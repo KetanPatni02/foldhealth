@@ -180,6 +180,53 @@
   background: rgba(255, 255, 255, 0.22);
 }
 
+.locationDropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.14);
+  min-width: 180px;
+  max-height: 320px;
+  overflow-y: auto;
+  z-index: 100;
+  padding: 4px 0;
+}
+
+.locationDropdownGroup {
+  padding: 8px 14px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--neutral-300);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.locationDropdownItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-400);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.locationDropdownItem:hover {
+  background: var(--primary-50);
+  color: var(--primary-400);
+}
+
+.locationDropdownItem[data-active] {
+  font-weight: 500;
+  color: var(--primary-400);
+}
+
 .welcomeClock {
   padding: 6px 20px 0;
 }
