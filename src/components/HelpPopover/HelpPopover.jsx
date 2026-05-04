@@ -53,6 +53,29 @@ const FEATURES = [
     ],
   },
   {
+    group: 'Calls',
+    items: [
+      {
+        icon: 'solar:phone-calling-linear',
+        crumbs: ['Call Lines'],
+        description: 'Manage inbound and outbound call lines and routing.',
+        page: 'calls',
+      },
+      {
+        icon: 'solar:phone-linear',
+        crumbs: ['Call Sessions'],
+        description: 'View active and completed call sessions with transcripts.',
+        page: 'calls',
+      },
+      {
+        icon: 'solar:chat-round-call-linear',
+        crumbs: ['Call Details'],
+        description: 'Live goals, transcripts, compliance, and call summaries.',
+        page: 'calls',
+      },
+    ],
+  },
+  {
     group: 'Messages',
     items: [
       {

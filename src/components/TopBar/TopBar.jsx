@@ -156,16 +156,17 @@ const menuItemStyle = {
 };
 
 export function TopBar() {
-  const toggleSubnav = useAppStore(s => s.toggleSubnav);
-  const subnavCollapsed = useAppStore(s => s.subnavCollapsed);
   const activePage = useAppStore(s => s.activePage);
   const showCreateNew = useAppStore(s => s.showCreateNew);
   const setShowCreateNew = useAppStore(s => s.setShowCreateNew);
   const btnRef = useRef(null);
+  const searchRef = useRef(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
   const [user, setUser] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data?.user || null));
@@ -184,8 +185,34 @@ export function TopBar() {
   const isCalls = activePage === 'calls';
   const selectedPatientId = useAppStore(s => s.selectedPatientId);
   const navigateBackToWorklist = useAppStore(s => s.navigateBackToWorklist);
+  const navigateToPatient = useAppStore(s => s.navigateToPatient);
   const patients = useAppStore(s => s.patients);
   const activeSubnavList = useAppStore(s => s.activeSubnavList);
+
+  const searchResults = searchQuery.trim().length >= 2
+    ? patients.filter(p => {
+        const q = searchQuery.toLowerCase().trim();
+        return p.name?.toLowerCase().includes(q) ||
+          p.memberId?.toLowerCase().includes(q) ||
+          p.initials?.toLowerCase().includes(q);
+      }).slice(0, 8)
+    : [];
+  const showResults = searchFocused && searchResults.length > 0;
+
+  useEffect(() => {
+    if (!searchFocused) return;
+    const handler = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) setSearchFocused(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [searchFocused]);
+
+  const handleSelectPatient = (id) => {
+    navigateToPatient(id);
+    setSearchQuery('');
+    setSearchFocused(false);
+  };
   const isPatientView = activePage === 'population' && !!selectedPatientId;
   const patientName = isPatientView ? (patients.find(p => p.id === selectedPatientId)?.name || 'Patient') : '';
 
@@ -193,14 +220,6 @@ export function TopBar() {
     <>
     <header className={styles.topbar}>
       <div className={styles.left}>
-        {!isSettings && !isAnalytics && !isCalendar && !isHome && !isMessages && !isCalls && !isPatientView && (
-          <ActionButton
-            icon={subnavCollapsed ? 'solar:alt-arrow-right-linear' : 'solar:sidebar-minimalistic-linear'}
-            size="L"
-            tooltip="Toggle panel"
-            onClick={toggleSubnav}
-          />
-        )}
         <nav className={styles.breadcrumb}>
           {isPatientView ? (
             <>
@@ -243,9 +262,41 @@ export function TopBar() {
       </div>
 
       <div className={styles.center}>
-        <div className={styles.searchBox}>
-          <Icon name="solar:magnifer-linear" size={18} color="var(--neutral-200)" />
-          <input type="text" placeholder="Search Patients or Members" />
+        <div className={styles.searchWrap} ref={searchRef}>
+          <div className={styles.searchBox}>
+            <Icon name="solar:magnifer-linear" size={18} color="var(--neutral-200)" />
+            <input
+              type="text"
+              placeholder="Search Patients or Members"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+            />
+            {searchQuery && (
+              <button className={styles.searchClear} onClick={() => setSearchQuery('')} aria-label="Clear search">
+                <Icon name="solar:close-circle-linear" size={16} color="var(--neutral-200)" />
+              </button>
+            )}
+          </div>
+          {showResults && (
+            <div className={styles.searchResults}>
+              {searchResults.map(p => (
+                <button
+                  key={p.id}
+                  className={styles.searchResultItem}
+                  onClick={() => handleSelectPatient(p.id)}
+                >
+                  <div className={styles.searchResultAvatar}>{p.initials}</div>
+                  <div className={styles.searchResultInfo}>
+                    <div className={styles.searchResultName}>{p.name}</div>
+                    <div className={styles.searchResultMeta}>
+                      {p.gender === 'M' ? 'Male' : p.gender === 'F' ? 'Female' : p.gender} • {p.memberId || '—'}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <button className={styles.askUnity}>
           <Icon name="solar:bolt-bold" size={18} />

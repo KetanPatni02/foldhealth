@@ -123,11 +123,11 @@ function PopulationView() {
   const isComingSoon = ['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'AWV', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList);
 
   return (
-    <>
-      <SubNav collapsed={subnavCollapsed} />
-      <div className={styles.main}>
-        <TopBar />
-        <DegradedBanner />
+    <div className={styles.main}>
+      <TopBar />
+      <DegradedBanner />
+      <div className={styles.bodyRow}>
+        <SubNav collapsed={subnavCollapsed} />
         <div className={styles.content}>
           {!isHcc && !isComingSoon && <TabBar />}
           {!isHcc && !isComingSoon && showFilterBar && <FilterBar />}
@@ -142,7 +142,7 @@ function PopulationView() {
           {!isHcc && !isComingSoon && <Pagination />}
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
