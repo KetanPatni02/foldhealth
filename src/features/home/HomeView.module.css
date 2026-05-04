@@ -645,6 +645,166 @@
   gap: 8px;
 }
 
+.quickNotesBody {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quickNote {
+  background: #FFF6D6;
+  border: 0.5px solid #F6E8A5;
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--neutral-500);
+  line-height: 1.5;
+  cursor: pointer;
+  position: relative;
+}
+
+.quickNoteText {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.quickNoteTextFull {
+  font-size: 12px;
+  color: var(--neutral-500);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.quickNoteMeta {
+  font-size: 10px;
+  color: var(--neutral-300);
+  margin-top: 6px;
+}
+
+.quickNoteHoverActions {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.quickNote:hover .quickNoteHoverActions { opacity: 1; }
+
+.quickNoteActionBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 3px;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+}
+.quickNoteActionBtn:hover { background: rgba(0,0,0,0.06); }
+
+.quickNoteFooter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.quickNoteSaveBtn {
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  background: var(--primary-300);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.quickNoteSaveBtn:hover { background: var(--primary-400); }
+
+.quickNoteCancelBtn {
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  background: none;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.quickNoteCancelBtn:hover { background: var(--neutral-50); }
+
+.quickNoteCollapseBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 3px;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  border-radius: 4px;
+}
+.quickNoteCollapseBtn:hover { background: rgba(0,0,0,0.06); }
+
+.quickNoteTextarea {
+  width: 100%;
+  min-height: 48px;
+  border: none;
+  outline: none;
+  resize: vertical;
+  font-size: 12px;
+  color: var(--neutral-500);
+  font-family: 'Inter', sans-serif;
+  line-height: 1.5;
+  background: transparent;
+  padding: 0;
+}
+.quickNoteTextarea::placeholder { color: var(--neutral-300); }
+
+.deleteConfirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.deleteConfirmText {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.deleteConfirmActions { display: flex; gap: 6px; }
+.deleteConfirmBtn {
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  background: var(--status-error);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.deleteConfirmBtn:hover { opacity: 0.9; }
+.deleteConfirmCancelBtn {
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  background: none;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.deleteConfirmCancelBtn:hover { background: var(--neutral-50); }
+
 .stickyNote {
   background: #FFF6D6;
   border: 0.5px solid #F6E8A5;
@@ -659,6 +819,16 @@
   font-size: 10px;
   color: var(--neutral-400);
   margin-top: 6px;
+}
+
+.quickNotesEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 24px 0;
+  font-size: 13px;
+  color: var(--neutral-200);
 }
 
 .loading, .errorState {

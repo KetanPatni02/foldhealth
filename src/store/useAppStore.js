@@ -72,6 +72,8 @@ export const useAppStore = create((set, get) => ({
   // Sticky Notes
   stickyNotes: [],
   stickyNoteHistory: [],
+  quickNotes: [],
+  quickNoteHistory: [],
   fetchStickyNotes: async (patientId) => {
     const { data } = await supabase.from('sticky_notes').select('*').eq('patient_id', patientId).order('created_at', { ascending: true });
     if (data) set({ stickyNotes: data });
@@ -115,6 +117,41 @@ export const useAppStore = create((set, get) => ({
       get().fetchStickyNotes(patientId);
       get().fetchStickyNoteHistory(patientId);
     }
+  },
+
+  // Quick Notes (global / home page)
+  fetchQuickNotes: async () => {
+    const { data } = await supabase.from('sticky_notes').select('*').eq('patient_id', 'global').order('created_at', { ascending: false });
+    if (data) set({ quickNotes: data });
+  },
+  fetchQuickNoteHistory: async () => {
+    const { data } = await supabase.from('sticky_note_history').select('*').eq('patient_id', 'global').order('created_at', { ascending: false });
+    if (data) set({ quickNoteHistory: data });
+  },
+  createQuickNote: async (text) => {
+    const note = { patient_id: 'global', text, author_name: 'You', ehr_profile: 'Quick Note' };
+    const { data, error } = await supabase.from('sticky_notes').insert(note).select().single();
+    if (!error && data) {
+      await supabase.from('sticky_note_history').insert({ sticky_note_id: data.id, patient_id: 'global', author_name: 'You', action: 'added a Note', note_text: text, ehr_instance: 'Quick Note' });
+      get().fetchQuickNotes();
+      get().fetchQuickNoteHistory();
+    }
+    return data;
+  },
+  updateQuickNote: async (id, text) => {
+    await supabase.from('sticky_notes').update({ text, author_name: 'You' }).eq('id', id);
+    await supabase.from('sticky_note_history').insert({ sticky_note_id: id, patient_id: 'global', author_name: 'You', action: 'Updated a Note', note_text: text, ehr_instance: 'Quick Note' });
+    get().fetchQuickNotes();
+    get().fetchQuickNoteHistory();
+  },
+  deleteQuickNote: async (id) => {
+    const { data: noteData } = await supabase.from('sticky_notes').select('*').eq('id', id).maybeSingle();
+    if (noteData) {
+      await supabase.from('sticky_note_history').insert({ sticky_note_id: id, patient_id: 'global', author_name: 'You', action: 'deleted a Note', note_text: noteData.text, ehr_instance: 'Quick Note' });
+    }
+    await supabase.from('sticky_notes').delete().eq('id', id);
+    get().fetchQuickNotes();
+    get().fetchQuickNoteHistory();
   },
 
   // P360 Profile data

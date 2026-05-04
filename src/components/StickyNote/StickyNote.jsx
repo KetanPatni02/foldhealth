@@ -18,9 +18,9 @@ import styles from './StickyNote.module.css';
  * @param {function}  onAuditLog    - () => void
  * @param {boolean}   collapsedOnly - If true, always show collapsed single-line view
  */
-export function StickyNote({ notes = [], onSave, onCreate, onDelete, onAuditLog, collapsedOnly = false }) {
-  const [expanded, setExpanded] = useState(false);
-  const [editing, setEditing] = useState(false);
+export function StickyNote({ notes = [], onSave, onCreate, onDelete, onAuditLog, collapsedOnly = false, initialExpanded = false }) {
+  const [expanded, setExpanded] = useState(initialExpanded);
+  const [editing, setEditing] = useState(initialExpanded && notes.length === 0);
   const [editText, setEditText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
   const textareaRef = useRef(null);
