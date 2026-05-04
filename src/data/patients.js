@@ -74,11 +74,11 @@ const _rawPatients = [
   {
     id: 'p2', initials: 'TS', name: 'Terri Schulist',
     gender: 'F', age: '61y 8m', memberId: '#2468029989898', enrolled: true, language: 'es',
-    agentAssigned: '', agentRole: '', outreachDots: ['failed','success','pending'],
+    agentAssigned: 'Erica', agentRole: 'TOC Agent', outreachDots: ['failed','success','pending'],
     lace: 'High', tocType: 'IP',
-    outreachType: '48h', outreachLeft: '12h left', onCall: false, callDuration: null,
-    status: 'scheduled', scheduledTime: '11/15/2025 10:30 AM', goals: null,
-    nextAction: 'Initial outreach — first contact attempt',
+    outreachType: '48h', outreachLeft: '12h left', onCall: true, callDuration: '03:42',
+    status: 'oncall', scheduledTime: '11/15/2025 10:30 AM', goals: null,
+    nextAction: 'Live outreach in progress',
     aiInsights: [
       { label: 'High Risk Patient', cls: 'ai-tag-risk', icon: 'solar:shield-warning-bold' },
       { label: 'Fall Risk', cls: 'ai-tag-social', icon: 'solar:running-2-bold' }
@@ -103,11 +103,11 @@ const _rawPatients = [
   {
     id: 'p3', initials: 'AB', name: 'Annette Brave',
     gender: 'O', age: '48y 4m', memberId: '#2468029989898', enrolled: true, language: 'yue',
-    agentAssigned: '', agentRole: '', outreachDots: ['success','pending','pending'],
+    agentAssigned: 'Erica', agentRole: 'TOC Agent', outreachDots: ['success','pending','pending'],
     lace: 'High', tocType: 'ED',
-    outreachType: '48h', outreachLeft: '4h left', onCall: false, callDuration: null,
-    status: 'scheduled', scheduledTime: '11/15/2025 11:00 AM', goals: null,
-    nextAction: 'Callback scheduled – inbound call detected',
+    outreachType: '48h', outreachLeft: '4h left', onCall: true, callDuration: '01:58',
+    status: 'oncall', scheduledTime: '11/15/2025 11:00 AM', goals: null,
+    nextAction: 'Live outreach in progress',
     aiInsights: [
       { label: 'Financial Aid', cls: 'ai-tag-social', icon: 'solar:wallet-money-bold' },
       { label: 'Social Isolation', cls: 'ai-tag-social', icon: 'solar:user-block-bold' },
@@ -134,7 +134,7 @@ const _rawPatients = [
   {
     id: 'p4', initials: 'GB', name: 'Glenn Bauch',
     gender: 'F', age: '66y 1m', memberId: '#2468029989898', enrolled: false, language: 'zh',
-    agentAssigned: '', agentRole: '', outreachDots: ['failed','failed','failed'],
+    agentAssigned: 'Erica', agentRole: 'TOC Agent', outreachDots: ['failed','failed','failed'],
     lace: 'Medium', tocType: 'IP',
     outreachType: '7d', outreachLeft: '3d 5h left', onCall: false,
     status: 'failed', goals: null,
@@ -165,11 +165,11 @@ const _rawPatients = [
   {
     id: 'p5', initials: 'MZ', name: 'Marcus Ziemann',
     gender: 'O', age: '50y 3m', memberId: '#2468029989898', enrolled: false, language: 'en',
-    agentAssigned: '', agentRole: '', outreachDots: ['failed','success','pending'],
+    agentAssigned: 'Erica', agentRole: 'TOC Agent', outreachDots: ['failed','success','pending'],
     lace: 'Medium', tocType: 'ED',
     outreachType: '7d', outreachLeft: '2d 8h left', onCall: false, callDuration: null,
-    status: 'scheduled', scheduledTime: '11/13/2025 03:00 PM', goals: null,
-    nextAction: 'Verify medication reconciliation',
+    status: 'queued', scheduledTime: '11/13/2025 03:00 PM', goals: null,
+    nextAction: 'Queued — waiting for available line',
     aiInsights: [
       { label: 'Med Non-Adherence', cls: 'ai-tag-med', icon: 'solar:pill-bold' },
       { label: 'Asthma Action Plan', cls: 'ai-tag-care', icon: 'solar:clipboard-heart-bold' }
@@ -221,11 +221,11 @@ const _rawPatients = [
   {
     id: 'p7', initials: 'KC', name: 'Kendra Crona',
     gender: 'M', age: '64y 9m', memberId: '#2468029989898', enrolled: false, language: 'en',
-    agentAssigned: '', agentRole: '', outreachDots: ['pending','pending','pending'],
+    agentAssigned: 'Ricardo', agentRole: 'SNP Agent', outreachDots: ['pending','pending','pending'],
     lace: 'Low', tocType: 'ED',
     outreachType: '7d', outreachLeft: '5d left', onCall: false,
-    status: 'scheduled', scheduledTime: '11/13/2025 02:00 PM', goals: null,
-    nextAction: 'Paused – awaiting coordinator review',
+    status: 'queued', scheduledTime: '11/13/2025 02:00 PM', goals: null,
+    nextAction: 'Queued — waiting for available line',
     aiInsights: [
       { label: 'Recurrent UTI', cls: 'ai-tag-risk', icon: 'solar:danger-triangle-bold' },
       { label: 'Antibiotic Adhere.', cls: 'ai-tag-med', icon: 'solar:pill-bold' }
@@ -331,7 +331,7 @@ const _rawPatients = [
   {
     id: 'p11', initials: 'CM', name: 'Clara Mitchell',
     gender: 'F', age: '34y 2m', memberId: '#2468029990011', enrolled: true, language: 'en',
-    agentAssigned: '', agentRole: '', outreachDots: ['success','success','success'],
+    agentAssigned: 'Anna', agentRole: 'TOC Outreach', outreachDots: ['success','success','success'],
     lace: 'Low', tocType: 'IP',
     outreachType: '7d', outreachLeft: '6d left', onCall: false, callDuration: null,
     status: 'completed', goals: { met: 3, total: 3 },

@@ -13,8 +13,8 @@ export function QueueTable() {
   const fetchCallDetails = useAppStore(s => s.fetchCallDetails);
   const searchQuery = useAppStore(s => s.searchQuery);
 
-  // Fetch patients + call details when queue mounts (lazy)
-  useEffect(() => { fetchPatients(); fetchCallDetails(); }, [fetchPatients, fetchCallDetails]);
+  // Fetch patients + call details when queue mounts (lazy — skip if already loaded)
+  useEffect(() => { if (!patients.length && !patientsLoading) fetchPatients(); fetchCallDetails(); }, [patients.length, patientsLoading, fetchPatients, fetchCallDetails]);
   const activeFilters = useAppStore(s => s.activeFilters);
   const currentPage = useAppStore(s => s.currentPage);
   const perPage = useAppStore(s => s.perPage);

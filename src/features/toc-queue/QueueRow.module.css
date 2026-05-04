@@ -194,3 +194,132 @@
   gap: 4px;
 }
 .aiOverflowWrap:hover .aiOverflowTooltip { display: flex; }
+
+/* Live goals mini (oncall status cell) */
+.liveGoalsMini {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+/* Live transcript snippet */
+.liveSnippet {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 280px;
+}
+.snippetLine {
+  display: flex;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--neutral-300);
+  line-height: 1.4;
+}
+.snippetLatest {
+  color: var(--neutral-400);
+  font-weight: 500;
+}
+.snippetSender {
+  font-weight: 500;
+  flex-shrink: 0;
+  color: var(--primary-300);
+}
+.snippetLatest .snippetSender {
+  color: var(--neutral-400);
+}
+.snippetText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Expanded call details row */
+.expandedRow {
+  display: flex;
+  gap: 0;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--neutral-150);
+  border-top: 1px solid var(--primary-100);
+}
+.expandedSection {
+  flex: 1;
+  min-width: 0;
+}
+.expandedDivider {
+  width: 1px;
+  background: var(--neutral-150);
+  margin: 0 20px;
+  align-self: stretch;
+}
+.expandedHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary-300);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+}
+.expandedGoals {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.expandedGoalItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.goalDone { color: var(--neutral-400); }
+.goalPending { color: var(--neutral-300); }
+.goalTime {
+  font-size: 11px;
+  color: var(--neutral-200);
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Expanded transcript */
+.expandedTranscript {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.transcriptMsg {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.agentMsg {
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-100);
+}
+.patientMsg {
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+}
+.transcriptMsgHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.transcriptName {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.transcriptTime {
+  font-size: 11px;
+  color: var(--neutral-200);
+  margin-left: auto;
+}
+.transcriptText {
+  color: var(--neutral-400);
+}

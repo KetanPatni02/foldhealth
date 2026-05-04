@@ -277,20 +277,32 @@ export const useAppStore = create((set, get) => ({
         patientsError: error.message,
       });
     } else {
+      // Build maps for merging: in-memory state (from active invocations) + fallback seed data
+      const existing = get().patients;
+      const overrides = {};
+      for (const ep of existing) {
+        if (ep.agentAssigned) overrides[ep.id] = ep;
+      }
+      const fallbackMap = {};
+      for (const fp of fallbackPatients) {
+        if (fp.agentAssigned) fallbackMap[fp.id] = fp;
+      }
+
       const patients = data.map(dbToJs).map(p => {
         const isPeter = p.name === 'Peter Kim' || p.id === 'p11';
+        const mem = overrides[p.id];
+        const fb = fallbackMap[p.id];
         return {
           ...p,
           name: isPeter ? 'Clara Mitchell' : p.name,
           initials: isPeter ? 'CM' : p.initials,
-        // Reset transient agent/call state on fresh load —
-        // queue should be empty until agents are explicitly invoked
-        // But preserve agent assignment for completed patients so they show in queue
-        agentAssigned: p.status === 'completed' ? (p.agentAssigned || 'Anna') : '',
-        agentRole: p.status === 'completed' ? (p.agentRole || 'TOC Outreach') : '',
-          onCall: false,
-          status: (p.status === 'oncall' || p.status === 'queued') ? 'scheduled' : p.status,
-          callDuration: (p.status === 'oncall') ? null : p.callDuration,
+          // Priority: in-memory invoke state > DB state > fallback seed data
+          agentAssigned: mem?.agentAssigned || p.agentAssigned || fb?.agentAssigned || '',
+          agentRole: mem?.agentRole || p.agentRole || fb?.agentRole || '',
+          onCall: mem ? mem.onCall : (p.onCall || fb?.onCall || false),
+          status: mem ? mem.status : (p.status !== 'scheduled' ? p.status : fb?.status || p.status),
+          callDuration: mem ? mem.callDuration : (p.callDuration || fb?.callDuration),
+          nextAction: mem?.nextAction || p.nextAction || fb?.nextAction,
         };
       });
       // Sort by numeric part of id (p1, p2, ... p10, p11, ...)
@@ -1444,6 +1456,10 @@ export const useAppStore = create((set, get) => ({
       return newP;
     });
     set({ patients: updated, selectedIds: [], showInvokeModal: false, toastSuccess: true, queueTabDot: true });
+
+    // Auto-navigate to the queue tab so users see their invoked patients
+    const { setActiveTab } = get();
+    setActiveTab('toc-queue');
 
     // Create call records for invoked patients and persist to Supabase
     for (const p of updated) {

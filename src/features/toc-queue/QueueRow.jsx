@@ -85,6 +85,10 @@ function StatusCell({ patient: p, voicemailCalls, completedCall }) {
     );
   }
   if (status === 'oncall') {
+    const liveGoals = p.liveGoals || [];
+    const done = liveGoals.filter(g => g.done).length;
+    const total = liveGoals.length;
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
     return (
       <div className={styles.statusCompact}>
         <Badge
@@ -93,6 +97,14 @@ function StatusCell({ patient: p, voicemailCalls, completedCall }) {
           icon="solar:phone-calling-bold"
           dot={false}
         />
+        {total > 0 && (
+          <div className={styles.liveGoalsMini}>
+            <div className={styles.goalsFill}>
+              <div className={styles.goalsFillInner} style={{ width: `${pct}%`, background: '#059669' }} />
+            </div>
+            <span className={styles.goalsText}>{done}/{total} goals</span>
+          </div>
+        )}
       </div>
     );
   }
@@ -145,8 +157,35 @@ function StatusCell({ patient: p, voicemailCalls, completedCall }) {
   return <span style={{ fontSize: 13, color: 'var(--neutral-200)' }}>—</span>;
 }
 
-function NextActionCell({ patient: p }) {
+function LiveTranscriptSnippet({ transcript }) {
+  if (!transcript?.length) return null;
+  const last = transcript[transcript.length - 1];
+  const prev = transcript.length > 1 ? transcript[transcript.length - 2] : null;
+  return (
+    <div className={styles.liveSnippet}>
+      {prev && (
+        <div className={styles.snippetLine}>
+          <span className={styles.snippetSender}>{prev.sender === 'agent' ? prev.name : prev.name?.split(' ')[0]}:</span>
+          <span className={styles.snippetText}>{prev.text.length > 60 ? prev.text.slice(0, 60) + '…' : prev.text}</span>
+        </div>
+      )}
+      <div className={`${styles.snippetLine} ${styles.snippetLatest}`}>
+        <span className={styles.snippetSender}>{last.sender === 'agent' ? last.name : last.name?.split(' ')[0]}:</span>
+        <span className={styles.snippetText}>{last.text.length > 60 ? last.text.slice(0, 60) + '…' : last.text}</span>
+      </div>
+    </div>
+  );
+}
+
+function NextActionCell({ patient: p, ongoingCall }) {
   const showToast = useAppStore(s => s.showToast);
+  if (p.status === 'oncall') {
+    const transcript = ongoingCall?.liveTranscript || p.liveTranscript || [];
+    if (transcript.length > 0) {
+      return <LiveTranscriptSnippet transcript={transcript} />;
+    }
+    return <div className={styles.nextAction}>{p.nextAction || 'Live outreach in progress'}</div>;
+  }
   if (p.nextAction === '__MED_REVIEW__') {
     return (
       <div>
@@ -197,6 +236,7 @@ export function QueueRow({ patient }) {
   const p = patient;
   const voicemailCalls = callDetails.filter(c => c.patientId === p.id && c.callType === 'voicemail');
   const completedCall = callDetails.find(c => c.patientId === p.id && c.callType === 'completed');
+  const ongoingCall = callDetails.find(c => c.patientId === p.id && c.callType === 'ongoing');
   const outreachBadgeVariant = p.outreachType === '48h' ? 'outreach-48h' : 'outreach-7d';
 
   const openDetail = useAppStore(s => s.openDetail);
@@ -289,7 +329,7 @@ export function QueueRow({ patient }) {
         <StatusCell patient={p} voicemailCalls={voicemailCalls} completedCall={completedCall} />
       </td>
       <td className={styles.agentColTd} style={{ background: 'var(--agent-col-bg)' }}>
-        <NextActionCell patient={p} />
+        <NextActionCell patient={p} ongoingCall={ongoingCall} />
       </td>
       <td className={styles.agentColTd} style={{ background: 'var(--agent-col-bg)', borderRight: '2px solid var(--primary-200)' }}>
         <AiInsightsCell insights={p.aiInsights} />
@@ -327,7 +367,11 @@ export function QueueRow({ patient }) {
             icon="solar:document-text-linear"
             size="L"
             tooltip="View details"
-            onClick={() => openWorkflow(p.id)}
+            onClick={() => {
+              if (p.status === 'oncall') openLiveDrawer(p.id);
+              else if (p.status === 'completed') openDetail(p.id);
+              else openWorkflow(p.id);
+            }}
           />
           <span className={rowStyles.actionDivider} />
           <span style={{ position: 'relative' }}>
