@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
+import { Icon } from '../Icon/Icon';
 import styles from './Toggle.module.css';
 
 /**
@@ -25,6 +26,7 @@ export function Toggle({ items = [], active, onChange, className, size = 'M', fu
   const normalized = items.map(item =>
     typeof item === 'string' ? { key: item, label: item } : item,
   );
+  const hasIcons = normalized.some(i => i.icon);
 
   const updateSlider = useCallback(() => {
     if (!containerRef.current) return;
@@ -46,7 +48,7 @@ export function Toggle({ items = [], active, onChange, className, size = 'M', fu
       role="radiogroup"
     >
       <div className={styles.slider} style={sliderStyle} />
-      {normalized.map(({ key, label }) => (
+      {normalized.map(({ key, label, icon }) => (
         <button
           key={key}
           type="button"
@@ -56,7 +58,7 @@ export function Toggle({ items = [], active, onChange, className, size = 'M', fu
           className={`${styles.btn} ${active === key ? styles.btnActive : ''}`}
           onClick={() => onChange(key)}
         >
-          {label}
+          {icon ? (typeof icon === 'string' ? <Icon name={icon} size={size === 'S' ? 14 : 16} /> : icon) : label}
         </button>
       ))}
     </div>

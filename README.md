@@ -139,6 +139,15 @@ The platform follows the **Fold Health design system** with strict adherence to:
 
 ## Recent Changes
 
+### Tasks — Full Tasks page with grouped task table (May 2026)
+- **New Tasks page** (`src/features/tasks/TasksView.jsx`) rendered when `activePage === 'tasks'`. Matches the Figma Tasks design (node `1371:40866`).
+- **Top nav tabs** — "Assigned to Me", "My Task Pool", "Created by Me", "Mentions" with count badges and active state styling. Right-aligned action buttons: list/board view toggle, filter, "+ Add Task", pin, settings.
+- **Filter bar** — nine filter chips (Assigned to, View By, Sort By, Created By, Members, Task Status, Priority, Due Date, Labels) with dropdown chevrons and a "Clear All" button.
+- **Grouped task table** — tasks grouped by status (Pending, Missed, Completed) with collapsible section headers showing task counts and add/collapse action buttons.
+- **Task rows** — circular checkbox (green check for completed), task name with hover link, parent task / subtask hierarchy with subtask icon, meta line (Care Journey / Automation / By), attachment & comment count badges, priority icons (high/medium/low with color coding), colored status badges (orange Pending, red Missed, green Completed), due dates (red with clock icon for missed), member with user icon, and label badges with "Add Label" placeholder.
+- **Routing** — `src/lib/router.js` now recognizes the `tasks` page (hash `#/tasks`); `Sidebar` adds `'tasks'` to `implementedPages`; `TopBar` shows "Tasks" breadcrumb.
+- **Reuses** existing components: `TopBar`, `ActionButton`, `Button`, `Icon`, and design tokens from `tokens.css`.
+
 ### Calls — Full Calls page wired to the sidebar (April 2026)
 - **New Calls page** (`src/features/calls/CallsView.jsx`) rendered when `activePage === 'calls'`. Matches the Figma "Build Health Agent Wizard" Calls screen (node `754:67514`).
 - **Layout** — reuses the shared `TopBar` (breadcrumb "Calls", search, Ask Unity, notifications, Create New, Schedule, avatar). Below it, a 40 px tabs bar hosts `All | Incoming | Outgoing | Missed | Calling Agents` (Calling Agents active), with right-aligned shortcut/settings action buttons.

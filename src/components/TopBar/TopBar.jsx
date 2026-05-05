@@ -183,6 +183,7 @@ export function TopBar() {
   const isHome = activePage === 'home';
   const isMessages = activePage === 'messages';
   const isCalls = activePage === 'calls';
+  const isTasks = activePage === 'tasks';
   const selectedPatientId = useAppStore(s => s.selectedPatientId);
   const navigateBackToWorklist = useAppStore(s => s.navigateBackToWorklist);
   const navigateToPatient = useAppStore(s => s.navigateToPatient);
@@ -235,6 +236,8 @@ export function TopBar() {
             <span className={styles.breadcrumbCurrent}>Messages</span>
           ) : isCalls ? (
             <span className={styles.breadcrumbCurrent}>Calls</span>
+          ) : isTasks ? (
+            <span className={styles.breadcrumbCurrent}>Tasks</span>
           ) : isCalendar ? (
             <span className={styles.breadcrumbCurrent}>Calendar</span>
           ) : isAnalytics ? (

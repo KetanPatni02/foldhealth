@@ -11,6 +11,7 @@ import { kpiRowToJs, tsRowToJs, tableRowToJs, barRowToJs, configRowToJs, groupTi
 import { domainDbToJs, domainJsToDb, componentDbToJs, componentJsToDb, auditLogDbToJs } from '../lib/embedMapper';
 import { FALLBACK_KPIS, FALLBACK_TIME_SERIES, FALLBACK_TABLES, FALLBACK_PROGRESS_BARS, FALLBACK_CONFIGS } from '../data/analyticsFallbacks';
 import { FALLBACK_INBOX_ITEMS, FALLBACK_CHANNEL_ITEMS, FALLBACK_CALL_LINES, FALLBACK_CALL_SESSIONS } from '../data/callsConfig';
+import { fallbackTasks } from '../data/tasks';
 import { updateHash } from '../lib/router';
 import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem } from '../lib/theme';
 
@@ -1820,6 +1821,71 @@ export const useAppStore = create((set, get) => ({
       .eq('id', id);
     if (error) { console.error('Delete appointment error:', error); return false; }
     get().fetchAppointments();
+    return true;
+  },
+
+  // ── Tasks ──
+  tasks: [],
+  tasksLoading: false,
+  tasksTab: 'assigned',
+  tasksFilters: {},
+  showTasksFilterBar: true,
+  tasksViewMode: 'list',
+
+  setTasksTab: (tab) => set({ tasksTab: tab }),
+  setTasksViewMode: (mode) => set({ tasksViewMode: mode }),
+  toggleTasksFilterBar: () => set(s => ({ showTasksFilterBar: !s.showTasksFilterBar })),
+  setTasksFilter: (key, value) => {
+    const filters = { ...get().tasksFilters };
+    if (value == null) delete filters[key];
+    else filters[key] = value;
+    set({ tasksFilters: filters });
+  },
+  clearTasksFilters: () => set({ tasksFilters: {} }),
+
+  fetchTasks: async () => {
+    set({ tasksLoading: true });
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (error || !data || data.length === 0) {
+      console.warn('Tasks fetch failed or empty, using fallback:', error?.message);
+      set({ tasks: fallbackTasks });
+    } else {
+      set({ tasks: data });
+    }
+    set({ tasksLoading: false });
+  },
+
+  createTask: async (task) => {
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert(task)
+      .select()
+      .single();
+    if (error) { console.error('Create task error:', error); return null; }
+    get().fetchTasks();
+    return data;
+  },
+
+  updateTask: async (id, updates) => {
+    const { error } = await supabase
+      .from('tasks')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) { console.error('Update task error:', error); return false; }
+    get().fetchTasks();
+    return true;
+  },
+
+  deleteTask: async (id) => {
+    const { error } = await supabase
+      .from('tasks')
+      .delete()
+      .eq('id', id);
+    if (error) { console.error('Delete task error:', error); return false; }
+    get().fetchTasks();
     return true;
   },
 }));

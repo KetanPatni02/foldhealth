@@ -463,6 +463,25 @@ async function seedCallSessions() {
   else console.log(`[seed] Seeded ${rows.length} call_sessions`);
 }
 
+// ── Seed tasks ──
+async function seedTasks() {
+  if (!(await isTableEmpty('tasks'))) return;
+  console.log('[seed] Seeding tasks...');
+  const rows = [
+    { name: 'Record daily blood pressure readings', meta: 'Care Journey : Hypertension Control Journey \'24', parent_task: null, is_subtask: false, attachments: 0, comments: 0, priority: 'medium', status: 'pending', due_date: '03-08-2024', due_missed: false, member: 'Celia Gerhold', labels: '{}', assigned_to: 'Dr. JeDee Potter', created_by: 'Dr. JeDee Potter' },
+    { name: 'Attend diabetes education session', meta: 'Automation : Monthly DM2 Seminar', parent_task: null, is_subtask: false, attachments: 2, comments: 0, priority: 'medium', status: 'pending', due_date: '03-11-2024', due_missed: false, member: 'Colleen Fadel', labels: '{}', assigned_to: 'Dr. JeDee Potter', created_by: 'Dr. JeDee Potter' },
+    { name: 'Exercise for 30 minutes', meta: 'Care Journey : Hypertension Control Journey \'24', parent_task: null, is_subtask: false, attachments: 0, comments: 1, priority: 'low', status: 'pending', due_date: '02-28-2024', due_missed: false, member: 'Gene Ankunding', labels: '{Hypertension,Exercise}', assigned_to: 'Dr. JeDee Potter', created_by: 'Dr. JeDee Potter' },
+    { name: 'Schedule and attend follow-up appointment', meta: 'By : Dr. JeDee Potter', parent_task: 'Get annual flu vaccine', is_subtask: true, attachments: 0, comments: 3, priority: 'medium', status: 'pending', due_date: '03-10-2024', due_missed: false, member: 'Celia Gerhold', labels: '{}', assigned_to: 'Dr. JeDee Potter', created_by: 'Dr. JeDee Potter' },
+    { name: 'Practice stress reduction techniques', meta: 'Care Journey : Hypertension Control Journey \'24', parent_task: 'Attend diabetes education session', is_subtask: true, attachments: 1, comments: 0, priority: 'low', status: 'missed', due_date: '12-12-2023', due_missed: true, member: 'Viola Langosh', labels: '{Hypertension}', assigned_to: 'Dr. JeDee Potter', created_by: 'Dr. JeDee Potter' },
+    { name: 'Submit health insurance documentation', meta: 'By : Deborah Hintz', parent_task: null, is_subtask: false, attachments: 0, comments: 1, priority: 'high', status: 'missed', due_date: '12-09-2023', due_missed: true, member: 'Phil Ward', labels: '{Document Collection}', assigned_to: 'Dr. JeDee Potter', created_by: 'Deborah Hintz' },
+    { name: 'Develop Standardized Appointment Scheduling System', meta: 'By : Dr. Robert Frost', parent_task: 'Improve Appointment', is_subtask: true, attachments: 1, comments: 0, priority: 'low', status: 'completed', due_date: '03-10-2024', due_missed: false, member: 'Kerry Bogisich', labels: '{Hypertension}', assigned_to: 'Dr. JeDee Potter', created_by: 'Dr. Robert Frost' },
+    { name: 'Review and Update Billing and Coding Procedures', meta: 'By : Deborah Hintz', parent_task: null, is_subtask: false, attachments: 0, comments: 1, priority: 'high', status: 'completed', due_date: '03-10-2024', due_missed: false, member: 'Amy Wuckert MD', labels: '{Document Collection}', assigned_to: 'Dr. JeDee Potter', created_by: 'Deborah Hintz' },
+  ];
+  const { error } = await supabase.from('tasks').insert(rows);
+  if (error) console.warn('[seed] tasks error:', error.message);
+  else console.log(`[seed] Seeded ${rows.length} tasks`);
+}
+
 export async function seedDatabaseIfEmpty() {
   // Only run once per session
   if (sessionStorage.getItem(SEED_FLAG)) return;
@@ -490,6 +509,7 @@ export async function seedDatabaseIfEmpty() {
     seedEmbedDomains(),
     seedEmbedComponents(),
     seedAuditLogs(),
+    seedTasks(),
   ]);
 
   // Reset sequences so auto-increment works after seeding explicit IDs
