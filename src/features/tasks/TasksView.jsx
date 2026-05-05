@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   DndContext,
   DragOverlay,
@@ -672,6 +673,45 @@ function EmptyState({ title, description, icon }) {
 }
 
 /* ── Task Detail Drawer ── */
+const ASSIGNEE_OPTIONS = ['Dr. JeDee Potter', 'Deborah Hintz', 'Dr. Robert Frost', 'Celia Gerhold'];
+const TASK_POOL_OPTIONS = ['Patient Outreach', 'Care Management', 'Follow-up', 'Documentation'];
+const MEMBER_OPTIONS = ['Celia Gerhold', 'Ralph Kessler', 'Robert Langdon', 'Cameron Haley'];
+const PRIORITY_OPTIONS = ['high', 'medium', 'low', 'none'];
+const LABEL_OPTIONS = ['Hypertension', 'Exercise', 'Document Collection', 'Medication', 'Diabetes', 'Follow-up'];
+
+function DetailDropdown({ value, options, onSelect, icon, renderOption, children }) {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef(null);
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button ref={btnRef} className={styles.detailValue} onClick={() => setOpen(v => !v)}>
+        {children || value || '—'}
+      </button>
+      {open && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setOpen(false)}>
+          <div
+            className={styles.simpleDropdown}
+            style={{ position: 'fixed', top: btnRef.current?.getBoundingClientRect().bottom + 4, left: btnRef.current?.getBoundingClientRect().left, zIndex: 9999 }}
+            onClick={e => e.stopPropagation()}
+          >
+            {options.map(opt => {
+              const label = typeof opt === 'string' ? opt : opt.label;
+              const val = typeof opt === 'string' ? opt : opt.value;
+              return (
+                <button key={val} className={styles.simpleDropItem} onClick={() => { onSelect(val); setOpen(false); }}>
+                  {renderOption ? renderOption(opt) : label}
+                </button>
+              );
+            })}
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
 const ACTIVITY_LOGS = [
   { user: 'John Doe', initials: 'JD', action: 'added a', target: 'Comment', type: 'comment', body: 'All patients who have been either admitted or discharged within last 29 days.' },
   { user: 'John Doe', initials: 'JD', action: 'changed the', target: 'Status', type: 'status', from: 'Pending', to: 'Completed' },
@@ -685,6 +725,11 @@ function TaskDetailDrawer({ task, onClose }) {
   const [activityToggle, setActivityToggle] = useState('Activity');
   const [editingDesc, setEditingDesc] = useState(false);
   const [descDraft, setDescDraft] = useState('');
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const [commentText, setCommentText] = useState('');
+  const [commentExpanded, setCommentExpanded] = useState(false);
+  const titleRef = useRef(null);
   const updateTask = useAppStore(s => s.updateTask);
   const showToast = useAppStore(s => s.showToast);
 
@@ -698,6 +743,22 @@ function TaskDetailDrawer({ task, onClose }) {
     updateTask(task.id, { status: newStatus });
     showToast(`Status changed to ${STATUS_LABELS[newStatus]}`);
   };
+
+  const handleTitleSave = () => {
+    const trimmed = titleDraft.trim();
+    if (trimmed && trimmed !== task.name) {
+      updateTask(task.id, { name: trimmed });
+      showToast('Title updated');
+    }
+    setEditingTitle(false);
+  };
+
+  const handleTitleKeyDown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); handleTitleSave(); }
+    if (e.key === 'Escape') setEditingTitle(false);
+  };
+
+  const getInitials = (name) => name ? name.split(' ').map(w => w[0]).join('').slice(0, 2) : '';
 
   return (
     <Drawer title="Task Details" onClose={onClose}>
@@ -733,52 +794,110 @@ function TaskDetailDrawer({ task, onClose }) {
           {labels.length > 0 && !task.is_subtask && (
             <Badge variant="overflow" label={labels[0]} />
           )}
-          <h3 className={styles.drawerTaskTitle}>{task.name}</h3>
+          {editingTitle ? (
+            <input
+              ref={titleRef}
+              className={styles.drawerTaskTitleInput}
+              value={titleDraft}
+              onChange={e => setTitleDraft(e.target.value)}
+              onBlur={handleTitleSave}
+              onKeyDown={handleTitleKeyDown}
+              autoFocus
+            />
+          ) : (
+            <h3
+              className={styles.drawerTaskTitle}
+              onClick={() => { setTitleDraft(task.name); setEditingTitle(true); }}
+            >
+              {task.name}
+            </h3>
+          )}
         </div>
 
         {/* Detail rows */}
         <div className={styles.drawerDetails}>
           <div className={styles.detailRow}>
             <span className={styles.detailLabel}>Assigned To</span>
-            <button className={styles.detailValue}>
+            <DetailDropdown
+              value={task.assigned_to}
+              options={ASSIGNEE_OPTIONS}
+              onSelect={v => { updateTask(task.id, { assigned_to: v }); showToast(`Assigned to ${v}`); }}
+              renderOption={opt => (
+                <><Avatar variant="assignee" initials={getInitials(opt)} className={styles.avatarXs} /> {opt}</>
+              )}
+            >
               <Avatar variant="assignee" initials={assigneeInitials} className={styles.avatarXs} />
               <span>{task.assigned_to || '—'}</span>
-            </button>
+            </DetailDropdown>
           </div>
           <div className={styles.detailRow}>
             <span className={styles.detailLabel}>Task Pool</span>
-            <button className={styles.detailValue}>Patient Outreach</button>
+            <DetailDropdown
+              value="Patient Outreach"
+              options={TASK_POOL_OPTIONS}
+              onSelect={v => showToast(`Task pool set to ${v}`)}
+            />
           </div>
           <div className={styles.detailRow}>
             <span className={styles.detailLabel}>Due Date</span>
-            <button className={styles.detailValue}>
+            <button className={styles.detailValue} onClick={() => showToast('Date picker coming soon')}>
               <Icon name="solar:calendar-linear" size={16} color="var(--neutral-300)" />
               <span>{task.due_date}</span>
             </button>
           </div>
           <div className={styles.detailRow}>
             <span className={styles.detailLabel}>Priority</span>
-            <button className={styles.detailValue}>
+            <DetailDropdown
+              value={task.priority}
+              options={PRIORITY_OPTIONS}
+              onSelect={v => { updateTask(task.id, { priority: v }); showToast(`Priority set to ${v}`); }}
+              renderOption={opt => (
+                <><PriorityIcon priority={opt} size={16} /> <span style={{ textTransform: 'capitalize' }}>{opt}</span></>
+              )}
+            >
               <PriorityIcon priority={task.priority} size={16} />
               <span style={{ textTransform: 'capitalize' }}>{task.priority}</span>
-            </button>
+            </DetailDropdown>
           </div>
           <div className={styles.detailRow}>
             <span className={styles.detailLabel}>Member</span>
-            <button className={styles.detailValue}>
+            <DetailDropdown
+              value={task.member}
+              options={MEMBER_OPTIONS}
+              onSelect={v => { updateTask(task.id, { member: v }); showToast(`Member set to ${v}`); }}
+              renderOption={opt => (
+                <><Avatar variant="patient" initials={getInitials(opt)} className={styles.avatarXs} /> {opt}</>
+              )}
+            >
               <Avatar variant="patient" initials={memberInitials} className={styles.avatarXs} />
               <span>{task.member}</span>
-            </button>
+            </DetailDropdown>
           </div>
           <div className={styles.detailRow}>
             <span className={styles.detailLabel}>Labels</span>
             <div className={styles.detailValueLabels}>
               {labels.map(l => (
-                <Badge key={l} variant="overflow" label={l} trailingIcon="solar:close-circle-linear" />
+                <Badge
+                  key={l}
+                  variant="overflow"
+                  label={l}
+                  trailingIcon="solar:close-circle-linear"
+                  onClick={() => {
+                    updateTask(task.id, { labels: labels.filter(x => x !== l) });
+                    showToast(`Label "${l}" removed`);
+                  }}
+                />
               ))}
-              <button className={styles.addLabelBtn}>
+              <DetailDropdown
+                value=""
+                options={LABEL_OPTIONS.filter(l => !labels.includes(l))}
+                onSelect={v => {
+                  updateTask(task.id, { labels: [...labels, v] });
+                  showToast(`Label "${v}" added`);
+                }}
+              >
                 <Icon name="solar:add-circle-linear" size={14} color="var(--neutral-200)" />
-              </button>
+              </DetailDropdown>
             </div>
           </div>
         </div>
@@ -877,10 +996,20 @@ function TaskDetailDrawer({ task, onClose }) {
 
           {/* Comment input */}
           <div className={styles.commentInput}>
-            <textarea placeholder="Add a comment" rows={2} className={styles.commentTextarea} />
-            <div className={styles.commentActions}>
-              <Button variant="secondary" size="S">Publish</Button>
-            </div>
+            <textarea
+              placeholder="Add a comment"
+              rows={commentExpanded ? 3 : 1}
+              className={styles.commentTextarea}
+              value={commentText}
+              onChange={e => setCommentText(e.target.value)}
+              onFocus={() => setCommentExpanded(true)}
+            />
+            {commentExpanded && (
+              <div className={styles.commentActions}>
+                <button className={styles.commentCancel} onClick={() => { setCommentExpanded(false); setCommentText(''); }}>Cancel</button>
+                <Button variant="primary" size="S" onClick={() => { showToast('Comment added'); setCommentText(''); setCommentExpanded(false); }}>Comment</Button>
+              </div>
+            )}
           </div>
 
           {/* Activity log */}

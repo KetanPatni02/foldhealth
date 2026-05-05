@@ -873,6 +873,32 @@
   color: var(--neutral-400);
   line-height: 1.2;
   margin: 0;
+  cursor: pointer;
+  padding: 4px 8px;
+  margin: -4px -8px;
+  border-radius: 4px;
+  transition: background .15s;
+}
+
+.drawerTaskTitle:hover {
+  background: var(--neutral-50);
+}
+
+.drawerTaskTitleInput {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  line-height: 1.2;
+  margin: 0;
+  padding: 4px 8px;
+  margin: -4px -8px;
+  border: 0.5px solid var(--primary-200);
+  border-radius: 4px;
+  outline: none;
+  background: var(--neutral-0);
+  font-family: 'Inter', sans-serif;
+  width: calc(100% + 16px);
+  box-sizing: border-box;
 }
 
 .drawerDetails {
@@ -984,7 +1010,6 @@
 .descEditor {
   border: 0.5px solid var(--neutral-150);
   border-radius: 6px;
-  overflow: hidden;
 }
 
 .descEditable {
@@ -1111,29 +1136,71 @@
 .commentInput {
   display: flex;
   flex-direction: column;
-  border: 0.5px solid var(--neutral-200);
-  border-radius: 4px;
-  overflow: hidden;
+  gap: 4px;
 }
 
 .commentTextarea {
-  border: none;
+  border: 0.5px solid var(--neutral-200);
+  border-radius: 4px;
   outline: none;
   padding: 8px;
   font-size: 14px;
   font-family: 'Inter', sans-serif;
   color: var(--neutral-400);
   resize: none;
-  min-height: 50px;
+  min-height: 32px;
+  max-height: 120px;
+  box-sizing: border-box;
+  transition: border-color .15s;
 }
+.commentTextarea:focus { border-color: var(--primary-200); }
 .commentTextarea::placeholder { color: var(--neutral-200); }
 
 .commentActions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
-  padding: 8px;
-  border-top: 0.5px solid var(--neutral-150);
+  gap: 8px;
 }
+
+.commentCancel {
+  background: none;
+  border: none;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-300);
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.commentCancel:hover { color: var(--neutral-400); }
+
+/* ── Detail Dropdown ── */
+.simpleDropdown {
+  min-width: 220px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  padding: 4px 0;
+  overflow: hidden;
+}
+
+.simpleDropItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font-size: 14px;
+  color: var(--neutral-400);
+  font-family: 'Inter', sans-serif;
+  transition: background .1s;
+}
+.simpleDropItem:hover { background: var(--neutral-50); }
 
 /* Activity log entries */
 .activityLog {
