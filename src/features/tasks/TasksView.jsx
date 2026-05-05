@@ -936,10 +936,10 @@ function AddTaskDrawer({ onClose, defaultStatus }) {
     <Drawer
       title="Add Task"
       onClose={onClose}
-      footer={
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <Button variant="secondary" size="M" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" size="M" onClick={handleSave}>Save Task</Button>
+      headerRight={
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button variant="secondary" size="L" onClick={onClose}>Cancel</Button>
+          <Button variant="primary" size="L" onClick={handleSave}>Save Task</Button>
         </div>
       }
     >

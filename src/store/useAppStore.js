@@ -1825,7 +1825,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   // ── Tasks ──
-  tasks: [],
+  tasks: fallbackTasks,
   tasksLoading: false,
   tasksTab: 'assigned',
   tasksFilters: {},
@@ -1853,19 +1853,28 @@ export const useAppStore = create((set, get) => ({
       console.warn('Tasks fetch failed or empty, using fallback:', error?.message);
       set({ tasks: fallbackTasks });
     } else {
-      set({ tasks: data });
+      const dbIds = new Set(data.map(t => t.id));
+      const merged = [...fallbackTasks.filter(t => !dbIds.has(t.id)), ...data];
+      set({ tasks: merged });
     }
     set({ tasksLoading: false });
   },
 
   createTask: async (task) => {
+    const tempId = Date.now();
+    const optimistic = { ...task, id: tempId };
+    set(s => ({ tasks: [...s.tasks, optimistic] }));
     const { data, error } = await supabase
       .from('tasks')
       .insert(task)
       .select()
       .single();
-    if (error) { console.error('Create task error:', error); return null; }
-    get().fetchTasks();
+    if (error) {
+      console.error('Create task error:', error);
+      set(s => ({ tasks: s.tasks.filter(t => t.id !== tempId) }));
+      return null;
+    }
+    set(s => ({ tasks: s.tasks.map(t => t.id === tempId ? data : t) }));
     return data;
   },
 
@@ -1882,12 +1891,17 @@ export const useAppStore = create((set, get) => ({
   },
 
   deleteTask: async (id) => {
+    const prev = get().tasks;
+    set(s => ({ tasks: s.tasks.filter(t => t.id !== id) }));
     const { error } = await supabase
       .from('tasks')
       .delete()
       .eq('id', id);
-    if (error) { console.error('Delete task error:', error); return false; }
-    get().fetchTasks();
+    if (error) {
+      console.error('Delete task error:', error);
+      set({ tasks: prev });
+      return false;
+    }
     return true;
   },
 }));
