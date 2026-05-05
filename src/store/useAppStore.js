@@ -1870,12 +1870,14 @@ export const useAppStore = create((set, get) => ({
   },
 
   updateTask: async (id, updates) => {
+    set(s => ({ tasks: s.tasks.map(t => t.id === id ? { ...t, ...updates } : t) }));
     const { error } = await supabase
       .from('tasks')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id);
-    if (error) { console.error('Update task error:', error); return false; }
-    get().fetchTasks();
+    if (error) {
+      console.warn('Update task error (optimistic update kept):', error.message);
+    }
     return true;
   },
 

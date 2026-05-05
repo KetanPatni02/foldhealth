@@ -307,7 +307,7 @@
 }
 
 .taskRow:hover {
-  background: var(--neutral-50);
+  background: var(--primary-25);
 }
 
 /* Checkbox column */
@@ -594,10 +594,9 @@
 }
 
 .kanbanStatusLabel {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--neutral-300);
-  letter-spacing: 0.5px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
 }
 
 .kanbanColumnActions {
@@ -836,4 +835,394 @@
   font-size: 14px;
   font-weight: 400;
   color: var(--neutral-300);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Task Detail Drawer
+   ═══════════════════════════════════════════════════════════ */
+.drawerContent {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.drawerToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--neutral-50);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.drawerToolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.drawerTitleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.drawerTaskTitle {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  line-height: 1.2;
+  margin: 0;
+}
+
+.drawerDetails {
+  display: flex;
+  flex-direction: column;
+}
+
+.detailRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+
+.detailRow:last-child {
+  border-bottom: none;
+}
+
+.detailLabel {
+  min-width: 150px;
+  min-height: 24px;
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+}
+
+.detailValue {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--neutral-400);
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  margin: -4px -8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: background .15s;
+}
+
+.detailValue:hover {
+  background: var(--neutral-50);
+}
+
+.detailValueLabels {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.addLabelBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: var(--neutral-50);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+}
+.addLabelBtn:hover { background: var(--neutral-100); }
+
+.drawerSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.drawerSectionLabel {
+  font-size: 14px;
+  color: var(--neutral-200);
+}
+
+.drawerSectionTitle {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  margin: 0;
+}
+
+.descriptionBox {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--neutral-400);
+  line-height: 1.5;
+  cursor: pointer;
+  background: var(--neutral-0);
+  transition: background .15s;
+}
+
+.descriptionBox:hover {
+  background: var(--neutral-50);
+}
+
+.descEditor {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.descEditable {
+  min-height: 60px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--neutral-400);
+  outline: none;
+  line-height: 1.5;
+  resize: vertical;
+  overflow-y: auto;
+  font-family: 'Inter', sans-serif;
+}
+
+.descToolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-top: 0.5px solid var(--neutral-100);
+  background: var(--neutral-50);
+}
+
+.toolbarDivider {
+  width: 0.5px;
+  height: 14px;
+  background: var(--neutral-150);
+  margin: 0 2px;
+}
+
+/* Subtask card in drawer */
+.subtaskCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 8px 12px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+}
+
+.subtaskCardBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.subtaskCardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.subtaskCardInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.subtaskCardName {
+  font-size: 14px;
+  color: var(--neutral-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subtaskCardDate {
+  font-size: 14px;
+  color: var(--neutral-400);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.subtaskCardMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.drawerEmpty {
+  font-size: 14px;
+  color: var(--neutral-200);
+}
+
+/* Activity section */
+.activityHeader {
+  display: flex;
+  align-items: center;
+}
+
+.activityTabs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.activityTabBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: none;
+  background: none;
+  font-size: 14px;
+  color: var(--neutral-300);
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+.activityTabBtn:hover { color: var(--neutral-400); }
+
+.activityTabActive {
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  color: var(--neutral-400);
+}
+
+.commentInput {
+  display: flex;
+  flex-direction: column;
+  border: 0.5px solid var(--neutral-200);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.commentTextarea {
+  border: none;
+  outline: none;
+  padding: 8px;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-400);
+  resize: none;
+  min-height: 50px;
+}
+.commentTextarea::placeholder { color: var(--neutral-200); }
+
+.commentActions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px;
+  border-top: 0.5px solid var(--neutral-150);
+}
+
+/* Activity log entries */
+.activityLog {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.logEntry {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.logBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.logAction {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--neutral-300);
+  line-height: 1.2;
+}
+
+.logUser {
+  font-weight: 500;
+}
+
+.logComment {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.logComment p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--neutral-300);
+  line-height: 1.2;
+}
+
+.logCommentActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logCommentBtn {
+  border: none;
+  background: none;
+  font-size: 12px;
+  color: var(--neutral-200);
+  cursor: pointer;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+}
+.logCommentBtn:hover { color: var(--primary-300); }
+
+.logDot {
+  font-size: 12px;
+  color: var(--neutral-200);
+}
+
+.logChange {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.logChangeItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--neutral-300);
+}
+
+.logChangeText {
+  font-size: 14px;
+  color: var(--neutral-300);
+  line-height: 1.2;
 }

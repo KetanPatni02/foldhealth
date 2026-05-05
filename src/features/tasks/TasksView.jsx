@@ -18,6 +18,8 @@ import { Badge } from '../../components/Badge/Badge';
 import { Toggle } from '../../components/Toggle/Toggle';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { TopBar } from '../../components/TopBar/TopBar';
+import { Drawer } from '../../components/Drawer/Drawer';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './TasksView.module.css';
 
@@ -98,6 +100,14 @@ const PRIORITY_COLORS = {
   low: '#0065FF',
   none: '#6F7A90',
 };
+
+function SubtaskIcon({ size = 16, color = 'var(--primary-300)' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+      <path d="M3.33325 6H12.6666C13.7712 6 14.6666 5.10457 14.6666 4C14.6666 2.89543 13.7712 2 12.6666 2H3.33325C2.22868 2 1.33325 2.89543 1.33325 4C1.33325 5.10457 2.22868 6 3.33325 6ZM3.33325 6L3.33325 9.33333C3.33325 10.8061 4.52716 12 5.99992 12M5.99992 12C5.99992 13.1046 6.89535 14 7.99992 14H12.6666C13.7712 14 14.6666 13.1046 14.6666 12C14.6666 10.8954 13.7712 10 12.6666 10H7.99992C6.89535 10 5.99992 10.8954 5.99992 12Z" stroke={color} strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
 
 function PriorityIcon({ priority, size = 24 }) {
   const s = size;
@@ -226,12 +236,12 @@ function SkeletonRow() {
 }
 
 /* ── List View: Task Row ── */
-function TaskRow({ task, onToggle }) {
+function TaskRow({ task, onToggle, onTaskClick }) {
   const isCompleted = task.status === 'completed';
   const labels = Array.isArray(task.labels) ? task.labels : [];
 
   return (
-    <div className={styles.taskRow}>
+    <div className={styles.taskRow} onClick={() => onTaskClick?.(task)}>
       <div className={styles.cellCheck}>
         <button
           className={`${styles.taskCheckbox} ${isCompleted ? styles.taskCheckboxChecked : ''}`}
@@ -249,7 +259,7 @@ function TaskRow({ task, onToggle }) {
           )}
           {task.is_subtask ? (
             <div className={styles.subtaskRow}>
-              <Icon name="solar:reorder-linear" size={14} color="var(--neutral-200)" />
+              <SubtaskIcon size={14} color="var(--primary-300)" />
               <span className={styles.taskName}>{task.name}</span>
             </div>
           ) : (
@@ -326,7 +336,7 @@ function TaskRow({ task, onToggle }) {
 }
 
 /* ── List View: Status Group ── */
-function StatusGroup({ status, tasks, onToggle }) {
+function StatusGroup({ status, tasks, onToggle, onTaskClick }) {
   const [collapsed, setCollapsed] = useState(false);
   const label = STATUS_LABELS[status];
 
@@ -353,7 +363,7 @@ function StatusGroup({ status, tasks, onToggle }) {
           />
         </div>
       </div>
-      {!collapsed && tasks.map(t => <TaskRow key={t.id} task={t} onToggle={onToggle} />)}
+      {!collapsed && tasks.map(t => <TaskRow key={t.id} task={t} onToggle={onToggle} onTaskClick={onTaskClick} />)}
     </div>
   );
 }
@@ -397,7 +407,7 @@ function KanbanCardContent({ task }) {
         {/* Row 2: Parent task (if subtask) */}
         {task.is_subtask && task.parent_task && (
           <span className={styles.cardParent}>
-            <Icon name="solar:reorder-linear" size={12} color="var(--neutral-200)" />
+            <SubtaskIcon size={12} color="var(--primary-300)" />
             {task.parent_task}
           </span>
         )}
@@ -449,7 +459,7 @@ function KanbanCardContent({ task }) {
           <div className={styles.cardLinked}>
             {task.is_subtask && (
               <span className={styles.linkedItem}>
-                <Icon name="solar:reorder-linear" size={16} color="var(--neutral-300)" />
+                <SubtaskIcon size={16} color="var(--primary-300)" />
                 1
               </span>
             )}
@@ -473,7 +483,8 @@ function KanbanCardContent({ task }) {
 }
 
 /* ── Kanban View: Draggable Card ── */
-function DraggableKanbanCard({ task, onToggle }) {
+function DraggableKanbanCard({ task, onToggle, onTaskClick }) {
+  const wasDragging = useRef(false);
   const {
     attributes,
     listeners,
@@ -486,11 +497,23 @@ function DraggableKanbanCard({ task, onToggle }) {
     data: { type: 'task', task, status: task.status },
   });
 
+  useEffect(() => {
+    if (isDragging) wasDragging.current = true;
+  }, [isDragging]);
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : 1,
   };
+
+  const handleClick = useCallback(() => {
+    if (wasDragging.current) {
+      wasDragging.current = false;
+      return;
+    }
+    onTaskClick?.(task);
+  }, [task, onTaskClick]);
 
   return (
     <div
@@ -499,7 +522,7 @@ function DraggableKanbanCard({ task, onToggle }) {
       className={`${styles.kanbanCard} ${isDragging ? styles.kanbanCardDragging : ''}`}
       {...attributes}
       {...listeners}
-      onClick={() => onToggle(task)}
+      onClick={handleClick}
     >
       <KanbanCardContent task={task} />
     </div>
@@ -507,7 +530,7 @@ function DraggableKanbanCard({ task, onToggle }) {
 }
 
 /* ── Kanban View: Droppable Column ── */
-function DroppableKanbanColumn({ status, tasks, onToggle }) {
+function DroppableKanbanColumn({ status, tasks, onToggle, onTaskClick }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `column-${status}`,
     data: { type: 'column', status },
@@ -536,7 +559,7 @@ function DroppableKanbanColumn({ status, tasks, onToggle }) {
         data-status={status}
       >
         {tasks.map(t => (
-          <DraggableKanbanCard key={t.id} task={t} onToggle={onToggle} />
+          <DraggableKanbanCard key={t.id} task={t} onToggle={onToggle} onTaskClick={onTaskClick} />
         ))}
         {tasks.length === 0 && (
           <div className={styles.kanbanDropHint}>
@@ -549,7 +572,7 @@ function DroppableKanbanColumn({ status, tasks, onToggle }) {
 }
 
 /* ── Kanban Board with DnD ── */
-function KanbanBoard({ kanbanGroups, onToggle, onStatusChange }) {
+function KanbanBoard({ kanbanGroups, onToggle, onStatusChange, onTaskClick }) {
   const [activeTask, setActiveTask] = useState(null);
   const [overColumn, setOverColumn] = useState(null);
 
@@ -619,6 +642,7 @@ function KanbanBoard({ kanbanGroups, onToggle, onStatusChange }) {
             status={g.status}
             tasks={g.tasks}
             onToggle={onToggle}
+            onTaskClick={onTaskClick}
           />
         ))}
       </div>
@@ -647,6 +671,276 @@ function EmptyState({ title, description, icon }) {
   );
 }
 
+/* ── Task Detail Drawer ── */
+const ACTIVITY_LOGS = [
+  { user: 'John Doe', initials: 'JD', action: 'added a', target: 'Comment', type: 'comment', body: 'All patients who have been either admitted or discharged within last 29 days.' },
+  { user: 'John Doe', initials: 'JD', action: 'changed the', target: 'Status', type: 'status', from: 'Pending', to: 'Completed' },
+  { user: 'John Doe', initials: 'JD', action: 'changed the', target: 'Priority', type: 'priority', from: 'High', to: 'Medium' },
+  { user: 'John Doe', initials: 'JD', action: 'added the', target: 'Description', type: 'description', from: 'None', to: 'Please collect the medication documents and gather before the appointment' },
+  { user: 'John Doe', initials: 'JD', action: 'created the task.', target: '', type: 'created' },
+];
+
+function TaskDetailDrawer({ task, onClose }) {
+  const [activityTab, setActivityTab] = useState('All');
+  const [activityToggle, setActivityToggle] = useState('Activity');
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [descDraft, setDescDraft] = useState('');
+  const updateTask = useAppStore(s => s.updateTask);
+  const showToast = useAppStore(s => s.showToast);
+
+  if (!task) return null;
+
+  const labels = Array.isArray(task.labels) ? task.labels : [];
+  const memberInitials = task.member ? task.member.split(' ').map(w => w[0]).join('').slice(0, 2) : '';
+  const assigneeInitials = task.assigned_to ? task.assigned_to.split(' ').map(w => w[0]).join('').slice(0, 2) : '';
+
+  const handleStatusChange = (newStatus) => {
+    updateTask(task.id, { status: newStatus });
+    showToast(`Status changed to ${STATUS_LABELS[newStatus]}`);
+  };
+
+  return (
+    <Drawer title="Task Details" onClose={onClose}>
+      <div className={styles.drawerContent}>
+        {/* Toolbar */}
+        <div className={styles.drawerToolbar}>
+          <Select value={task.status} onValueChange={handleStatusChange}>
+            <SelectTrigger className="h-8 text-sm w-[120px]" style={{ background: 'white' }}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_ORDER.map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <div className={styles.drawerToolbarRight}>
+            <ActionButton icon="solar:paperclip-linear" size="L" tooltip="Attachments" />
+            <span className={styles.iconDivider} />
+            <ActionButton icon="solar:copy-linear" size="L" tooltip="Duplicate" />
+            <span className={styles.iconDivider} />
+            <ActionButton icon="solar:link-minimalistic-linear" size="L" tooltip="Copy link" />
+            <span className={styles.iconDivider} />
+            <ActionButton icon="solar:clipboard-text-linear" size="L" tooltip="Copy ID" />
+            <span className={styles.iconDivider} />
+            <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More" />
+          </div>
+        </div>
+
+        {/* Label + Title */}
+        <div className={styles.drawerTitleBlock}>
+          {task.is_subtask && task.parent_task && (
+            <Badge variant="overflow" label={task.parent_task} />
+          )}
+          {labels.length > 0 && !task.is_subtask && (
+            <Badge variant="overflow" label={labels[0]} />
+          )}
+          <h3 className={styles.drawerTaskTitle}>{task.name}</h3>
+        </div>
+
+        {/* Detail rows */}
+        <div className={styles.drawerDetails}>
+          <div className={styles.detailRow}>
+            <span className={styles.detailLabel}>Assigned To</span>
+            <button className={styles.detailValue}>
+              <Avatar variant="assignee" initials={assigneeInitials} className={styles.avatarXs} />
+              <span>{task.assigned_to || '—'}</span>
+            </button>
+          </div>
+          <div className={styles.detailRow}>
+            <span className={styles.detailLabel}>Task Pool</span>
+            <button className={styles.detailValue}>Patient Outreach</button>
+          </div>
+          <div className={styles.detailRow}>
+            <span className={styles.detailLabel}>Due Date</span>
+            <button className={styles.detailValue}>
+              <Icon name="solar:calendar-linear" size={16} color="var(--neutral-300)" />
+              <span>{task.due_date}</span>
+            </button>
+          </div>
+          <div className={styles.detailRow}>
+            <span className={styles.detailLabel}>Priority</span>
+            <button className={styles.detailValue}>
+              <PriorityIcon priority={task.priority} size={16} />
+              <span style={{ textTransform: 'capitalize' }}>{task.priority}</span>
+            </button>
+          </div>
+          <div className={styles.detailRow}>
+            <span className={styles.detailLabel}>Member</span>
+            <button className={styles.detailValue}>
+              <Avatar variant="patient" initials={memberInitials} className={styles.avatarXs} />
+              <span>{task.member}</span>
+            </button>
+          </div>
+          <div className={styles.detailRow}>
+            <span className={styles.detailLabel}>Labels</span>
+            <div className={styles.detailValueLabels}>
+              {labels.map(l => (
+                <Badge key={l} variant="overflow" label={l} trailingIcon="solar:close-circle-linear" />
+              ))}
+              <button className={styles.addLabelBtn}>
+                <Icon name="solar:add-circle-linear" size={14} color="var(--neutral-200)" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Description */}
+        <div className={styles.drawerSection}>
+          <span className={styles.drawerSectionLabel}>Description</span>
+          {editingDesc ? (
+            <div className={styles.descEditor}>
+              <div
+                className={styles.descEditable}
+                contentEditable
+                suppressContentEditableWarning
+                dangerouslySetInnerHTML={{ __html: descDraft }}
+                onInput={e => setDescDraft(e.currentTarget.innerHTML)}
+              />
+              <div className={styles.descToolbar}>
+                <ActionButton icon="solar:paperclip-linear" size="S" tooltip="Attach" />
+                <span className={styles.toolbarDivider} />
+                <ActionButton icon="solar:text-bold-linear" size="S" tooltip="Bold" onClick={() => document.execCommand('bold')} />
+                <ActionButton icon="solar:text-italic-linear" size="S" tooltip="Italic" onClick={() => document.execCommand('italic')} />
+                <ActionButton icon="solar:text-underline-linear" size="S" tooltip="Underline" onClick={() => document.execCommand('underline')} />
+                <ActionButton icon="solar:text-cross-linear" size="S" tooltip="Strikethrough" onClick={() => document.execCommand('strikeThrough')} />
+                <span className={styles.toolbarDivider} />
+                <ActionButton icon="solar:list-linear" size="S" tooltip="List" onClick={() => document.execCommand('insertUnorderedList')} />
+                <div style={{ flex: 1 }} />
+                <ActionButton icon="solar:close-circle-linear" size="S" tooltip="Discard" onClick={() => setEditingDesc(false)} />
+                <ActionButton icon="solar:check-read-linear" size="S" tooltip="Save" onClick={() => { setEditingDesc(false); showToast('Description saved'); }} />
+              </div>
+            </div>
+          ) : (
+            <div
+              className={styles.descriptionBox}
+              onClick={() => { setDescDraft(task.meta || ''); setEditingDesc(true); }}
+            >
+              {task.meta || 'Click to add description...'}
+            </div>
+          )}
+        </div>
+
+        {/* Subtasks — only shown when task has subtasks */}
+        {task.is_subtask && (
+          <div className={styles.drawerSection}>
+            <h4 className={styles.drawerSectionTitle}>Subtasks</h4>
+            <div className={styles.subtaskCard}>
+              <button className={styles.taskCheckbox} aria-label="Mark complete" />
+              <div className={styles.subtaskCardBody}>
+                <div className={styles.subtaskCardTop}>
+                  <div className={styles.subtaskCardInfo}>
+                    <PriorityIcon priority={task.priority} size={16} />
+                    <span className={styles.subtaskCardName}>{task.name}</span>
+                  </div>
+                  <span className={styles.subtaskCardDate}>{task.due_date}</span>
+                </div>
+                <div className={styles.subtaskCardMeta}>
+                  {task.attachments > 0 && (
+                    <span className={styles.linkedItem}>
+                      <Icon name="solar:paperclip-linear" size={14} color="var(--neutral-300)" />
+                      {task.attachments}
+                    </span>
+                  )}
+                  {task.comments > 0 && (
+                    <span className={styles.linkedItem}>
+                      <Icon name="solar:chat-round-line-linear" size={14} color="var(--neutral-300)" />
+                      {task.comments}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <ActionButton icon="solar:menu-dots-bold" size="S" tooltip="More" />
+            </div>
+          </div>
+        )}
+
+        {/* Activity */}
+        <div className={styles.drawerSection}>
+          <div className={styles.activityHeader}>
+            <Toggle
+              items={['Activity', 'Automations']}
+              active={activityToggle}
+              onChange={setActivityToggle}
+              size="S"
+            />
+          </div>
+          <div className={styles.activityTabs}>
+            {['All', 'Comments', 'History'].map(tab => (
+              <button
+                key={tab}
+                className={`${styles.activityTabBtn} ${activityTab === tab ? styles.activityTabActive : ''}`}
+                onClick={() => setActivityTab(tab)}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          {/* Comment input */}
+          <div className={styles.commentInput}>
+            <textarea placeholder="Add a comment" rows={2} className={styles.commentTextarea} />
+            <div className={styles.commentActions}>
+              <Button variant="secondary" size="S">Publish</Button>
+            </div>
+          </div>
+
+          {/* Activity log */}
+          <div className={styles.activityLog}>
+            {ACTIVITY_LOGS.map((log, i) => (
+              <div key={i} className={styles.logEntry}>
+                <Avatar variant="patient" initials={log.initials} className={styles.avatarXs} />
+                <div className={styles.logBody}>
+                  <div className={styles.logAction}>
+                    <span className={styles.logUser}>{log.user}</span>
+                    <span>{log.action}</span>
+                    {log.target && <span>{log.target}</span>}
+                  </div>
+                  {log.type === 'comment' && (
+                    <div className={styles.logComment}>
+                      <p>{log.body}</p>
+                      <div className={styles.logCommentActions}>
+                        <button className={styles.logCommentBtn}>Edit</button>
+                        <span className={styles.logDot}>•</span>
+                        <button className={styles.logCommentBtn}>Delete</button>
+                      </div>
+                    </div>
+                  )}
+                  {log.type === 'status' && (
+                    <div className={styles.logChange}>
+                      <Badge variant="status-queued" label={log.from} />
+                      <Icon name="solar:arrow-right-linear" size={16} color="var(--neutral-200)" />
+                      <Badge variant="status-completed" label={log.to} />
+                    </div>
+                  )}
+                  {log.type === 'priority' && (
+                    <div className={styles.logChange}>
+                      <div className={styles.logChangeItem}>
+                        <PriorityIcon priority="high" size={16} />
+                        <span>{log.from}</span>
+                      </div>
+                      <Icon name="solar:arrow-right-linear" size={16} color="var(--neutral-200)" />
+                      <div className={styles.logChangeItem}>
+                        <PriorityIcon priority="medium" size={16} />
+                        <span>{log.to}</span>
+                      </div>
+                    </div>
+                  )}
+                  {log.type === 'description' && (
+                    <div className={styles.logChange}>
+                      <span className={styles.logChangeText}>{log.from}</span>
+                      <Icon name="solar:arrow-right-linear" size={16} color="var(--neutral-200)" />
+                      <span className={styles.logChangeText}>{log.to}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Drawer>
+  );
+}
+
 /* ── Main View ── */
 export function TasksView() {
   const tasks = useAppStore(s => s.tasks);
@@ -663,6 +957,7 @@ export function TasksView() {
   const tasksViewMode = useAppStore(s => s.tasksViewMode);
   const setTasksViewMode = useAppStore(s => s.setTasksViewMode);
   const showToast = useAppStore(s => s.showToast);
+  const [selectedTask, setSelectedTask] = useState(null);
 
   useEffect(() => { fetchTasks(); }, []);
 
@@ -767,6 +1062,7 @@ export function TasksView() {
           kanbanGroups={kanbanGroups}
           onToggle={handleToggle}
           onStatusChange={handleStatusChange}
+          onTaskClick={setSelectedTask}
         />
       );
     }
@@ -786,7 +1082,7 @@ export function TasksView() {
         </div>
 
         {grouped.map(g => (
-          <StatusGroup key={g.status} status={g.status} tasks={g.tasks} onToggle={handleToggle} />
+          <StatusGroup key={g.status} status={g.status} tasks={g.tasks} onToggle={handleToggle} onTaskClick={setSelectedTask} />
         ))}
       </div>
     );
@@ -852,6 +1148,10 @@ export function TasksView() {
       )}
 
       {renderContent()}
+
+      {selectedTask && (
+        <TaskDetailDrawer task={selectedTask} onClose={() => setSelectedTask(null)} />
+      )}
     </div>
   );
 }
