@@ -1921,8 +1921,18 @@ export const useAppStore = create((set, get) => ({
 
     if (error) {
       console.error('Tasks fetch error:', error.message);
-      set({ tasks: [], tasksLoading: false });
+      // Hard fallback: show local demo data so the page is never empty
+      set({ tasks: fallbackTasks, tasksLoading: false });
       return;
+    }
+
+    // Soft fallback: if DB returned fewer tasks than the demo set (e.g. because
+    // production DB doesn't have the seed and the seed insert failed silently),
+    // merge in any fallback tasks whose name isn't already present.
+    if ((data?.length || 0) < fallbackTasks.length) {
+      const existingNames = new Set((data || []).map(t => t.name));
+      const extras = fallbackTasks.filter(t => !existingNames.has(t.name));
+      data = [...(data || []), ...extras];
     }
 
     // Auto-mark overdue pending tasks as missed

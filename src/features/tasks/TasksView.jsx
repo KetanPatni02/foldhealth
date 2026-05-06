@@ -1969,13 +1969,10 @@ export function TasksView() {
 
   const meName = currentUserProfile?.name || 'Dr. JeDee Potter';
 
-  // Top-level tasks only (subtasks rendered nested inside their parent's drawer).
-  // Use parent_task_id if present, else fall back to is_subtask flag (for environments
-  // where the v2 migration hasn't been applied yet).
-  const topLevelTasks = useMemo(() => tasks.filter(t => !t.parent_task_id && !t.is_subtask), [tasks]);
-
+  // Show all tasks in the list (parents + subtasks). Subtasks render with a
+  // "Parent Task : ..." prefix and the subtask icon so they're visually nested.
   const filteredTasks = useMemo(() => {
-    let result = topLevelTasks;
+    let result = tasks;
 
     if (tasksTab === 'assigned') {
       result = result.filter(t => t.assigned_to === meName);
@@ -1997,14 +1994,14 @@ export function TasksView() {
     });
 
     return result;
-  }, [topLevelTasks, tasksTab, tasksFilters, meName]);
+  }, [tasks, tasksTab, tasksFilters, meName]);
 
   const tabCounts = useMemo(() => ({
-    assigned: topLevelTasks.filter(t => t.assigned_to === meName).length,
-    pool: topLevelTasks.filter(t => t.pool && !t.assigned_to).length,
-    created: topLevelTasks.filter(t => t.created_by === meName).length,
-    mentions: topLevelTasks.filter(t => Array.isArray(t.mentions) && t.mentions.includes(meName)).length,
-  }), [topLevelTasks, meName]);
+    assigned: tasks.filter(t => t.assigned_to === meName).length,
+    pool: tasks.filter(t => t.pool && !t.assigned_to).length,
+    created: tasks.filter(t => t.created_by === meName).length,
+    mentions: tasks.filter(t => Array.isArray(t.mentions) && t.mentions.includes(meName)).length,
+  }), [tasks, meName]);
 
   const handleToggle = useCallback((task) => {
     const newStatus = task.status === 'completed' ? 'pending' : 'completed';
