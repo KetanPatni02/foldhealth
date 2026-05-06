@@ -1933,4 +1933,62 @@ export const useAppStore = create((set, get) => ({
     }
     return true;
   },
+
+  // ── Task Profiles (assignees from Settings → Users / profiles table) ──
+  taskProfiles: [],
+  currentUserProfile: null,
+  fetchTaskProfiles: async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const authUser = sessionData?.session?.user;
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, email, full_name')
+      .order('full_name', { ascending: true });
+    if (error || !data || data.length === 0) {
+      set({ taskProfiles: [] });
+      return;
+    }
+    const profiles = data.map(p => ({
+      id: p.id,
+      name: (p.full_name || p.email?.split('@')[0] || 'Unknown').trim(),
+      email: p.email || '',
+    }));
+    let me = null;
+    if (authUser) {
+      me = profiles.find(p => p.id === authUser.id)
+        || profiles.find(p => p.email && authUser.email && p.email.toLowerCase() === authUser.email.toLowerCase())
+        || null;
+      if (!me) {
+        const meta = authUser.user_metadata || {};
+        const meName = (meta.full_name || meta.first_name || authUser.email?.split('@')[0] || '').trim();
+        if (meName) me = { id: authUser.id, name: meName, email: authUser.email || '' };
+      }
+    }
+    set({ taskProfiles: profiles, currentUserProfile: me });
+  },
+
+  // ── Task Labels (custom labels stored in DB) ──
+  taskLabels: [],
+  fetchTaskLabels: async () => {
+    const { data, error } = await supabase
+      .from('task_labels')
+      .select('name')
+      .order('name', { ascending: true });
+    if (error) {
+      console.warn('task_labels fetch failed (run migration?):', error.message);
+      set({ taskLabels: ['Hypertension', 'Exercise', 'Document Collection', 'Medication', 'Diabetes', 'Follow-up'] });
+      return;
+    }
+    set({ taskLabels: (data || []).map(l => l.name) });
+  },
+  createTaskLabel: async (name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return null;
+    set(s => s.taskLabels.includes(trimmed) ? s : { taskLabels: [...s.taskLabels, trimmed].sort() });
+    const { error } = await supabase.from('task_labels').insert({ name: trimmed });
+    if (error && error.code !== '23505') {
+      console.error('Create label error:', error.message);
+    }
+    return trimmed;
+  },
 }));

@@ -1038,6 +1038,12 @@
   font-family: 'Inter', sans-serif;
 }
 
+.descEditable:empty:before {
+  content: attr(data-placeholder);
+  color: var(--neutral-200);
+  pointer-events: none;
+}
+
 .descToolbar {
   display: flex;
   align-items: center;

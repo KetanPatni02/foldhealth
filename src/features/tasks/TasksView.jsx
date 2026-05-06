@@ -20,6 +20,7 @@ import { Toggle } from '../../components/Toggle/Toggle';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { TopBar } from '../../components/TopBar/TopBar';
 import { Drawer } from '../../components/Drawer/Drawer';
+import { ConfirmDialog } from '../../components/Modal/ConfirmDialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './TasksView.module.css';
@@ -212,20 +213,34 @@ function TaskDatePicker({ value, onSelect }) {
   );
 }
 
-/* ── Inline Label Dropdown for list rows (multi-select with search) ── */
+/* ── Inline Label Dropdown for list rows (multi-select with search + create) ── */
 function RowLabelDropdown({ task, children }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const btnRef = useRef(null);
   const updateTask = useAppStore(s => s.updateTask);
   const showToast = useAppStore(s => s.showToast);
+  const taskLabels = useAppStore(s => s.taskLabels);
+  const createTaskLabel = useAppStore(s => s.createTaskLabel);
   const labels = Array.isArray(task.labels) ? task.labels : [];
-  const filtered = LABEL_OPTIONS.filter(l => !search || l.toLowerCase().includes(search.toLowerCase()));
+  const filtered = taskLabels.filter(l => !search || l.toLowerCase().includes(search.toLowerCase()));
+  const exact = taskLabels.find(l => l.toLowerCase() === search.trim().toLowerCase());
+  const canCreate = search.trim() && !exact;
 
   const toggle = (l) => {
     const next = labels.includes(l) ? labels.filter(x => x !== l) : [...labels, l];
     updateTask(task.id, { labels: next });
     showToast(labels.includes(l) ? `Label "${l}" removed` : `Label "${l}" added`);
+  };
+
+  const handleCreate = async () => {
+    const created = await createTaskLabel(search.trim());
+    if (created) {
+      showToast(`Label "${created}" created`);
+      const next = [...labels, created];
+      updateTask(task.id, { labels: next });
+      setSearch('');
+    }
   };
 
   return (
@@ -245,7 +260,14 @@ function RowLabelDropdown({ task, children }) {
           >
             <div className={styles.dropdownSearch}>
               <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-200)" />
-              <input className={styles.dropdownSearchInput} placeholder="Search labels..." value={search} onChange={e => setSearch(e.target.value)} autoFocus />
+              <input
+                className={styles.dropdownSearchInput}
+                placeholder="Search or create..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && canCreate) handleCreate(); }}
+                autoFocus
+              />
             </div>
             {filtered.map(l => (
               <button key={l} className={styles.simpleDropItem} onClick={() => toggle(l)}>
@@ -253,7 +275,15 @@ function RowLabelDropdown({ task, children }) {
                 {l}
               </button>
             ))}
-            {filtered.length === 0 && <div className={styles.simpleDropItem} style={{ color: 'var(--neutral-200)', cursor: 'default' }}>No results</div>}
+            {canCreate && (
+              <button className={styles.simpleDropItem} style={{ color: 'var(--primary-300)', fontWeight: 500 }} onClick={handleCreate}>
+                <Icon name="solar:add-circle-linear" size={14} color="var(--primary-300)" />
+                Create "{search.trim()}"
+              </button>
+            )}
+            {filtered.length === 0 && !canCreate && (
+              <div className={styles.simpleDropItem} style={{ color: 'var(--neutral-200)', cursor: 'default' }}>No results</div>
+            )}
           </div>
         </div>,
         document.body
@@ -898,26 +928,66 @@ function EmptyState({ title, description, icon }) {
 }
 
 /* ── Add Task Drawer ── */
-function AddTaskDrawer({ onClose, defaultStatus }) {
+function AddTaskDrawer({ onClose, defaultStatus, onTaskCreated }) {
+  const initialStatus = defaultStatus || 'pending';
   const [name, setName] = useState('');
   const [priority, setPriority] = useState('medium');
-  const [status, setStatus] = useState(defaultStatus || 'pending');
+  const [status, setStatus] = useState(initialStatus);
   const [dueDate, setDueDate] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
   const [member, setMember] = useState('');
   const [description, setDescription] = useState('');
   const [selectedLabels, setSelectedLabels] = useState([]);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const editorRef = useRef(null);
+
   const createTask = useAppStore(s => s.createTask);
   const showToast = useAppStore(s => s.showToast);
+  const taskProfiles = useAppStore(s => s.taskProfiles);
+  const currentUserProfile = useAppStore(s => s.currentUserProfile);
+  const allPatients = useAppStore(s => s.allPatients);
+
+  const assigneeOptions = useMemo(() => {
+    const list = [];
+    const seenNames = new Set();
+    if (currentUserProfile && currentUserProfile.name) {
+      list.push({ value: currentUserProfile.name, label: `${currentUserProfile.name} (You)` });
+      seenNames.add(currentUserProfile.name);
+    }
+    (taskProfiles || []).forEach(p => {
+      if (seenNames.has(p.name)) return;
+      list.push({ value: p.name, label: p.name });
+      seenNames.add(p.name);
+    });
+    if (list.length === 0) return ASSIGNEE_OPTIONS.map(n => ({ value: n, label: n }));
+    return list;
+  }, [taskProfiles, currentUserProfile]);
+
+  const memberOptions = useMemo(() => {
+    const names = (allPatients || []).map(p => p.name).filter(Boolean);
+    return names.length > 0 ? names : MEMBER_OPTIONS;
+  }, [allPatients]);
+
+  const isDirty =
+    name.trim() !== '' ||
+    dueDate !== '' ||
+    assignedTo !== '' ||
+    member !== '' ||
+    description.replace(/<[^>]*>/g, '').trim() !== '' ||
+    selectedLabels.length > 0 ||
+    priority !== 'medium' ||
+    status !== initialStatus;
+
+  const canSave = name.trim() !== '' && isDirty;
 
   const handleSave = async () => {
-    if (!name.trim()) { showToast('Task name is required'); return; }
+    if (!canSave) return;
     const task = {
       name: name.trim(),
       status,
       priority,
       due_date: dueDate || new Date().toISOString().split('T')[0].replace(/(\d{4})-(\d{2})-(\d{2})/, '$2-$3-$1'),
-      assigned_to: assignedTo || 'Dr. JeDee Potter',
+      assigned_to: assignedTo || (currentUserProfile?.name) || 'Dr. JeDee Potter',
       member: member || 'Celia Gerhold',
       labels: selectedLabels,
       meta: description || '',
@@ -928,112 +998,144 @@ function AddTaskDrawer({ onClose, defaultStatus }) {
     const result = await createTask(task);
     if (result) {
       showToast('Task created');
-      onClose();
+      onTaskCreated?.(result);
     }
   };
 
-  return (
-    <Drawer
-      title="Add Task"
-      onClose={onClose}
-      headerRight={
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Button variant="secondary" size="L" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" size="L" onClick={handleSave}>Save Task</Button>
-        </div>
-      }
-    >
-      <div className={styles.drawerContent}>
-        {/* Task Name */}
-        <div className={styles.drawerSection}>
-          <span className={styles.drawerSectionLabel}>Task Name</span>
-          <input
-            className={styles.drawerTaskTitleInput}
-            style={{ margin: 0, width: '100%' }}
-            placeholder="Enter task name..."
-            value={name}
-            onChange={e => setName(e.target.value)}
-            autoFocus
-          />
-        </div>
+  const handleClose = () => {
+    if (isDirty) setShowCloseConfirm(true);
+    else onClose();
+  };
 
-        {/* Detail rows */}
-        <div className={styles.drawerDetails}>
-          <div className={styles.detailRow}>
-            <span className={styles.detailLabel}>Status</span>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="h-8 text-sm w-[140px]" style={{ background: 'white' }}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_ORDER.map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className={styles.detailRow}>
-            <span className={styles.detailLabel}>Assigned To</span>
-            <DetailDropdown
-              value={assignedTo || 'Select assignee'}
-              options={ASSIGNEE_OPTIONS}
-              onSelect={setAssignedTo}
+  const toggleLabel = (l) => {
+    setSelectedLabels(prev => prev.includes(l) ? prev.filter(x => x !== l) : [...prev, l]);
+  };
+
+  return (
+    <>
+      <Drawer
+        title="Add Task"
+        onClose={handleClose}
+        headerRight={
+          <Button variant="primary" size="L" disabled={!canSave} onClick={handleSave}>
+            Save Task
+          </Button>
+        }
+      >
+        <div className={styles.drawerContent}>
+          {/* Task Name */}
+          <div className={styles.drawerSection}>
+            <span className={styles.drawerSectionLabel}>Task Name</span>
+            <input
+              className={styles.drawerTaskTitleInput}
+              style={{ margin: 0, width: '100%' }}
+              placeholder="Enter task name..."
+              value={name}
+              onChange={e => setName(e.target.value)}
+              autoFocus
             />
           </div>
-          <div className={styles.detailRow}>
-            <span className={styles.detailLabel}>Due Date</span>
-            <TaskDatePicker value={dueDate} onSelect={setDueDate} />
-          </div>
-          <div className={styles.detailRow}>
-            <span className={styles.detailLabel}>Priority</span>
-            <DetailDropdown
-              value={priority}
-              options={PRIORITY_OPTIONS}
-              onSelect={setPriority}
-              renderOption={opt => (
-                <><PriorityIcon priority={opt} size={16} /> <span style={{ textTransform: 'capitalize' }}>{opt}</span></>
-              )}
-            >
-              <PriorityIcon priority={priority} size={16} />
-              <span style={{ textTransform: 'capitalize' }}>{priority}</span>
-            </DetailDropdown>
-          </div>
-          <div className={styles.detailRow}>
-            <span className={styles.detailLabel}>Member</span>
-            <DetailDropdown
-              value={member || 'Select member'}
-              options={MEMBER_OPTIONS}
-              onSelect={setMember}
-            />
-          </div>
-          <div className={styles.detailRow}>
-            <span className={styles.detailLabel}>Labels</span>
-            <div className={styles.detailValueLabels}>
-              {selectedLabels.map(l => (
-                <Badge key={l} variant="overflow" label={l} trailingIcon="solar:close-circle-linear" onClick={() => setSelectedLabels(prev => prev.filter(x => x !== l))} />
-              ))}
+
+          {/* Detail rows */}
+          <div className={styles.drawerDetails}>
+            <div className={styles.detailRow}>
+              <span className={styles.detailLabel}>Status</span>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger className="h-8 text-sm w-[140px]" style={{ background: 'white' }}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_ORDER.map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className={styles.detailRow}>
+              <span className={styles.detailLabel}>Assigned To</span>
               <DetailDropdown
-                value=""
-                options={LABEL_OPTIONS.filter(l => !selectedLabels.includes(l))}
-                onSelect={v => setSelectedLabels(prev => [...prev, v])}
+                value={assignedTo
+                  ? (currentUserProfile?.name === assignedTo ? `${assignedTo} (You)` : assignedTo)
+                  : 'Select assignee'}
+                options={assigneeOptions}
+                onSelect={setAssignedTo}
+              />
+            </div>
+            <div className={styles.detailRow}>
+              <span className={styles.detailLabel}>Due Date</span>
+              <TaskDatePicker value={dueDate} onSelect={setDueDate} />
+            </div>
+            <div className={styles.detailRow}>
+              <span className={styles.detailLabel}>Priority</span>
+              <DetailDropdown
+                value={priority}
+                options={PRIORITY_OPTIONS}
+                onSelect={setPriority}
+                renderOption={opt => (
+                  <><PriorityIcon priority={opt} size={16} /> <span style={{ textTransform: 'capitalize' }}>{opt}</span></>
+                )}
               >
-                <Icon name="solar:add-circle-linear" size={14} color="var(--neutral-200)" />
+                <PriorityIcon priority={priority} size={16} />
+                <span style={{ textTransform: 'capitalize' }}>{priority}</span>
               </DetailDropdown>
+            </div>
+            <div className={styles.detailRow}>
+              <span className={styles.detailLabel}>Member</span>
+              <DetailDropdown
+                value={member || 'Select member'}
+                options={memberOptions}
+                onSelect={setMember}
+              />
+            </div>
+            <div className={styles.detailRow}>
+              <span className={styles.detailLabel}>Labels</span>
+              <div className={styles.detailValueLabels}>
+                {selectedLabels.map(l => (
+                  <Badge key={l} variant="overflow" label={l} trailingIcon="solar:close-circle-linear" onClick={() => toggleLabel(l)} />
+                ))}
+                <CreatableLabelDropdown selectedLabels={selectedLabels} onToggle={toggleLabel} />
+              </div>
+            </div>
+          </div>
+
+          {/* Description with rich text editor */}
+          <div className={styles.drawerSection}>
+            <span className={styles.drawerSectionLabel}>Description</span>
+            <div className={styles.descEditor}>
+              <div
+                ref={editorRef}
+                className={styles.descEditable}
+                contentEditable
+                suppressContentEditableWarning
+                data-placeholder="Add a description..."
+                onInput={e => setDescription(e.currentTarget.innerHTML)}
+              />
+              <div className={styles.descToolbar}>
+                <ActionButton icon="solar:paperclip-linear" size="S" tooltip="Attach" />
+                <span className={styles.toolbarDivider} />
+                <ActionButton icon="solar:text-bold-linear" size="S" tooltip="Bold" onClick={() => document.execCommand('bold')} />
+                <ActionButton icon="solar:text-italic-linear" size="S" tooltip="Italic" onClick={() => document.execCommand('italic')} />
+                <ActionButton icon="solar:text-underline-linear" size="S" tooltip="Underline" onClick={() => document.execCommand('underline')} />
+                <ActionButton icon="solar:text-cross-linear" size="S" tooltip="Strikethrough" onClick={() => document.execCommand('strikeThrough')} />
+                <span className={styles.toolbarDivider} />
+                <ActionButton icon="solar:list-linear" size="S" tooltip="List" onClick={() => document.execCommand('insertUnorderedList')} />
+              </div>
             </div>
           </div>
         </div>
-
-        {/* Description */}
-        <div className={styles.drawerSection}>
-          <span className={styles.drawerSectionLabel}>Description</span>
-          <textarea
-            className={styles.addTaskTextarea}
-            placeholder="Add a description..."
-            value={description}
-            onChange={e => setDescription(e.target.value)}
-            rows={3}
-          />
-        </div>
-      </div>
-    </Drawer>
+      </Drawer>
+      {showCloseConfirm && (
+        <ConfirmDialog
+          icon="solar:danger-triangle-linear"
+          iconColor="var(--status-warning)"
+          title="Discard unsaved task?"
+          description="You have unsaved changes. Closing now will discard them."
+          confirmLabel="Discard"
+          cancelLabel="Keep editing"
+          variant="error"
+          onConfirm={() => { setShowCloseConfirm(false); onClose(); }}
+          onCancel={() => setShowCloseConfirm(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -1043,6 +1145,73 @@ const TASK_POOL_OPTIONS = ['Patient Outreach', 'Care Management', 'Follow-up', '
 const MEMBER_OPTIONS = ['Celia Gerhold', 'Ralph Kessler', 'Robert Langdon', 'Cameron Haley'];
 const PRIORITY_OPTIONS = ['high', 'medium', 'low', 'none'];
 const LABEL_OPTIONS = ['Hypertension', 'Exercise', 'Document Collection', 'Medication', 'Diabetes', 'Follow-up'];
+
+function CreatableLabelDropdown({ selectedLabels, onToggle, children }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const btnRef = useRef(null);
+  const taskLabels = useAppStore(s => s.taskLabels);
+  const createTaskLabel = useAppStore(s => s.createTaskLabel);
+  const showToast = useAppStore(s => s.showToast);
+
+  const filtered = taskLabels.filter(l => !search || l.toLowerCase().includes(search.toLowerCase()));
+  const exact = taskLabels.find(l => l.toLowerCase() === search.trim().toLowerCase());
+  const canCreate = search.trim() && !exact;
+
+  const handleCreate = async () => {
+    const created = await createTaskLabel(search.trim());
+    if (created) {
+      showToast(`Label "${created}" created`);
+      onToggle(created);
+      setSearch('');
+    }
+  };
+
+  return (
+    <div ref={btnRef} style={{ position: 'relative' }}>
+      <button className={styles.detailValue} onClick={e => { e.stopPropagation(); setOpen(v => !v); }}>
+        {children || <Icon name="solar:add-circle-linear" size={14} color="var(--neutral-200)" />}
+      </button>
+      {open && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => { setOpen(false); setSearch(''); }}>
+          <div
+            className={styles.simpleDropdown}
+            style={{ position: 'fixed', top: btnRef.current?.getBoundingClientRect().bottom + 4, left: btnRef.current?.getBoundingClientRect().left, zIndex: 9999 }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className={styles.dropdownSearch}>
+              <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-200)" />
+              <input
+                className={styles.dropdownSearchInput}
+                placeholder="Search or create..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && canCreate) handleCreate(); }}
+                autoFocus
+              />
+            </div>
+            {filtered.map(l => (
+              <button key={l} className={styles.simpleDropItem} onClick={() => onToggle(l)}>
+                <input type="checkbox" checked={selectedLabels.includes(l)} readOnly style={{ accentColor: 'var(--primary-300)', width: 15, height: 15, flexShrink: 0 }} />
+                {l}
+              </button>
+            ))}
+            {canCreate && (
+              <button className={styles.simpleDropItem} style={{ color: 'var(--primary-300)', fontWeight: 500 }} onClick={handleCreate}>
+                <Icon name="solar:add-circle-linear" size={14} color="var(--primary-300)" />
+                Create "{search.trim()}"
+              </button>
+            )}
+            {filtered.length === 0 && !canCreate && (
+              <div className={styles.simpleDropItem} style={{ color: 'var(--neutral-200)', cursor: 'default' }}>No results</div>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
 
 function DetailDropdown({ value, options, onSelect, icon, renderOption, children, searchable = true, multiSelect, selected = [] }) {
   const [open, setOpen] = useState(false);
@@ -1472,7 +1641,17 @@ export function TasksView() {
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [addDrawerStatus, setAddDrawerStatus] = useState('pending');
 
-  useEffect(() => { fetchTasks(); }, []);
+  const fetchTaskProfiles = useAppStore(s => s.fetchTaskProfiles);
+  const fetchTaskLabels = useAppStore(s => s.fetchTaskLabels);
+  const fetchAllPatients = useAppStore(s => s.fetchAllPatients);
+  const allPatients = useAppStore(s => s.allPatients);
+
+  useEffect(() => {
+    fetchTasks();
+    fetchTaskProfiles();
+    fetchTaskLabels();
+    if (!allPatients || allPatients.length === 0) fetchAllPatients();
+  }, []);
 
   const filteredTasks = useMemo(() => {
     let result = tasks;
@@ -1723,7 +1902,14 @@ export function TasksView() {
         <TaskDetailDrawer task={selectedTask} onClose={() => setSelectedTask(null)} />
       )}
       {showAddDrawer && (
-        <AddTaskDrawer onClose={() => setShowAddDrawer(false)} defaultStatus={addDrawerStatus} />
+        <AddTaskDrawer
+          onClose={() => setShowAddDrawer(false)}
+          defaultStatus={addDrawerStatus}
+          onTaskCreated={(task) => {
+            setShowAddDrawer(false);
+            setSelectedTask(task);
+          }}
+        />
       )}
     </div>
   );
