@@ -1825,8 +1825,8 @@ export const useAppStore = create((set, get) => ({
   },
 
   // ── Tasks ──
-  tasks: fallbackTasks,
-  tasksLoading: false,
+  tasks: [],
+  tasksLoading: true,
   tasksTab: 'assigned',
   tasksFilters: {},
   showTasksFilterBar: true,
@@ -1845,19 +1845,48 @@ export const useAppStore = create((set, get) => ({
 
   fetchTasks: async () => {
     set({ tasksLoading: true });
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('tasks')
       .select('*')
       .order('created_at', { ascending: true });
-    if (error || !data || data.length === 0) {
-      console.warn('Tasks fetch failed or empty, using fallback:', error?.message);
-      set({ tasks: fallbackTasks });
-    } else {
-      const dbIds = new Set(data.map(t => t.id));
-      const merged = [...fallbackTasks.filter(t => !dbIds.has(t.id)), ...data];
-      set({ tasks: merged });
+
+    if (!error && data) {
+      const seen = new Map();
+      const dupeIds = [];
+      for (const t of data) {
+        if (seen.has(t.name)) dupeIds.push(t.id);
+        else seen.set(t.name, t);
+      }
+      if (dupeIds.length > 0) {
+        await supabase.from('tasks').delete().in('id', dupeIds);
+        data = [...seen.values()];
+      }
+
+      const existingNames = new Set(data.map(t => t.name));
+      const missing = fallbackTasks
+        .filter(t => !existingNames.has(t.name))
+        .map(({ id, ...rest }) => rest);
+      if (missing.length > 0) {
+        const { error: seedErr } = await supabase.from('tasks').insert(missing);
+        if (seedErr) {
+          console.error('Tasks seed error:', seedErr.message);
+        } else {
+          const refetch = await supabase
+            .from('tasks')
+            .select('*')
+            .order('created_at', { ascending: true });
+          data = refetch.data;
+          error = refetch.error;
+        }
+      }
     }
-    set({ tasksLoading: false });
+
+    if (error) {
+      console.error('Tasks fetch error:', error.message);
+      set({ tasks: [], tasksLoading: false });
+      return;
+    }
+    set({ tasks: data || [], tasksLoading: false });
   },
 
   createTask: async (task) => {
