@@ -223,10 +223,10 @@ function TaskDatePicker({ value, onSelect, overdue }) {
       <button
         ref={btnRef}
         className={styles.detailValue}
-        style={{ color: overdue ? 'var(--status-error)' : 'var(--neutral-300)' }}
+        style={{ color: overdue ? 'var(--status-error)' : (value ? 'var(--neutral-300)' : 'var(--neutral-200)') }}
         onClick={e => { e.stopPropagation(); setOpen(v => !v); }}
       >
-        <Icon name="solar:calendar-linear" size={16} color={overdue ? 'var(--status-error)' : 'var(--neutral-300)'} />
+        <Icon name="solar:calendar-linear" size={16} color={overdue ? 'var(--status-error)' : (value ? 'var(--neutral-300)' : 'var(--neutral-200)')} />
         <span>{formatDateFriendly(value)}</span>
       </button>
       {open && createPortal(
@@ -1047,7 +1047,7 @@ function AddTaskDrawer({ onClose, defaultStatus, onTaskCreated }) {
     priority !== 'medium' ||
     status !== initialStatus;
 
-  const canSave = name.trim() !== '' && isDirty;
+  const canSave = name.trim() !== '' && isDirty && name.length <= TITLE_MAX;
 
   const handleSave = async () => {
     if (!canSave) return;
@@ -1101,16 +1101,23 @@ function AddTaskDrawer({ onClose, defaultStatus, onTaskCreated }) {
         <div className={styles.drawerContent}>
           {/* Task Name */}
           <div className={styles.drawerSection}>
-            <span className={styles.drawerSectionLabel}>Task Name <span style={{ color: 'var(--neutral-200)', fontWeight: 400 }}>({name.length}/{TITLE_MAX})</span></span>
+            <span className={styles.drawerSectionLabel}>Task Name</span>
             <input
-              className={styles.drawerTaskTitleInput}
+              className={`${styles.drawerTaskTitleInput} ${name.length > TITLE_MAX ? styles.inputInvalid : ''}`}
               style={{ margin: 0, width: '100%' }}
               placeholder="Enter task name..."
-              maxLength={TITLE_MAX}
               value={name}
               onChange={e => setName(e.target.value)}
               autoFocus
             />
+            <div className={styles.fieldHelper}>
+              <span className={styles.fieldError}>
+                {name.length > TITLE_MAX ? `Title must be ${TITLE_MAX} characters or fewer` : ''}
+              </span>
+              <span className={`${styles.charCount} ${name.length > TITLE_MAX ? styles.charCountOver : ''}`}>
+                {name.length}/{TITLE_MAX}
+              </span>
+            </div>
           </div>
 
           {/* Detail rows */}
@@ -1129,21 +1136,43 @@ function AddTaskDrawer({ onClose, defaultStatus, onTaskCreated }) {
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Task Pool</span>
               <DetailDropdown
-                value={pool || '— Direct assign —'}
+                value={pool}
                 options={['— Direct assign —', ...(taskPools || []).map(p => p.name)]}
                 onSelect={v => setPool(v === '— Direct assign —' ? '' : v)}
-              />
+              >
+                <span style={{ color: pool ? 'var(--neutral-400)' : 'var(--neutral-200)' }}>
+                  {pool || '— Direct assign —'}
+                </span>
+              </DetailDropdown>
             </div>
             {!pool && (
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Assigned To</span>
                 <DetailDropdown
-                  value={assignedTo
-                    ? (currentUserProfile?.name === assignedTo ? `${assignedTo} (You)` : assignedTo)
-                    : 'Select assignee'}
+                  value={assignedTo}
                   options={assigneeOptions}
                   onSelect={setAssignedTo}
-                />
+                  renderOption={opt => {
+                    const label = typeof opt === 'string' ? opt : opt.label;
+                    const val = typeof opt === 'string' ? opt : opt.value;
+                    const initials = (val || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                    return (
+                      <>
+                        <Avatar variant="assignee" initials={initials} className={styles.avatarXs} />
+                        <span>{label}</span>
+                      </>
+                    );
+                  }}
+                >
+                  {assignedTo ? (
+                    <>
+                      <Avatar variant="assignee" initials={(assignedTo || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()} className={styles.avatarXs} />
+                      <span>{currentUserProfile?.name === assignedTo ? `${assignedTo} (You)` : assignedTo}</span>
+                    </>
+                  ) : (
+                    <span style={{ color: 'var(--neutral-200)' }}>Select assignee</span>
+                  )}
+                </DetailDropdown>
               </div>
             )}
             <div className={styles.detailRow}>
@@ -1167,10 +1196,29 @@ function AddTaskDrawer({ onClose, defaultStatus, onTaskCreated }) {
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Member</span>
               <DetailDropdown
-                value={member || 'Select member'}
+                value={member}
                 options={memberOptions}
                 onSelect={setMember}
-              />
+                renderOption={opt => {
+                  const val = typeof opt === 'string' ? opt : opt.value;
+                  const initials = (val || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                  return (
+                    <>
+                      <Avatar variant="patient" initials={initials} className={styles.avatarXs} />
+                      <span>{val}</span>
+                    </>
+                  );
+                }}
+              >
+                {member ? (
+                  <>
+                    <Avatar variant="patient" initials={(member || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()} className={styles.avatarXs} />
+                    <span>{member}</span>
+                  </>
+                ) : (
+                  <span style={{ color: 'var(--neutral-200)' }}>Select member</span>
+                )}
+              </DetailDropdown>
             </div>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Labels</span>
@@ -1705,22 +1753,30 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
                   {sub.status === 'completed' && <Icon name="solar:check-read-linear" size={13} color="#fff" />}
                 </button>
                 <div className={styles.subtaskCardBody}>
-                  <div className={styles.subtaskCardTop}>
-                    <div className={styles.subtaskCardInfo}>
-                      <PriorityIcon priority={sub.priority} size={16} />
-                      <span className={`${styles.subtaskCardName} ${sub.status === 'completed' ? styles.subtaskCardNameDone : ''}`}>{sub.name}</span>
-                    </div>
-                    <span className={`${styles.subtaskCardDate} ${isOverdue(sub) ? styles.dueMissed : ''}`}>{formatDateFriendly(sub.due_date)}</span>
-                  </div>
-                  <div className={styles.subtaskCardMeta}>
+                  <div className={styles.subtaskCardRow}>
+                    <PriorityIcon priority={sub.priority} size={16} />
+                    <span className={`${styles.subtaskCardName} ${sub.status === 'completed' ? styles.subtaskCardNameDone : ''}`}>{sub.name}</span>
                     <Badge variant={STATUS_BADGE_VARIANTS[sub.status]} label={STATUS_LABELS[sub.status]} />
-                    {sub.attachments > 0 && (
-                      <span className={styles.linkedItem}>
-                        <Icon name="solar:paperclip-linear" size={14} color="var(--neutral-300)" />
-                        {sub.attachments}
-                      </span>
-                    )}
+                    <span className={`${styles.subtaskCardDate} ${isOverdue(sub) ? styles.dueMissed : ''}`}>
+                      {formatDateFriendly(sub.due_date)}
+                    </span>
                   </div>
+                  {(sub.attachments > 0 || sub.comments > 0) && (
+                    <div className={styles.subtaskCardAttachments}>
+                      {sub.attachments > 0 && (
+                        <span className={styles.linkedItem}>
+                          <Icon name="solar:paperclip-linear" size={14} color="var(--neutral-300)" />
+                          {sub.attachments}
+                        </span>
+                      )}
+                      {sub.comments > 0 && (
+                        <span className={styles.linkedItem}>
+                          <Icon name="solar:chat-round-line-linear" size={14} color="var(--neutral-300)" />
+                          {sub.comments}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
