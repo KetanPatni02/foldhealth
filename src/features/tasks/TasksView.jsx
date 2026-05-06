@@ -103,6 +103,47 @@ const PRIORITY_COLORS = {
   none: '#6F7A90',
 };
 
+/* ── Date helpers ── */
+function parseTaskDate(str) {
+  if (!str || typeof str !== 'string') return null;
+  const parts = str.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(n => Number.isNaN(n))) return null;
+  const [m, d, y] = parts;
+  const date = new Date(y, m - 1, d);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function todayStart() {
+  const t = new Date();
+  t.setHours(0, 0, 0, 0);
+  return t;
+}
+
+function todayMMDDYYYY() {
+  const t = new Date();
+  return `${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}-${t.getFullYear()}`;
+}
+
+function isOverdue(task) {
+  if (!task || !task.due_date || task.status === 'completed') return false;
+  const d = parseTaskDate(task.due_date);
+  if (!d) return false;
+  return d < todayStart() || task.status === 'missed';
+}
+
+function formatDateFriendly(str) {
+  if (!str) return 'Select Date';
+  const d = parseTaskDate(str);
+  if (!d) return str;
+  const today = todayStart();
+  const diff = Math.round((d - today) / (1000 * 60 * 60 * 24));
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Tomorrow';
+  if (diff === -1) return 'Yesterday';
+  return str;
+}
+
 function SubtaskIcon({ size = 16, color = 'var(--primary-300)' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
@@ -144,7 +185,7 @@ function PriorityIcon({ priority, size = 24 }) {
 }
 
 /* ── Date Picker (inline calendar, same as appointment drawer) ── */
-function TaskDatePicker({ value, onSelect }) {
+function TaskDatePicker({ value, onSelect, overdue }) {
   const [open, setOpen] = useState(false);
   const [viewDate, setViewDate] = useState(() => {
     if (value) {
@@ -179,9 +220,14 @@ function TaskDatePicker({ value, onSelect }) {
 
   return (
     <div style={{ position: 'relative' }}>
-      <button ref={btnRef} className={styles.detailValue} style={{ color: 'var(--neutral-300)' }} onClick={e => { e.stopPropagation(); setOpen(v => !v); }}>
-        <Icon name="solar:calendar-linear" size={16} color="var(--neutral-300)" />
-        <span>{value || 'Select Date'}</span>
+      <button
+        ref={btnRef}
+        className={styles.detailValue}
+        style={{ color: overdue ? 'var(--status-error)' : 'var(--neutral-300)' }}
+        onClick={e => { e.stopPropagation(); setOpen(v => !v); }}
+      >
+        <Icon name="solar:calendar-linear" size={16} color={overdue ? 'var(--status-error)' : 'var(--neutral-300)'} />
+        <span>{formatDateFriendly(value)}</span>
       </button>
       {open && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setOpen(false)}>
@@ -508,8 +554,8 @@ function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo }) {
         <RowStatusDropdown task={task} />
       </div>
 
-      <div className={`${styles.cellDue} ${task.due_missed ? styles.dueMissed : ''}`} onClick={e => e.stopPropagation()}>
-        <TaskDatePicker value={task.due_date} onSelect={v => { updateTask(task.id, { due_date: v }); showToast('Due date updated'); }} />
+      <div className={`${styles.cellDue} ${isOverdue(task) ? styles.dueMissed : ''}`} onClick={e => e.stopPropagation()}>
+        <TaskDatePicker value={task.due_date} overdue={isOverdue(task)} onSelect={v => { updateTask(task.id, { due_date: v }); showToast('Due date updated'); }} />
       </div>
 
       {!hideAssignedTo && (
@@ -642,8 +688,8 @@ function KanbanCardContent({ task }) {
         <div className={styles.cardTop}>
           <div className={styles.cardTopLeft}>
             <PriorityIcon priority={task.priority} size={16} />
-            <span className={`${styles.cardDue} ${task.due_missed ? styles.cardDueMissed : ''}`}>
-              Due : {task.due_date}
+            <span className={`${styles.cardDue} ${isOverdue(task) ? styles.cardDueMissed : ''}`}>
+              Due : {formatDateFriendly(task.due_date) === 'Today' || formatDateFriendly(task.due_date) === 'Tomorrow' || formatDateFriendly(task.due_date) === 'Yesterday' ? formatDateFriendly(task.due_date) : task.due_date}
             </span>
           </div>
           <button
@@ -1143,7 +1189,7 @@ function AddTaskDrawer({ onClose, defaultStatus, onTaskCreated }) {
 const ASSIGNEE_OPTIONS = ['Dr. JeDee Potter', 'Deborah Hintz', 'Dr. Robert Frost', 'Celia Gerhold'];
 const TASK_POOL_OPTIONS = ['Patient Outreach', 'Care Management', 'Follow-up', 'Documentation'];
 const MEMBER_OPTIONS = ['Celia Gerhold', 'Ralph Kessler', 'Robert Langdon', 'Cameron Haley'];
-const PRIORITY_OPTIONS = ['high', 'medium', 'low', 'none'];
+const PRIORITY_OPTIONS = ['high', 'medium', 'low'];
 const LABEL_OPTIONS = ['Hypertension', 'Exercise', 'Document Collection', 'Medication', 'Diabetes', 'Follow-up'];
 
 function CreatableLabelDropdown({ selectedLabels, onToggle, children }) {
@@ -1393,7 +1439,7 @@ function TaskDetailDrawer({ task, onClose }) {
           </div>
           <div className={styles.detailRow}>
             <span className={styles.detailLabel}>Due Date</span>
-            <TaskDatePicker value={task.due_date} onSelect={v => { updateTask(task.id, { due_date: v }); showToast('Due date updated'); }} />
+            <TaskDatePicker value={task.due_date} overdue={isOverdue(task)} onSelect={v => { updateTask(task.id, { due_date: v }); showToast('Due date updated'); }} />
           </div>
           <div className={styles.detailRow}>
             <span className={styles.detailLabel}>Priority</span>

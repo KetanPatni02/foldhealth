@@ -15,6 +15,24 @@ import { fallbackTasks } from '../data/tasks';
 import { updateHash } from '../lib/router';
 import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem } from '../lib/theme';
 
+function parseTaskDateStr(str) {
+  if (!str || typeof str !== 'string') return null;
+  const parts = str.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(n => Number.isNaN(n))) return null;
+  const [m, d, y] = parts;
+  const date = new Date(y, m - 1, d);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function isPastDate(str) {
+  const d = parseTaskDateStr(str);
+  if (!d) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return d < today;
+}
+
 function parseDuration(str) {
   const parts = (str || '00:00').split(':').map(Number);
   return parts[0] * 60 + (parts[1] || 0);
@@ -1886,16 +1904,44 @@ export const useAppStore = create((set, get) => ({
       set({ tasks: [], tasksLoading: false });
       return;
     }
-    set({ tasks: data || [], tasksLoading: false });
+
+    // Auto-mark overdue pending tasks as missed
+    const now = (data || []).map(t => {
+      if (t.status === 'pending' && isPastDate(t.due_date)) {
+        return { ...t, status: 'missed', due_missed: true };
+      }
+      if (t.status === 'completed' && t.due_missed) {
+        return { ...t, due_missed: false };
+      }
+      return t;
+    });
+    const overdueIds = (data || [])
+      .filter((t, i) => now[i] !== t && now[i].status === 'missed')
+      .map(t => t.id);
+    if (overdueIds.length > 0) {
+      await supabase.from('tasks')
+        .update({ status: 'missed', due_missed: true, updated_at: new Date().toISOString() })
+        .in('id', overdueIds);
+    }
+
+    set({ tasks: now, tasksLoading: false });
   },
 
   createTask: async (task) => {
+    const normalized = { ...task };
+    // If new task is created with a past due date and status is pending, flip to missed
+    if (normalized.status === 'pending' && isPastDate(normalized.due_date)) {
+      normalized.status = 'missed';
+      normalized.due_missed = true;
+    } else if (normalized.status === 'missed') {
+      normalized.due_missed = true;
+    }
     const tempId = Date.now();
-    const optimistic = { ...task, id: tempId };
+    const optimistic = { ...normalized, id: tempId };
     set(s => ({ tasks: [...s.tasks, optimistic] }));
     const { data, error } = await supabase
       .from('tasks')
-      .insert(task)
+      .insert(normalized)
       .select()
       .single();
     if (error) {
@@ -1908,10 +1954,42 @@ export const useAppStore = create((set, get) => ({
   },
 
   updateTask: async (id, updates) => {
-    set(s => ({ tasks: s.tasks.map(t => t.id === id ? { ...t, ...updates } : t) }));
+    const prev = get().tasks.find(t => t.id === id);
+    const merged = { ...(prev || {}), ...updates };
+    const final = { ...updates };
+
+    // Normalize due_missed and status based on due_date / status combinations
+    const overdue = isPastDate(merged.due_date);
+
+    if ('status' in updates) {
+      if (updates.status === 'completed') {
+        final.due_missed = false;
+      } else if (updates.status === 'missed') {
+        final.due_missed = true;
+      } else if (updates.status === 'pending') {
+        // If user sets back to pending but date is past, flip to missed
+        if (overdue) {
+          final.status = 'missed';
+          final.due_missed = true;
+        } else {
+          final.due_missed = false;
+        }
+      }
+    }
+    if ('due_date' in updates && !('status' in updates) && merged.status !== 'completed') {
+      if (overdue && merged.status !== 'missed') {
+        final.status = 'missed';
+        final.due_missed = true;
+      } else if (!overdue && merged.status === 'missed') {
+        final.status = 'pending';
+        final.due_missed = false;
+      }
+    }
+
+    set(s => ({ tasks: s.tasks.map(t => t.id === id ? { ...t, ...final } : t) }));
     const { error } = await supabase
       .from('tasks')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...final, updated_at: new Date().toISOString() })
       .eq('id', id);
     if (error) {
       console.warn('Update task error (optimistic update kept):', error.message);
