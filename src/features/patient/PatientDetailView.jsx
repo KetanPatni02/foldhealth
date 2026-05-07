@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
-import { PatientBanner } from './components/PatientBanner';
+import { PatientP360Banner } from './components/PatientP360Banner';
 import { PatientProfileTabs } from './components/PatientProfileTabs';
 import { ProfileTabBar } from './components/ProfileTabBar';
 import { CareManagementView } from './components/CareManagementView';
@@ -66,7 +66,7 @@ export function PatientDetailView() {
 
   return (
     <div className={styles.wrapper}>
-      <PatientBanner patient={patient} />
+      <PatientP360Banner patient={patient} />
       <div className={styles.body} ref={bodyRef}>
         <div style={{ width: leftWidth, minWidth: 300, maxWidth: 700, flexShrink: 0 }}>
           <PatientProfileTabs patientId={selectedPatientId} />

@@ -32,7 +32,7 @@
 .drawerProfileCard {
   display: flex; flex-direction: column; gap: 4px; padding: 4px 8px;
   border: 0.5px solid rgba(16, 156, 174, 0.25); border-radius: 4px;
-  background: radial-gradient(ellipse at 50% 50%, #fff 53%, #e5fcf4 100%);
+  background: radial-gradient(ellipse at 50% 50%, var(--neutral-0) 53%, #e5fcf4 100%);
   flex-shrink: 0; min-width: 0;
 }
 .drawerProfileRow { display: flex; align-items: center; gap: 4px; }

@@ -6,7 +6,7 @@ import { PhoneVerifiedIcon } from '../../../components/Icon/PhoneVerifiedIcon';
 import { ConsentPopover } from '../../../components/ConsentPopover/ConsentPopover';
 import { useAppStore } from '../../../store/useAppStore';
 import { FALLBACK_P360 } from '../data/p360Mock';
-import styles from './PatientBanner.module.css';
+import styles from './PatientP360Banner.module.css';
 
 /* ── Expanded sub-panels ── */
 function ExpandedDemographics({ p, className }) {
@@ -91,7 +91,7 @@ const DRAWER_ACTIONS = [
 
 
 /* ── Main Banner ── */
-export function PatientBanner({ patient, variant = 'full' }) {
+export function PatientP360Banner({ patient, variant = 'full' }) {
   const [expanded, setExpanded] = useState(false);
   const [tags, setTags] = useState([]);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -191,10 +191,15 @@ export function PatientBanner({ patient, variant = 'full' }) {
           <span className={styles.drawerCondBadge}>Diabetes</span>
           <span className={styles.drawerCondBadge}>Hypertension</span>
           <span className={styles.drawerMoreBadge}>+2</span>
-          <button className={styles.drawerAddTagBtn}>
+          <button className={styles.drawerAddTagBtn} aria-label="Add tag">
             <Icon name="solar:add-circle-linear" size={12} color="var(--neutral-300)" />
           </button>
-          <button className={styles.drawerExpandIcon} onClick={() => setDrawerExpanded(v => !v)}>
+          <button
+            className={styles.drawerExpandIcon}
+            onClick={() => setDrawerExpanded(v => !v)}
+            aria-label={drawerExpanded ? 'Collapse details' : 'Expand details'}
+            aria-expanded={drawerExpanded}
+          >
             <span className={`${styles.drawerExpandIconInner} ${drawerExpanded ? styles.drawerExpandIconRotated : ''}`}>
               <Icon name="custom:expand-drawer" size={16} />
             </span>
@@ -274,7 +279,7 @@ export function PatientBanner({ patient, variant = 'full' }) {
             <div className={styles.drawerActionCell}>
               <button className={styles.drawerActionBtn} onClick={noop('SMS')}>
                 <div className={styles.drawerSmsWrap}>
-                  <Icon name="custom:sms" size={16} color="var(--neutral-300)" />
+                  <Icon name="solar:chat-line-linear" size={16} color="var(--neutral-300)" />
                   <span className={styles.drawerSmsBadge}>
                     <Icon name="solar:verified-check-bold" size={10} color="var(--status-success)" />
                   </span>
@@ -446,7 +451,12 @@ export function PatientBanner({ patient, variant = 'full' }) {
           </div>
 
           {/* Expand arrow */}
-          <button className={styles.expandArrow} onClick={() => setExpanded(v => !v)}>
+          <button
+            className={styles.expandArrow}
+            onClick={() => setExpanded(v => !v)}
+            aria-label={expanded ? 'Collapse details' : 'Expand details'}
+            aria-expanded={expanded}
+          >
             <span className={`${styles.drawerExpandIconInner} ${expanded ? styles.drawerExpandIconRotated : ''}`}>
               <Icon name="custom:expand-drawer" size={16} />
             </span>
@@ -474,12 +484,16 @@ export function PatientBanner({ patient, variant = 'full' }) {
         {tags.map((tag, i) => (
           <span key={i} className={tag === 'Needs Transportation' ? styles.tagBlue : styles.tagCyan}>
             {tag}
-            <button className={styles.tagClose} onClick={() => setTags(prev => prev.filter((_, j) => j !== i))}>
-              <Icon name="solar:close-linear" size={12} color={tag === 'Needs Transportation' ? 'var(--status-info)' : '#109CAE'} />
+            <button
+              className={styles.tagClose}
+              onClick={() => setTags(prev => prev.filter((_, j) => j !== i))}
+              aria-label={`Remove ${tag} tag`}
+            >
+              <Icon name="solar:close-linear" size={12} color={tag === 'Needs Transportation' ? 'var(--status-info)' : 'var(--accent-cyan)'} />
             </button>
           </span>
         ))}
-        <button className={styles.addTagBtn}><Icon name="solar:add-circle-linear" size={12} color="var(--neutral-300)" /></button>
+        <button className={styles.addTagBtn} aria-label="Add tag"><Icon name="solar:add-circle-linear" size={12} color="var(--neutral-300)" /></button>
       </div>
 
       {/* ── Expanded: 4-column grid ── */}
