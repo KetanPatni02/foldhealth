@@ -1,0 +1,160 @@
+.popover {
+  position: fixed;
+  z-index: 10000;
+  width: 360px;
+  background: #fff;
+  border-radius: 8px;
+  border: 0.5px solid var(--neutral-150);
+  box-shadow: 0px 12px 60px -15px rgba(0, 0, 0, 0.06);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  white-space: nowrap;
+}
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Card base ── */
+.card {
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.card_selected {
+  background: rgba(246, 239, 255, 0.3);
+  border: 0.5px solid rgba(97, 7, 180, 0.3);
+}
+
+.card_teal {
+  background: linear-gradient(116deg, rgba(173,255,227,0.3) 1.8%, rgba(255,255,255,0.3) 24.7%, rgba(255,255,255,0.3) 57.7%, rgba(248,248,248,0.3) 76.9%, rgba(173,255,227,0.3) 98.8%);
+  border: 0.5px solid rgba(0, 150, 136, 0.6);
+}
+
+.card_gold {
+  background: linear-gradient(113deg, rgba(254,224,150,0.3) 0.9%, rgba(255,246,226,0.3) 52.2%, rgba(254,224,150,0.3) 99.6%);
+  border: 0.5px solid rgba(180, 129, 7, 0.3);
+}
+
+/* Must come after variant classes so it wins the cascade */
+.card_active {
+  border: 2px solid rgba(97, 7, 180, 0.3);
+}
+
+/* ── Card header ── */
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+
+.cardHeaderText {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.cardName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--neutral-400);
+  line-height: 1.2;
+}
+
+.cardSub {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-400);
+  line-height: 1.2;
+}
+
+/* ── Radio button ── */
+.radio {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid var(--neutral-200);
+  background: #fff;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.radioChecked {
+  background: var(--status-success);
+  border-color: var(--status-success);
+}
+
+/* ── Details row ── */
+.detailsRow {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.detailsGroup {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.detailDivider {
+  display: block;
+  width: 0.5px;
+  background: var(--neutral-100);
+  align-self: stretch;
+  flex-shrink: 0;
+}
+
+.detailCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.detailLabel {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  text-transform: capitalize;
+  line-height: 12px;
+}
+
+.detailValue {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  line-height: 1.2;
+}
+
+/* ── Card footer ── */
+.cardFooter {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-top: 0.5px solid var(--neutral-100);
+}

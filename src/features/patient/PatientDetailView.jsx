@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { PatientBanner } from './components/PatientBanner';
-import { CareGapsPanel } from './components/CareGapsPanel';
+import { PatientProfileTabs } from './components/PatientProfileTabs';
 import { ProfileTabBar } from './components/ProfileTabBar';
 import { CareManagementView } from './components/CareManagementView';
 import { OverviewTab } from './components/OverviewTab';
@@ -69,7 +69,7 @@ export function PatientDetailView() {
       <PatientBanner patient={patient} />
       <div className={styles.body} ref={bodyRef}>
         <div style={{ width: leftWidth, minWidth: 300, maxWidth: 700, flexShrink: 0 }}>
-          <CareGapsPanel patientId={selectedPatientId} />
+          <PatientProfileTabs patientId={selectedPatientId} />
         </div>
         {/* Drag handle */}
         <div className={styles.dragHandle} onMouseDown={handleMouseDown}>

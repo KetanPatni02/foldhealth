@@ -2176,7 +2176,7 @@ export function TasksView() {
           />
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="solar:filter-linear"
+            icon="custom:filter"
             size="L"
             tooltip={showTasksFilterBar ? 'Hide filters' : 'Show filters'}
             onClick={toggleTasksFilterBar}

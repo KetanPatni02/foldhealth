@@ -713,7 +713,7 @@ export function CallQueueDrawer({ agent, onClose, initialTab }) {
             <div className={styles.tabActions}>
               <ActionButton icon="solar:refresh-linear" size="L" tooltip="Refresh" />
               <span className={styles.tabDivider} />
-              <ActionButton icon="solar:filter-linear" size="L" tooltip="Filter" />
+              <ActionButton icon="custom:filter" size="L" tooltip="Filter" />
               <span className={styles.tabDivider} />
               <ActionButton icon="solar:magnifer-linear" size="L" tooltip="Search" onClick={() => { setSearchOpen(v => !v); if (searchOpen) setSearchQuery(''); }} />
             </div>

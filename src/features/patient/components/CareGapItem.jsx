@@ -1,20 +1,20 @@
-import { Icon } from '../../../components/Icon/Icon';
+import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import styles from './CareGapItem.module.css';
 
 export function CareGapItem({ item, selected, onSelect }) {
   return (
-    <div className={`${styles.row} ${selected ? styles.rowSelected : ''}`} onClick={() => onSelect?.(item.id)}>
-      <input type="checkbox" className={styles.checkbox} checked={selected} onChange={() => onSelect?.(item.id)} onClick={e => e.stopPropagation()} />
+    <div
+      className={`${styles.row} ${selected ? styles.rowSelected : ''}`}
+      onClick={() => onSelect?.(item.id)}
+    >
       <div className={styles.content}>
-        <div className={styles.titleRow}>
-          <span className={styles.title}>{item.title}</span>
-          {item.urgent && <Icon name="solar:danger-triangle-bold" size={14} color="var(--status-error)" />}
-        </div>
-        {item.diagnosis && <span className={styles.diagnosis}>{item.diagnosis}</span>}
+        <span className={styles.title}>{item.title}</span>
+        {item.diagnosis && <span className={styles.meta}>{item.diagnosis}</span>}
       </div>
-      <span className={`${styles.badge} ${item.status === 'Open' ? styles.badgeOpen : styles.badgeClosed}`}>
-        {item.status}
-      </span>
+      <span className={styles.status}>{item.status}</span>
+      <div className={styles.moreBtn} onClick={e => e.stopPropagation()}>
+        <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
+      </div>
     </div>
   );
 }

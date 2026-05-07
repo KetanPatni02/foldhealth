@@ -40,10 +40,17 @@ export const CARE_GAP_SECTIONS_EXTENDED = [
       { id: 'rf2', title: 'Cardiology Consult', status: 'Open', diagnosis: '', urgent: false },
     ],
   },
-  {
-    title: 'Diagnosis Gaps',
-    items: [],
-  },
+];
+
+export const ALERT_ITEMS = [
+  { id: 'al1', title: 'Losartan 50mg PO qD Needs Refill', category: 'Med Refill', time: '4h ago', status: 'Open', severity: 'error' },
+  { id: 'al2', title: 'Opioid Treatment Agreement Overdue (last 14 mos ago)', category: 'Overdue Lab Test', time: '1d ago', status: 'Open', severity: 'error' },
+  { id: 'al3', title: 'Elevated BP (> 140/90)', category: 'Overdue Lab Test', time: '1d ago', status: 'Open', severity: 'warning' },
+];
+
+export const DIAGNOSIS_GAP_ITEMS = [
+  { id: 'dg1', title: 'HCC 18 - Diabetes w/ Complications', status: 'Open', lastDocumented: '06/07/2025', icdCount: 3 },
+  { id: 'dg2', title: 'HCC 48 - Coagulation Defects and Other Specified Hematological Disorders', status: 'Open', lastDocumented: '06/07/2025', icdCount: 1 },
 ];
 
 export const CARE_GAP_TABS = ['Gaps(11)', 'PAMI/Hx', 'Vitals/Labs', 'Comms', 'Outreach', 'Summary'];

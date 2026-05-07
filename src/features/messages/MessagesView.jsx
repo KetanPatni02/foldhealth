@@ -295,7 +295,7 @@ export function MessagesView() {
                 onClick={() => { setShowSearch(v => !v); if (showSearch) setSearchQuery(''); }}
               />
               <div className={styles.convDivider} />
-              <ActionButton icon="solar:filter-linear" size="S" tooltip="Filter" />
+              <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
               <div className={styles.convDivider} />
               <ActionButton icon="solar:menu-dots-bold" size="S" tooltip="More" />
             </div>

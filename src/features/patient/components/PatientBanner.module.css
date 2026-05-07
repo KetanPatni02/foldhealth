@@ -1,3 +1,138 @@
+/* ── Drawer variant ── */
+.drawerPatientBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  min-height: 64px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: linear-gradient(to right, rgba(255, 218, 246, 0.2) 17%, rgba(255, 255, 255, 0.2));
+}
+.drawerBannerLeft { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.drawerAvatar {
+  width: 40px; height: 40px; border-radius: 8px;
+  border: 0.5px solid var(--primary-200); background: var(--primary-50);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: var(--primary-300); flex-shrink: 0; font-weight: 400;
+}
+.drawerPatientInfo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.drawerNameRow { display: flex; align-items: center; gap: 4px; }
+.drawerPatientName { font-size: 16px; font-weight: 600; color: var(--neutral-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.drawerMetaRow { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.drawerMetaText { font-size: 14px; color: var(--neutral-300); white-space: nowrap; }
+.drawerMetaDot { font-size: 14px; color: var(--neutral-300); }
+.drawerConsentBadge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: #fffcf5; border: 0.5px solid rgba(217, 165, 11, 0.2); border-radius: 4px;
+  padding: 2px 6px; font-size: 14px; color: var(--status-warning);
+  white-space: nowrap; cursor: pointer; font-family: inherit;
+}
+.drawerConsentBadge:hover { background: #fff8e6; }
+.drawerBannerDivider { display: block; width: 0.5px; align-self: stretch; background: var(--neutral-150); flex-shrink: 0; }
+.drawerProfileCard {
+  display: flex; flex-direction: column; gap: 4px; padding: 4px 8px;
+  border: 0.5px solid rgba(16, 156, 174, 0.25); border-radius: 4px;
+  background: radial-gradient(ellipse at 50% 50%, #fff 53%, #e5fcf4 100%);
+  flex-shrink: 0; min-width: 0;
+}
+.drawerProfileRow { display: flex; align-items: center; gap: 4px; }
+.drawerProfileSelector {
+  display: flex; align-items: center; gap: 4px; background: none; border: none;
+  cursor: pointer; padding: 0; font-size: 14px; color: var(--neutral-400);
+  font-family: inherit; white-space: nowrap;
+}
+.drawerProfileSelector:hover { color: var(--primary-300); }
+.drawerProfileIdRow { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--neutral-400); white-space: nowrap; }
+.drawerProfileOrg { font-weight: 500; }
+.drawerProfileIdText { color: var(--neutral-300); }
+.drawerPlusBadge {
+  background: var(--neutral-0); border: 0.5px solid var(--neutral-100);
+  border-radius: 4px; padding: 1px 4px; font-size: 12px; color: var(--neutral-300);
+}
+/* Drawer tags row */
+.drawerTagsRow {
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 12px; border-bottom: 0.5px solid var(--neutral-150); flex-wrap: wrap;
+}
+.drawerTagBadge {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: var(--neutral-50); border: 0.5px solid rgba(111, 122, 144, 0.1);
+  border-radius: 4px; padding: 2px 6px; font-size: 14px; color: var(--neutral-300); white-space: nowrap;
+}
+.drawerTagDivider { display: block; width: 0.5px; height: 16px; background: var(--neutral-150); flex-shrink: 0; }
+.drawerCondBadge {
+  display: inline-flex; align-items: center;
+  background: #e5f8fb; border: 0.5px solid rgba(16, 156, 174, 0.2);
+  border-radius: 4px; padding: 2px 6px; font-size: 14px; color: #109cae; white-space: nowrap;
+}
+.drawerMoreBadge {
+  display: inline-flex; align-items: center;
+  background: var(--neutral-50); border: 0.5px solid rgba(111, 122, 144, 0.1);
+  border-radius: 4px; padding: 2px 4px; font-size: 14px; color: var(--neutral-300);
+}
+.drawerAddTagBtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; background: var(--neutral-50);
+  border: 0.5px solid rgba(111, 122, 144, 0.1); border-radius: 4px; cursor: pointer; padding: 0; flex-shrink: 0;
+}
+.drawerAddTagBtn:hover { background: var(--neutral-100); }
+.drawerTagsSpacer { flex: 1; }
+.drawerExpandIcon {
+  display: flex; align-items: center; flex-shrink: 0; margin-left: auto; padding: 4px;
+  background: none; border: none; cursor: pointer;
+}
+.drawerExpandIconInner {
+  display: flex; align-items: center; transition: transform 0.2s;
+}
+.drawerExpandIconRotated { transform: rotate(180deg); }
+
+/* Drawer expanded panel */
+.drawerExpandedPanel { border-bottom: 0.5px solid var(--neutral-150); overflow-y: auto; }
+
+.drawerMetricsStrip {
+  display: flex; align-items: stretch;
+  background: rgba(246, 247, 248, 0.5);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.drawerMetricItem {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  gap: 4px; padding: 8px 12px; min-width: 0;
+}
+.drawerMetricLabel {
+  font-size: 14px; font-weight: 500; color: var(--neutral-400);
+  font-family: 'Inter', sans-serif; white-space: nowrap;
+}
+.drawerMetricDivider { width: 0.5px; align-self: stretch; background: var(--neutral-150); flex-shrink: 0; }
+
+.drawerExpandedCols { display: flex; align-items: flex-start; padding: 16px; gap: 0; }
+.drawerExpandedCol { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.drawerExpandedColDivider { width: 0.5px; align-self: stretch; background: var(--neutral-150); flex-shrink: 0; margin: 0 16px; }
+.drawerExpandedSection {
+  padding: 0 0 16px 0; border-bottom: 0.5px solid var(--neutral-100);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.drawerExpandedSection:last-child { border-bottom: none; padding-bottom: 0; }
+/* Drawer actions row */
+.drawerActionsRow {
+  display: flex; align-items: center; gap: 0;
+  padding: 8px 12px; border-bottom: 0.5px solid var(--neutral-150);
+}
+.drawerActionsList { display: flex; align-items: center; flex: 1; min-width: 0; }
+.drawerActionCell { display: flex; align-items: center; justify-content: center; flex: 1; min-width: 0; }
+.drawerActionDivider { display: block; width: 0.5px; height: 16px; background: var(--neutral-150); flex-shrink: 0; margin: 0 8px; }
+.drawerActionBtn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; background: none; border: none; cursor: pointer; padding: 4px 8px;
+  width: 100%; border-radius: 4px; transition: background 0.15s;
+}
+.drawerActionBtn:hover { background: var(--neutral-50); }
+.drawerActionDim { cursor: not-allowed; }
+.drawerActionDim:hover { background: none; }
+.drawerActionLabel { font-size: 12px; color: var(--neutral-200); white-space: nowrap; }
+.drawerActionLabelDim { color: var(--neutral-150); }
+.drawerSmsWrap { position: relative; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.drawerSmsBadge { position: absolute; top: -6px; right: -6px; display: flex; line-height: 1; }
+
 /* ── Patient P360 Banner ── */
 .banner { display: flex; flex-direction: column; border-bottom: 0.5px solid var(--neutral-150); background: var(--neutral-0); flex-shrink: 0; }
 
