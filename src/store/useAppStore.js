@@ -1036,6 +1036,30 @@ export const useAppStore = create((set, get) => ({
     updateHash(get);
   },
 
+  updateBuilderAgent: (patch) => set(s => ({
+    builderAgent: s.builderAgent ? { ...s.builderAgent, ...patch } : s.builderAgent,
+  })),
+
+  /** Counter bumped when the toolbar Save attempts to save with invalid
+   *  Global Settings. GlobalSettings listens to this and forces all
+   *  required fields into the "touched" state so inline errors appear. */
+  builderValidationAttempt: 0,
+  bumpBuilderValidationAttempt: () => set(s => ({
+    builderValidationAttempt: (s.builderValidationAttempt || 0) + 1,
+  })),
+
+  /** Returns { valid, errors } for the current agent's required global-settings
+   *  fields. Errors keyed by field. Used by Save to gate version bumps and by
+   *  GlobalSettings to disable its own Save Settings button. */
+  validateBuilderAgent: () => {
+    const a = get().builderAgent;
+    const gs = a?.globalSettings || {};
+    const errors = {};
+    if (!String(gs.agentName || a?.name || '').trim()) errors.agentName = 'Agent Name is required';
+    if (!String(gs.useCaseName || '').trim()) errors.useCaseName = 'Use Case is required';
+    return { valid: Object.keys(errors).length === 0, errors };
+  },
+
   setBuilderSelectedNode: (nodeId) => set({ builderSelectedNode: nodeId, builderActiveTransition: null }),
   builderActiveTransition: null,
   setBuilderActiveTransition: (idx) => set({ builderActiveTransition: idx }),

@@ -1,0 +1,433 @@
+/* ── Global Settings panel ──
+   Shares the right-rail width with ChatPanel. Scroll body, sticky footer. */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  min-width: 0;
+  background: var(--neutral-0);
+  overflow: hidden;
+}
+
+.scrollArea {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  container-type: inline-size;
+}
+
+/* ── Section ──
+   Collapsed: white card, 0.5px neutral-150 border, 4px radius.
+   Expanded: header strip turns neutral-50 (sleek "title bar" look).
+   flex-shrink: 0 keeps each card at its natural height. */
+.section {
+  flex: 0 0 auto;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: var(--neutral-0);
+  overflow: hidden;
+  transition: border-color .12s;
+}
+.sectionExpanded {
+  border-color: var(--neutral-150);
+}
+
+.sectionHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--neutral-0);
+  border: none;
+  outline: none;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: background .12s;
+}
+.sectionHeader:hover {
+  background: var(--neutral-50);
+}
+.sectionHeader:focus,
+.sectionHeader:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+.sectionHeaderActive {
+  background: var(--neutral-50);
+}
+.sectionHeaderActive:hover {
+  background: var(--neutral-50);
+}
+
+.sectionHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.sectionTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+/* In-body description shown only when the section is expanded. Sits
+   between the header strip and the first field, communicating intent
+   without repeating the title. */
+.sectionDescription {
+  margin: 0 0 4px 0;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  line-height: 1.45;
+}
+
+/* Legacy two-line sub-description on collapsed headers — kept for any
+   future caller, but the standard pattern is now single-line header +
+   in-body .sectionDescription. */
+.sectionDesc {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  line-height: 1.3;
+}
+
+.sectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  background: var(--neutral-0);
+  border-top: 0.5px solid var(--neutral-150);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* ── Field ── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  font-family: 'Inter', sans-serif;
+  line-height: 1.2;
+}
+
+.fieldHint {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  line-height: 1.3;
+}
+
+.fieldRequired {
+  color: var(--status-error);
+  margin-left: 2px;
+}
+
+.fieldFooter {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+.charCount {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  font-variant-numeric: tabular-nums;
+}
+
+.staticValue {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  padding-top: 2px;
+}
+
+/* Number-with-unit input pair (used in Reminder Message Frequency etc.) */
+.numberUnitRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.numberUnit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.numberInput {
+  height: 36px;
+  width: 80px;
+  flex-shrink: 0;
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--neutral-400);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  outline: none;
+  font-family: 'Inter', sans-serif;
+  font-variant-numeric: tabular-nums;
+  transition: border-color .12s;
+  box-sizing: border-box;
+}
+.numberInput:focus {
+  border-color: var(--primary-200);
+}
+/* hide native spinners — keeps the input flush with the unit label */
+.numberInput::-webkit-outer-spin-button,
+.numberInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.numberInput {
+  -moz-appearance: textfield;
+}
+
+.numberUnitLabel {
+  font-size: 13px;
+  color: var(--neutral-400);
+  white-space: nowrap;
+}
+
+/* ── Slider ── */
+.sliderRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0;
+  min-width: 0;
+}
+
+.slider {
+  flex: 1;
+  min-width: 0;
+}
+
+.sliderValue {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  width: 48px;
+  flex-shrink: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Toggle row ── */
+.toggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.toggleRowText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Inputs ──
+   Single source of truth for control height. Inputs, dropdown triggers
+   and the chip-input pill all share .controlHeight so dropdowns visually
+   line up with text fields regardless of right-rail width. */
+
+.input,
+.textarea {
+  width: 100%;
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--neutral-400);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  outline: none;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.4;
+  box-sizing: border-box;
+  transition: border-color .12s;
+}
+.input { height: 36px; }
+.textarea {
+  padding: 8px 10px;
+  resize: vertical;
+  min-height: 80px;
+}
+.input:focus,
+.textarea:focus {
+  border-color: var(--primary-200);
+}
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--neutral-200);
+}
+
+/* Required-field validation states */
+.inputError {
+  border-color: var(--status-error) !important;
+}
+.inputError:focus {
+  border-color: var(--status-error) !important;
+}
+
+.errorMsg {
+  font-size: 11px;
+  color: var(--status-error);
+  line-height: 1.3;
+}
+
+/* Force every dropdown trigger inside Global Settings to the same 36px
+   height so Voice / Language / Language Model / Background Sound /
+   Backchanneling / Speaker Priority are visually consistent. Radix
+   sets role="combobox" on the SelectTrigger, so we don't need to
+   touch each call site. */
+.scrollArea :global([role="combobox"]) {
+  height: 36px !important;
+  min-height: 36px !important;
+  font-size: 13px;
+  color: var(--neutral-400);
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+/* ── Chip input ── */
+.chipInput {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: var(--neutral-0);
+  min-height: 36px;
+  align-items: center;
+}
+.chipInput:focus-within {
+  border-color: var(--primary-200);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--primary-50, rgba(140, 90, 226, 0.08));
+  color: var(--primary-300);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.chipRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: var(--primary-300);
+  opacity: 0.7;
+  transition: opacity .12s;
+}
+.chipRemove:hover { opacity: 1; }
+
+.chipFieldInput {
+  flex: 1;
+  min-width: 80px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--neutral-400);
+  padding: 2px 0;
+}
+.chipFieldInput::placeholder {
+  color: var(--neutral-200);
+}
+
+/* ── Check grid (for multi-language) ──
+   Two columns at comfortable widths, collapses to one column when the
+   right rail is dragged narrow. Container query falls back to a media
+   query equivalent of ~360px panel width. */
+.checkGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 10px;
+}
+@container (max-width: 320px) {
+  .checkGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--neutral-400);
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  padding: 4px 0;
+}
+.checkRow input[type="checkbox"] {
+  accent-color: var(--primary-300);
+  width: 14px;
+  height: 14px;
+}
+
+/* ── Upload button ── */
+.uploadBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-300);
+  background: none;
+  border: 0.5px solid var(--primary-200);
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: background .12s;
+  align-self: flex-start;
+}
+.uploadBtn:hover {
+  background: var(--primary-50, rgba(140, 90, 226, 0.06));
+}
+

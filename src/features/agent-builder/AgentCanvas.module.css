@@ -116,6 +116,38 @@
   height: 20px;
   background: var(--neutral-100);
 }
+
+/* Toolbar icon button — used for Undo / Redo. */
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background .12s;
+  color: var(--neutral-400);
+}
+.iconBtn:hover:not(:disabled) {
+  background: var(--neutral-50);
+}
+.iconBtn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* Subtle text indicator next to the Save button — shows during auto-save. */
+.autoSaveStatus {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap;
+  padding: 0 4px;
+}
 .toolbarSecondaryBtn {
   display: flex;
   align-items: center;

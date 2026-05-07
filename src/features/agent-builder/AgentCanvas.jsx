@@ -20,6 +20,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { NodePanel } from './NodePanel';
 import { NodeSettings } from './NodeSettings';
 import { ChatPanel } from './ChatPanel';
+import { GlobalSettings } from './GlobalSettings';
 import { ConfigurePanel } from './ConfigurePanel';
 import { AnalyticsPanel } from './AnalyticsPanel';
 import { ConversationNode, StartNode, EndNode } from './nodes/ConversationNode';
@@ -52,11 +53,33 @@ export function AgentCanvas() {
   const closeBuilder = useAppStore(s => s.closeBuilder);
   const saveFlow = useAppStore(s => s.saveFlow);
   const createFlowVersion = useAppStore(s => s.createFlowVersion);
+  const validateBuilderAgent = useAppStore(s => s.validateBuilderAgent);
+  const bumpBuilderValidationAttempt = useAppStore(s => s.bumpBuilderValidationAttempt);
   const showToast = useAppStore(s => s.showToast);
+
+  // Undo/redo history (local — applied via setNodes/setEdges).
+  // `past` holds previous flow snapshots; `future` holds states unwound by undo.
+  const [history, setHistory] = useState({ past: [], future: [] });
+  const skipHistory = useRef(false);
+  const HISTORY_LIMIT = 50;
+
+  const captureHistory = useCallback((prevNodes, prevEdges) => {
+    if (skipHistory.current) return;
+    setHistory(h => ({
+      past: [...h.past, { nodes: prevNodes, edges: prevEdges }].slice(-HISTORY_LIMIT),
+      future: [],
+    }));
+  }, []);
+
+  // Auto-save status indicator
+  const [autoSaveStatus, setAutoSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved'
+  const autoSaveTimer = useRef(null);
+  const lastSavedSnapshot = useRef('');
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [activeTab, setActiveTab] = useState('Workflow');
+  const [rightTab, setRightTab] = useState('Workflow Assistant');
   const [saving, setSaving] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
   const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH);
@@ -108,6 +131,7 @@ export function AgentCanvas() {
   }, [builderFlow?.nodes]);
 
   const onConnect = useCallback((params) => {
+    captureHistory(nodes, edges);
     hasUnsavedChanges.current = true;
     setEdges(eds => addEdge({
       ...params,
@@ -115,7 +139,7 @@ export function AgentCanvas() {
       animated: false,
       style: { stroke: 'var(--neutral-150)', strokeWidth: 1.5 },
     }, eds));
-  }, [setEdges]);
+  }, [setEdges, captureHistory, nodes, edges]);
 
   const wrappedOnNodesChange = useCallback((changes) => {
     if (changes.some(c => c.type === 'position' || c.type === 'remove' || c.type === 'add')) {
@@ -123,6 +147,11 @@ export function AgentCanvas() {
     }
     onNodesChange(changes);
   }, [onNodesChange]);
+
+  // Snapshot pre-drag state so a single Cmd+Z reverses an entire drag
+  const handleNodeDragStart = useCallback(() => {
+    captureHistory(nodes, edges);
+  }, [captureHistory, nodes, edges]);
 
   const wrappedOnEdgesChange = useCallback((changes) => {
     if (changes.some(c => c.type === 'remove' || c.type === 'add')) {
@@ -192,8 +221,9 @@ export function AgentCanvas() {
       },
     };
 
+    captureHistory(nodes, edges);
     setNodes(nds => [...nds, newNode]);
-  }, [setNodes]);
+  }, [setNodes, captureHistory, nodes, edges]);
 
   // ─── Delete selected nodes (Delete / Backspace) ───
   const onKeyDown = useCallback((e) => {
@@ -204,12 +234,13 @@ export function AgentCanvas() {
       // Don't trigger when typing in an input
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
 
+      captureHistory(nodes, edges);
       setNodes(nds => nds.filter(n => n.id !== builderSelectedNode));
       setEdges(eds => eds.filter(e => e.source !== builderSelectedNode && e.target !== builderSelectedNode));
       setBuilderSelectedNode(null);
       showToast('Node deleted');
     }
-  }, [builderSelectedNode, nodes, setNodes, setEdges, setBuilderSelectedNode, showToast]);
+  }, [builderSelectedNode, nodes, edges, setNodes, setEdges, setBuilderSelectedNode, showToast, captureHistory]);
 
   useEffect(() => {
     document.addEventListener('keydown', onKeyDown);
@@ -220,6 +251,7 @@ export function AgentCanvas() {
   const handleDeleteNode = useCallback((nodeId) => {
     const node = nodes.find(n => n.id === nodeId);
     if (node?.type === 'startNode') return;
+    captureHistory(nodes, edges);
     setNodes(nds => nds.filter(n => n.id !== nodeId));
     setEdges(eds => eds.filter(e => e.source !== nodeId && e.target !== nodeId));
     setBuilderSelectedNode(null);
@@ -248,14 +280,105 @@ export function AgentCanvas() {
   }, [panelWidth]);
 
   // Save
+  // Explicit Save = bump version (+0.1). Validates required Global Settings
+  // first; if invalid, surface the errors instead of silently failing.
   const handleSave = async () => {
+    const { valid, errors } = validateBuilderAgent();
+    if (!valid) {
+      const first = Object.values(errors)[0];
+      showToast(first || 'Please complete required fields in Global Settings');
+      // Make sure the user can see/fix the errors: bring them to the
+      // workflow tab and switch the right rail to Global Settings.
+      setActiveTab('Workflow');
+      setRightTab('Global Settings');
+      // Tell GlobalSettings to surface inline errors immediately
+      bumpBuilderValidationAttempt();
+      return;
+    }
     setSaving(true);
     const viewport = reactFlowInstance.current?.getViewport() || { x: 0, y: 0, zoom: 1 };
-    await saveFlow(nodes, edges, viewport);
+    const newVersion = await createFlowVersion(nodes, edges, viewport);
     hasUnsavedChanges.current = false;
     setSaving(false);
-    showToast('Flow saved successfully');
+    if (newVersion) showToast(`Saved as v${newVersion}`);
   };
+
+  // Auto-save: debounced silent saveFlow on flow changes. No toast, no
+  // version bump — just keeps the draft on disk so a reload doesn't
+  // lose work. Skipped while loading and while an explicit save is in
+  // flight to avoid racing.
+  useEffect(() => {
+    if (!builderFlow || saving) return;
+    const snapshot = JSON.stringify({ nodes, edges });
+    if (snapshot === lastSavedSnapshot.current) return;
+    clearTimeout(autoSaveTimer.current);
+    setAutoSaveStatus('idle');
+    autoSaveTimer.current = setTimeout(async () => {
+      setAutoSaveStatus('saving');
+      const viewport = reactFlowInstance.current?.getViewport() || { x: 0, y: 0, zoom: 1 };
+      await saveFlow(nodes, edges, viewport);
+      lastSavedSnapshot.current = snapshot;
+      setAutoSaveStatus('saved');
+      setTimeout(() => setAutoSaveStatus('idle'), 1500);
+    }, 1500);
+    return () => clearTimeout(autoSaveTimer.current);
+  }, [nodes, edges, builderFlow, saving, saveFlow]);
+
+  // Undo / Redo — pop from past/future and apply via setNodes/setEdges.
+  // skipHistory prevents the resulting state change from re-recording.
+  const handleUndo = useCallback(() => {
+    setHistory(h => {
+      if (h.past.length === 0) return h;
+      const prev = h.past[h.past.length - 1];
+      skipHistory.current = true;
+      setNodes(prev.nodes);
+      setEdges(prev.edges);
+      requestAnimationFrame(() => { skipHistory.current = false; });
+      return {
+        past: h.past.slice(0, -1),
+        future: [...h.future, { nodes, edges }],
+      };
+    });
+  }, [nodes, edges, setNodes, setEdges]);
+
+  const handleRedo = useCallback(() => {
+    setHistory(h => {
+      if (h.future.length === 0) return h;
+      const next = h.future[h.future.length - 1];
+      skipHistory.current = true;
+      setNodes(next.nodes);
+      setEdges(next.edges);
+      requestAnimationFrame(() => { skipHistory.current = false; });
+      return {
+        past: [...h.past, { nodes, edges }],
+        future: h.future.slice(0, -1),
+      };
+    });
+  }, [nodes, edges, setNodes, setEdges]);
+
+  const canUndo = history.past.length > 0;
+  const canRedo = history.future.length > 0;
+
+  // Cmd/Ctrl+Z = undo, Cmd/Ctrl+Shift+Z (or Cmd/Ctrl+Y) = redo
+  useEffect(() => {
+    const onKey = (e) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      // Skip when user is typing in an input/textarea
+      const tag = (e.target?.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || e.target?.isContentEditable) return;
+      const key = e.key.toLowerCase();
+      if (key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      } else if ((key === 'z' && e.shiftKey) || key === 'y') {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [handleUndo, handleRedo]);
 
   // Close with unsaved changes check
   const handleCloseBuilder = useCallback(() => {
@@ -279,6 +402,7 @@ export function AgentCanvas() {
   // ─── Auto-arrange nodes in execution order ───
   const handleAutoArrange = useCallback(() => {
     if (!nodes.length) return;
+    captureHistory(nodes, edges);
 
     // Build adjacency list from edges
     const adj = {};
@@ -342,10 +466,11 @@ export function AgentCanvas() {
 
   // Apply chat modification to nodes/edges
   const applyFlowUpdate = useCallback((newNodes, newEdges) => {
+    captureHistory(nodes, edges);
     if (newNodes) setNodes(newNodes);
     if (newEdges) setEdges(newEdges);
     setTimeout(() => reactFlowInstance.current?.fitView({ padding: 0.3 }), 100);
-  }, [setNodes, setEdges]);
+  }, [setNodes, setEdges, captureHistory, nodes, edges]);
 
   // Selected node object
   const selectedNode = useMemo(() => {
@@ -364,6 +489,11 @@ export function AgentCanvas() {
         <div className={styles.toolbarLeft}>
           <Button variant="ghost" size="S" iconOnly leadingIcon="solar:arrow-left-linear" onClick={handleCloseBuilder} title="Back to Agents" />
           <span className={styles.agentName}>{builderAgent.name}</span>
+          {autoSaveStatus !== 'idle' && (
+            <span className={styles.autoSaveStatus}>
+              {autoSaveStatus === 'saving' ? 'Saving…' : 'Auto-saved'}
+            </span>
+          )}
         </div>
 
         <div className={styles.toolbarCenter}>
@@ -371,6 +501,25 @@ export function AgentCanvas() {
         </div>
 
         <div className={styles.toolbarRight}>
+          <button
+            className={styles.iconBtn}
+            onClick={handleUndo}
+            disabled={!canUndo}
+            title="Undo (⌘Z)"
+            aria-label="Undo"
+          >
+            <Icon name="solar:undo-left-linear" size={16} color={canUndo ? 'var(--neutral-400)' : 'var(--neutral-200)'} />
+          </button>
+          <button
+            className={styles.iconBtn}
+            onClick={handleRedo}
+            disabled={!canRedo}
+            title="Redo (⌘⇧Z)"
+            aria-label="Redo"
+          >
+            <Icon name="solar:undo-right-linear" size={16} color={canRedo ? 'var(--neutral-400)' : 'var(--neutral-200)'} />
+          </button>
+          <span className={styles.toolbarDivider} />
           <Button variant="secondary" size="L" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
           </Button>
@@ -408,6 +557,7 @@ export function AgentCanvas() {
                 edges={edges}
                 onNodesChange={wrappedOnNodesChange}
                 onEdgesChange={wrappedOnEdgesChange}
+                onNodeDragStart={handleNodeDragStart}
                 onConnect={onConnect}
                 onNodeClick={onNodeClick}
                 onPaneClick={onPaneClick}
@@ -519,12 +669,28 @@ export function AgentCanvas() {
                 onDelete={() => handleDeleteNode(selectedNode.id)}
               />
             ) : (
-              <ChatPanel
-                nodes={nodes}
-                edges={edges}
-                onApplyFlow={applyFlowUpdate}
-                agentName={builderAgent.name}
-              />
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+                <div style={{ padding: '10px 12px 6px', borderBottom: '0.5px solid var(--neutral-150)', flexShrink: 0 }}>
+                  <Toggle
+                    items={['Workflow Assistant', 'Global Settings']}
+                    active={rightTab}
+                    onChange={setRightTab}
+                    fullWidth
+                  />
+                </div>
+                <div style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                  {rightTab === 'Workflow Assistant' ? (
+                    <ChatPanel
+                      nodes={nodes}
+                      edges={edges}
+                      onApplyFlow={applyFlowUpdate}
+                      agentName={builderAgent.name}
+                    />
+                  ) : (
+                    <GlobalSettings />
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>
