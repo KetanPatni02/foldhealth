@@ -419,9 +419,114 @@ function RowStatusDropdown({ task }) {
   );
 }
 
+/* ── Inline Assignee Dropdown for list rows ──
+ * Mirrors the look of RowLabelDropdown: small pill in the row that
+ * opens a portal-anchored picker. Sources its options from
+ * useAppStore.taskProfiles (profiles table) with the current user
+ * pinned at top with "(You)". When the row has no assignee, renders an
+ * "Assign" empty-state pill in neutral-200 (same pattern as Add Label).
+ */
+function RowAssignDropdown({ task }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const btnRef = useRef(null);
+  const updateTask = useAppStore(s => s.updateTask);
+  const showToast = useAppStore(s => s.showToast);
+  const taskProfiles = useAppStore(s => s.taskProfiles);
+  const currentUserProfile = useAppStore(s => s.currentUserProfile);
+
+  // Build picker options: current user first (with "(You)"), then everyone else.
+  const profiles = (() => {
+    const seen = new Set();
+    const list = [];
+    if (currentUserProfile?.id) {
+      list.push({ ...currentUserProfile, label: `${currentUserProfile.name} (You)` });
+      seen.add(currentUserProfile.id);
+    }
+    (taskProfiles || []).forEach(p => {
+      if (seen.has(p.id)) return;
+      list.push({ ...p, label: p.name });
+      seen.add(p.id);
+    });
+    return list;
+  })();
+
+  const filtered = profiles.filter(p => !search || (p.name || '').toLowerCase().includes(search.toLowerCase()));
+
+  const pick = (profile) => {
+    updateTask(task.id, { assigned_to: profile.name, assigned_to_id: profile.id || null });
+    showToast(`Assigned to ${profile.name}`);
+    setOpen(false);
+    setSearch('');
+  };
+
+  const handleUnassign = () => {
+    updateTask(task.id, { assigned_to: null, assigned_to_id: null });
+    showToast('Unassigned');
+    setOpen(false);
+    setSearch('');
+  };
+
+  return (
+    <div ref={btnRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }} onClick={e => { e.stopPropagation(); setOpen(v => !v); }}>
+      {task.assigned_to ? (
+        <button className={styles.assignPill} aria-label={`Assigned to ${task.assigned_to}. Click to change.`}>
+          <Icon name="solar:user-linear" size={14} color="var(--neutral-300)" />
+          <span>{task.assigned_to}</span>
+        </button>
+      ) : (
+        <button className={styles.assignEmpty} aria-label="Assign">
+          <Icon name="solar:user-linear" size={13} color="var(--neutral-200)" />
+          Assign
+        </button>
+      )}
+      {open && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={e => { e.stopPropagation(); setOpen(false); setSearch(''); }}>
+          <div
+            className={styles.simpleDropdown}
+            style={{ position: 'fixed', top: btnRef.current?.getBoundingClientRect().bottom + 4, left: btnRef.current?.getBoundingClientRect().left, zIndex: 9999 }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className={styles.dropdownSearch}>
+              <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-200)" />
+              <input
+                className={styles.dropdownSearchInput}
+                placeholder="Search assignees..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                autoFocus
+              />
+            </div>
+            {filtered.map(p => {
+              const initials = (p.name || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+              return (
+                <button key={p.id || p.name} className={styles.simpleDropItem} onClick={() => pick(p)}>
+                  <Avatar variant="assignee" initials={initials} className={styles.avatarXs} />
+                  <span>{p.label}</span>
+                </button>
+              );
+            })}
+            {filtered.length === 0 && (
+              <div className={styles.simpleDropItem} style={{ color: 'var(--neutral-200)', cursor: 'default' }}>No matches</div>
+            )}
+            {task.assigned_to && (
+              <button className={styles.simpleDropItem} style={{ color: 'var(--status-error)', borderTop: '0.5px solid var(--neutral-100)' }} onClick={handleUnassign}>
+                <Icon name="solar:close-circle-linear" size={14} color="var(--status-error)" />
+                Unassign
+              </button>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
 /* ── Filter Chip (mirrors FilterBar's FilterChip) ── */
 function TaskFilterChip({ filterDef, value, onSet, onClear }) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
   const ref = useRef(null);
 
   useEffect(() => {
@@ -433,7 +538,19 @@ function TaskFilterChip({ filterDef, value, onSet, onClear }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
+  // Show the search input + avatars when the filter is people-shaped
+  // (assigned_to / created_by / member). The other chips stay plain.
+  const isPeopleChip = filterDef.iconKind === 'assignee' || filterDef.iconKind === 'patient';
+
+  useEffect(() => {
+    if (!open) setSearch('');
+  }, [open]);
+
   const selectedLabel = value ? filterDef.options.find(o => o.value === value)?.label || value : null;
+
+  const filteredOptions = isPeopleChip && search
+    ? filterDef.options.filter(o => (o.label || '').toLowerCase().includes(search.toLowerCase()))
+    : filterDef.options;
 
   return (
     <div className={styles.chipWrap} ref={ref}>
@@ -459,22 +576,48 @@ function TaskFilterChip({ filterDef, value, onSet, onClear }) {
       </button>
       {open && (
         <div className={styles.dropdown}>
-          {filterDef.options.map(opt => (
-            <button
-              key={opt.value}
-              className={[styles.dropdownItem, value === opt.value ? styles.selected : ''].filter(Boolean).join(' ')}
-              onClick={() => {
-                if (value === opt.value) onClear();
-                else onSet(opt.value);
-                setOpen(false);
-              }}
-            >
-              <span className={styles.dropdownCheck}>
-                {value === opt.value ? '✓' : ''}
-              </span>
-              {opt.label}
-            </button>
-          ))}
+          {isPeopleChip && (
+            <div className={styles.dropdownSearch}>
+              <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-200)" />
+              <input
+                className={styles.dropdownSearchInput}
+                placeholder={`Search ${filterDef.label.toLowerCase()}...`}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                autoFocus
+              />
+            </div>
+          )}
+          {filteredOptions.map(opt => {
+            const initials = isPeopleChip
+              ? (opt.label || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+              : '';
+            return (
+              <button
+                key={opt.value}
+                className={[styles.dropdownItem, value === opt.value ? styles.selected : ''].filter(Boolean).join(' ')}
+                onClick={() => {
+                  if (value === opt.value) onClear();
+                  else onSet(opt.value);
+                  setOpen(false);
+                }}
+              >
+                {isPeopleChip ? (
+                  <Avatar variant={filterDef.iconKind} initials={initials} className={styles.avatarXs} />
+                ) : (
+                  <span className={styles.dropdownCheck}>
+                    {value === opt.value ? '✓' : ''}
+                  </span>
+                )}
+                {opt.label}
+              </button>
+            );
+          })}
+          {isPeopleChip && filteredOptions.length === 0 && (
+            <div className={styles.dropdownItem} style={{ color: 'var(--neutral-200)', cursor: 'default' }}>
+              No matches
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -578,13 +721,8 @@ function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo }) {
       </div>
 
       {!hideAssignedTo && (
-        <div className={styles.cellAssigned}>
-          {task.assigned_to && (
-            <>
-              <Icon name="solar:user-linear" size={14} color="var(--neutral-300)" />
-              <span>{task.assigned_to}</span>
-            </>
-          )}
+        <div className={styles.cellAssigned} onClick={e => e.stopPropagation()}>
+          <RowAssignDropdown task={task} />
         </div>
       )}
 
@@ -597,7 +735,7 @@ function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo }) {
             const state = useAppStore.getState();
             const match = state.patients.find(p => p.name === task.member)
               || (state.allPatients || []).find(p => p.name === task.member);
-            if (match) state.navigateToPatient(match.id);
+            if (match) state.openQuickView(match);
           }}
         >
           {task.member}
@@ -755,7 +893,7 @@ function KanbanCardContent({ task }) {
                 const state = useAppStore.getState();
                 const match = state.patients.find(p => p.name === task.member)
                   || (state.allPatients || []).find(p => p.name === task.member);
-                if (match) state.navigateToPatient(match.id);
+                if (match) state.openQuickView(match);
               }}
             >
               {task.member}
@@ -1451,6 +1589,7 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
   const logTaskAudit = useAppStore(s => s.logTaskAudit);
   const taskPools = useAppStore(s => s.taskPools);
   const taskProfiles = useAppStore(s => s.taskProfiles);
+  const allPatients = useAppStore(s => s.allPatients);
   const currentUserProfile = useAppStore(s => s.currentUserProfile);
 
   useEffect(() => { if (task?.id) fetchTaskAuditLog(task.id); }, [task?.id]);
@@ -1463,6 +1602,17 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
   const subtasks = allTasks.filter(t => t.parent_task_id === task.id || (t.is_subtask && t.parent_task === task.name));
   const completedSubs = subtasks.filter(t => t.status === 'completed').length;
   const auditLog = taskAuditLogs[task.id] || [];
+
+  // Dynamic dropdown sources — same shape as the AddTaskDrawer.
+  const assigneeNames = (() => {
+    const seen = new Set();
+    const list = [];
+    if (currentUserProfile?.name) { list.push(currentUserProfile.name); seen.add(currentUserProfile.name); }
+    (taskProfiles || []).forEach(p => { if (p.name && !seen.has(p.name)) { list.push(p.name); seen.add(p.name); } });
+    return list.length > 0 ? list : ASSIGNEE_OPTIONS;
+  })();
+  const memberNames = ((allPatients || []).map(p => p.name).filter(Boolean));
+  const memberOptionsForDrawer = memberNames.length > 0 ? memberNames : MEMBER_OPTIONS;
 
   const handleStatusChange = (newStatus) => {
     if (newStatus === 'completed' && subtasks.length > 0 && completedSubs < subtasks.length) {
@@ -1612,7 +1762,7 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
             <span className={styles.detailLabel}>Assigned To</span>
             <DetailDropdown
               value={task.assigned_to}
-              options={ASSIGNEE_OPTIONS}
+              options={assigneeNames}
               onSelect={v => {
                 const picked = (taskProfiles || []).find(p => p.name === v);
                 updateTask(task.id, { assigned_to: v, assigned_to_id: picked?.id || null });
@@ -1660,7 +1810,7 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
             <span className={styles.detailLabel}>Member</span>
             <DetailDropdown
               value={task.member}
-              options={MEMBER_OPTIONS}
+              options={memberOptionsForDrawer}
               onSelect={v => { updateTask(task.id, { member: v }); showToast(`Member set to ${v}`); }}
               renderOption={opt => (
                 <><Avatar variant="patient" initials={getInitials(opt)} className={styles.avatarXs} /> {opt}</>
@@ -1983,6 +2133,7 @@ export function TasksView() {
   const fetchTaskPools = useAppStore(s => s.fetchTaskPools);
   const fetchAllPatients = useAppStore(s => s.fetchAllPatients);
   const allPatients = useAppStore(s => s.allPatients);
+  const taskProfiles = useAppStore(s => s.taskProfiles);
   const currentUserProfile = useAppStore(s => s.currentUserProfile);
 
   useEffect(() => {
@@ -2036,13 +2187,27 @@ export function TasksView() {
       if (!value) return;
       if (key === 'task_status') result = result.filter(t => t.status === value);
       else if (key === 'priority') result = result.filter(t => t.priority === value);
-      else if (key === 'assigned_to') result = result.filter(t => t.assigned_to === value);
-      else if (key === 'created_by') result = result.filter(t => t.created_by === value);
+      else if (key === 'assigned_to') {
+        // value is a profile.id from the dynamic filter chip; legacy
+        // rows without an FK fall back to a name match against the
+        // picked profile's display name.
+        const pickedName = (taskProfiles || []).find(p => p.id === value)?.name;
+        result = result.filter(t =>
+          t.assigned_to_id === value || (pickedName && t.assigned_to === pickedName)
+        );
+      }
+      else if (key === 'created_by') {
+        const pickedName = (taskProfiles || []).find(p => p.id === value)?.name;
+        result = result.filter(t =>
+          t.created_by_id === value || (pickedName && t.created_by === pickedName)
+        );
+      }
+      else if (key === 'member') result = result.filter(t => t.member === value);
       else if (key === 'labels') result = result.filter(t => Array.isArray(t.labels) && t.labels.includes(value));
     });
 
     return result;
-  }, [tasks, tasksTab, tasksFilters, meName]);
+  }, [tasks, tasksTab, tasksFilters, meName, taskProfiles]);
 
   const tabCounts = useMemo(() => ({
     all: tasks.length,
@@ -2083,6 +2248,34 @@ export function TasksView() {
     }
     return sorted;
   }, [filteredTasks, tasksFilters.sort_by]);
+
+  // Build the filter chip definitions with dynamic options for the
+  // user/patient-driven filters. Other chips (View By / Sort By /
+  // Status / Priority / Labels) keep their static option lists from
+  // TASK_FILTER_DEFS. assigned_to and created_by use profile.id as
+  // the value so the filter compares against the FK; member uses
+  // patient name (no FK in tasks → patients yet).
+  const filterDefs = useMemo(() => {
+    const profileOpts = (taskProfiles || []).map(p => ({ value: p.id, label: p.name }));
+    const memberOpts = (allPatients || []).map(p => ({ value: p.name, label: p.name }));
+    return TASK_FILTER_DEFS
+      .map(fd => {
+        // iconKind switches the chip dropdown into people mode (search +
+        // avatars) — same shape as the row-level RowAssignDropdown.
+        if (fd.key === 'assigned_to') return profileOpts.length ? { ...fd, options: profileOpts, iconKind: 'assignee' } : fd;
+        if (fd.key === 'created_by')  return profileOpts.length ? { ...fd, options: profileOpts, iconKind: 'assignee' } : fd;
+        return fd;
+      })
+      // Insert a Member filter after Created By so it sits next to the
+      // other identity-related chips. Skip when no patients are loaded
+      // so the chip doesn't render with an empty dropdown.
+      .flatMap(fd => {
+        if (fd.key === 'created_by' && memberOpts.length) {
+          return [fd, { key: 'member', label: 'Member', options: memberOpts, iconKind: 'patient' }];
+        }
+        return [fd];
+      });
+  }, [taskProfiles, allPatients]);
 
   const PRIORITY_ORDER = ['high', 'medium', 'low', 'none'];
   const PRIORITY_LABELS = { high: 'High', medium: 'Medium', low: 'Low', none: 'None' };
@@ -2237,7 +2430,7 @@ export function TasksView() {
 
       {showTasksFilterBar && (
         <div className={styles.filterBar}>
-          {TASK_FILTER_DEFS.map(fd => (
+          {filterDefs.map(fd => (
             <TaskFilterChip
               key={fd.key}
               filterDef={fd}

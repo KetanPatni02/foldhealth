@@ -171,6 +171,8 @@
   border-radius: 6px;
   text-align: left;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dropdownItem:hover {
@@ -470,6 +472,8 @@
   padding: 0 12px;
   font-size: 14px;
   color: var(--neutral-300);
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* Member */
@@ -482,6 +486,14 @@
   padding: 0 12px;
   font-size: 14px;
   color: var(--neutral-300);
+  min-width: 0;
+  overflow: hidden;
+}
+.cellMember > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 /* Labels */
@@ -510,6 +522,45 @@
 .addLabel:hover {
   color: var(--neutral-300);
 }
+
+/* Inline assignee in the list row — visually identical to the
+   original static span (icon + name). The button is the click target
+   for opening the dropdown but renders without chrome so it reads as
+   plain inline text. Empty state (.assignEmpty) handles unassigned. */
+.assignPill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--neutral-300);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  max-width: 100%;
+  min-width: 0;
+  font-family: inherit;
+}
+.assignPill > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.assignEmpty {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--neutral-200);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.assignEmpty:hover { color: var(--neutral-300); }
 
 /* ── Skeleton Loading ── */
 @keyframes shimmer {
@@ -1359,12 +1410,14 @@
 /* ── Detail Dropdown ── */
 .simpleDropdown {
   min-width: 220px;
+  max-height: 320px;
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.1);
   padding: 4px 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .simpleDropItem {
@@ -1390,6 +1443,10 @@
   gap: 8px;
   padding: 8px 12px;
   border-bottom: 0.5px solid var(--neutral-100);
+  position: sticky;
+  top: 0;
+  background: var(--neutral-0);
+  z-index: 1;
 }
 
 .dropdownSearchInput {
