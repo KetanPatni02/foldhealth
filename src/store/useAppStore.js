@@ -1874,7 +1874,7 @@ export const useAppStore = create((set, get) => ({
   // ── Tasks ──
   tasks: [],
   tasksLoading: true,
-  tasksTab: 'assigned',
+  tasksTab: 'all',
   tasksFilters: {},
   showTasksFilterBar: true,
   tasksViewMode: 'list',
@@ -1995,7 +1995,7 @@ export const useAppStore = create((set, get) => ({
     // Try insert with full schema; if fails due to missing column, retry with reduced payload
     let { data, error } = await supabase.from('tasks').insert(normalized).select().single();
     if (error && /column .* does not exist|schema cache/.test(error.message || '')) {
-      const { parent_task_id, pool, mentions, completed_at, description, ...legacy } = normalized;
+      const { parent_task_id, pool, mentions, completed_at, description, assigned_to_id, created_by_id, ...legacy } = normalized;
       ({ data, error } = await supabase.from('tasks').insert(legacy).select().single());
     }
     if (error) {
@@ -2049,7 +2049,7 @@ export const useAppStore = create((set, get) => ({
     // Try DB update; gracefully retry without unknown columns
     let { error } = await supabase.from('tasks').update({ ...final, updated_at: new Date().toISOString() }).eq('id', id);
     if (error && /column .* does not exist|schema cache/.test(error.message || '')) {
-      const { parent_task_id, pool, mentions, completed_at, description, ...legacy } = final;
+      const { parent_task_id, pool, mentions, completed_at, description, assigned_to_id, created_by_id, ...legacy } = final;
       ({ error } = await supabase.from('tasks').update({ ...legacy, updated_at: new Date().toISOString() }).eq('id', id));
     }
     if (error) {
@@ -2176,13 +2176,18 @@ export const useAppStore = create((set, get) => ({
   claimTask: async (taskId) => {
     const me = get().currentUserProfile;
     const claimer = me?.name || 'Current User';
+    const claimerId = me?.id || null;
     const task = get().tasks.find(t => t.id === taskId);
     if (!task) return false;
-    set(s => ({ tasks: s.tasks.map(t => t.id === taskId ? { ...t, assigned_to: claimer, pool: null } : t) }));
-    const { error } = await supabase
-      .from('tasks')
-      .update({ assigned_to: claimer, pool: null, updated_at: new Date().toISOString() })
-      .eq('id', taskId);
+    set(s => ({ tasks: s.tasks.map(t => t.id === taskId
+      ? { ...t, assigned_to: claimer, assigned_to_id: claimerId, pool: null }
+      : t) }));
+    const fullPayload = { assigned_to: claimer, assigned_to_id: claimerId, pool: null, updated_at: new Date().toISOString() };
+    let { error } = await supabase.from('tasks').update(fullPayload).eq('id', taskId);
+    if (error && /column .* does not exist|schema cache/.test(error.message || '')) {
+      const { assigned_to_id, pool, ...legacy } = fullPayload;
+      ({ error } = await supabase.from('tasks').update(legacy).eq('id', taskId));
+    }
     if (error) console.warn('Claim task error:', error.message);
     get().logTaskAudit(taskId, 'claimed', { field: 'assigned_to', from: '(unassigned)', to: claimer });
     return true;

@@ -26,6 +26,7 @@ import { useAppStore } from '../../store/useAppStore';
 import styles from './TasksView.module.css';
 
 const TABS = [
+  { key: 'all', label: 'All Tasks' },
   { key: 'assigned', label: 'Assigned to Me' },
   { key: 'pool', label: 'My Task Pool' },
   { key: 'created', label: 'Created by Me' },
@@ -1056,12 +1057,23 @@ function AddTaskDrawer({ onClose, defaultStatus, onTaskCreated }) {
   const handleSave = async () => {
     if (!canSave) return;
     const me = currentUserProfile?.name || 'Dr. JeDee Potter';
+    const meId = currentUserProfile?.id || null;
+    // Resolve the picked assignee's profile id by name (taskProfiles
+    // is the same dropdown source). Falls back to the current user.
+    const pickedAssignee = assignedTo
+      ? (taskProfiles || []).find(p => p.name === assignedTo)
+      : null;
+    const finalAssigneeName = pool ? null : (assignedTo || me);
+    const finalAssigneeId = pool
+      ? null
+      : (pickedAssignee?.id || (assignedTo === me ? meId : null) || meId);
     const task = {
       name: name.trim().slice(0, TITLE_MAX),
       status,
       priority,
       due_date: dueDate || todayMMDDYYYY(),
-      assigned_to: pool ? null : (assignedTo || me),
+      assigned_to: finalAssigneeName,
+      assigned_to_id: finalAssigneeId,
       member: member || (allPatients?.[0]?.name) || 'Celia Gerhold',
       labels: selectedLabels,
       meta: pool ? `Pool : ${pool}` : '',
@@ -1074,6 +1086,7 @@ function AddTaskDrawer({ onClose, defaultStatus, onTaskCreated }) {
       parent_task: null,
       parent_task_id: null,
       created_by: me,
+      created_by_id: meId,
     };
     const result = await createTask(task);
     if (result) {
@@ -1437,6 +1450,7 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
   const fetchTaskAuditLog = useAppStore(s => s.fetchTaskAuditLog);
   const logTaskAudit = useAppStore(s => s.logTaskAudit);
   const taskPools = useAppStore(s => s.taskPools);
+  const taskProfiles = useAppStore(s => s.taskProfiles);
   const currentUserProfile = useAppStore(s => s.currentUserProfile);
 
   useEffect(() => { if (task?.id) fetchTaskAuditLog(task.id); }, [task?.id]);
@@ -1477,6 +1491,9 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
       priority: task.priority || 'medium',
       due_date: task.due_date || todayMMDDYYYY(),
       assigned_to: task.assigned_to || currentUserProfile?.name || null,
+      // Inherit assignee FK from parent when present, otherwise the
+      // current user; either way keeps the new id-based filter honest.
+      assigned_to_id: task.assigned_to_id || currentUserProfile?.id || null,
       member: task.member,
       labels: [],
       parent_task: task.name,
@@ -1489,6 +1506,7 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
       pool: null,
       mentions: [],
       created_by: currentUserProfile?.name || 'Current User',
+      created_by_id: currentUserProfile?.id || null,
     };
     const created = await createTask(sub);
     if (created) {
@@ -1595,7 +1613,11 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
             <DetailDropdown
               value={task.assigned_to}
               options={ASSIGNEE_OPTIONS}
-              onSelect={v => { updateTask(task.id, { assigned_to: v }); showToast(`Assigned to ${v}`); }}
+              onSelect={v => {
+                const picked = (taskProfiles || []).find(p => p.name === v);
+                updateTask(task.id, { assigned_to: v, assigned_to_id: picked?.id || null });
+                showToast(`Assigned to ${v}`);
+              }}
               renderOption={opt => (
                 <><Avatar variant="assignee" initials={getInitials(opt)} className={styles.avatarXs} /> {opt}</>
               )}
@@ -1971,21 +1993,43 @@ export function TasksView() {
     if (!allPatients || allPatients.length === 0) fetchAllPatients();
   }, []);
 
-  const meName = currentUserProfile?.name || 'Dr. JeDee Potter';
+  // The user-scoped tabs (Assigned / Created / Mentions) require a real
+  // signed-in profile to compare against; if there's no auth session
+  // those filters short-circuit to an empty set rather than pretending
+  // to be the seed user.
+  const meId = currentUserProfile?.id || null;
+  const meName = currentUserProfile?.name || null;
+
+  // Match by FK first; fall back to name string for legacy rows where the
+  // tasks_assignee_id_migration backfill couldn't find a matching profile
+  // (e.g. seed rows assigned to "Dr. JeDee Potter"). When a row has BOTH
+  // an id and a different-named text value, the id wins.
+  const matchAssignee = (t) => {
+    if (!meId && !meName) return false;
+    if (t.assigned_to_id) return t.assigned_to_id === meId;
+    return !!meName && t.assigned_to === meName;
+  };
+  const matchCreator = (t) => {
+    if (!meId && !meName) return false;
+    if (t.created_by_id) return t.created_by_id === meId;
+    return !!meName && t.created_by === meName;
+  };
 
   // Show all tasks in the list (parents + subtasks). Subtasks render with a
   // "Parent Task : ..." prefix and the subtask icon so they're visually nested.
   const filteredTasks = useMemo(() => {
     let result = tasks;
 
-    if (tasksTab === 'assigned') {
-      result = result.filter(t => t.assigned_to === meName);
+    if (tasksTab === 'all') {
+      // No user filter — show every task in the org/DB.
+    } else if (tasksTab === 'assigned') {
+      result = result.filter(matchAssignee);
     } else if (tasksTab === 'pool') {
-      result = result.filter(t => t.pool && !t.assigned_to);
+      result = result.filter(t => t.pool && !t.assigned_to && !t.assigned_to_id);
     } else if (tasksTab === 'created') {
-      result = result.filter(t => t.created_by === meName);
+      result = result.filter(matchCreator);
     } else if (tasksTab === 'mentions') {
-      result = result.filter(t => Array.isArray(t.mentions) && t.mentions.includes(meName));
+      result = meName ? result.filter(t => Array.isArray(t.mentions) && t.mentions.includes(meName)) : [];
     }
 
     Object.entries(tasksFilters).forEach(([key, value]) => {
@@ -2001,10 +2045,11 @@ export function TasksView() {
   }, [tasks, tasksTab, tasksFilters, meName]);
 
   const tabCounts = useMemo(() => ({
-    assigned: tasks.filter(t => t.assigned_to === meName).length,
-    pool: tasks.filter(t => t.pool && !t.assigned_to).length,
-    created: tasks.filter(t => t.created_by === meName).length,
-    mentions: tasks.filter(t => Array.isArray(t.mentions) && t.mentions.includes(meName)).length,
+    all: tasks.length,
+    assigned: tasks.filter(matchAssignee).length,
+    pool: tasks.filter(t => t.pool && !t.assigned_to && !t.assigned_to_id).length,
+    created: tasks.filter(matchCreator).length,
+    mentions: meName ? tasks.filter(t => Array.isArray(t.mentions) && t.mentions.includes(meName)).length : 0,
   }), [tasks, meName]);
 
   const handleToggle = useCallback((task) => {
