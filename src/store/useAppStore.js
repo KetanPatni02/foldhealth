@@ -1419,6 +1419,11 @@ export const useAppStore = create((set, get) => ({
   setDiagDosFilter: (dos) => set({ diagDosFilter: dos }),
   setDiagViewMode: (mode) => set({ diagViewMode: mode }),
 
+  // Quick View drawer — opened by clicking a patient name in any worklist
+  quickViewPatient: null,
+  openQuickView: (patient) => set({ quickViewPatient: patient }),
+  closeQuickView: () => set({ quickViewPatient: null }),
+
   openWorkflow: (patientId) => {
     const p = get().patients.find(x => x.id === patientId);
     if (!p) return;

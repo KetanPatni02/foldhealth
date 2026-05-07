@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Icon } from '../Icon/Icon';
 import { ActionButton } from '../ActionButton/ActionButton';
+import { StickyNoteIcon } from '../Icon/StickyNoteIcon';
 import styles from './StickyNote.module.css';
 
 /**
@@ -74,7 +75,7 @@ export function StickyNote({ notes = [], onSave, onCreate, onDelete, onAuditLog,
     };
     return (
       <div className={styles.collapsed} onClick={handleCollapsedClick}>
-        <Icon name="solar:document-text-linear" size={16} color="var(--neutral-300)" />
+        <StickyNoteIcon size={16} />
         <span className={styles.collapsedText}>{note?.text || 'Add sticky Note'}</span>
         {/* Actions appear on hover */}
         <div className={styles.collapsedActions}>
@@ -95,7 +96,7 @@ export function StickyNote({ notes = [], onSave, onCreate, onDelete, onAuditLog,
     <div className={styles.expanded}>
       {/* Header */}
       <div className={styles.header}>
-        <Icon name="solar:document-text-linear" size={16} color="var(--neutral-300)" />
+        <StickyNoteIcon size={16} />
         <span className={styles.headerTitle}>Sticky Note</span>
         <div className={styles.headerActions}>
           <ActionButton icon="solar:clock-circle-linear" size="S" tooltip="Audit Log" onClick={onAuditLog} />

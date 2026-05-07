@@ -18,15 +18,15 @@ export default {
 };
 
 export const Playground = {
-  args: { icon: 'solar:filter-linear', size: 'L', tooltip: 'Filter', notification: false, dot: false, chevron: false },
+  args: { icon: 'custom:filter', size: 'L', tooltip: 'Filter', notification: false, dot: false, chevron: false },
 };
 
 export const AllExamples = {
   render: () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <ActionButton icon="solar:filter-linear" tooltip="Default" />
-        <ActionButton icon="solar:filter-linear" size="S" tooltip="Small" />
+        <ActionButton icon="custom:filter" tooltip="Default" />
+        <ActionButton icon="custom:filter" size="S" tooltip="Small" />
         <ActionButton icon="solar:bell-linear" notification count="3" tooltip="With badge" />
         <ActionButton icon="solar:bell-linear" dot tooltip="With dot" />
         <ActionButton icon="solar:pen-linear" state="disabled" tooltip="Disabled" />
@@ -37,7 +37,7 @@ export const AllExamples = {
         <span style={{ width: 0.5, height: 16, background: 'var(--neutral-150)' }} />
         <ActionButton icon="solar:check-square-linear" size="S" tooltip="Select" />
         <span style={{ width: 0.5, height: 16, background: 'var(--neutral-150)' }} />
-        <ActionButton icon="solar:filter-linear" size="S" tooltip="Filter" notification count="1" />
+        <ActionButton icon="custom:filter" size="S" tooltip="Filter" notification count="1" />
         <span style={{ width: 0.5, height: 16, background: 'var(--neutral-150)' }} />
         <ActionButton icon="solar:sort-vertical-linear" size="S" tooltip="Sort" />
         <span style={{ width: 0.5, height: 16, background: 'var(--neutral-150)' }} />

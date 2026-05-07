@@ -26,6 +26,7 @@ import { QueueSummaryBar } from '../features/toc-queue/QueueSummaryBar';
 import { HccWorklistTable } from '../features/hcc/HccWorklistTable';
 import { AllPatientsTable } from '../features/all-patients/AllPatientsTable';
 import { DiagPanel } from '../features/hcc/DiagPanel/DiagPanel';
+import { QuickViewDrawer } from '../components/QuickViewDrawer/QuickViewDrawer';
 import { Icon } from '../components/Icon/Icon';
 import { SettingsLayout } from '../features/settings/SettingsLayout';
 import { CreateAgentDrawer } from '../features/settings/CreateAgentDrawer';
@@ -264,6 +265,7 @@ export function AppLayout() {
   const businessHoursOpen = useAppStore(s => s.businessHoursOpen);
   const componentWizardOpen = useAppStore(s => s.componentWizardOpen);
   const diagPanelOpen = useAppStore(s => s.diagPanelOpen);
+  const quickViewPatient = useAppStore(s => s.quickViewPatient);
 
   // Agent Builder is a full-screen takeover
   if (activePage === 'builder') {
@@ -295,6 +297,7 @@ export function AppLayout() {
       {agentRulesGroupId && <AgentRulesDrawer />}
       {businessHoursOpen && <BusinessHoursDrawer />}
       {diagPanelOpen && <DiagPanel />}
+      {quickViewPatient && <QuickViewDrawer />}
       <Toast />
       <ToastSuccess />
     </div>

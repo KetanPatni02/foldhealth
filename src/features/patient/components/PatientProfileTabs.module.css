@@ -14,10 +14,15 @@
 .searchInput::placeholder { color: var(--neutral-200); }
 .searchClose { background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; flex-shrink: 0; }
 .alertHeader { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--status-warning-light); font-size: 12px; color: var(--neutral-400); font-family: 'Inter', sans-serif; flex-shrink: 0; border-bottom: 0.5px solid var(--neutral-100); }
-.sectionHeader { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 0.5px solid var(--neutral-100); flex-shrink: 0; }
+.sectionHeader { display: flex; align-items: center; gap: 0; padding: 0 12px 0 20px; height: 32px; flex-shrink: 0; }
+.collapseToggle { background: none; border: none; cursor: pointer; padding: 0; margin-left: 4px; display: flex; align-items: center; }
+.sectionActions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .sectionTitle { font-size: 14px; font-weight: 500; color: var(--neutral-400); font-family: 'Inter', sans-serif; }
-.sectionActions { display: flex; align-items: center; gap: 6px; }
 .viewBy { font-size: 12px; color: var(--neutral-300); font-family: 'Inter', sans-serif; }
+.dosLabel { font-size: 12px; color: #3a485f; font-family: 'Inter', sans-serif; }
+.dosValue { font-size: 12px; color: var(--neutral-300); font-family: 'Inter', sans-serif; }
 .filterDivider { width: 0.5px; height: 12px; background: var(--neutral-150); }
-.sections { flex: 1; overflow-y: auto; }
+.gapsWrapper { padding: 12px 0; }
+.sections { padding: 8px 12px 0; }
+.diagnosisHeader { margin-top: 24px; }
 .placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 48px; color: var(--neutral-200); font-size: 13px; font-family: 'Inter', sans-serif; }

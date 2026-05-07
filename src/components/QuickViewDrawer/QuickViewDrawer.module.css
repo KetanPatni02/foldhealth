@@ -1,0 +1,45 @@
+/* ── Header extras ── */
+.profileLink {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--primary-300);
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background 0.15s;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.profileLink:hover { background: var(--primary-50); }
+
+.headerDivider {
+  display: block;
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+/* ── Drawer body: flex column so sticky top + scrollable tabs work ── */
+.drawerBody {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Banner + tags + actions — never scroll */
+.stickyTop {
+  flex-shrink: 0;
+}
+
+/* PatientProfileTabs wrapper — takes remaining height, scrolls */
+.tabsPanel {
+  flex: 1;
+  min-height: 0;
+}

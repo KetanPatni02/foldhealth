@@ -48,7 +48,7 @@ export function AlertsMonitoringCard({ dragHandleClassName }) {
         <div className={styles.cardActions}>
           <button className={styles.iconBtn} aria-label="Assignee view"><Icon name="solar:user-linear" size={14} /></button>
           <button className={styles.iconBtn} aria-label="List view"><Icon name="solar:hamburger-menu-linear" size={14} /></button>
-          <button className={styles.iconBtn} aria-label="Filter"><Icon name="solar:filter-linear" size={14} /></button>
+          <button className={styles.iconBtn} aria-label="Filter"><Icon name="custom:filter" size={14} /></button>
         </div>
       </div>
       <div className={styles.cardBody}>

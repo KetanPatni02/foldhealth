@@ -181,7 +181,7 @@ export function AuditLogContent({ entityType, entityId }) {
     <div style={{ padding: '12px 0' }}>
       {/* Filter pills */}
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
-        <Icon name="solar:filter-linear" size={16} color="var(--neutral-300)" />
+        <Icon name="custom:filter" size={16} color="var(--neutral-300)" />
         {FILTERS.map(f => {
           const active = filter === f;
           return (
@@ -289,7 +289,7 @@ export function AuditLogDrawer({ entity, onClose }) {
     <Drawer title={title} onClose={onClose}>
       {/* Filter pills */}
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
-        <Icon name="solar:filter-linear" size={16} color="var(--neutral-300)" />
+        <Icon name="custom:filter" size={16} color="var(--neutral-300)" />
         {FILTERS.map(f => {
           const active = filter === f;
           return (
