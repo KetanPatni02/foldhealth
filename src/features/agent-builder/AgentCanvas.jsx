@@ -39,6 +39,41 @@ function getNextId() {
   return `n${++nodeIdCounter}`;
 }
 
+/* Inline icons for the canvas-mode toggle. Kept inline (not in the
+   shared icon module) because they're tiny and only used here. The
+   select cursor matches the Iconoir cursor-pointer the user requested
+   so the cursor on the canvas and the toggle button stay visually in
+   sync. */
+function SelectCursorIcon({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+        d="M19.503 9.97c1.204.489 1.112 2.224-.137 2.583l-6.305 1.813l-2.88 5.895c-.571 1.168-2.296.957-2.569-.314L4.677 6.257A1.369 1.369 0 0 1 6.53 4.7z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
+function PanHandIcon({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M8 13V5a1.5 1.5 0 1 1 3 0v6m0-1.5V4a1.5 1.5 0 1 1 3 0v7m0-1V5.5a1.5 1.5 0 1 1 3 0V13m0-2.5a1.5 1.5 0 1 1 3 0V15a6 6 0 0 1-6 6h-1.5a5 5 0 0 1-3.536-1.464l-3.864-3.864a1.5 1.5 0 1 1 2.121-2.122L8 15.5"
+      />
+    </svg>
+  );
+}
+
 const MIN_PANEL_WIDTH = 260;
 const MAX_PANEL_WIDTH = 480;
 const DEFAULT_PANEL_WIDTH = 300;
@@ -80,6 +115,11 @@ export function AgentCanvas() {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [activeTab, setActiveTab] = useState('Workflow');
   const [rightTab, setRightTab] = useState('Workflow Assistant');
+  // Canvas interaction mode: 'select' (left-drag = lasso) or 'pan' (left-drag = pan).
+  // Mirrors the Figma / Miro pattern. Persisted to sessionStorage so the
+  // mode survives reloads while the user is iterating on a flow.
+  const [canvasMode, setCanvasMode] = useState(() => sessionStorage.getItem('builderCanvasMode') || 'select');
+  useEffect(() => { sessionStorage.setItem('builderCanvasMode', canvasMode); }, [canvasMode]);
   const [saving, setSaving] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
   const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH);
@@ -201,11 +241,16 @@ export function AgentCanvas() {
     const instance = reactFlowInstance.current;
     if (!instance) return;
 
-    const bounds = reactFlowWrapper.current.getBoundingClientRect();
+    // screenToFlowPosition takes screen coords directly. The earlier
+    // subtraction by wrapper bounds was a leftover from the older
+    // `project()` API and double-offset the drop position. Center the
+    // node on the cursor (default node width ~280px, height ~80px).
     const position = instance.screenToFlowPosition({
-      x: e.clientX - bounds.left,
-      y: e.clientY - bounds.top,
+      x: e.clientX,
+      y: e.clientY,
     });
+    position.x -= 140;
+    position.y -= 40;
 
     const isEnd = nodeType === 'end';
     const newNode = {
@@ -226,20 +271,28 @@ export function AgentCanvas() {
   }, [setNodes, captureHistory, nodes, edges]);
 
   // ─── Delete selected nodes (Delete / Backspace) ───
+  // Handles both: a single click-selected node (builderSelectedNode in
+  // the store) and a rectangle multi-selection (React Flow marks each
+  // dragged-over node with selected: true). Start nodes are protected.
   const onKeyDown = useCallback((e) => {
-    if ((e.key === 'Delete' || e.key === 'Backspace') && builderSelectedNode) {
-      // Prevent deleting start node
-      const node = nodes.find(n => n.id === builderSelectedNode);
-      if (node?.type === 'startNode') return;
-      // Don't trigger when typing in an input
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+    if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+    // Don't trigger when typing in an input
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
 
-      captureHistory(nodes, edges);
-      setNodes(nds => nds.filter(n => n.id !== builderSelectedNode));
-      setEdges(eds => eds.filter(e => e.source !== builderSelectedNode && e.target !== builderSelectedNode));
-      setBuilderSelectedNode(null);
-      showToast('Node deleted');
-    }
+    const multiSelectedIds = nodes.filter(n => n.selected && n.type !== 'startNode').map(n => n.id);
+    const ids = multiSelectedIds.length > 0
+      ? multiSelectedIds
+      : (builderSelectedNode && nodes.find(n => n.id === builderSelectedNode)?.type !== 'startNode'
+          ? [builderSelectedNode]
+          : []);
+    if (ids.length === 0) return;
+
+    captureHistory(nodes, edges);
+    const idSet = new Set(ids);
+    setNodes(nds => nds.filter(n => !idSet.has(n.id)));
+    setEdges(eds => eds.filter(e => !idSet.has(e.source) && !idSet.has(e.target)));
+    setBuilderSelectedNode(null);
+    showToast(ids.length > 1 ? `${ids.length} nodes deleted` : 'Node deleted');
   }, [builderSelectedNode, nodes, edges, setNodes, setEdges, setBuilderSelectedNode, showToast, captureHistory]);
 
   useEffect(() => {
@@ -359,22 +412,25 @@ export function AgentCanvas() {
   const canUndo = history.past.length > 0;
   const canRedo = history.future.length > 0;
 
-  // Cmd/Ctrl+Z = undo, Cmd/Ctrl+Shift+Z (or Cmd/Ctrl+Y) = redo
+  // Keyboard shortcuts:
+  //   ⌘/Ctrl+Z       — undo
+  //   ⌘/Ctrl+⇧+Z / Y — redo
+  //   V              — switch to Select tool
+  //   H              — switch to Hand (Pan) tool
   useEffect(() => {
     const onKey = (e) => {
-      const mod = e.metaKey || e.ctrlKey;
-      if (!mod) return;
       // Skip when user is typing in an input/textarea
       const tag = (e.target?.tagName || '').toLowerCase();
       if (tag === 'input' || tag === 'textarea' || e.target?.isContentEditable) return;
       const key = e.key.toLowerCase();
-      if (key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        handleUndo();
-      } else if ((key === 'z' && e.shiftKey) || key === 'y') {
-        e.preventDefault();
-        handleRedo();
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod) {
+        if (key === 'z' && !e.shiftKey) { e.preventDefault(); handleUndo(); }
+        else if ((key === 'z' && e.shiftKey) || key === 'y') { e.preventDefault(); handleRedo(); }
+        return;
       }
+      if (key === 'v') { e.preventDefault(); setCanvasMode('select'); }
+      else if (key === 'h') { e.preventDefault(); setCanvasMode('pan'); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -576,6 +632,15 @@ export function AgentCanvas() {
                 minZoom={0.2}
                 maxZoom={2}
                 proOptions={{ hideAttribution: true }}
+                /* Canvas interaction mode toggle (bottom toolbar):
+                   - 'select': left-drag draws a lasso, pan moves to middle/right mouse
+                   - 'pan'   : left-drag pans the canvas, lasso disabled
+                   Either way ⌘/Ctrl/Shift+click extends the selection. */
+                selectionOnDrag={canvasMode === 'select'}
+                selectionMode="partial"
+                panOnDrag={canvasMode === 'select' ? [1, 2] : true}
+                className={canvasMode === 'pan' ? styles.flowPanMode : styles.flowSelectMode}
+                multiSelectionKeyCode={['Meta', 'Control', 'Shift']}
               >
                 <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="var(--neutral-100)" />
                 <MiniMap
@@ -593,8 +658,10 @@ export function AgentCanvas() {
                   style={{ width: 160, height: 100, marginBottom: 44, marginLeft: 12 }}
                 />
 
-                {/* Zoom controls — bottom left, below minimap */}
-                <Panel position="bottom-left" className={styles.zoomPanel}>
+                {/* Bottom-left cluster — zoom-controls pill on the left,
+                    Select/Pan toggle as its own pill on the right. */}
+                <Panel position="bottom-left" className={styles.bottomLeftCluster}>
+                  <div className={styles.zoomPanel}>
                   <button className={styles.zoomBtn} onClick={handleAutoArrange} title="Auto-arrange nodes">
                     <Icon name="solar:sort-horizontal-linear" size={14} />
                     Auto-arrange
@@ -612,6 +679,18 @@ export function AgentCanvas() {
                   <button className={styles.zoomBtn} onClick={() => reactFlowInstance.current?.zoomIn()}>
                     <Icon name="solar:add-circle-linear" size={14} />
                   </button>
+                  </div>
+                  <div className={styles.modeTogglePill} title="Tool (V / H)">
+                    <Toggle
+                      size="S"
+                      active={canvasMode}
+                      onChange={setCanvasMode}
+                      items={[
+                        { key: 'select', label: 'Select', icon: <SelectCursorIcon size={14} /> },
+                        { key: 'pan', label: 'Pan', icon: <PanHandIcon size={14} /> },
+                      ]}
+                    />
+                  </div>
                 </Panel>
 
                 <Panel position="bottom-right" className={styles.versionPanel}>
