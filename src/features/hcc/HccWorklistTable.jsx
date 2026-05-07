@@ -100,7 +100,7 @@ export function HccWorklistTable() {
           </div>
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="solar:filter-linear"
+            icon="custom:filter"
             size="L"
             tooltip="Filter"
             className={filterOpen ? styles.iconActive : ''}

@@ -5,12 +5,18 @@ import { StickyNote } from '../../../components/StickyNote/StickyNote';
 import { StickyNoteAuditDrawer } from '../../../components/StickyNote/StickyNoteAuditDrawer';
 import { useAppStore } from '../../../store/useAppStore';
 import { CareGapSection } from './CareGapSection';
+import { DiagnosisGapsTable } from './DiagnosisGapsTable';
+import { AlertsTable } from './AlertsTable';
+import { PAMIHxTab } from './PAMIHxTab';
 import { CARE_GAP_SECTIONS_EXTENDED, CARE_GAP_TABS } from '../data/careGapsMock';
-import styles from './CareGapsPanel.module.css';
+import styles from './PatientProfileTabs.module.css';
 
-export function CareGapsPanel({ patientId }) {
+export function PatientProfileTabs({ patientId }) {
   const [activeTab, setActiveTab] = useState(0);
   const [selectedGaps, setSelectedGaps] = useState([]);
+  const [gapsCollapsed, setGapsCollapsed] = useState(false);
+  const [diagnosisCollapsed, setDiagnosisCollapsed] = useState(false);
+  const [alertsCollapsed, setAlertsCollapsed] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAuditDrawer, setShowAuditDrawer] = useState(false);
@@ -34,15 +40,14 @@ export function CareGapsPanel({ patientId }) {
     setSelectedGaps(prev => prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]);
   };
 
-  // Filter care gaps by search query
-  const filteredSections = CARE_GAP_SECTIONS_EXTENDED.map(section => ({
+  const careGapSections = CARE_GAP_SECTIONS_EXTENDED.map(section => ({
     ...section,
     items: searchQuery
       ? section.items.filter(item => item.title.toLowerCase().includes(searchQuery.toLowerCase()))
       : section.items,
   }));
 
-  return (
+return (
     <div className={styles.panel}>
       {/* Tab bar OR search input */}
       {searching ? (
@@ -92,28 +97,78 @@ export function CareGapsPanel({ patientId }) {
       )}
 
       {activeTab === 0 && (
-        <>
+        <div className={styles.gapsWrapper}>
           {/* Care Gaps header */}
           <div className={styles.sectionHeader}>
             <span className={styles.sectionTitle}>Care Gaps</span>
-            <div className={styles.sectionActions}>
-              <span className={styles.viewBy}>View By: Action</span>
-              <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" />
-              <span className={styles.filterDivider} />
-              <ActionButton icon="solar:filter-linear" size="S" tooltip="Filter" />
-            </div>
+            <button className={styles.collapseToggle} onClick={() => setGapsCollapsed(v => !v)}>
+              <Icon name={gapsCollapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-200)" />
+            </button>
+            {!gapsCollapsed && (
+              <div className={styles.sectionActions}>
+                <span className={styles.viewBy}>View By: Action</span>
+                <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" />
+                <span className={styles.filterDivider} />
+                <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+              </div>
+            )}
           </div>
 
-          {/* Care gap sections */}
-          <div className={styles.sections}>
-            {filteredSections.map(section => (
-              <CareGapSection key={section.title} section={section} selectedGaps={selectedGaps} onToggleGap={toggleGap} />
-            ))}
+          {!gapsCollapsed && (
+            <div className={styles.sections}>
+              {careGapSections.map(section => (
+                <CareGapSection key={section.title} section={section} selectedGaps={selectedGaps} onToggleGap={toggleGap} />
+              ))}
+            </div>
+          )}
+
+          {/* Diagnosis Gaps header */}
+          <div className={`${styles.sectionHeader} ${styles.diagnosisHeader}`}>
+            <span className={styles.sectionTitle}>Diagnosis Gaps</span>
+            <button className={styles.collapseToggle} onClick={() => setDiagnosisCollapsed(v => !v)}>
+              <Icon name={diagnosisCollapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-200)" />
+            </button>
+            {!diagnosisCollapsed && (
+              <div className={styles.sectionActions}>
+                <span className={styles.dosLabel}>DOS:</span>
+                <span className={styles.dosValue}>03/04/2025</span>
+                <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" />
+                <span className={styles.filterDivider} />
+                <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+              </div>
+            )}
           </div>
-        </>
+
+          {!diagnosisCollapsed && (
+            <div className={styles.sections}>
+              <DiagnosisGapsTable />
+            </div>
+          )}
+
+          {/* Alerts header */}
+          <div className={`${styles.sectionHeader} ${styles.diagnosisHeader}`}>
+            <span className={styles.sectionTitle}>Alerts</span>
+            <button className={styles.collapseToggle} onClick={() => setAlertsCollapsed(v => !v)}>
+              <Icon name={alertsCollapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-200)" />
+            </button>
+            {!alertsCollapsed && (
+              <div className={styles.sectionActions}>
+                <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+              </div>
+            )}
+          </div>
+
+          {!alertsCollapsed && (
+            <div className={styles.sections}>
+              <AlertsTable />
+            </div>
+          )}
+        </div>
       )}
 
-      {activeTab !== 0 && (
+      {activeTab === 1 && <PAMIHxTab />}
+
+      {activeTab > 1 && (
         <div className={styles.placeholder}>
           <Icon name="solar:document-text-linear" size={32} color="var(--neutral-150)" />
           <span>Coming soon</span>

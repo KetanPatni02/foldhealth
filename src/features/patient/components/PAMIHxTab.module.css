@@ -1,0 +1,378 @@
+.wrapper {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Section ── */
+.section {
+  display: flex;
+  flex-direction: column;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+
+.sectionTitle {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: #16181d;
+  font-family: 'Inter', sans-serif;
+}
+
+.sectionActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.addBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Card ── */
+.card {
+  background: #fff;
+  overflow: hidden;
+  border-bottom: 0.5px solid #e9ecf1;
+}
+
+/* ── Column header ── */
+.colHeader {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 8px;
+  border-bottom: 0.5px solid #d0d6e1;
+}
+
+.colName {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6f7a90;
+  font-family: 'Inter', sans-serif;
+}
+
+.colStatus {
+  width: 100px;
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6f7a90;
+  font-family: 'Inter', sans-serif;
+  padding-left: 16px;
+}
+
+.colActions {
+  width: 40px;
+  flex-shrink: 0;
+}
+
+/* ── Data row ── */
+.row {
+  display: flex;
+  align-items: center;
+  border-bottom: 0.5px solid #e9ecf1;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.row:hover {
+  background: var(--primary-25);
+}
+
+/* ── Name cell ── */
+.nameCell {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px 8px 8px;
+}
+
+.name {
+  font-size: 14px;
+  color: #16181d;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.2;
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.meta {
+  font-size: 14px;
+  color: #6f7a90;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.2;
+}
+
+.metaDot {
+  font-size: 14px;
+  color: #6f7a90;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.2;
+}
+
+.moreBtn {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.row:hover .moreBtn {
+  opacity: 1;
+}
+
+/* ── Status cell ── */
+.statusCell {
+  width: 100px;
+  flex-shrink: 0;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+}
+
+.statusActive {
+  font-size: 14px;
+  color: #d72825;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.2;
+}
+
+.statusNeutral {
+  font-size: 14px;
+  color: #6f7a90;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.2;
+}
+
+/* ── Badge ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f6f7f8;
+  border: 0.5px solid rgba(111, 122, 144, 0.1);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #6f7a90;
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Footer link row ── */
+.footerRow {
+  border-top: 0.5px solid #d0d6e1;
+  padding: 4px;
+}
+
+.footerLink {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--primary-300);
+  font-family: 'Inter', sans-serif;
+  padding: 2px 4px;
+}
+
+/* ── Clinical event action ── */
+.eventAction {
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  flex-shrink: 0;
+}
+
+.actionLink {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--primary-300);
+  font-family: 'Inter', sans-serif;
+  padding: 0;
+  white-space: nowrap;
+}
+
+/* ── Report sections ── */
+.reportColActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.reportActionsCell {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  flex-shrink: 0;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.row:hover .reportActionsCell {
+  opacity: 1;
+}
+
+.reportActionDivider {
+  width: 0.5px;
+  height: 12px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+/* ── History section ── */
+.historyWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.historyCard {
+  background: #fff;
+  overflow: hidden;
+  border-bottom: 0.5px solid #e9ecf1;
+}
+
+.historySubHeader {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 8px 0 4px;
+  border-bottom: 0.5px solid #d0d6e1;
+}
+
+.historySubTitle {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 400;
+  color: #6f7a90;
+  font-family: 'Inter', sans-serif;
+}
+
+.subHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.subHeaderDivider {
+  width: 0.5px;
+  height: 12px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+.profileLink {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  color: #6f7a90;
+  font-family: 'Inter', sans-serif;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.historyRow {
+  display: flex;
+  align-items: flex-start;
+  border-bottom: 0.5px solid #d0d6e1;
+  padding: 12px 12px 12px 4px;
+  transition: background 0.1s;
+}
+
+.historyRow:last-of-type {
+  border-bottom: none;
+}
+
+.historyRow:hover {
+  background: var(--primary-25);
+}
+
+.historyContent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.historyFamilyRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 12px 12px 4px;
+  border-bottom: 0.5px solid #d0d6e1;
+  transition: background 0.1s;
+}
+
+.historyFamilyRow:last-of-type {
+  border-bottom: none;
+}
+
+.historyFamilyRow:hover {
+  background: var(--primary-25);
+}
+
+.familyRelation {
+  font-size: 14px;
+  color: #6f7a90;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.2;
+}
+
+.familyName {
+  font-size: 14px;
+  font-weight: 400;
+  color: #16181d;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.2;
+}
+
+.familyDesc {
+  font-size: 14px;
+  color: #6f7a90;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.4;
+}

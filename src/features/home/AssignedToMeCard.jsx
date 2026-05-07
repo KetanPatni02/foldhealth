@@ -16,7 +16,7 @@ export function AssignedToMeCard({ dragHandleClassName }) {
         </div>
         <div className={styles.cardActions}>
           <button className={styles.iconBtn} aria-label="Share"><Icon name="solar:share-linear" size={14} /></button>
-          <button className={styles.iconBtn} aria-label="Filter"><Icon name="solar:filter-linear" size={14} /></button>
+          <button className={styles.iconBtn} aria-label="Filter"><Icon name="custom:filter" size={14} /></button>
         </div>
       </div>
       <div className={styles.cardBody}>

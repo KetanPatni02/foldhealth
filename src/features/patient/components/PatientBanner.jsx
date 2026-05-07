@@ -1,15 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Avatar } from '../../../components/Avatar/Avatar';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Icon } from '../../../components/Icon/Icon';
+import { PhoneVerifiedIcon } from '../../../components/Icon/PhoneVerifiedIcon';
+import { ConsentPopover } from '../../../components/ConsentPopover/ConsentPopover';
 import { useAppStore } from '../../../store/useAppStore';
 import { FALLBACK_P360 } from '../data/p360Mock';
 import styles from './PatientBanner.module.css';
 
 /* ── Expanded sub-panels ── */
-function ExpandedDemographics({ p }) {
+function ExpandedDemographics({ p, className }) {
   return (
-    <div className={styles.expandCol}>
+    <div className={className ?? styles.expandCol}>
       <h4 className={styles.expandTitle}>Patient Demographic Details</h4>
       <div className={styles.expandRows}>
         <div className={styles.expandRow}><Icon name="solar:map-point-linear" size={14} color="var(--neutral-200)" /><span>{p.location || '—'}{p.location_count > 0 && <span className={styles.moreCount}> +{p.location_count}</span>}</span></div>
@@ -22,10 +24,10 @@ function ExpandedDemographics({ p }) {
   );
 }
 
-function ExpandedHealthStatus({ p }) {
+function ExpandedHealthStatus({ p, className }) {
   const v = p.recent_vitals || {};
   return (
-    <div className={styles.expandCol}>
+    <div className={className ?? styles.expandCol}>
       <h4 className={styles.expandTitle}>Health Status</h4>
       <div className={styles.expandRows}>
         <div className={styles.expandItem}>
@@ -45,9 +47,9 @@ function ExpandedHealthStatus({ p }) {
   );
 }
 
-function ExpandedAppointments({ p }) {
+function ExpandedAppointments({ p, className }) {
   return (
-    <div className={styles.expandCol}>
+    <div className={className ?? styles.expandCol}>
       <h4 className={styles.expandTitle}>Upcoming Appointments</h4>
       <div className={styles.expandRows}>
         {(p.upcoming_appointments || []).map((a, i) => (
@@ -61,9 +63,9 @@ function ExpandedAppointments({ p }) {
   );
 }
 
-function ExpandedFamily({ p }) {
+function ExpandedFamily({ p, className }) {
   return (
-    <div className={styles.expandCol}>
+    <div className={className ?? styles.expandCol}>
       <h4 className={styles.expandTitle}>Family and Caregiver</h4>
       {p.family_caregiver_count > 0 && <div className={styles.familyNotice}><Icon name="solar:check-circle-linear" size={14} color="var(--status-success)" />Member is identified as family & caregiver for {p.family_caregiver_count} Members</div>}
       <div className={styles.expandRows}>
@@ -79,14 +81,31 @@ function ExpandedFamily({ p }) {
   );
 }
 
+const DRAWER_ACTIONS = [
+  { icon: 'solar:arrow-right-up-linear', label: 'Elation' },
+  { icon: 'solar:phone-outline', label: 'Call' },
+  { icon: 'solar:calendar-add-linear', label: 'Schedule' },
+  { icon: 'solar:chat-round-line-linear', label: 'Chat', dim: true },
+  { icon: 'solar:notes-linear', label: 'Charts' },
+];
+
+
 /* ── Main Banner ── */
-export function PatientBanner({ patient }) {
+export function PatientBanner({ patient, variant = 'full' }) {
   const [expanded, setExpanded] = useState(false);
   const [tags, setTags] = useState([]);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [selectedProfileId, setSelectedProfileId] = useState('central');
+  // Drawer variant state
+  const [drawerExpanded, setDrawerExpanded] = useState(false);
+  const [consentPos, setConsentPos] = useState(null);
+  const consentBadgeRef = useRef(null);
+  const [drawerDropdownStyle, setDrawerDropdownStyle] = useState(null);
+  const profileCardRef = useRef(null);
+
   const p360Profile = useAppStore(s => s.p360Profile);
   const fetchP360Profile = useAppStore(s => s.fetchP360Profile);
+  const showToast = useAppStore(s => s.showToast);
 
   useEffect(() => { if (patient?.id) fetchP360Profile(patient.id); }, [patient?.id]);
 
@@ -95,6 +114,220 @@ export function PatientBanner({ patient }) {
   useEffect(() => { setTags(p.condition_tags || FALLBACK_P360.condition_tags); }, [p.condition_tags]);
 
   if (!patient) return null;
+
+  /* ── Drawer variant ── */
+  if (variant === 'drawer') {
+    const noop = (label) => () => showToast(`${label} — coming soon`);
+    const activeProfileName = (p.insurance_profiles || FALLBACK_P360.insurance_profiles).find(pr => pr.id === selectedProfileId)?.name || p.profile_type;
+
+    const handleConsentClick = () => {
+      if (consentPos) { setConsentPos(null); return; }
+      const rect = consentBadgeRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const popW = 320;
+      let left = rect.left;
+      if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
+      setConsentPos({ top: rect.bottom + 4, left });
+    };
+
+    const handleProfileClick = () => {
+      if (showProfileDropdown) { setShowProfileDropdown(false); setDrawerDropdownStyle(null); return; }
+      const rect = profileCardRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const popH = 480;
+      const top = rect.bottom + 4 + popH > window.innerHeight
+        ? Math.max(8, rect.top - popH - 4)
+        : rect.bottom + 4;
+      const left = Math.min(rect.left, window.innerWidth - 348);
+      setDrawerDropdownStyle({ position: 'fixed', top, left, zIndex: 9999 });
+      setShowProfileDropdown(true);
+    };
+
+    return (
+      <>
+        {/* Row 1: Compact banner */}
+        <div className={styles.drawerPatientBanner}>
+          <div className={styles.drawerBannerLeft}>
+            <div className={styles.drawerAvatar}>{patient.initials}</div>
+            <div className={styles.drawerPatientInfo}>
+              <div className={styles.drawerNameRow}>
+                <span className={styles.drawerPatientName}>{patient.name}</span>
+                <PhoneVerifiedIcon size={16} />
+              </div>
+              <div className={styles.drawerMetaRow}>
+                <span className={styles.drawerMetaText}>{patient.gender} • {patient.age}</span>
+                <span className={styles.drawerMetaDot}>•</span>
+                <button ref={consentBadgeRef} className={styles.drawerConsentBadge} onClick={handleConsentClick}>
+                  Consent: 2/4
+                  <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--status-warning)" />
+                </button>
+              </div>
+            </div>
+          </div>
+          <span className={styles.drawerBannerDivider} />
+          <div ref={profileCardRef} className={styles.drawerProfileCard} onClick={handleProfileClick} style={{ cursor: 'pointer' }}>
+            <div className={styles.drawerProfileRow}>
+              <Icon name="solar:hospital-linear" size={14} color="var(--neutral-300)" />
+              <button className={styles.drawerProfileSelector} tabIndex={-1}>
+                {activeProfileName}
+                <Icon name="solar:alt-arrow-down-linear" size={14} color="var(--neutral-300)" />
+              </button>
+            </div>
+            <div className={styles.drawerProfileIdRow}>
+              <span className={styles.drawerProfileOrg}>{selectedProfileId === 'central' ? p.health_plan_name : activeProfileName}</span>
+              <span className={styles.drawerProfileIdText}>(#{p.health_plan_id || patient.memberId})</span>
+              <span className={styles.drawerPlusBadge}>+{(p.insurance_profiles || FALLBACK_P360.insurance_profiles).length - 1}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2: Tags */}
+        <div className={styles.drawerTagsRow}>
+          <span className={styles.drawerTagBadge}>
+            New Patient
+            <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" />
+          </span>
+          <span className={styles.drawerTagDivider} />
+          <span className={styles.drawerCondBadge}>Diabetes</span>
+          <span className={styles.drawerCondBadge}>Hypertension</span>
+          <span className={styles.drawerMoreBadge}>+2</span>
+          <button className={styles.drawerAddTagBtn}>
+            <Icon name="solar:add-circle-linear" size={12} color="var(--neutral-300)" />
+          </button>
+          <button className={styles.drawerExpandIcon} onClick={() => setDrawerExpanded(v => !v)}>
+            <span className={`${styles.drawerExpandIconInner} ${drawerExpanded ? styles.drawerExpandIconRotated : ''}`}>
+              <Icon name="custom:expand-drawer" size={16} />
+            </span>
+          </button>
+        </div>
+
+        {/* Expanded panel: metrics strip + 2-col content */}
+        {drawerExpanded && (
+          <div className={styles.drawerExpandedPanel}>
+            <div className={styles.drawerMetricsStrip}>
+              <div className={styles.drawerMetricItem}>
+                <span className={styles.drawerMetricLabel}>Acuity</span>
+                <span className={`${styles.badge} ${styles.badgeError}`}>{p.acuity}</span>
+              </div>
+              <span className={styles.drawerMetricDivider} />
+              <div className={styles.drawerMetricItem}>
+                <span className={styles.drawerMetricLabel}>RAF</span>
+                <div className={styles.metricValueRow}>
+                  <span className={styles.rafValue}>{p.raf_score}</span>
+                  {p.raf_change > 0 && <span className={styles.rafChangeBadge}>+{p.raf_change} <Icon name="solar:arrow-up-linear" size={12} color="var(--status-error)" /></span>}
+                </div>
+              </div>
+              <span className={styles.drawerMetricDivider} />
+              <div className={styles.drawerMetricItem}>
+                <span className={styles.drawerMetricLabel}>Next Appt.</span>
+                <span className={styles.nextApptValue}>{p.next_appointment_date || '—'}</span>
+              </div>
+              <span className={styles.drawerMetricDivider} />
+              <div className={styles.drawerMetricItem}>
+                <span className={styles.drawerMetricLabel}>Last Contact</span>
+                <div className={styles.lastContactBtn}>
+                  <Icon name="solar:phone-calling-linear" size={16} color="var(--status-error)" />
+                  <span className={styles.lastContactText}>{p.last_contact_type}({p.last_contact_days}d)</span>
+                </div>
+              </div>
+              <span className={styles.drawerMetricDivider} />
+              <div className={styles.drawerMetricItem}>
+                <span className={styles.drawerMetricLabel}>Programs</span>
+                <div className={styles.programBadges}>
+                  {(p.programs || []).map(pr => <span key={pr} className={`${styles.badge} ${styles.badgeInfo}`}>{pr}</span>)}
+                  <span className={`${styles.badge} ${styles.badgeGrey}`}>+2</span>
+                </div>
+              </div>
+            </div>
+            <div className={styles.drawerExpandedCols}>
+              <div className={styles.drawerExpandedCol}>
+                <ExpandedDemographics p={p} className={styles.drawerExpandedSection} />
+                <ExpandedFamily p={p} className={styles.drawerExpandedSection} />
+              </div>
+              <span className={styles.drawerExpandedColDivider} />
+              <div className={styles.drawerExpandedCol}>
+                <ExpandedHealthStatus p={p} className={styles.drawerExpandedSection} />
+                <ExpandedAppointments p={p} className={styles.drawerExpandedSection} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Row 3: Actions */}
+        <div className={styles.drawerActionsRow}>
+          <div className={styles.drawerActionsList}>
+            {DRAWER_ACTIONS.flatMap(({ icon, label, dim }, i) => {
+              const cell = (
+                <div key={label} className={styles.drawerActionCell}>
+                  <button
+                    className={`${styles.drawerActionBtn} ${dim ? styles.drawerActionDim : ''}`}
+                    onClick={noop(label)}
+                  >
+                    <Icon name={icon} size={16} color={dim ? 'var(--neutral-200)' : 'var(--neutral-300)'} />
+                    <span className={`${styles.drawerActionLabel} ${dim ? styles.drawerActionLabelDim : ''}`}>{label}</span>
+                  </button>
+                </div>
+              );
+              return i === 0 ? [cell] : [<span key={`d${i}`} className={styles.drawerActionDivider} />, cell];
+            })}
+            <span className={styles.drawerActionDivider} />
+            <div className={styles.drawerActionCell}>
+              <button className={styles.drawerActionBtn} onClick={noop('SMS')}>
+                <div className={styles.drawerSmsWrap}>
+                  <Icon name="custom:sms" size={16} color="var(--neutral-300)" />
+                  <span className={styles.drawerSmsBadge}>
+                    <Icon name="solar:verified-check-bold" size={10} color="var(--status-success)" />
+                  </span>
+                </div>
+                <span className={styles.drawerActionLabel}>SMS</span>
+              </button>
+            </div>
+          </div>
+          <span className={styles.drawerActionDivider} />
+          <ActionButton icon="solar:menu-dots-linear" size="L" tooltip="More" onClick={noop('More')} />
+        </div>
+
+        {consentPos && (
+          <ConsentPopover pos={consentPos} onClose={() => setConsentPos(null)} />
+        )}
+        {showProfileDropdown && drawerDropdownStyle && (
+          <>
+            <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => { setShowProfileDropdown(false); setDrawerDropdownStyle(null); }} />
+            <div className={styles.profileDropdown} style={drawerDropdownStyle}>
+              <div className={styles.profileDropdownTitle}>Member Insurance Profiles</div>
+              {(p.insurance_profiles || FALLBACK_P360.insurance_profiles).map(prof => (
+                <div
+                  key={prof.id}
+                  className={`${styles.profileOption} ${selectedProfileId === prof.id ? styles.profileOptionSelected : ''}`}
+                  onClick={() => { setSelectedProfileId(prof.id); setShowProfileDropdown(false); setDrawerDropdownStyle(null); }}
+                >
+                  <div className={styles.profileOptionHeader}>
+                    <div>
+                      <div className={styles.profileOptionName}>{prof.name}</div>
+                      <div className={styles.profileOptionSub}>{prof.subtitle}</div>
+                    </div>
+                    {selectedProfileId === prof.id
+                      ? <Icon name="solar:check-circle-bold" size={20} color="var(--status-success)" />
+                      : <span className={styles.profileOptionRadio} />}
+                  </div>
+                  {prof.enrolledOn && (
+                    <div className={styles.profileOptionDetails}>
+                      <div className={styles.profileOptionDetail}><span className={styles.profileOptionDetailLabel}>Enrolled On</span><span className={styles.profileOptionDetailValue}>{prof.enrolledOn}</span></div>
+                      <div className={styles.profileOptionDetail}><span className={styles.profileOptionDetailLabel}>Insurance</span><span className={styles.profileOptionDetailValue}>{prof.insurance}</span></div>
+                      <div className={styles.profileOptionDetail}><span className={styles.profileOptionDetailLabel}>HP Code</span><span className={styles.profileOptionDetailValue}>{prof.hpCode}</span></div>
+                    </div>
+                  )}
+                  {prof.hpDesc && (
+                    <div className={styles.profileOptionDesc}><span className={styles.profileOptionDetailLabel}>HP Description</span><span className={styles.profileOptionDetailValue}>{prof.hpDesc}</span></div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </>
+    );
+  }
 
   return (
     <div className={styles.banner}>
@@ -214,7 +447,9 @@ export function PatientBanner({ patient }) {
 
           {/* Expand arrow */}
           <button className={styles.expandArrow} onClick={() => setExpanded(v => !v)}>
-            <Icon name={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} size={16} color="var(--status-success)" />
+            <span className={`${styles.drawerExpandIconInner} ${expanded ? styles.drawerExpandIconRotated : ''}`}>
+              <Icon name="custom:expand-drawer" size={16} />
+            </span>
           </button>
         </div>
 

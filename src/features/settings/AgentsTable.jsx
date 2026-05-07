@@ -348,7 +348,7 @@ export function AgentsTable() {
             )}
           </div>
           {settingsTab === 'goals' && (
-            <ActionButton icon="solar:filter-linear" size="L" tooltip="Filter" onClick={() => setGoalsFilterOpen(v => !v)}
+            <ActionButton icon="custom:filter" size="L" tooltip="Filter" onClick={() => setGoalsFilterOpen(v => !v)}
               style={goalsFilterOpen ? { background: 'var(--primary-50)' } : {}} />
           )}
           <span className={styles.tabDivider} />

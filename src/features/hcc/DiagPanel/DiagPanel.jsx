@@ -121,7 +121,7 @@ export function DiagPanel() {
           <span className={styles.divider} />
           <ActionButton icon="solar:check-square-linear" size="S" tooltip="Bulk Action" onClick={noop('Bulk Action')} />
           <span className={styles.divider} />
-          <ActionButton icon="solar:filter-linear" size="S" tooltip="Filter" notification count="1" onClick={noop('Filter')} />
+          <ActionButton icon="custom:filter" size="S" tooltip="Filter" notification count="1" onClick={noop('Filter')} />
           <span className={styles.divider} />
           <ActionButton icon="solar:sort-vertical-linear" size="S" tooltip="Sort" onClick={noop('Sort')} />
           <span className={styles.divider} />

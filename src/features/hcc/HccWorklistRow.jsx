@@ -200,6 +200,7 @@ export function HccWorklistRow({ member }) {
   const selectHccMember = useAppStore(s => s.selectHccMember);
   const openDiagPanel = useAppStore(s => s.openDiagPanel);
   const diagPanelMemberId = useAppStore(s => s.diagPanelMemberId);
+  const openQuickView = useAppStore(s => s.openQuickView);
   const checked = selectedHccIds.includes(member.id);
   const isOpenInDrawer = diagPanelMemberId === member.id;
 
@@ -230,7 +231,10 @@ export function HccWorklistRow({ member }) {
           <Avatar variant="patient" initials={member.in} />
           <div>
             <div className={styles.patientName}>
-              <span className={styles.patientNameLink}>{member.name}</span>{' '}
+              <button
+                className={styles.patientNameLink}
+                onClick={e => { e.stopPropagation(); openQuickView({ id: member.id, name: member.name, initials: member.in, gender: member.g, age: member.age, memberId: member.memberId, language: member.language, raf: member.raf }); }}
+              >{member.name}</button>{' '}
               <span className={styles.patientDemo}>({member.g}&bull;{member.age})</span>
             </div>
             <div className={styles.patientMeta}>

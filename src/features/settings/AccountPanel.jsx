@@ -421,7 +421,7 @@ export function AccountPanel() {
               <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
             )}
           </div>
-          <ActionButton icon="solar:filter-linear" size="L" tooltip="Filter" onClick={() => setStatusFilter(f => f === 'all' ? 'active' : f === 'active' ? 'inactive' : f === 'inactive' ? 'invited' : 'all')} />
+          <ActionButton icon="custom:filter" size="L" tooltip="Filter" onClick={() => setStatusFilter(f => f === 'all' ? 'active' : f === 'active' ? 'inactive' : f === 'inactive' ? 'invited' : 'all')} />
           {statusFilter !== 'all' && (
             <Badge variant={statusFilter === 'active' ? 'status-completed' : statusFilter === 'invited' ? 'status-queued' : 'status-failed'} label={statusFilter} style={{ textTransform: 'capitalize', cursor: 'pointer' }} onClick={() => setStatusFilter('all')} />
           )}

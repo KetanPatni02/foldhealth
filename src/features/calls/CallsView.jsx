@@ -398,7 +398,7 @@ export function CallsView() {
               <div className={styles.convDivider} />
               <ActionButton icon="solar:refresh-linear" size="L" tooltip="Refresh" />
               <div className={styles.convDivider} />
-              <ActionButton icon="solar:filter-linear"  size="L" tooltip="Filter" />
+              <ActionButton icon="custom:filter"  size="L" tooltip="Filter" />
             </div>
           </div>
 

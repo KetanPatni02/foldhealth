@@ -11,7 +11,7 @@ import styles from './ActionButton.module.css';
  * and any place a compact icon-only button is needed with optional badges.
  *
  * @param {object}   props
- * @param {string}   [props.icon]                      – Solar icon name (e.g. "solar:filter-linear")
+ * @param {string}   [props.icon]                      – Solar icon name (e.g. "custom:filter")
  * @param {React.ReactNode} [props.children]            – Custom icon element (used instead of icon prop)
  * @param {'S'|'L'|'XL'} [props.size='L']              – S=16px icon, L=20px icon, XL=32px icon
  * @param {'active'|'disabled'|'error'} [props.state='active']

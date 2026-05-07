@@ -52,7 +52,7 @@ export function QueueTable() {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textAlign: 'center', paddingBottom: 64 }}>
-          <Icon name="solar:filter-linear" size={40} color="var(--neutral-200)" />
+          <Icon name="custom:filter" size={40} color="var(--neutral-200)" />
           <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-400)' }}>No matching agents</div>
           <div style={{ fontSize: 13, color: 'var(--neutral-300)', lineHeight: 1.5 }}>
             Active filters hide all queued patients. Try adjusting your filters.
