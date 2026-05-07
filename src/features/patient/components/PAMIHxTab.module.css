@@ -19,8 +19,35 @@
   flex-shrink: 0;
 }
 
+.collapseToggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 4px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Smooth collapse transition */
+.collapseOuter {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.22s ease;
+  overflow: hidden;
+}
+
+.collapsedSection {
+  grid-template-rows: 0fr;
+}
+
+.collapseInner {
+  overflow: hidden;
+  min-height: 0;
+}
+
 .sectionTitle {
-  flex: 1;
   font-size: 14px;
   font-weight: 500;
   color: #16181d;
@@ -31,6 +58,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  margin-left: auto;
 }
 
 .addBtn {

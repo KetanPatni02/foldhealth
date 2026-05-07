@@ -4,6 +4,7 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Icon } from '../../../components/Icon/Icon';
 import { PhoneVerifiedIcon } from '../../../components/Icon/PhoneVerifiedIcon';
 import { ConsentPopover } from '../../../components/ConsentPopover/ConsentPopover';
+import { ScheduleDrawer } from '../../../components/ScheduleDrawer/ScheduleDrawer';
 import { useAppStore } from '../../../store/useAppStore';
 import { FALLBACK_P360 } from '../data/p360Mock';
 import styles from './PatientBanner.module.css';
@@ -85,7 +86,7 @@ const DRAWER_ACTIONS = [
   { icon: 'solar:arrow-right-up-linear', label: 'Elation' },
   { icon: 'solar:phone-outline', label: 'Call' },
   { icon: 'solar:calendar-add-linear', label: 'Schedule' },
-  { icon: 'solar:chat-round-line-linear', label: 'Chat', dim: true },
+  { icon: 'solar:chat-round-linear', label: 'Chat' },
   { icon: 'solar:notes-linear', label: 'Charts' },
 ];
 
@@ -103,9 +104,13 @@ export function PatientBanner({ patient, variant = 'full' }) {
   const [drawerDropdownStyle, setDrawerDropdownStyle] = useState(null);
   const profileCardRef = useRef(null);
 
+  const [showScheduleDrawer, setShowScheduleDrawer] = useState(false);
+  const callBtnRef = useRef(null);
+
   const p360Profile = useAppStore(s => s.p360Profile);
   const fetchP360Profile = useAppStore(s => s.fetchP360Profile);
   const showToast = useAppStore(s => s.showToast);
+  const openCallPopover = useAppStore(s => s.openCallPopover);
 
   useEffect(() => { if (patient?.id) fetchP360Profile(patient.id); }, [patient?.id]);
 
@@ -256,15 +261,22 @@ export function PatientBanner({ patient, variant = 'full' }) {
         {/* Row 3: Actions */}
         <div className={styles.drawerActionsRow}>
           <div className={styles.drawerActionsList}>
-            {DRAWER_ACTIONS.flatMap(({ icon, label, dim }, i) => {
+            {DRAWER_ACTIONS.flatMap(({ icon, label }, i) => {
+              const handleAction = () => {
+                if (label === 'Schedule') { setShowScheduleDrawer(true); return; }
+                if (label === 'Call') { openCallPopover(patient.id, callBtnRef); return; }
+                noop(label)();
+              };
+              const isCall = label === 'Call';
               const cell = (
                 <div key={label} className={styles.drawerActionCell}>
                   <button
-                    className={`${styles.drawerActionBtn} ${dim ? styles.drawerActionDim : ''}`}
-                    onClick={noop(label)}
+                    ref={isCall ? callBtnRef : undefined}
+                    className={styles.drawerActionBtn}
+                    onClick={handleAction}
                   >
-                    <Icon name={icon} size={16} color={dim ? 'var(--neutral-200)' : 'var(--neutral-300)'} />
-                    <span className={`${styles.drawerActionLabel} ${dim ? styles.drawerActionLabelDim : ''}`}>{label}</span>
+                    <Icon name={icon} size={16} color="var(--neutral-300)" />
+                    <span className={styles.drawerActionLabel}>{label}</span>
                   </button>
                 </div>
               );
@@ -287,6 +299,12 @@ export function PatientBanner({ patient, variant = 'full' }) {
           <ActionButton icon="solar:menu-dots-linear" size="L" tooltip="More" onClick={noop('More')} />
         </div>
 
+        {showScheduleDrawer && (
+          <ScheduleDrawer
+            initialPatientId={patient.id}
+            onClose={() => setShowScheduleDrawer(false)}
+          />
+        )}
         {consentPos && (
           <ConsentPopover pos={consentPos} onClose={() => setConsentPos(null)} />
         )}

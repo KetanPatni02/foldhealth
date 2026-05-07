@@ -346,7 +346,7 @@ function DatePicker({ value, onSelect }) {
 const APPOINTMENT_STATUSES = ['Booked', 'Cancelled', 'No Show', 'Checked In'];
 
 /* ── Main Drawer ── */
-export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointment, timezoneLabel = 'GMT' }) {
+export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointment, timezoneLabel = 'GMT', initialPatientId }) {
   const isViewMode = !!existingAppointment;
   const patients = useAppStore(s => s.patients);
   const fetchPatients = useAppStore(s => s.fetchPatients);
@@ -364,6 +364,13 @@ export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointm
     if (fetchPatients) fetchPatients();
     if (fetchAppointmentTypes) fetchAppointmentTypes();
   }, []);
+
+  // Pre-fill patient when initialPatientId is provided
+  useEffect(() => {
+    if (!initialPatientId || !patients.length) return;
+    const match = patients.find(p => p.id === initialPatientId);
+    if (match) setSelectedPatient(match);
+  }, [initialPatientId, patients]);
 
   // Derive initial date/time from selectedSlot (Temporal.ZonedDateTime)
   const initialDate = (() => {

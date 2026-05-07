@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Icon } from '../../../components/Icon/Icon';
 import styles from './PAMIHxTab.module.css';
@@ -99,11 +100,24 @@ function DataRow({ children, showMore = false }) {
   );
 }
 
-function SectionHeader({ title, actions }) {
+function SectionHeader({ title, actions, collapsed, onToggle }) {
   return (
     <div className={styles.sectionHeader}>
       <span className={styles.sectionTitle}>{title}</span>
+      {onToggle && (
+        <button className={styles.collapseToggle} onClick={onToggle}>
+          <Icon name={collapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-200)" />
+        </button>
+      )}
       {actions && <div className={styles.sectionActions}>{actions}</div>}
+    </div>
+  );
+}
+
+function CollapseWrapper({ collapsed, children }) {
+  return (
+    <div className={`${styles.collapseOuter} ${collapsed ? styles.collapsedSection : ''}`}>
+      <div className={styles.collapseInner}>{children}</div>
     </div>
   );
 }
@@ -292,67 +306,82 @@ function ReportColHeader({ nameLabel }) {
 // — Section components —
 
 function RecentClinicalEvents() {
+  const [collapsed, setCollapsed] = useState(false);
   return (
     <div className={styles.section}>
-      <SectionHeader title="Recent Clinical Events" />
-      <div className={styles.card}>
-        <div className={styles.colHeader}>
-          <span className={styles.colName}>Event Name</span>
-          <span className={styles.colActions} />
+      <SectionHeader title="Recent Clinical Events" collapsed={collapsed} onToggle={() => setCollapsed(v => !v)} />
+      <CollapseWrapper collapsed={collapsed}>
+        <div className={styles.card}>
+          <div className={styles.colHeader}>
+            <span className={styles.colName}>Event Name</span>
+            <span className={styles.colActions} />
+          </div>
+          {CLINICAL_EVENTS.map(ev => <ClinicalEventRow key={ev.id} event={ev} />)}
         </div>
-        {CLINICAL_EVENTS.map(ev => <ClinicalEventRow key={ev.id} event={ev} />)}
-      </div>
+      </CollapseWrapper>
     </div>
   );
 }
 
 function ProblemsSection() {
+  const [collapsed, setCollapsed] = useState(false);
   return (
     <div className={styles.section}>
-      <SectionHeader title="Problems" actions={<AddBtn />} />
-      <div className={styles.card}>
-        <ColHeader />
-        {PROBLEMS.map(item => <ProblemRow key={item.id} item={item} />)}
-        <FooterLink label="Resolved (1)" />
-      </div>
+      <SectionHeader title="Problems" actions={<AddBtn />} collapsed={collapsed} onToggle={() => setCollapsed(v => !v)} />
+      <CollapseWrapper collapsed={collapsed}>
+        <div className={styles.card}>
+          <ColHeader />
+          {PROBLEMS.map(item => <ProblemRow key={item.id} item={item} />)}
+          <FooterLink label="Resolved (1)" />
+        </div>
+      </CollapseWrapper>
     </div>
   );
 }
 
 function AllergiesSection() {
+  const [collapsed, setCollapsed] = useState(false);
   return (
     <div className={styles.section}>
-      <SectionHeader title="Allergies" actions={<AddBtn />} />
-      <div className={styles.card}>
-        <ColHeader />
-        {ALLERGIES.map(item => <AllergyRow key={item.id} item={item} />)}
-        <FooterLink label="Resolved (1)" />
-      </div>
+      <SectionHeader title="Allergies" actions={<AddBtn />} collapsed={collapsed} onToggle={() => setCollapsed(v => !v)} />
+      <CollapseWrapper collapsed={collapsed}>
+        <div className={styles.card}>
+          <ColHeader />
+          {ALLERGIES.map(item => <AllergyRow key={item.id} item={item} />)}
+          <FooterLink label="Resolved (1)" />
+        </div>
+      </CollapseWrapper>
     </div>
   );
 }
 
 function MedicationsSection() {
+  const [collapsed, setCollapsed] = useState(false);
   return (
     <div className={styles.section}>
-      <SectionHeader title="Medications" actions={<AddBtn />} />
-      <div className={styles.card}>
-        <ColHeader />
-        {MEDICATIONS.map(item => <MedicationRow key={item.id} item={item} />)}
-        <FooterLink label="Discontinued (4)" />
-      </div>
+      <SectionHeader title="Medications" actions={<AddBtn />} collapsed={collapsed} onToggle={() => setCollapsed(v => !v)} />
+      <CollapseWrapper collapsed={collapsed}>
+        <div className={styles.card}>
+          <ColHeader />
+          {MEDICATIONS.map(item => <MedicationRow key={item.id} item={item} />)}
+          <FooterLink label="Discontinued (4)" />
+        </div>
+      </CollapseWrapper>
     </div>
   );
 }
 
 function ImmunizationsSection() {
+  const [collapsed, setCollapsed] = useState(false);
   return (
     <div className={styles.section}>
-      <SectionHeader title="Immunizations" actions={<AddBtn />} />
-      <div className={styles.card}>
-        <ColHeader />
-        {IMMUNIZATIONS.map(item => <ImmunizationRow key={item.id} item={item} />)}
-      </div>
+      <SectionHeader title="Immunizations" actions={<AddBtn />} collapsed={collapsed} onToggle={() => setCollapsed(v => !v)} />
+      <CollapseWrapper collapsed={collapsed}>
+        <div className={styles.card}>
+          <ColHeader />
+          {IMMUNIZATIONS.map(item => <ImmunizationRow key={item.id} item={item} />)}
+        </div>
+      </CollapseWrapper>
     </div>
   );
 }
@@ -371,34 +400,42 @@ function HistorySubCard({ title, actions, children, footer }) {
 }
 
 function LabReportsSection() {
+  const [collapsed, setCollapsed] = useState(false);
   return (
     <div className={styles.section}>
-      <SectionHeader title="Lab Reports" actions={<AddBtn />} />
-      <div className={styles.card}>
-        <ReportColHeader nameLabel="Lab Name" />
-        {LAB_REPORTS.map(item => <ReportRow key={item.id} item={item} />)}
-      </div>
+      <SectionHeader title="Lab Reports" actions={<AddBtn />} collapsed={collapsed} onToggle={() => setCollapsed(v => !v)} />
+      <CollapseWrapper collapsed={collapsed}>
+        <div className={styles.card}>
+          <ReportColHeader nameLabel="Lab Name" />
+          {LAB_REPORTS.map(item => <ReportRow key={item.id} item={item} />)}
+        </div>
+      </CollapseWrapper>
     </div>
   );
 }
 
 function ImagingReportsSection() {
+  const [collapsed, setCollapsed] = useState(false);
   return (
     <div className={styles.section}>
-      <SectionHeader title="Imaging Reports" actions={<AddBtn />} />
-      <div className={styles.card}>
-        <ReportColHeader nameLabel="Report Name" />
-        {IMAGING_REPORTS.map(item => <ReportRow key={item.id} item={item} />)}
-      </div>
+      <SectionHeader title="Imaging Reports" actions={<AddBtn />} collapsed={collapsed} onToggle={() => setCollapsed(v => !v)} />
+      <CollapseWrapper collapsed={collapsed}>
+        <div className={styles.card}>
+          <ReportColHeader nameLabel="Report Name" />
+          {IMAGING_REPORTS.map(item => <ReportRow key={item.id} item={item} />)}
+        </div>
+      </CollapseWrapper>
     </div>
   );
 }
 
 function HistorySection() {
+  const [collapsed, setCollapsed] = useState(false);
   const noop = () => {};
   return (
     <div className={styles.section}>
-      <SectionHeader title="History" />
+      <SectionHeader title="History" collapsed={collapsed} onToggle={() => setCollapsed(v => !v)} />
+      <CollapseWrapper collapsed={collapsed}>
       <div className={styles.historyWrapper}>
         <HistorySubCard title="Medical History" actions={<AddBtn onClick={noop} />}>
           {MEDICAL_HISTORY.map(item => <MedicalHistoryRow key={item.id} item={item} />)}
@@ -447,6 +484,7 @@ function HistorySection() {
           {SOCIAL_HISTORY.map(item => <SocialHistoryRow key={item.id} item={item} />)}
         </HistorySubCard>
       </div>
+      </CollapseWrapper>
     </div>
   );
 }
