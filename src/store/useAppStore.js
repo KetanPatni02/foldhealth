@@ -1880,6 +1880,10 @@ export const useAppStore = create((set, get) => ({
     return true;
   },
 
+  // ── Campaign ──
+  campaignTab: 'active',
+  setCampaignTab: (tab) => { set({ campaignTab: tab }); updateHash(get); },
+
   // ── Tasks ──
   tasks: [],
   tasksLoading: true,

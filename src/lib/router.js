@@ -37,6 +37,10 @@ export function stateToHash(state) {
     return view === 'executive' ? buildHash('analytics') : buildHash('analytics', view);
   }
   if (activePage === 'calendar') return buildHash('calendar');
+  if (activePage === 'campaign') {
+    const tab = state.campaignTab || 'active';
+    return tab === 'active' ? buildHash('campaign') : buildHash('campaign', tab);
+  }
   if (activePage === 'home') return buildHash('home');
   if (activePage === 'messages') return buildHash('messages');
   if (activePage === 'calls') return buildHash('calls');
@@ -113,6 +117,12 @@ export function hashToState(route) {
   if (route.page === 'messages') { updates.activePage = 'messages'; return updates; }
   if (route.page === 'calls') { updates.activePage = 'calls'; return updates; }
   if (route.page === 'tasks') { updates.activePage = 'tasks'; return updates; }
+  if (route.page === 'campaign') {
+    updates.activePage = 'campaign';
+    const tab = route.section || 'active';
+    updates.campaignTab = ['active', 'drafts', 'ended'].includes(tab) ? tab : 'active';
+    return updates;
+  }
 
   if (route.page === 'settings') {
     updates.activePage = 'settings';

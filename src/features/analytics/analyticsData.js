@@ -2,7 +2,7 @@
 
 export const PAGES = [
   { section: 'OVERVIEW', items: [
-    { id: 'executive', label: 'Executive Dashboard', icon: 'solar:chart-2-linear' },
+    { id: 'executive', label: 'Executive Dashboard', icon: 'solar:chart-linear' },
   ]},
   { section: 'ANALYTICS', items: [
     { id: 'population', label: 'Population Overview', icon: 'solar:users-group-two-rounded-linear' },

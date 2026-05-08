@@ -94,7 +94,7 @@ export function ExecutiveView({ showToast }) {
 
       {/* Key Drivers Insight Banner */}
       <InsightBanner
-        icon="solar:chart-2-linear"
+        icon="solar:chart-linear"
         title="Key Drivers \u2014 Where to Focus"
         text="Cost: <strong>Inpatient $23 over benchmark</strong> driven by readmission spike at 3 facilities. Quality: <strong>AWV 19pp below target</strong>. Risk: <strong>962 HCC suspects open</strong> = $2.1M revenue at risk. Engagement: <strong>SMS-first converting at 61%</strong> vs 29% phone."
         buttons={[

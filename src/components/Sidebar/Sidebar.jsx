@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { icon: 'solar:phone-linear', filledIcon: 'solar:phone-bold', label: 'Calls', page: 'calls' },
   { icon: 'solar:user-speak-linear', filledIcon: 'solar:user-speak-bold', label: 'Leads', page: 'leads' },
   { icon: 'solar:target-linear', filledIcon: 'solar:target-bold', label: 'Campaign', page: 'campaign' },
-  { icon: 'solar:chart-2-linear', filledIcon: 'solar:chart-2-bold', label: 'Analytics', page: 'analytics' },
+  { icon: 'solar:chart-linear', filledIcon: 'solar:chart-bold', label: 'Analytics', page: 'analytics' },
   { icon: 'solar:settings-linear', filledIcon: 'solar:settings-bold', label: 'Settings', page: 'settings' },
 ];
 
@@ -29,7 +29,7 @@ export function Sidebar() {
 
   const showToast = useAppStore(s => s.showToast);
   const messagesUnreadCount = useAppStore(s => s.messagesUnreadCount);
-  const implementedPages = ['home', 'population', 'settings', 'analytics', 'calendar', 'messages', 'calls', 'tasks'];
+  const implementedPages = ['home', 'population', 'settings', 'analytics', 'calendar', 'messages', 'calls', 'tasks', 'campaign'];
 
   const handleClick = (e, page) => {
     e.preventDefault();

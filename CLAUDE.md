@@ -10,9 +10,6 @@ keep entries short and specific. Newest at the top.
   "commit and push" when I want changes shipped. Default behavior is: edit
   files, verify locally, and stop. Committing locally is fine when I ask for
   a commit, but `git push` always requires an explicit ask.
-- **Don't run the browser preview verification on your own.** Make the
-  changes and then ask me to review in the browser. Saves my tokens on
-  screenshots and log polling that I'd do myself anyway.
 - **Always use reusable components from `src/components/`.** Drawer,
   Button, Toggle, Badge, Select, Slider, Switch, ConfirmDialog, etc.
   Search the components folder before writing a new one. New components
