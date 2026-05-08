@@ -38,7 +38,6 @@ function TrendIcon() {
   );
 }
 
-// Resolves a CSS custom property at runtime — avoids hardcoding any hex values
 function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
@@ -104,10 +103,14 @@ const GRAPH_SECTIONS = [
     metrics: [
       {
         id: 'bp', title: 'Blood Pressure', unit: 'mmHg',
-        lastRecorded: '03/05/2024 • Apple Watch', type: 'range',
+        lastRecorded: '03/05/2024 • Apple Watch', type: 'range', shapeStyle: 'bp',
         yDomain: [0, 160], yTicks: [0, 40, 80, 120, 160], xLabel: 'Days',
         legend: ['Sys', 'Dia'],
-        stats: { avg: '120/80 mmHg', range: '105–140 mmHg' },
+        stats: [
+          { val: '120/80', unit: 'mmHg', label: 'Weekly Avg' },
+          { val: '105–140', unit: 'mmHg', label: 'Range' },
+          { val: '65–95', unit: 'mmHg', label: 'Diastolic' },
+        ],
         data: {
           '1D': [
             { t: '9am',  dia: 78, range: 44 }, { t: '11am', dia: 80, range: 42 },
@@ -127,9 +130,12 @@ const GRAPH_SECTIONS = [
       },
       {
         id: 'spo2', title: 'Blood Oxygen', unit: '%',
-        lastRecorded: '03/05/2024 • Apple Watch', type: 'range',
+        lastRecorded: '03/05/2024 • Apple Watch', type: 'range', shapeStyle: 'bar',
         yDomain: [85, 100], yTicks: [85, 90, 95, 100], xLabel: 'Days',
-        stats: { avg: '94%', range: '93–99%' },
+        stats: [
+          { val: '94', unit: '%', label: 'Weekly Avg' },
+          { val: '93–99', unit: '%', label: 'Range' },
+        ],
         data: {
           '1D': [
             { t: '9am',  dia: 95, range: 3 }, { t: '11am', dia: 94, range: 4 },
@@ -158,7 +164,10 @@ const GRAPH_SECTIONS = [
         subtitle: 'Data available for 5/7 Days',
         type: 'line',
         yDomain: [0, 300], yTicks: [0, 100, 200, 300], xLabel: 'Hours',
-        stats: { avg: '112 mg/dL', range: '66–217 mg/dL' },
+        stats: [
+          { val: '112', unit: 'mg/dL', label: 'Weekly Avg' },
+          { val: '66–217', unit: 'mg/dL', label: 'Range' },
+        ],
         data: {
           '1D': [
             { t: '12am', v: 130 }, { t: '3am', v: 108 }, { t: '6am',  v: 115 },
@@ -184,7 +193,10 @@ const GRAPH_SECTIONS = [
         lastRecorded: '03/05/2024 • Fitbit',
         type: 'line',
         yDomain: [0, 12000], yTicks: [0, 4000, 8000, 12000], xLabel: 'Days',
-        stats: { avg: '5,962 steps', range: '4,321–7,890 steps' },
+        stats: [
+          { val: '5,962', unit: 'steps', label: 'Weekly Avg' },
+          { val: '4,321–7,890', unit: 'steps', label: 'Range' },
+        ],
         data: {
           '1D': [
             { t: '6am', v: 450 }, { t: '9am', v: 2100 }, { t: '12pm', v: 4200 },
@@ -203,17 +215,29 @@ const GRAPH_SECTIONS = [
   },
 ];
 
-// ── Custom Range Bar shape for ComposedChart ─────────────────────────────────
+// ── Custom range bar shapes ───────────────────────────────────────────────────
 
-function makeRangeShape(topColor, botColor) {
+function makeRangeShape(topColor, botColor, shapeStyle) {
   return function RangeShape({ x, y, width, height }) {
     if (!height || height <= 0 || width == null) return null;
     const cx = x + width / 2;
+
+    if (shapeStyle === 'bar') {
+      // Thin filled capsule bar (Blood Oxygen style)
+      const bw = 4;
+      return <rect x={cx - bw / 2} y={y} width={bw} height={Math.max(height, 1)} fill={topColor} rx={2} />;
+    }
+
+    // 'bp' style: line + circle top + diamond bottom
+    const ds = 3.5;
     return (
       <g>
         <line x1={cx} y1={y} x2={cx} y2={y + height} stroke={topColor} strokeWidth={1.5} />
         <circle cx={cx} cy={y} r={3.5} fill={topColor} />
-        <circle cx={cx} cy={y + height} r={3.5} fill={botColor} />
+        <path
+          d={`M${cx},${y + height - ds} L${cx + ds},${y + height} L${cx},${y + height + ds} L${cx - ds},${y + height} Z`}
+          fill={botColor}
+        />
       </g>
     );
   };
@@ -224,7 +248,7 @@ function makeRangeShape(topColor, botColor) {
 function MetricChart({ metric, range, colors }) {
   const { topColor, botColor, lineColor, gridColor, axisColor } = colors;
   const data = metric.data[range] || metric.data['1W'];
-  const RangeShape = makeRangeShape(topColor, botColor);
+  const RangeShape = makeRangeShape(topColor, botColor, metric.shapeStyle || 'bp');
 
   const axisProps = {
     tick: { fontSize: 11, fill: axisColor, fontFamily: 'Inter, sans-serif' },
@@ -232,38 +256,33 @@ function MetricChart({ metric, range, colors }) {
     tickLine: false,
   };
 
-  if (metric.type === 'range') {
-    return (
-      <ResponsiveContainer width="100%" height={180}>
-        <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: -8 }}>
-          <CartesianGrid vertical={false} stroke={gridColor} />
-          <XAxis dataKey="t" {...axisProps} />
-          <YAxis domain={metric.yDomain} ticks={metric.yTicks} width={38}
-            label={{ value: metric.unit, angle: -90, position: 'insideLeft', offset: 12,
-              style: { fill: axisColor, fontSize: 11, fontFamily: 'Inter, sans-serif' } }}
-            {...axisProps} tick={{ ...axisProps.tick, dy: 0 }} />
-          {/* Transparent offset bar — pushes range bar up to the correct y position */}
-          <Bar dataKey="dia" stackId="r" fill="transparent" stroke="none" isAnimationActive={false} barSize={28} />
-          {/* Visible range bar with custom shape */}
-          <Bar dataKey="range" stackId="r" shape={<RangeShape />} fill="transparent" stroke="none" barSize={28} />
-        </ComposedChart>
-      </ResponsiveContainer>
-    );
-  }
-
-  return (
+  const innerChart = metric.type === 'range' ? (
     <ResponsiveContainer width="100%" height={180}>
-      <LineChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: -8 }}>
-        <CartesianGrid vertical={false} stroke={gridColor} />
+      <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: -10 }}>
+        <CartesianGrid vertical={false} stroke={gridColor} strokeDasharray="none" />
         <XAxis dataKey="t" {...axisProps} />
-        <YAxis domain={metric.yDomain} ticks={metric.yTicks} width={38}
-          label={{ value: metric.unit, angle: -90, position: 'insideLeft', offset: 12,
-            style: { fill: axisColor, fontSize: 11, fontFamily: 'Inter, sans-serif' } }}
-          {...axisProps} />
+        <YAxis domain={metric.yDomain} ticks={metric.yTicks} width={34} {...axisProps} tick={{ ...axisProps.tick, dy: 0 }} />
+        <Bar dataKey="dia" stackId="r" fill="transparent" stroke="none" isAnimationActive={false} barSize={24} />
+        <Bar dataKey="range" stackId="r" shape={<RangeShape />} fill="transparent" stroke="none" isAnimationActive={false} barSize={24} />
+      </ComposedChart>
+    </ResponsiveContainer>
+  ) : (
+    <ResponsiveContainer width="100%" height={180}>
+      <LineChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: -10 }}>
+        <CartesianGrid vertical={false} stroke={gridColor} strokeDasharray="none" />
+        <XAxis dataKey="t" {...axisProps} />
+        <YAxis domain={metric.yDomain} ticks={metric.yTicks} width={34} {...axisProps} />
         <Line type="monotone" dataKey="v" stroke={lineColor} strokeWidth={1.5}
-          dot={{ r: 3, fill: lineColor, strokeWidth: 0 }} activeDot={{ r: 4, fill: lineColor }} />
+          dot={{ r: 2.5, fill: lineColor, strokeWidth: 0 }} activeDot={{ r: 4, fill: lineColor }} />
       </LineChart>
     </ResponsiveContainer>
+  );
+
+  return (
+    <div className={styles.chartArea}>
+      <span className={styles.yLabel}>{metric.unit}</span>
+      <div className={styles.chartAreaInner}>{innerChart}</div>
+    </div>
   );
 }
 
@@ -348,11 +367,14 @@ function GraphView({ onClose }) {
             </button>
           </div>
 
-          {/* Metric cards */}
           {section.metrics.map(metric => (
             <div key={metric.id} className={styles.metricCard}>
               <div className={styles.metricHeader}>
-                <span className={styles.metricTitle}>{metric.title}</span>
+                <div className={styles.metricTitleGroup}>
+                  <span className={styles.metricTitle}>{metric.title}</span>
+                  <span className={styles.metricSub}>Last Recorded on {metric.lastRecorded}</span>
+                  {metric.subtitle && <span className={styles.metricSub}>{metric.subtitle}</span>}
+                </div>
                 {metric.legend && (
                   <div className={styles.legend}>
                     <span className={styles.legendCircle} style={{ background: topColor }} />
@@ -362,8 +384,6 @@ function GraphView({ onClose }) {
                   </div>
                 )}
               </div>
-              <span className={styles.metricSub}>Last Recorded on {metric.lastRecorded}</span>
-              {metric.subtitle && <span className={styles.metricSub}>{metric.subtitle}</span>}
 
               <div className={styles.chartWrap}>
                 <MetricChart metric={metric} range={range} colors={colors} />
@@ -371,15 +391,16 @@ function GraphView({ onClose }) {
               </div>
 
               <div className={styles.statsBar}>
-                <div className={styles.statItem}>
-                  <span className={styles.statValue}>{metric.stats.avg}</span>
-                  <span className={styles.statLabel}>Weekly Avg</span>
-                </div>
-                <span className={styles.statDivider} />
-                <div className={styles.statItem}>
-                  <span className={styles.statValue}>{metric.stats.range}</span>
-                  <span className={styles.statLabel}>Range</span>
-                </div>
+                {metric.stats.flatMap((stat, i) => [
+                  i > 0 ? <span key={`d${i}`} className={styles.statDivider} /> : null,
+                  <div key={`s${i}`} className={styles.statItem}>
+                    <span className={styles.statLine}>
+                      <span className={styles.statValue}>{stat.val}</span>
+                      {stat.unit && <span className={styles.statUnit}> {stat.unit}</span>}
+                    </span>
+                    <span className={styles.statLabel}>{stat.label}</span>
+                  </div>,
+                ])}
               </div>
             </div>
           ))}
