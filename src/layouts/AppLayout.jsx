@@ -37,6 +37,7 @@ import { MessagesView } from '../features/messages/MessagesView';
 import { CallsView } from '../features/calls/CallsView';
 import { TasksView } from '../features/tasks/TasksView';
 import { CampaignView } from '../features/campaign/CampaignView';
+import { EmailBuilder } from '../features/email-builder/EmailBuilder';
 import { useEffect } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { supabase } from '../lib/supabase';
@@ -267,6 +268,18 @@ export function AppLayout() {
   const componentWizardOpen = useAppStore(s => s.componentWizardOpen);
   const diagPanelOpen = useAppStore(s => s.diagPanelOpen);
   const quickViewPatient = useAppStore(s => s.quickViewPatient);
+  const editingCampaignId = useAppStore(s => s.editingCampaignId);
+
+  // Email Builder is a full-screen takeover when editing a campaign
+  if (editingCampaignId) {
+    return (
+      <div className={styles.app}>
+        <Sidebar />
+        <EmailBuilder />
+        <Toast />
+      </div>
+    );
+  }
 
   // Agent Builder is a full-screen takeover
   if (activePage === 'builder') {
@@ -278,6 +291,7 @@ export function AppLayout() {
       </div>
     );
   }
+
 
   return (
     <div className={styles.app}>

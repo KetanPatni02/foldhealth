@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { icon: 'solar:chat-round-dots-linear', filledIcon: 'solar:chat-round-dots-bold', label: 'Messages', badge: 8, page: 'messages' },
   { icon: 'solar:phone-linear', filledIcon: 'solar:phone-bold', label: 'Calls', page: 'calls' },
   { icon: 'solar:user-speak-linear', filledIcon: 'solar:user-speak-bold', label: 'Leads', page: 'leads' },
-  { icon: 'solar:target-linear', filledIcon: 'solar:target-bold', label: 'Campaign', page: 'campaign' },
+  { icon: 'custom:campaign', filledIcon: 'custom:campaign-bold', label: 'Campaign', page: 'campaign' },
   { icon: 'solar:chart-linear', filledIcon: 'solar:chart-bold', label: 'Analytics', page: 'analytics' },
   { icon: 'solar:settings-linear', filledIcon: 'solar:settings-bold', label: 'Settings', page: 'settings' },
 ];

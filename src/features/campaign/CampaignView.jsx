@@ -321,6 +321,7 @@ function computeHealth(delivered, opened) {
 
 function CampaignRow({ campaign, onToggle }) {
   const showToast = useAppStore(s => s.showToast);
+  const openEmailBuilder = useAppStore(s => s.openEmailBuilder);
   const isActive = campaign.section !== 'ended' && campaign.section !== 'draft';
   const isScheduled = campaign.section === 'scheduled';
   const health = computeHealth(campaign.delivered, campaign.opened);
@@ -332,12 +333,12 @@ function CampaignRow({ campaign, onToggle }) {
         <StatusIcon section={campaign.section} />
       </td>
 
-      {/* 2. Campaign Name (single line) */}
+      {/* 2. Campaign Name (single line, clickable) */}
       <td className={styles.tdName}>
-        <div className={styles.nameLine}>
+        <button type="button" className={styles.nameLink} onClick={() => openEmailBuilder(campaign)}>
           <Icon name={CHANNEL_ICONS[campaign.channel] || 'solar:letter-linear'} size={15} color="var(--neutral-300)" />
           <span className={styles.nameText}>{campaign.name}</span>
-        </div>
+        </button>
       </td>
 
       {/* 3. Audience */}
@@ -408,7 +409,7 @@ function CampaignRow({ campaign, onToggle }) {
             icon="solar:pen-linear"
             size="S"
             tooltip="Edit"
-            onClick={() => showToast('Edit – coming soon')}
+            onClick={() => openEmailBuilder(campaign)}
           />
           <div className={styles.vDivider} />
           <ActionButton

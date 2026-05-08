@@ -37,6 +37,9 @@ export function stateToHash(state) {
     return view === 'executive' ? buildHash('analytics') : buildHash('analytics', view);
   }
   if (activePage === 'calendar') return buildHash('calendar');
+  if (state.editingCampaignId) {
+    return buildHash('campaign', 'edit', String(state.editingCampaignId));
+  }
   if (activePage === 'campaign') {
     const tab = state.campaignTab || 'active';
     return tab === 'active' ? buildHash('campaign') : buildHash('campaign', tab);
@@ -119,6 +122,10 @@ export function hashToState(route) {
   if (route.page === 'tasks') { updates.activePage = 'tasks'; return updates; }
   if (route.page === 'campaign') {
     updates.activePage = 'campaign';
+    if (route.section === 'edit' && route.tab) {
+      updates._pendingCampaignEditId = route.tab;
+      return updates;
+    }
     const tab = route.section || 'active';
     updates.campaignTab = ['active', 'drafts', 'ended'].includes(tab) ? tab : 'active';
     return updates;
