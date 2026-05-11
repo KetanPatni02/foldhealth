@@ -177,6 +177,7 @@
   width: 14px;
   text-align: center;
   align-self: center;
+  margin-right: 8px;
 }
 
 .chartAreaInner {
@@ -290,7 +291,7 @@
   gap: 16px;
   background: var(--neutral-50);
   border-top: 0.5px solid var(--neutral-100);
-  padding: 8px 0;
+  padding: 8px 12px;
   margin-top: 4px;
 }
 
