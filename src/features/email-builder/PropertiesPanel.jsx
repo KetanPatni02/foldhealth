@@ -4,11 +4,15 @@ import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { Toggle } from '../../components/Toggle/Toggle';
 import { makeInitialDocument } from './initialDocument';
+import { HEADER_PRESETS, FOOTER_PRESETS } from './headerFooterLibrary';
 import styles from './EmailBuilder.module.css';
 
 const MIN_WIDTH = 280;
 const MAX_WIDTH = 720;
 const DEFAULT_WIDTH = 320;
+
+const RADIUS_TYPES = new Set(['Button', 'Image', 'Container', 'ColumnsContainer']);
+const BUTTON_STYLE_RADIUS = { rectangle: 0, rounded: 6, pill: 9999 };
 
 const FONT_FAMILIES = [
   { value: 'MODERN_SANS',    label: 'Inter' },
@@ -86,7 +90,7 @@ export function PropertiesPanel() {
 
       {tab === 'design' && <DesignTab block={block} updateBlock={updateBlock} id={id} />}
       {tab === 'code' && <CodeTab doc={doc} />}
-      {tab === 'template' && <TemplateTab />}
+      {tab === 'template' && <TemplateTab block={block} />}
     </div>
   );
 }
@@ -118,6 +122,139 @@ function DesignTab({ block, updateBlock, id }) {
 
   return (
     <div className={styles.designScroll}>
+      {/* ── Block-specific content sections (shown first) ── */}
+      {(block.type === 'Heading' || block.type === 'Text') && (
+        <>
+          <SectionHeading>Content</SectionHeading>
+          <Section>
+            <FieldLabel>Text</FieldLabel>
+            <textarea
+              className={styles.designTextarea}
+              value={props.text || ''}
+              onChange={e => update(['data', 'props', 'text'], e.target.value)}
+            />
+            {block.type === 'Heading' && (
+              <SelectInput
+                label="Level"
+                value={props.level || 'h2'}
+                options={[{ value: 'h1', label: 'H1' }, { value: 'h2', label: 'H2' }, { value: 'h3', label: 'H3' }]}
+                onChange={v => update(['data', 'props', 'level'], v)}
+              />
+            )}
+          </Section>
+        </>
+      )}
+
+      {block.type === 'Button' && (
+        <>
+          <SectionHeading>Button</SectionHeading>
+          <Section>
+            <PlainInput label="Label" value={props.text || ''} onChange={v => update(['data', 'props', 'text'], v)} />
+            <PlainInput label="URL" value={props.url || ''} onChange={v => update(['data', 'props', 'url'], v)} />
+            <Row2>
+              <SelectInput
+                label="Size"
+                value={props.size || 'medium'}
+                options={[{ value: 'x-small', label: 'X-Small' }, { value: 'small', label: 'Small' }, { value: 'medium', label: 'Medium' }, { value: 'large', label: 'Large' }]}
+                onChange={v => update(['data', 'props', 'size'], v)}
+              />
+              <SelectInput
+                label="Style"
+                value={props.buttonStyle || 'rectangle'}
+                options={[{ value: 'rectangle', label: 'Rectangle' }, { value: 'rounded', label: 'Rounded' }, { value: 'pill', label: 'Pill' }]}
+                onChange={v => update(['data', 'props', 'buttonStyle'], v)}
+              />
+            </Row2>
+          </Section>
+        </>
+      )}
+
+      {block.type === 'Image' && (
+        <>
+          <SectionHeading>Image</SectionHeading>
+          <Section>
+            <ImageUploader
+              currentUrl={props.url}
+              onChange={v => update(['data', 'props', 'url'], v)}
+            />
+            <PlainInput label="URL" value={props.url || ''} onChange={v => update(['data', 'props', 'url'], v)} />
+            <PlainInput label="Alt Text" value={props.alt || ''} onChange={v => update(['data', 'props', 'alt'], v)} />
+            <PlainInput label="Link URL" value={props.linkHref || ''} onChange={v => update(['data', 'props', 'linkHref'], v || null)} />
+          </Section>
+        </>
+      )}
+
+      {block.type === 'Avatar' && (
+        <>
+          <SectionHeading>Avatar</SectionHeading>
+          <Section>
+            <ImageUploader
+              currentUrl={props.imageUrl}
+              onChange={v => update(['data', 'props', 'imageUrl'], v)}
+            />
+            <PlainInput label="Image URL" value={props.imageUrl || ''} onChange={v => update(['data', 'props', 'imageUrl'], v)} />
+            <Row2>
+              <IconInput label="Size" suffix="px" value={props.size || 64} onChange={v => update(['data', 'props', 'size'], Number(v) || 64)} />
+              <SelectInput
+                label="Shape"
+                value={props.shape || 'circle'}
+                options={[{ value: 'circle', label: 'Circle' }, { value: 'square', label: 'Square' }, { value: 'rounded', label: 'Rounded' }]}
+                onChange={v => update(['data', 'props', 'shape'], v)}
+              />
+            </Row2>
+          </Section>
+        </>
+      )}
+
+      {block.type === 'Divider' && (
+        <>
+          <SectionHeading>Divider</SectionHeading>
+          <Section>
+            <Row2>
+              <ColorInput label="Line Color" value={props.lineColor} onChange={v => update(['data', 'props', 'lineColor'], v)} />
+              <IconInput label="Thickness" suffix="px" value={props.lineHeight || 1} onChange={v => update(['data', 'props', 'lineHeight'], Number(v) || 1)} />
+            </Row2>
+          </Section>
+        </>
+      )}
+
+      {block.type === 'Spacer' && (
+        <>
+          <SectionHeading>Spacer</SectionHeading>
+          <Section>
+            <IconInput label="Height" suffix="px" value={props.height || 16} onChange={v => update(['data', 'props', 'height'], Number(v) || 16)} />
+          </Section>
+        </>
+      )}
+
+      {block.type === 'ColumnsContainer' && (
+        <>
+          <SectionHeading>Columns</SectionHeading>
+          <Section>
+            <Row2>
+              <IconInput
+                label="Count"
+                value={props.columnsCount || 2}
+                onChange={v => {
+                  const num = Math.max(1, Math.min(6, Number(v) || 2));
+                  updateBlock(id, prev => {
+                    const next = JSON.parse(JSON.stringify(prev));
+                    next.data = next.data || {};
+                    next.data.props = next.data.props || {};
+                    next.data.props.columnsCount = num;
+                    const cols = next.data.props.columns || [];
+                    while (cols.length < num) cols.push({ childrenIds: [] });
+                    next.data.props.columns = cols;
+                    return next;
+                  });
+                }}
+              />
+              <IconInput label="Gap" suffix="px" value={props.columnsGap || 16} onChange={v => update(['data', 'props', 'columnsGap'], Number(v) || 16)} />
+            </Row2>
+          </Section>
+        </>
+      )}
+
       {/* ── Layout ── */}
       <SectionHeading>Layout</SectionHeading>
       <Section>
@@ -158,6 +295,16 @@ function DesignTab({ block, updateBlock, id }) {
               />
             </Row2>
           </>
+        )}
+
+        {RADIUS_TYPES.has(block.type) && (
+          <Row2>
+            <IconInput
+              label="Radius" suffix="px" icon={<RadiusIcon />}
+              value={style.borderRadius ?? (block.type === 'Button' ? BUTTON_STYLE_RADIUS[props.buttonStyle || 'rectangle'] ?? 0 : 0)}
+              onChange={v => update(['data', 'style', 'borderRadius'], Number(v) || 0)}
+            />
+          </Row2>
         )}
       </Section>
 
@@ -291,129 +438,7 @@ function DesignTab({ block, updateBlock, id }) {
         </>
       )}
 
-      {/* ── Block-specific content sections ── */}
-      {(block.type === 'Heading' || block.type === 'Text') && (
-        <>
-          <SectionHeading>Content</SectionHeading>
-          <Section>
-            <FieldLabel>Text</FieldLabel>
-            <textarea
-              className={styles.designTextarea}
-              value={props.text || ''}
-              onChange={e => update(['data', 'props', 'text'], e.target.value)}
-            />
-            {block.type === 'Heading' && (
-              <SelectInput
-                label="Level"
-                value={props.level || 'h2'}
-                options={[{ value: 'h1', label: 'H1' }, { value: 'h2', label: 'H2' }, { value: 'h3', label: 'H3' }]}
-                onChange={v => update(['data', 'props', 'level'], v)}
-              />
-            )}
-          </Section>
-        </>
-      )}
-
-      {block.type === 'Button' && (
-        <>
-          <SectionHeading>Button</SectionHeading>
-          <Section>
-            <PlainInput label="Label" value={props.text || ''} onChange={v => update(['data', 'props', 'text'], v)} />
-            <PlainInput label="URL" value={props.url || ''} onChange={v => update(['data', 'props', 'url'], v)} />
-            <Row2>
-              <SelectInput
-                label="Size"
-                value={props.size || 'medium'}
-                options={[{ value: 'x-small', label: 'X-Small' }, { value: 'small', label: 'Small' }, { value: 'medium', label: 'Medium' }, { value: 'large', label: 'Large' }]}
-                onChange={v => update(['data', 'props', 'size'], v)}
-              />
-              <SelectInput
-                label="Style"
-                value={props.buttonStyle || 'rectangle'}
-                options={[{ value: 'rectangle', label: 'Rectangle' }, { value: 'rounded', label: 'Rounded' }, { value: 'pill', label: 'Pill' }]}
-                onChange={v => update(['data', 'props', 'buttonStyle'], v)}
-              />
-            </Row2>
-          </Section>
-        </>
-      )}
-
-      {block.type === 'Image' && (
-        <>
-          <SectionHeading>Image</SectionHeading>
-          <Section>
-            <ImageUploader
-              currentUrl={props.url}
-              onChange={v => update(['data', 'props', 'url'], v)}
-            />
-            <PlainInput label="URL" value={props.url || ''} onChange={v => update(['data', 'props', 'url'], v)} />
-            <PlainInput label="Alt Text" value={props.alt || ''} onChange={v => update(['data', 'props', 'alt'], v)} />
-            <PlainInput label="Link URL" value={props.linkHref || ''} onChange={v => update(['data', 'props', 'linkHref'], v || null)} />
-          </Section>
-        </>
-      )}
-
-      {block.type === 'Avatar' && (
-        <>
-          <SectionHeading>Avatar</SectionHeading>
-          <Section>
-            <ImageUploader
-              currentUrl={props.imageUrl}
-              onChange={v => update(['data', 'props', 'imageUrl'], v)}
-            />
-            <PlainInput label="Image URL" value={props.imageUrl || ''} onChange={v => update(['data', 'props', 'imageUrl'], v)} />
-            <Row2>
-              <IconInput label="Size" suffix="px" value={props.size || 64} onChange={v => update(['data', 'props', 'size'], Number(v) || 64)} />
-              <SelectInput
-                label="Shape"
-                value={props.shape || 'circle'}
-                options={[{ value: 'circle', label: 'Circle' }, { value: 'square', label: 'Square' }, { value: 'rounded', label: 'Rounded' }]}
-                onChange={v => update(['data', 'props', 'shape'], v)}
-              />
-            </Row2>
-          </Section>
-        </>
-      )}
-
-      {block.type === 'Divider' && (
-        <>
-          <SectionHeading>Divider</SectionHeading>
-          <Section>
-            <Row2>
-              <ColorInput label="Line Color" value={props.lineColor} onChange={v => update(['data', 'props', 'lineColor'], v)} />
-              <IconInput label="Thickness" suffix="px" value={props.lineHeight || 1} onChange={v => update(['data', 'props', 'lineHeight'], Number(v) || 1)} />
-            </Row2>
-          </Section>
-        </>
-      )}
-
-      {block.type === 'Spacer' && (
-        <>
-          <SectionHeading>Spacer</SectionHeading>
-          <Section>
-            <IconInput label="Height" suffix="px" value={props.height || 16} onChange={v => update(['data', 'props', 'height'], Number(v) || 16)} />
-          </Section>
-        </>
-      )}
-
-      {block.type === 'ColumnsContainer' && (
-        <>
-          <SectionHeading>Columns</SectionHeading>
-          <Section>
-            <Row2>
-              <SelectInput
-                label="Count"
-                value={String(props.columnsCount || 2)}
-                options={[{ value: '2', label: '2' }, { value: '3', label: '3' }]}
-                onChange={v => update(['data', 'props', 'columnsCount'], Number(v))}
-              />
-              <IconInput label="Gap" suffix="px" value={props.columnsGap || 16} onChange={v => update(['data', 'props', 'columnsGap'], Number(v) || 16)} />
-            </Row2>
-          </Section>
-        </>
-      )}
-
-      {/* ── Stub sections: not yet supported by the renderer, shown for parity with Figma ── */}
+      {/* ── Stub sections ── */}
       <SectionHeading>Extra</SectionHeading>
       <SectionHeading>Iteration</SectionHeading>
       <SectionHeading>Conditions</SectionHeading>
@@ -611,22 +636,55 @@ const TEMPLATE_PRESETS = [
   { id: 'survey',   label: 'Patient Survey',   accent: '#EC4899' },
 ];
 
-function TemplateTab() {
+function TemplateTab({ block }) {
   const editingCampaignName = useAppStore(s => s.editingCampaignName);
+  const replaceHeaderFooter = useAppStore(s => s.replaceHeaderFooter);
   const setDocument = useAppStore.setState;
 
-  const apply = (preset) => {
+  const role = block?.data?.role;
+  const isHeaderOrFooter = role === 'header' || role === 'footer';
+
+  const applyPreset = (preset) => {
     const fresh = makeInitialDocument({ name: editingCampaignName || preset.label });
     fresh.root.data.backdropColor = preset.accent + '22';
     fresh['header-text'].data.style.color = preset.accent;
     setDocument({ emailDocument: fresh, selectedBlockId: 'root' });
   };
 
+  const applyRolePreset = (preset) => {
+    let counter = Date.now();
+    const genId = () => `block-${counter++}-${Math.random().toString(36).slice(2, 5)}`;
+    const tree = preset.build(genId, editingCampaignName || undefined);
+    replaceHeaderFooter(role, tree);
+  };
+
+  if (isHeaderOrFooter) {
+    const presets = role === 'header' ? HEADER_PRESETS : FOOTER_PRESETS;
+    const label = role === 'header' ? 'Header' : 'Footer';
+    return (
+      <div className={styles.templateScroll}>
+        <SectionHeading>{`Change ${label}`}</SectionHeading>
+        <div className={styles.templateGrid}>
+          {presets.map(p => (
+            <button key={p.id} className={styles.templateTile} onClick={() => applyRolePreset(p)}>
+              <div className={styles.templateThumb} style={{ background: p.accent + '22', borderColor: p.accent + '44' }}>
+                <div className={styles.templateThumbBar} style={{ background: p.accent }} />
+              </div>
+              <div className={styles.templateLabel}>{p.label}</div>
+              <div className={styles.templateDesc}>{p.description}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.templateScroll}>
+      <SectionHeading>Templates</SectionHeading>
       <div className={styles.templateGrid}>
         {TEMPLATE_PRESETS.map(p => (
-          <button key={p.id} className={styles.templateTile} onClick={() => apply(p)}>
+          <button key={p.id} className={styles.templateTile} onClick={() => applyPreset(p)}>
             <div className={styles.templateThumb} style={{ background: p.accent + '22', borderColor: p.accent + '44' }}>
               <div className={styles.templateThumbBar} style={{ background: p.accent }} />
             </div>
@@ -728,8 +786,8 @@ function ColorVariablesEditor() {
 
   return (
     <div className={styles.colorVarList}>
-      {variables.map(cv => (
-        <div key={cv.name} className={styles.colorVarRow}>
+      {variables.map((cv, idx) => (
+        <div key={idx} className={styles.colorVarRow}>
           <input
             type="color"
             value={cv.hex}
@@ -769,6 +827,14 @@ function ColorVariablesEditor() {
 
 // ── Field primitives ────────────────────────────────────────────────────────
 function IconInput({ label, suffix, icon, value, onChange }) {
+  const handleKeyDown = (e) => {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      const step = e.shiftKey ? 10 : 1;
+      const current = parseFloat(value) || 0;
+      onChange(String(e.key === 'ArrowUp' ? current + step : current - step));
+    }
+  };
   return (
     <div className={styles.fieldCol}>
       {label && <label className={styles.fieldLabel}>{label}</label>}
@@ -779,6 +845,7 @@ function IconInput({ label, suffix, icon, value, onChange }) {
           type="text"
           value={value ?? ''}
           onChange={e => onChange(e.target.value.replace(/[^0-9.-]/g, ''))}
+          onKeyDown={handleKeyDown}
         />
         {suffix && <span className={styles.iconInputSuffix}>{suffix}</span>}
       </div>
@@ -857,22 +924,41 @@ function ColorInput({ label, value, onChange }) {
           aria-label="Pick color"
         />
       </div>
-      {open && colorVariables.length > 0 && (
+      {open && (
         <div className={styles.colorVarPopover}>
-          <div className={styles.colorVarPopoverTitle}>Variables</div>
-          <div className={styles.colorVarSwatches}>
-            {colorVariables.map(cv => (
-              <button
-                key={cv.name}
-                type="button"
-                className={styles.colorVarSwatch}
-                title={`${cv.name} (${cv.hex})`}
-                onClick={() => { onChange(cv.hex); setOpen(false); }}
-              >
-                <span className={styles.colorVarDot} style={{ background: cv.hex }} />
-                <span className={styles.colorVarName}>{cv.name}</span>
-              </button>
-            ))}
+          {colorVariables.length > 0 && (
+            <>
+              <div className={styles.colorVarPopoverTitle}>Variables</div>
+              <div className={styles.colorVarSwatches}>
+                {colorVariables.map(cv => (
+                  <button
+                    key={cv.name}
+                    type="button"
+                    className={styles.colorVarSwatch}
+                    title={`${cv.name} (${cv.hex})`}
+                    onClick={() => { onChange(cv.hex); setOpen(false); }}
+                  >
+                    <span className={styles.colorVarDot} style={{ background: cv.hex }} />
+                    <span className={styles.colorVarName}>{cv.name}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          <div className={styles.colorVarPopoverTitle}>Custom</div>
+          <div className={styles.colorCustomRow}>
+            <input
+              type="color"
+              className={styles.colorCustomPicker}
+              value={v}
+              onChange={e => onChange(e.target.value)}
+            />
+            <input
+              type="text"
+              className={styles.colorCustomHex}
+              value={v.toUpperCase()}
+              onChange={e => onChange(e.target.value)}
+            />
           </div>
         </div>
       )}
@@ -891,6 +977,7 @@ function svg(d, w = 16, h = 16) {
 
 const WidthIcon     = () => svg('M2 4v8 M14 4v8 M4 8h8 M4 8l2-2 M4 8l2 2 M12 8l-2-2 M12 8l-2 2');
 const HeightIcon    = () => svg('M4 2h8 M4 14h8 M8 4v8 M8 4l-2 2 M8 4l2 2 M8 12l-2-2 M8 12l2-2');
+const RadiusIcon    = () => svg('M4 12V7a5 5 0 0 1 5-5h5');
 const PadLeftIcon   = () => svg('M3 2v12 M7 5h7 M7 8h7 M7 11h7');
 const PadTopIcon    = () => svg('M2 3h12 M5 7v7 M8 7v7 M11 7v7');
 const PadRightIcon  = () => svg('M13 2v12 M2 5h7 M2 8h7 M2 11h7');

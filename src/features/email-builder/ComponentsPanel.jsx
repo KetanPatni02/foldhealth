@@ -1,8 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { useDraggable } from '@dnd-kit/core';
+import { useDraggable, DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Icon } from '../../components/Icon/Icon';
 import { useAppStore } from '../../store/useAppStore';
 import { HEADER_PRESETS, FOOTER_PRESETS } from './headerFooterLibrary';
+import { buildParentMap } from './blockHelpers';
 import styles from './EmailBuilder.module.css';
 
 const COMPONENTS = [
@@ -69,6 +72,7 @@ const TYPE_ICONS = {
 export function ComponentsPanel() {
   const [tab, setTab] = useState('components');
   const [presetPicker, setPresetPicker] = useState(null); // 'header' | 'footer' | null
+  const [renamingId, setRenamingId] = useState(null);
   const addBlock = useAppStore(s => s.addBlock);
   const showToast = useAppStore(s => s.showToast);
   const emailDocument = useAppStore(s => s.emailDocument);
@@ -77,6 +81,15 @@ export function ComponentsPanel() {
   const setSelectedBlockId = useAppStore(s => s.setSelectedBlockId);
   const removeBlock = useAppStore(s => s.removeBlock);
   const replaceHeaderFooter = useAppStore(s => s.replaceHeaderFooter);
+
+  useEffect(() => {
+    const handler = (e) => {
+      setTab('layers');
+      setRenamingId(e.detail.id);
+    };
+    window.addEventListener('eb:rename', handler);
+    return () => window.removeEventListener('eb:rename', handler);
+  }, []);
 
   const handleAdd = (item) => {
     if (item.soon) { showToast(`${item.label} — coming soon`); return; }
@@ -105,7 +118,7 @@ export function ComponentsPanel() {
         >Layers</button>
       </div>
 
-      <div className={styles.panelScroll}>
+      <div className={styles.panelScrollFlush}>
         {tab === 'components' ? (
           <>
             <p className={styles.sectionHeading}>Content</p>
@@ -124,7 +137,7 @@ export function ComponentsPanel() {
               />
             )}
 
-            <p className={styles.sectionHeading} style={{ marginTop: 16 }}>Layout</p>
+            <p className={styles.sectionHeading}>Layout</p>
             <div className={styles.layoutGrid}>
               {LAYOUTS.map(l => (
                 <button
@@ -148,6 +161,8 @@ export function ComponentsPanel() {
             selectedId={selectedBlockId}
             onSelect={setSelectedBlockId}
             onRemove={removeBlock}
+            renamingId={renamingId}
+            setRenamingId={setRenamingId}
           />
         )}
       </div>
@@ -208,38 +223,175 @@ function PresetPicker({ role, presets, onPick, onClose }) {
   );
 }
 
-function LayerList({ doc, selectedId, onSelect, onRemove }) {
+function layerLabel(block) {
+  if (block.data?.alias) return block.data.alias;
+  const role = block.data?.role;
+  if (role === 'header') return 'Header';
+  if (role === 'body') return 'Body';
+  if (role === 'footer') return 'Footer';
+  if (block.type === 'Heading' || block.type === 'Text') {
+    return `${TYPE_LABELS[block.type]}: ${(block.data?.props?.text || '').slice(0, 22)}`;
+  }
+  return TYPE_LABELS[block.type] || block.type;
+}
+
+function layerIcon(block) {
+  const role = block.data?.role;
+  if (role === 'header') return 'solar:gallery-wide-linear';
+  if (role === 'body') return 'solar:document-text-linear';
+  if (role === 'footer') return 'solar:gallery-bold-linear';
+  return TYPE_ICONS[block.type] || 'solar:square-linear';
+}
+
+const STRUCTURAL_ROLES = new Set(['header', 'body', 'footer']);
+
+function LayerList({ doc, selectedId, onSelect, onRemove, renamingId, setRenamingId }) {
   if (!doc) return null;
-  const ids = ['root', ...(doc.root.data.childrenIds || [])];
+  const moveBlock = useAppStore(s => s.moveBlock);
+  const updateBlock = useAppStore(s => s.updateBlock);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+
+  const allSortableIds = [];
+  const collectIds = (childrenIds) => {
+    (childrenIds || []).forEach(id => {
+      const block = doc[id];
+      if (!block) return;
+      allSortableIds.push(id);
+      const props = block.data?.props || {};
+      if (Array.isArray(props.childrenIds)) collectIds(props.childrenIds);
+      if (Array.isArray(props.columns)) props.columns.forEach(c => collectIds(c.childrenIds || []));
+    });
+  };
+  collectIds(doc.root.data.childrenIds || []);
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const overId = String(over.id);
+    const activeId = String(active.id);
+    const overBlock = doc[overId];
+    if (!overBlock) return;
+    const map = buildParentMap(doc);
+    const overSlot = map[overId];
+    if (!overSlot) return;
+    moveBlock(activeId, { parentId: overSlot.parentId, columnIdx: overSlot.columnIdx, index: overSlot.index });
+  };
+
+  const ctx = { doc, selectedId, onSelect, onRemove, renamingId, setRenamingId, updateBlock };
+
   return (
-    <div className={styles.layerList}>
-      {ids.map(id => {
-        const block = doc[id];
-        if (!block) return null;
-        const isRoot = id === 'root';
-        const label = block.type === 'Heading' || block.type === 'Text'
-          ? `${TYPE_LABELS[block.type]}: ${(block.data?.props?.text || '').slice(0, 22)}`
-          : TYPE_LABELS[block.type] || block.type;
-        return (
-          <div
-            key={id}
-            className={[styles.layerRow, selectedId === id ? styles.layerRowActive : ''].join(' ')}
-            onClick={() => onSelect(id)}
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={allSortableIds} strategy={verticalListSortingStrategy}>
+        <div className={styles.layerList}>
+          <LayerChildren childrenIds={doc.root.data.childrenIds || []} depth={0} ctx={ctx} />
+        </div>
+      </SortableContext>
+    </DndContext>
+  );
+}
+
+function LayerChildren({ childrenIds, depth, ctx }) {
+  return (childrenIds || []).map(id => {
+    const block = ctx.doc[id];
+    if (!block) return null;
+    return <LayerRow key={id} id={id} block={block} depth={depth} ctx={ctx} />;
+  });
+}
+
+function LayerRow({ id, block, depth, ctx }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const [expanded, setExpanded] = useState(true);
+  const renameInputRef = useRef(null);
+  const isRenaming = ctx.renamingId === id;
+  const props = block.data?.props || {};
+  const hasChildren = Array.isArray(props.childrenIds) && props.childrenIds.length > 0;
+  const hasColumns = Array.isArray(props.columns) && props.columns.some(c => (c.childrenIds || []).length > 0);
+  const isExpandable = hasChildren || hasColumns;
+  const isStructural = STRUCTURAL_ROLES.has(block.data?.role);
+
+  useEffect(() => {
+    if (isRenaming && renameInputRef.current) {
+      renameInputRef.current.focus();
+      renameInputRef.current.select();
+    }
+  }, [isRenaming]);
+
+  const commitRename = (value) => {
+    const trimmed = value.trim();
+    ctx.updateBlock(id, prev => ({
+      ...prev,
+      data: { ...prev.data, alias: trimmed || undefined },
+    }));
+    ctx.setRenamingId(null);
+  };
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <>
+      <div
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        {...listeners}
+        className={[styles.layerRow, ctx.selectedId === id ? styles.layerRowActive : ''].join(' ')}
+        onClick={() => ctx.onSelect(id)}
+        onDoubleClick={() => ctx.setRenamingId(id)}
+      >
+        <span style={{ width: depth * 16, flexShrink: 0 }} />
+        {isExpandable ? (
+          <button
+            className={styles.layerExpandBtn}
+            onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
+            onPointerDown={(e) => e.stopPropagation()}
+            aria-label={expanded ? 'Collapse' : 'Expand'}
           >
-            <Icon name={TYPE_ICONS[block.type] || 'solar:square-linear'} size={14} color="currentColor" />
-            <span className={styles.layerRowText}>{label}</span>
-            {!isRoot && (
-              <button
-                className={styles.layerRemove}
-                onClick={(e) => { e.stopPropagation(); onRemove(id); }}
-                aria-label="Delete"
-              >
-                <Icon name="solar:trash-bin-trash-linear" size={14} color="currentColor" />
-              </button>
-            )}
-          </div>
-        );
-      })}
-    </div>
+            <Icon name={expanded ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'} size={12} color="currentColor" />
+          </button>
+        ) : (
+          <span style={{ width: 16, flexShrink: 0 }} />
+        )}
+        <Icon name={layerIcon(block)} size={14} color="currentColor" />
+        {isRenaming ? (
+          <input
+            ref={renameInputRef}
+            className={styles.layerRenameInput}
+            defaultValue={block.data?.alias || layerLabel(block)}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onBlur={(e) => commitRename(e.target.value)}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === 'Enter') commitRename(e.target.value);
+              if (e.key === 'Escape') ctx.setRenamingId(null);
+            }}
+          />
+        ) : (
+          <span className={styles.layerRowText}>{layerLabel(block)}</span>
+        )}
+        {!isStructural && (
+          <button
+            className={styles.layerRemove}
+            onClick={(e) => { e.stopPropagation(); ctx.onRemove(id); }}
+            onPointerDown={(e) => e.stopPropagation()}
+            aria-label="Delete"
+          >
+            <Icon name="solar:trash-bin-trash-linear" size={14} color="currentColor" />
+          </button>
+        )}
+      </div>
+      {expanded && hasChildren && (
+        <LayerChildren childrenIds={props.childrenIds} depth={depth + 1} ctx={ctx} />
+      )}
+      {expanded && hasColumns && props.columns.map((col, ci) => (
+        (col.childrenIds || []).length > 0 && (
+          <LayerChildren key={ci} childrenIds={col.childrenIds} depth={depth + 1} ctx={ctx} />
+        )
+      ))}
+    </>
   );
 }

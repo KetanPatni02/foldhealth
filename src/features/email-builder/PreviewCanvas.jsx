@@ -20,6 +20,14 @@ const TYPE_LABELS = {
   ColumnsContainer: 'Columns',
 };
 
+function blockLabel(block) {
+  const role = block.data?.role;
+  if (role === 'header') return 'Header';
+  if (role === 'body') return 'Body';
+  if (role === 'footer') return 'Footer';
+  return TYPE_LABELS[block.type] || block.type;
+}
+
 function paddingCss(p) {
   if (!p) return undefined;
   return `${p.top}px ${p.right}px ${p.bottom}px ${p.left}px`;
@@ -93,11 +101,10 @@ export function PreviewCanvas() {
       onClick={handleCanvasClick}
     >
       <div
-        className={[styles.canvas, styles.blockWrap, selectedBlockId === 'root' ? styles.blockWrapSelected : ''].join(' ')}
+        className={styles.canvas}
         style={layoutStyle}
         onClick={(e) => { e.stopPropagation(); setSelectedBlockId('root'); }}
       >
-        {selectedBlockId === 'root' && <div className={styles.blockToolbar}><span>Email</span></div>}
         <SortableList parentId="root" childrenIds={childrenIds} ctx={ctx} />
       </div>
     </div>
@@ -141,15 +148,16 @@ function SortableBlock({ id, ctx }) {
   const block = ctx.doc[id];
   if (!block) return null;
   const isSelected = ctx.selectedBlockId === id;
+  const isBody = block.data?.role === 'body';
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={[styles.blockWrap, isSelected ? styles.blockWrapSelected : ''].join(' ')}
+      className={[styles.blockWrap, isSelected && !isBody ? styles.blockWrapSelected : ''].join(' ')}
       onClick={(e) => { e.stopPropagation(); ctx.setSelectedBlockId(id); }}
     >
-      {isSelected && (
+      {isSelected && !isBody && (
         <div className={styles.blockToolbar}>
           <button
             {...attributes}
@@ -161,7 +169,7 @@ function SortableBlock({ id, ctx }) {
             <DragHandleDots />
           </button>
           <span className={styles.blockToolbarDivider} />
-          <span className={styles.blockToolbarLabel}>{TYPE_LABELS[block.type] || block.type}</span>
+          <span className={styles.blockToolbarLabel}>{blockLabel(block)}</span>
           <span className={styles.blockToolbarDivider} />
           <button
             className={styles.blockToolbarBtn}
@@ -224,6 +232,7 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
           backgroundColor: style.backgroundColor,
           padding: paddingCss(style.padding),
           color: style.color,
+          borderRadius: style.borderRadius ? `${style.borderRadius}px` : undefined,
         }}
       >
         <SortableList parentId={id} childrenIds={props.childrenIds || []} ctx={ctx} />
@@ -246,6 +255,7 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
           gap: `${gap}px`,
           padding: paddingCss(style.padding),
           backgroundColor: style.backgroundColor,
+          borderRadius: style.borderRadius ? `${style.borderRadius}px` : undefined,
         }}
       >
         {visible.map((col, idx) => (
@@ -269,7 +279,7 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     return (
       <div style={{ padding: paddingCss(style.padding), textAlign: style.textAlign || 'center', backgroundColor: style.backgroundColor }}>
         {props.url ? (
-          <img src={props.url} alt={props.alt || ''} style={{ maxWidth: '100%', height: 'auto', display: 'inline-block' }} />
+          <img src={props.url} alt={props.alt || ''} style={{ maxWidth: '100%', height: 'auto', display: 'inline-block', borderRadius: style.borderRadius ? `${style.borderRadius}px` : undefined }} />
         ) : (
           <div style={{ padding: 24, border: '1px dashed #CED4DD', borderRadius: 8, color: '#9CA3AF', fontSize: 12 }}>
             No image
@@ -304,6 +314,34 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     return <div style={{ height: props.height || 16 }} />;
   }
 
-  // Other primitives (Button, etc.) — delegate to Reader.
+  if (type === 'Button') {
+    const sizeStyles = { 'x-small': { padding: '6px 12px', fontSize: 12 }, small: { padding: '8px 16px', fontSize: 13 }, medium: { padding: '12px 20px', fontSize: 14 }, large: { padding: '14px 28px', fontSize: 16 } };
+    const presetRadius = { rectangle: 0, rounded: 6, pill: 9999 };
+    const sz = sizeStyles[props.size || 'medium'] || sizeStyles.medium;
+    const radius = style.borderRadius ?? presetRadius[props.buttonStyle || 'rectangle'] ?? 0;
+    return (
+      <div style={{ padding: paddingCss(style.padding), textAlign: style.textAlign || 'center' }}>
+        <a
+          href={props.url || '#'}
+          onClick={e => e.preventDefault()}
+          style={{
+            display: 'inline-block',
+            padding: sz.padding,
+            backgroundColor: props.buttonBackgroundColor || '#7C5CFA',
+            color: props.buttonTextColor || '#fff',
+            borderRadius: `${radius}px`,
+            textDecoration: 'none',
+            fontWeight: 600,
+            fontSize: sz.fontSize,
+            fontFamily: 'inherit',
+          }}
+        >
+          {props.text || 'Button'}
+        </a>
+      </div>
+    );
+  }
+
+  // Other primitives — delegate to Reader.
   return <Reader document={ctx.doc} rootBlockId={id} />;
 }

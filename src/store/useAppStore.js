@@ -1969,6 +1969,20 @@ export const useAppStore = create((set, get) => ({
     const tree = createBlockTree(type, genId);
     if (!tree) return {};
     const root = s.emailDocument.root;
+    const bodyId = (root.data.childrenIds || []).find(id => s.emailDocument[id]?.data?.role === 'body');
+    if (bodyId) {
+      const body = s.emailDocument[bodyId];
+      const props = { ...(body.data?.props || {}) };
+      props.childrenIds = [...(props.childrenIds || []), tree.rootId];
+      return {
+        emailDocument: {
+          ...s.emailDocument,
+          [bodyId]: { ...body, data: { ...body.data, props } },
+          ...tree.blocks,
+        },
+        selectedBlockId: tree.rootId,
+      };
+    }
     const updatedRoot = {
       ...root,
       data: { ...root.data, childrenIds: [...(root.data.childrenIds || []), tree.rootId] },
@@ -2143,14 +2157,35 @@ export const useAppStore = create((set, get) => ({
 
   removeBlock: (id) => set(s => {
     if (!s.emailDocument || id === 'root' || !s.emailDocument[id]) return {};
-    const next = { ...s.emailDocument };
-    delete next[id];
-    next.root = {
-      ...next.root,
-      data: { ...next.root.data, childrenIds: (next.root.data.childrenIds || []).filter(c => c !== id) },
-    };
+    const doc = { ...s.emailDocument };
+    const map = buildParentMap(doc);
+    const slot = map[id];
+    const toRemove = collectBlockTree(doc, id);
+    toRemove.forEach(bid => { delete doc[bid]; });
+    if (slot && slot.parentId !== 'root') {
+      const parent = doc[slot.parentId];
+      if (parent) {
+        const data = { ...parent.data };
+        const props = { ...(data.props || {}) };
+        if (slot.columnIdx != null && Array.isArray(props.columns)) {
+          props.columns = props.columns.map((c, i) => i === slot.columnIdx
+            ? { ...c, childrenIds: (c.childrenIds || []).filter(cid => cid !== id) }
+            : c
+          );
+        } else if (Array.isArray(props.childrenIds)) {
+          props.childrenIds = props.childrenIds.filter(cid => cid !== id);
+        }
+        data.props = props;
+        doc[slot.parentId] = { ...parent, data };
+      }
+    } else {
+      doc.root = {
+        ...doc.root,
+        data: { ...doc.root.data, childrenIds: (doc.root.data.childrenIds || []).filter(c => c !== id) },
+      };
+    }
     return {
-      emailDocument: next,
+      emailDocument: doc,
       selectedBlockId: s.selectedBlockId === id ? 'root' : s.selectedBlockId,
     };
   }),

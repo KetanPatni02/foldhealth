@@ -1,0 +1,304 @@
+/* ── Inline device-preview stage (replaces the builder body) ── */
+.stage {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 48px 24px 64px;
+  overflow: auto;
+  background: #fff;
+  min-height: 0;
+}
+
+.deviceWrap {
+  display: grid;
+  place-items: center;
+  transition: transform 280ms cubic-bezier(.2, .8, .2, 1);
+  width: 100%;
+}
+
+.meta {
+  margin-top: 28px;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--neutral-200);
+}
+
+/* ── Email iframe ── */
+.emailIframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: #fff;
+  color-scheme: light;
+}
+
+.emailIframeScaled {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #fff;
+  position: relative;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MacBook Pro (CSS-only frame)
+   ══════════════════════════════════════════════════════════════════════════ */
+.macbook {
+  padding: 4% 6%;
+  margin: 0 auto;
+  max-width: 800px;
+}
+
+.macScreen {
+  background: #000;
+  border-radius: 3% 3% 0.5% 0.5% / 5%;
+  margin: 0 auto;
+  position: relative;
+  width: 80%;
+}
+
+.macScreen::before {
+  border: 2px solid #cacacc;
+  border-radius: 3% 3% 0.5% 0.5% / 5%;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.8) inset,
+    0 0 1px 2px rgba(255, 255, 255, 0.3) inset;
+  content: '';
+  display: block;
+  padding-top: 67%;
+}
+
+.macScreen::after {
+  content: '';
+  border-top: 2px solid rgba(255, 255, 255, 0.15);
+  position: absolute;
+  bottom: 0.75%;
+  left: 0.5%;
+  padding-top: 1%;
+  width: 99%;
+}
+
+.macViewport {
+  position: absolute;
+  inset: 0;
+  margin: 2.4% 1.8%;
+  background: #000;
+  overflow: hidden;
+  border-radius: 14px;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.macViewport > * {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.macBase {
+  position: relative;
+  width: 100%;
+}
+
+.macBase::before {
+  content: '';
+  display: block;
+  padding-top: 3.3%;
+  background: linear-gradient(
+    #eaeced,
+    #edeef0 55%,
+    #fff 55%,
+    #8a8b8f 56%,
+    #999ba0 61%,
+    #4b4b4f 84%,
+    #262627 89%,
+    rgba(0, 0, 0, 0.01) 98%
+  );
+  border-radius: 0 0 10% 10% / 0 0 50% 50%;
+}
+
+.macBase::after {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.5),
+    rgba(255, 255, 255, 0.8) 0.5%,
+    rgba(0, 0, 0, 0.4) 3.3%,
+    transparent 15%,
+    rgba(255, 255, 255, 0.8) 50%,
+    transparent 85%,
+    rgba(0, 0, 0, 0.4) 96.7%,
+    rgba(255, 255, 255, 0.8) 99.5%,
+    rgba(0, 0, 0, 0.5) 100%
+  );
+  content: '';
+  height: 53%;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+
+.macNotch {
+  background: #ddd;
+  border-radius: 0 0 7% 7% / 0 0 95% 95%;
+  box-shadow:
+    -5px -1px 3px rgba(0, 0, 0, 0.2) inset,
+    5px -1px 3px rgba(0, 0, 0, 0.2) inset;
+  margin: -3.5% auto 0;
+  z-index: 2;
+  position: relative;
+  width: 14%;
+}
+
+.macNotch::before {
+  content: '';
+  display: block;
+  padding-top: 10%;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   iPhone 17 Pro (CSS-only frame)
+   ══════════════════════════════════════════════════════════════════════════ */
+.iphone {
+  position: relative;
+  padding: 6px;
+  width: 420px;
+  height: 885px;
+  background-color: #000;
+  margin-inline: auto;
+  border-radius: 60px;
+  box-shadow:
+    inset 0 0 0 2px #2d2d2d,
+    inset 0 0 0 4px #696969,
+    inset 0 0 0 6px #2d2d2d;
+  z-index: 1;
+}
+
+.iphone::before,
+.iphone::after {
+  position: absolute;
+  left: 0;
+  display: block;
+  content: '';
+  height: 6px;
+  width: 100%;
+  background-color: #2d2d2d;
+  z-index: -1;
+}
+
+.iphone::before { top: 80px; }
+.iphone::after { bottom: 80px; }
+
+.iphoneBorder::before,
+.iphoneBorder::after {
+  position: absolute;
+  left: auto;
+  display: block;
+  content: '';
+  height: 50%;
+  width: 6px;
+  background-color: #2d2d2d;
+  z-index: -1;
+}
+
+.iphoneBorder::before { top: 0; right: 80px; }
+.iphoneBorder::after { bottom: 0; left: 80px; }
+
+.iphoneSwitch,
+.iphoneVolup,
+.iphoneVoldown,
+.iphonePower {
+  position: absolute;
+  top: 150px;
+  left: -3px;
+  height: 40px;
+  width: 3px;
+  border-radius: 8px;
+  background-image: linear-gradient(0deg, #333, #fff);
+  box-shadow: inset -2px -8px 2px 0px #444;
+  border-top: 1px solid #fff;
+  border-bottom: 1px solid #fff;
+}
+
+.iphoneVolup,
+.iphoneVoldown { height: 80px; }
+.iphoneVolup { top: 230px; }
+.iphoneVoldown { top: 330px; }
+
+.iphonePower {
+  height: 110px;
+  top: 250px;
+  left: initial;
+  right: -3px;
+  transform: scale(-1, 1);
+}
+
+.iphoneScreen {
+  border-radius: 55px;
+  background-image: linear-gradient(70deg, #000, #101010, #000);
+  box-shadow: inset 0 0 0 5px #000;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  padding: 8px;
+}
+
+.iphoneInner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 48px;
+  overflow: hidden;
+  background: #000;
+}
+
+.iphoneInner > * {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.iphoneIsland {
+  position: absolute;
+  top: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 124px;
+  height: 36px;
+  background: #000;
+  border-radius: 999px;
+  z-index: 3;
+  box-shadow:
+    0 0 0 1px #050505,
+    inset 0 0 2px rgba(255, 255, 255, 0.04);
+}
+
+.iphoneIsland::before,
+.iphoneIsland::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 50%;
+}
+
+/* Front camera */
+.iphoneIsland::before {
+  right: 12px;
+  width: 10px;
+  height: 10px;
+  background: radial-gradient(circle at 35% 35%, #1a3a8a 0%, #0a1438 55%, #000 100%);
+  box-shadow: inset 0 0 0 1px #0a0a0a, 0 0 1px rgba(60, 100, 200, 0.4);
+}
+
+/* Face ID sensor */
+.iphoneIsland::after {
+  left: 14px;
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle at 35% 35%, #2a2a2a 0%, #0a0a0a 70%);
+}

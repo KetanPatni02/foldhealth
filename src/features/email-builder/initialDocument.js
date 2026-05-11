@@ -12,7 +12,7 @@ export function makeInitialDocument(campaign) {
   const header = HEADER_PRESETS[0].build(genId, name);
   const footer = FOOTER_PRESETS[0].build(genId, 'Fold Health');
 
-  // Body blocks
+  const bodyContainer = genId();
   const heading = genId();
   const greeting = genId();
   const body = genId();
@@ -28,10 +28,18 @@ export function makeInitialDocument(campaign) {
         canvasColor: '#FFFFFF',
         textColor: '#3A485F',
         fontFamily: 'MODERN_SANS',
-        childrenIds: [header.rootId, heading, greeting, body, spacer, signoff, divider, footer.rootId],
+        childrenIds: [header.rootId, bodyContainer, footer.rootId],
       },
     },
     ...header.blocks,
+    [bodyContainer]: {
+      type: 'Container',
+      data: {
+        role: 'body',
+        props: { childrenIds: [heading, greeting, body, spacer, signoff, divider] },
+        style: {},
+      },
+    },
     [heading]: {
       type: 'Heading',
       data: {

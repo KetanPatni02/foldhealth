@@ -1,15 +1,37 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Reader } from '@usewaypoint/email-builder';
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { Button } from '../../components/Button/Button';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { Toggle } from '../../components/Toggle/Toggle';
 import { ComponentsPanel } from './ComponentsPanel';
 import { PreviewCanvas } from './PreviewCanvas';
 import { PropertiesPanel } from './PropertiesPanel';
+import { DevicePreview } from './DevicePreview';
 import { buildParentMap } from './blockHelpers';
 import styles from './EmailBuilder.module.css';
+
+function getFirstChild(doc, id) {
+  if (id === 'root') return doc.root?.data?.childrenIds?.[0] || null;
+  const block = doc[id];
+  if (!block) return null;
+  const props = block.data?.props || {};
+  if (Array.isArray(props.childrenIds) && props.childrenIds.length > 0) return props.childrenIds[0];
+  if (Array.isArray(props.columns)) {
+    for (const col of props.columns) {
+      if (col.childrenIds?.length > 0) return col.childrenIds[0];
+    }
+  }
+  return null;
+}
+
+function getParentId(doc, id) {
+  if (id === 'root') return null;
+  const map = buildParentMap(doc);
+  return map[id]?.parentId || null;
+}
 
 // Match the active.id and over.id strings produced in ComponentsPanel and
 // PreviewCanvas to figure out the right store action.
@@ -47,6 +69,63 @@ export function EmailBuilder() {
   const moveBlock = useAppStore(s => s.moveBlock);
   const insertNewBlock = useAppStore(s => s.insertNewBlock);
   const [activeDrag, setActiveDrag] = useState(null);
+  const [viewMode, setViewMode] = useState('builder');
+
+  useEffect(() => {
+    const handler = (e) => {
+      const tag = document.activeElement?.tagName;
+      const isEditable = tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable;
+      const s = useAppStore.getState();
+      const doc = s.emailDocument;
+      const id = s.selectedBlockId;
+      if (!doc || !id) return;
+
+      const isMeta = e.metaKey || e.ctrlKey;
+
+      // Cmd+D — duplicate
+      if (isMeta && e.key === 'd') {
+        e.preventDefault();
+        if (id !== 'root') s.duplicateBlock(id);
+        return;
+      }
+
+      // Cmd+R — rename layer
+      if (isMeta && e.key === 'r') {
+        e.preventDefault();
+        if (id !== 'root') {
+          window.dispatchEvent(new CustomEvent('eb:rename', { detail: { id } }));
+        }
+        return;
+      }
+
+      if (isEditable) return;
+
+      // Enter — select first child
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        const child = getFirstChild(doc, id);
+        if (child) s.setSelectedBlockId(child);
+        return;
+      }
+
+      // Shift+Enter — select parent
+      if (e.key === 'Enter' && e.shiftKey) {
+        e.preventDefault();
+        const parent = getParentId(doc, id);
+        if (parent) s.setSelectedBlockId(parent);
+        return;
+      }
+
+      // Delete / Backspace — remove block
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        if (id !== 'root') s.removeBlock(id);
+        return;
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
@@ -89,9 +168,20 @@ export function EmailBuilder() {
         <div className={styles.topLeft}>
           <h1 className={styles.title}>Edit Template</h1>
         </div>
+        <div className={styles.topCenter}>
+          <Toggle
+            items={[
+              { key: 'builder', label: 'Builder', icon: 'solar:pen-new-square-linear' },
+              { key: 'desktop', label: 'Desktop', icon: 'solar:monitor-linear' },
+              { key: 'mobile', label: 'Mobile', icon: 'solar:smartphone-linear' },
+            ]}
+            active={viewMode}
+            onChange={setViewMode}
+            size="S"
+          />
+        </div>
         <div className={styles.topRight}>
           <ActionButton icon="solar:chart-2-linear" size="L" tooltip="Analytics" onClick={() => showToast('Analytics — coming soon')} />
-          <ActionButton icon="solar:eye-linear" size="L" tooltip="Preview" onClick={() => showToast('Preview — coming soon')} />
           <Button
             variant="primary"
             size="L"
@@ -105,11 +195,15 @@ export function EmailBuilder() {
         </div>
       </div>
 
-      <div className={styles.body}>
-        <ComponentsPanel />
-        <PreviewCanvas />
-        <PropertiesPanel />
-      </div>
+      {viewMode === 'builder' ? (
+        <div className={styles.body}>
+          <ComponentsPanel />
+          <PreviewCanvas />
+          <PropertiesPanel />
+        </div>
+      ) : (
+        <DevicePreview device={viewMode} />
+      )}
     </div>
       <DragOverlay>
         {activeDrag && (
