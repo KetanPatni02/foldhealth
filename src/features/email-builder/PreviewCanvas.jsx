@@ -1,3 +1,4 @@
+import { useState, useRef, useCallback } from 'react';
 import { Reader } from '@usewaypoint/email-builder';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useDroppable } from '@dnd-kit/core';
@@ -18,6 +19,7 @@ const TYPE_LABELS = {
   Spacer: 'Spacer',
   Container: 'Wrapper',
   ColumnsContainer: 'Columns',
+  Table: 'Table',
 };
 
 function blockLabel(block) {
@@ -50,6 +52,7 @@ function DragHandleDots() {
 export function PreviewCanvas() {
   const doc = useAppStore(s => s.emailDocument);
   const selectedBlockId = useAppStore(s => s.selectedBlockId);
+  const bulkSelectedIds = useAppStore(s => s.bulkSelectedIds);
   const setSelectedBlockId = useAppStore(s => s.setSelectedBlockId);
   const removeBlock = useAppStore(s => s.removeBlock);
   const updateBlock = useAppStore(s => s.updateBlock);
@@ -80,18 +83,28 @@ export function PreviewCanvas() {
     updateBlock(id, prev => ({ ...prev, data: { ...prev.data, props: { ...(prev.data?.props || {}), text } } }));
   };
 
+  const commitTable = (id, { columns, rows }) => {
+    updateBlock(id, prev => ({
+      ...prev,
+      data: { ...prev.data, props: { ...(prev.data?.props || {}), ...(columns !== undefined && { columns }), ...(rows !== undefined && { rows }) } },
+    }));
+  };
+
   const handleCanvasClick = (e) => {
     if (e.target === e.currentTarget) setSelectedBlockId('root');
   };
 
+  const bulkSet = new Set(bulkSelectedIds);
   const ctx = {
     doc,
     selectedBlockId,
+    bulkSet,
     setSelectedBlockId,
     removeBlock,
     duplicateBlock,
     moveBlockUp,
     commitText,
+    commitTable,
   };
 
   return (
@@ -148,13 +161,18 @@ function SortableBlock({ id, ctx }) {
   const block = ctx.doc[id];
   if (!block) return null;
   const isSelected = ctx.selectedBlockId === id;
+  const isBulkSelected = ctx.bulkSet.has(id);
   const isBody = block.data?.role === 'body';
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={[styles.blockWrap, isSelected && !isBody ? styles.blockWrapSelected : ''].join(' ')}
+      className={[
+        styles.blockWrap,
+        isSelected && !isBody ? styles.blockWrapSelected : '',
+        isBulkSelected ? styles.blockWrapBulk : '',
+      ].join(' ')}
       onClick={(e) => { e.stopPropagation(); ctx.setSelectedBlockId(id); }}
     >
       {isSelected && !isBody && (
@@ -243,16 +261,22 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
   if (type === 'ColumnsContainer') {
     const cols = props.columns || [];
     const count = props.columnsCount || cols.length || 2;
-    const gap = props.columnsGap ?? 16;
+    const hGap = props.columnsGap ?? 16;
+    const vGap = props.rowGap ?? 0;
     const align = props.contentAlignment || 'top';
+    const direction = props.direction || 'row';
+    const wrap = props.flexWrap || 'nowrap';
     const visible = cols.slice(0, count);
     const fixedWidths = props.fixedWidths || [];
     return (
       <div
         style={{
           display: 'flex',
+          flexDirection: direction,
+          flexWrap: wrap,
           alignItems: align === 'top' ? 'flex-start' : align === 'middle' ? 'center' : 'flex-end',
-          gap: `${gap}px`,
+          columnGap: `${hGap}px`,
+          rowGap: `${vGap}px`,
           padding: paddingCss(style.padding),
           backgroundColor: style.backgroundColor,
           borderRadius: style.borderRadius ? `${style.borderRadius}px` : undefined,
@@ -342,6 +366,115 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     );
   }
 
+  if (type === 'Table') {
+    return <InlineTable id={id} props={props} style={style} commitTable={ctx.commitTable} />;
+  }
+
   // Other primitives — delegate to Reader.
   return <Reader document={ctx.doc} rootBlockId={id} />;
+}
+
+function InlineTable({ id, props, style, commitTable }) {
+  const cols = props.columns || [];
+  const rows = props.rows || [];
+  const borderColor = props.borderColor || '#E1E4EA';
+  const headerBg = props.headerBg || '#7C5CFA';
+  const headerColor = props.headerColor || '#fff';
+  const stripedRows = props.stripedRows;
+  const stripedColor = props.stripedColor || '#F6F4FF';
+
+  const commitHeader = useCallback((ci, value) => {
+    const next = cols.map((c, i) => i === ci ? { ...c, header: value } : c);
+    commitTable(id, { columns: next });
+  }, [id, cols, commitTable]);
+
+  const commitCell = useCallback((ri, key, value) => {
+    const next = rows.map((r, i) => i === ri ? { ...r, [key]: value } : r);
+    commitTable(id, { rows: next });
+  }, [id, rows, commitTable]);
+
+  return (
+    <div style={{ padding: paddingCss(style.padding), overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: style.fontSize || 13, fontFamily: 'inherit', minWidth: cols.length > 3 ? cols.length * 120 : undefined }}>
+        <thead>
+          <tr>
+            {cols.map((col, ci) => (
+              <th key={ci} style={{ padding: 0, textAlign: 'left', backgroundColor: headerBg, color: headerColor, fontWeight: 600, border: `1px solid ${borderColor}` }}>
+                <EditableCell
+                  value={col.header}
+                  onCommit={v => commitHeader(ci, v)}
+                  style={{ color: headerColor, fontWeight: 600 }}
+                />
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, ri) => (
+            <tr key={ri}>
+              {cols.map((col, ci) => (
+                <td key={ci} style={{ padding: 0, border: `1px solid ${borderColor}`, backgroundColor: stripedRows && ri % 2 === 1 ? stripedColor : 'transparent' }}>
+                  <EditableCell
+                    value={row[col.key] || ''}
+                    onCommit={v => commitCell(ri, col.key, v)}
+                  />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function EditableCell({ value, onCommit, style: extraStyle }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const ref = useRef(null);
+
+  const startEdit = (e) => {
+    e.stopPropagation();
+    setDraft(value);
+    setEditing(true);
+    requestAnimationFrame(() => ref.current?.focus());
+  };
+
+  const finish = () => {
+    setEditing(false);
+    if (draft !== value) onCommit(draft);
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={ref}
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={finish}
+        onKeyDown={e => { if (e.key === 'Enter') finish(); if (e.key === 'Escape') { setDraft(value); setEditing(false); } }}
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: '100%',
+          padding: '8px 12px',
+          border: 'none',
+          background: 'var(--primary-25, #FAFAFF)',
+          outline: '2px solid var(--primary-300)',
+          outlineOffset: -2,
+          fontSize: 'inherit',
+          fontFamily: 'inherit',
+          ...extraStyle,
+        }}
+      />
+    );
+  }
+
+  return (
+    <div
+      onDoubleClick={startEdit}
+      style={{ padding: '8px 12px', cursor: 'text', minHeight: 20, ...extraStyle }}
+    >
+      {value || ' '}
+    </div>
+  );
 }

@@ -437,19 +437,29 @@ export function CampaignView() {
   const showToast = useAppStore(s => s.showToast);
   const activeTab = useAppStore(s => s.campaignTab);
   const setActiveTab = useAppStore(s => s.setCampaignTab);
-  const [campaignData, setCampaignData] = useState(CAMPAIGNS);
+  const storeCampaigns = useAppStore(s => s.campaigns);
+  const campaignsLoading = useAppStore(s => s.campaignsLoading);
+  const fetchCampaigns = useAppStore(s => s.fetchCampaigns);
+
+  const usingSupa = storeCampaigns.length > 0;
+  const [localData, setLocalData] = useState(CAMPAIGNS);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({});
 
+  useEffect(() => { fetchCampaigns(); }, [fetchCampaigns]);
+
+  const campaignData = usingSupa ? storeCampaigns : localData;
+
   const handleToggle = (id) => {
-    setCampaignData(prev => prev.map(c => c.id === id ? { ...c, enabled: !c.enabled } : c));
+    if (usingSupa) return;
+    setLocalData(prev => prev.map(c => c.id === id ? { ...c, enabled: !c.enabled } : c));
   };
 
   // Live tick — gradually advance progress/delivered/opened on running, enabled campaigns.
-  // Invariant preserved: opened ≤ delivered ≤ progress, all capped at 100.
   useEffect(() => {
+    if (usingSupa) return;
     const id = setInterval(() => {
-      setCampaignData(prev => prev.map(c => {
+      setLocalData(prev => prev.map(c => {
         if (c.section !== 'running' || !c.enabled) return c;
         const nextProgress = Math.min(100, c.progress + 0.4);
         const deliveredCap = nextProgress;
@@ -460,7 +470,7 @@ export function CampaignView() {
       }));
     }, 1500);
     return () => clearInterval(id);
-  }, []);
+  }, [usingSupa]);
 
   const handleFilterChange = (key, val) => setFilters(f => {
     const next = { ...f };
@@ -470,10 +480,10 @@ export function CampaignView() {
   const handleClearFilters = () => setFilters({});
 
   const baseRows = useMemo(() => {
-    if (activeTab === 'drafts') return DRAFTS;
-    if (activeTab === 'ended')  return ENDED;
-    return campaignData;
-  }, [activeTab, campaignData]);
+    if (activeTab === 'drafts') return usingSupa ? campaignData.filter(c => c.section === 'draft') : DRAFTS;
+    if (activeTab === 'ended')  return usingSupa ? campaignData.filter(c => c.section === 'ended') : ENDED;
+    return usingSupa ? campaignData.filter(c => c.section !== 'draft' && c.section !== 'ended') : campaignData;
+  }, [activeTab, campaignData, usingSupa]);
 
   const filteredRows = useMemo(() => {
     let rows = baseRows;

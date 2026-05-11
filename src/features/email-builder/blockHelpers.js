@@ -84,6 +84,28 @@ const FACTORIES = {
       },
     },
   }),
+  Table: () => ({
+    type: 'Table',
+    data: {
+      props: {
+        columns: [
+          { key: 'col1', header: 'Column 1' },
+          { key: 'col2', header: 'Column 2' },
+          { key: 'col3', header: 'Column 3' },
+        ],
+        rows: [
+          { col1: 'Row 1', col2: 'Data', col3: 'Data' },
+          { col1: 'Row 2', col2: 'Data', col3: 'Data' },
+        ],
+        headerBg: '#7C5CFA',
+        headerColor: '#FFFFFF',
+        stripedRows: true,
+        stripedColor: '#F6F4FF',
+        borderColor: '#E1E4EA',
+      },
+      style: { ...baseStyle(), fontSize: 13 },
+    },
+  }),
 };
 
 export function createBlock(type) {
@@ -226,22 +248,8 @@ export function createBlockTree(type, genId) {
       };
     }
 
-    case 'Column': {
-      // single-column variant: just a Container; for multi-col use Layouts.
-      const id = genId();
-      return {
-        rootId: id,
-        blocks: {
-          [id]: {
-            type: 'Container',
-            data: {
-              style: { padding: { top: 16, bottom: 16, left: 24, right: 24 } },
-              props: { childrenIds: [] },
-            },
-          },
-        },
-      };
-    }
+    case 'Column':
+      return makeColumns(genId, 2, null);
 
     // ── Layout presets — preconfigured ColumnsContainer ──
     case 'Layout-2-equal':   return makeColumns(genId, 2, null);

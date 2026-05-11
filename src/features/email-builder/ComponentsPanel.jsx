@@ -24,10 +24,11 @@ const COMPONENTS = [
   // Row 4
   { type: 'NavBar',    label: 'Nav Bar',  icon: 'solar:hamburger-menu-linear' },
   { type: 'Group',     label: 'Group',    icon: 'solar:users-group-rounded-linear' },
-  { type: 'Column',    label: 'Column',   icon: 'solar:square-bottom-down-linear' },
+  { type: 'Column',    label: 'Column',   icon: 'solar:columns-linear' },
   // Row 5
   { type: 'Section',   label: 'Section',  icon: 'solar:gallery-rectangle-linear' },
   { type: 'Form',      label: 'Form',     icon: 'solar:document-add-linear', soon: true },
+  { type: 'Table',     label: 'Table',    icon: 'solar:widget-2-linear' },
   // Row 6 — Header & Footer use a preset picker rather than a single block
   { type: 'Header',    label: 'Header',   icon: 'solar:gallery-wide-linear', preset: 'header' },
   { type: 'Footer',    label: 'Footer',   icon: 'solar:gallery-bold-linear', preset: 'footer' },
@@ -54,6 +55,7 @@ const TYPE_LABELS = {
   Spacer: 'Spacer',
   Container: 'Wrapper',
   ColumnsContainer: 'Columns',
+  Table: 'Table',
 };
 
 const TYPE_ICONS = {
@@ -67,6 +69,7 @@ const TYPE_ICONS = {
   Spacer: 'solar:square-double-alt-arrow-up-linear',
   Container: 'solar:layers-linear',
   ColumnsContainer: 'solar:hamburger-menu-linear',
+  Table: 'solar:widget-2-linear',
 };
 
 export function ComponentsPanel() {
@@ -140,18 +143,7 @@ export function ComponentsPanel() {
             <p className={styles.sectionHeading}>Layout</p>
             <div className={styles.layoutGrid}>
               {LAYOUTS.map(l => (
-                <button
-                  key={l.type}
-                  className={styles.layoutTile}
-                  onClick={() => addBlock(l.type)}
-                  title={`Add ${l.label} layout`}
-                >
-                  <div className={styles.layoutGlyph}>
-                    {l.glyph.map((flex, i) => (
-                      <div key={i} className={styles.layoutGlyphCol} style={{ flex }} />
-                    ))}
-                  </div>
-                </button>
+                <DraggableLayoutTile key={l.type} layout={l} onClick={() => addBlock(l.type)} />
               ))}
             </div>
           </>
@@ -188,6 +180,28 @@ function DraggableTile({ item, onClick }) {
     >
       <Icon name={item.icon} size={20} color="var(--neutral-300)" />
       {item.label}
+    </button>
+  );
+}
+
+function DraggableLayoutTile({ layout, onClick }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `__new:${layout.type}`,
+  });
+  return (
+    <button
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      className={[styles.layoutTile, isDragging ? styles.componentTileDragging : ''].join(' ')}
+      onClick={onClick}
+      title={`Add ${layout.label} layout`}
+    >
+      <div className={styles.layoutGlyph}>
+        {layout.glyph.map((flex, i) => (
+          <div key={i} className={styles.layoutGlyphCol} style={{ flex }} />
+        ))}
+      </div>
     </button>
   );
 }

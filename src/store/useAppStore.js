@@ -1885,6 +1885,65 @@ export const useAppStore = create((set, get) => ({
   // ── Campaign ──
   campaignTab: 'active',
   setCampaignTab: (tab) => { set({ campaignTab: tab }); updateHash(get); },
+  campaigns: [],
+  campaignsLoading: false,
+  fetchCampaigns: async () => {
+    set({ campaignsLoading: true });
+    const { data, error } = await supabase
+      .from('campaigns')
+      .select('*')
+      .order('id', { ascending: true });
+    if (error) {
+      console.error('fetchCampaigns error:', error);
+      set({ campaignsLoading: false });
+      return;
+    }
+    const campaigns = (data || []).map(row => ({
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      channel: row.channel || 'email',
+      section: row.section || 'scheduled',
+      audience: row.audience || 0,
+      dynamic: row.dynamic || false,
+      health: row.health,
+      delivered: row.delivered,
+      opened: row.opened,
+      startDate: row.start_date,
+      duration: row.duration,
+      progress: row.progress || 0,
+      executesIn: row.executes_in,
+      enabled: row.enabled || false,
+      emailTemplate: row.email_template,
+      colorVariables: row.color_variables,
+    }));
+    set({ campaigns, campaignsLoading: false });
+  },
+
+  saveEmailTemplate: async () => {
+    const s = get();
+    if (!s.editingCampaignId || !s.emailDocument) return false;
+    const { error } = await supabase
+      .from('campaigns')
+      .update({
+        email_template: s.emailDocument,
+        color_variables: s.colorVariables,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', s.editingCampaignId);
+    if (error) {
+      console.error('saveEmailTemplate error:', error);
+      return false;
+    }
+    set(prev => ({
+      campaigns: prev.campaigns.map(c =>
+        c.id === s.editingCampaignId
+          ? { ...c, emailTemplate: s.emailDocument, colorVariables: s.colorVariables }
+          : c
+      ),
+    }));
+    return true;
+  },
 
   // Email builder takeover. editingCampaignId is the trigger; emailDocument is the
   // editable Reader-compatible document; selectedBlockId is what the right panel inspects.
@@ -1892,6 +1951,7 @@ export const useAppStore = create((set, get) => ({
   editingCampaignName: null,
   emailDocument: null,
   selectedBlockId: 'root',
+  bulkSelectedIds: [],
   // When the user edits raw HTML in the Code tab, that string takes over the
   // preview canvas (rendered via an iframe). It can't round-trip back to the
   // JSON document, so it stays as an override until cleared.
@@ -1943,19 +2003,28 @@ export const useAppStore = create((set, get) => ({
     return { emailDocument: doc, selectedBlockId: presetTree.rootId };
   }),
   openEmailBuilder: (campaign) => {
+    const saved = campaign.emailTemplate;
+    const defaultVars = [
+      { name: 'Brand', hex: '#7C5CFA' },
+      { name: 'Accent', hex: '#22C55E' },
+      { name: 'Text', hex: '#3A485F' },
+      { name: 'Muted', hex: '#7B8499' },
+    ];
     set({
       editingCampaignId: campaign.id,
       editingCampaignName: campaign.name,
-      emailDocument: makeInitialDocument(campaign),
+      emailDocument: saved || makeInitialDocument(campaign),
+      colorVariables: campaign.colorVariables || defaultVars,
       selectedBlockId: 'root',
     });
     updateHash(get);
   },
   closeEmailBuilder: () => {
-    set({ editingCampaignId: null, editingCampaignName: null, emailDocument: null, selectedBlockId: 'root', htmlPreviewOverride: null });
+    set({ editingCampaignId: null, editingCampaignName: null, emailDocument: null, selectedBlockId: 'root', bulkSelectedIds: [], htmlPreviewOverride: null });
     updateHash(get);
   },
-  setSelectedBlockId: (id) => set({ selectedBlockId: id }),
+  setSelectedBlockId: (id) => set({ selectedBlockId: id, bulkSelectedIds: [] }),
+  setBulkSelectedIds: (ids) => set({ bulkSelectedIds: ids }),
   updateBlock: (id, updater) => set(s => {
     if (!s.emailDocument || !s.emailDocument[id]) return {};
     const block = s.emailDocument[id];

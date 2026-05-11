@@ -445,6 +445,11 @@
 .blockWrapSelected {
   outline-color: var(--primary-300) !important;
 }
+.blockWrapBulk {
+  outline: 2px solid var(--primary-200) !important;
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--primary-100) 20%, transparent);
+}
 
 .blockToolbar {
   position: absolute;
@@ -1231,4 +1236,105 @@
   text-align: center;
   color: var(--neutral-300);
   font-size: 13px;
+}
+.bulkHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary-500);
+  background: var(--primary-50);
+  border-bottom: 1px solid var(--primary-100);
+}
+.bulkClear {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  line-height: 0;
+}
+
+/* ── Table editor ── */
+.tableEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tableEditorGrid {
+  display: grid;
+  gap: 1px;
+  background: var(--neutral-100, #E1E4EA);
+  border: 1px solid var(--neutral-100, #E1E4EA);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.tableEditorHeaderCell {
+  position: relative;
+  background: var(--primary-50, #F6F4FF);
+}
+.tableEditorCell {
+  background: #fff;
+}
+.tableEditorInput {
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--neutral-500, #3A485F);
+  outline: none;
+}
+.tableEditorInput:focus {
+  background: var(--primary-25, #FAFAFF);
+}
+.tableEditorRemoveBtn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 1px;
+  line-height: 0;
+  opacity: 0;
+}
+.tableEditorHeaderCell:hover .tableEditorRemoveBtn {
+  opacity: 1;
+}
+.tableEditorRemoveRowBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.3;
+}
+.tableEditorRemoveRowBtn:hover {
+  opacity: 1;
+}
+.tableEditorActions {
+  display: flex;
+  gap: 8px;
+}
+.tableEditorAddBtn {
+  flex: 1;
+  padding: 4px 0;
+  border: 1px dashed var(--neutral-200, #CED4DD);
+  border-radius: 4px;
+  background: none;
+  font-size: 11px;
+  color: var(--neutral-400, #7B8499);
+  cursor: pointer;
+  font-family: inherit;
+}
+.tableEditorAddBtn:hover {
+  border-color: var(--primary-300);
+  color: var(--primary-500);
+  background: var(--primary-25);
 }

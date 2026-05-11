@@ -65,6 +65,7 @@ function parseDropTarget(overId, doc) {
 export function EmailBuilder() {
   const name = useAppStore(s => s.editingCampaignName) || 'Edit Template';
   const closeEmailBuilder = useAppStore(s => s.closeEmailBuilder);
+  const saveEmailTemplate = useAppStore(s => s.saveEmailTemplate);
   const showToast = useAppStore(s => s.showToast);
   const moveBlock = useAppStore(s => s.moveBlock);
   const insertNewBlock = useAppStore(s => s.insertNewBlock);
@@ -100,9 +101,24 @@ export function EmailBuilder() {
 
       if (isEditable) return;
 
-      // Enter — select first child
+      // Enter — bulk-select children if container, otherwise select first child
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
+        const block = id === 'root' ? doc.root : doc[id];
+        const blockType = block?.type;
+        if (blockType === 'Container' || blockType === 'ColumnsContainer') {
+          const p = block.data?.props || {};
+          let childIds = [];
+          if (blockType === 'Container') {
+            childIds = p.childrenIds || [];
+          } else {
+            (p.columns || []).forEach(col => { childIds.push(...(col.childrenIds || [])); });
+          }
+          if (childIds.length > 0) {
+            s.setBulkSelectedIds(childIds);
+            return;
+          }
+        }
         const child = getFirstChild(doc, id);
         if (child) s.setSelectedBlockId(child);
         return;
@@ -114,6 +130,15 @@ export function EmailBuilder() {
         const parent = getParentId(doc, id);
         if (parent) s.setSelectedBlockId(parent);
         return;
+      }
+
+      // Escape — clear bulk selection
+      if (e.key === 'Escape') {
+        if (s.bulkSelectedIds.length > 0) {
+          e.preventDefault();
+          s.setBulkSelectedIds([]);
+          return;
+        }
       }
 
       // Delete / Backspace — remove block
@@ -185,7 +210,11 @@ export function EmailBuilder() {
           <Button
             variant="primary"
             size="L"
-            onClick={() => { showToast('Template saved'); closeEmailBuilder(); }}
+            onClick={async () => {
+              const ok = await saveEmailTemplate();
+              showToast(ok ? 'Template saved' : 'Save failed — check console');
+              if (ok) closeEmailBuilder();
+            }}
           >
             Save
           </Button>

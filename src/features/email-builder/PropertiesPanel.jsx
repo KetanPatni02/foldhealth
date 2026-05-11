@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import { renderToStaticMarkup } from '@usewaypoint/email-builder';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
@@ -44,8 +44,10 @@ export function PropertiesPanel() {
   const doc = useAppStore(s => s.emailDocument);
   const id = useAppStore(s => s.selectedBlockId);
   const updateBlock = useAppStore(s => s.updateBlock);
+  const bulkIds = useAppStore(s => s.bulkSelectedIds);
 
   const block = doc?.[id];
+  const isBulk = bulkIds.length > 0;
 
   const handleMouseDown = useCallback((e) => {
     e.preventDefault();
@@ -55,7 +57,6 @@ export function PropertiesPanel() {
 
     const onMove = (ev) => {
       if (!dragging.current) return;
-      // Panel is on the right; width grows as the cursor moves left.
       const next = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, window.innerWidth - ev.clientX));
       setWidth(next);
     };
@@ -88,7 +89,10 @@ export function PropertiesPanel() {
         ))}
       </div>
 
-      {tab === 'design' && <DesignTab block={block} updateBlock={updateBlock} id={id} />}
+      {tab === 'design' && (isBulk
+        ? <BulkDesignTab doc={doc} bulkIds={bulkIds} updateBlock={updateBlock} />
+        : <DesignTab block={block} updateBlock={updateBlock} id={id} />
+      )}
       {tab === 'code' && <CodeTab doc={doc} />}
       {tab === 'template' && <TemplateTab block={block} />}
     </div>
@@ -227,6 +231,37 @@ function DesignTab({ block, updateBlock, id }) {
         </>
       )}
 
+      {block.type === 'Table' && (
+        <>
+          <SectionHeading>Table</SectionHeading>
+          <Section>
+            <TableEditor
+              columns={props.columns || []}
+              rows={props.rows || []}
+              onChangeColumns={cols => update(['data', 'props', 'columns'], cols)}
+              onChangeRows={rows => update(['data', 'props', 'rows'], rows)}
+            />
+            <Row2>
+              <ColorInput label="Header BG" value={props.headerBg || '#7C5CFA'} onChange={v => update(['data', 'props', 'headerBg'], v)} />
+              <ColorInput label="Header Text" value={props.headerColor || '#FFFFFF'} onChange={v => update(['data', 'props', 'headerColor'], v)} />
+            </Row2>
+            <Row2>
+              <ColorInput label="Border" value={props.borderColor || '#E1E4EA'} onChange={v => update(['data', 'props', 'borderColor'], v)} />
+              <ColorInput label="Stripe" value={props.stripedColor || '#F6F4FF'} onChange={v => update(['data', 'props', 'stripedColor'], v)} />
+            </Row2>
+            <div className={styles.fieldCol}>
+              <label className={styles.fieldLabel}>Striped Rows</label>
+              <Toggle
+                items={[{ key: 'on', label: 'On' }, { key: 'off', label: 'Off' }]}
+                active={props.stripedRows ? 'on' : 'off'}
+                size="S"
+                onChange={v => update(['data', 'props', 'stripedRows'], v === 'on')}
+              />
+            </div>
+          </Section>
+        </>
+      )}
+
       {block.type === 'ColumnsContainer' && (
         <>
           <SectionHeading>Columns</SectionHeading>
@@ -249,8 +284,35 @@ function DesignTab({ block, updateBlock, id }) {
                   });
                 }}
               />
-              <IconInput label="Gap" suffix="px" value={props.columnsGap || 16} onChange={v => update(['data', 'props', 'columnsGap'], Number(v) || 16)} />
+              <div className={styles.fieldCol}>
+                <label className={styles.fieldLabel}>Direction</label>
+                <Toggle
+                  items={[
+                    { key: 'row', label: '', icon: <DirectionRowIcon /> },
+                    { key: 'column', label: '', icon: <DirectionColIcon /> },
+                  ]}
+                  active={props.direction || 'row'}
+                  size="S"
+                  onChange={v => update(['data', 'props', 'direction'], v)}
+                />
+              </div>
             </Row2>
+            <Row2>
+              <IconInput label="H Gap" suffix="px" value={props.columnsGap ?? 16} onChange={v => update(['data', 'props', 'columnsGap'], Number(v) || 0)} />
+              <IconInput label="V Gap" suffix="px" value={props.rowGap ?? 0} onChange={v => update(['data', 'props', 'rowGap'], Number(v) || 0)} />
+            </Row2>
+            <div className={styles.fieldCol}>
+              <label className={styles.fieldLabel}>Wrap</label>
+              <Toggle
+                items={[
+                  { key: 'nowrap', label: 'No Wrap' },
+                  { key: 'wrap', label: 'Wrap' },
+                ]}
+                active={props.flexWrap || 'nowrap'}
+                size="S"
+                onChange={v => update(['data', 'props', 'flexWrap'], v)}
+              />
+            </div>
           </Section>
         </>
       )}
@@ -442,6 +504,176 @@ function DesignTab({ block, updateBlock, id }) {
       <SectionHeading>Extra</SectionHeading>
       <SectionHeading>Iteration</SectionHeading>
       <SectionHeading>Conditions</SectionHeading>
+    </div>
+  );
+}
+
+// ── Bulk design tab — edit common properties across multiple selected blocks ─
+const TEXT_TYPES = new Set(['Heading', 'Text', 'Button']);
+
+function getCommonValue(blocks, getter) {
+  if (blocks.length === 0) return undefined;
+  const first = getter(blocks[0]);
+  return blocks.every(b => getter(b) === first) ? first : undefined;
+}
+
+function BulkDesignTab({ doc, bulkIds, updateBlock }) {
+  const blocks = bulkIds.map(id => doc?.[id]).filter(Boolean);
+  const clearBulk = useAppStore(s => s.setBulkSelectedIds);
+  if (blocks.length === 0) return <div className={styles.emptyState}>No blocks selected</div>;
+
+  const types = new Set(blocks.map(b => b.type));
+  const allText = blocks.every(b => TEXT_TYPES.has(b.type));
+  const allHaveRadius = blocks.every(b => RADIUS_TYPES.has(b.type));
+
+  const bulkUpdate = (pathFn, value) => {
+    bulkIds.forEach(id => {
+      updateBlock(id, prev => {
+        const next = JSON.parse(JSON.stringify(prev));
+        let target = next;
+        const path = typeof pathFn === 'function' ? pathFn(prev) : pathFn;
+        for (let i = 0; i < path.length - 1; i++) {
+          target[path[i]] = target[path[i]] ?? {};
+          target = target[path[i]];
+        }
+        target[path[path.length - 1]] = value;
+        return next;
+      });
+    });
+  };
+
+  const commonPadding = {
+    top: getCommonValue(blocks, b => b.data?.style?.padding?.top),
+    bottom: getCommonValue(blocks, b => b.data?.style?.padding?.bottom),
+    left: getCommonValue(blocks, b => b.data?.style?.padding?.left),
+    right: getCommonValue(blocks, b => b.data?.style?.padding?.right),
+  };
+
+  return (
+    <div className={styles.designScroll}>
+      <div className={styles.bulkHeader}>
+        <Icon name="solar:layers-linear" size={14} color="var(--primary-400)" />
+        <span>{bulkIds.length} blocks selected</span>
+        <button className={styles.bulkClear} onClick={() => clearBulk([])}>
+          <Icon name="solar:close-circle-linear" size={14} color="var(--neutral-400)" />
+        </button>
+      </div>
+
+      {/* ── Layout ── */}
+      <SectionHeading>Layout</SectionHeading>
+      <Section>
+        <FieldLabel>Padding</FieldLabel>
+        <Row2>
+          <IconInput
+            suffix="px" icon={<PadLeftIcon />}
+            value={commonPadding.left ?? ''} onChange={v => bulkUpdate(['data', 'style', 'padding', 'left'], Number(v) || 0)}
+          />
+          <IconInput
+            suffix="px" icon={<PadTopIcon />}
+            value={commonPadding.top ?? ''} onChange={v => bulkUpdate(['data', 'style', 'padding', 'top'], Number(v) || 0)}
+          />
+        </Row2>
+        <Row2>
+          <IconInput
+            suffix="px" icon={<PadRightIcon />}
+            value={commonPadding.right ?? ''} onChange={v => bulkUpdate(['data', 'style', 'padding', 'right'], Number(v) || 0)}
+          />
+          <IconInput
+            suffix="px" icon={<PadBottomIcon />}
+            value={commonPadding.bottom ?? ''} onChange={v => bulkUpdate(['data', 'style', 'padding', 'bottom'], Number(v) || 0)}
+          />
+        </Row2>
+        {allHaveRadius && (
+          <Row2>
+            <IconInput
+              label="Radius" suffix="px" icon={<RadiusIcon />}
+              value={getCommonValue(blocks, b => b.data?.style?.borderRadius) ?? ''}
+              onChange={v => bulkUpdate(['data', 'style', 'borderRadius'], Number(v) || 0)}
+            />
+          </Row2>
+        )}
+      </Section>
+
+      {/* ── Color ── */}
+      <SectionHeading>Color</SectionHeading>
+      <Section>
+        <Row2>
+          {allText && (
+            <ColorInput
+              label="Text Color"
+              value={getCommonValue(blocks, b => b.type === 'Button' ? b.data?.props?.buttonTextColor : b.data?.style?.color) || ''}
+              onChange={v => {
+                bulkIds.forEach(id => {
+                  const blk = doc[id];
+                  const path = blk?.type === 'Button' ? ['data', 'props', 'buttonTextColor'] : ['data', 'style', 'color'];
+                  updateBlock(id, prev => {
+                    const next = JSON.parse(JSON.stringify(prev));
+                    let target = next;
+                    for (let i = 0; i < path.length - 1; i++) { target[path[i]] = target[path[i]] ?? {}; target = target[path[i]]; }
+                    target[path[path.length - 1]] = v;
+                    return next;
+                  });
+                });
+              }}
+            />
+          )}
+          <ColorInput
+            label="Background"
+            value={getCommonValue(blocks, b => b.type === 'Button' ? b.data?.props?.buttonBackgroundColor : b.data?.style?.backgroundColor) || ''}
+            onChange={v => {
+              bulkIds.forEach(id => {
+                const blk = doc[id];
+                const path = blk?.type === 'Button' ? ['data', 'props', 'buttonBackgroundColor'] : ['data', 'style', 'backgroundColor'];
+                updateBlock(id, prev => {
+                  const next = JSON.parse(JSON.stringify(prev));
+                  let target = next;
+                  for (let i = 0; i < path.length - 1; i++) { target[path[i]] = target[path[i]] ?? {}; target = target[path[i]]; }
+                  target[path[path.length - 1]] = v;
+                  return next;
+                });
+              });
+            }}
+          />
+        </Row2>
+      </Section>
+
+      {/* ── Typography (only if all are text-based) ── */}
+      {allText && (
+        <>
+          <SectionHeading>Typography</SectionHeading>
+          <Section>
+            <Row2>
+              <SelectInput
+                label="Font Weight"
+                value={getCommonValue(blocks, b => b.data?.style?.fontWeight) || 'normal'}
+                options={FONT_WEIGHTS}
+                onChange={v => bulkUpdate(['data', 'style', 'fontWeight'], v)}
+              />
+              <IconInput
+                label="Font Size" suffix="px"
+                value={getCommonValue(blocks, b => b.data?.style?.fontSize) ?? ''}
+                onChange={v => bulkUpdate(['data', 'style', 'fontSize'], Number(v) || 14)}
+              />
+            </Row2>
+            <Row2>
+              <div className={styles.fieldCol}>
+                <label className={styles.fieldLabelStrong}>Alignment</label>
+                <Toggle
+                  items={[
+                    { key: 'left',    label: '', icon: <AlignLeftIcon /> },
+                    { key: 'center',  label: '', icon: <AlignCenterIcon /> },
+                    { key: 'right',   label: '', icon: <AlignRightIcon /> },
+                    { key: 'justify', label: '', icon: <AlignJustifyIcon /> },
+                  ]}
+                  active={getCommonValue(blocks, b => b.data?.style?.textAlign) || 'left'}
+                  size="S"
+                  onChange={v => bulkUpdate(['data', 'style', 'textAlign'], v)}
+                />
+              </div>
+            </Row2>
+          </Section>
+        </>
+      )}
     </div>
   );
 }
@@ -966,6 +1198,80 @@ function ColorInput({ label, value, onChange }) {
   );
 }
 
+function TableEditor({ columns, rows, onChangeColumns, onChangeRows }) {
+  const updateHeader = (idx, header) => {
+    const next = columns.map((c, i) => i === idx ? { ...c, header } : c);
+    onChangeColumns(next);
+  };
+  const updateCell = (ri, key, value) => {
+    const next = rows.map((r, i) => i === ri ? { ...r, [key]: value } : r);
+    onChangeRows(next);
+  };
+  const addColumn = () => {
+    const key = `col${columns.length + 1}`;
+    onChangeColumns([...columns, { key, header: `Column ${columns.length + 1}` }]);
+    onChangeRows(rows.map(r => ({ ...r, [key]: '' })));
+  };
+  const removeColumn = (idx) => {
+    if (columns.length <= 1) return;
+    const removed = columns[idx];
+    onChangeColumns(columns.filter((_, i) => i !== idx));
+    onChangeRows(rows.map(r => { const n = { ...r }; delete n[removed.key]; return n; }));
+  };
+  const addRow = () => {
+    const empty = {};
+    columns.forEach(c => { empty[c.key] = ''; });
+    onChangeRows([...rows, empty]);
+  };
+  const removeRow = (idx) => {
+    if (rows.length <= 1) return;
+    onChangeRows(rows.filter((_, i) => i !== idx));
+  };
+
+  return (
+    <div className={styles.tableEditor}>
+      <div className={styles.tableEditorGrid} style={{ gridTemplateColumns: `repeat(${columns.length}, 1fr) 24px` }}>
+        {columns.map((col, ci) => (
+          <div key={ci} className={styles.tableEditorHeaderCell}>
+            <input
+              className={styles.tableEditorInput}
+              value={col.header}
+              onChange={e => updateHeader(ci, e.target.value)}
+              style={{ fontWeight: 600 }}
+            />
+            {columns.length > 1 && (
+              <button className={styles.tableEditorRemoveBtn} onClick={() => removeColumn(ci)} title="Remove column">
+                <Icon name="solar:close-circle-linear" size={10} color="var(--neutral-300)" />
+              </button>
+            )}
+          </div>
+        ))}
+        <div />
+        {rows.map((row, ri) => (
+          <Fragment key={ri}>
+            {columns.map((col, ci) => (
+              <div key={ci} className={styles.tableEditorCell}>
+                <input
+                  className={styles.tableEditorInput}
+                  value={row[col.key] || ''}
+                  onChange={e => updateCell(ri, col.key, e.target.value)}
+                />
+              </div>
+            ))}
+            <button className={styles.tableEditorRemoveRowBtn} onClick={() => removeRow(ri)} title="Remove row">
+              <Icon name="solar:close-circle-linear" size={12} color="var(--neutral-300)" />
+            </button>
+          </Fragment>
+        ))}
+      </div>
+      <div className={styles.tableEditorActions}>
+        <button className={styles.tableEditorAddBtn} onClick={addRow}>+ Row</button>
+        <button className={styles.tableEditorAddBtn} onClick={addColumn}>+ Column</button>
+      </div>
+    </div>
+  );
+}
+
 // ── Inline icons (precise to match Figma) ──────────────────────────────────
 function svg(d, w = 16, h = 16) {
   return (
@@ -982,6 +1288,9 @@ const PadLeftIcon   = () => svg('M3 2v12 M7 5h7 M7 8h7 M7 11h7');
 const PadTopIcon    = () => svg('M2 3h12 M5 7v7 M8 7v7 M11 7v7');
 const PadRightIcon  = () => svg('M13 2v12 M2 5h7 M2 8h7 M2 11h7');
 const PadBottomIcon = () => svg('M2 13h12 M5 2v7 M8 2v7 M11 2v7');
+
+const DirectionRowIcon = () => svg('M2 8h10 M9 5l3 3-3 3');
+const DirectionColIcon = () => svg('M8 2v10 M5 9l3 3 3-3');
 
 const AlignLeftIcon    = () => svg('M2 4h12 M2 8h8 M2 12h12');
 const AlignCenterIcon  = () => svg('M2 4h12 M4 8h8 M2 12h12');
