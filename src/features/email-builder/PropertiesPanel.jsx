@@ -325,13 +325,51 @@ function DesignTab({ block, updateBlock, id }) {
         {(block.type === 'Image' || block.type === 'Avatar') ? (
           <Row2>
             <IconInput
-              label="Width" suffix="px" icon={<WidthIcon />}
-              value={props.width || ''} onChange={v => update(['data', 'props', 'width'], Number(v) || null)}
+              label="Width" suffix="" icon={<WidthIcon />} freeform
+              value={props.width ?? '100%'}
+              onChange={v => {
+                const s = String(v).trim();
+                if (s.endsWith('%')) update(['data', 'props', 'width'], s);
+                else update(['data', 'props', 'width'], Number(s) || null);
+              }}
             />
             <IconInput
-              label="Height" suffix="px" icon={<HeightIcon />}
-              value={props.height || ''} onChange={v => update(['data', 'props', 'height'], Number(v) || null)}
+              label="Height" suffix="" icon={<HeightIcon />} freeform
+              value={props.height ?? 'auto'}
+              onChange={v => {
+                const s = String(v).trim();
+                if (s === 'auto' || s === '') update(['data', 'props', 'height'], null);
+                else if (s.endsWith('%')) update(['data', 'props', 'height'], s);
+                else update(['data', 'props', 'height'], Number(s) || null);
+              }}
             />
+          </Row2>
+        ) : null}
+
+        {(block.type === 'Container' || block.type === 'ColumnsContainer') ? (
+          <Row2>
+            <div className={styles.fieldCol}>
+              <label className={styles.fieldLabel}>Height</label>
+              <Toggle
+                items={[
+                  { key: 'hug', label: 'Hug' },
+                  { key: 'fixed', label: 'Fixed' },
+                ]}
+                active={props.heightMode || 'hug'}
+                size="S"
+                onChange={v => {
+                  update(['data', 'props', 'heightMode'], v);
+                  if (v === 'hug') update(['data', 'props', 'height'], null);
+                }}
+              />
+            </div>
+            {(props.heightMode === 'fixed') && (
+              <IconInput
+                label="Value" suffix="px" icon={<HeightIcon />}
+                value={props.height || ''}
+                onChange={v => update(['data', 'props', 'height'], Number(v) || null)}
+              />
+            )}
           </Row2>
         ) : null}
 
@@ -1142,7 +1180,7 @@ function ColorVariablesEditor() {
 }
 
 // ── Field primitives ────────────────────────────────────────────────────────
-function IconInput({ label, suffix, icon, value, onChange }) {
+function IconInput({ label, suffix, icon, value, onChange, freeform }) {
   const handleKeyDown = (e) => {
     if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       e.preventDefault();
@@ -1160,7 +1198,7 @@ function IconInput({ label, suffix, icon, value, onChange }) {
           className={styles.iconInputValue}
           type="text"
           value={value ?? ''}
-          onChange={e => onChange(e.target.value.replace(/[^0-9.-]/g, ''))}
+          onChange={e => onChange(freeform ? e.target.value : e.target.value.replace(/[^0-9.-]/g, ''))}
           onKeyDown={handleKeyDown}
         />
         {suffix && <span className={styles.iconInputSuffix}>{suffix}</span>}

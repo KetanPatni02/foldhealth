@@ -1433,3 +1433,126 @@
   color: var(--primary-500);
   background: var(--primary-25);
 }
+
+/* ── Resize handles ── */
+.resizeWrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.resizeRight {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+  z-index: 6;
+  touch-action: none;
+}
+.resizeRight::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 2px;
+  bottom: 0;
+  width: 1px;
+  background: var(--primary-300);
+}
+
+.resizeBottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 6px;
+  cursor: ns-resize;
+  z-index: 6;
+  touch-action: none;
+}
+.resizeBottom::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  height: 1px;
+  background: var(--primary-300);
+}
+
+.resizeCorner {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border: 1.5px solid var(--primary-300);
+  border-radius: 2px;
+  cursor: nwse-resize;
+  z-index: 7;
+  touch-action: none;
+}
+
+.resizeRight:hover::after { width: 2px; }
+.resizeBottom:hover::after { height: 2px; }
+.resizeCorner:hover { border-color: var(--primary-400, #6B3FA0); background: var(--primary-50); }
+
+.ratioLockBtn {
+  position: absolute;
+  top: -28px;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border: 1px solid var(--neutral-150);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--neutral-300);
+  z-index: 7;
+  padding: 0;
+  transition: background .12s, color .12s, border-color .12s;
+}
+
+.ratioLockBtn:hover {
+  background: var(--neutral-50);
+  color: var(--neutral-400);
+}
+
+.ratioLockActive {
+  background: var(--primary-300);
+  border-color: var(--primary-300);
+  color: #fff;
+}
+
+.ratioLockActive:hover {
+  background: var(--primary-400, #6B3FA0);
+  border-color: var(--primary-400, #6B3FA0);
+  color: #fff;
+}
+
+/* Container bottom resize (full-width, used by Section/Header/Footer/Wrapper) */
+.containerResizeBottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 6px;
+  cursor: ns-resize;
+  z-index: 6;
+  touch-action: none;
+}
+.containerResizeBottom::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  height: 1px;
+  background: var(--primary-300);
+}
+.containerResizeBottom:hover::after { height: 2px; }

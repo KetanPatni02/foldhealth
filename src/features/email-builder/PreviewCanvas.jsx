@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Reader } from '@usewaypoint/email-builder';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useDroppable } from '@dnd-kit/core';
@@ -46,6 +46,160 @@ function DragHandleDots() {
       <circle cx="3" cy="11" r="1.2" fill="#fff" />
       <circle cx="9" cy="11" r="1.2" fill="#fff" />
     </svg>
+  );
+}
+
+function parseSize(v) {
+  if (v == null || v === '') return { num: null, unit: 'px' };
+  const s = String(v);
+  if (s.endsWith('%')) return { num: parseFloat(s), unit: '%' };
+  return { num: parseFloat(s) || null, unit: 'px' };
+}
+
+function ContainerResizeHandle({ id, block, updateBlock }) {
+  const ref = useRef(null);
+
+  const startDrag = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const container = ref.current?.parentElement;
+    if (!container) return;
+    const startY = e.clientY;
+    const startH = container.getBoundingClientRect().height;
+    const target = e.target;
+    target.setPointerCapture(e.pointerId);
+
+    const onMove = (ev) => {
+      const newH = Math.max(20, Math.round(startH + (ev.clientY - startY)));
+      updateBlock(id, b => ({
+        ...b, data: { ...b.data, props: { ...b.data.props, heightMode: 'fixed', height: newH } },
+      }));
+    };
+
+    const onUp = () => {
+      target.releasePointerCapture(e.pointerId);
+      target.removeEventListener('pointermove', onMove);
+      target.removeEventListener('pointerup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'ns-resize';
+    document.body.style.userSelect = 'none';
+    target.addEventListener('pointermove', onMove);
+    target.addEventListener('pointerup', onUp);
+  }, [id, block, updateBlock]);
+
+  return <div ref={ref} className={styles.containerResizeBottom} onPointerDown={startDrag} />;
+}
+
+function ResizeWrap({ id, block, updateBlock, isSelected, canWidth, canHeight, children }) {
+  const [ratioLock, setRatioLock] = useState(true);
+  const wrapRef = useRef(null);
+
+  const startDrag = useCallback((e, edge) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const el = wrapRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const parentWidth = el.parentElement?.getBoundingClientRect().width || rect.width;
+    const startX = e.clientX;
+    const startY = e.clientY;
+
+    const props = block.data?.props || {};
+    const wParsed = parseSize(props.width);
+    const hParsed = parseSize(props.height);
+    const startW = rect.width;
+    const startH = rect.height;
+    const aspect = startW / (startH || 1);
+    const wUnit = wParsed.unit;
+    const hUnit = hParsed.unit;
+
+    const target = e.target;
+    target.setPointerCapture(e.pointerId);
+
+    const onMove = (ev) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      let newW, newH;
+
+      if (edge === 'right' || edge === 'corner') {
+        const rawW = Math.max(20, startW + dx);
+        newW = wUnit === '%' ? `${Math.max(5, Math.min(100, Math.round((rawW / parentWidth) * 100)))}%` : Math.round(rawW);
+      }
+      if (edge === 'bottom' || edge === 'corner') {
+        const rawH = Math.max(8, startH + dy);
+        newH = hUnit === '%' ? `${Math.round(rawH)}%` : Math.round(rawH);
+      }
+
+      if (edge === 'right' && canWidth) {
+        const rawW = Math.max(20, startW + dx);
+        newW = wUnit === '%' ? `${Math.max(5, Math.min(100, Math.round((rawW / parentWidth) * 100)))}%` : Math.round(rawW);
+        updateBlock(id, b => {
+          const p = { ...b.data.props, width: newW };
+          if (ratioLock && canHeight) {
+            const pxW = rawW;
+            const pxH = Math.round(pxW / aspect);
+            p.height = hUnit === '%' ? `${pxH}%` : pxH;
+          }
+          return { ...b, data: { ...b.data, props: p } };
+        });
+      } else if (edge === 'bottom' && canHeight) {
+        const rawH = Math.max(8, startH + dy);
+        newH = hUnit === '%' ? `${rawH}%` : Math.round(rawH);
+        updateBlock(id, b => {
+          const p = { ...b.data.props, height: newH };
+          if (ratioLock && canWidth) {
+            const pxH = rawH;
+            const pxW = Math.round(pxH * aspect);
+            p.width = wUnit === '%' ? `${Math.max(5, Math.min(100, Math.round((pxW / parentWidth) * 100)))}%` : Math.round(pxW);
+          }
+          return { ...b, data: { ...b.data, props: p } };
+        });
+      } else if (edge === 'corner') {
+        const rawW = Math.max(20, startW + dx);
+        const rawH = ratioLock ? rawW / aspect : Math.max(8, startH + dy);
+        newW = wUnit === '%' ? `${Math.max(5, Math.min(100, Math.round((rawW / parentWidth) * 100)))}%` : Math.round(rawW);
+        newH = hUnit === '%' ? `${Math.round(rawH)}%` : Math.round(rawH);
+        updateBlock(id, b => ({ ...b, data: { ...b.data, props: { ...b.data.props, width: newW, height: newH } } }));
+      }
+    };
+
+    const onUp = () => {
+      target.releasePointerCapture(e.pointerId);
+      target.removeEventListener('pointermove', onMove);
+      target.removeEventListener('pointerup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = edge === 'right' ? 'ew-resize' : edge === 'bottom' ? 'ns-resize' : 'nwse-resize';
+    document.body.style.userSelect = 'none';
+    target.addEventListener('pointermove', onMove);
+    target.addEventListener('pointerup', onUp);
+  }, [block, id, updateBlock, canWidth, canHeight, ratioLock]);
+
+  return (
+    <div ref={wrapRef} className={styles.resizeWrap} style={{ position: 'relative', display: 'inline-block', maxWidth: '100%' }}>
+      {children}
+      {isSelected && (
+        <>
+          {canWidth && <div className={styles.resizeRight} onPointerDown={e => startDrag(e, 'right')} />}
+          {canHeight && <div className={styles.resizeBottom} onPointerDown={e => startDrag(e, 'bottom')} />}
+          {canWidth && canHeight && <div className={styles.resizeCorner} onPointerDown={e => startDrag(e, 'corner')} />}
+          {canWidth && canHeight && (
+            <button
+              className={`${styles.ratioLockBtn} ${ratioLock ? styles.ratioLockActive : ''}`}
+              onClick={e => { e.stopPropagation(); setRatioLock(v => !v); }}
+              title={ratioLock ? 'Unlock aspect ratio' : 'Lock aspect ratio'}
+            >
+              <Icon name={ratioLock ? 'solar:lock-linear' : 'solar:lock-unlocked-linear'} size={12} color="currentColor" />
+            </button>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -101,6 +255,7 @@ export function PreviewCanvas() {
     bulkSet,
     setSelectedBlockId,
     removeBlock,
+    updateBlock,
     duplicateBlock,
     moveBlockUp,
     commitText,
@@ -244,25 +399,34 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
   }
 
   if (type === 'Container') {
+    const isSelected = ctx.selectedBlockId === id;
+    const heightMode = props.heightMode || 'hug';
+    const containerStyle = {
+      position: 'relative',
+      backgroundColor: style.backgroundColor,
+      backgroundImage: style.backgroundImage ? `url(${style.backgroundImage})` : undefined,
+      backgroundSize: style.backgroundSize || 'cover',
+      backgroundPosition: style.backgroundPosition || 'center',
+      backgroundRepeat: style.backgroundRepeat || 'no-repeat',
+      padding: paddingCss(style.padding),
+      color: style.color,
+      borderRadius: style.borderRadius ? `${style.borderRadius}px` : undefined,
+    };
+    if (heightMode === 'fixed' && props.height) {
+      containerStyle.height = typeof props.height === 'number' ? `${props.height}px` : props.height;
+      containerStyle.overflow = 'auto';
+    }
     return (
-      <div
-        style={{
-          backgroundColor: style.backgroundColor,
-          backgroundImage: style.backgroundImage ? `url(${style.backgroundImage})` : undefined,
-          backgroundSize: style.backgroundSize || 'cover',
-          backgroundPosition: style.backgroundPosition || 'center',
-          backgroundRepeat: style.backgroundRepeat || 'no-repeat',
-          padding: paddingCss(style.padding),
-          color: style.color,
-          borderRadius: style.borderRadius ? `${style.borderRadius}px` : undefined,
-        }}
-      >
+      <div style={containerStyle}>
         <SortableList parentId={id} childrenIds={props.childrenIds || []} ctx={ctx} />
+        {isSelected && <ContainerResizeHandle id={id} block={block} updateBlock={ctx.updateBlock} />}
       </div>
     );
   }
 
   if (type === 'ColumnsContainer') {
+    const isSelected = ctx.selectedBlockId === id;
+    const heightMode = props.heightMode || 'hug';
     const cols = props.columns || [];
     const count = props.columnsCount || cols.length || 2;
     const hGap = props.columnsGap ?? 16;
@@ -272,24 +436,28 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     const wrap = props.flexWrap || 'nowrap';
     const visible = cols.slice(0, count);
     const fixedWidths = props.fixedWidths || [];
+    const colsStyle = {
+      position: 'relative',
+      display: 'flex',
+      flexDirection: direction,
+      flexWrap: wrap,
+      alignItems: align === 'top' ? 'flex-start' : align === 'middle' ? 'center' : 'flex-end',
+      columnGap: `${hGap}px`,
+      rowGap: `${vGap}px`,
+      padding: paddingCss(style.padding),
+      backgroundColor: style.backgroundColor,
+      backgroundImage: style.backgroundImage ? `url(${style.backgroundImage})` : undefined,
+      backgroundSize: style.backgroundSize || 'cover',
+      backgroundPosition: style.backgroundPosition || 'center',
+      backgroundRepeat: style.backgroundRepeat || 'no-repeat',
+      borderRadius: style.borderRadius ? `${style.borderRadius}px` : undefined,
+    };
+    if (heightMode === 'fixed' && props.height) {
+      colsStyle.height = typeof props.height === 'number' ? `${props.height}px` : props.height;
+      colsStyle.overflow = 'auto';
+    }
     return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: direction,
-          flexWrap: wrap,
-          alignItems: align === 'top' ? 'flex-start' : align === 'middle' ? 'center' : 'flex-end',
-          columnGap: `${hGap}px`,
-          rowGap: `${vGap}px`,
-          padding: paddingCss(style.padding),
-          backgroundColor: style.backgroundColor,
-          backgroundImage: style.backgroundImage ? `url(${style.backgroundImage})` : undefined,
-          backgroundSize: style.backgroundSize || 'cover',
-          backgroundPosition: style.backgroundPosition || 'center',
-          backgroundRepeat: style.backgroundRepeat || 'no-repeat',
-          borderRadius: style.borderRadius ? `${style.borderRadius}px` : undefined,
-        }}
-      >
+      <div style={colsStyle}>
         {visible.map((col, idx) => (
           <div
             key={idx}
@@ -301,22 +469,36 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
             <SortableList parentId={id} columnIdx={idx} childrenIds={col?.childrenIds || []} ctx={ctx} />
           </div>
         ))}
+        {isSelected && <ContainerResizeHandle id={id} block={block} updateBlock={ctx.updateBlock} />}
       </div>
     );
   }
 
-  // Image — render manually so we don't depend on Reader's strict schema
-  // validation and so uploaded data-URLs render reliably.
   if (type === 'Image') {
+    const isSelected = ctx.selectedBlockId === id;
+    const imgStyle = {
+      display: 'block',
+      width: props.width ?? '100%',
+      borderRadius: style.borderRadius ? `${style.borderRadius}px` : undefined,
+    };
+    if (props.height) imgStyle.height = props.height;
+    else imgStyle.height = 'auto';
+    if (typeof imgStyle.width === 'number') imgStyle.width = `${imgStyle.width}px`;
+    if (typeof imgStyle.height === 'number') imgStyle.height = `${imgStyle.height}px`;
+
+    const content = props.url ? (
+      <img src={props.url} alt={props.alt || ''} style={imgStyle} />
+    ) : (
+      <div style={{ padding: 24, border: '1px dashed #CED4DD', borderRadius: 8, color: '#9CA3AF', fontSize: 12, width: imgStyle.width }}>
+        No image
+      </div>
+    );
+
     return (
       <div style={{ padding: paddingCss(style.padding), textAlign: style.textAlign || 'center', backgroundColor: style.backgroundColor }}>
-        {props.url ? (
-          <img src={props.url} alt={props.alt || ''} style={{ maxWidth: '100%', height: 'auto', display: 'inline-block', borderRadius: style.borderRadius ? `${style.borderRadius}px` : undefined }} />
-        ) : (
-          <div style={{ padding: 24, border: '1px dashed #CED4DD', borderRadius: 8, color: '#9CA3AF', fontSize: 12 }}>
-            No image
-          </div>
-        )}
+        <ResizeWrap id={id} block={block} updateBlock={ctx.updateBlock} isSelected={isSelected} canWidth canHeight>
+          {content}
+        </ResizeWrap>
       </div>
     );
   }
@@ -341,9 +523,14 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     );
   }
 
-  // Spacer
   if (type === 'Spacer') {
-    return <div style={{ height: props.height || 16 }} />;
+    const isSelected = ctx.selectedBlockId === id;
+    const h = props.height || 16;
+    return (
+      <ResizeWrap id={id} block={block} updateBlock={ctx.updateBlock} isSelected={isSelected} canWidth={false} canHeight>
+        <div style={{ height: typeof h === 'number' ? `${h}px` : h, width: '100%' }} />
+      </ResizeWrap>
+    );
   }
 
   if (type === 'Button') {
