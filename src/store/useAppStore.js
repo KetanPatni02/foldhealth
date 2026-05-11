@@ -1894,7 +1894,6 @@ export const useAppStore = create((set, get) => ({
       .select('*')
       .order('id', { ascending: true });
     if (error) {
-      console.error('fetchCampaigns error:', error);
       set({ campaignsLoading: false });
       return;
     }

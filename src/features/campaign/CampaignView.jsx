@@ -1,9 +1,10 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Button } from '../../components/Button/Button';
 import { Badge } from '../../components/Badge/Badge';
 import { Switch } from '../../components/Switch/Switch';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { TopBar } from '../../components/TopBar/TopBar';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './CampaignView.module.css';
 
@@ -528,6 +529,7 @@ export function CampaignView() {
 
   return (
     <div className={styles.page}>
+      <TopBar />
 
       {/* Page header */}
       <div className={styles.pageHeader}>
@@ -618,12 +620,12 @@ export function CampaignView() {
               </tr>
             ) : (
               sections.map(({ key, rows }) => (
-                <>
-                  <SectionHeader key={`hdr-${key}`} sectionKey={key} count={rows.length} />
+                <Fragment key={key}>
+                  <SectionHeader sectionKey={key} count={rows.length} />
                   {rows.map(c => (
                     <CampaignRow key={c.id} campaign={c} onToggle={handleToggle} />
                   ))}
-                </>
+                </Fragment>
               ))
             )}
           </tbody>
