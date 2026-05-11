@@ -531,11 +531,6 @@ export function CampaignView() {
     <div className={styles.page}>
       <TopBar />
 
-      {/* Page header */}
-      <div className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Campaign</h1>
-      </div>
-
       {/* Sub-nav: tabs + actions */}
       <div className={styles.subNav}>
         <div className={styles.tabs}>
