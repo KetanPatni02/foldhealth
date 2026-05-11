@@ -5,6 +5,7 @@ import { Icon } from '../../components/Icon/Icon';
 import { Toggle } from '../../components/Toggle/Toggle';
 import { makeInitialDocument } from './initialDocument';
 import { HEADER_PRESETS, FOOTER_PRESETS } from './headerFooterLibrary';
+import { uploadImage } from './uploadImage';
 import styles from './EmailBuilder.module.css';
 
 const MIN_WIDTH = 280;
@@ -12,6 +13,7 @@ const MAX_WIDTH = 720;
 const DEFAULT_WIDTH = 320;
 
 const RADIUS_TYPES = new Set(['Button', 'Image', 'Container', 'ColumnsContainer']);
+const BG_IMAGE_TYPES = new Set(['Container', 'ColumnsContainer']);
 const BUTTON_STYLE_RADIUS = { rectangle: 0, rounded: 6, pill: 9999 };
 
 const FONT_FAMILIES = [
@@ -406,6 +408,70 @@ function DesignTab({ block, updateBlock, id }) {
           </Row2>
         )}
       </Section>
+
+      {/* ── Background Image (containers only) ── */}
+      {!isLayout && BG_IMAGE_TYPES.has(block.type) && (
+        <>
+          <SectionHeading>Background Image</SectionHeading>
+          <Section>
+            <ImageUploader
+              compact
+              currentUrl={style.backgroundImage}
+              onChange={v => {
+                update(['data', 'style', 'backgroundImage'], v);
+                if (v && !style.backgroundSize) {
+                  update(['data', 'style', 'backgroundSize'], 'cover');
+                  update(['data', 'style', 'backgroundPosition'], 'center');
+                  update(['data', 'style', 'backgroundRepeat'], 'no-repeat');
+                }
+              }}
+            />
+            {style.backgroundImage && (
+              <>
+                <Row2>
+                  <SelectInput
+                    label="Size"
+                    value={style.backgroundSize || 'cover'}
+                    options={[
+                      { value: 'cover', label: 'Cover' },
+                      { value: 'contain', label: 'Contain' },
+                      { value: 'auto', label: 'Auto' },
+                    ]}
+                    onChange={v => update(['data', 'style', 'backgroundSize'], v)}
+                  />
+                  <SelectInput
+                    label="Repeat"
+                    value={style.backgroundRepeat || 'no-repeat'}
+                    options={[
+                      { value: 'no-repeat', label: 'None' },
+                      { value: 'repeat', label: 'Repeat' },
+                      { value: 'repeat-x', label: 'Repeat X' },
+                      { value: 'repeat-y', label: 'Repeat Y' },
+                    ]}
+                    onChange={v => update(['data', 'style', 'backgroundRepeat'], v)}
+                  />
+                </Row2>
+                <SelectInput
+                  label="Position"
+                  value={style.backgroundPosition || 'center'}
+                  options={[
+                    { value: 'center', label: 'Center' },
+                    { value: 'top', label: 'Top' },
+                    { value: 'bottom', label: 'Bottom' },
+                    { value: 'left', label: 'Left' },
+                    { value: 'right', label: 'Right' },
+                    { value: 'top left', label: 'Top Left' },
+                    { value: 'top right', label: 'Top Right' },
+                    { value: 'bottom left', label: 'Bottom Left' },
+                    { value: 'bottom right', label: 'Bottom Right' },
+                  ]}
+                  onChange={v => update(['data', 'style', 'backgroundPosition'], v)}
+                />
+              </>
+            )}
+          </Section>
+        </>
+      )}
 
       {/* ── Color Variables (root only — global tokens) ── */}
       {isLayout && (
@@ -946,29 +1012,31 @@ function FieldLabel({ children }) {
 }
 
 // ── Image uploader ──────────────────────────────────────────────────────────
-// Reads the picked file as a data URL and stuffs it straight into the URL
-// prop. Email clients warn against data URLs over ~10KB, so we cap upload size
-// at 1MB and show a hint if it's larger; for production templates you'd swap
-// this for an upload-to-CDN flow.
-function ImageUploader({ currentUrl, onChange }) {
+function ImageUploader({ currentUrl, onChange, compact }) {
   const inputRef = useRef(null);
   const [error, setError] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
-  const acceptFile = (file) => {
+  const acceptFile = async (file) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) { setError('File must be an image'); return; }
-    if (file.size > 1024 * 1024) { setError('Image larger than 1MB — consider hosting externally'); }
-    else setError(null);
-    const reader = new FileReader();
-    reader.onload = () => onChange(reader.result);
-    reader.readAsDataURL(file);
+    setError(null);
+    setUploading(true);
+    try {
+      const url = await uploadImage(file);
+      onChange(url);
+    } catch (err) {
+      setError(err.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
     <div className={styles.fieldCol}>
       <div
-        className={[styles.imgUploader, dragOver ? styles.imgUploaderOver : ''].join(' ')}
+        className={[styles.imgUploader, dragOver ? styles.imgUploaderOver : '', compact ? styles.imgUploaderCompact : ''].join(' ')}
         onDragOver={e => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={e => {
@@ -976,19 +1044,26 @@ function ImageUploader({ currentUrl, onChange }) {
           setDragOver(false);
           acceptFile(e.dataTransfer.files?.[0]);
         }}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => !uploading && inputRef.current?.click()}
       >
-        {currentUrl ? (
+        {uploading ? (
+          <div className={styles.imgUploaderEmpty}>
+            <Icon name="solar:upload-linear" size={20} color="var(--primary-300)" />
+            <span style={{ fontSize: 11, color: 'var(--neutral-300)', marginTop: 4 }}>Uploading…</span>
+          </div>
+        ) : currentUrl ? (
           <img src={currentUrl} alt="" className={styles.imgUploaderPreview} />
         ) : (
           <div className={styles.imgUploaderEmpty}>
             <Icon name="solar:gallery-add-linear" size={20} color="var(--neutral-300)" />
           </div>
         )}
-        <div className={styles.imgUploaderHint}>
-          <Icon name="solar:upload-linear" size={12} color="currentColor" />
-          {currentUrl ? 'Replace' : 'Click or drop'}
-        </div>
+        {!uploading && (
+          <div className={styles.imgUploaderHint}>
+            <Icon name="solar:upload-linear" size={12} color="currentColor" />
+            {currentUrl ? 'Replace' : 'Click or drop'}
+          </div>
+        )}
         <input
           ref={inputRef}
           type="file"
@@ -997,6 +1072,15 @@ function ImageUploader({ currentUrl, onChange }) {
           onChange={e => acceptFile(e.target.files?.[0])}
         />
       </div>
+      {currentUrl && compact && (
+        <button
+          type="button"
+          className={styles.bgImageRemoveBtn}
+          onClick={e => { e.stopPropagation(); onChange(null); }}
+        >
+          <Icon name="solar:trash-bin-minimalistic-linear" size={12} color="currentColor" /> Remove
+        </button>
+      )}
       {error && <div className={styles.imgUploaderError}>{error}</div>}
     </div>
   );

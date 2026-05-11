@@ -248,6 +248,10 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
       <div
         style={{
           backgroundColor: style.backgroundColor,
+          backgroundImage: style.backgroundImage ? `url(${style.backgroundImage})` : undefined,
+          backgroundSize: style.backgroundSize || 'cover',
+          backgroundPosition: style.backgroundPosition || 'center',
+          backgroundRepeat: style.backgroundRepeat || 'no-repeat',
           padding: paddingCss(style.padding),
           color: style.color,
           borderRadius: style.borderRadius ? `${style.borderRadius}px` : undefined,
@@ -279,6 +283,10 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
           rowGap: `${vGap}px`,
           padding: paddingCss(style.padding),
           backgroundColor: style.backgroundColor,
+          backgroundImage: style.backgroundImage ? `url(${style.backgroundImage})` : undefined,
+          backgroundSize: style.backgroundSize || 'cover',
+          backgroundPosition: style.backgroundPosition || 'center',
+          backgroundRepeat: style.backgroundRepeat || 'no-repeat',
           borderRadius: style.borderRadius ? `${style.borderRadius}px` : undefined,
         }}
       >

@@ -1007,6 +1007,26 @@
   pointer-events: none;
 }
 
+.imgUploaderCompact { height: 64px; }
+.imgUploaderCompact .imgUploaderPreview { height: 64px; }
+
+.bgImageRemoveBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 4px 8px;
+  border: none;
+  background: none;
+  font-size: 11px;
+  font-family: 'Inter', sans-serif;
+  color: var(--error-500, #ef4444);
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.bgImageRemoveBtn:hover { background: var(--neutral-50); }
+
 .imgUploaderError {
   margin-top: 6px;
   padding: 6px 8px;
