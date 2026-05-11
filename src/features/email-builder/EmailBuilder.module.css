@@ -40,6 +40,81 @@
   margin: 0;
 }
 
+.titleInput {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--neutral-400);
+  margin: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  min-width: 80px;
+  max-width: 320px;
+  border-bottom: 1.5px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.titleInput:hover { border-bottom-color: var(--neutral-200); }
+.titleInput:focus { border-bottom-color: var(--primary-300); }
+
+/* ── Test email popover ── */
+.testEmailPopover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: #fff;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
+  padding: 16px;
+  width: 320px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.testEmailLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--neutral-300);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.testEmailInput {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--neutral-150);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-400);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.testEmailInput:focus { border-color: var(--primary-300); }
+
+.testEmailActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.testEmailStatus {
+  font-size: 12px;
+  color: var(--neutral-300);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.testEmailStatusOk { color: var(--success-500, #22c55e); }
+.testEmailStatusErr { color: var(--error-500, #ef4444); }
+
 .closeBtn {
   display: inline-flex;
   align-items: center;

@@ -1948,6 +1948,7 @@ export const useAppStore = create((set, get) => ({
   // editable Reader-compatible document; selectedBlockId is what the right panel inspects.
   editingCampaignId: null,
   editingCampaignName: null,
+  setEditingCampaignName: (name) => set({ editingCampaignName: name }),
   emailDocument: null,
   selectedBlockId: 'root',
   bulkSelectedIds: [],
