@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   try {
     const resend = new Resend(apiKey);
     const { data, error } = await resend.emails.send({
-      from: 'Fold Health <onboarding@resend.dev>',
+      from: 'Fold Health <noreply@designedbyalok.com>',
       to,
       subject: subject || 'Test Email from Fold Health',
       html,
