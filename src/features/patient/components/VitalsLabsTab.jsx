@@ -130,7 +130,7 @@ const GRAPH_SECTIONS = [
       },
       {
         id: 'spo2', title: 'Blood Oxygen', unit: '%',
-        lastRecorded: '03/05/2024 • Apple Watch', type: 'range', shapeStyle: 'bar',
+        lastRecorded: '03/05/2024 • Apple Watch', type: 'line',
         yDomain: [85, 100], yTicks: [85, 90, 95, 100], xLabel: 'Days',
         stats: [
           { val: '94', unit: '%', label: 'Weekly Avg' },
@@ -138,18 +138,18 @@ const GRAPH_SECTIONS = [
         ],
         data: {
           '1D': [
-            { t: '9am',  dia: 95, range: 3 }, { t: '11am', dia: 94, range: 4 },
-            { t: '1pm',  dia: 96, range: 2 }, { t: '3pm',  dia: 93, range: 5 },
-            { t: '5pm',  dia: 95, range: 3 }, { t: '7pm',  dia: 94, range: 4 },
+            { t: '9am',  v: 97 }, { t: '11am', v: 96 },
+            { t: '1pm',  v: 98 }, { t: '3pm',  v: 95 },
+            { t: '5pm',  v: 97 }, { t: '7pm',  v: 96 },
           ],
           '1W': [
-            { t: '12 Mar', dia: 94, range: 4 }, { t: '13 Mar', dia: 95, range: 3 },
-            { t: '14 Mar', dia: 93, range: 5 }, { t: '15 Mar', dia: 96, range: 2 },
-            { t: '16 Mar', dia: 94, range: 4 }, { t: '17 Mar', dia: 95, range: 3 },
+            { t: '12 Mar', v: 97 }, { t: '13 Mar', v: 95 },
+            { t: '14 Mar', v: 98 }, { t: '15 Mar', v: 96 },
+            { t: '16 Mar', v: 97 }, { t: '17 Mar', v: 95 },
           ],
           '3W': [
-            { t: 'Feb 26', dia: 94, range: 4 }, { t: 'Mar 5',  dia: 95, range: 3 },
-            { t: 'Mar 12', dia: 94, range: 4 }, { t: 'Mar 17', dia: 95, range: 3 },
+            { t: 'Feb 26', v: 96 }, { t: 'Mar 5',  v: 97 },
+            { t: 'Mar 12', v: 95 }, { t: 'Mar 17', v: 98 },
           ],
         },
       },
@@ -258,20 +258,20 @@ function MetricChart({ metric, range, colors }) {
 
   const innerChart = metric.type === 'range' ? (
     <ResponsiveContainer width="100%" height={180}>
-      <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: -10 }}>
+      <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
         <CartesianGrid vertical={false} stroke={gridColor} strokeDasharray="none" />
         <XAxis dataKey="t" {...axisProps} />
-        <YAxis domain={metric.yDomain} ticks={metric.yTicks} width={34} {...axisProps} tick={{ ...axisProps.tick, dy: 0 }} />
+        <YAxis domain={metric.yDomain} ticks={metric.yTicks} width={40} {...axisProps} tick={{ ...axisProps.tick, dy: 0 }} />
         <Bar dataKey="dia" stackId="r" fill="transparent" stroke="none" isAnimationActive={false} barSize={24} />
         <Bar dataKey="range" stackId="r" shape={<RangeShape />} fill="transparent" stroke="none" isAnimationActive={false} barSize={24} />
       </ComposedChart>
     </ResponsiveContainer>
   ) : (
     <ResponsiveContainer width="100%" height={180}>
-      <LineChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: -10 }}>
+      <LineChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
         <CartesianGrid vertical={false} stroke={gridColor} strokeDasharray="none" />
         <XAxis dataKey="t" {...axisProps} />
-        <YAxis domain={metric.yDomain} ticks={metric.yTicks} width={34} {...axisProps} />
+        <YAxis domain={metric.yDomain} ticks={metric.yTicks} width={40} {...axisProps} />
         <Line type="monotone" dataKey="v" stroke={lineColor} strokeWidth={1.5}
           dot={{ r: 2.5, fill: lineColor, strokeWidth: 0 }} activeDot={{ r: 4, fill: lineColor }} />
       </LineChart>
