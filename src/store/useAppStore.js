@@ -1885,13 +1885,73 @@ export const useAppStore = create((set, get) => ({
   // ── Campaign ──
   campaignTab: 'active',
   setCampaignTab: (tab) => { set({ campaignTab: tab }); updateHash(get); },
+  campaigns: [],
+  campaignsLoading: false,
+  fetchCampaigns: async () => {
+    set({ campaignsLoading: true });
+    const { data, error } = await supabase
+      .from('campaigns')
+      .select('*')
+      .order('id', { ascending: true });
+    if (error) {
+      set({ campaignsLoading: false });
+      return;
+    }
+    const campaigns = (data || []).map(row => ({
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      channel: row.channel || 'email',
+      section: row.section || 'scheduled',
+      audience: row.audience || 0,
+      dynamic: row.dynamic || false,
+      health: row.health,
+      delivered: row.delivered,
+      opened: row.opened,
+      startDate: row.start_date,
+      duration: row.duration,
+      progress: row.progress || 0,
+      executesIn: row.executes_in,
+      enabled: row.enabled || false,
+      emailTemplate: row.email_template,
+      colorVariables: row.color_variables,
+    }));
+    set({ campaigns, campaignsLoading: false });
+  },
+
+  saveEmailTemplate: async () => {
+    const s = get();
+    if (!s.editingCampaignId || !s.emailDocument) return false;
+    const { error } = await supabase
+      .from('campaigns')
+      .update({
+        email_template: s.emailDocument,
+        color_variables: s.colorVariables,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', s.editingCampaignId);
+    if (error) {
+      console.error('saveEmailTemplate error:', error);
+      return false;
+    }
+    set(prev => ({
+      campaigns: prev.campaigns.map(c =>
+        c.id === s.editingCampaignId
+          ? { ...c, emailTemplate: s.emailDocument, colorVariables: s.colorVariables }
+          : c
+      ),
+    }));
+    return true;
+  },
 
   // Email builder takeover. editingCampaignId is the trigger; emailDocument is the
   // editable Reader-compatible document; selectedBlockId is what the right panel inspects.
   editingCampaignId: null,
   editingCampaignName: null,
+  setEditingCampaignName: (name) => set({ editingCampaignName: name }),
   emailDocument: null,
-  selectedBlockId: null,
+  selectedBlockId: 'root',
+  bulkSelectedIds: [],
   // When the user edits raw HTML in the Code tab, that string takes over the
   // preview canvas (rendered via an iframe). It can't round-trip back to the
   // JSON document, so it stays as an override until cleared.
@@ -1943,19 +2003,28 @@ export const useAppStore = create((set, get) => ({
     return { emailDocument: doc, selectedBlockId: presetTree.rootId };
   }),
   openEmailBuilder: (campaign) => {
+    const saved = campaign.emailTemplate;
+    const defaultVars = [
+      { name: 'Brand', hex: '#7C5CFA' },
+      { name: 'Accent', hex: '#22C55E' },
+      { name: 'Text', hex: '#3A485F' },
+      { name: 'Muted', hex: '#7B8499' },
+    ];
     set({
       editingCampaignId: campaign.id,
       editingCampaignName: campaign.name,
-      emailDocument: makeInitialDocument(campaign),
-      selectedBlockId: null,
+      emailDocument: saved || makeInitialDocument(campaign),
+      colorVariables: campaign.colorVariables || defaultVars,
+      selectedBlockId: 'root',
     });
     updateHash(get);
   },
   closeEmailBuilder: () => {
-    set({ editingCampaignId: null, editingCampaignName: null, emailDocument: null, selectedBlockId: null, htmlPreviewOverride: null });
+    set({ editingCampaignId: null, editingCampaignName: null, emailDocument: null, selectedBlockId: 'root', bulkSelectedIds: [], htmlPreviewOverride: null });
     updateHash(get);
   },
-  setSelectedBlockId: (id) => set({ selectedBlockId: id }),
+  setSelectedBlockId: (id) => set({ selectedBlockId: id, bulkSelectedIds: [] }),
+  setBulkSelectedIds: (ids) => set({ bulkSelectedIds: ids }),
   updateBlock: (id, updater) => set(s => {
     if (!s.emailDocument || !s.emailDocument[id]) return {};
     const block = s.emailDocument[id];
@@ -1969,6 +2038,20 @@ export const useAppStore = create((set, get) => ({
     const tree = createBlockTree(type, genId);
     if (!tree) return {};
     const root = s.emailDocument.root;
+    const bodyId = (root.data.childrenIds || []).find(id => s.emailDocument[id]?.data?.role === 'body');
+    if (bodyId) {
+      const body = s.emailDocument[bodyId];
+      const props = { ...(body.data?.props || {}) };
+      props.childrenIds = [...(props.childrenIds || []), tree.rootId];
+      return {
+        emailDocument: {
+          ...s.emailDocument,
+          [bodyId]: { ...body, data: { ...body.data, props } },
+          ...tree.blocks,
+        },
+        selectedBlockId: tree.rootId,
+      };
+    }
     const updatedRoot = {
       ...root,
       data: { ...root.data, childrenIds: [...(root.data.childrenIds || []), tree.rootId] },
@@ -2143,14 +2226,35 @@ export const useAppStore = create((set, get) => ({
 
   removeBlock: (id) => set(s => {
     if (!s.emailDocument || id === 'root' || !s.emailDocument[id]) return {};
-    const next = { ...s.emailDocument };
-    delete next[id];
-    next.root = {
-      ...next.root,
-      data: { ...next.root.data, childrenIds: (next.root.data.childrenIds || []).filter(c => c !== id) },
-    };
+    const doc = { ...s.emailDocument };
+    const map = buildParentMap(doc);
+    const slot = map[id];
+    const toRemove = collectBlockTree(doc, id);
+    toRemove.forEach(bid => { delete doc[bid]; });
+    if (slot && slot.parentId !== 'root') {
+      const parent = doc[slot.parentId];
+      if (parent) {
+        const data = { ...parent.data };
+        const props = { ...(data.props || {}) };
+        if (slot.columnIdx != null && Array.isArray(props.columns)) {
+          props.columns = props.columns.map((c, i) => i === slot.columnIdx
+            ? { ...c, childrenIds: (c.childrenIds || []).filter(cid => cid !== id) }
+            : c
+          );
+        } else if (Array.isArray(props.childrenIds)) {
+          props.childrenIds = props.childrenIds.filter(cid => cid !== id);
+        }
+        data.props = props;
+        doc[slot.parentId] = { ...parent, data };
+      }
+    } else {
+      doc.root = {
+        ...doc.root,
+        data: { ...doc.root.data, childrenIds: (doc.root.data.childrenIds || []).filter(c => c !== id) },
+      };
+    }
     return {
-      emailDocument: next,
+      emailDocument: doc,
       selectedBlockId: s.selectedBlockId === id ? 'root' : s.selectedBlockId,
     };
   }),

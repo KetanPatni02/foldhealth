@@ -44,15 +44,10 @@ export function PropertiesPanel() {
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const dragging = useRef(false);
   const doc = useAppStore(s => s.emailDocument);
-  const selectedBlockId = useAppStore(s => s.selectedBlockId);
+  const id = useAppStore(s => s.selectedBlockId);
   const updateBlock = useAppStore(s => s.updateBlock);
   const bulkIds = useAppStore(s => s.bulkSelectedIds);
 
-  // When nothing is selected, fall back to the root EmailLayout so the panel
-  // shows global settings (colors, color variables, typography) rather than
-  // an empty state. The canvas still doesn't draw an outline because it
-  // matches selectedBlockId strictly.
-  const id = selectedBlockId ?? 'root';
   const block = doc?.[id];
   const isBulk = bulkIds.length > 0;
 
