@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
-import { renderToStaticMarkup } from '@usewaypoint/email-builder';
+import { renderEmailHtml } from './patchEmailHtml';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { Toggle } from '../../components/Toggle/Toggle';
@@ -393,6 +393,7 @@ function DesignTab({ block, updateBlock, id }) {
                     const cols = next.data.props.columns || [];
                     while (cols.length < num) cols.push({ childrenIds: [] });
                     next.data.props.columns = cols;
+                    next.data.props.columnWidths = Array.from({ length: num }, () => Math.round(10000 / num) / 100);
                     return next;
                   });
                 }}
@@ -424,6 +425,14 @@ function DesignTab({ block, updateBlock, id }) {
                 active={props.flexWrap || 'nowrap'}
                 size="S"
                 onChange={v => update(['data', 'props', 'flexWrap'], v)}
+              />
+            </div>
+            <div className={styles.fieldCol}>
+              <label className={styles.fieldLabel}>Column Widths</label>
+              <ColumnWidthBar
+                count={props.columnsCount || 2}
+                widths={props.columnWidths}
+                onChange={next => update(['data', 'props', 'columnWidths'], next)}
               />
             </div>
           </Section>
@@ -918,7 +927,7 @@ function CodeTab({ doc }) {
         if (!cancelled) setText(next);
       } else {
         try {
-          const seed = htmlPreviewOverride ?? renderToStaticMarkup(doc, { rootBlockId: 'root' });
+          const seed = htmlPreviewOverride ?? renderEmailHtml(doc);
           const [{ format }, htmlPlugin] = await Promise.all([
             import('prettier/standalone'),
             import('prettier/plugins/html'),
@@ -1144,6 +1153,116 @@ function TemplateTab({ block }) {
 }
 
 // ── Section primitives ──────────────────────────────────────────────────────
+// ── Column width ratio bar ──────────────────────────────────────────────────
+const RATIO_PRESETS_2 = [
+  { label: '1 : 1', widths: [50, 50] },
+  { label: '1 : 2', widths: [33.33, 66.67] },
+  { label: '2 : 1', widths: [66.67, 33.33] },
+  { label: '1 : 3', widths: [25, 75] },
+  { label: '3 : 1', widths: [75, 25] },
+];
+const RATIO_PRESETS_3 = [
+  { label: '1 : 1 : 1', widths: [33.33, 33.33, 33.34] },
+  { label: '1 : 1 : 2', widths: [25, 25, 50] },
+  { label: '2 : 1 : 1', widths: [50, 25, 25] },
+  { label: '1 : 2 : 1', widths: [25, 50, 25] },
+];
+const RATIO_PRESETS_4 = [
+  { label: 'Equal', widths: [25, 25, 25, 25] },
+  { label: '2:1:1:1', widths: [40, 20, 20, 20] },
+];
+
+function ratioPresetsForCount(n) {
+  if (n === 2) return RATIO_PRESETS_2;
+  if (n === 3) return RATIO_PRESETS_3;
+  if (n === 4) return RATIO_PRESETS_4;
+  return [{ label: 'Equal', widths: Array.from({ length: n }, () => Math.round(10000 / n) / 100) }];
+}
+
+const COL_COLORS = ['var(--neutral-300, #6F7A90)', 'var(--neutral-100, #E9ECF1)'];
+
+function ColumnWidthBar({ count, widths, onChange }) {
+  const barRef = useRef(null);
+  const dragging = useRef(null);
+
+  const safeWidths = widths && widths.length >= count
+    ? widths.slice(0, count)
+    : Array.from({ length: count }, () => Math.round(10000 / count) / 100);
+
+  const handleMouseDown = useCallback((e, handleIdx) => {
+    e.preventDefault();
+    const bar = barRef.current;
+    if (!bar) return;
+    const rect = bar.getBoundingClientRect();
+    dragging.current = { handleIdx, barLeft: rect.left, barWidth: rect.width, startWidths: [...safeWidths] };
+
+    const onMove = (me) => {
+      const d = dragging.current;
+      if (!d) return;
+      const x = me.clientX - d.barLeft;
+      const pct = (x / d.barWidth) * 100;
+      const leftSum = d.startWidths.slice(0, d.handleIdx).reduce((a, b) => a + b, 0);
+      const pairTotal = d.startWidths[d.handleIdx] + d.startWidths[d.handleIdx + 1];
+      const minPct = 10;
+      const leftPct = Math.max(minPct, Math.min(pairTotal - minPct, pct - leftSum));
+      const rightPct = pairTotal - leftPct;
+      const next = [...d.startWidths];
+      next[d.handleIdx] = Math.round(leftPct * 100) / 100;
+      next[d.handleIdx + 1] = Math.round(rightPct * 100) / 100;
+      onChange(next);
+    };
+    const onUp = () => {
+      dragging.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [safeWidths, onChange]);
+
+  const presets = ratioPresetsForCount(count);
+
+  return (
+    <div className={styles.colWidthWrap}>
+      <div ref={barRef} className={styles.colWidthBar}>
+        {safeWidths.map((w, i) => (
+          <Fragment key={i}>
+            <div
+              className={styles.colWidthSeg}
+              style={{ width: `${w}%`, backgroundColor: COL_COLORS[i % COL_COLORS.length] }}
+            >
+              <span className={styles.colWidthLabel} style={{ color: i % 2 === 0 ? '#fff' : 'var(--neutral-400, #6F7A90)' }}>{Math.round(w)}%</span>
+            </div>
+            {i < count - 1 && (
+              <div
+                className={styles.colWidthHandle}
+                onMouseDown={e => handleMouseDown(e, i)}
+              />
+            )}
+          </Fragment>
+        ))}
+      </div>
+      <div className={styles.colWidthPresets}>
+        {presets.map(p => (
+          <button
+            key={p.label}
+            className={styles.colWidthPresetBtn}
+            onClick={() => onChange(p.widths)}
+            title={p.label}
+          >
+            <span className={styles.colWidthPresetGlyph}>
+              {p.widths.map((w, i) => (
+                <span key={i} style={{ flex: w, backgroundColor: COL_COLORS[i % COL_COLORS.length] }} />
+              ))}
+            </span>
+            <span className={styles.colWidthPresetLabel}>{p.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function SectionHeading({ children }) {
   return <div className={styles.sectionHeadingStrip}>{children}</div>;
 }

@@ -233,11 +233,11 @@ export function createBlockTree(type, genId) {
       return makeColumns(genId, 2, null);
 
     // ── Layout presets — preconfigured ColumnsContainer ──
-    case 'Layout-2-equal':   return makeColumns(genId, 2, null);
-    case 'Layout-1-2':       return makeColumns(genId, 2, [200, 400]);
-    case 'Layout-2-1':       return makeColumns(genId, 2, [400, 200]);
-    case 'Layout-3-equal':   return makeColumns(genId, 3, null);
-    case 'Layout-1-1-2':     return makeColumns(genId, 3, [120, 120, 360]);
+    case 'Layout-2-equal':   return makeColumns(genId, 2, [50, 50]);
+    case 'Layout-1-2':       return makeColumns(genId, 2, [33.33, 66.67]);
+    case 'Layout-2-1':       return makeColumns(genId, 2, [66.67, 33.33]);
+    case 'Layout-3-equal':   return makeColumns(genId, 3, [33.33, 33.33, 33.34]);
+    case 'Layout-1-1-2':     return makeColumns(genId, 3, [25, 25, 50]);
     default:
       return null;
   }
@@ -310,9 +310,10 @@ export function collectBlockTree(doc, rootId) {
   return ids;
 }
 
-function makeColumns(genId, count, fixedWidths) {
+function makeColumns(genId, count, columnWidths) {
   const root = genId();
-  const empty = { childrenIds: [] };
+  const cols = Array.from({ length: Math.max(count, 3) }, () => ({ childrenIds: [] }));
+  const widths = columnWidths || Array.from({ length: count }, () => Math.round(10000 / count) / 100);
   return {
     rootId: root,
     blocks: {
@@ -324,8 +325,8 @@ function makeColumns(genId, count, fixedWidths) {
             columnsCount: count,
             columnsGap: 16,
             contentAlignment: 'top',
-            columns: [empty, empty, empty],
-            ...(fixedWidths ? { fixedWidths: [...fixedWidths, undefined].slice(0, 3) } : {}),
+            columns: cols,
+            columnWidths: widths,
           },
         },
       },

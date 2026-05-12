@@ -465,15 +465,14 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     const direction = props.direction || 'row';
     const wrap = props.flexWrap || 'nowrap';
     const visible = cols.slice(0, count);
-    const fixedWidths = props.fixedWidths || [];
+    const columnWidths = props.columnWidths || Array.from({ length: count }, () => Math.round(10000 / count) / 100);
     const colsStyle = {
       position: 'relative',
       display: 'flex',
       flexDirection: direction,
       flexWrap: wrap,
       alignItems: align === 'top' ? 'flex-start' : align === 'middle' ? 'center' : 'flex-end',
-      columnGap: `${hGap}px`,
-      rowGap: `${vGap}px`,
+      gap: `${vGap}px ${hGap}px`,
       padding: paddingCss(style.padding),
       backgroundColor: style.backgroundColor,
       backgroundImage: style.backgroundImage ? `url(${style.backgroundImage})` : undefined,
@@ -486,19 +485,23 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
       colsStyle.height = typeof props.height === 'number' ? `${props.height}px` : props.height;
       colsStyle.overflow = 'auto';
     }
+    const totalGap = hGap * (count - 1);
     return (
       <div style={colsStyle}>
-        {visible.map((col, idx) => (
-          <div
-            key={idx}
-            style={{
-              flex: fixedWidths[idx] ? `0 0 ${fixedWidths[idx]}px` : '1 1 0',
-              minWidth: 0,
-            }}
-          >
-            <SortableList parentId={id} columnIdx={idx} childrenIds={col?.childrenIds || []} ctx={ctx} />
-          </div>
-        ))}
+        {visible.map((col, idx) => {
+          const w = columnWidths[idx] || (100 / count);
+          return (
+            <div
+              key={idx}
+              style={{
+                flex: `0 0 calc(${w}% - ${totalGap * w / 100}px)`,
+                minWidth: 0,
+              }}
+            >
+              <SortableList parentId={id} columnIdx={idx} childrenIds={col?.childrenIds || []} ctx={ctx} />
+            </div>
+          );
+        })}
         {isSelected && <ContainerResizeHandle id={id} block={block} updateBlock={ctx.updateBlock} />}
       </div>
     );
