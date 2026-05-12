@@ -84,6 +84,40 @@ const FACTORIES = {
       },
     },
   }),
+  Social: () => ({
+    type: 'Social',
+    data: {
+      props: {
+        platforms: [
+          { id: 'twitter',   label: 'Twitter',   url: 'https://twitter.com', iconUrl: 'https://cdn.simpleicons.org/x/000000' },
+          { id: 'linkedin',  label: 'LinkedIn',  url: 'https://linkedin.com', iconUrl: 'https://cdn.simpleicons.org/linkedin/0A66C2' },
+          { id: 'instagram', label: 'Instagram', url: 'https://instagram.com', iconUrl: 'https://cdn.simpleicons.org/instagram/E4405F' },
+        ],
+        iconSize: 24,
+        gap: 16,
+        alignment: 'center',
+      },
+      style: { padding: { top: 16, bottom: 16, left: 24, right: 24 } },
+    },
+  }),
+  NavBar: () => ({
+    type: 'NavBar',
+    data: {
+      props: {
+        links: [
+          { label: 'Home', url: '#' },
+          { label: 'About', url: '#' },
+          { label: 'Contact', url: '#' },
+        ],
+        alignment: 'center',
+        gap: 24,
+        linkColor: '#7C5CFA',
+        fontSize: 14,
+        fontWeight: 'bold',
+      },
+      style: { padding: { top: 12, bottom: 12, left: 16, right: 16 }, backgroundColor: '#FFFFFF' },
+    },
+  }),
   Table: () => ({
     type: 'Table',
     data: {
@@ -162,60 +196,6 @@ export function createBlockTree(type, genId) {
       };
     }
 
-    case 'Social': {
-      const a = genId(), b = genId(), c = genId();
-      const root = genId();
-      const mkIcon = (alt) => ({
-        type: 'Image',
-        data: {
-          props: { url: 'https://i.imgur.com/IkVnRaD.png', alt, contentAlignment: 'middle' },
-          style: { padding: { top: 8, bottom: 8, left: 8, right: 8 }, textAlign: 'center' },
-        },
-      });
-      return {
-        rootId: root,
-        blocks: {
-          [a]: mkIcon('Twitter'),
-          [b]: mkIcon('LinkedIn'),
-          [c]: mkIcon('Instagram'),
-          [root]: {
-            type: 'ColumnsContainer',
-            data: {
-              style: { padding: { top: 16, bottom: 16, left: 24, right: 24 } },
-              props: { columnsCount: 3, columnsGap: 12, contentAlignment: 'middle', columns: [{ childrenIds: [a] }, { childrenIds: [b] }, { childrenIds: [c] }] },
-            },
-          },
-        },
-      };
-    }
-
-    case 'NavBar': {
-      const a = genId(), b = genId(), c = genId();
-      const root = genId();
-      const mkLink = (text) => ({
-        type: 'Text',
-        data: {
-          props: { text },
-          style: { color: '#7C5CFA', fontSize: 14, fontWeight: 'bold', textAlign: 'center', padding: { top: 8, bottom: 8, left: 8, right: 8 } },
-        },
-      });
-      return {
-        rootId: root,
-        blocks: {
-          [a]: mkLink('Home'),
-          [b]: mkLink('About'),
-          [c]: mkLink('Contact'),
-          [root]: {
-            type: 'ColumnsContainer',
-            data: {
-              style: { padding: { top: 12, bottom: 12, left: 16, right: 16 }, backgroundColor: '#FFFFFF' },
-              props: { columnsCount: 3, columnsGap: 8, contentAlignment: 'middle', columns: [{ childrenIds: [a] }, { childrenIds: [b] }, { childrenIds: [c] }] },
-            },
-          },
-        },
-      };
-    }
-
     case 'Group': {
       const id = genId();
       return {
@@ -240,8 +220,9 @@ export function createBlockTree(type, genId) {
           [id]: {
             type: 'Container',
             data: {
-              style: { backgroundColor: '#F8F9FB', padding: { top: 32, bottom: 32, left: 32, right: 32 } },
-              props: { childrenIds: [] },
+              alias: 'Section',
+              style: { padding: { top: 0, bottom: 0, left: 0, right: 0 } },
+              props: { childrenIds: [], contentAlignment: 'center' },
             },
           },
         },

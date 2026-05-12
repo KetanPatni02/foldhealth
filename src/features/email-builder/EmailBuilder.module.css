@@ -192,7 +192,7 @@
   flex: 1;
   overflow-y: auto;
   padding: 0;
-  background: var(--neutral-50);
+  background: #fff;
 }
 
 .sectionHeading {
@@ -281,9 +281,27 @@
   transition: all .12s;
 }
 
+.emptyDropRich {
+  flex-direction: column;
+  gap: 12px;
+  min-height: 180px;
+  border: none;
+  margin: 0;
+}
+
+.emptyDropLabel {
+  font-size: 13px;
+  color: var(--neutral-300);
+  font-weight: 400;
+}
+
 .emptyDropOver {
   border-color: var(--primary-300);
   background: var(--primary-25);
+  color: var(--primary-300);
+}
+
+.emptyDropOver .emptyDropLabel {
   color: var(--primary-300);
 }
 
@@ -1442,6 +1460,38 @@
   border-color: var(--primary-300);
   color: var(--primary-500);
   background: var(--primary-25);
+}
+
+/* ── Social / NavBar editors ── */
+.socialRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+.socialIconBtn {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--neutral-150);
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color .12s;
+}
+.socialIconBtn:hover {
+  border-color: var(--primary-300);
+}
+
+.socialPresets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
 }
 
 /* ── Resize handles ── */

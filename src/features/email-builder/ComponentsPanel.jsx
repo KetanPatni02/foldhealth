@@ -14,21 +14,20 @@ const COMPONENTS = [
   { type: 'Image',     label: 'Image',    icon: 'solar:gallery-linear' },
   { type: 'Button',    label: 'Button',   icon: 'solar:bolt-circle-linear' },
   // Row 2: minor decorations
-  { type: 'Social',    label: 'Social',   icon: 'solar:share-linear' },
+  { type: 'Social',    label: 'Social',   icon: 'solar:share-circle-linear' },
   { type: 'Divider',   label: 'Divider',  icon: 'solar:minus-square-linear' },
-  { type: 'Spacer',    label: 'Spacer',   icon: 'solar:square-double-alt-arrow-up-linear' },
+  { type: 'Spacer',    label: 'Spacer',   icon: 'solar:paragraph-spacing-linear' },
   // Row 3: structural
-  { type: 'Hero',      label: 'Hero',     icon: 'solar:gallery-wide-linear' },
-  { type: 'Container', label: 'Wrapper',  icon: 'solar:square-linear' },
+  { type: 'Hero',      label: 'Hero',     icon: 'solar:laptop-minimalistic-linear' },
+  { type: 'Container', label: 'Wrapper',  icon: null, customIcon: 'group' },
   { type: 'Accordion', label: 'Accordion', icon: 'solar:list-arrow-down-linear', soon: true },
   // Row 4
   { type: 'NavBar',    label: 'Nav Bar',  icon: 'solar:hamburger-menu-linear' },
-  { type: 'Group',     label: 'Group',    icon: 'solar:users-group-rounded-linear' },
-  { type: 'Column',    label: 'Column',   icon: 'solar:columns-linear' },
+  { type: 'Column',    label: 'Column',   icon: null, customIcon: true },
   // Row 5
-  { type: 'Section',   label: 'Section',  icon: 'solar:gallery-rectangle-linear' },
+  { type: 'Section',   label: 'Section',  icon: 'solar:align-vertical-spacing-linear' },
   { type: 'Form',      label: 'Form',     icon: 'solar:document-add-linear', soon: true },
-  { type: 'Table',     label: 'Table',    icon: 'solar:widget-2-linear' },
+  { type: 'Table',     label: 'Table',    icon: null, customIcon: 'table' },
   // Row 6 — Header & Footer use a preset picker rather than a single block
   { type: 'Header',    label: 'Header',   icon: 'solar:gallery-wide-linear', preset: 'header' },
   { type: 'Footer',    label: 'Footer',   icon: 'solar:gallery-bold-linear', preset: 'footer' },
@@ -55,6 +54,8 @@ const TYPE_LABELS = {
   Spacer: 'Spacer',
   Container: 'Wrapper',
   ColumnsContainer: 'Columns',
+  Social: 'Social',
+  NavBar: 'Nav Bar',
   Table: 'Table',
 };
 
@@ -66,11 +67,37 @@ const TYPE_ICONS = {
   Image: 'solar:gallery-linear',
   Avatar: 'solar:user-circle-linear',
   Divider: 'solar:minus-square-linear',
-  Spacer: 'solar:square-double-alt-arrow-up-linear',
+  Spacer: 'solar:paragraph-spacing-linear',
   Container: 'solar:layers-linear',
   ColumnsContainer: 'solar:hamburger-menu-linear',
+  Social: 'solar:share-circle-linear',
+  NavBar: 'solar:hamburger-menu-linear',
   Table: 'solar:widget-2-linear',
 };
+
+function ColumnIcon({ size = 20, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2.74144L11.9626 1.99237L12 2.74144ZM12 29.2612L11.9626 30.0102L12 29.2612ZM20 2.74144L20.0373 1.99237L20 2.74144ZM20 29.2612L20.0373 30.0102L20 29.2612ZM2.66663 16.0013H1.91663C1.91663 19.1228 1.91503 21.5394 2.16739 23.4164C2.42265 25.315 2.95003 26.7735 4.08892 27.9123L4.61925 27.382L5.14958 26.8517C4.33584 26.0379 3.88691 24.9488 3.65402 23.2165C3.41822 21.4627 3.41663 19.1652 3.41663 16.0013H2.66663ZM29.3333 16.0013H28.5833C28.5833 19.1652 28.5817 21.4627 28.3459 23.2165C28.113 24.9488 27.6641 26.0379 26.8503 26.8517L27.3807 27.382L27.911 27.9123C29.0499 26.7735 29.5773 25.315 29.8325 23.4164C30.0849 21.5394 30.0833 19.1228 30.0833 16.0013H29.3333ZM29.3333 16.0013H30.0833C30.0833 12.8798 30.0849 10.4632 29.8325 8.58622C29.5773 6.68763 29.0499 5.22915 27.911 4.09026L27.3807 4.62059L26.8503 5.15092C27.6641 5.96465 28.113 7.05383 28.3459 8.78609C28.5817 10.5399 28.5833 12.8374 28.5833 16.0013H29.3333ZM2.66663 16.0013H3.41663C3.41663 12.8374 3.41822 10.5399 3.65402 8.78609C3.88691 7.05383 4.33584 5.96465 5.14958 5.15092L4.61925 4.62059L4.08892 4.09026C2.95003 5.22915 2.42265 6.68763 2.16739 8.58622C1.91503 10.4632 1.91663 12.8798 1.91663 16.0013H2.66663ZM16 2.66797V1.91797C13.891 1.91797 13.4558 1.91793 11.9626 1.99237L12 2.74144L12.0373 3.49051C13.4918 3.418 13.8966 3.41797 16 3.41797V2.66797ZM12 2.74144L11.9626 1.99237C10.4829 2.06613 8.91508 2.21406 7.53889 2.51627C6.19302 2.81181 4.89762 3.28156 4.08892 4.09026L4.61925 4.62059L5.14958 5.15092C5.6392 4.6613 6.57185 4.26436 7.86061 3.98136C9.11904 3.70501 10.5924 3.56253 12.0373 3.49051L12 2.74144ZM16 29.3346V28.5846C13.8966 28.5846 13.4918 28.5846 12.0373 28.5121L12 29.2612L11.9626 30.0102C13.4558 30.0847 13.891 30.0846 16 30.0846V29.3346ZM12 29.2612L12.0373 28.5121C10.5924 28.4401 9.11904 28.2976 7.86061 28.0212C6.57185 27.7382 5.6392 27.3413 5.14958 26.8517L4.61925 27.382L4.08892 27.9123C4.89762 28.721 6.19302 29.1908 7.53889 29.4863C8.91508 29.7885 10.4829 29.9365 11.9626 30.0102L12 29.2612ZM12 2.74144H11.25V29.2612H12H12.75V2.74144H12ZM16 2.66797V3.41797C18.1033 3.41797 18.5081 3.418 19.9626 3.49051L20 2.74144L20.0373 1.99237C18.5441 1.91793 18.1089 1.91797 16 1.91797V2.66797ZM20 2.74144L19.9626 3.49051C21.4075 3.56253 22.8809 3.70501 24.1393 3.98136C25.4281 4.26436 26.3607 4.6613 26.8503 5.15092L27.3807 4.62059L27.911 4.09026C27.1023 3.28156 25.8069 2.81181 24.461 2.51627C23.0848 2.21406 21.517 2.06613 20.0373 1.99237L20 2.74144ZM16 29.3346V30.0846C18.1089 30.0846 18.5441 30.0847 20.0373 30.0102L20 29.2612L19.9626 28.5121C18.5081 28.5846 18.1033 28.5846 16 28.5846V29.3346ZM20 29.2612L20.0373 30.0102C21.517 29.9365 23.0848 29.7885 24.461 29.4863C25.8069 29.1908 27.1023 28.721 27.911 27.9123L27.3807 27.382L26.8503 26.8517C26.3607 27.3413 25.4281 27.7382 24.1393 28.0212C22.8809 28.2976 21.4075 28.4401 19.9626 28.5121L20 29.2612ZM20 2.74144L19.25 2.74144L19.25 29.2612H20H20.75L20.75 2.74144L20 2.74144Z" fill={color} />
+    </svg>
+  );
+}
+
+function TableIcon({ size = 20, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3.33329 10.742H28.6666M2.66663 19.8902H29.3333M16 11.2235V29.3346M13.3333 29.3346C13.106 29.3346 12.8838 29.3346 12.6666 29.3345C10.3993 29.3328 8.67629 29.3136 7.33329 29.0946C5.95923 28.8704 4.98299 28.437 4.22872 27.599C2.66663 25.8633 2.66663 23.0698 2.66663 17.4828V14.5198C2.66663 8.9328 2.66663 6.1393 4.22872 4.40363C5.79082 2.66797 8.30498 2.66797 13.3333 2.66797H18.6666C23.6949 2.66797 26.2091 2.66797 27.7712 4.40363C29.3333 6.1393 29.3333 8.9328 29.3333 14.5198V17.4828C29.3333 23.0698 29.3333 25.8633 27.7712 27.599C26.793 28.6858 25.4416 29.0921 23.3333 29.244C22.0747 29.3346 20.5463 29.3346 18.6666 29.3346H13.3333Z" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function GroupIcon({ size = 20, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M2 12C2 7.28595 2 4.92893 3.46447 3.46447C4.92893 2 7.28595 2 12 2C16.714 2 19.0711 2 20.5355 3.46447C22 4.92893 22 7.28595 22 12C22 16.714 22 19.0711 20.5355 20.5355C19.0711 22 16.714 22 12 22C7.28595 22 4.92893 22 3.46447 20.5355C2 19.0711 2 16.714 2 12Z" stroke={color} strokeLinecap="round" strokeDasharray="2 2" />
+    </svg>
+  );
+}
 
 export function ComponentsPanel() {
   const [tab, setTab] = useState('components');
@@ -178,7 +205,10 @@ function DraggableTile({ item, onClick }) {
       onClick={onClick}
       title={item.soon ? `${item.label} — coming soon` : `Add ${item.label}`}
     >
-      <Icon name={item.icon} size={20} color="var(--neutral-300)" />
+      {item.customIcon === true && <ColumnIcon size={20} color="var(--neutral-300)" />}
+      {item.customIcon === 'table' && <TableIcon size={20} color="var(--neutral-300)" />}
+      {item.customIcon === 'group' && <GroupIcon size={20} color="var(--neutral-300)" />}
+      {!item.customIcon && <Icon name={item.icon} size={20} color="var(--neutral-300)" />}
       {item.label}
     </button>
   );

@@ -19,6 +19,8 @@ const TYPE_LABELS = {
   Spacer: 'Spacer',
   Container: 'Wrapper',
   ColumnsContainer: 'Columns',
+  Social: 'Social',
+  NavBar: 'Nav Bar',
   Table: 'Table',
 };
 
@@ -297,10 +299,38 @@ function SortableList({ parentId, columnIdx, childrenIds, ctx }) {
 function EmptyDropzone({ parentId, columnIdx }) {
   const dropId = columnIdx == null ? `__empty:${parentId}` : `__empty:${parentId}:${columnIdx}`;
   const { setNodeRef, isOver } = useDroppable({ id: dropId });
+  const doc = useAppStore(s => s.emailDocument);
+  const parentBlock = doc?.[parentId];
+  const isContainer = parentBlock?.type === 'Container';
+
+  if (isContainer) {
+    return (
+      <div ref={setNodeRef} className={[styles.emptyDrop, styles.emptyDropRich, isOver ? styles.emptyDropOver : ''].join(' ')}>
+        <EmptyDropIllustration />
+        <span className={styles.emptyDropLabel}>Drop a Column block here</span>
+      </div>
+    );
+  }
+
   return (
     <div ref={setNodeRef} className={[styles.emptyDrop, isOver ? styles.emptyDropOver : ''].join(' ')}>
       Drop here
     </div>
+  );
+}
+
+function EmptyDropIllustration() {
+  return (
+    <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="16" y="16" width="48" height="48" rx="6" stroke="var(--neutral-200)" strokeWidth="2" strokeDasharray="6 4" />
+      <rect x="30" y="10" width="36" height="42" rx="5" fill="white" stroke="var(--neutral-200)" strokeWidth="1.5" />
+      <rect x="34" y="20" width="10" height="8" rx="2" stroke="var(--neutral-300)" strokeWidth="1.2" />
+      <rect x="34" y="34" width="10" height="8" rx="2" stroke="var(--neutral-300)" strokeWidth="1.2" />
+      <line x1="48" y1="22" x2="62" y2="22" stroke="var(--neutral-200)" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="48" y1="26" x2="58" y2="26" stroke="var(--neutral-200)" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="48" y1="36" x2="62" y2="36" stroke="var(--neutral-200)" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="48" y1="40" x2="58" y2="40" stroke="var(--neutral-200)" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
   );
 }
 
@@ -602,6 +632,61 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
         >
           {props.text || 'Button'}
         </a>
+      </div>
+    );
+  }
+
+  if (type === 'Social') {
+    const platforms = props.platforms || [];
+    const iconSize = props.iconSize || 24;
+    const gap = props.gap || 16;
+    const alignment = props.alignment || 'center';
+    return (
+      <div style={{
+        padding: paddingCss(style.padding),
+        display: 'flex',
+        justifyContent: alignment === 'left' ? 'flex-start' : alignment === 'right' ? 'flex-end' : 'center',
+        alignItems: 'center',
+        gap: `${gap}px`,
+        backgroundColor: style.backgroundColor,
+      }}>
+        {platforms.map(p => (
+          <a key={p.id} href={p.url || '#'} onClick={e => e.preventDefault()} title={p.label} style={{ display: 'inline-flex' }}>
+            {p.iconUrl
+              ? <img src={p.iconUrl} alt={p.label} width={iconSize} height={iconSize} style={{ display: 'block' }} />
+              : <div style={{ width: iconSize, height: iconSize, borderRadius: 4, border: '1px dashed #CED4DD', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#9CA3AF' }}>?</div>}
+          </a>
+        ))}
+      </div>
+    );
+  }
+
+  if (type === 'NavBar') {
+    const links = props.links || [];
+    const gap = props.gap || 24;
+    const alignment = props.alignment || 'center';
+    const linkColor = props.linkColor || '#7C5CFA';
+    const fontSize = props.fontSize || 14;
+    const fontWeight = props.fontWeight || 'bold';
+    return (
+      <div style={{
+        padding: paddingCss(style.padding),
+        display: 'flex',
+        justifyContent: alignment === 'left' ? 'flex-start' : alignment === 'right' ? 'flex-end' : 'center',
+        alignItems: 'center',
+        gap: `${gap}px`,
+        backgroundColor: style.backgroundColor,
+      }}>
+        {links.map((link, i) => (
+          <a
+            key={i}
+            href={link.url || '#'}
+            onClick={e => e.preventDefault()}
+            style={{ color: linkColor, fontSize, fontWeight, textDecoration: 'none', fontFamily: 'inherit' }}
+          >
+            {link.label}
+          </a>
+        ))}
       </div>
     );
   }

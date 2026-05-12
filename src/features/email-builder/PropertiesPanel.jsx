@@ -308,6 +308,73 @@ function DesignTab({ block, updateBlock, id }) {
         </>
       )}
 
+      {block.type === 'Social' && (
+        <>
+          <SectionHeading>Social Links</SectionHeading>
+          <Section>
+            <SocialEditor
+              platforms={props.platforms || []}
+              onChange={platforms => update(['data', 'props', 'platforms'], platforms)}
+            />
+            <Row2>
+              <IconInput label="Icon Size" suffix="px" value={props.iconSize || 24} onChange={v => update(['data', 'props', 'iconSize'], Number(v) || 24)} />
+              <IconInput label="Gap" suffix="px" value={props.gap || 16} onChange={v => update(['data', 'props', 'gap'], Number(v) || 16)} />
+            </Row2>
+            <div className={styles.fieldCol}>
+              <label className={styles.fieldLabel}>Alignment</label>
+              <Toggle
+                items={[
+                  { key: 'left',   label: '', icon: <AlignLeftIcon /> },
+                  { key: 'center', label: '', icon: <AlignCenterIcon /> },
+                  { key: 'right',  label: '', icon: <AlignRightIcon /> },
+                ]}
+                active={props.alignment || 'center'}
+                size="S"
+                onChange={v => update(['data', 'props', 'alignment'], v)}
+              />
+            </div>
+          </Section>
+        </>
+      )}
+
+      {block.type === 'NavBar' && (
+        <>
+          <SectionHeading>Nav Links</SectionHeading>
+          <Section>
+            <NavLinkEditor
+              links={props.links || []}
+              onChange={links => update(['data', 'props', 'links'], links)}
+            />
+            <Row2>
+              <ColorInput label="Link Color" value={props.linkColor || '#7C5CFA'} onChange={v => update(['data', 'props', 'linkColor'], v)} />
+              <IconInput label="Font Size" suffix="px" value={props.fontSize || 14} onChange={v => update(['data', 'props', 'fontSize'], Number(v) || 14)} />
+            </Row2>
+            <Row2>
+              <IconInput label="Gap" suffix="px" value={props.gap || 24} onChange={v => update(['data', 'props', 'gap'], Number(v) || 24)} />
+              <SelectInput
+                label="Weight"
+                value={props.fontWeight || 'bold'}
+                options={FONT_WEIGHTS}
+                onChange={v => update(['data', 'props', 'fontWeight'], v)}
+              />
+            </Row2>
+            <div className={styles.fieldCol}>
+              <label className={styles.fieldLabel}>Alignment</label>
+              <Toggle
+                items={[
+                  { key: 'left',   label: '', icon: <AlignLeftIcon /> },
+                  { key: 'center', label: '', icon: <AlignCenterIcon /> },
+                  { key: 'right',  label: '', icon: <AlignRightIcon /> },
+                ]}
+                active={props.alignment || 'center'}
+                size="S"
+                onChange={v => update(['data', 'props', 'alignment'], v)}
+              />
+            </div>
+          </Section>
+        </>
+      )}
+
       {block.type === 'ColumnsContainer' && (
         <>
           <SectionHeading>Columns</SectionHeading>
@@ -1102,7 +1169,8 @@ function ImageUploader({ currentUrl, onChange, compact }) {
 
   const acceptFile = async (file) => {
     if (!file) return;
-    if (!file.type.startsWith('image/')) { setError('File must be an image'); return; }
+    const isImage = file.type.startsWith('image/') || file.name.endsWith('.svg');
+    if (!isImage) { setError('File must be an image or SVG'); return; }
     setError(null);
     setUploading(true);
     try {
@@ -1149,7 +1217,7 @@ function ImageUploader({ currentUrl, onChange, compact }) {
         <input
           ref={inputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,.svg"
           style={{ display: 'none' }}
           onChange={e => acceptFile(e.target.files?.[0])}
         />
@@ -1434,6 +1502,150 @@ function TableEditor({ columns, rows, onChangeColumns, onChangeRows }) {
         <button className={styles.tableEditorAddBtn} onClick={addRow}>+ Row</button>
         <button className={styles.tableEditorAddBtn} onClick={addColumn}>+ Column</button>
       </div>
+    </div>
+  );
+}
+
+// ── Social / NavBar editors ────────────────────────────────────────────────
+const SOCIAL_PRESETS = [
+  { id: 'twitter',   label: 'Twitter',   iconUrl: 'https://cdn.simpleicons.org/x/000000' },
+  { id: 'linkedin',  label: 'LinkedIn',  iconUrl: 'https://cdn.simpleicons.org/linkedin/0A66C2' },
+  { id: 'instagram', label: 'Instagram', iconUrl: 'https://cdn.simpleicons.org/instagram/E4405F' },
+  { id: 'facebook',  label: 'Facebook',  iconUrl: 'https://cdn.simpleicons.org/facebook/1877F2' },
+  { id: 'youtube',   label: 'YouTube',   iconUrl: 'https://cdn.simpleicons.org/youtube/FF0000' },
+  { id: 'tiktok',    label: 'TikTok',    iconUrl: 'https://cdn.simpleicons.org/tiktok/000000' },
+  { id: 'github',    label: 'GitHub',    iconUrl: 'https://cdn.simpleicons.org/github/181717' },
+];
+
+function SocialIconUpload({ currentUrl, onUpload }) {
+  const inputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+
+  const accept = async (file) => {
+    if (!file) return;
+    const isImage = file.type.startsWith('image/');
+    const isSvg = file.type === 'image/svg+xml' || file.name.endsWith('.svg');
+    if (!isImage && !isSvg) return;
+    setUploading(true);
+    try {
+      const url = await uploadImage(file);
+      onUpload(url);
+    } catch { /* silent */ }
+    setUploading(false);
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        className={styles.socialIconBtn}
+        onClick={() => inputRef.current?.click()}
+        title="Change icon"
+      >
+        {uploading
+          ? <Icon name="solar:upload-linear" size={14} color="var(--primary-300)" />
+          : currentUrl
+            ? <img src={currentUrl} alt="" width={16} height={16} style={{ borderRadius: 2, display: 'block' }} />
+            : <Icon name="solar:upload-linear" size={14} color="var(--neutral-300)" />}
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*,.svg"
+        style={{ display: 'none' }}
+        onChange={e => accept(e.target.files?.[0])}
+      />
+    </>
+  );
+}
+
+function SocialEditor({ platforms, onChange }) {
+  const updatePlatform = (idx, key, value) => {
+    const next = platforms.map((p, i) => i === idx ? { ...p, [key]: value } : p);
+    onChange(next);
+  };
+  const removePlatform = (idx) => onChange(platforms.filter((_, i) => i !== idx));
+  const addPlatform = (preset) => {
+    if (platforms.some(p => p.id === preset.id)) return;
+    onChange([...platforms, { ...preset, url: `https://${preset.id}.com` }]);
+  };
+  const addCustom = () => {
+    const id = `custom-${Date.now()}`;
+    onChange([...platforms, { id, label: 'Custom', url: '#', iconUrl: '' }]);
+  };
+
+  return (
+    <div className={styles.tableEditor}>
+      {platforms.map((p, i) => (
+        <div key={i} className={styles.socialRow}>
+          <SocialIconUpload
+            currentUrl={p.iconUrl}
+            onUpload={url => updatePlatform(i, 'iconUrl', url)}
+          />
+          <input
+            className={styles.tableEditorInput}
+            value={p.label}
+            onChange={e => updatePlatform(i, 'label', e.target.value)}
+            style={{ fontWeight: 500, flex: '0 0 70px' }}
+          />
+          <input
+            className={styles.tableEditorInput}
+            value={p.url || ''}
+            onChange={e => updatePlatform(i, 'url', e.target.value)}
+            placeholder="URL"
+            style={{ flex: 1 }}
+          />
+          <button className={styles.tableEditorRemoveRowBtn} onClick={() => removePlatform(i)} title="Remove">
+            <Icon name="solar:close-circle-linear" size={12} color="var(--neutral-300)" />
+          </button>
+        </div>
+      ))}
+      <div className={styles.socialPresets}>
+        {SOCIAL_PRESETS.filter(sp => !platforms.some(p => p.id === sp.id)).map(sp => (
+          <button key={sp.id} className={styles.tableEditorAddBtn} onClick={() => addPlatform(sp)}>
+            + {sp.label}
+          </button>
+        ))}
+        <button className={styles.tableEditorAddBtn} onClick={addCustom}>
+          + Custom
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function NavLinkEditor({ links, onChange }) {
+  const updateLink = (idx, key, value) => {
+    const next = links.map((l, i) => i === idx ? { ...l, [key]: value } : l);
+    onChange(next);
+  };
+  const removeLink = (idx) => onChange(links.filter((_, i) => i !== idx));
+  const addLink = () => onChange([...links, { label: 'Link', url: '#' }]);
+
+  return (
+    <div className={styles.tableEditor}>
+      {links.map((link, i) => (
+        <div key={i} className={styles.socialRow}>
+          <input
+            className={styles.tableEditorInput}
+            value={link.label}
+            onChange={e => updateLink(i, 'label', e.target.value)}
+            placeholder="Label"
+            style={{ fontWeight: 500, flex: '0 0 80px' }}
+          />
+          <input
+            className={styles.tableEditorInput}
+            value={link.url || ''}
+            onChange={e => updateLink(i, 'url', e.target.value)}
+            placeholder="URL"
+            style={{ flex: 1 }}
+          />
+          <button className={styles.tableEditorRemoveRowBtn} onClick={() => removeLink(i)} title="Remove">
+            <Icon name="solar:close-circle-linear" size={12} color="var(--neutral-300)" />
+          </button>
+        </div>
+      ))}
+      <button className={styles.tableEditorAddBtn} onClick={addLink}>+ Add link</button>
     </div>
   );
 }
