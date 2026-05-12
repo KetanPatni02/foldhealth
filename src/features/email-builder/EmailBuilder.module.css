@@ -25,6 +25,16 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: 1 0 auto;
+}
+
+.topRight { justify-content: flex-end; }
+
+.topCenter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .topCenter {
@@ -646,6 +656,57 @@
   width: 100%;
   border: none;
   background: #fff;
+}
+
+/* ── Web / Mobile preview modes ── */
+.previewWrap {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 32px 24px;
+  overflow: auto;
+  background: var(--neutral-25, #fafafa);
+  background-image:
+    linear-gradient(var(--neutral-100) 0.5px, transparent 0.5px),
+    linear-gradient(90deg, var(--neutral-100) 0.5px, transparent 0.5px);
+  background-size: 24px 24px;
+}
+
+.previewDesktop {
+  width: 100%;
+  max-width: 720px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .04);
+  overflow: hidden;
+}
+
+.previewMobile {
+  width: 375px;
+  max-width: 100%;
+  background: #fff;
+  border-radius: 28px;
+  border: 8px solid #1a1a1f;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .12);
+  overflow: hidden;
+  position: relative;
+}
+
+.previewMobileNotch {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 96px;
+  height: 18px;
+  background: #1a1a1f;
+  border-radius: 0 0 12px 12px;
+  z-index: 2;
+}
+
+.previewInner {
+  width: 100%;
 }
 
 /* Tabs at top */

@@ -247,7 +247,7 @@ export function PreviewCanvas() {
   };
 
   const handleCanvasClick = (e) => {
-    if (e.target === e.currentTarget) setSelectedBlockId('root');
+    if (e.target === e.currentTarget) setSelectedBlockId(null);
   };
 
   const bulkSet = new Set(bulkSelectedIds);
