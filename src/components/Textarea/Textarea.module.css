@@ -1,0 +1,51 @@
+/* Fold Health Textarea — multi-line input that matches <Input>'s design
+   tokens (border, radius, font, focus ring) so they can sit side by side. */
+
+.textarea {
+  width: 100%;
+  min-height: 72px;
+  padding: 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: var(--neutral-0);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-400);
+  line-height: 1.4;
+  outline: none;
+  resize: vertical;
+  transition: border-color .15s, box-shadow .15s;
+  box-sizing: border-box;
+}
+
+.textarea:hover {
+  border-color: var(--neutral-200);
+}
+
+.textarea:focus {
+  border-color: var(--primary-300);
+  box-shadow: 0 0 0 2px rgba(140, 90, 226, 0.12);
+}
+
+.textarea::placeholder {
+  color: var(--neutral-200);
+  font-weight: 400;
+}
+
+.textarea:disabled {
+  background: var(--neutral-50);
+  color: var(--neutral-300);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.textareaError {
+  border-color: var(--status-error);
+  background: var(--status-error-light);
+}
+
+.textareaError:focus {
+  border-color: var(--status-error);
+  box-shadow: 0 0 0 2px rgba(215, 40, 37, 0.12);
+}

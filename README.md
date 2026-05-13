@@ -140,6 +140,25 @@ The platform follows the **Fold Health design system** with strict adherence to:
 
 ## Recent Changes
 
+### Icon stroke normalization — all icons render at 1px (May 2026)
+- Added a global CSS rule in `src/index.css` that forces every stroked path inside an Iconify-rendered SVG to render at `stroke-width: 1`. Solar Linear icons ship at 1.5; this brings them in line with the rest of the chrome.
+- Updated all custom inline SVGs in `src/features/email-builder/` (EmptyDropIllustration, TableIcon, the `svg()` helper covering Width/Height/Padding/Radius/Direction/Alignment icons, and the Decoration underline/strike marks) from their previous 1.2–2.0 stroke widths to `strokeWidth="1"`.
+- Solar Bold icons use fill (not stroke), so they are unaffected.
+
+### Shared components — CloseButton, Textarea, Select; builders refactored (May 2026)
+- **`CloseButton`** (`src/components/CloseButton/`) — single source of truth for the top-bar dismiss action across full-screen takeovers. Wraps the plain-cross `CloseIcon` with the `neutral-75` hover affordance from `AgentCanvas`. Adopted in `EmailBuilder`, `CampaignBuilder`, and `AgentCanvas` (replacing local `closeBtn` styles and an inline `ActionButton`).
+- **`Textarea`** (`src/components/Textarea/`) — multi-line counterpart to `<Input>` with the same border, radius, focus ring, and error variant.
+- **`Select`** (`src/components/Select/`) — lightweight controlled single-select dropdown that matches the Input visual tokens. Replaces a custom `DropdownSelect` in `CampaignBuilder` and the native-styled `<select>` inside `PropertiesPanel`.
+- **Sidebar nav from inside builders** — clicking a Sidebar item while the Email Builder is open now triggers the unsaved-changes confirm dialog (with "Discard & Leave" / "Keep Editing" labels). From inside the Campaign Builder (auto-saves on edit) it just closes the builder and navigates. Implemented via a new `requestNavigate(page)` action + `pendingNavTarget` state in the store.
+- **Replaces inline raw `<textarea>` / `<input>` / `<select>` chrome** in the Email Builder property panel with `Input` / `Textarea` / `Select` wrappers; CampaignBuilder's `DropdownSelect` was deleted entirely.
+
+### Campaigns — New Campaign builder, expanded schema, Edit Template handoff (May 2026)
+- **New Campaign full-screen builder** (`src/features/campaign/CampaignBuilder.jsx`) — 500px form pane (name, description, include/exclude audience chip-select, Send Via radio, Start Date with Immediately/Schedule radio, End Date) + right pane with One-Time/Sequence toggle, Sender Name / Send From dropdowns, Subject Line, and an embedded read-only email preview.
+- **Auto-save** — every field edit PATCHes Supabase via a 600ms debounce so users can leave without an explicit save. A draft row is INSERTed the moment the user clicks "New Campaign" so the form has an id to persist against.
+- **Schema migration** (`supabase/campaigns_new_fields_migration.sql`) — adds `audience_include`, `audience_exclude`, `send_via` (JSONB), `start_mode`, `start_at`, `end_date`, `campaign_type`, `sender_name`, `send_from`, `subject_line`, plus a touch trigger for `updated_at`.
+- **Edit Template handoff** — "Edit Template" / "Change Template" inside the campaign builder open the existing Email Builder; closing it falls back to the campaign builder (both takeovers coexist in `AppLayout`).
+- **Run Campaign Now** flips `section='running'` and `enabled=true` after flushing any pending debounced field saves.
+
 ### Email Builder — Undo/Redo, decoration multi-select, shortcuts help, iframe sandbox (May 2026)
 - **Undo / Redo** — full history stack on the email document (`emailHistory`/`emailFuture`), wired to `⌘Z` / `⇧⌘Z` and toolbar buttons. Rapid edits (color picker drag, resize drag) coalesce inside a 400ms window so each gesture counts as one undo step.
 - **Decoration toggles are multi-select** — bold / italic / underline / strikethrough can now combine instead of being mutually exclusive.

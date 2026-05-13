@@ -7,6 +7,7 @@ import { Button } from '../../components/Button/Button';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Toggle } from '../../components/Toggle/Toggle';
 import { ConfirmDialog } from '../../components/Modal/ConfirmDialog';
+import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { ComponentsPanel } from './ComponentsPanel';
 import { PreviewCanvas } from './PreviewCanvas';
 import { PropertiesPanel } from './PropertiesPanel';
@@ -228,12 +229,20 @@ export function EmailBuilder() {
   const redoEmailEdit = useAppStore(s => s.redoEmailEdit);
   const canUndo = useAppStore(s => s.emailHistory.length > 0);
   const canRedo = useAppStore(s => s.emailFuture.length > 0);
+  const pendingNavTarget = useAppStore(s => s.pendingNavTarget);
+  const setPendingNavTarget = useAppStore(s => s.setPendingNavTarget);
+  const setActivePage = useAppStore(s => s.setActivePage);
   const [activeDrag, setActiveDrag] = useState(null);
   const [viewMode, setViewMode] = useState('builder');
   const [showTestEmail, setShowTestEmail] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState(null);
   const [savedSnapshot, setSavedSnapshot] = useState(null);
-  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  // `pendingClose` carries what should happen after the unsaved-changes
+  // confirm dialog resolves: a plain close, or a close+navigate to another
+  // sidebar page that the user clicked while editing.
+  const [pendingClose, setPendingClose] = useState(null);
+  // null | { reason: 'close' } | { reason: 'nav', target: 'home' }
+  const showCloseConfirm = pendingClose !== null;
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -241,6 +250,23 @@ export function EmailBuilder() {
   }, []);
 
   const unsavedCount = savedSnapshot ? countChanges(savedSnapshot, emailDocument) : 0;
+
+  // Sidebar click while EmailBuilder is open → either silently leave (no
+  // unsaved changes) or pop the confirm dialog so the user doesn't lose work.
+  useEffect(() => {
+    if (!pendingNavTarget) return;
+    if (unsavedCount > 0) {
+      setPendingClose({ reason: 'nav', target: pendingNavTarget });
+    } else {
+      closeEmailBuilder();
+      setActivePage(pendingNavTarget);
+      setPendingNavTarget(null);
+    }
+    // unsavedCount intentionally excluded — we only act when the *intent* to
+    // navigate fires; we don't want a passing edit during the dialog to
+    // re-trigger this effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingNavTarget]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -447,13 +473,10 @@ export function EmailBuilder() {
           >
             {saving ? 'Saving…' : 'Save'}
           </Button>
-          <button
-            className={styles.closeBtn}
-            onClick={() => unsavedCount > 0 ? setShowCloseConfirm(true) : closeEmailBuilder()}
-            aria-label="Close"
-          >
-            <Icon name="solar:close-circle-linear" size={22} color="var(--neutral-300)" />
-          </button>
+          <CloseButton
+            size={18}
+            onClick={() => unsavedCount > 0 ? setPendingClose({ reason: 'close' }) : closeEmailBuilder()}
+          />
         </div>
       </div>
 
@@ -479,12 +502,25 @@ export function EmailBuilder() {
           icon="solar:danger-triangle-linear"
           iconColor="var(--status-warning)"
           title="Unsaved changes"
-          description={`You have ${unsavedCount} unsaved change${unsavedCount !== 1 ? 's' : ''}. Are you sure you want to close without saving?`}
-          confirmLabel="Discard & Close"
+          description={`You have ${unsavedCount} unsaved change${unsavedCount !== 1 ? 's' : ''}. Are you sure you want to ${pendingClose?.reason === 'nav' ? 'leave' : 'close'} without saving?`}
+          confirmLabel={pendingClose?.reason === 'nav' ? 'Discard & Leave' : 'Discard & Close'}
           cancelLabel="Keep Editing"
           variant="error"
-          onConfirm={() => { setShowCloseConfirm(false); closeEmailBuilder(); }}
-          onCancel={() => setShowCloseConfirm(false)}
+          onConfirm={() => {
+            const target = pendingClose;
+            setPendingClose(null);
+            closeEmailBuilder();
+            if (target?.reason === 'nav' && target.target) {
+              setActivePage(target.target);
+              setPendingNavTarget(null);
+            }
+          }}
+          onCancel={() => {
+            // User chose to stay — cancel the pending nav (if any) without
+            // touching the editing state.
+            if (pendingClose?.reason === 'nav') setPendingNavTarget(null);
+            setPendingClose(null);
+          }}
         />
       )}
     </DndContext>

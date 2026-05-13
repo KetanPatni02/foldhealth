@@ -322,14 +322,14 @@ function EmptyDropzone({ parentId, columnIdx }) {
 function EmptyDropIllustration() {
   return (
     <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="16" y="16" width="48" height="48" rx="6" stroke="var(--neutral-200)" strokeWidth="2" strokeDasharray="6 4" />
-      <rect x="30" y="10" width="36" height="42" rx="5" fill="white" stroke="var(--neutral-200)" strokeWidth="1.5" />
-      <rect x="34" y="20" width="10" height="8" rx="2" stroke="var(--neutral-300)" strokeWidth="1.2" />
-      <rect x="34" y="34" width="10" height="8" rx="2" stroke="var(--neutral-300)" strokeWidth="1.2" />
-      <line x1="48" y1="22" x2="62" y2="22" stroke="var(--neutral-200)" strokeWidth="1.2" strokeLinecap="round" />
-      <line x1="48" y1="26" x2="58" y2="26" stroke="var(--neutral-200)" strokeWidth="1.2" strokeLinecap="round" />
-      <line x1="48" y1="36" x2="62" y2="36" stroke="var(--neutral-200)" strokeWidth="1.2" strokeLinecap="round" />
-      <line x1="48" y1="40" x2="58" y2="40" stroke="var(--neutral-200)" strokeWidth="1.2" strokeLinecap="round" />
+      <rect x="16" y="16" width="48" height="48" rx="6" stroke="var(--neutral-200)" strokeWidth="1" strokeDasharray="6 4" />
+      <rect x="30" y="10" width="36" height="42" rx="5" fill="white" stroke="var(--neutral-200)" strokeWidth="1" />
+      <rect x="34" y="20" width="10" height="8" rx="2" stroke="var(--neutral-300)" strokeWidth="1" />
+      <rect x="34" y="34" width="10" height="8" rx="2" stroke="var(--neutral-300)" strokeWidth="1" />
+      <line x1="48" y1="22" x2="62" y2="22" stroke="var(--neutral-200)" strokeWidth="1" strokeLinecap="round" />
+      <line x1="48" y1="26" x2="58" y2="26" stroke="var(--neutral-200)" strokeWidth="1" strokeLinecap="round" />
+      <line x1="48" y1="36" x2="62" y2="36" stroke="var(--neutral-200)" strokeWidth="1" strokeLinecap="round" />
+      <line x1="48" y1="40" x2="58" y2="40" stroke="var(--neutral-200)" strokeWidth="1" strokeLinecap="round" />
     </svg>
   );
 }

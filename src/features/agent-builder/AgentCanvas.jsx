@@ -13,7 +13,7 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import { Icon } from '../../components/Icon/Icon';
-import { CloseIcon } from '../../components/Icon/CloseIcon';
+import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { Button } from '../../components/Button/Button';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import { useAppStore } from '../../store/useAppStore';
@@ -586,9 +586,7 @@ export function AgentCanvas() {
           <Button variant="ghost" size="L" disabled>
             Deploy Agent Now
           </Button>
-          <button className={styles.toolbarCloseBtn} onClick={handleCloseBuilder} title="Close">
-            <CloseIcon size={18} />
-          </button>
+          <CloseButton onClick={handleCloseBuilder} />
         </div>
       </div>
 
