@@ -10,6 +10,7 @@ import styles from './EmailBuilder.module.css';
 
 const COMPONENTS = [
   // Row 1: text-flow basics
+  { type: 'Heading',   label: 'Heading',  icon: null, customIcon: 'heading' },
   { type: 'Text',      label: 'Text',     icon: 'solar:text-square-linear' },
   { type: 'Image',     label: 'Image',    icon: 'solar:gallery-linear' },
   { type: 'Button',    label: 'Button',   icon: 'solar:bolt-circle-linear' },
@@ -111,6 +112,22 @@ function FooterIcon({ size = 20, color = 'currentColor' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M3.17157 20.7984L2.81357 21.1474L3.17157 20.7984ZM20.8284 20.7984L21.1864 21.1474L20.8284 20.7984ZM4.5 18C4.22386 18 4 18.2239 4 18.5C4 18.7761 4.22386 19 4.5 19V18.5V18ZM7.5 19C7.77614 19 8 18.7761 8 18.5C8 18.2239 7.77614 18 7.5 18V18.5V19ZM10 18C9.72386 18 9.5 18.2239 9.5 18.5C9.5 18.7761 9.72386 19 10 19V18.5V18ZM14 19C14.2761 19 14.5 18.7761 14.5 18.5C14.5 18.2239 14.2761 18 14 18V18.5V19ZM16.5 18C16.2239 18 16 18.2239 16 18.5C16 18.7761 16.2239 19 16.5 19V18.5V18ZM19.5 19C19.7761 19 20 18.7761 20 18.5C20 18.2239 19.7761 18 19.5 18V18.5V19ZM2.00473 15.5L1.50475 15.5045L2.00473 15.5ZM10 2V2.5H14V2V1.5H10V2ZM22 9.74358H21.5V13.7949H22H22.5V9.74358H22ZM14 22V21.5H10V22V22.5H14V22ZM2 13.7949H2.5V9.74358H2H1.5V13.7949H2ZM10 22V21.5C8.09989 21.5 6.72639 21.4989 5.67921 21.3545C4.64775 21.2122 4.00753 20.9395 3.52957 20.4493L3.17157 20.7984L2.81357 21.1474C3.50719 21.8588 4.39556 22.1869 5.54261 22.3451C6.67395 22.5011 8.12887 22.5 10 22.5V22ZM14 22V22.5C15.8711 22.5 17.326 22.5011 18.4574 22.3451C19.6044 22.1869 20.4928 21.8588 21.1864 21.1474L20.8284 20.7984L20.4704 20.4493C19.9925 20.9395 19.3522 21.2122 18.3208 21.3545C17.2736 21.4989 15.9001 21.5 14 21.5V22ZM14 2V2.5C15.8993 2.5 17.2751 2.501 18.3246 2.63757C19.3613 2.77249 20.0038 3.03173 20.4807 3.49329L20.8284 3.13402L21.1762 2.77476C20.4814 2.1023 19.5954 1.79452 18.4536 1.64593C17.3246 1.499 15.8719 1.5 14 1.5V2ZM22 9.74358H22.5C22.5 7.93299 22.5011 6.52311 22.3488 5.42638C22.1942 4.31356 21.8732 3.44942 21.1762 2.77476L20.8284 3.13402L20.4807 3.49329C20.9552 3.95264 21.22 4.5681 21.3583 5.56396C21.4989 6.57593 21.5 7.90381 21.5 9.74358H22ZM10 2V1.5C8.12807 1.5 6.67542 1.499 5.54639 1.64593C4.40459 1.79452 3.51855 2.1023 2.82382 2.77476L3.17157 3.13402L3.51932 3.49329C3.99617 3.03173 4.63872 2.77249 5.67544 2.63757C6.72491 2.501 8.10069 2.5 10 2.5V2ZM2 9.74358H2.5C2.5 7.90381 2.50113 6.57593 2.64169 5.56396C2.78002 4.5681 3.04476 3.95264 3.51932 3.49329L3.17157 3.13402L2.82382 2.77476C2.12682 3.44942 1.80577 4.31356 1.6512 5.42639C1.49887 6.52311 1.5 7.93299 1.5 9.74358H2ZM4.5 18.5V19H7.5V18.5V18H4.5V18.5ZM10 18.5V19H14V18.5V18H10V18.5ZM16.5 18.5V19H19.5V18.5V18H16.5V18.5ZM2 13.7949H1.5C1.5 14.4101 1.5 14.9792 1.50475 15.5045L2.00473 15.5L2.50471 15.4955C2.5 14.9756 2.5 14.4112 2.5 13.7949H2ZM2.00473 15.5L1.50475 15.5045C1.51722 16.8833 1.5621 17.9972 1.73726 18.9005C1.91493 19.8168 2.23287 20.5518 2.81357 21.1474L3.17157 20.7984L3.52957 20.4493C3.12522 20.0346 2.87222 19.5005 2.71897 18.7101C2.56321 17.9069 2.5172 16.8767 2.50471 15.4955L2.00473 15.5ZM22 13.7949H21.5C21.5 14.4112 21.5 14.9756 21.4953 15.4955L21.9953 15.5L22.4953 15.5045C22.5 14.9792 22.5 14.4101 22.5 13.7949H22ZM21.9953 15.5L21.4953 15.4955C21.4828 16.8767 21.4368 17.9069 21.281 18.7101C21.1278 19.5005 20.8748 20.0346 20.4704 20.4493L20.8284 20.7984L21.1864 21.1474C21.7671 20.5518 22.0851 19.8168 22.2627 18.9005C22.4379 17.9972 22.4828 16.8833 22.4953 15.5045L21.9953 15.5ZM2.00473 15.5V16H21.9953V15.5V15H2.00473V15.5Z" fill={color} />
+    </svg>
+  );
+}
+
+// Custom Heading "H" glyph — two vertical strokes joined by a horizontal bar
+// with serifs at top and bottom of each stroke. Matches the icon supplied
+// by design. Used in both the Components panel tile and the Layers panel.
+function HeadingIcon({ size = 20, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M7 12H17M7 5V19M17 5V19M15 19H19M15 5H19M5 19H9M5 5H9"
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -221,6 +238,7 @@ function DraggableTile({ item, onClick }) {
       {item.customIcon === 'group' && <GroupIcon size={20} color="var(--neutral-300)" />}
       {item.customIcon === 'header' && <HeaderIcon size={20} color="var(--neutral-300)" />}
       {item.customIcon === 'footer' && <FooterIcon size={20} color="var(--neutral-300)" />}
+      {item.customIcon === 'heading' && <HeadingIcon size={20} color="var(--neutral-300)" />}
       {!item.customIcon && <Icon name={item.icon} size={20} color="var(--neutral-300)" />}
       {item.label}
     </button>
@@ -255,7 +273,14 @@ function layerLabel(block) {
   if (role === 'header') return 'Header';
   if (role === 'body') return 'Body';
   if (role === 'footer') return 'Footer';
-  if (block.type === 'Heading' || block.type === 'Text') {
+  if (block.type === 'Heading') {
+    // Surface the heading level (H1 / H2 / H3) so users can spot at a
+    // glance which heading they're looking at without selecting it.
+    const level = (block.data?.props?.level || 'h2').toUpperCase();
+    const text = (block.data?.props?.text || '').slice(0, 22);
+    return `${level}: ${text}`;
+  }
+  if (block.type === 'Text') {
     return `${TYPE_LABELS[block.type]}: ${(block.data?.props?.text || '').slice(0, 22)}`;
   }
   return TYPE_LABELS[block.type] || block.type;
@@ -271,6 +296,7 @@ function LayerIcon({ block, size = 14, color = 'currentColor' }) {
   if (role === 'footer') return <FooterIcon size={size} color={color} />;
   if (role === 'body')   return <Icon name="solar:document-text-linear" size={size} color={color} />;
   switch (block.type) {
+    case 'Heading':          return <HeadingIcon size={size} color={color} />;
     case 'Container':        return <GroupIcon size={size} color={color} />;
     case 'ColumnsContainer': return <ColumnIcon size={size} color={color} />;
     case 'Table':            return <TableIcon size={size} color={color} />;
