@@ -117,7 +117,6 @@ function FooterIcon({ size = 20, color = 'currentColor' }) {
 
 export function ComponentsPanel() {
   const [tab, setTab] = useState('components');
-  const [presetPicker, setPresetPicker] = useState(null); // 'header' | 'footer' | null
   const [renamingId, setRenamingId] = useState(null);
   const addBlock = useAppStore(s => s.addBlock);
   const showToast = useAppStore(s => s.showToast);
@@ -137,18 +136,23 @@ export function ComponentsPanel() {
     return () => window.removeEventListener('eb:rename', handler);
   }, []);
 
+  // Clicking a Header / Footer tile in the components panel adds a default
+  // preset directly — the picker for browsing/changing presets now lives
+  // only in the right-panel Template tab (which is what surfaces when the
+  // user actually wants to swap an existing header/footer).
   const handleAdd = (item) => {
     if (item.soon) { showToast(`${item.label} — coming soon`); return; }
-    if (item.preset) { setPresetPicker(item.preset); return; }
+    if (item.preset === 'header' || item.preset === 'footer') {
+      const role = item.preset;
+      const list = role === 'header' ? HEADER_PRESETS : FOOTER_PRESETS;
+      if (!list.length) return;
+      let counter = Date.now();
+      const genId = () => `block-${counter++}-${Math.random().toString(36).slice(2, 5)}`;
+      const tree = list[0].build(genId, editingCampaignName || 'Welcome');
+      replaceHeaderFooter(role, tree);
+      return;
+    }
     addBlock(item.type);
-  };
-
-  const handlePickPreset = (role, preset) => {
-    let counter = Date.now();
-    const genId = () => `block-${counter++}-${Math.random().toString(36).slice(2, 5)}`;
-    const tree = preset.build(genId, editingCampaignName || 'Welcome');
-    replaceHeaderFooter(role, tree);
-    setPresetPicker(null);
   };
 
   return (
@@ -173,15 +177,6 @@ export function ComponentsPanel() {
                 <DraggableTile key={c.type} item={c} onClick={() => handleAdd(c)} />
               ))}
             </div>
-
-            {presetPicker && (
-              <PresetPicker
-                role={presetPicker}
-                presets={presetPicker === 'header' ? HEADER_PRESETS : FOOTER_PRESETS}
-                onPick={(p) => handlePickPreset(presetPicker, p)}
-                onClose={() => setPresetPicker(null)}
-              />
-            )}
 
             <p className={styles.sectionHeading}>Layout</p>
             <div className={styles.layoutGrid}>
@@ -254,37 +249,6 @@ function DraggableLayoutTile({ layout, onClick }) {
   );
 }
 
-function PresetPicker({ role, presets, onPick, onClose }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
-    setTimeout(() => document.addEventListener('mousedown', handler), 0);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
-
-  return (
-    <div ref={ref} className={styles.presetPicker}>
-      <div className={styles.presetPickerHeader}>
-        <span>Choose a {role}</span>
-        <button className={styles.presetPickerClose} onClick={onClose} aria-label="Close">
-          <Icon name="solar:close-circle-linear" size={14} color="currentColor" />
-        </button>
-      </div>
-      {presets.map(p => (
-        <button key={p.id} className={styles.presetPickerItem} onClick={() => onPick(p)}>
-          <div className={styles.presetThumb} style={{ background: p.accent + '22' }}>
-            <div className={styles.presetThumbBar} style={{ background: p.accent }} />
-          </div>
-          <div className={styles.presetText}>
-            <div className={styles.presetTitle}>{p.label}</div>
-            <div className={styles.presetDesc}>{p.description}</div>
-          </div>
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function layerLabel(block) {
   if (block.data?.alias) return block.data.alias;
   const role = block.data?.role;
@@ -297,12 +261,24 @@ function layerLabel(block) {
   return TYPE_LABELS[block.type] || block.type;
 }
 
-function layerIcon(block) {
+// Render the right icon for a block in the Layers panel. Roles (header /
+// body / footer) and custom-glyph types (Container, ColumnsContainer, Table)
+// use the same hand-drawn SVGs the Components panel tiles use, so a block's
+// layer-row icon matches the tile you'd drag in from the left.
+function LayerIcon({ block, size = 14, color = 'currentColor' }) {
   const role = block.data?.role;
-  if (role === 'header') return 'solar:gallery-wide-linear';
-  if (role === 'body') return 'solar:document-text-linear';
-  if (role === 'footer') return 'solar:gallery-bold-linear';
-  return TYPE_ICONS[block.type] || 'solar:square-linear';
+  if (role === 'header') return <HeaderIcon size={size} color={color} />;
+  if (role === 'footer') return <FooterIcon size={size} color={color} />;
+  if (role === 'body')   return <Icon name="solar:document-text-linear" size={size} color={color} />;
+  switch (block.type) {
+    case 'Container':        return <GroupIcon size={size} color={color} />;
+    case 'ColumnsContainer': return <ColumnIcon size={size} color={color} />;
+    case 'Table':            return <TableIcon size={size} color={color} />;
+    default: {
+      const name = TYPE_ICONS[block.type] || 'solar:square-linear';
+      return <Icon name={name} size={size} color={color} />;
+    }
+  }
 }
 
 const STRUCTURAL_ROLES = new Set(['header', 'body', 'footer']);
@@ -417,7 +393,7 @@ function LayerRow({ id, block, depth, ctx }) {
         ) : (
           <span style={{ width: 16, flexShrink: 0 }} />
         )}
-        <Icon name={layerIcon(block)} size={14} color="currentColor" />
+        <LayerIcon block={block} size={14} color="currentColor" />
         {isRenaming ? (
           <input
             ref={renameInputRef}

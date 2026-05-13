@@ -13,6 +13,7 @@ import { PreviewCanvas } from './PreviewCanvas';
 import { PropertiesPanel } from './PropertiesPanel';
 import { DevicePreview } from './DevicePreview';
 import { renderEmailHtml } from './patchEmailHtml';
+import { SendTestPopover } from './SendTestPopover';
 import { buildParentMap } from './blockHelpers';
 import styles from './EmailBuilder.module.css';
 
@@ -65,97 +66,6 @@ function parseDropTarget(overId, doc) {
   return { parentId: slot.parentId, columnIdx: slot.columnIdx, index: slot.index + 1 };
 }
 
-function SendTestPopover({ onClose }) {
-  const doc = useAppStore(s => s.emailDocument);
-  const campaignName = useAppStore(s => s.editingCampaignName);
-  const [email, setEmail] = useState('');
-  const [status, setStatus] = useState(null); // null | 'sending' | 'ok' | 'error'
-  const [errorMsg, setErrorMsg] = useState('');
-  const inputRef = useRef(null);
-  const popoverRef = useRef(null);
-
-  useEffect(() => { inputRef.current?.focus(); }, []);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target)) onClose();
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
-
-  const handleSend = async () => {
-    if (!email || !email.includes('@')) return;
-    setStatus('sending');
-    setErrorMsg('');
-    const html = renderEmailHtml(doc);
-    if (!html || html.includes('Could not render')) {
-      setStatus('error');
-      setErrorMsg('Failed to render email template');
-      return;
-    }
-    try {
-      const res = await fetch('/api/send-test-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: email,
-          subject: `[Test] ${campaignName || 'Email Template'}`,
-          html,
-        }),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        let msg = 'Send failed';
-        try { const j = JSON.parse(text); msg = j.error?.message || j.error || msg; } catch { msg = text || msg; }
-        setStatus('error');
-        setErrorMsg(msg);
-      } else {
-        const json = await res.json();
-        if (json.error) {
-          setStatus('error');
-          setErrorMsg(json.error?.message || json.error || 'Send failed');
-        } else {
-          setStatus('ok');
-        }
-      }
-    } catch (err) {
-      setStatus('error');
-      setErrorMsg(err.message || 'Network error');
-    }
-  };
-
-  return (
-    <div ref={popoverRef} className={styles.testEmailPopover}>
-      <div className={styles.testEmailLabel}>Send test email</div>
-      <input
-        ref={inputRef}
-        type="email"
-        className={styles.testEmailInput}
-        placeholder="name@example.com"
-        value={email}
-        onChange={e => setEmail(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') handleSend(); if (e.key === 'Escape') onClose(); }}
-      />
-      {status === 'ok' && (
-        <div className={`${styles.testEmailStatus} ${styles.testEmailStatusOk}`}>
-          <Icon name="solar:check-circle-linear" size={14} /> Sent successfully
-        </div>
-      )}
-      {status === 'error' && (
-        <div className={`${styles.testEmailStatus} ${styles.testEmailStatusErr}`}>
-          <Icon name="solar:close-circle-linear" size={14} /> {errorMsg}
-        </div>
-      )}
-      <div className={styles.testEmailActions}>
-        <Button variant="secondary" size="S" onClick={onClose}>Cancel</Button>
-        <Button variant="primary" size="S" onClick={handleSend} disabled={status === 'sending' || !email}>
-          {status === 'sending' ? 'Sending…' : 'Send'}
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 const SHORTCUTS = [
   { keys: '⌘Z', label: 'Undo' },
@@ -441,7 +351,12 @@ export function EmailBuilder() {
           >
             Test Mail
           </Button>
-          {showTestEmail && <SendTestPopover onClose={() => setShowTestEmail(false)} />}
+          {showTestEmail && (
+            <SendTestPopover
+              campaignId={useAppStore.getState().editingCampaignId}
+              onClose={() => setShowTestEmail(false)}
+            />
+          )}
           {lastSavedAt && unsavedCount === 0 && (
             <span className={styles.saveStatus}>
               <Icon name="solar:check-circle-linear" size={14} color="var(--status-success)" />

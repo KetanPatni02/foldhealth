@@ -3,10 +3,28 @@
   flex: 1;
   display: grid;
   place-items: center;
-  padding: 48px 24px 64px;
+  padding: 16px 24px 64px;
   overflow: auto;
   background: #fff;
   min-height: 0;
+  position: relative;
+}
+
+/* Light / Dark theme toggle floats just above the device frame */
+.themeBar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 16px;
+  background: linear-gradient(to bottom, #fff 80%, rgba(255,255,255,0));
+}
+
+.themeBadge {
+  margin-left: 6px;
+  color: var(--neutral-300);
 }
 
 .deviceWrap {

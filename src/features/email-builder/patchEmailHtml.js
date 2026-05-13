@@ -1,6 +1,118 @@
 // Full custom email renderer — produces table-based HTML that matches
 // the builder canvas exactly across all email clients.
 
+// ── Dark-mode color transforms ──────────────────────────────────────────
+// Real device dark mode (iOS Mail / Gmail auto-dark / Outlook) doesn't
+// just darken the backdrop — it inverts whiteish surfaces to dark and
+// dark text to light, while preserving vivid brand colors (a purple
+// gradient header stays purple). Approximated here with three small
+// helpers; tuned to the Fold token palette.
+
+function _rgb(hex) {
+  if (!hex || typeof hex !== 'string') return null;
+  let h = hex.trim();
+  if (!h.startsWith('#')) return null;
+  h = h.slice(1);
+  if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  if (h.length !== 6) return null;
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) return null;
+  return [r, g, b];
+}
+
+function _luminance([r, g, b]) {
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function _saturation([r, g, b]) {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  if (max === 0) return 0;
+  return (max - min) / max;
+}
+
+// Backgrounds: only transform unsaturated (gray-scale) colors. Vivid
+// brand colors (purple, orange, etc.) pass through unchanged so the
+// gradient header / promo banner keep their identity.
+function darkenBackground(hex) {
+  const rgb = _rgb(hex);
+  if (!rgb) return hex;
+  if (_saturation(rgb) > 0.25) return hex;
+  const lum = _luminance(rgb);
+  if (lum > 235) return '#16181D';   // pure white → near-black canvas
+  if (lum > 210) return '#1B1E24';   // very light → dark
+  if (lum > 170) return '#23262D';   // light gray → mid-dark
+  if (lum > 100) return '#2C3038';   // mid gray → slightly lighter dark
+  return hex;                        // already dark, leave alone
+}
+
+// Text colors: only flip unsaturated text. White-on-dark text used in
+// gradient headers (#FFF on #5020A0) would technically get caught but
+// would also look fine inverted on a dark surface, so we leave it; the
+// guard against high-luminance text covers that.
+function lightenText(hex) {
+  const rgb = _rgb(hex);
+  if (!rgb) return hex;
+  if (_saturation(rgb) > 0.25) return hex; // vivid text stays
+  const lum = _luminance(rgb);
+  if (lum > 200) return hex;         // already light — eg #FFF on a gradient
+  if (lum < 80)  return '#E4E5EE';   // very dark → very light
+  if (lum < 140) return '#C7CBD4';   // mid dark → light gray
+  if (lum < 180) return '#A0A6B2';   // gray → softer light gray
+  return hex;
+}
+
+// Walk the document and produce a dark-mode copy. Original doc isn't
+// mutated. Touches:
+//  - root.backdropColor / canvasColor / textColor
+//  - every block.data.style { backgroundColor, color }
+//  - Button.props.buttonBackgroundColor / .buttonTextColor
+//  - NavBar.props.linkColor (only when unsaturated)
+//  - Divider.props.lineColor (always darken-then-lighten so the rule's
+//    visible against the dark canvas)
+function transformDocForDarkMode(doc) {
+  if (!doc) return doc;
+  const out = {};
+  for (const [id, block] of Object.entries(doc)) {
+    if (!block || typeof block !== 'object') { out[id] = block; continue; }
+    if (id === 'root') {
+      const data = block.data || {};
+      out.root = {
+        ...block,
+        data: {
+          ...data,
+          backdropColor: '#0F1115',
+          canvasColor: '#16181D',
+          textColor: lightenText(data.textColor || '#3A485F'),
+        },
+      };
+      continue;
+    }
+    const data = block.data || {};
+    const style = data.style || {};
+    const newStyle = { ...style };
+    if (style.backgroundColor) newStyle.backgroundColor = darkenBackground(style.backgroundColor);
+    if (style.color)           newStyle.color           = lightenText(style.color);
+    const props = data.props || {};
+    const newProps = { ...props };
+    if (block.type === 'Button') {
+      if (props.buttonBackgroundColor) newProps.buttonBackgroundColor = darkenBackground(props.buttonBackgroundColor);
+      if (props.buttonTextColor)       newProps.buttonTextColor       = lightenText(props.buttonTextColor);
+    }
+    if (block.type === 'NavBar' && props.linkColor) {
+      newProps.linkColor = lightenText(props.linkColor);
+    }
+    if (block.type === 'Divider' && props.lineColor) {
+      // A light divider on a dark canvas disappears; lift its luminance.
+      newProps.lineColor = lightenText(props.lineColor);
+    }
+    out[id] = { ...block, data: { ...data, style: newStyle, props: newProps } };
+  }
+  return out;
+}
+
 const FONT_MAP = {
   MODERN_SANS: "'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif",
   BOOK_SANS: "Helvetica, Arial, sans-serif",
@@ -12,6 +124,23 @@ const FONT_MAP = {
   BOOK_SERIF: "Georgia, 'Times New Roman', serif",
   MONOSPACE: "'Courier New', Courier, monospace",
 };
+
+// Format a backgroundImage value for inline CSS. CSS gradient functions
+// (linear-gradient / radial-gradient / conic-gradient and their repeating
+// variants) must be emitted verbatim — wrapping them in url(...) produces
+// invalid CSS that mail clients reject, often discarding the surrounding
+// background-color fallback too (which is why a gradient header was showing
+// white-on-white in the actual sent email). URLs / paths still get wrapped.
+function formatBackgroundImage(value) {
+  if (!value) return '';
+  const trimmed = String(value).trim();
+  if (/^(?:repeating-)?(?:linear|radial|conic)-gradient\s*\(/i.test(trimmed)) {
+    return trimmed;
+  }
+  // Strip an existing url() wrapper if present so we don't double-wrap.
+  if (/^url\s*\(/i.test(trimmed)) return trimmed;
+  return `url(${trimmed})`;
+}
 
 function pad(p) {
   if (!p) return '';
@@ -174,7 +303,7 @@ function renderBlock(doc, id) {
         'border-radius': style.borderRadius ? `${style.borderRadius}px` : '',
       };
       if (style.backgroundImage) {
-        s['background-image'] = `url(${style.backgroundImage})`;
+        s['background-image'] = formatBackgroundImage(style.backgroundImage);
         s['background-size'] = style.backgroundSize || 'cover';
         s['background-position'] = style.backgroundPosition || 'center';
         s['background-repeat'] = style.backgroundRepeat || 'no-repeat';
@@ -335,27 +464,48 @@ function buildDividerSvg(props) {
   </svg>`;
 }
 
-export function renderEmailHtml(doc) {
+// Options:
+//   wrapperPadding — outer table-cell padding around the email body; pass '0'
+//     for thumbnail previews so the email sits flush. Default '24px 0'.
+//   theme — 'auto' | 'light' | 'dark'. When 'dark', simulates how a device
+//     in dark mode renders the email: page backdrop flips to a dark grey,
+//     the html element advertises color-scheme: dark so client/system text
+//     defaults pick up correctly, and a @media (prefers-color-scheme: dark)
+//     rule echoes the override. The email content itself (gradient headers,
+//     branded colors) stays untouched — most dark-mode-aware clients leave
+//     in-content colors alone and just darken the surrounding chrome.
+export function renderEmailHtml(doc, { wrapperPadding = '24px 0', theme = 'auto' } = {}) {
   if (!doc) return '';
-  const root = doc.root;
+  // In dark mode, pre-transform every block in the document so individual
+  // backgrounds / text colors invert too — not just the outer backdrop.
+  // Vivid brand colors (gradient header, promo banner) pass through.
+  const effectiveDoc = theme === 'dark' ? transformDocForDarkMode(doc) : doc;
+  const root = effectiveDoc.root;
   if (!root) return '';
 
-  const backdropColor = root.data?.backdropColor || '#F2EEFE';
-  const canvasColor = root.data?.canvasColor || '#FFFFFF';
-  const textColor = root.data?.textColor || '#3A485F';
+  const isDark = theme === 'dark';
+  const backdropColor = root.data?.backdropColor || (isDark ? '#0F1115' : '#F2EEFE');
+  const canvasColor = root.data?.canvasColor || (isDark ? '#16181D' : '#FFFFFF');
+  const textColor = root.data?.textColor || (isDark ? '#E4E5EE' : '#3A485F');
   const fontFamily = FONT_MAP[root.data?.fontFamily] || FONT_MAP.MODERN_SANS;
   const childrenIds = root.data?.childrenIds || [];
 
-  const bodyContent = childrenIds.map(cid => renderBlock(doc, cid)).join('');
+  // Use effectiveDoc (the dark-mode-transformed copy when theme === 'dark')
+  // so child blocks render with their flipped backgrounds / text colors.
+  const bodyContent = childrenIds.map(cid => renderBlock(effectiveDoc, cid)).join('');
+  const colorScheme = theme === 'auto' ? 'light dark' : theme;
 
   return `<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" style="color-scheme: ${colorScheme}">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+<meta name="color-scheme" content="${colorScheme}"/>
+<meta name="supported-color-schemes" content="${colorScheme}"/>
 <title>Email</title>
 <style>
+  :root { color-scheme: ${colorScheme}; }
   body, table, td, p, a, h1, h2, h3 { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
   table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
   img { -ms-interpolation-mode: bicubic; border: 0; outline: none; text-decoration: none; display: block; max-width: 100%; height: auto; }
@@ -375,7 +525,7 @@ export function renderEmailHtml(doc) {
 </head>
 <body style="margin:0;padding:0;background-color:${backdropColor};font-family:${fontFamily};">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:${backdropColor}">
-<tr><td align="center" style="padding:24px 0">
+<tr><td align="center" style="padding:${wrapperPadding}">
   <table role="presentation" class="email-container" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;width:100%;background-color:${canvasColor};color:${textColor};font-family:${fontFamily};">
   <tr><td>
     ${bodyContent}

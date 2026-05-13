@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Reader } from '@usewaypoint/email-builder';
 import { useAppStore } from '../../store/useAppStore';
+import { renderEmailHtml } from '../email-builder/patchEmailHtml';
 import { Icon } from '../../components/Icon/Icon';
 import { Button } from '../../components/Button/Button';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { CloseButton } from '../../components/CloseButton/CloseButton';
+import { SendTestPopover } from '../email-builder/SendTestPopover';
 import { Input } from '../../components/Input/Input';
 import { Textarea } from '../../components/Textarea/Textarea';
 import { Select } from '../../components/Select/Select';
@@ -66,12 +67,18 @@ export function CampaignBuilder() {
   const runCampaign = useAppStore(s => s.runCampaignNow);
   const openTemplate = useAppStore(s => s.openEmailTemplateFromCampaign);
   const showToast = useAppStore(s => s.showToast);
+  const [showTestEmail, setShowTestEmail] = useState(false);
 
   // Build a preview document on the fly when the campaign has no saved
   // template yet, so the user sees something instead of an empty pane.
-  const previewDoc = useMemo(() => {
-    if (campaign?.emailTemplate) return campaign.emailTemplate;
-    return makeInitialDocument({ name: campaign?.name || 'Untitled Campaign' });
+  // Render it to HTML through the same renderer the production email uses
+  // (renderEmailHtml) — Reader on its own can't draw custom block types
+  // (NavBar / Social / Table) and skips backgroundImage gradients, so the
+  // preview was diverging visually from the actual email export.
+  const previewHtml = useMemo(() => {
+    const doc = campaign?.emailTemplate
+      || makeInitialDocument({ name: campaign?.name || 'Untitled Campaign' });
+    return renderEmailHtml(doc);
   }, [campaign?.emailTemplate, campaign?.name]);
 
   if (!campaign) {
@@ -121,10 +128,10 @@ export function CampaignBuilder() {
                     id="campaign-name"
                     placeholder="Enter Campaign Name"
                     value={displayName}
-                    maxLength={25}
+                    maxLength={60}
                     onChange={e => set({ name: e.target.value })}
                   />
-                  <CharCount value={displayName} max={25} />
+                  <CharCount value={displayName} max={60} />
                 </>
               );
             })()}
@@ -232,15 +239,21 @@ export function CampaignBuilder() {
             size="S"
             onChange={v => set({ campaignType: v })}
           />
-          <div className={styles.topRight}>
+          <div className={styles.topRight} style={{ position: 'relative' }}>
             <Button
               variant="secondary"
               size="S"
               leadingIcon="solar:letter-linear"
-              onClick={() => showToast('Test mail flow lives in the email builder — click Edit Template')}
+              onClick={() => setShowTestEmail(v => !v)}
             >
               Send Test Mail
             </Button>
+            {showTestEmail && (
+              <SendTestPopover
+                campaignId={id}
+                onClose={() => setShowTestEmail(false)}
+              />
+            )}
             <Button
               variant="primary"
               size="S"
@@ -299,9 +312,12 @@ export function CampaignBuilder() {
               </div>
             </div>
             <div className={styles.previewFrame}>
-              <div className={styles.previewInner}>
-                <Reader document={previewDoc} rootBlockId="root" />
-              </div>
+              <iframe
+                title="Email preview"
+                sandbox="allow-same-origin"
+                srcDoc={previewHtml}
+                className={styles.previewIframe}
+              />
             </div>
           </div>
         </div>

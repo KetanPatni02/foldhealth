@@ -375,38 +375,50 @@
   flex-shrink: 0;
 }
 
+/* The whole right pane wraps the email card with a small gray gutter, matching
+   Figma node 964:184252 — Subject Line, Email Design label, and the rendered
+   email all live inside ONE rounded white card. */
 .previewWrap {
   flex: 1;
-  overflow-y: auto;
-  background: var(--neutral-50);
+  min-height: 0;
   display: flex;
-  justify-content: center;
-  padding: 24px 16px;
+  background: var(--neutral-50);
+  padding: 16px;
+  overflow: hidden;
 }
 
 .previewCard {
   width: 100%;
-  max-width: 600px;
+  max-width: 700px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+  overflow: hidden;
+  min-height: 0;
+  flex: 1;
 }
 
+/* Subject Line + Email Design rows stay pinned at the top of the card so the
+   user can edit the subject and access "Edit Template" while scrolling the
+   email body below. */
 .previewSubjectRow {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px 12px;
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 8px;
+  padding: 16px 20px 12px;
+  flex-shrink: 0;
 }
 
 .previewDesignRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: 0 20px 12px;
+  flex-shrink: 0;
+  border-bottom: 0.5px solid var(--neutral-100);
 }
 
 .previewDesignLabel {
@@ -422,13 +434,19 @@
   gap: 12px;
 }
 
+/* The email itself — fills the remaining height and scrolls internally. No
+   border or radius; the parent .previewCard provides those so the gradient
+   header in the email visually butts up against the card edge. */
 .previewFrame {
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 8px;
-  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
-.previewInner {
-  pointer-events: none;
+.previewIframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--neutral-0);
+  display: block;
 }
