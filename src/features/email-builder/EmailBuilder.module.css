@@ -392,6 +392,173 @@
   padding: 0;
 }
 
+/* Search bar wrapping the shared <Input> in the Template tab. Sits between
+   the save-as-preset bar and the listing — no extra chrome of its own; the
+   Input component already brings the field styling. */
+.presetSearchBar {
+  padding: 8px 12px 4px;
+}
+
+.presetPickerEmpty {
+  padding: 20px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--neutral-200);
+}
+
+/* Section heading between Your-presets and Built-in groups. */
+.presetPickerSection {
+  padding: 12px 4px 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+/* Preset card — live preview + meta block, action buttons hover-revealed. */
+.presetCardWrap {
+  position: relative;
+  margin-bottom: 6px;
+}
+
+.presetCard {
+  display: block;
+  width: 100%;
+  padding: 0;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+  transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
+}
+.presetCard:hover:not(:disabled) {
+  border-color: var(--primary-300);
+  box-shadow: 0 6px 16px -4px rgba(140, 90, 226, 0.12);
+  transform: translateY(-1px);
+}
+.presetCard:disabled { cursor: default; }
+
+.presetCardMeta {
+  padding: 6px 10px 8px;
+}
+.presetCardTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  line-height: 1.3;
+}
+.presetCardDesc {
+  margin-top: 2px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  color: var(--neutral-300);
+  line-height: 1.4;
+}
+
+.presetCardActions {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: inline-flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.presetCardWrap:hover .presetCardActions { opacity: 1; }
+
+.presetCardActionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--neutral-400);
+}
+.presetCardActionBtn:hover { background: var(--neutral-50); }
+.presetCardActionDanger { color: var(--status-error); }
+.presetCardActionDanger:hover { background: var(--status-error-light); }
+
+/* Inline rename form — replaces the meta strip when editing a user preset. */
+.presetCardEditForm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: var(--neutral-50);
+  border-top: 0.5px solid var(--neutral-150);
+}
+.presetCardEditInput {
+  width: 100%;
+  height: 26px;
+  padding: 0 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 4px;
+  background: var(--neutral-0);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-400);
+  outline: none;
+  box-sizing: border-box;
+}
+.presetCardEditInput:focus { border-color: var(--primary-300); }
+.presetCardEditActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.presetCardEditCancel,
+.presetCardEditSave {
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  border: 0.5px solid var(--neutral-150);
+}
+.presetCardEditCancel { background: var(--neutral-0); color: var(--neutral-400); }
+.presetCardEditCancel:hover { background: var(--neutral-50); }
+.presetCardEditSave {
+  background: var(--primary-300);
+  border-color: var(--primary-300);
+  color: #fff;
+}
+.presetCardEditSave:hover { background: var(--primary-400, #5020A0); border-color: var(--primary-400, #5020A0); }
+
+.presetPickerItemWrap {
+  position: relative;
+}
+.presetPickerDelete {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--status-error);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.presetPickerItemWrap:hover .presetPickerDelete { opacity: 1; }
+.presetPickerDelete:hover { background: var(--status-error-light); }
+
 .presetPickerItem {
   display: flex;
   align-items: center;
@@ -1406,6 +1573,141 @@
 .tokTag      { color: #F07178; }
 .tokAttr     { color: #FFCB6B; }
 .tokPunct    { color: #89DDFF; }
+
+/* Section subheading inside scrollable panels — smaller than the gray strip,
+   used to label "Your presets" / "Built-in" inside the Template tab. */
+.sectionSubHeading {
+  display: flex;
+  align-items: center;
+  padding: 10px 4px 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  letter-spacing: 0;
+}
+
+/* Save-as-preset inline form (Template tab → header/footer mode). */
+.presetSaveBar {
+  padding: 8px 12px 4px;
+}
+
+.presetSaveBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--primary-50);
+  border: 0.5px dashed var(--primary-200);
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-400, #5020A0);
+}
+.presetSaveBtn:hover {
+  background: var(--primary-100);
+  border-style: solid;
+}
+
+.presetSaveForm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+}
+
+.presetSaveInput {
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 4px;
+  background: var(--neutral-0);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-400);
+  outline: none;
+  box-sizing: border-box;
+}
+.presetSaveInput:focus { border-color: var(--primary-300); }
+
+.presetSaveActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.presetSaveCancel,
+.presetSavePrimary {
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  border: 0.5px solid var(--neutral-150);
+}
+.presetSaveCancel {
+  background: var(--neutral-0);
+  color: var(--neutral-400);
+}
+.presetSaveCancel:hover { background: var(--neutral-50); }
+.presetSavePrimary {
+  background: var(--primary-300);
+  border-color: var(--primary-300);
+  color: #fff;
+}
+.presetSavePrimary:hover:not(:disabled) { background: var(--primary-400, #5020A0); border-color: var(--primary-400, #5020A0); }
+.presetSavePrimary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Vertical list inside the Template tab — refined modern card layout. */
+.presetCardList {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px 16px;
+  gap: 0;
+}
+
+/* Live preview thumbnail — scaled Reader output. The outer wrap clips to
+   the chosen `width` and the dynamically computed scaled height; the inner
+   scale wrapper renders at the full email content width (600px) then is
+   CSS-scaled down to fit. pointer-events disabled so the thumbnail behaves
+   as one click target via its parent button. */
+.livePreviewWrap {
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.livePreviewScale {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Iframe inside the scaled live preview. Sized at the source email width
+   (600px) and CSS-scaled down via transform; the wrapper clips the overflow
+   so we just see the scaled-down thumbnail. */
+.livePreviewIframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 0;
+  transform-origin: top left;
+  pointer-events: none;
+  background: #fff;
+}
 
 /* Template tab */
 .templateGrid {

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { renderEmailHtml } from './patchEmailHtml';
+import { Toggle } from '../../components/Toggle/Toggle';
 import styles from './DevicePreview.module.css';
 
 function EmailIframe({ html, renderWidth }) {
@@ -113,6 +114,10 @@ export function DevicePreview({ device }) {
   const htmlOverride = useAppStore(s => s.htmlPreviewOverride);
   const stageRef = useRef(null);
   const [stageW, setStageW] = useState(0);
+  // Theme override for the device preview — lets the user see how the email
+  // would render on a device with system dark mode versus light mode without
+  // changing their actual OS theme.
+  const [theme, setTheme] = useState('light');
 
   useEffect(() => {
     const el = stageRef.current;
@@ -126,7 +131,7 @@ export function DevicePreview({ device }) {
   if (htmlOverride) {
     emailHtml = htmlOverride;
   } else if (doc) {
-    emailHtml = renderEmailHtml(doc);
+    emailHtml = renderEmailHtml(doc, { theme });
   }
 
   const avail = Math.max(280, stageW - 64);
@@ -135,6 +140,17 @@ export function DevicePreview({ device }) {
 
   return (
     <div className={styles.stage} ref={stageRef}>
+      <div className={styles.themeBar}>
+        <Toggle
+          size="S"
+          items={[
+            { key: 'light', label: 'Light', icon: 'solar:sun-linear' },
+            { key: 'dark',  label: 'Dark',  icon: 'solar:moon-linear' },
+          ]}
+          active={theme}
+          onChange={setTheme}
+        />
+      </div>
       <div className={styles.deviceWrap} key={device}>
         {device === 'desktop' ? (
           <MacBookPro width={macWidth} screen={<EmailIframe html={emailHtml} renderWidth={1280} />} />
@@ -143,6 +159,7 @@ export function DevicePreview({ device }) {
         )}
         <div className={styles.meta}>
           {device === 'desktop' ? 'MacBook Pro · 16-inch' : 'iPhone 17 Pro · 6.3-inch'}
+          {theme === 'dark' && <span className={styles.themeBadge}>· Dark mode</span>}
         </div>
       </div>
     </div>

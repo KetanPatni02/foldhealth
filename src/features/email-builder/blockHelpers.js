@@ -293,6 +293,90 @@ export function cloneBlockTree(doc, sourceId, genId) {
   return rootId ? { rootId, blocks } : null;
 }
 
+// Extract a self-contained { rootId, blocks } subtree from a live document.
+// Used when saving the currently-selected header/footer to the preset library —
+// the returned object has the same shape replaceHeaderFooter() expects, and
+// can be re-IDed via cloneStoredTree() before being applied somewhere else.
+export function extractSubtree(doc, rootId) {
+  const ids = collectBlockTree(doc, rootId);
+  const blocks = {};
+  ids.forEach(id => {
+    if (doc[id]) blocks[id] = JSON.parse(JSON.stringify(doc[id]));
+  });
+  return { rootId, blocks };
+}
+
+// Produce a stable, ID-independent fingerprint of a { rootId, blocks } subtree
+// so two trees with different block ids but the same shape + props compare
+// equal. Walks from root, replaces each block's id with a sequential token,
+// rewrites childrenIds / columns references, and emits a JSON string.
+//
+// Used by the Save-as-preset affordance to detect whether the currently
+// selected header/footer is byte-equal to a built-in (or already-saved)
+// preset — if so, saving would duplicate, so we hide the button.
+export function fingerprintTree(tree) {
+  if (!tree?.rootId || !tree?.blocks) return '';
+  const order = [];
+  const visited = new Set();
+  const visit = (id) => {
+    if (!id || visited.has(id) || !tree.blocks[id]) return;
+    visited.add(id);
+    order.push(id);
+    const props = tree.blocks[id].data?.props;
+    if (props?.childrenIds) props.childrenIds.forEach(visit);
+    if (Array.isArray(props?.columns)) {
+      props.columns.forEach(col => (col.childrenIds || []).forEach(visit));
+    }
+  };
+  visit(tree.rootId);
+  const idMap = {};
+  order.forEach((id, i) => { idMap[id] = `n${i}`; });
+  const normalized = order.map(oldId => {
+    const block = JSON.parse(JSON.stringify(tree.blocks[oldId]));
+    const props = block.data?.props;
+    if (props) {
+      if (Array.isArray(props.childrenIds)) {
+        props.childrenIds = props.childrenIds.map(c => idMap[c] || c);
+      }
+      if (Array.isArray(props.columns)) {
+        props.columns = props.columns.map(col => ({
+          ...col,
+          childrenIds: (col.childrenIds || []).map(c => idMap[c] || c),
+        }));
+      }
+    }
+    return [idMap[oldId], block];
+  });
+  return JSON.stringify(normalized);
+}
+
+// Re-ID a stored { rootId, blocks } subtree. Old → new id mapping is built
+// up-front, then every childrenIds / columns reference is rewritten in one
+// pass. Returns a fresh tree safe to merge into a document without collision.
+export function cloneStoredTree(stored, genId) {
+  if (!stored?.rootId || !stored?.blocks) return null;
+  const idMap = {};
+  for (const oldId of Object.keys(stored.blocks)) idMap[oldId] = genId();
+  const blocks = {};
+  for (const [oldId, block] of Object.entries(stored.blocks)) {
+    const cloned = JSON.parse(JSON.stringify(block));
+    const props = cloned.data?.props;
+    if (props) {
+      if (Array.isArray(props.childrenIds)) {
+        props.childrenIds = props.childrenIds.map(cid => idMap[cid] || cid);
+      }
+      if (Array.isArray(props.columns)) {
+        props.columns = props.columns.map(col => ({
+          ...col,
+          childrenIds: (col.childrenIds || []).map(cid => idMap[cid] || cid),
+        }));
+      }
+    }
+    blocks[idMap[oldId]] = cloned;
+  }
+  return { rootId: idMap[stored.rootId], blocks };
+}
+
 // Walk a block + descendants and return all ids that belong to the subtree.
 // Used when we need to remove a header/footer cleanly without orphan blocks.
 export function collectBlockTree(doc, rootId) {

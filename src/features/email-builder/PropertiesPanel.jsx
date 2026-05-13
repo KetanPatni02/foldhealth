@@ -8,6 +8,8 @@ import { Textarea } from '../../components/Textarea/Textarea';
 import { Select as SharedSelect } from '../../components/Select/Select';
 import { makeInitialDocument } from './initialDocument';
 import { HEADER_PRESETS, FOOTER_PRESETS } from './headerFooterLibrary';
+import { PresetLivePreview } from './PresetLivePreview';
+import { extractSubtree, fingerprintTree } from './blockHelpers';
 import { uploadImage } from './uploadImage';
 import styles from './EmailBuilder.module.css';
 
@@ -1097,7 +1099,21 @@ const TEMPLATE_PRESETS = [
 function TemplateTab({ block }) {
   const editingCampaignName = useAppStore(s => s.editingCampaignName);
   const replaceHeaderFooter = useAppStore(s => s.replaceHeaderFooter);
+  const customHeaderPresets = useAppStore(s => s.customHeaderPresets);
+  const customFooterPresets = useAppStore(s => s.customFooterPresets);
+  const saveCurrentAsPreset = useAppStore(s => s.saveCurrentAsPreset);
+  const deleteCustomPreset = useAppStore(s => s.deleteCustomPreset);
+  const updateCustomPreset = useAppStore(s => s.updateCustomPreset);
+  const applyCustomPreset = useAppStore(s => s.applyCustomPreset);
   const setDocument = useAppStore.setState;
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveName, setSaveName] = useState('');
+  const [saveDesc, setSaveDesc] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [presetQuery, setPresetQuery] = useState('');
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameName, setRenameName] = useState('');
+  const [renameDesc, setRenameDesc] = useState('');
 
   const role = block?.data?.role;
   const isHeaderOrFooter = role === 'header' || role === 'footer';
@@ -1110,28 +1126,170 @@ function TemplateTab({ block }) {
   };
 
   const applyRolePreset = (preset) => {
+    if (preset.isUserPreset) {
+      applyCustomPreset(role, preset);
+      return;
+    }
     let counter = Date.now();
     const genId = () => `block-${counter++}-${Math.random().toString(36).slice(2, 5)}`;
     const tree = preset.build(genId, editingCampaignName || undefined);
     replaceHeaderFooter(role, tree);
   };
 
+  const handleSave = async () => {
+    setSaving(true);
+    const result = await saveCurrentAsPreset(role, { name: saveName, description: saveDesc });
+    setSaving(false);
+    if (result) {
+      setSaveOpen(false);
+      setSaveName('');
+      setSaveDesc('');
+    }
+  };
+
   if (isHeaderOrFooter) {
-    const presets = role === 'header' ? HEADER_PRESETS : FOOTER_PRESETS;
+    const builtIn = role === 'header' ? HEADER_PRESETS : FOOTER_PRESETS;
+    const userPresets = role === 'header' ? customHeaderPresets : customFooterPresets;
     const label = role === 'header' ? 'Header' : 'Footer';
+
+    // Detect whether the currently-selected header/footer matches an existing
+    // built-in or user preset byte-for-byte. If it does, hiding the Save
+    // button avoids creating duplicate library entries. Read `doc` via the
+    // *prop* (`block`) so this recomputes whenever the doc mutates — using
+    // useAppStore.getState() here would skip re-runs since it doesn't sub.
+    let currentFingerprint = '';
+    if (block?.data?.role === role) {
+      const doc = useAppStore.getState().emailDocument;
+      const rootChildren = doc?.root?.data?.childrenIds || [];
+      const rootId = rootChildren.find(id => doc[id]?.data?.role === role);
+      if (rootId) currentFingerprint = fingerprintTree(extractSubtree(doc, rootId));
+    }
+    const knownFingerprints = new Set();
+    builtIn.forEach(p => {
+      let n = 0;
+      const tree = p.build(() => `fp-${p.id}-${++n}`, editingCampaignName || 'Welcome');
+      knownFingerprints.add(fingerprintTree(tree));
+    });
+    userPresets.forEach(p => {
+      if (p.tree) knownFingerprints.add(fingerprintTree(p.tree));
+    });
+    const canSavePreset = !!currentFingerprint && !knownFingerprints.has(currentFingerprint);
+
+    const matches = (p) => {
+      if (!presetQuery.trim()) return true;
+      const q = presetQuery.trim().toLowerCase();
+      return (p.label || '').toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q);
+    };
+    const filteredUser = userPresets.filter(matches);
+    const filteredBuiltIn = builtIn.filter(matches);
+
+    const startRename = (p) => {
+      setRenamingId(p.id);
+      setRenameName(p.label || '');
+      setRenameDesc(p.description || '');
+    };
+    const commitRename = (p) => {
+      updateCustomPreset(p.id, role, { name: renameName, description: renameDesc });
+      setRenamingId(null);
+    };
+
     return (
       <div className={styles.templateScroll}>
         <SectionHeading>{`Change ${label}`}</SectionHeading>
-        <div className={styles.templateGrid}>
-          {presets.map(p => (
-            <button key={p.id} className={styles.templateTile} onClick={() => applyRolePreset(p)}>
-              <div className={styles.templateThumb} style={{ background: p.accent + '22', borderColor: p.accent + '44' }}>
-                <div className={styles.templateThumbBar} style={{ background: p.accent }} />
-              </div>
-              <div className={styles.templateLabel}>{p.label}</div>
-              <div className={styles.templateDesc}>{p.description}</div>
+
+        {/* Save current as preset — only when the current header/footer
+            differs from every known preset. Avoids creating duplicates. */}
+        {canSavePreset && (
+        <div className={styles.presetSaveBar}>
+          {!saveOpen ? (
+            <button
+              type="button"
+              className={styles.presetSaveBtn}
+              onClick={() => { setSaveOpen(true); setSaveName(''); setSaveDesc(''); }}
+            >
+              <Icon name="solar:bookmark-linear" size={14} color="currentColor" />
+              Save current {label.toLowerCase()} as preset
             </button>
-          ))}
+          ) : (
+            <div className={styles.presetSaveForm}>
+              <input
+                autoFocus
+                className={styles.presetSaveInput}
+                placeholder={`${label} name (e.g. Brand banner)`}
+                value={saveName}
+                onChange={e => setSaveName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setSaveOpen(false); }}
+                maxLength={60}
+              />
+              <input
+                className={styles.presetSaveInput}
+                placeholder="Short description (optional)"
+                value={saveDesc}
+                onChange={e => setSaveDesc(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setSaveOpen(false); }}
+                maxLength={120}
+              />
+              <div className={styles.presetSaveActions}>
+                <button type="button" className={styles.presetSaveCancel} onClick={() => setSaveOpen(false)}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className={styles.presetSavePrimary}
+                  onClick={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+        )}
+
+        {/* Search across both saved + built-in presets, using the shared
+            <Input> so the field matches the rest of the app. */}
+        <div className={styles.presetSearchBar}>
+          <Input
+            placeholder={`Search ${label.toLowerCase()}s…`}
+            value={presetQuery}
+            onChange={(e) => setPresetQuery(e.target.value)}
+          />
+        </div>
+
+        <div className={styles.presetCardList}>
+          {filteredUser.length > 0 && (
+            <>
+              <SectionSubHeading>Your presets</SectionSubHeading>
+              {filteredUser.map(p => (
+                <TemplatePresetCard
+                  key={`u-${p.id}`}
+                  preset={p}
+                  isRenaming={renamingId === p.id}
+                  draftName={renameName}
+                  draftDesc={renameDesc}
+                  onDraftName={setRenameName}
+                  onDraftDesc={setRenameDesc}
+                  onCommitRename={() => commitRename(p)}
+                  onCancelRename={() => setRenamingId(null)}
+                  onApply={() => applyRolePreset(p)}
+                  onEdit={() => startRename(p)}
+                  onDelete={() => { if (window.confirm(`Delete preset "${p.label}"?`)) deleteCustomPreset(p.id, role); }}
+                />
+              ))}
+            </>
+          )}
+          {filteredBuiltIn.length > 0 && (
+            <>
+              {filteredUser.length > 0 && <SectionSubHeading>Built-in</SectionSubHeading>}
+              {filteredBuiltIn.map(p => (
+                <TemplatePresetCard key={p.id} preset={p} onApply={() => applyRolePreset(p)} />
+              ))}
+            </>
+          )}
+          {filteredUser.length === 0 && filteredBuiltIn.length === 0 && (
+            <div className={styles.presetPickerEmpty}>No {label.toLowerCase()}s match "{presetQuery}"</div>
+          )}
         </div>
       </div>
     );
@@ -1267,6 +1425,95 @@ function ColumnWidthBar({ count, widths, onChange }) {
 
 function SectionHeading({ children }) {
   return <div className={styles.sectionHeadingStrip}>{children}</div>;
+}
+
+function SectionSubHeading({ children }) {
+  return <div className={styles.sectionSubHeading}>{children}</div>;
+}
+
+// Header/footer preset card — live preview + meta. User presets show edit /
+// delete actions on hover; built-in presets are apply-only. Shares the same
+// CSS classes as the ComponentsPanel PresetCard so the picker and the right-
+// panel list stay visually identical.
+function TemplatePresetCard({
+  preset,
+  isRenaming = false,
+  draftName,
+  draftDesc,
+  onDraftName,
+  onDraftDesc,
+  onCommitRename,
+  onCancelRename,
+  onApply,
+  onEdit,
+  onDelete,
+}) {
+  const isUser = !!preset.isUserPreset;
+  return (
+    <div className={styles.presetCardWrap}>
+      <button
+        type="button"
+        className={styles.presetCard}
+        onClick={isRenaming ? undefined : onApply}
+        disabled={isRenaming}
+      >
+        <PresetLivePreview preset={preset} />
+        {!isRenaming && (
+          <div className={styles.presetCardMeta}>
+            <div className={styles.presetCardTitle}>{preset.label}</div>
+            {preset.description && (
+              <div className={styles.presetCardDesc}>{preset.description}</div>
+            )}
+          </div>
+        )}
+      </button>
+      {isRenaming && (
+        <div className={styles.presetCardEditForm}>
+          <input
+            autoFocus
+            className={styles.presetCardEditInput}
+            placeholder="Name"
+            value={draftName}
+            onChange={(e) => onDraftName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') onCommitRename(); if (e.key === 'Escape') onCancelRename(); }}
+            maxLength={60}
+          />
+          <input
+            className={styles.presetCardEditInput}
+            placeholder="Description (optional)"
+            value={draftDesc}
+            onChange={(e) => onDraftDesc(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') onCommitRename(); if (e.key === 'Escape') onCancelRename(); }}
+            maxLength={120}
+          />
+          <div className={styles.presetCardEditActions}>
+            <button type="button" className={styles.presetCardEditCancel} onClick={onCancelRename}>Cancel</button>
+            <button type="button" className={styles.presetCardEditSave} onClick={onCommitRename}>Save</button>
+          </div>
+        </div>
+      )}
+      {isUser && !isRenaming && (
+        <div className={styles.presetCardActions}>
+          <button
+            type="button"
+            className={styles.presetCardActionBtn}
+            title="Rename"
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          >
+            <Icon name="solar:pen-2-linear" size={12} color="currentColor" />
+          </button>
+          <button
+            type="button"
+            className={[styles.presetCardActionBtn, styles.presetCardActionDanger].join(' ')}
+            title="Delete"
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          >
+            <Icon name="solar:trash-bin-minimalistic-linear" size={12} color="currentColor" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function Section({ children }) {

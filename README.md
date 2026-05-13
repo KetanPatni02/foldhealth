@@ -140,6 +140,18 @@ The platform follows the **Fold Health design system** with strict adherence to:
 
 ## Recent Changes
 
+### Email Builder — Save header/footer to library (May 2026)
+- **Save any edited header or footer as a reusable preset.** With a header/footer block selected, the right-panel "Template" tab now shows a "Save current header/footer as preset" button. It opens an inline form (name + optional description) and persists the subtree to a new Supabase table.
+- **Picker shows user presets alongside built-ins.** Both the in-canvas component-panel preset picker (clicking the Header / Footer tiles) and the right-panel Template tab merge user-saved presets with the built-in `HEADER_PRESETS` / `FOOTER_PRESETS`. User presets display under "Your presets"; built-ins under "Built-in".
+- **Delete** affordance on each user preset (hover → trash pill) with a confirm prompt.
+- **Migration**: `supabase/email_header_footer_presets_migration.sql` — new table with `role`, `name`, `description`, `accent`, `tree` (JSONB), CHECK constraint on role, and a `updated_at` trigger. Must be run in Supabase SQL Editor before the save flow works; the UI degrades gracefully (toast-prompt) until then.
+- **Implementation**: new `extractSubtree(doc, rootId)` and `cloneStoredTree(stored, genId)` helpers in `blockHelpers.js`. Store actions `fetchCustomPresets`, `saveCurrentAsPreset(role, {name, description})`, `deleteCustomPreset(id, role)`, and `applyCustomPreset(role, preset)`. `openEmailBuilder` now also fetches user presets on open.
+
+### Release Notes campaign + Campaign-name click reroute (May 2026)
+- **New seed campaign** "Fold July 2024 Release Notes" with a fully-designed email template modeled on the Figma "Release Notes" reference (gradient hero, featured "Introducing Fold Sidecar" block, 7 feature rows, additional-features card, gradient footer). Lives at `src/features/campaign/templates/releaseNotesTemplate.js` so the template stays maintainable in code, and is reflected in `supabase/release_notes_campaign_seed.sql` for redeployment.
+- **Campaign-name click now opens the Campaign Builder** (was the Email Builder). The row's pencil-edit button also goes to the Campaign Builder for consistency — "Edit Template" inside the builder is now the single entry point to the Email Builder.
+- **Campaign name maxLength bumped from 25 → 60** to accommodate existing campaign names like "Healthy Moms, Happy Babies" and "Fold July 2024 Release Notes".
+
 ### Icon stroke normalization — all icons render at 1px (May 2026)
 - Added a global CSS rule in `src/index.css` that forces every stroked path inside an Iconify-rendered SVG to render at `stroke-width: 1`. Solar Linear icons ship at 1.5; this brings them in line with the rest of the chrome.
 - Updated all custom inline SVGs in `src/features/email-builder/` (EmptyDropIllustration, TableIcon, the `svg()` helper covering Width/Height/Padding/Radius/Direction/Alignment icons, and the Decoration underline/strike marks) from their previous 1.2–2.0 stroke widths to `strokeWidth="1"`.

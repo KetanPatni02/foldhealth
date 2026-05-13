@@ -213,7 +213,7 @@ export function PreviewCanvas() {
   const removeBlock = useAppStore(s => s.removeBlock);
   const updateBlock = useAppStore(s => s.updateBlock);
   const duplicateBlock = useAppStore(s => s.duplicateBlock);
-  const moveBlockUp = useAppStore(s => s.moveBlockUp);
+  const selectParentBlock = useAppStore(s => s.selectParentBlock);
   const htmlOverride = useAppStore(s => s.htmlPreviewOverride);
 
   if (!doc) return null;
@@ -259,7 +259,7 @@ export function PreviewCanvas() {
     removeBlock,
     updateBlock,
     duplicateBlock,
-    moveBlockUp,
+    selectParentBlock,
     commitText,
     commitTable,
   };
@@ -376,9 +376,9 @@ function SortableBlock({ id, ctx }) {
           <span className={styles.blockToolbarDivider} />
           <button
             className={styles.blockToolbarBtn}
-            onClick={(e) => { e.stopPropagation(); ctx.moveBlockUp(id); }}
-            aria-label="Move up"
-            title="Move up"
+            onClick={(e) => { e.stopPropagation(); ctx.selectParentBlock(id); }}
+            aria-label="Select parent"
+            title="Select parent (⇧↵)"
           >
             <Icon name="solar:undo-left-round-linear" size={14} color="#fff" />
           </button>

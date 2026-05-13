@@ -14,7 +14,7 @@ import { FALLBACK_INBOX_ITEMS, FALLBACK_CHANNEL_ITEMS, FALLBACK_CALL_LINES, FALL
 import { fallbackTasks } from '../data/tasks';
 import { updateHash } from '../lib/router';
 import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem } from '../lib/theme';
-import { createBlock, createBlockTree, collectBlockTree, buildParentMap, cloneBlockTree } from '../features/email-builder/blockHelpers';
+import { createBlock, createBlockTree, collectBlockTree, buildParentMap, cloneBlockTree, extractSubtree, cloneStoredTree } from '../features/email-builder/blockHelpers';
 import { makeInitialDocument } from '../features/email-builder/initialDocument';
 
 function parseTaskDateStr(str) {
@@ -2261,11 +2261,158 @@ export const useAppStore = create((set, get) => ({
       emailFuture: [],
       _lastEmailHistoryTime: 0,
     });
+    // Fire-and-forget — the picker reads from customHeaderPresets /
+    // customFooterPresets which both default to [], so the builder renders
+    // immediately and gets populated when the fetch resolves.
+    get().fetchCustomPresets();
     updateHash(get);
   },
   closeEmailBuilder: () => {
     set({ editingCampaignId: null, editingCampaignName: null, emailDocument: null, selectedBlockId: 'root', bulkSelectedIds: [], htmlPreviewOverride: null, emailHistory: [], emailFuture: [], _lastEmailHistoryTime: 0 });
     updateHash(get);
+  },
+
+  // ── User-saved header/footer presets ──────────────────────────────────
+  // Persisted in Supabase. Merged with the built-in HEADER_PRESETS /
+  // FOOTER_PRESETS in the preset pickers so users see their saved templates
+  // alongside the defaults. `tree` is the `{ rootId, blocks }` shape that
+  // replaceHeaderFooter() consumes, re-IDed at apply time via cloneStoredTree.
+  customHeaderPresets: [],
+  customFooterPresets: [],
+
+  fetchCustomPresets: async () => {
+    const { data, error } = await supabase
+      .from('email_header_footer_presets')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      // Table not migrated yet → degrade silently rather than spamming errors.
+      const msg = String(error.message || '');
+      if (!msg.includes('does not exist') && !msg.includes('schema cache')) {
+        console.error('fetchCustomPresets error:', error);
+      }
+      return;
+    }
+    const headers = [];
+    const footers = [];
+    for (const row of data || []) {
+      const preset = {
+        id: row.id,
+        label: row.name,
+        description: row.description || '',
+        accent: row.accent || '#7C5CFA',
+        tree: row.tree,
+        isUserPreset: true,
+      };
+      if (row.role === 'header') headers.push(preset);
+      else if (row.role === 'footer') footers.push(preset);
+    }
+    set({ customHeaderPresets: headers, customFooterPresets: footers });
+  },
+
+  saveCurrentAsPreset: async (role, { name, description }) => {
+    const s = get();
+    if (!s.emailDocument || (role !== 'header' && role !== 'footer')) return null;
+    // Find the block in the doc carrying this role marker.
+    const rootChildren = s.emailDocument.root?.data?.childrenIds || [];
+    const rootId = rootChildren.find(id => s.emailDocument[id]?.data?.role === role);
+    if (!rootId) {
+      s.showToast(`No ${role} found in this template to save`);
+      return null;
+    }
+    const tree = extractSubtree(s.emailDocument, rootId);
+    const trimmedName = (name || '').trim() || `Custom ${role}`;
+    const { data, error } = await supabase
+      .from('email_header_footer_presets')
+      .insert({
+        role,
+        name: trimmedName,
+        description: (description || '').trim() || null,
+        accent: '#7C5CFA',
+        tree,
+      })
+      .select('*')
+      .single();
+    if (error) {
+      const msg = String(error.message || '');
+      if (msg.includes('does not exist') || msg.includes('schema cache')) {
+        s.showToast('Run email_header_footer_presets migration to enable saving');
+      } else {
+        s.showToast(`Save failed — ${msg}`);
+      }
+      console.error('saveCurrentAsPreset error:', error);
+      return null;
+    }
+    const fresh = {
+      id: data.id,
+      label: data.name,
+      description: data.description || '',
+      accent: data.accent || '#7C5CFA',
+      tree: data.tree,
+      isUserPreset: true,
+    };
+    set(prev => ({
+      customHeaderPresets: role === 'header' ? [fresh, ...prev.customHeaderPresets] : prev.customHeaderPresets,
+      customFooterPresets: role === 'footer' ? [fresh, ...prev.customFooterPresets] : prev.customFooterPresets,
+    }));
+    s.showToast(`Saved as ${role}: "${trimmedName}"`);
+    return fresh;
+  },
+
+  // Rename / re-describe a saved preset. Only the metadata is updated —
+  // the underlying tree stays the same so existing applies aren't affected.
+  updateCustomPreset: async (id, role, { name, description }) => {
+    const patch = {};
+    if (typeof name === 'string') patch.name = name.trim();
+    if (typeof description === 'string') patch.description = description.trim() || null;
+    if (Object.keys(patch).length === 0) return false;
+    const { error } = await supabase
+      .from('email_header_footer_presets')
+      .update(patch)
+      .eq('id', id);
+    if (error) {
+      console.error('updateCustomPreset error:', error);
+      get().showToast('Update failed');
+      return false;
+    }
+    const apply = (list) => list.map(p => p.id === id ? { ...p, label: patch.name ?? p.label, description: patch.description ?? p.description } : p);
+    set(prev => ({
+      customHeaderPresets: role === 'header' ? apply(prev.customHeaderPresets) : prev.customHeaderPresets,
+      customFooterPresets: role === 'footer' ? apply(prev.customFooterPresets) : prev.customFooterPresets,
+    }));
+    return true;
+  },
+
+  deleteCustomPreset: async (id, role) => {
+    const { error } = await supabase
+      .from('email_header_footer_presets')
+      .delete()
+      .eq('id', id);
+    if (error) {
+      console.error('deleteCustomPreset error:', error);
+      get().showToast('Delete failed');
+      return false;
+    }
+    set(prev => ({
+      customHeaderPresets: role === 'header'
+        ? prev.customHeaderPresets.filter(p => p.id !== id)
+        : prev.customHeaderPresets,
+      customFooterPresets: role === 'footer'
+        ? prev.customFooterPresets.filter(p => p.id !== id)
+        : prev.customFooterPresets,
+    }));
+    return true;
+  },
+
+  // Apply a saved preset by re-IDing its stored tree and handing it to the
+  // existing replaceHeaderFooter action. Built-in presets still go through
+  // their preset.build(genId, name) entry point.
+  applyCustomPreset: (role, preset) => {
+    if (!preset?.tree) return;
+    let counter = Date.now();
+    const genId = () => `block-${counter++}-${Math.random().toString(36).slice(2, 5)}`;
+    const tree = cloneStoredTree(preset.tree, genId);
+    if (tree) get().replaceHeaderFooter(role, tree);
   },
   setSelectedBlockId: (id) => set({ selectedBlockId: id, bulkSelectedIds: [] }),
   setBulkSelectedIds: (ids) => set({ bulkSelectedIds: ids }),
@@ -2481,6 +2628,17 @@ export const useAppStore = create((set, get) => ({
     const slot = map[id];
     if (!slot || slot.index === 0) return;
     s.moveBlock(id, { parentId: slot.parentId, columnIdx: slot.columnIdx, index: slot.index - 1 });
+  },
+
+  // Select the parent of the given block (root if no parent). Mirrors the
+  // Shift+Enter keyboard shortcut so the block-toolbar button and the
+  // keyboard surface a single behavior.
+  selectParentBlock: (id) => {
+    const s = get();
+    if (!s.emailDocument || id === 'root') return;
+    const map = buildParentMap(s.emailDocument);
+    const parentId = map[id]?.parentId;
+    if (parentId) s.setSelectedBlockId(parentId);
   },
 
   removeBlock: (id) => {
