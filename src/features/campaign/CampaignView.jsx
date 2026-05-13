@@ -441,6 +441,8 @@ export function CampaignView() {
   const storeCampaigns = useAppStore(s => s.campaigns);
   const campaignsLoading = useAppStore(s => s.campaignsLoading);
   const fetchCampaigns = useAppStore(s => s.fetchCampaigns);
+  const openCampaignBuilder = useAppStore(s => s.openCampaignBuilder);
+  const campaignBuilderSaving = useAppStore(s => s.campaignBuilderSaving);
 
   const usingSupa = storeCampaigns.length > 0;
   const [localData, setLocalData] = useState(CAMPAIGNS);
@@ -560,9 +562,10 @@ export function CampaignView() {
             variant="secondary"
             size="L"
             leadingIcon="solar:add-circle-linear"
-            onClick={() => showToast('New Campaign – coming soon')}
+            disabled={campaignBuilderSaving}
+            onClick={() => openCampaignBuilder(null)}
           >
-            New Campaign
+            {campaignBuilderSaving ? 'Creating…' : 'New Campaign'}
           </Button>
         </div>
       </div>

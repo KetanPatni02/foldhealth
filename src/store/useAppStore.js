@@ -60,6 +60,84 @@ const _savedSettingsTab = sessionStorage.getItem('settingsTab');
 const _initialThemeSetting = getStoredTheme();
 const _initialResolvedTheme = getResolvedTheme(_initialThemeSetting);
 
+// ── Campaign row mapper ──
+// Single source of truth for translating Supabase campaigns rows into the JS
+// shape the UI consumes. Used by both fetchCampaigns (bulk load) and the
+// CampaignBuilder (after an INSERT / UPDATE returns the row).
+function campaignRowToJs(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    channel: row.channel || 'email',
+    section: row.section || 'scheduled',
+    audience: row.audience || 0,
+    dynamic: row.dynamic || false,
+    health: row.health,
+    delivered: row.delivered,
+    opened: row.opened,
+    startDate: row.start_date,
+    duration: row.duration,
+    progress: row.progress || 0,
+    executesIn: row.executes_in,
+    enabled: row.enabled || false,
+    emailTemplate: row.email_template,
+    colorVariables: row.color_variables,
+    // New Campaign builder fields ───────────────────────────────
+    audienceInclude: row.audience_include || [],
+    audienceExclude: row.audience_exclude || [],
+    sendVia: row.send_via || ['email'],
+    startMode: row.start_mode || 'immediately',
+    startAt: row.start_at,
+    endDate: row.end_date,
+    campaignType: row.campaign_type || 'one_time',
+    senderName: row.sender_name || '',
+    sendFrom: row.send_from || '',
+    subjectLine: row.subject_line || '',
+  };
+}
+
+// Reverse: JS-shape patch → DB-shape patch. Only includes keys present in the
+// patch so we never overwrite columns with `undefined`.
+const CAMPAIGN_FIELD_MAP = {
+  name: 'name',
+  description: 'description',
+  channel: 'channel',
+  section: 'section',
+  audience: 'audience',
+  enabled: 'enabled',
+  audienceInclude: 'audience_include',
+  audienceExclude: 'audience_exclude',
+  sendVia: 'send_via',
+  startMode: 'start_mode',
+  startAt: 'start_at',
+  endDate: 'end_date',
+  campaignType: 'campaign_type',
+  senderName: 'sender_name',
+  sendFrom: 'send_from',
+  subjectLine: 'subject_line',
+};
+function campaignPatchToDb(patch) {
+  const out = {};
+  for (const [jsKey, value] of Object.entries(patch)) {
+    const dbKey = CAMPAIGN_FIELD_MAP[jsKey];
+    if (dbKey) out[dbKey] = value;
+  }
+  return out;
+}
+
+// Debounced auto-save for the Campaign builder. We coalesce rapid field edits
+// (typing, slider drags) into one PATCH per 600ms window per campaign id.
+const _campaignSaveTimers = new Map();
+function scheduleCampaignSave(id, fn) {
+  const existing = _campaignSaveTimers.get(id);
+  if (existing) clearTimeout(existing);
+  _campaignSaveTimers.set(id, setTimeout(() => {
+    _campaignSaveTimers.delete(id);
+    fn();
+  }, 600));
+}
+
 export const useAppStore = create((set, get) => ({
   // ─── Theme ───────────────────────────────────────────────────────────
   // `theme` is the user's chosen setting: 'light' | 'dark' | 'system'
@@ -510,6 +588,36 @@ export const useAppStore = create((set, get) => ({
 
   // Actions
   setActivePage: (page) => { sessionStorage.setItem('activePage', page); set({ activePage: page }); updateHash(get); },
+
+  // Navigation guard for full-screen takeovers. When the user clicks a Sidebar
+  // entry while the EmailBuilder or CampaignBuilder is open, we don't want the
+  // page to silently change underneath them — instead we ask the open builder
+  // to handle the navigation, including any unsaved-changes confirmation it
+  // owns. `pendingNavTarget` is the page we're trying to reach; the builder
+  // clears it once it has decided what to do.
+  pendingNavTarget: null,
+  setPendingNavTarget: (page) => set({ pendingNavTarget: page }),
+  requestNavigate: (page) => {
+    const s = get();
+    // Email Builder takeover — defer to its unsaved-changes flow.
+    if (s.editingCampaignId) {
+      set({ pendingNavTarget: page });
+      return;
+    }
+    // Campaign Builder takeover — auto-saved on every edit, so we can close
+    // and navigate immediately.
+    if (s.campaignBuilderId) {
+      set({ campaignBuilderId: null });
+      sessionStorage.setItem('activePage', page);
+      set({ activePage: page });
+      updateHash(get);
+      return;
+    }
+    // No takeover open — plain navigation.
+    sessionStorage.setItem('activePage', page);
+    set({ activePage: page });
+    updateHash(get);
+  },
   requestAddTask: (opts = {}) => {
     sessionStorage.setItem('activePage', 'tasks');
     set({ activePage: 'tasks', pendingAddTask: { member: opts.member || null } });
@@ -1883,10 +1991,116 @@ export const useAppStore = create((set, get) => ({
   },
 
   // ── Campaign ──
+  // (helper hoisted below; declared at module scope via const mapper above the store)
   campaignTab: 'active',
   setCampaignTab: (tab) => { set({ campaignTab: tab }); updateHash(get); },
   campaigns: [],
   campaignsLoading: false,
+  // Builder takeover. `campaignBuilderId` is the campaigns.id we're editing in
+  // the New Campaign full-screen view. It coexists with `editingCampaignId`:
+  // when both are set, the EmailBuilder shows on top; closing it returns to
+  // the CampaignBuilder. `campaignBuilderSaving` is "draft-row creation" — the
+  // brief moment between "user clicked New Campaign" and "draft row exists".
+  campaignBuilderId: null,
+  campaignBuilderSaving: false,
+
+  // Open the New Campaign builder. If campaignOrNull is null, insert a fresh
+  // draft row first so we have an id to PATCH against on every subsequent
+  // field edit (no need for a separate "create" submit step).
+  openCampaignBuilder: async (campaignOrNull) => {
+    if (campaignOrNull?.id) {
+      set({ campaignBuilderId: campaignOrNull.id });
+      updateHash(get);
+      return campaignOrNull.id;
+    }
+    set({ campaignBuilderSaving: true });
+    const { data, error } = await supabase
+      .from('campaigns')
+      .insert({
+        name: 'Untitled Campaign',
+        section: 'draft',
+        channel: 'email',
+        send_via: ['email'],
+        start_mode: 'immediately',
+        campaign_type: 'one_time',
+      })
+      .select('*')
+      .single();
+    set({ campaignBuilderSaving: false });
+    if (error) {
+      console.error('openCampaignBuilder insert error:', error);
+      get().showToast('Could not create draft campaign');
+      return null;
+    }
+    const fresh = campaignRowToJs(data);
+    set(s => ({
+      campaigns: [...s.campaigns, fresh],
+      campaignBuilderId: fresh.id,
+    }));
+    updateHash(get);
+    return fresh.id;
+  },
+
+  closeCampaignBuilder: () => {
+    set({ campaignBuilderId: null });
+    updateHash(get);
+  },
+
+  // Patch arbitrary fields on the campaign currently being built. Optimistic
+  // local update + debounced Supabase PATCH so the UI feels instant and a
+  // burst of edits collapses into one network call.
+  updateCampaignFields: (patch) => {
+    const id = get().campaignBuilderId;
+    if (!id) return;
+    set(s => ({
+      campaigns: s.campaigns.map(c => c.id === id ? { ...c, ...patch } : c),
+    }));
+    scheduleCampaignSave(id, async () => {
+      const dbPatch = campaignPatchToDb(patch);
+      if (Object.keys(dbPatch).length === 0) return;
+      const { error } = await supabase
+        .from('campaigns')
+        .update(dbPatch)
+        .eq('id', id);
+      if (error) console.error('updateCampaignFields error:', error);
+    });
+  },
+
+  // Run / activate the campaign. Flushes any pending debounced save first,
+  // then flips section → 'running' and enabled → true.
+  runCampaignNow: async () => {
+    const id = get().campaignBuilderId;
+    if (!id) return false;
+    // Flush pending debounced save synchronously so we don't lose the latest
+    // field edit racing with this request.
+    const pending = _campaignSaveTimers.get(id);
+    if (pending) { clearTimeout(pending); _campaignSaveTimers.delete(id); }
+    const { error } = await supabase
+      .from('campaigns')
+      .update({ section: 'running', enabled: true })
+      .eq('id', id);
+    if (error) {
+      console.error('runCampaignNow error:', error);
+      get().showToast('Could not start campaign');
+      return false;
+    }
+    set(s => ({
+      campaigns: s.campaigns.map(c => c.id === id ? { ...c, section: 'running', enabled: true } : c),
+    }));
+    get().showToast('Campaign started');
+    return true;
+  },
+
+  // Hand-off from the CampaignBuilder to the EmailBuilder for "Edit Template".
+  // Reuses the existing email-builder takeover; closing it returns to the
+  // CampaignBuilder because campaignBuilderId stays set.
+  openEmailTemplateFromCampaign: () => {
+    const id = get().campaignBuilderId;
+    if (!id) return;
+    const campaign = get().campaigns.find(c => c.id === id);
+    if (!campaign) return;
+    get().openEmailBuilder(campaign);
+  },
   fetchCampaigns: async () => {
     set({ campaignsLoading: true });
     const { data, error } = await supabase
@@ -1897,25 +2111,7 @@ export const useAppStore = create((set, get) => ({
       set({ campaignsLoading: false });
       return;
     }
-    const campaigns = (data || []).map(row => ({
-      id: row.id,
-      name: row.name,
-      description: row.description,
-      channel: row.channel || 'email',
-      section: row.section || 'scheduled',
-      audience: row.audience || 0,
-      dynamic: row.dynamic || false,
-      health: row.health,
-      delivered: row.delivered,
-      opened: row.opened,
-      startDate: row.start_date,
-      duration: row.duration,
-      progress: row.progress || 0,
-      executesIn: row.executes_in,
-      enabled: row.enabled || false,
-      emailTemplate: row.email_template,
-      colorVariables: row.color_variables,
-    }));
+    const campaigns = (data || []).map(campaignRowToJs);
     set({ campaigns, campaignsLoading: false });
   },
 

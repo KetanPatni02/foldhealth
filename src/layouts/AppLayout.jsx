@@ -38,6 +38,7 @@ import { CallsView } from '../features/calls/CallsView';
 import { TasksView } from '../features/tasks/TasksView';
 import { CampaignView } from '../features/campaign/CampaignView';
 import { EmailBuilder } from '../features/email-builder/EmailBuilder';
+import { CampaignBuilder } from '../features/campaign/CampaignBuilder';
 import { useEffect } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { supabase } from '../lib/supabase';
@@ -269,13 +270,29 @@ export function AppLayout() {
   const diagPanelOpen = useAppStore(s => s.diagPanelOpen);
   const quickViewPatient = useAppStore(s => s.quickViewPatient);
   const editingCampaignId = useAppStore(s => s.editingCampaignId);
+  const campaignBuilderId = useAppStore(s => s.campaignBuilderId);
 
-  // Email Builder is a full-screen takeover when editing a campaign
+  // Email Builder is a full-screen takeover when editing a campaign. Wins over
+  // the CampaignBuilder so "Edit Template" from inside the campaign builder
+  // pushes the email builder on top — closing it falls back to the campaign
+  // builder (campaignBuilderId stays set).
   if (editingCampaignId) {
     return (
       <div className={styles.app}>
         <Sidebar />
         <EmailBuilder />
+        <Toast />
+      </div>
+    );
+  }
+
+  // Campaign Builder is a full-screen takeover for creating/editing the
+  // metadata, scheduling, audience, and channel of a campaign.
+  if (campaignBuilderId) {
+    return (
+      <div className={styles.app}>
+        <Sidebar />
+        <CampaignBuilder />
         <Toast />
       </div>
     );

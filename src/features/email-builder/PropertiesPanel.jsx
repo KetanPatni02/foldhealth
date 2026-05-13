@@ -3,6 +3,9 @@ import { renderEmailHtml } from './patchEmailHtml';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { Toggle } from '../../components/Toggle/Toggle';
+import { Input } from '../../components/Input/Input';
+import { Textarea } from '../../components/Textarea/Textarea';
+import { Select as SharedSelect } from '../../components/Select/Select';
 import { makeInitialDocument } from './initialDocument';
 import { HEADER_PRESETS, FOOTER_PRESETS } from './headerFooterLibrary';
 import { uploadImage } from './uploadImage';
@@ -137,8 +140,7 @@ function DesignTab({ block, updateBlock, id }) {
           <SectionHeading>Content</SectionHeading>
           <Section>
             <FieldLabel>Text</FieldLabel>
-            <textarea
-              className={styles.designTextarea}
+            <Textarea
               value={props.text || ''}
               onChange={e => update(['data', 'props', 'text'], e.target.value)}
             />
@@ -1438,18 +1440,19 @@ function IconInput({ label, suffix, icon, value, onChange, freeform }) {
   );
 }
 
+// Thin wrappers around the shared Input/Select primitives so the rest of
+// PropertiesPanel keeps its label-above-control field-col layout but stops
+// reimplementing the chrome. Single source of truth for visual style now
+// lives in src/components/{Input,Select}.
 function PlainInput({ label, value, onChange }) {
   return (
     <div className={styles.fieldCol}>
       {label && <label className={styles.fieldLabel}>{label}</label>}
-      <div className={styles.iconInputWrap}>
-        <input
-          className={styles.iconInputValue}
-          type="text"
-          value={value ?? ''}
-          onChange={e => onChange(e.target.value)}
-        />
-      </div>
+      <Input
+        type="text"
+        value={value ?? ''}
+        onChange={e => onChange(e.target.value)}
+      />
     </div>
   );
 }
@@ -1458,14 +1461,11 @@ function SelectInput({ label, value, options, onChange }) {
   return (
     <div className={styles.fieldCol}>
       {label && <label className={styles.fieldLabel}>{label}</label>}
-      <div className={styles.selectWrap}>
-        <select className={styles.selectInput} value={value ?? ''} onChange={e => onChange(e.target.value)}>
-          {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-        <span className={styles.selectChevron}>
-          <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" />
-        </span>
-      </div>
+      <SharedSelect
+        options={options}
+        value={value ?? ''}
+        onChange={onChange}
+      />
     </div>
   );
 }
@@ -1806,7 +1806,7 @@ function DecorationToggles({ bold, italic, underline, strike, onChange }) {
 function svg(d, w = 16, h = 16) {
   return (
     <svg width={w} height={h} viewBox="0 0 16 16" fill="none">
-      <path d={d} stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d={d} stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -1841,12 +1841,12 @@ const DecoItalicIcon = () => (
 const DecoUnderlineIcon = () => (
   <svg width={14} height={14} viewBox="0 0 14 14" fill="none">
     <text x="3" y="10" fontSize="11" fontFamily="Inter" fill="currentColor">U</text>
-    <line x1="3" y1="12" x2="11" y2="12" stroke="currentColor" strokeWidth="1.2" />
+    <line x1="3" y1="12" x2="11" y2="12" stroke="currentColor" strokeWidth="1" />
   </svg>
 );
 const DecoStrikeIcon = () => (
   <svg width={14} height={14} viewBox="0 0 14 14" fill="none">
     <text x="4" y="11" fontSize="11" fontFamily="Inter" fill="currentColor">T</text>
-    <line x1="2" y1="7" x2="12" y2="7" stroke="currentColor" strokeWidth="1.2" />
+    <line x1="2" y1="7" x2="12" y2="7" stroke="currentColor" strokeWidth="1" />
   </svg>
 );

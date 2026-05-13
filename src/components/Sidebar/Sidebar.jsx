@@ -23,7 +23,7 @@ const BOTTOM_ITEMS = [
 
 export function Sidebar() {
   const activePage = useAppStore(s => s.activePage);
-  const setActivePage = useAppStore(s => s.setActivePage);
+  const requestNavigate = useAppStore(s => s.requestNavigate);
   const setCurrentPage = useAppStore(s => s.setCurrentPage);
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -35,7 +35,9 @@ export function Sidebar() {
     e.preventDefault();
     if (!page) return;
     if (implementedPages.includes(page)) {
-      setActivePage(page);
+      // requestNavigate handles the open-builder dialog flow for us. For pages
+      // that go through cleanly, it routes to setActivePage internally.
+      requestNavigate(page);
       setCurrentPage(1);
     } else {
       showToast(`${page.charAt(0).toUpperCase() + page.slice(1)} – coming soon`);

@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS public.campaigns (
 
 ALTER TABLE public.campaigns ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow all access to campaigns" ON public.campaigns;
 CREATE POLICY "Allow all access to campaigns"
   ON public.campaigns FOR ALL
   USING (true) WITH CHECK (true);
