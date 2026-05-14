@@ -141,6 +141,7 @@ function DesignTab({ block, updateBlock, id }) {
         <>
           <SectionHeading>Content</SectionHeading>
           <Section>
+            <TextStyleChips block={block} updateBlock={updateBlock} id={id} />
             <FieldLabel>Text</FieldLabel>
             <Textarea
               value={props.text || ''}
@@ -153,6 +154,28 @@ function DesignTab({ block, updateBlock, id }) {
                 options={[{ value: 'h1', label: 'H1' }, { value: 'h2', label: 'H2' }, { value: 'h3', label: 'H3' }]}
                 onChange={v => update(['data', 'props', 'level'], v)}
               />
+            )}
+            {/* Link wrap — set on the text/heading to render <a href> */}
+            <LinkInput
+              value={props.linkHref || ''}
+              onChange={v => update(['data', 'props', 'linkHref'], v || null)}
+            />
+            {/* Bulleted / Numbered list toggle (Text blocks only — Headings stay h1/h2/h3) */}
+            {block.type === 'Text' && (
+              <div className={styles.fieldCol}>
+                <label className={styles.fieldLabel}>List</label>
+                <Toggle
+                  fullWidth
+                  items={[
+                    { key: 'none',   label: '', icon: <ListNoneIcon /> },
+                    { key: 'bullet', label: '', icon: <ListBulletIcon /> },
+                    { key: 'number', label: '', icon: <ListNumberIcon /> },
+                  ]}
+                  active={props.listStyle || 'none'}
+                  size="S"
+                  onChange={v => update(['data', 'props', 'listStyle'], v === 'none' ? null : v)}
+                />
+              </div>
             )}
           </Section>
         </>
@@ -681,38 +704,50 @@ function DesignTab({ block, updateBlock, id }) {
                     onChange={v => update(['data', 'style', 'fontSize'], Number(v) || 14)}
                   />
                 </Row2>
-                <Row2>
-                  <div className={styles.fieldCol}>
-                    <label className={styles.fieldLabelStrong}>Alignment</label>
-                    <Toggle
-                      fullWidth
-                      items={[
-                        { key: 'left',    label: '', icon: <AlignLeftIcon /> },
-                        { key: 'center',  label: '', icon: <AlignCenterIcon /> },
-                        { key: 'right',   label: '', icon: <AlignRightIcon /> },
-                        { key: 'justify', label: '', icon: <AlignJustifyIcon /> },
-                      ]}
-                      active={style.textAlign || 'left'}
-                      size="S"
-                      onChange={v => update(['data', 'style', 'textAlign'], v)}
-                    />
+                <div className={styles.fieldCol}>
+                  <label className={styles.fieldLabelStrong}>Alignment</label>
+                  <Toggle
+                    fullWidth
+                    items={[
+                      { key: 'left',    label: '', icon: <AlignLeftIcon /> },
+                      { key: 'center',  label: '', icon: <AlignCenterIcon /> },
+                      { key: 'right',   label: '', icon: <AlignRightIcon /> },
+                      { key: 'justify', label: '', icon: <AlignJustifyIcon /> },
+                    ]}
+                    active={style.textAlign || 'left'}
+                    size="S"
+                    onChange={v => update(['data', 'style', 'textAlign'], v)}
+                  />
+                </div>
+                {/* Decoration gets its own full-width row — 6 buttons (B/I/U/S/Code/Caps)
+                    don't fit comfortably next to Alignment. These apply to the
+                    *whole* block. Range-level inline formatting is in the floating
+                    toolbar that appears when text is selected on the canvas. */}
+                <div className={styles.fieldCol}>
+                  <div className={styles.decorationLabelRow}>
+                    <label className={styles.fieldLabelStrong}>Decoration (block)</label>
+                    <span className={styles.decorationHint}>
+                      <Icon name="solar:cursor-square-linear" size={11} color="var(--neutral-200)" />
+                      Select text to format inline
+                    </span>
                   </div>
-                  <div className={styles.fieldCol}>
-                    <label className={styles.fieldLabelStrong}>Decoration</label>
-                    <DecorationToggles
-                      bold={style.fontWeight === 'bold'}
-                      italic={style.fontStyle === 'italic'}
-                      underline={style.textDecoration === 'underline'}
-                      strike={style.textDecoration === 'line-through'}
-                      onChange={(key, on) => {
-                        if (key === 'bold') update(['data', 'style', 'fontWeight'], on ? 'bold' : 'normal');
-                        if (key === 'italic') update(['data', 'style', 'fontStyle'], on ? 'italic' : null);
-                        if (key === 'underline') update(['data', 'style', 'textDecoration'], on ? 'underline' : null);
-                        if (key === 'strike') update(['data', 'style', 'textDecoration'], on ? 'line-through' : null);
-                      }}
-                    />
-                  </div>
-                </Row2>
+                  <DecorationToggles
+                    bold={style.fontWeight === 'bold'}
+                    italic={style.fontStyle === 'italic'}
+                    underline={style.textDecoration === 'underline'}
+                    strike={style.textDecoration === 'line-through'}
+                    code={style.fontFamily === 'MONOSPACE'}
+                    caps={style.textTransform === 'uppercase'}
+                    onChange={(key, on) => {
+                      if (key === 'bold') update(['data', 'style', 'fontWeight'], on ? 'bold' : 'normal');
+                      if (key === 'italic') update(['data', 'style', 'fontStyle'], on ? 'italic' : null);
+                      if (key === 'underline') update(['data', 'style', 'textDecoration'], on ? 'underline' : null);
+                      if (key === 'strike') update(['data', 'style', 'textDecoration'], on ? 'line-through' : null);
+                      if (key === 'code') update(['data', 'style', 'fontFamily'], on ? 'MONOSPACE' : 'MODERN_SANS');
+                      if (key === 'caps') update(['data', 'style', 'textTransform'], on ? 'uppercase' : null);
+                    }}
+                  />
+                </div>
                 <Row2>
                   <IconInput
                     label="Line Height" suffix="%"
@@ -720,7 +755,7 @@ function DesignTab({ block, updateBlock, id }) {
                     onChange={v => update(['data', 'style', 'lineHeight'], (Number(v) || 120) / 100)}
                   />
                   <IconInput
-                    label="Letter Spacing" suffix="%"
+                    label="Letter Spacing" suffix="px"
                     value={style.letterSpacing || 0}
                     onChange={v => update(['data', 'style', 'letterSpacing'], Number(v) || 0)}
                   />
@@ -2022,13 +2057,102 @@ function NavLinkEditor({ links, onChange }) {
   );
 }
 
+// Quick-style chips at the top of the Content section. Tapping one applies a
+// preset of typography settings (fontSize + fontWeight, and for Headings the
+// `level` too). The matching chip highlights if the current style is already
+// at that preset.
+const TEXT_STYLE_PRESETS = [
+  { key: 'title',    label: 'Title',    fontSize: 24, fontWeight: 'bold',   level: 'h1' },
+  { key: 'subtitle', label: 'Subtitle', fontSize: 18, fontWeight: 'bold',   level: 'h2' },
+  { key: 'heading',  label: 'Heading',  fontSize: 16, fontWeight: 'bold',   level: 'h3' },
+  { key: 'body',     label: 'Body',     fontSize: 14, fontWeight: 'normal', level: null },
+];
+
+function TextStyleChips({ block, updateBlock, id }) {
+  const style = block.data?.style || {};
+  const props = block.data?.props || {};
+  const apply = (preset) => {
+    updateBlock(id, prev => {
+      const next = JSON.parse(JSON.stringify(prev));
+      next.data = next.data || {};
+      next.data.style = next.data.style || {};
+      next.data.style.fontSize = preset.fontSize;
+      next.data.style.fontWeight = preset.fontWeight;
+      next.data.props = next.data.props || {};
+      if (next.type === 'Heading' && preset.level) next.data.props.level = preset.level;
+      return next;
+    });
+  };
+  // Which chip matches the current settings?
+  const active = (() => {
+    const fs = Number(style.fontSize) || (block.type === 'Heading' ? 24 : 14);
+    const fw = style.fontWeight || (block.type === 'Heading' ? 'bold' : 'normal');
+    const lvl = props.level;
+    for (const p of TEXT_STYLE_PRESETS) {
+      const sizeMatch = fs === p.fontSize;
+      const weightMatch = fw === p.fontWeight;
+      const levelMatch = block.type !== 'Heading' || !p.level || lvl === p.level;
+      if (sizeMatch && weightMatch && levelMatch) return p.key;
+    }
+    return null;
+  })();
+  return (
+    <div className={styles.textChipsRow}>
+      {TEXT_STYLE_PRESETS.map(p => (
+        <button
+          key={p.key}
+          type="button"
+          className={[styles.textChip, active === p.key ? styles.textChipActive : ''].join(' ')}
+          onClick={() => apply(p)}
+        >
+          {p.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Link input — inline collapsible row. Shows a "+ Add link" affordance when
+// no link is set, expands to an Input that captures the href.
+function LinkInput({ value, onChange }) {
+  const [open, setOpen] = useState(!!value);
+  return (
+    <div className={styles.fieldCol}>
+      <div className={styles.linkHeader}>
+        <label className={styles.fieldLabel}>Link</label>
+        <button
+          type="button"
+          className={styles.linkToggle}
+          onClick={() => {
+            if (open && value) { onChange(''); }
+            setOpen(o => !o);
+          }}
+          aria-label={open ? 'Remove link' : 'Add link'}
+        >
+          <Icon name={open ? 'solar:minus-circle-linear' : 'solar:add-circle-linear'} size={14} color="currentColor" />
+        </button>
+      </div>
+      {open && (
+        <Input
+          type="url"
+          placeholder="https://example.com"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+        />
+      )}
+    </div>
+  );
+}
+
 // ── Independent decoration toggles — bold/italic/underline/strike can combine ─
-function DecorationToggles({ bold, italic, underline, strike, onChange }) {
+function DecorationToggles({ bold, italic, underline, strike, code, caps, onChange }) {
   const items = [
     { key: 'bold',      on: bold,      icon: <DecoBoldIcon />,      label: 'Bold' },
     { key: 'italic',    on: italic,    icon: <DecoItalicIcon />,    label: 'Italic' },
     { key: 'underline', on: underline, icon: <DecoUnderlineIcon />, label: 'Underline' },
     { key: 'strike',    on: strike,    icon: <DecoStrikeIcon />,    label: 'Strikethrough' },
+    { key: 'code',      on: code,      icon: <DecoCodeIcon />,      label: 'Code' },
+    { key: 'caps',      on: caps,      icon: <DecoCapsIcon />,      label: 'Uppercase' },
   ];
   return (
     <div className={styles.decoToggles}>
@@ -2095,5 +2219,44 @@ const DecoStrikeIcon = () => (
   <svg width={14} height={14} viewBox="0 0 14 14" fill="none">
     <text x="4" y="11" fontSize="11" fontFamily="Inter" fill="currentColor">T</text>
     <line x1="2" y1="7" x2="12" y2="7" stroke="currentColor" strokeWidth="1" />
+  </svg>
+);
+const DecoCodeIcon = () => (
+  <svg width={14} height={14} viewBox="0 0 14 14" fill="none">
+    <path d="M5 4L2 7L5 10 M9 4L12 7L9 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+const DecoCapsIcon = () => (
+  <svg width={16} height={14} viewBox="0 0 16 14" fill="none">
+    <text x="1" y="10" fontSize="9" fontFamily="Inter" fontWeight="500" fill="currentColor">AB</text>
+  </svg>
+);
+
+// Three icons for the list-style toggle on Text blocks.
+const ListNoneIcon = () => (
+  <svg width={14} height={14} viewBox="0 0 14 14" fill="none">
+    <line x1="3" y1="4" x2="11" y2="4" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+    <line x1="3" y1="7" x2="11" y2="7" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+    <line x1="3" y1="10" x2="11" y2="10" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+  </svg>
+);
+const ListBulletIcon = () => (
+  <svg width={14} height={14} viewBox="0 0 14 14" fill="none">
+    <circle cx="2.5" cy="4" r="0.9" fill="currentColor" />
+    <circle cx="2.5" cy="7" r="0.9" fill="currentColor" />
+    <circle cx="2.5" cy="10" r="0.9" fill="currentColor" />
+    <line x1="5.5" y1="4" x2="11.5" y2="4" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+    <line x1="5.5" y1="7" x2="11.5" y2="7" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+    <line x1="5.5" y1="10" x2="11.5" y2="10" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+  </svg>
+);
+const ListNumberIcon = () => (
+  <svg width={14} height={14} viewBox="0 0 14 14" fill="none">
+    <text x="1" y="5" fontSize="3.5" fontFamily="Inter" fontWeight="500" fill="currentColor">1.</text>
+    <text x="1" y="8.5" fontSize="3.5" fontFamily="Inter" fontWeight="500" fill="currentColor">2.</text>
+    <text x="1" y="12" fontSize="3.5" fontFamily="Inter" fontWeight="500" fill="currentColor">3.</text>
+    <line x1="5.5" y1="4" x2="11.5" y2="4" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+    <line x1="5.5" y1="7" x2="11.5" y2="7" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+    <line x1="5.5" y1="10" x2="11.5" y2="10" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
   </svg>
 );

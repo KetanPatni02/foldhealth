@@ -177,7 +177,12 @@ function renderBlock(doc, id) {
   switch (type) {
     case 'Heading':
     case 'Text': {
-      const tag = type === 'Heading' ? (props.level || 'h2') : 'p';
+      // Text supports list-style — bullet/number — by splitting on newlines.
+      const listStyle = type === 'Text' ? props.listStyle : null;
+      const isList = listStyle === 'bullet' || listStyle === 'number';
+      const tag = isList
+        ? (listStyle === 'number' ? 'ol' : 'ul')
+        : (type === 'Heading' ? (props.level || 'h2') : 'p');
       const s = {
         margin: '0',
         padding,
@@ -190,8 +195,28 @@ function renderBlock(doc, id) {
       };
       if (style.fontStyle) s['font-style'] = style.fontStyle;
       if (style.textDecoration) s['text-decoration'] = style.textDecoration;
-      if (style.letterSpacing) s['letter-spacing'] = `${style.letterSpacing}%`;
-      return `<${tag} style="${styleStr(s)}">${nl2br(props.text || '')}</${tag}>`;
+      if (style.letterSpacing) s['letter-spacing'] = `${style.letterSpacing}px`;
+      if (style.textTransform) s['text-transform'] = style.textTransform;
+      if (style.backgroundColor) s['background-color'] = style.backgroundColor;
+      if (isList) s['list-style-position'] = 'inside';
+      // Body content. props.text is now an HTML string (so inline formatting
+      // from the floating SelectionToolbar — <strong>/<em>/<u>/<s>/<code>/<a>
+      // — round-trips correctly). For non-lists we just convert bare newlines
+      // to <br>; for lists we split lines and wrap each in an <li> without
+      // escaping (lines may contain their own inline tags).
+      let body;
+      if (isList) {
+        const items = (props.text || '').split(/\n/).filter(l => l.trim() !== '');
+        body = items.map(line => `<li>${line}</li>`).join('');
+      } else {
+        body = (props.text || '').replace(/\n/g, '<br/>');
+      }
+      // Link wrap — if linkHref is set, wrap the inner content in an <a>.
+      // Render the anchor inside the tag so semantics + inheritance hold.
+      if (props.linkHref) {
+        body = `<a href="${esc(props.linkHref)}" target="_blank" style="color:inherit;text-decoration:underline">${body}</a>`;
+      }
+      return `<${tag} style="${styleStr(s)}">${body}</${tag}>`;
     }
 
     case 'Button': {

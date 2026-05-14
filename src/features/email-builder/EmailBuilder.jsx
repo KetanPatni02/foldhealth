@@ -14,6 +14,7 @@ import { PropertiesPanel } from './PropertiesPanel';
 import { DevicePreview } from './DevicePreview';
 import { renderEmailHtml } from './patchEmailHtml';
 import { SendTestPopover } from './SendTestPopover';
+import { SelectionToolbar } from './SelectionToolbar';
 import { buildParentMap } from './blockHelpers';
 import styles from './EmailBuilder.module.css';
 
@@ -412,6 +413,10 @@ export function EmailBuilder() {
           </div>
         )}
       </DragOverlay>
+      {/* Floating selection toolbar — appears when text is selected inside
+          any Text/Heading block on the canvas. Range-level B/I/U/S/Code/Link
+          via execCommand; block-level "Text" style dropdown for quick presets. */}
+      <SelectionToolbar />
       {showCloseConfirm && (
         <ConfirmDialog
           icon="solar:danger-triangle-linear"

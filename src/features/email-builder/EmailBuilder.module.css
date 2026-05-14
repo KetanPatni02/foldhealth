@@ -1384,6 +1384,192 @@
   border-style: solid;
 }
 
+/* Floating SelectionToolbar — pops up above the user's text selection on the
+   canvas and exposes range-level formatting. Dark pill background; sized to
+   feel like a tooltip, not a full panel. Sits on a portal at <body> so it
+   isn't clipped by the canvas overflow. */
+.selectionToolbar {
+  position: absolute;
+  z-index: 200;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: #1F1F23;
+  border-radius: 999px;
+  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.3),
+              0 2px 6px rgba(0, 0, 0, 0.18);
+  color: #FFFFFF;
+  font-family: 'Inter', sans-serif;
+  user-select: none;
+}
+
+.selectionToolbarBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  background: transparent;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  color: #FFFFFF;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+}
+.selectionToolbarBtn:hover { background: rgba(255, 255, 255, 0.12); }
+.selectionToolbarBtn:active { background: rgba(255, 255, 255, 0.18); }
+
+.selectionToolbarDivider {
+  width: 0.5px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.18);
+  margin: 0 2px;
+}
+
+/* Style dropdown inside the toolbar (Title / Subtitle / Heading / Body) */
+.selectionToolbarStyle {
+  position: relative;
+}
+.selectionToolbarStyleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  background: transparent;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  color: #FFFFFF;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+}
+.selectionToolbarStyleBtn:hover { background: rgba(255, 255, 255, 0.12); }
+
+.selectionToolbarStyleMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 140px;
+  background: #1F1F23;
+  border-radius: 8px;
+  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.35),
+              0 2px 6px rgba(0, 0, 0, 0.22);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.selectionToolbarStyleItem {
+  text-align: left;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #FFFFFF;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+}
+.selectionToolbarStyleItem:hover { background: rgba(255, 255, 255, 0.1); }
+
+.selectionToolbarLinkInput {
+  height: 24px;
+  width: 200px;
+  margin: 0 4px;
+  padding: 0 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 0.5px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  color: #FFFFFF;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  outline: none;
+}
+.selectionToolbarLinkInput::placeholder { color: rgba(255, 255, 255, 0.4); }
+.selectionToolbarLinkInput:focus {
+  border-color: var(--primary-300);
+}
+
+/* Label + discoverability hint above the block-level Decoration toggles.
+   The hint tells users they can select text on the canvas for range-level
+   formatting (which would otherwise be hidden behind the floating toolbar
+   that only appears on selection). */
+.decorationLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.decorationHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 10.5px;
+  color: var(--neutral-200);
+  line-height: 1.2;
+}
+
+/* Text style chips — Title / Subtitle / Heading / Body quick presets, shown
+   at the top of the Design tab for any selected Heading or Text block. */
+.textChipsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.textChip {
+  flex: 0 0 auto;
+  height: 26px;
+  padding: 0 12px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 999px;
+  background: var(--neutral-0);
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.textChip:hover {
+  background: var(--neutral-50);
+  border-color: var(--neutral-200);
+}
+.textChipActive,
+.textChipActive:hover {
+  background: var(--primary-50);
+  border-color: var(--primary-300);
+  color: var(--primary-400, #5020A0);
+}
+
+/* Link section header — label on the left, + / - toggle on the right. */
+.linkHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.linkToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--primary-300);
+}
+.linkToggle:hover { background: var(--primary-50); }
+
 /* Decoration toggle group — independent multi-select. Stretches to its
    fieldCol and lets the four buttons share space so the last one (Strike)
    never clips in narrow right-panel widths. */

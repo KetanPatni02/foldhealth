@@ -421,6 +421,7 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
         blockId={id}
         type={type}
         level={props.level}
+        listStyle={props.listStyle}
         text={props.text || ''}
         style={style}
         onCommit={ctx.commitText}

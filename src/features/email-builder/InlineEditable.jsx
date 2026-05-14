@@ -1,9 +1,15 @@
 import { useEffect, useRef } from 'react';
 
-// In-place text editor for Heading/Text blocks. We render an HTML element with
-// contentEditable so users can click-and-type directly on the canvas; on blur
-// we push the new text up to the document. Crucially we never set the element's
-// innerText while it has focus — that would clobber the caret.
+// In-place text editor for Heading/Text blocks. Renders a contentEditable
+// element so users can click-and-type directly on the canvas, **and** select
+// portions of the text for inline formatting (bold/italic/link/etc. applied
+// via the floating SelectionToolbar). On blur we commit the new HTML back
+// into the document.
+//
+// Text storage model: props.text is an HTML string. Inline tags like
+// <strong>/<em>/<u>/<s>/<code>/<a> are preserved across edits so per-range
+// formatting works. Plain text without HTML still works — it's valid HTML.
+// Newlines (\n) and <br> are both supported; we normalize to <br> on save.
 
 const FONT_FAMILY_MAP = {
   MODERN_SANS:    `'Helvetica Neue', 'Arial Nova', 'Nimbus Sans', Arial, sans-serif`,
@@ -31,8 +37,9 @@ function buildStyle(style) {
     fontStyle: style.fontStyle,
     textDecoration: style.textDecoration,
     textAlign: style.textAlign,
+    textTransform: style.textTransform,
     lineHeight: style.lineHeight ?? 1.5,
-    letterSpacing: style.letterSpacing ? `${style.letterSpacing / 100}em` : undefined,
+    letterSpacing: style.letterSpacing ? `${style.letterSpacing}px` : undefined,
     padding: paddingCss(style.padding),
     backgroundColor: style.backgroundColor,
     fontFamily: FONT_FAMILY_MAP[style.fontFamily] || FONT_FAMILY_MAP.MODERN_SANS,
@@ -41,40 +48,69 @@ function buildStyle(style) {
   };
 }
 
-export function InlineEditable({ blockId, type, level, text, style, onCommit }) {
-  const ref = useRef(null);
-  const Tag = type === 'Heading' ? (level || 'h2') : 'p';
+// Convert stored text into the HTML the editable element holds in the DOM.
+// - For lists, split on newline and wrap each non-empty line in <li>.
+// - For non-lists, normalize raw newlines to <br/> so they show as line breaks.
+// Empty content renders one <li><br></li> or nothing so the caret has a home.
+function textToInnerHtml(text, listStyle) {
+  const safe = text || '';
+  if (listStyle === 'bullet' || listStyle === 'number') {
+    const lines = safe.split(/\n/);
+    const items = lines.length ? lines : [''];
+    return items.map(l => `<li>${l || '<br>'}</li>`).join('');
+  }
+  // Preserve existing inline HTML; only convert bare newlines.
+  return safe.replace(/\n/g, '<br>');
+}
 
-  // Sync external `text` updates to DOM only when the element is not focused —
-  // otherwise typing would race with React re-renders and reset the caret.
+// Read the current DOM back into the stored text format. For lists we walk
+// the <li> children; otherwise we read innerHTML and normalize <br> → \n.
+function innerHtmlToText(el, listStyle) {
+  if (!el) return '';
+  if (listStyle === 'bullet' || listStyle === 'number') {
+    const items = [...el.querySelectorAll('li')].map(li => li.innerHTML.trim().replace(/<br\s*\/?>$/i, ''));
+    return items.join('\n');
+  }
+  return el.innerHTML.replace(/<br\s*\/?>/gi, '\n');
+}
+
+export function InlineEditable({ blockId, type, level, text, style, listStyle, onCommit }) {
+  const ref = useRef(null);
+  const isList = listStyle === 'bullet' || listStyle === 'number';
+  const Tag = isList
+    ? (listStyle === 'number' ? 'ol' : 'ul')
+    : (type === 'Heading' ? (level || 'h2') : 'p');
+
+  // Sync external text → DOM only when the element is not focused, so typing
+  // never races with a re-render and the caret position is preserved.
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     if (document.activeElement === el) return;
-    if (el.innerText !== text) el.innerText = text;
-  }, [text]);
+    const next = textToInnerHtml(text, listStyle);
+    if (el.innerHTML !== next) el.innerHTML = next;
+  }, [text, listStyle]);
 
   const handleBlur = () => {
-    const next = ref.current?.innerText ?? '';
+    const next = innerHtmlToText(ref.current, listStyle);
     if (next !== text) onCommit(blockId, next);
   };
 
   const handleKeyDown = (e) => {
-    // Esc → blur (commits and exits edit mode)
     if (e.key === 'Escape') { e.preventDefault(); ref.current?.blur(); }
   };
 
   return (
     <Tag
       ref={ref}
+      data-eb-editable={type}
+      data-eb-block-id={blockId}
       style={buildStyle(style)}
       contentEditable
       suppressContentEditableWarning
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
       spellCheck={false}
-    >
-      {text}
-    </Tag>
+    />
   );
 }
