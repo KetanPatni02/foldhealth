@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react';
+import { getFontStack } from './googleFonts';
+import { isGradient } from './colorHelpers';
 
 // In-place text editor for Heading/Text blocks. Renders a contentEditable
 // element so users can click-and-type directly on the canvas, **and** select
@@ -11,27 +13,31 @@ import { useEffect, useRef } from 'react';
 // formatting works. Plain text without HTML still works — it's valid HTML.
 // Newlines (\n) and <br> are both supported; we normalize to <br> on save.
 
-const FONT_FAMILY_MAP = {
-  MODERN_SANS:    `'Helvetica Neue', 'Arial Nova', 'Nimbus Sans', Arial, sans-serif`,
-  BOOK_SANS:      `'Ubuntu', 'Segoe UI', sans-serif`,
-  ORGANIC_SANS:   `'Verdana', sans-serif`,
-  GEOMETRIC_SANS: `'Tahoma', sans-serif`,
-  HEAVY_SANS:     `'Arial Black', sans-serif`,
-  ROUNDED_SANS:   `'Comic Sans MS', cursive`,
-  MODERN_SERIF:   `'Garamond', serif`,
-  BOOK_SERIF:     `'Georgia', serif`,
-  MONOSPACE:      `'Consolas', monospace`,
-};
-
 function paddingCss(padding) {
   if (!padding) return undefined;
   return `${padding.top}px ${padding.right}px ${padding.bottom}px ${padding.left}px`;
 }
 
 function buildStyle(style) {
+  const border = style.borderWidth
+    ? `${style.borderWidth}px ${style.borderStyle || 'solid'} ${style.borderColor || '#3A485F'}`
+    : undefined;
+  const textIsGradient = isGradient(style.color);
+  const bgIsGradient = isGradient(style.backgroundColor);
+  // Gradient text uses background-clip: text so the gradient becomes the
+  // text fill. Color is made transparent so the gradient shows through.
+  // Caret color is set to the gradient's first stop so typing stays visible.
+  const gradTextStyles = textIsGradient ? {
+    backgroundImage: style.color,
+    WebkitBackgroundClip: 'text',
+    backgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    color: 'transparent',
+    caretColor: '#3A485F',
+  } : {};
   return {
     margin: 0,
-    color: style.color,
+    color: textIsGradient ? undefined : style.color,
     fontSize: style.fontSize ? `${style.fontSize}px` : undefined,
     fontWeight: style.fontWeight,
     fontStyle: style.fontStyle,
@@ -41,10 +47,15 @@ function buildStyle(style) {
     lineHeight: style.lineHeight ?? 1.5,
     letterSpacing: style.letterSpacing ? `${style.letterSpacing}px` : undefined,
     padding: paddingCss(style.padding),
-    backgroundColor: style.backgroundColor,
-    fontFamily: FONT_FAMILY_MAP[style.fontFamily] || FONT_FAMILY_MAP.MODERN_SANS,
+    // backgroundColor only takes solids; gradients go via backgroundImage.
+    backgroundColor: bgIsGradient ? undefined : style.backgroundColor,
+    backgroundImage: bgIsGradient ? style.backgroundColor : (textIsGradient ? style.color : undefined),
+    border,
+    borderRadius: style.borderRadius ? `${style.borderRadius}px` : undefined,
+    fontFamily: getFontStack(style.fontFamily),
     outline: 'none',
     whiteSpace: 'pre-wrap',
+    ...gradTextStyles,
   };
 }
 

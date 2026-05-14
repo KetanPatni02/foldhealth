@@ -1,6 +1,9 @@
 // Full custom email renderer — produces table-based HTML that matches
 // the builder canvas exactly across all email clients.
 
+import { getFontStack, getGoogleFontsHref, resolveFont, GOOGLE_FONTS } from './googleFonts';
+import { isGradient, firstStopColor } from './colorHelpers';
+
 // ── Dark-mode color transforms ──────────────────────────────────────────
 // Real device dark mode (iOS Mail / Gmail auto-dark / Outlook) doesn't
 // just darken the backdrop — it inverts whiteish surfaces to dark and
@@ -113,17 +116,33 @@ function transformDocForDarkMode(doc) {
   return out;
 }
 
-const FONT_MAP = {
-  MODERN_SANS: "'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif",
-  BOOK_SANS: "Helvetica, Arial, sans-serif",
-  ORGANIC_SANS: "Verdana, Geneva, sans-serif",
-  GEOMETRIC_SANS: "Tahoma, Geneva, sans-serif",
-  HEAVY_SANS: "Arial, Helvetica, sans-serif",
-  ROUNDED_SANS: "'Comic Sans MS', cursive, sans-serif",
-  MODERN_SERIF: "Garamond, 'Times New Roman', serif",
-  BOOK_SERIF: "Georgia, 'Times New Roman', serif",
-  MONOSPACE: "'Courier New', Courier, monospace",
-};
+// Track which Google fonts are actually referenced by the document so the
+// exported email only loads the families it needs (the canvas preview can
+// load all of them eagerly, but the email should be lean).
+function collectUsedFontFamilies(doc) {
+  const used = new Set();
+  Object.values(doc || {}).forEach(block => {
+    const sf = block?.data?.style?.fontFamily;
+    if (sf) used.add(sf);
+    const df = block?.data?.fontFamily;
+    if (df) used.add(df);
+  });
+  return used;
+}
+
+// Apply a (possibly-gradient) background value to an inline style object.
+// Solids go to `background-color`; gradients set both `background-image`
+// (for modern clients) and a first-stop `background-color` (so legacy
+// clients still get a sensible fallback color).
+function applyBgColor(s, value) {
+  if (!value) return;
+  if (isGradient(value)) {
+    s['background-color'] = firstStopColor(value);
+    s['background-image'] = value;
+  } else {
+    s['background-color'] = value;
+  }
+}
 
 // Format a backgroundImage value for inline CSS. CSS gradient functions
 // (linear-gradient / radial-gradient / conic-gradient and their repeating
@@ -183,21 +202,45 @@ function renderBlock(doc, id) {
       const tag = isList
         ? (listStyle === 'number' ? 'ol' : 'ul')
         : (type === 'Heading' ? (props.level || 'h2') : 'p');
+      // Gradient text: modern clients (Apple Mail, iOS Mail, recent Gmail
+      // webmail) support background-clip: text. Legacy clients ignore the
+      // clip and fall back to the first stop's solid color via `color:`.
+      const textGradient = isGradient(style.color);
+      const textColor = textGradient ? firstStopColor(style.color) : (style.color || 'inherit');
+      // Background: gradients render via background-image (the existing
+      // formatBackgroundImage path). Solids use background-color.
+      const bgIsGradient = isGradient(style.backgroundColor);
       const s = {
         margin: '0',
         padding,
-        color: style.color || 'inherit',
+        color: textColor,
         'font-size': `${style.fontSize || (type === 'Heading' ? 24 : 14)}px`,
         'font-weight': style.fontWeight || (type === 'Heading' ? 'bold' : 'normal'),
         'text-align': style.textAlign || 'left',
-        'font-family': FONT_MAP[style.fontFamily] || 'inherit',
+        'font-family': style.fontFamily ? getFontStack(style.fontFamily) : 'inherit',
         'line-height': style.lineHeight ? String(style.lineHeight) : '1.5',
       };
+      if (textGradient) {
+        s['background-image'] = style.color;
+        s['-webkit-background-clip'] = 'text';
+        s['background-clip'] = 'text';
+        s['-webkit-text-fill-color'] = 'transparent';
+      }
       if (style.fontStyle) s['font-style'] = style.fontStyle;
       if (style.textDecoration) s['text-decoration'] = style.textDecoration;
       if (style.letterSpacing) s['letter-spacing'] = `${style.letterSpacing}px`;
       if (style.textTransform) s['text-transform'] = style.textTransform;
-      if (style.backgroundColor) s['background-color'] = style.backgroundColor;
+      if (style.backgroundColor && !bgIsGradient) s['background-color'] = style.backgroundColor;
+      if (bgIsGradient) {
+        s['background-color'] = firstStopColor(style.backgroundColor);
+        s['background-image'] = style.backgroundColor;
+      }
+      // Border (radius / width / color / style). Falls back gracefully when
+      // only some pieces are set so partial configuration still renders.
+      if (style.borderWidth) {
+        s.border = `${style.borderWidth}px ${style.borderStyle || 'solid'} ${style.borderColor || '#3A485F'}`;
+      }
+      if (style.borderRadius) s['border-radius'] = `${style.borderRadius}px`;
       if (isList) s['list-style-position'] = 'inside';
       // Body content. props.text is now an HTML string (so inline formatting
       // from the floating SelectionToolbar — <strong>/<em>/<u>/<s>/<code>/<a>
@@ -214,7 +257,8 @@ function renderBlock(doc, id) {
       // Link wrap — if linkHref is set, wrap the inner content in an <a>.
       // Render the anchor inside the tag so semantics + inheritance hold.
       if (props.linkHref) {
-        body = `<a href="${esc(props.linkHref)}" target="_blank" style="color:inherit;text-decoration:underline">${body}</a>`;
+        const target = props.linkOpenInNewTab === false ? '' : ' target="_blank"';
+        body = `<a href="${esc(props.linkHref)}"${target} style="color:inherit;text-decoration:underline">${body}</a>`;
       }
       return `<${tag} style="${styleStr(s)}">${body}</${tag}>`;
     }
@@ -253,8 +297,8 @@ function renderBlock(doc, id) {
         margin: '0',
         padding,
         'text-align': align,
-        'background-color': style.backgroundColor || '',
       };
+      applyBgColor(wrapS, style.backgroundColor);
       const width = props.width ?? '100%';
       const isFixedPx = typeof width === 'number';
       const widthAttr = isFixedPx ? `${width}` : width.replace('%', '');
@@ -324,9 +368,13 @@ function renderBlock(doc, id) {
       const children = (props.childrenIds || []).map(cid => renderBlock(doc, cid)).join('');
       const s = {
         padding,
-        'background-color': style.backgroundColor || '',
         'border-radius': style.borderRadius ? `${style.borderRadius}px` : '',
+        // Container border — honors the same Border section in the property panel.
+        border: style.borderWidth
+          ? `${style.borderWidth}px ${style.borderStyle || 'solid'} ${style.borderColor || '#3A485F'}`
+          : '',
       };
+      applyBgColor(s, style.backgroundColor);
       if (style.backgroundImage) {
         s['background-image'] = formatBackgroundImage(style.backgroundImage);
         s['background-size'] = style.backgroundSize || 'cover';
@@ -351,9 +399,9 @@ function renderBlock(doc, id) {
 
       const wrapS = {
         padding,
-        'background-color': style.backgroundColor || '',
         'border-radius': style.borderRadius ? `${style.borderRadius}px` : '',
       };
+      applyBgColor(wrapS, style.backgroundColor);
       if (style.backgroundImage) {
         wrapS['background-image'] = `url(${style.backgroundImage})`;
         wrapS['background-size'] = style.backgroundSize || 'cover';
@@ -512,13 +560,26 @@ export function renderEmailHtml(doc, { wrapperPadding = '24px 0', theme = 'auto'
   const backdropColor = root.data?.backdropColor || (isDark ? '#0F1115' : '#F2EEFE');
   const canvasColor = root.data?.canvasColor || (isDark ? '#16181D' : '#FFFFFF');
   const textColor = root.data?.textColor || (isDark ? '#E4E5EE' : '#3A485F');
-  const fontFamily = FONT_MAP[root.data?.fontFamily] || FONT_MAP.MODERN_SANS;
+  const fontFamily = getFontStack(root.data?.fontFamily);
   const childrenIds = root.data?.childrenIds || [];
 
   // Use effectiveDoc (the dark-mode-transformed copy when theme === 'dark')
   // so child blocks render with their flipped backgrounds / text colors.
   const bodyContent = childrenIds.map(cid => renderBlock(effectiveDoc, cid)).join('');
   const colorScheme = theme === 'auto' ? 'light dark' : theme;
+
+  // Build a lean Google Fonts <link> covering only the families this email
+  // actually references — keeps the email payload small and avoids loading
+  // 30+ fonts every recipient doesn't need.
+  const usedFontValues = collectUsedFontFamilies(effectiveDoc);
+  const usedFamilies = [...usedFontValues]
+    .map(v => resolveFont(v))
+    .filter(f => f && f.googleFamily)
+    .map(f => `family=${f.googleFamily}`)
+    .filter((v, i, a) => a.indexOf(v) === i);
+  const googleFontsLink = usedFamilies.length
+    ? `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?${usedFamilies.join('&')}&display=swap"/>`
+    : '';
 
   return `<!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" style="color-scheme: ${colorScheme}">
@@ -529,6 +590,7 @@ export function renderEmailHtml(doc, { wrapperPadding = '24px 0', theme = 'auto'
 <meta name="color-scheme" content="${colorScheme}"/>
 <meta name="supported-color-schemes" content="${colorScheme}"/>
 <title>Email</title>
+${googleFontsLink}
 <style>
   :root { color-scheme: ${colorScheme}; }
   body, table, td, p, a, h1, h2, h3 { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }

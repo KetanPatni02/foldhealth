@@ -912,23 +912,27 @@
 }
 
 /* Section heading strip (grey #F6F7F8, 32px tall) */
+/* Section heading — light surface strip that titles each group. Slightly
+   shorter and quieter than before for a more minimal feel; the muted color
+   keeps section labels from competing with field labels. */
 .sectionHeadingStrip {
-  height: 32px;
+  height: 28px;
   display: flex;
   align-items: center;
   padding: 0 12px;
   background: var(--neutral-50, #F6F7F8);
   border-bottom: 0.5px solid var(--neutral-150);
   font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--neutral-300);
+  letter-spacing: 0.2px;
 }
 
 .sectionContent {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   padding: 12px;
   border-bottom: 0.5px solid var(--neutral-150);
 }
@@ -965,20 +969,27 @@
   margin: 0;
 }
 
-/* Icon-prefixed input (used for Width/Height/Padding/Size etc.) */
+/* Icon-prefixed input (used for Width/Height/Padding/Size etc.). Border
+   color, radius, and focus ring all match the shared <Input>/<Select> so
+   every form control in the panel reads as one consistent system. */
 .iconInputWrap {
   display: flex;
   align-items: center;
   gap: 8px;
   height: 32px;
   padding: 0 8px;
-  background: #fff;
-  border: 0.5px solid var(--neutral-200, #8A94A8);
-  border-radius: 4px;
+  background: var(--neutral-0, #fff);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
   box-sizing: border-box;
+  transition: border-color .15s, box-shadow .15s;
 }
 
-.iconInputWrap:focus-within { border-color: var(--primary-300); }
+.iconInputWrap:hover { border-color: var(--neutral-200); }
+.iconInputWrap:focus-within {
+  border-color: var(--primary-300);
+  box-shadow: 0 0 0 2px rgba(140, 90, 226, 0.12);
+}
 
 .iconInputIcon {
   display: inline-flex;
@@ -1047,7 +1058,8 @@
   display: flex;
 }
 
-/* Color input (color dot + hex) */
+/* Color input (color dot + hex) — border/radius/focus match the shared
+   <Input>/<Select> so every form control in the panel reads as one system. */
 .colorInputWrap {
   position: relative;
   display: flex;
@@ -1055,10 +1067,17 @@
   gap: 8px;
   height: 32px;
   padding: 0 8px;
-  background: #fff;
-  border: 0.5px solid var(--neutral-200, #8A94A8);
-  border-radius: 4px;
+  background: var(--neutral-0, #fff);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
   box-sizing: border-box;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.colorInputWrap:hover { border-color: var(--neutral-200); }
+.colorInputWrap:focus-within {
+  border-color: var(--primary-300);
+  box-shadow: 0 0 0 2px rgba(140, 90, 226, 0.12);
 }
 
 .colorDot {
@@ -1103,6 +1122,14 @@
   border: none;
   padding: 0;
   cursor: pointer;
+}
+
+/* Portalled ColorPicker popover. Positioned in document coordinates by
+   ColorInput's useLayoutEffect so it escapes the right-panel's
+   overflow:hidden clip and stays on-screen. */
+.colorPickerPortal {
+  position: fixed;
+  z-index: 1000;
 }
 
 /* Variable popover from ColorInput */
@@ -1496,6 +1523,59 @@
   border-color: var(--primary-300);
 }
 
+/* Padding section header — label on the left, uniform/per-side toggle on
+   the right. The toggle is a 2-state icon switch (single square vs sliced
+   square) so the user can flip between one combined input and four. */
+.paddingLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Collapsed "+ Add border" affordance — only the label shows until the
+   user expands the Border section. Same visual language as the Link
+   section's collapsed state. */
+.borderAddBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--primary-50);
+  border: 0.5px dashed var(--primary-200);
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-400, #5020A0);
+  align-self: flex-start;
+}
+.borderAddBtn:hover {
+  background: var(--primary-100);
+  border-style: solid;
+}
+
+.borderHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.borderRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--status-error);
+}
+.borderRemove:hover { background: var(--status-error-light); }
+
 /* Label + discoverability hint above the block-level Decoration toggles.
    The hint tells users they can select text on the canvas for range-level
    formatting (which would otherwise be hidden behind the floating toolbar
@@ -1569,6 +1649,26 @@
   color: var(--primary-300);
 }
 .linkToggle:hover { background: var(--primary-50); }
+
+/* "Open in New Tab" checkbox under Link input. Inline row with a native
+   checkbox (slightly restyled) and a 12px label. */
+.linkNewTab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-400, #4B5462);
+  cursor: pointer;
+  user-select: none;
+}
+.linkNewTab input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--primary-300);
+  cursor: pointer;
+}
 
 /* Decoration toggle group — independent multi-select. Stretches to its
    fieldCol and lets the four buttons share space so the last one (Strike)

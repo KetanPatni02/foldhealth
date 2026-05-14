@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
+import { useState, useEffect, useRef, useCallback, useLayoutEffect, Fragment } from 'react';
+import { createPortal } from 'react-dom';
 import { renderEmailHtml } from './patchEmailHtml';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
@@ -11,7 +12,14 @@ import { HEADER_PRESETS, FOOTER_PRESETS } from './headerFooterLibrary';
 import { PresetLivePreview } from './PresetLivePreview';
 import { extractSubtree, fingerprintTree } from './blockHelpers';
 import { uploadImage } from './uploadImage';
+import { GOOGLE_FONTS, injectGoogleFonts } from './googleFonts';
+import { ColorPicker } from './ColorPicker';
+import { isGradient } from './colorHelpers';
 import styles from './EmailBuilder.module.css';
+
+// Inject the Google Fonts stylesheet once so the canvas + inline previews
+// render with the actual web fonts. Safe to call repeatedly.
+injectGoogleFonts();
 
 const MIN_WIDTH = 280;
 const MAX_WIDTH = 720;
@@ -21,17 +29,10 @@ const RADIUS_TYPES = new Set(['Button', 'Image', 'Container', 'ColumnsContainer'
 const BG_IMAGE_TYPES = new Set(['Container', 'ColumnsContainer']);
 const BUTTON_STYLE_RADIUS = { rectangle: 0, rounded: 6, pill: 9999 };
 
-const FONT_FAMILIES = [
-  { value: 'MODERN_SANS',    label: 'Inter' },
-  { value: 'BOOK_SANS',      label: 'Helvetica' },
-  { value: 'ORGANIC_SANS',   label: 'Verdana' },
-  { value: 'GEOMETRIC_SANS', label: 'Tahoma' },
-  { value: 'HEAVY_SANS',     label: 'Arial' },
-  { value: 'ROUNDED_SANS',   label: 'Comic Sans MS' },
-  { value: 'MODERN_SERIF',   label: 'Garamond' },
-  { value: 'BOOK_SERIF',     label: 'Georgia' },
-  { value: 'MONOSPACE',      label: 'Monospace' },
-];
+// Pulled from the curated Google Fonts catalogue. Each entry stores the
+// Google font name directly so the value renders the same way in builder,
+// preview, and the exported email <link rel="stylesheet">.
+const FONT_FAMILIES = GOOGLE_FONTS.map(f => ({ value: f.value, label: f.label }));
 
 const FONT_WEIGHTS = [
   { value: 'normal', label: 'Regular' },
@@ -158,25 +159,10 @@ function DesignTab({ block, updateBlock, id }) {
             {/* Link wrap — set on the text/heading to render <a href> */}
             <LinkInput
               value={props.linkHref || ''}
+              openInNewTab={props.linkOpenInNewTab !== false}
               onChange={v => update(['data', 'props', 'linkHref'], v || null)}
+              onChangeOpenInNewTab={v => update(['data', 'props', 'linkOpenInNewTab'], v)}
             />
-            {/* Bulleted / Numbered list toggle (Text blocks only — Headings stay h1/h2/h3) */}
-            {block.type === 'Text' && (
-              <div className={styles.fieldCol}>
-                <label className={styles.fieldLabel}>List</label>
-                <Toggle
-                  fullWidth
-                  items={[
-                    { key: 'none',   label: '', icon: <ListNoneIcon /> },
-                    { key: 'bullet', label: '', icon: <ListBulletIcon /> },
-                    { key: 'number', label: '', icon: <ListNumberIcon /> },
-                  ]}
-                  active={props.listStyle || 'none'}
-                  size="S"
-                  onChange={v => update(['data', 'props', 'listStyle'], v === 'none' ? null : v)}
-                />
-              </div>
-            )}
           </Section>
         </>
       )}
@@ -533,29 +519,11 @@ function DesignTab({ block, updateBlock, id }) {
         ) : null}
 
         {!isLayout && (
-          <>
-            <FieldLabel>Padding</FieldLabel>
-            <Row2>
-              <IconInput
-                suffix="px" icon={<PadLeftIcon />}
-                value={padding.left} onChange={v => update(['data', 'style', 'padding', 'left'], Number(v) || 0)}
-              />
-              <IconInput
-                suffix="px" icon={<PadTopIcon />}
-                value={padding.top} onChange={v => update(['data', 'style', 'padding', 'top'], Number(v) || 0)}
-              />
-            </Row2>
-            <Row2>
-              <IconInput
-                suffix="px" icon={<PadRightIcon />}
-                value={padding.right} onChange={v => update(['data', 'style', 'padding', 'right'], Number(v) || 0)}
-              />
-              <IconInput
-                suffix="px" icon={<PadBottomIcon />}
-                value={padding.bottom} onChange={v => update(['data', 'style', 'padding', 'bottom'], Number(v) || 0)}
-              />
-            </Row2>
-          </>
+          <PaddingControl
+            padding={padding}
+            onChangeSide={(side, value) => update(['data', 'style', 'padding', side], value)}
+            onChangeAll={(value) => update(['data', 'style', 'padding'], { top: value, right: value, bottom: value, left: value })}
+          />
         )}
 
         {RADIUS_TYPES.has(block.type) && (
@@ -569,8 +537,8 @@ function DesignTab({ block, updateBlock, id }) {
         )}
       </Section>
 
-      {/* ── Color ── */}
-      <SectionHeading>Color</SectionHeading>
+      {/* ── Appearance ── (text color, background color, border in one group) */}
+      <SectionHeading>Appearance</SectionHeading>
       <Section>
         {isLayout ? (
           <>
@@ -583,26 +551,32 @@ function DesignTab({ block, updateBlock, id }) {
             </Row2>
           </>
         ) : (
-          <Row2>
-            {(block.type === 'Heading' || block.type === 'Text' || block.type === 'Button') && (
+          <>
+            <Row2>
+              {(block.type === 'Heading' || block.type === 'Text' || block.type === 'Button') && (
+                <ColorInput
+                  label="Text Color"
+                  value={block.type === 'Button' ? props.buttonTextColor : style.color}
+                  onChange={v => update(
+                    block.type === 'Button' ? ['data', 'props', 'buttonTextColor'] : ['data', 'style', 'color'],
+                    v
+                  )}
+                />
+              )}
               <ColorInput
-                label="Text Color"
-                value={block.type === 'Button' ? props.buttonTextColor : style.color}
+                label="Background Color"
+                value={block.type === 'Button' ? props.buttonBackgroundColor : style.backgroundColor}
                 onChange={v => update(
-                  block.type === 'Button' ? ['data', 'props', 'buttonTextColor'] : ['data', 'style', 'color'],
+                  block.type === 'Button' ? ['data', 'props', 'buttonBackgroundColor'] : ['data', 'style', 'backgroundColor'],
                   v
                 )}
               />
-            )}
-            <ColorInput
-              label="Background Color"
-              value={block.type === 'Button' ? props.buttonBackgroundColor : style.backgroundColor}
-              onChange={v => update(
-                block.type === 'Button' ? ['data', 'props', 'buttonBackgroundColor'] : ['data', 'style', 'backgroundColor'],
-                v
-              )}
+            </Row2>
+            <BorderControl
+              style={style}
+              onUpdate={(key, value) => update(['data', 'style', key], value)}
             />
-          </Row2>
+          </>
         )}
       </Section>
 
@@ -685,7 +659,7 @@ function DesignTab({ block, updateBlock, id }) {
           <Section>
             <SelectInput
               label="Font Family"
-              value={(isLayout ? data.fontFamily : style.fontFamily) || 'MODERN_SANS'}
+              value={(isLayout ? data.fontFamily : style.fontFamily) || 'Inter'}
               options={FONT_FAMILIES}
               onChange={v => update(isLayout ? ['data', 'fontFamily'] : ['data', 'style', 'fontFamily'], v)}
             />
@@ -704,50 +678,6 @@ function DesignTab({ block, updateBlock, id }) {
                     onChange={v => update(['data', 'style', 'fontSize'], Number(v) || 14)}
                   />
                 </Row2>
-                <div className={styles.fieldCol}>
-                  <label className={styles.fieldLabelStrong}>Alignment</label>
-                  <Toggle
-                    fullWidth
-                    items={[
-                      { key: 'left',    label: '', icon: <AlignLeftIcon /> },
-                      { key: 'center',  label: '', icon: <AlignCenterIcon /> },
-                      { key: 'right',   label: '', icon: <AlignRightIcon /> },
-                      { key: 'justify', label: '', icon: <AlignJustifyIcon /> },
-                    ]}
-                    active={style.textAlign || 'left'}
-                    size="S"
-                    onChange={v => update(['data', 'style', 'textAlign'], v)}
-                  />
-                </div>
-                {/* Decoration gets its own full-width row — 6 buttons (B/I/U/S/Code/Caps)
-                    don't fit comfortably next to Alignment. These apply to the
-                    *whole* block. Range-level inline formatting is in the floating
-                    toolbar that appears when text is selected on the canvas. */}
-                <div className={styles.fieldCol}>
-                  <div className={styles.decorationLabelRow}>
-                    <label className={styles.fieldLabelStrong}>Decoration (block)</label>
-                    <span className={styles.decorationHint}>
-                      <Icon name="solar:cursor-square-linear" size={11} color="var(--neutral-200)" />
-                      Select text to format inline
-                    </span>
-                  </div>
-                  <DecorationToggles
-                    bold={style.fontWeight === 'bold'}
-                    italic={style.fontStyle === 'italic'}
-                    underline={style.textDecoration === 'underline'}
-                    strike={style.textDecoration === 'line-through'}
-                    code={style.fontFamily === 'MONOSPACE'}
-                    caps={style.textTransform === 'uppercase'}
-                    onChange={(key, on) => {
-                      if (key === 'bold') update(['data', 'style', 'fontWeight'], on ? 'bold' : 'normal');
-                      if (key === 'italic') update(['data', 'style', 'fontStyle'], on ? 'italic' : null);
-                      if (key === 'underline') update(['data', 'style', 'textDecoration'], on ? 'underline' : null);
-                      if (key === 'strike') update(['data', 'style', 'textDecoration'], on ? 'line-through' : null);
-                      if (key === 'code') update(['data', 'style', 'fontFamily'], on ? 'MONOSPACE' : 'MODERN_SANS');
-                      if (key === 'caps') update(['data', 'style', 'textTransform'], on ? 'uppercase' : null);
-                    }}
-                  />
-                </div>
                 <Row2>
                   <IconInput
                     label="Line Height" suffix="%"
@@ -760,6 +690,61 @@ function DesignTab({ block, updateBlock, id }) {
                     onChange={v => update(['data', 'style', 'letterSpacing'], Number(v) || 0)}
                   />
                 </Row2>
+                <Row2>
+                  <div className={styles.fieldCol}>
+                    <label className={styles.fieldLabel}>Alignment</label>
+                    <Toggle
+                      fullWidth
+                      items={[
+                        { key: 'left',    label: '', icon: <AlignLeftIcon /> },
+                        { key: 'center',  label: '', icon: <AlignCenterIcon /> },
+                        { key: 'right',   label: '', icon: <AlignRightIcon /> },
+                        { key: 'justify', label: '', icon: <AlignJustifyIcon /> },
+                      ]}
+                      active={style.textAlign || 'left'}
+                      size="S"
+                      onChange={v => update(['data', 'style', 'textAlign'], v)}
+                    />
+                  </div>
+                  {block.type === 'Text' && (
+                    <div className={styles.fieldCol}>
+                      <label className={styles.fieldLabel}>List Style</label>
+                      <Toggle
+                        fullWidth
+                        items={[
+                          { key: 'none',   label: '', icon: <ListNoneIcon /> },
+                          { key: 'bullet', label: '', icon: <ListBulletIcon /> },
+                          { key: 'number', label: '', icon: <ListNumberIcon /> },
+                        ]}
+                        active={props.listStyle || 'none'}
+                        size="S"
+                        onChange={v => update(['data', 'props', 'listStyle'], v === 'none' ? null : v)}
+                      />
+                    </div>
+                  )}
+                </Row2>
+                {/* Decoration row applies to the whole block. Selecting text
+                    on the canvas reveals the floating toolbar for inline
+                    range-level formatting. */}
+                <div className={styles.fieldCol}>
+                  <label className={styles.fieldLabel}>Decoration</label>
+                  <DecorationToggles
+                    bold={style.fontWeight === 'bold'}
+                    italic={style.fontStyle === 'italic'}
+                    underline={style.textDecoration === 'underline'}
+                    strike={style.textDecoration === 'line-through'}
+                    code={style.fontFamily === 'JetBrains Mono' || style.fontFamily === 'Fira Code' || style.fontFamily === 'IBM Plex Mono' || style.fontFamily === 'MONOSPACE'}
+                    caps={style.textTransform === 'uppercase'}
+                    onChange={(key, on) => {
+                      if (key === 'bold') update(['data', 'style', 'fontWeight'], on ? 'bold' : 'normal');
+                      if (key === 'italic') update(['data', 'style', 'fontStyle'], on ? 'italic' : null);
+                      if (key === 'underline') update(['data', 'style', 'textDecoration'], on ? 'underline' : null);
+                      if (key === 'strike') update(['data', 'style', 'textDecoration'], on ? 'line-through' : null);
+                      if (key === 'code') update(['data', 'style', 'fontFamily'], on ? 'JetBrains Mono' : 'Inter');
+                      if (key === 'caps') update(['data', 'style', 'textTransform'], on ? 'uppercase' : null);
+                    }}
+                  />
+                </div>
               </>
             )}
           </Section>
@@ -1752,82 +1737,94 @@ function SelectInput({ label, value, options, onChange }) {
   );
 }
 
-function ColorInput({ label, value, onChange }) {
+function ColorInput({ label, value, onChange, allowGradient = true }) {
   const colorVariables = useAppStore(s => s.colorVariables);
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+  const fieldRef = useRef(null);
+  const popoverRef = useRef(null);
+  const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0 });
   const v = value || '#FFFFFF';
+  const isGrad = isGradient(v);
+  const displayText = isGrad ? 'Gradient' : (typeof v === 'string' ? v.toUpperCase() : '');
 
+  // Position the portalled popover under the field. If there isn't enough
+  // room to the right of the panel for a 268px popover, anchor it to the
+  // left of the field so it stays on-screen.
+  useLayoutEffect(() => {
+    if (!open || !fieldRef.current) return;
+    const update = () => {
+      const r = fieldRef.current.getBoundingClientRect();
+      const popoverWidth = 268;
+      // Prefer flush-right with the field; fall back to flush-left if that
+      // would clip past the viewport.
+      let left = r.right - popoverWidth;
+      const minLeft = 8;
+      if (left < minLeft) left = Math.min(r.left, window.innerWidth - popoverWidth - 8);
+      setPopoverPos({ top: r.bottom + 4, left });
+    };
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [open]);
+
+  // Dismiss on outside click. Both the field button and the portalled
+  // popover count as "inside" so clicking either keeps the picker open.
   useEffect(() => {
     if (!open) return;
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const handler = (e) => {
+      if (fieldRef.current?.contains(e.target)) return;
+      if (popoverRef.current?.contains(e.target)) return;
+      setOpen(false);
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
   return (
-    <div className={styles.fieldCol} ref={ref}>
+    <div className={styles.fieldCol} ref={fieldRef}>
       {label && <label className={styles.fieldLabel}>{label}</label>}
       <div className={styles.colorInputWrap}>
         <button
           type="button"
           className={styles.colorDotBtn}
           onClick={() => setOpen(o => !o)}
-          aria-label="Choose from variables"
+          aria-label="Open color picker"
         >
-          <span className={styles.colorDot} style={{ background: v, borderColor: v.toLowerCase() === '#ffffff' ? '#CED4DD' : v }} />
+          <span
+            className={styles.colorDot}
+            style={{
+              background: v,
+              borderColor: !isGrad && typeof v === 'string' && v.toLowerCase() === '#ffffff' ? '#CED4DD' : (isGrad ? 'transparent' : v),
+            }}
+          />
         </button>
         <input
           type="text"
           className={styles.colorHex}
-          value={v.toUpperCase()}
-          onChange={e => onChange(e.target.value)}
-        />
-        <input
-          type="color"
-          className={styles.colorPickerInline}
-          value={v}
-          onChange={e => onChange(e.target.value)}
-          aria-label="Pick color"
+          value={displayText}
+          onChange={e => { if (!isGrad) onChange(e.target.value); }}
+          readOnly={isGrad}
         />
       </div>
-      {open && (
-        <div className={styles.colorVarPopover}>
-          {colorVariables.length > 0 && (
-            <>
-              <div className={styles.colorVarPopoverTitle}>Variables</div>
-              <div className={styles.colorVarSwatches}>
-                {colorVariables.map(cv => (
-                  <button
-                    key={cv.name}
-                    type="button"
-                    className={styles.colorVarSwatch}
-                    title={`${cv.name} (${cv.hex})`}
-                    onClick={() => { onChange(cv.hex); setOpen(false); }}
-                  >
-                    <span className={styles.colorVarDot} style={{ background: cv.hex }} />
-                    <span className={styles.colorVarName}>{cv.name}</span>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-          <div className={styles.colorVarPopoverTitle}>Custom</div>
-          <div className={styles.colorCustomRow}>
-            <input
-              type="color"
-              className={styles.colorCustomPicker}
-              value={v}
-              onChange={e => onChange(e.target.value)}
-            />
-            <input
-              type="text"
-              className={styles.colorCustomHex}
-              value={v.toUpperCase()}
-              onChange={e => onChange(e.target.value)}
-            />
-          </div>
-        </div>
+      {open && createPortal(
+        <div
+          ref={popoverRef}
+          className={styles.colorPickerPortal}
+          style={{ top: popoverPos.top, left: popoverPos.left }}
+        >
+          <ColorPicker
+            value={v}
+            onChange={onChange}
+            variables={colorVariables}
+            allowGradient={allowGradient}
+            onClose={() => setOpen(false)}
+          />
+        </div>,
+        document.body,
       )}
     </div>
   );
@@ -2097,24 +2094,23 @@ function TextStyleChips({ block, updateBlock, id }) {
     return null;
   })();
   return (
-    <div className={styles.textChipsRow}>
-      {TEXT_STYLE_PRESETS.map(p => (
-        <button
-          key={p.key}
-          type="button"
-          className={[styles.textChip, active === p.key ? styles.textChipActive : ''].join(' ')}
-          onClick={() => apply(p)}
-        >
-          {p.label}
-        </button>
-      ))}
-    </div>
+    <Toggle
+      fullWidth
+      size="S"
+      items={TEXT_STYLE_PRESETS.map(p => ({ key: p.key, label: p.label }))}
+      active={active || ''}
+      onChange={(key) => {
+        const preset = TEXT_STYLE_PRESETS.find(p => p.key === key);
+        if (preset) apply(preset);
+      }}
+    />
   );
 }
 
 // Link input — inline collapsible row. Shows a "+ Add link" affordance when
-// no link is set, expands to an Input that captures the href.
-function LinkInput({ value, onChange }) {
+// no link is set, expands to an Input that captures the href and a checkbox
+// to toggle target="_blank" (defaults to true to match prior behaviour).
+function LinkInput({ value, openInNewTab = true, onChange, onChangeOpenInNewTab }) {
   const [open, setOpen] = useState(!!value);
   return (
     <div className={styles.fieldCol}>
@@ -2133,19 +2129,204 @@ function LinkInput({ value, onChange }) {
         </button>
       </div>
       {open && (
-        <Input
-          type="url"
-          placeholder="https://example.com"
-          value={value}
-          onChange={e => onChange(e.target.value)}
+        <>
+          <Input
+            type="url"
+            placeholder="https://example.com"
+            value={value}
+            onChange={e => onChange(e.target.value)}
+          />
+          {onChangeOpenInNewTab && (
+            <label className={styles.linkNewTab}>
+              <input
+                type="checkbox"
+                checked={openInNewTab}
+                onChange={(e) => onChangeOpenInNewTab(e.target.checked)}
+              />
+              <span>Open in New Tab</span>
+            </label>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// Padding control — three modes:
+//  • uniform:   one value for all four sides (1 input)
+//  • symmetric: top/bottom + left/right (2 inputs)
+//  • per-side:  four independent values (4 inputs)
+// The mode auto-detects from current values so something else editing
+// padding can't strand the UI in the wrong mode.
+function PaddingControl({ padding, onChangeSide, onChangeAll }) {
+  const allEqual = padding.top === padding.right
+                && padding.right === padding.bottom
+                && padding.bottom === padding.left;
+  const symmetric = !allEqual
+                 && padding.top === padding.bottom
+                 && padding.left === padding.right;
+  const detected = allEqual ? 'uniform' : (symmetric ? 'symmetric' : 'per-side');
+  const [mode, setMode] = useState(detected);
+  // Keep mode in sync with the values when they're changed elsewhere.
+  useEffect(() => { setMode(detected); }, [detected]);
+
+  const setSymmetric = (vertical, horizontal) => {
+    onChangeSide('top', vertical);
+    onChangeSide('bottom', vertical);
+    onChangeSide('left', horizontal);
+    onChangeSide('right', horizontal);
+  };
+
+  return (
+    <>
+      <div className={styles.paddingLabelRow}>
+        <label className={styles.fieldLabelStrong}>Padding</label>
+        <Toggle
+          size="S"
+          items={[
+            { key: 'uniform',   label: '', icon: <PadUniformIcon /> },
+            { key: 'symmetric', label: '', icon: <PadSymmetricIcon /> },
+            { key: 'per-side',  label: '', icon: <PadPerSideIcon /> },
+          ]}
+          active={mode}
+          onChange={(v) => {
+            setMode(v);
+            if (v === 'uniform') onChangeAll(padding.top);
+            else if (v === 'symmetric') setSymmetric(padding.top, padding.left);
+          }}
         />
+      </div>
+      {mode === 'uniform' && (
+        <IconInput
+          suffix="px" icon={<RadiusIcon />}
+          value={padding.top}
+          onChange={v => onChangeAll(Number(v) || 0)}
+        />
+      )}
+      {mode === 'symmetric' && (
+        <Row2>
+          <IconInput
+            label="Vertical" suffix="px" icon={<PadVerticalIcon />}
+            value={padding.top}
+            onChange={v => {
+              const n = Number(v) || 0;
+              onChangeSide('top', n);
+              onChangeSide('bottom', n);
+            }}
+          />
+          <IconInput
+            label="Horizontal" suffix="px" icon={<PadHorizontalIcon />}
+            value={padding.left}
+            onChange={v => {
+              const n = Number(v) || 0;
+              onChangeSide('left', n);
+              onChangeSide('right', n);
+            }}
+          />
+        </Row2>
+      )}
+      {mode === 'per-side' && (
+        <>
+          <Row2>
+            <IconInput
+              suffix="px" icon={<PadLeftIcon />}
+              value={padding.left}
+              onChange={v => onChangeSide('left', Number(v) || 0)}
+            />
+            <IconInput
+              suffix="px" icon={<PadTopIcon />}
+              value={padding.top}
+              onChange={v => onChangeSide('top', Number(v) || 0)}
+            />
+          </Row2>
+          <Row2>
+            <IconInput
+              suffix="px" icon={<PadRightIcon />}
+              value={padding.right}
+              onChange={v => onChangeSide('right', Number(v) || 0)}
+            />
+            <IconInput
+              suffix="px" icon={<PadBottomIcon />}
+              value={padding.bottom}
+              onChange={v => onChangeSide('bottom', Number(v) || 0)}
+            />
+          </Row2>
+        </>
+      )}
+    </>
+  );
+}
+
+// Border control — uses the same +/− toggle pattern as LinkInput so the
+// builder UI is consistent. Collapsed when no border values are set;
+// expanding applies sensible defaults.
+function BorderControl({ style, onUpdate }) {
+  const hasBorder = !!(style.borderWidth || style.borderColor || style.borderStyle);
+  const [open, setOpen] = useState(hasBorder);
+  return (
+    <div className={styles.fieldCol}>
+      <div className={styles.linkHeader}>
+        <label className={styles.fieldLabel}>Border</label>
+        <button
+          type="button"
+          className={styles.linkToggle}
+          onClick={() => {
+            if (open) {
+              onUpdate('borderWidth', null);
+              onUpdate('borderStyle', null);
+              onUpdate('borderColor', null);
+              setOpen(false);
+            } else {
+              onUpdate('borderWidth', style.borderWidth || 1);
+              onUpdate('borderStyle', style.borderStyle || 'solid');
+              onUpdate('borderColor', style.borderColor || '#E1E4EA');
+              setOpen(true);
+            }
+          }}
+          aria-label={open ? 'Remove border' : 'Add border'}
+        >
+          <Icon name={open ? 'solar:minus-circle-linear' : 'solar:add-circle-linear'} size={14} color="currentColor" />
+        </button>
+      </div>
+      {open && (
+        <>
+          <Row2>
+            <IconInput
+              label="Width" suffix="px"
+              value={style.borderWidth ?? 1}
+              onChange={v => onUpdate('borderWidth', Number(v) || 0)}
+            />
+            <ColorInput
+              label="Color"
+              value={style.borderColor || '#E1E4EA'}
+              onChange={v => onUpdate('borderColor', v)}
+            />
+          </Row2>
+          <div className={styles.fieldCol}>
+            <label className={styles.fieldLabel}>Style</label>
+            <Toggle
+              fullWidth
+              size="S"
+              items={[
+                { key: 'solid',  label: 'Solid' },
+                { key: 'dashed', label: 'Dashed' },
+                { key: 'dotted', label: 'Dotted' },
+              ]}
+              active={style.borderStyle || 'solid'}
+              onChange={v => onUpdate('borderStyle', v)}
+            />
+          </div>
+        </>
       )}
     </div>
   );
 }
 
 // ── Independent decoration toggles — bold/italic/underline/strike can combine ─
+// The leading "none" button is a one-click clear that turns every decoration
+// off in a single tap (matches the Figma reference).
 function DecorationToggles({ bold, italic, underline, strike, code, caps, onChange }) {
+  const anyOn = bold || italic || underline || strike || code || caps;
   const items = [
     { key: 'bold',      on: bold,      icon: <DecoBoldIcon />,      label: 'Bold' },
     { key: 'italic',    on: italic,    icon: <DecoItalicIcon />,    label: 'Italic' },
@@ -2156,6 +2337,23 @@ function DecorationToggles({ bold, italic, underline, strike, code, caps, onChan
   ];
   return (
     <div className={styles.decoToggles}>
+      <button
+        type="button"
+        className={[styles.decoToggleBtn, !anyOn ? styles.decoToggleActive : ''].join(' ')}
+        onClick={() => {
+          if (bold) onChange('bold', false);
+          if (italic) onChange('italic', false);
+          if (underline) onChange('underline', false);
+          if (strike) onChange('strike', false);
+          if (code) onChange('code', false);
+          if (caps) onChange('caps', false);
+        }}
+        title="None"
+        aria-label="No decoration"
+        aria-pressed={!anyOn}
+      >
+        <DecoNoneIcon />
+      </button>
       {items.map(it => (
         <button
           key={it.key}
@@ -2189,6 +2387,15 @@ const PadLeftIcon   = () => svg('M3 2v12 M7 5h7 M7 8h7 M7 11h7');
 const PadTopIcon    = () => svg('M2 3h12 M5 7v7 M8 7v7 M11 7v7');
 const PadRightIcon  = () => svg('M13 2v12 M2 5h7 M2 8h7 M2 11h7');
 const PadBottomIcon = () => svg('M2 13h12 M5 2v7 M8 2v7 M11 2v7');
+// Uniform / Symmetric (vertical bars) / Per-side mode icons. Symmetric is a
+// square with two vertical guides hinting at independent top/bottom only.
+const PadUniformIcon   = () => svg('M3 3h10v10H3z');
+const PadSymmetricIcon = () => svg('M3 3h10v10H3z M3 8h10');
+const PadPerSideIcon   = () => svg('M3 3h10v10H3z M3 8h10 M8 3v10');
+
+// Symmetric input icons — vertical & horizontal axes.
+const PadVerticalIcon   = () => svg('M8 3v10 M5 4l3-1 3 1 M5 12l3 1 3-1');
+const PadHorizontalIcon = () => svg('M3 8h10 M4 5l-1 3 1 3 M12 5l1 3-1 3');
 
 const DirectionRowIcon = () => svg('M2 8h10 M9 5l3 3-3 3');
 const DirectionColIcon = () => svg('M8 2v10 M5 9l3 3 3-3');
