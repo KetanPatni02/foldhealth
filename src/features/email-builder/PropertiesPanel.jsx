@@ -2205,7 +2205,7 @@ function PaddingControl({ padding, onChangeSide, onChangeAll }) {
       </div>
       {mode === 'uniform' && (
         <IconInput
-          suffix="px" icon={<RadiusIcon />}
+          suffix="px" icon={<PadAllSidesIcon />}
           value={padding.top}
           onChange={v => onChangeAll(Number(v) || 0)}
         />
@@ -2399,6 +2399,11 @@ const PadBottomIcon = () => svg('M2 13h12 M5 2v7 M8 2v7 M11 2v7');
 const PadUniformIcon   = () => svg('M3 3h10v10H3z');
 const PadSymmetricIcon = () => svg('M3 3h10v10H3z M3 8h10');
 const PadPerSideIcon   = () => svg('M3 3h10v10H3z M3 8h10 M8 3v10');
+
+// PadAllSidesIcon — used as the input-field icon when padding is in
+// uniform mode. Two concentric squares clearly read as "padding on all
+// sides" and avoid clashing with RadiusIcon (rounded-corner glyph).
+const PadAllSidesIcon = () => svg('M2 2h12v12H2z M5 5h6v6H5z');
 
 // Symmetric input icons — vertical & horizontal axes.
 const PadVerticalIcon   = () => svg('M8 3v10 M5 4l3-1 3 1 M5 12l3 1 3-1');

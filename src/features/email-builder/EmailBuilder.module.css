@@ -238,15 +238,39 @@
 .panelScroll {
   flex: 1;
   overflow-y: auto;
+  overflow-y: overlay;
   padding: 16px 12px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(58, 72, 95, 0.25) transparent;
 }
+.panelScroll::-webkit-scrollbar { width: 8px; }
+.panelScroll::-webkit-scrollbar-track { background: transparent; }
+.panelScroll::-webkit-scrollbar-thumb {
+  background: rgba(58, 72, 95, 0.22);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.panelScroll::-webkit-scrollbar-thumb:hover { background: rgba(58, 72, 95, 0.4); background-clip: padding-box; }
 
 .panelScrollFlush {
   flex: 1;
   overflow-y: auto;
+  overflow-y: overlay;
   padding: 0;
   background: #fff;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(58, 72, 95, 0.25) transparent;
 }
+.panelScrollFlush::-webkit-scrollbar { width: 8px; }
+.panelScrollFlush::-webkit-scrollbar-track { background: transparent; }
+.panelScrollFlush::-webkit-scrollbar-thumb {
+  background: rgba(58, 72, 95, 0.22);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.panelScrollFlush::-webkit-scrollbar-thumb:hover { background: rgba(58, 72, 95, 0.4); background-clip: padding-box; }
 
 .sectionHeading {
   height: 32px;
@@ -740,6 +764,7 @@
 .canvasWrap {
   flex: 1;
   overflow: auto;
+  overflow: overlay;
   display: flex;
   justify-content: center;
   padding: 32px 24px;
@@ -921,11 +946,51 @@
   border-bottom-color: var(--primary-300);
 }
 
-/* Design / Code / Template scroll containers */
+/* Design / Code / Template scroll containers. The scrollbar is rendered
+   inside a 6px gutter that's always reserved (scrollbar-gutter: stable),
+   so toggling scroll state never resizes the content underneath. The
+   custom scrollbar styling below makes the thumb thin and semi-transparent
+   so it visually floats over the section labels instead of clipping them. */
 .designScroll, .codeScroll, .templateScroll {
   flex: 1;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
+
+.designScroll,
+.codeScroll,
+.templateScroll,
+.canvasWrap,
+.layersScroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(58, 72, 95, 0.25) transparent;
+}
+
+.designScroll::-webkit-scrollbar,
+.codeScroll::-webkit-scrollbar,
+.templateScroll::-webkit-scrollbar,
+.canvasWrap::-webkit-scrollbar,
+.layersScroll::-webkit-scrollbar { width: 6px; height: 6px; }
+
+.designScroll::-webkit-scrollbar-track,
+.codeScroll::-webkit-scrollbar-track,
+.templateScroll::-webkit-scrollbar-track,
+.canvasWrap::-webkit-scrollbar-track,
+.layersScroll::-webkit-scrollbar-track { background: transparent; }
+
+.designScroll::-webkit-scrollbar-thumb,
+.codeScroll::-webkit-scrollbar-thumb,
+.templateScroll::-webkit-scrollbar-thumb,
+.canvasWrap::-webkit-scrollbar-thumb,
+.layersScroll::-webkit-scrollbar-thumb {
+  background: rgba(58, 72, 95, 0.18);
+  border-radius: 999px;
+}
+.designScroll::-webkit-scrollbar-thumb:hover,
+.codeScroll::-webkit-scrollbar-thumb:hover,
+.templateScroll::-webkit-scrollbar-thumb:hover,
+.canvasWrap::-webkit-scrollbar-thumb:hover,
+.layersScroll::-webkit-scrollbar-thumb:hover { background: rgba(58, 72, 95, 0.4); }
 
 /* Section heading strip (grey #F6F7F8, 32px tall) */
 /* Section heading — light surface strip that titles each group. Slightly
