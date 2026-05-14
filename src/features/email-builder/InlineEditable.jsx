@@ -18,8 +18,23 @@ function paddingCss(padding) {
   return `${padding.top}px ${padding.right}px ${padding.bottom}px ${padding.left}px`;
 }
 
+// Build CSS border shorthand from a per-side entry: `{ width, color, style }`.
+function _sideBorder(side) {
+  if (!side) return undefined;
+  return `${side.width || 1}px ${side.style || 'solid'} ${side.color || '#3A485F'}`;
+}
+
 function buildStyle(style) {
-  const border = style.borderWidth
+  // Per-side wins over uniform when present. null sides simply omit
+  // their border-* property so that edge has no border.
+  const borderSides = style.borderSides;
+  const perSide = borderSides && Object.values(borderSides).some(Boolean) ? {
+    borderTop:    _sideBorder(borderSides.top),
+    borderRight:  _sideBorder(borderSides.right),
+    borderBottom: _sideBorder(borderSides.bottom),
+    borderLeft:   _sideBorder(borderSides.left),
+  } : null;
+  const border = !perSide && style.borderWidth
     ? `${style.borderWidth}px ${style.borderStyle || 'solid'} ${style.borderColor || '#3A485F'}`
     : undefined;
   const textIsGradient = isGradient(style.color);
@@ -51,6 +66,7 @@ function buildStyle(style) {
     backgroundColor: bgIsGradient ? undefined : style.backgroundColor,
     backgroundImage: bgIsGradient ? style.backgroundColor : (textIsGradient ? style.color : undefined),
     border,
+    ...(perSide || {}),
     borderRadius: style.borderRadius ? `${style.borderRadius}px` : undefined,
     fontFamily: getFontStack(style.fontFamily),
     outline: 'none',
@@ -101,6 +117,31 @@ export function InlineEditable({ blockId, type, level, text, style, listStyle, o
     const next = textToInnerHtml(text, listStyle);
     if (el.innerHTML !== next) el.innerHTML = next;
   }, [text, listStyle]);
+
+  // Structural rebuild on list-style change. When the user toggles bullet
+  // or numbered while the element is focused, the effect above bails out
+  // (to preserve caret) — but we still need to rewrite the HTML so the
+  // <p> ↔ <ul>/<ol> change actually takes hold. This runs only on
+  // listStyle transitions, never on plain text edits.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const next = textToInnerHtml(text, listStyle);
+    if (el.innerHTML !== next) {
+      el.innerHTML = next;
+      // Re-place the caret at the end of the new content so the user can
+      // keep typing without losing context.
+      if (document.activeElement === el) {
+        const sel = window.getSelection?.();
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        range.collapse(false);
+        sel?.removeAllRanges?.();
+        sel?.addRange?.(range);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listStyle]);
 
   const handleBlur = () => {
     const next = innerHtmlToText(ref.current, listStyle);

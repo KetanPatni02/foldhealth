@@ -31,7 +31,7 @@ function EmailIframe({ html, renderWidth }) {
       <iframe
         title="Email preview"
         className={styles.emailIframe}
-        sandbox=""
+        sandbox="allow-same-origin"
         srcDoc={srcDoc}
       />
     );
@@ -41,7 +41,7 @@ function EmailIframe({ html, renderWidth }) {
     <div ref={wrapRef} className={styles.emailIframeScaled}>
       <iframe
         title="Email preview"
-        sandbox=""
+        sandbox="allow-same-origin"
         srcDoc={srcDoc}
         style={{
           width: renderWidth,

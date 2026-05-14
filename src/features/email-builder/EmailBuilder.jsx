@@ -293,7 +293,25 @@ export function EmailBuilder() {
     if (activeId.startsWith(NEW_PREFIX)) {
       insertNewBlock(activeId.slice(NEW_PREFIX.length), target);
     } else {
-      moveBlock(activeId, target);
+      // Bulk drag: if the user has multiple blocks selected and dragged
+      // one of them, move all of them to the same drop target in their
+      // original order. Skip duplicates: if a bulk id was the dragged one
+      // we still move it once at the target index.
+      const bulkIds = useAppStore.getState().bulkSelectedIds;
+      const isBulk = bulkIds.length > 1 && bulkIds.includes(activeId);
+      if (isBulk) {
+        // Move the dragged block first, then insert the rest right after
+        // it (each subsequent moveBlock keeps the new doc state, so we
+        // re-resolve the parent's childrenIds between calls). Doing them
+        // in DOM order preserves the group's vertical sequence.
+        const ordered = bulkIds.slice().sort((a, b) => bulkIds.indexOf(a) - bulkIds.indexOf(b));
+        let nextTarget = target;
+        ordered.forEach((id, idx) => {
+          moveBlock(id, { ...nextTarget, index: nextTarget.index + idx });
+        });
+      } else {
+        moveBlock(activeId, target);
+      }
     }
   };
 

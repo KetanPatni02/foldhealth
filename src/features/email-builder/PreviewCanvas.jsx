@@ -7,6 +7,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { InlineEditable } from './InlineEditable';
 import { isGradient } from './colorHelpers';
+import { tintSvgMarkup } from './svgTint';
 import styles from './EmailBuilder.module.css';
 
 // Turns a (solid OR gradient) value into the right pair of style props.
@@ -39,6 +40,9 @@ function blockLabel(block) {
   if (role === 'header') return 'Header';
   if (role === 'body') return 'Body';
   if (role === 'footer') return 'Footer';
+  // alias wins over the generic type label so the selection toolbar reads
+  // "Section" (or any user rename) rather than the underlying "Wrapper".
+  if (block.data?.alias) return block.data.alias;
   return TYPE_LABELS[block.type] || block.type;
 }
 
@@ -232,7 +236,7 @@ export function PreviewCanvas() {
   if (htmlOverride != null) {
     return (
       <div className={styles.canvasWrap}>
-        <iframe className={styles.canvasIframe} title="Email preview" srcDoc={htmlOverride} sandbox="" />
+        <iframe className={styles.canvasIframe} title="Email preview" srcDoc={htmlOverride} sandbox="allow-same-origin" />
       </div>
     );
   }
@@ -260,12 +264,14 @@ export function PreviewCanvas() {
     if (e.target === e.currentTarget) setSelectedBlockId('root');
   };
 
+  const toggleBulkSelected = useAppStore.getState().toggleBulkSelected;
   const bulkSet = new Set(bulkSelectedIds);
   const ctx = {
     doc,
     selectedBlockId,
     bulkSet,
     setSelectedBlockId,
+    toggleBulkSelected,
     removeBlock,
     updateBlock,
     duplicateBlock,
@@ -344,6 +350,41 @@ function EmptyDropIllustration() {
   );
 }
 
+// Wrap dnd-kit's pointer listeners with a hold gate so text-editable
+// blocks don't grab on a single click (which would prevent entering text-
+// edit mode). Holds the pointer for `delay` ms — if still pressed, calls
+// the wrapped onPointerDown so dnd-kit picks up the drag. Cancels on
+// pointerup or significant movement before the delay elapses.
+function holdListeners(listeners, delay = 250) {
+  if (!listeners?.onPointerDown) return listeners;
+  return {
+    ...listeners,
+    onPointerDown: (e) => {
+      // Let clicks that target an interactive child (drag handle, button)
+      // go through immediately — those have their own listeners spread.
+      if (e.target.closest('[data-no-drag]')) return;
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const evClone = { ...e, clientX: e.clientX, clientY: e.clientY, target: e.target, currentTarget: e.currentTarget, nativeEvent: e.nativeEvent, preventDefault: () => e.preventDefault(), stopPropagation: () => e.stopPropagation() };
+      let cancelled = false;
+      const cancel = () => { cancelled = true; cleanup(); };
+      const move = (mv) => {
+        if (Math.abs(mv.clientX - startX) > 5 || Math.abs(mv.clientY - startY) > 5) cancel();
+      };
+      const cleanup = () => {
+        window.removeEventListener('pointerup', cancel);
+        window.removeEventListener('pointermove', move);
+      };
+      window.addEventListener('pointerup', cancel, { once: true });
+      window.addEventListener('pointermove', move);
+      setTimeout(() => {
+        cleanup();
+        if (!cancelled) listeners.onPointerDown(evClone);
+      }, delay);
+    },
+  };
+}
+
 // ── One sortable wrapper around a block of any type. ────────────────────────
 function SortableBlock({ id, ctx }) {
   const sortable = useSortable({ id });
@@ -357,6 +398,11 @@ function SortableBlock({ id, ctx }) {
   if (!block) return null;
   const isSelected = ctx.selectedBlockId === id;
   const isBulkSelected = ctx.bulkSet.has(id);
+  // Heading/Text blocks use contentEditable for inline editing — wrap the
+  // wrapper-level drag listener with a hold gate so a normal click goes
+  // into edit mode. Other block types use the listeners directly.
+  const isTextBlock = block.type === 'Heading' || block.type === 'Text';
+  const wrapListeners = isTextBlock ? holdListeners(listeners) : listeners;
 
   return (
     <div
@@ -367,13 +413,25 @@ function SortableBlock({ id, ctx }) {
         isSelected ? styles.blockWrapSelected : '',
         isBulkSelected ? styles.blockWrapBulk : '',
       ].join(' ')}
-      onClick={(e) => { e.stopPropagation(); ctx.setSelectedBlockId(id); }}
+      onClick={(e) => {
+        e.stopPropagation();
+        // Cmd/Ctrl/Shift-click → add this block to (or remove from) the
+        // bulk-selection set so the right panel opens BulkDesignTab.
+        if (e.metaKey || e.ctrlKey || e.shiftKey) {
+          ctx.toggleBulkSelected(id);
+        } else {
+          ctx.setSelectedBlockId(id);
+        }
+      }}
+      {...attributes}
+      {...wrapListeners}
     >
       {isSelected && (
         <div className={styles.blockToolbar}>
           <button
             {...attributes}
             {...listeners}
+            data-no-drag
             className={styles.blockToolbarBtn}
             aria-label="Drag"
             onClick={(e) => e.stopPropagation()}
@@ -457,9 +515,32 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
       color: style.color,
       borderRadius: style.borderRadius ? `${style.borderRadius}px` : undefined,
     };
+    // SVG tint for backgroundImage — substitute fills inline and emit
+    // as a data-URI so the existing background-image: url(…) path keeps
+    // working without changing CSS plumbing.
+    if (style.bgSvgRaw && style.bgTintColor) {
+      const tinted = tintSvgMarkup(style.bgSvgRaw, style.bgTintColor);
+      containerStyle.backgroundImage = `url("data:image/svg+xml;utf8,${encodeURIComponent(tinted)}")`;
+      containerStyle.backgroundSize = style.backgroundSize || 'contain';
+      containerStyle.backgroundPosition = style.backgroundPosition || 'center';
+      containerStyle.backgroundRepeat = style.backgroundRepeat || 'no-repeat';
+    }
     if (heightMode === 'fixed' && props.height) {
+      // Fixed-height containers position their child content via flex
+      // instead of scrolling. contentAlignH/contentAlign (left/center/
+      // right + top/middle/bottom) map to justify- and align-items so
+      // the user can park content in any of 9 spots. overflow-x: hidden
+      // stops a too-wide child (e.g. a background gradient bleed) from
+      // forcing a horizontal scrollbar inside the container.
       containerStyle.height = typeof props.height === 'number' ? `${props.height}px` : props.height;
-      containerStyle.overflow = 'auto';
+      containerStyle.overflow = 'hidden';
+      containerStyle.display = 'flex';
+      containerStyle.flexDirection = 'column';
+      containerStyle.minWidth = 0;
+      const vMap = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };
+      const hMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
+      containerStyle.justifyContent = vMap[props.contentAlign] || 'flex-start';
+      containerStyle.alignItems = hMap[props.contentAlignH] || 'stretch';
     }
     return (
       <div style={containerStyle}>
@@ -498,9 +579,16 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
       } : {}),
       borderRadius: style.borderRadius ? `${style.borderRadius}px` : undefined,
     };
+    if (style.bgSvgRaw && style.bgTintColor) {
+      const tinted = tintSvgMarkup(style.bgSvgRaw, style.bgTintColor);
+      colsStyle.backgroundImage = `url("data:image/svg+xml;utf8,${encodeURIComponent(tinted)}")`;
+      colsStyle.backgroundSize = style.backgroundSize || 'contain';
+      colsStyle.backgroundPosition = style.backgroundPosition || 'center';
+      colsStyle.backgroundRepeat = style.backgroundRepeat || 'no-repeat';
+    }
     if (heightMode === 'fixed' && props.height) {
       colsStyle.height = typeof props.height === 'number' ? `${props.height}px` : props.height;
-      colsStyle.overflow = 'auto';
+      colsStyle.overflow = 'hidden';
     }
     const isColumn = direction === 'column';
     const totalGap = hGap * (count - 1);
@@ -539,7 +627,16 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     if (typeof imgStyle.width === 'number') imgStyle.width = `${imgStyle.width}px`;
     if (typeof imgStyle.height === 'number') imgStyle.height = `${imgStyle.height}px`;
 
-    const content = props.url ? (
+    // If we have the raw SVG markup cached (set on upload of an .svg) and
+    // a Tint colour, recolor in-place via inline SVG. The wrapper div takes
+    // the image's sizing so the SVG scales the same way as the <img> path.
+    const hasTintedSvg = props.svgRaw && props.tintColor;
+    const content = hasTintedSvg ? (
+      <div
+        style={{ ...imgStyle, display: 'inline-block', lineHeight: 0 }}
+        dangerouslySetInnerHTML={{ __html: tintSvgMarkup(props.svgRaw, props.tintColor) }}
+      />
+    ) : props.url ? (
       <img src={props.url} alt={props.alt || ''} style={imgStyle} />
     ) : (
       <div style={{ padding: 24, border: '1px dashed #CED4DD', borderRadius: 8, color: '#9CA3AF', fontSize: 12, width: imgStyle.width }}>
@@ -548,7 +645,7 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     );
 
     return (
-      <div style={{ padding: paddingCss(style.padding), textAlign: style.textAlign || 'center', ...bgProps(style.backgroundColor) }}>
+      <div style={{ padding: paddingCss(style.padding), textAlign: style.blockAlign || style.textAlign || 'center', ...bgProps(style.backgroundColor) }}>
         <ResizeWrap id={id} block={block} updateBlock={ctx.updateBlock} isSelected={isSelected} canWidth canHeight>
           {content}
         </ResizeWrap>
@@ -575,6 +672,23 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     const endRight = props.endRight || 'none';
     const hasEndpoints = endLeft !== 'none' || endRight !== 'none';
     const markerSize = Math.max(8, thickness * 4);
+    const orientation = props.orientation || 'horizontal';
+
+    // Vertical dividers ignore the endpoint markers — they're a horizontal
+    // pattern. Render a thin tall bar with an explicit height (defaults to
+    // 40px, mirrors patchEmailHtml.js).
+    if (orientation === 'vertical') {
+      const h = props.height ?? 40;
+      return (
+        <div style={{ padding: paddingCss(style.padding), display: 'flex', justifyContent: 'center' }}>
+          <div style={{
+            width: `${thickness}px`,
+            height: `${h}px`,
+            borderLeft: `${thickness}px ${lineStyle} ${color}`,
+          }} />
+        </div>
+      );
+    }
 
     if (!hasEndpoints) {
       return (
@@ -636,7 +750,7 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     const sz = sizeStyles[props.size || 'medium'] || sizeStyles.medium;
     const radius = style.borderRadius ?? presetRadius[props.buttonStyle || 'rectangle'] ?? 0;
     return (
-      <div style={{ padding: paddingCss(style.padding), textAlign: style.textAlign || 'center' }}>
+      <div style={{ padding: paddingCss(style.padding), textAlign: style.blockAlign || style.textAlign || 'center' }}>
         <a
           href={props.url || '#'}
           onClick={e => e.preventDefault()}

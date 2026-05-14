@@ -946,19 +946,31 @@
   border-bottom-color: var(--primary-300);
 }
 
-/* Design / Code / Template scroll containers. The scrollbar is rendered
-   inside a 6px gutter that's always reserved (scrollbar-gutter: stable),
-   so toggling scroll state never resizes the content underneath. The
-   custom scrollbar styling below makes the thumb thin and semi-transparent
-   so it visually floats over the section labels instead of clipping them. */
-.designScroll, .codeScroll, .templateScroll {
+/* Design / Template scroll containers. The scrollbar is rendered inside a
+   6px gutter that's always reserved (scrollbar-gutter: stable), so toggling
+   scroll state never resizes the content underneath. The custom scrollbar
+   styling below makes the thumb thin and semi-transparent. */
+.designScroll, .templateScroll {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-gutter: stable;
 }
 
+/* The Code tab hands its scrolling off to codeEditorScroll (both axes), so
+   codeScroll itself is just a flex column that pins the toolbar at the top
+   and lets the editor below take the remaining height. The horizontal
+   scrollbar then sits at the bottom of the visible panel instead of the
+   bottom of the (often very tall) JSON/HTML content. */
+.codeScroll {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .designScroll,
-.codeScroll,
 .templateScroll,
 .canvasWrap,
 .layersScroll {
@@ -967,19 +979,16 @@
 }
 
 .designScroll::-webkit-scrollbar,
-.codeScroll::-webkit-scrollbar,
 .templateScroll::-webkit-scrollbar,
 .canvasWrap::-webkit-scrollbar,
 .layersScroll::-webkit-scrollbar { width: 6px; height: 6px; }
 
 .designScroll::-webkit-scrollbar-track,
-.codeScroll::-webkit-scrollbar-track,
 .templateScroll::-webkit-scrollbar-track,
 .canvasWrap::-webkit-scrollbar-track,
 .layersScroll::-webkit-scrollbar-track { background: transparent; }
 
 .designScroll::-webkit-scrollbar-thumb,
-.codeScroll::-webkit-scrollbar-thumb,
 .templateScroll::-webkit-scrollbar-thumb,
 .canvasWrap::-webkit-scrollbar-thumb,
 .layersScroll::-webkit-scrollbar-thumb {
@@ -987,7 +996,6 @@
   border-radius: 999px;
 }
 .designScroll::-webkit-scrollbar-thumb:hover,
-.codeScroll::-webkit-scrollbar-thumb:hover,
 .templateScroll::-webkit-scrollbar-thumb:hover,
 .canvasWrap::-webkit-scrollbar-thumb:hover,
 .layersScroll::-webkit-scrollbar-thumb:hover { background: rgba(58, 72, 95, 0.4); }
@@ -1101,6 +1109,54 @@
   font-size: 14px;
   color: var(--neutral-400);
   flex-shrink: 0;
+}
+
+/* px/% unit toggle pill rendered as the suffix when a UnitInput is wired
+   up. Mirrors the iconInputSuffix size but is clickable and slightly
+   tinted so it reads as an affordance. */
+.unitToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  padding: 0 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 4px;
+  background: var(--neutral-50);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-400);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.unitToggleBtn:hover { background: var(--neutral-100); border-color: var(--neutral-200); }
+
+/* Per-side border toggle row — four equal-width pills (T/R/B/L). Active
+   side glows with the primary tint to mirror Decoration & Padding modes. */
+.bsideRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.bsideBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: var(--neutral-0, #fff);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  cursor: pointer;
+}
+.bsideBtn:hover { background: var(--neutral-50); }
+.bsideBtnOn {
+  background: var(--primary-50);
+  border-color: var(--primary-300);
+  color: var(--primary-400, #5020A0);
 }
 
 /* Select input (Font Family, Weight, Level, etc.) */
@@ -1817,11 +1873,11 @@
 
 .designTextarea:focus { border-color: var(--primary-300); }
 
-/* Code tab */
+/* Code tab — codeToolbar pins to the top of codeScroll (which is a flex
+   column with overflow hidden) so it never scrolls horizontally or
+   vertically with the editor content below it. */
 .codeToolbar {
-  position: sticky;
-  top: 0;
-  z-index: 1;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1880,9 +1936,89 @@
   border-bottom: 0.5px solid var(--status-error);
 }
 
-/* Editor stack — pre with highlighted HTML below, transparent textarea above. */
+/* Overlay-scroll wrapper used by OverlayVerticalScroll. The inner div is
+   the actual scroll viewport — its native vertical scrollbar is hidden
+   (width 0 on Chromium, scrollbar-width: none on Firefox); a custom
+   translucent thumb is rendered absolutely on the right edge so it
+   floats above content with zero width footprint. The horizontal
+   scrollbar stays native (slim and translucent) and sits at the bottom
+   of the viewport so it's always reachable. */
+.overlayScrollWrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  /* The wrapper itself doesn't scroll; it just hosts the thumb on top. */
+}
+.overlayScrollInner {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: scroll;
+  /* Hide native scrollbars on both axes — JS-driven thumbs below render
+     the visible scrollbars as overlays so neither rail steals layout space.
+     `scrollbar-width: none` here overrides the project-wide `* { scrollbar-
+     width: thin }` rule in index.css which would otherwise force a 6-8px
+     gutter regardless of webkit pseudo-element styling. */
+  scrollbar-width: none;
+}
+.overlayScrollInner::-webkit-scrollbar { width: 0; height: 0; }
+.overlayScrollInner::-webkit-scrollbar-track { background: transparent; }
+.overlayScrollInner::-webkit-scrollbar-thumb { background: transparent; }
+.overlayScrollInner::-webkit-scrollbar-corner { background: transparent; }
+
+.overlayScrollThumb {
+  position: absolute;
+  top: 0;
+  right: 3px;
+  width: 6px;
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  pointer-events: auto;
+  cursor: grab;
+  transition: background .15s, width .15s;
+  z-index: 2;
+}
+.overlayScrollThumb:hover,
+.overlayScrollThumb:active {
+  background: rgba(255, 255, 255, 0.4);
+  width: 8px;
+  right: 2px;
+}
+.overlayScrollThumb:active { cursor: grabbing; }
+
+/* Horizontal overlay thumb — pinned to the bottom edge of the viewport so
+   it's always reachable regardless of how tall the JSON content is. */
+.overlayScrollThumbH {
+  position: absolute;
+  left: 0;
+  bottom: 3px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  pointer-events: auto;
+  cursor: grab;
+  transition: background .15s, height .15s;
+  z-index: 2;
+}
+.overlayScrollThumbH:hover,
+.overlayScrollThumbH:active {
+  background: rgba(255, 255, 255, 0.4);
+  height: 8px;
+  bottom: 2px;
+}
+.overlayScrollThumbH:active { cursor: grabbing; }
+
+/* codeEditorScroll is now applied to the inner scroll viewport. Just
+   needs the dark background and to take up remaining space. */
+.codeEditorScroll {
+  background: #1E1E2E;
+}
+
 .codeEditor {
   position: relative;
+  width: max-content;
+  min-width: 100%;
   background: #1E1E2E;
 }
 

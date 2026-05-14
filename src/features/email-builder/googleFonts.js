@@ -100,3 +100,46 @@ export function injectGoogleFonts() {
   link.href = getGoogleFontsHref();
   document.head.appendChild(link);
 }
+
+// Canonical names for the standard CSS font-weight axis. Used by the
+// weight dropdown in the Properties panel so the user sees "SemiBold 600"
+// rather than a bare number.
+const WEIGHT_LABELS = {
+  100: 'Thin',
+  200: 'ExtraLight',
+  300: 'Light',
+  400: 'Regular',
+  500: 'Medium',
+  600: 'SemiBold',
+  700: 'Bold',
+  800: 'ExtraBold',
+  900: 'Black',
+};
+
+// Parse a font's `googleFamily` axis string (e.g. "Inter:wght@400;500;700")
+// and return [{ value: '400', label: 'Regular 400' }, …] for every weight
+// that family actually ships. Falls back to Regular/Bold when the entry
+// has no axis info (system fonts).
+export function availableWeights(value) {
+  const font = resolveFont(value);
+  const axis = font?.googleFamily || '';
+  const m = axis.match(/wght@([\d;]+)/);
+  const weights = m
+    ? m[1].split(';').map(n => Number(n)).filter(n => Number.isFinite(n))
+    : [400, 700];
+  return weights.map(w => ({
+    value: String(w),
+    label: `${WEIGHT_LABELS[w] || w} ${w}`,
+  }));
+}
+
+// Legacy weight tokens ('normal', 'bold') stored on existing documents
+// resolve to numeric weights so the dropdown can match them.
+export function normalizeWeight(w) {
+  if (w == null) return '400';
+  const s = String(w).trim();
+  if (s === 'normal') return '400';
+  if (s === 'bold') return '700';
+  if (/^\d+$/.test(s)) return s;
+  return '400';
+}

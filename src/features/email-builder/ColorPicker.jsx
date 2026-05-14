@@ -111,7 +111,7 @@ function EyeDropperBtn({ onPick }) {
 }
 
 // ── Solid color picker (HSV square + hue + hex/rgb inputs + swatches) ──
-function SolidPicker({ value, onChange, variables }) {
+function SolidPicker({ value, onChange, variables, recentlyUsed }) {
   const hex = normalizeHex(value);
   const hsv = useMemo(() => hexToHsv(hex), [hex]);
   const rgb = useMemo(() => hexToRgb(hex), [hex]);
@@ -125,10 +125,18 @@ function SolidPicker({ value, onChange, variables }) {
     const next = { ...rgb, [key]: Number(n) || 0 };
     onChange(rgbToHex(next));
   };
+  // Accept any of these as input:
+  //   "FF0080"     – just the 6 hex chars
+  //   "#FF0080"    – with the leading hash (typed or pasted)
+  //   "  FF0080  " – padded
+  // normalizeHex handles the prefix; we re-prefix the draft so the field
+  // shows "#FF0080" while the value commits cleanly.
   const commitHex = (raw) => {
-    setHexDraft(raw);
-    const normalized = normalizeHex(raw);
-    if (/^#[0-9A-F]{6}$/.test(normalized)) onChange(normalized);
+    const trimmed = String(raw).trim();
+    const stripped = trimmed.replace(/^#+/, '');
+    const draft = `#${stripped.slice(0, 6).toUpperCase()}`;
+    setHexDraft(draft);
+    if (/^#[0-9A-F]{6}$/.test(draft)) onChange(draft);
   };
 
   return (
@@ -139,13 +147,12 @@ function SolidPicker({ value, onChange, variables }) {
       <div className={styles.inputsRow}>
         <EyeDropperBtn onPick={onChange} />
         <div className={styles.hexField}>
-          <span className={styles.hexHash}>#</span>
           <input
             type="text"
             className={styles.hexInput}
-            value={hexDraft.replace('#', '')}
+            value={hexDraft}
             onChange={(e) => commitHex(e.target.value)}
-            maxLength={6}
+            maxLength={7}
             spellCheck={false}
           />
         </div>
@@ -155,6 +162,24 @@ function SolidPicker({ value, onChange, variables }) {
           <input className={styles.rgbInput} type="text" value={rgb.b} onChange={(e) => commitRgb('b', e.target.value)} />
         </div>
       </div>
+
+      {recentlyUsed && recentlyUsed.length > 0 && (
+        <>
+          <div className={styles.sectionLabel}>Recently used</div>
+          <div className={styles.swatchGrid}>
+            {recentlyUsed.map((hexStr, i) => (
+              <button
+                key={`${hexStr}-${i}`}
+                type="button"
+                className={styles.swatch}
+                title={hexStr}
+                onClick={() => onChange(hexStr)}
+                style={{ background: hexStr }}
+              />
+            ))}
+          </div>
+        </>
+      )}
 
       {variables && variables.length > 0 && (
         <>
@@ -338,9 +363,18 @@ function GradientPicker({ value, onChange, variables }) {
 // ── Top-level ColorPicker — mode toggle + popover frame ────────────────
 // Close behavior is owned by the host (ColorInput's outside-click handler).
 // We don't render a close button here so the chrome stays minimal.
-export function ColorPicker({ value, onChange, variables = [], allowGradient = true }) {
+export function ColorPicker({ value, onChange, variables = [], recentlyUsed = [], onCommitRecent, allowGradient = true }) {
   const initialMode = isGradient(value) ? 'gradient' : 'solid';
   const [mode, setMode] = useState(initialMode);
+
+  // Wrap the host onChange so every solid commit feeds the Recently-used
+  // MRU list. Gradient commits skip (a gradient string isn't a single hex).
+  const handleChange = (next) => {
+    onChange(next);
+    if (typeof next === 'string' && /^#[0-9A-Fa-f]{6}$/.test(next) && onCommitRecent) {
+      onCommitRecent(next);
+    }
+  };
 
   const setModeWithConvert = (next) => {
     if (next === mode) return;
@@ -371,7 +405,7 @@ export function ColorPicker({ value, onChange, variables = [], allowGradient = t
         />
       )}
       {mode === 'solid' ? (
-        <SolidPicker value={value} onChange={onChange} variables={variables} />
+        <SolidPicker value={value} onChange={handleChange} variables={variables} recentlyUsed={recentlyUsed} />
       ) : (
         <GradientPicker value={value} onChange={onChange} variables={variables} />
       )}

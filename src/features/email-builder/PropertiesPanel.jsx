@@ -12,7 +12,7 @@ import { HEADER_PRESETS, FOOTER_PRESETS } from './headerFooterLibrary';
 import { PresetLivePreview } from './PresetLivePreview';
 import { extractSubtree, fingerprintTree } from './blockHelpers';
 import { uploadImage } from './uploadImage';
-import { GOOGLE_FONTS, injectGoogleFonts } from './googleFonts';
+import { GOOGLE_FONTS, injectGoogleFonts, availableWeights, normalizeWeight } from './googleFonts';
 import { ColorPicker } from './ColorPicker';
 import { isGradient } from './colorHelpers';
 import styles from './EmailBuilder.module.css';
@@ -34,9 +34,12 @@ const BUTTON_STYLE_RADIUS = { rectangle: 0, rounded: 6, pill: 9999 };
 // preview, and the exported email <link rel="stylesheet">.
 const FONT_FAMILIES = GOOGLE_FONTS.map(f => ({ value: f.value, label: f.label }));
 
-const FONT_WEIGHTS = [
-  { value: 'normal', label: 'Regular' },
-  { value: 'bold',   label: 'Bold' },
+// Fallback used until the selected fontFamily is known. The real options
+// come from availableWeights(fontFamily) at render time so each family
+// surfaces only the weights it ships with on Google Fonts.
+const FONT_WEIGHTS_FALLBACK = [
+  { value: '400', label: 'Regular 400' },
+  { value: '700', label: 'Bold 700' },
 ];
 
 const TABS = [
@@ -189,7 +192,7 @@ function DesignTab({ block, updateBlock, id }) {
             </Row2>
             <Row2>
               <ColorInput label="Border Color" value={props.borderColor} onChange={v => update(['data', 'props', 'borderColor'], v)} />
-              <IconInput label="Border" suffix="px" value={props.borderWidth ?? 0} onChange={v => update(['data', 'props', 'borderWidth'], Number(v) || 0)} />
+              <IconInput label="Border" suffix="px" value={props.borderWidth ?? 0} onChange={v => update(['data', 'props', 'borderWidth'], parseFloat(v) || 0)} />
             </Row2>
           </Section>
         </>
@@ -201,11 +204,39 @@ function DesignTab({ block, updateBlock, id }) {
           <Section>
             <ImageUploader
               currentUrl={props.url}
-              onChange={v => update(['data', 'props', 'url'], v)}
+              onChange={async (v) => {
+                update(['data', 'props', 'url'], v);
+                // Best-effort: if the new URL is an SVG, fetch its markup
+                // and cache it on the block so we can re-tint the fills
+                // via dangerouslySetInnerHTML. CORS-blocked URLs fall back
+                // to a plain <img> render — the tint just won't apply.
+                if (typeof v === 'string' && /\.svg(\?|#|$)/i.test(v)) {
+                  try {
+                    const res = await fetch(v);
+                    const text = await res.text();
+                    if (text.includes('<svg')) {
+                      update(['data', 'props', 'svgRaw'], text);
+                    }
+                  } catch { /* fine — tint just won't apply */ }
+                } else if (props.svgRaw) {
+                  update(['data', 'props', 'svgRaw'], null);
+                }
+              }}
             />
             <PlainInput label="URL" value={props.url || ''} onChange={v => update(['data', 'props', 'url'], v)} />
             <PlainInput label="Alt Text" value={props.alt || ''} onChange={v => update(['data', 'props', 'alt'], v)} />
             <PlainInput label="Link URL" value={props.linkHref || ''} onChange={v => update(['data', 'props', 'linkHref'], v || null)} />
+            {/* Tint color appears only for SVGs we've cached the raw markup
+                for. Substituted into fill="…" attributes at render time so
+                a single-color icon recolors cleanly without filter hacks. */}
+            {props.svgRaw && (
+              <ColorInput
+                label="Tint"
+                value={props.tintColor || '#3A485F'}
+                onChange={v => update(['data', 'props', 'tintColor'], v)}
+                allowGradient={false}
+              />
+            )}
           </Section>
         </>
       )}
@@ -220,7 +251,7 @@ function DesignTab({ block, updateBlock, id }) {
             />
             <PlainInput label="Image URL" value={props.imageUrl || ''} onChange={v => update(['data', 'props', 'imageUrl'], v)} />
             <Row2>
-              <IconInput label="Size" suffix="px" value={props.size || 64} onChange={v => update(['data', 'props', 'size'], Number(v) || 64)} />
+              <IconInput label="Size" suffix="px" value={props.size || 64} onChange={v => update(['data', 'props', 'size'], parseFloat(v) || 64)} />
               <SelectInput
                 label="Shape"
                 value={props.shape || 'circle'}
@@ -236,10 +267,32 @@ function DesignTab({ block, updateBlock, id }) {
         <>
           <SectionHeading>Divider</SectionHeading>
           <Section>
+            <div className={styles.fieldCol}>
+              <label className={styles.fieldLabel}>Orientation</label>
+              <Toggle
+                fullWidth
+                items={[
+                  { key: 'horizontal', label: 'Horizontal' },
+                  { key: 'vertical',   label: 'Vertical' },
+                ]}
+                active={props.orientation || 'horizontal'}
+                size="S"
+                onChange={v => update(['data', 'props', 'orientation'], v)}
+              />
+            </div>
             <Row2>
               <ColorInput label="Line Color" value={props.lineColor} onChange={v => update(['data', 'props', 'lineColor'], v)} />
-              <IconInput label="Thickness" suffix="px" value={props.lineHeight || 1} onChange={v => update(['data', 'props', 'lineHeight'], Number(v) || 1)} />
+              <IconInput label="Thickness" suffix="px" value={props.lineHeight || 1} onChange={v => update(['data', 'props', 'lineHeight'], parseFloat(v) || 1)} />
             </Row2>
+            {/* Vertical dividers get an explicit Height field — without it
+                the bar collapses to its 24px min-height inside flex layouts. */}
+            {props.orientation === 'vertical' && (
+              <IconInput
+                label="Height" suffix="px"
+                value={props.height ?? 40}
+                onChange={v => update(['data', 'props', 'height'], parseFloat(v) || 40)}
+              />
+            )}
             <div className={styles.fieldCol}>
               <label className={styles.fieldLabel}>Style</label>
               <Toggle
@@ -291,7 +344,7 @@ function DesignTab({ block, updateBlock, id }) {
         <>
           <SectionHeading>Spacer</SectionHeading>
           <Section>
-            <IconInput label="Height" suffix="px" value={props.height || 16} onChange={v => update(['data', 'props', 'height'], Number(v) || 16)} />
+            <IconInput label="Height" suffix="px" value={props.height || 16} onChange={v => update(['data', 'props', 'height'], parseFloat(v) || 16)} />
           </Section>
         </>
       )}
@@ -337,8 +390,8 @@ function DesignTab({ block, updateBlock, id }) {
               onChange={platforms => update(['data', 'props', 'platforms'], platforms)}
             />
             <Row2>
-              <IconInput label="Icon Size" suffix="px" value={props.iconSize || 24} onChange={v => update(['data', 'props', 'iconSize'], Number(v) || 24)} />
-              <IconInput label="Gap" suffix="px" value={props.gap || 16} onChange={v => update(['data', 'props', 'gap'], Number(v) || 16)} />
+              <IconInput label="Icon Size" suffix="px" value={props.iconSize || 24} onChange={v => update(['data', 'props', 'iconSize'], parseFloat(v) || 24)} />
+              <IconInput label="Gap" suffix="px" value={props.gap || 16} onChange={v => update(['data', 'props', 'gap'], parseFloat(v) || 16)} />
             </Row2>
             <div className={styles.fieldCol}>
               <label className={styles.fieldLabel}>Alignment</label>
@@ -368,14 +421,14 @@ function DesignTab({ block, updateBlock, id }) {
             />
             <Row2>
               <ColorInput label="Link Color" value={props.linkColor || '#7C5CFA'} onChange={v => update(['data', 'props', 'linkColor'], v)} />
-              <IconInput label="Font Size" suffix="px" value={props.fontSize || 14} onChange={v => update(['data', 'props', 'fontSize'], Number(v) || 14)} />
+              <IconInput label="Font Size" suffix="px" value={props.fontSize || 14} onChange={v => update(['data', 'props', 'fontSize'], parseFloat(v) || 14)} />
             </Row2>
             <Row2>
-              <IconInput label="Gap" suffix="px" value={props.gap || 24} onChange={v => update(['data', 'props', 'gap'], Number(v) || 24)} />
+              <IconInput label="Gap" suffix="px" value={props.gap || 24} onChange={v => update(['data', 'props', 'gap'], parseFloat(v) || 24)} />
               <SelectInput
                 label="Weight"
-                value={props.fontWeight || 'bold'}
-                options={FONT_WEIGHTS}
+                value={normalizeWeight(props.fontWeight || 'bold')}
+                options={availableWeights(style.fontFamily || 'Inter')}
                 onChange={v => update(['data', 'props', 'fontWeight'], v)}
               />
             </Row2>
@@ -406,7 +459,7 @@ function DesignTab({ block, updateBlock, id }) {
                 label="Count"
                 value={props.columnsCount || 2}
                 onChange={v => {
-                  const num = Math.max(1, Math.min(6, Number(v) || 2));
+                  const num = Math.max(1, Math.min(6, parseFloat(v) || 2));
                   updateBlock(id, prev => {
                     const next = JSON.parse(JSON.stringify(prev));
                     next.data = next.data || {};
@@ -435,8 +488,8 @@ function DesignTab({ block, updateBlock, id }) {
               </div>
             </Row2>
             <Row2>
-              <IconInput label="H Gap" suffix="px" value={props.columnsGap ?? 16} onChange={v => update(['data', 'props', 'columnsGap'], Number(v) || 0)} />
-              <IconInput label="V Gap" suffix="px" value={props.rowGap ?? 0} onChange={v => update(['data', 'props', 'rowGap'], Number(v) || 0)} />
+              <IconInput label="H Gap" suffix="px" value={props.columnsGap ?? 16} onChange={v => update(['data', 'props', 'columnsGap'], parseFloat(v) || 0)} />
+              <IconInput label="V Gap" suffix="px" value={props.rowGap ?? 0} onChange={v => update(['data', 'props', 'rowGap'], parseFloat(v) || 0)} />
             </Row2>
             <div className={styles.fieldCol}>
               <label className={styles.fieldLabel}>Wrap</label>
@@ -468,25 +521,51 @@ function DesignTab({ block, updateBlock, id }) {
       <Section>
         {(block.type === 'Image' || block.type === 'Avatar') ? (
           <Row2>
-            <IconInput
-              label="Width" suffix="" icon={<WidthIcon />} freeform
-              value={props.width ?? '100%'}
-              onChange={v => {
-                const s = String(v).trim();
-                if (s.endsWith('%')) update(['data', 'props', 'width'], s);
-                else update(['data', 'props', 'width'], Number(s) || null);
-              }}
-            />
-            <IconInput
-              label="Height" suffix="" icon={<HeightIcon />} freeform
-              value={props.height ?? 'auto'}
-              onChange={v => {
-                const s = String(v).trim();
-                if (s === 'auto' || s === '') update(['data', 'props', 'height'], null);
-                else if (s.endsWith('%')) update(['data', 'props', 'height'], s);
-                else update(['data', 'props', 'height'], Number(s) || null);
-              }}
-            />
+            {(() => {
+              // Width: parse the stored value (number = px, "NN%" = percent)
+              // into a numeric input + a unit toggle. Commits a number or
+              // a "NN%" string back to props.width depending on the unit.
+              const wRaw = props.width;
+              const wUnit = typeof wRaw === 'string' && wRaw.endsWith('%') ? '%' : 'px';
+              const wNum = wUnit === '%' ? parseFloat(wRaw) : (typeof wRaw === 'number' ? wRaw : '');
+              return (
+                <IconInput
+                  label="Width" icon={<WidthIcon />}
+                  unit={wUnit}
+                  onUnitChange={(next) => {
+                    if (next === '%') update(['data', 'props', 'width'], `${wNum || 100}%`);
+                    else update(['data', 'props', 'width'], wNum || null);
+                  }}
+                  value={wNum}
+                  onChange={v => {
+                    const n = parseFloat(v);
+                    if (Number.isNaN(n)) return update(['data', 'props', 'width'], null);
+                    update(['data', 'props', 'width'], wUnit === '%' ? `${n}%` : n);
+                  }}
+                />
+              );
+            })()}
+            {(() => {
+              const hRaw = props.height;
+              const hUnit = typeof hRaw === 'string' && hRaw.endsWith('%') ? '%' : 'px';
+              const hNum = hUnit === '%' ? parseFloat(hRaw) : (typeof hRaw === 'number' ? hRaw : '');
+              return (
+                <IconInput
+                  label="Height" icon={<HeightIcon />}
+                  unit={hUnit}
+                  onUnitChange={(next) => {
+                    if (next === '%') update(['data', 'props', 'height'], `${hNum || 100}%`);
+                    else update(['data', 'props', 'height'], hNum || null);
+                  }}
+                  value={hNum}
+                  onChange={v => {
+                    const n = parseFloat(v);
+                    if (Number.isNaN(n)) return update(['data', 'props', 'height'], null);
+                    update(['data', 'props', 'height'], hUnit === '%' ? `${n}%` : n);
+                  }}
+                />
+              );
+            })()}
           </Row2>
         ) : null}
 
@@ -512,11 +591,47 @@ function DesignTab({ block, updateBlock, id }) {
               <IconInput
                 label="Value" suffix="px" icon={<HeightIcon />}
                 value={props.height || ''}
-                onChange={v => update(['data', 'props', 'height'], Number(v) || null)}
+                onChange={v => update(['data', 'props', 'height'], parseFloat(v) || null)}
               />
             )}
           </Row2>
         ) : null}
+
+        {/* Fixed-height containers position their child content via flex
+            instead of overflowing. Two 3-button toggles (Horizontal +
+            Vertical) map to align-items + justify-content respectively. */}
+        {(block.type === 'Container' || block.type === 'ColumnsContainer') && props.heightMode === 'fixed' && (
+          <Row2>
+            <div className={styles.fieldCol}>
+              <label className={styles.fieldLabel}>Horizontal</label>
+              <Toggle
+                fullWidth
+                size="S"
+                items={[
+                  { key: 'left',   label: '', icon: <AlignLeftIcon /> },
+                  { key: 'center', label: '', icon: <AlignCenterIcon /> },
+                  { key: 'right',  label: '', icon: <AlignRightIcon /> },
+                ]}
+                active={props.contentAlignH || 'left'}
+                onChange={v => update(['data', 'props', 'contentAlignH'], v)}
+              />
+            </div>
+            <div className={styles.fieldCol}>
+              <label className={styles.fieldLabel}>Vertical</label>
+              <Toggle
+                fullWidth
+                size="S"
+                items={[
+                  { key: 'top',    label: '', icon: <AlignTopIcon /> },
+                  { key: 'middle', label: '', icon: <AlignMiddleIcon /> },
+                  { key: 'bottom', label: '', icon: <AlignBottomIcon /> },
+                ]}
+                active={props.contentAlign || 'top'}
+                onChange={v => update(['data', 'props', 'contentAlign'], v)}
+              />
+            </div>
+          </Row2>
+        )}
 
         {!isLayout && (
           <PaddingControl
@@ -526,12 +641,34 @@ function DesignTab({ block, updateBlock, id }) {
           />
         )}
 
+        {/* Block-level horizontal alignment — controls where the rendered
+            element sits inside its parent (works for Image/Avatar/Button
+            via wrapper text-align, and for Container/ColumnsContainer via
+            an inline-block alignment passed to the renderer). Distinct
+            from textAlign which only controls text inside the element. */}
+        {!isLayout && ['Image', 'Avatar', 'Button', 'Container', 'ColumnsContainer'].includes(block.type) && (
+          <div className={styles.fieldCol}>
+            <label className={styles.fieldLabel}>Align</label>
+            <Toggle
+              fullWidth
+              items={[
+                { key: 'left',   label: '', icon: <AlignLeftIcon /> },
+                { key: 'center', label: '', icon: <AlignCenterIcon /> },
+                { key: 'right',  label: '', icon: <AlignRightIcon /> },
+              ]}
+              active={style.blockAlign || 'left'}
+              size="S"
+              onChange={v => update(['data', 'style', 'blockAlign'], v)}
+            />
+          </div>
+        )}
+
         {RADIUS_TYPES.has(block.type) && (
           <Row2>
             <IconInput
               label="Radius" suffix="px" icon={<RadiusIcon />}
               value={style.borderRadius ?? (block.type === 'Button' ? BUTTON_STYLE_RADIUS[props.buttonStyle || 'rectangle'] ?? 0 : 0)}
-              onChange={v => update(['data', 'style', 'borderRadius'], Number(v) || 0)}
+              onChange={v => update(['data', 'style', 'borderRadius'], parseFloat(v) || 0)}
             />
           </Row2>
         )}
@@ -588,15 +725,37 @@ function DesignTab({ block, updateBlock, id }) {
             <ImageUploader
               compact
               currentUrl={style.backgroundImage}
-              onChange={v => {
+              onChange={async (v) => {
                 update(['data', 'style', 'backgroundImage'], v);
                 if (v && !style.backgroundSize) {
                   update(['data', 'style', 'backgroundSize'], 'cover');
                   update(['data', 'style', 'backgroundPosition'], 'center');
                   update(['data', 'style', 'backgroundRepeat'], 'no-repeat');
                 }
+                // Cache raw SVG markup so the user can tint it — mirrors
+                // the Image-block path. URLs that aren't SVG (or fail to
+                // fetch for CORS) just don't get a Tint control surfaced.
+                if (typeof v === 'string' && /\.svg(\?|#|$)/i.test(v)) {
+                  try {
+                    const res = await fetch(v);
+                    const text = await res.text();
+                    if (text.includes('<svg')) {
+                      update(['data', 'style', 'bgSvgRaw'], text);
+                    }
+                  } catch { /* tint just won't apply */ }
+                } else if (style.bgSvgRaw) {
+                  update(['data', 'style', 'bgSvgRaw'], null);
+                }
               }}
             />
+            {style.bgSvgRaw && (
+              <ColorInput
+                label="Image Tint"
+                value={style.bgTintColor || '#3A485F'}
+                onChange={v => update(['data', 'style', 'bgTintColor'], v)}
+                allowGradient={false}
+              />
+            )}
             {style.backgroundImage && (
               <>
                 <Row2>
@@ -668,26 +827,26 @@ function DesignTab({ block, updateBlock, id }) {
                 <Row2>
                   <SelectInput
                     label="Font Weight"
-                    value={style.fontWeight || 'normal'}
-                    options={FONT_WEIGHTS}
+                    value={normalizeWeight(style.fontWeight)}
+                    options={availableWeights(style.fontFamily || (isLayout ? data.fontFamily : 'Inter'))}
                     onChange={v => update(['data', 'style', 'fontWeight'], v)}
                   />
                   <IconInput
                     label="Font Size" suffix="px"
                     value={style.fontSize || 14}
-                    onChange={v => update(['data', 'style', 'fontSize'], Number(v) || 14)}
+                    onChange={v => update(['data', 'style', 'fontSize'], parseFloat(v) || 14)}
                   />
                 </Row2>
                 <Row2>
                   <IconInput
                     label="Line Height" suffix="%"
                     value={style.lineHeight ? Math.round(Number(style.lineHeight) * 100) : 120}
-                    onChange={v => update(['data', 'style', 'lineHeight'], (Number(v) || 120) / 100)}
+                    onChange={v => update(['data', 'style', 'lineHeight'], (parseFloat(v) || 120) / 100)}
                   />
                   <IconInput
                     label="Letter Spacing" suffix="px"
                     value={style.letterSpacing || 0}
-                    onChange={v => update(['data', 'style', 'letterSpacing'], Number(v) || 0)}
+                    onChange={v => update(['data', 'style', 'letterSpacing'], parseFloat(v) || 0)}
                   />
                 </Row2>
                 <Row2>
@@ -729,14 +888,14 @@ function DesignTab({ block, updateBlock, id }) {
                 <div className={styles.fieldCol}>
                   <label className={styles.fieldLabel}>Decoration</label>
                   <DecorationToggles
-                    bold={style.fontWeight === 'bold'}
+                    bold={Number(normalizeWeight(style.fontWeight)) >= 600}
                     italic={style.fontStyle === 'italic'}
                     underline={style.textDecoration === 'underline'}
                     strike={style.textDecoration === 'line-through'}
                     code={style.fontFamily === 'JetBrains Mono' || style.fontFamily === 'Fira Code' || style.fontFamily === 'IBM Plex Mono' || style.fontFamily === 'MONOSPACE'}
                     caps={style.textTransform === 'uppercase'}
                     onChange={(key, on) => {
-                      if (key === 'bold') update(['data', 'style', 'fontWeight'], on ? 'bold' : 'normal');
+                      if (key === 'bold') update(['data', 'style', 'fontWeight'], on ? '700' : '400');
                       if (key === 'italic') update(['data', 'style', 'fontStyle'], on ? 'italic' : null);
                       if (key === 'underline') update(['data', 'style', 'textDecoration'], on ? 'underline' : null);
                       if (key === 'strike') update(['data', 'style', 'textDecoration'], on ? 'line-through' : null);
@@ -813,21 +972,21 @@ function BulkDesignTab({ doc, bulkIds, updateBlock }) {
         <Row2>
           <IconInput
             suffix="px" icon={<PadLeftIcon />}
-            value={commonPadding.left ?? ''} onChange={v => bulkUpdate(['data', 'style', 'padding', 'left'], Number(v) || 0)}
+            value={commonPadding.left ?? ''} onChange={v => bulkUpdate(['data', 'style', 'padding', 'left'], parseFloat(v) || 0)}
           />
           <IconInput
             suffix="px" icon={<PadTopIcon />}
-            value={commonPadding.top ?? ''} onChange={v => bulkUpdate(['data', 'style', 'padding', 'top'], Number(v) || 0)}
+            value={commonPadding.top ?? ''} onChange={v => bulkUpdate(['data', 'style', 'padding', 'top'], parseFloat(v) || 0)}
           />
         </Row2>
         <Row2>
           <IconInput
             suffix="px" icon={<PadRightIcon />}
-            value={commonPadding.right ?? ''} onChange={v => bulkUpdate(['data', 'style', 'padding', 'right'], Number(v) || 0)}
+            value={commonPadding.right ?? ''} onChange={v => bulkUpdate(['data', 'style', 'padding', 'right'], parseFloat(v) || 0)}
           />
           <IconInput
             suffix="px" icon={<PadBottomIcon />}
-            value={commonPadding.bottom ?? ''} onChange={v => bulkUpdate(['data', 'style', 'padding', 'bottom'], Number(v) || 0)}
+            value={commonPadding.bottom ?? ''} onChange={v => bulkUpdate(['data', 'style', 'padding', 'bottom'], parseFloat(v) || 0)}
           />
         </Row2>
         {allHaveRadius && (
@@ -835,7 +994,7 @@ function BulkDesignTab({ doc, bulkIds, updateBlock }) {
             <IconInput
               label="Radius" suffix="px" icon={<RadiusIcon />}
               value={getCommonValue(blocks, b => b.data?.style?.borderRadius) ?? ''}
-              onChange={v => bulkUpdate(['data', 'style', 'borderRadius'], Number(v) || 0)}
+              onChange={v => bulkUpdate(['data', 'style', 'borderRadius'], parseFloat(v) || 0)}
             />
           </Row2>
         )}
@@ -892,14 +1051,14 @@ function BulkDesignTab({ doc, bulkIds, updateBlock }) {
             <Row2>
               <SelectInput
                 label="Font Weight"
-                value={getCommonValue(blocks, b => b.data?.style?.fontWeight) || 'normal'}
-                options={FONT_WEIGHTS}
+                value={normalizeWeight(getCommonValue(blocks, b => b.data?.style?.fontWeight))}
+                options={availableWeights(getCommonValue(blocks, b => b.data?.style?.fontFamily) || 'Inter')}
                 onChange={v => bulkUpdate(['data', 'style', 'fontWeight'], v)}
               />
               <IconInput
                 label="Font Size" suffix="px"
                 value={getCommonValue(blocks, b => b.data?.style?.fontSize) ?? ''}
-                onChange={v => bulkUpdate(['data', 'style', 'fontSize'], Number(v) || 14)}
+                onChange={v => bulkUpdate(['data', 'style', 'fontSize'], parseFloat(v) || 14)}
               />
             </Row2>
             <Row2>
@@ -921,6 +1080,130 @@ function BulkDesignTab({ doc, bulkIds, updateBlock }) {
             </Row2>
           </Section>
         </>
+      )}
+    </div>
+  );
+}
+
+// ── Overlay scrollbar (both axes) ───────────────────────────────────────────
+// Wraps a scrollable child and replaces both native scrollbars with thin
+// translucent thumbs pinned to the right edge (vertical) and bottom edge
+// (horizontal). Both thumbs float over the content with zero width/height
+// footprint, so the section width never changes between scroll states.
+function OverlayVerticalScroll({ innerRef, className, children, ...rest }) {
+  const localRef = useRef(null);
+  const setRef = (el) => {
+    localRef.current = el;
+    if (typeof innerRef === 'function') innerRef(el);
+    else if (innerRef) innerRef.current = el;
+  };
+  const [vThumb, setVThumb] = useState({ visible: false, top: 0, height: 0 });
+  const [hThumb, setHThumb] = useState({ visible: false, left: 0, width: 0 });
+  const draggingRef = useRef(null);
+
+  useEffect(() => {
+    const el = localRef.current;
+    if (!el) return;
+    const update = () => {
+      const { scrollTop, scrollLeft, scrollHeight, clientHeight, scrollWidth, clientWidth } = el;
+      // Vertical
+      if (scrollHeight <= clientHeight) {
+        setVThumb((t) => (t.visible ? { visible: false, top: 0, height: 0 } : t));
+      } else {
+        const ratio = clientHeight / scrollHeight;
+        const height = Math.max(24, clientHeight * ratio);
+        const maxThumbTop = clientHeight - height;
+        const maxScroll = scrollHeight - clientHeight;
+        const top = maxScroll > 0 ? (scrollTop / maxScroll) * maxThumbTop : 0;
+        setVThumb({ visible: true, top, height });
+      }
+      // Horizontal
+      if (scrollWidth <= clientWidth) {
+        setHThumb((t) => (t.visible ? { visible: false, left: 0, width: 0 } : t));
+      } else {
+        const ratio = clientWidth / scrollWidth;
+        const width = Math.max(24, clientWidth * ratio);
+        const maxThumbLeft = clientWidth - width;
+        const maxScroll = scrollWidth - clientWidth;
+        const left = maxScroll > 0 ? (scrollLeft / maxScroll) * maxThumbLeft : 0;
+        setHThumb({ visible: true, left, width });
+      }
+    };
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    const mo = new MutationObserver(update);
+    mo.observe(el, { childList: true, subtree: true, characterData: true });
+    return () => {
+      el.removeEventListener('scroll', update);
+      ro.disconnect();
+      mo.disconnect();
+    };
+  }, []);
+
+  const onVerticalDown = (e) => {
+    e.preventDefault();
+    const el = localRef.current;
+    if (!el) return;
+    const startY = e.clientY;
+    const startScrollTop = el.scrollTop;
+    const trackHeight = el.clientHeight - vThumb.height;
+    const maxScroll = el.scrollHeight - el.clientHeight;
+    draggingRef.current = 'v';
+    const move = (ev) => {
+      if (draggingRef.current !== 'v') return;
+      const dy = ev.clientY - startY;
+      const ratio = trackHeight > 0 ? dy / trackHeight : 0;
+      el.scrollTop = Math.max(0, Math.min(maxScroll, startScrollTop + ratio * maxScroll));
+    };
+    const up = () => { draggingRef.current = null; window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
+  const onHorizontalDown = (e) => {
+    e.preventDefault();
+    const el = localRef.current;
+    if (!el) return;
+    const startX = e.clientX;
+    const startScrollLeft = el.scrollLeft;
+    const trackWidth = el.clientWidth - hThumb.width;
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    draggingRef.current = 'h';
+    const move = (ev) => {
+      if (draggingRef.current !== 'h') return;
+      const dx = ev.clientX - startX;
+      const ratio = trackWidth > 0 ? dx / trackWidth : 0;
+      el.scrollLeft = Math.max(0, Math.min(maxScroll, startScrollLeft + ratio * maxScroll));
+    };
+    const up = () => { draggingRef.current = null; window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
+  return (
+    <div className={styles.overlayScrollWrap}>
+      <div
+        ref={setRef}
+        className={[styles.overlayScrollInner, className].filter(Boolean).join(' ')}
+        {...rest}
+      >
+        {children}
+      </div>
+      {vThumb.visible && (
+        <div
+          className={styles.overlayScrollThumb}
+          style={{ top: vThumb.top, height: vThumb.height }}
+          onMouseDown={onVerticalDown}
+        />
+      )}
+      {hThumb.visible && (
+        <div
+          className={styles.overlayScrollThumbH}
+          style={{ left: hThumb.left, width: hThumb.width }}
+          onMouseDown={onHorizontalDown}
+        />
       )}
     </div>
   );
@@ -1052,20 +1335,27 @@ function CodeTab({ doc }) {
         </div>
       )}
 
-      <div className={styles.codeEditor}>
-        <pre className={styles.codePre} aria-hidden="true">
-          <code className={styles.codeBlock} dangerouslySetInnerHTML={{ __html: highlighted + '\n' }} />
-        </pre>
-        <textarea
-          className={styles.codeTextarea}
-          value={text}
-          onChange={handleChange}
-          onBlur={handleBlur}
-          spellCheck={false}
-          autoComplete="off"
-          aria-label={`Edit ${mode.toUpperCase()}`}
-        />
-      </div>
+      {/* Editor viewport scrolls both axes. The native vertical scrollbar
+          is hidden by the OverlayVerticalScroll wrapper, which renders a
+          custom translucent thumb on the right edge so it floats above
+          the content. The native horizontal scrollbar (slim, translucent)
+          stays visible at the bottom of the viewport. */}
+      <OverlayVerticalScroll className={styles.codeEditorScroll}>
+        <div className={styles.codeEditor}>
+          <pre className={styles.codePre} aria-hidden="true">
+            <code className={styles.codeBlock} dangerouslySetInnerHTML={{ __html: highlighted + '\n' }} />
+          </pre>
+          <textarea
+            className={styles.codeTextarea}
+            value={text}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            spellCheck={false}
+            autoComplete="off"
+            aria-label={`Edit ${mode.toUpperCase()}`}
+          />
+        </div>
+      </OverlayVerticalScroll>
     </div>
   );
 }
@@ -1680,7 +1970,7 @@ function ColorVariablesEditor() {
 }
 
 // ── Field primitives ────────────────────────────────────────────────────────
-function IconInput({ label, suffix, icon, value, onChange, freeform }) {
+function IconInput({ label, suffix, icon, value, onChange, freeform, unit, onUnitChange }) {
   const handleKeyDown = (e) => {
     if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       e.preventDefault();
@@ -1701,7 +1991,20 @@ function IconInput({ label, suffix, icon, value, onChange, freeform }) {
           onChange={e => onChange(freeform ? e.target.value : e.target.value.replace(/[^0-9.-]/g, ''))}
           onKeyDown={handleKeyDown}
         />
-        {suffix && <span className={styles.iconInputSuffix}>{suffix}</span>}
+        {/* When the caller passes a unit + onUnitChange the suffix becomes a
+            clickable px/% pill (the only two units we support today). The
+            value itself stays a plain number — the parent reads `unit` to
+            decide whether to commit a number (px) or a "NN%" string (%). */}
+        {unit && onUnitChange ? (
+          <button
+            type="button"
+            className={styles.unitToggleBtn}
+            onClick={() => onUnitChange(unit === 'px' ? '%' : 'px')}
+            title={`Switch to ${unit === 'px' ? '%' : 'px'}`}
+          >
+            {unit}
+          </button>
+        ) : (suffix && <span className={styles.iconInputSuffix}>{suffix}</span>)}
       </div>
     </div>
   );
@@ -1739,6 +2042,8 @@ function SelectInput({ label, value, options, onChange }) {
 
 function ColorInput({ label, value, onChange, allowGradient = true }) {
   const colorVariables = useAppStore(s => s.colorVariables);
+  const recentlyUsedColors = useAppStore(s => s.recentlyUsedColors);
+  const pushRecentColor = useAppStore(s => s.pushRecentColor);
   const [open, setOpen] = useState(false);
   const fieldRef = useRef(null);
   const popoverRef = useRef(null);
@@ -1747,34 +2052,55 @@ function ColorInput({ label, value, onChange, allowGradient = true }) {
   const isGrad = isGradient(v);
   const displayText = isGrad ? 'Gradient' : (typeof v === 'string' ? v.toUpperCase() : '');
 
-  // Position the portalled popover so it stays fully on-screen. Defaults
-  // to appearing below the field but flips above when there isn't room.
-  // The popover has its own max-height + internal scroll, so a clamped
-  // top still leaves all content reachable.
+  // Position the portalled popover so it stays fully on-screen, flush
+  // with the right edge of the field. We re-run the calculation on:
+  //   • initial open (+ next rAF, after the right-panel scroll settles)
+  //   • window resize / scroll bubbling
+  //   • the field's own size or position changing (ResizeObserver)
+  // and clamp both axes so the popover never drifts off-screen.
   useLayoutEffect(() => {
     if (!open || !fieldRef.current) return;
     const update = () => {
-      const r = fieldRef.current.getBoundingClientRect();
+      const r = fieldRef.current?.getBoundingClientRect();
+      if (!r) return;
       const popoverWidth = 264;
+      // The popover has internal scroll so we can constrain its height
+      // tightly against the viewport without losing content.
+      const popoverMaxH = Math.min(window.innerHeight - 16, 720);
       const margin = 8;
-      // Horizontal: prefer flush-right; clamp to keep inside viewport.
+      // Horizontal: prefer flush-right with the field; if that clips at
+      // the left edge, slide it back in. Final clamp keeps it on-screen.
       let left = r.right - popoverWidth;
       if (left < margin) left = Math.min(r.left, window.innerWidth - popoverWidth - margin);
       left = Math.max(margin, Math.min(left, window.innerWidth - popoverWidth - margin));
-      // Vertical: prefer below; if there's more room above, flip up.
-      const spaceBelow = window.innerHeight - r.bottom;
-      const spaceAbove = r.top;
-      const top = spaceBelow >= spaceAbove
-        ? r.bottom + 4
-        : Math.max(margin, r.top - 4 - Math.min(spaceAbove - margin, window.innerHeight - 2 * margin));
+      // Vertical: prefer below; flip above when there's more room there.
+      const spaceBelow = window.innerHeight - r.bottom - margin;
+      const spaceAbove = r.top - margin;
+      let top;
+      if (spaceBelow >= 200 || spaceBelow >= spaceAbove) {
+        top = r.bottom + 4;
+      } else {
+        top = Math.max(margin, r.top - 4 - popoverMaxH);
+      }
+      // Final clamp so we always sit inside the viewport.
+      top = Math.max(margin, Math.min(top, window.innerHeight - margin - 40));
       setPopoverPos({ top, left });
     };
+    // Run now, then once more after the next paint so any pending layout
+    // (right-panel scroll, route transitions, font loading) is settled.
     update();
+    const raf = requestAnimationFrame(update);
     window.addEventListener('resize', update);
     window.addEventListener('scroll', update, true);
+    // Watch the field itself so any size/position drift (panel resize,
+    // section expand/collapse) keeps the popover anchored.
+    const ro = new ResizeObserver(update);
+    ro.observe(fieldRef.current);
     return () => {
+      cancelAnimationFrame(raf);
       window.removeEventListener('resize', update);
       window.removeEventListener('scroll', update, true);
+      ro.disconnect();
     };
   }, [open]);
 
@@ -1827,6 +2153,8 @@ function ColorInput({ label, value, onChange, allowGradient = true }) {
             value={v}
             onChange={onChange}
             variables={colorVariables}
+            recentlyUsed={recentlyUsedColors}
+            onCommitRecent={pushRecentColor}
             allowGradient={allowGradient}
             onClose={() => setOpen(false)}
           />
@@ -2207,7 +2535,7 @@ function PaddingControl({ padding, onChangeSide, onChangeAll }) {
         <IconInput
           suffix="px" icon={<PadAllSidesIcon />}
           value={padding.top}
-          onChange={v => onChangeAll(Number(v) || 0)}
+          onChange={v => onChangeAll(parseFloat(v) || 0)}
         />
       )}
       {mode === 'symmetric' && (
@@ -2216,7 +2544,7 @@ function PaddingControl({ padding, onChangeSide, onChangeAll }) {
             label="Vertical" suffix="px" icon={<PadVerticalIcon />}
             value={padding.top}
             onChange={v => {
-              const n = Number(v) || 0;
+              const n = parseFloat(v) || 0;
               onChangeSide('top', n);
               onChangeSide('bottom', n);
             }}
@@ -2225,7 +2553,7 @@ function PaddingControl({ padding, onChangeSide, onChangeAll }) {
             label="Horizontal" suffix="px" icon={<PadHorizontalIcon />}
             value={padding.left}
             onChange={v => {
-              const n = Number(v) || 0;
+              const n = parseFloat(v) || 0;
               onChangeSide('left', n);
               onChangeSide('right', n);
             }}
@@ -2238,24 +2566,24 @@ function PaddingControl({ padding, onChangeSide, onChangeAll }) {
             <IconInput
               suffix="px" icon={<PadLeftIcon />}
               value={padding.left}
-              onChange={v => onChangeSide('left', Number(v) || 0)}
+              onChange={v => onChangeSide('left', parseFloat(v) || 0)}
             />
             <IconInput
               suffix="px" icon={<PadTopIcon />}
               value={padding.top}
-              onChange={v => onChangeSide('top', Number(v) || 0)}
+              onChange={v => onChangeSide('top', parseFloat(v) || 0)}
             />
           </Row2>
           <Row2>
             <IconInput
               suffix="px" icon={<PadRightIcon />}
               value={padding.right}
-              onChange={v => onChangeSide('right', Number(v) || 0)}
+              onChange={v => onChangeSide('right', parseFloat(v) || 0)}
             />
             <IconInput
               suffix="px" icon={<PadBottomIcon />}
               value={padding.bottom}
-              onChange={v => onChangeSide('bottom', Number(v) || 0)}
+              onChange={v => onChangeSide('bottom', parseFloat(v) || 0)}
             />
           </Row2>
         </>
@@ -2268,8 +2596,55 @@ function PaddingControl({ padding, onChangeSide, onChangeAll }) {
 // builder UI is consistent. Collapsed when no border values are set;
 // expanding applies sensible defaults.
 function BorderControl({ style, onUpdate }) {
-  const hasBorder = !!(style.borderWidth || style.borderColor || style.borderStyle);
+  // Two storage shapes:
+  //   uniform → style.borderWidth/Color/Style (existing)
+  //   per-side → style.borderSides = { top, right, bottom, left } where
+  //     each side is null (no border) or { width, color, style }
+  const hasUniform = !!(style.borderWidth || style.borderColor || style.borderStyle);
+  const hasPerSide = !!(style.borderSides && Object.values(style.borderSides).some(Boolean));
+  const hasBorder = hasUniform || hasPerSide;
   const [open, setOpen] = useState(hasBorder);
+  const [mode, setMode] = useState(hasPerSide ? 'per-side' : 'uniform');
+
+  const removeBorder = () => {
+    onUpdate('borderWidth', null);
+    onUpdate('borderStyle', null);
+    onUpdate('borderColor', null);
+    onUpdate('borderSides', null);
+    setOpen(false);
+  };
+  const addBorder = () => {
+    onUpdate('borderWidth', style.borderWidth || 1);
+    onUpdate('borderStyle', style.borderStyle || 'solid');
+    onUpdate('borderColor', style.borderColor || '#E1E4EA');
+    setOpen(true);
+  };
+
+  // Seed per-side from current uniform when the user switches modes so
+  // they don't lose the values they already configured.
+  const seedSide = () => ({ width: style.borderWidth || 1, color: style.borderColor || '#E1E4EA', style: style.borderStyle || 'solid' });
+  const switchMode = (next) => {
+    if (next === mode) return;
+    if (next === 'per-side') {
+      const seed = style.borderSides || { top: seedSide(), right: seedSide(), bottom: seedSide(), left: seedSide() };
+      onUpdate('borderSides', seed);
+    } else {
+      onUpdate('borderSides', null);
+    }
+    setMode(next);
+  };
+
+  const sides = style.borderSides || {};
+  const toggleSide = (side) => {
+    const next = { ...sides };
+    next[side] = next[side] ? null : seedSide();
+    onUpdate('borderSides', next);
+  };
+  const updateSide = (side, key, value) => {
+    const next = { ...sides, [side]: { ...(sides[side] || seedSide()), [key]: value } };
+    onUpdate('borderSides', next);
+  };
+
   return (
     <div className={styles.fieldCol}>
       <div className={styles.linkHeader}>
@@ -2277,19 +2652,7 @@ function BorderControl({ style, onUpdate }) {
         <button
           type="button"
           className={styles.linkToggle}
-          onClick={() => {
-            if (open) {
-              onUpdate('borderWidth', null);
-              onUpdate('borderStyle', null);
-              onUpdate('borderColor', null);
-              setOpen(false);
-            } else {
-              onUpdate('borderWidth', style.borderWidth || 1);
-              onUpdate('borderStyle', style.borderStyle || 'solid');
-              onUpdate('borderColor', style.borderColor || '#E1E4EA');
-              setOpen(true);
-            }
-          }}
+          onClick={() => open ? removeBorder() : addBorder()}
           aria-label={open ? 'Remove border' : 'Add border'}
         >
           <Icon name={open ? 'solar:minus-circle-linear' : 'solar:add-circle-linear'} size={14} color="currentColor" />
@@ -2297,32 +2660,91 @@ function BorderControl({ style, onUpdate }) {
       </div>
       {open && (
         <>
-          <Row2>
-            <IconInput
-              label="Width" suffix="px"
-              value={style.borderWidth ?? 1}
-              onChange={v => onUpdate('borderWidth', Number(v) || 0)}
-            />
-            <ColorInput
-              label="Color"
-              value={style.borderColor || '#E1E4EA'}
-              onChange={v => onUpdate('borderColor', v)}
-            />
-          </Row2>
           <div className={styles.fieldCol}>
-            <label className={styles.fieldLabel}>Style</label>
             <Toggle
               fullWidth
               size="S"
               items={[
-                { key: 'solid',  label: 'Solid' },
-                { key: 'dashed', label: 'Dashed' },
-                { key: 'dotted', label: 'Dotted' },
+                { key: 'uniform',  label: 'All sides' },
+                { key: 'per-side', label: 'Per side' },
               ]}
-              active={style.borderStyle || 'solid'}
-              onChange={v => onUpdate('borderStyle', v)}
+              active={mode}
+              onChange={switchMode}
             />
           </div>
+          {mode === 'uniform' ? (
+            <>
+              <Row2>
+                <IconInput
+                  label="Width" suffix="px"
+                  value={style.borderWidth ?? 1}
+                  onChange={v => onUpdate('borderWidth', parseFloat(v) || 0)}
+                />
+                <ColorInput
+                  label="Color"
+                  value={style.borderColor || '#E1E4EA'}
+                  onChange={v => onUpdate('borderColor', v)}
+                />
+              </Row2>
+              <div className={styles.fieldCol}>
+                <label className={styles.fieldLabel}>Style</label>
+                <Toggle
+                  fullWidth
+                  size="S"
+                  items={[
+                    { key: 'solid',  label: 'Solid' },
+                    { key: 'dashed', label: 'Dashed' },
+                    { key: 'dotted', label: 'Dotted' },
+                  ]}
+                  active={style.borderStyle || 'solid'}
+                  onChange={v => onUpdate('borderStyle', v)}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Side enable toggles — clicking a side enables/disables its
+                  border. Compact icon set top/right/bottom/left. */}
+              <div className={styles.fieldCol}>
+                <label className={styles.fieldLabel}>Sides</label>
+                <div className={styles.bsideRow}>
+                  {[
+                    { key: 'top', label: 'T' },
+                    { key: 'right', label: 'R' },
+                    { key: 'bottom', label: 'B' },
+                    { key: 'left', label: 'L' },
+                  ].map(s => (
+                    <button
+                      key={s.key}
+                      type="button"
+                      className={[styles.bsideBtn, sides[s.key] ? styles.bsideBtnOn : ''].join(' ')}
+                      onClick={() => toggleSide(s.key)}
+                      title={`Toggle ${s.key}`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Render width + color rows for each enabled side. Keeping
+                  these stacked avoids cramming 4 cols × 3 fields in a tiny
+                  panel; users typically enable 1–2 sides. */}
+              {['top', 'right', 'bottom', 'left'].filter(k => sides[k]).map((k) => (
+                <Row2 key={k}>
+                  <IconInput
+                    label={`${k} width`} suffix="px"
+                    value={sides[k]?.width ?? 1}
+                    onChange={v => updateSide(k, 'width', parseFloat(v) || 0)}
+                  />
+                  <ColorInput
+                    label="Color"
+                    value={sides[k]?.color || '#E1E4EA'}
+                    onChange={v => updateSide(k, 'color', v)}
+                  />
+                </Row2>
+              ))}
+            </>
+          )}
         </>
       )}
     </div>
@@ -2416,6 +2838,12 @@ const AlignLeftIcon    = () => svg('M2 4h12 M2 8h8 M2 12h12');
 const AlignCenterIcon  = () => svg('M2 4h12 M4 8h8 M2 12h12');
 const AlignRightIcon   = () => svg('M2 4h12 M6 8h8 M2 12h12');
 const AlignJustifyIcon = () => svg('M2 4h12 M2 8h12 M2 12h12');
+// Vertical-align icons for the fixed-height container Position toggle.
+// Top: heavy bar at the top, two shorter rows below. Middle: shorter
+// rows above and below a heavy bar. Bottom: heavy bar at the bottom.
+const AlignTopIcon     = () => svg('M2 3h12 M4 7h8 M4 11h8');
+const AlignMiddleIcon  = () => svg('M4 4h8 M2 8h12 M4 12h8');
+const AlignBottomIcon  = () => svg('M4 5h8 M4 9h8 M2 13h12');
 
 const DecoNoneIcon  = () => svg('M3 8h10');
 const DecoBoldIcon = () => (

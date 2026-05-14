@@ -213,6 +213,10 @@ export function createBlockTree(type, genId) {
     }
 
     case 'Section': {
+      // Section = Container with section-like defaults — generous vertical
+      // padding and a transparent background so the user can drop it as a
+      // structural divider that's visually distinct from a Wrapper (which
+      // ships with a colored backdrop).
       const id = genId();
       return {
         rootId: id,
@@ -221,7 +225,7 @@ export function createBlockTree(type, genId) {
             type: 'Container',
             data: {
               alias: 'Section',
-              style: { padding: { top: 0, bottom: 0, left: 0, right: 0 } },
+              style: { padding: { top: 40, bottom: 40, left: 24, right: 24 } },
               props: { childrenIds: [], contentAlignment: 'center' },
             },
           },

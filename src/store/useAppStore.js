@@ -2213,6 +2213,24 @@ export const useAppStore = create((set, get) => ({
   })),
   removeColorVariable: (name) => set(s => ({ colorVariables: s.colorVariables.filter(v => v.name !== name) })),
 
+  // Recently used colors — capped MRU list shown above Variables in the
+  // ColorPicker so users don't have to re-pick the same custom hex twice.
+  // Hydrated from localStorage on boot; every commit re-saves the list.
+  recentlyUsedColors: (() => {
+    try {
+      const raw = typeof localStorage !== 'undefined' && localStorage.getItem('eb_recent_colors');
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.slice(0, 10) : [];
+    } catch { return []; }
+  })(),
+  pushRecentColor: (hex) => set(s => {
+    if (typeof hex !== 'string' || !/^#[0-9A-Fa-f]{6}$/.test(hex.trim())) return {};
+    const upper = hex.trim().toUpperCase();
+    const next = [upper, ...s.recentlyUsedColors.filter(c => c.toUpperCase() !== upper)].slice(0, 10);
+    try { if (typeof localStorage !== 'undefined') localStorage.setItem('eb_recent_colors', JSON.stringify(next)); } catch {}
+    return { recentlyUsedColors: next };
+  }),
+
   // Swap the existing header/footer for a different preset. Replaces by role
   // marker stored on the block; falls back to first/last child by convention.
   replaceHeaderFooter: (role, presetTree) => {
@@ -2416,6 +2434,25 @@ export const useAppStore = create((set, get) => ({
   },
   setSelectedBlockId: (id) => set({ selectedBlockId: id, bulkSelectedIds: [] }),
   setBulkSelectedIds: (ids) => set({ bulkSelectedIds: ids }),
+  // Cmd/Shift-click on a block: build up a multi-selection from the
+  // currently-selected single block + the clicked id. Re-clicking a block
+  // already in the bulk set removes it. Single selection is cleared while
+  // the bulk set is non-empty so the right panel switches to BulkDesignTab.
+  toggleBulkSelected: (id) => set(s => {
+    const current = new Set(s.bulkSelectedIds);
+    if (current.has(id)) {
+      current.delete(id);
+    } else {
+      // Seed with the existing single selection if there isn't already a
+      // bulk list — gives the user "click A → cmd-click B" semantics.
+      if (current.size === 0 && s.selectedBlockId && s.selectedBlockId !== id) {
+        current.add(s.selectedBlockId);
+      }
+      current.add(id);
+    }
+    const ids = [...current];
+    return { bulkSelectedIds: ids, selectedBlockId: ids.length === 1 ? ids[0] : null };
+  }),
   updateBlock: (id, updater) => {
     get()._pushEmailHistory();
     set(s => {

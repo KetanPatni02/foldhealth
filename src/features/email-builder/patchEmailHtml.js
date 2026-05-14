@@ -3,6 +3,7 @@
 
 import { getFontStack, getGoogleFontsHref, resolveFont, GOOGLE_FONTS } from './googleFonts';
 import { isGradient, firstStopColor } from './colorHelpers';
+import { tintSvgMarkup } from './svgTint';
 
 // ── Dark-mode color transforms ──────────────────────────────────────────
 // Real device dark mode (iOS Mail / Gmail auto-dark / Outlook) doesn't
@@ -144,6 +145,21 @@ function applyBgColor(s, value) {
   }
 }
 
+// Build per-side `border-top`/`-right`/`-bottom`/`-left` shorthand entries
+// for inline CSS. Returns null when no sides are configured so the caller
+// can fall back to the legacy uniform `border:` shorthand. null sides
+// emit no property at all → that edge stays without a border.
+function perSideBorderCss(borderSides) {
+  if (!borderSides || !Object.values(borderSides).some(Boolean)) return null;
+  const out = {};
+  const side = (k) => borderSides[k];
+  if (side('top'))    out['border-top']    = `${side('top').width || 1}px ${side('top').style || 'solid'} ${side('top').color || '#3A485F'}`;
+  if (side('right'))  out['border-right']  = `${side('right').width || 1}px ${side('right').style || 'solid'} ${side('right').color || '#3A485F'}`;
+  if (side('bottom')) out['border-bottom'] = `${side('bottom').width || 1}px ${side('bottom').style || 'solid'} ${side('bottom').color || '#3A485F'}`;
+  if (side('left'))   out['border-left']   = `${side('left').width || 1}px ${side('left').style || 'solid'} ${side('left').color || '#3A485F'}`;
+  return out;
+}
+
 // Format a backgroundImage value for inline CSS. CSS gradient functions
 // (linear-gradient / radial-gradient / conic-gradient and their repeating
 // variants) must be emitted verbatim — wrapping them in url(...) produces
@@ -179,9 +195,13 @@ function nl2br(s) {
 }
 
 function styleStr(obj) {
+  // The serialised string lives inside a double-quoted `style="…"` HTML
+  // attribute, so values that contain literal `"` (e.g. font stacks like
+  // 'Inter', "Segoe UI', sans-serif) would prematurely close the attribute.
+  // Swap any `"` for `'` — equivalent in CSS and safe inside attributes.
   return Object.entries(obj)
     .filter(([, v]) => v != null && v !== '')
-    .map(([k, v]) => `${k.replace(/([A-Z])/g, '-$1').toLowerCase()}:${v}`)
+    .map(([k, v]) => `${k.replace(/([A-Z])/g, '-$1').toLowerCase()}:${String(v).replace(/"/g, "'")}`)
     .join(';');
 }
 
@@ -235,9 +255,11 @@ function renderBlock(doc, id) {
         s['background-color'] = firstStopColor(style.backgroundColor);
         s['background-image'] = style.backgroundColor;
       }
-      // Border (radius / width / color / style). Falls back gracefully when
-      // only some pieces are set so partial configuration still renders.
-      if (style.borderWidth) {
+      // Border — per-side wins over the uniform shorthand when present.
+      const perSideText = perSideBorderCss(style.borderSides);
+      if (perSideText) {
+        Object.assign(s, perSideText);
+      } else if (style.borderWidth) {
         s.border = `${style.borderWidth}px ${style.borderStyle || 'solid'} ${style.borderColor || '#3A485F'}`;
       }
       if (style.borderRadius) s['border-radius'] = `${style.borderRadius}px`;
@@ -274,7 +296,7 @@ function renderBlock(doc, id) {
       const sz = sizeStyles[props.size || 'medium'] || sizeStyles.medium;
       const radius = style.borderRadius ?? presetRadius[props.buttonStyle || 'rectangle'] ?? 0;
       const border = props.borderWidth ? `${props.borderWidth}px solid ${props.borderColor || 'transparent'}` : 'none';
-      const wrapS = { margin: '0', padding, 'text-align': style.textAlign || 'center' };
+      const wrapS = { margin: '0', padding, 'text-align': style.blockAlign || style.textAlign || 'center' };
       const btnS = {
         display: 'inline-block',
         padding: sz.padding,
@@ -292,7 +314,7 @@ function renderBlock(doc, id) {
     }
 
     case 'Image': {
-      const align = style.textAlign || 'center';
+      const align = style.blockAlign || style.textAlign || 'center';
       const wrapS = {
         margin: '0',
         padding,
@@ -317,11 +339,18 @@ function renderBlock(doc, id) {
         imgS['margin-left'] = 'auto';
         imgS['margin-right'] = '0';
       }
-      if (!props.url) {
+      if (!props.url && !props.svgRaw) {
         return `<div style="${styleStr(wrapS)}"><div style="padding:24px;border:1px dashed #CED4DD;border-radius:8px;color:#9CA3AF;font-size:12px">No image</div></div>`;
       }
       const linkOpen = props.linkHref ? `<a href="${esc(props.linkHref)}" target="_blank">` : '';
       const linkClose = props.linkHref ? '</a>' : '';
+      // SVG tint path: substitute fills inline so modern email clients
+      // (Apple Mail, iOS Mail, Gmail web) render the recolored icon. Older
+      // clients that strip inline <svg> fall back to the original URL.
+      if (props.svgRaw && props.tintColor) {
+        const svgInner = tintSvgMarkup(props.svgRaw, props.tintColor);
+        return `<div style="${styleStr(wrapS)}">${linkOpen}<span style="${styleStr(imgS)};display:inline-block;line-height:0">${svgInner}</span>${linkClose}</div>`;
+      }
       const fixedClass = isFixedPx ? ' class="img-fixed"' : '';
       return `<div style="${styleStr(wrapS)}">${linkOpen}<img src="${esc(props.url)}" alt="${esc(props.alt || '')}" width="${widthAttr}"${fixedClass} style="${styleStr(imgS)}" />${linkClose}</div>`;
     }
@@ -346,6 +375,15 @@ function renderBlock(doc, id) {
       const lineStyle = props.lineStyle || 'solid';
       const endLeft = props.endLeft || 'none';
       const endRight = props.endRight || 'none';
+      const orientation = props.orientation || 'horizontal';
+
+      // Vertical divider: render a thin bar with an explicit height. Email
+      // clients can't honour `height: 100%` on a free-standing div, so we
+      // commit to a fixed pixel height (matches the canvas).
+      if (orientation === 'vertical') {
+        const h = props.height ?? 40;
+        return `<div style="padding:${padding};display:flex;justify-content:center"><div style="width:${thickness}px;height:${h}px;border-left:${thickness}px ${lineStyle} ${color}"></div></div>`;
+      }
 
       if (endLeft !== 'none' || endRight !== 'none') {
         return `<div style="padding:${padding}">${buildDividerSvg(props)}</div>`;
@@ -366,16 +404,25 @@ function renderBlock(doc, id) {
 
     case 'Container': {
       const children = (props.childrenIds || []).map(cid => renderBlock(doc, cid)).join('');
+      const perSideC = perSideBorderCss(style.borderSides);
       const s = {
         padding,
         'border-radius': style.borderRadius ? `${style.borderRadius}px` : '',
-        // Container border — honors the same Border section in the property panel.
-        border: style.borderWidth
-          ? `${style.borderWidth}px ${style.borderStyle || 'solid'} ${style.borderColor || '#3A485F'}`
-          : '',
+        // Container border — per-side overrides uniform when present.
+        ...(perSideC || (style.borderWidth
+          ? { border: `${style.borderWidth}px ${style.borderStyle || 'solid'} ${style.borderColor || '#3A485F'}` }
+          : {})),
       };
       applyBgColor(s, style.backgroundColor);
-      if (style.backgroundImage) {
+      if (style.bgSvgRaw && style.bgTintColor) {
+        // Inline-tinted SVG → data-URI background. Encoded so quotes
+        // inside the SVG don't break the inline style.
+        const tinted = tintSvgMarkup(style.bgSvgRaw, style.bgTintColor);
+        s['background-image'] = `url("data:image/svg+xml;utf8,${encodeURIComponent(tinted)}")`;
+        s['background-size'] = style.backgroundSize || 'contain';
+        s['background-position'] = style.backgroundPosition || 'center';
+        s['background-repeat'] = style.backgroundRepeat || 'no-repeat';
+      } else if (style.backgroundImage) {
         s['background-image'] = formatBackgroundImage(style.backgroundImage);
         s['background-size'] = style.backgroundSize || 'cover';
         s['background-position'] = style.backgroundPosition || 'center';
@@ -384,6 +431,14 @@ function renderBlock(doc, id) {
       if (props.heightMode === 'fixed' && props.height) {
         s['height'] = typeof props.height === 'number' ? `${props.height}px` : props.height;
         s['overflow'] = 'hidden';
+        // Same flex-position story as the canvas — modern clients honour
+        // display:flex; older ones fall back to default block layout.
+        s['display'] = 'flex';
+        s['flex-direction'] = 'column';
+        const vMap = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };
+        const hMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
+        s['justify-content'] = vMap[props.contentAlign] || 'flex-start';
+        s['align-items'] = hMap[props.contentAlignH] || 'stretch';
       }
       return `<div style="${styleStr(s)}">${children}</div>`;
     }
@@ -610,10 +665,10 @@ ${googleFontsLink}
 <style>body, table, td { font-family: Arial, Helvetica, sans-serif !important; }</style>
 <![endif]-->
 </head>
-<body style="margin:0;padding:0;background-color:${backdropColor};font-family:${fontFamily};">
+<body style="margin:0;padding:0;background-color:${backdropColor};font-family:${fontFamily.replace(/"/g, "'")};">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:${backdropColor}">
 <tr><td align="center" style="padding:${wrapperPadding}">
-  <table role="presentation" class="email-container" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;width:100%;background-color:${canvasColor};color:${textColor};font-family:${fontFamily};">
+  <table role="presentation" class="email-container" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;width:100%;background-color:${canvasColor};color:${textColor};font-family:${fontFamily.replace(/"/g, "'")};">
   <tr><td>
     ${bodyContent}
   </td></tr>
