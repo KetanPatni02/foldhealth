@@ -347,7 +347,6 @@ function SortableBlock({ id, ctx }) {
   if (!block) return null;
   const isSelected = ctx.selectedBlockId === id;
   const isBulkSelected = ctx.bulkSet.has(id);
-  const isBody = block.data?.role === 'body';
 
   return (
     <div
@@ -355,12 +354,12 @@ function SortableBlock({ id, ctx }) {
       style={style}
       className={[
         styles.blockWrap,
-        isSelected && !isBody ? styles.blockWrapSelected : '',
+        isSelected ? styles.blockWrapSelected : '',
         isBulkSelected ? styles.blockWrapBulk : '',
       ].join(' ')}
       onClick={(e) => { e.stopPropagation(); ctx.setSelectedBlockId(id); }}
     >
-      {isSelected && !isBody && (
+      {isSelected && (
         <div className={styles.blockToolbar}>
           <button
             {...attributes}

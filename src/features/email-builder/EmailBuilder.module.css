@@ -757,20 +757,36 @@
   align-self: flex-start;
 }
 
+/* Selection / bulk borders use a pseudo-element overlay instead of CSS
+   outline. Outlines get painted by the parent and can be hidden when a
+   child has a full-bleed background that paints over them (the Wrapper /
+   Header / Footer / Body case). An absolutely-positioned ::after with
+   pointer-events:none sits on top of all children and renders the border
+   cleanly all the way around. */
 .blockWrap {
   position: relative;
   cursor: pointer;
-  transition: outline .1s;
-  outline: 2px solid transparent;
-  outline-offset: -2px;
 }
 
-.blockWrapSelected {
-  outline-color: var(--primary-300) !important;
+.blockWrapSelected::after,
+.blockWrapBulk::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  border-radius: inherit;
+  transition: border-color .1s;
+}
+
+.blockWrapSelected::after {
+  border: 2px solid var(--primary-300);
+}
+
+.blockWrapBulk::after {
+  border: 2px solid var(--primary-200);
 }
 .blockWrapBulk {
-  outline: 2px solid var(--primary-200) !important;
-  outline-offset: -2px;
   background: color-mix(in srgb, var(--primary-100) 20%, transparent);
 }
 
