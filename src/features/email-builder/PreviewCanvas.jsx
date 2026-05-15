@@ -645,6 +645,13 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
           const itemStyle = isColumn
             ? { width: '100%', minWidth: 0, textAlign: colAlign, display: 'flex', flexDirection: 'column', justifyContent: vMap[colValign] || 'flex-start' }
             : { flex: `0 0 calc(${w}% - ${totalGap * w / 100}px)`, minWidth: 0, textAlign: colAlign, display: 'flex', flexDirection: 'column', justifyContent: vMap[colValign] || 'flex-start' };
+          const colHeight = col?.heightMode || 'hug';
+          if (colHeight === 'fill') {
+            itemStyle.alignSelf = 'stretch';
+          } else if (colHeight === 'custom' && col?.customHeight) {
+            itemStyle.height = typeof col.customHeight === 'number' ? `${col.customHeight}px` : col.customHeight;
+            itemStyle.overflow = 'hidden';
+          }
           if (colPad) {
             itemStyle.padding = `${colPad.top || 0}px ${colPad.right || 0}px ${colPad.bottom || 0}px ${colPad.left || 0}px`;
           }

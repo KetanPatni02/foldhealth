@@ -482,6 +482,9 @@ function renderBlock(doc, id) {
           const tdS = { 'padding-bottom': `${rowGap}px`, 'text-align': colAlign, 'vertical-align': colValign === 'middle' ? 'middle' : colValign === 'bottom' ? 'bottom' : 'top' };
           if (colPad) tdS.padding = `${colPad.top || 0}px ${colPad.right || 0}px ${colPad.bottom || 0}px ${colPad.left || 0}px`;
           if (col.backgroundColor) tdS['background-color'] = col.backgroundColor;
+          const cHeight = col.heightMode || 'hug';
+          if (cHeight === 'fill') tdS.height = '100%';
+          else if (cHeight === 'custom' && col.customHeight) tdS.height = typeof col.customHeight === 'number' ? `${col.customHeight}px` : col.customHeight;
           return `<tr><td style="${styleStr(tdS)}">${children || '&nbsp;'}</td></tr>`;
         }).join('');
         return `<div style="${styleStr(wrapS)}"><table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">${rows}</table></div>`;
@@ -501,6 +504,9 @@ function renderBlock(doc, id) {
         };
         if (colPad) tdS.padding = `${colPad.top || 0}px ${colPad.right || 0}px ${colPad.bottom || 0}px ${colPad.left || 0}px`;
         if (col.backgroundColor) tdS['background-color'] = col.backgroundColor;
+        const cHeight = col.heightMode || 'hug';
+        if (cHeight === 'fill') tdS.height = '100%';
+        else if (cHeight === 'custom' && col.customHeight) tdS.height = typeof col.customHeight === 'number' ? `${col.customHeight}px` : col.customHeight;
         return `<td style="${styleStr(tdS)}">${children || '&nbsp;'}</td>`;
       }).join('');
 

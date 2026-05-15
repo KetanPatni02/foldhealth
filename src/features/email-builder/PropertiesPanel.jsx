@@ -1014,6 +1014,29 @@ function ColumnDesignTab({ block, updateBlock, id, columnIdx }) {
             />
           </div>
         </Row2>
+
+        <div className={styles.fieldCol}>
+          <label className={styles.fieldLabel}>Height</label>
+          <Toggle
+            fullWidth
+            size="S"
+            items={[
+              { key: 'hug',    label: 'Hug' },
+              { key: 'fill',   label: 'Fill' },
+              { key: 'custom', label: 'Custom' },
+            ]}
+            active={col.heightMode || 'hug'}
+            onChange={v => updateCol('heightMode', v)}
+          />
+        </div>
+        {col.heightMode === 'custom' && (
+          <IconInput
+            label="Value" suffix="px" icon={<HeightIcon />}
+            value={col.customHeight ?? 200}
+            onChange={v => updateCol('customHeight', parseFloat(v) || 0)}
+          />
+        )}
+
         <PaddingControl
           padding={colPadding}
           onChangeSide={(side, value) => {
@@ -2367,14 +2390,27 @@ function ColorVariablesEditor() {
 
 // ── Field primitives ────────────────────────────────────────────────────────
 function IconInput({ label, suffix, icon, value, onChange, freeform, unit, onUnitChange }) {
+  const [localValue, setLocalValue] = useState(null);
+  const editing = localValue !== null;
+  const displayed = editing ? localValue : (value ?? '');
+
   const handleKeyDown = (e) => {
     if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       e.preventDefault();
       const step = e.shiftKey ? 10 : 1;
-      const current = parseFloat(value) || 0;
-      onChange(String(e.key === 'ArrowUp' ? current + step : current - step));
+      const current = parseFloat(displayed) || 0;
+      const next = String(e.key === 'ArrowUp' ? current + step : current - step);
+      setLocalValue(null);
+      onChange(next);
     }
   };
+  const handleChange = (e) => {
+    const raw = freeform ? e.target.value : e.target.value.replace(/[^0-9.-]/g, '');
+    setLocalValue(raw);
+    onChange(raw);
+  };
+  const handleBlur = () => setLocalValue(null);
+
   return (
     <div className={styles.fieldCol}>
       {label && <label className={styles.fieldLabel}>{label}</label>}
@@ -2383,14 +2419,11 @@ function IconInput({ label, suffix, icon, value, onChange, freeform, unit, onUni
         <input
           className={styles.iconInputValue}
           type="text"
-          value={value ?? ''}
-          onChange={e => onChange(freeform ? e.target.value : e.target.value.replace(/[^0-9.-]/g, ''))}
+          value={displayed}
+          onChange={handleChange}
           onKeyDown={handleKeyDown}
+          onBlur={handleBlur}
         />
-        {/* When the caller passes a unit + onUnitChange the suffix becomes a
-            clickable px/% pill (the only two units we support today). The
-            value itself stays a plain number — the parent reads `unit` to
-            decide whether to commit a number (px) or a "NN%" string (%). */}
         {unit && onUnitChange ? (
           <button
             type="button"
