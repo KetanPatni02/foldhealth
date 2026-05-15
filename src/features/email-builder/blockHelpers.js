@@ -5,7 +5,7 @@
 // preconfigured composite onto the canvas in one click.
 
 const baseStyle = () => ({
-  padding: { top: 16, bottom: 16, left: 24, right: 24 },
+  padding: { top: 0, bottom: 0, left: 0, right: 0 },
 });
 
 const FACTORIES = {
@@ -34,7 +34,7 @@ const FACTORIES = {
     type: 'Button',
     data: {
       props: { text: 'Click me', url: 'https://example.com', size: 'medium', fullWidth: false, buttonStyle: 'rectangle', buttonBackgroundColor: '#7C5CFA', buttonTextColor: '#FFFFFF' },
-      style: { padding: { top: 12, bottom: 12, left: 24, right: 24 }, textAlign: 'center' },
+      style: { padding: { top: 0, bottom: 0, left: 0, right: 0 }, textAlign: 'center' },
     },
   }),
   Image: () => ({
@@ -48,14 +48,14 @@ const FACTORIES = {
     type: 'Avatar',
     data: {
       props: { imageUrl: 'https://i.pravatar.cc/96', alt: 'Avatar', shape: 'circle', size: 64 },
-      style: { padding: { top: 16, bottom: 16, left: 24, right: 24 }, textAlign: 'center' },
+      style: { padding: { top: 0, bottom: 0, left: 0, right: 0 }, textAlign: 'center' },
     },
   }),
   Divider: () => ({
     type: 'Divider',
     data: {
       props: { lineColor: '#E1E4EA', lineHeight: 1 },
-      style: { padding: { top: 12, bottom: 12, left: 24, right: 24 } },
+      style: { padding: { top: 0, bottom: 0, left: 0, right: 0 } },
     },
   }),
   Spacer: () => ({
@@ -68,14 +68,14 @@ const FACTORIES = {
   Container: () => ({
     type: 'Container',
     data: {
-      style: { ...baseStyle(), backgroundColor: '#F6F4FF' },
+      style: { padding: { top: 0, bottom: 0, left: 0, right: 0 }, backgroundColor: '#F6F4FF' },
       props: { childrenIds: [] },
     },
   }),
   ColumnsContainer: () => ({
     type: 'ColumnsContainer',
     data: {
-      style: { padding: { top: 16, bottom: 16, left: 24, right: 24 } },
+      style: { padding: { top: 0, bottom: 0, left: 0, right: 0 } },
       props: {
         columnsCount: 2,
         columnsGap: 16,
@@ -97,7 +97,7 @@ const FACTORIES = {
         gap: 16,
         alignment: 'center',
       },
-      style: { padding: { top: 16, bottom: 16, left: 24, right: 24 } },
+      style: { padding: { top: 0, bottom: 0, left: 0, right: 0 } },
     },
   }),
   NavBar: () => ({
@@ -115,7 +115,7 @@ const FACTORIES = {
         fontSize: 14,
         fontWeight: 'bold',
       },
-      style: { padding: { top: 12, bottom: 12, left: 16, right: 16 }, backgroundColor: '#FFFFFF' },
+      style: { padding: { top: 0, bottom: 0, left: 0, right: 0 }, backgroundColor: '#FFFFFF' },
     },
   }),
   Table: () => ({
@@ -175,20 +175,20 @@ export function createBlockTree(type, genId) {
             type: 'Heading',
             data: {
               props: { text: 'Hero headline', level: 'h1' },
-              style: { color: '#3A485F', textAlign: 'center', padding: { top: 16, bottom: 8, left: 24, right: 24 } },
+              style: { color: '#3A485F', textAlign: 'center', padding: { top: 0, bottom: 0, left: 0, right: 0 } },
             },
           },
           [textId]: {
             type: 'Text',
             data: {
               props: { text: 'Add a short tagline here.' },
-              style: { color: '#6B7280', fontSize: 14, textAlign: 'center', padding: { top: 0, bottom: 16, left: 24, right: 24 } },
+              style: { color: '#6B7280', fontSize: 14, textAlign: 'center', padding: { top: 0, bottom: 0, left: 0, right: 0 } },
             },
           },
           [containerId]: {
             type: 'Container',
             data: {
-              style: { backgroundColor: '#F2EEFE', padding: { top: 32, bottom: 32, left: 24, right: 24 } },
+              style: { backgroundColor: '#F2EEFE', padding: { top: 0, bottom: 0, left: 0, right: 0 } },
               props: { childrenIds: [headingId, textId] },
             },
           },
@@ -204,7 +204,7 @@ export function createBlockTree(type, genId) {
           [id]: {
             type: 'Container',
             data: {
-              style: { padding: { top: 8, bottom: 8, left: 8, right: 8 } },
+              style: { padding: { top: 0, bottom: 0, left: 0, right: 0 } },
               props: { childrenIds: [] },
             },
           },
@@ -225,7 +225,7 @@ export function createBlockTree(type, genId) {
             type: 'Container',
             data: {
               alias: 'Section',
-              style: { padding: { top: 40, bottom: 40, left: 24, right: 24 } },
+              style: { padding: { top: 0, bottom: 0, left: 0, right: 0 } },
               props: { childrenIds: [], contentAlignment: 'center' },
             },
           },
@@ -458,7 +458,7 @@ function makeColumns(genId, count, columnWidths) {
       [root]: {
         type: 'ColumnsContainer',
         data: {
-          style: { padding: { top: 16, bottom: 16, left: 24, right: 24 } },
+          style: { padding: { top: 0, bottom: 0, left: 0, right: 0 } },
           props: {
             columnsCount: count,
             columnsGap: 16,
