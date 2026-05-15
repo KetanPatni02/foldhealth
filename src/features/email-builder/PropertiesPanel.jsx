@@ -1477,6 +1477,27 @@ function convertMjmlToFold(mjml) {
 
         return allChildIds;
       }
+      case 'wrapper': {
+        const ids = [];
+        for (const wc of (node.children || [])) {
+          const r = convertNode(wc);
+          if (Array.isArray(r)) ids.push(...r);
+          else if (r) ids.push(r);
+        }
+        if (ids.length === 0) return null;
+        if (a['background-color'] && a['background-color'] !== 'white' && a['background-color'] !== '#FFFFFF' && a['background-color'] !== '#ffffff') {
+          const id = genId();
+          blocks[id] = {
+            type: 'Container',
+            data: {
+              style: { padding: parsePadding(a.padding), backgroundColor: a['background-color'] },
+              props: { childrenIds: ids },
+            },
+          };
+          return id;
+        }
+        return ids;
+      }
       default:
         return null;
     }
@@ -1620,7 +1641,14 @@ function CodeTab({ doc }) {
     drafting.current = true;
     if (mode === 'json') {
       try {
-        let parsed = JSON.parse(v);
+        let sanitized = v.replace(/[\x00-\x1F\x7F]/g, (ch) => {
+          if (ch === '\n' || ch === '\r' || ch === '\t') return ch;
+          return '';
+        });
+        sanitized = sanitized.replace(/"(?:[^"\\]|\\.)*"/g, (match) =>
+          match.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t')
+        );
+        let parsed = JSON.parse(sanitized);
         if (parsed && parsed.type === 'page' && Array.isArray(parsed.children)) {
           parsed = convertMjmlToFold(parsed);
         }
