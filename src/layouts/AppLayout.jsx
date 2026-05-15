@@ -256,6 +256,32 @@ export function AppLayout() {
       }
     }
   }, []);
+
+  // Re-open campaign builder or email builder on page refresh
+  useEffect(() => {
+    const state = useAppStore.getState();
+    const pendingEmail = state._pendingEmailEditId;
+    const pendingCampaign = state._pendingCampaignBuilderId;
+    if (!pendingEmail && !pendingCampaign) return;
+
+    (async () => {
+      await useAppStore.getState().fetchCampaigns();
+      const campaigns = useAppStore.getState().campaigns || [];
+      const targetId = pendingEmail || pendingCampaign;
+      const c = campaigns.find(camp => String(camp.id) === String(targetId));
+      if (!c) {
+        useAppStore.setState({ _pendingEmailEditId: null, _pendingCampaignBuilderId: null });
+        return;
+      }
+      if (pendingEmail) {
+        useAppStore.getState().openEmailBuilder(c);
+      } else {
+        useAppStore.getState().openCampaignBuilder(c);
+      }
+      useAppStore.setState({ _pendingEmailEditId: null, _pendingCampaignBuilderId: null });
+    })();
+  }, []);
+
   const showCreateAgent = useAppStore(s => s.showCreateAgent);
   const workflowPatient = useAppStore(s => s.workflowPatient);
   const callPopoverPatient = useAppStore(s => s.callPopoverPatient);

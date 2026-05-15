@@ -38,7 +38,10 @@ export function stateToHash(state) {
   }
   if (activePage === 'calendar') return buildHash('calendar');
   if (state.editingCampaignId) {
-    return buildHash('campaign', 'edit', String(state.editingCampaignId));
+    return buildHash('email', String(state.editingCampaignId));
+  }
+  if (state.campaignBuilderId) {
+    return buildHash('campaign', String(state.campaignBuilderId));
   }
   if (activePage === 'campaign') {
     const tab = state.campaignTab || 'active';
@@ -120,10 +123,25 @@ export function hashToState(route) {
   if (route.page === 'messages') { updates.activePage = 'messages'; return updates; }
   if (route.page === 'calls') { updates.activePage = 'calls'; return updates; }
   if (route.page === 'tasks') { updates.activePage = 'tasks'; return updates; }
+  if (route.page === 'email' && route.section) {
+    updates.activePage = 'campaign';
+    const numId = isNaN(Number(route.section)) ? route.section : Number(route.section);
+    updates.editingCampaignId = numId;
+    updates._pendingEmailEditId = route.section;
+    return updates;
+  }
   if (route.page === 'campaign') {
     updates.activePage = 'campaign';
     if (route.section === 'edit' && route.tab) {
-      updates._pendingCampaignEditId = route.tab;
+      const numId = isNaN(Number(route.tab)) ? route.tab : Number(route.tab);
+      updates.editingCampaignId = numId;
+      updates._pendingEmailEditId = route.tab;
+      return updates;
+    }
+    if (route.section && !['active', 'drafts', 'ended'].includes(route.section)) {
+      const numId = isNaN(Number(route.section)) ? route.section : Number(route.section);
+      updates.campaignBuilderId = numId;
+      updates._pendingCampaignBuilderId = route.section;
       return updates;
     }
     const tab = route.section || 'active';

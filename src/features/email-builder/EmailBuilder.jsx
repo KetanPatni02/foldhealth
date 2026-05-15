@@ -329,6 +329,14 @@ export function EmailBuilder() {
     }
   };
 
+  if (!emailDocument) {
+    return (
+      <div className={styles.canvas} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+        <span style={{ color: 'var(--neutral-300)' }}>Loading template…</span>
+      </div>
+    );
+  }
+
   return (
     <DndContext
       sensors={sensors}

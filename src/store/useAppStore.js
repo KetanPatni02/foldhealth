@@ -373,6 +373,8 @@ export const useAppStore = create((set, get) => ({
   builderFlowLoading: false,
   builderSelectedNode: null, // id of currently selected node
   _pendingAgentId: null,    // set by router on refresh — triggers re-open in AppLayout
+  _pendingCampaignBuilderId: null, // set by router on refresh — triggers campaign builder open
+  _pendingEmailEditId: null,       // set by router on refresh — triggers email builder open
   builderVersions: [],      // list of saved versions
   builderPrompt: '',        // original creation prompt
   builderConfig: null,      // agent_config row for current agent
