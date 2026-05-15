@@ -609,7 +609,22 @@ export function CampaignView() {
             </tr>
           </thead>
           <tbody>
-            {sections.length === 0 ? (
+            {campaignsLoading && !usingSupa ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <tr key={`skel-${i}`} className={styles.row}>
+                  <td className={styles.tdS}><span className={styles.skelCircle} /></td>
+                  <td className={styles.tdName}><span className={styles.skelBar} style={{ width: `${55 + (i % 3) * 15}%` }} /></td>
+                  <td className={styles.tdAudience}><span className={styles.skelBar} style={{ width: 40 }} /></td>
+                  <td className={styles.tdProgress}><span className={styles.skelBar} style={{ width: '70%' }} /></td>
+                  <td className={styles.tdMetric}><span className={styles.skelBar} style={{ width: 32 }} /></td>
+                  <td className={styles.tdMetric}><span className={styles.skelBar} style={{ width: 32 }} /></td>
+                  <td className={styles.tdHealth}><span className={styles.skelBar} style={{ width: 56 }} /></td>
+                  <td className={styles.tdDate}><span className={styles.skelBar} style={{ width: 72 }} /></td>
+                  <td className={styles.tdDuration}><span className={styles.skelBar} style={{ width: 52 }} /></td>
+                  <td className={styles.tdAction}><span className={styles.skelBar} style={{ width: 80 }} /></td>
+                </tr>
+              ))
+            ) : sections.length === 0 ? (
               <tr>
                 <td colSpan={10} className={styles.emptyState}>
                   <Icon name="solar:filter-linear" size={32} color="var(--neutral-150)" />

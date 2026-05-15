@@ -173,6 +173,8 @@ input[type="radio"]:disabled {
   cursor: not-allowed;
 }
 
+html { scroll-behavior: smooth; }
+
 /* Slim Modern Scrollbars */
 * {
   scrollbar-width: thin;

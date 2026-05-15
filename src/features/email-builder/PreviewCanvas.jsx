@@ -214,7 +214,7 @@ function ResizeWrap({ id, block, updateBlock, isSelected, canWidth, canHeight, c
   }, [block, id, updateBlock, canWidth, canHeight, ratioLock]);
 
   return (
-    <div ref={wrapRef} className={styles.resizeWrap} style={{ position: 'relative', display: 'inline-block', maxWidth: '100%' }}>
+    <div ref={wrapRef} className={styles.resizeWrap} style={{ position: 'relative', display: 'inline-block', maxWidth: '100%', width: block.data?.props?.width != null ? (typeof block.data.props.width === 'number' ? `${block.data.props.width}px` : block.data.props.width) : undefined }}>
       {children}
       {isSelected && (
         <>

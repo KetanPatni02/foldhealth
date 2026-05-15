@@ -66,13 +66,15 @@ export function SendTestPopover({ onClose, campaignId }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [onClose]);
 
+  const parseEmails = (str) =>
+    str.split(',').map(s => s.trim()).filter(s => s.includes('@'));
+
   const handleSend = async () => {
-    if (!email || !email.includes('@')) return;
+    const addresses = parseEmails(email);
+    if (addresses.length === 0) return;
     setStatus('sending');
     setErrorMsg('');
 
-    // Prefer the live editing document if EmailBuilder is open; otherwise
-    // fall back to the saved template on the campaign row.
     const doc = liveDoc || campaign?.emailTemplate;
     if (!doc) {
       setStatus('error');
@@ -91,32 +93,40 @@ export function SendTestPopover({ onClose, campaignId }) {
       : `[Test] ${campaignName || campaign?.name || 'Email Template'}`;
     const fromName  = campaign?.senderName ? (SENDER_LABELS[campaign.senderName] || campaign.senderName) : undefined;
 
-    try {
-      const res = await fetch('/api/send-test-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: email, subject, html, fromName }),
-      });
-      const text = await res.text();
-      let payload = null;
-      try { payload = text ? JSON.parse(text) : null; } catch { /* keep raw */ }
-      if (!res.ok || payload?.error) {
-        setStatus('error');
-        const err = payload?.error;
-        setErrorMsg(
-          (typeof err === 'string' ? err : err?.message)
-            || text
-            || `Send failed (${res.status})`
-        );
-        return;
-      }
-      setStatus('ok');
-      addRecentEmail(email);
-      setRecents(getRecentEmails());
-    } catch (err) {
+    const results = await Promise.allSettled(
+      addresses.map(addr =>
+        fetch('/api/send-test-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to: addr, subject, html, fromName }),
+        }).then(async res => {
+          const text = await res.text();
+          let payload = null;
+          try { payload = text ? JSON.parse(text) : null; } catch { /* keep raw */ }
+          if (!res.ok || payload?.error) {
+            const err = payload?.error;
+            throw new Error(
+              (typeof err === 'string' ? err : err?.message)
+                || text
+                || `Send failed (${res.status})`
+            );
+          }
+        })
+      )
+    );
+
+    const failed = results.filter(r => r.status === 'rejected');
+    if (failed.length === results.length) {
       setStatus('error');
-      setErrorMsg(err?.message || 'Network error');
+      setErrorMsg(failed[0].reason?.message || 'All sends failed');
+    } else if (failed.length > 0) {
+      setStatus('error');
+      setErrorMsg(`Sent ${results.length - failed.length}/${results.length} — ${failed[0].reason?.message}`);
+    } else {
+      setStatus('ok');
     }
+    addresses.forEach(addRecentEmail);
+    setRecents(getRecentEmails());
   };
 
   return (
@@ -124,16 +134,16 @@ export function SendTestPopover({ onClose, campaignId }) {
       <div className={styles.testEmailLabel}>Send test email</div>
       <input
         ref={inputRef}
-        type="email"
+        type="text"
         className={styles.testEmailInput}
-        placeholder="name@example.com"
+        placeholder="name@example.com, another@example.com"
         value={email}
         onChange={e => setEmail(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') handleSend(); if (e.key === 'Escape') onClose(); }}
       />
       {status === 'ok' && (
         <div className={`${styles.testEmailStatus} ${styles.testEmailStatusOk}`}>
-          <Icon name="solar:check-circle-linear" size={14} /> Sent successfully
+          <Icon name="solar:check-circle-linear" size={14} /> Sent{parseEmails(email).length > 1 ? ` to ${parseEmails(email).length} recipients` : ' successfully'}
         </div>
       )}
       {status === 'error' && (
@@ -159,7 +169,11 @@ export function SendTestPopover({ onClose, campaignId }) {
               <button
                 key={addr}
                 className={styles.testEmailRecentChip}
-                onClick={() => setEmail(addr)}
+                onClick={() => {
+                  const existing = parseEmails(email);
+                  if (existing.includes(addr)) return;
+                  setEmail(existing.length > 0 ? `${email.replace(/,\s*$/, '')}, ${addr}` : addr);
+                }}
                 title={addr}
               >
                 <Icon name="solar:letter-linear" size={12} color="currentColor" />
