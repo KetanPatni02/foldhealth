@@ -24,7 +24,7 @@ function _sideBorder(side) {
   return `${side.width || 1}px ${side.style || 'solid'} ${side.color || '#3A485F'}`;
 }
 
-function buildStyle(style) {
+function buildStyle(style, type) {
   // Per-side wins over uniform when present. null sides simply omit
   // their border-* property so that edge has no border.
   const borderSides = style.borderSides;
@@ -54,7 +54,11 @@ function buildStyle(style) {
     margin: 0,
     color: textIsGradient ? undefined : style.color,
     fontSize: style.fontSize ? `${style.fontSize}px` : undefined,
-    fontWeight: style.fontWeight,
+    // Default Heading weight to 700 so the canvas matches the exported
+    // email even when Tailwind's preflight strips the browser's default
+    // bold from <h1>/<h2>/<h3>. Text blocks default to 400 for the same
+    // reason. Explicit user-set weights pass through unchanged.
+    fontWeight: style.fontWeight ?? (type === 'Heading' ? 700 : 400),
     fontStyle: style.fontStyle,
     textDecoration: style.textDecoration,
     textAlign: style.textAlign,
@@ -157,7 +161,7 @@ export function InlineEditable({ blockId, type, level, text, style, listStyle, o
       ref={ref}
       data-eb-editable={type}
       data-eb-block-id={blockId}
-      style={buildStyle(style)}
+      style={buildStyle(style, type)}
       contentEditable
       suppressContentEditableWarning
       onBlur={handleBlur}

@@ -147,8 +147,14 @@ function DesignTab({ block, updateBlock, id }) {
           <Section>
             <TextStyleChips block={block} updateBlock={updateBlock} id={id} />
             <FieldLabel>Text</FieldLabel>
+            {/* props.text can contain inline HTML from the selection toolbar
+                (bold/italic/link/etc). The textarea should show only the
+                visible text — so we strip tags for display, and on edit
+                commit the plain string (which replaces any prior HTML).
+                Inline edits made on the canvas via the SelectionToolbar
+                still round-trip through the contentEditable directly. */}
             <Textarea
-              value={props.text || ''}
+              value={htmlToPlain(props.text || '')}
               onChange={e => update(['data', 'props', 'text'], e.target.value)}
             />
             {block.type === 'Heading' && (
@@ -1214,10 +1220,16 @@ function CodeTab({ doc }) {
   const setEmailDocument = useAppStore(s => s.setEmailDocument);
   const htmlPreviewOverride = useAppStore(s => s.htmlPreviewOverride);
   const setHtmlPreviewOverride = useAppStore(s => s.setHtmlPreviewOverride);
+  // selectedBlockId drives the "jump to this block's source" cursor sync
+  // below — whenever the user picks a block on the canvas, we scroll the
+  // matching `"block-…": {` (JSON) or that block's first inner element
+  // (HTML) into view in the editor.
+  const selectedBlockId = useAppStore(s => s.selectedBlockId);
 
   const [mode, setMode] = useState('json');
   const [text, setText] = useState('');
   const [error, setError] = useState(null);
+  const textareaRef = useRef(null);
   // Track whether the local `text` state is the user's draft (true) or freshly
   // synced from the document/override (false). When sync'd, we re-format from
   // the doc; when drafting, we keep the user's text untouched.
@@ -1233,22 +1245,80 @@ function CodeTab({ doc }) {
         const next = JSON.stringify(doc, null, 2);
         if (!cancelled) setText(next);
       } else {
+        // Always render the email HTML even if prettier fails to load —
+        // an unformatted but valid HTML string is much more useful than
+        // a comment placeholder.
+        const seed = htmlPreviewOverride ?? renderEmailHtml(doc);
+        if (!cancelled) setText(seed);
         try {
-          const seed = htmlPreviewOverride ?? renderEmailHtml(doc);
           const [{ format }, htmlPlugin] = await Promise.all([
             import('prettier/standalone'),
             import('prettier/plugins/html'),
           ]);
           const next = await format(seed, { parser: 'html', plugins: [htmlPlugin.default || htmlPlugin], printWidth: 80, htmlWhitespaceSensitivity: 'ignore' });
           if (!cancelled) setText(next);
-        } catch (e) {
-          if (!cancelled) setText('<!-- Failed to render: ' + (e?.message || e) + ' -->');
-        }
+        } catch { /* keep the unformatted seed */ }
       }
       setError(null);
     })();
     return () => { cancelled = true; };
   }, [mode, doc, htmlPreviewOverride]);
+
+  // Canvas-selection → code-jump. Whenever the user picks a block on the
+  // canvas, scroll the editor to that block's location in the source and
+  // place the caret + selection there so it visually highlights.
+  // JSON mode: search for the block id literal (the key in the object).
+  // HTML mode: try `data-eb-block-id` (none today — we strip on export)
+  //   then fall back to the first occurrence of the block's text content.
+  useEffect(() => {
+    if (!selectedBlockId || selectedBlockId === 'root') return;
+    const el = textareaRef.current;
+    if (!el || !text) return;
+    let index = -1;
+    if (mode === 'json') {
+      // The block appears as `"block-…": {` — match the opening quote so
+      // we land right on the key rather than inside a childrenIds array.
+      const needle = `"${selectedBlockId}"`;
+      index = text.indexOf(needle);
+    } else {
+      // HTML export doesn't include block ids today; try the rendered
+      // text of the selected block (Heading/Text only — anything short
+      // enough to be unique). For other types we give up gracefully.
+      const block = doc?.[selectedBlockId];
+      const t = block?.data?.props?.text;
+      if (typeof t === 'string' && t.length > 4) {
+        // Strip inline HTML tags to match against the formatted body.
+        const plain = t.replace(/<[^>]+>/g, '').trim().slice(0, 80);
+        if (plain) index = text.indexOf(plain);
+      }
+    }
+    if (index < 0) return;
+    // Place the caret at the match, then scroll the editor viewport so
+    // the caret line ends up roughly centred. The textarea itself has
+    // overflow:hidden — the OverlayVerticalScroll wrapper (parent
+    // `.overlayScrollInner`) owns the scrollbar, so we scroll that.
+    el.focus({ preventScroll: true });
+    el.setSelectionRange(index, index);
+    const lineHeight = 18; // matches .codeTextarea line-height: 1.55 × 11.5
+    const lineNo = text.slice(0, index).split('\n').length - 1;
+    const viewport = el.closest?.('[class*="overlayScrollInner"]') || el.parentElement;
+    if (viewport) {
+      const targetTop = Math.max(0, lineNo * lineHeight - viewport.clientHeight / 2);
+      viewport.scrollTop = targetTop;
+    }
+    // Highlight by setting a full-token selection on JSON, or the search
+    // phrase on HTML, so the user sees where they landed.
+    if (mode === 'json') {
+      el.setSelectionRange(index, index + selectedBlockId.length + 2);
+    } else {
+      const block = doc?.[selectedBlockId];
+      const t = block?.data?.props?.text;
+      const plain = typeof t === 'string' ? t.replace(/<[^>]+>/g, '').trim().slice(0, 80) : '';
+      el.setSelectionRange(index, index + plain.length);
+    }
+    // Drafting flag stays false so future doc changes still re-format.
+    drafting.current = false;
+  }, [selectedBlockId, mode, text, doc]);
 
   const handleChange = (e) => {
     const v = e.target.value;
@@ -1346,6 +1416,7 @@ function CodeTab({ doc }) {
             <code className={styles.codeBlock} dangerouslySetInnerHTML={{ __html: highlighted + '\n' }} />
           </pre>
           <textarea
+            ref={textareaRef}
             className={styles.codeTextarea}
             value={text}
             onChange={handleChange}
@@ -2399,6 +2470,18 @@ const TEXT_STYLE_PRESETS = [
   { key: 'heading',  label: 'Heading',  fontSize: 16, fontWeight: 'bold',   level: 'h3' },
   { key: 'body',     label: 'Body',     fontSize: 14, fontWeight: 'normal', level: null },
 ];
+
+// Strip inline HTML for plain-text display in the right-panel Text
+// textarea. The DOM parses the markup and `innerText` gives us the
+// visible characters with `<br>` honoured as newlines. Empty / non-string
+// inputs short-circuit so we don't hit jsdom in tests.
+function htmlToPlain(html) {
+  if (typeof html !== 'string') return '';
+  if (typeof document === 'undefined' || !/[<&]/.test(html)) return html;
+  const div = document.createElement('div');
+  div.innerHTML = html.replace(/<br\s*\/?>/gi, '\n');
+  return (div.textContent || div.innerText || '').replace(/ /g, ' ');
+}
 
 function TextStyleChips({ block, updateBlock, id }) {
   const style = block.data?.style || {};
