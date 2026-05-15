@@ -15,7 +15,7 @@ import { DevicePreview } from './DevicePreview';
 import { renderEmailHtml } from './patchEmailHtml';
 import { SendTestPopover } from './SendTestPopover';
 import { SelectionToolbar } from './SelectionToolbar';
-import { buildParentMap } from './blockHelpers';
+import { buildParentMap, computeDropPosition } from './blockHelpers';
 import styles from './EmailBuilder.module.css';
 
 function getFirstChild(doc, id) {
@@ -144,6 +144,7 @@ export function EmailBuilder() {
   const setPendingNavTarget = useAppStore(s => s.setPendingNavTarget);
   const setActivePage = useAppStore(s => s.setActivePage);
   const [activeDrag, setActiveDrag] = useState(null);
+  const [dropIndicator, setDropIndicator] = useState(null);
   const [viewMode, setViewMode] = useState('builder');
   const [showTestEmail, setShowTestEmail] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState(null);
@@ -280,34 +281,33 @@ export function EmailBuilder() {
     }
   };
 
+  const handleDragOver = useCallback((event) => {
+    const doc = useAppStore.getState().emailDocument;
+    if (!doc) { setDropIndicator(null); return; }
+    const activeId = String(event.active.id);
+    const resolvedId = activeId.startsWith(NEW_PREFIX) ? null : activeId;
+    setDropIndicator(computeDropPosition(event, doc, resolvedId));
+  }, []);
+
   const handleDragEnd = (event) => {
     setActiveDrag(null);
+    const target = dropIndicator;
+    setDropIndicator(null);
     const { active, over } = event;
-    if (!over) return;
+    if (!over || !target) return;
     const doc = useAppStore.getState().emailDocument;
     if (!doc) return;
-    const target = parseDropTarget(String(over.id), doc);
-    if (!target) return;
 
     const activeId = String(active.id);
     if (activeId.startsWith(NEW_PREFIX)) {
       insertNewBlock(activeId.slice(NEW_PREFIX.length), target);
     } else {
-      // Bulk drag: if the user has multiple blocks selected and dragged
-      // one of them, move all of them to the same drop target in their
-      // original order. Skip duplicates: if a bulk id was the dragged one
-      // we still move it once at the target index.
       const bulkIds = useAppStore.getState().bulkSelectedIds;
       const isBulk = bulkIds.length > 1 && bulkIds.includes(activeId);
       if (isBulk) {
-        // Move the dragged block first, then insert the rest right after
-        // it (each subsequent moveBlock keeps the new doc state, so we
-        // re-resolve the parent's childrenIds between calls). Doing them
-        // in DOM order preserves the group's vertical sequence.
         const ordered = bulkIds.slice().sort((a, b) => bulkIds.indexOf(a) - bulkIds.indexOf(b));
-        let nextTarget = target;
         ordered.forEach((id, idx) => {
-          moveBlock(id, { ...nextTarget, index: nextTarget.index + idx });
+          moveBlock(id, { ...target, index: target.index + idx });
         });
       } else {
         moveBlock(activeId, target);
@@ -319,9 +319,10 @@ export function EmailBuilder() {
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
+      onDragOver={handleDragOver}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      onDragCancel={() => setActiveDrag(null)}
+      onDragCancel={() => { setActiveDrag(null); setDropIndicator(null); }}
     >
     <div className={styles.builder}>
       <div className={styles.topBar}>
@@ -417,7 +418,7 @@ export function EmailBuilder() {
       {viewMode === 'builder' ? (
         <div className={styles.body}>
           <ComponentsPanel />
-          <PreviewCanvas />
+          <PreviewCanvas dropIndicator={dropIndicator} />
           <PropertiesPanel />
         </div>
       ) : (

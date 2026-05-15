@@ -61,7 +61,7 @@ function buildStyle(style, type) {
     fontWeight: style.fontWeight ?? (type === 'Heading' ? 700 : 400),
     fontStyle: style.fontStyle,
     textDecoration: style.textDecoration,
-    textAlign: style.textAlign,
+    textAlign: style.blockAlign || style.textAlign,
     textTransform: style.textTransform,
     lineHeight: style.lineHeight ?? 1.5,
     letterSpacing: style.letterSpacing ? `${style.letterSpacing}px` : undefined,

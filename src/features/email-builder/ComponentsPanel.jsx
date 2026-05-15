@@ -1,11 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useDraggable, DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Icon } from '../../components/Icon/Icon';
 import { useAppStore } from '../../store/useAppStore';
 import { HEADER_PRESETS, FOOTER_PRESETS } from './headerFooterLibrary';
-import { buildParentMap } from './blockHelpers';
+import { buildParentMap, computeDropPosition } from './blockHelpers';
 import styles from './EmailBuilder.module.css';
 
 const COMPONENTS = [
@@ -314,6 +314,7 @@ function LayerList({ doc, selectedId, onSelect, onRemove, renamingId, setRenamin
   const moveBlock = useAppStore(s => s.moveBlock);
   const updateBlock = useAppStore(s => s.updateBlock);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const [layerDropIndicator, setLayerDropIndicator] = useState(null);
 
   const allSortableIds = [];
   const collectIds = (childrenIds) => {
@@ -328,38 +329,54 @@ function LayerList({ doc, selectedId, onSelect, onRemove, renamingId, setRenamin
   };
   collectIds(doc.root.data.childrenIds || []);
 
+  const handleDragOver = useCallback((event) => {
+    setLayerDropIndicator(computeDropPosition(event, doc, String(event.active.id)));
+  }, [doc]);
+
   const handleDragEnd = (event) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const overId = String(over.id);
-    const activeId = String(active.id);
-    const overBlock = doc[overId];
-    if (!overBlock) return;
-    const map = buildParentMap(doc);
-    const overSlot = map[overId];
-    if (!overSlot) return;
-    moveBlock(activeId, { parentId: overSlot.parentId, columnIdx: overSlot.columnIdx, index: overSlot.index });
+    const target = layerDropIndicator;
+    setLayerDropIndicator(null);
+    if (!target) return;
+    const activeId = String(event.active.id);
+    if (activeId === String(event.over?.id)) return;
+    moveBlock(activeId, target);
   };
 
-  const ctx = { doc, selectedId, onSelect, onRemove, renamingId, setRenamingId, updateBlock };
+  const ctx = { doc, selectedId, onSelect, onRemove, renamingId, setRenamingId, updateBlock, layerDropIndicator };
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={() => setLayerDropIndicator(null)}>
       <SortableContext items={allSortableIds} strategy={verticalListSortingStrategy}>
         <div className={styles.layerList}>
-          <LayerChildren childrenIds={doc.root.data.childrenIds || []} depth={0} ctx={ctx} />
+          <LayerChildren childrenIds={doc.root.data.childrenIds || []} depth={0} parentId="root" ctx={ctx} />
         </div>
       </SortableContext>
     </DndContext>
   );
 }
 
-function LayerChildren({ childrenIds, depth, ctx }) {
-  return (childrenIds || []).map(id => {
-    const block = ctx.doc[id];
-    if (!block) return null;
-    return <LayerRow key={id} id={id} block={block} depth={depth} ctx={ctx} />;
-  });
+function LayerDropLine({ depth }) {
+  return <div className={styles.layerDropLine} style={{ marginLeft: depth * 16 + 8 }} />;
+}
+
+function LayerChildren({ childrenIds, depth, parentId, ctx }) {
+  const ind = ctx.layerDropIndicator;
+  const showHere = ind && ind.parentId === parentId && (ind.columnIdx ?? undefined) === undefined && !ind.isNest;
+  return (
+    <>
+      {showHere && ind.index === 0 && <LayerDropLine depth={depth} />}
+      {(childrenIds || []).map((id, idx) => {
+        const block = ctx.doc[id];
+        if (!block) return null;
+        return (
+          <div key={id}>
+            <LayerRow id={id} block={block} depth={depth} ctx={ctx} />
+            {showHere && ind.index === idx + 1 && <LayerDropLine depth={depth} />}
+          </div>
+        );
+      })}
+    </>
+  );
 }
 
 function LayerRow({ id, block, depth, ctx }) {
@@ -402,7 +419,7 @@ function LayerRow({ id, block, depth, ctx }) {
         style={style}
         {...attributes}
         {...listeners}
-        className={[styles.layerRow, ctx.selectedId === id ? styles.layerRowActive : ''].join(' ')}
+        className={[styles.layerRow, ctx.selectedId === id ? styles.layerRowActive : '', ctx.layerDropIndicator?.isNest && ctx.layerDropIndicator?.parentId === id ? styles.layerRowNestTarget : ''].join(' ')}
         onClick={() => ctx.onSelect(id)}
         onDoubleClick={() => ctx.setRenamingId(id)}
       >
@@ -449,11 +466,11 @@ function LayerRow({ id, block, depth, ctx }) {
         )}
       </div>
       {expanded && hasChildren && (
-        <LayerChildren childrenIds={props.childrenIds} depth={depth + 1} ctx={ctx} />
+        <LayerChildren childrenIds={props.childrenIds} depth={depth + 1} parentId={id} ctx={ctx} />
       )}
       {expanded && hasColumns && props.columns.map((col, ci) => (
         (col.childrenIds || []).length > 0 && (
-          <LayerChildren key={ci} childrenIds={col.childrenIds} depth={depth + 1} ctx={ctx} />
+          <LayerChildren key={ci} childrenIds={col.childrenIds} depth={depth + 1} parentId={id} ctx={ctx} />
         )
       ))}
     </>

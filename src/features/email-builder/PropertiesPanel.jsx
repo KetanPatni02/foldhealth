@@ -652,7 +652,7 @@ function DesignTab({ block, updateBlock, id }) {
             via wrapper text-align, and for Container/ColumnsContainer via
             an inline-block alignment passed to the renderer). Distinct
             from textAlign which only controls text inside the element. */}
-        {!isLayout && ['Image', 'Avatar', 'Button', 'Container', 'ColumnsContainer'].includes(block.type) && (
+        {!isLayout && (
           <div className={styles.fieldCol}>
             <label className={styles.fieldLabel}>Align</label>
             <Toggle

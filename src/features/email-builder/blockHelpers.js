@@ -41,7 +41,7 @@ const FACTORIES = {
     type: 'Image',
     data: {
       props: { url: 'https://images.unsplash.com/photo-1494232410401-ad00d5433cfa?w=480', alt: 'Placeholder', linkHref: null, contentAlignment: 'middle' },
-      style: { padding: { top: 16, bottom: 16, left: 24, right: 24 }, textAlign: 'center' },
+      style: { padding: { top: 0, bottom: 0, left: 0, right: 0 }, textAlign: 'center' },
     },
   }),
   Avatar: () => ({
@@ -268,6 +268,56 @@ export function buildParentMap(doc) {
   };
   if (doc?.root) walk('root', doc.root.data.childrenIds || []);
   return map;
+}
+
+const EMPTY_PREFIX = '__empty:';
+
+export function computeDropPosition(event, doc, activeId) {
+  const { over } = event;
+  if (!over) return null;
+  const overId = String(over.id);
+
+  if (overId.startsWith(EMPTY_PREFIX)) {
+    const rest = overId.slice(EMPTY_PREFIX.length);
+    const parts = rest.split(':');
+    if (parts.length === 1) {
+      const parent = doc[parts[0]];
+      const list = parent?.data?.props?.childrenIds || [];
+      return { parentId: parts[0], index: list.length };
+    }
+    const containerId = parts[0];
+    const columnIdx = Number(parts[1]);
+    const parent = doc[containerId];
+    const list = parent?.data?.props?.columns?.[columnIdx]?.childrenIds || [];
+    return { parentId: containerId, columnIdx, index: list.length };
+  }
+
+  if (overId === activeId) return null;
+
+  const overBlock = doc[overId];
+  if (!overBlock) return null;
+  const map = buildParentMap(doc);
+  const slot = map[overId];
+  if (!slot) return null;
+
+  const overRect = over.rect;
+  const pointerY = (event.activatorEvent?.clientY || 0) + (event.delta?.y || 0);
+  const relY = overRect && overRect.height ? (pointerY - overRect.top) / overRect.height : 0.5;
+
+  const isContainer = overBlock.type === 'Container' || overBlock.type === 'ColumnsContainer';
+  if (isContainer && relY > 0.25 && relY < 0.75) {
+    if (overBlock.type === 'Container') {
+      return { parentId: overId, index: (overBlock.data?.props?.childrenIds || []).length, isNest: true };
+    }
+    const cols = overBlock.data?.props?.columns || [];
+    return { parentId: overId, columnIdx: 0, index: (cols[0]?.childrenIds || []).length, isNest: true };
+  }
+
+  return {
+    parentId: slot.parentId,
+    columnIdx: slot.columnIdx,
+    index: relY < 0.5 ? slot.index : slot.index + 1,
+  };
 }
 
 // Deep-clone a block subtree with fresh ids. Returns { rootId, blocks } in the

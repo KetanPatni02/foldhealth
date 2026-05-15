@@ -51,6 +51,23 @@ function paddingCss(p) {
   return `${p.top}px ${p.right}px ${p.bottom}px ${p.left}px`;
 }
 
+function perSideBorderStyle(borderSides) {
+  if (!borderSides || !Object.values(borderSides).some(Boolean)) return null;
+  const out = {};
+  const fmt = (s) => `${s.width || 1}px ${s.style || 'solid'} ${s.color || '#3A485F'}`;
+  if (borderSides.top)    out.borderTop    = fmt(borderSides.top);
+  if (borderSides.right)  out.borderRight  = fmt(borderSides.right);
+  if (borderSides.bottom) out.borderBottom = fmt(borderSides.bottom);
+  if (borderSides.left)   out.borderLeft   = fmt(borderSides.left);
+  return out;
+}
+
+function applyBorder(target, style) {
+  const perSide = perSideBorderStyle(style.borderSides);
+  if (perSide) Object.assign(target, perSide);
+  else if (style.borderWidth) target.border = `${style.borderWidth}px ${style.borderStyle || 'solid'} ${style.borderColor || '#3A485F'}`;
+}
+
 // Six-dot drag handle that matches the Figma toolbar precisely.
 function DragHandleDots() {
   return (
@@ -219,7 +236,7 @@ function ResizeWrap({ id, block, updateBlock, isSelected, canWidth, canHeight, c
   );
 }
 
-export function PreviewCanvas() {
+export function PreviewCanvas({ dropIndicator }) {
   const doc = useAppStore(s => s.emailDocument);
   const selectedBlockId = useAppStore(s => s.selectedBlockId);
   const bulkSelectedIds = useAppStore(s => s.bulkSelectedIds);
@@ -278,6 +295,7 @@ export function PreviewCanvas() {
     selectParentBlock,
     commitText,
     commitTable,
+    dropIndicator,
   };
 
   return (
@@ -297,16 +315,25 @@ export function PreviewCanvas() {
   );
 }
 
+function DropIndicatorLine() {
+  return <div className={styles.dropIndicatorLine} />;
+}
+
 // ── A sortable list of blocks belonging to a single parent slot. ────────────
 function SortableList({ parentId, columnIdx, childrenIds, ctx }) {
-  // If empty, render a droppable placeholder so the user has somewhere to drop.
   if (!childrenIds || childrenIds.length === 0) {
     return <EmptyDropzone parentId={parentId} columnIdx={columnIdx} />;
   }
+  const ind = ctx.dropIndicator;
+  const showHere = ind && ind.parentId === parentId && (ind.columnIdx ?? undefined) === (columnIdx ?? undefined) && !ind.isNest;
   return (
     <SortableContext items={childrenIds} strategy={verticalListSortingStrategy}>
-      {childrenIds.map(id => (
-        <SortableBlock key={id} id={id} ctx={ctx} />
+      {showHere && ind.index === 0 && <DropIndicatorLine />}
+      {childrenIds.map((id, idx) => (
+        <div key={id}>
+          <SortableBlock id={id} ctx={ctx} />
+          {showHere && ind.index === idx + 1 && <DropIndicatorLine />}
+        </div>
       ))}
     </SortableContext>
   );
@@ -515,6 +542,7 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
       color: style.color,
       borderRadius: style.borderRadius ? `${style.borderRadius}px` : undefined,
     };
+    applyBorder(containerStyle, style);
     // SVG tint for backgroundImage — substitute fills inline and emit
     // as a data-URI so the existing background-image: url(…) path keeps
     // working without changing CSS plumbing.
@@ -542,8 +570,9 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
       containerStyle.justifyContent = vMap[props.contentAlign] || 'flex-start';
       containerStyle.alignItems = hMap[props.contentAlignH] || 'stretch';
     }
+    const isNestTarget = ctx.dropIndicator?.isNest && ctx.dropIndicator?.parentId === id;
     return (
-      <div style={containerStyle}>
+      <div style={containerStyle} className={isNestTarget ? styles.dropNestTarget : undefined}>
         <SortableList parentId={id} childrenIds={props.childrenIds || []} ctx={ctx} />
         {isSelected && <ContainerResizeHandle id={id} block={block} updateBlock={ctx.updateBlock} />}
       </div>
@@ -579,6 +608,7 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
       } : {}),
       borderRadius: style.borderRadius ? `${style.borderRadius}px` : undefined,
     };
+    applyBorder(colsStyle, style);
     if (style.bgSvgRaw && style.bgTintColor) {
       const tinted = tintSvgMarkup(style.bgSvgRaw, style.bgTintColor);
       colsStyle.backgroundImage = `url("data:image/svg+xml;utf8,${encodeURIComponent(tinted)}")`;
@@ -592,8 +622,9 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     }
     const isColumn = direction === 'column';
     const totalGap = hGap * (count - 1);
+    const isNestTargetCols = ctx.dropIndicator?.isNest && ctx.dropIndicator?.parentId === id;
     return (
-      <div style={colsStyle}>
+      <div style={colsStyle} className={isNestTargetCols ? styles.dropNestTarget : undefined}>
         {visible.map((col, idx) => {
           const w = columnWidths[idx] || (100 / count);
           // In row direction the column-width % drives flex-basis along the
@@ -658,7 +689,7 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     const size = props.size || 64;
     const radius = props.shape === 'circle' ? '50%' : props.shape === 'rounded' ? 8 : 0;
     return (
-      <div style={{ padding: paddingCss(style.padding), textAlign: style.textAlign || 'center' }}>
+      <div style={{ padding: paddingCss(style.padding), textAlign: style.blockAlign || style.textAlign || 'center' }}>
         {props.imageUrl && <img src={props.imageUrl} alt={props.alt || ''} style={{ width: size, height: size, borderRadius: radius, objectFit: 'cover' }} />}
       </div>
     );
@@ -680,7 +711,7 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     if (orientation === 'vertical') {
       const h = props.height ?? 40;
       return (
-        <div style={{ padding: paddingCss(style.padding), display: 'flex', justifyContent: 'center' }}>
+        <div style={{ padding: paddingCss(style.padding), display: 'flex', justifyContent: style.blockAlign === 'left' ? 'flex-start' : style.blockAlign === 'right' ? 'flex-end' : 'center' }}>
           <div style={{
             width: `${thickness}px`,
             height: `${h}px`,
@@ -779,21 +810,20 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     const gap = props.gap || 16;
     const alignment = props.alignment || 'center';
     return (
-      <div style={{
-        padding: paddingCss(style.padding),
-        display: 'flex',
-        justifyContent: alignment === 'left' ? 'flex-start' : alignment === 'right' ? 'flex-end' : 'center',
-        alignItems: 'center',
-        gap: `${gap}px`,
-        ...bgProps(style.backgroundColor),
-      }}>
-        {platforms.map(p => (
-          <a key={p.id} href={p.url || '#'} onClick={e => e.preventDefault()} title={p.label} style={{ display: 'inline-flex' }}>
-            {p.iconUrl
-              ? <img src={p.iconUrl} alt={p.label} width={iconSize} height={iconSize} style={{ display: 'block' }} />
-              : <div style={{ width: iconSize, height: iconSize, borderRadius: 4, border: '1px dashed #CED4DD', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#9CA3AF' }}>?</div>}
-          </a>
-        ))}
+      <div style={{ padding: paddingCss(style.padding), textAlign: style.blockAlign || alignment, ...bgProps(style.backgroundColor) }}>
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: `${gap}px`,
+        }}>
+          {platforms.map(p => (
+            <a key={p.id} href={p.url || '#'} onClick={e => e.preventDefault()} title={p.label} style={{ display: 'inline-flex' }}>
+              {p.iconUrl
+                ? <img src={p.iconUrl} alt={p.label} width={iconSize} height={iconSize} style={{ display: 'block' }} />
+                : <div style={{ width: iconSize, height: iconSize, borderRadius: 4, border: '1px dashed #CED4DD', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#9CA3AF' }}>?</div>}
+            </a>
+          ))}
+        </div>
       </div>
     );
   }
@@ -806,24 +836,23 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     const fontSize = props.fontSize || 14;
     const fontWeight = props.fontWeight || 'bold';
     return (
-      <div style={{
-        padding: paddingCss(style.padding),
-        display: 'flex',
-        justifyContent: alignment === 'left' ? 'flex-start' : alignment === 'right' ? 'flex-end' : 'center',
-        alignItems: 'center',
-        gap: `${gap}px`,
-        ...bgProps(style.backgroundColor),
-      }}>
-        {links.map((link, i) => (
-          <a
-            key={i}
-            href={link.url || '#'}
-            onClick={e => e.preventDefault()}
-            style={{ color: linkColor, fontSize, fontWeight, textDecoration: 'none', fontFamily: 'inherit' }}
-          >
-            {link.label}
-          </a>
-        ))}
+      <div style={{ padding: paddingCss(style.padding), textAlign: style.blockAlign || alignment, ...bgProps(style.backgroundColor) }}>
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: `${gap}px`,
+        }}>
+          {links.map((link, i) => (
+            <a
+              key={i}
+              href={link.url || '#'}
+              onClick={e => e.preventDefault()}
+              style={{ color: linkColor, fontSize, fontWeight, textDecoration: 'none', fontFamily: 'inherit' }}
+            >
+              {link.label}
+            </a>
+          ))}
+        </div>
       </div>
     );
   }
@@ -856,7 +885,7 @@ function InlineTable({ id, props, style, commitTable }) {
   }, [id, rows, commitTable]);
 
   return (
-    <div style={{ padding: paddingCss(style.padding), overflowX: 'auto' }}>
+    <div style={{ padding: paddingCss(style.padding), overflowX: 'auto', textAlign: style.blockAlign || 'left' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: style.fontSize || 13, fontFamily: 'inherit', minWidth: cols.length > 3 ? cols.length * 120 : undefined }}>
         <thead>
           <tr>

@@ -236,7 +236,7 @@ function renderBlock(doc, id) {
         color: textColor,
         'font-size': `${style.fontSize || (type === 'Heading' ? 24 : 14)}px`,
         'font-weight': style.fontWeight || (type === 'Heading' ? 'bold' : 'normal'),
-        'text-align': style.textAlign || 'left',
+        'text-align': style.blockAlign || style.textAlign || 'left',
         'font-family': style.fontFamily ? getFontStack(style.fontFamily) : 'inherit',
         'line-height': style.lineHeight ? String(style.lineHeight) : '1.5',
       };
@@ -358,7 +358,7 @@ function renderBlock(doc, id) {
     case 'Avatar': {
       const size = props.size || 64;
       const radius = props.shape === 'circle' ? '50%' : props.shape === 'rounded' ? '8px' : '0';
-      const wrapS = { margin: '0', padding, 'text-align': style.textAlign || 'center' };
+      const wrapS = { margin: '0', padding, 'text-align': style.blockAlign || style.textAlign || 'center' };
       const imgS = {
         width: `${size}px`,
         height: `${size}px`,
@@ -382,7 +382,8 @@ function renderBlock(doc, id) {
       // commit to a fixed pixel height (matches the canvas).
       if (orientation === 'vertical') {
         const h = props.height ?? 40;
-        return `<div style="padding:${padding};display:flex;justify-content:center"><div style="width:${thickness}px;height:${h}px;border-left:${thickness}px ${lineStyle} ${color}"></div></div>`;
+        const vJustify = style.blockAlign === 'left' ? 'flex-start' : style.blockAlign === 'right' ? 'flex-end' : 'center';
+        return `<div style="padding:${padding};display:flex;justify-content:${vJustify}"><div style="width:${thickness}px;height:${h}px;border-left:${thickness}px ${lineStyle} ${color}"></div></div>`;
       }
 
       if (endLeft !== 'none' || endRight !== 'none') {
@@ -456,6 +457,9 @@ function renderBlock(doc, id) {
         padding,
         'border-radius': style.borderRadius ? `${style.borderRadius}px` : '',
       };
+      const perSideCC = perSideBorderCss(style.borderSides);
+      if (perSideCC) Object.assign(wrapS, perSideCC);
+      else if (style.borderWidth) wrapS.border = `${style.borderWidth}px ${style.borderStyle || 'solid'} ${style.borderColor || '#3A485F'}`;
       applyBgColor(wrapS, style.backgroundColor);
       if (style.backgroundImage) {
         wrapS['background-image'] = `url(${style.backgroundImage})`;
@@ -494,7 +498,7 @@ function renderBlock(doc, id) {
       const iconSize = props.iconSize || 24;
       const gap = props.gap || 16;
       const alignment = props.alignment || 'center';
-      const align = alignment === 'left' ? 'left' : alignment === 'right' ? 'right' : 'center';
+      const align = style.blockAlign || (alignment === 'left' ? 'left' : alignment === 'right' ? 'right' : 'center');
       const wrapS = { padding, 'text-align': align, 'background-color': style.backgroundColor || '' };
 
       const icons = platforms.map(p => {
@@ -512,7 +516,7 @@ function renderBlock(doc, id) {
       const linkColor = props.linkColor || '#7C5CFA';
       const fontSize = props.fontSize || 14;
       const fontWeight = props.fontWeight || 'bold';
-      const align = alignment === 'left' ? 'left' : alignment === 'right' ? 'right' : 'center';
+      const align = style.blockAlign || (alignment === 'left' ? 'left' : alignment === 'right' ? 'right' : 'center');
       const wrapS = { padding, 'text-align': align, 'background-color': style.backgroundColor || '' };
       const linkS = {
         color: linkColor,
@@ -547,7 +551,8 @@ function renderBlock(doc, id) {
         return '<tr>' + columns.map(c => `<td style="${cellS};${bg}">${esc(row[c.key] || '')}</td>`).join('') + '</tr>';
       }).join('');
 
-      return `<div style="padding:${padding};overflow-x:auto"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
+      const tableAlign = style.blockAlign ? `text-align:${style.blockAlign};` : '';
+      return `<div style="padding:${padding};overflow-x:auto;${tableAlign}"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
     }
 
     default:
