@@ -90,13 +90,12 @@ export function SendTestPopover({ onClose, campaignId }) {
       ? `[Test] ${campaign.subjectLine}`
       : `[Test] ${campaignName || campaign?.name || 'Email Template'}`;
     const fromName  = campaign?.senderName ? (SENDER_LABELS[campaign.senderName] || campaign.senderName) : undefined;
-    const fromEmail = campaign?.sendFrom || undefined;
 
     try {
       const res = await fetch('/api/send-test-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: email, subject, html, fromName, fromEmail }),
+        body: JSON.stringify({ to: email, subject, html, fromName }),
       });
       const text = await res.text();
       let payload = null;
