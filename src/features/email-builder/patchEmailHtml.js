@@ -332,6 +332,9 @@ function renderBlock(doc, id) {
         'border-radius': style.borderRadius ? `${style.borderRadius}px` : '',
         border: '0',
       };
+      if (props.objectFit && props.objectFit !== 'fill') imgS['object-fit'] = props.objectFit;
+      if (props.objectPosition && props.objectPosition !== 'center') imgS['object-position'] = props.objectPosition;
+      if (props.height) imgS.height = typeof props.height === 'number' ? `${props.height}px` : props.height;
       if (isFixedPx && align === 'center') {
         imgS['margin-left'] = 'auto';
         imgS['margin-right'] = 'auto';

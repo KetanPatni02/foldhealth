@@ -247,6 +247,35 @@ function DesignTab({ block, updateBlock, id }) {
                 allowGradient={false}
               />
             )}
+            <Row2>
+              <SelectInput
+                label="Size"
+                value={props.objectFit || 'fill'}
+                options={[
+                  { value: 'fill', label: 'Fill' },
+                  { value: 'cover', label: 'Cover' },
+                  { value: 'contain', label: 'Contain' },
+                  { value: 'none', label: 'None' },
+                ]}
+                onChange={v => update(['data', 'props', 'objectFit'], v)}
+              />
+              <SelectInput
+                label="Position"
+                value={props.objectPosition || 'center'}
+                options={[
+                  { value: 'center', label: 'Center' },
+                  { value: 'top', label: 'Top' },
+                  { value: 'bottom', label: 'Bottom' },
+                  { value: 'left', label: 'Left' },
+                  { value: 'right', label: 'Right' },
+                  { value: 'top left', label: 'Top Left' },
+                  { value: 'top right', label: 'Top Right' },
+                  { value: 'bottom left', label: 'Bottom Left' },
+                  { value: 'bottom right', label: 'Bottom Right' },
+                ]}
+                onChange={v => update(['data', 'props', 'objectPosition'], v)}
+              />
+            </Row2>
           </Section>
         </>
       )}

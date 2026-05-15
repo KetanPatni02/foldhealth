@@ -163,6 +163,20 @@ export function EmailBuilder() {
 
   const unsavedCount = savedSnapshot ? countChanges(savedSnapshot, emailDocument) : 0;
 
+  const autosaveTimer = useRef(null);
+  useEffect(() => {
+    if (unsavedCount === 0 || saving) return;
+    clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(async () => {
+      const ok = await saveEmailTemplate();
+      if (ok) {
+        setLastSavedAt(new Date());
+        setSavedSnapshot(structuredClone(useAppStore.getState().emailDocument));
+      }
+    }, 5000);
+    return () => clearTimeout(autosaveTimer.current);
+  }, [emailDocument]);
+
   // Sidebar click while EmailBuilder is open → either silently leave (no
   // unsaved changes) or pop the confirm dialog so the user doesn't lose work.
   useEffect(() => {

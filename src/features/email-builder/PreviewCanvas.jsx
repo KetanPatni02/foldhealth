@@ -676,6 +676,8 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     else imgStyle.height = 'auto';
     if (typeof imgStyle.width === 'number') imgStyle.width = `${imgStyle.width}px`;
     if (typeof imgStyle.height === 'number') imgStyle.height = `${imgStyle.height}px`;
+    if (props.objectFit && props.objectFit !== 'fill') imgStyle.objectFit = props.objectFit;
+    if (props.objectPosition && props.objectPosition !== 'center') imgStyle.objectPosition = props.objectPosition;
 
     // If we have the raw SVG markup cached (set on upload of an .svg) and
     // a Tint colour, recolor in-place via inline SVG. The wrapper div takes

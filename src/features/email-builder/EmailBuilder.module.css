@@ -161,10 +161,52 @@
 
 .testEmailInput:focus { border-color: var(--primary-300); }
 
+.testEmailDivider {
+  height: 0.5px;
+  background: var(--neutral-150);
+  margin: 6px 0 4px;
+}
+
+.testEmailRecentsLabel {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.testEmailRecents {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.testEmailRecentChip {
+  all: unset;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--neutral-400);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.testEmailRecentChip:hover {
+  background: var(--primary-50);
+  color: var(--primary-500);
+}
+
 .testEmailActions {
   display: flex;
-  gap: 8px;
-  justify-content: flex-end;
+  gap: 6px;
+  justify-content: flex-start;
 }
 
 .testEmailStatus {

@@ -28,12 +28,27 @@ const SENDER_LABELS = {
  *  - Document: useAppStore.emailDocument when EmailBuilder is open, else
  *              the saved campaign.emailTemplate.
  */
+const RECENT_EMAILS_KEY = 'fold:testEmailRecents';
+const MAX_RECENTS = 5;
+
+function getRecentEmails() {
+  try { return JSON.parse(localStorage.getItem(RECENT_EMAILS_KEY)) || []; }
+  catch { return []; }
+}
+
+function addRecentEmail(addr) {
+  const list = getRecentEmails().filter(e => e !== addr);
+  list.unshift(addr);
+  localStorage.setItem(RECENT_EMAILS_KEY, JSON.stringify(list.slice(0, MAX_RECENTS)));
+}
+
 export function SendTestPopover({ onClose, campaignId }) {
   const inputRef = useRef(null);
   const popoverRef = useRef(null);
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState(null); // null | 'sending' | 'ok' | 'error'
   const [errorMsg, setErrorMsg] = useState('');
+  const [recents, setRecents] = useState(getRecentEmails);
 
   // Read everything the popover needs from the store in one go.
   const liveDoc = useAppStore(s => s.emailDocument);
@@ -97,6 +112,8 @@ export function SendTestPopover({ onClose, campaignId }) {
         return;
       }
       setStatus('ok');
+      addRecentEmail(email);
+      setRecents(getRecentEmails());
     } catch (err) {
       setStatus('error');
       setErrorMsg(err?.message || 'Network error');
@@ -126,11 +143,33 @@ export function SendTestPopover({ onClose, campaignId }) {
         </div>
       )}
       <div className={styles.testEmailActions}>
-        <Button variant="secondary" size="S" onClick={onClose}>Cancel</Button>
         <Button variant="primary" size="S" onClick={handleSend} disabled={status === 'sending' || !email}>
           {status === 'sending' ? 'Sending…' : 'Send'}
         </Button>
+        <Button variant="secondary" size="S" onClick={onClose}>Cancel</Button>
       </div>
+      {recents.length > 0 && (
+        <>
+          <div className={styles.testEmailDivider} />
+          <div className={styles.testEmailRecentsLabel}>
+            <Icon name="solar:history-linear" size={12} color="currentColor" />
+            Recent
+          </div>
+          <div className={styles.testEmailRecents}>
+            {recents.map(addr => (
+              <button
+                key={addr}
+                className={styles.testEmailRecentChip}
+                onClick={() => setEmail(addr)}
+                title={addr}
+              >
+                <Icon name="solar:letter-linear" size={12} color="currentColor" />
+                {addr}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
