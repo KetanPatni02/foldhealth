@@ -140,7 +140,9 @@ export function ComponentsPanel() {
   const emailDocument = useAppStore(s => s.emailDocument);
   const editingCampaignName = useAppStore(s => s.editingCampaignName);
   const selectedBlockId = useAppStore(s => s.selectedBlockId);
+  const selectedColumnIdx = useAppStore(s => s.selectedColumnIdx);
   const setSelectedBlockId = useAppStore(s => s.setSelectedBlockId);
+  const selectColumn = useAppStore(s => s.selectColumn);
   const removeBlock = useAppStore(s => s.removeBlock);
   const replaceHeaderFooter = useAppStore(s => s.replaceHeaderFooter);
 
@@ -206,7 +208,9 @@ export function ComponentsPanel() {
           <LayerList
             doc={emailDocument}
             selectedId={selectedBlockId}
+            selectedColumnIdx={selectedColumnIdx}
             onSelect={setSelectedBlockId}
+            selectColumn={selectColumn}
             onRemove={removeBlock}
             renamingId={renamingId}
             setRenamingId={setRenamingId}
@@ -309,7 +313,7 @@ function LayerIcon({ block, size = 14, color = 'currentColor' }) {
 
 const STRUCTURAL_ROLES = new Set(['header', 'body', 'footer']);
 
-function LayerList({ doc, selectedId, onSelect, onRemove, renamingId, setRenamingId }) {
+function LayerList({ doc, selectedId, selectedColumnIdx, onSelect, selectColumn, onRemove, renamingId, setRenamingId }) {
   if (!doc) return null;
   const moveBlock = useAppStore(s => s.moveBlock);
   const updateBlock = useAppStore(s => s.updateBlock);
@@ -342,7 +346,7 @@ function LayerList({ doc, selectedId, onSelect, onRemove, renamingId, setRenamin
     moveBlock(activeId, target);
   };
 
-  const ctx = { doc, selectedId, onSelect, onRemove, renamingId, setRenamingId, updateBlock, layerDropIndicator };
+  const ctx = { doc, selectedId, selectedColumnIdx, onSelect, selectColumn, onRemove, renamingId, setRenamingId, updateBlock, layerDropIndicator };
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={() => setLayerDropIndicator(null)}>
@@ -379,6 +383,32 @@ function LayerChildren({ childrenIds, depth, parentId, ctx }) {
   );
 }
 
+function ColumnGroup({ parentId, columnIdx, childrenIds, depth, ctx }) {
+  const [expanded, setExpanded] = useState(true);
+  const label = `Column ${columnIdx + 1}`;
+  const isSelected = ctx.selectedId === parentId && ctx.selectedColumnIdx === columnIdx;
+  return (
+    <>
+      <div className={[styles.layerRow, isSelected ? styles.layerRowActive : ''].join(' ')} onClick={() => ctx.selectColumn(parentId, columnIdx)}>
+        <span style={{ width: depth * 16, flexShrink: 0 }} />
+        <button
+          className={styles.layerExpandBtn}
+          onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          aria-label={expanded ? 'Collapse' : 'Expand'}
+        >
+          <Icon name={expanded ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'} size={12} color="currentColor" />
+        </button>
+        <Icon name="solar:folder-open-linear" size={14} color="currentColor" />
+        <span className={styles.layerRowText}>{label}</span>
+      </div>
+      {expanded && (
+        <LayerChildren childrenIds={childrenIds} depth={depth + 1} parentId={parentId} ctx={ctx} />
+      )}
+    </>
+  );
+}
+
 function LayerRow({ id, block, depth, ctx }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const [expanded, setExpanded] = useState(true);
@@ -386,7 +416,7 @@ function LayerRow({ id, block, depth, ctx }) {
   const isRenaming = ctx.renamingId === id;
   const props = block.data?.props || {};
   const hasChildren = Array.isArray(props.childrenIds) && props.childrenIds.length > 0;
-  const hasColumns = Array.isArray(props.columns) && props.columns.some(c => (c.childrenIds || []).length > 0);
+  const hasColumns = block.type === 'ColumnsContainer' && Array.isArray(props.columns) && (props.columnsCount || props.columns.length) > 0;
   const isExpandable = hasChildren || hasColumns;
   const isStructural = STRUCTURAL_ROLES.has(block.data?.role);
 
@@ -468,10 +498,8 @@ function LayerRow({ id, block, depth, ctx }) {
       {expanded && hasChildren && (
         <LayerChildren childrenIds={props.childrenIds} depth={depth + 1} parentId={id} ctx={ctx} />
       )}
-      {expanded && hasColumns && props.columns.map((col, ci) => (
-        (col.childrenIds || []).length > 0 && (
-          <LayerChildren key={ci} childrenIds={col.childrenIds} depth={depth + 1} parentId={id} ctx={ctx} />
-        )
+      {expanded && hasColumns && props.columns.slice(0, block.data?.props?.columnsCount || props.columns.length).map((col, ci) => (
+        <ColumnGroup key={ci} parentId={id} columnIdx={ci} childrenIds={col.childrenIds || []} depth={depth + 1} ctx={ctx} />
       ))}
     </>
   );

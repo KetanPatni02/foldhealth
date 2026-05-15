@@ -2147,6 +2147,7 @@ export const useAppStore = create((set, get) => ({
   setEditingCampaignName: (name) => set({ editingCampaignName: name }),
   emailDocument: null,
   selectedBlockId: 'root',
+  selectedColumnIdx: null,
   bulkSelectedIds: [],
   // When the user edits raw HTML in the Code tab, that string takes over the
   // preview canvas (rendered via an iframe). It can't round-trip back to the
@@ -2286,7 +2287,7 @@ export const useAppStore = create((set, get) => ({
     updateHash(get);
   },
   closeEmailBuilder: () => {
-    set({ editingCampaignId: null, editingCampaignName: null, emailDocument: null, selectedBlockId: 'root', bulkSelectedIds: [], htmlPreviewOverride: null, emailHistory: [], emailFuture: [], _lastEmailHistoryTime: 0 });
+    set({ editingCampaignId: null, editingCampaignName: null, emailDocument: null, selectedBlockId: 'root', selectedColumnIdx: null, bulkSelectedIds: [], htmlPreviewOverride: null, emailHistory: [], emailFuture: [], _lastEmailHistoryTime: 0 });
     updateHash(get);
   },
 
@@ -2432,7 +2433,9 @@ export const useAppStore = create((set, get) => ({
     const tree = cloneStoredTree(preset.tree, genId);
     if (tree) get().replaceHeaderFooter(role, tree);
   },
-  setSelectedBlockId: (id) => set({ selectedBlockId: id, bulkSelectedIds: [] }),
+  setSelectedBlockId: (id) => set({ selectedBlockId: id, selectedColumnIdx: null, bulkSelectedIds: [] }),
+  setSelectedColumnIdx: (idx) => set({ selectedColumnIdx: idx }),
+  selectColumn: (blockId, colIdx) => set({ selectedBlockId: blockId, selectedColumnIdx: colIdx, bulkSelectedIds: [] }),
   setBulkSelectedIds: (ids) => set({ bulkSelectedIds: ids }),
   // Cmd/Shift-click on a block: build up a multi-selection from the
   // currently-selected single block + the clicked id. Re-clicking a block

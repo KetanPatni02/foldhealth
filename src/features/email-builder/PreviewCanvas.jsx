@@ -239,8 +239,10 @@ function ResizeWrap({ id, block, updateBlock, isSelected, canWidth, canHeight, c
 export function PreviewCanvas({ dropIndicator }) {
   const doc = useAppStore(s => s.emailDocument);
   const selectedBlockId = useAppStore(s => s.selectedBlockId);
+  const selectedColumnIdx = useAppStore(s => s.selectedColumnIdx);
   const bulkSelectedIds = useAppStore(s => s.bulkSelectedIds);
   const setSelectedBlockId = useAppStore(s => s.setSelectedBlockId);
+  const selectColumn = useAppStore(s => s.selectColumn);
   const removeBlock = useAppStore(s => s.removeBlock);
   const updateBlock = useAppStore(s => s.updateBlock);
   const duplicateBlock = useAppStore(s => s.duplicateBlock);
@@ -286,8 +288,10 @@ export function PreviewCanvas({ dropIndicator }) {
   const ctx = {
     doc,
     selectedBlockId,
+    selectedColumnIdx,
     bulkSet,
     setSelectedBlockId,
+    selectColumn,
     toggleBulkSelected,
     removeBlock,
     updateBlock,
@@ -632,11 +636,26 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
           // the main axis is vertical — applying the % there would size each
           // column as a fraction of the parent's height (≈0 in hug mode), so
           // every column would collapse. Stack them at full width instead.
+          const colAlign = col?.align || 'left';
+          const colValign = col?.valign || 'top';
+          const vMap = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };
+          const isColSelected = ctx.selectedBlockId === id && ctx.selectedColumnIdx === idx;
+          const colPad = col?.padding;
+          const colBg = col?.backgroundColor;
           const itemStyle = isColumn
-            ? { width: '100%', minWidth: 0 }
-            : { flex: `0 0 calc(${w}% - ${totalGap * w / 100}px)`, minWidth: 0 };
+            ? { width: '100%', minWidth: 0, textAlign: colAlign, display: 'flex', flexDirection: 'column', justifyContent: vMap[colValign] || 'flex-start' }
+            : { flex: `0 0 calc(${w}% - ${totalGap * w / 100}px)`, minWidth: 0, textAlign: colAlign, display: 'flex', flexDirection: 'column', justifyContent: vMap[colValign] || 'flex-start' };
+          if (colPad) {
+            itemStyle.padding = `${colPad.top || 0}px ${colPad.right || 0}px ${colPad.bottom || 0}px ${colPad.left || 0}px`;
+          }
+          if (colBg) itemStyle.backgroundColor = colBg;
           return (
-            <div key={idx} style={itemStyle}>
+            <div
+              key={idx}
+              style={itemStyle}
+              className={isColSelected ? styles.selectedColumn : undefined}
+              onClick={(e) => { e.stopPropagation(); ctx.selectColumn(id, idx); }}
+            >
               <SortableList parentId={id} columnIdx={idx} childrenIds={col?.childrenIds || []} ctx={ctx} />
             </div>
           );

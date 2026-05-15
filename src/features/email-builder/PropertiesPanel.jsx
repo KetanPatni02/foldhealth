@@ -54,11 +54,13 @@ export function PropertiesPanel() {
   const dragging = useRef(false);
   const doc = useAppStore(s => s.emailDocument);
   const id = useAppStore(s => s.selectedBlockId);
+  const selectedColumnIdx = useAppStore(s => s.selectedColumnIdx);
   const updateBlock = useAppStore(s => s.updateBlock);
   const bulkIds = useAppStore(s => s.bulkSelectedIds);
 
   const block = doc?.[id];
   const isBulk = bulkIds.length > 0;
+  const isColumnSelected = selectedColumnIdx !== null && block?.type === 'ColumnsContainer';
 
   const handleMouseDown = useCallback((e) => {
     e.preventDefault();
@@ -105,7 +107,9 @@ export function PropertiesPanel() {
 
       {tab === 'design' && (isBulk
         ? <BulkDesignTab doc={doc} bulkIds={bulkIds} updateBlock={updateBlock} />
-        : <DesignTab block={block} updateBlock={updateBlock} id={id} />
+        : isColumnSelected
+          ? <ColumnDesignTab block={block} updateBlock={updateBlock} id={id} columnIdx={selectedColumnIdx} />
+          : <DesignTab block={block} updateBlock={updateBlock} id={id} />
       )}
       {tab === 'code' && <CodeTab doc={doc} />}
       {tab === 'template' && <TemplateTab block={block} />}
@@ -927,6 +931,77 @@ function getCommonValue(blocks, getter) {
   if (blocks.length === 0) return undefined;
   const first = getter(blocks[0]);
   return blocks.every(b => getter(b) === first) ? first : undefined;
+}
+
+function ColumnDesignTab({ block, updateBlock, id, columnIdx }) {
+  if (!block) return <div className={styles.emptyState}>Select a block</div>;
+  const props = block.data?.props || {};
+  const col = props.columns?.[columnIdx] || {};
+  const colPadding = col.padding || { top: 0, right: 0, bottom: 0, left: 0 };
+
+  const updateCol = (key, value) => {
+    updateBlock(id, prev => {
+      const next = JSON.parse(JSON.stringify(prev));
+      next.data = next.data || {};
+      next.data.props = next.data.props || {};
+      next.data.props.columns = next.data.props.columns || [];
+      while (next.data.props.columns.length <= columnIdx) next.data.props.columns.push({ childrenIds: [] });
+      next.data.props.columns[columnIdx][key] = value;
+      return next;
+    });
+  };
+
+  return (
+    <div className={styles.designScroll}>
+      <SectionHeading>Column {columnIdx + 1}</SectionHeading>
+      <Section>
+        <Row2>
+          <div className={styles.fieldCol}>
+            <label className={styles.fieldLabel}>Horizontal</label>
+            <Toggle
+              fullWidth
+              size="S"
+              items={[
+                { key: 'left',   label: '', icon: <AlignLeftIcon /> },
+                { key: 'center', label: '', icon: <AlignCenterIcon /> },
+                { key: 'right',  label: '', icon: <AlignRightIcon /> },
+              ]}
+              active={col.align || 'left'}
+              onChange={v => updateCol('align', v)}
+            />
+          </div>
+          <div className={styles.fieldCol}>
+            <label className={styles.fieldLabel}>Vertical</label>
+            <Toggle
+              fullWidth
+              size="S"
+              items={[
+                { key: 'top',    label: '', icon: <AlignTopIcon /> },
+                { key: 'middle', label: '', icon: <AlignMiddleIcon /> },
+                { key: 'bottom', label: '', icon: <AlignBottomIcon /> },
+              ]}
+              active={col.valign || 'top'}
+              onChange={v => updateCol('valign', v)}
+            />
+          </div>
+        </Row2>
+        <PaddingControl
+          padding={colPadding}
+          onChangeSide={(side, value) => {
+            updateCol('padding', { ...colPadding, [side]: value });
+          }}
+          onChangeAll={(value) => {
+            updateCol('padding', { top: value, right: value, bottom: value, left: value });
+          }}
+        />
+        <ColorInput
+          label="Background"
+          value={col.backgroundColor || ''}
+          onChange={v => updateCol('backgroundColor', v || '')}
+        />
+      </Section>
+    </div>
+  );
 }
 
 function BulkDesignTab({ doc, bulkIds, updateBlock }) {

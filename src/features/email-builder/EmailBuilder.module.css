@@ -411,6 +411,12 @@
   outline-offset: -2px;
 }
 
+.selectedColumn {
+  outline: 2px solid var(--primary-200);
+  outline-offset: -2px;
+  border-radius: 2px;
+}
+
 /* Preset picker (Header/Footer dropdown) */
 .presetPicker {
   margin-top: 12px;

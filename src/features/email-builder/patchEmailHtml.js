@@ -473,7 +473,12 @@ function renderBlock(doc, id) {
       if (direction === 'column') {
         const rows = visible.map(col => {
           const children = (col.childrenIds || []).map(cid => renderBlock(doc, cid)).join('');
-          const tdS = { 'padding-bottom': `${rowGap}px` };
+          const colAlign = col.align || 'left';
+          const colValign = col.valign || 'top';
+          const colPad = col.padding;
+          const tdS = { 'padding-bottom': `${rowGap}px`, 'text-align': colAlign, 'vertical-align': colValign === 'middle' ? 'middle' : colValign === 'bottom' ? 'bottom' : 'top' };
+          if (colPad) tdS.padding = `${colPad.top || 0}px ${colPad.right || 0}px ${colPad.bottom || 0}px ${colPad.left || 0}px`;
+          if (col.backgroundColor) tdS['background-color'] = col.backgroundColor;
           return `<tr><td style="${styleStr(tdS)}">${children || '&nbsp;'}</td></tr>`;
         }).join('');
         return `<div style="${styleStr(wrapS)}"><table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">${rows}</table></div>`;
@@ -482,11 +487,17 @@ function renderBlock(doc, id) {
       let colsHtml = visible.map((col, idx) => {
         const children = (col.childrenIds || []).map(cid => renderBlock(doc, cid)).join('');
         const w = columnWidths[idx] || (100 / count);
+        const colAlign = col.align || 'left';
+        const colValign = col.valign || 'top';
+        const colPad = col.padding;
         const tdS = {
           width: `${Math.round(w)}%`,
-          'vertical-align': 'top',
+          'vertical-align': colValign === 'middle' ? 'middle' : colValign === 'bottom' ? 'bottom' : 'top',
+          'text-align': colAlign,
           'padding-right': idx < visible.length - 1 ? `${gap}px` : '0',
         };
+        if (colPad) tdS.padding = `${colPad.top || 0}px ${colPad.right || 0}px ${colPad.bottom || 0}px ${colPad.left || 0}px`;
+        if (col.backgroundColor) tdS['background-color'] = col.backgroundColor;
         return `<td style="${styleStr(tdS)}">${children || '&nbsp;'}</td>`;
       }).join('');
 
