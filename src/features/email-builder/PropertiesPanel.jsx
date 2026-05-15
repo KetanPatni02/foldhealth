@@ -1319,6 +1319,196 @@ function OverlayVerticalScroll({ innerRef, className, children, ...rest }) {
   );
 }
 
+// ── MJML / Easy Email → Fold document converter ─────────────────────────────
+function convertMjmlToFold(mjml) {
+  let counter = 0;
+  const genId = () => `imported-${++counter}`;
+  const blocks = {};
+
+  function parsePadding(str) {
+    if (!str) return { top: 0, right: 0, bottom: 0, left: 0 };
+    const parts = str.replace(/px/g, '').trim().split(/\s+/).map(Number);
+    if (parts.length === 1) return { top: parts[0], right: parts[0], bottom: parts[0], left: parts[0] };
+    if (parts.length === 2) return { top: parts[0], right: parts[1], bottom: parts[0], left: parts[1] };
+    if (parts.length === 4) return { top: parts[0], right: parts[1], bottom: parts[2], left: parts[3] };
+    return { top: 0, right: 0, bottom: 0, left: 0 };
+  }
+
+  function pxToNum(val) {
+    if (!val) return undefined;
+    return parseInt(String(val).replace('px', ''), 10) || undefined;
+  }
+
+  function stripHtml(html) {
+    return html?.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '') || '';
+  }
+
+  function convertNode(node) {
+    if (!node || !node.type) return null;
+    const a = node.attributes || {};
+    const val = node.data?.value || {};
+
+    switch (node.type) {
+      case 'image': {
+        const id = genId();
+        blocks[id] = {
+          type: 'Image',
+          data: {
+            props: { url: a.src || '', alt: a.alt || '', width: pxToNum(a.width) },
+            style: { padding: parsePadding(a.padding), textAlign: a.align || 'center' },
+          },
+        };
+        return id;
+      }
+      case 'text': {
+        const id = genId();
+        const content = val.content || '';
+        const isHeading = pxToNum(a['font-size']) >= 24;
+        blocks[id] = {
+          type: isHeading ? 'Heading' : 'Text',
+          data: {
+            props: { text: content, ...(isHeading ? { level: 'h2' } : {}) },
+            style: {
+              padding: parsePadding(a.padding),
+              color: a.color || '#3A485F',
+              fontSize: pxToNum(a['font-size']) || 14,
+              fontWeight: a['font-weight'] || 'normal',
+              textAlign: a.align || 'left',
+            },
+          },
+        };
+        return id;
+      }
+      case 'button': {
+        const id = genId();
+        blocks[id] = {
+          type: 'Button',
+          data: {
+            props: {
+              text: val.content || stripHtml(a['inner-text'] || 'Click me'),
+              url: a.href || '#',
+              buttonBackgroundColor: a['background-color'] || '#7C5CFA',
+              buttonTextColor: a.color || '#FFFFFF',
+            },
+            style: { padding: parsePadding(a.padding), textAlign: a.align || 'center' },
+          },
+        };
+        return id;
+      }
+      case 'divider':
+      case 'advanced_divider': {
+        const id = genId();
+        blocks[id] = {
+          type: 'Divider',
+          data: {
+            props: { lineColor: a['border-color'] || '#E1E4EA', lineHeight: pxToNum(a['border-width']) || 1 },
+            style: { padding: parsePadding(a.padding) },
+          },
+        };
+        return id;
+      }
+      case 'spacer': {
+        const id = genId();
+        blocks[id] = {
+          type: 'Spacer',
+          data: {
+            props: { height: pxToNum(a.height) || 32 },
+            style: { padding: { top: 0, right: 0, bottom: 0, left: 0 } },
+          },
+        };
+        return id;
+      }
+      case 'column': {
+        const childIds = (node.children || []).map(convertNode).filter(Boolean);
+        return childIds;
+      }
+      case 'group':
+      case 'section': {
+        const columns = [];
+        const flatChildren = [];
+        for (const child of (node.children || [])) {
+          if (child.type === 'group') {
+            for (const gc of (child.children || [])) {
+              if (gc.type === 'column') {
+                columns.push((gc.children || []).map(convertNode).filter(Boolean));
+              } else {
+                const cid = convertNode(gc);
+                if (cid) flatChildren.push(cid);
+              }
+            }
+          } else if (child.type === 'column') {
+            columns.push((child.children || []).map(convertNode).filter(Boolean));
+          } else {
+            const cid = convertNode(child);
+            if (cid) flatChildren.push(cid);
+          }
+        }
+
+        if (columns.length > 1) {
+          const id = genId();
+          blocks[id] = {
+            type: 'ColumnsContainer',
+            data: {
+              style: { padding: parsePadding(a.padding), backgroundColor: a['background-color'] },
+              props: {
+                columnsCount: columns.length,
+                columnsGap: 16,
+                columns: columns.map(col => ({ childrenIds: col.flat() })),
+              },
+            },
+          };
+          return id;
+        }
+
+        const allChildIds = [...flatChildren, ...columns.flat(2)];
+        if (allChildIds.length === 0) return null;
+
+        if (a['background-color'] && a['background-color'] !== 'white' && a['background-color'] !== '#FFFFFF' && a['background-color'] !== '#ffffff') {
+          const id = genId();
+          blocks[id] = {
+            type: 'Container',
+            data: {
+              style: { padding: parsePadding(a.padding), backgroundColor: a['background-color'] },
+              props: { childrenIds: allChildIds },
+            },
+          };
+          return id;
+        }
+
+        return allChildIds;
+      }
+      default:
+        return null;
+    }
+  }
+
+  const rootChildIds = [];
+  for (const child of (mjml.children || [])) {
+    const result = convertNode(child);
+    if (Array.isArray(result)) rootChildIds.push(...result);
+    else if (result) rootChildIds.push(result);
+  }
+
+  const pageAttrs = mjml.attributes || {};
+  const pageValue = mjml.data?.value || {};
+
+  const doc = {
+    root: {
+      type: 'EmailLayout',
+      data: {
+        backdropColor: pageAttrs['background-color'] || '#F2EEFE',
+        canvasColor: '#FFFFFF',
+        textColor: pageValue['text-color'] || '#3A485F',
+        fontFamily: 'MODERN_SANS',
+        childrenIds: rootChildIds,
+      },
+    },
+    ...blocks,
+  };
+
+  return doc;
+}
+
 // ── Code tab ────────────────────────────────────────────────────────────────
 function CodeTab({ doc }) {
   const setEmailDocument = useAppStore(s => s.setEmailDocument);
@@ -1430,7 +1620,10 @@ function CodeTab({ doc }) {
     drafting.current = true;
     if (mode === 'json') {
       try {
-        const parsed = JSON.parse(v);
+        let parsed = JSON.parse(v);
+        if (parsed && parsed.type === 'page' && Array.isArray(parsed.children)) {
+          parsed = convertMjmlToFold(parsed);
+        }
         if (!parsed || typeof parsed !== 'object' || !parsed.root) {
           setError('Document must contain a "root" block');
           return;
