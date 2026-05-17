@@ -140,6 +140,12 @@ The platform follows the **Fold Health design system** with strict adherence to:
 
 ## Recent Changes
 
+### Email Builder — Gap between nested children (May 2026)
+- New **Gap** control (px) in the Design tab Layout section for Container, ColumnsContainer, and the EmailLayout root. Sets vertical spacing between stacked children. For ColumnsContainer it spaces the children inside each column (distinct from the existing `columnsGap`/`rowGap` which space the columns themselves).
+- Canvas implementation: `SortableList` accepts a `gap` prop and wraps children in `display: flex; flex-direction: column; gap: Npx` when set.
+- HTML export: new `joinChildrenWithGap(childHtmls, gap)` helper inserts a transparent spacer `<div>` between children — works in Outlook/Gmail/Apple Mail (flex gap doesn't survive Outlook desktop).
+- Storage: blocks write to `data.style.gap`; root writes to `data.gap`. Factories default to `0` so existing campaigns continue to render flush-stacked.
+
 ### Email Builder — Skeleton shimmer loading state (May 2026)
 - **`EmailBuilderSkeleton` component** replaces the bare "Loading template…" text shown during the hard-refresh fetch window. Mirrors the real builder chrome exactly — top bar with title + device picker + Test/Save pills, left panel with two tab placeholders + a 5×3 component-tile grid, canvas with a hero placeholder + varied-width text lines + a card + a pill button, right panel with three tab placeholders + section strips + dual-column field-input rows for typography. The transition into the populated UI is now visually continuous instead of a jarring text→full-page swap.
 - New `@keyframes ebShimmer` + `.sk*` class set in `EmailBuilder.module.css`. Uses the same `linear-gradient` slid via `background-position` technique as `CallsView`/`TasksView`, with `--neutral-75` / `--neutral-100` tokens so placeholders sit subtly on the white panel surfaces.

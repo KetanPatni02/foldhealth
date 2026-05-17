@@ -519,7 +519,7 @@ export function PreviewCanvas({ dropIndicator }) {
         style={layoutStyle}
         onClick={(e) => { e.stopPropagation(); setSelectedBlockId('root'); }}
       >
-        <SortableList parentId="root" childrenIds={childrenIds} ctx={ctx} />
+        <SortableList parentId="root" childrenIds={childrenIds} ctx={ctx} gap={root?.data?.gap} />
       </div>
     </div>
   );
@@ -530,14 +530,19 @@ function DropIndicatorLine() {
 }
 
 // ── A sortable list of blocks belonging to a single parent slot. ────────────
-function SortableList({ parentId, columnIdx, childrenIds, ctx }) {
+function SortableList({ parentId, columnIdx, childrenIds, ctx, gap }) {
   if (!childrenIds || childrenIds.length === 0) {
     return <EmptyDropzone parentId={parentId} columnIdx={columnIdx} />;
   }
   const ind = ctx.dropIndicator;
   const showHere = ind && ind.parentId === parentId && (ind.columnIdx ?? undefined) === (columnIdx ?? undefined) && !ind.isNest;
-  return (
-    <SortableContext items={childrenIds} strategy={verticalListSortingStrategy}>
+  // `gap` is the vertical spacing between children, configured on the
+  // parent nesting block (Container / ColumnsContainer column / EmailLayout).
+  // We use flex column instead of margin so the gap doesn't collapse with
+  // a child's own margin and stays consistent with the export pipeline.
+  const wrapperStyle = gap ? { display: 'flex', flexDirection: 'column', gap: `${gap}px` } : undefined;
+  const content = (
+    <>
       {showHere && ind.index === 0 && <DropIndicatorLine />}
       {childrenIds.map((id, idx) => (
         <div key={id}>
@@ -545,6 +550,11 @@ function SortableList({ parentId, columnIdx, childrenIds, ctx }) {
           {showHere && ind.index === idx + 1 && <DropIndicatorLine />}
         </div>
       ))}
+    </>
+  );
+  return (
+    <SortableContext items={childrenIds} strategy={verticalListSortingStrategy}>
+      {wrapperStyle ? <div style={wrapperStyle}>{content}</div> : content}
     </SortableContext>
   );
 }
@@ -796,7 +806,7 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     const isNestTarget = ctx.dropIndicator?.isNest && ctx.dropIndicator?.parentId === id;
     return (
       <div style={containerStyle} className={isNestTarget ? styles.dropNestTarget : undefined}>
-        <SortableList parentId={id} childrenIds={props.childrenIds || []} ctx={ctx} />
+        <SortableList parentId={id} childrenIds={props.childrenIds || []} ctx={ctx} gap={style.gap} />
         {isSelected && <ContainerResizeHandle id={id} block={block} updateBlock={ctx.updateBlock} />}
       </div>
     );
@@ -882,7 +892,7 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
               className={isColSelected ? styles.selectedColumn : undefined}
               onClick={(e) => { e.stopPropagation(); ctx.selectColumn(id, idx); }}
             >
-              <SortableList parentId={id} columnIdx={idx} childrenIds={col?.childrenIds || []} ctx={ctx} />
+              <SortableList parentId={id} columnIdx={idx} childrenIds={col?.childrenIds || []} ctx={ctx} gap={style.gap} />
             </div>
           );
         })}

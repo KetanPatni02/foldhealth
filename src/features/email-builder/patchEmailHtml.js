@@ -182,6 +182,17 @@ function pad(p) {
   return `${p.top || 0}px ${p.right || 0}px ${p.bottom || 0}px ${p.left || 0}px`;
 }
 
+// Join rendered child HTMLs with a vertical gap between them. CSS `gap` on
+// flex containers isn't reliable across email clients (Outlook desktop
+// renders flex as block); a transparent spacer div sandwiched between each
+// pair is the lowest-common-denominator that works everywhere.
+function joinChildrenWithGap(childHtmls, gap) {
+  const g = parseFloat(gap) || 0;
+  if (!g || childHtmls.length < 2) return childHtmls.join('');
+  const spacer = `<div style="height:${g}px;line-height:1px;font-size:1px">&nbsp;</div>`;
+  return childHtmls.join(spacer);
+}
+
 function esc(s) {
   return String(s || '')
     .replace(/&/g, '&amp;')
@@ -416,7 +427,10 @@ function renderBlock(doc, id) {
     }
 
     case 'Container': {
-      const children = (props.childrenIds || []).map(cid => renderBlock(doc, cid)).join('');
+      const children = joinChildrenWithGap(
+        (props.childrenIds || []).map(cid => renderBlock(doc, cid)),
+        style.gap,
+      );
       const perSideC = perSideBorderCss(style.borderSides);
       const s = {
         padding,
@@ -494,7 +508,10 @@ function renderBlock(doc, id) {
       // row). Direction = row → render as a horizontal table of cells.
       if (direction === 'column') {
         const rows = visible.map(col => {
-          const children = (col.childrenIds || []).map(cid => renderBlock(doc, cid)).join('');
+          const children = joinChildrenWithGap(
+            (col.childrenIds || []).map(cid => renderBlock(doc, cid)),
+            style.gap,
+          );
           const colAlign = col.align || 'left';
           const colValign = col.valign || 'top';
           const colPad = col.padding;
@@ -669,7 +686,10 @@ export function renderEmailHtml(doc, { wrapperPadding = '24px 0', theme = 'auto'
 
   // Use effectiveDoc (the dark-mode-transformed copy when theme === 'dark')
   // so child blocks render with their flipped backgrounds / text colors.
-  const bodyContent = childrenIds.map(cid => renderBlock(effectiveDoc, cid)).join('');
+  const bodyContent = joinChildrenWithGap(
+    childrenIds.map(cid => renderBlock(effectiveDoc, cid)),
+    root.data?.gap,
+  );
   const colorScheme = theme === 'auto' ? 'light dark' : theme;
 
   // Build a lean Google Fonts <link> covering only the families this email

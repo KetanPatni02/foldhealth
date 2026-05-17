@@ -68,14 +68,14 @@ const FACTORIES = {
   Container: () => ({
     type: 'Container',
     data: {
-      style: { padding: { top: 0, bottom: 0, left: 0, right: 0 }, backgroundColor: '#F6F4FF' },
+      style: { padding: { top: 0, bottom: 0, left: 0, right: 0 }, backgroundColor: '#F6F4FF', gap: 0 },
       props: { childrenIds: [] },
     },
   }),
   ColumnsContainer: () => ({
     type: 'ColumnsContainer',
     data: {
-      style: { padding: { top: 0, bottom: 0, left: 0, right: 0 } },
+      style: { padding: { top: 0, bottom: 0, left: 0, right: 0 }, gap: 0 },
       props: {
         columnsCount: 2,
         columnsGap: 16,

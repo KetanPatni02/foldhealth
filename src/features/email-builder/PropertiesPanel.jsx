@@ -640,6 +640,20 @@ function DesignTab({ block, updateBlock, id }) {
           </Row2>
         ) : null}
 
+        {/* Gap between stacked children. For ColumnsContainer this is the
+            vertical spacing inside each column (separate from columnsGap /
+            rowGap which space the columns themselves). For Container and
+            the root EmailLayout it spaces the top-level children stack. */}
+        {(block.type === 'Container' || block.type === 'ColumnsContainer' || isLayout) && (
+          <Row2>
+            <IconInput
+              label="Gap" suffix="px"
+              value={(isLayout ? data.gap : style.gap) ?? 0}
+              onChange={v => update(isLayout ? ['data', 'gap'] : ['data', 'style', 'gap'], parseFloat(v) || 0)}
+            />
+          </Row2>
+        )}
+
         {/* Fixed-height containers position their child content via flex
             instead of overflowing. Two 3-button toggles (Horizontal +
             Vertical) map to align-items + justify-content respectively. */}
