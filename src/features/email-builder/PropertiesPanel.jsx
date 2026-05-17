@@ -15,6 +15,8 @@ import { uploadImage } from './uploadImage';
 import { GOOGLE_FONTS, injectGoogleFonts, availableWeights, normalizeWeight } from './googleFonts';
 import { ColorPicker } from './ColorPicker';
 import { isGradient } from './colorHelpers';
+import { parseLineHeight, formatLineHeight, parseLetterSpacing, formatLetterSpacing } from './dimUnits';
+import { parseHtmlToDocument } from './htmlToDocument';
 import styles from './EmailBuilder.module.css';
 
 // Inject the Google Fonts stylesheet once so the canvas + inline previews
@@ -57,6 +59,7 @@ export function PropertiesPanel() {
   const selectedColumnIdx = useAppStore(s => s.selectedColumnIdx);
   const updateBlock = useAppStore(s => s.updateBlock);
   const bulkIds = useAppStore(s => s.bulkSelectedIds);
+  const setHtmlPreviewOverride = useAppStore(s => s.setHtmlPreviewOverride);
 
   const block = doc?.[id];
   const isBulk = bulkIds.length > 0;
@@ -119,6 +122,7 @@ export function PropertiesPanel() {
 
 // ── Design tab ──────────────────────────────────────────────────────────────
 function DesignTab({ block, updateBlock, id }) {
+  const rootFontFamily = useAppStore(s => s.emailDocument?.root?.data?.fontFamily);
   if (!block) {
     return <div className={styles.emptyState}>Select a block</div>;
   }
@@ -857,7 +861,7 @@ function DesignTab({ block, updateBlock, id }) {
           <Section>
             <SelectInput
               label="Font Family"
-              value={(isLayout ? data.fontFamily : style.fontFamily) || 'Inter'}
+              value={(isLayout ? data.fontFamily : style.fontFamily) || rootFontFamily || 'Inter'}
               options={FONT_FAMILIES}
               onChange={v => update(isLayout ? ['data', 'fontFamily'] : ['data', 'style', 'fontFamily'], v)}
             />
@@ -877,16 +881,8 @@ function DesignTab({ block, updateBlock, id }) {
                   />
                 </Row2>
                 <Row2>
-                  <IconInput
-                    label="Line Height" suffix="%"
-                    value={style.lineHeight ? Math.round(Number(style.lineHeight) * 100) : 120}
-                    onChange={v => update(['data', 'style', 'lineHeight'], (parseFloat(v) || 120) / 100)}
-                  />
-                  <IconInput
-                    label="Letter Spacing" suffix="px"
-                    value={style.letterSpacing || 0}
-                    onChange={v => update(['data', 'style', 'letterSpacing'], parseFloat(v) || 0)}
-                  />
+                  <LineHeightInput value={style.lineHeight} onChange={v => update(['data', 'style', 'lineHeight'], v)} />
+                  <LetterSpacingInput value={style.letterSpacing} onChange={v => update(['data', 'style', 'letterSpacing'], v)} />
                 </Row2>
                 <Row2>
                   <div className={styles.fieldCol}>
@@ -1742,7 +1738,55 @@ function CodeTab({ doc }) {
       {mode === 'html' && htmlPreviewOverride && (
         <div className={styles.codeBanner}>
           <Icon name="solar:info-circle-linear" size={12} color="currentColor" />
-          HTML override active — preview shows your edits. Switch to JSON or Design to revert.
+          <span style={{ flex: 1 }}>Previewing edited HTML — confirm to import as editable blocks.</span>
+          <button
+            type="button"
+            className={styles.codeBannerBtn}
+            onClick={async () => {
+              const html = htmlPreviewOverride;
+              const parsed = await parseHtmlToDocument(html);
+              if (parsed) {
+                setEmailDocument(parsed);
+              } else {
+                // Parsing produced nothing usable — keep the HTML as a raw
+                // custom body so the user still gets WYSIWYG editing.
+                setEmailDocument({
+                  ...doc,
+                  root: {
+                    ...doc.root,
+                    data: { ...(doc.root?.data || {}), customHtml: html },
+                  },
+                });
+              }
+            }}
+            title="Convert HTML to editable blocks"
+          >
+            <Icon name="solar:check-circle-linear" size={13} color="currentColor" />
+            Confirm
+          </button>
+        </div>
+      )}
+      {mode === 'html' && !htmlPreviewOverride && doc?.root?.data?.customHtml && (
+        <div className={styles.codeBanner}>
+          <Icon name="solar:check-circle-linear" size={12} color="currentColor" />
+          <span style={{ flex: 1 }}>Custom HTML body is active.</span>
+          <button
+            type="button"
+            className={styles.codeBannerBtn}
+            onClick={() => {
+              setEmailDocument({
+                ...doc,
+                root: {
+                  ...doc.root,
+                  data: { ...(doc.root?.data || {}), customHtml: undefined },
+                },
+              });
+            }}
+            title="Remove custom HTML and revert to block-based body"
+          >
+            <Icon name="solar:trash-bin-minimalistic-linear" size={13} color="currentColor" />
+            Remove
+          </button>
         </div>
       )}
 
@@ -2334,6 +2378,86 @@ function ImageUploader({ currentUrl, onChange, compact }) {
 }
 
 // ── Color Variables (global) ────────────────────────────────────────────────
+function ColorVarSwatch({ value, name, onChange }) {
+  const recentlyUsed = useAppStore(s => s.recentlyUsedColors);
+  const pushRecent = useAppStore(s => s.pushRecentColor);
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef(null);
+  const popoverRef = useRef(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  useLayoutEffect(() => {
+    if (!open || !btnRef.current) return;
+    const update = () => {
+      const r = btnRef.current?.getBoundingClientRect();
+      if (!r) return;
+      const popoverWidth = 264;
+      const margin = 8;
+      let left = r.left;
+      left = Math.max(margin, Math.min(left, window.innerWidth - popoverWidth - margin));
+      const popoverMaxH = Math.min(window.innerHeight - 16, 720);
+      const spaceBelow = window.innerHeight - r.bottom - margin;
+      const spaceAbove = r.top - margin;
+      let top = (spaceBelow >= 200 || spaceBelow >= spaceAbove) ? r.bottom + 4 : Math.max(margin, r.top - 4 - popoverMaxH);
+      top = Math.max(margin, Math.min(top, window.innerHeight - margin - 40));
+      setPos({ top, left });
+    };
+    update();
+    const raf = requestAnimationFrame(update);
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    const ro = new ResizeObserver(update);
+    ro.observe(btnRef.current);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', update); window.removeEventListener('scroll', update, true); ro.disconnect(); };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (btnRef.current?.contains(e.target)) return;
+      if (popoverRef.current?.contains(e.target)) return;
+      setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        className={styles.colorDotBtn}
+        onClick={() => setOpen(o => !o)}
+        aria-label={`Color for ${name}`}
+        style={{ flexShrink: 0 }}
+      >
+        <span
+          className={styles.colorDot}
+          style={{
+            background: value,
+            borderColor: typeof value === 'string' && value.toLowerCase() === '#ffffff' ? '#CED4DD' : value,
+          }}
+        />
+      </button>
+      {open && createPortal(
+        <div ref={popoverRef} className={styles.colorPickerPortal} style={{ top: pos.top, left: pos.left }}>
+          <ColorPicker
+            value={value}
+            onChange={onChange}
+            variables={[]}
+            recentlyUsed={recentlyUsed}
+            onCommitRecent={pushRecent}
+            allowGradient={false}
+            onClose={() => setOpen(false)}
+          />
+        </div>,
+        document.body,
+      )}
+    </>
+  );
+}
+
 function ColorVariablesEditor() {
   const variables = useAppStore(s => s.colorVariables);
   const addColorVariable = useAppStore(s => s.addColorVariable);
@@ -2351,12 +2475,10 @@ function ColorVariablesEditor() {
     <div className={styles.colorVarList}>
       {variables.map((cv, idx) => (
         <div key={idx} className={styles.colorVarRow}>
-          <input
-            type="color"
+          <ColorVarSwatch
             value={cv.hex}
-            onChange={e => updateColorVariable(cv.name, { hex: e.target.value })}
-            className={styles.colorVarPicker}
-            aria-label={`Color for ${cv.name}`}
+            name={cv.name}
+            onChange={hex => updateColorVariable(cv.name, { hex })}
           />
           <input
             type="text"
@@ -2385,6 +2507,34 @@ function ColorVariablesEditor() {
         Add variable
       </button>
     </div>
+  );
+}
+
+// Line height with px/% unit toggle. Storage stays backward-compatible:
+// number = unitless multiplier (legacy %), string like "18px" = explicit px.
+function LineHeightInput({ value, onChange }) {
+  const lh = parseLineHeight(value);
+  return (
+    <IconInput
+      label="Line Height"
+      unit={lh.unit}
+      onUnitChange={u => onChange(formatLineHeight(lh.value, u))}
+      value={lh.value}
+      onChange={v => onChange(formatLineHeight(v, lh.unit))}
+    />
+  );
+}
+
+function LetterSpacingInput({ value, onChange }) {
+  const ls = parseLetterSpacing(value);
+  return (
+    <IconInput
+      label="Letter Spacing"
+      unit={ls.unit}
+      onUnitChange={u => onChange(formatLetterSpacing(ls.value, u))}
+      value={ls.value}
+      onChange={v => onChange(formatLetterSpacing(v, ls.unit))}
+    />
   );
 }
 
@@ -2856,18 +3006,14 @@ function TextStyleChips({ block, updateBlock, id }) {
       return next;
     });
   };
-  // Which chip matches the current settings?
+  // Which chip matches the current element? Text blocks → Body; Headings map
+  // to the chip whose `level` matches the block's `level`. Falls back to
+  // Heading for unknown levels so something is always selected.
   const active = (() => {
-    const fs = Number(style.fontSize) || (block.type === 'Heading' ? 24 : 14);
-    const fw = style.fontWeight || (block.type === 'Heading' ? 'bold' : 'normal');
-    const lvl = props.level;
-    for (const p of TEXT_STYLE_PRESETS) {
-      const sizeMatch = fs === p.fontSize;
-      const weightMatch = fw === p.fontWeight;
-      const levelMatch = block.type !== 'Heading' || !p.level || lvl === p.level;
-      if (sizeMatch && weightMatch && levelMatch) return p.key;
-    }
-    return null;
+    if (block.type !== 'Heading') return 'body';
+    const lvl = (props.level || 'h2').toLowerCase();
+    const byLevel = TEXT_STYLE_PRESETS.find(p => p.level === lvl);
+    return byLevel ? byLevel.key : 'heading';
   })();
   return (
     <Toggle

@@ -2117,6 +2117,16 @@ export const useAppStore = create((set, get) => ({
     set({ campaigns, campaignsLoading: false });
   },
 
+  fetchCampaignById: async (id) => {
+    const { data, error } = await supabase
+      .from('campaigns')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error || !data) return null;
+    return campaignRowToJs(data);
+  },
+
   saveEmailTemplate: async () => {
     const s = get();
     if (!s.editingCampaignId || !s.emailDocument) return false;

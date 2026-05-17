@@ -140,6 +140,18 @@ The platform follows the **Fold Health design system** with strict adherence to:
 
 ## Recent Changes
 
+### Email Builder — HTML import as editable blocks + Code/Design polish (May 2026)
+- **HTML → editable blocks.** Paste any HTML into the Code > HTML tab, hit **Confirm**, and the parser walks the rendered DOM in a hidden iframe, reads `getComputedStyle()` for every element (so CSS classes from `<style>` blocks resolve correctly), and produces a full document tree — headings, text, images, anchor-buttons, columns, dividers, containers. The layers panel populates and each block is editable through the Design tab. New file: `src/features/email-builder/htmlToDocument.js`.
+- **Preview persists across tab switches.** Switching from Code/HTML to Design or JSON no longer clobbers the pasted HTML preview — you can review on all three tabs before confirming.
+- **Editable customHtml fallback.** When parsing can't produce a clean tree, the HTML is stored as `root.data.customHtml` and the canvas renders it inside a `contenteditable` iframe (`EditableHtmlIframe` in `PreviewCanvas.jsx`). Changes debounce-write back to `customHtml`; the contenteditable attr and editor-only styles are stripped from the persisted markup.
+- **Color values stored as hex.** New `rgbToHex` converter in `htmlToDocument.js` normalizes `rgb()` → `#RRGGBB`; the Design tab color fields now show `#3A485F` etc. instead of `RGB(58, 72, 95)`.
+- **Hard-refresh fix on email-builder URLs.** `_pendingEmailEditId` / `_pendingCampaignBuilderId` handler in `AppLayout.jsx` falls back to a single-row `fetchCampaignById` when the bulk fetch misses, and clears `editingCampaignId` if neither finds the campaign — no more permanent "Loading template…".
+- **Keyboard-shortcuts popover redesign** (`EmailBuilder.jsx`). Individual key-cap Badges with `+` separators and Solar icons for ⌘ (`solar:command-linear`) and ⇧ (`solar:arrow-up-linear`); action icons on the left of each row; new `kbd` Badge variant in `Badge.module.css`.
+- **Global font cascade.** `PreviewCanvas` now applies `getFontStack(root.data.fontFamily)` on the canvas root; `InlineEditable` uses `'inherit'` when a block has no specific font so the global choice flows down. The font-family dropdown on blocks defaults to the root font.
+- **Line Height / Letter Spacing unit switching.** Both inputs now have a `% ↔ px` toggle. Storage stays backward-compatible: number = legacy default unit, string with suffix = explicit unit. Letter-spacing `%` renders as `em` in CSS at write time (`dimUnits.js`).
+- **Text style chips pre-select by element type.** The Title / Subtitle / Heading / Body chip on a selected text block now highlights based on block type and heading level (h1 → Title, h2 → Subtitle, h3 → Heading, Text → Body) instead of requiring an exact fontSize match.
+- **Color variable swatches use the redesigned ColorPicker.** Replaced the native `<input type="color">` in the Color Variables editor with a `ColorVarSwatch` that opens the same hue/saturation picker used everywhere else (`ColorPicker.jsx`).
+
 ### Email Builder — Save header/footer to library (May 2026)
 - **Save any edited header or footer as a reusable preset.** With a header/footer block selected, the right-panel "Template" tab now shows a "Save current header/footer as preset" button. It opens an inline form (name + optional description) and persists the subtree to a new Supabase table.
 - **Picker shows user presets alongside built-ins.** Both the in-canvas component-panel preset picker (clicking the Header / Footer tiles) and the right-panel Template tab merge user-saved presets with the built-in `HEADER_PRESETS` / `FOOTER_PRESETS`. User presets display under "Your presets"; built-ins under "Built-in".

@@ -78,48 +78,66 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
-  padding: 12px 16px;
-  width: 280px;
+  padding: 16px;
+  width: 320px;
   z-index: 50;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
+}
+
+.shortcutsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
 }
 
 .shortcutsTitle {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--neutral-300);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 4px;
+  color: var(--neutral-500);
 }
+
+.shortcutsClose {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--neutral-300);
+  display: flex;
+  line-height: 1;
+}
+.shortcutsClose:hover { color: var(--neutral-400); }
 
 .shortcutRow {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 4px 0;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 0.5px solid var(--neutral-75);
 }
-
-.shortcutKey {
-  flex-shrink: 0;
-  min-width: 52px;
-  text-align: center;
-  padding: 2px 6px;
-  background: var(--neutral-50);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 4px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--neutral-400);
-}
+.shortcutRow:last-child { border-bottom: none; }
 
 .shortcutLabel {
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--neutral-400);
-  line-height: 1.4;
+  flex: 1;
+}
+
+.shortcutKeys {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.keySep {
+  font-size: 10px;
+  color: var(--neutral-200);
+  font-weight: 500;
 }
 
 /* ── Test email popover ── */
@@ -2007,6 +2025,24 @@
   background: var(--primary-25);
   border-bottom: 0.5px solid var(--primary-100);
 }
+
+.codeBannerBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--primary-300);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.codeBannerBtn:hover { background: var(--primary-400); }
 
 .codeError {
   display: flex;

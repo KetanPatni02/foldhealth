@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Fragment } from 'react';
 import { Reader } from '@usewaypoint/email-builder';
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
+import { Badge } from '../../components/Badge/Badge';
 import { Button } from '../../components/Button/Button';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Toggle } from '../../components/Toggle/Toggle';
@@ -69,14 +70,14 @@ function parseDropTarget(overId, doc) {
 
 
 const SHORTCUTS = [
-  { keys: '⌘Z', label: 'Undo' },
-  { keys: '⇧⌘Z', label: 'Redo' },
-  { keys: '⌘D', label: 'Duplicate block' },
-  { keys: '⌘R', label: 'Rename layer' },
-  { keys: 'Enter', label: 'Select first child / bulk-select children' },
-  { keys: '⇧Enter', label: 'Select parent' },
-  { keys: 'Esc', label: 'Clear bulk selection' },
-  { keys: '⌫', label: 'Delete selected block' },
+  { icon: 'solar:undo-left-round-linear', label: 'Undo', keys: [{ icon: 'solar:command-linear' }, { text: 'Z' }] },
+  { icon: 'solar:undo-right-round-linear', label: 'Redo', keys: [{ icon: 'solar:arrow-up-linear' }, { icon: 'solar:command-linear' }, { text: 'Z' }] },
+  { icon: 'solar:copy-linear', label: 'Duplicate block', keys: [{ icon: 'solar:command-linear' }, { text: 'D' }] },
+  { icon: 'solar:pen-new-round-linear', label: 'Rename layer', keys: [{ icon: 'solar:command-linear' }, { text: 'R' }] },
+  { icon: 'solar:square-bottom-down-linear', label: 'Select children', keys: [{ text: 'Enter' }] },
+  { icon: 'solar:square-top-up-linear', label: 'Select parent', keys: [{ icon: 'solar:arrow-up-linear' }, { text: 'Enter' }] },
+  { icon: 'solar:close-circle-linear', label: 'Clear selection', keys: [{ text: 'Esc' }] },
+  { icon: 'solar:trash-bin-minimalistic-linear', label: 'Delete block', keys: [{ text: 'Backspace' }] },
 ];
 
 function ShortcutsHelpButton() {
@@ -100,11 +101,24 @@ function ShortcutsHelpButton() {
       />
       {open && (
         <div className={styles.shortcutsPopover}>
-          <div className={styles.shortcutsTitle}>Keyboard shortcuts</div>
+          <div className={styles.shortcutsHeader}>
+            <span className={styles.shortcutsTitle}>Keyboard shortcuts</span>
+            <button className={styles.shortcutsClose} onClick={() => setOpen(false)}>
+              <Icon name="solar:close-circle-linear" size={18} />
+            </button>
+          </div>
           {SHORTCUTS.map(s => (
             <div key={s.label} className={styles.shortcutRow}>
-              <kbd className={styles.shortcutKey}>{s.keys}</kbd>
+              <Icon name={s.icon} size={16} style={{ color: 'var(--neutral-300)', flexShrink: 0 }} />
               <span className={styles.shortcutLabel}>{s.label}</span>
+              <div className={styles.shortcutKeys}>
+                {s.keys.map((k, i) => (
+                  <Fragment key={i}>
+                    {i > 0 && <span className={styles.keySep}>+</span>}
+                    <Badge variant="kbd" label={k.text} icon={k.icon} />
+                  </Fragment>
+                ))}
+              </div>
             </div>
           ))}
         </div>

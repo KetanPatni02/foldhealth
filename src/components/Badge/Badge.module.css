@@ -124,6 +124,21 @@
 .health-degraded { background: var(--status-warning-light); color: var(--status-warning); border-color: rgba(217,165,11,0.2); }
 .health-down { background: var(--status-error-light); color: var(--status-error); border-color: rgba(215,40,37,0.2); }
 
+/* ── Keyboard Key Cap ── */
+.kbd {
+  background: var(--neutral-0);
+  color: var(--neutral-500);
+  border-color: var(--neutral-150);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 6px;
+  min-width: 24px;
+  min-height: 24px;
+  justify-content: center;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+
 @keyframes securityPulse {
   0%, 100% { opacity: 1; }
   50% { opacity: .7; }

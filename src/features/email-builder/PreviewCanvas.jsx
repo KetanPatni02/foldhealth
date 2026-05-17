@@ -6,6 +6,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { InlineEditable } from './InlineEditable';
+import { getFontStack } from './googleFonts';
 import { isGradient } from './colorHelpers';
 import { tintSvgMarkup } from './svgTint';
 import styles from './EmailBuilder.module.css';
@@ -69,6 +70,103 @@ function applyBorder(target, style) {
 }
 
 // Six-dot drag handle that matches the Figma toolbar precisely.
+// Editable iframe for confirmed custom HTML bodies. Loads the HTML once,
+// makes the body contenteditable, and writes outerHTML back to
+// `doc.root.data.customHtml` on input. Re-renders skip srcDoc updates while
+// the user is editing so the caret stays put.
+function EditableHtmlIframe({ html, doc }) {
+  const setEmailDocument = useAppStore(s => s.setEmailDocument);
+  const iframeRef = useRef(null);
+  const lastLoadedRef = useRef(null);
+  const editingRef = useRef(false);
+  const debounceRef = useRef(null);
+
+  // (Re)load the iframe only when the html prop changes from the outside —
+  // not in response to our own writes. editingRef gates against echoing
+  // user typing back into srcDoc, which would blow away the selection.
+  useEffect(() => {
+    if (editingRef.current) return;
+    if (lastLoadedRef.current === html) return;
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    lastLoadedRef.current = html;
+    iframe.srcdoc = html;
+  }, [html]);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    const handleLoad = () => {
+      const idoc = iframe.contentDocument;
+      if (!idoc) return;
+      const body = idoc.body;
+      if (!body) return;
+      body.setAttribute('contenteditable', 'true');
+      body.style.outline = 'none';
+      body.style.minHeight = '100%';
+
+      const flush = () => {
+        // Clone the document so we can strip editor-only attributes (the
+        // contenteditable flag, the injected outline/min-height styles)
+        // without disturbing the live DOM the user is typing into.
+        const cloneDoc = idoc.cloneNode(true);
+        const cloneBody = cloneDoc.body;
+        if (cloneBody) {
+          cloneBody.removeAttribute('contenteditable');
+          // Strip the two style properties we set programmatically. If the
+          // body has its own `style` attribute, preserve everything else.
+          const s = cloneBody.style;
+          s.removeProperty('outline');
+          s.removeProperty('min-height');
+          if (!cloneBody.getAttribute('style')) cloneBody.removeAttribute('style');
+        }
+        const full = '<!doctype html>\n' + cloneDoc.documentElement.outerHTML;
+        lastLoadedRef.current = full;
+        // Use a fresh getState read to avoid stale `doc` closures across edits.
+        const cur = useAppStore.getState().emailDocument;
+        if (!cur?.root) return;
+        setEmailDocument({
+          ...cur,
+          root: { ...cur.root, data: { ...(cur.root.data || {}), customHtml: full } },
+        });
+      };
+
+      const onInput = () => {
+        editingRef.current = true;
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => {
+          flush();
+          editingRef.current = false;
+        }, 300);
+      };
+
+      idoc.addEventListener('input', onInput);
+    };
+
+    iframe.addEventListener('load', handleLoad);
+    // Initial srcdoc — assigning srcdoc fires `load` once it parses.
+    iframe.srcdoc = html;
+    lastLoadedRef.current = html;
+    return () => {
+      iframe.removeEventListener('load', handleLoad);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+    // We intentionally don't depend on `html` here — the other effect handles
+    // external-html changes, and this one only sets up listeners once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <iframe
+      ref={iframeRef}
+      className={styles.canvasIframe}
+      title="Email preview (editable)"
+      sandbox="allow-same-origin"
+    />
+  );
+}
+
 function DragHandleDots() {
   return (
     <svg width="12" height="14" viewBox="0 0 12 14" fill="none" aria-hidden="true">
@@ -252,10 +350,22 @@ export function PreviewCanvas({ dropIndicator }) {
   if (!doc) return null;
 
   // HTML override → bypass the doc and render the user's edited markup.
+  // Live override (htmlPreviewOverride) takes precedence so the user sees
+  // their pending edits; falls back to a persisted customHtml on the root.
+  // Once confirmed (customHtml set, no live override), the iframe body is
+  // contenteditable so the user can keep editing directly on the canvas.
+  const customHtml = doc.root?.data?.customHtml;
   if (htmlOverride != null) {
     return (
       <div className={styles.canvasWrap}>
         <iframe className={styles.canvasIframe} title="Email preview" srcDoc={htmlOverride} sandbox="allow-same-origin" />
+      </div>
+    );
+  }
+  if (customHtml != null) {
+    return (
+      <div className={styles.canvasWrap}>
+        <EditableHtmlIframe html={customHtml} doc={doc} />
       </div>
     );
   }
@@ -265,7 +375,7 @@ export function PreviewCanvas({ dropIndicator }) {
   const layoutStyle = {
     background: root?.data?.canvasColor || '#fff',
     color: root?.data?.textColor || '#3A485F',
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: getFontStack(root?.data?.fontFamily),
   };
 
   const commitText = (id, text) => {

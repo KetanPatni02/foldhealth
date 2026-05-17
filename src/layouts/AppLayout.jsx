@@ -264,13 +264,23 @@ export function AppLayout() {
     const pendingCampaign = state._pendingCampaignBuilderId;
     if (!pendingEmail && !pendingCampaign) return;
 
+    const targetId = pendingEmail || pendingCampaign;
+
     (async () => {
+      // Try bulk fetch first, then fall back to single-row fetch
       await useAppStore.getState().fetchCampaigns();
-      const campaigns = useAppStore.getState().campaigns || [];
-      const targetId = pendingEmail || pendingCampaign;
-      const c = campaigns.find(camp => String(camp.id) === String(targetId));
+      let c = (useAppStore.getState().campaigns || []).find(
+        camp => String(camp.id) === String(targetId)
+      );
       if (!c) {
-        useAppStore.setState({ _pendingEmailEditId: null, _pendingCampaignBuilderId: null });
+        const numId = isNaN(Number(targetId)) ? targetId : Number(targetId);
+        c = await useAppStore.getState().fetchCampaignById(numId);
+      }
+      if (!c) {
+        useAppStore.setState({
+          _pendingEmailEditId: null, _pendingCampaignBuilderId: null,
+          editingCampaignId: null, campaignBuilderId: null,
+        });
         return;
       }
       if (pendingEmail) {

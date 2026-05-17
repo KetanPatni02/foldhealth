@@ -248,7 +248,16 @@ function renderBlock(doc, id) {
       }
       if (style.fontStyle) s['font-style'] = style.fontStyle;
       if (style.textDecoration) s['text-decoration'] = style.textDecoration;
-      if (style.letterSpacing) s['letter-spacing'] = `${style.letterSpacing}px`;
+      if (style.letterSpacing !== undefined && style.letterSpacing !== null && style.letterSpacing !== '') {
+        if (typeof style.letterSpacing === 'string' && style.letterSpacing.endsWith('%')) {
+          const num = parseFloat(style.letterSpacing);
+          if (!Number.isNaN(num)) s['letter-spacing'] = `${num / 100}em`;
+        } else if (typeof style.letterSpacing === 'number') {
+          s['letter-spacing'] = `${style.letterSpacing}px`;
+        } else {
+          s['letter-spacing'] = String(style.letterSpacing);
+        }
+      }
       if (style.textTransform) s['text-transform'] = style.textTransform;
       if (style.backgroundColor && !bgIsGradient) s['background-color'] = style.backgroundColor;
       if (bgIsGradient) {
@@ -629,6 +638,10 @@ function buildDividerSvg(props) {
 //     in-content colors alone and just darken the surrounding chrome.
 export function renderEmailHtml(doc, { wrapperPadding = '24px 0', theme = 'auto' } = {}) {
   if (!doc) return '';
+  // Custom HTML body takes over — the user pasted/edited raw HTML in the Code
+  // tab and confirmed it as the template body. We hand it back verbatim so
+  // saved/exported emails ship exactly what the user previewed.
+  if (doc.root?.data?.customHtml) return doc.root.data.customHtml;
   // In dark mode, pre-transform every block in the document so individual
   // backgrounds / text colors invert too — not just the outer backdrop.
   // Vivid brand colors (gradient header, promo banner) pass through.

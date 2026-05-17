@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { getFontStack } from './googleFonts';
 import { isGradient } from './colorHelpers';
+import { formatLetterSpacingCss } from './dimUnits';
 
 // In-place text editor for Heading/Text blocks. Renders a contentEditable
 // element so users can click-and-type directly on the canvas, **and** select
@@ -64,7 +65,7 @@ function buildStyle(style, type) {
     textAlign: style.blockAlign || style.textAlign,
     textTransform: style.textTransform,
     lineHeight: style.lineHeight ?? 1.5,
-    letterSpacing: style.letterSpacing ? `${style.letterSpacing}px` : undefined,
+    letterSpacing: formatLetterSpacingCss(style.letterSpacing),
     padding: paddingCss(style.padding),
     // backgroundColor only takes solids; gradients go via backgroundImage.
     backgroundColor: bgIsGradient ? undefined : style.backgroundColor,
@@ -72,7 +73,7 @@ function buildStyle(style, type) {
     border,
     ...(perSide || {}),
     borderRadius: style.borderRadius ? `${style.borderRadius}px` : undefined,
-    fontFamily: getFontStack(style.fontFamily),
+    fontFamily: style.fontFamily ? getFontStack(style.fontFamily) : 'inherit',
     outline: 'none',
     whiteSpace: 'pre-wrap',
     ...gradTextStyles,
