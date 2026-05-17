@@ -70,12 +70,57 @@ function applyBorder(target, style) {
 }
 
 // Six-dot drag handle that matches the Figma toolbar precisely.
+// Translate the block's style object into the inline CSS string the
+// matching iframe element should carry. Inline styles win over CSS class
+// rules so Design-tab edits live-update the canvas without us having to
+// rewrite the original <style> block.
+function blockStyleToCss(s) {
+  if (!s) return '';
+  const parts = [];
+  if (s.color) parts.push(`color: ${s.color}`);
+  if (s.backgroundColor) {
+    // Gradient strings go on background-image; solids on background-color.
+    if (/^(linear|radial)-gradient/.test(s.backgroundColor)) {
+      parts.push(`background-image: ${s.backgroundColor}`);
+    } else {
+      parts.push(`background-color: ${s.backgroundColor}`);
+    }
+  }
+  if (s.backgroundImage && !/^(linear|radial)-gradient/.test(s.backgroundColor || '')) {
+    parts.push(`background-image: url("${s.backgroundImage}")`);
+    if (s.backgroundSize) parts.push(`background-size: ${s.backgroundSize}`);
+    if (s.backgroundPosition) parts.push(`background-position: ${s.backgroundPosition}`);
+    if (s.backgroundRepeat) parts.push(`background-repeat: ${s.backgroundRepeat}`);
+  }
+  if (s.fontFamily) parts.push(`font-family: ${s.fontFamily}`);
+  if (s.fontSize != null) parts.push(`font-size: ${s.fontSize}px`);
+  if (s.fontWeight) parts.push(`font-weight: ${s.fontWeight}`);
+  if (s.fontStyle) parts.push(`font-style: ${s.fontStyle}`);
+  if (s.textDecoration) parts.push(`text-decoration: ${s.textDecoration}`);
+  if (s.textTransform) parts.push(`text-transform: ${s.textTransform}`);
+  if (s.textAlign) parts.push(`text-align: ${s.textAlign}`);
+  if (s.letterSpacing) parts.push(`letter-spacing: ${s.letterSpacing}`);
+  if (s.lineHeight) parts.push(`line-height: ${s.lineHeight}`);
+  if (s.padding) {
+    const p = s.padding;
+    parts.push(`padding: ${p.top || 0}px ${p.right || 0}px ${p.bottom || 0}px ${p.left || 0}px`);
+  }
+  if (s.borderRadius != null) parts.push(`border-radius: ${s.borderRadius}px`);
+  if (s.borderWidth) {
+    parts.push(`border: ${s.borderWidth}px ${s.borderStyle || 'solid'} ${s.borderColor || '#000'}`);
+  }
+  return parts.join('; ');
+}
+
 // Editable iframe for confirmed custom HTML bodies. Loads the HTML once,
 // makes the body contenteditable, and writes outerHTML back to
-// `doc.root.data.customHtml` on input. Re-renders skip srcDoc updates while
-// the user is editing so the caret stays put.
+// `doc.root.data.customHtml` on input. Clicks on tagged elements
+// (`[data-eb-block-id]`) select the matching block; block-style changes
+// from the Design tab are written into the iframe as inline CSS.
 function EditableHtmlIframe({ html, doc }) {
   const setEmailDocument = useAppStore(s => s.setEmailDocument);
+  const setSelectedBlockId = useAppStore(s => s.setSelectedBlockId);
+  const selectedBlockId = useAppStore(s => s.selectedBlockId);
   const iframeRef = useRef(null);
   const lastLoadedRef = useRef(null);
   const editingRef = useRef(false);
@@ -84,7 +129,10 @@ function EditableHtmlIframe({ html, doc }) {
   // (Re)load the iframe only when the html prop changes from the outside —
   // not in response to our own writes. editingRef gates against echoing
   // user typing back into srcDoc, which would blow away the selection.
+  // We skip the initial mount since the load-listener effect below owns
+  // the first srcdoc assignment (and must attach `load` first).
   useEffect(() => {
+    if (lastLoadedRef.current === null) return; // initial mount
     if (editingRef.current) return;
     if (lastLoadedRef.current === html) return;
     const iframe = iframeRef.current;
@@ -92,6 +140,43 @@ function EditableHtmlIframe({ html, doc }) {
     lastLoadedRef.current = html;
     iframe.srcdoc = html;
   }, [html]);
+
+  // Apply each block's style to its tagged element. Runs on every doc
+  // change so Design-tab edits land in the iframe immediately.
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    const idoc = iframe?.contentDocument;
+    if (!idoc?.body) return;
+    Object.keys(doc).forEach(id => {
+      if (id === 'root') return;
+      const block = doc[id];
+      const el = idoc.querySelector(`[data-eb-block-id="${id}"]`);
+      if (!el) return;
+      const css = blockStyleToCss(block?.data?.style);
+      // Preserve the editor outline if this is the currently selected block.
+      const isSelected = selectedBlockId === id;
+      const outline = isSelected ? '; outline: 2px solid #7C5CFA; outline-offset: 2px' : '';
+      el.setAttribute('style', css + outline);
+    });
+  }, [doc, selectedBlockId]);
+
+  // Visual highlight for the selected block. Separate from the style effect
+  // so click highlights show up even when the block has no inline style.
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    const idoc = iframe?.contentDocument;
+    if (!idoc?.body) return;
+    idoc.querySelectorAll('[data-eb-block-id]').forEach(el => {
+      const id = el.getAttribute('data-eb-block-id');
+      if (id === selectedBlockId) {
+        el.style.outline = '2px solid #7C5CFA';
+        el.style.outlineOffset = '2px';
+      } else {
+        el.style.removeProperty('outline');
+        el.style.removeProperty('outline-offset');
+      }
+    });
+  }, [selectedBlockId]);
 
   useEffect(() => {
     const iframe = iframeRef.current;
@@ -108,22 +193,24 @@ function EditableHtmlIframe({ html, doc }) {
 
       const flush = () => {
         // Clone the document so we can strip editor-only attributes (the
-        // contenteditable flag, the injected outline/min-height styles)
-        // without disturbing the live DOM the user is typing into.
+        // contenteditable flag, the injected outline/min-height styles, the
+        // per-block outlines) without disturbing the live DOM.
         const cloneDoc = idoc.cloneNode(true);
         const cloneBody = cloneDoc.body;
         if (cloneBody) {
           cloneBody.removeAttribute('contenteditable');
-          // Strip the two style properties we set programmatically. If the
-          // body has its own `style` attribute, preserve everything else.
           const s = cloneBody.style;
           s.removeProperty('outline');
           s.removeProperty('min-height');
           if (!cloneBody.getAttribute('style')) cloneBody.removeAttribute('style');
         }
+        cloneDoc.querySelectorAll('[data-eb-block-id]').forEach(el => {
+          el.style.removeProperty('outline');
+          el.style.removeProperty('outline-offset');
+          if (!el.getAttribute('style')) el.removeAttribute('style');
+        });
         const full = '<!doctype html>\n' + cloneDoc.documentElement.outerHTML;
         lastLoadedRef.current = full;
-        // Use a fresh getState read to avoid stale `doc` closures across edits.
         const cur = useAppStore.getState().emailDocument;
         if (!cur?.root) return;
         setEmailDocument({
@@ -141,7 +228,16 @@ function EditableHtmlIframe({ html, doc }) {
         }, 300);
       };
 
+      const onClick = (e) => {
+        const tagged = e.target.closest?.('[data-eb-block-id]');
+        if (tagged) {
+          const id = tagged.getAttribute('data-eb-block-id');
+          useAppStore.getState().setSelectedBlockId(id);
+        }
+      };
+
       idoc.addEventListener('input', onInput);
+      idoc.addEventListener('click', onClick);
     };
 
     iframe.addEventListener('load', handleLoad);
@@ -152,8 +248,6 @@ function EditableHtmlIframe({ html, doc }) {
       iframe.removeEventListener('load', handleLoad);
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-    // We intentionally don't depend on `html` here — the other effect handles
-    // external-html changes, and this one only sets up listeners once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

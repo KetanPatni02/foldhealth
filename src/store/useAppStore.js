@@ -2171,6 +2171,16 @@ export const useAppStore = create((set, get) => ({
     set({ emailDocument: doc, htmlPreviewOverride: null });
   },
 
+  // Pending HTML-import font substitution. When the parser surfaces font
+  // families that aren't in the builder's Google Fonts catalogue, we hold
+  // the parsed doc here and surface a dialog so the user can map each
+  // unknown font to one we can load. The doc commits to emailDocument
+  // only after the user confirms (or skips with the default mapping).
+  pendingFontDoc: null,
+  pendingUnknownFonts: [],
+  openFontSubstitutionDialog: (doc, fonts) => set({ pendingFontDoc: doc, pendingUnknownFonts: fonts }),
+  closeFontSubstitutionDialog: () => set({ pendingFontDoc: null, pendingUnknownFonts: [] }),
+
   // ── Undo / Redo for the email document ──
   // Snapshots the previous emailDocument before each mutation. Rapid edits
   // (color picker drag, resize drag) coalesce within a 400ms window so the

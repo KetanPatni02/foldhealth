@@ -7,6 +7,8 @@
 // `style` attribute alone misses everything that isn't inline — which is
 // most of what designers use.
 
+import { GOOGLE_FONTS } from './googleFonts';
+
 const HEADING_TAGS = new Set(['H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
 const TEXT_TAGS = new Set(['P', 'SPAN', 'BLOCKQUOTE', 'PRE', 'CODE', 'EM', 'STRONG', 'B', 'I', 'U']);
 const ALLOWED_INLINE_TAGS = new Set(['STRONG', 'B', 'EM', 'I', 'U', 'S', 'A', 'BR', 'CODE', 'SPAN']);
@@ -212,6 +214,12 @@ function buildDocFromDom(idoc, win) {
     if (bg) canvasColor = bg;
   }
 
+  // Tag the source element with the block ID we're about to create so the
+  // editor can later click on the rendered HTML and resolve back to a block.
+  // We also tag a `__textPath` on Text blocks pointing at the original
+  // element so style edits can find the right DOM node when syncing.
+  const tagEl = (el, id) => { el.setAttribute('data-eb-block-id', id); };
+
   const walk = (el) => {
     const cs = win.getComputedStyle(el);
 
@@ -221,6 +229,7 @@ function buildDocFromDom(idoc, win) {
     // Buttons (anchors that look like buttons)
     if (isAnchorButton(el, cs)) {
       const id = genId();
+      tagEl(el, id);
       blocks[id] = {
         type: 'Button',
         data: {
@@ -234,6 +243,7 @@ function buildDocFromDom(idoc, win) {
     // Headings
     if (HEADING_TAGS.has(el.tagName)) {
       const id = genId();
+      tagEl(el, id);
       blocks[id] = {
         type: 'Heading',
         data: {
@@ -247,6 +257,7 @@ function buildDocFromDom(idoc, win) {
     // Images
     if (el.tagName === 'IMG') {
       const id = genId();
+      tagEl(el, id);
       const w = parsePxNumber(el.getAttribute('width')) ?? parsePxNumber(cs.width);
       const h = parsePxNumber(el.getAttribute('height')) ?? parsePxNumber(cs.height);
       const props = { url: el.getAttribute('src') || '', alt: el.getAttribute('alt') || '' };
@@ -262,6 +273,7 @@ function buildDocFromDom(idoc, win) {
     // Horizontal rule → Divider
     if (el.tagName === 'HR') {
       const id = genId();
+      tagEl(el, id);
       const lineColor = rgbToHex(cs.borderTopColor) || rgbToHex(cs.color) || '#E1E4EA';
       const lineHeight = parsePxNumber(cs.borderTopWidth) || 1;
       blocks[id] = {
@@ -274,6 +286,7 @@ function buildDocFromDom(idoc, win) {
     // Columns row (TR with multiple TDs, or div with flex/grid children)
     if (isColumnsRow(el)) {
       const id = genId();
+      tagEl(el, id);
       const cols = (el.tagName === 'TR'
         ? Array.from(el.children).filter(c => c.tagName === 'TD')
         : Array.from(el.children).filter(c => c.tagName === 'DIV'));
@@ -285,6 +298,7 @@ function buildDocFromDom(idoc, win) {
         });
         if (!childrenIds.length && col.textContent.trim()) {
           const tid = genId();
+          tagEl(col, tid);
           blocks[tid] = {
             type: 'Text',
             data: { props: { text: extractInlineHtml(col) }, style: extractStyle(col, win) },
@@ -311,6 +325,8 @@ function buildDocFromDom(idoc, win) {
           const txt = node.textContent.trim();
           if (txt) {
             const tid = genId();
+            // No element to tag for bare text nodes — they get inline-edited
+            // via the parent's contenteditable.
             blocks[tid] = {
               type: 'Text',
               data: { props: { text: txt }, style: {} },
@@ -331,6 +347,7 @@ function buildDocFromDom(idoc, win) {
         return childrenIds;
       }
       const id = genId();
+      tagEl(el, id);
       blocks[id] = {
         type: 'Container',
         data: {
@@ -347,6 +364,7 @@ function buildDocFromDom(idoc, win) {
       const text = extractInlineHtml(el);
       if (!text.trim()) return [];
       const id = genId();
+      tagEl(el, id);
       blocks[id] = {
         type: 'Text',
         data: { props: { text }, style: extractStyle(el, win) },
@@ -432,8 +450,12 @@ export function parseHtmlToDocument(html) {
     const attempt = () => {
       try {
         if (!idoc.body) return finish(null);
-        const result = buildDocFromDom(idoc, win);
-        finish(result);
+        const doc = buildDocFromDom(idoc, win);
+        if (!doc) return finish(null);
+        // Serialize the now-tagged document so the canvas iframe can use
+        // `[data-eb-block-id]` to map clicks back to blocks.
+        const taggedHtml = '<!doctype html>\n' + idoc.documentElement.outerHTML;
+        finish({ doc, html: taggedHtml });
       } catch (err) {
         console.error('parseHtmlToDocument build failed:', err);
         finish(null);
@@ -444,4 +466,50 @@ export function parseHtmlToDocument(html) {
     requestAnimationFrame(() => requestAnimationFrame(attempt));
     setTimeout(() => finish(null), 2000);
   });
+}
+
+// Walk a parsed document and surface font-family values the email builder
+// can't render natively. Used to drive the post-import font substitution
+// dialog so the user maps unknown fonts to one of the Google Fonts the
+// builder knows how to load.
+const GENERIC_FONTS = new Set(['serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui', 'ui-sans-serif', 'ui-serif', 'ui-monospace', 'inherit']);
+const KNOWN_FONT_VALUES = new Set(GOOGLE_FONTS.map(f => f.value.toLowerCase()));
+const KNOWN_FONT_LABELS = new Set(GOOGLE_FONTS.map(f => f.label.toLowerCase()));
+
+export function collectUnknownFonts(doc) {
+  if (!doc) return [];
+  const found = new Set();
+  const check = (name) => {
+    if (!name || typeof name !== 'string') return;
+    const lower = name.toLowerCase().trim();
+    if (KNOWN_FONT_VALUES.has(lower) || KNOWN_FONT_LABELS.has(lower)) return;
+    if (GENERIC_FONTS.has(lower)) return;
+    found.add(name);
+  };
+  check(doc.root?.data?.fontFamily);
+  Object.keys(doc).forEach(id => {
+    if (id === 'root') return;
+    check(doc[id]?.data?.style?.fontFamily);
+  });
+  return Array.from(found);
+}
+
+// Apply font substitutions to a parsed doc — `mappings` is `{ original: target }`.
+// Returns a new doc with every fontFamily replaced according to the map.
+export function applyFontMappings(doc, mappings) {
+  if (!doc || !mappings) return doc;
+  const remap = (name) => (name && mappings[name]) || name;
+  const next = { ...doc };
+  if (next.root?.data?.fontFamily) {
+    next.root = { ...next.root, data: { ...next.root.data, fontFamily: remap(next.root.data.fontFamily) } };
+  }
+  Object.keys(next).forEach(id => {
+    if (id === 'root') return;
+    const b = next[id];
+    const ff = b?.data?.style?.fontFamily;
+    if (ff && mappings[ff]) {
+      next[id] = { ...b, data: { ...b.data, style: { ...b.data.style, fontFamily: mappings[ff] } } };
+    }
+  });
+  return next;
 }

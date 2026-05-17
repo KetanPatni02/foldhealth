@@ -16,7 +16,7 @@ import { GOOGLE_FONTS, injectGoogleFonts, availableWeights, normalizeWeight } fr
 import { ColorPicker } from './ColorPicker';
 import { isGradient } from './colorHelpers';
 import { parseLineHeight, formatLineHeight, parseLetterSpacing, formatLetterSpacing } from './dimUnits';
-import { parseHtmlToDocument } from './htmlToDocument';
+import { parseHtmlToDocument, collectUnknownFonts } from './htmlToDocument';
 import styles from './EmailBuilder.module.css';
 
 // Inject the Google Fonts stylesheet once so the canvas + inline previews
@@ -1745,8 +1745,19 @@ function CodeTab({ doc }) {
             onClick={async () => {
               const html = htmlPreviewOverride;
               const parsed = await parseHtmlToDocument(html);
-              if (parsed) {
-                setEmailDocument(parsed);
+              if (parsed?.doc) {
+                // Render through the normal block pipeline — drag/drop,
+                // toolbar, reordering, and component-panel insertion all
+                // keep working. Style fidelity comes from the parser's
+                // computed-style extraction, not from re-using the raw HTML.
+                const unknownFonts = collectUnknownFonts(parsed.doc);
+                if (unknownFonts.length > 0) {
+                  // Stash the pending doc; the dialog applies font
+                  // substitutions and commits via setEmailDocument.
+                  useAppStore.getState().openFontSubstitutionDialog(parsed.doc, unknownFonts);
+                } else {
+                  setEmailDocument(parsed.doc);
+                }
               } else {
                 // Parsing produced nothing usable — keep the HTML as a raw
                 // custom body so the user still gets WYSIWYG editing.
@@ -1759,7 +1770,7 @@ function CodeTab({ doc }) {
                 });
               }
             }}
-            title="Convert HTML to editable blocks"
+            title="Import HTML as editable blocks (canvas renders verbatim)"
           >
             <Icon name="solar:check-circle-linear" size={13} color="currentColor" />
             Confirm
