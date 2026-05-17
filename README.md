@@ -140,6 +140,10 @@ The platform follows the **Fold Health design system** with strict adherence to:
 
 ## Recent Changes
 
+### Email Builder — Skeleton shimmer loading state (May 2026)
+- **`EmailBuilderSkeleton` component** replaces the bare "Loading template…" text shown during the hard-refresh fetch window. Mirrors the real builder chrome exactly — top bar with title + device picker + Test/Save pills, left panel with two tab placeholders + a 5×3 component-tile grid, canvas with a hero placeholder + varied-width text lines + a card + a pill button, right panel with three tab placeholders + section strips + dual-column field-input rows for typography. The transition into the populated UI is now visually continuous instead of a jarring text→full-page swap.
+- New `@keyframes ebShimmer` + `.sk*` class set in `EmailBuilder.module.css`. Uses the same `linear-gradient` slid via `background-position` technique as `CallsView`/`TasksView`, with `--neutral-75` / `--neutral-100` tokens so placeholders sit subtly on the white panel surfaces.
+
 ### Email Builder — HTML import: CSS fidelity, block precedence, parser polish (May 2026)
 - **Block-pipeline precedence over `customHtml`.** `PreviewCanvas.jsx` and `patchEmailHtml.js` now check `!hasBlocks` before falling back to the iframe rendering. Imported HTML (which always produces `childrenIds`) routes through `SortableBlock`, restoring the per-block toolbar, drag handles, drop indicator, reorder, and component-panel insertion. Legacy iframe-only docs (no blocks) still get the iframe.
 - **Auto-heal stale `customHtml` on load** (`useAppStore.js:openEmailBuilder`). Campaigns saved before the precedence fix carried a stale `customHtml` field alongside a parsed block tree; stripping it at load means the next save retires the dead field for good.

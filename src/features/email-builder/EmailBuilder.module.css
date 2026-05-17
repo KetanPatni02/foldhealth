@@ -2754,3 +2754,219 @@
   color: var(--neutral-400, #9CA3AF);
   white-space: nowrap;
 }
+
+/* ─────────────────────────── Skeleton loading ──────────────────────────
+ * Mirrors the real builder chrome — top bar, left components panel,
+ * canvas with stacked block placeholders, right design panel — so the
+ * transition from skeleton to populated UI is smooth. Shimmer uses the
+ * same animation curve as CallsView/TasksView for consistency. */
+@keyframes ebShimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+
+.skeletonShimmer,
+.skTopRow,
+.skBlock,
+.skBlockSmall,
+.skTileLabel,
+.skTabPill,
+.skSection,
+.skField,
+.skBar {
+  background: linear-gradient(90deg, var(--neutral-75, #f1f1f5) 25%, var(--neutral-100, #e6e6ee) 50%, var(--neutral-75, #f1f1f5) 75%);
+  background-size: 800px 100%;
+  animation: ebShimmer 1.4s infinite linear;
+}
+
+.skTopBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: #fff;
+  border-bottom: 0.5px solid var(--neutral-150);
+  height: 56px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.skTopGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.skPill {
+  height: 16px;
+  width: 160px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--neutral-75, #f1f1f5) 25%, var(--neutral-100, #e6e6ee) 50%, var(--neutral-75, #f1f1f5) 75%);
+  background-size: 800px 100%;
+  animation: ebShimmer 1.4s infinite linear;
+}
+.skPillSmall { width: 72px; height: 12px; }
+.skPillMedium { width: 100px; height: 28px; border-radius: 8px; }
+.skPillLarge { width: 140px; height: 32px; border-radius: 8px; }
+
+.skLeftPanel {
+  width: 240px;
+  background: #fff;
+  border-right: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.skTabs {
+  display: flex;
+  border-bottom: 0.5px solid var(--neutral-150);
+  height: 40px;
+  align-items: center;
+  padding: 0 16px;
+  gap: 24px;
+}
+.skTab {
+  width: 80px;
+  height: 12px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--neutral-75, #f1f1f5) 25%, var(--neutral-100, #e6e6ee) 50%, var(--neutral-75, #f1f1f5) 75%);
+  background-size: 800px 100%;
+  animation: ebShimmer 1.4s infinite linear;
+}
+
+.skSectionHeader {
+  padding: 12px 16px 8px;
+}
+.skSectionHeader > div {
+  width: 60px;
+  height: 10px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--neutral-75, #f1f1f5) 25%, var(--neutral-100, #e6e6ee) 50%, var(--neutral-75, #f1f1f5) 75%);
+  background-size: 800px 100%;
+  animation: ebShimmer 1.4s infinite linear;
+}
+
+.skTileGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 4px 12px 16px;
+}
+.skTile {
+  aspect-ratio: 1 / 1;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--neutral-75, #f1f1f5) 25%, var(--neutral-100, #e6e6ee) 50%, var(--neutral-75, #f1f1f5) 75%);
+  background-size: 800px 100%;
+  animation: ebShimmer 1.4s infinite linear;
+}
+
+.skCanvasWrap {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 32px 24px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.skCanvas {
+  width: 600px;
+  max-width: 100%;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .04);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-self: flex-start;
+}
+
+.skHero {
+  height: 180px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--neutral-75, #f1f1f5) 25%, var(--neutral-100, #e6e6ee) 50%, var(--neutral-75, #f1f1f5) 75%);
+  background-size: 800px 100%;
+  animation: ebShimmer 1.4s infinite linear;
+}
+
+.skLine {
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--neutral-75, #f1f1f5) 25%, var(--neutral-100, #e6e6ee) 50%, var(--neutral-75, #f1f1f5) 75%);
+  background-size: 800px 100%;
+  animation: ebShimmer 1.4s infinite linear;
+}
+.skLineFull   { width: 100%; }
+.skLineWide   { width: 85%; }
+.skLineMedium { width: 60%; }
+.skLineNarrow { width: 35%; }
+
+.skCard {
+  height: 96px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--neutral-75, #f1f1f5) 25%, var(--neutral-100, #e6e6ee) 50%, var(--neutral-75, #f1f1f5) 75%);
+  background-size: 800px 100%;
+  animation: ebShimmer 1.4s infinite linear;
+}
+
+.skButton {
+  align-self: flex-start;
+  width: 140px;
+  height: 36px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, var(--neutral-75, #f1f1f5) 25%, var(--neutral-100, #e6e6ee) 50%, var(--neutral-75, #f1f1f5) 75%);
+  background-size: 800px 100%;
+  animation: ebShimmer 1.4s infinite linear;
+}
+
+.skRightPanel {
+  width: 320px;
+  background: #fff;
+  border-left: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.skSectionStrip {
+  padding: 12px 16px;
+  border-bottom: 0.5px solid var(--neutral-100);
+  background: var(--neutral-25, #fafafa);
+}
+.skSectionStrip > div {
+  width: 80px;
+  height: 11px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--neutral-75, #f1f1f5) 25%, var(--neutral-100, #e6e6ee) 50%, var(--neutral-75, #f1f1f5) 75%);
+  background-size: 800px 100%;
+  animation: ebShimmer 1.4s infinite linear;
+}
+
+.skFieldRow {
+  padding: 12px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.skFieldLabel {
+  width: 70px;
+  height: 10px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--neutral-75, #f1f1f5) 25%, var(--neutral-100, #e6e6ee) 50%, var(--neutral-75, #f1f1f5) 75%);
+  background-size: 800px 100%;
+  animation: ebShimmer 1.4s infinite linear;
+}
+.skFieldInput {
+  height: 32px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--neutral-75, #f1f1f5) 25%, var(--neutral-100, #e6e6ee) 50%, var(--neutral-75, #f1f1f5) 75%);
+  background-size: 800px 100%;
+  animation: ebShimmer 1.4s infinite linear;
+}
+.skFieldDuo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
