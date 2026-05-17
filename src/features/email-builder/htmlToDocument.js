@@ -137,6 +137,30 @@ function extractStyle(el, win) {
   return out;
 }
 
+// Preserve the inline-only style attributes we know our InlineEditable
+// renderer will honour. Whitelisted to avoid leaking layout properties
+// (padding/margin/etc.) into a span that the renderer would treat as
+// inline. Color goes through rgbToHex so the result matches the rest of
+// the document storage convention.
+function inlineStyleAttr(el) {
+  const s = el.style;
+  if (!s) return '';
+  const parts = [];
+  const color = rgbToHex(s.color);
+  if (color) parts.push(`color:${color}`);
+  if (s.fontWeight && s.fontWeight !== 'normal' && s.fontWeight !== '400') {
+    parts.push(`font-weight:${s.fontWeight}`);
+  }
+  if (s.fontStyle && s.fontStyle !== 'normal') parts.push(`font-style:${s.fontStyle}`);
+  if (s.textDecoration && s.textDecoration !== 'none') parts.push(`text-decoration:${s.textDecoration}`);
+  if (s.textTransform && s.textTransform !== 'none') parts.push(`text-transform:${s.textTransform}`);
+  if (s.backgroundColor) {
+    const bg = rgbToHex(s.backgroundColor);
+    if (bg) parts.push(`background-color:${bg}`);
+  }
+  return parts.length ? ` style="${parts.join(';')}"` : '';
+}
+
 function extractInlineHtml(el) {
   const parts = [];
   el.childNodes.forEach(node => {
@@ -149,9 +173,10 @@ function extractInlineHtml(el) {
         if (tag === 'BR') parts.push('<br>');
         else if (tag === 'A') {
           const href = node.getAttribute('href') || '#';
-          parts.push(`<a href="${href}">${inner}</a>`);
+          parts.push(`<a href="${href}"${inlineStyleAttr(node)}>${inner}</a>`);
         } else {
-          parts.push(`<${tag.toLowerCase()}>${inner}</${tag.toLowerCase()}>`);
+          const lower = tag.toLowerCase();
+          parts.push(`<${lower}${inlineStyleAttr(node)}>${inner}</${lower}>`);
         }
       } else {
         parts.push(extractInlineHtml(node));
@@ -248,6 +273,27 @@ function makeIdGen() {
   return () => `block-${base}-${n++}`;
 }
 
+// Pull family names out of any `<link href="…fonts.googleapis.com/css2?
+// family=A+B:wght@400&family=C:wght@500">` tags in the head. Used to tell
+// the substitution dialog "these are loaded externally — don't flag them
+// as unknowns." Returns an array of human-readable family names with
+// spaces (e.g. "IBM Plex Serif"), de-duped.
+function extractLinkedGoogleFonts(idoc) {
+  const links = Array.from(idoc?.head?.querySelectorAll('link[href*="fonts.googleapis.com"]') || []);
+  const families = new Set();
+  for (const link of links) {
+    const href = link.getAttribute('href') || '';
+    // family= params can repeat; the value is "Family+Name:axis@list".
+    const matches = href.matchAll(/[?&]family=([^&]+)/g);
+    for (const m of matches) {
+      const raw = decodeURIComponent(m[1]).split(':')[0];
+      const name = raw.replace(/\+/g, ' ').trim();
+      if (name) families.add(name);
+    }
+  }
+  return [...families];
+}
+
 // Walk the body into a flat blocks map + root child list. The walker
 // (`walk`) returns an array of block IDs the caller should treat as the
 // element's contribution to its parent's child list — usually one ID, but
@@ -257,6 +303,11 @@ function buildDocFromDom(idoc, win) {
   const blocks = {};
   const genId = makeIdGen();
   const body = idoc.body;
+
+  // Capture linked Google Fonts BEFORE we strip the head (well — body links;
+  // head links survive `body.querySelectorAll` but we still want the read to
+  // happen up-front in case a future change moves the strip).
+  const linkedFonts = extractLinkedGoogleFonts(idoc);
 
   // Sentinel-strip elements with no editable representation.
   body.querySelectorAll('script, style, meta, link, noscript').forEach(el => el.remove());
@@ -306,6 +357,33 @@ function buildDocFromDom(idoc, win) {
           props: { text: extractInlineHtml(el), level: el.tagName.toLowerCase() },
           style: extractStyle(el, win),
         },
+      };
+      return [id];
+    }
+
+    // Inline SVG — preserved as an Image block with the raw markup. Common
+    // for logo squares, icon bubbles, and social-bar glyphs in production
+    // emails. Without this branch the SVG element would either fall through
+    // to the text-leaf branch (where it gets stripped) or be inlined as
+    // HTML inside a Text block (the renderer doesn't pass through unknown
+    // tags). Image's existing svgRaw path renders the markup as-is.
+    if (el.tagName === 'svg' || el.tagName === 'SVG') {
+      const id = genId();
+      tagEl(el, id);
+      // Prefer explicit width/height attrs (SVG icons usually set both);
+      // fall back to viewBox-derived dimensions or a 24px default.
+      const w = parsePxNumber(el.getAttribute('width')) || parsePxNumber(cs.width);
+      const h = parsePxNumber(el.getAttribute('height')) || parsePxNumber(cs.height);
+      const props = {
+        url: '',
+        alt: '',
+        svgRaw: el.outerHTML,
+      };
+      if (w) props.width = w;
+      if (h) props.height = h;
+      blocks[id] = {
+        type: 'Image',
+        data: { props, style: extractStyle(el, win) },
       };
       return [id];
     }
@@ -382,7 +460,30 @@ function buildDocFromDom(idoc, win) {
           };
           childrenIds.push(tid);
         }
-        return { childrenIds };
+        // Capture per-cell styling so the ColumnsContainer renderer can
+        // paint backgrounds, padding, alignment, and fixed widths on each
+        // column. Common in production emails — the principle-rows in the
+        // NodeOps template use a 3px coloured bar as column 1.
+        const colCs = win.getComputedStyle(col);
+        const colInfo = { childrenIds };
+        const colBg = rgbToHex(colCs.backgroundColor);
+        if (colBg) colInfo.backgroundColor = colBg;
+        const cp = readPadding(colCs);
+        if (cp.top || cp.right || cp.bottom || cp.left) colInfo.padding = cp;
+        if (colCs.textAlign && colCs.textAlign !== 'start') {
+          colInfo.align = colCs.textAlign;
+        }
+        const vAttr = col.getAttribute('valign');
+        if (vAttr === 'top' || vAttr === 'middle' || vAttr === 'bottom') {
+          colInfo.valign = vAttr;
+        }
+        const wAttr = col.getAttribute('width');
+        const wPx = parsePxNumber(wAttr) || parsePxNumber(colCs.width);
+        if (wAttr && /^\d+$/.test(wAttr)) {
+          // numeric attribute (no `px`) is per-table-width — treat as px
+          colInfo.customWidth = wPx;
+        }
+        return colInfo;
       });
       blocks[id] = {
         type: 'ColumnsContainer',
@@ -418,15 +519,52 @@ function buildDocFromDom(idoc, win) {
     // shortcut the walker falls into the text-leaf branch below and inlines
     // the anchor as raw HTML in a Text block — visually fine, but the user
     // can't edit it as a Button. Hoist the inner Button block up.
-    if ((el.tagName === 'P' || el.tagName === 'DIV') && elementChildren.length === 1) {
+    if (['P', 'DIV', 'TD'].includes(el.tagName) && elementChildren.length === 1) {
       const only = elementChildren[0];
       const textNodeCount = Array.from(el.childNodes).filter(n => n.nodeType === 3 && n.textContent.trim()).length;
       if (textNodeCount === 0 && only.tagName === 'A') {
         const onlyCs = win.getComputedStyle(only);
+        // Pattern A — the anchor itself is button-styled (background +
+        // padding on the <a>). Common in MJML/Hubspot output.
         if (isAnchorButton(only, onlyCs)) {
           const id = genId();
           tagEl(only, id);
           blocks[id] = extractButtonBlock(only, win);
+          return [id];
+        }
+        // Pattern B — the wrapper carries the styling (bg + radius), the
+        // anchor is just a styled text label inside. This is the classic
+        // production email CTA: <td bgcolor="#1C1917" style="border-radius:
+        // 9999px"><a href="#" style="padding:12px 22px;color:#fff">…</a></td>
+        const wrapperBg = rgbToHex(cs.backgroundColor);
+        const wrapperRadius = parsePxNumber(cs.borderTopLeftRadius);
+        if (wrapperBg && wrapperRadius != null && wrapperRadius > 0) {
+          const id = genId();
+          tagEl(el, id);
+          const innerPadding = readPadding(onlyCs);
+          let buttonStyle = 'rectangle';
+          if (wrapperRadius >= 100) buttonStyle = 'pill';
+          else if (wrapperRadius > 0) buttonStyle = 'rounded';
+          const props = {
+            text: only.textContent.trim() || 'Button',
+            url: only.getAttribute('href') || '#',
+            buttonStyle,
+            buttonBackgroundColor: wrapperBg,
+            size: inferButtonSize(innerPadding),
+          };
+          const textColor = rgbToHex(onlyCs.color);
+          if (textColor) props.buttonTextColor = textColor;
+          blocks[id] = {
+            type: 'Button',
+            data: {
+              props,
+              style: {
+                padding: innerPadding,
+                textAlign: 'center',
+                borderRadius: wrapperRadius,
+              },
+            },
+          };
           return [id];
         }
       }
@@ -515,17 +653,23 @@ function buildDocFromDom(idoc, win) {
   if (!rootChildren.length) return null;
 
   return {
-    root: {
-      type: 'EmailLayout',
-      data: {
-        backdropColor,
-        canvasColor,
-        textColor: rootTextColor,
-        fontFamily: rootFontFamily || undefined,
-        childrenIds: rootChildren,
+    doc: {
+      root: {
+        type: 'EmailLayout',
+        data: {
+          backdropColor,
+          canvasColor,
+          textColor: rootTextColor,
+          fontFamily: rootFontFamily || undefined,
+          childrenIds: rootChildren,
+          // Track families the source HTML linked from Google Fonts so the
+          // Confirm handler can skip the substitution dialog for them.
+          ...(linkedFonts.length ? { linkedFonts } : {}),
+        },
       },
+      ...blocks,
     },
-    ...blocks,
+    linkedFonts,
   };
 }
 
@@ -537,7 +681,10 @@ export function parseHtmlToDocument(html) {
   return new Promise((resolve) => {
     const iframe = document.createElement('iframe');
     iframe.setAttribute('aria-hidden', 'true');
-    iframe.style.cssText = 'position:absolute;left:-99999px;top:0;width:600px;height:1200px;visibility:hidden;pointer-events:none;border:0';
+    // 800px keeps the parser above common mobile-first @media (max-width:620px)
+    // breakpoints so the captured computed styles reflect the desktop layout,
+    // not a collapsed mobile view that would hijack font sizes and padding.
+    iframe.style.cssText = 'position:absolute;left:-99999px;top:0;width:800px;height:1200px;visibility:hidden;pointer-events:none;border:0';
     let done = false;
     const cleanup = () => {
       if (done) return;
@@ -564,12 +711,12 @@ export function parseHtmlToDocument(html) {
     const attempt = () => {
       try {
         if (!idoc.body) return finish(null);
-        const doc = buildDocFromDom(idoc, win);
-        if (!doc) return finish(null);
+        const built = buildDocFromDom(idoc, win);
+        if (!built?.doc) return finish(null);
         // Serialize the now-tagged document so the canvas iframe can use
         // `[data-eb-block-id]` to map clicks back to blocks.
         const taggedHtml = '<!doctype html>\n' + idoc.documentElement.outerHTML;
-        finish({ doc, html: taggedHtml });
+        finish({ doc: built.doc, html: taggedHtml, linkedFonts: built.linkedFonts || [] });
       } catch (err) {
         console.error('parseHtmlToDocument build failed:', err);
         finish(null);
@@ -593,11 +740,18 @@ const KNOWN_FONT_LABELS = new Set(GOOGLE_FONTS.map(f => f.label.toLowerCase()));
 export function collectUnknownFonts(doc) {
   if (!doc) return [];
   const found = new Set();
+  // Treat any font the source HTML linked from Google Fonts as known —
+  // the iframe parser already loaded them and we'll preserve the family
+  // name. The substitution dialog should only nag about families we
+  // truly can't render.
+  const linked = doc.root?.data?.linkedFonts || [];
+  const linkedLower = new Set(linked.map(f => f.toLowerCase()));
   const check = (name) => {
     if (!name || typeof name !== 'string') return;
     const lower = name.toLowerCase().trim();
     if (KNOWN_FONT_VALUES.has(lower) || KNOWN_FONT_LABELS.has(lower)) return;
     if (GENERIC_FONTS.has(lower)) return;
+    if (linkedLower.has(lower)) return;
     found.add(name);
   };
   check(doc.root?.data?.fontFamily);

@@ -225,6 +225,17 @@ function renderBlock(doc, id) {
   const padding = pad(style.padding);
 
   switch (type) {
+    // RawHtml — verbatim passthrough wrapped in the block's padding/align.
+    // The canvas renderer trusts this string; the export ships it as-is so
+    // imported pixel-perfect subtrees survive to the recipient inbox.
+    case 'RawHtml': {
+      const wrap = {
+        padding,
+        'text-align': style.blockAlign || style.textAlign || 'left',
+      };
+      return `<div style="${styleStr(wrap)}">${props.html || ''}</div>`;
+    }
+
     case 'Heading':
     case 'Text': {
       // Text supports list-style — bullet/number — by splitting on newlines.
@@ -367,11 +378,10 @@ function renderBlock(doc, id) {
       }
       const linkOpen = props.linkHref ? `<a href="${esc(props.linkHref)}" target="_blank">` : '';
       const linkClose = props.linkHref ? '</a>' : '';
-      // SVG tint path: substitute fills inline so modern email clients
-      // (Apple Mail, iOS Mail, Gmail web) render the recolored icon. Older
-      // clients that strip inline <svg> fall back to the original URL.
-      if (props.svgRaw && props.tintColor) {
-        const svgInner = tintSvgMarkup(props.svgRaw, props.tintColor);
+      // Inline SVG path: tinted recolour when tintColor is set, otherwise
+      // verbatim raw markup so imported icons/logos round-trip.
+      if (props.svgRaw) {
+        const svgInner = props.tintColor ? tintSvgMarkup(props.svgRaw, props.tintColor) : props.svgRaw;
         return `<div style="${styleStr(wrapS)}">${linkOpen}<span style="${styleStr(imgS)};display:inline-block;line-height:0">${svgInner}</span>${linkClose}</div>`;
       }
       const fixedClass = isFixedPx ? ' class="img-fixed"' : '';

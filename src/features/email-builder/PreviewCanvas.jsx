@@ -34,6 +34,7 @@ const TYPE_LABELS = {
   Social: 'Social',
   NavBar: 'Nav Bar',
   Table: 'Table',
+  RawHtml: 'Raw HTML',
 };
 
 function blockLabel(block) {
@@ -743,6 +744,25 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     );
   }
 
+  // Raw HTML escape hatch — the parser emits these when it detects an
+  // imported subtree that's too bespoke to faithfully model as blocks
+  // (deeply nested table mockups, bar charts assembled from stacked
+  // cells, etc.). Users can also drop them in from the components panel
+  // for arbitrary HTML they need to keep verbatim. dangerouslySetInnerHTML
+  // is safe here — the parser strips <script> before walking and the
+  // user is the trust boundary for what they paste.
+  if (type === 'RawHtml') {
+    return (
+      <div
+        style={{
+          padding: paddingCss(style.padding),
+          textAlign: style.blockAlign || style.textAlign,
+        }}
+        dangerouslySetInnerHTML={{ __html: props.html || '' }}
+      />
+    );
+  }
+
   if (type === 'Container') {
     const isSelected = ctx.selectedBlockId === id;
     const heightMode = props.heightMode || 'hug';
@@ -915,14 +935,14 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     if (props.objectFit && props.objectFit !== 'fill') imgStyle.objectFit = props.objectFit;
     if (props.objectPosition && props.objectPosition !== 'center') imgStyle.objectPosition = props.objectPosition;
 
-    // If we have the raw SVG markup cached (set on upload of an .svg) and
-    // a Tint colour, recolor in-place via inline SVG. The wrapper div takes
-    // the image's sizing so the SVG scales the same way as the <img> path.
-    const hasTintedSvg = props.svgRaw && props.tintColor;
-    const content = hasTintedSvg ? (
+    // If we have raw SVG markup (set on upload of an .svg, or extracted
+    // from imported inline SVGs in HTML), render it via dangerouslySetInnerHTML.
+    // When a tintColor is also set, recolour the fills/strokes in-place.
+    const hasSvg = props.svgRaw;
+    const content = hasSvg ? (
       <div
         style={{ ...imgStyle, display: 'inline-block', lineHeight: 0 }}
-        dangerouslySetInnerHTML={{ __html: tintSvgMarkup(props.svgRaw, props.tintColor) }}
+        dangerouslySetInnerHTML={{ __html: props.tintColor ? tintSvgMarkup(props.svgRaw, props.tintColor) : props.svgRaw }}
       />
     ) : props.url ? (
       <img src={props.url} alt={props.alt || ''} style={imgStyle} />

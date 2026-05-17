@@ -184,6 +184,23 @@ function DesignTab({ block, updateBlock, id }) {
         </>
       )}
 
+      {block.type === 'RawHtml' && (
+        <>
+          <SectionHeading>HTML</SectionHeading>
+          <Section>
+            <div className={styles.fieldCol}>
+              <label className={styles.fieldLabel}>Markup</label>
+              <Textarea
+                value={props.html || ''}
+                onChange={e => update(['data', 'props', 'html'], e.target.value)}
+                rows={12}
+                style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12 }}
+              />
+            </div>
+          </Section>
+        </>
+      )}
+
       {block.type === 'Button' && (
         <>
           <SectionHeading>Button</SectionHeading>
@@ -1762,7 +1779,37 @@ function CodeTab({ doc }) {
       {mode === 'html' && htmlPreviewOverride && (
         <div className={styles.codeBanner}>
           <Icon name="solar:info-circle-linear" size={12} color="currentColor" />
-          <span style={{ flex: 1 }}>Previewing edited HTML — confirm to import as editable blocks.</span>
+          <span style={{ flex: 1 }}>Previewing edited HTML — choose how to import.</span>
+          {/* Tier A: pixel-perfect path. Keep the markup verbatim in the
+              canvas iframe so designs with complex tables/SVG mockups stay
+              true to the source. The user trades structural block editing
+              for full CSS fidelity. */}
+          <button
+            type="button"
+            className={styles.codeBannerBtn}
+            style={{ background: 'transparent', color: 'var(--primary-300)', border: '0.5px solid var(--primary-200)' }}
+            onClick={() => {
+              const html = htmlPreviewOverride;
+              setEmailDocument({
+                ...doc,
+                root: {
+                  ...doc.root,
+                  data: {
+                    ...(doc.root?.data || {}),
+                    customHtml: html,
+                    // Clear blocks so the precedence check routes through
+                    // the iframe path (PreviewCanvas only uses customHtml
+                    // when childrenIds is empty).
+                    childrenIds: [],
+                  },
+                },
+              });
+            }}
+            title="Render the HTML verbatim in an editable iframe — no block conversion"
+          >
+            <Icon name="solar:code-linear" size={13} color="currentColor" />
+            Keep as raw HTML
+          </button>
           <button
             type="button"
             className={styles.codeBannerBtn}
@@ -1797,8 +1844,8 @@ function CodeTab({ doc }) {
             }}
             title="Import HTML as editable blocks"
           >
-            <Icon name="solar:check-circle-linear" size={13} color="currentColor" />
-            Confirm
+            <Icon name="solar:layers-linear" size={13} color="currentColor" />
+            Import as blocks
           </button>
         </div>
       )}

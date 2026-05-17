@@ -29,6 +29,7 @@ const COMPONENTS = [
   { type: 'Section',   label: 'Section',  icon: 'solar:align-vertical-spacing-linear' },
   { type: 'Form',      label: 'Form',     icon: 'solar:document-add-linear', soon: true },
   { type: 'Table',     label: 'Table',    icon: null, customIcon: 'table' },
+  { type: 'RawHtml',   label: 'HTML',     icon: 'solar:code-square-linear' },
   // Row 6 — Header & Footer use a preset picker rather than a single block
   { type: 'Header',    label: 'Header',   icon: null, customIcon: 'header', preset: 'header' },
   { type: 'Footer',    label: 'Footer',   icon: null, customIcon: 'footer', preset: 'footer' },
@@ -58,6 +59,7 @@ const TYPE_LABELS = {
   Social: 'Social',
   NavBar: 'Nav Bar',
   Table: 'Table',
+  RawHtml: 'HTML',
 };
 
 const TYPE_ICONS = {
@@ -74,6 +76,7 @@ const TYPE_ICONS = {
   Social: 'solar:share-circle-linear',
   NavBar: 'solar:hamburger-menu-linear',
   Table: 'solar:widget-2-linear',
+  RawHtml: 'solar:code-square-linear',
 };
 
 function ColumnIcon({ size = 20, color = 'currentColor' }) {

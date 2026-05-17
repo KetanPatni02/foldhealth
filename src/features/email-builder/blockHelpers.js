@@ -84,6 +84,13 @@ const FACTORIES = {
       },
     },
   }),
+  RawHtml: () => ({
+    type: 'RawHtml',
+    data: {
+      props: { html: '<div style="padding:24px;background:#FAFAF9;border:1px dashed #E7E5E4;border-radius:8px;font-family:Inter,sans-serif;color:#78716C;text-align:center;font-size:13px">Paste your HTML here</div>' },
+      style: { padding: { top: 0, bottom: 0, left: 0, right: 0 } },
+    },
+  }),
   Social: () => ({
     type: 'Social',
     data: {

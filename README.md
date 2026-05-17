@@ -140,6 +140,17 @@ The platform follows the **Fold Health design system** with strict adherence to:
 
 ## Recent Changes
 
+### Email Builder — HTML import: Tier A/B/C parser improvements + RawHtml block (May 2026)
+- **Tier A — User choice at Confirm.** The HTML-paste banner now offers two buttons: "Keep as raw HTML" (sets `customHtml`, clears `childrenIds` → iframe path with pixel-perfect fidelity) and "Import as blocks" (existing parser path with full structural editing).
+- **Tier B — Parser fidelity polish for production emails.**
+  - B1: Parser iframe widened to 800px so `@media (max-width:620px)` mobile rules don't hijack the captured computed styles.
+  - B2: `<td bgcolor><a>…</a></td>` CTA pattern now extracts as a Button — the wrapper bg + border-radius are promoted to `props.buttonBackgroundColor`/`buttonStyle: 'pill'`, anchor's padding/color carry through.
+  - B3: Inline `style="color:…"` on `<em>`/`<strong>`/`<span>`/`<u>`/`<s>`/`<a>` is preserved in `extractInlineHtml` (whitelisted to color, font-weight, font-style, text-decoration, text-transform, background-color).
+  - B4: ColumnsContainer per-cell styling — each `<td>`'s computed background-color, padding, text-align, valign attribute, and width attribute write through to `col.backgroundColor`/`padding`/`align`/`valign`/`customWidth` so coloured-bar columns and icon-bubble cells survive.
+  - B5: Inline `<svg>` → Image block with `svgRaw`. The Image renderer's SVG path no longer requires `tintColor`; raw markup renders as-is. Logos, principle icons, and social-bar glyphs round-trip.
+  - B6: `<link rel="stylesheet" href*="fonts.googleapis.com">` is parsed for `family=` URL params; the resulting list stores on `root.data.linkedFonts` and `collectUnknownFonts` excludes them so the substitution dialog doesn't nag.
+- **Tier C — RawHtml block.** New escape-hatch block type with `props.html: string`. BlockBody renders via `dangerouslySetInnerHTML` wrapped with the block's padding/textAlign — full SortableBlock treatment (toolbar, drag handle, drop indicator, reorderable). HTML export passes through verbatim. New "HTML" tile in the Components panel (`solar:code-square-linear` icon) drops one in alongside Heading/Text/Image. Layers panel labels it "Raw HTML". Design tab adds an "HTML" section with a monospace `Textarea` for editing markup directly.
+
 ### Email Builder — Gap between nested children (May 2026)
 - New **Gap** control (px) in the Design tab Layout section for Container, ColumnsContainer, and the EmailLayout root. Sets vertical spacing between stacked children. For ColumnsContainer it spaces the children inside each column (distinct from the existing `columnsGap`/`rowGap` which space the columns themselves).
 - Canvas implementation: `SortableList` accepts a `gap` prop and wraps children in `display: flex; flex-direction: column; gap: Npx` when set.
