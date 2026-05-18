@@ -51,7 +51,7 @@ export function PatientProfileTabs({ patientId }) {
       : section.items,
   }));
 
-return (
+  return (
     <div className={styles.panel}>
       {/* Sticky tab bar OR search input */}
       {searching ? (
@@ -70,11 +70,20 @@ return (
         </div>
       ) : (
         <div className={styles.tabRow}>
-          {CARE_GAP_TABS.map((tab, i) => (
-            <button key={tab} className={`${styles.tab} ${activeTab === i ? styles.tabActive : ''}`} onClick={() => setActiveTab(i)}>
-              {tab}
-            </button>
-          ))}
+          <div className={styles.tabsScroll}>
+            {CARE_GAP_TABS.map((tab, i) => (
+              <button
+                key={tab}
+                className={`${styles.tab} ${activeTab === i ? styles.tabActive : ''}`}
+                onClick={(e) => {
+                  setActiveTab(i);
+                  e.currentTarget.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
+                }}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
           <button className={styles.searchIcon} onClick={() => setSearching(true)} aria-label="Search">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--neutral-300)" strokeWidth="1.5"><circle cx="11.5" cy="11.5" r="9.5" /><path strokeLinecap="round" d="M18.5 18.5L22 22" /></svg>
           </button>
@@ -107,7 +116,12 @@ return (
             {/* Care Gaps header */}
             <div className={styles.sectionHeader}>
               <span className={styles.sectionTitle}>Care Gaps</span>
-              <button className={styles.collapseToggle} onClick={() => setGapsCollapsed(v => !v)}>
+              <button
+                className={styles.collapseToggle}
+                onClick={() => setGapsCollapsed(v => !v)}
+                aria-label={gapsCollapsed ? 'Expand Care Gaps' : 'Collapse Care Gaps'}
+                aria-expanded={!gapsCollapsed}
+              >
                 <Icon name={gapsCollapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-200)" />
               </button>
               {!gapsCollapsed && (
@@ -133,7 +147,12 @@ return (
             {/* Diagnosis Gaps header */}
             <div className={`${styles.sectionHeader} ${styles.diagnosisHeader}`}>
               <span className={styles.sectionTitle}>Diagnosis Gaps</span>
-              <button className={styles.collapseToggle} onClick={() => setDiagnosisCollapsed(v => !v)}>
+              <button
+                className={styles.collapseToggle}
+                onClick={() => setDiagnosisCollapsed(v => !v)}
+                aria-label={diagnosisCollapsed ? 'Expand Diagnosis Gaps' : 'Collapse Diagnosis Gaps'}
+                aria-expanded={!diagnosisCollapsed}
+              >
                 <Icon name={diagnosisCollapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-200)" />
               </button>
               {!diagnosisCollapsed && (
@@ -158,7 +177,12 @@ return (
             {/* Alerts header */}
             <div className={`${styles.sectionHeader} ${styles.diagnosisHeader}`}>
               <span className={styles.sectionTitle}>Alerts</span>
-              <button className={styles.collapseToggle} onClick={() => setAlertsCollapsed(v => !v)}>
+              <button
+                className={styles.collapseToggle}
+                onClick={() => setAlertsCollapsed(v => !v)}
+                aria-label={alertsCollapsed ? 'Expand Alerts' : 'Collapse Alerts'}
+                aria-expanded={!alertsCollapsed}
+              >
                 <Icon name={alertsCollapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-200)" />
               </button>
               {!alertsCollapsed && (

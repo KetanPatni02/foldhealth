@@ -1,0 +1,19 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: background 0.12s;
+}
+
+.btn:hover {
+  background: var(--neutral-75);
+}
+
+.btn:active {
+  background: var(--neutral-100);
+}

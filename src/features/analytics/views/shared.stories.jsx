@@ -37,7 +37,7 @@ export const InsightBannerAmber = {
   render: () => (
     <div style={{ width: 800 }}>
       <InsightBanner
-        icon="solar:chart-2-linear"
+        icon="solar:chart-linear"
         title="Key Drivers — Where to Focus"
         variant="amber"
         text="Cost: <strong>Inpatient $23 over benchmark</strong>. Quality: <strong>AWV 19pp below target</strong>."

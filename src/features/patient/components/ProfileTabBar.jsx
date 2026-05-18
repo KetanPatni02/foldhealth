@@ -9,7 +9,16 @@ export function ProfileTabBar({ activeTab, onTabChange }) {
       <span className={styles.divider} />
       <div className={styles.tabs}>
         {PROFILE_TABS.map(tab => (
-          <button key={tab} className={`${styles.tab} ${activeTab === tab ? styles.tabActive : ''}`} onClick={() => onTabChange(tab)}>
+          <button
+            key={tab}
+            className={`${styles.tab} ${activeTab === tab ? styles.tabActive : ''}`}
+            onClick={(e) => {
+              onTabChange(tab);
+              // Bring partially-clipped tabs fully into view; no-op when
+              // the tab is already fully visible.
+              e.currentTarget.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
+            }}
+          >
             {tab}
           </button>
         ))}

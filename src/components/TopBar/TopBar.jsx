@@ -184,6 +184,7 @@ export function TopBar() {
   const isMessages = activePage === 'messages';
   const isCalls = activePage === 'calls';
   const isTasks = activePage === 'tasks';
+  const isCampaign = activePage === 'campaign';
   const selectedPatientId = useAppStore(s => s.selectedPatientId);
   const navigateBackToWorklist = useAppStore(s => s.navigateBackToWorklist);
   const navigateToPatient = useAppStore(s => s.navigateToPatient);
@@ -246,6 +247,8 @@ export function TopBar() {
               <span className={styles.sep}>/</span>
               <span className={styles.breadcrumbCurrent}>Fold Insights</span>
             </>
+          ) : isCampaign ? (
+            <span className={styles.breadcrumbCurrent}>Campaign</span>
           ) : isSettings ? (
             <>
               <a className={styles.breadcrumbLink} href="#" onClick={e => e.preventDefault()}>Settings</a>

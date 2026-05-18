@@ -2,21 +2,21 @@
 
 .sectionLabel {
   height: 28px; display: flex; align-items: center; padding-left: 8px;
-  font-size: 14px; font-weight: 400; color: #6f7a90;
+  font-size: 14px; font-weight: 400; color: var(--neutral-300);
   font-family: 'Inter', sans-serif; margin-bottom: 4px;
 }
 
 .card {
-  background: #fff;
-  border-bottom: 0.5px solid #e9ecf1;
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-100);
   overflow: hidden;
 }
 
 .colHeader {
   display: flex; align-items: center; gap: 10px;
   padding: 6px 8px;
-  border-bottom: 0.5px solid #d0d6e1;
+  border-bottom: 0.5px solid var(--neutral-150);
 }
-.colTitle { flex: 1; font-size: 14px; font-weight: 500; color: #6f7a90; font-family: 'Inter', sans-serif; }
-.colStatus { width: 90px; flex-shrink: 0; font-size: 14px; font-weight: 500; color: #6f7a90; font-family: 'Inter', sans-serif; }
+.colTitle { flex: 1; font-size: 14px; font-weight: 500; color: var(--neutral-300); font-family: 'Inter', sans-serif; }
+.colStatus { width: 90px; flex-shrink: 0; font-size: 14px; font-weight: 500; color: var(--neutral-300); font-family: 'Inter', sans-serif; }
 .colActions { width: 24px; flex-shrink: 0; }

@@ -1,68 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { Toggle } from '../../components/Toggle/Toggle';
-import { ConversationIcon, GuardrailsIcon, CallTransferIcon, AgentsIcon } from './nodes/NodeIcons';
+import { NODE_LIST } from './nodes/nodeConfig';
 import styles from './NodePanel.module.css';
-
-/* ── Node type config: drawer icons use light bg + colored border; canvas icons use solid bg ── */
-const NODE_TYPES = [
-  {
-    type: 'conversation',
-    label: 'Conversation',
-    iconColor: '#009688',
-    drawerBg: '#E5F4F3',
-    drawerBorder: 'rgba(0,150,136,0.1)',
-    CustomIcon: ConversationIcon,
-  },
-  {
-    type: 'appointment',
-    icon: 'solar:calendar-mark-linear',
-    label: 'Appointment',
-    iconColor: '#8C5AE2',
-    drawerBg: '#FCFAFF',
-    drawerBorder: 'rgba(140,90,226,0.3)',
-  },
-  {
-    type: 'guardrails',
-    label: 'Guardrails',
-    iconColor: '#D9A50B',
-    drawerBg: '#FFFCF5',
-    drawerBorder: 'rgba(217,165,11,0.3)',
-    CustomIcon: GuardrailsIcon,
-  },
-  {
-    type: 'callTransfer',
-    label: 'Call Transfer',
-    iconColor: '#9C27B0',
-    drawerBg: '#F5E9F7',
-    drawerBorder: 'rgba(156,39,176,0.2)',
-    CustomIcon: CallTransferIcon,
-  },
-  {
-    type: 'escalation',
-    icon: 'solar:danger-triangle-linear',
-    label: 'Escalations',
-    iconColor: '#D72825',
-    drawerBg: '#FFFCF5',
-    drawerBorder: 'rgba(215,40,37,0.2)',
-  },
-  {
-    type: 'agents',
-    label: 'Agents',
-    iconColor: '#FF907F',
-    drawerBg: 'linear-gradient(136deg, #FFF2F0 2%, #FFEDFA 52%, #EDF5FF 94%)',
-    drawerBorder: '#FF907F',
-    CustomIcon: AgentsIcon,
-  },
-  {
-    type: 'end',
-    icon: 'solar:forbidden-circle-linear',
-    label: 'End',
-    iconColor: '#109CAE',
-    drawerBg: '#E5F8FB',
-    drawerBorder: 'rgba(16,156,174,0.3)',
-  },
-];
 
 const COMPONENTS = [
   { type: 'greeting', icon: 'solar:hand-shake-linear', label: 'Greeting', desc: 'Standard greeting message' },
@@ -70,6 +11,68 @@ const COMPONENTS = [
   { type: 'medCheck', icon: 'solar:pill-linear', label: 'Med Check', desc: 'Medication reconciliation' },
   { type: 'scheduling', icon: 'solar:calendar-mark-linear', label: 'Scheduling', desc: 'Appointment scheduling' },
 ];
+
+function NodeItem({ node, onDragStart }) {
+  const [hovered, setHovered] = useState(false);
+  const itemRef = useRef(null);
+  const hoverTimer = useRef(null);
+
+  const handleEnter = () => {
+    clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => setHovered(true), 250);
+  };
+  const handleLeave = () => {
+    clearTimeout(hoverTimer.current);
+    setHovered(false);
+  };
+
+  const rect = itemRef.current?.getBoundingClientRect();
+
+  return (
+    <>
+      <div
+        ref={itemRef}
+        className={styles.nodeItem}
+        draggable
+        onDragStart={e => { handleLeave(); onDragStart(e, node.type, node.label); }}
+        onMouseEnter={handleEnter}
+        onMouseLeave={handleLeave}
+      >
+        <div
+          className={styles.nodeIcon}
+          style={{ background: node.drawerBg, borderColor: node.drawerBorder }}
+        >
+          {node.CustomIcon
+            ? <node.CustomIcon size={16} color={node.color} />
+            : <Icon name={node.icon} size={16} color={node.color} />}
+        </div>
+        <span className={styles.nodeLabel}>{node.label}</span>
+      </div>
+      {hovered && rect && createPortal(
+        <div
+          className={styles.nodeTooltip}
+          style={{ top: rect.top + rect.height / 2, left: rect.right + 8 }}
+        >
+          <div className={styles.nodeTooltipHeader}>
+            <div
+              className={styles.nodeTooltipIcon}
+              style={{ background: node.drawerBg, borderColor: node.drawerBorder }}
+            >
+              {node.CustomIcon
+                ? <node.CustomIcon size={16} color={node.color} />
+                : <Icon name={node.icon} size={16} color={node.color} />}
+            </div>
+            <span className={styles.nodeTooltipTitle} style={{ color: node.color }}>
+              {node.label}
+            </span>
+          </div>
+          <p className={styles.nodeTooltipDesc}>{node.description}</p>
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
 
 export function NodePanel({ onDragStart }) {
   const [activeTab, setActiveTab] = useState('Node');
@@ -82,35 +85,15 @@ export function NodePanel({ onDragStart }) {
 
   return (
     <aside className={styles.panel}>
-      {/* Segmented toggle */}
       <div className={styles.toggleWrap}>
         <Toggle items={['Node', 'Components']} active={activeTab} onChange={setActiveTab} fullWidth />
       </div>
 
       <div className={styles.list}>
         {activeTab === 'Node' ? (
-          NODE_TYPES.map(n => {
-            const isGradient = n.drawerBg.startsWith('linear');
-            return (
-              <div
-                key={n.type}
-                className={styles.nodeItem}
-                draggable
-                onDragStart={e => handleDragStart(e, n.type, n.label)}
-              >
-                <div
-                  className={styles.nodeIcon}
-                  style={{
-                    background: n.drawerBg,
-                    borderColor: n.drawerBorder,
-                  }}
-                >
-                  {n.CustomIcon ? <n.CustomIcon size={16} color={n.iconColor} /> : <Icon name={n.icon} size={16} color={n.iconColor} />}
-                </div>
-                <span className={styles.nodeLabel}>{n.label}</span>
-              </div>
-            );
-          })
+          NODE_LIST.map(n => (
+            <NodeItem key={n.type} node={n} onDragStart={handleDragStart} />
+          ))
         ) : (
           COMPONENTS.map(c => (
             <div

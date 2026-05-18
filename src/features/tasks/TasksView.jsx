@@ -26,6 +26,7 @@ import { useAppStore } from '../../store/useAppStore';
 import styles from './TasksView.module.css';
 
 const TABS = [
+  { key: 'all', label: 'All Tasks' },
   { key: 'assigned', label: 'Assigned to Me' },
   { key: 'pool', label: 'My Task Pool' },
   { key: 'created', label: 'Created by Me' },
@@ -103,6 +104,47 @@ const PRIORITY_COLORS = {
   none: '#6F7A90',
 };
 
+/* ── Date helpers ── */
+function parseTaskDate(str) {
+  if (!str || typeof str !== 'string') return null;
+  const parts = str.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(n => Number.isNaN(n))) return null;
+  const [m, d, y] = parts;
+  const date = new Date(y, m - 1, d);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function todayStart() {
+  const t = new Date();
+  t.setHours(0, 0, 0, 0);
+  return t;
+}
+
+function todayMMDDYYYY() {
+  const t = new Date();
+  return `${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}-${t.getFullYear()}`;
+}
+
+function isOverdue(task) {
+  if (!task || !task.due_date || task.status === 'completed') return false;
+  const d = parseTaskDate(task.due_date);
+  if (!d) return false;
+  return d < todayStart() || task.status === 'missed';
+}
+
+function formatDateFriendly(str) {
+  if (!str) return 'Select Date';
+  const d = parseTaskDate(str);
+  if (!d) return str;
+  const today = todayStart();
+  const diff = Math.round((d - today) / (1000 * 60 * 60 * 24));
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Tomorrow';
+  if (diff === -1) return 'Yesterday';
+  return str;
+}
+
 function SubtaskIcon({ size = 16, color = 'var(--primary-300)' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
@@ -144,7 +186,7 @@ function PriorityIcon({ priority, size = 24 }) {
 }
 
 /* ── Date Picker (inline calendar, same as appointment drawer) ── */
-function TaskDatePicker({ value, onSelect }) {
+function TaskDatePicker({ value, onSelect, overdue }) {
   const [open, setOpen] = useState(false);
   const [viewDate, setViewDate] = useState(() => {
     if (value) {
@@ -179,9 +221,14 @@ function TaskDatePicker({ value, onSelect }) {
 
   return (
     <div style={{ position: 'relative' }}>
-      <button ref={btnRef} className={styles.detailValue} style={{ color: 'var(--neutral-300)' }} onClick={e => { e.stopPropagation(); setOpen(v => !v); }}>
-        <Icon name="solar:calendar-linear" size={16} color="var(--neutral-300)" />
-        <span>{value || 'Select Date'}</span>
+      <button
+        ref={btnRef}
+        className={styles.detailValue}
+        style={{ color: overdue ? 'var(--status-error)' : (value ? 'var(--neutral-300)' : 'var(--neutral-200)') }}
+        onClick={e => { e.stopPropagation(); setOpen(v => !v); }}
+      >
+        <Icon name="solar:calendar-linear" size={16} color={overdue ? 'var(--status-error)' : (value ? 'var(--neutral-300)' : 'var(--neutral-200)')} />
+        <span>{formatDateFriendly(value)}</span>
       </button>
       {open && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setOpen(false)}>
@@ -295,10 +342,13 @@ function RowLabelDropdown({ task, children }) {
 /* ── Three-dot Action Menu for rows and kanban cards ── */
 function RowActionMenu({ task }) {
   const [open, setOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const btnRef = useRef(null);
   const updateTask = useAppStore(s => s.updateTask);
   const deleteTask = useAppStore(s => s.deleteTask);
   const showToast = useAppStore(s => s.showToast);
+  const allTasks = useAppStore(s => s.tasks);
+  const subCount = allTasks.filter(t => t.parent_task_id === task.id).length;
 
   const actions = [];
   if (task.status === 'pending') {
@@ -311,7 +361,7 @@ function RowActionMenu({ task }) {
     actions.push({ key: 'pending', label: 'Mark as Pending', icon: 'solar:clock-circle-linear', handler: () => { updateTask(task.id, { status: 'pending' }); showToast('Task marked as pending'); } });
     actions.push({ key: 'missed', label: 'Mark as Missed', icon: 'solar:close-circle-linear', handler: () => { updateTask(task.id, { status: 'missed' }); showToast('Task marked as missed'); } });
   }
-  actions.push({ key: 'delete', label: 'Delete', icon: 'solar:trash-bin-trash-linear', danger: true, handler: () => { deleteTask(task.id); showToast('Task deleted'); } });
+  actions.push({ key: 'delete', label: 'Delete', icon: 'solar:trash-bin-trash-linear', danger: true, handler: () => setShowDeleteConfirm(true) });
 
   return (
     <div ref={btnRef} style={{ position: 'relative' }}>
@@ -335,6 +385,19 @@ function RowActionMenu({ task }) {
         </div>,
         document.body
       )}
+      {showDeleteConfirm && (
+        <ConfirmDialog
+          icon="solar:danger-triangle-linear"
+          iconColor="var(--status-error)"
+          title="Delete this task?"
+          description={subCount > 0 ? `This task has ${subCount} subtask(s). Deleting it will also delete all subtasks. This cannot be undone.` : 'This action cannot be undone.'}
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          variant="error"
+          onConfirm={() => { deleteTask(task.id); showToast('Task deleted'); setShowDeleteConfirm(false); }}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
+      )}
     </div>
   );
 }
@@ -356,9 +419,114 @@ function RowStatusDropdown({ task }) {
   );
 }
 
+/* ── Inline Assignee Dropdown for list rows ──
+ * Mirrors the look of RowLabelDropdown: small pill in the row that
+ * opens a portal-anchored picker. Sources its options from
+ * useAppStore.taskProfiles (profiles table) with the current user
+ * pinned at top with "(You)". When the row has no assignee, renders an
+ * "Assign" empty-state pill in neutral-200 (same pattern as Add Label).
+ */
+function RowAssignDropdown({ task }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const btnRef = useRef(null);
+  const updateTask = useAppStore(s => s.updateTask);
+  const showToast = useAppStore(s => s.showToast);
+  const taskProfiles = useAppStore(s => s.taskProfiles);
+  const currentUserProfile = useAppStore(s => s.currentUserProfile);
+
+  // Build picker options: current user first (with "(You)"), then everyone else.
+  const profiles = (() => {
+    const seen = new Set();
+    const list = [];
+    if (currentUserProfile?.id) {
+      list.push({ ...currentUserProfile, label: `${currentUserProfile.name} (You)` });
+      seen.add(currentUserProfile.id);
+    }
+    (taskProfiles || []).forEach(p => {
+      if (seen.has(p.id)) return;
+      list.push({ ...p, label: p.name });
+      seen.add(p.id);
+    });
+    return list;
+  })();
+
+  const filtered = profiles.filter(p => !search || (p.name || '').toLowerCase().includes(search.toLowerCase()));
+
+  const pick = (profile) => {
+    updateTask(task.id, { assigned_to: profile.name, assigned_to_id: profile.id || null });
+    showToast(`Assigned to ${profile.name}`);
+    setOpen(false);
+    setSearch('');
+  };
+
+  const handleUnassign = () => {
+    updateTask(task.id, { assigned_to: null, assigned_to_id: null });
+    showToast('Unassigned');
+    setOpen(false);
+    setSearch('');
+  };
+
+  return (
+    <div ref={btnRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }} onClick={e => { e.stopPropagation(); setOpen(v => !v); }}>
+      {task.assigned_to ? (
+        <button className={styles.assignPill} aria-label={`Assigned to ${task.assigned_to}. Click to change.`}>
+          <Icon name="solar:user-linear" size={14} color="var(--neutral-300)" />
+          <span>{task.assigned_to}</span>
+        </button>
+      ) : (
+        <button className={styles.assignEmpty} aria-label="Assign">
+          <Icon name="solar:user-linear" size={13} color="var(--neutral-200)" />
+          Assign
+        </button>
+      )}
+      {open && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={e => { e.stopPropagation(); setOpen(false); setSearch(''); }}>
+          <div
+            className={styles.simpleDropdown}
+            style={{ position: 'fixed', top: btnRef.current?.getBoundingClientRect().bottom + 4, left: btnRef.current?.getBoundingClientRect().left, zIndex: 9999 }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className={styles.dropdownSearch}>
+              <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-200)" />
+              <input
+                className={styles.dropdownSearchInput}
+                placeholder="Search assignees..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                autoFocus
+              />
+            </div>
+            {filtered.map(p => {
+              const initials = (p.name || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+              return (
+                <button key={p.id || p.name} className={styles.simpleDropItem} onClick={() => pick(p)}>
+                  <Avatar variant="assignee" initials={initials} className={styles.avatarXs} />
+                  <span>{p.label}</span>
+                </button>
+              );
+            })}
+            {filtered.length === 0 && (
+              <div className={styles.simpleDropItem} style={{ color: 'var(--neutral-200)', cursor: 'default' }}>No matches</div>
+            )}
+            {task.assigned_to && (
+              <button className={styles.simpleDropItem} style={{ color: 'var(--status-error)', borderTop: '0.5px solid var(--neutral-100)' }} onClick={handleUnassign}>
+                <Icon name="solar:close-circle-linear" size={14} color="var(--status-error)" />
+                Unassign
+              </button>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
 /* ── Filter Chip (mirrors FilterBar's FilterChip) ── */
 function TaskFilterChip({ filterDef, value, onSet, onClear }) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
   const ref = useRef(null);
 
   useEffect(() => {
@@ -370,7 +538,19 @@ function TaskFilterChip({ filterDef, value, onSet, onClear }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
+  // Show the search input + avatars when the filter is people-shaped
+  // (assigned_to / created_by / member). The other chips stay plain.
+  const isPeopleChip = filterDef.iconKind === 'assignee' || filterDef.iconKind === 'patient';
+
+  useEffect(() => {
+    if (!open) setSearch('');
+  }, [open]);
+
   const selectedLabel = value ? filterDef.options.find(o => o.value === value)?.label || value : null;
+
+  const filteredOptions = isPeopleChip && search
+    ? filterDef.options.filter(o => (o.label || '').toLowerCase().includes(search.toLowerCase()))
+    : filterDef.options;
 
   return (
     <div className={styles.chipWrap} ref={ref}>
@@ -396,22 +576,48 @@ function TaskFilterChip({ filterDef, value, onSet, onClear }) {
       </button>
       {open && (
         <div className={styles.dropdown}>
-          {filterDef.options.map(opt => (
-            <button
-              key={opt.value}
-              className={[styles.dropdownItem, value === opt.value ? styles.selected : ''].filter(Boolean).join(' ')}
-              onClick={() => {
-                if (value === opt.value) onClear();
-                else onSet(opt.value);
-                setOpen(false);
-              }}
-            >
-              <span className={styles.dropdownCheck}>
-                {value === opt.value ? '✓' : ''}
-              </span>
-              {opt.label}
-            </button>
-          ))}
+          {isPeopleChip && (
+            <div className={styles.dropdownSearch}>
+              <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-200)" />
+              <input
+                className={styles.dropdownSearchInput}
+                placeholder={`Search ${filterDef.label.toLowerCase()}...`}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                autoFocus
+              />
+            </div>
+          )}
+          {filteredOptions.map(opt => {
+            const initials = isPeopleChip
+              ? (opt.label || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+              : '';
+            return (
+              <button
+                key={opt.value}
+                className={[styles.dropdownItem, value === opt.value ? styles.selected : ''].filter(Boolean).join(' ')}
+                onClick={() => {
+                  if (value === opt.value) onClear();
+                  else onSet(opt.value);
+                  setOpen(false);
+                }}
+              >
+                {isPeopleChip ? (
+                  <Avatar variant={filterDef.iconKind} initials={initials} className={styles.avatarXs} />
+                ) : (
+                  <span className={styles.dropdownCheck}>
+                    {value === opt.value ? '✓' : ''}
+                  </span>
+                )}
+                {opt.label}
+              </button>
+            );
+          })}
+          {isPeopleChip && filteredOptions.length === 0 && (
+            <div className={styles.dropdownItem} style={{ color: 'var(--neutral-200)', cursor: 'default' }}>
+              No matches
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -477,12 +683,14 @@ function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo }) {
           {task.is_subtask ? (
             <div className={styles.subtaskRow}>
               <SubtaskIcon size={14} color="var(--primary-300)" />
-              <span className={styles.taskName}>{task.name}</span>
+              <span className={`${styles.taskName} ${isCompleted ? styles.taskNameDone : ''}`}>{task.name}</span>
             </div>
           ) : (
-            <span className={styles.taskName}>{task.name}</span>
+            <span className={`${styles.taskName} ${isCompleted ? styles.taskNameDone : ''}`}>{task.name}</span>
           )}
-          <span className={styles.taskMeta}>{task.meta}</span>
+          <span className={styles.taskMeta}>
+            {task.parent_task ? (task.created_by ? `By : ${task.created_by}` : '') : task.meta}
+          </span>
         </div>
         <div className={styles.taskAttachments}>
           {task.attachments > 0 && (
@@ -508,18 +716,13 @@ function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo }) {
         <RowStatusDropdown task={task} />
       </div>
 
-      <div className={`${styles.cellDue} ${task.due_missed ? styles.dueMissed : ''}`} onClick={e => e.stopPropagation()}>
-        <TaskDatePicker value={task.due_date} onSelect={v => { updateTask(task.id, { due_date: v }); showToast('Due date updated'); }} />
+      <div className={`${styles.cellDue} ${isOverdue(task) ? styles.dueMissed : ''}`} onClick={e => e.stopPropagation()}>
+        <TaskDatePicker value={task.due_date} overdue={isOverdue(task)} onSelect={v => { updateTask(task.id, { due_date: v }); showToast('Due date updated'); }} />
       </div>
 
       {!hideAssignedTo && (
-        <div className={styles.cellAssigned}>
-          {task.assigned_to && (
-            <>
-              <Icon name="solar:user-linear" size={14} color="var(--neutral-300)" />
-              <span>{task.assigned_to}</span>
-            </>
-          )}
+        <div className={styles.cellAssigned} onClick={e => e.stopPropagation()}>
+          <RowAssignDropdown task={task} />
         </div>
       )}
 
@@ -532,7 +735,7 @@ function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo }) {
             const state = useAppStore.getState();
             const match = state.patients.find(p => p.name === task.member)
               || (state.allPatients || []).find(p => p.name === task.member);
-            if (match) state.navigateToPatient(match.id);
+            if (match) state.openQuickView(match);
           }}
         >
           {task.member}
@@ -573,7 +776,11 @@ function StatusGroup({ status, label: labelProp, tasks, onToggle, onTaskClick, h
   const [collapsed, setCollapsed] = useState(false);
   const [page, setPage] = useState(0);
   const label = labelProp || STATUS_LABELS[status];
-  const totalPages = Math.ceil(tasks.length / PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(tasks.length / PAGE_SIZE));
+  // Reset to a valid page when the task list shrinks/grows past current page
+  useEffect(() => {
+    if (page >= totalPages) setPage(Math.max(0, totalPages - 1));
+  }, [totalPages, page]);
   const paginated = tasks.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (
@@ -642,8 +849,8 @@ function KanbanCardContent({ task }) {
         <div className={styles.cardTop}>
           <div className={styles.cardTopLeft}>
             <PriorityIcon priority={task.priority} size={16} />
-            <span className={`${styles.cardDue} ${task.due_missed ? styles.cardDueMissed : ''}`}>
-              Due : {task.due_date}
+            <span className={`${styles.cardDue} ${isOverdue(task) ? styles.cardDueMissed : ''}`}>
+              Due : {formatDateFriendly(task.due_date) === 'Today' || formatDateFriendly(task.due_date) === 'Tomorrow' || formatDateFriendly(task.due_date) === 'Yesterday' ? formatDateFriendly(task.due_date) : task.due_date}
             </span>
           </div>
           <button
@@ -664,7 +871,7 @@ function KanbanCardContent({ task }) {
         )}
 
         {/* Row 3: Task title */}
-        <span className={styles.cardTitle}>{task.name}</span>
+        <span className={`${styles.cardTitle} ${isCompleted ? styles.taskNameDone : ''}`}>{task.name}</span>
 
         {/* Row 4: Labels */}
         {labels.length > 0 && (
@@ -686,7 +893,7 @@ function KanbanCardContent({ task }) {
                 const state = useAppStore.getState();
                 const match = state.patients.find(p => p.name === task.member)
                   || (state.allPatients || []).find(p => p.name === task.member);
-                if (match) state.navigateToPatient(match.id);
+                if (match) state.openQuickView(match);
               }}
             >
               {task.member}
@@ -706,7 +913,9 @@ function KanbanCardContent({ task }) {
 
         {/* Row 6: Meta + linked counts */}
         <div className={styles.cardFooterRow}>
-          <span className={styles.cardFooterMeta}>{task.meta}</span>
+          <span className={styles.cardFooterMeta}>
+            {task.is_subtask && task.parent_task ? (task.created_by ? `By : ${task.created_by}` : '') : task.meta}
+          </span>
           <div className={styles.cardLinked}>
             {task.is_subtask && (
               <span className={styles.linkedItem}>
@@ -928,14 +1137,15 @@ function EmptyState({ title, description, icon }) {
 }
 
 /* ── Add Task Drawer ── */
-function AddTaskDrawer({ onClose, defaultStatus, onTaskCreated }) {
+function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCreated }) {
   const initialStatus = defaultStatus || 'pending';
   const [name, setName] = useState('');
   const [priority, setPriority] = useState('medium');
   const [status, setStatus] = useState(initialStatus);
   const [dueDate, setDueDate] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
-  const [member, setMember] = useState('');
+  const [member, setMember] = useState(initialMember || '');
+  const [pool, setPool] = useState('');
   const [description, setDescription] = useState('');
   const [selectedLabels, setSelectedLabels] = useState([]);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
@@ -946,6 +1156,7 @@ function AddTaskDrawer({ onClose, defaultStatus, onTaskCreated }) {
   const taskProfiles = useAppStore(s => s.taskProfiles);
   const currentUserProfile = useAppStore(s => s.currentUserProfile);
   const allPatients = useAppStore(s => s.allPatients);
+  const taskPools = useAppStore(s => s.taskPools);
 
   const assigneeOptions = useMemo(() => {
     const list = [];
@@ -973,27 +1184,47 @@ function AddTaskDrawer({ onClose, defaultStatus, onTaskCreated }) {
     dueDate !== '' ||
     assignedTo !== '' ||
     member !== '' ||
+    pool !== '' ||
     description.replace(/<[^>]*>/g, '').trim() !== '' ||
     selectedLabels.length > 0 ||
     priority !== 'medium' ||
     status !== initialStatus;
 
-  const canSave = name.trim() !== '' && isDirty;
+  const canSave = name.trim() !== '' && isDirty && name.length <= TITLE_MAX;
 
   const handleSave = async () => {
     if (!canSave) return;
+    const me = currentUserProfile?.name || 'Dr. JeDee Potter';
+    const meId = currentUserProfile?.id || null;
+    // Resolve the picked assignee's profile id by name (taskProfiles
+    // is the same dropdown source). Falls back to the current user.
+    const pickedAssignee = assignedTo
+      ? (taskProfiles || []).find(p => p.name === assignedTo)
+      : null;
+    const finalAssigneeName = pool ? null : (assignedTo || me);
+    const finalAssigneeId = pool
+      ? null
+      : (pickedAssignee?.id || (assignedTo === me ? meId : null) || meId);
     const task = {
-      name: name.trim(),
+      name: name.trim().slice(0, TITLE_MAX),
       status,
       priority,
-      due_date: dueDate || new Date().toISOString().split('T')[0].replace(/(\d{4})-(\d{2})-(\d{2})/, '$2-$3-$1'),
-      assigned_to: assignedTo || (currentUserProfile?.name) || 'Dr. JeDee Potter',
-      member: member || 'Celia Gerhold',
+      due_date: dueDate || todayMMDDYYYY(),
+      assigned_to: finalAssigneeName,
+      assigned_to_id: finalAssigneeId,
+      member: member || (allPatients?.[0]?.name) || 'Celia Gerhold',
       labels: selectedLabels,
-      meta: description || '',
+      meta: pool ? `Pool : ${pool}` : '',
+      description: description || '',
+      pool: pool || null,
+      mentions: [],
       attachments: 0,
       comments: 0,
       is_subtask: false,
+      parent_task: null,
+      parent_task_id: null,
+      created_by: me,
+      created_by_id: meId,
     };
     const result = await createTask(task);
     if (result) {
@@ -1027,13 +1258,21 @@ function AddTaskDrawer({ onClose, defaultStatus, onTaskCreated }) {
           <div className={styles.drawerSection}>
             <span className={styles.drawerSectionLabel}>Task Name</span>
             <input
-              className={styles.drawerTaskTitleInput}
+              className={`${styles.drawerTaskTitleInput} ${name.length > TITLE_MAX ? styles.inputInvalid : ''}`}
               style={{ margin: 0, width: '100%' }}
               placeholder="Enter task name..."
               value={name}
               onChange={e => setName(e.target.value)}
               autoFocus
             />
+            <div className={styles.fieldHelper}>
+              <span className={styles.fieldError}>
+                {name.length > TITLE_MAX ? `Title must be ${TITLE_MAX} characters or fewer` : ''}
+              </span>
+              <span className={`${styles.charCount} ${name.length > TITLE_MAX ? styles.charCountOver : ''}`}>
+                {name.length}/{TITLE_MAX}
+              </span>
+            </div>
           </div>
 
           {/* Detail rows */}
@@ -1050,15 +1289,47 @@ function AddTaskDrawer({ onClose, defaultStatus, onTaskCreated }) {
               </Select>
             </div>
             <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>Assigned To</span>
+              <span className={styles.detailLabel}>Task Pool</span>
               <DetailDropdown
-                value={assignedTo
-                  ? (currentUserProfile?.name === assignedTo ? `${assignedTo} (You)` : assignedTo)
-                  : 'Select assignee'}
-                options={assigneeOptions}
-                onSelect={setAssignedTo}
-              />
+                value={pool}
+                options={['— Direct assign —', ...(taskPools || []).map(p => p.name)]}
+                onSelect={v => setPool(v === '— Direct assign —' ? '' : v)}
+              >
+                <span style={{ color: pool ? 'var(--neutral-400)' : 'var(--neutral-200)' }}>
+                  {pool || '— Direct assign —'}
+                </span>
+              </DetailDropdown>
             </div>
+            {!pool && (
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Assigned To</span>
+                <DetailDropdown
+                  value={assignedTo}
+                  options={assigneeOptions}
+                  onSelect={setAssignedTo}
+                  renderOption={opt => {
+                    const label = typeof opt === 'string' ? opt : opt.label;
+                    const val = typeof opt === 'string' ? opt : opt.value;
+                    const initials = (val || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                    return (
+                      <>
+                        <Avatar variant="assignee" initials={initials} className={styles.avatarXs} />
+                        <span>{label}</span>
+                      </>
+                    );
+                  }}
+                >
+                  {assignedTo ? (
+                    <>
+                      <Avatar variant="assignee" initials={(assignedTo || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()} className={styles.avatarXs} />
+                      <span>{currentUserProfile?.name === assignedTo ? `${assignedTo} (You)` : assignedTo}</span>
+                    </>
+                  ) : (
+                    <span style={{ color: 'var(--neutral-200)' }}>Select assignee</span>
+                  )}
+                </DetailDropdown>
+              </div>
+            )}
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Due Date</span>
               <TaskDatePicker value={dueDate} onSelect={setDueDate} />
@@ -1080,10 +1351,29 @@ function AddTaskDrawer({ onClose, defaultStatus, onTaskCreated }) {
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Member</span>
               <DetailDropdown
-                value={member || 'Select member'}
+                value={member}
                 options={memberOptions}
                 onSelect={setMember}
-              />
+                renderOption={opt => {
+                  const val = typeof opt === 'string' ? opt : opt.value;
+                  const initials = (val || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                  return (
+                    <>
+                      <Avatar variant="patient" initials={initials} className={styles.avatarXs} />
+                      <span>{val}</span>
+                    </>
+                  );
+                }}
+              >
+                {member ? (
+                  <>
+                    <Avatar variant="patient" initials={(member || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()} className={styles.avatarXs} />
+                    <span>{member}</span>
+                  </>
+                ) : (
+                  <span style={{ color: 'var(--neutral-200)' }}>Select member</span>
+                )}
+              </DetailDropdown>
             </div>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Labels</span>
@@ -1143,7 +1433,7 @@ function AddTaskDrawer({ onClose, defaultStatus, onTaskCreated }) {
 const ASSIGNEE_OPTIONS = ['Dr. JeDee Potter', 'Deborah Hintz', 'Dr. Robert Frost', 'Celia Gerhold'];
 const TASK_POOL_OPTIONS = ['Patient Outreach', 'Care Management', 'Follow-up', 'Documentation'];
 const MEMBER_OPTIONS = ['Celia Gerhold', 'Ralph Kessler', 'Robert Langdon', 'Cameron Haley'];
-const PRIORITY_OPTIONS = ['high', 'medium', 'low', 'none'];
+const PRIORITY_OPTIONS = ['high', 'medium', 'low'];
 const LABEL_OPTIONS = ['Hypertension', 'Exercise', 'Document Collection', 'Medication', 'Diabetes', 'Follow-up'];
 
 function CreatableLabelDropdown({ selectedLabels, onToggle, children }) {
@@ -1273,7 +1563,9 @@ const ACTIVITY_LOGS = [
   { user: 'John Doe', initials: 'JD', action: 'created the task.', target: '', type: 'created' },
 ];
 
-function TaskDetailDrawer({ task, onClose }) {
+const TITLE_MAX = 200;
+
+function TaskDetailDrawer({ task, onClose, onSelectTask }) {
   const [activityTab, setActivityTab] = useState('All');
   const [activityToggle, setActivityToggle] = useState('Activity');
   const [editingDesc, setEditingDesc] = useState(false);
@@ -1282,28 +1574,124 @@ function TaskDetailDrawer({ task, onClose }) {
   const [titleDraft, setTitleDraft] = useState('');
   const [commentText, setCommentText] = useState('');
   const [commentExpanded, setCommentExpanded] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showAddSubtask, setShowAddSubtask] = useState(false);
+  const [subtaskName, setSubtaskName] = useState('');
   const titleRef = useRef(null);
   const updateTask = useAppStore(s => s.updateTask);
+  const deleteTask = useAppStore(s => s.deleteTask);
+  const createTask = useAppStore(s => s.createTask);
+  const claimTask = useAppStore(s => s.claimTask);
   const showToast = useAppStore(s => s.showToast);
+  const allTasks = useAppStore(s => s.tasks);
+  const taskAuditLogs = useAppStore(s => s.taskAuditLogs);
+  const fetchTaskAuditLog = useAppStore(s => s.fetchTaskAuditLog);
+  const logTaskAudit = useAppStore(s => s.logTaskAudit);
+  const taskPools = useAppStore(s => s.taskPools);
+  const taskProfiles = useAppStore(s => s.taskProfiles);
+  const allPatients = useAppStore(s => s.allPatients);
+  const currentUserProfile = useAppStore(s => s.currentUserProfile);
+
+  useEffect(() => { if (task?.id) fetchTaskAuditLog(task.id); }, [task?.id]);
 
   if (!task) return null;
 
   const labels = Array.isArray(task.labels) ? task.labels : [];
   const memberInitials = task.member ? task.member.split(' ').map(w => w[0]).join('').slice(0, 2) : '';
   const assigneeInitials = task.assigned_to ? task.assigned_to.split(' ').map(w => w[0]).join('').slice(0, 2) : '';
+  const subtasks = allTasks.filter(t => t.parent_task_id === task.id || (t.is_subtask && t.parent_task === task.name));
+  const completedSubs = subtasks.filter(t => t.status === 'completed').length;
+  const auditLog = taskAuditLogs[task.id] || [];
+
+  // Dynamic dropdown sources — same shape as the AddTaskDrawer.
+  const assigneeNames = (() => {
+    const seen = new Set();
+    const list = [];
+    if (currentUserProfile?.name) { list.push(currentUserProfile.name); seen.add(currentUserProfile.name); }
+    (taskProfiles || []).forEach(p => { if (p.name && !seen.has(p.name)) { list.push(p.name); seen.add(p.name); } });
+    return list.length > 0 ? list : ASSIGNEE_OPTIONS;
+  })();
+  const memberNames = ((allPatients || []).map(p => p.name).filter(Boolean));
+  const memberOptionsForDrawer = memberNames.length > 0 ? memberNames : MEMBER_OPTIONS;
 
   const handleStatusChange = (newStatus) => {
+    if (newStatus === 'completed' && subtasks.length > 0 && completedSubs < subtasks.length) {
+      showToast(`Cannot complete: ${subtasks.length - completedSubs} subtask(s) still open`);
+      return;
+    }
     updateTask(task.id, { status: newStatus });
     showToast(`Status changed to ${STATUS_LABELS[newStatus]}`);
   };
 
   const handleTitleSave = () => {
-    const trimmed = titleDraft.trim();
+    const trimmed = titleDraft.trim().slice(0, TITLE_MAX);
     if (trimmed && trimmed !== task.name) {
       updateTask(task.id, { name: trimmed });
       showToast('Title updated');
     }
     setEditingTitle(false);
+  };
+
+  const handleAddSubtask = async () => {
+    const trimmed = subtaskName.trim();
+    if (!trimmed) return;
+    const sub = {
+      name: trimmed.slice(0, TITLE_MAX),
+      status: 'pending',
+      priority: task.priority || 'medium',
+      due_date: task.due_date || todayMMDDYYYY(),
+      assigned_to: task.assigned_to || currentUserProfile?.name || null,
+      // Inherit assignee FK from parent when present, otherwise the
+      // current user; either way keeps the new id-based filter honest.
+      assigned_to_id: task.assigned_to_id || currentUserProfile?.id || null,
+      member: task.member,
+      labels: [],
+      parent_task: task.name,
+      parent_task_id: task.id,
+      is_subtask: true,
+      attachments: 0,
+      comments: 0,
+      meta: '',
+      description: '',
+      pool: null,
+      mentions: [],
+      created_by: currentUserProfile?.name || 'Current User',
+      created_by_id: currentUserProfile?.id || null,
+    };
+    const created = await createTask(sub);
+    if (created) {
+      logTaskAudit(task.id, 'subtask_added', { to: trimmed });
+      setSubtaskName('');
+      setShowAddSubtask(false);
+      showToast('Subtask added');
+    }
+  };
+
+  const handleDelete = async () => {
+    setShowDeleteConfirm(false);
+    await deleteTask(task.id);
+    showToast('Task deleted');
+    onClose();
+  };
+
+  const handleClaim = async () => {
+    await claimTask(task.id);
+    showToast('Task claimed');
+  };
+
+  const handleAddComment = () => {
+    const text = commentText.trim();
+    if (!text) return;
+    const mentions = (text.match(/@(\w+(?:\s+\w+)?)/g) || []).map(m => m.slice(1).trim());
+    logTaskAudit(task.id, 'comment_added', { to: text });
+    if (mentions.length > 0) {
+      const existingMentions = Array.isArray(task.mentions) ? task.mentions : [];
+      const newMentions = [...new Set([...existingMentions, ...mentions])];
+      updateTask(task.id, { mentions: newMentions });
+    }
+    showToast('Comment added');
+    setCommentText('');
+    setCommentExpanded(false);
   };
 
   const handleTitleKeyDown = (e) => {
@@ -1327,15 +1715,16 @@ function TaskDetailDrawer({ task, onClose }) {
             </SelectContent>
           </Select>
           <div className={styles.drawerToolbarRight}>
+            {task.pool && !task.assigned_to && (
+              <Button variant="primary" size="S" onClick={handleClaim}>Claim Task</Button>
+            )}
             <ActionButton icon="solar:paperclip-linear" size="L" tooltip="Attachments" />
             <span className={styles.iconDivider} />
-            <ActionButton icon="solar:copy-linear" size="L" tooltip="Duplicate" />
+            <ActionButton icon="solar:link-minimalistic-linear" size="L" tooltip="Copy link" onClick={() => { navigator.clipboard?.writeText(`${window.location.origin}/#/tasks?taskId=${task.id}`); showToast('Link copied'); }} />
             <span className={styles.iconDivider} />
-            <ActionButton icon="solar:link-minimalistic-linear" size="L" tooltip="Copy link" />
+            <ActionButton icon="solar:clipboard-text-linear" size="L" tooltip="Copy ID" onClick={() => { navigator.clipboard?.writeText(String(task.id)); showToast('ID copied'); }} />
             <span className={styles.iconDivider} />
-            <ActionButton icon="solar:clipboard-text-linear" size="L" tooltip="Copy ID" />
-            <span className={styles.iconDivider} />
-            <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More" />
+            <ActionButton icon="solar:trash-bin-trash-linear" size="L" tooltip="Delete" onClick={() => setShowDeleteConfirm(true)} />
           </div>
         </div>
 
@@ -1373,8 +1762,12 @@ function TaskDetailDrawer({ task, onClose }) {
             <span className={styles.detailLabel}>Assigned To</span>
             <DetailDropdown
               value={task.assigned_to}
-              options={ASSIGNEE_OPTIONS}
-              onSelect={v => { updateTask(task.id, { assigned_to: v }); showToast(`Assigned to ${v}`); }}
+              options={assigneeNames}
+              onSelect={v => {
+                const picked = (taskProfiles || []).find(p => p.name === v);
+                updateTask(task.id, { assigned_to: v, assigned_to_id: picked?.id || null });
+                showToast(`Assigned to ${v}`);
+              }}
               renderOption={opt => (
                 <><Avatar variant="assignee" initials={getInitials(opt)} className={styles.avatarXs} /> {opt}</>
               )}
@@ -1386,14 +1779,18 @@ function TaskDetailDrawer({ task, onClose }) {
           <div className={styles.detailRow}>
             <span className={styles.detailLabel}>Task Pool</span>
             <DetailDropdown
-              value="Patient Outreach"
-              options={TASK_POOL_OPTIONS}
-              onSelect={v => showToast(`Task pool set to ${v}`)}
+              value={task.pool || '— None —'}
+              options={['— None —', ...taskPools.map(p => p.name)]}
+              onSelect={v => {
+                const next = v === '— None —' ? null : v;
+                updateTask(task.id, { pool: next });
+                showToast(next ? `Pool set to ${next}` : 'Removed from pool');
+              }}
             />
           </div>
           <div className={styles.detailRow}>
             <span className={styles.detailLabel}>Due Date</span>
-            <TaskDatePicker value={task.due_date} onSelect={v => { updateTask(task.id, { due_date: v }); showToast('Due date updated'); }} />
+            <TaskDatePicker value={task.due_date} overdue={isOverdue(task)} onSelect={v => { updateTask(task.id, { due_date: v }); showToast('Due date updated'); }} />
           </div>
           <div className={styles.detailRow}>
             <span className={styles.detailLabel}>Priority</span>
@@ -1413,7 +1810,7 @@ function TaskDetailDrawer({ task, onClose }) {
             <span className={styles.detailLabel}>Member</span>
             <DetailDropdown
               value={task.member}
-              options={MEMBER_OPTIONS}
+              options={memberOptionsForDrawer}
               onSelect={v => { updateTask(task.id, { member: v }); showToast(`Member set to ${v}`); }}
               renderOption={opt => (
                 <><Avatar variant="patient" initials={getInitials(opt)} className={styles.avatarXs} /> {opt}</>
@@ -1475,50 +1872,108 @@ function TaskDetailDrawer({ task, onClose }) {
                 <ActionButton icon="solar:list-linear" size="S" tooltip="List" onClick={() => document.execCommand('insertUnorderedList')} />
                 <div style={{ flex: 1 }} />
                 <ActionButton icon="solar:close-circle-linear" size="S" tooltip="Discard" onClick={() => setEditingDesc(false)} />
-                <ActionButton icon="solar:check-read-linear" size="S" tooltip="Save" onClick={() => { setEditingDesc(false); showToast('Description saved'); }} />
+                <ActionButton icon="solar:check-read-linear" size="S" tooltip="Save" onClick={() => { updateTask(task.id, { description: descDraft }); setEditingDesc(false); showToast('Description saved'); }} />
               </div>
             </div>
           ) : (
             <div
               className={styles.descriptionBox}
-              onClick={() => { setDescDraft(task.meta || ''); setEditingDesc(true); }}
-            >
-              {task.meta || 'Click to add description...'}
-            </div>
+              onClick={() => { setDescDraft(task.description || ''); setEditingDesc(true); }}
+              dangerouslySetInnerHTML={{ __html: task.description || '<span style="color: var(--neutral-200);">Click to add description...</span>' }}
+            />
           )}
         </div>
 
-        {/* Subtasks — only shown when task has subtasks */}
-        {task.is_subtask && (
+        {/* Subtasks — show progress + list of children, allow adding new ones */}
+        {!task.is_subtask && (
           <div className={styles.drawerSection}>
-            <h4 className={styles.drawerSectionTitle}>Subtasks</h4>
-            <div className={styles.subtaskCard}>
-              <button className={styles.taskCheckbox} aria-label="Mark complete" />
-              <div className={styles.subtaskCardBody}>
-                <div className={styles.subtaskCardTop}>
-                  <div className={styles.subtaskCardInfo}>
-                    <PriorityIcon priority={task.priority} size={16} />
-                    <span className={styles.subtaskCardName}>{task.name}</span>
+            <div className={styles.subtaskHeader}>
+              <h4 className={styles.drawerSectionTitle}>
+                Subtasks {subtasks.length > 0 && <span className={styles.subtaskCount}>{completedSubs}/{subtasks.length}</span>}
+              </h4>
+              <button className={styles.subtaskAddBtn} onClick={() => setShowAddSubtask(v => !v)}>
+                <Icon name="solar:add-circle-linear" size={14} color="var(--primary-300)" />
+                Add Subtask
+              </button>
+            </div>
+            {subtasks.length > 0 && (
+              <div className={styles.subtaskProgressBar}>
+                <div className={styles.subtaskProgressFill} style={{ width: `${(completedSubs / subtasks.length) * 100}%` }} />
+              </div>
+            )}
+            {showAddSubtask && (
+              <div className={styles.subtaskAddRow}>
+                <input
+                  className={styles.subtaskAddInput}
+                  placeholder="Enter subtask name..."
+                  maxLength={TITLE_MAX}
+                  value={subtaskName}
+                  onChange={e => setSubtaskName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleAddSubtask(); if (e.key === 'Escape') { setShowAddSubtask(false); setSubtaskName(''); } }}
+                  autoFocus
+                />
+                <Button variant="primary" size="S" onClick={handleAddSubtask} disabled={!subtaskName.trim()}>Add</Button>
+                <Button variant="secondary" size="S" onClick={() => { setShowAddSubtask(false); setSubtaskName(''); }}>Cancel</Button>
+              </div>
+            )}
+            {subtasks.map(sub => (
+              <div key={sub.id} className={styles.subtaskCard} onClick={() => onSelectTask?.(sub)}>
+                <button
+                  className={`${styles.taskCheckbox} ${sub.status === 'completed' ? styles.taskCheckboxChecked : ''}`}
+                  aria-label={sub.status === 'completed' ? 'Mark incomplete' : 'Mark complete'}
+                  onClick={e => {
+                    e.stopPropagation();
+                    updateTask(sub.id, { status: sub.status === 'completed' ? 'pending' : 'completed' });
+                  }}
+                >
+                  {sub.status === 'completed' && <Icon name="solar:check-read-linear" size={13} color="#fff" />}
+                </button>
+                <div className={styles.subtaskCardBody}>
+                  <div className={styles.subtaskCardRow}>
+                    <PriorityIcon priority={sub.priority} size={16} />
+                    <span className={`${styles.subtaskCardName} ${sub.status === 'completed' ? styles.subtaskCardNameDone : ''}`}>{sub.name}</span>
+                    <Badge variant={STATUS_BADGE_VARIANTS[sub.status]} label={STATUS_LABELS[sub.status]} />
+                    <span className={`${styles.subtaskCardDate} ${isOverdue(sub) ? styles.dueMissed : ''}`}>
+                      {formatDateFriendly(sub.due_date)}
+                    </span>
                   </div>
-                  <span className={styles.subtaskCardDate}>{task.due_date}</span>
-                </div>
-                <div className={styles.subtaskCardMeta}>
-                  {task.attachments > 0 && (
-                    <span className={styles.linkedItem}>
-                      <Icon name="solar:paperclip-linear" size={14} color="var(--neutral-300)" />
-                      {task.attachments}
-                    </span>
-                  )}
-                  {task.comments > 0 && (
-                    <span className={styles.linkedItem}>
-                      <Icon name="solar:chat-round-line-linear" size={14} color="var(--neutral-300)" />
-                      {task.comments}
-                    </span>
+                  {(sub.attachments > 0 || sub.comments > 0) && (
+                    <div className={styles.subtaskCardAttachments}>
+                      {sub.attachments > 0 && (
+                        <span className={styles.linkedItem}>
+                          <Icon name="solar:paperclip-linear" size={14} color="var(--neutral-300)" />
+                          {sub.attachments}
+                        </span>
+                      )}
+                      {sub.comments > 0 && (
+                        <span className={styles.linkedItem}>
+                          <Icon name="solar:chat-round-line-linear" size={14} color="var(--neutral-300)" />
+                          {sub.comments}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
-              <ActionButton icon="solar:menu-dots-bold" size="S" tooltip="More" />
-            </div>
+            ))}
+            {subtasks.length === 0 && !showAddSubtask && (
+              <div className={styles.subtaskEmpty}>No subtasks yet. Break this task down into smaller steps.</div>
+            )}
+          </div>
+        )}
+        {task.is_subtask && task.parent_task && (
+          <div className={styles.drawerSection}>
+            <span className={styles.drawerSectionLabel}>Parent Task</span>
+            <button
+              className={styles.subtaskParentLink}
+              onClick={() => {
+                const parent = allTasks.find(t => t.id === task.parent_task_id);
+                if (parent) onSelectTask?.(parent);
+              }}
+            >
+              <Icon name="solar:link-minimalistic-linear" size={14} color="var(--primary-300)" />
+              {task.parent_task}
+            </button>
           </div>
         )}
 
@@ -1544,10 +1999,10 @@ function TaskDetailDrawer({ task, onClose }) {
             ))}
           </div>
 
-          {/* Comment input */}
+          {/* Comment input — supports @mentions */}
           <div className={styles.commentInput}>
             <textarea
-              placeholder="Add a comment"
+              placeholder="Add a comment, use @ to mention someone"
               rows={commentExpanded ? 3 : 1}
               className={styles.commentTextarea}
               value={commentText}
@@ -1557,65 +2012,97 @@ function TaskDetailDrawer({ task, onClose }) {
             {commentExpanded && (
               <div className={styles.commentActions}>
                 <button className={styles.commentCancel} onClick={() => { setCommentExpanded(false); setCommentText(''); }}>Cancel</button>
-                <Button variant="primary" size="S" onClick={() => { showToast('Comment added'); setCommentText(''); setCommentExpanded(false); }}>Comment</Button>
+                <Button variant="primary" size="S" disabled={!commentText.trim()} onClick={handleAddComment}>Comment</Button>
               </div>
             )}
           </div>
 
-          {/* Activity log */}
+          {/* Activity log — real audit entries */}
           <div className={styles.activityLog}>
-            {ACTIVITY_LOGS.map((log, i) => (
-              <div key={i} className={styles.logEntry}>
-                <Avatar variant="patient" initials={log.initials} className={styles.avatarXs} />
-                <div className={styles.logBody}>
-                  <div className={styles.logAction}>
-                    <span className={styles.logUser}>{log.user}</span>
-                    <span>{log.action}</span>
-                    {log.target && <span>{log.target}</span>}
+            {auditLog
+              .filter(l => activityTab === 'All'
+                || (activityTab === 'Comments' && l.action_type === 'comment_added')
+                || (activityTab === 'History' && l.action_type !== 'comment_added'))
+              .map((log) => {
+                const initials = (log.user_name || '?').split(' ').map(w => w[0]).join('').slice(0, 2);
+                const verbMap = {
+                  created: 'created the task.',
+                  status_changed: 'changed the Status',
+                  priority_changed: 'changed the Priority',
+                  due_date_changed: 'changed the Due Date',
+                  assignee_changed: 'changed the Assignee',
+                  label_added: 'added a Label',
+                  label_removed: 'removed a Label',
+                  description_changed: 'updated the Description',
+                  renamed: 'renamed the task',
+                  comment_added: 'added a Comment',
+                  subtask_added: 'added a Subtask',
+                  claimed: 'claimed the task',
+                  deleted: 'deleted the task',
+                };
+                return (
+                  <div key={log.id} className={styles.logEntry}>
+                    <Avatar variant="patient" initials={initials} className={styles.avatarXs} />
+                    <div className={styles.logBody}>
+                      <div className={styles.logAction}>
+                        <span className={styles.logUser}>{log.user_name}</span>
+                        <span>{verbMap[log.action_type] || log.action_type}</span>
+                      </div>
+                      {log.action_type === 'comment_added' && log.to_value && (
+                        <div className={styles.logComment}>
+                          <p>{log.to_value}</p>
+                        </div>
+                      )}
+                      {log.action_type === 'status_changed' && log.from_value && log.to_value && (
+                        <div className={styles.logChange}>
+                          <Badge variant={STATUS_BADGE_VARIANTS[log.from_value] || 'overflow'} label={STATUS_LABELS[log.from_value] || log.from_value} />
+                          <Icon name="solar:arrow-right-linear" size={16} color="var(--neutral-200)" />
+                          <Badge variant={STATUS_BADGE_VARIANTS[log.to_value] || 'overflow'} label={STATUS_LABELS[log.to_value] || log.to_value} />
+                        </div>
+                      )}
+                      {log.action_type === 'priority_changed' && (
+                        <div className={styles.logChange}>
+                          <div className={styles.logChangeItem}>
+                            <PriorityIcon priority={log.from_value} size={16} />
+                            <span style={{ textTransform: 'capitalize' }}>{log.from_value}</span>
+                          </div>
+                          <Icon name="solar:arrow-right-linear" size={16} color="var(--neutral-200)" />
+                          <div className={styles.logChangeItem}>
+                            <PriorityIcon priority={log.to_value} size={16} />
+                            <span style={{ textTransform: 'capitalize' }}>{log.to_value}</span>
+                          </div>
+                        </div>
+                      )}
+                      {(log.action_type === 'due_date_changed' || log.action_type === 'assignee_changed' || log.action_type === 'renamed' || log.action_type === 'label_added' || log.action_type === 'label_removed' || log.action_type === 'subtask_added' || log.action_type === 'claimed') && (
+                        <div className={styles.logChange}>
+                          {log.from_value && <span className={styles.logChangeText}>{log.from_value}</span>}
+                          {log.from_value && log.to_value && <Icon name="solar:arrow-right-linear" size={16} color="var(--neutral-200)" />}
+                          {log.to_value && <span className={styles.logChangeText}>{log.to_value}</span>}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  {log.type === 'comment' && (
-                    <div className={styles.logComment}>
-                      <p>{log.body}</p>
-                      <div className={styles.logCommentActions}>
-                        <button className={styles.logCommentBtn}>Edit</button>
-                        <span className={styles.logDot}>•</span>
-                        <button className={styles.logCommentBtn}>Delete</button>
-                      </div>
-                    </div>
-                  )}
-                  {log.type === 'status' && (
-                    <div className={styles.logChange}>
-                      <Badge variant="status-queued" label={log.from} />
-                      <Icon name="solar:arrow-right-linear" size={16} color="var(--neutral-200)" />
-                      <Badge variant="status-completed" label={log.to} />
-                    </div>
-                  )}
-                  {log.type === 'priority' && (
-                    <div className={styles.logChange}>
-                      <div className={styles.logChangeItem}>
-                        <PriorityIcon priority="high" size={16} />
-                        <span>{log.from}</span>
-                      </div>
-                      <Icon name="solar:arrow-right-linear" size={16} color="var(--neutral-200)" />
-                      <div className={styles.logChangeItem}>
-                        <PriorityIcon priority="medium" size={16} />
-                        <span>{log.to}</span>
-                      </div>
-                    </div>
-                  )}
-                  {log.type === 'description' && (
-                    <div className={styles.logChange}>
-                      <span className={styles.logChangeText}>{log.from}</span>
-                      <Icon name="solar:arrow-right-linear" size={16} color="var(--neutral-200)" />
-                      <span className={styles.logChangeText}>{log.to}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+                );
+              })}
+            {auditLog.length === 0 && (
+              <div className={styles.subtaskEmpty}>No activity yet.</div>
+            )}
           </div>
         </div>
       </div>
+      {showDeleteConfirm && (
+        <ConfirmDialog
+          icon="solar:danger-triangle-linear"
+          iconColor="var(--status-error)"
+          title="Delete this task?"
+          description={subtasks.length > 0 ? `This task has ${subtasks.length} subtask(s). Deleting it will also delete all subtasks. This cannot be undone.` : 'This action cannot be undone.'}
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          variant="error"
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+        />
+      )}
     </Drawer>
   );
 }
@@ -1637,53 +2124,109 @@ export function TasksView() {
   const setTasksViewMode = useAppStore(s => s.setTasksViewMode);
   const showToast = useAppStore(s => s.showToast);
   const createTask = useAppStore(s => s.createTask);
+  const pendingAddTask = useAppStore(s => s.pendingAddTask);
+  const clearPendingAddTask = useAppStore(s => s.clearPendingAddTask);
   const [selectedTask, setSelectedTask] = useState(null);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [addDrawerStatus, setAddDrawerStatus] = useState('pending');
+  const [addDrawerInitialMember, setAddDrawerInitialMember] = useState(null);
 
   const fetchTaskProfiles = useAppStore(s => s.fetchTaskProfiles);
   const fetchTaskLabels = useAppStore(s => s.fetchTaskLabels);
+  const fetchTaskPools = useAppStore(s => s.fetchTaskPools);
   const fetchAllPatients = useAppStore(s => s.fetchAllPatients);
   const allPatients = useAppStore(s => s.allPatients);
+  const taskProfiles = useAppStore(s => s.taskProfiles);
+  const currentUserProfile = useAppStore(s => s.currentUserProfile);
 
   useEffect(() => {
     fetchTasks();
     fetchTaskProfiles();
     fetchTaskLabels();
+    fetchTaskPools();
     if (!allPatients || allPatients.length === 0) fetchAllPatients();
   }, []);
 
+  useEffect(() => {
+    if (!pendingAddTask) return;
+    setAddDrawerStatus('pending');
+    setAddDrawerInitialMember(pendingAddTask.member || null);
+    setShowAddDrawer(true);
+    clearPendingAddTask();
+  }, [pendingAddTask]);
+
+  // The user-scoped tabs (Assigned / Created / Mentions) require a real
+  // signed-in profile to compare against; if there's no auth session
+  // those filters short-circuit to an empty set rather than pretending
+  // to be the seed user.
+  const meId = currentUserProfile?.id || null;
+  const meName = currentUserProfile?.name || null;
+
+  // Match by FK first; fall back to name string for legacy rows where the
+  // tasks_assignee_id_migration backfill couldn't find a matching profile
+  // (e.g. seed rows assigned to "Dr. JeDee Potter"). When a row has BOTH
+  // an id and a different-named text value, the id wins.
+  const matchAssignee = (t) => {
+    if (!meId && !meName) return false;
+    if (t.assigned_to_id) return t.assigned_to_id === meId;
+    return !!meName && t.assigned_to === meName;
+  };
+  const matchCreator = (t) => {
+    if (!meId && !meName) return false;
+    if (t.created_by_id) return t.created_by_id === meId;
+    return !!meName && t.created_by === meName;
+  };
+
+  // Show all tasks in the list (parents + subtasks). Subtasks render with a
+  // "Parent Task : ..." prefix and the subtask icon so they're visually nested.
   const filteredTasks = useMemo(() => {
     let result = tasks;
 
-    if (tasksTab === 'assigned') {
-      result = result.filter(t => t.assigned_to === 'Dr. JeDee Potter');
+    if (tasksTab === 'all') {
+      // No user filter — show every task in the org/DB.
+    } else if (tasksTab === 'assigned') {
+      result = result.filter(matchAssignee);
     } else if (tasksTab === 'pool') {
-      return [];
+      result = result.filter(t => t.pool && !t.assigned_to && !t.assigned_to_id);
     } else if (tasksTab === 'created') {
-      result = result.filter(t => t.created_by === 'Dr. JeDee Potter');
+      result = result.filter(matchCreator);
     } else if (tasksTab === 'mentions') {
-      result = result.filter(t => t.comments > 0);
+      result = meName ? result.filter(t => Array.isArray(t.mentions) && t.mentions.includes(meName)) : [];
     }
 
     Object.entries(tasksFilters).forEach(([key, value]) => {
       if (!value) return;
       if (key === 'task_status') result = result.filter(t => t.status === value);
       else if (key === 'priority') result = result.filter(t => t.priority === value);
-      else if (key === 'assigned_to') result = result.filter(t => t.assigned_to === value);
-      else if (key === 'created_by') result = result.filter(t => t.created_by === value);
+      else if (key === 'assigned_to') {
+        // value is a profile.id from the dynamic filter chip; legacy
+        // rows without an FK fall back to a name match against the
+        // picked profile's display name.
+        const pickedName = (taskProfiles || []).find(p => p.id === value)?.name;
+        result = result.filter(t =>
+          t.assigned_to_id === value || (pickedName && t.assigned_to === pickedName)
+        );
+      }
+      else if (key === 'created_by') {
+        const pickedName = (taskProfiles || []).find(p => p.id === value)?.name;
+        result = result.filter(t =>
+          t.created_by_id === value || (pickedName && t.created_by === pickedName)
+        );
+      }
+      else if (key === 'member') result = result.filter(t => t.member === value);
       else if (key === 'labels') result = result.filter(t => Array.isArray(t.labels) && t.labels.includes(value));
     });
 
     return result;
-  }, [tasks, tasksTab, tasksFilters]);
+  }, [tasks, tasksTab, tasksFilters, meName, taskProfiles]);
 
   const tabCounts = useMemo(() => ({
-    assigned: tasks.filter(t => t.assigned_to === 'Dr. JeDee Potter').length,
-    pool: 0,
-    created: tasks.filter(t => t.created_by === 'Dr. JeDee Potter').length,
-    mentions: tasks.filter(t => t.comments > 0).length,
-  }), [tasks]);
+    all: tasks.length,
+    assigned: tasks.filter(matchAssignee).length,
+    pool: tasks.filter(t => t.pool && !t.assigned_to && !t.assigned_to_id).length,
+    created: tasks.filter(matchCreator).length,
+    mentions: meName ? tasks.filter(t => Array.isArray(t.mentions) && t.mentions.includes(meName)).length : 0,
+  }), [tasks, meName]);
 
   const handleToggle = useCallback((task) => {
     const newStatus = task.status === 'completed' ? 'pending' : 'completed';
@@ -1716,6 +2259,34 @@ export function TasksView() {
     }
     return sorted;
   }, [filteredTasks, tasksFilters.sort_by]);
+
+  // Build the filter chip definitions with dynamic options for the
+  // user/patient-driven filters. Other chips (View By / Sort By /
+  // Status / Priority / Labels) keep their static option lists from
+  // TASK_FILTER_DEFS. assigned_to and created_by use profile.id as
+  // the value so the filter compares against the FK; member uses
+  // patient name (no FK in tasks → patients yet).
+  const filterDefs = useMemo(() => {
+    const profileOpts = (taskProfiles || []).map(p => ({ value: p.id, label: p.name }));
+    const memberOpts = (allPatients || []).map(p => ({ value: p.name, label: p.name }));
+    return TASK_FILTER_DEFS
+      .map(fd => {
+        // iconKind switches the chip dropdown into people mode (search +
+        // avatars) — same shape as the row-level RowAssignDropdown.
+        if (fd.key === 'assigned_to') return profileOpts.length ? { ...fd, options: profileOpts, iconKind: 'assignee' } : fd;
+        if (fd.key === 'created_by')  return profileOpts.length ? { ...fd, options: profileOpts, iconKind: 'assignee' } : fd;
+        return fd;
+      })
+      // Insert a Member filter after Created By so it sits next to the
+      // other identity-related chips. Skip when no patients are loaded
+      // so the chip doesn't render with an empty dropdown.
+      .flatMap(fd => {
+        if (fd.key === 'created_by' && memberOpts.length) {
+          return [fd, { key: 'member', label: 'Member', options: memberOpts, iconKind: 'patient' }];
+        }
+        return [fd];
+      });
+  }, [taskProfiles, allPatients]);
 
   const PRIORITY_ORDER = ['high', 'medium', 'low', 'none'];
   const PRIORITY_LABELS = { high: 'High', medium: 'Medium', low: 'Low', none: 'None' };
@@ -1783,15 +2354,6 @@ export function TasksView() {
       );
     }
 
-    if (tasksTab === 'pool') {
-      return (
-        <EmptyState
-          title="No tasks in your pool"
-          description="Tasks assigned to your team but not yet claimed will appear here."
-          icon="solar:inbox-linear"
-        />
-      );
-    }
 
     if (filteredTasks.length === 0) {
       return (
@@ -1879,7 +2441,7 @@ export function TasksView() {
 
       {showTasksFilterBar && (
         <div className={styles.filterBar}>
-          {TASK_FILTER_DEFS.map(fd => (
+          {filterDefs.map(fd => (
             <TaskFilterChip
               key={fd.key}
               filterDef={fd}
@@ -1899,14 +2461,20 @@ export function TasksView() {
       {renderContent()}
 
       {selectedTask && (
-        <TaskDetailDrawer task={selectedTask} onClose={() => setSelectedTask(null)} />
+        <TaskDetailDrawer
+          task={tasks.find(t => t.id === selectedTask.id) || selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onSelectTask={t => setSelectedTask(t)}
+        />
       )}
       {showAddDrawer && (
         <AddTaskDrawer
-          onClose={() => setShowAddDrawer(false)}
+          onClose={() => { setShowAddDrawer(false); setAddDrawerInitialMember(null); }}
           defaultStatus={addDrawerStatus}
+          initialMember={addDrawerInitialMember}
           onTaskCreated={(task) => {
             setShowAddDrawer(false);
+            setAddDrawerInitialMember(null);
             setSelectedTask(task);
           }}
         />

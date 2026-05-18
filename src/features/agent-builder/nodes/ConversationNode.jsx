@@ -2,17 +2,8 @@ import { memo, useRef, useState, useCallback } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { Icon } from '../../../components/Icon/Icon';
 import { useAppStore } from '../../../store/useAppStore';
-import { ConversationIcon, GuardrailsIcon, CallTransferIcon, AgentsIcon } from './NodeIcons';
+import { getNodeConfig } from './nodeConfig';
 import styles from './ConversationNode.module.css';
-
-const TYPE_CONFIG = {
-  conversation: { color: '#009688', label: 'Conversation', CustomIcon: ConversationIcon },
-  appointment: { icon: 'solar:calendar-mark-linear', color: '#8C5AE2', label: 'Appointment' },
-  guardrails: { color: '#D9A50B', label: 'Guardrails', CustomIcon: GuardrailsIcon },
-  callTransfer: { color: '#9C27B0', label: 'Call Transfer', CustomIcon: CallTransferIcon },
-  escalation: { icon: 'solar:danger-triangle-linear', color: '#D72825', label: 'Escalation' },
-  agents: { color: '#FF907F', label: 'Agents', CustomIcon: AgentsIcon },
-};
 
 function DragDots({ className, onPointerDown }) {
   return (
@@ -30,7 +21,7 @@ function DragDots({ className, onPointerDown }) {
 }
 
 export const ConversationNode = memo(function ConversationNode({ data, id }) {
-  const config = TYPE_CONFIG[data.nodeType] || TYPE_CONFIG.conversation;
+  const config = getNodeConfig(data.nodeType);
   const transitions = data.transitions || [];
   const builderSelectedNode = useAppStore(s => s.builderSelectedNode);
   const activeTransitionIdx = useAppStore(s => s.builderActiveTransition);

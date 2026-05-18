@@ -36,6 +36,9 @@ import { HomeView } from '../features/home/HomeView';
 import { MessagesView } from '../features/messages/MessagesView';
 import { CallsView } from '../features/calls/CallsView';
 import { TasksView } from '../features/tasks/TasksView';
+import { CampaignView } from '../features/campaign/CampaignView';
+import { EmailBuilder } from '../features/email-builder/EmailBuilder';
+import { CampaignBuilder } from '../features/campaign/CampaignBuilder';
 import { useEffect } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { supabase } from '../lib/supabase';
@@ -253,6 +256,42 @@ export function AppLayout() {
       }
     }
   }, []);
+
+  // Re-open campaign builder or email builder on page refresh
+  useEffect(() => {
+    const state = useAppStore.getState();
+    const pendingEmail = state._pendingEmailEditId;
+    const pendingCampaign = state._pendingCampaignBuilderId;
+    if (!pendingEmail && !pendingCampaign) return;
+
+    const targetId = pendingEmail || pendingCampaign;
+
+    (async () => {
+      // Try bulk fetch first, then fall back to single-row fetch
+      await useAppStore.getState().fetchCampaigns();
+      let c = (useAppStore.getState().campaigns || []).find(
+        camp => String(camp.id) === String(targetId)
+      );
+      if (!c) {
+        const numId = isNaN(Number(targetId)) ? targetId : Number(targetId);
+        c = await useAppStore.getState().fetchCampaignById(numId);
+      }
+      if (!c) {
+        useAppStore.setState({
+          _pendingEmailEditId: null, _pendingCampaignBuilderId: null,
+          editingCampaignId: null, campaignBuilderId: null,
+        });
+        return;
+      }
+      if (pendingEmail) {
+        useAppStore.getState().openEmailBuilder(c);
+      } else {
+        useAppStore.getState().openCampaignBuilder(c);
+      }
+      useAppStore.setState({ _pendingEmailEditId: null, _pendingCampaignBuilderId: null });
+    })();
+  }, []);
+
   const showCreateAgent = useAppStore(s => s.showCreateAgent);
   const workflowPatient = useAppStore(s => s.workflowPatient);
   const callPopoverPatient = useAppStore(s => s.callPopoverPatient);
@@ -266,6 +305,34 @@ export function AppLayout() {
   const componentWizardOpen = useAppStore(s => s.componentWizardOpen);
   const diagPanelOpen = useAppStore(s => s.diagPanelOpen);
   const quickViewPatient = useAppStore(s => s.quickViewPatient);
+  const editingCampaignId = useAppStore(s => s.editingCampaignId);
+  const campaignBuilderId = useAppStore(s => s.campaignBuilderId);
+
+  // Email Builder is a full-screen takeover when editing a campaign. Wins over
+  // the CampaignBuilder so "Edit Template" from inside the campaign builder
+  // pushes the email builder on top — closing it falls back to the campaign
+  // builder (campaignBuilderId stays set).
+  if (editingCampaignId) {
+    return (
+      <div className={styles.app}>
+        <Sidebar />
+        <EmailBuilder />
+        <Toast />
+      </div>
+    );
+  }
+
+  // Campaign Builder is a full-screen takeover for creating/editing the
+  // metadata, scheduling, audience, and channel of a campaign.
+  if (campaignBuilderId) {
+    return (
+      <div className={styles.app}>
+        <Sidebar />
+        <CampaignBuilder />
+        <Toast />
+      </div>
+    );
+  }
 
   // Agent Builder is a full-screen takeover
   if (activePage === 'builder') {
@@ -278,10 +345,11 @@ export function AppLayout() {
     );
   }
 
+
   return (
     <div className={styles.app}>
       <Sidebar />
-      {activePage === 'home' ? <HomeView /> : activePage === 'messages' ? <MessagesView /> : activePage === 'calls' ? <CallsView /> : activePage === 'tasks' ? <TasksView /> : activePage === 'analytics' ? <AnalyticsView /> : activePage === 'settings' ? <SettingsView /> : activePage === 'calendar' ? <CalendarViewPage /> : <PopulationView />}
+      {activePage === 'home' ? <HomeView /> : activePage === 'messages' ? <MessagesView /> : activePage === 'calls' ? <CallsView /> : activePage === 'tasks' ? <TasksView /> : activePage === 'analytics' ? <AnalyticsView /> : activePage === 'settings' ? <SettingsView /> : activePage === 'calendar' ? <CalendarViewPage /> : activePage === 'campaign' ? <CampaignView /> : <PopulationView />}
 
       {showCreateAgent && <CreateAgentDrawer />}
       {workflowPatient && <WorkflowPanel />}

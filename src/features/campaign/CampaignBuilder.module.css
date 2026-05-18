@@ -1,0 +1,452 @@
+/* ── Campaign Builder ─────────────────────────────────────────────
+   Full-screen takeover: 500px form pane on the left + the rest on the
+   right (email config + preview). Matches Figma node 964:184196. */
+
+.builder {
+  flex: 1;
+  display: flex;
+  height: 100vh;
+  background: var(--neutral-0);
+  font-family: 'Inter', sans-serif;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--neutral-300);
+  font-size: 13px;
+}
+
+/* ── Left pane: form ─────────────────────────────────────────── */
+.leftPane {
+  width: 500px;
+  flex-shrink: 0;
+  background: var(--neutral-0);
+  border-right: 0.5px solid var(--neutral-150);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.leftHeader {
+  height: 48px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.title {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  line-height: 1.2;
+}
+
+.leftScroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Field primitives ─────────────────────────────────────────── */
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fieldCol {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  line-height: 1.3;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.required {
+  color: var(--status-error);
+  font-weight: 500;
+}
+
+.sectionTitle {
+  margin: 8px 0 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  line-height: 1.2;
+}
+
+.aiBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-300);
+}
+.aiBtn:hover { color: var(--primary-400, #5020A0); }
+
+.charCount {
+  align-self: flex-end;
+  font-size: 11px;
+  color: var(--neutral-200);
+}
+
+.linkBtn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-300);
+}
+.linkBtn:hover { color: var(--primary-400, #5020A0); }
+
+.linkDivider {
+  display: inline-block;
+  width: 1px;
+  height: 12px;
+  background: var(--neutral-150);
+}
+
+.dateInput {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: var(--neutral-0);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--neutral-400);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+.dateInput:focus { border-color: var(--primary-300); }
+.dateInput::-webkit-calendar-picker-indicator {
+  filter: invert(50%);
+  cursor: pointer;
+}
+
+/* ── Radio groups ─────────────────────────────────────────────── */
+.radioStack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.radioInline {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.radioOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: none;
+  border: 0.5px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--neutral-400);
+  text-align: left;
+  transition: background 0.12s, border-color 0.12s;
+}
+.radioStack .radioOption {
+  border: 0.5px solid var(--neutral-150);
+}
+.radioOption:hover { background: var(--neutral-50); }
+.radioOptionSelected,
+.radioOptionSelected:hover {
+  border-color: var(--primary-300);
+  background: var(--primary-50);
+  color: var(--primary-400, #5020A0);
+}
+.radioLabel { line-height: 1.2; }
+
+.radioDot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--neutral-200);
+  background: var(--neutral-0);
+  flex-shrink: 0;
+  position: relative;
+  box-sizing: border-box;
+}
+.radioDotSelected {
+  border-color: var(--primary-300);
+}
+.radioDotSelected::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: var(--primary-300);
+}
+
+.startModeRow {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Chip multi-select ─────────────────────────────────────────── */
+.chipSelect {
+  position: relative;
+}
+
+.chipSelectControl {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 4px 28px 4px 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: var(--neutral-0);
+  cursor: text;
+  position: relative;
+  transition: border-color 0.15s;
+}
+.chipSelectControl:focus-within {
+  border-color: var(--primary-300);
+}
+
+.chipPlaceholder {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--neutral-200);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 2px 8px;
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--primary-400, #5020A0);
+  line-height: 1.2;
+}
+
+.chipRemove {
+  display: inline-flex;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--primary-300);
+}
+.chipRemove:hover { color: var(--primary-400, #5020A0); }
+
+.chipInput {
+  flex: 1;
+  min-width: 60px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--neutral-400);
+}
+
+.chipChevron {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  display: flex;
+}
+
+.chipDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.chipOption {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--neutral-400);
+}
+.chipOption:hover {
+  background: var(--primary-50);
+  color: var(--primary-400, #5020A0);
+}
+
+/* ── Right pane: top bar + email config + preview ──────────────── */
+.rightPane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.topBar {
+  height: 48px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+}
+
+.topRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.senderRow {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  flex-shrink: 0;
+}
+
+/* The whole right pane wraps the email card with a small gray gutter, matching
+   Figma node 964:184252 — Subject Line, Email Design label, and the rendered
+   email all live inside ONE rounded white card. */
+.previewWrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  background: var(--neutral-50);
+  padding: 16px;
+  overflow: hidden;
+}
+
+.previewCard {
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+  overflow: hidden;
+  min-height: 0;
+  flex: 1;
+}
+
+/* Subject Line + Email Design rows stay pinned at the top of the card so the
+   user can edit the subject and access "Edit Template" while scrolling the
+   email body below. */
+.previewSubjectRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 20px 12px;
+  flex-shrink: 0;
+}
+
+.previewDesignRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px 12px;
+  flex-shrink: 0;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+
+.previewDesignLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+
+.previewLinks {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* The email itself — fills the remaining height and scrolls internally. No
+   border or radius; the parent .previewCard provides those so the gradient
+   header in the email visually butts up against the card edge. */
+.previewFrame {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.previewIframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--neutral-0);
+  display: block;
+}

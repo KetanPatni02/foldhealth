@@ -12,8 +12,8 @@ const NAV_ITEMS = [
   { icon: 'solar:chat-round-dots-linear', filledIcon: 'solar:chat-round-dots-bold', label: 'Messages', badge: 8, page: 'messages' },
   { icon: 'solar:phone-linear', filledIcon: 'solar:phone-bold', label: 'Calls', page: 'calls' },
   { icon: 'solar:user-speak-linear', filledIcon: 'solar:user-speak-bold', label: 'Leads', page: 'leads' },
-  { icon: 'solar:target-linear', filledIcon: 'solar:target-bold', label: 'Campaign', page: 'campaign' },
-  { icon: 'solar:chart-2-linear', filledIcon: 'solar:chart-2-bold', label: 'Analytics', page: 'analytics' },
+  { icon: 'custom:campaign', filledIcon: 'custom:campaign-bold', label: 'Campaign', page: 'campaign' },
+  { icon: 'solar:chart-linear', filledIcon: 'solar:chart-bold', label: 'Analytics', page: 'analytics' },
   { icon: 'solar:settings-linear', filledIcon: 'solar:settings-bold', label: 'Settings', page: 'settings' },
 ];
 
@@ -23,19 +23,21 @@ const BOTTOM_ITEMS = [
 
 export function Sidebar() {
   const activePage = useAppStore(s => s.activePage);
-  const setActivePage = useAppStore(s => s.setActivePage);
+  const requestNavigate = useAppStore(s => s.requestNavigate);
   const setCurrentPage = useAppStore(s => s.setCurrentPage);
   const [helpOpen, setHelpOpen] = useState(false);
 
   const showToast = useAppStore(s => s.showToast);
   const messagesUnreadCount = useAppStore(s => s.messagesUnreadCount);
-  const implementedPages = ['home', 'population', 'settings', 'analytics', 'calendar', 'messages', 'calls', 'tasks'];
+  const implementedPages = ['home', 'population', 'settings', 'analytics', 'calendar', 'messages', 'calls', 'tasks', 'campaign'];
 
   const handleClick = (e, page) => {
     e.preventDefault();
     if (!page) return;
     if (implementedPages.includes(page)) {
-      setActivePage(page);
+      // requestNavigate handles the open-builder dialog flow for us. For pages
+      // that go through cleanly, it routes to setActivePage internally.
+      requestNavigate(page);
       setCurrentPage(1);
     } else {
       showToast(`${page.charAt(0).toUpperCase() + page.slice(1)} – coming soon`);

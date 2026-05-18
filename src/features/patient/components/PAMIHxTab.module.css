@@ -50,7 +50,7 @@
 .sectionTitle {
   font-size: 14px;
   font-weight: 500;
-  color: #16181d;
+  color: var(--neutral-500);
   font-family: 'Inter', sans-serif;
 }
 
@@ -72,9 +72,9 @@
 
 /* ── Card ── */
 .card {
-  background: #fff;
+  background: var(--neutral-0);
   overflow: hidden;
-  border-bottom: 0.5px solid #e9ecf1;
+  border-bottom: 0.5px solid var(--neutral-100);
 }
 
 /* ── Column header ── */
@@ -83,14 +83,14 @@
   align-items: center;
   height: 32px;
   padding: 0 8px;
-  border-bottom: 0.5px solid #d0d6e1;
+  border-bottom: 0.5px solid var(--neutral-150);
 }
 
 .colName {
   flex: 1;
   font-size: 14px;
   font-weight: 500;
-  color: #6f7a90;
+  color: var(--neutral-300);
   font-family: 'Inter', sans-serif;
 }
 
@@ -99,7 +99,7 @@
   flex-shrink: 0;
   font-size: 14px;
   font-weight: 500;
-  color: #6f7a90;
+  color: var(--neutral-300);
   font-family: 'Inter', sans-serif;
   padding-left: 16px;
 }
@@ -113,7 +113,7 @@
 .row {
   display: flex;
   align-items: center;
-  border-bottom: 0.5px solid #e9ecf1;
+  border-bottom: 0.5px solid var(--neutral-100);
   cursor: pointer;
   transition: background 0.1s;
 }
@@ -138,7 +138,7 @@
 
 .name {
   font-size: 14px;
-  color: #16181d;
+  color: var(--neutral-500);
   font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
@@ -152,14 +152,14 @@
 
 .meta {
   font-size: 14px;
-  color: #6f7a90;
+  color: var(--neutral-300);
   font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
 
 .metaDot {
   font-size: 14px;
-  color: #6f7a90;
+  color: var(--neutral-300);
   font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
@@ -196,7 +196,7 @@
 
 .statusNeutral {
   font-size: 14px;
-  color: #6f7a90;
+  color: var(--neutral-300);
   font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
@@ -206,12 +206,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #f6f7f8;
+  background: var(--neutral-50);
   border: 0.5px solid rgba(111, 122, 144, 0.1);
   padding: 2px 4px;
   border-radius: 4px;
   font-size: 14px;
-  color: #6f7a90;
+  color: var(--neutral-300);
   font-family: 'Inter', sans-serif;
   white-space: nowrap;
   flex-shrink: 0;
@@ -219,7 +219,7 @@
 
 /* ── Footer link row ── */
 .footerRow {
-  border-top: 0.5px solid #d0d6e1;
+  border-top: 0.5px solid var(--neutral-150);
   padding: 4px;
 }
 
@@ -295,9 +295,9 @@
 }
 
 .historyCard {
-  background: #fff;
+  background: var(--neutral-0);
   overflow: hidden;
-  border-bottom: 0.5px solid #e9ecf1;
+  border-bottom: 0.5px solid var(--neutral-100);
 }
 
 .historySubHeader {
@@ -305,14 +305,14 @@
   align-items: center;
   height: 32px;
   padding: 0 8px 0 4px;
-  border-bottom: 0.5px solid #d0d6e1;
+  border-bottom: 0.5px solid var(--neutral-150);
 }
 
 .historySubTitle {
   flex: 1;
   font-size: 14px;
   font-weight: 400;
-  color: #6f7a90;
+  color: var(--neutral-300);
   font-family: 'Inter', sans-serif;
 }
 
@@ -337,7 +337,7 @@
   align-items: center;
   gap: 2px;
   font-size: 12px;
-  color: #6f7a90;
+  color: var(--neutral-300);
   font-family: 'Inter', sans-serif;
   padding: 0;
   white-space: nowrap;
@@ -346,7 +346,7 @@
 .historyRow {
   display: flex;
   align-items: flex-start;
-  border-bottom: 0.5px solid #d0d6e1;
+  border-bottom: 0.5px solid var(--neutral-150);
   padding: 12px 12px 12px 4px;
   transition: background 0.1s;
 }
@@ -371,7 +371,7 @@
   flex-direction: column;
   gap: 4px;
   padding: 12px 12px 12px 4px;
-  border-bottom: 0.5px solid #d0d6e1;
+  border-bottom: 0.5px solid var(--neutral-150);
   transition: background 0.1s;
 }
 
@@ -385,7 +385,7 @@
 
 .familyRelation {
   font-size: 14px;
-  color: #6f7a90;
+  color: var(--neutral-300);
   font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
@@ -393,14 +393,14 @@
 .familyName {
   font-size: 14px;
   font-weight: 400;
-  color: #16181d;
+  color: var(--neutral-500);
   font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
 
 .familyDesc {
   font-size: 14px;
-  color: #6f7a90;
+  color: var(--neutral-300);
   font-family: 'Inter', sans-serif;
   line-height: 1.4;
 }

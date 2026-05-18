@@ -14,6 +14,21 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   Iconify Solar stroke normalization
+   Solar Linear icons ship at stroke-width 1.5 in their source
+   SVGs. We render them through @iconify/react which inlines
+   those SVGs as-is, so they look heavier than our custom 1px
+   chrome (close button, drag handles, decoration icons, etc.).
+   Force every stroked path inside an Iconify-rendered SVG to
+   render at 1px. Solar Bold icons use fill, not stroke, so
+   they are unaffected. Adding `!important` because the source
+   SVG specifies stroke-width inline.
+   ═══════════════════════════════════════════════════════════ */
+svg.iconify [stroke]:not([stroke="none"]) {
+  stroke-width: 1 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
    Theme transitions
    Smoothly cross-fade colors when the user flips themes.
    Initial paint is NOT animated — transitions only fire when
@@ -157,6 +172,8 @@ input[type="radio"]:disabled {
   border-color: var(--neutral-100);
   cursor: not-allowed;
 }
+
+html { scroll-behavior: smooth; }
 
 /* Slim Modern Scrollbars */
 * {

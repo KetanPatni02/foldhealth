@@ -1,18 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { useAppStore } from '../../store/useAppStore';
-import { ConversationIcon, GuardrailsIcon, CallTransferIcon, AgentsIcon } from './nodes/NodeIcons';
+import { getNodeConfig } from './nodes/nodeConfig';
 import styles from './NodeSettings.module.css';
-
-const TYPE_CONFIG = {
-  conversation: { color: '#009688', CustomIcon: ConversationIcon },
-  appointment: { icon: 'solar:calendar-mark-linear', color: '#8C5AE2' },
-  guardrails: { color: '#D9A50B', CustomIcon: GuardrailsIcon },
-  callTransfer: { color: '#9C27B0', CustomIcon: CallTransferIcon },
-  escalation: { icon: 'solar:danger-triangle-linear', color: '#D72825' },
-  agents: { color: '#FF907F', CustomIcon: AgentsIcon },
-  end: { icon: 'solar:forbidden-circle-linear', color: '#109CAE' },
-};
 
 /* ── Custom select dropdown ── */
 function CustomSelect({ value, options, placeholder, onChange }) {
@@ -105,7 +95,7 @@ export function NodeSettings({ node, allNodes, onSave, onClose, onDelete }) {
   }, [isEditing]);
 
   const isEndNode = node.data.nodeType === 'end' || node.type === 'endNode';
-  const config = TYPE_CONFIG[node.data.nodeType] || (isEndNode ? TYPE_CONFIG.end : TYPE_CONFIG.conversation);
+  const config = getNodeConfig(isEndNode ? 'end' : node.data.nodeType);
   const otherNodes = allNodes.filter(n => n.id !== node.id && n.type !== 'startNode');
   const nodeOptions = otherNodes.map(n => ({ value: n.data.label || n.id, label: n.data.label || n.id }));
 

@@ -1,16 +1,44 @@
-.panel { display: flex; flex-direction: column; width: 100%; height: 100%; border-right: 0.5px solid var(--neutral-100); background: var(--neutral-0); overflow: hidden; }
+/* Panel layout: header strip (tab row + sticky note) is pinned, only
+   the .scrollContent area scrolls vertically. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border-right: 0.5px solid var(--neutral-100);
+  background: var(--neutral-0);
+  overflow: hidden;
+}
 
-/* Tab row: tabs + search icon inline — sticky */
-.tabRow { display: flex; align-items: center; border-bottom: 0.5px solid var(--neutral-100); padding: 0 4px 0 8px; flex-shrink: 0; height: 40px; background: var(--neutral-0); position: sticky; top: 0; z-index: 10; overflow-x: auto; scrollbar-width: none; }
-.tabRow::-webkit-scrollbar { display: none; }
-.tab { padding: 0 10px; font-size: 14px; font-weight: 400; color: var(--neutral-300); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.12s; white-space: nowrap; height: 100%; display: flex; align-items: center; }
+.scrollContent {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Tab row: scrollable tabs (no visible scrollbar) on the left,
+   sticky search icon pinned on the right.                         */
+.tabRow { display: flex; align-items: center; border-bottom: 0.5px solid var(--neutral-100); padding: 0 4px 0 8px; flex-shrink: 0; height: 40px; gap: 4px; }
+.tabsScroll {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* IE/Edge */
+  scroll-behavior: smooth;
+}
+.tabsScroll::-webkit-scrollbar { display: none; }  /* Chrome/Safari */
+.tab { padding: 0 10px; font-size: 14px; font-weight: 400; color: var(--neutral-300); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.12s; white-space: nowrap; height: 100%; display: flex; align-items: center; flex-shrink: 0; scroll-margin-inline: 24px; }
 .tabActive { color: var(--primary-300); font-weight: 500; border-bottom-color: var(--primary-300); }
 .tab:hover:not(.tabActive) { color: var(--neutral-400); }
-.searchIcon { background: none; border: none; cursor: pointer; padding: 8px 6px; display: flex; align-items: center; margin-left: auto; flex-shrink: 0; }
+.searchIcon { background: none; border: none; cursor: pointer; padding: 8px 6px; display: flex; align-items: center; flex-shrink: 0; }
 .searchIcon:hover { opacity: 0.7; }
-
-/* Scrollable content area below sticky tab row */
-.scrollContent { flex: 1; overflow-y: auto; min-height: 0; }
 
 /* Search bar (replaces tabs when active) */
 .searchBar { display: flex; align-items: center; border-bottom: 2px solid var(--primary-300); padding: 0 8px; flex-shrink: 0; height: 40px; background: var(--neutral-0); position: sticky; top: 0; z-index: 10; }
@@ -23,7 +51,7 @@
 .sectionActions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .sectionTitle { font-size: 14px; font-weight: 500; color: var(--neutral-400); font-family: 'Inter', sans-serif; }
 .viewBy { font-size: 12px; color: var(--neutral-300); font-family: 'Inter', sans-serif; }
-.dosLabel { font-size: 12px; color: #3a485f; font-family: 'Inter', sans-serif; }
+.dosLabel { font-size: 12px; color: var(--neutral-400); font-family: 'Inter', sans-serif; }
 .dosValue { font-size: 12px; color: var(--neutral-300); font-family: 'Inter', sans-serif; }
 .filterDivider { width: 0.5px; height: 12px; background: var(--neutral-150); }
 .gapsWrapper { padding: 12px 0; }

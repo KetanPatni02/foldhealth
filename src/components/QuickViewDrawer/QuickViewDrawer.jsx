@@ -2,7 +2,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { Drawer } from '../Drawer/Drawer';
 import { Icon } from '../Icon/Icon';
 import { ActionButton } from '../ActionButton/ActionButton';
-import { PatientBanner } from '../../features/patient/components/PatientBanner';
+import { PatientP360Banner } from '../../features/patient/components/PatientP360Banner';
 import { PatientProfileTabs } from '../../features/patient/components/PatientProfileTabs';
 import styles from './QuickViewDrawer.module.css';
 
@@ -53,7 +53,7 @@ export function QuickViewDrawer() {
       bodyClassName={styles.drawerBody}
     >
       <div className={styles.stickyTop}>
-        <PatientBanner patient={patient} variant="drawer" />
+        <PatientP360Banner patient={patient} variant="drawer" />
       </div>
 
       <div className={styles.tabsPanel}>
