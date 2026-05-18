@@ -1,0 +1,338 @@
+.wrapper {
+  height: 100%;
+  background: var(--neutral-0);
+  overflow-y: auto;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+/* ── Table view ── */
+.tableView {}
+
+.tableSection {
+  margin-bottom: 8px;
+}
+.tableSection:last-child { margin-bottom: 0; }
+
+.tableSectionHeader {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding: 0;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+
+.tableSectionTitle {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  font-family: 'Inter', sans-serif;
+}
+
+.tableSectionActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.graphIconBtn,
+.addIconBtn,
+.listIconBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 4px;
+  color: var(--neutral-300);
+  transition: background 0.1s;
+}
+.graphIconBtn:hover,
+.addIconBtn:hover,
+.listIconBtn:hover { background: var(--neutral-100); color: var(--neutral-400); }
+
+.sectionActionDivider {
+  width: 0.5px;
+  height: 12px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+  margin: 0 8px;
+}
+
+.colHeader {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+
+.colNameLabel {
+  width: 150px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--neutral-300);
+  font-family: 'Inter', sans-serif;
+}
+
+.colValuesLabel {
+  flex: 1;
+  font-size: 12px;
+  color: var(--neutral-300);
+  font-family: 'Inter', sans-serif;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  border-bottom: 0.5px solid var(--neutral-100);
+  padding: 8px 0;
+  min-height: 52px;
+  transition: background 0.1s;
+  cursor: pointer;
+}
+.row:last-child { border-bottom: none; }
+.row:hover { background: var(--primary-25); }
+
+.nameCell {
+  width: 150px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rowName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  font-family: 'Inter', sans-serif;
+  line-height: 1.2;
+}
+
+.rowUnit {
+  font-size: 12px;
+  color: var(--primary-300);
+  font-family: 'Inter', sans-serif;
+  line-height: 1.2;
+}
+
+.valuesCell {
+  flex: 1;
+  display: flex;
+  gap: 0;
+}
+
+.valueItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.val {
+  font-size: 14px;
+  color: var(--neutral-500);
+  font-family: 'Inter', sans-serif;
+  line-height: 1.2;
+}
+.valFlag {
+  color: var(--status-error);
+  font-weight: 500;
+}
+
+.valDate {
+  font-size: 12px;
+  color: var(--neutral-300);
+  font-family: 'Inter', sans-serif;
+  line-height: 1.2;
+}
+
+/* ── Graph view ── */
+.graphView {
+  background: var(--neutral-0);
+}
+
+/* ── Chart area with external y-label ── */
+.chartArea {
+  display: flex;
+  align-items: stretch;
+}
+
+.yLabel {
+  writing-mode: vertical-lr;
+  transform: rotate(180deg);
+  font-size: 11px;
+  color: var(--neutral-300);
+  font-family: 'Inter', sans-serif;
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+  align-self: center;
+  margin-right: 4px;
+}
+
+.chartAreaInner {
+  flex: 1;
+  min-width: 0;
+}
+
+.graphSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0;
+  background: var(--neutral-0);
+  position: sticky;
+  top: -12px;
+  z-index: 5;
+}
+
+.graphSectionTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  font-family: 'Inter', sans-serif;
+  flex: 1;
+}
+
+/* ── Metric card ── */
+.metricCard {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.metricHeader {
+  display: flex;
+  align-items: flex-start;
+  padding: 12px 12px 4px;
+  gap: 8px;
+}
+
+.metricTitleGroup {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.metricTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  font-family: 'Inter', sans-serif;
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.legendCircle {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legendDiamond {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  transform: rotate(45deg);
+}
+
+.legendLabel {
+  font-size: 11px;
+  color: var(--neutral-300);
+  font-family: 'Inter', sans-serif;
+}
+
+.metricSub {
+  font-size: 12px;
+  color: var(--neutral-300);
+  font-family: 'Inter', sans-serif;
+  line-height: 1.4;
+}
+
+.chartWrap {
+  padding: 4px 12px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.xAxisLabel {
+  font-size: 11px;
+  color: var(--neutral-300);
+  font-family: 'Inter', sans-serif;
+  text-align: center;
+  margin-top: 4px;
+  padding-bottom: 4px;
+}
+
+/* ── Stats bar below each chart ── */
+.statsBar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--neutral-50);
+  border-top: 0.5px solid var(--neutral-100);
+  padding: 8px 12px;
+  margin-top: 4px;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.statLine {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.statValue {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  font-family: 'Inter', sans-serif;
+}
+
+.statUnit {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  font-family: 'Inter', sans-serif;
+  margin-left: 2px;
+}
+
+.statLabel {
+  font-size: 12px;
+  color: var(--neutral-300);
+  font-family: 'Inter', sans-serif;
+}
+
+.statDivider {
+  width: 0.5px;
+  height: 28px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}

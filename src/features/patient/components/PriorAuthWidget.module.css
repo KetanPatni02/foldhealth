@@ -1,0 +1,127 @@
+/* ── PriorAuthWidget ── */
+.widget {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  min-height: 36px;
+  flex-shrink: 0;
+}
+
+.header:last-child {
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+
+.titleBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.title {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #16181d;
+  white-space: nowrap;
+}
+
+.addBtn {
+  background: none;
+  border: none;
+  padding: 2px 6px;
+  font-size: 16px;
+  color: var(--neutral-300, #8a94a8);
+  cursor: pointer;
+  line-height: 1;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
+.addBtn:hover {
+  background: var(--neutral-50);
+}
+
+/* ── Body ── */
+.body {
+  padding: 4px 8px 8px;
+}
+
+/* Shared grid — header + data share the same column tracks */
+.table {
+  display: grid;
+  grid-template-columns: 1fr auto;
+}
+
+/* Column headers */
+.colLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  color: var(--neutral-200, #8a94a8);
+  font-weight: 400;
+}
+
+.colName {
+  padding: 0 8px 6px 0;
+}
+
+.colStatus {
+  padding: 0 0 6px 8px;
+}
+
+/* Data cells */
+.authInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 12px 8px 12px 0;
+  border-top: 0.5px solid var(--neutral-100);
+}
+
+.statusCell {
+  padding: 12px 0 12px 8px;
+  border-top: 0.5px solid var(--neutral-100);
+  display: flex;
+  align-items: flex-start;
+}
+
+.authNumber {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #16181d;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.authDate {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  color: var(--neutral-200, #8a94a8);
+}
+
+.statusBadge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  background: #fffbeb;
+  color: #f59e0b;
+  border: 0.5px solid rgba(245, 158, 11, 0.3);
+}

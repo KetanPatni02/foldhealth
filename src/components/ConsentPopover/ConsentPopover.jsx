@@ -78,7 +78,7 @@ export function ConsentPopover({ pos, onClose }) {
               {section.items.map(item => (
                 <div key={item.id} className={styles.row}>
                   <div className={styles.rowCheck}>
-                    <Icon name="solar:check-circle-bold" size={12} color="var(--status-success)" />
+                    <Icon name="solar:check-circle-bold" size={16} color="var(--status-success)" />
                   </div>
                   <div className={styles.rowText}>
                     <span className={styles.rowLabel}>{item.label}</span>

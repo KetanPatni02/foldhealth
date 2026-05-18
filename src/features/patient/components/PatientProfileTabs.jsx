@@ -8,6 +8,10 @@ import { CareGapSection } from './CareGapSection';
 import { DiagnosisGapsTable } from './DiagnosisGapsTable';
 import { AlertsTable } from './AlertsTable';
 import { PAMIHxTab } from './PAMIHxTab';
+import { VitalsLabsTab } from './VitalsLabsTab';
+import { CommsTab } from './CommsTab';
+import { OutreachTab } from './OutreachTab';
+import { SummaryTab } from './SummaryTab';
 import { CARE_GAP_SECTIONS_EXTENDED, CARE_GAP_TABS } from '../data/careGapsMock';
 import styles from './PatientProfileTabs.module.css';
 
@@ -47,9 +51,9 @@ export function PatientProfileTabs({ patientId }) {
       : section.items,
   }));
 
-return (
+  return (
     <div className={styles.panel}>
-      {/* Tab bar OR search input */}
+      {/* Sticky tab bar OR search input */}
       {searching ? (
         <div className={styles.searchBar}>
           <input
@@ -73,9 +77,6 @@ return (
                 className={`${styles.tab} ${activeTab === i ? styles.tabActive : ''}`}
                 onClick={(e) => {
                   setActiveTab(i);
-                  // If the tab is partially clipped at either edge, scroll it
-                  // fully into view. inline:'nearest' is a no-op when the tab
-                  // is already fully visible, so this only acts on edge taps.
                   e.currentTarget.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
                 }}
               >
@@ -89,120 +90,134 @@ return (
         </div>
       )}
 
-      {/* Sticky Note (replaces static alert header) */}
-      <StickyNote
-        notes={stickyNotes}
-        onSave={(id, text) => updateStickyNote(id, { text, author_name: 'You' }, patientId)}
-        onCreate={(text) => createStickyNote({ patient_id: patientId, text, author_name: 'You', ehr_profile: 'Central Profile' })}
-        onDelete={(id) => deleteStickyNote(id, patientId)}
-        onAuditLog={() => setShowAuditDrawer(true)}
-      />
-
-      {/* Audit Log Drawer */}
-      {showAuditDrawer && (
-        <StickyNoteAuditDrawer
-          patientId={patientId}
-          note={stickyNotes[0]}
-          profileOptions={['Central Profile', 'APC', 'JADE Health']}
-          onClose={() => setShowAuditDrawer(false)}
-        />
-      )}
-
-      {/* Scrollable content — tab row and sticky note above stay pinned. */}
+      {/* Scrollable content */}
       <div className={styles.scrollContent}>
-      {activeTab === 0 && (
-        <div className={styles.gapsWrapper}>
-          {/* Care Gaps header */}
-          <div className={styles.sectionHeader}>
-            <span className={styles.sectionTitle}>Care Gaps</span>
-            <button
-              className={styles.collapseToggle}
-              onClick={() => setGapsCollapsed(v => !v)}
-              aria-label={gapsCollapsed ? 'Expand Care Gaps' : 'Collapse Care Gaps'}
-              aria-expanded={!gapsCollapsed}
-            >
-              <Icon name={gapsCollapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-200)" />
-            </button>
-            {!gapsCollapsed && (
-              <div className={styles.sectionActions}>
-                <span className={styles.viewBy}>View By: Action</span>
-                <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" />
-                <span className={styles.filterDivider} />
-                <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
-              </div>
-            )}
-          </div>
+        {/* Sticky Note */}
+        <StickyNote
+          notes={stickyNotes}
+          onSave={(id, text) => updateStickyNote(id, { text, author_name: 'You' }, patientId)}
+          onCreate={(text) => createStickyNote({ patient_id: patientId, text, author_name: 'You', ehr_profile: 'Central Profile' })}
+          onDelete={(id) => deleteStickyNote(id, patientId)}
+          onAuditLog={() => setShowAuditDrawer(true)}
+        />
 
-          {!gapsCollapsed && (
-            <div className={styles.sections}>
-              {careGapSections.map(section => (
-                <CareGapSection key={section.title} section={section} selectedGaps={selectedGaps} onToggleGap={toggleGap} />
-              ))}
+        {/* Audit Log Drawer */}
+        {showAuditDrawer && (
+          <StickyNoteAuditDrawer
+            patientId={patientId}
+            note={stickyNotes[0]}
+            profileOptions={['Central Profile', 'APC', 'JADE Health']}
+            onClose={() => setShowAuditDrawer(false)}
+          />
+        )}
+
+        {activeTab === 0 && (
+          <div className={styles.gapsWrapper}>
+            {/* Care Gaps header */}
+            <div className={styles.sectionHeader}>
+              <span className={styles.sectionTitle}>Care Gaps</span>
+              <button
+                className={styles.collapseToggle}
+                onClick={() => setGapsCollapsed(v => !v)}
+                aria-label={gapsCollapsed ? 'Expand Care Gaps' : 'Collapse Care Gaps'}
+                aria-expanded={!gapsCollapsed}
+              >
+                <Icon name={gapsCollapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-200)" />
+              </button>
+              {!gapsCollapsed && (
+                <div className={styles.sectionActions}>
+                  <span className={styles.viewBy}>View By: Action</span>
+                  <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" />
+                  <span className={styles.filterDivider} />
+                  <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+                </div>
+              )}
             </div>
-          )}
 
-          {/* Diagnosis Gaps header */}
-          <div className={`${styles.sectionHeader} ${styles.diagnosisHeader}`}>
-            <span className={styles.sectionTitle}>Diagnosis Gaps</span>
-            <button
-              className={styles.collapseToggle}
-              onClick={() => setDiagnosisCollapsed(v => !v)}
-              aria-label={diagnosisCollapsed ? 'Expand Diagnosis Gaps' : 'Collapse Diagnosis Gaps'}
-              aria-expanded={!diagnosisCollapsed}
-            >
-              <Icon name={diagnosisCollapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-200)" />
-            </button>
-            {!diagnosisCollapsed && (
-              <div className={styles.sectionActions}>
-                <span className={styles.dosLabel}>DOS:</span>
-                <span className={styles.dosValue}>03/04/2025</span>
-                <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" />
-                <span className={styles.filterDivider} />
-                <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+            <div className={`${styles.collapseOuter} ${gapsCollapsed ? styles.collapsedSection : ''}`}>
+              <div className={styles.collapseInner}>
+                <div className={styles.sections}>
+                  {careGapSections.map(section => (
+                    <CareGapSection key={section.title} section={section} selectedGaps={selectedGaps} onToggleGap={toggleGap} />
+                  ))}
+                </div>
               </div>
-            )}
-          </div>
-
-          {!diagnosisCollapsed && (
-            <div className={styles.sections}>
-              <DiagnosisGapsTable />
             </div>
-          )}
 
-          {/* Alerts header */}
-          <div className={`${styles.sectionHeader} ${styles.diagnosisHeader}`}>
-            <span className={styles.sectionTitle}>Alerts</span>
-            <button
-              className={styles.collapseToggle}
-              onClick={() => setAlertsCollapsed(v => !v)}
-              aria-label={alertsCollapsed ? 'Expand Alerts' : 'Collapse Alerts'}
-              aria-expanded={!alertsCollapsed}
-            >
-              <Icon name={alertsCollapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-200)" />
-            </button>
-            {!alertsCollapsed && (
-              <div className={styles.sectionActions}>
-                <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+            {/* Diagnosis Gaps header */}
+            <div className={`${styles.sectionHeader} ${styles.diagnosisHeader}`}>
+              <span className={styles.sectionTitle}>Diagnosis Gaps</span>
+              <button
+                className={styles.collapseToggle}
+                onClick={() => setDiagnosisCollapsed(v => !v)}
+                aria-label={diagnosisCollapsed ? 'Expand Diagnosis Gaps' : 'Collapse Diagnosis Gaps'}
+                aria-expanded={!diagnosisCollapsed}
+              >
+                <Icon name={diagnosisCollapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-200)" />
+              </button>
+              {!diagnosisCollapsed && (
+                <div className={styles.sectionActions}>
+                  <span className={styles.dosLabel}>DOS:</span>
+                  <span className={styles.dosValue}>03/04/2025</span>
+                  <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" />
+                  <span className={styles.filterDivider} />
+                  <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+                </div>
+              )}
+            </div>
+
+            <div className={`${styles.collapseOuter} ${diagnosisCollapsed ? styles.collapsedSection : ''}`}>
+              <div className={styles.collapseInner}>
+                <div className={styles.sections}>
+                  <DiagnosisGapsTable />
+                </div>
               </div>
-            )}
-          </div>
-
-          {!alertsCollapsed && (
-            <div className={styles.sections}>
-              <AlertsTable />
             </div>
-          )}
-        </div>
-      )}
 
-      {activeTab === 1 && <PAMIHxTab />}
+            {/* Alerts header */}
+            <div className={`${styles.sectionHeader} ${styles.diagnosisHeader}`}>
+              <span className={styles.sectionTitle}>Alerts</span>
+              <button
+                className={styles.collapseToggle}
+                onClick={() => setAlertsCollapsed(v => !v)}
+                aria-label={alertsCollapsed ? 'Expand Alerts' : 'Collapse Alerts'}
+                aria-expanded={!alertsCollapsed}
+              >
+                <Icon name={alertsCollapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-200)" />
+              </button>
+              {!alertsCollapsed && (
+                <div className={styles.sectionActions}>
+                  <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+                </div>
+              )}
+            </div>
 
-      {activeTab > 1 && (
-        <div className={styles.placeholder}>
-          <Icon name="solar:document-text-linear" size={32} color="var(--neutral-150)" />
-          <span>Coming soon</span>
-        </div>
-      )}
+            <div className={`${styles.collapseOuter} ${alertsCollapsed ? styles.collapsedSection : ''}`}>
+              <div className={styles.collapseInner}>
+                <div className={styles.sections}>
+                  <AlertsTable />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 1 && <PAMIHxTab />}
+
+        {activeTab === 2 && <VitalsLabsTab />}
+
+        {activeTab === 3 && <CommsTab />}
+
+        {activeTab === 4 && <OutreachTab />}
+
+        {activeTab === 5 && <SummaryTab />}
+
+        {activeTab > 5 && (
+          <div className={styles.placeholder}>
+            <Icon name="solar:document-text-linear" size={32} color="var(--neutral-150)" />
+            <span>Coming soon</span>
+          </div>
+        )}
       </div>
     </div>
   );
