@@ -275,7 +275,7 @@
 }
 
 .convItem:hover {
-  background: var(--neutral-50);
+  background: var(--primary-25);
 }
 
 .convItem.selected {
