@@ -9,6 +9,9 @@ import { DiagnosisGapsTable } from './DiagnosisGapsTable';
 import { AlertsTable } from './AlertsTable';
 import { PAMIHxTab } from './PAMIHxTab';
 import { VitalsLabsTab } from './VitalsLabsTab';
+import { CommsTab } from './CommsTab';
+import { OutreachTab } from './OutreachTab';
+import { SummaryTab } from './SummaryTab';
 import { CARE_GAP_SECTIONS_EXTENDED, CARE_GAP_TABS } from '../data/careGapsMock';
 import styles from './PatientProfileTabs.module.css';
 
@@ -179,7 +182,13 @@ return (
 
         {activeTab === 2 && <VitalsLabsTab />}
 
-        {activeTab > 2 && (
+        {activeTab === 3 && <CommsTab />}
+
+        {activeTab === 4 && <OutreachTab />}
+
+        {activeTab === 5 && <SummaryTab />}
+
+        {activeTab > 5 && (
           <div className={styles.placeholder}>
             <Icon name="solar:document-text-linear" size={32} color="var(--neutral-150)" />
             <span>Coming soon</span>

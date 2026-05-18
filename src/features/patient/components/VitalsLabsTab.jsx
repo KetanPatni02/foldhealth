@@ -268,13 +268,14 @@ function MetricChart({ metric, range, colors }) {
     </ResponsiveContainer>
   ) : (
     <ResponsiveContainer width="100%" height={180}>
-      <LineChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
+      <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
         <CartesianGrid vertical={false} stroke={gridColor} strokeDasharray="none" />
         <XAxis dataKey="t" {...axisProps} />
         <YAxis domain={metric.yDomain} ticks={metric.yTicks} width={40} {...axisProps} />
+        <Bar dataKey="__dummy" fill="transparent" stroke="none" isAnimationActive={false} barSize={1} />
         <Line type="monotone" dataKey="v" stroke={lineColor} strokeWidth={1.5}
           dot={{ r: 2.5, fill: lineColor, strokeWidth: 0 }} activeDot={{ r: 4, fill: lineColor }} />
-      </LineChart>
+      </ComposedChart>
     </ResponsiveContainer>
   );
 

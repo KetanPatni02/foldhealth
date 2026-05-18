@@ -18,6 +18,17 @@
   flex-shrink: 0;
 }
 
+/* Notification count pill */
+.notification {
+  background: var(--secondary-300);
+  color: #fff;
+  font-size: 10px;
+  padding: 1px 4px;
+  min-width: 16px;
+  justify-content: center;
+  border-color: transparent;
+}
+
 /* LACE */
 .lace-high { background: var(--status-error-light); color: var(--status-error); border-color: rgba(215,40,37,0.2); }
 .lace-medium { background: var(--status-warning-light); color: var(--status-warning); border-color: rgba(217,165,11,0.2); }

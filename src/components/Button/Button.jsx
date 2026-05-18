@@ -11,6 +11,7 @@ import styles from './Button.module.css';
  * @param {'primary'|'secondary'|'tertiary'|'ghost'|'alt'|'success'|'danger'|'dangerFilled'|'info'} [props.variant='primary']
  * @param {'S'|'L'|'XL'}  [props.size='L']         – S=24px, L=32px, XL=52px (mobile)
  * @param {string}   [props.leadingIcon]             – Solar icon name for leading icon
+ * @param {React.ReactNode} [props.leadingIconElement] – Custom React node for leading icon (overrides leadingIcon)
  * @param {string}   [props.trailingIcon]            – Solar icon name for trailing icon
  * @param {boolean}  [props.iconOnly=false]          – Square icon-only button (no text)
  * @param {boolean}  [props.fullWidth=false]          – Full-width button
@@ -24,6 +25,7 @@ export const Button = forwardRef(function Button(
     variant = 'primary',
     size = 'L',
     leadingIcon,
+    leadingIconElement,
     trailingIcon,
     iconOnly = false,
     fullWidth = false,
@@ -74,7 +76,8 @@ export const Button = forwardRef(function Button(
 
   return (
     <button ref={ref} type={type} className={cls} disabled={disabled} {...rest}>
-      {leadingIcon && (
+      {leadingIconElement && leadingIconElement}
+      {!leadingIconElement && leadingIcon && (
         <Icon name={leadingIcon} size={iconSize} color={iconColor} className={styles.icon} />
       )}
       {!iconOnly && children}
