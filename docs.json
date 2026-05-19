@@ -2,16 +2,68 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Fold Health",
-  "favicon": "/favicon.svg",
   "colors": {
     "primary": "#8C5AE2",
     "light": "#A87FF0",
     "dark": "#7B4FCA"
   },
-  "navigation": [
-    {
-      "group": "Getting Started",
-      "pages": ["docs/introduction"]
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "docs/introduction"
+            ]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Platform",
+          "href": "https://foldhealth.vercel.app",
+          "icon": "browser"
+        }
+      ]
     }
-  ]
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Support",
+        "href": "mailto:alokk@fold.health"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Open App",
+      "href": "https://foldhealth.vercel.app"
+    }
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/designedbyalok/foldhealth"
+    }
+  }
 }
