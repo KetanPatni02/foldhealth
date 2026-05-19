@@ -1,0 +1,28 @@
+---
+title: Home Dashboard
+description: Personalized dashboard with draggable, resizable cards.
+---
+
+The Home page is a personalized dashboard with draggable, resizable cards powered by `react-grid-layout`.
+
+## Dashboard cards
+
+| Card | Description |
+|------|-------------|
+| Welcome | Greeting banner with user name, location (via geolocation + reverse geocoding), and live weather from Open-Meteo |
+| Alerts & Monitoring | Patient list from Supabase with action badges (Missed, Message, Alerts, Tasks) |
+| Assigned to Me | Recent interactions and assigned items |
+| Today's Calendar | 24-hour day view with appointments, live "Now" line, and click-to-schedule |
+| Quick Notes | Sticky-note style cards with text and timestamps |
+
+## Customization
+
+- **Edit mode** — Click "Edit Dashboard" to enable drag handles and resize grips on all cards
+- **Drag and drop** — Reorder cards freely on a 12-column grid
+- **Resize** — Drag the bottom-right corner to resize any card
+- **Persist** — Layout saves to `localStorage` automatically
+- **Reset** — Restore the default layout from edit mode
+
+## Calendar integration
+
+The calendar card pulls appointments from Supabase and renders them as positioned blocks. Clicking an empty time slot opens the Schedule Drawer pre-populated with the selected date and time.

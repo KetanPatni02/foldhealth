@@ -1,0 +1,107 @@
+---
+title: Routing
+description: Hash-based routing system with bidirectional URL-state sync.
+---
+
+Fold Health uses **hash-based routing** (URL fragments) with bidirectional sync between the URL and the Zustand store.
+
+## Router module
+
+```
+src/lib/router.js
+```
+
+### Core functions
+
+| Function | Purpose |
+|----------|---------|
+| `parseHash()` | Extracts segments from the URL hash (page, section, tab, id, sub) |
+| `hashToState(route)` | Converts a parsed URL hash into store state updates |
+| `stateToHash(state)` | Derives a URL hash from the current store state |
+| `syncFromHash()` | Handles `window.hashchange` events |
+| `updateHash(getState)` | Pushes store state changes to the URL |
+| `initRouter(store)` | Attaches listeners and syncs initial URL on app load |
+
+### Initialization
+
+`initRouter(store)` is called once in `App.jsx`. It:
+1. Attaches a `hashchange` listener to sync URL changes into the store
+2. Reads the initial URL on page load
+3. Syncs store updates back to the URL after navigation actions
+
+## Route map
+
+```
+#/home                                  Home dashboard
+#/population/toc-worklist               TOC Worklist (default)
+#/population/toc-queue                  TOC Queue
+#/population/patient/{id}               Patient detail
+#/population/{list}                     Alternate worklists
+
+#/calls                                 Call history
+#/messages                              Messages / chat
+#/tasks                                 Task management
+#/calendar                              Calendar view
+
+#/analytics                             Analytics (executive)
+#/analytics/{view}                      Analytics by dashboard
+
+#/settings/agents                       Agent directory
+#/settings/agents/edit/{id}             Agent builder
+#/settings/agents/goals                 Goals list
+#/settings/agents/goals/{id}            Goal detail
+#/settings/agents/goals/new             Goal wizard
+#/settings/messages                     Chat settings
+#/settings/messages/chat-settings/{id}  Group detail
+#/settings/embedded-components/{tab}    Domain registry / components
+#/settings/account/{tab}               Users / access management
+
+#/campaign                              Campaign list
+#/campaign/edit/{id}                    Campaign builder
+#/email/{id}                            Email template builder
+```
+
+## Bidirectional sync
+
+### URL to store
+
+When the browser hash changes (back/forward navigation, manual URL edit), `syncFromHash()` fires:
+
+```
+hashchange event → parseHash() → hashToState() → store.setState()
+```
+
+### Store to URL
+
+When a navigation action updates the store, `updateHash()` derives the new hash:
+
+```
+setActivePage('calls') → set({...}) → updateHash(get) → window.location.hash
+```
+
+## Session persistence
+
+These fields are persisted to `sessionStorage` so they survive page reloads:
+
+- `activePage`
+- `activeTab`
+- `settingsTab`
+- `settingsNavItem`
+
+## View routing in AppLayout
+
+`AppLayout.jsx` uses conditional rendering based on the `activePage` store value:
+
+```jsx
+{activePage === 'home'      && <HomeView />}
+{activePage === 'messages'  && <MessagesView />}
+{activePage === 'calls'     && <CallsView />}
+{activePage === 'tasks'     && <TasksView />}
+{activePage === 'analytics' && <AnalyticsView />}
+{activePage === 'settings'  && <SettingsView />}
+{activePage === 'calendar'  && <CalendarViewPage />}
+{activePage === 'campaign'  && <CampaignView />}
+{/* Default: PopulationView */}
+```
+
+Full-screen takeovers (Email Builder, Campaign Builder, Agent Canvas) render as overlays on top of the current page.

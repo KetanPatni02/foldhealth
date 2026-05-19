@@ -1,0 +1,52 @@
+---
+title: Population Management
+description: Patient worklists, agent queues, and scheduling tools for care coordination.
+---
+
+The Population workspace is the primary workspace for care managers. It houses patient worklists, agent queues, and scheduling tools accessed via the left SubNav panel.
+
+## Worklists
+
+### TOC Worklist
+
+The default view showing all Transitional Care patients. Patients are displayed in a table with these columns:
+
+| Column | Description |
+|--------|-------------|
+| Members | Name, gender, age, member ID, preferred language |
+| LACE Acuity | Risk score (High, Medium, Low) |
+| Outreach Window | TOC 48h or TOC 7d with countdown timer |
+| TOC Status | Enrolled, Engaged, Attempted, New, On Call |
+| Outreach | Call attempt history with dot indicators |
+| Next Outreach | Scheduled follow-up date |
+| Start Date | Program enrollment date |
+| Last Admission | Most recent hospital admission |
+| Assignee | Assigned care manager |
+| Agent Assigned | AI agent handling outreach |
+| Actions | View details, call, more options |
+
+**Status sections** — When grouped by status, patients are organized into: Ongoing Call, In Queue, Scheduled, Needs Attention, and Enrolled.
+
+**Bulk actions** — Select multiple patients via checkboxes to perform batch operations through the BulkBar.
+
+### HCC Worklist
+
+A 23-column table for Hierarchical Condition Category coding review. Includes RAF scores, risk levels, diagnosis gaps, and a DiagPanel side-car drawer for detailed ICD code review.
+
+### All Patients
+
+A unified roster combining TOC and HCC populations with additional fields: contact info, location, insurance attributes, chronic conditions, PCP, care programs, and consent status.
+
+### Scheduling List
+
+A filtered view of the patient population with Provider and Location filter chips for scheduling workflows.
+
+## Agent Queue
+
+The TOC Agent Queue shows patients assigned to AI agents for automated outreach. Features a KPI summary bar with real-time metrics and agent status tracking.
+
+## Search and Filters
+
+- **Search** — Filter by patient name, member ID, or initials
+- **Filter bar** — 12 filter chips: Gender, Language, LACE Acuity, TOC Status, Status, Assigned to, Outreach Window, Trigger Type, Readmission, Care Plan, Priority, Outreach Category, Agent
+- **View by** — Toggle between Outreach Window (sorted by urgency) and Outreach Status (grouped by lifecycle stage)

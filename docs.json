@@ -16,7 +16,46 @@
           {
             "group": "Getting Started",
             "pages": [
-              "docs/introduction"
+              "docs/introduction",
+              "docs/getting-started/installation",
+              "docs/getting-started/tech-stack",
+              "docs/getting-started/project-structure"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "docs/features/home",
+              "docs/features/population",
+              "docs/features/tasks",
+              "docs/features/calls",
+              "docs/features/campaigns",
+              "docs/features/analytics",
+              "docs/features/agent-builder",
+              "docs/features/settings"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "docs/architecture/state-management",
+              "docs/architecture/routing",
+              "docs/architecture/data-flow"
+            ]
+          },
+          {
+            "group": "Components",
+            "pages": [
+              "docs/components/design-system",
+              "docs/components/shared-components"
+            ]
+          },
+          {
+            "group": "API & Backend",
+            "pages": [
+              "docs/api/supabase",
+              "docs/api/authentication",
+              "docs/api/realtime"
             ]
           }
         ]

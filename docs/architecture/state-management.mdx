@@ -1,0 +1,141 @@
+---
+title: State Management
+description: Zustand store architecture, slices, and data flow patterns.
+---
+
+Fold Health uses a single **Zustand** store (`useAppStore`) as the central state container. All UI state, server data, and navigation state flows through this store.
+
+## Store overview
+
+```
+src/store/useAppStore.js
+```
+
+The store is created with `zustand/create` and exposes 100+ actions alongside state. Components subscribe via selectors for fine-grained reactivity.
+
+```jsx
+const patients = useAppStore(s => s.patients);
+const fetchPatients = useAppStore(s => s.fetchPatients);
+```
+
+## State slices
+
+The store is organized into logical slices, all defined in a single `create()` call.
+
+### Navigation
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `activePage` | string | Top-level page (home, population, calls, etc.) |
+| `activeTab` | string | Tab within a page (toc-worklist, toc-queue) |
+| `activeSubnavList` | string | Selected worklist in SubNav |
+| `subnavCollapsed` | boolean | Sidebar collapse state |
+| `settingsNavItem` | string | Settings left-nav selection |
+
+### Patient management
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `patients` | array | All patient records |
+| `selectedPatientId` | string | Currently viewed patient |
+| `patientsLoading` | boolean | Fetch loading state |
+| `selectedIds` | array | Multi-select for bulk actions |
+
+**Actions:** `fetchPatients()`, `persistPatient(id, updates)`, `navigateToPatient()`, `navigateBackToWorklist()`
+
+### Call management
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `callDetails` | array | Call history records |
+| `callDetailsLoading` | boolean | Fetch state |
+| `callDetailsHasMore` | boolean | Pagination flag |
+| `callNavItems` | array | UI nav config from DB |
+| `systemHealth` | object | EHR/Retell/Redis/Supabase status |
+
+**Actions:** `fetchCallDetails()`, `fetchMoreCallDetails()`, `createCallRecord()`, `updateCallRecord()`
+
+### Goals and programs
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `goalsData` | array | Goal records with programs |
+| `goalDetailId` | string | Open goal detail drawer |
+| `goalWizardOpen` | boolean | Goal creation wizard state |
+
+**Actions:** `fetchGoals()`, `addGoal()`, `updateGoal()`, `deleteGoal()`
+
+### Agent builder
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `builderAgent` | object | `{ id, name, prompt, globalSettings }` |
+| `builderFlow` | object | `{ id, nodes, edges, viewport, version }` |
+| `builderSelectedNode` | string | Selected canvas node |
+| `builderVersions` | array | Flow version history |
+| `builderConfig` | object | Agent config row |
+
+**Actions:** `openBuilder()`, `closeBuilder()`, `fetchFlow()`, `saveFlow()`, `createFlowVersion()`
+
+### Messages and chat
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `chatGroupsData` | array | Chat group configs |
+| `chatGroupDetailId` | string | Open group drawer |
+| `messageTab` | string | Messages subtab |
+
+### Campaigns
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `editingCampaignId` | string | Email builder takeover |
+| `campaignBuilderId` | string | Campaign builder takeover |
+| `campaigns` | array | Campaign list |
+
+### Theme
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| `theme` | string | User setting (light, dark, system) |
+| `resolvedTheme` | string | Computed theme (light or dark) |
+
+## Async data pattern
+
+Store actions fetch from Supabase directly, update local state optimistically, and handle errors inline.
+
+```jsx
+fetchGoals: async () => {
+  set({ goalsLoading: true });
+  const { data, error } = await supabase.from('goals').select('*');
+  if (error) {
+    console.warn('[goals] fetch failed:', error.message);
+    set({ goalsData: fallbackGoalsData, goalsLoading: false });
+    return;
+  }
+  set({ goalsData: data.map(dbToJs), goalsLoading: false });
+}
+```
+
+Key pattern: if Supabase fails, fallback data from `src/data/` is used so the app works offline.
+
+## Navigation actions
+
+Navigation actions update both the store and the URL hash in a single call.
+
+```jsx
+setActivePage: (page) => {
+  set({ activePage: page });
+  updateHash(get); // syncs store → URL
+}
+```
+
+The `requestNavigate()` action handles deferred navigation when unsaved changes exist in builders.
+
+## Toast notifications
+
+```jsx
+showToast(message)    // error toast
+toastSuccess(message) // success toast
+closeToast()          // dismiss
+```
