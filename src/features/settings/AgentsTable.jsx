@@ -241,7 +241,7 @@ function AgentRow({ agent, isFirst }) {
             </svg>
           </ActionButton>
           <span className={styles.actionDivider} />
-          <ActionButton icon="solar:chart-outline" size="L" tooltip="Call Analytics" onClick={() => { setCallQueueInitTab('analytics'); setShowCallQueue(true); }} {...(isFirst ? { 'data-tour': 'call-analytics-btn' } : {})} />
+          <ActionButton icon="solar:chart-linear" size="L" tooltip="Call Analytics" onClick={() => { setCallQueueInitTab('analytics'); setShowCallQueue(true); }} {...(isFirst ? { 'data-tour': 'call-analytics-btn' } : {})} />
           <span className={styles.actionDivider} />
           <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More Options" ref={moreBtnRef} onClick={handleMoreClick} {...(isFirst ? { 'data-tour': 'more-options-btn' } : {})} />
         </div>
@@ -494,7 +494,7 @@ const AGENT_TOUR_STEPS = [
     target: '[data-tour="call-analytics-btn"]',
     title: 'Call Analytics',
     content: 'Jump directly into call performance — see goal progress, engagement scores, and sentiment analysis.',
-    icon: 'solar:chart-outline',
+    icon: 'solar:chart-linear',
     placement: 'bottom',
     skipBeacon: true,
   },

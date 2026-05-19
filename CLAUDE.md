@@ -18,7 +18,11 @@ keep entries short and specific. Newest at the top.
   Use size/weight/color tokens from `src/tokens/tokens.css` — don't
   hand-pick `font-size`, `font-weight`, or hex colors.
 - **Use Solar (Iconify) icons.** `solar:*-linear` variants first; custom
-  SVGs only as a last resort, kept in shared icon modules.
+  SVGs only as a last resort, kept in shared icon modules. **All icons
+  must render at 1px stroke** — never use `-outline` variants (they use
+  heavier fill-based outlines). Custom SVGs must set `strokeWidth="1"`.
+  A global CSS rule in `src/index.css` already forces Iconify linear
+  icons from 1.5px down to 1px.
 
 ## Project overview
 

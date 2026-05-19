@@ -84,7 +84,7 @@ function ExpandedFamily({ p, className }) {
 
 const DRAWER_ACTIONS = [
   { icon: 'solar:arrow-right-up-linear', label: 'Elation' },
-  { icon: 'solar:phone-outline', label: 'Call' },
+  { icon: 'solar:phone-linear', label: 'Call' },
   { icon: 'solar:calendar-add-linear', label: 'Schedule' },
   { icon: 'solar:chat-round-linear', label: 'Chat' },
   { icon: 'solar:notes-linear', label: 'Charts' },

@@ -129,7 +129,7 @@ function DropdownMenu({ patientId, onClose }) {
       <div className={styles.dropdownDivider} />
       <div className={styles.dropdownSection}>Automation</div>
       <button className={styles.dropdownItem} onClick={() => { showToast('Run Automation – coming soon'); onClose(); }}>
-        <Icon name="solar:bolt-outline" size={18} color="var(--neutral-300)" />
+        <Icon name="solar:bolt-linear" size={18} color="var(--neutral-300)" />
         Run Automation
       </button>
       <div className={styles.dropdownDivider} />
@@ -299,7 +299,7 @@ export function WorklistRow({ patient, isSelected, onSelect }) {
             <span style={{ position: 'relative' }}>
               <ActionButton
                 ref={callBtnRef}
-                icon="solar:phone-outline"
+                icon="solar:phone-linear"
                 size="L"
                 tooltip={p.status === 'oncall' ? 'View live call' : 'Call patient'}
                 iconColor={p.status === 'oncall' ? '#059669' : undefined}

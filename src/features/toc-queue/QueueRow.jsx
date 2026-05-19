@@ -377,7 +377,7 @@ export function QueueRow({ patient }) {
           <span style={{ position: 'relative' }}>
             <ActionButton
               ref={callBtnRef}
-              icon="solar:phone-outline"
+              icon="solar:phone-linear"
               size="L"
               tooltip={p.status === 'oncall' ? 'View live call' : 'Call patient'}
               iconColor={p.status === 'oncall' ? '#059669' : undefined}

@@ -45,7 +45,7 @@ function DropdownMenu({ row, onClose }) {
       <div className={rowStyles.dropdownDivider} />
       <div className={rowStyles.dropdownSection}>Automation</div>
       <button className={rowStyles.dropdownItem} onClick={() => { showToast('Run Automation – coming soon'); onClose(); }}>
-        <Icon name="solar:bolt-outline" size={18} color="var(--neutral-300)" />
+        <Icon name="solar:bolt-linear" size={18} color="var(--neutral-300)" />
         Run Automation
       </button>
       <div className={rowStyles.dropdownDivider} />
