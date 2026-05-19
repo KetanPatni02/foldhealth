@@ -1,0 +1,14 @@
+{
+  "name": "Fold Health",
+  "colors": {
+    "primary": "#8C5AE2",
+    "light": "#A87FF0",
+    "dark": "#7B4FCA"
+  },
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": ["docs/introduction"]
+    }
+  ]
+}
