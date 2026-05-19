@@ -138,6 +138,8 @@ function HeadingIcon({ size = 20, color = 'currentColor' }) {
 export function ComponentsPanel() {
   const [tab, setTab] = useState('components');
   const [renamingId, setRenamingId] = useState(null);
+  const [panelWidth, setPanelWidth] = useState(240);
+  const [isResizing, setIsResizing] = useState(false);
   const addBlock = useAppStore(s => s.addBlock);
   const showToast = useAppStore(s => s.showToast);
   const emailDocument = useAppStore(s => s.emailDocument);
@@ -148,6 +150,7 @@ export function ComponentsPanel() {
   const selectColumn = useAppStore(s => s.selectColumn);
   const removeBlock = useAppStore(s => s.removeBlock);
   const replaceHeaderFooter = useAppStore(s => s.replaceHeaderFooter);
+  const panelRef = useRef(null);
 
   useEffect(() => {
     const handler = (e) => {
@@ -157,6 +160,24 @@ export function ComponentsPanel() {
     window.addEventListener('eb:rename', handler);
     return () => window.removeEventListener('eb:rename', handler);
   }, []);
+
+  const handleResizeStart = useCallback((e) => {
+    e.preventDefault();
+    setIsResizing(true);
+    const startX = e.clientX;
+    const startW = panelRef.current?.offsetWidth || panelWidth;
+    const onMove = (ev) => {
+      const newW = Math.max(240, Math.min(480, startW + ev.clientX - startX));
+      setPanelWidth(newW);
+    };
+    const onUp = () => {
+      setIsResizing(false);
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [panelWidth]);
 
   // Clicking a Header / Footer tile in the components panel adds a default
   // preset directly — the picker for browsing/changing presets now lives
@@ -178,7 +199,7 @@ export function ComponentsPanel() {
   };
 
   return (
-    <div className={styles.leftPanel}>
+    <div ref={panelRef} className={styles.leftPanel} style={{ width: panelWidth }}>
       <div className={styles.tabs}>
         <button
           className={[styles.tab, tab === 'components' ? styles.tabActive : ''].join(' ')}
@@ -220,6 +241,10 @@ export function ComponentsPanel() {
           />
         )}
       </div>
+      <div
+        className={[styles.resizeHandle, isResizing ? styles.resizeHandleActive : ''].join(' ')}
+        onMouseDown={handleResizeStart}
+      />
     </div>
   );
 }

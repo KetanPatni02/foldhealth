@@ -261,13 +261,27 @@
 
 /* ── Left: Components panel ── */
 .leftPanel {
-  width: 240px;
   flex-shrink: 0;
   background: #fff;
   border-right: 0.5px solid var(--neutral-150);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+}
+
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+}
+.resizeHandle:hover,
+.resizeHandleActive {
+  background: var(--primary-200);
 }
 
 .tabs {
@@ -317,6 +331,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-y: overlay;
+  overflow-x: auto;
   padding: 0;
   background: #fff;
   scrollbar-width: thin;
@@ -350,7 +365,7 @@
 
 .componentGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
   gap: 8px;
   padding: 12px;
 }
@@ -791,6 +806,8 @@
   font-size: 13px;
   color: var(--neutral-400);
   transition: background .08s;
+  width: fit-content;
+  min-width: 100%;
 }
 
 .layerRow:active { cursor: grabbing; }
@@ -808,10 +825,8 @@
 }
 
 .layerRowText {
-  flex: 1;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex-shrink: 0;
 }
 
 .layerRemove {
