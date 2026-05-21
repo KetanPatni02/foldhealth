@@ -286,10 +286,14 @@ export function QueueRow({ patient }) {
             <div className={rowStyles.patientName}>{p.name} <span className={rowStyles.patientDemo}>({p.gender}•{p.age})</span></div>
             <div className={rowStyles.patientMeta}>
               {p.memberId} •{' '}
-              <span className={rowStyles.langBadge}>
+              <button
+                type="button"
+                className={rowStyles.langBadge}
+                onClick={(e) => e.stopPropagation()}
+              >
                 {(p.language || 'en').toUpperCase()}
                 <span className={rowStyles.langTooltip}>Preferred Language: {LANG_MAP[p.language] || 'English'}</span>
-              </span>
+              </button>
             </div>
           </div>
         </div>

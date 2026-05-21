@@ -6,7 +6,7 @@ import { useState, useMemo } from 'react';
  * @param {Array} data      — array of row objects
  * @param {string} [defaultKey]  — initial sort column key
  * @param {string} [defaultDir='asc'] — 'asc' | 'desc'
- * @returns {{ sorted, sortKey, sortDir, requestSort, getSortIcon }}
+ * @returns {{ sorted, sortKey, sortDir, requestSort, setSort, clearSort }}
  *
  * Usage:
  *   const { sorted, sortKey, sortDir, requestSort } = useTableSort(rows, 'name');
@@ -23,6 +23,17 @@ export function useTableSort(data, defaultKey = null, defaultDir = 'asc') {
       setSortKey(key);
       setSortDir('asc');
     }
+  };
+
+  // Explicit setters — used when the caller drives sort from a SortPopover
+  // rather than cycle-click on a header.
+  const setSort = (key, dir = 'asc') => {
+    setSortKey(key);
+    setSortDir(dir);
+  };
+  const clearSort = () => {
+    setSortKey(null);
+    setSortDir('asc');
   };
 
   const sorted = useMemo(() => {
@@ -57,5 +68,5 @@ export function useTableSort(data, defaultKey = null, defaultDir = 'asc') {
     });
   }, [data, sortKey, sortDir]);
 
-  return { sorted, sortKey, sortDir, requestSort };
+  return { sorted, sortKey, sortDir, requestSort, setSort, clearSort };
 }

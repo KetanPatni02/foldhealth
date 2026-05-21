@@ -442,12 +442,12 @@ export function CampaignView() {
   const campaignsLoading = useAppStore(s => s.campaignsLoading);
   const fetchCampaigns = useAppStore(s => s.fetchCampaigns);
 
-  const usingSupa = storeCampaigns.length > 0;
+  const usingSupa = Array.isArray(storeCampaigns) && storeCampaigns.length > 0;
   const [localData, setLocalData] = useState(CAMPAIGNS);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({});
 
-  useEffect(() => { fetchCampaigns(); }, [fetchCampaigns]);
+  useEffect(() => { fetchCampaigns?.(); }, [fetchCampaigns]);
 
   const campaignData = usingSupa ? storeCampaigns : localData;
 

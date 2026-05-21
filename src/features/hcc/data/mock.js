@@ -164,3 +164,16 @@ export const HCC_MEMBERS = MEMBERS_RAW.map((m, i) => {
     posDesc: pos.desc,
   };
 });
+
+// Name-keyed lookup of the rich mock so callers (DiagPanel, store enrichment)
+// can fill in prototype-shape fields when Supabase returns them stripped.
+// First entry wins when a name appears in multiple rows (e.g. multi-visit
+// repeats for the same patient — we keep the visit-1 record as canonical).
+export const HCC_MEMBER_BY_NAME = Object.fromEntries(
+  HCC_MEMBERS.reduce((acc, m) => {
+    if (m.name && !acc.find(([k]) => k === m.name)) acc.push([m.name, m]);
+    return acc;
+  }, []),
+);
+
+export const getMockMember = (name) => HCC_MEMBER_BY_NAME[name] || null;

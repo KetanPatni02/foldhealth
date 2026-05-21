@@ -16,6 +16,10 @@ import { updateHash } from '../lib/router';
 import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem } from '../lib/theme';
 import { createBlock, createBlockTree, collectBlockTree, buildParentMap, cloneBlockTree } from '../features/email-builder/blockHelpers';
 import { makeInitialDocument } from '../features/email-builder/initialDocument';
+import * as hccLifecycle from '../features/hcc/assignment/lifecycle';
+import { hydrateFromMember, dosKey as hccDosKey } from '../features/hcc/assignment/dosState';
+import { DEFAULT_SAMPLING_RATES } from '../features/hcc/assignment/sampling';
+import { staffById as hccStaffById } from '../features/hcc/assignment/astranaStaff';
 
 function parseTaskDateStr(str) {
   if (!str || typeof str !== 'string') return null;
@@ -1299,13 +1303,29 @@ export const useAppStore = create((set, get) => ({
       .select('*')
       .order('create_date', { ascending: false });
     if (error) {
-      console.error('fetchHccMembers error:', error.message);
-      set({ hccMembers: [], hccMembersLoading: false });
+      // Phase 2f — Supabase error: fall back to the full local mock so the
+      // worklist still has rows. Logs the error so we don't silently swap
+      // backends without noticing.
+      console.warn('fetchHccMembers error — falling back to local mock:', error.message);
+      const { HCC_MEMBERS } = await import('../features/hcc/data/mock');
+      set({ hccMembers: HCC_MEMBERS, hccMembersLoading: false });
+      return;
+    }
+    // Empty result set: same fallback.
+    if (!data || data.length === 0) {
+      const { HCC_MEMBERS } = await import('../features/hcc/data/mock');
+      set({ hccMembers: HCC_MEMBERS, hccMembersLoading: false });
       return;
     }
     const POS_MAP = { 'Walk-in': { code: '11', desc: 'Office' }, Telehealth: { code: '02', desc: 'Telehealth' } };
+    // Phase 2f — when Supabase rows are missing prototype-shape fields
+    // (dos_list, docStatus, cv/tv), fall back to the local rich mock keyed
+    // by name. This keeps the DiagPanel's DosSelector + Snapshot tiles
+    // populated even when the backend hasn't seeded that data yet.
+    const { HCC_MEMBER_BY_NAME } = await import('../features/hcc/data/mock');
     const members = (data || []).map(row => {
-      const dosList = row.dos_list || [];
+      const mock = HCC_MEMBER_BY_NAME[row.name] || {};
+      const dosList = (row.dos_list && row.dos_list.length) ? row.dos_list : (mock.dos_list || []);
       const pos = POS_MAP[row.visit_type] || { code: '', desc: row.visit_type || '' };
       return {
         id: row.id,
@@ -1314,13 +1334,15 @@ export const useAppStore = create((set, get) => ({
         name: row.name,
         g: row.gender,
         age: row.age,
-        cv: row.current_visit,
-        tv: row.total_visits,
+        cv: row.current_visit ?? mock.cv ?? null,
+        tv: row.total_visits  ?? mock.tv ?? null,
         dos_list: dosList,
-        dos: dosList[row.current_visit ? row.current_visit - 1 : 0]?.date,
-        visits: row.current_visit && row.total_visits ? `${row.current_visit} of ${row.total_visits} Visits` : null,
-        ch: row.chart_count,
-        docStatus: row.doc_status || [],
+        dos: dosList[(row.current_visit ?? mock.cv) ? (row.current_visit ?? mock.cv) - 1 : 0]?.date,
+        visits: (row.current_visit ?? mock.cv) && (row.total_visits ?? mock.tv)
+          ? `${row.current_visit ?? mock.cv} of ${row.total_visits ?? mock.tv} Visits`
+          : null,
+        ch: row.chart_count ?? mock.ch ?? null,
+        docStatus: (row.doc_status && row.doc_status.length) ? row.doc_status : (mock.docStatus || []),
         open: row.open_icds,
         date: row.create_date,
         due: row.due_label,
@@ -1385,6 +1407,25 @@ export const useAppStore = create((set, get) => ({
     set({ hccDiagnosisGaps: gaps, hccDiagnosisGapsLoading: false });
   },
 
+  // Optimistic accept/dismiss of an ICD inside the DiagPanel. Updates the
+  // local gap list immediately so the UI reflects the new state; the server
+  // round-trip is a TODO (Phase 3).
+  acceptHccGap: (code) => set(s => ({
+    hccDiagnosisGaps: s.hccDiagnosisGaps.map(g =>
+      g.code === code ? { ...g, status: 'Accepted' } : g
+    ),
+  })),
+  dismissHccGap: (code, reason) => set(s => ({
+    hccDiagnosisGaps: s.hccDiagnosisGaps.map(g =>
+      g.code === code ? { ...g, status: 'Dismissed', dismissReason: reason ?? g.dismissReason } : g
+    ),
+  })),
+  reopenHccGap: (code) => set(s => ({
+    hccDiagnosisGaps: s.hccDiagnosisGaps.map(g =>
+      g.code === code ? { ...g, status: 'New', dismissReason: null } : g
+    ),
+  })),
+
   selectedHccIds: [],
   selectHccMember: (id) => set(s => ({
     selectedHccIds: s.selectedHccIds.includes(id)
@@ -1393,6 +1434,207 @@ export const useAppStore = create((set, get) => ({
   })),
   selectAllHcc: (ids) => set({ selectedHccIds: ids }),
   clearHccSelected: () => set({ selectedHccIds: [] }),
+
+  // ─── HCC worklist sub-header state ───
+  hccListTitle: 'HCC List',
+  setHccListTitle: (title) => set({ hccListTitle: title }),
+  hccDueDateFilter: null, // null | 'Overdue' | 'Due Today' | 'Due This Week' | 'Due Next Week' | 'Due More Than 2 Weeks'
+  setHccDueDateFilter: (cat) => set({ hccDueDateFilter: cat }),
+
+  // ─── HCC worklist filter state ───
+  // hccFilters: { [filterKey]: string[] } — empty object = no filters applied.
+  hccFilters: {},
+  setHccFilter: (k, vals) => set(s => {
+    const next = { ...s.hccFilters };
+    if (!vals || !vals.length) delete next[k];
+    else next[k] = vals;
+    // Changing a filter detaches us from any "applied saved filter" highlight
+    return { hccFilters: next, hccActiveSavedId: null };
+  }),
+  clearHccFilters: () => set({ hccFilters: {}, hccActiveSavedId: null }),
+
+  // Which filter chip keys appear in the chip row. The MoreFiltersPopover
+  // toggles entries in this set. Initialized to the primary keys on first read.
+  hccVisibleFilterKeys: null, // null → fall back to PRIMARY_FILTER_KEYS in components
+  toggleHccVisibleFilter: (k) => set(s => {
+    // Lazy-initialize from primary keys
+    const current = s.hccVisibleFilterKeys
+      ? new Set(s.hccVisibleFilterKeys)
+      : new Set(['my','rl','coh','g','open','chart','supS','cdrS','r1s','dec']);
+    if (current.has(k)) current.delete(k); else current.add(k);
+    return { hccVisibleFilterKeys: [...current] };
+  }),
+  clearHccVisibleFilters: () => set({ hccVisibleFilterKeys: [] }),
+
+  // Saved filter sets. Each: { id, name, filters: {[k]: string[]} }.
+  hccSavedFilters: [
+    { id: 'sf1', name: 'High Risk Members',  filters: { rl: ['High'] } },
+    { id: 'sf2', name: 'Overdue Incomplete', filters: { supS: ['Assign'], cdrS: ['Assign'] } },
+  ],
+  hccActiveSavedId: null,
+  saveHccFilter: (name) => set(s => {
+    const trimmed = (name || '').trim();
+    if (!trimmed) return {};
+    const id = `sf-${Date.now()}`;
+    return {
+      hccSavedFilters: [...s.hccSavedFilters, { id, name: trimmed, filters: { ...s.hccFilters } }],
+      hccActiveSavedId: id,
+    };
+  }),
+  renameHccSavedFilter: (id, name) => set(s => ({
+    hccSavedFilters: s.hccSavedFilters.map(f => f.id === id ? { ...f, name: (name || '').trim() || f.name } : f),
+  })),
+  deleteHccSavedFilter: (id) => set(s => ({
+    hccSavedFilters: s.hccSavedFilters.filter(f => f.id !== id),
+    hccActiveSavedId: s.hccActiveSavedId === id ? null : s.hccActiveSavedId,
+    hccFilters: s.hccActiveSavedId === id ? {} : s.hccFilters,
+  })),
+  applyHccSavedFilter: (id) => set(s => {
+    const f = s.hccSavedFilters.find(x => x.id === id);
+    if (!f) return {};
+    return { hccFilters: { ...f.filters }, hccActiveSavedId: id };
+  }),
+
+  // Column visibility — array of column keys that are hidden. Sticky Member/Actions
+  // columns are not toggleable so they never appear here.
+  hccHiddenCols: [],
+  toggleHccColumn: (k) => set(s => {
+    const next = new Set(s.hccHiddenCols);
+    if (next.has(k)) next.delete(k); else next.add(k);
+    return { hccHiddenCols: [...next] };
+  }),
+  clearHccHiddenCols: () => set({ hccHiddenCols: [] }),
+
+  // Column ordering — array of column keys in the user's preferred order.
+  // Empty array means "use HCC_COLUMNS default order". Drag-to-reorder in the
+  // Show Columns popover writes here; HccWorklistTable + ColumnConfigPopover
+  // apply this order via `orderColumns(HCC_COLUMNS, hccColumnOrder)`.
+  hccColumnOrder: [],
+  reorderHccColumns: (fromKey, toKey) => set(s => {
+    if (!fromKey || !toKey || fromKey === toKey) return {};
+    // Seed the order from the static default the first time we move anything.
+    const base = s.hccColumnOrder.length
+      ? [...s.hccColumnOrder]
+      : (s._hccDefaultColumnKeys || []);
+    if (!base.length) return {};
+    const from = base.indexOf(fromKey);
+    const to = base.indexOf(toKey);
+    if (from < 0 || to < 0) return {};
+    base.splice(to, 0, base.splice(from, 1)[0]);
+    return { hccColumnOrder: base };
+  }),
+  // Stash the default key order once at app boot so reorderHccColumns can seed
+  // itself without importing columns.js (avoids a circular dep).
+  _hccDefaultColumnKeys: [],
+  setHccDefaultColumnKeys: (keys) => set(s => (
+    s._hccDefaultColumnKeys.length ? {} : { _hccDefaultColumnKeys: keys }
+  )),
+  clearHccColumnOrder: () => set({ hccColumnOrder: [] }),
+
+  // ─── HCC DOS-level assignment engine ─────────────────────────────────
+  // Per-(patient, DOS) assignment state keyed as `${patientId}::${dosDate}`.
+  // The shape is defined in features/hcc/assignment/dosState.js. Lifecycle
+  // transitions live in features/hcc/assignment/lifecycle.js — this slice
+  // just stores the result and exposes thin wrappers per AC.
+  hccDosAssignments: {},
+  // Client-level config — sampling rates can be overridden per client.
+  hccConfig: {
+    astrana: true,
+    samplingRates: { ...DEFAULT_SAMPLING_RATES },
+    slaCloseDays: 7,
+  },
+
+  // Look up the DOS-state record. Lazy-hydrates from the legacy member fields
+  // the first time a (patient, DOS) is read so the worklist's existing display
+  // values don't disappear.
+  getHccDosState: (patientId, dosDate) => {
+    const key = hccDosKey(patientId, dosDate);
+    const map = useAppStore.getState().hccDosAssignments;
+    if (map[key]) return map[key];
+    const patient = useAppStore.getState().hccMembers.find(m => m.id === patientId);
+    if (!patient) return null;
+    const idx = (patient.dos_list || []).findIndex(d => d.date === dosDate);
+    const hydrated = hydrateFromMember(patient, dosDate, idx < 0 ? 0 : idx);
+    set(s => ({ hccDosAssignments: { ...s.hccDosAssignments, [key]: hydrated } }));
+    return hydrated;
+  },
+
+  // Initialize Support assignment for every DOS on a patient (AC-1).
+  initializeHccPatient: (patientId) => set(s => {
+    const patient = s.hccMembers.find(m => m.id === patientId);
+    if (!patient) return {};
+    const { nextMap } = hccLifecycle.initializePatient(s.hccDosAssignments, patient, {
+      astrana: s.hccConfig.astrana,
+      slaCloseDays: s.hccConfig.slaCloseDays,
+    });
+    return { hccDosAssignments: nextMap };
+  }),
+
+  // Generic dispatcher — `kind` corresponds to a lifecycle.js export. Each
+  // call rebuilds `hccDosAssignments` immutably. UI components use the named
+  // wrappers below; this is the single chokepoint for the engine.
+  transitionHccDos: (patientId, dosDate, kind, payload = {}) => set(s => {
+    const fn = hccLifecycle[kind];
+    if (typeof fn !== 'function') {
+      console.warn(`transitionHccDos: unknown kind "${kind}"`);
+      return {};
+    }
+    const patient = s.hccMembers.find(m => m.id === patientId);
+    if (!patient) return {};
+    const dos = (patient.dos_list || []).find(d => d.date === dosDate) || { date: dosDate };
+    const actor = payload.actor || 'current-user';
+    let result;
+    switch (kind) {
+      case 'markInsufficient':
+      case 'rejectDos':
+        result = fn(s.hccDosAssignments, patient, dos, actor, payload.reason);
+        break;
+      case 'returnDos':
+        result = fn(s.hccDosAssignments, patient, dos, payload.fromRole, actor, payload.reason);
+        break;
+      case 'reassignRole':
+        result = fn(s.hccDosAssignments, patient, dos, payload.role, payload.staffId, actor, payload.reason);
+        break;
+      case 'completeR1':
+      case 'completeR2':
+        result = fn(s.hccDosAssignments, patient, dos, actor, s.hccConfig.samplingRates);
+        break;
+      default:
+        result = fn(s.hccDosAssignments, patient, dos, actor);
+    }
+    return { hccDosAssignments: result.nextMap };
+  }),
+
+  // Convenience wrappers — one per AC transition so consumers don't have to
+  // remember string kinds. They forward to transitionHccDos above.
+  hccMarkSupportInProgress: (pid, dos, actor) =>
+    useAppStore.getState().transitionHccDos(pid, dos, 'markSupportInProgress', { actor }),
+  hccCompleteSupport: (pid, dos, actor) =>
+    useAppStore.getState().transitionHccDos(pid, dos, 'completeSupport', { actor }),
+  hccMarkInsufficient: (pid, dos, actor, reason) =>
+    useAppStore.getState().transitionHccDos(pid, dos, 'markInsufficient', { actor, reason }),
+  hccRejectDos: (pid, dos, actor, reason) =>
+    useAppStore.getState().transitionHccDos(pid, dos, 'rejectDos', { actor, reason }),
+  hccCompleteCoder: (pid, dos, actor) =>
+    useAppStore.getState().transitionHccDos(pid, dos, 'completeCoder', { actor }),
+  hccRequestRecords: (pid, dos, actor) =>
+    useAppStore.getState().transitionHccDos(pid, dos, 'requestRecords', { actor }),
+  hccRecordsReceived: (pid, dos, actor) =>
+    useAppStore.getState().transitionHccDos(pid, dos, 'recordsReceived', { actor }),
+  hccCompleteR1: (pid, dos, actor) =>
+    useAppStore.getState().transitionHccDos(pid, dos, 'completeR1', { actor }),
+  hccCompleteR2: (pid, dos, actor) =>
+    useAppStore.getState().transitionHccDos(pid, dos, 'completeR2', { actor }),
+  hccCompleteR3: (pid, dos, actor) =>
+    useAppStore.getState().transitionHccDos(pid, dos, 'completeR3', { actor }),
+  hccReturnDos: (pid, dos, fromRole, actor, reason) =>
+    useAppStore.getState().transitionHccDos(pid, dos, 'returnDos', { fromRole, actor, reason }),
+  hccReassignRole: (pid, dos, role, staffId, actor, reason) =>
+    useAppStore.getState().transitionHccDos(pid, dos, 'reassignRole', { role, staffId, actor, reason }),
+
+  // Helpers exposed for the UI — resolve a staff id back to a display name.
+  hccStaffName: (staffId) => (hccStaffById(staffId)?.name || staffId || ''),
+  hccStaffInitials: (staffId) => (hccStaffById(staffId)?.initials || ''),
 
   // ─── All Patients (unified TOC + HCC view, Supabase-backed) ───
   allPatients: [],
@@ -1459,15 +1701,42 @@ export const useAppStore = create((set, get) => ({
   diagPanelMemberId: null,
   diagActiveTab: 'Codes',
   diagDosFilter: null,      // null = first DOS (member.dos_list[0]); 'ALL' = sweep; else a date string
-  diagViewMode: 'HCC',      // 'HCC' (grouped) | 'ICD' (flat)
-  openDiagPanel: (id) => set({
+  diagViewMode: 'ICD',      // 'ICD' (flat sections, default) | 'HCC' (grouped)
+  diagHighlightCode: null,
+  // Status pill next to the DOS selector (current DOS's worklist status).
+  diagDosStatus: 'New',
+  setDiagDosStatus: (s) => set({ diagDosStatus: s }),
+  // Snapshot-tile filter: 'Open' | 'Suspect' | 'Recapture' | 'Other' | null.
+  diagSnapFilter: null,
+  setDiagSnapFilter: (f) => set({ diagSnapFilter: f }),
+  // Patient Gap Snapshot section collapsed/expanded.
+  diagSnapOpen: true,
+  setDiagSnapOpen: (open) => set({ diagSnapOpen: open }),
+  // Left-workspace tab: null = drawer at 40vw with only the right pane;
+  // any string = drawer expands to 70vw with the matching tab content.
+  diagLeftPanel: null,   // 'activity' | 'comments' | 'documents' | 'notes' | 'claims' | null
+  setDiagLeftPanel: (panel) => set({ diagLeftPanel: panel }),
+
+  // Upload chart drawer — member object or null. Opened from ChartPopover's
+  // "Upload New Chart" CTA and from the DiagPanel chart-upload action.
+  hccUploadMember: null,
+  openHccUploadDrawer: (member) => set({ hccUploadMember: member }),
+  closeHccUploadDrawer: () => set({ hccUploadMember: null }),
+  openDiagPanel: (id, opts = {}) => set({
     diagPanelOpen: true,
     diagPanelMemberId: id,
     diagActiveTab: 'Codes',
-    diagDosFilter: null,
-    diagViewMode: 'HCC',
+    // `initialDos` and `highlightCode` come from row popovers (Visits → open a
+    // specific DOS, OpenICDs hover → scroll/highlight a specific code).
+    diagDosFilter: opts.initialDos ?? null,
+    diagHighlightCode: opts.highlightCode ?? null,
+    diagDosStatus: opts.dosStatus ?? 'New',
+    diagSnapFilter: null,
+    diagSnapOpen: true,
+    diagLeftPanel: opts.leftPanel ?? null,
+    diagViewMode: 'ICD',
   }),
-  closeDiagPanel: () => set({ diagPanelOpen: false, diagPanelMemberId: null }),
+  closeDiagPanel: () => set({ diagPanelOpen: false, diagPanelMemberId: null, diagLeftPanel: null }),
   setDiagActiveTab: (tab) => set({ diagActiveTab: tab }),
   setDiagDosFilter: (dos) => set({ diagDosFilter: dos }),
   setDiagViewMode: (mode) => set({ diagViewMode: mode }),

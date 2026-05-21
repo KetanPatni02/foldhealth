@@ -8,11 +8,20 @@ import { Checkbox } from '../ui/checkbox';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './BulkBar.module.css';
 
-export function BulkBar() {
-  const selectedIds = useAppStore(s => s.selectedIds);
-  const clearSelected = useAppStore(s => s.clearSelected);
+/**
+ * BulkBar — floating action bar that appears when one or more rows are
+ * selected. By default it binds to the global selection store, but callers
+ * can pass their own `selectedIds` + `onClear` if they manage a separate
+ * selection set (e.g. the HCC worklist uses `selectedHccIds`).
+ */
+export function BulkBar({ selectedIds: selectedIdsProp, onClear } = {}) {
+  const storeSelectedIds = useAppStore(s => s.selectedIds);
+  const storeClearSelected = useAppStore(s => s.clearSelected);
   const setShowInvokeModal = useAppStore(s => s.setShowInvokeModal);
   const showToast = useAppStore(s => s.showToast);
+
+  const selectedIds = selectedIdsProp ?? storeSelectedIds;
+  const clearSelected = onClear ?? storeClearSelected;
   const [showMore, setShowMore] = useState(false);
   const [visible, setVisible] = useState(false);
   const moreRef = useRef(null);

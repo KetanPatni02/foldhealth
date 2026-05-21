@@ -1,0 +1,160 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 8998;
+  background: transparent;
+}
+
+.popover {
+  position: fixed;
+  z-index: 8999;
+  padding: 14px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-100);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.heading {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  margin-bottom: 8px;
+}
+
+/* ── Calendar header (chevrons + month labels) ───────────────────────── */
+
+.calHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.navBtn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  transition: background 0.12s;
+}
+.navBtn:hover { background: var(--neutral-50); }
+
+.monthLabels {
+  display: flex;
+  gap: 28px;
+  flex: 1;
+  justify-content: center;
+}
+
+.monthLabels span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neutral-400);
+  letter-spacing: 0.2px;
+}
+
+/* ── Calendar grid ───────────────────────────────────────────────────── */
+
+.calBody {
+  display: flex;
+  gap: 16px;
+  padding: 0 4px;
+}
+
+.calDivider {
+  width: 0.5px;
+  background: var(--neutral-150);
+  align-self: stretch;
+  flex-shrink: 0;
+}
+
+.month {
+  width: 220px;
+}
+
+.dowRow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 2px;
+}
+
+.dow {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--neutral-200);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.cellEmpty {
+  height: 32px;
+}
+
+.cell {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 13px;
+  background: transparent;
+  border: none;
+  color: var(--neutral-400);
+  border-radius: 4px;
+  font-family: inherit;
+  transition: background 0.12s;
+}
+.cell:hover {
+  background: var(--neutral-50);
+}
+
+.cellSelected {
+  background: var(--primary-300);
+  color: var(--neutral-0);
+  font-weight: 600;
+  border-radius: 0;
+}
+.cellSelected:hover {
+  background: var(--primary-300);
+}
+
+.cellRoundFull  { border-radius: 50%; }
+.cellRoundLeft  { border-radius: 50% 0 0 50%; }
+.cellRoundRight { border-radius: 0 50% 50% 0; }
+
+.cellInRange {
+  background: var(--primary-50);
+  color: var(--neutral-400);
+  border-radius: 0;
+}
+.cellInRange:hover {
+  background: var(--primary-50);
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────── */
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 0.5px solid var(--neutral-150);
+}

@@ -39,6 +39,8 @@ const TABS = [
   { id: 'template', icon: 'solar:palette-linear' },
 ];
 
+const EMPTY_BULK_IDS = [];
+
 export function PropertiesPanel() {
   const [tab, setTab] = useState('design');
   const [width, setWidth] = useState(DEFAULT_WIDTH);
@@ -46,7 +48,7 @@ export function PropertiesPanel() {
   const doc = useAppStore(s => s.emailDocument);
   const selectedBlockId = useAppStore(s => s.selectedBlockId);
   const updateBlock = useAppStore(s => s.updateBlock);
-  const bulkIds = useAppStore(s => s.bulkSelectedIds);
+  const bulkIds = useAppStore(s => s.bulkSelectedIds) ?? EMPTY_BULK_IDS;
 
   // When nothing is selected, fall back to the root EmailLayout so the panel
   // shows global settings (colors, color variables, typography) rather than

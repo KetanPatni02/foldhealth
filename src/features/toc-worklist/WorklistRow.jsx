@@ -233,10 +233,14 @@ export function WorklistRow({ patient, isSelected, onSelect }) {
               <div className={styles.patientName}><button className={styles.patientNameLink} onClick={e => { e.stopPropagation(); useAppStore.getState().openQuickView({ id: p.id, name: p.name, initials: p.initials, gender: p.gender, age: p.age, memberId: p.memberId, language: p.language, lace: p.lace }); }}>{p.name}</button> <span className={styles.patientDemo}>({p.gender}•{p.age})</span></div>
               <div className={styles.patientMeta}>
                 {p.memberId} •{' '}
-                <span className={styles.langBadge}>
+                <button
+                  type="button"
+                  className={styles.langBadge}
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {(p.language || 'en').toUpperCase()}
                   <span className={styles.langTooltip}>Preferred Language: {LANG_MAP[p.language] || 'English'}</span>
-                </span>
+                </button>
               </div>
             </div>
           </div>

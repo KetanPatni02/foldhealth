@@ -21,12 +21,14 @@
   padding: 0 16px;
   flex-shrink: 0;
   justify-content: space-between;
+  min-height: 48px;
   /* NOT sticky — kept outside the horizontal scroll wrap so it stays anchored */
 }
 
 .tabLeft {
   display: flex;
-  gap: 12px;
+  align-items: center;
+  gap: 8px;
 }
 
 .tabItem {
@@ -143,6 +145,33 @@
   border-right: 1px solid var(--neutral-150);
 }
 
+/* ── Sortable header cells (opens SortPopover on click) ── */
+.headerCell {
+  /* Inherit positioning from base .table thead th — just add interaction state. */
+}
+.headerCellSortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.12s;
+}
+.headerCellSortable:hover {
+  color: var(--neutral-400);
+}
+.headerCellActive {
+  color: var(--primary-300);
+}
+
+.headerLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sortIcon {
+  display: inline-flex;
+  align-items: center;
+}
+
 /* ── Empty state ── */
 .empty {
   display: flex;
@@ -166,3 +195,34 @@
   text-align: center;
   max-width: 320px;
 }
+
+/* ── Actions <th> — embeds the column hide/show trigger ───────────────── */
+
+.actionsTh {
+  padding: 8px 8px !important;
+}
+
+.actionsHeaderLabel {
+  display: inline-block;
+  margin-right: 6px;
+}
+
+.colCfgBtn {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.colCfgBtn:hover { background: var(--neutral-50); }
+
+.colCfgBtnActive {
+  background: var(--primary-50);
+}
+.colCfgBtnActive:hover { background: var(--primary-100); }

@@ -8,6 +8,8 @@ import { Icon } from '../../components/Icon/Icon';
 import { InlineEditable } from './InlineEditable';
 import styles from './EmailBuilder.module.css';
 
+const EMPTY_BULK_IDS = [];
+
 const TYPE_LABELS = {
   EmailLayout: 'Email',
   Heading: 'Heading',
@@ -208,7 +210,7 @@ function ResizeWrap({ id, block, updateBlock, isSelected, canWidth, canHeight, c
 export function PreviewCanvas() {
   const doc = useAppStore(s => s.emailDocument);
   const selectedBlockId = useAppStore(s => s.selectedBlockId);
-  const bulkSelectedIds = useAppStore(s => s.bulkSelectedIds);
+  const bulkSelectedIds = useAppStore(s => s.bulkSelectedIds) ?? EMPTY_BULK_IDS;
   const setSelectedBlockId = useAppStore(s => s.setSelectedBlockId);
   const removeBlock = useAppStore(s => s.removeBlock);
   const updateBlock = useAppStore(s => s.updateBlock);
