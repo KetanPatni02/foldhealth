@@ -13,7 +13,7 @@ import { FALLBACK_KPIS, FALLBACK_TIME_SERIES, FALLBACK_TABLES, FALLBACK_PROGRESS
 import { FALLBACK_INBOX_ITEMS, FALLBACK_CHANNEL_ITEMS, FALLBACK_CALL_LINES, FALLBACK_CALL_SESSIONS } from '../data/callsConfig';
 import { fallbackTasks } from '../data/tasks';
 import { updateHash } from '../lib/router';
-import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem } from '../lib/theme';
+import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem, applyNavStyle, getStoredNavStyle } from '../lib/theme';
 import { createBlock, createBlockTree, collectBlockTree, buildParentMap, cloneBlockTree, extractSubtree, cloneStoredTree } from '../features/email-builder/blockHelpers';
 import { makeInitialDocument } from '../features/email-builder/initialDocument';
 
@@ -59,6 +59,10 @@ const _savedSettingsTab = sessionStorage.getItem('settingsTab');
 // index.html blocking script already applied to <html>.
 const _initialThemeSetting = getStoredTheme();
 const _initialResolvedTheme = getResolvedTheme(_initialThemeSetting);
+const _initialNavStyle = getStoredNavStyle();
+// Apply nav style at module load so it lands before React mounts (the index.html
+// blocking script handles the color theme but not this one yet).
+applyNavStyle(_initialNavStyle);
 
 // ── Campaign row mapper ──
 // Single source of truth for translating Supabase campaigns rows into the JS
@@ -160,6 +164,16 @@ export const useAppStore = create((set, get) => ({
     );
   },
   _themeSubscribed: false,
+
+  // ─── Nav style ───────────────────────────────────────────────────────
+  // 'default' = per-theme dark-purple chrome (existing behavior)
+  // 'light'   = light sidebar (white surface, primary purple accent),
+  //             applied consistently across all color themes
+  navStyle: _initialNavStyle,
+  setNavStyle: (next) => {
+    const applied = applyNavStyle(next);
+    set({ navStyle: applied });
+  },
 
   // Pending add-task request — set by CreateNewPopover or WorklistRow "Add Task"
   pendingAddTask: null,
