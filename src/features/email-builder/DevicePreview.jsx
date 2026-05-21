@@ -9,15 +9,34 @@ function EmailIframe({ html, renderWidth, theme = 'light' }) {
   const [scale, setScale] = useState(1);
   const [size, setSize] = useState({ w: 0, h: 0 });
 
-  // Render the email HTML via srcdoc + sandbox — isolates the iframe from the
-  // parent origin so any <script> in the email markup cannot run in the app.
-  const srcDoc = html || '<!DOCTYPE html><html><body></body></html>';
-
   // Preview surface mirrors the in-component theme toggle, not the app theme —
   // recipients see emails on a device with its own light/dark setting, so the
   // iframe and its wrapper must paint together to prevent a white flash before
   // the email HTML loads.
   const previewBg = theme === 'dark' ? '#0F1117' : '#fff';
+
+  // Inject a thin transparent scrollbar into the iframe document so the email
+  // preview doesn't render with the OS-default scrollbar (which paints as a
+  // wide dark bar over the rendered design). Preview-only — does not affect
+  // the actual email HTML delivered to recipients. Always prepended (no head
+  // matching) and forced with !important so we win the cascade vs whatever
+  // styles the email template ships with.
+  const scrollbarThumb = theme === 'dark' ? 'rgba(255,255,255,0.28)' : 'rgba(0,0,0,0.28)';
+  const scrollbarThumbHover = theme === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)';
+  const scrollbarCss = `<style>
+    html, body { scrollbar-width: thin !important; scrollbar-color: ${scrollbarThumb} transparent !important; }
+    ::-webkit-scrollbar { width: 8px !important; height: 8px !important; background: transparent !important; }
+    ::-webkit-scrollbar-track { background: transparent !important; border: none !important; box-shadow: none !important; }
+    ::-webkit-scrollbar-corner { background: transparent !important; }
+    ::-webkit-scrollbar-thumb { background: ${scrollbarThumb} !important; border-radius: 4px !important; border: 2px solid transparent !important; background-clip: padding-box !important; }
+    ::-webkit-scrollbar-thumb:hover { background: ${scrollbarThumbHover} !important; background-clip: padding-box !important; }
+  </style>`;
+
+  // Render the email HTML via srcdoc + sandbox — isolates the iframe from the
+  // parent origin so any <script> in the email markup cannot run in the app.
+  // Always prepend the scrollbar style; HTML parsers tolerate <style> outside
+  // <head> and hoist it.
+  const srcDoc = html ? scrollbarCss + html : '<!DOCTYPE html><html><body></body></html>';
 
   useEffect(() => {
     if (!renderWidth) return;
