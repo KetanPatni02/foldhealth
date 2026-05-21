@@ -4,7 +4,7 @@ import { renderEmailHtml } from './patchEmailHtml';
 import { Toggle } from '../../components/Toggle/Toggle';
 import styles from './DevicePreview.module.css';
 
-function EmailIframe({ html, renderWidth }) {
+function EmailIframe({ html, renderWidth, theme = 'light' }) {
   const wrapRef = useRef(null);
   const [scale, setScale] = useState(1);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -12,6 +12,12 @@ function EmailIframe({ html, renderWidth }) {
   // Render the email HTML via srcdoc + sandbox — isolates the iframe from the
   // parent origin so any <script> in the email markup cannot run in the app.
   const srcDoc = html || '<!DOCTYPE html><html><body></body></html>';
+
+  // Preview surface mirrors the in-component theme toggle, not the app theme —
+  // recipients see emails on a device with its own light/dark setting, so the
+  // iframe and its wrapper must paint together to prevent a white flash before
+  // the email HTML loads.
+  const previewBg = theme === 'dark' ? '#0F1117' : '#fff';
 
   useEffect(() => {
     if (!renderWidth) return;
@@ -33,12 +39,13 @@ function EmailIframe({ html, renderWidth }) {
         className={styles.emailIframe}
         sandbox="allow-same-origin"
         srcDoc={srcDoc}
+        style={{ background: previewBg, colorScheme: theme }}
       />
     );
   }
 
   return (
-    <div ref={wrapRef} className={styles.emailIframeScaled}>
+    <div ref={wrapRef} className={styles.emailIframeScaled} style={{ background: previewBg }}>
       <iframe
         title="Email preview"
         sandbox="allow-same-origin"
@@ -53,8 +60,8 @@ function EmailIframe({ html, renderWidth }) {
           top: 0,
           border: 0,
           display: 'block',
-          background: '#fff',
-          colorScheme: 'light',
+          background: previewBg,
+          colorScheme: theme,
         }}
       />
     </div>
@@ -153,9 +160,9 @@ export function DevicePreview({ device }) {
       </div>
       <div className={styles.deviceWrap} key={device}>
         {device === 'desktop' ? (
-          <MacBookPro width={macWidth} screen={<EmailIframe html={emailHtml} renderWidth={1280} />} />
+          <MacBookPro width={macWidth} screen={<EmailIframe html={emailHtml} renderWidth={1280} theme={theme} />} />
         ) : (
-          <IPhone17Pro width={phoneWidth} screen={<EmailIframe html={emailHtml} renderWidth={420} />} />
+          <IPhone17Pro width={phoneWidth} screen={<EmailIframe html={emailHtml} renderWidth={420} theme={theme} />} />
         )}
         <div className={styles.meta}>
           {device === 'desktop' ? 'MacBook Pro · 16-inch' : 'iPhone 17 Pro · 6.3-inch'}

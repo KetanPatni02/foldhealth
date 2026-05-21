@@ -2263,7 +2263,7 @@ function ColumnWidthBar({ count, widths, onChange }) {
               className={styles.colWidthSeg}
               style={{ width: `${w}%`, backgroundColor: COL_COLORS[i % COL_COLORS.length] }}
             >
-              <span className={styles.colWidthLabel} style={{ color: i % 2 === 0 ? '#fff' : 'var(--neutral-400, #6F7A90)' }}>{Math.round(w)}%</span>
+              <span className={styles.colWidthLabel} style={{ color: i % 2 === 0 ? 'var(--neutral-0)' : 'var(--neutral-400)' }}>{Math.round(w)}%</span>
             </div>
             {i < count - 1 && (
               <div

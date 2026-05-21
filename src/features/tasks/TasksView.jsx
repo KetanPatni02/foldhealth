@@ -671,7 +671,7 @@ function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo }) {
           onClick={e => { e.stopPropagation(); onToggle(task); }}
           aria-label={isCompleted ? 'Mark incomplete' : 'Mark complete'}
         >
-          {isCompleted && <Icon name="solar:check-read-linear" size={13} color="#fff" />}
+          {isCompleted && <Icon name="solar:check-read-linear" size={13} color="var(--neutral-0)" />}
         </button>
       </div>
 
@@ -858,7 +858,7 @@ function KanbanCardContent({ task }) {
             onClick={(e) => e.stopPropagation()}
             aria-label={isCompleted ? 'Mark incomplete' : 'Mark complete'}
           >
-            {isCompleted && <Icon name="solar:check-read-linear" size={13} color="#fff" />}
+            {isCompleted && <Icon name="solar:check-read-linear" size={13} color="var(--neutral-0)" />}
           </button>
         </div>
 
@@ -1280,7 +1280,7 @@ function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCreated })
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Status</span>
               <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className="h-8 text-sm w-[140px]" style={{ background: 'white' }}>
+                <SelectTrigger className="h-8 text-sm w-[140px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1707,7 +1707,7 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
         {/* Toolbar */}
         <div className={styles.drawerToolbar}>
           <Select value={task.status} onValueChange={handleStatusChange}>
-            <SelectTrigger className="h-8 text-sm w-[120px]" style={{ background: 'white' }}>
+            <SelectTrigger className="h-8 text-sm w-[120px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1926,7 +1926,7 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
                     updateTask(sub.id, { status: sub.status === 'completed' ? 'pending' : 'completed' });
                   }}
                 >
-                  {sub.status === 'completed' && <Icon name="solar:check-read-linear" size={13} color="#fff" />}
+                  {sub.status === 'completed' && <Icon name="solar:check-read-linear" size={13} color="var(--neutral-0)" />}
                 </button>
                 <div className={styles.subtaskCardBody}>
                   <div className={styles.subtaskCardRow}>

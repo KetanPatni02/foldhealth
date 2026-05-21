@@ -80,7 +80,7 @@
 }
 
 .toggleBtnActive {
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
@@ -138,7 +138,7 @@
   border: 0.5px solid transparent;
   border-radius: 8px;
   background:
-    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(var(--neutral-0), var(--neutral-0)) padding-box,
     linear-gradient(to right, #FF907F 0%, #FF57CD 51%, #68A7FF 96%) border-box;
   display: flex;
   flex-direction: column;
@@ -331,7 +331,7 @@
 }
 
 .shareYesBtn {
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid rgba(140, 90, 226, 0.25);
   border-radius: 4px;
   padding: 2px 8px;
@@ -348,7 +348,7 @@
 }
 
 .shareNoBtn {
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-100);
   border-radius: 4px;
   padding: 2px 8px;
