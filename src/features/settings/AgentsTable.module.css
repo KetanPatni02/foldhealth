@@ -195,7 +195,7 @@
   z-index: 3;
 }
 
-/* Repaint sticky cells on row hover so they don't show through as opaque white strips */
+/* Repaint sticky cells on row hover so they don't show through as opaque strips */
 .table tbody tr:hover .stickyLeft,
 .table tbody tr:hover .stickyStatus,
 .table tbody tr:hover .stickyRight {

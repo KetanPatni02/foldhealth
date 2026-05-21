@@ -132,24 +132,24 @@
   --primary-200: #9B7BD9;
   --primary-100: #241B36;   /* soft purple-tinted dark surface */
   --primary-50:  #1A1428;
-  --primary-25:  #15101F;
+  --primary-25:  #231F26;   /* subtle warm purple-leaning hover (4% lighter than page) */
 
   /* Secondary (orange) */
   --secondary-300: #FF8B52;
   --secondary-200: #7A3F22;
   --secondary-100: #3A1E10;
 
-  /* Neutral — warm-neutral palette (Claude/Vercel/Cursor-style) */
-  --neutral-500: #FAFAFA;   /* highest-contrast text (softer than pure white) */
-  --neutral-400: #E5E5E5;   /* primary text — warm off-white */
-  --neutral-300: #A8A8A8;   /* body muted text */
-  --neutral-200: #787878;   /* hint / disabled (~4.8:1 on page; was FAIL at #5A6478) */
-  --neutral-150: #3A3A3A;   /* default borders */
-  --neutral-100: #2F2F2F;   /* soft borders / dividers */
-  --neutral-75:  #2A2A2A;   /* elevated surface 2 (hovers) */
-  --neutral-50:  #222222;   /* elevated surface 1 (cards) */
-  --neutral-25:  #1E1E1E;   /* very subtle surface (between page and cards) */
-  --neutral-0:   #1A1A1A;   /* page surface — warm near-black */
+  /* Neutral — Claude-style warm sepia palette (balanced contrast, softer text) */
+  --neutral-500: #EDEAE3;   /* highest-contrast text — warm, never pure white */
+  --neutral-400: #D4D1CB;   /* primary body text — soft warm off-white */
+  --neutral-300: #ADA9A2;   /* muted body text — warm grey-tan */
+  --neutral-200: #7E7B74;   /* hint / disabled — warm muted (~4.7:1 on page) */
+  --neutral-150: #3D3A35;   /* default borders — visible warm */
+  --neutral-100: #322F2B;   /* soft borders / dividers */
+  --neutral-75:  #2A2724;   /* elevated surface 2 (hovers) */
+  --neutral-50:  #252320;   /* elevated surface 1 (cards) — clear elevation */
+  --neutral-25:  #1F1D1A;   /* very subtle surface between page and cards */
+  --neutral-0:   #1A1815;   /* page surface — warm near-black, slightly warmer */
 
   /* Status — adjusted for readability on dark surfaces */
   --status-error:         #F15B58;
