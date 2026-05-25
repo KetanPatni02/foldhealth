@@ -1,0 +1,170 @@
+.drawer {
+  width: 648px;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+
+.body {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Patient strip ────────────────────────────────────────────────────── */
+
+.patient {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--primary-50);
+  border-bottom: 0.5px solid var(--neutral-100);
+  flex-shrink: 0;
+  font-family: 'Inter', sans-serif;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--primary-25);
+  border: 0.5px solid var(--primary-200);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary-300);
+  flex-shrink: 0;
+}
+
+.patientText {
+  min-width: 0;
+}
+
+.patientName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+
+.patientMeta {
+  font-size: 13px;
+  color: var(--neutral-300);
+}
+
+/* ── Form ─────────────────────────────────────────────────────────────── */
+
+.form {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-family: 'Inter', sans-serif;
+}
+
+.dropZone {
+  border: 0.5px dashed var(--neutral-150);
+  border-radius: 8px;
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: var(--neutral-0);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.dropZone:hover { border-color: var(--neutral-200); }
+
+.dropZoneActive {
+  border-color: var(--primary-300);
+  background: var(--primary-50);
+}
+
+.dropZoneCopy {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dropZoneMuted {
+  font-size: 14px;
+  color: var(--neutral-200);
+  font-weight: 500;
+}
+
+.dropZoneLink {
+  font-size: 14px;
+  color: var(--primary-300);
+}
+
+.dropZoneFile {
+  font-size: 14px;
+  color: var(--primary-300);
+  font-weight: 500;
+}
+
+.fileInput {
+  display: none;
+}
+
+/* ── Fields ───────────────────────────────────────────────────────────── */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fieldLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--neutral-200);
+  font-family: 'Inter', sans-serif;
+}
+
+.required::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--status-error);
+  display: inline-block;
+}
+
+.input {
+  width: 100%;
+  height: 32px;
+  border: 0.5px solid var(--neutral-200);
+  border-radius: 4px;
+  padding: 0 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--neutral-500);
+  outline: none;
+  box-sizing: border-box;
+  background: var(--neutral-0);
+  transition: border-color 0.12s;
+}
+.input:focus {
+  border-color: var(--primary-300);
+}
+.input::placeholder {
+  color: var(--neutral-200);
+}
+
+.select {
+  width: 100%;
+  height: 32px;
+  font-size: 14px;
+}

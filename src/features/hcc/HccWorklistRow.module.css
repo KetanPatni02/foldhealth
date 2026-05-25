@@ -91,20 +91,34 @@
   color: var(--neutral-200);
   margin-top: 3px;
 }
+/* Plain text-link badge — sits inside .patientMeta. Grey by default, picks
+   up the primary-300 underline on hover. Tooltip wrapper stays unchanged. */
 .langBadge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 6px;
-  background: var(--primary-100);
-  color: var(--primary-300);
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 500;
+  background: transparent;
+  color: var(--neutral-300);
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: normal;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border: 0.5px solid color-mix(in srgb, var(--primary-300) 20%, transparent);
   position: relative;
-  cursor: default;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.12s;
+}
+.langBadge:hover {
+  color: var(--primary-300);
+  text-decoration: underline;
+  text-decoration-color: var(--primary-300);
+  text-underline-offset: 2px;
+}
+.langBadge:focus-visible {
+  outline: 2px solid var(--primary-300);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 .langTooltip {
   display: none;
@@ -134,6 +148,31 @@
   min-width: 0;
 }
 
+/* ── Clickable trigger wrappers (Last Visit + HCC Evidence) ──
+   They become buttons in markup but visually behave like the old stack cells. */
+.lastVisitTrigger,
+.evidenceTrigger {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  align-items: flex-start;
+  border-radius: 4px;
+  transition: background 0.12s;
+}
+.lastVisitTrigger:hover,
+.evidenceTrigger:hover {
+  background: var(--neutral-50);
+}
+
 /* ── Last Visit cell — purple date + visits count ── */
 .lastVisitDate {
   font-size: 14px;
@@ -143,9 +182,16 @@
   white-space: nowrap;
 }
 .lastVisitMeta {
+  /* Matches prototype: dotted-underlined clickable visit count */
   font-size: 12px;
   color: var(--neutral-400);
   white-space: nowrap;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.lastVisitTrigger:hover .lastVisitMeta {
+  color: var(--primary-300);
 }
 
 /* ── Create Date cell — date + due line with clock icon ── */
@@ -204,17 +250,26 @@
 .roleStatusLine {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   font-size: 12px;
   white-space: nowrap;
+  color: var(--neutral-300);
+  /* Visible label below the role name is the *date*; the status is encoded
+     by the icon's color. The legend at the bottom of the worklist explains
+     the icon meanings. */
+}
+.roleDate {
+  font-size: 12px;
+  color: var(--neutral-300);
+  font-variant-numeric: tabular-nums;
 }
 .roleUnassigned {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   padding: 4px;
   font-size: 14px;
-  color: var(--neutral-150);
+  color: var(--neutral-200);
 }
 
 /* ── RAF Impact badge — green with up arrow (or red with down) ── */
@@ -268,7 +323,38 @@
 .colOpen        { min-width: 90px; }
 .colDate        { min-width: 110px; }
 .colEvidence    { min-width: 110px; }
+.colAssignee    { min-width: 170px; }
 .colRole        { min-width: 150px; }
+
+/* Assignee cell — Avatar + 2-line stack (name on top, current role below).
+   Mirrors the Member cell's typography so the column reads as a person. */
+.assigneeCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.assigneeText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1.2;
+}
+.assigneeName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.assigneeRole {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
 .colProvider    { min-width: 140px; }
 .colPos         { min-width: 100px; }
 .colPosDesc     { min-width: 140px; }
@@ -282,11 +368,24 @@
 .colRl          { min-width: 90px; }
 .colAd          { min-width: 90px; }
 .colFr          { min-width: 80px; }
-.colActions     { min-width: 56px; }
+.colActions     { min-width: 90px; }
 
 .actionsCell {
   text-align: center;
   padding: 8px 10px !important;
+}
+
+.actionsRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.actionsDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
 }
 
 /* ── Open ICDs hover popover ── */

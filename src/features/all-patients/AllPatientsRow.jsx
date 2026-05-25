@@ -176,10 +176,14 @@ export function AllPatientsRow({ row, isSelected, onSelect }) {
             </div>
             <div className={rowStyles.patientMeta}>
               {row.memberId} •{' '}
-              <span className={rowStyles.langBadge}>
+              <button
+                type="button"
+                className={rowStyles.langBadge}
+                onClick={(e) => e.stopPropagation()}
+              >
                 {(row.language || 'en').toUpperCase()}
                 <span className={rowStyles.langTooltip}>Preferred Language: {LANG_MAP[row.language] || 'English'}</span>
-              </span>
+              </button>
             </div>
           </div>
         </div>

@@ -50,6 +50,8 @@ const TABS = [
   { id: 'template', icon: 'solar:palette-linear',      label: 'Template' },
 ];
 
+const EMPTY_BULK_IDS = [];
+
 export function PropertiesPanel() {
   const [tab, setTab] = useState('design');
   const [width, setWidth] = useState(DEFAULT_WIDTH);

@@ -1,0 +1,421 @@
+/* ── Shared ─────────────────────────────────────────────────────────────── */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 8998;
+  background: transparent;
+}
+
+.bridge {
+  position: fixed;
+  z-index: 9251;
+}
+
+.popover {
+  position: fixed;
+  z-index: 8999;
+  padding: 8px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-100);
+  border-radius: 8px;
+  box-shadow: 0 12px 60px rgba(0, 0, 0, 0.1);
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.header {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  padding: 4px 8px 6px;
+  border-bottom: 0.5px solid var(--neutral-100);
+  margin-bottom: 2px;
+}
+.header strong {
+  color: var(--neutral-400);
+  font-weight: 500;
+}
+
+.empty {
+  padding: 16px 8px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--neutral-200);
+}
+
+/* ── RAF tooltip ────────────────────────────────────────────────────────── */
+
+.rafTrigger {
+  display: inline-flex;
+}
+
+.rafTooltip {
+  position: fixed;
+  z-index: 9252;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-100);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+}
+
+.rafTooltipHeader {
+  padding: 8px 12px 6px;
+  border-bottom: 0.5px solid var(--neutral-100);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--neutral-300);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rafTooltipList {
+  display: flex;
+  flex-direction: column;
+}
+
+.rafTooltipRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 0.5px solid var(--neutral-50);
+}
+
+.rafTooltipRowText {
+  flex: 1;
+  min-width: 0;
+}
+
+.rafTooltipHcc {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-300);
+}
+
+.rafTooltipName {
+  font-size: 11px;
+  color: var(--neutral-300);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rafTooltipImpact {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--status-success);
+  flex-shrink: 0;
+}
+
+.rafTooltipFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px;
+  background: var(--primary-50);
+  border-top: 0.5px solid var(--primary-200);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-300);
+}
+.rafTooltipFooter strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary-300);
+}
+
+/* ── Visits popover ─────────────────────────────────────────────────────── */
+
+.visitList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.visitRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.12s;
+}
+.visitRow:hover { background: var(--primary-50); }
+
+.visitIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.visitText {
+  flex: 1;
+  min-width: 0;
+}
+.visitDate {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-300);
+}
+.visitLabel {
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Chart popover ──────────────────────────────────────────────────────── */
+
+.chartPopover {
+  position: fixed;
+  z-index: 8999;
+  background: var(--neutral-0);
+  border-radius: 10px;
+  border: 0.5px solid var(--neutral-100);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.06), 0 12px 32px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+}
+
+.chartHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 8px;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.chartHeaderLabel {
+  font-size: 12px;
+  color: var(--neutral-300);
+  font-weight: 500;
+}
+.chartHeaderStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.chartHeaderDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.chartUpload {
+  padding: 8px 14px;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.chartUploadBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 0;
+  border-radius: 6px;
+  border: 1px dashed var(--primary-200);
+  background: var(--neutral-0);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-300);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.chartUploadBtn:hover { background: var(--primary-50); }
+
+.chartList {
+  display: flex;
+  flex-direction: column;
+}
+
+.chartRow {
+  display: flex;
+  align-items: center;
+  padding: 9px 14px;
+  border-bottom: 0.5px solid var(--neutral-100);
+  gap: 8px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.chartRow:hover { background: var(--neutral-50); }
+
+.chartRowText {
+  flex: 1;
+  min-width: 0;
+}
+
+.chartName {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.chartName span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chartMeta {
+  font-size: 11px;
+  color: var(--neutral-300);
+}
+
+.chartStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px;
+  border-radius: 5px;
+  border: 0.5px solid;
+  font-size: 11px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.chartMoreBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 14px;
+  border: none;
+  background: var(--neutral-0);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-300);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.chartMoreBtn:hover { background: var(--primary-50); }
+
+/* ── Actions menu ───────────────────────────────────────────────────────── */
+
+.actionsMenu {
+  position: fixed;
+  z-index: 9400;
+  padding: 8px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-100);
+  border-radius: 8px;
+  box-shadow: 0 12px 60px rgba(0, 0, 0, 0.06);
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.actionRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 8px;
+  border: none;
+  background: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: background 0.12s;
+}
+.actionRow:hover { background: var(--neutral-50); }
+
+.actionLabel {
+  flex: 1;
+  font-size: 14px;
+  color: var(--neutral-400);
+  line-height: 1.2;
+}
+
+/* ── Open ICDs hover popover ────────────────────────────────────────────── */
+
+.openIcdsPopover {
+  position: fixed;
+  z-index: 9252;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(22, 24, 29, 0.10);
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.openIcdsSection {
+  padding: 8px 14px 4px;
+  background: var(--neutral-50);
+  border-top: 0.5px solid var(--neutral-100);
+  border-bottom: 0.5px solid var(--neutral-100);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-300);
+}
+.openIcdsSection:first-child {
+  border-top: none;
+}
+
+.icdRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border: none;
+  background: var(--neutral-0);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.12s;
+}
+.icdRow:hover { background: var(--neutral-50); }
+
+.icdRowText {
+  flex: 1;
+  min-width: 0;
+}
+
+.icdRowDesc {
+  font-size: 13px;
+  color: var(--neutral-400);
+  line-height: 1.45;
+  margin-bottom: 5px;
+}
+.icdRowDesc strong {
+  font-weight: 600;
+}
+
+.icdRowMeta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.icdHcc {
+  font-size: 11px;
+  color: var(--neutral-300);
+}

@@ -27,6 +27,7 @@ import { HccWorklistTable } from '../features/hcc/HccWorklistTable';
 import { AllPatientsTable } from '../features/all-patients/AllPatientsTable';
 import { SchedulingListTable } from '../features/scheduling-list/SchedulingListTable';
 import { DiagPanel } from '../features/hcc/DiagPanel/DiagPanel';
+import { UploadChartDrawer } from '../features/hcc/UploadChartDrawer';
 import { QuickViewDrawer } from '../components/QuickViewDrawer/QuickViewDrawer';
 import { Icon } from '../components/Icon/Icon';
 import { SettingsLayout } from '../features/settings/SettingsLayout';
@@ -369,6 +370,7 @@ export function AppLayout() {
       {agentRulesGroupId && <AgentRulesDrawer />}
       {businessHoursOpen && <BusinessHoursDrawer />}
       {diagPanelOpen && <DiagPanel />}
+      <UploadChartDrawer />{/* mounts itself only when hccUploadMember is set */}
       {quickViewPatient && <QuickViewDrawer />}
       <Toast />
       <ToastSuccess />

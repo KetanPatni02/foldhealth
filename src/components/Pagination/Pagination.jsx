@@ -4,7 +4,16 @@ import { Icon } from '../Icon/Icon';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
 import styles from './Pagination.module.css';
 
-export function Pagination() {
+/**
+ * Pagination — page navigator + per-page selector + go-to input.
+ *
+ * Reads page state from the store (currentPage, perPage) and figures out the
+ * total item count based on the active subnav. Callers with their own
+ * filtering pipeline can override by passing `totalItems` directly — this is
+ * how the HCC worklist hands in its post-filter count so the page numbers
+ * stay accurate.
+ */
+export function Pagination({ totalItems: totalItemsProp } = {}) {
   const currentPage = useAppStore(s => s.currentPage);
   const perPage = useAppStore(s => s.perPage);
   const patients = useAppStore(s => s.patients);
@@ -21,8 +30,10 @@ export function Pagination() {
   const isAllPatients = activeSubnavList === 'All Patients';
   const allPatients = useAppStore(s => s.allPatients);
 
-  // Derive the total count based on what's actually being shown
-  const totalItems = useMemo(() => {
+  // Derive the total count based on what's actually being shown. If the caller
+  // passed `totalItems`, use it as-is — they know better than this generic
+  // pipeline what's currently rendered.
+  const totalItemsComputed = useMemo(() => {
     if (isAllPatients) {
       const base = allPatients.length > 0 ? allPatients : [...patients, ...hccMembers];
       if (!searchQuery.trim()) return base.length;
@@ -72,6 +83,7 @@ export function Pagination() {
     return result.length;
   }, [isHcc, isAllPatients, allPatients, hccMembers, patients, searchQuery, activeTab, activeFilters]);
 
+  const totalItems = totalItemsProp != null ? totalItemsProp : totalItemsComputed;
   const [goToInput, setGoToInput] = useState('');
 
   const totalPages = Math.max(1, Math.ceil(totalItems / perPage));
