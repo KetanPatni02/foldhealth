@@ -9,10 +9,10 @@ export function RoiView({ showToast }) {
   const fetchConfig = useAppStore(st => st.fetchConfig);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const [config, setConfig] = useState({});
+  const [config, setConfig] = useState(null);
 
   useEffect(() => {
-    fetchConfig('roi_levers').then(d => d && setConfig(d));
+    fetchConfig('roi_levers').then(d => setConfig(d || {}));
   }, [period]);
 
   const safeConfig = safeConfigData(config);

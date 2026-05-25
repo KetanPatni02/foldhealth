@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
-import { KpiCard, InsightBanner, Card, StatusPill, safeTableRows, safeConfigData } from './shared';
+import { KpiCard, InsightBanner, Card, StatusPill, safeTableRows, safeConfigData, EmptyState, KpiSkeleton, TableSkeleton } from './shared';
 import s from '../AnalyticsLayout.module.css';
 
 export function PlatformOpsView({ showToast }) {
@@ -9,16 +9,16 @@ export function PlatformOpsView({ showToast }) {
   const fetchViewTable = useAppStore(st => st.fetchViewTable);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
-  const [pipelineHealth, setPipelineHealth] = useState({});
-  const [dataQuality, setDataQuality] = useState({ columns: [], rows: [] });
-  const [integrationStatus, setIntegrationStatus] = useState({ columns: [], rows: [] });
+  const [kpiData, setKpiData] = useState(null);
+  const [pipelineHealth, setPipelineHealth] = useState(null);
+  const [dataQuality, setDataQuality] = useState(null);
+  const [integrationStatus, setIntegrationStatus] = useState(null);
 
   useEffect(() => {
-    fetchViewKpis('platformops').then(d => d && setKpiData(d));
-    fetchConfig('pipeline_health').then(d => d && setPipelineHealth(d));
-    fetchViewTable('platformops', 'data_quality').then(d => d && setDataQuality(d));
-    fetchViewTable('platformops', 'integration_status').then(d => d && setIntegrationStatus(d));
+    fetchViewKpis('platformops').then(d => setKpiData(d || { kpis: [], insight: null }));
+    fetchConfig('pipeline_health').then(d => setPipelineHealth(d || {}));
+    fetchViewTable('platformops', 'data_quality').then(d => setDataQuality(d || { columns: [], rows: [] }));
+    fetchViewTable('platformops', 'integration_status').then(d => setIntegrationStatus(d || { columns: [], rows: [] }));
   }, [period]);
 
   const kpis = kpiData?.kpis || [];
@@ -41,11 +41,15 @@ export function PlatformOpsView({ showToast }) {
         />
       )}
 
-      <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        {kpis.map(k => (
-          <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
-        ))}
-      </div>
+      {kpiData === null ? (
+        <KpiSkeleton count={4} />
+      ) : (
+        <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {kpis.map(k => (
+            <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
+          ))}
+        </div>
+      )}
 
       <Card title="Pipeline Health">
         <div style={{ padding: '4px 0' }}>
@@ -67,6 +71,12 @@ export function PlatformOpsView({ showToast }) {
                 <tr><th>Dimension</th><th className={s.r}>Score</th><th className={s.r}>Threshold</th><th>Status</th></tr>
               </thead>
               <tbody>
+                {dataQuality === null && (
+                  <tr><td colSpan={4} style={{ padding: 0 }}><TableSkeleton rows={4} cols={4} /></td></tr>
+                )}
+                {dataQuality !== null && dqRows.length === 0 && (
+                  <EmptyState colSpan={4} message="No data quality metrics for this period." icon="solar:shield-check-linear" />
+                )}
                 {dqRows.map((row, i) => {
                   const st = row.status;
                   return (
@@ -90,6 +100,12 @@ export function PlatformOpsView({ showToast }) {
                 <tr><th>System</th><th>Type</th><th className={s.r}>Uptime</th><th className={s.r}>Errors (7d)</th><th>Status</th></tr>
               </thead>
               <tbody>
+                {integrationStatus === null && (
+                  <tr><td colSpan={5} style={{ padding: 0 }}><TableSkeleton rows={4} cols={5} /></td></tr>
+                )}
+                {integrationStatus !== null && intRows.length === 0 && (
+                  <EmptyState colSpan={5} message="No integration status data for this period." icon="solar:plug-circle-linear" />
+                )}
                 {intRows.map((row, i) => {
                   const st = row.status;
                   return (

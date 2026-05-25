@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { KpiCard, InsightBanner, Card, ProgressBar, safeBarItems, safeTableRows } from './shared';
+import { KpiCard, InsightBanner, Card, ProgressBar, safeBarItems, safeTableRows, EmptyState, KpiSkeleton, TableSkeleton, ProgressBarSkeleton } from './shared';
 import { RafTrendLineChart } from './charts';
 import s from '../AnalyticsLayout.module.css';
 
@@ -11,18 +11,18 @@ export function RiskView({ showToast }) {
   const fetchProgressBars = useAppStore(st => st.fetchProgressBars);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
-  const [rafByPractice, setRafByPractice] = useState({ columns: [], rows: [] });
-  const [hccRecapture, setHccRecapture] = useState([]);
-  const [hccRecaptureCategories, setHccRecaptureCategories] = useState([]);
-  const [openHccSuspects, setOpenHccSuspects] = useState({ columns: [], rows: [] });
+  const [kpiData, setKpiData] = useState(null);
+  const [rafByPractice, setRafByPractice] = useState(null);
+  const [hccRecapture, setHccRecapture] = useState(null);
+  const [hccRecaptureCategories, setHccRecaptureCategories] = useState(null);
+  const [openHccSuspects, setOpenHccSuspects] = useState(null);
 
   useEffect(() => {
-    fetchViewKpis('risk').then(d => d && setKpiData(d));
-    fetchViewTable('risk', 'raf_by_practice').then(d => d && setRafByPractice(d));
-    fetchProgressBars('risk', 'hcc_recapture').then(d => d && setHccRecapture(d));
-    fetchProgressBars('risk', 'hcc_recapture_categories').then(d => d && setHccRecaptureCategories(d));
-    fetchViewTable('risk', 'open_hcc_suspects').then(d => d && setOpenHccSuspects(d));
+    fetchViewKpis('risk').then(d => setKpiData(d || { kpis: [], insight: null }));
+    fetchViewTable('risk', 'raf_by_practice').then(d => setRafByPractice(d || { columns: [], rows: [] }));
+    fetchProgressBars('risk', 'hcc_recapture').then(d => setHccRecapture(d || []));
+    fetchProgressBars('risk', 'hcc_recapture_categories').then(d => setHccRecaptureCategories(d || []));
+    fetchViewTable('risk', 'open_hcc_suspects').then(d => setOpenHccSuspects(d || { columns: [], rows: [] }));
   }, [period]);
 
   const kpis = kpiData?.kpis || [];
@@ -70,11 +70,15 @@ export function RiskView({ showToast }) {
         </span>
       </div>
 
-      <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        {kpis.map(k => (
-          <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
-        ))}
-      </div>
+      {kpiData === null ? (
+        <KpiSkeleton count={4} />
+      ) : (
+        <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {kpis.map(k => (
+            <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
+          ))}
+        </div>
+      )}
 
       <div className={s.g2}>
         {/* RAF Score Trend */}
@@ -94,6 +98,12 @@ export function RiskView({ showToast }) {
                 <tr><th>Practice</th><th className={s.r}>Members</th><th className={s.r}>Avg RAF</th><th className={s.r}>Capture%</th><th className={s.r}>Gap%</th><th className={s.r}>Rev. Opp.</th></tr>
               </thead>
               <tbody>
+                {rafByPractice === null && (
+                  <tr><td colSpan={6} style={{ padding: 0 }}><TableSkeleton rows={5} cols={6} /></td></tr>
+                )}
+                {rafByPractice !== null && rafRows.length === 0 && (
+                  <EmptyState colSpan={6} message="No RAF by practice data for this period." icon="solar:buildings-linear" />
+                )}
                 {rafRows.map((row, i) => (
                   <tr key={i}>
                     <td className={s.fw600}>{row.name}</td>
@@ -146,19 +156,29 @@ export function RiskView({ showToast }) {
       </Card>
 
       {/* HCC Recapture bars (kept from original) */}
-      {hccItems.length > 0 && (
+      {(hccRecapture === null || hccItems.length > 0) && (
         <Card title="HCC Recapture Performance">
-          {hccItems.map(b => (
-            <ProgressBar key={b.label} label={b.label} value={b.value} pct={b.pct} color={b.color} sub={b.sub} />
-          ))}
+          {hccRecapture === null ? (
+            <ProgressBarSkeleton count={4} />
+          ) : (
+            hccItems.map(b => (
+              <ProgressBar key={b.label} label={b.label} value={b.value} pct={b.pct} color={b.color} sub={b.sub} />
+            ))
+          )}
         </Card>
       )}
 
       {/* HCC Recapture by Category */}
       <Card title="HCC Recapture by Category">
-        {safeBarItems(hccRecaptureCategories).map(b => (
-          <ProgressBar key={b.label} label={b.label} value={b.value} pct={b.pct} color={b.color} sub={b.sub} />
-        ))}
+        {hccRecaptureCategories === null ? (
+          <ProgressBarSkeleton count={4} />
+        ) : safeBarItems(hccRecaptureCategories).length === 0 ? (
+          <EmptyState message="No HCC recapture categories for this period." icon="solar:diagram-up-linear" />
+        ) : (
+          safeBarItems(hccRecaptureCategories).map(b => (
+            <ProgressBar key={b.label} label={b.label} value={b.value} pct={b.pct} color={b.color} sub={b.sub} />
+          ))
+        )}
       </Card>
 
       {/* Top Open HCC Suspects */}
@@ -169,6 +189,12 @@ export function RiskView({ showToast }) {
               <tr><th>Member ID</th><th>HCC Category</th><th>Description</th><th className={s.r}>Est. Revenue Impact</th><th>Last Coded Date</th><th>Action</th></tr>
             </thead>
             <tbody>
+              {openHccSuspects === null && (
+                <tr><td colSpan={6} style={{ padding: 0 }}><TableSkeleton rows={5} cols={6} /></td></tr>
+              )}
+              {openHccSuspects !== null && safeTableRows(openHccSuspects).length === 0 && (
+                <EmptyState colSpan={6} message="No open HCC suspects for this period." icon="solar:document-text-linear" />
+              )}
               {safeTableRows(openHccSuspects).map((row, i) => (
                 <tr key={i}>
                   <td className={s.fw600}>{row.member_id}</td>

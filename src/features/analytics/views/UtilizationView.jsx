@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { KpiCard, InsightBanner, Card, ProgressBar, safeBarItems, safeTableRows } from './shared';
+import { KpiCard, InsightBanner, Card, ProgressBar, safeBarItems, safeTableRows, EmptyState, KpiSkeleton, TableSkeleton } from './shared';
 import { ReadmitTrendLineChart } from './charts';
 import s from '../AnalyticsLayout.module.css';
 
@@ -11,14 +11,14 @@ export function UtilizationView({ showToast }) {
   const fetchProgressBars = useAppStore(st => st.fetchProgressBars);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
-  const [readmissionByDrg, setReadmissionByDrg] = useState({ columns: [], rows: [] });
-  const [tcmImpact, setTcmImpact] = useState([]);
+  const [kpiData, setKpiData] = useState(null);
+  const [readmissionByDrg, setReadmissionByDrg] = useState(null);
+  const [tcmImpact, setTcmImpact] = useState(null);
 
   useEffect(() => {
-    fetchViewKpis('utilization').then(d => d && setKpiData(d));
-    fetchViewTable('utilization', 'readmission_by_drg').then(d => d && setReadmissionByDrg(d));
-    fetchProgressBars('utilization', 'tcm_impact').then(d => d && setTcmImpact(d));
+    fetchViewKpis('utilization').then(d => setKpiData(d || { kpis: [], insight: null }));
+    fetchViewTable('utilization', 'readmission_by_drg').then(d => setReadmissionByDrg(d || { columns: [], rows: [] }));
+    fetchProgressBars('utilization', 'tcm_impact').then(d => setTcmImpact(d || []));
   }, [period]);
 
   const kpis = kpiData?.kpis || [];
@@ -64,11 +64,15 @@ export function UtilizationView({ showToast }) {
         />
       )}
 
-      <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        {kpis.map(k => (
-          <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
-        ))}
-      </div>
+      {kpiData === null ? (
+        <KpiSkeleton count={4} />
+      ) : (
+        <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {kpis.map(k => (
+            <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
+          ))}
+        </div>
+      )}
 
       <div className={s.g2}>
         {/* Readmission Rate Trend Chart */}
@@ -99,6 +103,12 @@ export function UtilizationView({ showToast }) {
               <tr><th>DRG Category</th><th className={s.r}>Admits</th><th className={s.r}>Readmits</th><th className={s.r}>Rate</th><th className={s.r}>Benchmark</th><th>Status</th></tr>
             </thead>
             <tbody>
+              {readmissionByDrg === null && (
+                <tr><td colSpan={6} style={{ padding: 0 }}><TableSkeleton rows={5} cols={6} /></td></tr>
+              )}
+              {readmissionByDrg !== null && drgRows.length === 0 && (
+                <EmptyState colSpan={6} message="No readmission-by-DRG data for this period." icon="solar:document-text-linear" />
+              )}
               {drgRows.map((row, i) => {
                 const st = row.status;
                 return (

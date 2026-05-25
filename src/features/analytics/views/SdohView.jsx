@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
-import { KpiCard, InsightBanner, Card, StatusPill, safeTableRows } from './shared';
+import { KpiCard, InsightBanner, Card, StatusPill, safeTableRows, EmptyState, KpiSkeleton, TableSkeleton } from './shared';
 import s from '../AnalyticsLayout.module.css';
 
 export function SdohView({ showToast }) {
@@ -8,16 +8,16 @@ export function SdohView({ showToast }) {
   const fetchViewTable = useAppStore(st => st.fetchViewTable);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
-  const [equityByRace, setEquityByRace] = useState({ columns: [], rows: [] });
-  const [sdohRiskFactors, setSdohRiskFactors] = useState({ columns: [], rows: [] });
-  const [communityReferrals, setCommunityReferrals] = useState({ columns: [], rows: [] });
+  const [kpiData, setKpiData] = useState(null);
+  const [equityByRace, setEquityByRace] = useState(null);
+  const [sdohRiskFactors, setSdohRiskFactors] = useState(null);
+  const [communityReferrals, setCommunityReferrals] = useState(null);
 
   useEffect(() => {
-    fetchViewKpis('sdoh').then(d => d && setKpiData(d));
-    fetchViewTable('sdoh', 'equity_by_race').then(d => d && setEquityByRace(d));
-    fetchViewTable('sdoh', 'sdoh_risk_factors').then(d => d && setSdohRiskFactors(d));
-    fetchViewTable('sdoh', 'community_referrals').then(d => d && setCommunityReferrals(d));
+    fetchViewKpis('sdoh').then(d => setKpiData(d || { kpis: [], insight: null }));
+    fetchViewTable('sdoh', 'equity_by_race').then(d => setEquityByRace(d || { columns: [], rows: [] }));
+    fetchViewTable('sdoh', 'sdoh_risk_factors').then(d => setSdohRiskFactors(d || { columns: [], rows: [] }));
+    fetchViewTable('sdoh', 'community_referrals').then(d => setCommunityReferrals(d || { columns: [], rows: [] }));
   }, [period]);
 
   const kpis = kpiData?.kpis || [];
@@ -39,11 +39,15 @@ export function SdohView({ showToast }) {
         />
       )}
 
-      <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        {kpis.map(k => (
-          <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
-        ))}
-      </div>
+      {kpiData === null ? (
+        <KpiSkeleton count={4} />
+      ) : (
+        <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {kpis.map(k => (
+            <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
+          ))}
+        </div>
+      )}
 
       <Card title="Health Equity Dashboard" sub="Quality measures by race/ethnicity" flush>
         <div className={s.tblWrap}>
@@ -52,6 +56,12 @@ export function SdohView({ showToast }) {
               <tr><th>Measure</th><th className={s.r}>Overall Rate</th><th className={s.r}>White</th><th className={s.r}>Black</th><th className={s.r}>Hispanic</th><th className={s.r}>Asian</th><th className={s.r}>Disparity Gap</th><th>Status</th></tr>
             </thead>
             <tbody>
+              {equityByRace === null && (
+                <tr><td colSpan={8} style={{ padding: 0 }}><TableSkeleton rows={5} cols={8} /></td></tr>
+              )}
+              {equityByRace !== null && equityRows.length === 0 && (
+                <EmptyState colSpan={8} message="No equity-by-race data for this period." icon="solar:users-group-rounded-linear" />
+              )}
               {equityRows.map((row, i) => {
                 const gapNum = parseInt((row.gap || '').replace('pp', ''));
                 const st = gapNum >= 16 ? 'red' : gapNum >= 12 ? 'amber' : 'green';
@@ -84,6 +94,12 @@ export function SdohView({ showToast }) {
                 <tr><th>Risk Factor</th><th className={s.r}>Members</th><th className={s.r}>% of Pop</th><th className={s.r}>TCOC Impact</th><th className={s.r}>Referral Rate</th></tr>
               </thead>
               <tbody>
+                {sdohRiskFactors === null && (
+                  <tr><td colSpan={5} style={{ padding: 0 }}><TableSkeleton rows={5} cols={5} /></td></tr>
+                )}
+                {sdohRiskFactors !== null && riskRows.length === 0 && (
+                  <EmptyState colSpan={5} message="No SDoH risk factors for this period." icon="solar:danger-triangle-linear" />
+                )}
                 {riskRows.map((row, i) => (
                   <tr key={i}>
                     <td className={s.fw600}>{row.factor}</td>
@@ -105,6 +121,12 @@ export function SdohView({ showToast }) {
                 <tr><th>Organization</th><th>Service</th><th className={s.r}>Referrals</th><th className={s.r}>Completion</th><th>Status</th></tr>
               </thead>
               <tbody>
+                {communityReferrals === null && (
+                  <tr><td colSpan={5} style={{ padding: 0 }}><TableSkeleton rows={5} cols={5} /></td></tr>
+                )}
+                {communityReferrals !== null && referralRows.length === 0 && (
+                  <EmptyState colSpan={5} message="No community referral data for this period." icon="solar:hand-heart-linear" />
+                )}
                 {referralRows.map((row, i) => {
                   const st = row.status;
                   return (

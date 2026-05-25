@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { KpiCard, InsightBanner, Card, safeTableRows, safeConfigData } from './shared';
+import { KpiCard, InsightBanner, Card, safeTableRows, safeConfigData, EmptyState, KpiSkeleton, TableSkeleton } from './shared';
 import s from '../AnalyticsLayout.module.css';
 
 export function AiAnalyticsView({ showToast }) {
@@ -10,16 +10,16 @@ export function AiAnalyticsView({ showToast }) {
   const fetchViewTable = useAppStore(st => st.fetchViewTable);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
-  const [nlqExamples, setNlqExamples] = useState({});
-  const [anomalies, setAnomalies] = useState({});
-  const [predictiveModels, setPredictiveModels] = useState({ columns: [], rows: [] });
+  const [kpiData, setKpiData] = useState(null);
+  const [nlqExamples, setNlqExamples] = useState(null);
+  const [anomalies, setAnomalies] = useState(null);
+  const [predictiveModels, setPredictiveModels] = useState(null);
 
   useEffect(() => {
-    fetchViewKpis('aianalytics').then(d => d && setKpiData(d));
-    fetchConfig('nlq_examples').then(d => d && setNlqExamples(d));
-    fetchConfig('anomalies').then(d => d && setAnomalies(d));
-    fetchViewTable('aianalytics', 'predictive_models').then(d => d && setPredictiveModels(d));
+    fetchViewKpis('aianalytics').then(d => setKpiData(d || { kpis: [], insight: null }));
+    fetchConfig('nlq_examples').then(d => setNlqExamples(d || {}));
+    fetchConfig('anomalies').then(d => setAnomalies(d || {}));
+    fetchViewTable('aianalytics', 'predictive_models').then(d => setPredictiveModels(d || { columns: [], rows: [] }));
   }, [period]);
 
   const kpis = kpiData?.kpis || [];
@@ -55,11 +55,15 @@ export function AiAnalyticsView({ showToast }) {
         />
       )}
 
-      <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        {kpis.map(k => (
-          <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
-        ))}
-      </div>
+      {kpiData === null ? (
+        <KpiSkeleton count={4} />
+      ) : (
+        <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {kpis.map(k => (
+            <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
+          ))}
+        </div>
+      )}
 
       <Card title="Ask Fold \u2014 Natural Language Query Engine" sub="Click an example or type your own question">
         <div style={{ fontSize: 14, color: 'var(--neutral-300)', marginBottom: 12 }}>
@@ -103,6 +107,12 @@ export function AiAnalyticsView({ showToast }) {
                 <tr><th>Model</th><th className={s.r}>AUC</th><th className={s.r}>Accuracy</th><th className={s.r}>Active Predictions</th><th className={s.r}>Last Retrained</th><th>Status</th></tr>
               </thead>
               <tbody>
+                {predictiveModels === null && (
+                  <tr><td colSpan={6} style={{ padding: 0 }}><TableSkeleton rows={4} cols={6} /></td></tr>
+                )}
+                {predictiveModels !== null && modelRows.length === 0 && (
+                  <EmptyState colSpan={6} message="No predictive models for this period." icon="solar:graph-up-linear" />
+                )}
                 {modelRows.map((row, i) => {
                   const st = row.status;
                   return (
