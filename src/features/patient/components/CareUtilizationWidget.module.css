@@ -1,0 +1,213 @@
+/* ── CareUtilizationWidget ── */
+.widget {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ── Header — outside bordered container ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+  min-height: 28px;
+  flex-shrink: 0;
+}
+
+.header:last-child {
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+
+.titleBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.title {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #16181d;
+  white-space: nowrap;
+}
+
+.yearBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--neutral-50);
+  border: 0.5px solid rgba(111, 122, 144, 0.1);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-300);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ── Main bordered container ── */
+.container {
+  background: var(--neutral-0);
+  border: 0.5px solid #d0d6e1;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Legend ── */
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 8px;
+  border-bottom: 0.5px solid #d0d6e1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-shrink: 0;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legendLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #3a485f;
+  white-space: nowrap;
+}
+
+/* ── Month grid ── */
+.grid {
+  display: flex;
+  background: #fcfaff;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-shrink: 0;
+}
+
+.monthCol {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 0;
+  min-width: 0;
+  border-right: 0.5px solid #d0d6e1;
+}
+
+.monthCol:last-child {
+  border-right: none;
+}
+
+/* Badge stack — fixed 100px height, badges stack from bottom */
+.badgeStack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  height: 100px;
+  padding: 8px 0;
+  box-sizing: border-box;
+}
+
+.badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 0.5px solid;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+/* Month label row — pinned below the badge stack */
+.monthLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-top: 0.5px solid #d0d6e1;
+  flex-shrink: 0;
+}
+
+.monthLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: #6f7a90;
+  white-space: nowrap;
+}
+
+/* ── Footer ── */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 12px;
+  border-top: 0.5px solid #d0d6e1;
+  flex-shrink: 0;
+}
+
+.footerLeft {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.footerKeyText {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #3a485f;
+  white-space: nowrap;
+}
+
+.footerLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--primary-300, #8c5ae2);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.footerRight {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #3a485f;
+  white-space: nowrap;
+}

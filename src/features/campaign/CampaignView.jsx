@@ -322,7 +322,7 @@ function computeHealth(delivered, opened) {
 
 function CampaignRow({ campaign, onToggle }) {
   const showToast = useAppStore(s => s.showToast);
-  const openEmailBuilder = useAppStore(s => s.openEmailBuilder);
+  const openCampaignBuilder = useAppStore(s => s.openCampaignBuilder);
   const isActive = campaign.section !== 'ended' && campaign.section !== 'draft';
   const isScheduled = campaign.section === 'scheduled';
   const health = computeHealth(campaign.delivered, campaign.opened);
@@ -336,7 +336,7 @@ function CampaignRow({ campaign, onToggle }) {
 
       {/* 2. Campaign Name (single line, clickable) */}
       <td className={styles.tdName}>
-        <button type="button" className={styles.nameLink} onClick={() => openEmailBuilder(campaign)}>
+        <button type="button" className={styles.nameLink} onClick={() => openCampaignBuilder(campaign)}>
           <Icon name={CHANNEL_ICONS[campaign.channel] || 'solar:letter-linear'} size={15} color="var(--neutral-300)" />
           <span className={styles.nameText}>{campaign.name}</span>
         </button>
@@ -410,7 +410,7 @@ function CampaignRow({ campaign, onToggle }) {
             icon="solar:pen-linear"
             size="S"
             tooltip="Edit"
-            onClick={() => openEmailBuilder(campaign)}
+            onClick={() => openCampaignBuilder(campaign)}
           />
           <div className={styles.vDivider} />
           <ActionButton
@@ -441,6 +441,8 @@ export function CampaignView() {
   const storeCampaigns = useAppStore(s => s.campaigns);
   const campaignsLoading = useAppStore(s => s.campaignsLoading);
   const fetchCampaigns = useAppStore(s => s.fetchCampaigns);
+  const openCampaignBuilder = useAppStore(s => s.openCampaignBuilder);
+  const campaignBuilderSaving = useAppStore(s => s.campaignBuilderSaving);
 
   const usingSupa = Array.isArray(storeCampaigns) && storeCampaigns.length > 0;
   const [localData, setLocalData] = useState(CAMPAIGNS);
@@ -560,9 +562,10 @@ export function CampaignView() {
             variant="secondary"
             size="L"
             leadingIcon="solar:add-circle-linear"
-            onClick={() => showToast('New Campaign – coming soon')}
+            disabled={campaignBuilderSaving}
+            onClick={() => openCampaignBuilder(null)}
           >
-            New Campaign
+            {campaignBuilderSaving ? 'Creating…' : 'New Campaign'}
           </Button>
         </div>
       </div>
@@ -606,7 +609,22 @@ export function CampaignView() {
             </tr>
           </thead>
           <tbody>
-            {sections.length === 0 ? (
+            {campaignsLoading && !usingSupa ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <tr key={`skel-${i}`} className={styles.row}>
+                  <td className={styles.tdS}><span className={styles.skelCircle} /></td>
+                  <td className={styles.tdName}><span className={styles.skelBar} style={{ width: `${55 + (i % 3) * 15}%` }} /></td>
+                  <td className={styles.tdAudience}><span className={styles.skelBar} style={{ width: 40 }} /></td>
+                  <td className={styles.tdProgress}><span className={styles.skelBar} style={{ width: '70%' }} /></td>
+                  <td className={styles.tdMetric}><span className={styles.skelBar} style={{ width: 32 }} /></td>
+                  <td className={styles.tdMetric}><span className={styles.skelBar} style={{ width: 32 }} /></td>
+                  <td className={styles.tdHealth}><span className={styles.skelBar} style={{ width: 56 }} /></td>
+                  <td className={styles.tdDate}><span className={styles.skelBar} style={{ width: 72 }} /></td>
+                  <td className={styles.tdDuration}><span className={styles.skelBar} style={{ width: 52 }} /></td>
+                  <td className={styles.tdAction}><span className={styles.skelBar} style={{ width: 80 }} /></td>
+                </tr>
+              ))
+            ) : sections.length === 0 ? (
               <tr>
                 <td colSpan={10} className={styles.emptyState}>
                   <Icon name="solar:filter-linear" size={32} color="var(--neutral-150)" />

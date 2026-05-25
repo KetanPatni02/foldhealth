@@ -1,0 +1,46 @@
+---
+title: "Campaigns"
+description: "Campaign management and visual email template builder."
+---
+
+## Campaigns
+
+The Campaign page lists all outreach campaigns with status, audience, and performance metrics.
+
+### Campaign Builder
+
+A full-screen builder for creating and managing campaigns:
+
+- **Form pane** (500px) — Name, description, audience include/exclude, send method, scheduling, sender configuration, and subject line
+- **Preview pane** — Read-only email template preview
+- **Auto-save** — Every field edit persists to Supabase via a 600ms debounce
+
+### Campaign types
+
+- **One-Time** — Single send to a defined audience
+- **Sequence** — Multi-step automated campaigns
+
+## Email Builder
+
+A visual email template editor with a drag-and-drop block system.
+
+### Block types
+
+- **Text** — Rich text with formatting controls
+- **Heading** — H1-H3 with style presets (Title, Subtitle, Heading, Body)
+- **Image** — Upload or URL-based images
+- **Button** — CTA buttons with shape, color, and size options
+- **Divider** — Horizontal rule separator
+- **Spacer** — Vertical spacing block
+- **Container** — Grouping wrapper with background and padding
+- **Columns** — Multi-column layouts
+- **Raw HTML** — Escape hatch for custom markup
+
+### Key features
+
+- **Undo/Redo** — Full history stack with `Cmd+Z` / `Shift+Cmd+Z`
+- **HTML import** — Paste HTML and convert to editable blocks with CSS fidelity
+- **Font substitution** — Maps unknown fonts to Google Fonts on import
+- **Header/Footer presets** — Save and reuse across templates
+- **Device preview** — Desktop, tablet, and mobile viewport previews
+- **Code view** — Switch between visual editor and raw HTML/JSON

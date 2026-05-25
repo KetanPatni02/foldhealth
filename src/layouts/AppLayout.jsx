@@ -25,6 +25,7 @@ import { QueueTable } from '../features/toc-queue/QueueTable';
 import { QueueSummaryBar } from '../features/toc-queue/QueueSummaryBar';
 import { HccWorklistTable } from '../features/hcc/HccWorklistTable';
 import { AllPatientsTable } from '../features/all-patients/AllPatientsTable';
+import { SchedulingListTable } from '../features/scheduling-list/SchedulingListTable';
 import { DiagPanel } from '../features/hcc/DiagPanel/DiagPanel';
 import { UploadChartDrawer } from '../features/hcc/UploadChartDrawer';
 import { QuickViewDrawer } from '../components/QuickViewDrawer/QuickViewDrawer';
@@ -39,6 +40,7 @@ import { CallsView } from '../features/calls/CallsView';
 import { TasksView } from '../features/tasks/TasksView';
 import { CampaignView } from '../features/campaign/CampaignView';
 import { EmailBuilder } from '../features/email-builder/EmailBuilder';
+import { CampaignBuilder } from '../features/campaign/CampaignBuilder';
 import { useEffect } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { supabase } from '../lib/supabase';
@@ -123,8 +125,9 @@ function PopulationView() {
 
   const isHcc = activeSubnavList === 'HCC';
   const isAllPatients = activeSubnavList === 'All Patients';
+  const isSchedulingList = activeSubnavList === 'Scheduling List';
   const TOC_LISTS = ['TOC'];
-  const isToc = TOC_LISTS.includes(activeSubnavList) || (!isHcc && !isAllPatients && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'AWV', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
+  const isToc = TOC_LISTS.includes(activeSubnavList) || (!isHcc && !isAllPatients && !isSchedulingList && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'AWV', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
   const isComingSoon = ['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'AWV', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList);
 
   return (
@@ -134,17 +137,19 @@ function PopulationView() {
       <div className={styles.bodyRow}>
         <SubNav collapsed={subnavCollapsed} />
         <div className={styles.content}>
-          {!isHcc && !isComingSoon && <TabBar />}
-          {!isHcc && !isComingSoon && showFilterBar && <FilterBar />}
-          {!isHcc && !isAllPatients && !isComingSoon && activeTab === 'toc-queue' && <QueueSummaryBar />}
-          {isHcc
-            ? <HccWorklistTable />
-            : isAllPatients
-              ? <AllPatientsTable />
-              : isComingSoon
-                ? <ComingSoonState listName={activeSubnavList} />
-                : (activeTab === 'toc-worklist' ? <WorklistTable /> : <QueueTable />)}
-          {!isHcc && !isComingSoon && <Pagination />}
+          {!isHcc && !isComingSoon && !isSchedulingList && <TabBar />}
+          {!isHcc && !isComingSoon && !isSchedulingList && showFilterBar && <FilterBar />}
+          {!isHcc && !isAllPatients && !isComingSoon && !isSchedulingList && activeTab === 'toc-queue' && <QueueSummaryBar />}
+          {isSchedulingList
+            ? <SchedulingListTable />
+            : isHcc
+              ? <HccWorklistTable />
+              : isAllPatients
+                ? <AllPatientsTable />
+                : isComingSoon
+                  ? <ComingSoonState listName={activeSubnavList} />
+                  : (activeTab === 'toc-worklist' ? <WorklistTable /> : <QueueTable />)}
+          {!isHcc && !isComingSoon && !isSchedulingList && <Pagination />}
         </div>
       </div>
     </div>
@@ -256,6 +261,42 @@ export function AppLayout() {
       }
     }
   }, []);
+
+  // Re-open campaign builder or email builder on page refresh
+  useEffect(() => {
+    const state = useAppStore.getState();
+    const pendingEmail = state._pendingEmailEditId;
+    const pendingCampaign = state._pendingCampaignBuilderId;
+    if (!pendingEmail && !pendingCampaign) return;
+
+    const targetId = pendingEmail || pendingCampaign;
+
+    (async () => {
+      // Try bulk fetch first, then fall back to single-row fetch
+      await useAppStore.getState().fetchCampaigns();
+      let c = (useAppStore.getState().campaigns || []).find(
+        camp => String(camp.id) === String(targetId)
+      );
+      if (!c) {
+        const numId = isNaN(Number(targetId)) ? targetId : Number(targetId);
+        c = await useAppStore.getState().fetchCampaignById(numId);
+      }
+      if (!c) {
+        useAppStore.setState({
+          _pendingEmailEditId: null, _pendingCampaignBuilderId: null,
+          editingCampaignId: null, campaignBuilderId: null,
+        });
+        return;
+      }
+      if (pendingEmail) {
+        useAppStore.getState().openEmailBuilder(c);
+      } else {
+        useAppStore.getState().openCampaignBuilder(c);
+      }
+      useAppStore.setState({ _pendingEmailEditId: null, _pendingCampaignBuilderId: null });
+    })();
+  }, []);
+
   const showCreateAgent = useAppStore(s => s.showCreateAgent);
   const workflowPatient = useAppStore(s => s.workflowPatient);
   const callPopoverPatient = useAppStore(s => s.callPopoverPatient);
@@ -270,13 +311,29 @@ export function AppLayout() {
   const diagPanelOpen = useAppStore(s => s.diagPanelOpen);
   const quickViewPatient = useAppStore(s => s.quickViewPatient);
   const editingCampaignId = useAppStore(s => s.editingCampaignId);
+  const campaignBuilderId = useAppStore(s => s.campaignBuilderId);
 
-  // Email Builder is a full-screen takeover when editing a campaign
+  // Email Builder is a full-screen takeover when editing a campaign. Wins over
+  // the CampaignBuilder so "Edit Template" from inside the campaign builder
+  // pushes the email builder on top — closing it falls back to the campaign
+  // builder (campaignBuilderId stays set).
   if (editingCampaignId) {
     return (
       <div className={styles.app}>
         <Sidebar />
         <EmailBuilder />
+        <Toast />
+      </div>
+    );
+  }
+
+  // Campaign Builder is a full-screen takeover for creating/editing the
+  // metadata, scheduling, audience, and channel of a campaign.
+  if (campaignBuilderId) {
+    return (
+      <div className={styles.app}>
+        <Sidebar />
+        <CampaignBuilder />
         <Toast />
       </div>
     );

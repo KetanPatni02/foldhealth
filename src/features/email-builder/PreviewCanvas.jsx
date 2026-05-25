@@ -6,9 +6,19 @@ import { CSS } from '@dnd-kit/utilities';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { InlineEditable } from './InlineEditable';
+import { getFontStack } from './googleFonts';
+import { isGradient } from './colorHelpers';
+import { tintSvgMarkup } from './svgTint';
 import styles from './EmailBuilder.module.css';
 
-const EMPTY_BULK_IDS = [];
+// Turns a (solid OR gradient) value into the right pair of style props.
+// Gradients can't use `backgroundColor` — they go on `backgroundImage`.
+// Returns an object you can spread onto a style prop.
+function bgProps(value) {
+  if (!value) return {};
+  if (isGradient(value)) return { backgroundImage: value };
+  return { backgroundColor: value };
+}
 
 const TYPE_LABELS = {
   EmailLayout: 'Email',
@@ -24,6 +34,7 @@ const TYPE_LABELS = {
   Social: 'Social',
   NavBar: 'Nav Bar',
   Table: 'Table',
+  RawHtml: 'Raw HTML',
 };
 
 function blockLabel(block) {
@@ -31,6 +42,9 @@ function blockLabel(block) {
   if (role === 'header') return 'Header';
   if (role === 'body') return 'Body';
   if (role === 'footer') return 'Footer';
+  // alias wins over the generic type label so the selection toolbar reads
+  // "Section" (or any user rename) rather than the underlying "Wrapper".
+  if (block.data?.alias) return block.data.alias;
   return TYPE_LABELS[block.type] || block.type;
 }
 
@@ -39,7 +53,215 @@ function paddingCss(p) {
   return `${p.top}px ${p.right}px ${p.bottom}px ${p.left}px`;
 }
 
+function perSideBorderStyle(borderSides) {
+  if (!borderSides || !Object.values(borderSides).some(Boolean)) return null;
+  const out = {};
+  const fmt = (s) => `${s.width || 1}px ${s.style || 'solid'} ${s.color || '#3A485F'}`;
+  if (borderSides.top)    out.borderTop    = fmt(borderSides.top);
+  if (borderSides.right)  out.borderRight  = fmt(borderSides.right);
+  if (borderSides.bottom) out.borderBottom = fmt(borderSides.bottom);
+  if (borderSides.left)   out.borderLeft   = fmt(borderSides.left);
+  return out;
+}
+
+function applyBorder(target, style) {
+  const perSide = perSideBorderStyle(style.borderSides);
+  if (perSide) Object.assign(target, perSide);
+  else if (style.borderWidth) target.border = `${style.borderWidth}px ${style.borderStyle || 'solid'} ${style.borderColor || '#3A485F'}`;
+}
+
 // Six-dot drag handle that matches the Figma toolbar precisely.
+// Translate the block's style object into the inline CSS string the
+// matching iframe element should carry. Inline styles win over CSS class
+// rules so Design-tab edits live-update the canvas without us having to
+// rewrite the original <style> block.
+function blockStyleToCss(s) {
+  if (!s) return '';
+  const parts = [];
+  if (s.color) parts.push(`color: ${s.color}`);
+  if (s.backgroundColor) {
+    // Gradient strings go on background-image; solids on background-color.
+    if (/^(linear|radial)-gradient/.test(s.backgroundColor)) {
+      parts.push(`background-image: ${s.backgroundColor}`);
+    } else {
+      parts.push(`background-color: ${s.backgroundColor}`);
+    }
+  }
+  if (s.backgroundImage && !/^(linear|radial)-gradient/.test(s.backgroundColor || '')) {
+    parts.push(`background-image: url("${s.backgroundImage}")`);
+    if (s.backgroundSize) parts.push(`background-size: ${s.backgroundSize}`);
+    if (s.backgroundPosition) parts.push(`background-position: ${s.backgroundPosition}`);
+    if (s.backgroundRepeat) parts.push(`background-repeat: ${s.backgroundRepeat}`);
+  }
+  if (s.fontFamily) parts.push(`font-family: ${s.fontFamily}`);
+  if (s.fontSize != null) parts.push(`font-size: ${s.fontSize}px`);
+  if (s.fontWeight) parts.push(`font-weight: ${s.fontWeight}`);
+  if (s.fontStyle) parts.push(`font-style: ${s.fontStyle}`);
+  if (s.textDecoration) parts.push(`text-decoration: ${s.textDecoration}`);
+  if (s.textTransform) parts.push(`text-transform: ${s.textTransform}`);
+  if (s.textAlign) parts.push(`text-align: ${s.textAlign}`);
+  if (s.letterSpacing) parts.push(`letter-spacing: ${s.letterSpacing}`);
+  if (s.lineHeight) parts.push(`line-height: ${s.lineHeight}`);
+  if (s.padding) {
+    const p = s.padding;
+    parts.push(`padding: ${p.top || 0}px ${p.right || 0}px ${p.bottom || 0}px ${p.left || 0}px`);
+  }
+  if (s.borderRadius != null) parts.push(`border-radius: ${s.borderRadius}px`);
+  if (s.borderWidth) {
+    parts.push(`border: ${s.borderWidth}px ${s.borderStyle || 'solid'} ${s.borderColor || '#000'}`);
+  }
+  return parts.join('; ');
+}
+
+// Editable iframe for confirmed custom HTML bodies. Loads the HTML once,
+// makes the body contenteditable, and writes outerHTML back to
+// `doc.root.data.customHtml` on input. Clicks on tagged elements
+// (`[data-eb-block-id]`) select the matching block; block-style changes
+// from the Design tab are written into the iframe as inline CSS.
+function EditableHtmlIframe({ html, doc }) {
+  const setEmailDocument = useAppStore(s => s.setEmailDocument);
+  const setSelectedBlockId = useAppStore(s => s.setSelectedBlockId);
+  const selectedBlockId = useAppStore(s => s.selectedBlockId);
+  const iframeRef = useRef(null);
+  const lastLoadedRef = useRef(null);
+  const editingRef = useRef(false);
+  const debounceRef = useRef(null);
+
+  // (Re)load the iframe only when the html prop changes from the outside —
+  // not in response to our own writes. editingRef gates against echoing
+  // user typing back into srcDoc, which would blow away the selection.
+  // We skip the initial mount since the load-listener effect below owns
+  // the first srcdoc assignment (and must attach `load` first).
+  useEffect(() => {
+    if (lastLoadedRef.current === null) return; // initial mount
+    if (editingRef.current) return;
+    if (lastLoadedRef.current === html) return;
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    lastLoadedRef.current = html;
+    iframe.srcdoc = html;
+  }, [html]);
+
+  // Apply each block's style to its tagged element. Runs on every doc
+  // change so Design-tab edits land in the iframe immediately.
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    const idoc = iframe?.contentDocument;
+    if (!idoc?.body) return;
+    Object.keys(doc).forEach(id => {
+      if (id === 'root') return;
+      const block = doc[id];
+      const el = idoc.querySelector(`[data-eb-block-id="${id}"]`);
+      if (!el) return;
+      const css = blockStyleToCss(block?.data?.style);
+      // Preserve the editor outline if this is the currently selected block.
+      const isSelected = selectedBlockId === id;
+      const outline = isSelected ? '; outline: 2px solid #7C5CFA; outline-offset: 2px' : '';
+      el.setAttribute('style', css + outline);
+    });
+  }, [doc, selectedBlockId]);
+
+  // Visual highlight for the selected block. Separate from the style effect
+  // so click highlights show up even when the block has no inline style.
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    const idoc = iframe?.contentDocument;
+    if (!idoc?.body) return;
+    idoc.querySelectorAll('[data-eb-block-id]').forEach(el => {
+      const id = el.getAttribute('data-eb-block-id');
+      if (id === selectedBlockId) {
+        el.style.outline = '2px solid #7C5CFA';
+        el.style.outlineOffset = '2px';
+      } else {
+        el.style.removeProperty('outline');
+        el.style.removeProperty('outline-offset');
+      }
+    });
+  }, [selectedBlockId]);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    const handleLoad = () => {
+      const idoc = iframe.contentDocument;
+      if (!idoc) return;
+      const body = idoc.body;
+      if (!body) return;
+      body.setAttribute('contenteditable', 'true');
+      body.style.outline = 'none';
+      body.style.minHeight = '100%';
+
+      const flush = () => {
+        // Clone the document so we can strip editor-only attributes (the
+        // contenteditable flag, the injected outline/min-height styles, the
+        // per-block outlines) without disturbing the live DOM.
+        const cloneDoc = idoc.cloneNode(true);
+        const cloneBody = cloneDoc.body;
+        if (cloneBody) {
+          cloneBody.removeAttribute('contenteditable');
+          const s = cloneBody.style;
+          s.removeProperty('outline');
+          s.removeProperty('min-height');
+          if (!cloneBody.getAttribute('style')) cloneBody.removeAttribute('style');
+        }
+        cloneDoc.querySelectorAll('[data-eb-block-id]').forEach(el => {
+          el.style.removeProperty('outline');
+          el.style.removeProperty('outline-offset');
+          if (!el.getAttribute('style')) el.removeAttribute('style');
+        });
+        const full = '<!doctype html>\n' + cloneDoc.documentElement.outerHTML;
+        lastLoadedRef.current = full;
+        const cur = useAppStore.getState().emailDocument;
+        if (!cur?.root) return;
+        setEmailDocument({
+          ...cur,
+          root: { ...cur.root, data: { ...(cur.root.data || {}), customHtml: full } },
+        });
+      };
+
+      const onInput = () => {
+        editingRef.current = true;
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => {
+          flush();
+          editingRef.current = false;
+        }, 300);
+      };
+
+      const onClick = (e) => {
+        const tagged = e.target.closest?.('[data-eb-block-id]');
+        if (tagged) {
+          const id = tagged.getAttribute('data-eb-block-id');
+          useAppStore.getState().setSelectedBlockId(id);
+        }
+      };
+
+      idoc.addEventListener('input', onInput);
+      idoc.addEventListener('click', onClick);
+    };
+
+    iframe.addEventListener('load', handleLoad);
+    // Initial srcdoc — assigning srcdoc fires `load` once it parses.
+    iframe.srcdoc = html;
+    lastLoadedRef.current = html;
+    return () => {
+      iframe.removeEventListener('load', handleLoad);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <iframe
+      ref={iframeRef}
+      className={styles.canvasIframe}
+      title="Email preview (editable)"
+      sandbox="allow-same-origin"
+    />
+  );
+}
+
 function DragHandleDots() {
   return (
     <svg width="12" height="14" viewBox="0 0 12 14" fill="none" aria-hidden="true">
@@ -185,7 +407,7 @@ function ResizeWrap({ id, block, updateBlock, isSelected, canWidth, canHeight, c
   }, [block, id, updateBlock, canWidth, canHeight, ratioLock]);
 
   return (
-    <div ref={wrapRef} className={styles.resizeWrap} style={{ position: 'relative', display: 'inline-block', maxWidth: '100%' }}>
+    <div ref={wrapRef} className={styles.resizeWrap} style={{ position: 'relative', display: 'inline-block', maxWidth: '100%', width: block.data?.props?.width != null ? (typeof block.data.props.width === 'number' ? `${block.data.props.width}px` : block.data.props.width) : undefined }}>
       {children}
       {isSelected && (
         <>
@@ -207,24 +429,40 @@ function ResizeWrap({ id, block, updateBlock, isSelected, canWidth, canHeight, c
   );
 }
 
-export function PreviewCanvas() {
+export function PreviewCanvas({ dropIndicator }) {
   const doc = useAppStore(s => s.emailDocument);
   const selectedBlockId = useAppStore(s => s.selectedBlockId);
-  const bulkSelectedIds = useAppStore(s => s.bulkSelectedIds) ?? EMPTY_BULK_IDS;
+  const selectedColumnIdx = useAppStore(s => s.selectedColumnIdx);
+  const bulkSelectedIds = useAppStore(s => s.bulkSelectedIds);
   const setSelectedBlockId = useAppStore(s => s.setSelectedBlockId);
+  const selectColumn = useAppStore(s => s.selectColumn);
   const removeBlock = useAppStore(s => s.removeBlock);
   const updateBlock = useAppStore(s => s.updateBlock);
   const duplicateBlock = useAppStore(s => s.duplicateBlock);
-  const moveBlockUp = useAppStore(s => s.moveBlockUp);
+  const selectParentBlock = useAppStore(s => s.selectParentBlock);
   const htmlOverride = useAppStore(s => s.htmlPreviewOverride);
 
   if (!doc) return null;
 
   // HTML override → bypass the doc and render the user's edited markup.
+  // Live override (htmlPreviewOverride) takes precedence so the user sees
+  // their pending edits. Persisted customHtml is only used as a fallback
+  // when there are no parsed blocks — that way imported HTML (which always
+  // produces childrenIds) flows through the normal SortableBlock pipeline
+  // so the toolbar, drag handles, drop indicator, and reorder all work.
+  const customHtml = doc.root?.data?.customHtml;
+  const hasBlocks = (doc.root?.data?.childrenIds?.length ?? 0) > 0;
   if (htmlOverride != null) {
     return (
       <div className={styles.canvasWrap}>
-        <iframe className={styles.canvasIframe} title="Email preview" srcDoc={htmlOverride} sandbox="" />
+        <iframe className={styles.canvasIframe} title="Email preview" srcDoc={htmlOverride} sandbox="allow-same-origin" />
+      </div>
+    );
+  }
+  if (customHtml != null && !hasBlocks) {
+    return (
+      <div className={styles.canvasWrap}>
+        <EditableHtmlIframe html={customHtml} doc={doc} />
       </div>
     );
   }
@@ -234,7 +472,7 @@ export function PreviewCanvas() {
   const layoutStyle = {
     background: root?.data?.canvasColor || '#fff',
     color: root?.data?.textColor || '#3A485F',
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: getFontStack(root?.data?.fontFamily),
   };
 
   const commitText = (id, text) => {
@@ -249,21 +487,26 @@ export function PreviewCanvas() {
   };
 
   const handleCanvasClick = (e) => {
-    if (e.target === e.currentTarget) setSelectedBlockId(null);
+    if (e.target === e.currentTarget) setSelectedBlockId('root');
   };
 
+  const toggleBulkSelected = useAppStore.getState().toggleBulkSelected;
   const bulkSet = new Set(bulkSelectedIds);
   const ctx = {
     doc,
     selectedBlockId,
+    selectedColumnIdx,
     bulkSet,
     setSelectedBlockId,
+    selectColumn,
+    toggleBulkSelected,
     removeBlock,
     updateBlock,
     duplicateBlock,
-    moveBlockUp,
+    selectParentBlock,
     commitText,
     commitTable,
+    dropIndicator,
   };
 
   return (
@@ -277,23 +520,42 @@ export function PreviewCanvas() {
         style={layoutStyle}
         onClick={(e) => { e.stopPropagation(); setSelectedBlockId('root'); }}
       >
-        <SortableList parentId="root" childrenIds={childrenIds} ctx={ctx} />
+        <SortableList parentId="root" childrenIds={childrenIds} ctx={ctx} gap={root?.data?.gap} />
       </div>
     </div>
   );
 }
 
+function DropIndicatorLine() {
+  return <div className={styles.dropIndicatorLine} />;
+}
+
 // ── A sortable list of blocks belonging to a single parent slot. ────────────
-function SortableList({ parentId, columnIdx, childrenIds, ctx }) {
-  // If empty, render a droppable placeholder so the user has somewhere to drop.
+function SortableList({ parentId, columnIdx, childrenIds, ctx, gap }) {
   if (!childrenIds || childrenIds.length === 0) {
     return <EmptyDropzone parentId={parentId} columnIdx={columnIdx} />;
   }
+  const ind = ctx.dropIndicator;
+  const showHere = ind && ind.parentId === parentId && (ind.columnIdx ?? undefined) === (columnIdx ?? undefined) && !ind.isNest;
+  // `gap` is the vertical spacing between children, configured on the
+  // parent nesting block (Container / ColumnsContainer column / EmailLayout).
+  // We use flex column instead of margin so the gap doesn't collapse with
+  // a child's own margin and stays consistent with the export pipeline.
+  const wrapperStyle = gap ? { display: 'flex', flexDirection: 'column', gap: `${gap}px` } : undefined;
+  const content = (
+    <>
+      {showHere && ind.index === 0 && <DropIndicatorLine />}
+      {childrenIds.map((id, idx) => (
+        <div key={id}>
+          <SortableBlock id={id} ctx={ctx} />
+          {showHere && ind.index === idx + 1 && <DropIndicatorLine />}
+        </div>
+      ))}
+    </>
+  );
   return (
     <SortableContext items={childrenIds} strategy={verticalListSortingStrategy}>
-      {childrenIds.map(id => (
-        <SortableBlock key={id} id={id} ctx={ctx} />
-      ))}
+      {wrapperStyle ? <div style={wrapperStyle}>{content}</div> : content}
     </SortableContext>
   );
 }
@@ -324,16 +586,51 @@ function EmptyDropzone({ parentId, columnIdx }) {
 function EmptyDropIllustration() {
   return (
     <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="16" y="16" width="48" height="48" rx="6" stroke="var(--neutral-200)" strokeWidth="2" strokeDasharray="6 4" />
-      <rect x="30" y="10" width="36" height="42" rx="5" fill="white" stroke="var(--neutral-200)" strokeWidth="1.5" />
-      <rect x="34" y="20" width="10" height="8" rx="2" stroke="var(--neutral-300)" strokeWidth="1.2" />
-      <rect x="34" y="34" width="10" height="8" rx="2" stroke="var(--neutral-300)" strokeWidth="1.2" />
-      <line x1="48" y1="22" x2="62" y2="22" stroke="var(--neutral-200)" strokeWidth="1.2" strokeLinecap="round" />
-      <line x1="48" y1="26" x2="58" y2="26" stroke="var(--neutral-200)" strokeWidth="1.2" strokeLinecap="round" />
-      <line x1="48" y1="36" x2="62" y2="36" stroke="var(--neutral-200)" strokeWidth="1.2" strokeLinecap="round" />
-      <line x1="48" y1="40" x2="58" y2="40" stroke="var(--neutral-200)" strokeWidth="1.2" strokeLinecap="round" />
+      <rect x="16" y="16" width="48" height="48" rx="6" stroke="var(--neutral-200)" strokeWidth="1" strokeDasharray="6 4" />
+      <rect x="30" y="10" width="36" height="42" rx="5" fill="white" stroke="var(--neutral-200)" strokeWidth="1" />
+      <rect x="34" y="20" width="10" height="8" rx="2" stroke="var(--neutral-300)" strokeWidth="1" />
+      <rect x="34" y="34" width="10" height="8" rx="2" stroke="var(--neutral-300)" strokeWidth="1" />
+      <line x1="48" y1="22" x2="62" y2="22" stroke="var(--neutral-200)" strokeWidth="1" strokeLinecap="round" />
+      <line x1="48" y1="26" x2="58" y2="26" stroke="var(--neutral-200)" strokeWidth="1" strokeLinecap="round" />
+      <line x1="48" y1="36" x2="62" y2="36" stroke="var(--neutral-200)" strokeWidth="1" strokeLinecap="round" />
+      <line x1="48" y1="40" x2="58" y2="40" stroke="var(--neutral-200)" strokeWidth="1" strokeLinecap="round" />
     </svg>
   );
+}
+
+// Wrap dnd-kit's pointer listeners with a hold gate so text-editable
+// blocks don't grab on a single click (which would prevent entering text-
+// edit mode). Holds the pointer for `delay` ms — if still pressed, calls
+// the wrapped onPointerDown so dnd-kit picks up the drag. Cancels on
+// pointerup or significant movement before the delay elapses.
+function holdListeners(listeners, delay = 250) {
+  if (!listeners?.onPointerDown) return listeners;
+  return {
+    ...listeners,
+    onPointerDown: (e) => {
+      // Let clicks that target an interactive child (drag handle, button)
+      // go through immediately — those have their own listeners spread.
+      if (e.target.closest('[data-no-drag]')) return;
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const evClone = { ...e, clientX: e.clientX, clientY: e.clientY, target: e.target, currentTarget: e.currentTarget, nativeEvent: e.nativeEvent, preventDefault: () => e.preventDefault(), stopPropagation: () => e.stopPropagation() };
+      let cancelled = false;
+      const cancel = () => { cancelled = true; cleanup(); };
+      const move = (mv) => {
+        if (Math.abs(mv.clientX - startX) > 5 || Math.abs(mv.clientY - startY) > 5) cancel();
+      };
+      const cleanup = () => {
+        window.removeEventListener('pointerup', cancel);
+        window.removeEventListener('pointermove', move);
+      };
+      window.addEventListener('pointerup', cancel, { once: true });
+      window.addEventListener('pointermove', move);
+      setTimeout(() => {
+        cleanup();
+        if (!cancelled) listeners.onPointerDown(evClone);
+      }, delay);
+    },
+  };
 }
 
 // ── One sortable wrapper around a block of any type. ────────────────────────
@@ -349,7 +646,11 @@ function SortableBlock({ id, ctx }) {
   if (!block) return null;
   const isSelected = ctx.selectedBlockId === id;
   const isBulkSelected = ctx.bulkSet.has(id);
-  const isBody = block.data?.role === 'body';
+  // Heading/Text blocks use contentEditable for inline editing — wrap the
+  // wrapper-level drag listener with a hold gate so a normal click goes
+  // into edit mode. Other block types use the listeners directly.
+  const isTextBlock = block.type === 'Heading' || block.type === 'Text';
+  const wrapListeners = isTextBlock ? holdListeners(listeners) : listeners;
 
   return (
     <div
@@ -357,16 +658,28 @@ function SortableBlock({ id, ctx }) {
       style={style}
       className={[
         styles.blockWrap,
-        isSelected && !isBody ? styles.blockWrapSelected : '',
+        isSelected ? styles.blockWrapSelected : '',
         isBulkSelected ? styles.blockWrapBulk : '',
       ].join(' ')}
-      onClick={(e) => { e.stopPropagation(); ctx.setSelectedBlockId(id); }}
+      onClick={(e) => {
+        e.stopPropagation();
+        // Cmd/Ctrl/Shift-click → add this block to (or remove from) the
+        // bulk-selection set so the right panel opens BulkDesignTab.
+        if (e.metaKey || e.ctrlKey || e.shiftKey) {
+          ctx.toggleBulkSelected(id);
+        } else {
+          ctx.setSelectedBlockId(id);
+        }
+      }}
+      {...attributes}
+      {...wrapListeners}
     >
-      {isSelected && !isBody && (
+      {isSelected && (
         <div className={styles.blockToolbar}>
           <button
             {...attributes}
             {...listeners}
+            data-no-drag
             className={styles.blockToolbarBtn}
             aria-label="Drag"
             onClick={(e) => e.stopPropagation()}
@@ -378,9 +691,9 @@ function SortableBlock({ id, ctx }) {
           <span className={styles.blockToolbarDivider} />
           <button
             className={styles.blockToolbarBtn}
-            onClick={(e) => { e.stopPropagation(); ctx.moveBlockUp(id); }}
-            aria-label="Move up"
-            title="Move up"
+            onClick={(e) => { e.stopPropagation(); ctx.selectParentBlock(id); }}
+            aria-label="Select parent"
+            title="Select parent (⇧↵)"
           >
             <Icon name="solar:undo-left-round-linear" size={14} color="#fff" />
           </button>
@@ -423,6 +736,7 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
         blockId={id}
         type={type}
         level={props.level}
+        listStyle={props.listStyle}
         text={props.text || ''}
         style={style}
         onCommit={ctx.commitText}
@@ -430,27 +744,89 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     );
   }
 
+  // Raw HTML escape hatch — the parser emits these when it detects an
+  // imported subtree that's too bespoke to faithfully model as blocks
+  // (deeply nested table mockups, bar charts assembled from stacked
+  // cells, etc.). Users can also drop them in from the components panel
+  // for arbitrary HTML they need to keep verbatim. dangerouslySetInnerHTML
+  // is safe here — the parser strips <script> before walking and the
+  // user is the trust boundary for what they paste.
+  if (type === 'RawHtml') {
+    return (
+      <div
+        style={{
+          padding: paddingCss(style.padding),
+          textAlign: style.blockAlign || style.textAlign,
+        }}
+        dangerouslySetInnerHTML={{ __html: props.html || '' }}
+      />
+    );
+  }
+
   if (type === 'Container') {
     const isSelected = ctx.selectedBlockId === id;
     const heightMode = props.heightMode || 'hug';
+    // bgProps() routes gradients to backgroundImage and solids to
+    // backgroundColor. If the user has a Background Image set, it
+    // overrides whatever's in bgColor.
     const containerStyle = {
       position: 'relative',
-      backgroundColor: style.backgroundColor,
-      backgroundImage: style.backgroundImage ? `url(${style.backgroundImage})` : undefined,
-      backgroundSize: style.backgroundSize || 'cover',
-      backgroundPosition: style.backgroundPosition || 'center',
-      backgroundRepeat: style.backgroundRepeat || 'no-repeat',
+      ...bgProps(style.backgroundColor),
+      ...(style.backgroundImage ? {
+        backgroundImage: `url(${style.backgroundImage})`,
+        backgroundSize: style.backgroundSize || 'cover',
+        backgroundPosition: style.backgroundPosition || 'center',
+        backgroundRepeat: style.backgroundRepeat || 'no-repeat',
+      } : {}),
       padding: paddingCss(style.padding),
       color: style.color,
       borderRadius: style.borderRadius ? `${style.borderRadius}px` : undefined,
     };
-    if (heightMode === 'fixed' && props.height) {
-      containerStyle.height = typeof props.height === 'number' ? `${props.height}px` : props.height;
-      containerStyle.overflow = 'auto';
+    applyBorder(containerStyle, style);
+    // Centred-email + hero-section fidelity. `max-width` paired with
+    // auto side margins is the standard centring pattern; `min-height`
+    // lets a hero hold its height even when content is short. The parser
+    // emits these from CSS classes that the original HTML used; without
+    // the fields here they were silently dropped on the canvas.
+    if (style.maxWidth) {
+      containerStyle.maxWidth = typeof style.maxWidth === 'number' ? `${style.maxWidth}px` : style.maxWidth;
+      containerStyle.marginLeft = 'auto';
+      containerStyle.marginRight = 'auto';
     }
+    if (style.minHeight) {
+      containerStyle.minHeight = typeof style.minHeight === 'number' ? `${style.minHeight}px` : style.minHeight;
+    }
+    // SVG tint for backgroundImage — substitute fills inline and emit
+    // as a data-URI so the existing background-image: url(…) path keeps
+    // working without changing CSS plumbing.
+    if (style.bgSvgRaw && style.bgTintColor) {
+      const tinted = tintSvgMarkup(style.bgSvgRaw, style.bgTintColor);
+      containerStyle.backgroundImage = `url("data:image/svg+xml;utf8,${encodeURIComponent(tinted)}")`;
+      containerStyle.backgroundSize = style.backgroundSize || 'contain';
+      containerStyle.backgroundPosition = style.backgroundPosition || 'center';
+      containerStyle.backgroundRepeat = style.backgroundRepeat || 'no-repeat';
+    }
+    if (heightMode === 'fixed' && props.height) {
+      // Fixed-height containers position their child content via flex
+      // instead of scrolling. contentAlignH/contentAlign (left/center/
+      // right + top/middle/bottom) map to justify- and align-items so
+      // the user can park content in any of 9 spots. overflow-x: hidden
+      // stops a too-wide child (e.g. a background gradient bleed) from
+      // forcing a horizontal scrollbar inside the container.
+      containerStyle.height = typeof props.height === 'number' ? `${props.height}px` : props.height;
+      containerStyle.overflow = 'hidden';
+      containerStyle.display = 'flex';
+      containerStyle.flexDirection = 'column';
+      containerStyle.minWidth = 0;
+      const vMap = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };
+      const hMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
+      containerStyle.justifyContent = vMap[props.contentAlign] || 'flex-start';
+      containerStyle.alignItems = hMap[props.contentAlignH] || 'stretch';
+    }
+    const isNestTarget = ctx.dropIndicator?.isNest && ctx.dropIndicator?.parentId === id;
     return (
-      <div style={containerStyle}>
-        <SortableList parentId={id} childrenIds={props.childrenIds || []} ctx={ctx} />
+      <div style={containerStyle} className={isNestTarget ? styles.dropNestTarget : undefined}>
+        <SortableList parentId={id} childrenIds={props.childrenIds || []} ctx={ctx} gap={style.gap} />
         {isSelected && <ContainerResizeHandle id={id} block={block} updateBlock={ctx.updateBlock} />}
       </div>
     );
@@ -476,31 +852,67 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
       alignItems: align === 'top' ? 'flex-start' : align === 'middle' ? 'center' : 'flex-end',
       gap: `${vGap}px ${hGap}px`,
       padding: paddingCss(style.padding),
-      backgroundColor: style.backgroundColor,
-      backgroundImage: style.backgroundImage ? `url(${style.backgroundImage})` : undefined,
-      backgroundSize: style.backgroundSize || 'cover',
-      backgroundPosition: style.backgroundPosition || 'center',
-      backgroundRepeat: style.backgroundRepeat || 'no-repeat',
+      ...bgProps(style.backgroundColor),
+      ...(style.backgroundImage ? {
+        backgroundImage: `url(${style.backgroundImage})`,
+        backgroundSize: style.backgroundSize || 'cover',
+        backgroundPosition: style.backgroundPosition || 'center',
+        backgroundRepeat: style.backgroundRepeat || 'no-repeat',
+      } : {}),
       borderRadius: style.borderRadius ? `${style.borderRadius}px` : undefined,
     };
+    applyBorder(colsStyle, style);
+    if (style.bgSvgRaw && style.bgTintColor) {
+      const tinted = tintSvgMarkup(style.bgSvgRaw, style.bgTintColor);
+      colsStyle.backgroundImage = `url("data:image/svg+xml;utf8,${encodeURIComponent(tinted)}")`;
+      colsStyle.backgroundSize = style.backgroundSize || 'contain';
+      colsStyle.backgroundPosition = style.backgroundPosition || 'center';
+      colsStyle.backgroundRepeat = style.backgroundRepeat || 'no-repeat';
+    }
     if (heightMode === 'fixed' && props.height) {
       colsStyle.height = typeof props.height === 'number' ? `${props.height}px` : props.height;
-      colsStyle.overflow = 'auto';
+      colsStyle.overflow = 'hidden';
     }
+    const isColumn = direction === 'column';
     const totalGap = hGap * (count - 1);
+    const isNestTargetCols = ctx.dropIndicator?.isNest && ctx.dropIndicator?.parentId === id;
     return (
-      <div style={colsStyle}>
+      <div style={colsStyle} className={isNestTargetCols ? styles.dropNestTarget : undefined}>
         {visible.map((col, idx) => {
           const w = columnWidths[idx] || (100 / count);
+          // In row direction the column-width % drives flex-basis along the
+          // main (horizontal) axis. When the user flips direction to column,
+          // the main axis is vertical — applying the % there would size each
+          // column as a fraction of the parent's height (≈0 in hug mode), so
+          // every column would collapse. Stack them at full width instead.
+          const colAlign = col?.align || 'left';
+          const colValign = col?.valign || 'top';
+          const vMap = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };
+          const isColSelected = ctx.selectedBlockId === id && ctx.selectedColumnIdx === idx;
+          const colPad = col?.padding;
+          const colBg = col?.backgroundColor;
+          const itemStyle = isColumn
+            ? { width: '100%', minWidth: 0, textAlign: colAlign, display: 'flex', flexDirection: 'column', justifyContent: vMap[colValign] || 'flex-start' }
+            : { flex: `0 0 calc(${w}% - ${totalGap * w / 100}px)`, minWidth: 0, textAlign: colAlign, display: 'flex', flexDirection: 'column', justifyContent: vMap[colValign] || 'flex-start' };
+          const colHeight = col?.heightMode || 'hug';
+          if (colHeight === 'fill') {
+            itemStyle.alignSelf = 'stretch';
+          } else if (colHeight === 'custom' && col?.customHeight) {
+            itemStyle.height = typeof col.customHeight === 'number' ? `${col.customHeight}px` : col.customHeight;
+            itemStyle.overflow = 'hidden';
+          }
+          if (colPad) {
+            itemStyle.padding = `${colPad.top || 0}px ${colPad.right || 0}px ${colPad.bottom || 0}px ${colPad.left || 0}px`;
+          }
+          if (colBg) itemStyle.backgroundColor = colBg;
           return (
             <div
               key={idx}
-              style={{
-                flex: `0 0 calc(${w}% - ${totalGap * w / 100}px)`,
-                minWidth: 0,
-              }}
+              style={itemStyle}
+              className={isColSelected ? styles.selectedColumn : undefined}
+              onClick={(e) => { e.stopPropagation(); ctx.selectColumn(id, idx); }}
             >
-              <SortableList parentId={id} columnIdx={idx} childrenIds={col?.childrenIds || []} ctx={ctx} />
+              <SortableList parentId={id} columnIdx={idx} childrenIds={col?.childrenIds || []} ctx={ctx} gap={style.gap} />
             </div>
           );
         })}
@@ -520,17 +932,28 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     else imgStyle.height = 'auto';
     if (typeof imgStyle.width === 'number') imgStyle.width = `${imgStyle.width}px`;
     if (typeof imgStyle.height === 'number') imgStyle.height = `${imgStyle.height}px`;
+    if (props.objectFit && props.objectFit !== 'fill') imgStyle.objectFit = props.objectFit;
+    if (props.objectPosition && props.objectPosition !== 'center') imgStyle.objectPosition = props.objectPosition;
 
-    const content = props.url ? (
+    // If we have raw SVG markup (set on upload of an .svg, or extracted
+    // from imported inline SVGs in HTML), render it via dangerouslySetInnerHTML.
+    // When a tintColor is also set, recolour the fills/strokes in-place.
+    const hasSvg = props.svgRaw;
+    const content = hasSvg ? (
+      <div
+        style={{ ...imgStyle, display: 'inline-block', lineHeight: 0 }}
+        dangerouslySetInnerHTML={{ __html: props.tintColor ? tintSvgMarkup(props.svgRaw, props.tintColor) : props.svgRaw }}
+      />
+    ) : props.url ? (
       <img src={props.url} alt={props.alt || ''} style={imgStyle} />
     ) : (
-      <div style={{ padding: 24, border: '1px dashed #CED4DD', borderRadius: 8, color: '#9CA3AF', fontSize: 12, width: imgStyle.width }}>
+      <div style={{ padding: 24, border: '1px dashed var(--neutral-150)', borderRadius: 8, color: 'var(--neutral-200)', fontSize: 12, width: imgStyle.width }}>
         No image
       </div>
     );
 
     return (
-      <div style={{ padding: paddingCss(style.padding), textAlign: style.textAlign || 'center', backgroundColor: style.backgroundColor }}>
+      <div style={{ padding: paddingCss(style.padding), textAlign: style.blockAlign || style.textAlign || 'center', ...bgProps(style.backgroundColor) }}>
         <ResizeWrap id={id} block={block} updateBlock={ctx.updateBlock} isSelected={isSelected} canWidth canHeight>
           {content}
         </ResizeWrap>
@@ -543,7 +966,7 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     const size = props.size || 64;
     const radius = props.shape === 'circle' ? '50%' : props.shape === 'rounded' ? 8 : 0;
     return (
-      <div style={{ padding: paddingCss(style.padding), textAlign: style.textAlign || 'center' }}>
+      <div style={{ padding: paddingCss(style.padding), textAlign: style.blockAlign || style.textAlign || 'center' }}>
         {props.imageUrl && <img src={props.imageUrl} alt={props.alt || ''} style={{ width: size, height: size, borderRadius: radius, objectFit: 'cover' }} />}
       </div>
     );
@@ -557,6 +980,23 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     const endRight = props.endRight || 'none';
     const hasEndpoints = endLeft !== 'none' || endRight !== 'none';
     const markerSize = Math.max(8, thickness * 4);
+    const orientation = props.orientation || 'horizontal';
+
+    // Vertical dividers ignore the endpoint markers — they're a horizontal
+    // pattern. Render a thin tall bar with an explicit height (defaults to
+    // 40px, mirrors patchEmailHtml.js).
+    if (orientation === 'vertical') {
+      const h = props.height ?? 40;
+      return (
+        <div style={{ padding: paddingCss(style.padding), display: 'flex', justifyContent: style.blockAlign === 'left' ? 'flex-start' : style.blockAlign === 'right' ? 'flex-end' : 'center' }}>
+          <div style={{
+            width: `${thickness}px`,
+            height: `${h}px`,
+            borderLeft: `${thickness}px ${lineStyle} ${color}`,
+          }} />
+        </div>
+      );
+    }
 
     if (!hasEndpoints) {
       return (
@@ -618,14 +1058,14 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     const sz = sizeStyles[props.size || 'medium'] || sizeStyles.medium;
     const radius = style.borderRadius ?? presetRadius[props.buttonStyle || 'rectangle'] ?? 0;
     return (
-      <div style={{ padding: paddingCss(style.padding), textAlign: style.textAlign || 'center' }}>
+      <div style={{ padding: paddingCss(style.padding), textAlign: style.blockAlign || style.textAlign || 'center' }}>
         <a
           href={props.url || '#'}
           onClick={e => e.preventDefault()}
           style={{
             display: 'inline-block',
             padding: sz.padding,
-            backgroundColor: props.buttonBackgroundColor || '#7C5CFA',
+            ...bgProps(props.buttonBackgroundColor || '#7C5CFA'),
             color: props.buttonTextColor || '#fff',
             borderRadius: `${radius}px`,
             textDecoration: 'none',
@@ -647,21 +1087,20 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     const gap = props.gap || 16;
     const alignment = props.alignment || 'center';
     return (
-      <div style={{
-        padding: paddingCss(style.padding),
-        display: 'flex',
-        justifyContent: alignment === 'left' ? 'flex-start' : alignment === 'right' ? 'flex-end' : 'center',
-        alignItems: 'center',
-        gap: `${gap}px`,
-        backgroundColor: style.backgroundColor,
-      }}>
-        {platforms.map(p => (
-          <a key={p.id} href={p.url || '#'} onClick={e => e.preventDefault()} title={p.label} style={{ display: 'inline-flex' }}>
-            {p.iconUrl
-              ? <img src={p.iconUrl} alt={p.label} width={iconSize} height={iconSize} style={{ display: 'block' }} />
-              : <div style={{ width: iconSize, height: iconSize, borderRadius: 4, border: '1px dashed #CED4DD', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#9CA3AF' }}>?</div>}
-          </a>
-        ))}
+      <div style={{ padding: paddingCss(style.padding), textAlign: style.blockAlign || alignment, ...bgProps(style.backgroundColor) }}>
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: `${gap}px`,
+        }}>
+          {platforms.map(p => (
+            <a key={p.id} href={p.url || '#'} onClick={e => e.preventDefault()} title={p.label} style={{ display: 'inline-flex' }}>
+              {p.iconUrl
+                ? <img src={p.iconUrl} alt={p.label} width={iconSize} height={iconSize} style={{ display: 'block' }} />
+                : <div style={{ width: iconSize, height: iconSize, borderRadius: 4, border: '1px dashed var(--neutral-150)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'var(--neutral-200)' }}>?</div>}
+            </a>
+          ))}
+        </div>
       </div>
     );
   }
@@ -674,24 +1113,23 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     const fontSize = props.fontSize || 14;
     const fontWeight = props.fontWeight || 'bold';
     return (
-      <div style={{
-        padding: paddingCss(style.padding),
-        display: 'flex',
-        justifyContent: alignment === 'left' ? 'flex-start' : alignment === 'right' ? 'flex-end' : 'center',
-        alignItems: 'center',
-        gap: `${gap}px`,
-        backgroundColor: style.backgroundColor,
-      }}>
-        {links.map((link, i) => (
-          <a
-            key={i}
-            href={link.url || '#'}
-            onClick={e => e.preventDefault()}
-            style={{ color: linkColor, fontSize, fontWeight, textDecoration: 'none', fontFamily: 'inherit' }}
-          >
-            {link.label}
-          </a>
-        ))}
+      <div style={{ padding: paddingCss(style.padding), textAlign: style.blockAlign || alignment, ...bgProps(style.backgroundColor) }}>
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: `${gap}px`,
+        }}>
+          {links.map((link, i) => (
+            <a
+              key={i}
+              href={link.url || '#'}
+              onClick={e => e.preventDefault()}
+              style={{ color: linkColor, fontSize, fontWeight, textDecoration: 'none', fontFamily: 'inherit' }}
+            >
+              {link.label}
+            </a>
+          ))}
+        </div>
       </div>
     );
   }
@@ -724,7 +1162,7 @@ function InlineTable({ id, props, style, commitTable }) {
   }, [id, rows, commitTable]);
 
   return (
-    <div style={{ padding: paddingCss(style.padding), overflowX: 'auto' }}>
+    <div style={{ padding: paddingCss(style.padding), overflowX: 'auto', textAlign: style.blockAlign || 'left' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: style.fontSize || 13, fontFamily: 'inherit', minWidth: cols.length > 3 ? cols.length * 120 : undefined }}>
         <thead>
           <tr>

@@ -11,6 +11,17 @@ import styles from './QueueRow.module.css';
 
 const LANG_MAP = { en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese', ko: 'Korean', vi: 'Vietnamese', hi: 'Hindi', pa: 'Punjabi' };
 
+function computeAgentDueOn(dischargeDate, outreachType) {
+  if (!dischargeDate) return null;
+  const [m, d, y] = dischargeDate.split('/').map(Number);
+  if (!m || !d || !y) return null;
+  const base = new Date(y, m - 1, d);
+  const offsetMs = outreachType === '7d' ? 7 * 24 * 60 * 60 * 1000 : 48 * 60 * 60 * 1000;
+  const due = new Date(base.getTime() + offsetMs);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(due.getMonth() + 1)}/${pad(due.getDate())}/${due.getFullYear()}`;
+}
+
 const AI_VARIANT_MAP = {
   'ai-tag-risk': 'ai-risk',
   'ai-tag-care': 'ai-care',
@@ -333,6 +344,17 @@ export function QueueRow({ patient }) {
         <StatusCell patient={p} voicemailCalls={voicemailCalls} completedCall={completedCall} />
       </td>
       <td className={styles.agentColTd} style={{ background: 'var(--agent-col-bg)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 14, color: 'var(--neutral-400)' }}>
+            {computeAgentDueOn(p.dischargeDate, p.outreachType) || '—'}
+          </span>
+          <span style={{ fontSize: 12, color: 'var(--neutral-300)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <Icon name="solar:clock-circle-linear" size={14} />
+            {p.outreachLeft || '—'}
+          </span>
+        </div>
+      </td>
+      <td className={styles.agentColTd} style={{ background: 'var(--agent-col-bg)' }}>
         <NextActionCell patient={p} ongoingCall={ongoingCall} />
       </td>
       <td className={styles.agentColTd} style={{ background: 'var(--agent-col-bg)', borderRight: '2px solid var(--primary-200)' }}>
@@ -381,7 +403,7 @@ export function QueueRow({ patient }) {
           <span style={{ position: 'relative' }}>
             <ActionButton
               ref={callBtnRef}
-              icon="solar:phone-outline"
+              icon="solar:phone-linear"
               size="L"
               tooltip={p.status === 'oncall' ? 'View live call' : 'Call patient'}
               iconColor={p.status === 'oncall' ? '#059669' : undefined}

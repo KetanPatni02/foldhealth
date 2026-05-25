@@ -1,0 +1,1199 @@
+.wrapper {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  height: 100%;
+  box-sizing: border-box;
+  background: var(--neutral-0);
+}
+
+/* ── Empty state ── */
+.emptyCard {
+  background: var(--primary-50);
+  border-radius: 8px;
+  padding: 16px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='%23FCFAFF' rx='8' ry='8' stroke='%23D0D6E1' stroke-width='1' stroke-dasharray='6%2c10' stroke-linecap='square'/%3e%3c/svg%3e");
+}
+
+/* ── Form card ── */
+.formCard {
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Header row ── */
+.formHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+/* ── Log Outreach For ── */
+.logForRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+
+.logForLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  white-space: nowrap;
+  margin-right: 4px;
+}
+
+/* ── FieldDropdown ── */
+.fieldDropdownWrap {
+  position: relative;
+  width: 100%;
+}
+
+.fieldDropdownTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 32px;
+  width: 100%;
+  padding: 0 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-400);
+  background: var(--neutral-0);
+  cursor: pointer;
+  text-align: left;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.fieldDropdownTrigger:hover { border-color: var(--neutral-200); }
+
+.fieldDropdownTrigger:focus {
+  border-color: var(--primary-300);
+  box-shadow: 0 0 0 2px rgba(140, 90, 226, 0.12);
+}
+
+.fieldDropdownPlaceholder { color: var(--neutral-200); }
+
+.fieldDropdownValue {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fieldDropdownMenu {
+  position: fixed;
+  background: var(--neutral-0);
+  border: 0.5px solid #E9ECF1;
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+  padding: 4px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.fieldDropdownItem {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 8px;
+  background: none;
+  border: none;
+  border-left: 2px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--neutral-400);
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+  transition: background 0.1s;
+  white-space: nowrap;
+}
+
+.fieldDropdownItem:hover { background: var(--neutral-50); }
+
+.fieldDropdownItemSelected {
+  background: var(--primary-50) !important;
+  border-left-color: var(--primary-300) !important;
+  color: var(--primary-300) !important;
+}
+
+/* ── TypeDropdown ── */
+.typeDropdownWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.typeDropdownTrigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 8px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-200);
+  border-radius: 4px;
+  cursor: pointer;
+  min-width: 130px;
+  transition: border-color 0.1s;
+}
+
+.typeDropdownTrigger:hover:not(:disabled) {
+  border-color: var(--neutral-300);
+}
+
+.typeDropdownTriggerDisabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: var(--neutral-50);
+}
+
+.typeDropdownValue {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--neutral-400);
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.typeDropdownMenu {
+  position: fixed;
+  background: var(--neutral-0);
+  border: 0.5px solid #E9ECF1;
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+  padding: 8px;
+  z-index: 9999;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.typeDropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 8px;
+  background: none;
+  border: none;
+  border-left: 2px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--neutral-400);
+  text-align: left;
+  transition: background 0.1s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.typeDropdownItem:hover {
+  background: var(--neutral-50);
+}
+
+.typeDropdownItemSelected {
+  background: var(--primary-50) !important;
+  border-left-color: var(--primary-300) !important;
+  color: var(--primary-300) !important;
+}
+
+/* ── Date/time picker ── */
+.dateInputWrap {
+  width: 200px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-200);
+  border-radius: 4px;
+  height: 32px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.datePickerTrigger {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+
+.datePickerText {
+  font-size: 14px;
+  color: var(--neutral-400);
+  flex: 1;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.datePickerPlaceholder {
+  font-size: 14px;
+  color: var(--neutral-200);
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* ── DateTimePicker dropdown ── */
+.dateTimeDropdown {
+  position: fixed;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.dtPickerBody {
+  display: flex;
+  align-items: stretch;
+}
+
+/* ── Calendar ── */
+.calendarSection {
+  padding: 16px;
+  border-right: 0.5px solid var(--neutral-100);
+}
+
+.calendarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.calendarTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--neutral-400);
+  font-family: 'Inter', sans-serif;
+}
+
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+}
+
+.calendarDayLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-200);
+  padding: 6px 0;
+  font-family: 'Inter', sans-serif;
+}
+
+.calendarDay {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--neutral-400);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Inter', sans-serif;
+  transition: background 0.1s;
+}
+
+.calendarDay:hover { background: var(--primary-50); color: var(--primary-300); }
+
+.calendarDaySelected {
+  background: var(--primary-300) !important;
+  color: var(--neutral-0) !important;
+  font-weight: 600;
+}
+
+/* ── Time columns ── */
+.timeColumnsSection {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 8px;
+  min-width: 100px;
+}
+
+.timeColsRow {
+  display: flex;
+  gap: 4px;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+}
+
+.timeColWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  flex: 1;
+  min-height: 0;
+}
+
+.timeColLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--neutral-300);
+  font-family: 'Inter', sans-serif;
+  text-align: center;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.timeCol {
+  flex: 1;
+  min-height: 0;
+  width: 44px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border: 0.5px solid var(--neutral-100);
+  border-radius: 4px;
+  padding: 2px;
+  box-sizing: border-box;
+}
+
+.timeCol::-webkit-scrollbar { display: none; }
+
+.timeColItem {
+  width: 100%;
+  height: 28px;
+  min-height: 28px;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  font-size: 13px;
+  color: var(--neutral-300);
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  text-align: center;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.timeColItem:hover { background: var(--primary-50); color: var(--primary-300); }
+
+.timeColItemSelected {
+  background: var(--primary-300) !important;
+  color: var(--neutral-0) !important;
+  font-weight: 600;
+}
+
+.timeColsFooter {
+  display: flex;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 0.5px solid var(--neutral-100);
+}
+
+.nowBtn {
+  flex: 1;
+  height: 28px;
+  border: 0.5px solid var(--neutral-200);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  background: none;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: background 0.1s;
+}
+
+.nowBtn:hover { background: var(--neutral-50); }
+
+.okBtn {
+  flex: 1;
+  height: 28px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-0);
+  background: var(--primary-300);
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: opacity 0.1s;
+}
+
+.okBtnDisabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Call Details Section ── */
+.callDetailsInner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Last Call banner */
+.callBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--primary-25);
+  border: 0.5px solid rgba(140, 90, 226, 0.15);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.callBannerIconWrap {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--primary-50);
+  border: 0.5px solid rgba(140, 90, 226, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.callBannerText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.callBannerTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.callBannerSub {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  color: var(--neutral-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.callBannerUseBtn {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-300);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity 0.1s;
+}
+
+.callBannerUseBtn:hover { opacity: 0.75; }
+
+.callBannerCloseBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  flex-shrink: 0;
+  color: var(--neutral-300);
+  transition: opacity 0.1s;
+}
+
+.callBannerCloseBtn:hover { opacity: 0.65; }
+
+/* Call Details header */
+.callDetailsHeader {
+  display: flex;
+  align-items: center;
+}
+
+.callDetailsLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neutral-400);
+}
+
+/* Direction row */
+.callDirectionRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* 2-column field grid */
+.callFieldsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+}
+
+.callFieldWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.callFieldLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+
+/* Duration row */
+.callDurationRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Override width + centering on the shared Input component */
+.callDurationInput {
+  width: 44px !important;
+  text-align: center;
+  padding: 0 4px !important;
+  -moz-appearance: textfield;
+}
+
+.callDurationInput::-webkit-inner-spin-button,
+.callDurationInput::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+.callDurationUnit {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+
+/* ── Form body ── */
+.formBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sectionLabelRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sectionLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  white-space: nowrap;
+}
+
+/* ── Program pills ── */
+.programs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.progPill {
+  background: var(--neutral-50);
+  border: 0.5px solid rgba(111, 122, 144, 0.1);
+  border-radius: 4px;
+  height: 22px;
+  padding: 0 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--neutral-300);
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+}
+
+.progPillSelected {
+  background: var(--primary-100);
+  border-color: var(--primary-300);
+  color: var(--primary-300);
+}
+
+/* ── Outcome row with inline switch ── */
+.outcomeRow2 {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* ── Radio buttons row ── */
+.radios {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* ── Separate Notes inline ── */
+.separateNotesInline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 8px;
+  border-left: 0.5px solid var(--neutral-150);
+}
+
+/* ── Note panels ── */
+.notePanels {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notePanel {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 4px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notePanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.notePanelTitle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  min-width: 0;
+}
+
+.notePanelName {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notePanelActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.selectOutcomeWrap {
+  position: relative;
+}
+
+.selectOutcomeBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--neutral-50);
+  border: 0.5px solid rgba(111, 122, 144, 0.1);
+  border-radius: 4px;
+  height: 22px;
+  padding: 0 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--neutral-300);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s;
+}
+
+.selectOutcomeBtn:hover { background: var(--neutral-100); }
+
+.outcomeDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 150px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  z-index: 25;
+  overflow: hidden;
+}
+
+.outcomeDropdownItem {
+  width: 100%;
+  padding: 8px 12px;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--neutral-400);
+}
+
+.outcomeDropdownItem:hover { background: var(--neutral-50); }
+
+.panelDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+/* ── Outcome badges row inside note panel ── */
+.outcomeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.outcomeRowLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-200);
+  white-space: nowrap;
+}
+
+.outcomeBadge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 4px;
+  height: 22px;
+  padding: 0 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity 0.1s;
+  border: 0.5px solid transparent;
+}
+
+.outcomeBadge:hover { opacity: 0.75; }
+
+.outcomeBadgeSuccess {
+  background: var(--status-success-light);
+  border-color: rgba(0, 155, 83, 0.2);
+  color: var(--status-success);
+}
+
+.outcomeBadgeError {
+  background: var(--status-error-light);
+  border-color: rgba(215, 40, 37, 0.2);
+  color: var(--status-error);
+}
+
+.outcomeBadgeWarning {
+  background: var(--status-warning-light);
+  border-color: rgba(217, 165, 11, 0.2);
+  color: var(--status-warning);
+}
+
+/* ── Note textarea ── */
+.noteTextarea {
+  width: 100%;
+  min-height: 100px;
+  border: 0.5px solid var(--neutral-200);
+  border-radius: 4px;
+  padding: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--neutral-400);
+  resize: vertical;
+  background: var(--neutral-0);
+  outline: none;
+  box-sizing: border-box;
+  line-height: 1.4;
+}
+
+.noteTextarea::placeholder { color: var(--neutral-200); }
+.noteTextarea:focus { border-color: var(--neutral-300); }
+
+/* ── Actions row ── */
+.actionsRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.actionsLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  white-space: nowrap;
+}
+
+.actionsDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+/* ── Activity filter bar ── */
+.activityFilterBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.activityFilterTabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.activityFilterTab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: none;
+  background: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--neutral-300);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.1s, color 0.1s;
+}
+
+.activityFilterTab:hover {
+  background: var(--primary-25);
+}
+
+.activityFilterTabActive {
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150) !important;
+  color: var(--neutral-400);
+}
+
+.activityFilterDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.activityFilterActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.activityFilterDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+/* ── Log group ── */
+.logGroup {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.logGroupHeader {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 29px;
+  padding: 2px 2px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.logGroupTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logGroupEntries {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* ── Log entry row ── */
+.logEntry {
+  display: flex;
+  gap: 4px;
+  align-items: stretch;
+  width: 100%;
+}
+
+/* Timeline column */
+.logTimeline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 24px;
+}
+
+.logTimelineTop {
+  display: flex;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.logTimelineBottom {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 8px;
+}
+
+.logTimelineLine {
+  width: 0.5px;
+  height: 100%;
+  background: var(--neutral-150);
+}
+
+.logIconAvatar {
+  width: 24px;
+  height: 24px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--neutral-0);
+}
+
+/* Card */
+.logCard {
+  flex: 1;
+  min-width: 0;
+  background: var(--neutral-0);
+  border-radius: 8px;
+  padding: 6px;
+  margin-bottom: 4px;
+  align-self: flex-start;
+  cursor: pointer;
+  transition: background 0.15s;
+  border: none;
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.logCard:hover { background: var(--primary-25); }
+.logCard:focus-visible { box-shadow: 0 0 0 2px var(--primary-200); }
+
+.logCardExpanded {
+  background: var(--primary-25);
+}
+
+.logBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+}
+
+.logMeta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  white-space: nowrap;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.logMetaDot {
+  color: var(--neutral-300);
+}
+
+.logChevron {
+  opacity: 0;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.logCard:hover .logChevron {
+  opacity: 1;
+}
+
+.logCardExpanded .logChevron {
+  opacity: 1;
+}
+
+.logTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+}
+
+.logTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-500);
+  line-height: 1.2;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.logProgBadge {
+  background: var(--primary-50);
+  border: 0.5px solid rgba(140, 90, 226, 0.2);
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--primary-300);
+  flex-shrink: 0;
+}
+
+.logOutcomeRow {
+  display: flex;
+  align-items: center;
+}
+
+.logOutcome {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* ── Log entry expanded content ── */
+.logExpandedContent {
+  border-top: 0.5px solid var(--neutral-100);
+  margin-top: 4px;
+  padding-top: 8px;
+}
+
+.logNoteLabel {
+  font-weight: 500;
+  color: var(--neutral-300);
+}
+
+.logExpandedNote {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--neutral-400);
+  margin: 0;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── Outreach Activity header ── */
+.activityHeader {
+  display: flex;
+  align-items: center;
+  padding: 0 2px;
+}
+
+.activityLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  line-height: 1.2;
+}
+
+/* ── Footer ── */
+.formFooter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

@@ -62,7 +62,7 @@ export function BulkBar({ selectedIds: selectedIdsProp, onClear } = {}) {
       <Button variant="secondary" size="S" leadingIcon="solar:user-check-rounded-linear" onClick={() => showToast('Change Assignee – coming soon')}>
         Change Assignee
       </Button>
-      <Button variant="secondary" size="S" leadingIcon="solar:bolt-outline" onClick={() => showToast('Run Automation – coming soon')}>
+      <Button variant="secondary" size="S" leadingIcon="solar:bolt-linear" onClick={() => showToast('Run Automation – coming soon')}>
         Run Automation
       </Button>
       <div className={styles.moreWrap} ref={moreRef}>

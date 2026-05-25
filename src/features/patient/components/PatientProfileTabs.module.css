@@ -41,7 +41,7 @@
 .searchIcon:hover { opacity: 0.7; }
 
 /* Search bar (replaces tabs when active) */
-.searchBar { display: flex; align-items: center; border-bottom: 2px solid var(--primary-300); padding: 0 8px; flex-shrink: 0; height: 40px; }
+.searchBar { display: flex; align-items: center; border-bottom: 2px solid var(--primary-300); padding: 0 8px; flex-shrink: 0; height: 40px; background: var(--neutral-0); position: sticky; top: 0; z-index: 10; }
 .searchInput { flex: 1; border: none; outline: none; font-size: 14px; font-family: 'Inter', sans-serif; color: var(--neutral-400); background: transparent; padding: 8px 4px; }
 .searchInput::placeholder { color: var(--neutral-200); }
 .searchClose { background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; flex-shrink: 0; }
@@ -56,5 +56,10 @@
 .filterDivider { width: 0.5px; height: 12px; background: var(--neutral-150); }
 .gapsWrapper { padding: 12px 0; }
 .sections { padding: 8px 12px 0; }
-.diagnosisHeader { margin-top: 24px; }
+.diagnosisHeader { margin-top: 16px; }
 .placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 48px; color: var(--neutral-200); font-size: 13px; font-family: 'Inter', sans-serif; }
+
+/* Smooth collapse transition (grid-template-rows trick) */
+.collapseOuter { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 0.22s ease; overflow: hidden; }
+.collapseOuter.collapsedSection { grid-template-rows: 0fr; }
+.collapseInner { overflow: hidden; min-height: 0; }

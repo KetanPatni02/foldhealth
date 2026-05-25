@@ -3,10 +3,52 @@
   flex: 1;
   display: grid;
   place-items: center;
-  padding: 48px 24px 64px;
+  padding: 16px 24px 64px;
   overflow: auto;
-  background: #fff;
+  background: var(--neutral-0);
   min-height: 0;
+  position: relative;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--neutral-300) 35%, transparent) transparent;
+}
+
+.stage::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  background: transparent;
+}
+
+.stage::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.stage::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--neutral-300) 35%, transparent);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.stage::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--neutral-300) 60%, transparent);
+  background-clip: padding-box;
+}
+
+/* Light / Dark theme toggle floats just above the device frame */
+.themeBar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 16px;
+  background: linear-gradient(to bottom, var(--neutral-0) 80%, transparent);
+}
+
+.themeBadge {
+  margin-left: 6px;
+  color: var(--neutral-300);
 }
 
 .deviceWrap {

@@ -1,0 +1,347 @@
+/* ── Color picker popover ────────────────────────────────────────────── */
+.popover {
+  width: 264px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  padding: 10px;
+  background: var(--neutral-0, #fff);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: 0 12px 60px -15px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.04);
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-400);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* Custom thin scrollbar so the popover doesn't get a chunky native one. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--neutral-200) transparent;
+}
+.popover::-webkit-scrollbar { width: 6px; }
+.popover::-webkit-scrollbar-thumb { background: var(--neutral-200); border-radius: 3px; }
+.popover::-webkit-scrollbar-track { background: transparent; }
+
+.eyedropperBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0, #fff);
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.eyedropperBtn:hover { background: var(--neutral-50); border-color: var(--primary-200); }
+
+/* ── Solid picker ────────────────────────────────────────────────────── */
+.solidPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.svSquare {
+  position: relative;
+  width: 100%;
+  height: 132px;
+  border-radius: 6px;
+  border: 0.5px solid var(--neutral-150);
+  cursor: crosshair;
+  overflow: hidden;
+  user-select: none;
+}
+.svWhite,
+.svBlack {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  pointer-events: none;
+}
+.svWhite { background: linear-gradient(to right, #fff, transparent); }
+.svBlack { background: linear-gradient(to top, #000, transparent); }
+
+.svPointer {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border: 1.5px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+.hueSlider {
+  position: relative;
+  height: 14px;
+  border-radius: 7px;
+  background: linear-gradient(
+    to right,
+    #ff0000 0%,    #ffff00 17%,
+    #00ff00 33%,   #00ffff 50%,
+    #0000ff 67%,   #ff00ff 83%,
+    #ff0000 100%
+  );
+  cursor: pointer;
+  user-select: none;
+}
+.hueThumb {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  background: #fff;
+  border: 1.5px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18), 0 1px 2px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+}
+
+/* ── Hex + RGB inputs row ────────────────────────────────────────────── */
+.inputsRow {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.hexField {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  flex: 1.1;
+  min-width: 0;
+  padding: 0 6px;
+  background: var(--neutral-0, #fff);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.hexField:focus-within {
+  border-color: var(--primary-300);
+  box-shadow: 0 0 0 2px rgba(140, 90, 226, 0.12);
+}
+.hexHash {
+  font-size: 12px;
+  color: var(--neutral-200);
+  margin-right: 2px;
+}
+.hexInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-400);
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+}
+
+.rgbField {
+  display: flex;
+  gap: 4px;
+  flex: 1.4;
+  min-width: 0;
+}
+.rgbInput {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 4px;
+  text-align: center;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: var(--neutral-0, #fff);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-400);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.rgbInput:focus {
+  border-color: var(--primary-300);
+  box-shadow: 0 0 0 2px rgba(140, 90, 226, 0.12);
+}
+
+/* ── Variables / preset swatches ─────────────────────────────────────── */
+.sectionLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-top: 2px;
+}
+
+.swatchGrid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 4px;
+}
+.swatch {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 4px;
+  border: 0.5px solid var(--neutral-150);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: transform .1s;
+}
+.swatch:hover { transform: scale(1.06); }
+
+/* ── Gradient picker ─────────────────────────────────────────────────── */
+.gradientPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gradientHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.gradientHeader > :first-child { flex: 1; }
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0, #fff);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--neutral-400);
+}
+.iconBtn:hover { background: var(--neutral-50); }
+
+.gradientPreview {
+  width: 100%;
+  height: 28px;
+  border-radius: 6px;
+  border: 0.5px solid var(--neutral-150);
+}
+
+.angleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fieldLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-400);
+  flex-shrink: 0;
+}
+.angleSlider {
+  flex: 1;
+  accent-color: var(--primary-300);
+}
+.angleValue {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-400);
+  width: 36px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.stopsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.stopsList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stopRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  background: var(--neutral-50);
+  border: 0.5px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.stopRow:hover { background: var(--neutral-100, #ECEEF0); }
+.stopRowActive {
+  background: var(--primary-50);
+  border-color: var(--primary-150, #BFA3E5);
+}
+
+.stopPosInput {
+  width: 32px;
+  height: 24px;
+  padding: 0 2px;
+  border: none;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-400);
+  text-align: right;
+  outline: none;
+}
+.stopPosSuffix {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  color: var(--neutral-300);
+  margin-right: 4px;
+}
+.stopColorChip {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+.stopHexInput {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-400);
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+  outline: none;
+}
+.stopRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--neutral-300);
+}
+.stopRemove:hover:not(:disabled) {
+  background: var(--status-error-light);
+  color: var(--status-error);
+}
+.stopRemove:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.activeStopWrap {
+  padding-top: 6px;
+  border-top: 0.5px solid var(--neutral-150);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}

@@ -1,0 +1,133 @@
+---
+title: Supabase Integration
+description: Database client, tables, mappers, and seeding.
+---
+
+Fold Health uses **Supabase** as its backend, providing PostgreSQL database, authentication, real-time subscriptions, file storage, and edge functions.
+
+## Client setup
+
+```
+src/lib/supabase.js
+```
+
+The client is initialized with environment variables (or hardcoded fallbacks for development):
+
+| Variable | Purpose |
+|----------|---------|
+| `VITE_SUPABASE_URL` | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Public anon key (RLS-protected) |
+
+A single `supabase` instance is exported and used throughout the app.
+
+## Database tables
+
+### Core tables
+
+| Table | Feature | Operations |
+|-------|---------|------------|
+| `patients` | Patient registry | SELECT, UPSERT |
+| `all_patients` | Computed patient view | SELECT |
+| `profiles` | User management | SELECT, INSERT, UPDATE, UPSERT |
+| `agents` | AI agent config | SELECT, INSERT, DELETE, UPSERT |
+| `agent_flows` | Agent workflow configs | SELECT, INSERT, UPDATE |
+| `agent_config` | Global agent settings | SELECT, UPDATE |
+
+### Communication
+
+| Table | Feature | Operations |
+|-------|---------|------------|
+| `direct_messages` | Internal chat | SELECT, INSERT, UPDATE |
+| `call_details` | Call history | SELECT, UPSERT |
+| `call_nav_items` | Call UI nav config | UPSERT |
+| `call_lines` | Phone lines | UPSERT |
+| `call_sessions` | Active calls | UPSERT |
+| `chat_groups` | Team chat groups | SELECT, INSERT, UPDATE, DELETE, UPSERT |
+| `chat_participants` | Chat members | UPSERT |
+
+### Care management
+
+| Table | Feature | Operations |
+|-------|---------|------------|
+| `goals` | Care journey goals | SELECT, INSERT, UPDATE, DELETE, UPSERT |
+| `tasks` | Task management | SELECT, INSERT |
+| `task_audit_log` | Task history | SELECT |
+| `task_labels` | Task categories | SELECT |
+| `task_pools` | Task grouping | SELECT |
+| `campaigns` | Campaign management | SELECT, INSERT, UPDATE |
+| `appointments` | Scheduling | UPSERT |
+| `appointment_types` | Appointment categories | UPSERT |
+
+### Analytics
+
+| Table | Feature | Operations |
+|-------|---------|------------|
+| `analytics_kpis` | KPI metrics | UPSERT |
+| `analytics_time_series` | Trend data | UPSERT |
+| `analytics_tables` | Tabular data | UPSERT |
+| `analytics_progress_bars` | Progress metrics | UPSERT |
+| `analytics_configs` | Dashboard config | UPSERT |
+
+### Configuration
+
+| Table | Feature | Operations |
+|-------|---------|------------|
+| `faqs` | Knowledge base | INSERT |
+| `agent_rules` | Agent decision rules | UPSERT |
+| `business_hours` | Operating hours | UPSERT |
+| `holidays` | Non-business days | UPSERT |
+| `embed_domains` | Domain registry | SELECT, INSERT, UPDATE, DELETE, UPSERT |
+| `embed_components` | Embedded UI components | SELECT, INSERT, UPSERT |
+| `audit_logs` | Activity logs | SELECT, INSERT |
+
+### HCC
+
+| Table | Feature | Operations |
+|-------|---------|------------|
+| `hcc_members` | HCC roster | SELECT |
+| `hcc_diagnosis_gaps` | Diagnosis gaps | SELECT |
+| `p360_profiles` | Patient 360 data | SELECT |
+
+### Other
+
+| Table | Feature | Operations |
+|-------|---------|------------|
+| `sticky_notes` | Quick notes | SELECT, INSERT, UPDATE, DELETE |
+| `sticky_note_history` | Note audit trail | SELECT |
+| `email_header_footer_presets` | Email templates | SELECT |
+
+## Data mappers
+
+Mappers in `src/lib/` translate between database naming (snake_case) and JavaScript (camelCase).
+
+| Mapper | File | Tables |
+|--------|------|--------|
+| Patient | `patientMapper.js` | patients, all_patients |
+| Call Details | `callDetailsMapper.js` | call_details |
+| Analytics | `analyticsMapper.js` | analytics_* tables |
+| Embedded | `embedMapper.js` | embed_domains, embed_components |
+
+Each exports `dbToJs(row)` and `jsToDb(obj)`.
+
+## Auto-seeding
+
+`src/lib/seedDatabase.js` runs once per session on app load. It checks if key tables are empty and populates them with fallback data using `upsert` for idempotency.
+
+## Storage buckets
+
+| Bucket | Purpose | Used by |
+|--------|---------|---------|
+| `avatars` | User profile pictures | PreferencesDrawer |
+| `chat-media` | Message attachments | ChatArea |
+
+## Edge functions
+
+| Function | Purpose | Called from |
+|----------|---------|------------|
+| `delete-user` | Delete user from Auth + profiles | AccountPanel |
+
+## RPC calls
+
+| Function | Purpose | Called from |
+|----------|---------|------------|
+| `setval_max` | Reset sequences after seeding | seedDatabase |

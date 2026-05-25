@@ -103,6 +103,13 @@ export function SubNav({ collapsed }) {
         All Patients
         <span className={styles.count}>{allPatientsCount || 0}</span>
       </div>
+      <div
+        className={[styles.item, activeSubnavList === 'Scheduling List' ? styles.active : ''].filter(Boolean).join(' ')}
+        onClick={() => { setActiveSubnavList('Scheduling List'); clearSelected(); clearHccSelected(); setActiveFilters({}); }}
+      >
+        Scheduling List
+        <span className={styles.count}>{patients.length || 0}</span>
+      </div>
       <div className={styles.sectionLabel} style={{ marginTop: 8 }}>Population Groups</div>
       <div className={styles.sectionLabel} style={{ marginTop: 4 }}>Leads &amp; Contacts</div>
     </aside>

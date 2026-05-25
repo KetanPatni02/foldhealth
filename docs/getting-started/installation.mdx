@@ -1,0 +1,52 @@
+---
+title: Installation
+description: Set up the Fold Health platform locally for development.
+---
+
+## Prerequisites
+
+- [Bun](https://bun.sh) 1.2 or later
+- A Supabase project (PostgreSQL)
+- Node.js 18+ (for tooling compatibility)
+
+## Quick start
+
+```bash
+git clone https://github.com/designedbyalok/foldhealth.git
+cd foldhealth
+bun install
+bun run dev
+```
+
+The app starts at `http://localhost:5173`.
+
+## Environment variables
+
+Create a `.env` file at the project root:
+
+```bash
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
+
+These connect the app to your Supabase instance. Without them, the platform falls back to local mock data from `src/data/`.
+
+## Supabase setup
+
+The platform uses several Supabase tables. Migration files live in `supabase/`:
+
+| Migration | Purpose |
+|-----------|---------|
+| `campaigns_new_fields_migration.sql` | Campaign builder schema |
+| `email_header_footer_presets_migration.sql` | Email builder presets |
+| `release_notes_campaign_seed.sql` | Seed campaign data |
+
+Run migrations in the Supabase SQL Editor. The app degrades gracefully when tables don't exist yet — most features fall back to in-memory mock data.
+
+## Build for production
+
+```bash
+bun run build
+```
+
+Output goes to `dist/`. The app deploys as a static SPA on Vercel, Netlify, or any static host.

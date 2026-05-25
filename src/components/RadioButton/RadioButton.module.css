@@ -1,0 +1,80 @@
+/* ── Fold Health RadioButton ──
+ * Single radio selector with optional label.
+ *
+ * Radio circle: 20×20px, border-radius 50%, 1.5px border
+ * Inner dot:    8×8px, border-radius 50%
+ * OFF: border var(--neutral-300), bg #fff
+ * ON:  bg var(--primary-300), border var(--primary-300), inner dot #fff
+ */
+
+/* ── Wrapper button ── */
+.radioOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  outline: none;
+}
+
+.radioOption:focus-visible .radioCircle {
+  box-shadow: 0 0 0 2px var(--primary-100);
+}
+
+/* ── Disabled state ── */
+.radioOptionDisabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ── Radio circle ── */
+.radioCircle {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--neutral-300);
+  background: #fff;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* Inner dot via pseudo-element */
+.radioCircle::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+/* ── Checked state ── */
+.radioCircleChecked {
+  background: var(--primary-300);
+  border-color: var(--primary-300);
+}
+
+.radioCircleChecked::after {
+  background: #fff;
+}
+
+/* ── Label ── */
+.radioLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--neutral-300);
+  white-space: nowrap;
+  transition: color 0.1s;
+  user-select: none;
+}
+
+.radioLabelChecked {
+  color: var(--neutral-400);
+}

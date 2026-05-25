@@ -312,7 +312,7 @@ export function TopBar() {
 
       <div className={styles.right}>
         <ActionButton
-          icon="solar:bell-outline"
+          icon="solar:bell-linear"
           size="L"
           tooltip="Notifications"
         />

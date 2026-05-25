@@ -65,7 +65,7 @@
 
 .row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   padding: 6px 8px;
   border-radius: 4px;
@@ -74,8 +74,8 @@
 
 .rowCheck {
   display: flex;
-  align-items: flex-start;
-  padding-top: 2px;
+  align-items: center;
+  height: 20px;
   flex-shrink: 0;
 }
 

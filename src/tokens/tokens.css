@@ -29,6 +29,7 @@
   --neutral-100: #E9ECF1;
   --neutral-75:  #F3F4F7;
   --neutral-50:  #F6F7F8;
+  --neutral-25:  #FAFAFA;
   --neutral-0:   #FFFFFF;
 
   /* Status */
@@ -59,15 +60,21 @@
   /* Modal / dialog backdrop tint */
   --surface-overlay: rgba(0, 0, 0, 0.40);
 
-  /* Sidebar — theme-invariant chrome (always dark purple surface) */
-  --sidebar-bg:            #1A0647;
-  --sidebar-fg:            rgba(255, 255, 255, 0.85);
-  --sidebar-fg-muted:      rgba(255, 255, 255, 0.60);
-  --sidebar-hover-bg:      rgba(80, 32, 160, 0.50);
-  --sidebar-active-bg:     #5020A0;
-  --sidebar-active-border: #7747E2;
-  --sidebar-active-overlay: rgba(0, 0, 0, 0.25);
+  /* Sidebar — default chrome (dark purple). Per-theme variants below
+     retint via Blue/Plum blocks. The light-nav opt-in toggle (set via
+     `data-nav-style="light"` at the document root) overrides this block
+     across all themes — see the bottom of this file. */
+  --sidebar-bg:                    #1A0647;
+  --sidebar-fg:                    rgba(255, 255, 255, 0.85);
+  --sidebar-fg-muted:              rgba(255, 255, 255, 0.60);
+  --sidebar-hover-bg:              rgba(80, 32, 160, 0.50);
+  --sidebar-active-bg:             #5020A0;
+  --sidebar-active-border:         #7747E2;
+  --sidebar-active-overlay:        rgba(0, 0, 0, 0.25);
   --sidebar-active-overlay-border: rgba(255, 255, 255, 0.25);
+  --sidebar-active-fg:             rgba(255, 255, 255, 0.95);
+  --sidebar-logo:                  #FFFFFF;
+  --sidebar-border:                transparent;
 
   /* Chart Colors — ordered data-point palette for visualizations */
   --chart-1:  #80A4D5;
@@ -125,30 +132,31 @@
   --primary-200: #9B7BD9;
   --primary-100: #241B36;   /* soft purple-tinted dark surface */
   --primary-50:  #1A1428;
-  --primary-25:  #15101F;
+  --primary-25:  #231F26;   /* subtle warm purple-leaning hover (4% lighter than page) */
 
   /* Secondary (orange) */
   --secondary-300: #FF8B52;
   --secondary-200: #7A3F22;
   --secondary-100: #3A1E10;
 
-  /* Neutral — full inversion of the surface scale */
-  --neutral-500: #FFFFFF;   /* highest-contrast text */
-  --neutral-400: #D8DEE9;   /* primary text */
-  --neutral-300: #9BA5BC;   /* body muted text */
-  --neutral-200: #5A6478;   /* hint text / disabled */
-  --neutral-150: #2D3441;   /* default borders */
-  --neutral-100: #232936;   /* soft borders / dividers */
-  --neutral-75:  #1C2029;   /* elevated surface 2 (hovers) */
-  --neutral-50:  #171A22;   /* elevated surface 1 (cards) */
-  --neutral-0:   #0F1117;   /* page surface */
+  /* Neutral — Claude-style warm sepia palette (balanced contrast, softer text) */
+  --neutral-500: #EDEAE3;   /* highest-contrast text — warm, never pure white */
+  --neutral-400: #D4D1CB;   /* primary body text — soft warm off-white */
+  --neutral-300: #ADA9A2;   /* muted body text — warm grey-tan */
+  --neutral-200: #7E7B74;   /* hint / disabled — warm muted (~4.7:1 on page) */
+  --neutral-150: #3D3A35;   /* default borders — visible warm */
+  --neutral-100: #322F2B;   /* soft borders / dividers */
+  --neutral-75:  #2A2724;   /* elevated surface 2 (hovers) */
+  --neutral-50:  #252320;   /* elevated surface 1 (cards) — clear elevation */
+  --neutral-25:  #1F1D1A;   /* very subtle surface between page and cards */
+  --neutral-0:   #1A1815;   /* page surface — warm near-black, slightly warmer */
 
   /* Status — adjusted for readability on dark surfaces */
   --status-error:         #F15B58;
   --status-error-light:   #2D1414;
   --status-warning:       #F5C429;
   --status-warning-light: #2A2310;
-  --status-success:       #12B76A;
+  --status-success:       #15D974;
   --status-success-light: #0A2418;
   --status-info:          #5B8DEF;
   --status-info-light:    #0E1A2D;
@@ -209,6 +217,8 @@
   /* Modal backdrop a touch denser on dark */
   --surface-overlay: rgba(0, 0, 0, 0.60);
 
+  /* Sidebar tokens inherit from :root (always-dark chrome). */
+
   /* Native form / scrollbar coloring */
   color-scheme: dark;
 }
@@ -233,9 +243,12 @@
   --primary-25:  #FAFCFF;   /* almost white, subtle hover tint */
 
   /* Sidebar chrome — dark navy so it reads as cohesively blue */
-  --sidebar-bg:            #002D6F;
-  --sidebar-fg:            rgba(255, 255, 255, 0.85);
-  --sidebar-fg-muted:      rgba(255, 255, 255, 0.60);
+  --sidebar-bg:                    #002D6F;
+  --sidebar-fg:                    rgba(255, 255, 255, 0.85);
+  --sidebar-fg-muted:              rgba(255, 255, 255, 0.60);
+  --sidebar-active-fg:             rgba(255, 255, 255, 0.95);
+  --sidebar-logo:                  #FFFFFF;
+  --sidebar-border:                transparent;
   --sidebar-hover-bg:      rgba(0, 87, 179, 0.50);
   --sidebar-active-bg:     #0057B3;
   --sidebar-active-border: #3399FF;
@@ -268,9 +281,12 @@
   --primary-25:  #FDFAFB;   /* almost white, subtle hover tint */
 
   /* Sidebar chrome — deep plum so it reads as cohesively regal */
-  --sidebar-bg:            #2A0519;
-  --sidebar-fg:            rgba(255, 255, 255, 0.85);
-  --sidebar-fg-muted:      rgba(255, 255, 255, 0.60);
+  --sidebar-bg:                    #2A0519;
+  --sidebar-fg:                    rgba(255, 255, 255, 0.85);
+  --sidebar-fg-muted:              rgba(255, 255, 255, 0.60);
+  --sidebar-active-fg:             rgba(255, 255, 255, 0.95);
+  --sidebar-logo:                  #FFFFFF;
+  --sidebar-border:                transparent;
   --sidebar-hover-bg:      rgba(74, 10, 48, 0.50);
   --sidebar-active-bg:     #4A0A30;
   --sidebar-active-border: #9B3A6C;
@@ -281,4 +297,30 @@
      overridden — they inherit the :root (light) values. */
 
   color-scheme: light;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   NAV STYLE = "light" (theme-aware minimal variant)
+   Opt-in via:
+     document.documentElement.setAttribute('data-nav-style', 'light')
+   Replaces the per-theme dark-purple chrome with a minimal variant
+   that adopts the ACTIVE color theme: surfaces use neutral tokens
+   (white in light/blue/plum themes, dark in dark theme) and accents
+   use --primary-300 so each theme paints its own brand color on the
+   active pill. The active label stays white because the pill is
+   always a saturated brand color.
+   ═══════════════════════════════════════════════════════════ */
+
+[data-nav-style="light"] {
+  --sidebar-bg:                    var(--neutral-0);
+  --sidebar-fg:                    var(--neutral-400);
+  --sidebar-fg-muted:              var(--neutral-300);
+  --sidebar-hover-bg:              var(--primary-100);
+  --sidebar-active-bg:             var(--primary-300);
+  --sidebar-active-border:         var(--primary-300);
+  --sidebar-active-overlay:        rgba(0, 0, 0, 0.10);
+  --sidebar-active-overlay-border: transparent;
+  --sidebar-active-fg:             #FFFFFF;
+  --sidebar-logo:                  var(--primary-300);
+  --sidebar-border:                var(--neutral-150);
 }

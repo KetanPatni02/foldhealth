@@ -5,7 +5,7 @@
 // preconfigured composite onto the canvas in one click.
 
 const baseStyle = () => ({
-  padding: { top: 16, bottom: 16, left: 24, right: 24 },
+  padding: { top: 0, bottom: 0, left: 0, right: 0 },
 });
 
 const FACTORIES = {
@@ -34,28 +34,28 @@ const FACTORIES = {
     type: 'Button',
     data: {
       props: { text: 'Click me', url: 'https://example.com', size: 'medium', fullWidth: false, buttonStyle: 'rectangle', buttonBackgroundColor: '#7C5CFA', buttonTextColor: '#FFFFFF' },
-      style: { padding: { top: 12, bottom: 12, left: 24, right: 24 }, textAlign: 'center' },
+      style: { padding: { top: 0, bottom: 0, left: 0, right: 0 }, textAlign: 'center' },
     },
   }),
   Image: () => ({
     type: 'Image',
     data: {
       props: { url: 'https://images.unsplash.com/photo-1494232410401-ad00d5433cfa?w=480', alt: 'Placeholder', linkHref: null, contentAlignment: 'middle' },
-      style: { padding: { top: 16, bottom: 16, left: 24, right: 24 }, textAlign: 'center' },
+      style: { padding: { top: 0, bottom: 0, left: 0, right: 0 }, textAlign: 'center' },
     },
   }),
   Avatar: () => ({
     type: 'Avatar',
     data: {
       props: { imageUrl: 'https://i.pravatar.cc/96', alt: 'Avatar', shape: 'circle', size: 64 },
-      style: { padding: { top: 16, bottom: 16, left: 24, right: 24 }, textAlign: 'center' },
+      style: { padding: { top: 0, bottom: 0, left: 0, right: 0 }, textAlign: 'center' },
     },
   }),
   Divider: () => ({
     type: 'Divider',
     data: {
       props: { lineColor: '#E1E4EA', lineHeight: 1 },
-      style: { padding: { top: 12, bottom: 12, left: 24, right: 24 } },
+      style: { padding: { top: 0, bottom: 0, left: 0, right: 0 } },
     },
   }),
   Spacer: () => ({
@@ -68,20 +68,27 @@ const FACTORIES = {
   Container: () => ({
     type: 'Container',
     data: {
-      style: { ...baseStyle(), backgroundColor: '#F6F4FF' },
+      style: { padding: { top: 0, bottom: 0, left: 0, right: 0 }, backgroundColor: '#F6F4FF', gap: 0 },
       props: { childrenIds: [] },
     },
   }),
   ColumnsContainer: () => ({
     type: 'ColumnsContainer',
     data: {
-      style: { padding: { top: 16, bottom: 16, left: 24, right: 24 } },
+      style: { padding: { top: 0, bottom: 0, left: 0, right: 0 }, gap: 0 },
       props: {
         columnsCount: 2,
         columnsGap: 16,
         contentAlignment: 'top',
         columns: [{ childrenIds: [] }, { childrenIds: [] }, { childrenIds: [] }],
       },
+    },
+  }),
+  RawHtml: () => ({
+    type: 'RawHtml',
+    data: {
+      props: { html: '<div style="padding:24px;background:#FAFAF9;border:1px dashed #E7E5E4;border-radius:8px;font-family:Inter,sans-serif;color:#78716C;text-align:center;font-size:13px">Paste your HTML here</div>' },
+      style: { padding: { top: 0, bottom: 0, left: 0, right: 0 } },
     },
   }),
   Social: () => ({
@@ -97,7 +104,7 @@ const FACTORIES = {
         gap: 16,
         alignment: 'center',
       },
-      style: { padding: { top: 16, bottom: 16, left: 24, right: 24 } },
+      style: { padding: { top: 0, bottom: 0, left: 0, right: 0 } },
     },
   }),
   NavBar: () => ({
@@ -115,7 +122,7 @@ const FACTORIES = {
         fontSize: 14,
         fontWeight: 'bold',
       },
-      style: { padding: { top: 12, bottom: 12, left: 16, right: 16 }, backgroundColor: '#FFFFFF' },
+      style: { padding: { top: 0, bottom: 0, left: 0, right: 0 }, backgroundColor: '#FFFFFF' },
     },
   }),
   Table: () => ({
@@ -175,20 +182,20 @@ export function createBlockTree(type, genId) {
             type: 'Heading',
             data: {
               props: { text: 'Hero headline', level: 'h1' },
-              style: { color: '#3A485F', textAlign: 'center', padding: { top: 16, bottom: 8, left: 24, right: 24 } },
+              style: { color: '#3A485F', textAlign: 'center', padding: { top: 0, bottom: 0, left: 0, right: 0 } },
             },
           },
           [textId]: {
             type: 'Text',
             data: {
               props: { text: 'Add a short tagline here.' },
-              style: { color: '#6B7280', fontSize: 14, textAlign: 'center', padding: { top: 0, bottom: 16, left: 24, right: 24 } },
+              style: { color: '#6B7280', fontSize: 14, textAlign: 'center', padding: { top: 0, bottom: 0, left: 0, right: 0 } },
             },
           },
           [containerId]: {
             type: 'Container',
             data: {
-              style: { backgroundColor: '#F2EEFE', padding: { top: 32, bottom: 32, left: 24, right: 24 } },
+              style: { backgroundColor: '#F2EEFE', padding: { top: 0, bottom: 0, left: 0, right: 0 } },
               props: { childrenIds: [headingId, textId] },
             },
           },
@@ -204,7 +211,7 @@ export function createBlockTree(type, genId) {
           [id]: {
             type: 'Container',
             data: {
-              style: { padding: { top: 8, bottom: 8, left: 8, right: 8 } },
+              style: { padding: { top: 0, bottom: 0, left: 0, right: 0 } },
               props: { childrenIds: [] },
             },
           },
@@ -213,6 +220,10 @@ export function createBlockTree(type, genId) {
     }
 
     case 'Section': {
+      // Section = Container with section-like defaults — generous vertical
+      // padding and a transparent background so the user can drop it as a
+      // structural divider that's visually distinct from a Wrapper (which
+      // ships with a colored backdrop).
       const id = genId();
       return {
         rootId: id,
@@ -266,6 +277,56 @@ export function buildParentMap(doc) {
   return map;
 }
 
+const EMPTY_PREFIX = '__empty:';
+
+export function computeDropPosition(event, doc, activeId) {
+  const { over } = event;
+  if (!over) return null;
+  const overId = String(over.id);
+
+  if (overId.startsWith(EMPTY_PREFIX)) {
+    const rest = overId.slice(EMPTY_PREFIX.length);
+    const parts = rest.split(':');
+    if (parts.length === 1) {
+      const parent = doc[parts[0]];
+      const list = parent?.data?.props?.childrenIds || [];
+      return { parentId: parts[0], index: list.length };
+    }
+    const containerId = parts[0];
+    const columnIdx = Number(parts[1]);
+    const parent = doc[containerId];
+    const list = parent?.data?.props?.columns?.[columnIdx]?.childrenIds || [];
+    return { parentId: containerId, columnIdx, index: list.length };
+  }
+
+  if (overId === activeId) return null;
+
+  const overBlock = doc[overId];
+  if (!overBlock) return null;
+  const map = buildParentMap(doc);
+  const slot = map[overId];
+  if (!slot) return null;
+
+  const overRect = over.rect;
+  const pointerY = (event.activatorEvent?.clientY || 0) + (event.delta?.y || 0);
+  const relY = overRect && overRect.height ? (pointerY - overRect.top) / overRect.height : 0.5;
+
+  const isContainer = overBlock.type === 'Container' || overBlock.type === 'ColumnsContainer';
+  if (isContainer && relY > 0.25 && relY < 0.75) {
+    if (overBlock.type === 'Container') {
+      return { parentId: overId, index: (overBlock.data?.props?.childrenIds || []).length, isNest: true };
+    }
+    const cols = overBlock.data?.props?.columns || [];
+    return { parentId: overId, columnIdx: 0, index: (cols[0]?.childrenIds || []).length, isNest: true };
+  }
+
+  return {
+    parentId: slot.parentId,
+    columnIdx: slot.columnIdx,
+    index: relY < 0.5 ? slot.index : slot.index + 1,
+  };
+}
+
 // Deep-clone a block subtree with fresh ids. Returns { rootId, blocks } in the
 // same shape as createBlockTree so the caller can reuse insert logic.
 export function cloneBlockTree(doc, sourceId, genId) {
@@ -291,6 +352,90 @@ export function cloneBlockTree(doc, sourceId, genId) {
   };
   const rootId = cloneOne(sourceId);
   return rootId ? { rootId, blocks } : null;
+}
+
+// Extract a self-contained { rootId, blocks } subtree from a live document.
+// Used when saving the currently-selected header/footer to the preset library —
+// the returned object has the same shape replaceHeaderFooter() expects, and
+// can be re-IDed via cloneStoredTree() before being applied somewhere else.
+export function extractSubtree(doc, rootId) {
+  const ids = collectBlockTree(doc, rootId);
+  const blocks = {};
+  ids.forEach(id => {
+    if (doc[id]) blocks[id] = JSON.parse(JSON.stringify(doc[id]));
+  });
+  return { rootId, blocks };
+}
+
+// Produce a stable, ID-independent fingerprint of a { rootId, blocks } subtree
+// so two trees with different block ids but the same shape + props compare
+// equal. Walks from root, replaces each block's id with a sequential token,
+// rewrites childrenIds / columns references, and emits a JSON string.
+//
+// Used by the Save-as-preset affordance to detect whether the currently
+// selected header/footer is byte-equal to a built-in (or already-saved)
+// preset — if so, saving would duplicate, so we hide the button.
+export function fingerprintTree(tree) {
+  if (!tree?.rootId || !tree?.blocks) return '';
+  const order = [];
+  const visited = new Set();
+  const visit = (id) => {
+    if (!id || visited.has(id) || !tree.blocks[id]) return;
+    visited.add(id);
+    order.push(id);
+    const props = tree.blocks[id].data?.props;
+    if (props?.childrenIds) props.childrenIds.forEach(visit);
+    if (Array.isArray(props?.columns)) {
+      props.columns.forEach(col => (col.childrenIds || []).forEach(visit));
+    }
+  };
+  visit(tree.rootId);
+  const idMap = {};
+  order.forEach((id, i) => { idMap[id] = `n${i}`; });
+  const normalized = order.map(oldId => {
+    const block = JSON.parse(JSON.stringify(tree.blocks[oldId]));
+    const props = block.data?.props;
+    if (props) {
+      if (Array.isArray(props.childrenIds)) {
+        props.childrenIds = props.childrenIds.map(c => idMap[c] || c);
+      }
+      if (Array.isArray(props.columns)) {
+        props.columns = props.columns.map(col => ({
+          ...col,
+          childrenIds: (col.childrenIds || []).map(c => idMap[c] || c),
+        }));
+      }
+    }
+    return [idMap[oldId], block];
+  });
+  return JSON.stringify(normalized);
+}
+
+// Re-ID a stored { rootId, blocks } subtree. Old → new id mapping is built
+// up-front, then every childrenIds / columns reference is rewritten in one
+// pass. Returns a fresh tree safe to merge into a document without collision.
+export function cloneStoredTree(stored, genId) {
+  if (!stored?.rootId || !stored?.blocks) return null;
+  const idMap = {};
+  for (const oldId of Object.keys(stored.blocks)) idMap[oldId] = genId();
+  const blocks = {};
+  for (const [oldId, block] of Object.entries(stored.blocks)) {
+    const cloned = JSON.parse(JSON.stringify(block));
+    const props = cloned.data?.props;
+    if (props) {
+      if (Array.isArray(props.childrenIds)) {
+        props.childrenIds = props.childrenIds.map(cid => idMap[cid] || cid);
+      }
+      if (Array.isArray(props.columns)) {
+        props.columns = props.columns.map(col => ({
+          ...col,
+          childrenIds: (col.childrenIds || []).map(cid => idMap[cid] || cid),
+        }));
+      }
+    }
+    blocks[idMap[oldId]] = cloned;
+  }
+  return { rootId: idMap[stored.rootId], blocks };
 }
 
 // Walk a block + descendants and return all ids that belong to the subtree.
@@ -320,7 +465,7 @@ function makeColumns(genId, count, columnWidths) {
       [root]: {
         type: 'ColumnsContainer',
         data: {
-          style: { padding: { top: 16, bottom: 16, left: 24, right: 24 } },
+          style: { padding: { top: 0, bottom: 0, left: 0, right: 0 } },
           props: {
             columnsCount: count,
             columnsGap: 16,

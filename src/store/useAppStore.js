@@ -13,8 +13,8 @@ import { FALLBACK_KPIS, FALLBACK_TIME_SERIES, FALLBACK_TABLES, FALLBACK_PROGRESS
 import { FALLBACK_INBOX_ITEMS, FALLBACK_CHANNEL_ITEMS, FALLBACK_CALL_LINES, FALLBACK_CALL_SESSIONS } from '../data/callsConfig';
 import { fallbackTasks } from '../data/tasks';
 import { updateHash } from '../lib/router';
-import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem } from '../lib/theme';
-import { createBlock, createBlockTree, collectBlockTree, buildParentMap, cloneBlockTree } from '../features/email-builder/blockHelpers';
+import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem, applyNavStyle, getStoredNavStyle } from '../lib/theme';
+import { createBlock, createBlockTree, collectBlockTree, buildParentMap, cloneBlockTree, extractSubtree, cloneStoredTree } from '../features/email-builder/blockHelpers';
 import { makeInitialDocument } from '../features/email-builder/initialDocument';
 import * as hccLifecycle from '../features/hcc/assignment/lifecycle';
 import { hydrateFromMember, dosKey as hccDosKey } from '../features/hcc/assignment/dosState';
@@ -63,6 +63,88 @@ const _savedSettingsTab = sessionStorage.getItem('settingsTab');
 // index.html blocking script already applied to <html>.
 const _initialThemeSetting = getStoredTheme();
 const _initialResolvedTheme = getResolvedTheme(_initialThemeSetting);
+const _initialNavStyle = getStoredNavStyle();
+// Apply nav style at module load so it lands before React mounts (the index.html
+// blocking script handles the color theme but not this one yet).
+applyNavStyle(_initialNavStyle);
+
+// ── Campaign row mapper ──
+// Single source of truth for translating Supabase campaigns rows into the JS
+// shape the UI consumes. Used by both fetchCampaigns (bulk load) and the
+// CampaignBuilder (after an INSERT / UPDATE returns the row).
+function campaignRowToJs(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    channel: row.channel || 'email',
+    section: row.section || 'scheduled',
+    audience: row.audience || 0,
+    dynamic: row.dynamic || false,
+    health: row.health,
+    delivered: row.delivered,
+    opened: row.opened,
+    startDate: row.start_date,
+    duration: row.duration,
+    progress: row.progress || 0,
+    executesIn: row.executes_in,
+    enabled: row.enabled || false,
+    emailTemplate: row.email_template,
+    colorVariables: row.color_variables,
+    // New Campaign builder fields ───────────────────────────────
+    audienceInclude: row.audience_include || [],
+    audienceExclude: row.audience_exclude || [],
+    sendVia: row.send_via || ['email'],
+    startMode: row.start_mode || 'immediately',
+    startAt: row.start_at,
+    endDate: row.end_date,
+    campaignType: row.campaign_type || 'one_time',
+    senderName: row.sender_name || '',
+    sendFrom: row.send_from || '',
+    subjectLine: row.subject_line || '',
+  };
+}
+
+// Reverse: JS-shape patch → DB-shape patch. Only includes keys present in the
+// patch so we never overwrite columns with `undefined`.
+const CAMPAIGN_FIELD_MAP = {
+  name: 'name',
+  description: 'description',
+  channel: 'channel',
+  section: 'section',
+  audience: 'audience',
+  enabled: 'enabled',
+  audienceInclude: 'audience_include',
+  audienceExclude: 'audience_exclude',
+  sendVia: 'send_via',
+  startMode: 'start_mode',
+  startAt: 'start_at',
+  endDate: 'end_date',
+  campaignType: 'campaign_type',
+  senderName: 'sender_name',
+  sendFrom: 'send_from',
+  subjectLine: 'subject_line',
+};
+function campaignPatchToDb(patch) {
+  const out = {};
+  for (const [jsKey, value] of Object.entries(patch)) {
+    const dbKey = CAMPAIGN_FIELD_MAP[jsKey];
+    if (dbKey) out[dbKey] = value;
+  }
+  return out;
+}
+
+// Debounced auto-save for the Campaign builder. We coalesce rapid field edits
+// (typing, slider drags) into one PATCH per 600ms window per campaign id.
+const _campaignSaveTimers = new Map();
+function scheduleCampaignSave(id, fn) {
+  const existing = _campaignSaveTimers.get(id);
+  if (existing) clearTimeout(existing);
+  _campaignSaveTimers.set(id, setTimeout(() => {
+    _campaignSaveTimers.delete(id);
+    fn();
+  }, 600));
+}
 
 export const useAppStore = create((set, get) => ({
   // ─── Theme ───────────────────────────────────────────────────────────
@@ -86,6 +168,16 @@ export const useAppStore = create((set, get) => ({
     );
   },
   _themeSubscribed: false,
+
+  // ─── Nav style ───────────────────────────────────────────────────────
+  // 'default' = per-theme dark-purple chrome (existing behavior)
+  // 'light'   = light sidebar (white surface, primary purple accent),
+  //             applied consistently across all color themes
+  navStyle: _initialNavStyle,
+  setNavStyle: (next) => {
+    const applied = applyNavStyle(next);
+    set({ navStyle: applied });
+  },
 
   // Pending add-task request — set by CreateNewPopover or WorklistRow "Add Task"
   pendingAddTask: null,
@@ -299,6 +391,8 @@ export const useAppStore = create((set, get) => ({
   builderFlowLoading: false,
   builderSelectedNode: null, // id of currently selected node
   _pendingAgentId: null,    // set by router on refresh — triggers re-open in AppLayout
+  _pendingCampaignBuilderId: null, // set by router on refresh — triggers campaign builder open
+  _pendingEmailEditId: null,       // set by router on refresh — triggers email builder open
   builderVersions: [],      // list of saved versions
   builderPrompt: '',        // original creation prompt
   builderConfig: null,      // agent_config row for current agent
@@ -514,6 +608,36 @@ export const useAppStore = create((set, get) => ({
 
   // Actions
   setActivePage: (page) => { sessionStorage.setItem('activePage', page); set({ activePage: page }); updateHash(get); },
+
+  // Navigation guard for full-screen takeovers. When the user clicks a Sidebar
+  // entry while the EmailBuilder or CampaignBuilder is open, we don't want the
+  // page to silently change underneath them — instead we ask the open builder
+  // to handle the navigation, including any unsaved-changes confirmation it
+  // owns. `pendingNavTarget` is the page we're trying to reach; the builder
+  // clears it once it has decided what to do.
+  pendingNavTarget: null,
+  setPendingNavTarget: (page) => set({ pendingNavTarget: page }),
+  requestNavigate: (page) => {
+    const s = get();
+    // Email Builder takeover — defer to its unsaved-changes flow.
+    if (s.editingCampaignId) {
+      set({ pendingNavTarget: page });
+      return;
+    }
+    // Campaign Builder takeover — auto-saved on every edit, so we can close
+    // and navigate immediately.
+    if (s.campaignBuilderId) {
+      set({ campaignBuilderId: null });
+      sessionStorage.setItem('activePage', page);
+      set({ activePage: page });
+      updateHash(get);
+      return;
+    }
+    // No takeover open — plain navigation.
+    sessionStorage.setItem('activePage', page);
+    set({ activePage: page });
+    updateHash(get);
+  },
   requestAddTask: (opts = {}) => {
     sessionStorage.setItem('activePage', 'tasks');
     set({ activePage: 'tasks', pendingAddTask: { member: opts.member || null } });
@@ -2152,21 +2276,232 @@ export const useAppStore = create((set, get) => ({
   },
 
   // ── Campaign ──
+  // (helper hoisted below; declared at module scope via const mapper above the store)
   campaignTab: 'active',
   setCampaignTab: (tab) => { set({ campaignTab: tab }); updateHash(get); },
+  campaigns: [],
+  campaignsLoading: false,
+  // Builder takeover. `campaignBuilderId` is the campaigns.id we're editing in
+  // the New Campaign full-screen view. It coexists with `editingCampaignId`:
+  // when both are set, the EmailBuilder shows on top; closing it returns to
+  // the CampaignBuilder. `campaignBuilderSaving` is "draft-row creation" — the
+  // brief moment between "user clicked New Campaign" and "draft row exists".
+  campaignBuilderId: null,
+  campaignBuilderSaving: false,
+
+  // Open the New Campaign builder. If campaignOrNull is null, insert a fresh
+  // draft row first so we have an id to PATCH against on every subsequent
+  // field edit (no need for a separate "create" submit step).
+  openCampaignBuilder: async (campaignOrNull) => {
+    if (campaignOrNull?.id) {
+      set({ campaignBuilderId: campaignOrNull.id });
+      updateHash(get);
+      return campaignOrNull.id;
+    }
+    set({ campaignBuilderSaving: true });
+    const { data, error } = await supabase
+      .from('campaigns')
+      .insert({
+        name: 'Untitled Campaign',
+        section: 'draft',
+        channel: 'email',
+        send_via: ['email'],
+        start_mode: 'immediately',
+        campaign_type: 'one_time',
+      })
+      .select('*')
+      .single();
+    set({ campaignBuilderSaving: false });
+    if (error) {
+      console.error('openCampaignBuilder insert error:', error);
+      get().showToast('Could not create draft campaign');
+      return null;
+    }
+    const fresh = campaignRowToJs(data);
+    set(s => ({
+      campaigns: [...s.campaigns, fresh],
+      campaignBuilderId: fresh.id,
+    }));
+    updateHash(get);
+    return fresh.id;
+  },
+
+  closeCampaignBuilder: () => {
+    set({ campaignBuilderId: null });
+    updateHash(get);
+  },
+
+  // Patch arbitrary fields on the campaign currently being built. Optimistic
+  // local update + debounced Supabase PATCH so the UI feels instant and a
+  // burst of edits collapses into one network call.
+  updateCampaignFields: (patch) => {
+    const id = get().campaignBuilderId;
+    if (!id) return;
+    set(s => ({
+      campaigns: s.campaigns.map(c => c.id === id ? { ...c, ...patch } : c),
+    }));
+    scheduleCampaignSave(id, async () => {
+      const dbPatch = campaignPatchToDb(patch);
+      if (Object.keys(dbPatch).length === 0) return;
+      const { error } = await supabase
+        .from('campaigns')
+        .update(dbPatch)
+        .eq('id', id);
+      if (error) console.error('updateCampaignFields error:', error);
+    });
+  },
+
+  // Run / activate the campaign. Flushes any pending debounced save first,
+  // then flips section → 'running' and enabled → true.
+  runCampaignNow: async () => {
+    const id = get().campaignBuilderId;
+    if (!id) return false;
+    // Flush pending debounced save synchronously so we don't lose the latest
+    // field edit racing with this request.
+    const pending = _campaignSaveTimers.get(id);
+    if (pending) { clearTimeout(pending); _campaignSaveTimers.delete(id); }
+    const { error } = await supabase
+      .from('campaigns')
+      .update({ section: 'running', enabled: true })
+      .eq('id', id);
+    if (error) {
+      console.error('runCampaignNow error:', error);
+      get().showToast('Could not start campaign');
+      return false;
+    }
+    set(s => ({
+      campaigns: s.campaigns.map(c => c.id === id ? { ...c, section: 'running', enabled: true } : c),
+    }));
+    get().showToast('Campaign started');
+    return true;
+  },
+
+  // Hand-off from the CampaignBuilder to the EmailBuilder for "Edit Template".
+  // Reuses the existing email-builder takeover; closing it returns to the
+  // CampaignBuilder because campaignBuilderId stays set.
+  openEmailTemplateFromCampaign: () => {
+    const id = get().campaignBuilderId;
+    if (!id) return;
+    const campaign = get().campaigns.find(c => c.id === id);
+    if (!campaign) return;
+    get().openEmailBuilder(campaign);
+  },
+  fetchCampaigns: async () => {
+    set({ campaignsLoading: true });
+    const { data, error } = await supabase
+      .from('campaigns')
+      .select('*')
+      .order('id', { ascending: true });
+    if (error) {
+      set({ campaignsLoading: false });
+      return;
+    }
+    const campaigns = (data || []).map(campaignRowToJs);
+    set({ campaigns, campaignsLoading: false });
+  },
+
+  fetchCampaignById: async (id) => {
+    const { data, error } = await supabase
+      .from('campaigns')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error || !data) return null;
+    return campaignRowToJs(data);
+  },
+
+  saveEmailTemplate: async () => {
+    const s = get();
+    if (!s.editingCampaignId || !s.emailDocument) return false;
+    const { error } = await supabase
+      .from('campaigns')
+      .update({
+        email_template: s.emailDocument,
+        color_variables: s.colorVariables,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', s.editingCampaignId);
+    if (error) {
+      console.error('saveEmailTemplate error:', error);
+      return false;
+    }
+    set(prev => ({
+      campaigns: prev.campaigns.map(c =>
+        c.id === s.editingCampaignId
+          ? { ...c, emailTemplate: s.emailDocument, colorVariables: s.colorVariables }
+          : c
+      ),
+    }));
+    return true;
+  },
 
   // Email builder takeover. editingCampaignId is the trigger; emailDocument is the
   // editable Reader-compatible document; selectedBlockId is what the right panel inspects.
   editingCampaignId: null,
   editingCampaignName: null,
+  setEditingCampaignName: (name) => set({ editingCampaignName: name }),
   emailDocument: null,
-  selectedBlockId: null,
+  selectedBlockId: 'root',
+  selectedColumnIdx: null,
+  bulkSelectedIds: [],
   // When the user edits raw HTML in the Code tab, that string takes over the
   // preview canvas (rendered via an iframe). It can't round-trip back to the
   // JSON document, so it stays as an override until cleared.
   htmlPreviewOverride: null,
   setHtmlPreviewOverride: (html) => set({ htmlPreviewOverride: html }),
-  setEmailDocument: (doc) => set({ emailDocument: doc, htmlPreviewOverride: null }),
+  setEmailDocument: (doc) => {
+    get()._pushEmailHistory();
+    set({ emailDocument: doc, htmlPreviewOverride: null });
+  },
+
+  // Pending HTML-import font substitution. When the parser surfaces font
+  // families that aren't in the builder's Google Fonts catalogue, we hold
+  // the parsed doc here and surface a dialog so the user can map each
+  // unknown font to one we can load. The doc commits to emailDocument
+  // only after the user confirms (or skips with the default mapping).
+  pendingFontDoc: null,
+  pendingUnknownFonts: [],
+  openFontSubstitutionDialog: (doc, fonts) => set({ pendingFontDoc: doc, pendingUnknownFonts: fonts }),
+  closeFontSubstitutionDialog: () => set({ pendingFontDoc: null, pendingUnknownFonts: [] }),
+
+  // ── Undo / Redo for the email document ──
+  // Snapshots the previous emailDocument before each mutation. Rapid edits
+  // (color picker drag, resize drag) coalesce within a 400ms window so the
+  // whole gesture counts as a single undo step.
+  emailHistory: [],
+  emailFuture: [],
+  _lastEmailHistoryTime: 0,
+  _pushEmailHistory: () => {
+    const s = get();
+    if (!s.emailDocument) return;
+    const now = Date.now();
+    const coalesce = now - s._lastEmailHistoryTime < 400 && s.emailHistory.length > 0;
+    set(state => ({
+      emailHistory: coalesce ? state.emailHistory : [...state.emailHistory.slice(-49), state.emailDocument],
+      emailFuture: [],
+      _lastEmailHistoryTime: now,
+    }));
+  },
+  undoEmailEdit: () => set(s => {
+    if (!s.emailDocument || s.emailHistory.length === 0) return {};
+    const prev = s.emailHistory[s.emailHistory.length - 1];
+    return {
+      emailHistory: s.emailHistory.slice(0, -1),
+      emailFuture: [s.emailDocument, ...s.emailFuture].slice(0, 50),
+      emailDocument: prev,
+      _lastEmailHistoryTime: 0,
+    };
+  }),
+  redoEmailEdit: () => set(s => {
+    if (!s.emailDocument || s.emailFuture.length === 0) return {};
+    const next = s.emailFuture[0];
+    return {
+      emailFuture: s.emailFuture.slice(1),
+      emailHistory: [...s.emailHistory.slice(-49), s.emailDocument],
+      emailDocument: next,
+      _lastEmailHistoryTime: 0,
+    };
+  }),
 
   // Named color variables — global "design tokens" for the open template.
   // Setting/picking a variable applies its hex; we don't persist a reference,
@@ -2184,10 +2519,30 @@ export const useAppStore = create((set, get) => ({
   })),
   removeColorVariable: (name) => set(s => ({ colorVariables: s.colorVariables.filter(v => v.name !== name) })),
 
+  // Recently used colors — capped MRU list shown above Variables in the
+  // ColorPicker so users don't have to re-pick the same custom hex twice.
+  // Hydrated from localStorage on boot; every commit re-saves the list.
+  recentlyUsedColors: (() => {
+    try {
+      const raw = typeof localStorage !== 'undefined' && localStorage.getItem('eb_recent_colors');
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.slice(0, 10) : [];
+    } catch { return []; }
+  })(),
+  pushRecentColor: (hex) => set(s => {
+    if (typeof hex !== 'string' || !/^#[0-9A-Fa-f]{6}$/.test(hex.trim())) return {};
+    const upper = hex.trim().toUpperCase();
+    const next = [upper, ...s.recentlyUsedColors.filter(c => c.toUpperCase() !== upper)].slice(0, 10);
+    try { if (typeof localStorage !== 'undefined') localStorage.setItem('eb_recent_colors', JSON.stringify(next)); } catch {}
+    return { recentlyUsedColors: next };
+  }),
+
   // Swap the existing header/footer for a different preset. Replaces by role
   // marker stored on the block; falls back to first/last child by convention.
-  replaceHeaderFooter: (role, presetTree) => set(s => {
-    if (!s.emailDocument) return {};
+  replaceHeaderFooter: (role, presetTree) => {
+    get()._pushEmailHistory();
+    return set(s => {
+      if (!s.emailDocument) return {};
     const doc = { ...s.emailDocument };
     const root = doc.root;
     const childrenIds = [...(root.data.childrenIds || [])];
@@ -2209,35 +2564,246 @@ export const useAppStore = create((set, get) => ({
     }
     Object.assign(doc, presetTree.blocks);
     doc.root = { ...root, data: { ...root.data, childrenIds } };
-    return { emailDocument: doc, selectedBlockId: presetTree.rootId };
-  }),
+      return { emailDocument: doc, selectedBlockId: presetTree.rootId };
+    });
+  },
   openEmailBuilder: (campaign) => {
+    const saved = campaign.emailTemplate;
+    const defaultVars = [
+      { name: 'Brand', hex: '#7C5CFA' },
+      { name: 'Accent', hex: '#22C55E' },
+      { name: 'Text', hex: '#3A485F' },
+      { name: 'Muted', hex: '#7B8499' },
+    ];
+    // Self-heal: campaigns saved before the customHtml-precedence fix carry
+    // a stale `customHtml` field alongside a fully parsed block tree. The
+    // canvas/export still prefer blocks (PreviewCanvas + patchEmailHtml
+    // now check `!hasBlocks`), but stripping the dead field at load means
+    // the next save persists a clean doc and customHtml retires over time.
+    let doc = saved || makeInitialDocument(campaign);
+    if (doc?.root?.data?.customHtml &&
+        (doc.root?.data?.childrenIds?.length ?? 0) > 0) {
+      const { customHtml: _stale, ...restData } = doc.root.data;
+      doc = { ...doc, root: { ...doc.root, data: restData } };
+    }
     set({
       editingCampaignId: campaign.id,
       editingCampaignName: campaign.name,
-      emailDocument: makeInitialDocument(campaign),
-      selectedBlockId: null,
+      emailDocument: doc,
+      colorVariables: campaign.colorVariables || defaultVars,
+      selectedBlockId: 'root',
+      emailHistory: [],
+      emailFuture: [],
+      _lastEmailHistoryTime: 0,
     });
+    // Fire-and-forget — the picker reads from customHeaderPresets /
+    // customFooterPresets which both default to [], so the builder renders
+    // immediately and gets populated when the fetch resolves.
+    get().fetchCustomPresets();
     updateHash(get);
   },
   closeEmailBuilder: () => {
-    set({ editingCampaignId: null, editingCampaignName: null, emailDocument: null, selectedBlockId: null, htmlPreviewOverride: null });
+    set({ editingCampaignId: null, editingCampaignName: null, emailDocument: null, selectedBlockId: 'root', selectedColumnIdx: null, bulkSelectedIds: [], htmlPreviewOverride: null, emailHistory: [], emailFuture: [], _lastEmailHistoryTime: 0 });
     updateHash(get);
   },
-  setSelectedBlockId: (id) => set({ selectedBlockId: id }),
-  updateBlock: (id, updater) => set(s => {
-    if (!s.emailDocument || !s.emailDocument[id]) return {};
-    const block = s.emailDocument[id];
-    const next = typeof updater === 'function' ? updater(block) : updater;
-    return { emailDocument: { ...s.emailDocument, [id]: next } };
+
+  // ── User-saved header/footer presets ──────────────────────────────────
+  // Persisted in Supabase. Merged with the built-in HEADER_PRESETS /
+  // FOOTER_PRESETS in the preset pickers so users see their saved templates
+  // alongside the defaults. `tree` is the `{ rootId, blocks }` shape that
+  // replaceHeaderFooter() consumes, re-IDed at apply time via cloneStoredTree.
+  customHeaderPresets: [],
+  customFooterPresets: [],
+
+  fetchCustomPresets: async () => {
+    const { data, error } = await supabase
+      .from('email_header_footer_presets')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      // Table not migrated yet → degrade silently rather than spamming errors.
+      const msg = String(error.message || '');
+      if (!msg.includes('does not exist') && !msg.includes('schema cache')) {
+        console.error('fetchCustomPresets error:', error);
+      }
+      return;
+    }
+    const headers = [];
+    const footers = [];
+    for (const row of data || []) {
+      const preset = {
+        id: row.id,
+        label: row.name,
+        description: row.description || '',
+        accent: row.accent || '#7C5CFA',
+        tree: row.tree,
+        isUserPreset: true,
+      };
+      if (row.role === 'header') headers.push(preset);
+      else if (row.role === 'footer') footers.push(preset);
+    }
+    set({ customHeaderPresets: headers, customFooterPresets: footers });
+  },
+
+  saveCurrentAsPreset: async (role, { name, description }) => {
+    const s = get();
+    if (!s.emailDocument || (role !== 'header' && role !== 'footer')) return null;
+    // Find the block in the doc carrying this role marker.
+    const rootChildren = s.emailDocument.root?.data?.childrenIds || [];
+    const rootId = rootChildren.find(id => s.emailDocument[id]?.data?.role === role);
+    if (!rootId) {
+      s.showToast(`No ${role} found in this template to save`);
+      return null;
+    }
+    const tree = extractSubtree(s.emailDocument, rootId);
+    const trimmedName = (name || '').trim() || `Custom ${role}`;
+    const { data, error } = await supabase
+      .from('email_header_footer_presets')
+      .insert({
+        role,
+        name: trimmedName,
+        description: (description || '').trim() || null,
+        accent: '#7C5CFA',
+        tree,
+      })
+      .select('*')
+      .single();
+    if (error) {
+      const msg = String(error.message || '');
+      if (msg.includes('does not exist') || msg.includes('schema cache')) {
+        s.showToast('Run email_header_footer_presets migration to enable saving');
+      } else {
+        s.showToast(`Save failed — ${msg}`);
+      }
+      console.error('saveCurrentAsPreset error:', error);
+      return null;
+    }
+    const fresh = {
+      id: data.id,
+      label: data.name,
+      description: data.description || '',
+      accent: data.accent || '#7C5CFA',
+      tree: data.tree,
+      isUserPreset: true,
+    };
+    set(prev => ({
+      customHeaderPresets: role === 'header' ? [fresh, ...prev.customHeaderPresets] : prev.customHeaderPresets,
+      customFooterPresets: role === 'footer' ? [fresh, ...prev.customFooterPresets] : prev.customFooterPresets,
+    }));
+    s.showToast(`Saved as ${role}: "${trimmedName}"`);
+    return fresh;
+  },
+
+  // Rename / re-describe a saved preset. Only the metadata is updated —
+  // the underlying tree stays the same so existing applies aren't affected.
+  updateCustomPreset: async (id, role, { name, description }) => {
+    const patch = {};
+    if (typeof name === 'string') patch.name = name.trim();
+    if (typeof description === 'string') patch.description = description.trim() || null;
+    if (Object.keys(patch).length === 0) return false;
+    const { error } = await supabase
+      .from('email_header_footer_presets')
+      .update(patch)
+      .eq('id', id);
+    if (error) {
+      console.error('updateCustomPreset error:', error);
+      get().showToast('Update failed');
+      return false;
+    }
+    const apply = (list) => list.map(p => p.id === id ? { ...p, label: patch.name ?? p.label, description: patch.description ?? p.description } : p);
+    set(prev => ({
+      customHeaderPresets: role === 'header' ? apply(prev.customHeaderPresets) : prev.customHeaderPresets,
+      customFooterPresets: role === 'footer' ? apply(prev.customFooterPresets) : prev.customFooterPresets,
+    }));
+    return true;
+  },
+
+  deleteCustomPreset: async (id, role) => {
+    const { error } = await supabase
+      .from('email_header_footer_presets')
+      .delete()
+      .eq('id', id);
+    if (error) {
+      console.error('deleteCustomPreset error:', error);
+      get().showToast('Delete failed');
+      return false;
+    }
+    set(prev => ({
+      customHeaderPresets: role === 'header'
+        ? prev.customHeaderPresets.filter(p => p.id !== id)
+        : prev.customHeaderPresets,
+      customFooterPresets: role === 'footer'
+        ? prev.customFooterPresets.filter(p => p.id !== id)
+        : prev.customFooterPresets,
+    }));
+    return true;
+  },
+
+  // Apply a saved preset by re-IDing its stored tree and handing it to the
+  // existing replaceHeaderFooter action. Built-in presets still go through
+  // their preset.build(genId, name) entry point.
+  applyCustomPreset: (role, preset) => {
+    if (!preset?.tree) return;
+    let counter = Date.now();
+    const genId = () => `block-${counter++}-${Math.random().toString(36).slice(2, 5)}`;
+    const tree = cloneStoredTree(preset.tree, genId);
+    if (tree) get().replaceHeaderFooter(role, tree);
+  },
+  setSelectedBlockId: (id) => set({ selectedBlockId: id, selectedColumnIdx: null, bulkSelectedIds: [] }),
+  setSelectedColumnIdx: (idx) => set({ selectedColumnIdx: idx }),
+  selectColumn: (blockId, colIdx) => set({ selectedBlockId: blockId, selectedColumnIdx: colIdx, bulkSelectedIds: [] }),
+  setBulkSelectedIds: (ids) => set({ bulkSelectedIds: ids }),
+  // Cmd/Shift-click on a block: build up a multi-selection from the
+  // currently-selected single block + the clicked id. Re-clicking a block
+  // already in the bulk set removes it. Single selection is cleared while
+  // the bulk set is non-empty so the right panel switches to BulkDesignTab.
+  toggleBulkSelected: (id) => set(s => {
+    const current = new Set(s.bulkSelectedIds);
+    if (current.has(id)) {
+      current.delete(id);
+    } else {
+      // Seed with the existing single selection if there isn't already a
+      // bulk list — gives the user "click A → cmd-click B" semantics.
+      if (current.size === 0 && s.selectedBlockId && s.selectedBlockId !== id) {
+        current.add(s.selectedBlockId);
+      }
+      current.add(id);
+    }
+    const ids = [...current];
+    return { bulkSelectedIds: ids, selectedBlockId: ids.length === 1 ? ids[0] : null };
   }),
-  addBlock: (type) => set(s => {
+  updateBlock: (id, updater) => {
+    get()._pushEmailHistory();
+    set(s => {
+      if (!s.emailDocument || !s.emailDocument[id]) return {};
+      const block = s.emailDocument[id];
+      const next = typeof updater === 'function' ? updater(block) : updater;
+      return { emailDocument: { ...s.emailDocument, [id]: next } };
+    });
+  },
+  addBlock: (type) => {
+    get()._pushEmailHistory();
+    return set(s => {
     if (!s.emailDocument) return {};
     let counter = Date.now();
     const genId = () => `block-${counter++}-${Math.random().toString(36).slice(2, 5)}`;
     const tree = createBlockTree(type, genId);
     if (!tree) return {};
     const root = s.emailDocument.root;
+    const bodyId = (root.data.childrenIds || []).find(id => s.emailDocument[id]?.data?.role === 'body');
+    if (bodyId) {
+      const body = s.emailDocument[bodyId];
+      const props = { ...(body.data?.props || {}) };
+      props.childrenIds = [...(props.childrenIds || []), tree.rootId];
+      return {
+        emailDocument: {
+          ...s.emailDocument,
+          [bodyId]: { ...body, data: { ...body.data, props } },
+          ...tree.blocks,
+        },
+        selectedBlockId: tree.rootId,
+      };
+    }
     const updatedRoot = {
       ...root,
       data: { ...root.data, childrenIds: [...(root.data.childrenIds || []), tree.rootId] },
@@ -2246,13 +2812,16 @@ export const useAppStore = create((set, get) => ({
       emailDocument: { ...s.emailDocument, root: updatedRoot, ...tree.blocks },
       selectedBlockId: tree.rootId,
     };
-  }),
+    });
+  },
   // Move an existing block to a new parent slot.
   // target = { parentId, columnIdx?, index } where parentId is 'root' or a
   // block id (Container or ColumnsContainer). For ColumnsContainer parents,
   // columnIdx (0-2) chooses which column. Index is the insert position in
   // that children list.
-  moveBlock: (blockId, target) => set(s => {
+  moveBlock: (blockId, target) => {
+    get()._pushEmailHistory();
+    return set(s => {
     if (!s.emailDocument || blockId === target.parentId) return {};
     const doc = { ...s.emailDocument };
     const map = buildParentMap(doc);
@@ -2323,10 +2892,13 @@ export const useAppStore = create((set, get) => ({
     }
     insertInto(target.parentId, target.columnIdx, targetIndex);
     return { emailDocument: doc };
-  }),
+    });
+  },
 
   // Drop a brand-new component (from the panel) at a specific spot.
-  insertNewBlock: (type, target) => set(s => {
+  insertNewBlock: (type, target) => {
+    get()._pushEmailHistory();
+    return set(s => {
     if (!s.emailDocument) return {};
     let counter = Date.now();
     const genId = () => `block-${counter++}-${Math.random().toString(36).slice(2, 5)}`;
@@ -2362,9 +2934,12 @@ export const useAppStore = create((set, get) => ({
       doc[target.parentId] = { ...parent, data };
     }
     return { emailDocument: doc, selectedBlockId: tree.rootId };
-  }),
+    });
+  },
 
-  duplicateBlock: (id) => set(s => {
+  duplicateBlock: (id) => {
+    get()._pushEmailHistory();
+    return set(s => {
     if (!s.emailDocument || !s.emailDocument[id]) return {};
     const map = buildParentMap(s.emailDocument);
     const slot = map[id];
@@ -2399,7 +2974,8 @@ export const useAppStore = create((set, get) => ({
       doc[slot.parentId] = { ...parent, data };
     }
     return { emailDocument: doc, selectedBlockId: tree.rootId };
-  }),
+    });
+  },
 
   moveBlockUp: (id) => {
     const s = get();
@@ -2410,19 +2986,54 @@ export const useAppStore = create((set, get) => ({
     s.moveBlock(id, { parentId: slot.parentId, columnIdx: slot.columnIdx, index: slot.index - 1 });
   },
 
-  removeBlock: (id) => set(s => {
-    if (!s.emailDocument || id === 'root' || !s.emailDocument[id]) return {};
-    const next = { ...s.emailDocument };
-    delete next[id];
-    next.root = {
-      ...next.root,
-      data: { ...next.root.data, childrenIds: (next.root.data.childrenIds || []).filter(c => c !== id) },
-    };
+  // Select the parent of the given block (root if no parent). Mirrors the
+  // Shift+Enter keyboard shortcut so the block-toolbar button and the
+  // keyboard surface a single behavior.
+  selectParentBlock: (id) => {
+    const s = get();
+    if (!s.emailDocument || id === 'root') return;
+    const map = buildParentMap(s.emailDocument);
+    const parentId = map[id]?.parentId;
+    if (parentId) s.setSelectedBlockId(parentId);
+  },
+
+  removeBlock: (id) => {
+    get()._pushEmailHistory();
+    return set(s => {
+      if (!s.emailDocument || id === 'root' || !s.emailDocument[id]) return {};
+    const doc = { ...s.emailDocument };
+    const map = buildParentMap(doc);
+    const slot = map[id];
+    const toRemove = collectBlockTree(doc, id);
+    toRemove.forEach(bid => { delete doc[bid]; });
+    if (slot && slot.parentId !== 'root') {
+      const parent = doc[slot.parentId];
+      if (parent) {
+        const data = { ...parent.data };
+        const props = { ...(data.props || {}) };
+        if (slot.columnIdx != null && Array.isArray(props.columns)) {
+          props.columns = props.columns.map((c, i) => i === slot.columnIdx
+            ? { ...c, childrenIds: (c.childrenIds || []).filter(cid => cid !== id) }
+            : c
+          );
+        } else if (Array.isArray(props.childrenIds)) {
+          props.childrenIds = props.childrenIds.filter(cid => cid !== id);
+        }
+        data.props = props;
+        doc[slot.parentId] = { ...parent, data };
+      }
+    } else {
+      doc.root = {
+        ...doc.root,
+        data: { ...doc.root.data, childrenIds: (doc.root.data.childrenIds || []).filter(c => c !== id) },
+      };
+    }
     return {
-      emailDocument: next,
+      emailDocument: doc,
       selectedBlockId: s.selectedBlockId === id ? 'root' : s.selectedBlockId,
     };
-  }),
+    });
+  },
 
   // ── Tasks ──
   tasks: [],

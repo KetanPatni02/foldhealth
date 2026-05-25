@@ -1,5 +1,15 @@
 {
   "installCommand": "bun install",
   "buildCommand": "bun run build",
-  "framework": "vite"
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/docs",
+      "destination": "https://fold-ab931789.subdirectory-docs.mintlify.me/docs"
+    },
+    {
+      "source": "/docs/:match*",
+      "destination": "https://fold-ab931789.subdirectory-docs.mintlify.me/docs/:match*"
+    }
+  ]
 }

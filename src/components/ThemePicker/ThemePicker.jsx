@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Icon } from '../Icon/Icon';
+import { Switch } from '../Switch/Switch';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './ThemePicker.module.css';
 
@@ -25,6 +26,8 @@ const OPTIONS = [
 export function ThemePicker() {
   const theme = useAppStore(s => s.theme);
   const setTheme = useAppStore(s => s.setTheme);
+  const navStyle = useAppStore(s => s.navStyle);
+  const setNavStyle = useAppStore(s => s.setNavStyle);
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
 
@@ -47,45 +50,61 @@ export function ThemePicker() {
 
   return (
     <div className={styles.wrapper} ref={wrapRef}>
-      <div className={styles.label}>Theme</div>
-      <button
-        type="button"
-        className={styles.trigger}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label="Theme"
-        onClick={() => setOpen(o => !o)}
-      >
-        <span className={styles.triggerLeft}>
-          <Icon name={current.icon} size={14} color="currentColor" />
-          <span>{current.label}</span>
-        </span>
-        <Icon name="solar:alt-arrow-down-linear" size={12} color="currentColor" />
-      </button>
-      {open && (
-        <ul className={styles.menu} role="listbox" aria-label="Theme">
-          {OPTIONS.map(opt => {
-            const active = theme === opt.value;
-            return (
-              <li key={opt.value} role="option" aria-selected={active}>
-                <button
-                  type="button"
-                  className={`${styles.item} ${active ? styles.itemActive : ''}`}
-                  onClick={() => { setTheme(opt.value); setOpen(false); }}
-                >
-                  <Icon name={opt.icon} size={14} color="currentColor" />
-                  <span>{opt.label}</span>
-                  {active && (
-                    <span className={styles.check} aria-hidden="true">
-                      <Icon name="solar:check-read-linear" size={14} color="var(--primary-300)" />
-                    </span>
-                  )}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <div className={styles.section}>
+        <div className={styles.label}>Theme</div>
+        <button
+          type="button"
+          className={styles.trigger}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-label="Theme"
+          onClick={() => setOpen(o => !o)}
+        >
+          <span className={styles.triggerLeft}>
+            <Icon name={current.icon} size={14} color="currentColor" />
+            <span>{current.label}</span>
+          </span>
+          <Icon name="solar:alt-arrow-down-linear" size={12} color="currentColor" />
+        </button>
+        {open && (
+          <ul className={styles.menu} role="listbox" aria-label="Theme">
+            {OPTIONS.map(opt => {
+              const active = theme === opt.value;
+              return (
+                <li key={opt.value} role="option" aria-selected={active}>
+                  <button
+                    type="button"
+                    className={`${styles.item} ${active ? styles.itemActive : ''}`}
+                    onClick={() => { setTheme(opt.value); setOpen(false); }}
+                  >
+                    <Icon name={opt.icon} size={14} color="currentColor" />
+                    <span>{opt.label}</span>
+                    {active && (
+                      <span className={styles.check} aria-hidden="true">
+                        <Icon name="solar:check-read-linear" size={14} color="var(--primary-300)" />
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+      <div className={styles.section}>
+        <div className={styles.label}>Sidebar</div>
+        <div className={styles.toggleRow}>
+          <span className={styles.toggleCopy}>
+            <span className={styles.toggleTitle}>Minimal navigation</span>
+            <span className={styles.toggleHint}>Adopts the active theme&rsquo;s primary color as the accent.</span>
+          </span>
+          <Switch
+            checked={navStyle === 'light'}
+            onChange={(next) => setNavStyle(next ? 'light' : 'default')}
+            ariaLabel="Toggle light navigation"
+          />
+        </div>
+      </div>
     </div>
   );
 }

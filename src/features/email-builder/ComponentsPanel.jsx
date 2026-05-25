@@ -1,15 +1,16 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useDraggable, DndContext, DragOverlay, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Icon } from '../../components/Icon/Icon';
 import { useAppStore } from '../../store/useAppStore';
 import { HEADER_PRESETS, FOOTER_PRESETS } from './headerFooterLibrary';
-import { buildParentMap } from './blockHelpers';
+import { buildParentMap, computeDropPosition } from './blockHelpers';
 import styles from './EmailBuilder.module.css';
 
 const COMPONENTS = [
   // Row 1: text-flow basics
+  { type: 'Heading',   label: 'Heading',  icon: null, customIcon: 'heading' },
   { type: 'Text',      label: 'Text',     icon: 'solar:text-square-linear' },
   { type: 'Image',     label: 'Image',    icon: 'solar:gallery-linear' },
   { type: 'Button',    label: 'Button',   icon: 'solar:bolt-circle-linear' },
@@ -28,6 +29,7 @@ const COMPONENTS = [
   { type: 'Section',   label: 'Section',  icon: 'solar:align-vertical-spacing-linear' },
   { type: 'Form',      label: 'Form',     icon: 'solar:document-add-linear', soon: true },
   { type: 'Table',     label: 'Table',    icon: null, customIcon: 'table' },
+  { type: 'RawHtml',   label: 'HTML',     icon: 'solar:code-square-linear' },
   // Row 6 — Header & Footer use a preset picker rather than a single block
   { type: 'Header',    label: 'Header',   icon: null, customIcon: 'header', preset: 'header' },
   { type: 'Footer',    label: 'Footer',   icon: null, customIcon: 'footer', preset: 'footer' },
@@ -57,6 +59,7 @@ const TYPE_LABELS = {
   Social: 'Social',
   NavBar: 'Nav Bar',
   Table: 'Table',
+  RawHtml: 'HTML',
 };
 
 const TYPE_ICONS = {
@@ -73,6 +76,7 @@ const TYPE_ICONS = {
   Social: 'solar:share-circle-linear',
   NavBar: 'solar:hamburger-menu-linear',
   Table: 'solar:widget-2-linear',
+  RawHtml: 'solar:code-square-linear',
 };
 
 function ColumnIcon({ size = 20, color = 'currentColor' }) {
@@ -86,7 +90,7 @@ function ColumnIcon({ size = 20, color = 'currentColor' }) {
 function TableIcon({ size = 20, color = 'currentColor' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M3.33329 10.742H28.6666M2.66663 19.8902H29.3333M16 11.2235V29.3346M13.3333 29.3346C13.106 29.3346 12.8838 29.3346 12.6666 29.3345C10.3993 29.3328 8.67629 29.3136 7.33329 29.0946C5.95923 28.8704 4.98299 28.437 4.22872 27.599C2.66663 25.8633 2.66663 23.0698 2.66663 17.4828V14.5198C2.66663 8.9328 2.66663 6.1393 4.22872 4.40363C5.79082 2.66797 8.30498 2.66797 13.3333 2.66797H18.6666C23.6949 2.66797 26.2091 2.66797 27.7712 4.40363C29.3333 6.1393 29.3333 8.9328 29.3333 14.5198V17.4828C29.3333 23.0698 29.3333 25.8633 27.7712 27.599C26.793 28.6858 25.4416 29.0921 23.3333 29.244C22.0747 29.3346 20.5463 29.3346 18.6666 29.3346H13.3333Z" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3.33329 10.742H28.6666M2.66663 19.8902H29.3333M16 11.2235V29.3346M13.3333 29.3346C13.106 29.3346 12.8838 29.3346 12.6666 29.3345C10.3993 29.3328 8.67629 29.3136 7.33329 29.0946C5.95923 28.8704 4.98299 28.437 4.22872 27.599C2.66663 25.8633 2.66663 23.0698 2.66663 17.4828V14.5198C2.66663 8.9328 2.66663 6.1393 4.22872 4.40363C5.79082 2.66797 8.30498 2.66797 13.3333 2.66797H18.6666C23.6949 2.66797 26.2091 2.66797 27.7712 4.40363C29.3333 6.1393 29.3333 8.9328 29.3333 14.5198V17.4828C29.3333 23.0698 29.3333 25.8633 27.7712 27.599C26.793 28.6858 25.4416 29.0921 23.3333 29.244C22.0747 29.3346 20.5463 29.3346 18.6666 29.3346H13.3333Z" stroke={color} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -115,18 +119,38 @@ function FooterIcon({ size = 20, color = 'currentColor' }) {
   );
 }
 
+// Custom Heading "H" glyph — two vertical strokes joined by a horizontal bar
+// with serifs at top and bottom of each stroke. Matches the icon supplied
+// by design. Used in both the Components panel tile and the Layers panel.
+function HeadingIcon({ size = 20, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M7 12H17M7 5V19M17 5V19M15 19H19M15 5H19M5 19H9M5 5H9"
+        stroke={color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function ComponentsPanel() {
   const [tab, setTab] = useState('components');
-  const [presetPicker, setPresetPicker] = useState(null); // 'header' | 'footer' | null
   const [renamingId, setRenamingId] = useState(null);
+  const [panelWidth, setPanelWidth] = useState(240);
+  const [isResizing, setIsResizing] = useState(false);
   const addBlock = useAppStore(s => s.addBlock);
   const showToast = useAppStore(s => s.showToast);
   const emailDocument = useAppStore(s => s.emailDocument);
   const editingCampaignName = useAppStore(s => s.editingCampaignName);
   const selectedBlockId = useAppStore(s => s.selectedBlockId);
+  const selectedColumnIdx = useAppStore(s => s.selectedColumnIdx);
   const setSelectedBlockId = useAppStore(s => s.setSelectedBlockId);
+  const selectColumn = useAppStore(s => s.selectColumn);
   const removeBlock = useAppStore(s => s.removeBlock);
   const replaceHeaderFooter = useAppStore(s => s.replaceHeaderFooter);
+  const panelRef = useRef(null);
 
   useEffect(() => {
     const handler = (e) => {
@@ -137,22 +161,45 @@ export function ComponentsPanel() {
     return () => window.removeEventListener('eb:rename', handler);
   }, []);
 
+  const handleResizeStart = useCallback((e) => {
+    e.preventDefault();
+    setIsResizing(true);
+    const startX = e.clientX;
+    const startW = panelRef.current?.offsetWidth || panelWidth;
+    const onMove = (ev) => {
+      const newW = Math.max(240, Math.min(480, startW + ev.clientX - startX));
+      setPanelWidth(newW);
+    };
+    const onUp = () => {
+      setIsResizing(false);
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [panelWidth]);
+
+  // Clicking a Header / Footer tile in the components panel adds a default
+  // preset directly — the picker for browsing/changing presets now lives
+  // only in the right-panel Template tab (which is what surfaces when the
+  // user actually wants to swap an existing header/footer).
   const handleAdd = (item) => {
     if (item.soon) { showToast(`${item.label} — coming soon`); return; }
-    if (item.preset) { setPresetPicker(item.preset); return; }
+    if (item.preset === 'header' || item.preset === 'footer') {
+      const role = item.preset;
+      const list = role === 'header' ? HEADER_PRESETS : FOOTER_PRESETS;
+      if (!list.length) return;
+      let counter = Date.now();
+      const genId = () => `block-${counter++}-${Math.random().toString(36).slice(2, 5)}`;
+      const tree = list[0].build(genId, editingCampaignName || 'Welcome');
+      replaceHeaderFooter(role, tree);
+      return;
+    }
     addBlock(item.type);
   };
 
-  const handlePickPreset = (role, preset) => {
-    let counter = Date.now();
-    const genId = () => `block-${counter++}-${Math.random().toString(36).slice(2, 5)}`;
-    const tree = preset.build(genId, editingCampaignName || 'Welcome');
-    replaceHeaderFooter(role, tree);
-    setPresetPicker(null);
-  };
-
   return (
-    <div className={styles.leftPanel}>
+    <div ref={panelRef} className={styles.leftPanel} style={{ width: panelWidth }}>
       <div className={styles.tabs}>
         <button
           className={[styles.tab, tab === 'components' ? styles.tabActive : ''].join(' ')}
@@ -174,15 +221,6 @@ export function ComponentsPanel() {
               ))}
             </div>
 
-            {presetPicker && (
-              <PresetPicker
-                role={presetPicker}
-                presets={presetPicker === 'header' ? HEADER_PRESETS : FOOTER_PRESETS}
-                onPick={(p) => handlePickPreset(presetPicker, p)}
-                onClose={() => setPresetPicker(null)}
-              />
-            )}
-
             <p className={styles.sectionHeading}>Layout</p>
             <div className={styles.layoutGrid}>
               {LAYOUTS.map(l => (
@@ -194,13 +232,19 @@ export function ComponentsPanel() {
           <LayerList
             doc={emailDocument}
             selectedId={selectedBlockId}
+            selectedColumnIdx={selectedColumnIdx}
             onSelect={setSelectedBlockId}
+            selectColumn={selectColumn}
             onRemove={removeBlock}
             renamingId={renamingId}
             setRenamingId={setRenamingId}
           />
         )}
       </div>
+      <div
+        className={[styles.resizeHandle, isResizing ? styles.resizeHandleActive : ''].join(' ')}
+        onMouseDown={handleResizeStart}
+      />
     </div>
   );
 }
@@ -226,6 +270,7 @@ function DraggableTile({ item, onClick }) {
       {item.customIcon === 'group' && <GroupIcon size={20} color="var(--neutral-300)" />}
       {item.customIcon === 'header' && <HeaderIcon size={20} color="var(--neutral-300)" />}
       {item.customIcon === 'footer' && <FooterIcon size={20} color="var(--neutral-300)" />}
+      {item.customIcon === 'heading' && <HeadingIcon size={20} color="var(--neutral-300)" />}
       {!item.customIcon && <Icon name={item.icon} size={20} color="var(--neutral-300)" />}
       {item.label}
     </button>
@@ -254,64 +299,54 @@ function DraggableLayoutTile({ layout, onClick }) {
   );
 }
 
-function PresetPicker({ role, presets, onPick, onClose }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
-    setTimeout(() => document.addEventListener('mousedown', handler), 0);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
-
-  return (
-    <div ref={ref} className={styles.presetPicker}>
-      <div className={styles.presetPickerHeader}>
-        <span>Choose a {role}</span>
-        <button className={styles.presetPickerClose} onClick={onClose} aria-label="Close">
-          <Icon name="solar:close-circle-linear" size={14} color="currentColor" />
-        </button>
-      </div>
-      {presets.map(p => (
-        <button key={p.id} className={styles.presetPickerItem} onClick={() => onPick(p)}>
-          <div className={styles.presetThumb} style={{ background: p.accent + '22' }}>
-            <div className={styles.presetThumbBar} style={{ background: p.accent }} />
-          </div>
-          <div className={styles.presetText}>
-            <div className={styles.presetTitle}>{p.label}</div>
-            <div className={styles.presetDesc}>{p.description}</div>
-          </div>
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function layerLabel(block) {
   if (block.data?.alias) return block.data.alias;
   const role = block.data?.role;
   if (role === 'header') return 'Header';
   if (role === 'body') return 'Body';
   if (role === 'footer') return 'Footer';
-  if (block.type === 'Heading' || block.type === 'Text') {
+  if (block.type === 'Heading') {
+    // Surface the heading level (H1 / H2 / H3) so users can spot at a
+    // glance which heading they're looking at without selecting it.
+    const level = (block.data?.props?.level || 'h2').toUpperCase();
+    const text = (block.data?.props?.text || '').slice(0, 22);
+    return `${level}: ${text}`;
+  }
+  if (block.type === 'Text') {
     return `${TYPE_LABELS[block.type]}: ${(block.data?.props?.text || '').slice(0, 22)}`;
   }
   return TYPE_LABELS[block.type] || block.type;
 }
 
-function layerIcon(block) {
+// Render the right icon for a block in the Layers panel. Roles (header /
+// body / footer) and custom-glyph types (Container, ColumnsContainer, Table)
+// use the same hand-drawn SVGs the Components panel tiles use, so a block's
+// layer-row icon matches the tile you'd drag in from the left.
+function LayerIcon({ block, size = 14, color = 'currentColor' }) {
   const role = block.data?.role;
-  if (role === 'header') return 'solar:gallery-wide-linear';
-  if (role === 'body') return 'solar:document-text-linear';
-  if (role === 'footer') return 'solar:gallery-bold-linear';
-  return TYPE_ICONS[block.type] || 'solar:square-linear';
+  if (role === 'header') return <HeaderIcon size={size} color={color} />;
+  if (role === 'footer') return <FooterIcon size={size} color={color} />;
+  if (role === 'body')   return <Icon name="solar:document-text-linear" size={size} color={color} />;
+  switch (block.type) {
+    case 'Heading':          return <HeadingIcon size={size} color={color} />;
+    case 'Container':        return <GroupIcon size={size} color={color} />;
+    case 'ColumnsContainer': return <ColumnIcon size={size} color={color} />;
+    case 'Table':            return <TableIcon size={size} color={color} />;
+    default: {
+      const name = TYPE_ICONS[block.type] || 'solar:square-linear';
+      return <Icon name={name} size={size} color={color} />;
+    }
+  }
 }
 
 const STRUCTURAL_ROLES = new Set(['header', 'body', 'footer']);
 
-function LayerList({ doc, selectedId, onSelect, onRemove, renamingId, setRenamingId }) {
+function LayerList({ doc, selectedId, selectedColumnIdx, onSelect, selectColumn, onRemove, renamingId, setRenamingId }) {
   if (!doc) return null;
   const moveBlock = useAppStore(s => s.moveBlock);
   const updateBlock = useAppStore(s => s.updateBlock);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const [layerDropIndicator, setLayerDropIndicator] = useState(null);
 
   const allSortableIds = [];
   const collectIds = (childrenIds) => {
@@ -326,38 +361,80 @@ function LayerList({ doc, selectedId, onSelect, onRemove, renamingId, setRenamin
   };
   collectIds(doc.root.data.childrenIds || []);
 
+  const handleDragOver = useCallback((event) => {
+    setLayerDropIndicator(computeDropPosition(event, doc, String(event.active.id)));
+  }, [doc]);
+
   const handleDragEnd = (event) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const overId = String(over.id);
-    const activeId = String(active.id);
-    const overBlock = doc[overId];
-    if (!overBlock) return;
-    const map = buildParentMap(doc);
-    const overSlot = map[overId];
-    if (!overSlot) return;
-    moveBlock(activeId, { parentId: overSlot.parentId, columnIdx: overSlot.columnIdx, index: overSlot.index });
+    const target = layerDropIndicator;
+    setLayerDropIndicator(null);
+    if (!target) return;
+    const activeId = String(event.active.id);
+    if (activeId === String(event.over?.id)) return;
+    moveBlock(activeId, target);
   };
 
-  const ctx = { doc, selectedId, onSelect, onRemove, renamingId, setRenamingId, updateBlock };
+  const ctx = { doc, selectedId, selectedColumnIdx, onSelect, selectColumn, onRemove, renamingId, setRenamingId, updateBlock, layerDropIndicator };
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={() => setLayerDropIndicator(null)}>
       <SortableContext items={allSortableIds} strategy={verticalListSortingStrategy}>
         <div className={styles.layerList}>
-          <LayerChildren childrenIds={doc.root.data.childrenIds || []} depth={0} ctx={ctx} />
+          <LayerChildren childrenIds={doc.root.data.childrenIds || []} depth={0} parentId="root" ctx={ctx} />
         </div>
       </SortableContext>
     </DndContext>
   );
 }
 
-function LayerChildren({ childrenIds, depth, ctx }) {
-  return (childrenIds || []).map(id => {
-    const block = ctx.doc[id];
-    if (!block) return null;
-    return <LayerRow key={id} id={id} block={block} depth={depth} ctx={ctx} />;
-  });
+function LayerDropLine({ depth }) {
+  return <div className={styles.layerDropLine} style={{ marginLeft: depth * 16 + 8 }} />;
+}
+
+function LayerChildren({ childrenIds, depth, parentId, ctx }) {
+  const ind = ctx.layerDropIndicator;
+  const showHere = ind && ind.parentId === parentId && (ind.columnIdx ?? undefined) === undefined && !ind.isNest;
+  return (
+    <>
+      {showHere && ind.index === 0 && <LayerDropLine depth={depth} />}
+      {(childrenIds || []).map((id, idx) => {
+        const block = ctx.doc[id];
+        if (!block) return null;
+        return (
+          <div key={id}>
+            <LayerRow id={id} block={block} depth={depth} ctx={ctx} />
+            {showHere && ind.index === idx + 1 && <LayerDropLine depth={depth} />}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+function ColumnGroup({ parentId, columnIdx, childrenIds, depth, ctx }) {
+  const [expanded, setExpanded] = useState(true);
+  const label = `Column ${columnIdx + 1}`;
+  const isSelected = ctx.selectedId === parentId && ctx.selectedColumnIdx === columnIdx;
+  return (
+    <>
+      <div className={[styles.layerRow, isSelected ? styles.layerRowActive : ''].join(' ')} onClick={() => ctx.selectColumn(parentId, columnIdx)}>
+        <span style={{ width: depth * 16, flexShrink: 0 }} />
+        <button
+          className={styles.layerExpandBtn}
+          onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
+          onPointerDown={(e) => e.stopPropagation()}
+          aria-label={expanded ? 'Collapse' : 'Expand'}
+        >
+          <Icon name={expanded ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'} size={12} color="currentColor" />
+        </button>
+        <Icon name="solar:folder-open-linear" size={14} color="currentColor" />
+        <span className={styles.layerRowText}>{label}</span>
+      </div>
+      {expanded && (
+        <LayerChildren childrenIds={childrenIds} depth={depth + 1} parentId={parentId} ctx={ctx} />
+      )}
+    </>
+  );
 }
 
 function LayerRow({ id, block, depth, ctx }) {
@@ -367,7 +444,7 @@ function LayerRow({ id, block, depth, ctx }) {
   const isRenaming = ctx.renamingId === id;
   const props = block.data?.props || {};
   const hasChildren = Array.isArray(props.childrenIds) && props.childrenIds.length > 0;
-  const hasColumns = Array.isArray(props.columns) && props.columns.some(c => (c.childrenIds || []).length > 0);
+  const hasColumns = block.type === 'ColumnsContainer' && Array.isArray(props.columns) && (props.columnsCount || props.columns.length) > 0;
   const isExpandable = hasChildren || hasColumns;
   const isStructural = STRUCTURAL_ROLES.has(block.data?.role);
 
@@ -400,7 +477,7 @@ function LayerRow({ id, block, depth, ctx }) {
         style={style}
         {...attributes}
         {...listeners}
-        className={[styles.layerRow, ctx.selectedId === id ? styles.layerRowActive : ''].join(' ')}
+        className={[styles.layerRow, ctx.selectedId === id ? styles.layerRowActive : '', ctx.layerDropIndicator?.isNest && ctx.layerDropIndicator?.parentId === id ? styles.layerRowNestTarget : ''].join(' ')}
         onClick={() => ctx.onSelect(id)}
         onDoubleClick={() => ctx.setRenamingId(id)}
       >
@@ -417,7 +494,7 @@ function LayerRow({ id, block, depth, ctx }) {
         ) : (
           <span style={{ width: 16, flexShrink: 0 }} />
         )}
-        <Icon name={layerIcon(block)} size={14} color="currentColor" />
+        <LayerIcon block={block} size={14} color="currentColor" />
         {isRenaming ? (
           <input
             ref={renameInputRef}
@@ -447,12 +524,10 @@ function LayerRow({ id, block, depth, ctx }) {
         )}
       </div>
       {expanded && hasChildren && (
-        <LayerChildren childrenIds={props.childrenIds} depth={depth + 1} ctx={ctx} />
+        <LayerChildren childrenIds={props.childrenIds} depth={depth + 1} parentId={id} ctx={ctx} />
       )}
-      {expanded && hasColumns && props.columns.map((col, ci) => (
-        (col.childrenIds || []).length > 0 && (
-          <LayerChildren key={ci} childrenIds={col.childrenIds} depth={depth + 1} ctx={ctx} />
-        )
+      {expanded && hasColumns && props.columns.slice(0, block.data?.props?.columnsCount || props.columns.length).map((col, ci) => (
+        <ColumnGroup key={ci} parentId={id} columnIdx={ci} childrenIds={col.childrenIds || []} depth={depth + 1} ctx={ctx} />
       ))}
     </>
   );

@@ -1,22 +1,42 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { renderEmailHtml } from './patchEmailHtml';
+import { Toggle } from '../../components/Toggle/Toggle';
 import styles from './DevicePreview.module.css';
 
-function EmailIframe({ html, renderWidth }) {
-  const iframeRef = useRef(null);
+function EmailIframe({ html, renderWidth, theme = 'light' }) {
   const wrapRef = useRef(null);
   const [scale, setScale] = useState(1);
   const [size, setSize] = useState({ w: 0, h: 0 });
 
-  useEffect(() => {
-    const f = iframeRef.current;
-    if (!f) return;
-    const doc = f.contentDocument;
-    doc.open();
-    doc.write(html);
-    doc.close();
-  }, [html]);
+  // Preview surface mirrors the in-component theme toggle, not the app theme —
+  // recipients see emails on a device with its own light/dark setting, so the
+  // iframe and its wrapper must paint together to prevent a white flash before
+  // the email HTML loads.
+  const previewBg = theme === 'dark' ? '#0F1117' : '#fff';
+
+  // Inject a thin transparent scrollbar into the iframe document so the email
+  // preview doesn't render with the OS-default scrollbar (which paints as a
+  // wide dark bar over the rendered design). Preview-only — does not affect
+  // the actual email HTML delivered to recipients. Always prepended (no head
+  // matching) and forced with !important so we win the cascade vs whatever
+  // styles the email template ships with.
+  const scrollbarThumb = theme === 'dark' ? 'rgba(255,255,255,0.28)' : 'rgba(0,0,0,0.28)';
+  const scrollbarThumbHover = theme === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)';
+  const scrollbarCss = `<style>
+    html, body { scrollbar-width: thin !important; scrollbar-color: ${scrollbarThumb} transparent !important; }
+    ::-webkit-scrollbar { width: 8px !important; height: 8px !important; background: transparent !important; }
+    ::-webkit-scrollbar-track { background: transparent !important; border: none !important; box-shadow: none !important; }
+    ::-webkit-scrollbar-corner { background: transparent !important; }
+    ::-webkit-scrollbar-thumb { background: ${scrollbarThumb} !important; border-radius: 4px !important; border: 2px solid transparent !important; background-clip: padding-box !important; }
+    ::-webkit-scrollbar-thumb:hover { background: ${scrollbarThumbHover} !important; background-clip: padding-box !important; }
+  </style>`;
+
+  // Render the email HTML via srcdoc + sandbox — isolates the iframe from the
+  // parent origin so any <script> in the email markup cannot run in the app.
+  // Always prepend the scrollbar style; HTML parsers tolerate <style> outside
+  // <head> and hoist it.
+  const srcDoc = html ? scrollbarCss + html : '<!DOCTYPE html><html><body></body></html>';
 
   useEffect(() => {
     if (!renderWidth) return;
@@ -34,18 +54,21 @@ function EmailIframe({ html, renderWidth }) {
   if (!renderWidth) {
     return (
       <iframe
-        ref={iframeRef}
         title="Email preview"
         className={styles.emailIframe}
+        sandbox="allow-same-origin"
+        srcDoc={srcDoc}
+        style={{ background: previewBg, colorScheme: theme }}
       />
     );
   }
 
   return (
-    <div ref={wrapRef} className={styles.emailIframeScaled}>
+    <div ref={wrapRef} className={styles.emailIframeScaled} style={{ background: previewBg }}>
       <iframe
-        ref={iframeRef}
         title="Email preview"
+        sandbox="allow-same-origin"
+        srcDoc={srcDoc}
         style={{
           width: renderWidth,
           height: scale ? size.h / scale : '100%',
@@ -56,8 +79,8 @@ function EmailIframe({ html, renderWidth }) {
           top: 0,
           border: 0,
           display: 'block',
-          background: '#fff',
-          colorScheme: 'light',
+          background: previewBg,
+          colorScheme: theme,
         }}
       />
     </div>
@@ -117,6 +140,10 @@ export function DevicePreview({ device }) {
   const htmlOverride = useAppStore(s => s.htmlPreviewOverride);
   const stageRef = useRef(null);
   const [stageW, setStageW] = useState(0);
+  // Theme override for the device preview — lets the user see how the email
+  // would render on a device with system dark mode versus light mode without
+  // changing their actual OS theme.
+  const [theme, setTheme] = useState('light');
 
   useEffect(() => {
     const el = stageRef.current;
@@ -130,7 +157,7 @@ export function DevicePreview({ device }) {
   if (htmlOverride) {
     emailHtml = htmlOverride;
   } else if (doc) {
-    emailHtml = renderEmailHtml(doc);
+    emailHtml = renderEmailHtml(doc, { theme });
   }
 
   const avail = Math.max(280, stageW - 64);
@@ -139,14 +166,26 @@ export function DevicePreview({ device }) {
 
   return (
     <div className={styles.stage} ref={stageRef}>
+      <div className={styles.themeBar}>
+        <Toggle
+          size="S"
+          items={[
+            { key: 'light', label: 'Light', icon: 'solar:sun-linear' },
+            { key: 'dark',  label: 'Dark',  icon: 'solar:moon-linear' },
+          ]}
+          active={theme}
+          onChange={setTheme}
+        />
+      </div>
       <div className={styles.deviceWrap} key={device}>
         {device === 'desktop' ? (
-          <MacBookPro width={macWidth} screen={<EmailIframe html={emailHtml} renderWidth={1280} />} />
+          <MacBookPro width={macWidth} screen={<EmailIframe html={emailHtml} renderWidth={1280} theme={theme} />} />
         ) : (
-          <IPhone17Pro width={phoneWidth} screen={<EmailIframe html={emailHtml} renderWidth={420} />} />
+          <IPhone17Pro width={phoneWidth} screen={<EmailIframe html={emailHtml} renderWidth={420} theme={theme} />} />
         )}
         <div className={styles.meta}>
           {device === 'desktop' ? 'MacBook Pro · 16-inch' : 'iPhone 17 Pro · 6.3-inch'}
+          {theme === 'dark' && <span className={styles.themeBadge}>· Dark mode</span>}
         </div>
       </div>
     </div>

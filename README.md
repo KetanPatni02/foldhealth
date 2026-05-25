@@ -140,6 +140,100 @@ The platform follows the **Fold Health design system** with strict adherence to:
 
 ## Recent Changes
 
+### Email Builder — HTML import: Tier A/B/C parser improvements + RawHtml block (May 2026)
+- **Tier A — User choice at Confirm.** The HTML-paste banner now offers two buttons: "Keep as raw HTML" (sets `customHtml`, clears `childrenIds` → iframe path with pixel-perfect fidelity) and "Import as blocks" (existing parser path with full structural editing).
+- **Tier B — Parser fidelity polish for production emails.**
+  - B1: Parser iframe widened to 800px so `@media (max-width:620px)` mobile rules don't hijack the captured computed styles.
+  - B2: `<td bgcolor><a>…</a></td>` CTA pattern now extracts as a Button — the wrapper bg + border-radius are promoted to `props.buttonBackgroundColor`/`buttonStyle: 'pill'`, anchor's padding/color carry through.
+  - B3: Inline `style="color:…"` on `<em>`/`<strong>`/`<span>`/`<u>`/`<s>`/`<a>` is preserved in `extractInlineHtml` (whitelisted to color, font-weight, font-style, text-decoration, text-transform, background-color).
+  - B4: ColumnsContainer per-cell styling — each `<td>`'s computed background-color, padding, text-align, valign attribute, and width attribute write through to `col.backgroundColor`/`padding`/`align`/`valign`/`customWidth` so coloured-bar columns and icon-bubble cells survive.
+  - B5: Inline `<svg>` → Image block with `svgRaw`. The Image renderer's SVG path no longer requires `tintColor`; raw markup renders as-is. Logos, principle icons, and social-bar glyphs round-trip.
+  - B6: `<link rel="stylesheet" href*="fonts.googleapis.com">` is parsed for `family=` URL params; the resulting list stores on `root.data.linkedFonts` and `collectUnknownFonts` excludes them so the substitution dialog doesn't nag.
+- **Tier C — RawHtml block.** New escape-hatch block type with `props.html: string`. BlockBody renders via `dangerouslySetInnerHTML` wrapped with the block's padding/textAlign — full SortableBlock treatment (toolbar, drag handle, drop indicator, reorderable). HTML export passes through verbatim. New "HTML" tile in the Components panel (`solar:code-square-linear` icon) drops one in alongside Heading/Text/Image. Layers panel labels it "Raw HTML". Design tab adds an "HTML" section with a monospace `Textarea` for editing markup directly.
+
+### Email Builder — Gap between nested children (May 2026)
+- New **Gap** control (px) in the Design tab Layout section for Container, ColumnsContainer, and the EmailLayout root. Sets vertical spacing between stacked children. For ColumnsContainer it spaces the children inside each column (distinct from the existing `columnsGap`/`rowGap` which space the columns themselves).
+- Canvas implementation: `SortableList` accepts a `gap` prop and wraps children in `display: flex; flex-direction: column; gap: Npx` when set.
+- HTML export: new `joinChildrenWithGap(childHtmls, gap)` helper inserts a transparent spacer `<div>` between children — works in Outlook/Gmail/Apple Mail (flex gap doesn't survive Outlook desktop).
+- Storage: blocks write to `data.style.gap`; root writes to `data.gap`. Factories default to `0` so existing campaigns continue to render flush-stacked.
+
+### Email Builder — Skeleton shimmer loading state (May 2026)
+- **`EmailBuilderSkeleton` component** replaces the bare "Loading template…" text shown during the hard-refresh fetch window. Mirrors the real builder chrome exactly — top bar with title + device picker + Test/Save pills, left panel with two tab placeholders + a 5×3 component-tile grid, canvas with a hero placeholder + varied-width text lines + a card + a pill button, right panel with three tab placeholders + section strips + dual-column field-input rows for typography. The transition into the populated UI is now visually continuous instead of a jarring text→full-page swap.
+- New `@keyframes ebShimmer` + `.sk*` class set in `EmailBuilder.module.css`. Uses the same `linear-gradient` slid via `background-position` technique as `CallsView`/`TasksView`, with `--neutral-75` / `--neutral-100` tokens so placeholders sit subtly on the white panel surfaces.
+
+### Email Builder — HTML import: CSS fidelity, block precedence, parser polish (May 2026)
+- **Block-pipeline precedence over `customHtml`.** `PreviewCanvas.jsx` and `patchEmailHtml.js` now check `!hasBlocks` before falling back to the iframe rendering. Imported HTML (which always produces `childrenIds`) routes through `SortableBlock`, restoring the per-block toolbar, drag handles, drop indicator, reorder, and component-panel insertion. Legacy iframe-only docs (no blocks) still get the iframe.
+- **Auto-heal stale `customHtml` on load** (`useAppStore.js:openEmailBuilder`). Campaigns saved before the precedence fix carried a stale `customHtml` field alongside a parsed block tree; stripping it at load means the next save retires the dead field for good.
+- **"Convert to blocks" button** on the legacy iframe banner. Parses the active customHtml and commits the resulting blocks (with the font-substitution dialog if needed). The existing "Remove" button stays for users who'd rather start clean.
+- **Button shape normalization** in the parser (`htmlToDocument.js:extractButtonBlock`). The renderer reads color/shape/size off `props.buttonBackgroundColor`/`buttonTextColor`/`buttonStyle`/`size`; the parser previously put them on `style`, so the default purple won. The helper now promotes them to `props`, infers `buttonStyle` from `borderRadius` (`≥100` → pill, `>0` → rounded, else rectangle), infers `size` from horizontal padding (≤18 x-small, ≤24 small, ≤40 medium, >40 large), and keeps `style` clean with just padding/textAlign/blockAlign and a numeric `borderRadius` override.
+- **Container `max-width` + `min-height` in canvas + export.** `max-width` pairs with `margin: 0 auto` so centred email wrappers render flush-centre; `min-height` lets hero sections hold their height even with short content. Mirrored in `patchEmailHtml.js` so sends/exports match the canvas.
+- **Parser fidelity polish** (`htmlToDocument.js`):
+  - Anchor-buttons wrapped in `<p>`/`<div>` get hoisted to Button blocks (previously inlined as raw HTML inside a Text block).
+  - `<ul>`/`<ol>` with `<li>` children → single Text block with `props.listStyle: 'bullet' | 'number'`.
+  - Empty `<div>` with computed height ≥ 8px → Spacer block.
+  - `extractStyle` now captures `cs.minHeight` and `cs.maxWidth`.
+
+### Email Builder — HTML import refinements (May 2026)
+- **Confirmed HTML renders through the normal block pipeline.** The Confirm flow no longer stuffs the raw HTML into `customHtml`; the parsed doc commits directly so imported blocks get the full editor experience — drag handles, the per-block toolbar (move/duplicate/delete), reordering, component-panel insertion, the selection outline. Previously the iframe rendering preserved CSS fidelity but locked out all editing affordances.
+- **Font substitution dialog** (`FontSubstitutionDialog.jsx`). When the parser surfaces font families that aren't in the builder's Google Fonts catalogue (e.g. `Helvetica`, `Georgia`), a modal lists each unknown font with a Select to map it to a Google Font we can load. "Apply substitutions" rewrites the doc; "Skip" commits the originals (the renderer falls back to Inter). New helpers `collectUnknownFonts(doc)` and `applyFontMappings(doc, mappings)` live in `htmlToDocument.js`.
+- **Click-to-select on canvas elements** (preserved iframe path). For docs that still use `customHtml` (parse fallback), the parser tags every block-equivalent element with `data-eb-block-id`; `EditableHtmlIframe` listens for clicks, looks up the closest tagged element, and routes through `setSelectedBlockId`. The selected element gets a 2px purple outline rendered live in the iframe.
+- **Style sync from Design tab into the iframe**. A new `blockStyleToCss()` helper converts each block's style object into an inline CSS string; on every doc change, every tagged element's `style` attribute is rewritten so color/padding/border/font edits show up immediately. Editor-only attributes (`contenteditable`, the highlight outline, the injected `outline:none/min-height`) are stripped from the persisted markup.
+- **Iframe load race fix**. Reordered the `EditableHtmlIframe` mount so the `load` listener attaches *before* the initial `srcdoc` assignment — the prior order let `load` fire before the listener was bound, which is why early click events weren't reaching the store.
+
+### Email Builder — HTML import as editable blocks + Code/Design polish (May 2026)
+- **HTML → editable blocks.** Paste any HTML into the Code > HTML tab, hit **Confirm**, and the parser walks the rendered DOM in a hidden iframe, reads `getComputedStyle()` for every element (so CSS classes from `<style>` blocks resolve correctly), and produces a full document tree — headings, text, images, anchor-buttons, columns, dividers, containers. The layers panel populates and each block is editable through the Design tab. New file: `src/features/email-builder/htmlToDocument.js`.
+- **Preview persists across tab switches.** Switching from Code/HTML to Design or JSON no longer clobbers the pasted HTML preview — you can review on all three tabs before confirming.
+- **Editable customHtml fallback.** When parsing can't produce a clean tree, the HTML is stored as `root.data.customHtml` and the canvas renders it inside a `contenteditable` iframe (`EditableHtmlIframe` in `PreviewCanvas.jsx`). Changes debounce-write back to `customHtml`; the contenteditable attr and editor-only styles are stripped from the persisted markup.
+- **Color values stored as hex.** New `rgbToHex` converter in `htmlToDocument.js` normalizes `rgb()` → `#RRGGBB`; the Design tab color fields now show `#3A485F` etc. instead of `RGB(58, 72, 95)`.
+- **Hard-refresh fix on email-builder URLs.** `_pendingEmailEditId` / `_pendingCampaignBuilderId` handler in `AppLayout.jsx` falls back to a single-row `fetchCampaignById` when the bulk fetch misses, and clears `editingCampaignId` if neither finds the campaign — no more permanent "Loading template…".
+- **Keyboard-shortcuts popover redesign** (`EmailBuilder.jsx`). Individual key-cap Badges with `+` separators and Solar icons for ⌘ (`solar:command-linear`) and ⇧ (`solar:arrow-up-linear`); action icons on the left of each row; new `kbd` Badge variant in `Badge.module.css`.
+- **Global font cascade.** `PreviewCanvas` now applies `getFontStack(root.data.fontFamily)` on the canvas root; `InlineEditable` uses `'inherit'` when a block has no specific font so the global choice flows down. The font-family dropdown on blocks defaults to the root font.
+- **Line Height / Letter Spacing unit switching.** Both inputs now have a `% ↔ px` toggle. Storage stays backward-compatible: number = legacy default unit, string with suffix = explicit unit. Letter-spacing `%` renders as `em` in CSS at write time (`dimUnits.js`).
+- **Text style chips pre-select by element type.** The Title / Subtitle / Heading / Body chip on a selected text block now highlights based on block type and heading level (h1 → Title, h2 → Subtitle, h3 → Heading, Text → Body) instead of requiring an exact fontSize match.
+- **Color variable swatches use the redesigned ColorPicker.** Replaced the native `<input type="color">` in the Color Variables editor with a `ColorVarSwatch` that opens the same hue/saturation picker used everywhere else (`ColorPicker.jsx`).
+
+### Email Builder — Save header/footer to library (May 2026)
+- **Save any edited header or footer as a reusable preset.** With a header/footer block selected, the right-panel "Template" tab now shows a "Save current header/footer as preset" button. It opens an inline form (name + optional description) and persists the subtree to a new Supabase table.
+- **Picker shows user presets alongside built-ins.** Both the in-canvas component-panel preset picker (clicking the Header / Footer tiles) and the right-panel Template tab merge user-saved presets with the built-in `HEADER_PRESETS` / `FOOTER_PRESETS`. User presets display under "Your presets"; built-ins under "Built-in".
+- **Delete** affordance on each user preset (hover → trash pill) with a confirm prompt.
+- **Migration**: `supabase/email_header_footer_presets_migration.sql` — new table with `role`, `name`, `description`, `accent`, `tree` (JSONB), CHECK constraint on role, and a `updated_at` trigger. Must be run in Supabase SQL Editor before the save flow works; the UI degrades gracefully (toast-prompt) until then.
+- **Implementation**: new `extractSubtree(doc, rootId)` and `cloneStoredTree(stored, genId)` helpers in `blockHelpers.js`. Store actions `fetchCustomPresets`, `saveCurrentAsPreset(role, {name, description})`, `deleteCustomPreset(id, role)`, and `applyCustomPreset(role, preset)`. `openEmailBuilder` now also fetches user presets on open.
+
+### Release Notes campaign + Campaign-name click reroute (May 2026)
+- **New seed campaign** "Fold July 2024 Release Notes" with a fully-designed email template modeled on the Figma "Release Notes" reference (gradient hero, featured "Introducing Fold Sidecar" block, 7 feature rows, additional-features card, gradient footer). Lives at `src/features/campaign/templates/releaseNotesTemplate.js` so the template stays maintainable in code, and is reflected in `supabase/release_notes_campaign_seed.sql` for redeployment.
+- **Campaign-name click now opens the Campaign Builder** (was the Email Builder). The row's pencil-edit button also goes to the Campaign Builder for consistency — "Edit Template" inside the builder is now the single entry point to the Email Builder.
+- **Campaign name maxLength bumped from 25 → 60** to accommodate existing campaign names like "Healthy Moms, Happy Babies" and "Fold July 2024 Release Notes".
+
+### Icon stroke normalization — all icons render at 1px (May 2026)
+- Added a global CSS rule in `src/index.css` that forces every stroked path inside an Iconify-rendered SVG to render at `stroke-width: 1`. Solar Linear icons ship at 1.5; this brings them in line with the rest of the chrome.
+- Updated all custom inline SVGs in `src/features/email-builder/` (EmptyDropIllustration, TableIcon, the `svg()` helper covering Width/Height/Padding/Radius/Direction/Alignment icons, and the Decoration underline/strike marks) from their previous 1.2–2.0 stroke widths to `strokeWidth="1"`.
+- Solar Bold icons use fill (not stroke), so they are unaffected.
+
+### Shared components — CloseButton, Textarea, Select; builders refactored (May 2026)
+- **`CloseButton`** (`src/components/CloseButton/`) — single source of truth for the top-bar dismiss action across full-screen takeovers. Wraps the plain-cross `CloseIcon` with the `neutral-75` hover affordance from `AgentCanvas`. Adopted in `EmailBuilder`, `CampaignBuilder`, and `AgentCanvas` (replacing local `closeBtn` styles and an inline `ActionButton`).
+- **`Textarea`** (`src/components/Textarea/`) — multi-line counterpart to `<Input>` with the same border, radius, focus ring, and error variant.
+- **`Select`** (`src/components/Select/`) — lightweight controlled single-select dropdown that matches the Input visual tokens. Replaces a custom `DropdownSelect` in `CampaignBuilder` and the native-styled `<select>` inside `PropertiesPanel`.
+- **Sidebar nav from inside builders** — clicking a Sidebar item while the Email Builder is open now triggers the unsaved-changes confirm dialog (with "Discard & Leave" / "Keep Editing" labels). From inside the Campaign Builder (auto-saves on edit) it just closes the builder and navigates. Implemented via a new `requestNavigate(page)` action + `pendingNavTarget` state in the store.
+- **Replaces inline raw `<textarea>` / `<input>` / `<select>` chrome** in the Email Builder property panel with `Input` / `Textarea` / `Select` wrappers; CampaignBuilder's `DropdownSelect` was deleted entirely.
+
+### Campaigns — New Campaign builder, expanded schema, Edit Template handoff (May 2026)
+- **New Campaign full-screen builder** (`src/features/campaign/CampaignBuilder.jsx`) — 500px form pane (name, description, include/exclude audience chip-select, Send Via radio, Start Date with Immediately/Schedule radio, End Date) + right pane with One-Time/Sequence toggle, Sender Name / Send From dropdowns, Subject Line, and an embedded read-only email preview.
+- **Auto-save** — every field edit PATCHes Supabase via a 600ms debounce so users can leave without an explicit save. A draft row is INSERTed the moment the user clicks "New Campaign" so the form has an id to persist against.
+- **Schema migration** (`supabase/campaigns_new_fields_migration.sql`) — adds `audience_include`, `audience_exclude`, `send_via` (JSONB), `start_mode`, `start_at`, `end_date`, `campaign_type`, `sender_name`, `send_from`, `subject_line`, plus a touch trigger for `updated_at`.
+- **Edit Template handoff** — "Edit Template" / "Change Template" inside the campaign builder open the existing Email Builder; closing it falls back to the campaign builder (both takeovers coexist in `AppLayout`).
+- **Run Campaign Now** flips `section='running'` and `enabled=true` after flushing any pending debounced field saves.
+
+### Email Builder — Undo/Redo, decoration multi-select, shortcuts help, iframe sandbox (May 2026)
+- **Undo / Redo** — full history stack on the email document (`emailHistory`/`emailFuture`), wired to `⌘Z` / `⇧⌘Z` and toolbar buttons. Rapid edits (color picker drag, resize drag) coalesce inside a 400ms window so each gesture counts as one undo step.
+- **Decoration toggles are multi-select** — bold / italic / underline / strikethrough can now combine instead of being mutually exclusive.
+- **Keyboard shortcuts popover** — new `?` button in the top-right surfaces all builder shortcuts.
+- **Right-panel tab labels** — Design / Code / Template tabs now show text alongside icons.
+- **Device preview iframes sandboxed** — `srcdoc` + `sandbox=""` prevents scripts in user-authored email HTML from executing in the app origin.
+- **Token cleanup** — replaced hardcoded status hex values with Fold tokens (`--status-error`, `--status-warning`, `--status-success`).
+- **Removed stub sections** — "Extra", "Iteration", "Conditions" placeholders dropped from the Design tab.
+- **Removed Analytics "coming soon" button** from the top bar.
+- **Surface upload errors** in SocialIconUpload via toast instead of silent catch.
+
 ### Platform — Bun migration, Help menu update (May 2026)
 - **Migrated from npm to Bun** — `packageManager` set to `bun@1.2.23`, `bun.lock` replaces `package-lock.json` as the canonical lock file.
 - **Help popover** — added Tasks group (Task List, Kanban Board) to the platform features menu.

@@ -53,4 +53,4 @@ export const DIAGNOSIS_GAP_ITEMS = [
   { id: 'dg2', title: 'HCC 48 - Coagulation Defects and Other Specified Hematological Disorders', status: 'Open', lastDocumented: '06/07/2025', icdCount: 1 },
 ];
 
-export const CARE_GAP_TABS = ['Gaps(11)', 'PAMI/Hx', 'Vitals/Labs', 'Comms', 'Outreach', 'Summary'];
+export const CARE_GAP_TABS = ['Gaps(11)', 'PAMI/Hx', 'Vitals/Labs', 'Comms', 'Outreach', 'Summary', 'Tasks', 'CRM', 'Profile'];

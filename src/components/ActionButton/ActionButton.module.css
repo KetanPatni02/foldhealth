@@ -50,7 +50,7 @@
 
 /* ── State: Active ── */
 .active:hover {
-  background: rgba(22, 24, 29, 0.05);
+  background: color-mix(in srgb, var(--neutral-500) 8%, transparent);
 }
 
 /* ── State: Disabled ── */

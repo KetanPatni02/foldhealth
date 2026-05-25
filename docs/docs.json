@@ -1,0 +1,109 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Fold Health",
+  "colors": {
+    "primary": "#8C5AE2",
+    "light": "#A87FF0",
+    "dark": "#7B4FCA"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "getting-started/installation",
+              "getting-started/tech-stack",
+              "getting-started/project-structure"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/home",
+              "features/population",
+              "features/tasks",
+              "docs/features/tasks",
+              "features/calls",
+              "features/campaigns",
+              "features/analytics",
+              "features/agent-builder",
+              "features/settings"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "architecture/state-management",
+              "architecture/routing",
+              "architecture/data-flow"
+            ]
+          },
+          {
+            "group": "Components",
+            "pages": [
+              "components/design-system",
+              "components/shared-components"
+            ]
+          },
+          {
+            "group": "API & Backend",
+            "pages": [
+              "api/supabase",
+              "api/authentication",
+              "api/realtime"
+            ]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Platform",
+          "href": "https://foldhealth.vercel.app",
+          "icon": "browser"
+        }
+      ]
+    }
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Support",
+        "href": "mailto:alokk@fold.health"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Open App",
+      "href": "https://foldhealth.vercel.app"
+    }
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/designedbyalok/foldhealth"
+    }
+  }
+}
