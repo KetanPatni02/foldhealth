@@ -5,7 +5,7 @@ import 'react-resizable/css/styles.css';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
 import { Toggle } from '../../../components/Toggle/Toggle';
-import { KpiCard, InsightBanner, Card, ProgressBar, GhostBtn, safeTableRows, safeBarItems } from './shared';
+import { KpiCard, InsightBanner, Card, ProgressBar, GhostBtn, safeTableRows, safeBarItems, EmptyState } from './shared';
 import { TcocLineChart, SavingsAreaChart } from './charts';
 import s from '../AnalyticsLayout.module.css';
 
@@ -242,6 +242,9 @@ export function ExecutiveView({ showToast, editing = false, resetTick = 0 }) {
             </tr>
           </thead>
           <tbody>
+            {carePrograms.length === 0 && (
+              <EmptyState colSpan={5} message="No care programs configured for this period." icon="solar:heart-pulse-linear" />
+            )}
             {carePrograms.map((p, i) => (
               <tr key={i} style={{ cursor: 'pointer' }} onClick={() => showToast?.(`Navigating to Care Management → Programs → ${p.abbr}`)}>
                 <td className={s.fw600}>{p.abbr}<div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{p.members} mbrs</div></td>
@@ -285,7 +288,11 @@ export function ExecutiveView({ showToast, editing = false, resetTick = 0 }) {
           <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--neutral-200)' }}>Full-year projection</div>
         </div>
       </div>
-      <SavingsAreaChart data={savingsTrajectory} targetLabel="MSR $2.8M" targetValue={2.8} />
+      {savingsTrajectory.length === 0 ? (
+        <EmptyState message="No savings trajectory data for this period." icon="solar:chart-2-linear" />
+      ) : (
+        <SavingsAreaChart data={savingsTrajectory} targetLabel="MSR $2.8M" targetValue={2.8} />
+      )}
       <div style={{ fontSize: 12, color: 'var(--neutral-200)', padding: '8px 14px 4px', borderTop: '1px solid var(--neutral-100)', marginTop: 8 }}>
         MSSP Track 1B &middot; Performance Year 2025 &middot; Quality composite secures maximum sharing rate
       </div>
@@ -300,6 +307,9 @@ export function ExecutiveView({ showToast, editing = false, resetTick = 0 }) {
             <tr><th>Setting</th><th className={s.r}>Actual PMPM</th><th className={s.r}>Benchmark</th><th className={s.r}>Variance</th><th>Status</th></tr>
           </thead>
           <tbody>
+            {costRows.length === 0 && (
+              <EmptyState colSpan={5} message="No cost-by-setting data for this period." icon="solar:wallet-money-linear" />
+            )}
             {costRows.map((row, i) => {
               const setting = row.setting || row[0];
               const actual = row.actual || row[1];
