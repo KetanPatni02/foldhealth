@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { track } from '../../lib/tracking';
 import { Input } from '../../components/Input/Input';
 import { Button } from '../../components/Button/Button';
 import { Icon } from '../../components/Icon/Icon';
@@ -25,7 +26,10 @@ export function LoginPage({ onBypass }) {
     setError('');
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
     if (authError) {
+      track('auth.login_failed', { method: 'password', reason: authError.message || 'unknown' });
       setError(authError.message === 'Invalid login credentials' ? 'Invalid email or password' : authError.message);
+    } else {
+      track('auth.login_succeeded', { method: 'password' });
     }
     setLoading(false);
   };
@@ -48,8 +52,10 @@ export function LoginPage({ onBypass }) {
       },
     });
     if (authError) {
+      track('auth.signup_failed', { reason: authError.message || 'unknown' });
       setError(authError.message);
     } else {
+      track('auth.signup_succeeded');
       setSuccess('Account created! Check your email to confirm, or sign in directly.');
       setIsSignUp(false);
       setConfirmPassword('');
@@ -60,13 +66,17 @@ export function LoginPage({ onBypass }) {
   const handleOAuthLogin = async (provider) => {
     setLoading(true);
     setError('');
+    track('auth.oauth_initiated', { provider });
     const { error: authError } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
         redirectTo: window.location.origin,
       },
     });
-    if (authError) setError(authError.message);
+    if (authError) {
+      track('auth.login_failed', { method: provider, reason: authError.message || 'unknown' });
+      setError(authError.message);
+    }
     setLoading(false);
   };
 

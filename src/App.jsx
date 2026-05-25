@@ -6,6 +6,7 @@ import { LoginPage } from './features/auth/LoginPage';
 import { useAppStore } from './store/useAppStore';
 import { supabase } from './lib/supabase';
 import { initRouter } from './lib/router';
+import { track } from './lib/tracking';
 
 function App() {
   const routerInit = useRef(false);
@@ -18,7 +19,12 @@ function App() {
       setSession(s);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      // Sentry/Vercel events for major auth transitions. Supabase emits
+      // SIGNED_IN once after a successful login (covers password, OAuth
+      // callback, and magic-link), and SIGNED_OUT on logout.
+      if (event === 'SIGNED_OUT') track('auth.logout');
+      else if (event === 'SIGNED_IN') track('auth.session_established');
       setSession(s);
     });
 
@@ -30,6 +36,9 @@ function App() {
     if (!routerInit.current) {
       routerInit.current = true;
       initRouter(useAppStore);
+      // Smoke test — confirms the analytics + Sentry breadcrumb pipeline is
+      // live on app boot. Remove once full coverage is in place.
+      track('app.booted');
     }
   }, []);
 
@@ -55,7 +64,7 @@ function App() {
   // Not authenticated — show login
   if (!isAuthenticated) {
     if (window.location.hash !== '#/login') window.location.hash = '#/login';
-    return <LoginPage onBypass={() => { sessionStorage.setItem('__auth_bypass', 'true'); setBypassed(true); window.location.hash = '#/home'; }} />;
+    return <LoginPage onBypass={() => { track('auth.bypass_used'); sessionStorage.setItem('__auth_bypass', 'true'); setBypassed(true); window.location.hash = '#/home'; }} />;
   }
 
   // Authenticated — clear login hash if present

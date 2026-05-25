@@ -10,6 +10,7 @@ import { domainDbToJs, domainJsToDb, componentDbToJs, componentJsToDb, auditLogD
 // inside the fetch actions that consume them, so they don't bloat the entry
 // chunk. They're only needed when Supabase returns empty or errors.
 import { updateHash } from '../lib/router';
+import { track } from '../lib/tracking';
 import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem, applyNavStyle, getStoredNavStyle } from '../lib/theme';
 import { createBlock, createBlockTree, collectBlockTree, buildParentMap, cloneBlockTree, extractSubtree, cloneStoredTree } from '../features/email-builder/blockHelpers';
 import { makeInitialDocument } from '../features/email-builder/initialDocument';
@@ -151,6 +152,8 @@ export const useAppStore = create((set, get) => ({
   theme: _initialThemeSetting,
   resolvedTheme: _initialResolvedTheme,
   setTheme: (next) => {
+    const from = get().theme;
+    track('theme.changed', { from, to: next });
     const resolved = applyTheme(next);
     set({ theme: next, resolvedTheme: resolved });
   },
@@ -172,6 +175,8 @@ export const useAppStore = create((set, get) => ({
   //             applied consistently across all color themes
   navStyle: _initialNavStyle,
   setNavStyle: (next) => {
+    const from = get().navStyle;
+    track('nav.style_changed', { from, to: next });
     const applied = applyNavStyle(next);
     set({ navStyle: applied });
   },
@@ -202,6 +207,7 @@ export const useAppStore = create((set, get) => ({
   createStickyNote: async (note) => {
     const { data, error } = await supabase.from('sticky_notes').insert(note).select().single();
     if (!error && data) {
+      track('note.sticky_created', { noteId: data.id });
       await supabase.from('sticky_note_history').insert({ sticky_note_id: data.id, patient_id: note.patient_id, author_name: note.author_name || 'You', action: 'added a Note', note_text: note.text, ehr_instance: note.ehr_profile || 'Central Profile' });
       get().fetchStickyNotes(note.patient_id);
       get().fetchStickyNoteHistory(note.patient_id);
@@ -209,6 +215,7 @@ export const useAppStore = create((set, get) => ({
     return data;
   },
   updateStickyNote: async (id, updates, patientId) => {
+    track('note.sticky_updated', { noteId: id });
     await supabase.from('sticky_notes').update(updates).eq('id', id);
     if (patientId) {
       await supabase.from('sticky_note_history').insert({ sticky_note_id: id, patient_id: patientId, author_name: updates.author_name || 'You', action: 'Updated a Note', note_text: updates.text, ehr_instance: updates.ehr_profile || 'Central Profile' });
@@ -217,6 +224,7 @@ export const useAppStore = create((set, get) => ({
     }
   },
   deleteStickyNote: async (id, patientId) => {
+    track('note.sticky_deleted', { noteId: id });
     // Log the deletion as an audit activity before removing the note
     const { data: noteData } = await supabase.from('sticky_notes').select('*').eq('id', id).maybeSingle();
     if (noteData) {
@@ -249,6 +257,7 @@ export const useAppStore = create((set, get) => ({
     const note = { patient_id: 'global', text, author_name: 'You', ehr_profile: 'Quick Note' };
     const { data, error } = await supabase.from('sticky_notes').insert(note).select().single();
     if (!error && data) {
+      track('note.quick_created', { noteId: data.id });
       await supabase.from('sticky_note_history').insert({ sticky_note_id: data.id, patient_id: 'global', author_name: 'You', action: 'added a Note', note_text: text, ehr_instance: 'Quick Note' });
       get().fetchQuickNotes();
       get().fetchQuickNoteHistory();
@@ -256,12 +265,14 @@ export const useAppStore = create((set, get) => ({
     return data;
   },
   updateQuickNote: async (id, text) => {
+    track('note.quick_updated', { noteId: id });
     await supabase.from('sticky_notes').update({ text, author_name: 'You' }).eq('id', id);
     await supabase.from('sticky_note_history').insert({ sticky_note_id: id, patient_id: 'global', author_name: 'You', action: 'Updated a Note', note_text: text, ehr_instance: 'Quick Note' });
     get().fetchQuickNotes();
     get().fetchQuickNoteHistory();
   },
   deleteQuickNote: async (id) => {
+    track('note.quick_deleted', { noteId: id });
     const { data: noteData } = await supabase.from('sticky_notes').select('*').eq('id', id).maybeSingle();
     if (noteData) {
       await supabase.from('sticky_note_history').insert({ sticky_note_id: id, patient_id: 'global', author_name: 'You', action: 'deleted a Note', note_text: noteData.text, ehr_instance: 'Quick Note' });
@@ -308,16 +319,24 @@ export const useAppStore = create((set, get) => ({
   selectedPatientId: null,
   patientProfileTab: 'Care Management',
   navigateToPatient: (patientId) => {
+    const from = get().activePage;
+    track('nav.patient_opened', { patientId, from });
     set({ selectedPatientId: patientId });
     const state = get();
     if (state.activePage !== 'population') set({ activePage: 'population' });
     updateHash?.(get());
   },
   navigateBackToWorklist: () => {
+    const patientId = get().selectedPatientId;
+    track('nav.patient_closed', { patientId });
     set({ selectedPatientId: null });
     updateHash?.(get());
   },
-  setPatientProfileTab: (tab) => set({ patientProfileTab: tab }),
+  setPatientProfileTab: (tab) => {
+    const from = get().patientProfileTab;
+    track('nav.patient_tab_changed', { patientId: get().selectedPatientId, from, to: tab });
+    set({ patientProfileTab: tab });
+  },
 
   // Table
   patients: [],
@@ -553,6 +572,7 @@ export const useAppStore = create((set, get) => ({
 
   // Create a new call record (on agent invoke)
   createCallRecord: (record) => {
+    track('call.record_created', { callId: record?.id });
     set(s => ({ callDetails: [enrichCallRecord(record), ...s.callDetails] }));
     // Persist to Supabase in background
     supabase.from('call_details').insert(callDetailJsToDb(record)).then(({ error }) => {
@@ -581,7 +601,13 @@ export const useAppStore = create((set, get) => ({
   },
 
   // Actions
-  setActivePage: (page) => { sessionStorage.setItem('activePage', page); set({ activePage: page }); updateHash(get); },
+  setActivePage: (page) => {
+    const from = get().activePage;
+    if (from !== page) track('nav.page_changed', { from, to: page });
+    sessionStorage.setItem('activePage', page);
+    set({ activePage: page });
+    updateHash(get);
+  },
 
   // Navigation guard for full-screen takeovers. When the user clicks a Sidebar
   // entry while the EmailBuilder or CampaignBuilder is open, we don't want the
@@ -613,24 +639,51 @@ export const useAppStore = create((set, get) => ({
     updateHash(get);
   },
   requestAddTask: (opts = {}) => {
+    track('task.create_requested', { source: opts?.source || null });
     sessionStorage.setItem('activePage', 'tasks');
     set({ activePage: 'tasks', pendingAddTask: { member: opts.member || null } });
     updateHash(get);
   },
   clearPendingAddTask: () => set({ pendingAddTask: null }),
-  setActiveTab: (tab) => { sessionStorage.setItem('activeTab', tab); set({ activeTab: tab }); updateHash(get); },
-  setSettingsTab: (tab) => { sessionStorage.setItem('settingsTab', tab); set({ settingsTab: tab }); updateHash(get); },
+  setActiveTab: (tab) => {
+    const from = get().activeTab;
+    if (from !== tab) track('nav.tab_changed', { scope: 'population', from, to: tab });
+    sessionStorage.setItem('activeTab', tab);
+    set({ activeTab: tab });
+    updateHash(get);
+  },
+  setSettingsTab: (tab) => {
+    const from = get().settingsTab;
+    if (from !== tab) track('nav.tab_changed', { scope: 'settings', from, to: tab });
+    sessionStorage.setItem('settingsTab', tab);
+    set({ settingsTab: tab });
+    updateHash(get);
+  },
   setShowCreateAgent: (v) => set({ showCreateAgent: v }),
 
   // Settings nav
-  setSettingsNavItem: (item) => { sessionStorage.setItem('settingsNavItem', item); set({ settingsNavItem: item }); updateHash(get); },
+  setSettingsNavItem: (item) => {
+    const from = get().settingsNavItem;
+    if (from !== item) track('nav.settings_section_changed', { from, to: item });
+    sessionStorage.setItem('settingsNavItem', item);
+    set({ settingsNavItem: item });
+    updateHash(get);
+  },
 
   // Chat Groups actions
   setMessagesUnreadCount: (n) => set({ messagesUnreadCount: n }),
   setPendingChatUserEmail: (email) => set({ pendingChatUserEmail: email }),
   setMessageTab: (tab) => { set({ messageTab: tab }); updateHash(get); },
-  setChatGroupDetailId: (id) => { set({ chatGroupDetailId: id }); updateHash(get); },
-  setAgentRulesGroupId: (id) => { set({ agentRulesGroupId: id }); updateHash(get); },
+  setChatGroupDetailId: (id) => {
+    if (id) track('chat.group_detail_opened', { groupId: id });
+    set({ chatGroupDetailId: id });
+    updateHash(get);
+  },
+  setAgentRulesGroupId: (id) => {
+    if (id) track('chat.rules_opened', { groupId: id });
+    set({ agentRulesGroupId: id });
+    updateHash(get);
+  },
   setBusinessHoursOpen: (open) => { set({ businessHoursOpen: open }); updateHash(get); },
 
   setEmbeddedComponentsTab: (tab) => { set({ embeddedComponentsTab: tab }); updateHash(get); },
@@ -690,12 +743,14 @@ export const useAppStore = create((set, get) => ({
         location: data[0].location, updated: new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
         updatedBy: data[0].updated_by || '', activeChats: 0, hasAgent: data[0].has_agent, agentName: data[0].agent_name || '',
       };
+      track('chat.group_created', { groupId: newGroup.id });
       set(s => ({ chatGroupsData: [newGroup, ...(s.chatGroupsData || [])] }));
       get().logAudit('ChatGroup', newGroup.id, newGroup.name, 'created', `Chat group created`, 'Lifecycle');
     }
   },
 
   updateChatGroup: async (id, updates) => {
+    track('chat.group_updated', { groupId: id });
     const dbUpdates = {};
     if (updates.name !== undefined) dbUpdates.name = updates.name;
     if (updates.users !== undefined) dbUpdates.users = updates.users;
@@ -717,6 +772,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   deleteChatGroup: async (id) => {
+    track('chat.group_deleted', { groupId: id });
     const group = (get().chatGroupsData || []).find(g => g.id === id);
     set(s => ({ chatGroupsData: (s.chatGroupsData || []).filter(g => g.id !== id) }));
     const { error } = await supabase.from('chat_groups').delete().eq('id', id);
@@ -742,6 +798,7 @@ export const useAppStore = create((set, get) => ({
         set({ embedDomains: (data || []).map(domainDbToJs), embedDomainsLoading: false });
   },
   addEmbedDomain: async (domain) => {
+    track('embed.domain_added', { domain: domain?.domain || domain?.host || domain?.url || null });
     // Check for duplicate domain
     const existing = get().embedDomains.find(d => d.domain?.toLowerCase() === domain.domain?.toLowerCase());
     if (existing) {
@@ -765,6 +822,7 @@ export const useAppStore = create((set, get) => ({
     return newDomain;
   },
   updateEmbedDomain: async (id, updates) => {
+    track('embed.domain_updated', { domainId: id });
     const oldDomain = get().embedDomains.find(d => d.id === id);
     const dbUpdates = domainJsToDb(updates);
     await supabase.from('embed_domains').update(dbUpdates).eq('id', id);
@@ -780,6 +838,7 @@ export const useAppStore = create((set, get) => ({
     get().logAudit('Domain', id, oldDomain?.domain || '', 'updated', Object.keys(updates).join(', ') + ' changed', 'Configuration', changes);
   },
   deleteEmbedDomain: async (id) => {
+    track('embed.domain_deleted', { domainId: id });
     // Block deletion if components reference this domain
     const compsUsingDomain = get().embedComponents.filter(c => c.domainId === id);
     if (compsUsingDomain.length > 0) {
@@ -796,6 +855,7 @@ export const useAppStore = create((set, get) => ({
     const domain = get().embedDomains.find(d => d.id === id);
     if (!domain) return;
     const newEnabled = !domain.enabled;
+    track('embed.domain_toggled', { domainId: id, enabled: newEnabled });
     await supabase.from('embed_domains').update({ enabled: newEnabled }).eq('id', id);
     set(s => ({ embedDomains: s.embedDomains.map(d => d.id === id ? { ...d, enabled: newEnabled } : d) }));
     get().logAudit('Domain', id, domain.domain, newEnabled ? 'enabled' : 'disabled', newEnabled ? 'Domain enabled' : 'Domain disabled', 'Status',
@@ -812,6 +872,7 @@ export const useAppStore = create((set, get) => ({
         set({ embedComponents: (data || []).map(componentDbToJs), embedComponentsLoading: false });
   },
   addEmbedComponent: async (comp) => {
+    track('embed.component_added', { componentType: comp?.type || comp?.category || null });
         const row = componentJsToDb(comp);
     const { data, error } = await supabase.from('embed_components').insert(row).select();
     if (error) { console.warn('[store] addEmbedComponent failed:', error.message); return null; }
@@ -821,6 +882,7 @@ export const useAppStore = create((set, get) => ({
     return newComp;
   },
   updateEmbedComponent: async (id, updates) => {
+    track('embed.component_updated', { componentId: id });
     const oldComp = get().embedComponents.find(c => c.id === id);
     const dbUpdates = componentJsToDb(updates);
     await supabase.from('embed_components').update(dbUpdates).eq('id', id);
@@ -838,6 +900,7 @@ export const useAppStore = create((set, get) => ({
     get().logAudit('Component', id, oldComp?.name || '', 'updated', Object.keys(updates).join(', ') + ' changed', 'Configuration', changes);
   },
   deleteEmbedComponent: async (id) => {
+    track('embed.component_deleted', { componentId: id });
     const comp = get().embedComponents.find(c => c.id === id);
     await supabase.from('embed_components').delete().eq('id', id);
     set(s => ({ embedComponents: s.embedComponents.filter(c => c.id !== id) }));
@@ -853,6 +916,7 @@ export const useAppStore = create((set, get) => ({
       [{ field: 'enabled', from: comp.enabled ? 'Enabled' : 'Disabled', to: newEnabled ? 'Enabled' : 'Disabled', type: 'status' }]);
   },
   duplicateEmbedComponent: async (id) => {
+    track('embed.component_duplicated', { componentId: id });
     const comp = get().embedComponents.find(c => c.id === id);
     if (!comp) return null;
         const dup = { ...comp, name: comp.name + ' (Copy)', enabled: false, id: undefined };
@@ -911,15 +975,18 @@ export const useAppStore = create((set, get) => ({
     const { data, error } = await supabase.from('faqs').insert(row).select();
     if (!error && data && data[0]) {
       const r = data[0];
+      track('chat.faq_created', { faqId: r.id });
       set(s => ({ faqsData: [...(s.faqsData || []), { id: r.id, question: r.question, answer: r.answer, category: r.category, updatedAt: new Date(r.updated_at || r.created_at).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) }] }));
     }
   },
   updateFaq: async (id, updates) => {
+    track('chat.faq_updated', { faqId: id });
     const now = new Date().toISOString();
     await supabase.from('faqs').update({ ...updates, updated_at: now }).eq('id', id);
     set(s => ({ faqsData: (s.faqsData || []).map(f => f.id === id ? { ...f, ...updates, updatedAt: new Date(now).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) } : f) }));
   },
   deleteFaq: async (id) => {
+    track('chat.faq_deleted', { faqId: id });
     await supabase.from('faqs').delete().eq('id', id);
     set(s => ({ faqsData: (s.faqsData || []).filter(f => f.id !== id) }));
   },
@@ -936,10 +1003,12 @@ export const useAppStore = create((set, get) => ({
     const { data, error } = await supabase.from('agent_rules').insert(row).select();
     if (!error && data) {
       const mapped = { id: data[0].id, name: data[0].name, type: 'custom', locked: false, enabled: true, condition: data[0].condition_text, action: data[0].action_text, sortOrder: data[0].sort_order };
+      track('chat.rule_created', { ruleId: mapped.id });
       set(s => ({ agentRulesData: [...(s.agentRulesData || []), mapped] }));
     }
   },
   updateAgentRule: async (id, updates) => {
+    track('chat.rule_updated', { ruleId: id });
     const dbUpdates = {};
     if (updates.name !== undefined) dbUpdates.name = updates.name;
     if (updates.enabled !== undefined) dbUpdates.enabled = updates.enabled;
@@ -949,6 +1018,7 @@ export const useAppStore = create((set, get) => ({
     set(s => ({ agentRulesData: (s.agentRulesData || []).map(r => r.id === id ? { ...r, ...updates } : r) }));
   },
   deleteAgentRule: async (id) => {
+    track('chat.rule_deleted', { ruleId: id });
     await supabase.from('agent_rules').delete().eq('id', id);
     set(s => ({ agentRulesData: (s.agentRulesData || []).filter(r => r.id !== id) }));
   },
@@ -993,8 +1063,16 @@ export const useAppStore = create((set, get) => ({
   },
 
   // Goals actions
-  setGoalDetailId: (id) => { set({ goalDetailId: id }); updateHash(get); },
-  setGoalWizard: (open, editId) => { set({ goalWizardOpen: open, goalWizardEditId: editId || null }); updateHash(get); },
+  setGoalDetailId: (id) => {
+    if (id) track('goal.detail_opened', { goalId: id });
+    set({ goalDetailId: id });
+    updateHash(get);
+  },
+  setGoalWizard: (open, editId) => {
+    if (open) track('goal.wizard_opened', { mode: editId ? 'edit' : 'new', goalId: editId || null });
+    set({ goalWizardOpen: open, goalWizardEditId: editId || null });
+    updateHash(get);
+  },
 
   fetchGoals: async () => {
     set({ goalsLoading: true });
@@ -1030,6 +1108,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   addGoal: async (goal) => {
+    track('goal.created', { goalId: goal.id, goalKind: goal.kind || goal.program || null });
     // Optimistic update
     set(s => {
       const current = s.goalsData || [];
@@ -1058,6 +1137,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   updateGoal: async (goal) => {
+    track('goal.updated', { goalId: goal.id });
     // Optimistic update
     set(s => {
       const current = s.goalsData || [];
@@ -1083,6 +1163,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   deleteGoal: async (id) => {
+    track('goal.deleted', { goalId: id });
     const goal = (get().goalsData || []).find(g => g.id === id);
     set(s => ({ goalsData: (s.goalsData || []).filter(g => g.id !== id) }));
     const { error } = await supabase.from('goals').delete().eq('id', id);
@@ -1090,20 +1171,35 @@ export const useAppStore = create((set, get) => ({
     if (goal) get().logAudit('Goal', id, goal.name, 'deleted', `Goal deleted`, 'Lifecycle');
   },
 
-  toggleSubnav: () => set(s => ({ subnavCollapsed: !s.subnavCollapsed })),
+  toggleSubnav: () => set(s => {
+    const open = s.subnavCollapsed; // becomes !collapsed after the set, so "open" is the new state
+    track('nav.subnav_toggled', { open });
+    return { subnavCollapsed: !s.subnavCollapsed };
+  }),
   setViewBy: (v) => set({ viewBy: v, currentPage: 1 }),
   setActiveFilters: (filters) => set({ activeFilters: filters, currentPage: 1 }),
-  setFilter: (key, value) => set(s => {
-    const next = { ...s.activeFilters };
-    if (value === null || value === undefined) {
-      delete next[key];
-    } else {
-      next[key] = value;
-    }
-    return { activeFilters: next, currentPage: 1 };
-  }),
-  clearAllFilters: () => set({ activeFilters: {}, currentPage: 1 }),
-  setActiveSubnavList: (list) => { set({ activeSubnavList: list, currentPage: 1 }); updateHash(get); },
+  setFilter: (key, value) => {
+    track('worklist.filter_applied', { filterKey: key, filterValue: value });
+    set(s => {
+      const next = { ...s.activeFilters };
+      if (value === null || value === undefined) {
+        delete next[key];
+      } else {
+        next[key] = value;
+      }
+      return { activeFilters: next, currentPage: 1 };
+    });
+  },
+  clearAllFilters: () => {
+    track('worklist.filters_cleared_all');
+    set({ activeFilters: {}, currentPage: 1 });
+  },
+  setActiveSubnavList: (list) => {
+    const from = get().activeSubnavList;
+    if (from !== list) track('nav.list_changed', { from, to: list });
+    set({ activeSubnavList: list, currentPage: 1 });
+    updateHash(get);
+  },
 
   fetchAgents: async () => {
     set({ agentsLoading: true });
@@ -1127,6 +1223,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   updateAgent: async (id, updates) => {
+    track('builder.agent_updated', { agentId: id });
     const agent = get().agents.find(a => a.id === id);
     set(s => ({
       agents: s.agents.map(a => a.id === id ? { ...a, ...updates } : a)
@@ -1137,6 +1234,7 @@ export const useAppStore = create((set, get) => ({
 
   // ─── Agent Builder actions ───
   openBuilder: (agent, prompt) => {
+    track('builder.opened', { agentId: agent?.id });
     sessionStorage.setItem('activePage', 'builder');
     set({ builderAgent: agent, activePage: 'builder', builderSelectedNode: null, builderPrompt: prompt || '' });
     get().fetchFlow(agent.id, prompt);
@@ -1144,6 +1242,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   closeBuilder: () => {
+    track('builder.closed', { agentId: get().builderAgent?.id });
     sessionStorage.setItem('activePage', 'settings');
     set({ builderAgent: null, builderFlow: null, builderSelectedNode: null, builderVersions: [], builderPrompt: '', builderConfig: null, activePage: 'settings', _pendingAgentId: null });
     updateHash(get);
@@ -1194,6 +1293,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   saveAgentConfig: async (agentId, configData) => {
+    track('builder.agent_config_saved', { agentId });
     const row = {
       agent_id: agentId,
       agent_role: configData.agentRole,
@@ -1313,6 +1413,7 @@ export const useAppStore = create((set, get) => ({
   saveFlow: async (nodes, edges, viewport) => {
     const { builderFlow, builderAgent } = get();
     if (!builderFlow || !builderAgent) return;
+    track('builder.flow_saved', { agentId: builderAgent.id, flowId: builderFlow.id });
 
     const updates = { nodes, edges, viewport, updated_at: new Date().toISOString() };
     set(s => ({ builderFlow: { ...s.builderFlow, ...updates } }));
@@ -1324,6 +1425,7 @@ export const useAppStore = create((set, get) => ({
   createFlowVersion: async (nodes, edges, viewport) => {
     const { builderFlow, builderAgent } = get();
     if (!builderFlow || !builderAgent) return;
+    track('builder.flow_version_created', { agentId: builderAgent.id, versionId: builderFlow.id });
 
     // Mark old as not current
     await supabase.from('agent_flows').update({ is_current: false }).eq('id', builderFlow.id);
@@ -1360,6 +1462,7 @@ export const useAppStore = create((set, get) => ({
   switchFlowVersion: async (flowId) => {
     const { builderAgent } = get();
     if (!builderAgent) return;
+    track('builder.flow_version_switched', { agentId: builderAgent.id, versionId: flowId });
 
     // Unset current
     await supabase.from('agent_flows').update({ is_current: false }).eq('agent_id', builderAgent.id).eq('is_current', true);
@@ -1380,16 +1483,33 @@ export const useAppStore = create((set, get) => ({
   },
 
   setCurrentPage: (page) => set({ currentPage: page }),
-  setPerPage: (pp) => set({ perPage: pp, currentPage: 1 }),
-  setSearchQuery: (q) => set({ searchQuery: q, currentPage: 1 }),
+  setPerPage: (pp) => {
+    track('worklist.page_size_changed', { size: pp });
+    set({ perPage: pp, currentPage: 1 });
+  },
+  setSearchQuery: (q) => {
+    const prev = get().searchQuery;
+    if (q && q !== prev) track('worklist.search_executed', { queryLength: q.length });
+    else if (!q && prev) track('worklist.search_cleared');
+    set({ searchQuery: q, currentPage: 1 });
+  },
 
-  selectPatient: (id) => set(s => ({
-    selectedIds: s.selectedIds.includes(id)
-      ? s.selectedIds.filter(x => x !== id)
-      : [...s.selectedIds, id]
-  })),
-  selectAll: (ids) => set({ selectedIds: ids }),
-  clearSelected: () => set({ selectedIds: [] }),
+  selectPatient: (id) => {
+    track('worklist.row_selected', { patientId: id });
+    set(s => ({
+      selectedIds: s.selectedIds.includes(id)
+        ? s.selectedIds.filter(x => x !== id)
+        : [...s.selectedIds, id]
+    }));
+  },
+  selectAll: (ids) => {
+    track('worklist.row_select_all', { count: Array.isArray(ids) ? ids.length : 0 });
+    set({ selectedIds: ids });
+  },
+  clearSelected: () => {
+    track('worklist.row_select_cleared');
+    set({ selectedIds: [] });
+  },
 
   // ─── HCC Worklist (Supabase-backed) ───
   hccMembers: [],
@@ -1525,11 +1645,14 @@ export const useAppStore = create((set, get) => ({
   })),
 
   selectedHccIds: [],
-  selectHccMember: (id) => set(s => ({
-    selectedHccIds: s.selectedHccIds.includes(id)
-      ? s.selectedHccIds.filter(x => x !== id)
-      : [...s.selectedHccIds, id]
-  })),
+  selectHccMember: (id) => {
+    track('hcc.member_selected', { memberId: id });
+    set(s => ({
+      selectedHccIds: s.selectedHccIds.includes(id)
+        ? s.selectedHccIds.filter(x => x !== id)
+        : [...s.selectedHccIds, id]
+    }));
+  },
   selectAllHcc: (ids) => set({ selectedHccIds: ids }),
   clearHccSelected: () => set({ selectedHccIds: [] }),
 
@@ -1542,14 +1665,20 @@ export const useAppStore = create((set, get) => ({
   // ─── HCC worklist filter state ───
   // hccFilters: { [filterKey]: string[] } — empty object = no filters applied.
   hccFilters: {},
-  setHccFilter: (k, vals) => set(s => {
-    const next = { ...s.hccFilters };
-    if (!vals || !vals.length) delete next[k];
-    else next[k] = vals;
-    // Changing a filter detaches us from any "applied saved filter" highlight
-    return { hccFilters: next, hccActiveSavedId: null };
-  }),
-  clearHccFilters: () => set({ hccFilters: {}, hccActiveSavedId: null }),
+  setHccFilter: (k, vals) => {
+    track('hcc.filter_applied', { filterKey: k, filterValue: vals });
+    set(s => {
+      const next = { ...s.hccFilters };
+      if (!vals || !vals.length) delete next[k];
+      else next[k] = vals;
+      // Changing a filter detaches us from any "applied saved filter" highlight
+      return { hccFilters: next, hccActiveSavedId: null };
+    });
+  },
+  clearHccFilters: () => {
+    track('hcc.filters_cleared_all');
+    set({ hccFilters: {}, hccActiveSavedId: null });
+  },
 
   // Which filter chip keys appear in the chip row. The MoreFiltersPopover
   // toggles entries in this set. Initialized to the primary keys on first read.
@@ -1570,37 +1699,52 @@ export const useAppStore = create((set, get) => ({
     { id: 'sf2', name: 'Overdue Incomplete', filters: { supS: ['Assign'], cdrS: ['Assign'] } },
   ],
   hccActiveSavedId: null,
-  saveHccFilter: (name) => set(s => {
-    const trimmed = (name || '').trim();
-    if (!trimmed) return {};
-    const id = `sf-${Date.now()}`;
-    return {
-      hccSavedFilters: [...s.hccSavedFilters, { id, name: trimmed, filters: { ...s.hccFilters } }],
-      hccActiveSavedId: id,
-    };
-  }),
-  renameHccSavedFilter: (id, name) => set(s => ({
-    hccSavedFilters: s.hccSavedFilters.map(f => f.id === id ? { ...f, name: (name || '').trim() || f.name } : f),
-  })),
-  deleteHccSavedFilter: (id) => set(s => ({
-    hccSavedFilters: s.hccSavedFilters.filter(f => f.id !== id),
-    hccActiveSavedId: s.hccActiveSavedId === id ? null : s.hccActiveSavedId,
-    hccFilters: s.hccActiveSavedId === id ? {} : s.hccFilters,
-  })),
-  applyHccSavedFilter: (id) => set(s => {
-    const f = s.hccSavedFilters.find(x => x.id === id);
-    if (!f) return {};
-    return { hccFilters: { ...f.filters }, hccActiveSavedId: id };
-  }),
+  saveHccFilter: (name) => {
+    track('hcc.filter_saved');
+    set(s => {
+      const trimmed = (name || '').trim();
+      if (!trimmed) return {};
+      const id = `sf-${Date.now()}`;
+      return {
+        hccSavedFilters: [...s.hccSavedFilters, { id, name: trimmed, filters: { ...s.hccFilters } }],
+        hccActiveSavedId: id,
+      };
+    });
+  },
+  renameHccSavedFilter: (id, name) => {
+    track('hcc.saved_filter_renamed', { filterId: id });
+    set(s => ({
+      hccSavedFilters: s.hccSavedFilters.map(f => f.id === id ? { ...f, name: (name || '').trim() || f.name } : f),
+    }));
+  },
+  deleteHccSavedFilter: (id) => {
+    track('hcc.saved_filter_deleted', { filterId: id });
+    set(s => ({
+      hccSavedFilters: s.hccSavedFilters.filter(f => f.id !== id),
+      hccActiveSavedId: s.hccActiveSavedId === id ? null : s.hccActiveSavedId,
+      hccFilters: s.hccActiveSavedId === id ? {} : s.hccFilters,
+    }));
+  },
+  applyHccSavedFilter: (id) => {
+    track('hcc.saved_filter_applied', { filterId: id });
+    set(s => {
+      const f = s.hccSavedFilters.find(x => x.id === id);
+      if (!f) return {};
+      return { hccFilters: { ...f.filters }, hccActiveSavedId: id };
+    });
+  },
 
   // Column visibility — array of column keys that are hidden. Sticky Member/Actions
   // columns are not toggleable so they never appear here.
   hccHiddenCols: [],
-  toggleHccColumn: (k) => set(s => {
-    const next = new Set(s.hccHiddenCols);
-    if (next.has(k)) next.delete(k); else next.add(k);
-    return { hccHiddenCols: [...next] };
-  }),
+  toggleHccColumn: (k) => {
+    track('hcc.column_toggled', { column: k });
+    set(s => {
+      const next = new Set(s.hccHiddenCols);
+      if (next.has(k)) next.delete(k); else next.add(k);
+      return { hccHiddenCols: [...next] };
+    });
+  },
   clearHccHiddenCols: () => set({ hccHiddenCols: [] }),
 
   // Column ordering — array of column keys in the user's preferred order.
@@ -1610,6 +1754,7 @@ export const useAppStore = create((set, get) => ({
   hccColumnOrder: [],
   reorderHccColumns: (fromKey, toKey) => set(s => {
     if (!fromKey || !toKey || fromKey === toKey) return {};
+    track('hcc.columns_reordered', { from: fromKey, to: toKey });
     // Seed the order from the static default the first time we move anything.
     const base = s.hccColumnOrder.length
       ? [...s.hccColumnOrder]
@@ -1705,30 +1850,54 @@ export const useAppStore = create((set, get) => ({
 
   // Convenience wrappers — one per AC transition so consumers don't have to
   // remember string kinds. They forward to transitionHccDos above.
-  hccMarkSupportInProgress: (pid, dos, actor) =>
-    useAppStore.getState().transitionHccDos(pid, dos, 'markSupportInProgress', { actor }),
-  hccCompleteSupport: (pid, dos, actor) =>
-    useAppStore.getState().transitionHccDos(pid, dos, 'completeSupport', { actor }),
-  hccMarkInsufficient: (pid, dos, actor, reason) =>
-    useAppStore.getState().transitionHccDos(pid, dos, 'markInsufficient', { actor, reason }),
-  hccRejectDos: (pid, dos, actor, reason) =>
-    useAppStore.getState().transitionHccDos(pid, dos, 'rejectDos', { actor, reason }),
-  hccCompleteCoder: (pid, dos, actor) =>
-    useAppStore.getState().transitionHccDos(pid, dos, 'completeCoder', { actor }),
-  hccRequestRecords: (pid, dos, actor) =>
-    useAppStore.getState().transitionHccDos(pid, dos, 'requestRecords', { actor }),
-  hccRecordsReceived: (pid, dos, actor) =>
-    useAppStore.getState().transitionHccDos(pid, dos, 'recordsReceived', { actor }),
-  hccCompleteR1: (pid, dos, actor) =>
-    useAppStore.getState().transitionHccDos(pid, dos, 'completeR1', { actor }),
-  hccCompleteR2: (pid, dos, actor) =>
-    useAppStore.getState().transitionHccDos(pid, dos, 'completeR2', { actor }),
-  hccCompleteR3: (pid, dos, actor) =>
-    useAppStore.getState().transitionHccDos(pid, dos, 'completeR3', { actor }),
-  hccReturnDos: (pid, dos, fromRole, actor, reason) =>
-    useAppStore.getState().transitionHccDos(pid, dos, 'returnDos', { fromRole, actor, reason }),
-  hccReassignRole: (pid, dos, role, staffId, actor, reason) =>
-    useAppStore.getState().transitionHccDos(pid, dos, 'reassignRole', { role, staffId, actor, reason }),
+  hccMarkSupportInProgress: (pid, dos, actor) => {
+    track('hcc.support_started', { memberId: pid });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'markSupportInProgress', { actor });
+  },
+  hccCompleteSupport: (pid, dos, actor) => {
+    track('hcc.support_completed', { memberId: pid });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'completeSupport', { actor });
+  },
+  hccMarkInsufficient: (pid, dos, actor, reason) => {
+    track('hcc.insufficient_marked', { memberId: pid, dosId: dos, reason });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'markInsufficient', { actor, reason });
+  },
+  hccRejectDos: (pid, dos, actor, reason) => {
+    track('hcc.dos_rejected', { dosId: dos, reason });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'rejectDos', { actor, reason });
+  },
+  hccCompleteCoder: (pid, dos, actor) => {
+    track('hcc.coder_completed', { memberId: pid });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'completeCoder', { actor });
+  },
+  hccRequestRecords: (pid, dos, actor) => {
+    track('hcc.records_requested', { memberId: pid });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'requestRecords', { actor });
+  },
+  hccRecordsReceived: (pid, dos, actor) => {
+    track('hcc.records_received', { memberId: pid });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'recordsReceived', { actor });
+  },
+  hccCompleteR1: (pid, dos, actor) => {
+    track('hcc.review_completed', { memberId: pid, level: 'r1' });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'completeR1', { actor });
+  },
+  hccCompleteR2: (pid, dos, actor) => {
+    track('hcc.review_completed', { memberId: pid, level: 'r2' });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'completeR2', { actor });
+  },
+  hccCompleteR3: (pid, dos, actor) => {
+    track('hcc.review_completed', { memberId: pid, level: 'r3' });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'completeR3', { actor });
+  },
+  hccReturnDos: (pid, dos, fromRole, actor, reason) => {
+    track('hcc.dos_returned', { dosId: dos, toRole: fromRole });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'returnDos', { fromRole, actor, reason });
+  },
+  hccReassignRole: (pid, dos, role, staffId, actor, reason) => {
+    track('hcc.role_reassigned', { memberId: pid, fromRole: null, toRole: role });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'reassignRole', { role, staffId, actor, reason });
+  },
 
   // Helpers exposed for the UI — resolve a staff id back to a display name.
   hccStaffName: (staffId) => (hccStaffById(staffId)?.name || staffId || ''),
@@ -2023,6 +2192,7 @@ export const useAppStore = create((set, get) => ({
   closeCallPopover: () => set({ callPopoverPatient: null, callPopoverBtnRef: null }),
 
   startActiveCall: (patientId) => {
+    track('call.started', { patientId });
     const state = get();
     if (state.activeCallTimerRef) clearInterval(state.activeCallTimerRef);
     const updates = { status: 'oncall', onCall: true, callDuration: '00:00' };
@@ -2050,6 +2220,7 @@ export const useAppStore = create((set, get) => ({
 
   endActiveCall: () => {
     const { activeCallTimerRef, activeCallPatient, activeCallSeconds } = get();
+    track('call.ended', { patientId: activeCallPatient, durationSec: activeCallSeconds });
     if (activeCallTimerRef) clearInterval(activeCallTimerRef);
     const updates = { status: 'scheduled', onCall: false, callDuration: formatDuration(activeCallSeconds) };
     set(s => ({
@@ -2273,6 +2444,7 @@ export const useAppStore = create((set, get) => ({
   // draft row first so we have an id to PATCH against on every subsequent
   // field edit (no need for a separate "create" submit step).
   openCampaignBuilder: async (campaignOrNull) => {
+    track('campaign.builder_opened', { campaignId: campaignOrNull?.id || null });
     if (campaignOrNull?.id) {
       set({ campaignBuilderId: campaignOrNull.id });
       updateHash(get);
@@ -2307,6 +2479,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   closeCampaignBuilder: () => {
+    track('campaign.builder_closed');
     set({ campaignBuilderId: null });
     updateHash(get);
   },
@@ -2317,6 +2490,7 @@ export const useAppStore = create((set, get) => ({
   updateCampaignFields: (patch) => {
     const id = get().campaignBuilderId;
     if (!id) return;
+    track('campaign.fields_updated', { fields: Object.keys(patch || {}) });
     set(s => ({
       campaigns: s.campaigns.map(c => c.id === id ? { ...c, ...patch } : c),
     }));
@@ -2336,6 +2510,7 @@ export const useAppStore = create((set, get) => ({
   runCampaignNow: async () => {
     const id = get().campaignBuilderId;
     if (!id) return false;
+    track('campaign.run_now', { campaignId: id });
     // Flush pending debounced save synchronously so we don't lose the latest
     // field edit racing with this request.
     const pending = _campaignSaveTimers.get(id);
@@ -2362,6 +2537,7 @@ export const useAppStore = create((set, get) => ({
   openEmailTemplateFromCampaign: () => {
     const id = get().campaignBuilderId;
     if (!id) return;
+    track('email.template_opened_from_campaign', { campaignId: id });
     const campaign = get().campaigns.find(c => c.id === id);
     if (!campaign) return;
     get().openEmailBuilder(campaign);
@@ -2393,6 +2569,7 @@ export const useAppStore = create((set, get) => ({
   saveEmailTemplate: async () => {
     const s = get();
     if (!s.editingCampaignId || !s.emailDocument) return false;
+    track('email.template_saved', { templateId: s.editingCampaignId });
     const { error } = await supabase
       .from('campaigns')
       .update({
@@ -2464,6 +2641,7 @@ export const useAppStore = create((set, get) => ({
   },
   undoEmailEdit: () => set(s => {
     if (!s.emailDocument || s.emailHistory.length === 0) return {};
+    track('email.undo');
     const prev = s.emailHistory[s.emailHistory.length - 1];
     return {
       emailHistory: s.emailHistory.slice(0, -1),
@@ -2474,6 +2652,7 @@ export const useAppStore = create((set, get) => ({
   }),
   redoEmailEdit: () => set(s => {
     if (!s.emailDocument || s.emailFuture.length === 0) return {};
+    track('email.redo');
     const next = s.emailFuture[0];
     return {
       emailFuture: s.emailFuture.slice(1),
@@ -2520,6 +2699,7 @@ export const useAppStore = create((set, get) => ({
   // Swap the existing header/footer for a different preset. Replaces by role
   // marker stored on the block; falls back to first/last child by convention.
   replaceHeaderFooter: (role, presetTree) => {
+    track('email.header_footer_replaced', { role });
     get()._pushEmailHistory();
     return set(s => {
       if (!s.emailDocument) return {};
@@ -2548,6 +2728,7 @@ export const useAppStore = create((set, get) => ({
     });
   },
   openEmailBuilder: (campaign) => {
+    track('email.template_opened', { campaignId: campaign?.id });
     const saved = campaign.emailTemplate;
     const defaultVars = [
       { name: 'Brand', hex: '#7C5CFA' },
@@ -2583,6 +2764,7 @@ export const useAppStore = create((set, get) => ({
     updateHash(get);
   },
   closeEmailBuilder: () => {
+    track('email.template_closed');
     set({ editingCampaignId: null, editingCampaignName: null, emailDocument: null, selectedBlockId: 'root', selectedColumnIdx: null, bulkSelectedIds: [], htmlPreviewOverride: null, emailHistory: [], emailFuture: [], _lastEmailHistoryTime: 0 });
     updateHash(get);
   },
@@ -2753,6 +2935,8 @@ export const useAppStore = create((set, get) => ({
     return { bulkSelectedIds: ids, selectedBlockId: ids.length === 1 ? ids[0] : null };
   }),
   updateBlock: (id, updater) => {
+    const blockType = get().emailDocument?.[id]?.type || null;
+    track('email.block_updated', { blockType });
     get()._pushEmailHistory();
     set(s => {
       if (!s.emailDocument || !s.emailDocument[id]) return {};
@@ -2762,6 +2946,7 @@ export const useAppStore = create((set, get) => ({
     });
   },
   addBlock: (type) => {
+    track('email.block_added', { blockType: type });
     get()._pushEmailHistory();
     return set(s => {
     if (!s.emailDocument) return {};
@@ -2800,6 +2985,8 @@ export const useAppStore = create((set, get) => ({
   // columnIdx (0-2) chooses which column. Index is the insert position in
   // that children list.
   moveBlock: (blockId, target) => {
+    const blockType = get().emailDocument?.[blockId]?.type || null;
+    track('email.block_moved', { blockType, from: blockId, to: target?.parentId });
     get()._pushEmailHistory();
     return set(s => {
     if (!s.emailDocument || blockId === target.parentId) return {};
@@ -2978,6 +3165,8 @@ export const useAppStore = create((set, get) => ({
   },
 
   removeBlock: (id) => {
+    const blockType = get().emailDocument?.[id]?.type || null;
+    track('email.block_removed', { blockType });
     get()._pushEmailHistory();
     return set(s => {
       if (!s.emailDocument || id === 'root' || !s.emailDocument[id]) return {};
@@ -3070,6 +3259,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   createTask: async (task) => {
+    track('task.created', { taskId: task?.id, taskType: task?.type || null });
     const normalized = { ...task };
     if (normalized.status === 'pending' && isPastDate(normalized.due_date)) {
       normalized.status = 'missed';
@@ -3103,6 +3293,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   updateTask: async (id, updates) => {
+    track('task.updated', { taskId: id });
     const prev = get().tasks.find(t => t.id === id);
     const merged = { ...(prev || {}), ...updates };
     const final = { ...updates };
@@ -3178,6 +3369,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   deleteTask: async (id) => {
+    track('task.deleted', { taskId: id });
     const prev = get().tasks;
     // Cascade-delete subtasks locally too
     set(s => ({ tasks: s.tasks.filter(t => t.id !== id && t.parent_task_id !== id) }));
@@ -3244,6 +3436,7 @@ export const useAppStore = create((set, get) => ({
   createTaskLabel: async (name) => {
     const trimmed = name.trim();
     if (!trimmed) return null;
+    track('task.label_created', { label: trimmed });
     set(s => s.taskLabels.includes(trimmed) ? s : { taskLabels: [...s.taskLabels, trimmed].sort() });
     const { error } = await supabase.from('task_labels').insert({ name: trimmed });
     if (error && error.code !== '23505') {
@@ -3266,6 +3459,7 @@ export const useAppStore = create((set, get) => ({
     }
   },
   claimTask: async (taskId) => {
+    track('task.claimed', { taskId });
     const me = get().currentUserProfile;
     const claimer = me?.name || 'Current User';
     const claimerId = me?.id || null;
