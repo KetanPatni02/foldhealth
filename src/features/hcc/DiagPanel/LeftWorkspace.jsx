@@ -41,7 +41,7 @@ export function LeftWorkspace({ active, onChange, onClose, member }) {
           aria-label="Collapse workspace"
           title="Collapse"
         >
-          <Icon name="solar:alt-arrow-right-linear" size={14} color="var(--neutral-300)" />
+          <Icon name="solar:alt-arrow-right-linear" size={12} color="var(--neutral-300)" />
         </button>
         <span className={styles.tabBarDivider} />
         <div className={styles.tabRow}>
@@ -219,7 +219,7 @@ function ActivityEntry({ item, isFirst, isLast }) {
               {item.fileType && <div className={styles.tlFileType}>{item.fileType}</div>}
             </div>
             <button type="button" className={styles.tlFilePreview} aria-label="Preview">
-              <Icon name="solar:eye-linear" size={13} color="var(--neutral-300)" />
+              <Icon name="solar:eye-linear" size={14} color="var(--neutral-300)" />
             </button>
           </div>
         )}

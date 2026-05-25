@@ -58,7 +58,7 @@ export function DosStatusMenu({ value, onChange, disabled = false }) {
         {!disabled && (
           <>
             <span className={styles.divider} style={{ background: `${spec.color}60` }} />
-            <Icon name="solar:alt-arrow-down-linear" size={9} color={spec.color} />
+            <Icon name="solar:alt-arrow-down-linear" size={12} color={spec.color} />
           </>
         )}
       </button>

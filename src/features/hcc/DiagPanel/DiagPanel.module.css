@@ -372,6 +372,9 @@
   flex-shrink: 0;
 }
 
+/* With-<Stage> pill in the DOS row. Hover opens ReviewProgressPopover.
+   The leading ring is rendered by <ProgressRing> from
+   ReviewProgressPopover.jsx — no static CSS half-circle anymore. */
 .withCoderPill {
   display: inline-flex;
   align-items: center;
@@ -384,26 +387,16 @@
   font-weight: 400;
   color: var(--neutral-300);
   flex-shrink: 0;
+  cursor: default;
+  transition: background 0.12s;
 }
-
-.withCoderRing {
-  width: 16px;
-  height: 16px;
-  border-radius: 8px;
-  border: 1px solid var(--status-success);
-  background: var(--neutral-0);
-  flex-shrink: 0;
-  position: relative;
-  overflow: hidden;
+.withCoderPill:hover,
+.withCoderPill:focus-visible {
+  background: var(--neutral-100);
 }
-.withCoderRing::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 0;
-  width: 50%;
-  height: 100%;
-  background: var(--status-success);
+.withCoderPill:focus-visible {
+  outline: 2px solid var(--primary-300);
+  outline-offset: 2px;
 }
 
 .sweepBadge {

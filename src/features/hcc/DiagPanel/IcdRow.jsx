@@ -100,66 +100,91 @@ export function IcdRow({ icd }) {
     showToast(`${kind} — coming in Phase 3`);
   };
 
+  // Clicking the notes count button opens the unified expansion panel with
+  // the MEAT Note section expanded (and Confidence collapsed). Clicking
+  // again while MEAT is already open collapses the panel. For closed ICDs
+  // (Accepted / Dismissed) the panel can't render, so we keep the toast.
+  const handleNotesClick = (e) => {
+    e.stopPropagation();
+    if (isClosed) {
+      showToast('Notes — coming in Phase 3');
+      return;
+    }
+    const meatAlreadyOpen = panel === 'meat' && meatOpen;
+    if (meatAlreadyOpen) {
+      setPanel('none');
+      setMeatOpen(false);
+      return;
+    }
+    if (!meatText) setMeatText(getMeatNote(icd.code, icd.desc));
+    setPanel('meat');
+    setConfOpen(false);
+    setMeatOpen(true);
+  };
+
   return (
     <div
       className={[styles.row, isClosed ? styles.rowClosed : ''].join(' ')}
       data-status={icd.status}
     >
-      {/* Top row: code + description */}
-      <div className={styles.topRow}>
-        <span
-          className={styles.code}
-          onClick={(e) => { e.stopPropagation(); showToast('Open code details — coming in Phase 3'); }}
-        >
-          {icd.code}
-        </span>
-        <span className={styles.desc}>{icd.desc}</span>
-      </div>
-
-      {/* Meta: last-reviewed + badge cluster */}
-      {(icd.by || icd.last) && (
-        <div className={styles.lastLine}>
-          {icd.by
-            ? `Last Reviewed by ${icd.by}${icd.last ? ' · ' + icd.last : ''}`
-            : `Last Recorded: ${icd.last}`}
-        </div>
-      )}
-
-      <div className={styles.badges}>
-        {icd.hcc && (
-          <span className={styles.hccChip}>{icd.hcc.split(' - ')[0]}</span>
-        )}
-        {typeBadge && (
-          <span className={[styles.typeTag, styles[typeBadge.className]].join(' ')}>
-            {typeBadge.label}
-          </span>
-        )}
-        {conf.score > 0 && !isClosed && (
-          <button
-            type="button"
-            className={styles.confidenceBadge}
-            style={{ background: scoreStyle.bg }}
-            onClick={handleConfidenceClick}
-            aria-expanded={panel === 'confidence'}
-            title={`Confidence: ${conf.status} (${conf.score})`}
+      {/* Title sub-stack — code + description, then Last Reviewed, then the
+          badge cluster (HCC / Suspect / Confidence). All three sit inside
+          the stack with a tight 4px gap so the badges read as part of the
+          title block, not as a separate section. Outer .row gap (12px)
+          continues to separate the whole stack from the footer. */}
+      <div className={styles.titleStack}>
+        <div className={styles.topRow}>
+          <span
+            className={styles.code}
+            onClick={(e) => { e.stopPropagation(); showToast('Open code details — coming in Phase 3'); }}
           >
-            <Icon name="solar:star-bold" size={9} color="var(--neutral-0)" />
-            <span>{conf.score}</span>
-          </button>
-        )}
-        {icd.dismissReason && (
-          <span className={styles.overrideChip}>
-            <Icon name="solar:refresh-linear" size={9} color="var(--neutral-300)" />
-            Overrides
+            {icd.code}
           </span>
+          <span className={styles.desc}>{icd.desc}</span>
+        </div>
+        {(icd.by || icd.last) && (
+          <div className={styles.lastLine}>
+            {icd.by
+              ? `Last Reviewed by ${icd.by}${icd.last ? ' · ' + icd.last : ''}`
+              : `Last Recorded: ${icd.last}`}
+          </div>
         )}
+        <div className={styles.badges}>
+          {icd.hcc && (
+            <span className={styles.hccChip}>{icd.hcc.split(' - ')[0]}</span>
+          )}
+          {typeBadge && (
+            <span className={[styles.typeTag, styles[typeBadge.className]].join(' ')}>
+              {typeBadge.label}
+            </span>
+          )}
+          {conf.score > 0 && !isClosed && (
+            <button
+              type="button"
+              className={styles.confidenceBadge}
+              style={{ background: scoreStyle.bg }}
+              onClick={handleConfidenceClick}
+              aria-expanded={panel === 'confidence'}
+              title={`Confidence: ${conf.status} (${conf.score})`}
+            >
+              <Icon name="solar:star-bold" size={9} color="var(--neutral-0)" />
+              <span>{conf.score}</span>
+            </button>
+          )}
+          {icd.dismissReason && (
+            <span className={styles.overrideChip}>
+              <Icon name="solar:refresh-linear" size={9} color="var(--neutral-300)" />
+              Overrides
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Dismiss-reason explanation row — visible when this ICD has been
           dismissed with a reason. Matches the prototype line 1186. */}
       {icd.dismissReason && isDismissed && (
         <div className={styles.dismissExplanation}>
-          <Icon name="solar:info-circle-linear" size={11} color="var(--neutral-300)" />
+          <Icon name="solar:info-circle-linear" size={12} color="var(--neutral-300)" />
           <em>{icd.dismissReason}</em>
         </div>
       )}
@@ -168,17 +193,30 @@ export function IcdRow({ icd }) {
       <div className={styles.footer}>
         <div className={styles.counts}>
           <button type="button" className={styles.countBtn} onClick={handleCount('Documents')}>
-            <Icon name="solar:file-text-linear" size={13} color="var(--neutral-300)" />
+            <Icon name="solar:file-text-linear" size={16} color="var(--neutral-300)" />
             <span>{icd.docs ?? 0}</span>
           </button>
           <span className={styles.countDivider} />
           <button type="button" className={styles.countBtn} onClick={handleCount('Comments')}>
-            <Icon name="solar:chat-square-linear" size={13} color="var(--neutral-300)" />
+            <Icon name="solar:chat-square-linear" size={16} color="var(--neutral-300)" />
             <span>{icd.cmts ?? 0}</span>
           </button>
           <span className={styles.countDivider} />
-          <button type="button" className={styles.countBtn} onClick={handleCount('Notes')}>
-            <Icon name="solar:notes-linear" size={13} color="var(--neutral-300)" />
+          <button
+            type="button"
+            className={[
+              styles.countBtn,
+              panel === 'meat' && meatOpen ? styles.countBtnActive : '',
+            ].filter(Boolean).join(' ')}
+            onClick={handleNotesClick}
+            aria-expanded={panel === 'meat' && meatOpen}
+            aria-label="Open MEAT note"
+          >
+            <Icon
+              name="solar:notes-linear"
+              size={16}
+              color={panel === 'meat' && meatOpen ? 'var(--primary-300)' : 'var(--neutral-300)'}
+            />
             <span>{icd.notes ?? 0}</span>
           </button>
         </div>
@@ -186,7 +224,7 @@ export function IcdRow({ icd }) {
         <div className={styles.actions}>
           {isAccepted ? (
             <span className={[styles.actionBtn, styles.acceptedPill].join(' ')}>
-              <Icon name="solar:check-circle-linear" size={11} color="var(--status-success)" />
+              <Icon name="solar:check-circle-linear" size={16} color="var(--status-success)" />
               <span>Accepted</span>
             </span>
           ) : (
@@ -195,7 +233,7 @@ export function IcdRow({ icd }) {
               className={[styles.actionBtn, styles.acceptBtn].join(' ')}
               onClick={handleAccept}
             >
-              <Icon name="solar:check-read-linear" size={12} color="var(--primary-300)" />
+              <Icon name="solar:check-read-linear" size={16} color="var(--primary-300)" />
               <span>Accept</span>
             </button>
           )}
@@ -211,7 +249,7 @@ export function IcdRow({ icd }) {
           >
             <Icon
               name="solar:close-circle-linear"
-              size={12}
+              size={16}
               color={isDismissed ? 'var(--status-error)' : 'var(--neutral-300)'}
             />
             <span>{isDismissed ? 'Dismissed' : 'Dismiss'}</span>
@@ -223,7 +261,7 @@ export function IcdRow({ icd }) {
             onClick={handleMore}
             aria-label="More actions"
           >
-            <Icon name="solar:menu-dots-bold" size={13} color="var(--neutral-300)" />
+            <Icon name="solar:menu-dots-bold" size={16} color="var(--neutral-300)" />
           </button>
         </div>
       </div>
@@ -262,25 +300,27 @@ export function IcdRow({ icd }) {
                 className={styles.expandClose}
                 onClick={() => setPanel('none')}
               >
-                <Icon name="solar:close-linear" size={11} color="var(--neutral-300)" />
+                <Icon name="solar:close-linear" size={12} color="var(--neutral-300)" />
                 <span>Close</span>
               </button>
             </div>
             {confOpen && (
               <div className={styles.evidenceWrap}>
                 <div className={styles.evidenceHeader}>
-                  <Icon name="solar:bolt-linear" size={13} color="var(--primary-300)" />
+                  <Icon name="solar:bolt-linear" size={14} color="var(--primary-300)" />
                   <span>Clinical Evidence</span>
                 </div>
                 {conf.evidence.map((ev, i) => (
                   <div key={i} className={styles.evidenceRow}>
-                    <span className={styles.evidenceText}>&bull; {ev.text}</span>
+                    <span className={styles.evidenceBullet} aria-hidden="true" />
+                    <span className={styles.evidenceText}>{ev.text}</span>
                     <button
                       type="button"
                       className={styles.evidenceLink}
                       title="Open source document"
+                      aria-label="Open source document"
                     >
-                      <Icon name="solar:link-linear" size={11} color="var(--primary-300)" />
+                      <Icon name="solar:link-linear" size={12} color="var(--primary-300)" />
                     </button>
                   </div>
                 ))}
@@ -302,7 +342,7 @@ export function IcdRow({ icd }) {
             >
               <Icon
                 name={meatOpen ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'}
-                size={14}
+                size={12}
                 color="var(--neutral-400)"
               />
               <span className={styles.expandTitleLg}>MEAT Note</span>
@@ -314,7 +354,7 @@ export function IcdRow({ icd }) {
             {meatOpen && (
               <div className={styles.meatBody}>
                 <div className={styles.meatInfoBanner}>
-                  <Icon name="solar:info-circle-linear" size={14} color="var(--status-info)" />
+                  <Icon name="solar:info-circle-linear" size={12} color="var(--status-info)" />
                   <span>Review this auto-generated MEAT note before accepting.</span>
                 </div>
                 <textarea

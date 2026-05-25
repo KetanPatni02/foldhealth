@@ -1,0 +1,137 @@
+/* Invisible 8px bridge between the pill and the popover so the cursor can
+   travel without triggering the close timer in between. */
+.bridge {
+  position: fixed;
+  z-index: 9499;
+  background: transparent;
+}
+
+.popover {
+  position: fixed;
+  z-index: 9500;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+  font-family: 'Inter', sans-serif;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--neutral-400);
+}
+
+/* ── Timeline ────────────────────────────────────────────────────────── */
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stage {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+/* Marker column — icon at top, vertical connector below stretching to the
+   next stage's icon. */
+.markerColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 16px;
+  align-self: stretch;
+}
+
+.connector {
+  flex: 1;
+  width: 1px;
+  min-height: 12px;
+  margin: 2px 0;
+  background: var(--neutral-150);
+}
+
+/* Hollow circle for the "Not Assigned" stages. */
+.pendingDot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--neutral-200);
+  background: var(--neutral-0);
+}
+
+.stageBody {
+  flex: 1;
+  min-width: 0;
+  padding-bottom: 8px;
+}
+
+.stageTitle {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--neutral-400);
+}
+
+.stageRole {
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+
+.stageSubtitle {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--neutral-300);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Footer: Send to Bill ────────────────────────────────────────────── */
+
+.sendToBill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 12px;
+  border-top: 0.5px solid var(--neutral-150);
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--neutral-300);
+  cursor: pointer;
+  border-radius: 0;
+  transition: color 0.12s;
+}
+.sendToBill:not(:disabled):hover { color: var(--primary-300); }
+.sendToBill:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ── Progress ring (trigger pill) ─────────────────────────────────────── */
+
+.ring {
+  display: block;
+  flex-shrink: 0;
+}

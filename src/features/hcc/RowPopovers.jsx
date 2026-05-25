@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
-import { Badge } from '../../components/Badge/Badge';
 import { getRafBreakdown } from './data/raf';
 import { getChartDocs } from './data/chartDocs';
 import styles from './RowPopovers.module.css';
@@ -392,6 +391,11 @@ export function OpenIcdsHoverPopover({
   );
 }
 
+// Row shape (per Figma node 11864:523333):
+//   <strong>E11.22</strong> - Type 2 Diabetes Mellitus with Diabeti…
+//   [ HCC18 ]
+// No status badge, no count metadata, no chevron — just code + description
+// on the top line and the HCC code in a small chip beneath.
 function IcdHoverRow({ icd, hccShort, onClick }) {
   return (
     <button type="button" className={styles.icdRow} onClick={onClick}>
@@ -401,28 +405,10 @@ function IcdHoverRow({ icd, hccShort, onClick }) {
           {' - '}
           <span>{icd.desc}</span>
         </div>
-        <div className={styles.icdRowMeta}>
-          <Badge variant={statusVariant(icd.status)} label={icd.status} />
-          <span className={styles.icdHcc}>&bull; {hccShort(icd.hcc)}</span>
-        </div>
+        {icd.hcc && (
+          <span className={styles.icdHccChip}>{hccShort(icd.hcc)}</span>
+        )}
       </div>
-      <Icon name="solar:arrow-right-linear" size={12} color="var(--neutral-300)" />
     </button>
   );
-}
-
-function statusVariant(status) {
-  switch (status) {
-    case 'Accepted':           return 'success';
-    case 'Completed':          return 'success';
-    case 'Records Received':   return 'success';
-    case 'New':                return 'warning';
-    case 'In Progress':        return 'primary';
-    case 'Awaiting':           return 'info';
-    case 'Insufficient':       return 'secondary';
-    case 'Records Requested':  return 'secondary';
-    case 'Returned':           return 'secondary';
-    case 'Rejected':           return 'error';
-    default:                   return 'default';
-  }
 }

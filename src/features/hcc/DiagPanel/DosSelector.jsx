@@ -49,7 +49,7 @@ export function DosSelector({
         <span className={[styles.triggerValue, isSweep ? styles.triggerValueSweep : ''].join(' ')}>
           {label}
         </span>
-        <Icon name="solar:alt-arrow-down-linear" size={9} color="var(--neutral-200)" />
+        <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-200)" />
       </button>
 
       {popRect && (

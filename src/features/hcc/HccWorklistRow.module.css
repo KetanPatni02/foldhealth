@@ -148,9 +148,8 @@
   min-width: 0;
 }
 
-/* ── Clickable trigger wrappers (Last Visit + HCC Evidence) ──
-   They become buttons in markup but visually behave like the old stack cells. */
-.lastVisitTrigger,
+/* ── Clickable trigger wrapper (HCC Evidence) ──
+   Behaves like a button in markup but visually mirrors the old stack cell. */
 .evidenceTrigger {
   display: flex;
   flex-direction: column;
@@ -168,7 +167,6 @@
   border-radius: 4px;
   transition: background 0.12s;
 }
-.lastVisitTrigger:hover,
 .evidenceTrigger:hover {
   background: var(--neutral-50);
 }
@@ -190,8 +188,61 @@
   text-underline-offset: 2px;
   cursor: pointer;
 }
-.lastVisitTrigger:hover .lastVisitMeta {
+.lastVisitVisitsBtn:hover .lastVisitMeta {
   color: var(--primary-300);
+}
+
+/* ── Split-button layout for the DOS cell ──
+   The date line and the "X of Y Visits" sub-line each carry their own click
+   target so a claim-sourced date can open the Claim Preview while the visits
+   link still opens the all-DOSs popover. */
+.lastVisitStack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* Date button — purple, no underline by default, no hover bg */
+.lastVisitDateBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+/* Visits button — just a wrapper for the underlined "X of Y Visits" text */
+.lastVisitVisitsBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  line-height: 1;
+}
+
+/* Date hover (claim variant only): visited link feel */
+.lastVisitDateBtn:hover .lastVisitDate {
+  text-decoration: underline;
+  text-decoration-color: var(--primary-300);
+  text-underline-offset: 2px;
+}
+
+/* Non-claim variant — plain grey date (no button wrapper) */
+.lastVisitDateMuted {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 /* ── Create Date cell — date + due line with clock icon ── */
@@ -469,7 +520,8 @@
 .openIcdsRow:last-child { border-bottom: none; }
 
 .openIcdsCode {
-  font-family: 'SF Mono', ui-monospace, Menlo, monospace;
+  font-family: 'Inter', sans-serif;
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
   font-weight: 600;
   color: var(--primary-300);

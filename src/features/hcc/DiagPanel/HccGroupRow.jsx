@@ -99,7 +99,7 @@ export function HccCard({
 
         <Icon
           name={open ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
-          size={14}
+          size={12}
           color="var(--neutral-300)"
           className={styles.chev}
         />
