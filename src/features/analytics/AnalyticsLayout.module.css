@@ -140,6 +140,19 @@
 }
 .filterBtn:hover { border-color: var(--neutral-200); color: var(--neutral-500); }
 
+/* Active state for the Customize / Done toggle when the dashboard is in
+   edit mode. Applied alongside .filterBtn via classname composition. */
+.filterBtnActive {
+  background: var(--primary-100);
+  color: var(--primary-300);
+  border-color: var(--primary-200);
+}
+.filterBtnActive:hover {
+  background: var(--primary-100);
+  color: var(--primary-300);
+  border-color: var(--primary-200);
+}
+
 /* ──────────────────────────────────────────────
    KPI Cards
    ────────────────────────────────────────────── */
@@ -424,3 +437,59 @@
 .canvas::-webkit-scrollbar-thumb { background: var(--neutral-150); border-radius: 4px; }
 .pnScroll::-webkit-scrollbar { width: 4px; }
 .pnScroll::-webkit-scrollbar-thumb { background: var(--neutral-150); border-radius: 4px; }
+
+/* ── Editable dashboard (drag/resize) — mirrors HomeView.module.css pattern.
+   The Customize / Reset buttons live in the view header (.filterBar) via
+   .filterBtn / .filterBtnActive defined above. */
+.gridContainer {
+  position: relative;
+}
+
+/* Dashed editing border + card-fills-cell. The card surface stretches to
+   match the grid cell (height: 100% on `.gridItem > *`) so the dashed
+   border lays exactly on the grid cell's edge — no gap above OR below.
+   Default layout heights are tuned aggressively (see DEFAULT_LAYOUT in
+   ExecutiveView.jsx) so the cell stays close to the card's natural
+   content height, keeping any internal empty area minimal. */
+.gridContainer.gridEditing .gridItem > * {
+  border: 1px dashed var(--primary-200) !important;
+  border-radius: 12px;
+}
+
+.gridItem > * {
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* Edit-mode cursor cue: entire card is the drag handle */
+.gridContainer.gridEditing :global(.react-grid-item):not(:global(.react-grid-placeholder)) {
+  cursor: move;
+}
+
+/* Resize handle: invisible by default, visible in edit mode.
+   Matches HomeView.module.css:849-866. */
+.gridContainer :global(.react-grid-item > .react-resizable-handle) {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s;
+}
+
+.gridContainer.gridEditing :global(.react-grid-item > .react-resizable-handle) {
+  opacity: 0.6;
+  pointer-events: auto;
+}
+
+.gridContainer.gridEditing :global(.react-grid-item:hover > .react-resizable-handle) {
+  opacity: 1;
+}
+
+.gridItem {
+  position: relative;
+  height: 100%;
+  box-sizing: border-box;
+  /* No overflow rule — let react-resizable-handle render at bottom-right
+     of the grid item. Card content overflow is handled internally by the
+     Card component's .cardBody. Cards inside are content-sized; the dashed
+     edit-mode border hugs each card's actual content rather than stretching
+     to fill the grid cell. */
+}
