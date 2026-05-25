@@ -92,7 +92,7 @@ export function SweepIcdRow({ icd, onAccept, onDismiss, dosList }) {
         <div className={styles.middle}>
           {isTrumped && (
             <span className={styles.overrideBanner}>
-              <Icon name="solar:info-circle-linear" size={10} color="var(--neutral-300)" />
+              <Icon name="solar:info-circle-linear" size={12} color="var(--neutral-300)" />
               Overridden by {icd.trumpedBy}
             </span>
           )}
@@ -116,7 +116,7 @@ export function SweepIcdRow({ icd, onAccept, onDismiss, dosList }) {
                   >
                     <Icon
                       name={expanded ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'}
-                      size={9}
+                      size={12}
                       color="var(--primary-300)"
                     />
                     +{entries.length - 1} DOS
@@ -135,7 +135,7 @@ export function SweepIcdRow({ icd, onAccept, onDismiss, dosList }) {
           {/* Dismiss reason */}
           {icd.dismissReason && (
             <div className={styles.dismissReason}>
-              <Icon name="solar:info-circle-linear" size={10} color="var(--neutral-300)" />
+              <Icon name="solar:info-circle-linear" size={12} color="var(--neutral-300)" />
               <em>{icd.dismissReason}</em>
             </div>
           )}
@@ -147,19 +147,19 @@ export function SweepIcdRow({ icd, onAccept, onDismiss, dosList }) {
             <div className={styles.counts}>
               {icd.docs > 0 && (
                 <span className={styles.countChip}>
-                  <Icon name="solar:file-text-linear" size={10} color="var(--neutral-200)" />
+                  <Icon name="solar:file-text-linear" size={16} color="var(--neutral-200)" />
                   {icd.docs}
                 </span>
               )}
               {icd.cmts > 0 && (
                 <span className={styles.countChip}>
-                  <Icon name="solar:chat-square-linear" size={10} color="var(--neutral-200)" />
+                  <Icon name="solar:chat-square-linear" size={16} color="var(--neutral-200)" />
                   {icd.cmts}
                 </span>
               )}
               {icd.notes > 0 && (
                 <span className={styles.countChip}>
-                  <Icon name="solar:notes-linear" size={10} color="var(--neutral-200)" />
+                  <Icon name="solar:notes-linear" size={16} color="var(--neutral-200)" />
                   {icd.notes}
                 </span>
               )}
@@ -171,7 +171,7 @@ export function SweepIcdRow({ icd, onAccept, onDismiss, dosList }) {
         <div className={styles.actions}>
           {isTrumped ? (
             <span className={styles.readOnly}>
-              <Icon name="solar:info-circle-linear" size={10} color="var(--neutral-200)" />
+              <Icon name="solar:info-circle-linear" size={12} color="var(--neutral-200)" />
               Read-only
             </span>
           ) : (
@@ -185,7 +185,7 @@ export function SweepIcdRow({ icd, onAccept, onDismiss, dosList }) {
               >
                 <Icon
                   name="solar:check-read-linear"
-                  size={13}
+                  size={16}
                   color={isAccepted ? 'var(--neutral-0)' : 'var(--neutral-300)'}
                 />
               </button>
@@ -198,7 +198,7 @@ export function SweepIcdRow({ icd, onAccept, onDismiss, dosList }) {
               >
                 <Icon
                   name="solar:close-circle-linear"
-                  size={13}
+                  size={16}
                   color={isDismissed ? 'var(--neutral-0)' : 'var(--neutral-300)'}
                 />
               </button>
@@ -227,7 +227,7 @@ export function SweepIcdRow({ icd, onAccept, onDismiss, dosList }) {
         <div className={styles.dosBreakdown}>
           {entries.map((e, idx) => (
             <div key={idx} className={styles.dosEntry}>
-              <Icon name="solar:calendar-linear" size={11} color="var(--neutral-300)" />
+              <Icon name="solar:calendar-linear" size={12} color="var(--neutral-300)" />
               <span className={styles.dosEntryDate}>DOS: {e.dos}</span>
               <span className={[styles.statusPill, STATUS_CLASS[e.status] || styles.statusNew].join(' ')}>
                 {e.status}

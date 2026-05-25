@@ -409,13 +409,18 @@
   font-weight: 600;
 }
 
-.icdRowMeta {
-  display: flex;
+/* Single neutral chip beneath the ICD code+description — Figma node
+   11864:523333. No status badge, no chevron, no extra metadata. */
+.icdHccChip {
+  display: inline-flex;
   align-items: center;
-  gap: 7px;
-}
-
-.icdHcc {
-  font-size: 11px;
+  padding: 2px 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--neutral-300);
+  background: var(--neutral-50);
+  border: 1px solid var(--neutral-150);
+  border-radius: 4px;
+  white-space: nowrap;
 }

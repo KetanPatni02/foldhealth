@@ -226,10 +226,11 @@
   border-color: rgba(244, 122, 62, 0.2);
 }
 .pillRecReceived {
-  /* "Records Received" — prototype's teal palette; no exact token, kept literal */
-  color: #1E9DAE;
-  background: #F0FBFC;
-  border-color: rgba(30, 157, 174, 0.2);
+  /* "Record Received" — aligns with statusSpec.js (warning amber palette).
+     Previously used a one-off teal that wasn't in tokens.css. */
+  color: var(--status-warning);
+  background: var(--status-warning-light);
+  border-color: rgba(217, 165, 11, 0.2);
 }
 .pillRejected,
 .pillInsufficient {

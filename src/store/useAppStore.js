@@ -1820,6 +1820,16 @@ export const useAppStore = create((set, get) => ({
   hccUploadMember: null,
   openHccUploadDrawer: (member) => set({ hccUploadMember: member }),
   closeHccUploadDrawer: () => set({ hccUploadMember: null }),
+
+  // ─── Claim preview drawer ─────────────────────────────────────────
+  // Opened by clicking a claim-sourced DOS date in the HCC worklist's DOS
+  // column. Only claim-sourced DOSs (member.dosFromClaim !== false) are
+  // clickable; manually-entered DOSs render in grey as static text.
+  hccClaimPreview: { open: false, member: null, dosDate: null },
+  openHccClaimPreview: (member, dosDate) =>
+    set({ hccClaimPreview: { open: true, member, dosDate: dosDate || member?.dos || null } }),
+  closeHccClaimPreview: () =>
+    set({ hccClaimPreview: { open: false, member: null, dosDate: null } }),
   openDiagPanel: (id, opts = {}) => set({
     diagPanelOpen: true,
     diagPanelMemberId: id,

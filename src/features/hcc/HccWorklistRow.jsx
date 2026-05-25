@@ -20,13 +20,35 @@ import styles from './HccWorklistRow.module.css';
 
 const RISK_VARIANT = { High: 'lace-high', Medium: 'lace-medium', Low: 'lace-low' };
 
-function LastVisitCell({ dos, visits, onClick }) {
+function LastVisitCell({ dos, visits, fromClaim, onClickDate, onClickVisits }) {
   if (!dos) return <span className={styles.muted}>—</span>;
+  // Two click targets in one cell:
+  //   - The DATE opens the Claim Preview drawer (only when fromClaim).
+  //   - The "X of Y Visits" sub-text always opens the all-DOSs popover for
+  //     the patient — that behaviour is independent of the date's source.
   return (
-    <button type="button" className={styles.lastVisitTrigger} onClick={onClick}>
-      <span className={styles.lastVisitDate}>{dos}</span>
-      {visits && <span className={styles.lastVisitMeta}>{visits}</span>}
-    </button>
+    <span className={styles.lastVisitStack}>
+      {fromClaim ? (
+        <button
+          type="button"
+          className={styles.lastVisitDateBtn}
+          onClick={onClickDate}
+        >
+          <span className={styles.lastVisitDate}>{dos}</span>
+        </button>
+      ) : (
+        <span className={styles.lastVisitDateMuted}>{dos}</span>
+      )}
+      {visits && (
+        <button
+          type="button"
+          className={styles.lastVisitVisitsBtn}
+          onClick={onClickVisits}
+        >
+          <span className={styles.lastVisitMeta}>{visits}</span>
+        </button>
+      )}
+    </span>
   );
 }
 
@@ -294,7 +316,7 @@ function AssigneeCell({ member, dosState }) {
   if (!a) return <span className={styles.muted}>—</span>;
   return (
     <div className={styles.assigneeCell}>
-      <Avatar variant="user" initials={a.initials} />
+      <Avatar variant="provider" initials={a.initials} />
       <div className={styles.assigneeText}>
         <span className={styles.assigneeName}>{a.name}</span>
         <span className={styles.assigneeRole}>{ROLE_LABEL[a.role] || a.role}</span>
@@ -308,11 +330,27 @@ function AssigneeCell({ member, dosState }) {
 // The row iterates over the (possibly user-reordered) columns array and calls
 // the matching renderer — keeping body layout in sync with header order.
 const CELL_RENDERERS = {
-  dos: ({ member, openVisits }) => (
-    <td key="dos" data-col="dos" className={styles.colLastVisit} onClick={(e) => e.stopPropagation()}>
-      <LastVisitCell dos={member.dos} visits={member.visits} onClick={openVisits} />
-    </td>
-  ),
+  dos: ({ member, openClaimPreview, openVisits }) => {
+    // `dosFromClaim` toggles the cell between a clickable purple link
+    // (claim-sourced) and static grey text (manually entered). When the
+    // field isn't set explicitly we infer it from chart presence — every
+    // claim ships with documentation, so a row with at least one chart
+    // (`ch > 0`) almost certainly originated from a claim feed.
+    const fromClaim = member.dosFromClaim != null
+      ? !!member.dosFromClaim
+      : (member.ch != null && member.ch > 0);
+    return (
+      <td key="dos" data-col="dos" className={styles.colLastVisit} onClick={(e) => e.stopPropagation()}>
+        <LastVisitCell
+          dos={member.dos}
+          visits={member.visits}
+          fromClaim={fromClaim}
+          onClickDate={() => openClaimPreview?.(member, member.dos)}
+          onClickVisits={openVisits}
+        />
+      </td>
+    );
+  },
   open: ({ member, openDiagPanel }) => (
     <td key="open" data-col="open" className={styles.colOpen} onClick={(e) => e.stopPropagation()}>
       <OpenIcdsCell
@@ -448,6 +486,7 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
   const openQuickView = useAppStore(s => s.openQuickView);
   const showToast = useAppStore(s => s.showToast);
   const openHccUploadDrawer = useAppStore(s => s.openHccUploadDrawer);
+  const openClaimPreview = useAppStore(s => s.openHccClaimPreview);
   // Per-DOS engine state — drives the Assignee column. `member.dos` is the
   // member's currently-selected DOS in the worklist (i.e. the row's "active"
   // visit), so we look that up in hccDosAssignments. May be undefined if the
@@ -534,7 +573,7 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
       {(columns || []).map((col) => {
         const render = CELL_RENDERERS[col.k];
         if (!render || isHidden(col.k)) return null;
-        return render({ member, dosState, openVisits, openChart, openDiagPanel });
+        return render({ member, dosState, openVisits, openChart, openDiagPanel, openClaimPreview });
       })}
 
       {/* ── Sticky right: actions ── */}

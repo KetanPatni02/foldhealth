@@ -28,7 +28,7 @@ export function SnapshotTiles({ counts, filter, onFilter, open, onToggle }) {
         className={styles.header}
         onClick={() => onToggle(!open)}
       >
-        <span className={styles.title}>Patient Gap Snapshot</span>
+        <span className={styles.title}>Patient Summary</span>
 
         {!open && (
           <span className={styles.collapsedCount}>
@@ -43,7 +43,7 @@ export function SnapshotTiles({ counts, filter, onFilter, open, onToggle }) {
             role="button"
             aria-label="Clear snapshot filter"
           >
-            <Icon name="solar:close-linear" size={10} color="var(--neutral-300)" />
+            <Icon name="solar:close-linear" size={12} color="var(--neutral-300)" />
             <span>Clear</span>
           </span>
         )}
@@ -70,6 +70,7 @@ export function SnapshotTiles({ counts, filter, onFilter, open, onToggle }) {
                 onClick={() => onFilter(filter === card.key ? null : card.key)}
               >
                 <span className={styles.tileLabel}>{card.label}</span>
+                <span className={styles.tileSep} aria-hidden="true">·</span>
                 <span className={styles.tileCount}>{card.count}</span>
               </button>
             );

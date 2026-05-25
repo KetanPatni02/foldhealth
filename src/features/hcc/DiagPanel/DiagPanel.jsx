@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { Drawer } from '../../../components/Drawer/Drawer';
 import { Icon } from '../../../components/Icon/Icon';
@@ -13,12 +13,20 @@ import { DosStatusMenu } from './DosStatusMenu';
 import { SnapshotTiles } from './SnapshotTiles';
 import { SweepIcdRow } from './SweepIcdRow';
 import { LeftWorkspace } from './LeftWorkspace';
+import {
+  ReviewProgressPopover,
+  ProgressRing,
+  buildReviewStages,
+  computeReviewProgress,
+} from './ReviewProgressPopover';
 import { getSweepIcdsForMember } from '../data/sweepIcds';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
+import { RoleTooltip } from '../RoleTooltip';
 import styles from './DiagPanel.module.css';
 
 // Small initials-square avatar used to the left of the DOS status pill.
 // Picks orange (coder) tint if a coder is assigned, else purple (support).
+// Hovering reveals a RoleTooltip card with the assignee's full name + role.
 function AssigneeAvatar({ coder, support }) {
   const nm = (coder || support || '').trim();
   if (!nm) return null;
@@ -28,19 +36,26 @@ function AssigneeAvatar({ coder, support }) {
   const bg = isCoder ? 'var(--secondary-100)' : 'var(--primary-50)';
   const border = isCoder ? 'var(--secondary-200)' : 'var(--primary-200)';
   const color = isCoder ? 'var(--secondary-300)' : 'var(--primary-300)';
+  const role = isCoder ? 'Coder' : 'Support Team';
   return (
-    <span
-      style={{
-        width: 24, height: 24, borderRadius: 6,
-        background: bg, border: `0.5px solid ${border}`,
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        flexShrink: 0, fontSize: 10, fontWeight: 500, color,
-        fontFamily: 'Inter, sans-serif',
-      }}
-      title={nm}
+    <RoleTooltip
+      name={nm}
+      role={role}
+      initials={initials}
+      variant={isCoder ? 'provider' : 'patient'}
     >
-      {initials}
-    </span>
+      <span
+        style={{
+          width: 24, height: 24, borderRadius: 6,
+          background: bg, border: `0.5px solid ${border}`,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0, fontSize: 10, fontWeight: 500, color,
+          fontFamily: 'Inter, sans-serif',
+        }}
+      >
+        {initials}
+      </span>
+    </RoleTooltip>
   );
 }
 
@@ -200,6 +215,53 @@ export function DiagPanel() {
   const dosState = dosStateKey ? hccDosAssignments[dosStateKey] : null;
   const coderStatus = dosState?.coder?.status || diagDosStatus || member?.cdrS || 'New';
 
+  // ── Review-progress stages + ring (drives the With-Coder pill) ──
+  const reviewStages = useMemo(
+    () => buildReviewStages(member, dosState),
+    [member, dosState],
+  );
+  const reviewProgress = useMemo(
+    () => computeReviewProgress(reviewStages),
+    [reviewStages],
+  );
+  // Pill label adapts to the current active stage so it doesn't read "With
+  // Coder" when the DOS is actually with Support / a Reviewer / Billing.
+  const pillLabel = useMemo(() => {
+    const active = reviewStages.find(s => s.state === 'active');
+    if (active) return `With ${active.label}`;
+    if (reviewStages.every(s => s.state === 'done')) return 'Billing Ready';
+    const firstPending = reviewStages.find(s => s.state === 'pending');
+    return firstPending ? `Awaiting ${firstPending.label}` : 'With Coder';
+  }, [reviewStages]);
+
+  // Hover state for the Review Progress popover.
+  const pillRef = useRef(null);
+  const openTimer = useRef(null);
+  const closeTimer = useRef(null);
+  const [pillRect, setPillRect] = useState(null);
+  const onPillEnter = () => {
+    if (closeTimer.current) { clearTimeout(closeTimer.current); closeTimer.current = null; }
+    if (pillRect) return;
+    openTimer.current = setTimeout(() => {
+      const r = pillRef.current?.getBoundingClientRect();
+      if (r) setPillRect(r);
+    }, 200);
+  };
+  const onPillLeave = () => {
+    if (openTimer.current) { clearTimeout(openTimer.current); openTimer.current = null; }
+    closeTimer.current = setTimeout(() => setPillRect(null), 200);
+  };
+  const cancelClose = () => {
+    if (closeTimer.current) { clearTimeout(closeTimer.current); closeTimer.current = null; }
+  };
+  const requestClose = () => {
+    closeTimer.current = setTimeout(() => setPillRect(null), 200);
+  };
+  useEffect(() => () => {
+    clearTimeout(openTimer.current);
+    clearTimeout(closeTimer.current);
+  }, []);
+
   // Bridge from the DosStatusMenu's onChange (status label) to the right
   // lifecycle transition. The menu is currently rooted in the Coder view.
   const handleCoderStatusChange = (next) => {
@@ -284,7 +346,7 @@ export function DiagPanel() {
         <div className={styles.memberInfo}>
           <div className={styles.memberNameRow}>
             <span className={styles.memberName}>{member.name}</span>
-            <Icon name="solar:alt-arrow-right-linear" size={11} color="var(--neutral-300)" />
+            <Icon name="solar:alt-arrow-right-linear" size={12} color="var(--neutral-300)" />
           </div>
           <div className={styles.memberMeta}>
             <span>Patient</span>
@@ -326,10 +388,29 @@ export function DiagPanel() {
           {!isSweep && (
             <>
               <span className={styles.dosRowDivider} />
-              <span className={styles.withCoderPill}>
-                <span className={styles.withCoderRing} />
-                <span>With Coder</span>
+              {/* "With <Stage>" pill — hover opens the Review Progress
+                   popover; the green ring on the left is a real progress
+                   bar driven by the engine state. */}
+              <span
+                ref={pillRef}
+                className={styles.withCoderPill}
+                onMouseEnter={onPillEnter}
+                onMouseLeave={onPillLeave}
+                tabIndex={0}
+                aria-label={`${pillLabel} — review ${Math.round(reviewProgress * 100)}% complete. Hover for details.`}
+              >
+                <ProgressRing progress={reviewProgress} size={16} stroke={2} />
+                <span>{pillLabel}</span>
               </span>
+              {pillRect && (
+                <ReviewProgressPopover
+                  anchorRect={pillRect}
+                  stages={reviewStages}
+                  onEnter={cancelClose}
+                  onLeave={requestClose}
+                  onClose={() => setPillRect(null)}
+                />
+              )}
             </>
           )}
         </div>
@@ -347,18 +428,8 @@ export function DiagPanel() {
         </div>
       </div>
 
-      {/* ── Patient Gap Snapshot tiles ── */}
-      {!isSweep && (
-        <SnapshotTiles
-          counts={snapCounts}
-          filter={diagSnapFilter}
-          onFilter={setDiagSnapFilter}
-          open={diagSnapOpen}
-          onToggle={setDiagSnapOpen}
-        />
-      )}
-
-      {/* ── Row 3: View-by toolbar ── */}
+      {/* ── View-by toolbar — sits above Patient Summary so it anchors the
+          section regardless of whether the summary is expanded. ── */}
       <div className={styles.toolbar}>
         <div className={styles.viewBy}>
           <span className={styles.viewByLabel}>View by:</span>
@@ -398,6 +469,17 @@ export function DiagPanel() {
           <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" onClick={() => setSearchOpen(o => !o)} />
         </div>
       </div>
+
+      {/* ── Patient Summary tiles ── */}
+      {!isSweep && (
+        <SnapshotTiles
+          counts={snapCounts}
+          filter={diagSnapFilter}
+          onFilter={setDiagSnapFilter}
+          open={diagSnapOpen}
+          onToggle={setDiagSnapOpen}
+        />
+      )}
 
       {/* ── Search bar (shown when search icon toggled) ── */}
       {searchOpen && (
@@ -470,7 +552,7 @@ function SweepList({ memberName, dosList }) {
   return (
     <div className={styles.sweepWrap}>
       <div className={styles.sweepBanner}>
-        <Icon name="solar:info-circle-linear" size={11} color="var(--status-warning)" />
+        <Icon name="solar:info-circle-linear" size={12} color="var(--status-warning)" />
         <span>Deduplicated across all DOSs — showing most recent DOS per ICD.</span>
       </div>
       <div className={styles.sweepHeaderRow}>
@@ -576,7 +658,7 @@ function IcdSection({ title, count, open, onToggle, badge, children }) {
         {badge}
         <Icon
           name={open ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'}
-          size={14}
+          size={12}
           color="var(--neutral-300)"
         />
       </button>

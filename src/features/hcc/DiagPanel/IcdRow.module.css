@@ -3,8 +3,10 @@
 .row {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
+  /* Figma node 1:33230: 12px gap between top header block (title+badges) and
+     footer (counts + actions); 12px padding on all sides. */
+  gap: 12px;
+  padding: 12px;
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
   background: var(--neutral-0);
@@ -22,6 +24,15 @@
 
 /* ── Top row: code + description ──────────────────────────────────────── */
 
+/* Title sub-stack wraps .topRow + .lastLine so they sit close together
+   (4px), instead of inheriting the card's 12px outer gap. */
+.titleStack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
 .topRow {
   display: flex;
   align-items: baseline;
@@ -29,9 +40,11 @@
   min-width: 0;
 }
 
+/* Figma: Inter SemiBold 14 / line-height 1.2, color Primary 300. */
 .code {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
+  line-height: 1.2;
   color: var(--primary-300);
   cursor: pointer;
   flex-shrink: 0;
@@ -42,9 +55,11 @@
   text-underline-offset: 2px;
 }
 
+/* Figma: Inter Regular 14 / line-height 1.2, color Neutral 400. */
 .desc {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
+  line-height: 1.2;
   color: var(--neutral-400);
   white-space: nowrap;
   overflow: hidden;
@@ -53,10 +68,13 @@
 }
 
 /* ── Last reviewed line ──────────────────────────────────────────────── */
-
+/* Not in the Figma default state but kept for context. Bumped to 12px to
+   satisfy Fold's clinical-accessibility floor (min 12px) and to Neutral 300
+   for adequate contrast. */
 .lastLine {
-  font-size: 11px;
-  color: var(--neutral-200);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -67,29 +85,38 @@
 .badges {
   display: flex;
   align-items: center;
-  gap: 4px;
+  /* Figma: 6px gap between badge chips */
+  gap: 6px;
   flex-wrap: wrap;
 }
 
+/* Figma: Badge with white bg, Neutral 150 border, Inter Regular 10px in
+   Neutral 300, padding 2px 4px, min-width 18px, center-aligned. */
 .hccChip {
   display: inline-flex;
   align-items: center;
-  padding: 1px 5px;
+  padding: 2px 4px;
   border-radius: 4px;
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   font-size: 10px;
+  font-weight: 400;
+  line-height: 1.2;
   color: var(--neutral-300);
-  min-width: 40px;
+  min-width: 18px;
   justify-content: center;
 }
 
+/* Figma: Type tag (Suspect / Recapture / Manual / Added in EHR) — same
+   padding as the HCC chip, 10px Regular, color and bg per status palette. */
 .typeTag {
   display: inline-flex;
   align-items: center;
-  padding: 1px 5px;
+  padding: 2px 4px;
   border-radius: 4px;
   font-size: 10px;
+  font-weight: 400;
+  line-height: 1.2;
 }
 
 .typeSuspect {
@@ -113,17 +140,19 @@
   color: var(--status-warning);
 }
 
+/* Figma: chip with gap 1px (icon → number), padding 2px 4px, radius 4px,
+   Inter Regular 10px in white, bg per score tier from getScoreStyle(). */
 .confidenceBadge {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  padding: 1px 6px;
+  gap: 1px;
+  padding: 2px 4px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-family: inherit;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--neutral-0);
   line-height: 1.2;
 }
@@ -190,31 +219,40 @@
 
 /* ── Footer ────────────────────────────────────────────────────────── */
 
+/* Figma: footer row, 8px gap between counts cluster, accept/dismiss group
+   and the dots button. Inner-column gap (12px) already separates from the
+   header block above. */
 .footer {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 2px;
 }
 
+/* Figma: counts cluster — 8px gap between count chips. Each chip is 16px
+   tall, vertically centred. */
 .counts {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex: 1;
 }
 
+/* Figma: count chip — 4px gap between icon and number, 14px Regular number
+   in Neutral 300, 4px radius. */
 .countBtn {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
+  height: 16px;
   border: none;
   background: transparent;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.2;
   color: var(--neutral-300);
   cursor: pointer;
-  padding: 2px 4px;
+  padding: 0 4px;
   border-radius: 4px;
   transition: opacity 0.12s, background 0.12s;
 }
@@ -222,31 +260,47 @@
   background: var(--neutral-50);
   opacity: 0.95;
 }
+/* Active state — shown while a count button (e.g. Notes → MEAT) has its
+   expansion panel open. Purple-tinted to match the row's primary accent. */
+.countBtnActive,
+.countBtnActive:hover {
+  background: var(--primary-50);
+  color: var(--primary-300);
+  opacity: 1;
+}
 
+/* Figma: vertical divider between count chips — 0.5px wide, 16px tall. */
 .countDivider {
   width: 0.5px;
-  height: 12px;
+  height: 16px;
   background: var(--neutral-150);
   flex-shrink: 0;
 }
 
+/* Figma: Accept + Dismiss group, 8px gap. */
 .actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
+/* Figma: Accept/Dismiss button — 24px tall, min-width 32px, 8px horizontal
+   padding, 0.5px border, 4px radius, Inter Medium 14px label, 4px gap
+   between icon (16px) and label. */
 .actionBtn {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  height: 22px;
-  padding: 0 7px;
+  justify-content: center;
+  gap: 4px;
+  height: 24px;
+  min-width: 32px;
+  padding: 0 8px;
   border-radius: 4px;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
+  line-height: 1.2;
   cursor: pointer;
   border: 0.5px solid var(--neutral-200);
   background: var(--neutral-0);
@@ -286,16 +340,19 @@
   background: color-mix(in srgb, var(--status-error-light) 70%, var(--status-error));
 }
 
+/* Figma: 3-dot menu — square icon button, 24px outer box (4px padding around
+   a 16px icon), no border by default. */
 .dotsBtn {
   width: 24px;
   height: 24px;
-  padding: 0;
+  min-width: auto;
+  padding: 4px;
   justify-content: center;
   border-color: transparent;
 }
 .dotsBtn:hover {
   background: var(--neutral-50);
-  border-color: var(--neutral-150);
+  border-color: transparent;
 }
 
 /* ── MEAT note panel (Phase 2e) ───────────────────────────────────────── */
@@ -350,12 +407,9 @@
   border-color: var(--primary-300);
 }
 
-.meatActions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-}
+/* (Older `.meatActions` block — used to live inside the legacy `.meatPanel`
+   that was replaced by the unified expansion panel. The active rule for the
+   unified panel is defined further down with `justify-content: flex-start`.) */
 
 /* ── Dismiss explanation — small line under the badges when ICD is
        dismissed with a reason. Mirrors prototype line 1186. ───────────── */
@@ -409,36 +463,38 @@
   text-align: left;
 }
 
-.expandTitle {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--neutral-400);
-}
-
+/* Section header label ("Confidence Score" / "MEAT Note") — same treatment
+   as Fold card titles: 14px Medium, Neutral 400. */
+.expandTitle,
 .expandTitleLg {
   font-size: 14px;
   font-weight: 500;
+  line-height: 1.2;
   color: var(--neutral-400);
 }
 
+/* Inline score pill next to "Confidence Score". Fold floor is 12px — bumped
+   both score value and label to 12px. */
 .scorePill {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 7px;
+  padding: 2px 8px;
   border-radius: 4px;
   margin-left: 4px;
   border: 0.5px solid rgba(0, 0, 0, 0.06);
   color: var(--neutral-0);
+  line-height: 1.2;
 }
 
 .scoreValue {
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .scoreLabel {
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 400;
 }
 
 .readyBadge {
@@ -457,53 +513,72 @@
 .expandClose {
   display: flex;
   align-items: center;
-  gap: 3px;
-  padding: 2px 6px;
+  gap: 4px;
+  padding: 4px 8px;
   border: none;
   background: transparent;
   border-radius: 4px;
   cursor: pointer;
   font-family: inherit;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--neutral-300);
   flex-shrink: 0;
-  transition: background 0.12s;
+  transition: background 0.12s, color 0.12s;
 }
 .expandClose:hover {
   background: var(--neutral-50);
+  color: var(--neutral-400);
 }
 
-/* Clinical Evidence list */
+/* ── Clinical Evidence list ────────────────────────────────────────── */
 
 .evidenceWrap {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
+/* "Clinical Evidence" sub-header */
 .evidenceHeader {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   margin-bottom: 2px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
+  line-height: 1.2;
   color: var(--neutral-400);
 }
 
+/* Each bullet row — bullet dot · text · trailing link icon, all vertically
+   centred on the first text line. Bullet sits on the text baseline. */
 .evidenceRow {
   display: flex;
   align-items: flex-start;
-  gap: 4px;
+  gap: 8px;
+}
+
+/* Solid 4px primary dot, aligned with the cap height of the first line. */
+.evidenceBullet {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--primary-300);
+  flex-shrink: 0;
+  margin-top: 8px;        /* (font-size 13 * line-height 1.5 / 2) ≈ vertical centre of first line */
 }
 
 .evidenceText {
   flex: 1;
-  font-size: 12px;
-  color: var(--neutral-300);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-400);
   line-height: 1.5;
 }
 
+/* Trailing link icon — flat ghost button, 20×20, transparent by default;
+   primary-50 tint on hover. Aligned to the first text line, not the bottom. */
 .evidenceLink {
   display: inline-flex;
   align-items: center;
@@ -511,15 +586,16 @@
   width: 20px;
   height: 20px;
   border-radius: 4px;
-  background: var(--primary-50);
-  border: 0.5px solid var(--primary-200);
+  background: transparent;
+  border: none;
   cursor: pointer;
   flex-shrink: 0;
-  margin-top: 1px;
+  margin-top: -2px;       /* nudge up so 16px icon aligns with text cap */
+  padding: 0;
   transition: background 0.12s;
 }
 .evidenceLink:hover {
-  background: var(--primary-100);
+  background: var(--primary-50);
 }
 
 /* MEAT Note body */
@@ -563,10 +639,12 @@
   border-color: var(--primary-300);
 }
 
+/* Sign & Accept · Save as Draft · Copy — left-aligned per request. */
 .meatActions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: flex-start;
+  gap: 8px;
 }
 
 .meatBtn {
