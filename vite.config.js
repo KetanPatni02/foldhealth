@@ -20,24 +20,14 @@ export default defineConfig({
     }
   },
   build: {
-    // Split big vendor libs into their own chunks so:
-    //  1. Updates to app code don't bust their browser cache.
-    //  2. They load in parallel with the entry chunk.
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (!id.includes('node_modules')) return;
-          if (id.includes('recharts') || id.includes('d3-')) return 'vendor-charts';
-          if (id.includes('@xyflow')) return 'vendor-xyflow';
-          if (id.includes('@schedule-x')) return 'vendor-schedulex';
-          if (id.includes('@usewaypoint')) return 'vendor-email';
-          if (id.includes('react-grid-layout') || id.includes('react-resizable') || id.includes('react-draggable')) return 'vendor-grid';
-          if (id.includes('@radix-ui')) return 'vendor-radix';
-          if (id.includes('@supabase')) return 'vendor-supabase';
-          if (id.includes('react-dom') || id.includes('/react/') || id.includes('scheduler')) return 'vendor-react';
-        },
-      },
-    },
+    // No manualChunks. Earlier attempts to group recharts into a
+    // 'vendor-charts' chunk caused Rolldown's CJS interop to hoist React's
+    // require_* wrappers into that chunk, which then dragged vendor-charts
+    // into the entry's static import graph — defeating lazy-loading and
+    // forcing recharts onto the first-paint critical path.
+    //
+    // Auto-chunking respects the lazy() boundaries in AppLayout: recharts
+    // lands in its own chunk that only loads when an analytics view mounts.
     chunkSizeWarningLimit: 1000,
   },
   test: {
