@@ -14,6 +14,10 @@ import { useAppStore } from './store/useAppStore'
 // on this for any HIPAA-sensitive deployment.
 Sentry.init({
   dsn: 'https://2d5be2c606f585f9dd1fdfe9b23ae274@o4511450529529856.ingest.us.sentry.io/4511450531037184',
+  // Route envelopes through our own /api/monitoring function so requests
+  // leave the browser as a same-origin path. Bypasses ad/privacy blockers
+  // that match the public *.ingest.sentry.io host.
+  tunnel: '/api/monitoring',
   integrations: [Sentry.browserTracingIntegration()],
   tracesSampleRate: 1.0,
   // Stream GenAI spans for Vercel AI SDK calls (generateText, streamText,
