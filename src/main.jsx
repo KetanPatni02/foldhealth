@@ -16,6 +16,11 @@ Sentry.init({
   dsn: 'https://2d5be2c606f585f9dd1fdfe9b23ae274@o4511450529529856.ingest.us.sentry.io/4511450531037184',
   integrations: [Sentry.browserTracingIntegration()],
   tracesSampleRate: 1.0,
+  // Stream GenAI spans for Vercel AI SDK calls (generateText, streamText,
+  // ToolLoopAgent, etc.). Inert until we add the AI SDK. When we do, pass
+  // `experimental_telemetry: { isEnabled: true, functionId, recordInputs,
+  // recordOutputs }` on each call so spans land in Sentry's Agents tab.
+  streamGenAiSpans: true,
   sendDefaultPii: true,
 })
 
