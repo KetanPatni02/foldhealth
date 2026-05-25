@@ -1,33 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
-import { FALLBACK_CONFIGS } from '../../../data/analyticsFallbacks';
 import { Card, safeConfigData } from './shared';
 import { SavingsAreaChart } from './charts';
 import { Slider } from '../../../components/ui/slider';
 import s from '../AnalyticsLayout.module.css';
 
-const DEFAULT_FALLBACK = FALLBACK_CONFIGS.roi_levers || { levers: [], baselines: {} };
-
 export function RoiView({ showToast }) {
   const fetchConfig = useAppStore(st => st.fetchConfig);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const [config, setConfig] = useState(FALLBACK_CONFIGS.roi_levers);
+  const [config, setConfig] = useState({});
 
   useEffect(() => {
     fetchConfig('roi_levers').then(d => d && setConfig(d));
   }, [period]);
 
-  const safeConfig = safeConfigData(config, DEFAULT_FALLBACK);
-  const levers = safeConfig.levers || DEFAULT_FALLBACK.levers || [];
-  const baselines = safeConfig.baselines || DEFAULT_FALLBACK.baselines || {};
+  const safeConfig = safeConfigData(config);
+  const levers = safeConfig.levers || [];
+  const baselines = safeConfig.baselines || {};
 
   // Build local slider state from config defaults
-  const [sliders, setSliders] = useState(() => {
-    const init = {};
-    (DEFAULT_FALLBACK.levers || []).forEach(l => { init[l.key] = l.default; });
-    return init;
-  });
+  const [sliders, setSliders] = useState({});
 
   // Re-init sliders when config changes
   useEffect(() => {

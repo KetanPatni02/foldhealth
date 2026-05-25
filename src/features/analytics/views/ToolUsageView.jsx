@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { FALLBACK_KPIS, FALLBACK_TABLES } from '../../../data/analyticsFallbacks';
 import { KpiCard, InsightBanner, Card, ProgressBar, StatusPill, safeTableRows } from './shared';
 import s from '../AnalyticsLayout.module.css';
 
@@ -10,19 +9,18 @@ export function ToolUsageView({ showToast }) {
   const fetchViewTable = useAppStore(st => st.fetchViewTable);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const fb = FALLBACK_KPIS.tools || { kpis: [], insight: null };
-  const [kpiData, setKpiData] = useState(fb);
-  const [adoptionData, setAdoptionData] = useState(FALLBACK_TABLES.adoption_by_provider);
+  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
+  const [adoptionData, setAdoptionData] = useState({ columns: [], rows: [] });
 
   useEffect(() => {
     fetchViewKpis('tools').then(d => d && setKpiData(d));
     fetchViewTable('tools', 'adoption_by_provider').then(d => d && setAdoptionData(d));
   }, [period]);
 
-  const kpis = kpiData?.kpis || fb.kpis || [];
-  const insight = kpiData?.insight || fb.insight;
-  const adoptionRows = safeTableRows(adoptionData, (FALLBACK_TABLES.adoption_by_provider || {}).rows);
-  const nonAdopterRows = safeTableRows(FALLBACK_TABLES.non_adopters, []);
+  const kpis = kpiData?.kpis || [];
+  const insight = kpiData?.insight || null;
+  const adoptionRows = safeTableRows(adoptionData);
+  const nonAdopterRows = [];
 
   return (
     <>

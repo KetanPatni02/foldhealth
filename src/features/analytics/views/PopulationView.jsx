@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { FALLBACK_KPIS, FALLBACK_PROGRESS_BARS, FALLBACK_TABLES } from '../../../data/analyticsFallbacks';
 import { KpiCard, InsightBanner, Card, ProgressBar, safeBarItems, safeTableRows } from './shared';
 import { Icon } from '../../../components/Icon/Icon';
 import s from '../AnalyticsLayout.module.css';
@@ -12,12 +11,11 @@ export function PopulationView({ showToast }) {
   const fetchViewTable = useAppStore(st => st.fetchViewTable);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const fb = FALLBACK_KPIS.population || { kpis: [], insight: null };
-  const [kpiData, setKpiData] = useState(fb);
-  const [riskTiers, setRiskTiers] = useState(FALLBACK_PROGRESS_BARS.risk_tiers);
-  const [chronicConditions, setChronicConditions] = useState(FALLBACK_PROGRESS_BARS.chronic_conditions);
-  const [memberLists, setMemberLists] = useState(FALLBACK_TABLES.actionable_member_lists);
-  const [sdohScreening, setSdohScreening] = useState(FALLBACK_PROGRESS_BARS.sdoh_screening);
+  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
+  const [riskTiers, setRiskTiers] = useState([]);
+  const [chronicConditions, setChronicConditions] = useState([]);
+  const [memberLists, setMemberLists] = useState({ columns: [], rows: [] });
+  const [sdohScreening, setSdohScreening] = useState([]);
 
   useEffect(() => {
     fetchViewKpis('population').then(d => d && setKpiData(d));
@@ -27,9 +25,9 @@ export function PopulationView({ showToast }) {
     fetchProgressBars('population', 'sdoh_screening').then(d => d && setSdohScreening(d));
   }, [period]);
 
-  const kpis = kpiData?.kpis || fb.kpis || [];
-  const insight = kpiData?.insight || fb.insight;
-  const memberRows = safeTableRows(memberLists, (FALLBACK_TABLES.actionable_member_lists || {}).rows);
+  const kpis = kpiData?.kpis || [];
+  const insight = kpiData?.insight || null;
+  const memberRows = safeTableRows(memberLists);
   const riskTierItems = safeBarItems(riskTiers);
   const chronicItems = safeBarItems(chronicConditions);
   const sdohItems = safeBarItems(sdohScreening);

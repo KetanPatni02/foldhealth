@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { FALLBACK_KPIS, FALLBACK_TABLES, FALLBACK_PROGRESS_BARS, FALLBACK_CONFIGS } from '../../../data/analyticsFallbacks';
 import { KpiCard, InsightBanner, Card, ProgressBar, StatusPill, safeBarItems, safeTableRows, safeConfigData } from './shared';
 import s from '../AnalyticsLayout.module.css';
 
@@ -14,12 +13,11 @@ export function CareView({ showToast }) {
   const fetchProgressBars = useAppStore(st => st.fetchProgressBars);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const fb = FALLBACK_KPIS.care || { kpis: [], insight: null };
-  const [kpiData, setKpiData] = useState(fb);
-  const [prodByCm, setProdByCm] = useState(FALLBACK_TABLES.productivity_by_cm);
-  const [prodStrip, setProdStrip] = useState(FALLBACK_CONFIGS.care_productivity_strip);
-  const [careQuality, setCareQuality] = useState(FALLBACK_PROGRESS_BARS.care_quality_metrics);
-  const [programsDetail, setProgramsDetail] = useState(FALLBACK_TABLES.programs_detail);
+  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
+  const [prodByCm, setProdByCm] = useState({ columns: [], rows: [] });
+  const [prodStrip, setProdStrip] = useState({});
+  const [careQuality, setCareQuality] = useState([]);
+  const [programsDetail, setProgramsDetail] = useState({ columns: [], rows: [] });
   const [tab, setTab] = useState(0);
 
   useEffect(() => {
@@ -30,11 +28,11 @@ export function CareView({ showToast }) {
     fetchViewTable('care', 'programs_detail').then(d => d && setProgramsDetail(d));
   }, [period]);
 
-  const kpis = kpiData?.kpis || fb.kpis || [];
-  const insight = kpiData?.insight || fb.insight;
-  const safeProdStrip = safeConfigData(prodStrip, FALLBACK_CONFIGS.care_productivity_strip);
-  const stripMetrics = safeProdStrip.metrics || (FALLBACK_CONFIGS.care_productivity_strip || {}).metrics || [];
-  const cmRows = safeTableRows(prodByCm, (FALLBACK_TABLES.productivity_by_cm || {}).rows);
+  const kpis = kpiData?.kpis || [];
+  const insight = kpiData?.insight || null;
+  const safeProdStrip = safeConfigData(prodStrip);
+  const stripMetrics = safeProdStrip.metrics || [];
+  const cmRows = safeTableRows(prodByCm);
 
   // Program ROI strip data
   const roiPrograms = [
@@ -409,7 +407,7 @@ function QualityTab({ bars, showToast }) {
 }
 
 function ProgramsTab({ showToast, programsDetail }) {
-  const pdRows = safeTableRows(programsDetail, (FALLBACK_TABLES.programs_detail || {}).rows);
+  const pdRows = safeTableRows(programsDetail);
   const programs = [
     { name: 'Chronic Care Management', abbr: 'CCM', color: 'var(--status-info)', members: 4823, eligible: 6100, enrolled: 79, saved: '$1,620K', spent: '$450K', roi: '3.6x',
       kpis: [['Monthly Minutes Avg','38 min','\u226520 min','g'],['Monthly Review Plan %','71%','85%','a'],['1st Month Contact Rate','84%','80%','g'],['Care Plan Update Rate','58%','75%','r']],

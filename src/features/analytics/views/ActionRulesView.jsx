@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { FALLBACK_KPIS, FALLBACK_CONFIGS } from '../../../data/analyticsFallbacks';
 import { KpiCard, InsightBanner, Card, safeConfigData } from './shared';
 import s from '../AnalyticsLayout.module.css';
 
@@ -10,21 +9,20 @@ export function ActionRulesView({ showToast }) {
   const fetchConfig = useAppStore(st => st.fetchConfig);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const fb = FALLBACK_KPIS.actionrules || { kpis: [], insight: null };
-  const [kpiData, setKpiData] = useState(fb);
-  const [rulesData, setRulesData] = useState(FALLBACK_CONFIGS.action_rules_data);
+  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
+  const [rulesData, setRulesData] = useState({});
 
   useEffect(() => {
     fetchViewKpis('actionrules').then(d => d && setKpiData(d));
     fetchConfig('action_rules_data').then(d => d && setRulesData(d));
   }, [period]);
 
-  const kpis = kpiData?.kpis || fb.kpis || [];
-  const insight = kpiData?.insight || fb.insight;
-  const safeRules = safeConfigData(rulesData, FALLBACK_CONFIGS.action_rules_data);
-  const inlineRules = safeRules.inline || (FALLBACK_CONFIGS.action_rules_data || {}).inline || [];
-  const automatedRules = safeRules.automated || (FALLBACK_CONFIGS.action_rules_data || {}).automated || [];
-  const agentRules = safeRules.agent || (FALLBACK_CONFIGS.action_rules_data || {}).agent || [];
+  const kpis = kpiData?.kpis || [];
+  const insight = kpiData?.insight || null;
+  const safeRules = safeConfigData(rulesData);
+  const inlineRules = safeRules.inline || [];
+  const automatedRules = safeRules.automated || [];
+  const agentRules = safeRules.agent || [];
 
   return (
     <>

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
-import { FALLBACK_KPIS, FALLBACK_TABLES, FALLBACK_CONFIGS } from '../../../data/analyticsFallbacks';
 import { KpiCard, InsightBanner, Card, StatusPill, safeTableRows, safeConfigData } from './shared';
 import s from '../AnalyticsLayout.module.css';
 
@@ -10,11 +9,10 @@ export function PlatformOpsView({ showToast }) {
   const fetchViewTable = useAppStore(st => st.fetchViewTable);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const fb = FALLBACK_KPIS.platformops || { kpis: [], insight: null };
-  const [kpiData, setKpiData] = useState(fb);
-  const [pipelineHealth, setPipelineHealth] = useState(FALLBACK_CONFIGS.pipeline_health);
-  const [dataQuality, setDataQuality] = useState(FALLBACK_TABLES.data_quality);
-  const [integrationStatus, setIntegrationStatus] = useState(FALLBACK_TABLES.integration_status);
+  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
+  const [pipelineHealth, setPipelineHealth] = useState({});
+  const [dataQuality, setDataQuality] = useState({ columns: [], rows: [] });
+  const [integrationStatus, setIntegrationStatus] = useState({ columns: [], rows: [] });
 
   useEffect(() => {
     fetchViewKpis('platformops').then(d => d && setKpiData(d));
@@ -23,12 +21,12 @@ export function PlatformOpsView({ showToast }) {
     fetchViewTable('platformops', 'integration_status').then(d => d && setIntegrationStatus(d));
   }, [period]);
 
-  const kpis = kpiData?.kpis || fb.kpis || [];
-  const insight = kpiData?.insight || fb.insight;
-  const safePipeline = safeConfigData(pipelineHealth, FALLBACK_CONFIGS.pipeline_health);
-  const pipelines = safePipeline.pipelines || (FALLBACK_CONFIGS.pipeline_health || {}).pipelines || [];
-  const dqRows = safeTableRows(dataQuality, (FALLBACK_TABLES.data_quality || {}).rows);
-  const intRows = safeTableRows(integrationStatus, (FALLBACK_TABLES.integration_status || {}).rows);
+  const kpis = kpiData?.kpis || [];
+  const insight = kpiData?.insight || null;
+  const safePipeline = safeConfigData(pipelineHealth);
+  const pipelines = safePipeline.pipelines || [];
+  const dqRows = safeTableRows(dataQuality);
+  const intRows = safeTableRows(integrationStatus);
 
   return (
     <>

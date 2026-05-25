@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { FALLBACK_KPIS, FALLBACK_TABLES, FALLBACK_PROGRESS_BARS } from '../../../data/analyticsFallbacks';
 import { KpiCard, InsightBanner, Card, ProgressBar, StatusPill, safeBarItems, safeTableRows } from './shared';
 import s from '../AnalyticsLayout.module.css';
 
@@ -13,21 +12,20 @@ export function FinancialView({ showToast }) {
   const fetchProgressBars = useAppStore(st => st.fetchProgressBars);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const fb = FALLBACK_KPIS.financial || { kpis: [], insight: null };
-  const [kpiData, setKpiData] = useState(fb);
-  const [costByProvider, setCostByProvider] = useState(FALLBACK_TABLES.cost_by_provider);
-  const [ipCostDetail, setIpCostDetail] = useState(FALLBACK_TABLES.ip_cost_detail);
-  const [opEdUtil, setOpEdUtil] = useState(FALLBACK_TABLES.op_ed_utilization);
-  const [snfSpending, setSnfSpending] = useState(FALLBACK_TABLES.snf_spending);
-  const [readmissionRates, setReadmissionRates] = useState(FALLBACK_PROGRESS_BARS.readmission_rates);
-  const [pharmacyCost, setPharmacyCost] = useState(FALLBACK_PROGRESS_BARS.pharmacy_cost);
-  const [highCostClaimants, setHighCostClaimants] = useState(FALLBACK_TABLES.high_cost_claimants);
-  const [topDrgs, setTopDrgs] = useState(FALLBACK_TABLES.top_drgs);
-  const [topFacilitiesReadmit, setTopFacilitiesReadmit] = useState(FALLBACK_TABLES.top_facilities_readmit);
-  const [edChiefComplaints, setEdChiefComplaints] = useState(FALLBACK_TABLES.ed_chief_complaints);
-  const [edTopFacilities, setEdTopFacilities] = useState(FALLBACK_TABLES.ed_top_facilities);
-  const [opEdOrgHierarchy, setOpEdOrgHierarchy] = useState(FALLBACK_TABLES.op_ed_org_hierarchy);
-  const [snfQualityScorecard, setSnfQualityScorecard] = useState(FALLBACK_TABLES.snf_quality_scorecard);
+  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
+  const [costByProvider, setCostByProvider] = useState({ columns: [], rows: [] });
+  const [ipCostDetail, setIpCostDetail] = useState({ columns: [], rows: [] });
+  const [opEdUtil, setOpEdUtil] = useState({ columns: [], rows: [] });
+  const [snfSpending, setSnfSpending] = useState({ columns: [], rows: [] });
+  const [readmissionRates, setReadmissionRates] = useState([]);
+  const [pharmacyCost, setPharmacyCost] = useState([]);
+  const [highCostClaimants, setHighCostClaimants] = useState({ columns: [], rows: [] });
+  const [topDrgs, setTopDrgs] = useState({ columns: [], rows: [] });
+  const [topFacilitiesReadmit, setTopFacilitiesReadmit] = useState({ columns: [], rows: [] });
+  const [edChiefComplaints, setEdChiefComplaints] = useState({ columns: [], rows: [] });
+  const [edTopFacilities, setEdTopFacilities] = useState({ columns: [], rows: [] });
+  const [opEdOrgHierarchy, setOpEdOrgHierarchy] = useState({ columns: [], rows: [] });
+  const [snfQualityScorecard, setSnfQualityScorecard] = useState({ columns: [], rows: [] });
   const [tab, setTab] = useState(0);
 
   useEffect(() => {
@@ -47,8 +45,8 @@ export function FinancialView({ showToast }) {
     fetchViewTable('financial', 'snf_quality_scorecard').then(d => d && setSnfQualityScorecard(d));
   }, [period]);
 
-  const kpis = kpiData?.kpis || fb.kpis || [];
-  const insight = kpiData?.insight || fb.insight;
+  const kpis = kpiData?.kpis || [];
+  const insight = kpiData?.insight || null;
 
   return (
     <>
@@ -86,8 +84,8 @@ export function FinancialView({ showToast }) {
 }
 
 function TcocTab({ data, highCost, showToast }) {
-  const rows = safeTableRows(data, (FALLBACK_TABLES.cost_by_provider || {}).rows);
-  const hcRows = safeTableRows(highCost, (FALLBACK_TABLES.high_cost_claimants || {}).rows);
+  const rows = safeTableRows(data);
+  const hcRows = safeTableRows(highCost);
   return (
     <>
       <Card title="Cost by Setting — Provider Hierarchy" flush>
@@ -141,7 +139,7 @@ function TcocTab({ data, highCost, showToast }) {
 }
 
 function InpatientTab({ data }) {
-  const rows = safeTableRows(data, (FALLBACK_TABLES.ip_cost_detail || {}).rows);
+  const rows = safeTableRows(data);
   return (
     <Card title="Inpatient Cost Detail" flush>
       <div className={s.tblWrap}>
@@ -166,8 +164,8 @@ function InpatientTab({ data }) {
 
 function ReadmissionsTab({ bars, topDrgs, topFacilities, showToast }) {
   const items = safeBarItems(bars);
-  const drgRows = safeTableRows(topDrgs, (FALLBACK_TABLES.top_drgs || {}).rows);
-  const facRows = safeTableRows(topFacilities, (FALLBACK_TABLES.top_facilities_readmit || {}).rows);
+  const drgRows = safeTableRows(topDrgs);
+  const facRows = safeTableRows(topFacilities);
 
   return (
     <>
@@ -230,10 +228,10 @@ function ReadmissionsTab({ bars, topDrgs, topFacilities, showToast }) {
 }
 
 function EdOutpatientTab({ complaints, facilities, orgHierarchy, opEdUtil, showToast }) {
-  const complaintRows = safeTableRows(complaints, (FALLBACK_TABLES.ed_chief_complaints || {}).rows);
-  const facRows = safeTableRows(facilities, (FALLBACK_TABLES.ed_top_facilities || {}).rows);
-  const orgRows = safeTableRows(orgHierarchy, (FALLBACK_TABLES.op_ed_org_hierarchy || {}).rows);
-  const utilRows = safeTableRows(opEdUtil, (FALLBACK_TABLES.op_ed_utilization || {}).rows);
+  const complaintRows = safeTableRows(complaints);
+  const facRows = safeTableRows(facilities);
+  const orgRows = safeTableRows(orgHierarchy);
+  const utilRows = safeTableRows(opEdUtil);
 
   return (
     <>
@@ -318,8 +316,8 @@ function EdOutpatientTab({ complaints, facilities, orgHierarchy, opEdUtil, showT
 }
 
 function SnfPostAcuteTab({ data, scorecard, showToast }) {
-  const rows = safeTableRows(data, (FALLBACK_TABLES.snf_spending || {}).rows);
-  const scorecardRows = safeTableRows(scorecard, (FALLBACK_TABLES.snf_quality_scorecard || {}).rows);
+  const rows = safeTableRows(data);
+  const scorecardRows = safeTableRows(scorecard);
 
   return (
     <>

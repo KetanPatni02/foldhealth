@@ -6,11 +6,9 @@ import { LoginPage } from './features/auth/LoginPage';
 import { useAppStore } from './store/useAppStore';
 import { supabase } from './lib/supabase';
 import { initRouter } from './lib/router';
-import { seedDatabaseIfEmpty } from './lib/seedDatabase';
 
 function App() {
   const routerInit = useRef(false);
-  const seeded = useRef(false);
   const [session, setSession] = useState(undefined); // undefined = loading, null = unauthenticated
   const [bypassed, setBypassed] = useState(() => sessionStorage.getItem('__auth_bypass') === 'true');
 
@@ -25,14 +23,6 @@ function App() {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
-
-  // Auto-seed empty tables once (always — RLS is open for prototype)
-  useEffect(() => {
-    if (!seeded.current) {
-      seeded.current = true;
-      seedDatabaseIfEmpty();
-    }
   }, []);
 
   // Initialize hash router (once)

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
-import { FALLBACK_KPIS, FALLBACK_TABLES } from '../../../data/analyticsFallbacks';
 import { KpiCard, InsightBanner, Card, StatusPill, safeTableRows } from './shared';
 import s from '../AnalyticsLayout.module.css';
 
@@ -9,10 +8,9 @@ export function NetworkView({ showToast }) {
   const fetchViewTable = useAppStore(st => st.fetchViewTable);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const fb = FALLBACK_KPIS.network || { kpis: [], insight: null };
-  const [kpiData, setKpiData] = useState(fb);
-  const [referralLeakage, setReferralLeakage] = useState(FALLBACK_TABLES.referral_leakage);
-  const [snfScorecard, setSnfScorecard] = useState(FALLBACK_TABLES.snf_scorecard);
+  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
+  const [referralLeakage, setReferralLeakage] = useState({ columns: [], rows: [] });
+  const [snfScorecard, setSnfScorecard] = useState({ columns: [], rows: [] });
 
   useEffect(() => {
     fetchViewKpis('network').then(d => d && setKpiData(d));
@@ -20,10 +18,10 @@ export function NetworkView({ showToast }) {
     fetchViewTable('network', 'snf_scorecard').then(d => d && setSnfScorecard(d));
   }, [period]);
 
-  const kpis = kpiData?.kpis || fb.kpis || [];
-  const insight = kpiData?.insight || fb.insight;
-  const leakageRows = safeTableRows(referralLeakage, (FALLBACK_TABLES.referral_leakage || {}).rows);
-  const snfRows = safeTableRows(snfScorecard, (FALLBACK_TABLES.snf_scorecard || {}).rows);
+  const kpis = kpiData?.kpis || [];
+  const insight = kpiData?.insight || null;
+  const leakageRows = safeTableRows(referralLeakage);
+  const snfRows = safeTableRows(snfScorecard);
 
   return (
     <>
