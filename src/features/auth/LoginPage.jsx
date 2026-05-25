@@ -163,7 +163,13 @@ export function LoginPage({ onBypass }) {
                   placeholder={isSignUp ? 'Min 6 characters' : 'Enter your password'}
                   autoComplete={isSignUp ? 'new-password' : 'current-password'}
                 />
-                <button type="button" className={styles.eyeBtn} onClick={() => setShowPassword(v => !v)}>
+                <button
+                  type="button"
+                  className={styles.eyeBtn}
+                  onClick={() => setShowPassword(v => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-pressed={showPassword}
+                >
                   <Icon name={showPassword ? 'solar:eye-linear' : 'solar:eye-closed-linear'} size={16} color="#8A94A8" />
                 </button>
               </div>
