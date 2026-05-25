@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
-import { FALLBACK_KPIS, FALLBACK_TABLES } from '../../../data/analyticsFallbacks';
 import { KpiCard, InsightBanner, Card, StatusPill, safeTableRows } from './shared';
 import s from '../AnalyticsLayout.module.css';
 
@@ -9,11 +8,10 @@ export function SdohView({ showToast }) {
   const fetchViewTable = useAppStore(st => st.fetchViewTable);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const fb = FALLBACK_KPIS.sdoh || { kpis: [], insight: null };
-  const [kpiData, setKpiData] = useState(fb);
-  const [equityByRace, setEquityByRace] = useState(FALLBACK_TABLES.equity_by_race);
-  const [sdohRiskFactors, setSdohRiskFactors] = useState(FALLBACK_TABLES.sdoh_risk_factors);
-  const [communityReferrals, setCommunityReferrals] = useState(FALLBACK_TABLES.community_referrals);
+  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
+  const [equityByRace, setEquityByRace] = useState({ columns: [], rows: [] });
+  const [sdohRiskFactors, setSdohRiskFactors] = useState({ columns: [], rows: [] });
+  const [communityReferrals, setCommunityReferrals] = useState({ columns: [], rows: [] });
 
   useEffect(() => {
     fetchViewKpis('sdoh').then(d => d && setKpiData(d));
@@ -22,11 +20,11 @@ export function SdohView({ showToast }) {
     fetchViewTable('sdoh', 'community_referrals').then(d => d && setCommunityReferrals(d));
   }, [period]);
 
-  const kpis = kpiData?.kpis || fb.kpis || [];
-  const insight = kpiData?.insight || fb.insight;
-  const equityRows = safeTableRows(equityByRace, (FALLBACK_TABLES.equity_by_race || {}).rows);
-  const riskRows = safeTableRows(sdohRiskFactors, (FALLBACK_TABLES.sdoh_risk_factors || {}).rows);
-  const referralRows = safeTableRows(communityReferrals, (FALLBACK_TABLES.community_referrals || {}).rows);
+  const kpis = kpiData?.kpis || [];
+  const insight = kpiData?.insight || null;
+  const equityRows = safeTableRows(equityByRace);
+  const riskRows = safeTableRows(sdohRiskFactors);
+  const referralRows = safeTableRows(communityReferrals);
 
   return (
     <>

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { FALLBACK_KPIS, FALLBACK_TABLES, FALLBACK_PROGRESS_BARS } from '../../../data/analyticsFallbacks';
 import { KpiCard, InsightBanner, Card, ProgressBar, safeBarItems, safeTableRows } from './shared';
 import { RafTrendLineChart } from './charts';
 import s from '../AnalyticsLayout.module.css';
@@ -12,12 +11,11 @@ export function RiskView({ showToast }) {
   const fetchProgressBars = useAppStore(st => st.fetchProgressBars);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const fb = FALLBACK_KPIS.risk || { kpis: [], insight: null };
-  const [kpiData, setKpiData] = useState(fb);
-  const [rafByPractice, setRafByPractice] = useState(FALLBACK_TABLES.raf_by_practice);
-  const [hccRecapture, setHccRecapture] = useState(FALLBACK_PROGRESS_BARS.hcc_recapture);
-  const [hccRecaptureCategories, setHccRecaptureCategories] = useState(FALLBACK_PROGRESS_BARS.hcc_recapture_categories);
-  const [openHccSuspects, setOpenHccSuspects] = useState(FALLBACK_TABLES.open_hcc_suspects);
+  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
+  const [rafByPractice, setRafByPractice] = useState({ columns: [], rows: [] });
+  const [hccRecapture, setHccRecapture] = useState([]);
+  const [hccRecaptureCategories, setHccRecaptureCategories] = useState([]);
+  const [openHccSuspects, setOpenHccSuspects] = useState({ columns: [], rows: [] });
 
   useEffect(() => {
     fetchViewKpis('risk').then(d => d && setKpiData(d));
@@ -27,9 +25,9 @@ export function RiskView({ showToast }) {
     fetchViewTable('risk', 'open_hcc_suspects').then(d => d && setOpenHccSuspects(d));
   }, [period]);
 
-  const kpis = kpiData?.kpis || fb.kpis || [];
-  const insight = kpiData?.insight || fb.insight;
-  const rafRows = safeTableRows(rafByPractice, (FALLBACK_TABLES.raf_by_practice || {}).rows);
+  const kpis = kpiData?.kpis || [];
+  const insight = kpiData?.insight || null;
+  const rafRows = safeTableRows(rafByPractice);
   const hccItems = safeBarItems(hccRecapture);
 
   const rafTrend = [1.010, 1.014, 1.018, 1.022, 1.025, 1.028, 1.031, 1.034, 1.037, 1.040, 1.041, 1.042];
@@ -171,7 +169,7 @@ export function RiskView({ showToast }) {
               <tr><th>Member ID</th><th>HCC Category</th><th>Description</th><th className={s.r}>Est. Revenue Impact</th><th>Last Coded Date</th><th>Action</th></tr>
             </thead>
             <tbody>
-              {safeTableRows(openHccSuspects, (FALLBACK_TABLES.open_hcc_suspects || {}).rows).map((row, i) => (
+              {safeTableRows(openHccSuspects).map((row, i) => (
                 <tr key={i}>
                   <td className={s.fw600}>{row.member_id}</td>
                   <td><span className={`${s.stPill} ${s.stNeutral}`}>{row.hcc_category}</span></td>

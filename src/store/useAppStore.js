@@ -2,16 +2,13 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { dbToJs, updatesToDb } from '../lib/patientMapper';
 import { callDetailDbToJs, callDetailJsToDb } from '../lib/callDetailsMapper';
-import { patients as fallbackPatients } from '../data/patients';
-import { callDetails as fallbackCallDetails, enrichCallRecord } from '../data/callDetails';
-import { goals as fallbackGoalsData } from '../data/goals';
-import { chatGroups as fallbackChatGroups } from '../data/chatGroups';
+import { enrichCallRecord } from '../data/callDetailsEnrich';
 import { generateFlowFromPrompt } from '../lib/flowGenerator';
 import { kpiRowToJs, tsRowToJs, tableRowToJs, barRowToJs, configRowToJs, groupTimeSeries } from '../lib/analyticsMapper';
 import { domainDbToJs, domainJsToDb, componentDbToJs, componentJsToDb, auditLogDbToJs } from '../lib/embedMapper';
-import { FALLBACK_KPIS, FALLBACK_TIME_SERIES, FALLBACK_TABLES, FALLBACK_PROGRESS_BARS, FALLBACK_CONFIGS } from '../data/analyticsFallbacks';
-import { FALLBACK_INBOX_ITEMS, FALLBACK_CHANNEL_ITEMS, FALLBACK_CALL_LINES, FALLBACK_CALL_SESSIONS } from '../data/callsConfig';
-import { fallbackTasks } from '../data/tasks';
+// Fallback datasets (~220KB raw across all of these) are imported lazily
+// inside the fetch actions that consume them, so they don't bloat the entry
+// chunk. They're only needed when Supabase returns empty or errors.
 import { updateHash } from '../lib/router';
 import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem, applyNavStyle, getStoredNavStyle } from '../lib/theme';
 import { createBlock, createBlockTree, collectBlockTree, buildParentMap, cloneBlockTree, extractSubtree, cloneStoredTree } from '../features/email-builder/blockHelpers';
@@ -314,11 +311,11 @@ export const useAppStore = create((set, get) => ({
     set({ selectedPatientId: patientId });
     const state = get();
     if (state.activePage !== 'population') set({ activePage: 'population' });
-    import('../lib/router').then(m => m.updateHash?.(get()));
+    updateHash?.(get());
   },
   navigateBackToWorklist: () => {
     set({ selectedPatientId: null });
-    import('../lib/router').then(m => m.updateHash?.(get()));
+    updateHash?.(get());
   },
   setPatientProfileTab: (tab) => set({ patientProfileTab: tab }),
 
@@ -442,26 +439,20 @@ export const useAppStore = create((set, get) => ({
       for (const ep of existing) {
         if (ep.agentAssigned) overrides[ep.id] = ep;
       }
-      const fallbackMap = {};
-      for (const fp of fallbackPatients) {
-        if (fp.agentAssigned) fallbackMap[fp.id] = fp;
-      }
-
       const patients = data.map(dbToJs).map(p => {
         const isPeter = p.name === 'Peter Kim' || p.id === 'p11';
         const mem = overrides[p.id];
-        const fb = fallbackMap[p.id];
         return {
           ...p,
           name: isPeter ? 'Clara Mitchell' : p.name,
           initials: isPeter ? 'CM' : p.initials,
-          // Priority: in-memory invoke state > DB state > fallback seed data
-          agentAssigned: mem?.agentAssigned || p.agentAssigned || fb?.agentAssigned || '',
-          agentRole: mem?.agentRole || p.agentRole || fb?.agentRole || '',
-          onCall: mem ? mem.onCall : (p.onCall || fb?.onCall || false),
-          status: mem ? mem.status : (p.status !== 'scheduled' ? p.status : fb?.status || p.status),
-          callDuration: mem ? mem.callDuration : (p.callDuration || fb?.callDuration),
-          nextAction: mem?.nextAction || p.nextAction || fb?.nextAction,
+          // Priority: in-memory invoke state > DB state
+          agentAssigned: mem?.agentAssigned || p.agentAssigned || '',
+          agentRole: mem?.agentRole || p.agentRole || '',
+          onCall: mem ? mem.onCall : (p.onCall || false),
+          status: mem ? mem.status : p.status,
+          callDuration: mem ? mem.callDuration : p.callDuration,
+          nextAction: mem?.nextAction || p.nextAction,
         };
       });
       // Sort by numeric part of id (p1, p2, ... p10, p11, ...)
@@ -488,24 +479,10 @@ export const useAppStore = create((set, get) => ({
       .neq('call_type', 'ongoing')
       .order('started_at', { ascending: false });
 
-    let combined;
-    if (error) {
-      console.warn('call_details fetch failed, using fallback:', error.message);
-      combined = fallbackCallDetails
-        .filter(c => c.callType !== 'ongoing')
-        .map(enrichCallRecord);
-    } else {
-      const dbRecords = data.map(c => enrichCallRecord(callDetailDbToJs(c)));
-      const dbIds = new Set(dbRecords.map(r => r.id));
-      // Supplement with local-only records (incoming, declined) not yet seeded to DB
-      const supplemental = fallbackCallDetails
-        .filter(c => c.callType !== 'ongoing' && !dbIds.has(c.id))
-        .map(enrichCallRecord);
-      combined = [...dbRecords, ...supplemental];
-    }
-
-    // Sort by startedAt desc — naturally mixes call types by date
-    combined.sort((a, b) => new Date(b.startedAt || 0) - new Date(a.startedAt || 0));
+    if (error) console.warn('call_details fetch failed:', error.message);
+    const combined = (data || [])
+      .map(c => enrichCallRecord(callDetailDbToJs(c)))
+      .sort((a, b) => new Date(b.startedAt || 0) - new Date(a.startedAt || 0));
 
     set({
       _allCallDetails: combined,
@@ -556,13 +533,10 @@ export const useAppStore = create((set, get) => ({
     const linesData = linesRes.status === 'fulfilled' ? (linesRes.value.data || []) : [];
     const sessData = sessRes.status === 'fulfilled' ? (sessRes.value.data || []) : [];
 
-    const allNav = navData.map(mapNav);
     set({
-      callNavItems: allNav.filter(i => i.section === 'inbox').length
-        ? allNav
-        : [...FALLBACK_INBOX_ITEMS, ...FALLBACK_CHANNEL_ITEMS],
-      callLines: linesData.length ? linesData.map(mapLine) : FALLBACK_CALL_LINES,
-      callSessions: sessData.length ? sessData.map(mapSession) : FALLBACK_CALL_SESSIONS,
+      callNavItems: navData.map(mapNav),
+      callLines: linesData.map(mapLine),
+      callSessions: sessData.map(mapSession),
       callsConfigLoading: false,
     });
   },
@@ -1030,8 +1004,8 @@ export const useAppStore = create((set, get) => ({
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.warn('goals fetch failed, using fallback:', error.message);
-      set({ goalsData: fallbackGoalsData, goalsLoading: false });
+      console.warn('goals fetch failed:', error.message);
+      set({ goalsData: [], goalsLoading: false, goalsError: error.message });
     } else {
       // Map DB snake_case → JS camelCase
       const mapped = data.map(row => ({
@@ -2160,7 +2134,7 @@ export const useAppStore = create((set, get) => ({
         .from('analytics_kpis').select('*')
         .eq('tenant_id', t).eq('view_key', viewId).eq('period', p)
         .maybeSingle();
-      if (error || !data) return FALLBACK_KPIS[viewId] || { kpis: [], insight: null };
+      if (error || !data) return { kpis: [], insight: null };
       return kpiRowToJs(data);
     });
   },
@@ -2172,11 +2146,7 @@ export const useAppStore = create((set, get) => ({
       const { data, error } = await supabase
         .from('analytics_time_series').select('*')
         .eq('tenant_id', t).in('series_key', seriesKeys).eq('period', p);
-      if (error || !data?.length) {
-        const result = {};
-        seriesKeys.forEach(k => { if (FALLBACK_TIME_SERIES[k]) result[k] = FALLBACK_TIME_SERIES[k]; });
-        return result;
-      }
+      if (error || !data?.length) return {};
       return groupTimeSeries(data);
     });
   },
@@ -2189,7 +2159,7 @@ export const useAppStore = create((set, get) => ({
         .from('analytics_tables').select('*')
         .eq('tenant_id', t).eq('table_key', tableKey).eq('period', p)
         .maybeSingle();
-      if (error || !data) return FALLBACK_TABLES[tableKey] || { columns: [], rows: [] };
+      if (error || !data) return { columns: [], rows: [] };
       return tableRowToJs(data);
     });
   },
@@ -2202,7 +2172,7 @@ export const useAppStore = create((set, get) => ({
         .from('analytics_progress_bars').select('*')
         .eq('tenant_id', t).eq('bar_key', barKey).eq('period', p)
         .maybeSingle();
-      if (error || !data) return FALLBACK_PROGRESS_BARS[barKey] || [];
+      if (error || !data) return [];
       return barRowToJs(data);
     });
   },
@@ -2215,7 +2185,7 @@ export const useAppStore = create((set, get) => ({
         .from('analytics_configs').select('*')
         .eq('tenant_id', t).eq('config_key', configKey)
         .maybeSingle();
-      if (error || !data) return FALLBACK_CONFIGS[configKey] || {};
+      if (error || !data) return {};
       return configRowToJs(data);
     });
   },
@@ -3056,67 +3026,15 @@ export const useAppStore = create((set, get) => ({
 
   fetchTasks: async () => {
     set({ tasksLoading: true });
-    let { data, error } = await supabase
+    const { data, error } = await supabase
       .from('tasks')
       .select('*')
       .order('created_at', { ascending: true });
 
-    if (!error && data) {
-      // Seed any missing demo task (matched by name). Users may genuinely
-      // create multiple tasks with the same name, so we no longer dedupe.
-      const existingNames = new Set(data.map(t => t.name));
-      const missing = fallbackTasks.filter(t => !existingNames.has(t.name));
-      if (missing.length > 0) {
-        // Insert parents first (no parent_task_id), then subtasks (look up parent name → real id)
-        const parents = missing.filter(t => !t.parent_task_id).map(({ id, parent_task_id, ...rest }) => rest);
-        const subtasks = missing.filter(t => t.parent_task_id);
-        let insertOk = true;
-
-        if (parents.length > 0) {
-          let { error: pErr } = await supabase.from('tasks').insert(parents);
-          if (pErr && /column .* does not exist|schema cache/.test(pErr.message || '')) {
-            const legacy = parents.map(({ pool, mentions, completed_at, description, ...rest }) => rest);
-            ({ error: pErr } = await supabase.from('tasks').insert(legacy));
-          }
-          if (pErr) { console.error('Tasks seed error (parents):', pErr.message); insertOk = false; }
-        }
-
-        if (insertOk && subtasks.length > 0) {
-          // Refetch to get real ids of inserted parents
-          const { data: now } = await supabase.from('tasks').select('id, name');
-          const nameToId = new Map((now || []).map(r => [r.name, r.id]));
-          const subRows = subtasks.map(({ id, ...rest }) => ({
-            ...rest,
-            parent_task_id: nameToId.get(rest.parent_task) || null,
-          }));
-          let { error: sErr } = await supabase.from('tasks').insert(subRows);
-          if (sErr && /column .* does not exist|schema cache/.test(sErr.message || '')) {
-            const legacy = subRows.map(({ pool, mentions, completed_at, description, parent_task_id, ...rest }) => rest);
-            ({ error: sErr } = await supabase.from('tasks').insert(legacy));
-          }
-          if (sErr) console.warn('Tasks seed error (subtasks):', sErr.message);
-        }
-
-        const refetch = await supabase.from('tasks').select('*').order('created_at', { ascending: true });
-        data = refetch.data;
-        error = refetch.error;
-      }
-    }
-
     if (error) {
       console.error('Tasks fetch error:', error.message);
-      // Hard fallback: show local demo data so the page is never empty
-      set({ tasks: fallbackTasks, tasksLoading: false });
+      set({ tasks: [], tasksLoading: false });
       return;
-    }
-
-    // Soft fallback: if DB returned fewer tasks than the demo set (e.g. because
-    // production DB doesn't have the seed and the seed insert failed silently),
-    // merge in any fallback tasks whose name isn't already present.
-    if ((data?.length || 0) < fallbackTasks.length) {
-      const existingNames = new Set((data || []).map(t => t.name));
-      const extras = fallbackTasks.filter(t => !existingNames.has(t.name));
-      data = [...(data || []), ...extras];
     }
 
     // Auto-mark overdue pending tasks as missed

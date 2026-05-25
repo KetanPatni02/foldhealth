@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { FALLBACK_KPIS, FALLBACK_TABLES } from '../../../data/analyticsFallbacks';
 import { KpiCard, InsightBanner, Card, ProgressBar, Tag, safeTableRows } from './shared';
 import s from '../AnalyticsLayout.module.css';
 
@@ -10,9 +9,8 @@ export function QualityView({ showToast }) {
   const fetchViewTable = useAppStore(st => st.fetchViewTable);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const fb = FALLBACK_KPIS.quality || { kpis: [], insight: null };
-  const [kpiData, setKpiData] = useState(fb);
-  const [qualityMeasures, setQualityMeasures] = useState(FALLBACK_TABLES.quality_measures);
+  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
+  const [qualityMeasures, setQualityMeasures] = useState({ columns: [], rows: [] });
   const [measureFilter, setMeasureFilter] = useState('All Measures');
 
   useEffect(() => {
@@ -20,9 +18,9 @@ export function QualityView({ showToast }) {
     fetchViewTable('quality', 'quality_measures').then(d => d && setQualityMeasures(d));
   }, [period]);
 
-  const kpis = kpiData?.kpis || fb.kpis || [];
-  const insight = kpiData?.insight || fb.insight;
-  const allMeasures = safeTableRows(qualityMeasures, (FALLBACK_TABLES.quality_measures || {}).rows);
+  const kpis = kpiData?.kpis || [];
+  const insight = kpiData?.insight || null;
+  const allMeasures = safeTableRows(qualityMeasures);
 
   const filterOptions = ['All Measures', 'HEDIS', 'Star Ratings', 'ACO CAHPS', 'ACO PC01'];
   const measures = measureFilter === 'All Measures'

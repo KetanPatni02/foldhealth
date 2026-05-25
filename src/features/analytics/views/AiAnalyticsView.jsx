@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { FALLBACK_KPIS, FALLBACK_TABLES, FALLBACK_CONFIGS } from '../../../data/analyticsFallbacks';
 import { KpiCard, InsightBanner, Card, safeTableRows, safeConfigData } from './shared';
 import s from '../AnalyticsLayout.module.css';
 
@@ -11,11 +10,10 @@ export function AiAnalyticsView({ showToast }) {
   const fetchViewTable = useAppStore(st => st.fetchViewTable);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const fb = FALLBACK_KPIS.aianalytics || { kpis: [], insight: null };
-  const [kpiData, setKpiData] = useState(fb);
-  const [nlqExamples, setNlqExamples] = useState(FALLBACK_CONFIGS.nlq_examples);
-  const [anomalies, setAnomalies] = useState(FALLBACK_CONFIGS.anomalies);
-  const [predictiveModels, setPredictiveModels] = useState(FALLBACK_TABLES.predictive_models);
+  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
+  const [nlqExamples, setNlqExamples] = useState({});
+  const [anomalies, setAnomalies] = useState({});
+  const [predictiveModels, setPredictiveModels] = useState({ columns: [], rows: [] });
 
   useEffect(() => {
     fetchViewKpis('aianalytics').then(d => d && setKpiData(d));
@@ -24,13 +22,13 @@ export function AiAnalyticsView({ showToast }) {
     fetchViewTable('aianalytics', 'predictive_models').then(d => d && setPredictiveModels(d));
   }, [period]);
 
-  const kpis = kpiData?.kpis || fb.kpis || [];
-  const insight = kpiData?.insight || fb.insight;
-  const safeNlq = safeConfigData(nlqExamples, FALLBACK_CONFIGS.nlq_examples);
-  const safeAnomalies = safeConfigData(anomalies, FALLBACK_CONFIGS.anomalies);
-  const examples = safeNlq.examples || (FALLBACK_CONFIGS.nlq_examples || {}).examples || [];
-  const anomalyList = safeAnomalies.anomalies || (FALLBACK_CONFIGS.anomalies || {}).anomalies || [];
-  const modelRows = safeTableRows(predictiveModels, (FALLBACK_TABLES.predictive_models || {}).rows);
+  const kpis = kpiData?.kpis || [];
+  const insight = kpiData?.insight || null;
+  const safeNlq = safeConfigData(nlqExamples);
+  const safeAnomalies = safeConfigData(anomalies);
+  const examples = safeNlq.examples || [];
+  const anomalyList = safeAnomalies.anomalies || [];
+  const modelRows = safeTableRows(predictiveModels);
 
   return (
     <>

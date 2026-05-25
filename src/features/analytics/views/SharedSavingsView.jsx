@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { FALLBACK_KPIS, FALLBACK_TABLES, FALLBACK_PROGRESS_BARS } from '../../../data/analyticsFallbacks';
 import { KpiCard, InsightBanner, Card, ProgressBar, safeBarItems, safeTableRows } from './shared';
 import { SavingsAreaChart } from './charts';
 import s from '../AnalyticsLayout.module.css';
@@ -12,10 +11,9 @@ export function SharedSavingsView({ showToast }) {
   const fetchProgressBars = useAppStore(st => st.fetchProgressBars);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const fb = FALLBACK_KPIS.shared || { kpis: [], insight: null };
-  const [kpiData, setKpiData] = useState(fb);
-  const [keyLevers, setKeyLevers] = useState(FALLBACK_TABLES.key_levers);
-  const [qualityComposite, setQualityComposite] = useState(FALLBACK_PROGRESS_BARS.quality_composite);
+  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
+  const [keyLevers, setKeyLevers] = useState({ columns: [], rows: [] });
+  const [qualityComposite, setQualityComposite] = useState([]);
 
   useEffect(() => {
     fetchViewKpis('shared').then(d => d && setKpiData(d));
@@ -23,9 +21,9 @@ export function SharedSavingsView({ showToast }) {
     fetchProgressBars('shared', 'quality_composite').then(d => d && setQualityComposite(d));
   }, [period]);
 
-  const kpis = kpiData?.kpis || fb.kpis || [];
-  const insight = kpiData?.insight || fb.insight;
-  const leverRows = safeTableRows(keyLevers, (FALLBACK_TABLES.key_levers || {}).rows);
+  const kpis = kpiData?.kpis || [];
+  const insight = kpiData?.insight || null;
+  const leverRows = safeTableRows(keyLevers);
   const compositeItems = safeBarItems(qualityComposite);
 
   const savingsData = [0, 0.1, 0.2, 0.35, 0.5, 0.62, 0.75, 0.9, 1.0, 1.1, 1.2, 1.32];

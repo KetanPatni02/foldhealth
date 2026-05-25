@@ -4,7 +4,6 @@ import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { FALLBACK_KPIS, FALLBACK_TIME_SERIES, FALLBACK_TABLES, FALLBACK_PROGRESS_BARS, FALLBACK_CONFIGS } from '../../../data/analyticsFallbacks';
 import { Toggle } from '../../../components/Toggle/Toggle';
 import { KpiCard, InsightBanner, Card, ProgressBar, GhostBtn, safeTableRows, safeBarItems } from './shared';
 import { TcocLineChart, SavingsAreaChart } from './charts';
@@ -62,16 +61,15 @@ export function ExecutiveView({ showToast, editing = false, resetTick = 0 }) {
   const period = useAppStore(st => st.analyticsPeriod);
   const periodMode = useAppStore(st => st.analyticsPeriodMode);
 
-  const fb = FALLBACK_KPIS.executive || { kpis: [], insight: null };
-  const [kpiData, setKpiData] = useState(fb);
-  const [tcocData, setTcocData] = useState(FALLBACK_TIME_SERIES);
-  const [costData, setCostData] = useState(FALLBACK_TABLES.cost_by_setting_benchmark);
-  const [qualitySummary, setQualitySummary] = useState(FALLBACK_PROGRESS_BARS.executive_quality_summary);
+  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
+  const [tcocData, setTcocData] = useState({});
+  const [costData, setCostData] = useState({ columns: [], rows: [] });
+  const [qualitySummary, setQualitySummary] = useState([]);
   const [tcocTab, setTcocTab] = useState('all');
   const [tcocMode, setTcocMode] = useState('pmpm');
-  const [costInlineData, setCostInlineData] = useState(FALLBACK_CONFIGS.exec_cost_by_setting_inline);
-  const [savingsData, setSavingsData] = useState(FALLBACK_CONFIGS.exec_savings_trajectory);
-  const [careProgramData, setCareProgramData] = useState(FALLBACK_CONFIGS.exec_care_programs);
+  const [costInlineData, setCostInlineData] = useState({});
+  const [savingsData, setSavingsData] = useState({});
+  const [careProgramData, setCareProgramData] = useState({});
 
   // ── Editable layout state ───────────────────────────────────────────
   // `editing` is controlled by AnalyticsLayout (which renders the
@@ -115,9 +113,9 @@ export function ExecutiveView({ showToast, editing = false, resetTick = 0 }) {
     fetchConfig('exec_care_programs').then(d => d && setCareProgramData(d));
   }, [period, periodMode]);
 
-  const kpis = kpiData?.kpis || fb.kpis || [];
-  const insight = kpiData?.insight || fb.insight;
-  const costRows = safeTableRows(costData, (FALLBACK_TABLES.cost_by_setting_benchmark || {}).rows);
+  const kpis = kpiData?.kpis || [];
+  const insight = kpiData?.insight || null;
+  const costRows = safeTableRows(costData);
   const qualityItems = safeBarItems(qualitySummary);
 
   const qualFallback = qualityItems.length > 0 ? qualityItems : [
@@ -128,14 +126,14 @@ export function ExecutiveView({ showToast, editing = false, resetTick = 0 }) {
     { label: 'Depression Screening', value: '83%', pct: 83, color: 'green', sub: 'Target 80% ✓' },
   ];
 
-  const costBySettingInline = costInlineData?.items || FALLBACK_CONFIGS.exec_cost_by_setting_inline?.items || [];
+  const costBySettingInline = costInlineData?.items || [];
 
-  const rawSavings = savingsData?.data_points || FALLBACK_CONFIGS.exec_savings_trajectory?.data_points || [];
+  const rawSavings = savingsData?.data_points || [];
   const savingsTrajectory = periodMode === 'r12'
     ? rawSavings.map(v => v != null ? +(v * 1.15).toFixed(2) : null)
     : rawSavings;
 
-  const carePrograms = careProgramData?.rows || FALLBACK_CONFIGS.exec_care_programs?.rows || [];
+  const carePrograms = careProgramData?.rows || [];
 
   const periodLabel = periodMode === 'ytd' ? 'YTD 2025' : 'Rolling 12M';
 

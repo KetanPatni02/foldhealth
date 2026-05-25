@@ -1,5 +1,16 @@
 @import './tokens/tokens.css';
 
+/* Self-hosted Inter (Latin variable). Replaces the Google Fonts <link> in
+   index.html — bundled with the app so first paint doesn't wait on a
+   fonts.googleapis.com round-trip. Single woff2 covers weights 100–900. */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('@fontsource-variable/inter/files/inter-latin-wght-normal.woff2') format('woff2-variations');
+}
+
 /* NOTE: Tailwind CSS 4 preflight handles box-sizing/margin/padding reset in @layer base.
    Do NOT add an unlayered * reset here — it would override Tailwind utility classes. */
 

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { FALLBACK_KPIS, FALLBACK_TABLES, FALLBACK_PROGRESS_BARS } from '../../../data/analyticsFallbacks';
 import { KpiCard, InsightBanner, Card, ProgressBar, safeBarItems, safeTableRows } from './shared';
 import { ReadmitTrendLineChart } from './charts';
 import s from '../AnalyticsLayout.module.css';
@@ -12,10 +11,9 @@ export function UtilizationView({ showToast }) {
   const fetchProgressBars = useAppStore(st => st.fetchProgressBars);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const fb = FALLBACK_KPIS.utilization || { kpis: [], insight: null };
-  const [kpiData, setKpiData] = useState(fb);
-  const [readmissionByDrg, setReadmissionByDrg] = useState(FALLBACK_TABLES.readmission_by_drg);
-  const [tcmImpact, setTcmImpact] = useState(FALLBACK_PROGRESS_BARS.tcm_impact);
+  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
+  const [readmissionByDrg, setReadmissionByDrg] = useState({ columns: [], rows: [] });
+  const [tcmImpact, setTcmImpact] = useState([]);
 
   useEffect(() => {
     fetchViewKpis('utilization').then(d => d && setKpiData(d));
@@ -23,9 +21,9 @@ export function UtilizationView({ showToast }) {
     fetchProgressBars('utilization', 'tcm_impact').then(d => d && setTcmImpact(d));
   }, [period]);
 
-  const kpis = kpiData?.kpis || fb.kpis || [];
-  const insight = kpiData?.insight || fb.insight;
-  const drgRows = safeTableRows(readmissionByDrg, (FALLBACK_TABLES.readmission_by_drg || {}).rows);
+  const kpis = kpiData?.kpis || [];
+  const insight = kpiData?.insight || null;
+  const drgRows = safeTableRows(readmissionByDrg);
   const tcmItems = safeBarItems(tcmImpact);
 
   // Fallback TCM items if not from DB

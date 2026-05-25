@@ -1,50 +1,61 @@
+import { lazy, Suspense, useEffect } from 'react';
 import { Sidebar } from '../components/Sidebar/Sidebar';
-import { PatientDetailView } from '../features/patient/PatientDetailView';
-import { CalendarView as CalendarPageView } from '../features/calendar/CalendarView';
 import { SubNav } from '../components/SubNav/SubNav';
 import { TopBar } from '../components/TopBar/TopBar';
 import { TabBar } from '../components/TabBar/TabBar';
 import { FilterBar } from '../components/FilterBar/FilterBar';
 import { Pagination } from '../components/Pagination/Pagination';
-import { WorkflowPanel } from '../components/WorkflowPanel/WorkflowPanel';
 import { ActiveCallCard } from '../components/ActiveCallCard/ActiveCallCard';
-import { CallPopover } from '../components/CallPopover/CallPopover';
 import { InvokeAgentModal } from '../components/InvokeAgentModal/InvokeAgentModal';
-import { DetailDrawer } from '../components/DetailDrawer/DetailDrawer';
-import { LiveDrawer } from '../components/LiveDrawer/LiveDrawer';
-import { SystemHealthStrip } from '../components/SystemHealthStrip/SystemHealthStrip';
 import { DegradedBanner } from '../components/DegradedBanner/DegradedBanner';
-import { GoalDetailDrawer } from '../features/settings/panels/GoalDetailDrawer';
-import { GoalWizardDrawer } from '../features/settings/panels/GoalWizardDrawer';
-import { GroupDetailDrawer } from '../features/settings/panels/GroupDetailDrawer';
-import { AgentRulesDrawer } from '../features/settings/panels/AgentRulesDrawer';
-import { BusinessHoursDrawer } from '../features/settings/panels/BusinessHoursDrawer';
-import { ComponentWizardDrawer } from '../features/settings/panels/ComponentWizardDrawer';
 import { WorklistTable } from '../features/toc-worklist/WorklistTable';
 import { QueueTable } from '../features/toc-queue/QueueTable';
 import { QueueSummaryBar } from '../features/toc-queue/QueueSummaryBar';
 import { HccWorklistTable } from '../features/hcc/HccWorklistTable';
 import { AllPatientsTable } from '../features/all-patients/AllPatientsTable';
 import { SchedulingListTable } from '../features/scheduling-list/SchedulingListTable';
-import { DiagPanel } from '../features/hcc/DiagPanel/DiagPanel';
-import { UploadChartDrawer } from '../features/hcc/UploadChartDrawer';
-import { QuickViewDrawer } from '../components/QuickViewDrawer/QuickViewDrawer';
 import { Icon } from '../components/Icon/Icon';
-import { SettingsLayout } from '../features/settings/SettingsLayout';
-import { CreateAgentDrawer } from '../features/settings/CreateAgentDrawer';
-import { AgentCanvas } from '../features/agent-builder/AgentCanvas';
-import { AnalyticsLayout } from '../features/analytics/AnalyticsLayout';
-import { HomeView } from '../features/home/HomeView';
-import { MessagesView } from '../features/messages/MessagesView';
-import { CallsView } from '../features/calls/CallsView';
-import { TasksView } from '../features/tasks/TasksView';
-import { CampaignView } from '../features/campaign/CampaignView';
-import { EmailBuilder } from '../features/email-builder/EmailBuilder';
-import { CampaignBuilder } from '../features/campaign/CampaignBuilder';
-import { useEffect } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { supabase } from '../lib/supabase';
 import styles from './AppLayout.module.css';
+
+// Lazy-loaded features. These pull in heavy deps (recharts, @xyflow, @schedule-x,
+// @usewaypoint/email-builder, react-grid-layout) and are not used on the default
+// landing view, so they should not be in the entry chunk.
+const lz = (importer, name) => lazy(() => importer().then(m => ({ default: m[name] })));
+
+const PatientDetailView = lz(() => import('../features/patient/PatientDetailView'), 'PatientDetailView');
+const CalendarPageView  = lz(() => import('../features/calendar/CalendarView'),     'CalendarView');
+const HomeView          = lz(() => import('../features/home/HomeView'),             'HomeView');
+const MessagesView      = lz(() => import('../features/messages/MessagesView'),     'MessagesView');
+const CallsView         = lz(() => import('../features/calls/CallsView'),           'CallsView');
+const TasksView         = lz(() => import('../features/tasks/TasksView'),           'TasksView');
+const CampaignView      = lz(() => import('../features/campaign/CampaignView'),     'CampaignView');
+const AnalyticsLayout   = lz(() => import('../features/analytics/AnalyticsLayout'), 'AnalyticsLayout');
+const SettingsLayout    = lz(() => import('../features/settings/SettingsLayout'),   'SettingsLayout');
+const AgentCanvas       = lz(() => import('../features/agent-builder/AgentCanvas'), 'AgentCanvas');
+const EmailBuilder      = lz(() => import('../features/email-builder/EmailBuilder'), 'EmailBuilder');
+const CampaignBuilder   = lz(() => import('../features/campaign/CampaignBuilder'),  'CampaignBuilder');
+
+// Drawers and overlays — only mounted when their state is truthy, so lazy here
+// keeps them out of the entry chunk entirely.
+const WorkflowPanel        = lz(() => import('../components/WorkflowPanel/WorkflowPanel'),                 'WorkflowPanel');
+const CallPopover          = lz(() => import('../components/CallPopover/CallPopover'),                     'CallPopover');
+const DetailDrawer         = lz(() => import('../components/DetailDrawer/DetailDrawer'),                   'DetailDrawer');
+const LiveDrawer           = lz(() => import('../components/LiveDrawer/LiveDrawer'),                       'LiveDrawer');
+const QuickViewDrawer      = lz(() => import('../components/QuickViewDrawer/QuickViewDrawer'),             'QuickViewDrawer');
+const CreateAgentDrawer    = lz(() => import('../features/settings/CreateAgentDrawer'),                    'CreateAgentDrawer');
+const GoalDetailDrawer     = lz(() => import('../features/settings/panels/GoalDetailDrawer'),              'GoalDetailDrawer');
+const GoalWizardDrawer     = lz(() => import('../features/settings/panels/GoalWizardDrawer'),              'GoalWizardDrawer');
+const GroupDetailDrawer    = lz(() => import('../features/settings/panels/GroupDetailDrawer'),             'GroupDetailDrawer');
+const AgentRulesDrawer     = lz(() => import('../features/settings/panels/AgentRulesDrawer'),              'AgentRulesDrawer');
+const BusinessHoursDrawer  = lz(() => import('../features/settings/panels/BusinessHoursDrawer'),           'BusinessHoursDrawer');
+const ComponentWizardDrawer= lz(() => import('../features/settings/panels/ComponentWizardDrawer'),         'ComponentWizardDrawer');
+const DiagPanel            = lz(() => import('../features/hcc/DiagPanel/DiagPanel'),                       'DiagPanel');
+const UploadChartDrawer    = lz(() => import('../features/hcc/UploadChartDrawer'),                         'UploadChartDrawer');
+
+// Placeholder while a lazy chunk is in flight. Empty div keeps layout stable.
+const LazyFallback = () => <div style={{ flex: 1 }} />;
 
 function ComingSoonState({ listName }) {
   return (
@@ -117,7 +128,9 @@ function PopulationView() {
       <div className={styles.main}>
         <TopBar />
         <div className={styles.content}>
-          <PatientDetailView />
+          <Suspense fallback={<LazyFallback />}>
+            <PatientDetailView />
+          </Suspense>
         </div>
       </div>
     );
@@ -161,7 +174,9 @@ function SettingsView() {
     <div className={styles.main}>
       <TopBar />
       <div className={styles.content}>
-        <SettingsLayout />
+        <Suspense fallback={<LazyFallback />}>
+          <SettingsLayout />
+        </Suspense>
       </div>
     </div>
   );
@@ -172,7 +187,9 @@ function AnalyticsView() {
     <div className={styles.main}>
       <TopBar />
       <div className={styles.content}>
-        <AnalyticsLayout />
+        <Suspense fallback={<LazyFallback />}>
+          <AnalyticsLayout />
+        </Suspense>
       </div>
     </div>
   );
@@ -183,7 +200,9 @@ function CalendarViewPage() {
     <div className={styles.main}>
       <TopBar />
       <div className={styles.content}>
-        <CalendarPageView />
+        <Suspense fallback={<LazyFallback />}>
+          <CalendarPageView />
+        </Suspense>
       </div>
     </div>
   );
@@ -321,7 +340,9 @@ export function AppLayout() {
     return (
       <div className={styles.app}>
         <Sidebar />
-        <EmailBuilder />
+        <Suspense fallback={<LazyFallback />}>
+          <EmailBuilder />
+        </Suspense>
         <Toast />
       </div>
     );
@@ -333,7 +354,9 @@ export function AppLayout() {
     return (
       <div className={styles.app}>
         <Sidebar />
-        <CampaignBuilder />
+        <Suspense fallback={<LazyFallback />}>
+          <CampaignBuilder />
+        </Suspense>
         <Toast />
       </div>
     );
@@ -344,34 +367,52 @@ export function AppLayout() {
     return (
       <div className={styles.app}>
         <Sidebar />
-        <AgentCanvas />
+        <Suspense fallback={<LazyFallback />}>
+          <AgentCanvas />
+        </Suspense>
         <Toast />
       </div>
     );
   }
 
+  // Wraps the active page in a single Suspense boundary so chart/grid/canvas
+  // chunks load without dropping the whole shell. PopulationView is eager
+  // (default landing area) so its fallback is a no-op.
+  const activeView = activePage === 'home' ? <HomeView />
+    : activePage === 'messages' ? <MessagesView />
+    : activePage === 'calls' ? <CallsView />
+    : activePage === 'tasks' ? <TasksView />
+    : activePage === 'analytics' ? <AnalyticsView />
+    : activePage === 'settings' ? <SettingsView />
+    : activePage === 'calendar' ? <CalendarViewPage />
+    : activePage === 'campaign' ? <CampaignView />
+    : <PopulationView />;
 
   return (
     <div className={styles.app}>
       <Sidebar />
-      {activePage === 'home' ? <HomeView /> : activePage === 'messages' ? <MessagesView /> : activePage === 'calls' ? <CallsView /> : activePage === 'tasks' ? <TasksView /> : activePage === 'analytics' ? <AnalyticsView /> : activePage === 'settings' ? <SettingsView /> : activePage === 'calendar' ? <CalendarViewPage /> : activePage === 'campaign' ? <CampaignView /> : <PopulationView />}
+      <Suspense fallback={<LazyFallback />}>
+        {activeView}
+      </Suspense>
 
-      {showCreateAgent && <CreateAgentDrawer />}
-      {workflowPatient && <WorkflowPanel />}
-      {callPopoverPatient && <CallPopover />}
-      <ActiveCallCard />
-      <InvokeAgentModal />
-      {detailPatient && <DetailDrawer />}
-      {liveDrawerPatient && <LiveDrawer />}
-      {goalDetailId && <GoalDetailDrawer />}
-      {goalWizardOpen && <GoalWizardDrawer />}
-      {componentWizardOpen && <ComponentWizardDrawer />}
-      {chatGroupDetailId && <GroupDetailDrawer />}
-      {agentRulesGroupId && <AgentRulesDrawer />}
-      {businessHoursOpen && <BusinessHoursDrawer />}
-      {diagPanelOpen && <DiagPanel />}
-      <UploadChartDrawer />{/* mounts itself only when hccUploadMember is set */}
-      {quickViewPatient && <QuickViewDrawer />}
+      <Suspense fallback={null}>
+        {showCreateAgent && <CreateAgentDrawer />}
+        {workflowPatient && <WorkflowPanel />}
+        {callPopoverPatient && <CallPopover />}
+        <ActiveCallCard />
+        <InvokeAgentModal />
+        {detailPatient && <DetailDrawer />}
+        {liveDrawerPatient && <LiveDrawer />}
+        {goalDetailId && <GoalDetailDrawer />}
+        {goalWizardOpen && <GoalWizardDrawer />}
+        {componentWizardOpen && <ComponentWizardDrawer />}
+        {chatGroupDetailId && <GroupDetailDrawer />}
+        {agentRulesGroupId && <AgentRulesDrawer />}
+        {businessHoursOpen && <BusinessHoursDrawer />}
+        {diagPanelOpen && <DiagPanel />}
+        <UploadChartDrawer />{/* mounts itself only when hccUploadMember is set */}
+        {quickViewPatient && <QuickViewDrawer />}
+      </Suspense>
       <Toast />
       <ToastSuccess />
     </div>
