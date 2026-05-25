@@ -493,3 +493,44 @@
      edit-mode border hugs each card's actual content rather than stretching
      to fill the grid cell. */
 }
+
+/* ── Shimmer / skeleton loaders ─────────────────────────────────
+   Drop-in placeholders used by the analytics views while Supabase
+   data is in flight. Single keyframe; per-shape sizes come from
+   the React components in shared.jsx. */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--neutral-100) 0%,
+    var(--neutral-150) 50%,
+    var(--neutral-100) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 4px;
+}
+.skeletonKpi {
+  height: 86px;
+  border: 0.5px solid var(--neutral-100);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.skeletonRow {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.skeletonChart {
+  height: 180px;
+  display: flex; align-items: flex-end; gap: 6px;
+  padding: 16px 14px 4px;
+}
+.skeletonBar {
+  flex: 1;
+  border-radius: 4px 4px 0 0;
+}
