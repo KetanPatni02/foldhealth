@@ -18,7 +18,6 @@ import * as hccLifecycle from '../features/hcc/assignment/lifecycle';
 import { hydrateFromMember, dosKey as hccDosKey } from '../features/hcc/assignment/dosState';
 import { DEFAULT_SAMPLING_RATES } from '../features/hcc/assignment/sampling';
 import { staffById as hccStaffById } from '../features/hcc/assignment/astranaStaff';
-import { HEDIS_MEMBERS } from '../features/hedis-worklist/data/mock';
 
 function parseTaskDateStr(str) {
   if (!str || typeof str !== 'string') return null;
@@ -352,8 +351,8 @@ export const useAppStore = create((set, get) => ({
   activeFilters: {},  // { gender: 'F', language: 'es', lace: 'High', ... }
   activeSubnavList: 'TOC',  // which SubNav list is selected
 
-  // HEDIS worklist
-  hedisMembers: HEDIS_MEMBERS,
+  // HEDIS worklist state lives at line ~1558 (caregapActivity, hedisMembers,
+  // setHedisMembers, updateGapStatus, etc.) — defined by upstream.
 
   // Call Details
   _allCallDetails: [],   // full sorted dataset (DB + supplemental local)
