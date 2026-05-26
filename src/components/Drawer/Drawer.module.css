@@ -51,7 +51,7 @@
 .headerRight {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
@@ -67,6 +67,15 @@
   justify-content: center;
   line-height: 1;
   transition: background .15s, color .15s;
+}
+
+/* Vertical divider between primary action and close — only renders when
+   closeBtn has a sibling (i.e. headerRight has an action), so drawers
+   without a headerRight action stay unaffected. */
+.headerRight > .closeBtn:not(:only-child) {
+  border-left: 1px solid var(--neutral-100);
+  padding-left: 12px;
+  margin-left: 4px;
 }
 .closeBtn:hover {
   background: var(--neutral-100);

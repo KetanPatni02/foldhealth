@@ -1,0 +1,97 @@
+/* ── Billing Panel — tab bar mirrors AccountPanel for visual parity ── */
+
+.wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--neutral-0);
+}
+
+/* Tab bar */
+.tabBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+.tab {
+  padding: 10px 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap;
+  transition: color .12s;
+}
+.tab:hover { color: var(--neutral-400); }
+.tabActive {
+  color: var(--primary-300);
+  border-bottom-color: var(--primary-300);
+}
+
+.tabActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.searchWrap {
+  display: flex;
+  align-items: center;
+}
+
+.searchInput {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0.5px solid var(--primary-300);
+  border-radius: 6px;
+  padding: 0 10px;
+  height: 36px;
+  width: 220px;
+  background: var(--neutral-0);
+}
+.searchInput input {
+  border: none;
+  outline: none;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-400);
+  flex: 1;
+  background: transparent;
+}
+.searchInput input::placeholder { color: var(--neutral-200); }
+
+.searchClose {
+  background: none;
+  border: none;
+  color: var(--neutral-300);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+/* Content area fills remaining height */
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
