@@ -9,6 +9,9 @@
 .rowChecked { background: var(--primary-50); }
 .rowChecked .stickyLeft { background: var(--primary-50) !important; }
 .rowChecked .stickyRight { background: var(--primary-50); }
+.rowActive { background: var(--primary-100); }
+.rowActive .stickyLeft { background: var(--primary-100) !important; }
+.rowActive .stickyRight { background: var(--primary-100); }
 
 /* Sticky positioning */
 .stickyLeft {
@@ -26,6 +29,11 @@
 }
 .stickyCheck { left: 0; }
 .stickyMember { left: 36px; }
+
+/* Active (drawer open) left-edge accent on check cell */
+.checkTdActive {
+  box-shadow: inset 2px 0 0 0 var(--primary-300);
+}
 
 /* Cells */
 .checkTd { padding: 8px 10px; vertical-align: middle; }
@@ -54,30 +62,37 @@
   max-width: 260px;
 }
 
+/* Em dash placeholder */
+.emDash { font-size: 12px; color: var(--neutral-200); }
+
 /* Member cell */
 .patientCell { display: flex; align-items: center; gap: 10px; }
 .patientInfo { display: flex; flex-direction: column; gap: 2px; }
-.patientName { font-size: 13px; font-weight: 500; color: var(--neutral-400); white-space: nowrap; }
-.patientId { font-size: 12px; color: var(--neutral-300); }
+.patientName { font-size: 14px; font-weight: 500; color: var(--neutral-400); white-space: nowrap; }
+.patientId { font-size: 13px; color: var(--neutral-300); }
+
+/* Language badge — plain text button style (matches TOC worklist) */
 .langBadge {
   position: relative;
   display: inline-flex;
   align-items: center;
-  padding: 1px 5px;
-  background: var(--primary-100);
-  color: var(--primary-300);
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-  border: 0.5px solid color-mix(in srgb, var(--primary-300) 20%, transparent);
+  padding: 0;
+  background: transparent;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
   cursor: default;
   width: fit-content;
+  text-transform: uppercase;
+  letter-spacing: .04em;
 }
+.langBadge:hover { color: var(--primary-300); text-decoration: underline; }
+
 .langTooltip {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 6px);
   left: 0;
   white-space: nowrap;
   padding: 5px 8px;
@@ -85,14 +100,23 @@
   font-weight: 400;
   letter-spacing: normal;
   text-transform: none;
-  background: var(--neutral-400);
+  background: var(--neutral-500);
   color: var(--neutral-0);
   border-radius: 5px;
-  box-shadow: 0 4px 12px rgba(0,0,0,.12);
+  box-shadow: 0 4px 12px rgba(0,0,0,.14);
   opacity: 0;
   pointer-events: none;
   transition: opacity .15s;
   z-index: 10;
+}
+/* Arrow */
+.langTooltip::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 8px;
+  border: 4px solid transparent;
+  border-bottom-color: var(--neutral-500);
 }
 .langBadge:hover .langTooltip { opacity: 1; }
 
@@ -162,7 +186,6 @@
 }
 .reasonIcon { flex-shrink: 0; margin-top: 1px; }
 
-/* Title-only label — full description moves to tooltip */
 .reasonTitleWrap {
   position: relative;
   display: inline-flex;
@@ -181,8 +204,6 @@
   color: var(--primary-300);
   white-space: normal;
 }
-
-/* Tooltip — shown on hover over the title */
 .reasonTooltip {
   position: absolute;
   left: 0;
@@ -251,7 +272,6 @@
   white-space: nowrap;
 }
 .actionsBtns { display: flex; align-items: center; gap: 0; }
-
 .actionDivider {
   width: 1px;
   height: 16px;

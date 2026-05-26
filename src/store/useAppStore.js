@@ -18,6 +18,7 @@ import * as hccLifecycle from '../features/hcc/assignment/lifecycle';
 import { hydrateFromMember, dosKey as hccDosKey } from '../features/hcc/assignment/dosState';
 import { DEFAULT_SAMPLING_RATES } from '../features/hcc/assignment/sampling';
 import { staffById as hccStaffById } from '../features/hcc/assignment/astranaStaff';
+import { HEDIS_MEMBERS } from '../features/hedis-worklist/data/mock';
 
 function parseTaskDateStr(str) {
   if (!str || typeof str !== 'string') return null;
@@ -350,6 +351,9 @@ export const useAppStore = create((set, get) => ({
   // Filters
   activeFilters: {},  // { gender: 'F', language: 'es', lace: 'High', ... }
   activeSubnavList: 'TOC',  // which SubNav list is selected
+
+  // HEDIS worklist
+  hedisMembers: HEDIS_MEMBERS,
 
   // Call Details
   _allCallDetails: [],   // full sorted dataset (DB + supplemental local)

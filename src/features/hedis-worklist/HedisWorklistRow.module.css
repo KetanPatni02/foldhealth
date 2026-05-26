@@ -1,0 +1,161 @@
+.row {
+  border-bottom: 1px solid var(--neutral-150);
+  transition: background .1s;
+  cursor: pointer;
+}
+.row:hover { background: var(--primary-25); }
+.row:hover .stickyRight { background: var(--primary-25); }
+.row:hover .stickyLeft { background: var(--primary-25) !important; }
+.rowChecked { background: var(--primary-50); }
+.rowChecked .stickyLeft { background: var(--primary-50) !important; }
+.rowChecked .stickyRight { background: var(--primary-50); }
+
+.stickyLeft {
+  position: sticky;
+  background: var(--neutral-0);
+  z-index: 3;
+}
+.stickyRight {
+  position: sticky;
+  right: 0;
+  background: var(--neutral-0);
+  border-left: 1px solid var(--neutral-150);
+  box-shadow: -2px 0 6px rgba(0,0,0,.04);
+  z-index: 3;
+}
+.stickyCheck { left: 0; }
+.stickyMember { left: 36px; }
+
+.checkTd { padding: 8px 10px; vertical-align: middle; }
+.memberTd {
+  padding: 8px 12px;
+  border-right: 1px solid var(--neutral-150);
+  vertical-align: middle;
+  min-width: 220px;
+}
+.td {
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-400);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.tdMuted {
+  padding: 8px 14px;
+  font-size: 14px;
+  color: var(--neutral-200);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* Member cell */
+.patientCell { display: flex; align-items: center; gap: 12px; }
+.patientName { font-size: 14px; font-weight: 500; color: var(--neutral-400); white-space: nowrap; }
+.patientNameLink {
+  background: none; border: none; padding: 0;
+  font: inherit; color: inherit; cursor: pointer; font-weight: 500;
+}
+.patientNameLink:hover { color: var(--primary-300); text-decoration: underline; }
+.patientDemo { font-size: 13px; font-weight: 400; color: var(--neutral-300); }
+.patientMeta { font-size: 13px; color: var(--neutral-200); margin-top: 3px; }
+
+.langBadge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  background: var(--primary-100);
+  color: var(--primary-300);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  border: 0.5px solid color-mix(in srgb, var(--primary-300) 20%, transparent);
+  cursor: default;
+}
+.langTooltip {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  white-space: nowrap;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  background: var(--neutral-400);
+  color: var(--neutral-0);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s;
+  z-index: 10;
+}
+.langBadge:hover .langTooltip { opacity: 1; }
+
+/* Total Gaps cell list */
+.gapList { display: flex; gap: 4px; flex-wrap: wrap; }
+
+/* Gap status */
+.gapStatusCell { display: flex; flex-direction: column; gap: 2px; }
+.gapStatusLine { font-size: 13px; color: var(--neutral-300); white-space: nowrap; }
+.gapStatusCode { font-weight: 500; color: var(--neutral-400); }
+.gapStatusOpen { color: var(--status-warning); font-weight: 500; }
+.gapStatusClosed { color: var(--status-success); font-weight: 500; }
+.gapStatusExcluded { color: var(--neutral-200); font-weight: 500; }
+
+/* Outreach cell — lifted from src/features/toc-worklist/WorklistRow.module.css */
+.outreachWl { display: flex; flex-direction: column; gap: 4px; }
+.outreachWlMain { display: flex; align-items: center; gap: 6px; }
+.outreachWlText { font-size: 13px; color: var(--neutral-400); }
+.outreachWlDate { font-size: 12px; color: var(--status-success); font-weight: 500; }
+.outreachWlDateMuted { font-size: 12px; color: var(--neutral-200); }
+.outreachWlFailed { font-size: 13px; color: var(--status-error); font-weight: 500; }
+.outreachWlNone { font-size: 13px; color: var(--neutral-200); }
+.dotsRow { display: flex; align-items: center; gap: 4px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; }
+.dot.success { background: var(--status-success); }
+.dot.failed { background: var(--status-error); }
+.dot.pending { background: var(--neutral-150); }
+
+/* Assignee cell */
+.assigneeCell { display: flex; flex-direction: column; gap: 2px; }
+.assigneeCode { font-size: 12px; color: var(--neutral-300); font-weight: 500; }
+.assigneeName { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--neutral-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+.assigneeBtn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: 5px;
+  border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  font-size: 12px; font-weight: 500; color: var(--neutral-300);
+  cursor: pointer; font-family: 'Inter', sans-serif;
+}
+.assigneeBtn:hover { border-color: var(--primary-300); color: var(--primary-300); }
+
+/* Start date cell */
+.startDateCell { display: flex; flex-direction: column; gap: 2px; }
+.startDateCode { font-size: 12px; color: var(--neutral-300); font-weight: 500; }
+.startDateValue { font-size: 13px; color: var(--neutral-400); white-space: nowrap; }
+
+/* Numeric cells */
+.numText { font-size: 14px; color: var(--neutral-400); font-variant-numeric: tabular-nums; }
+.muted { color: var(--neutral-200); font-size: 14px; }
+
+/* Risk level */
+.riskBadge {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 4px;
+  font-size: 12px; font-weight: 500;
+  border: 0.5px solid transparent; white-space: nowrap;
+}
+
+/* Actions cell */
+.actionsCell {
+  padding: 8px 12px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.actionsBtns { display: flex; align-items: center; gap: 4px; }
