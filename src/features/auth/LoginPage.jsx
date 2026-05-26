@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { track } from '../../lib/tracking';
 import { Input } from '../../components/Input/Input';
@@ -7,8 +7,15 @@ import { Icon } from '../../components/Icon/Icon';
 import loginHero from '../../assets/login-hero.png';
 import styles from './LoginPage.module.css';
 
+// Cooldown between transactional email sends (reset password / resend
+// verification). Supabase's own rate limit is similar, but we surface
+// this in the UI so users get a visible countdown rather than a silent
+// failure.
+const RESEND_COOLDOWN_SECONDS = 30;
+
 export function LoginPage({ onBypass }) {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -18,20 +25,96 @@ export function LoginPage({ onBypass }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  // Tracks which email address has been confirmed-as-unverified by the
+  // server. Set when signInWithPassword returns "Email not confirmed";
+  // surfacing it lets us show an inline "Resend verification" action.
+  const [unverifiedEmail, setUnverifiedEmail] = useState('');
+  // Cooldown shared by reset-password + resend-verification sends.
+  const [cooldown, setCooldown] = useState(0);
+
+  // Tick the countdown timer once per second while a cooldown is active.
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = setInterval(() => setCooldown(c => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(id);
+  }, [cooldown]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) { setError('Please enter email and password'); return; }
     setLoading(true);
     setError('');
+    setUnverifiedEmail('');
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
     if (authError) {
       track('auth.login_failed', { method: 'password', reason: authError.message || 'unknown' });
-      setError(authError.message === 'Invalid login credentials' ? 'Invalid email or password' : authError.message);
+      // Supabase returns "Email not confirmed" when the account exists but
+      // the user hasn't clicked their verification link yet. Surface a
+      // dedicated "Resend verification email" affordance instead of the
+      // generic error so they can recover without contacting support.
+      const isUnverified = /email not confirmed/i.test(authError.message || '');
+      if (isUnverified) {
+        setUnverifiedEmail(email.trim());
+        setError('');
+      } else {
+        setError(authError.message === 'Invalid login credentials' ? 'Invalid email or password' : authError.message);
+      }
     } else {
       track('auth.login_succeeded', { method: 'password' });
     }
     setLoading(false);
+  };
+
+  const handleForgotPassword = async (e) => {
+    e?.preventDefault?.();
+    if (!email.trim()) { setError('Please enter your email'); return; }
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    const { error: authError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/#/reset-password`,
+    });
+    if (authError) {
+      track('auth.password_reset_failed', { reason: authError.message || 'unknown' });
+      setError(authError.message);
+    } else {
+      track('auth.password_reset_email_sent');
+      setSuccess(`Reset link sent to ${email.trim()}. Check your inbox.`);
+      setCooldown(RESEND_COOLDOWN_SECONDS);
+    }
+    setLoading(false);
+  };
+
+  const handleResendVerification = async () => {
+    const target = (unverifiedEmail || email).trim();
+    if (!target) return;
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    const { error: authError } = await supabase.auth.resend({ type: 'signup', email: target });
+    if (authError) {
+      track('auth.verification_email_failed', { reason: authError.message || 'unknown' });
+      setError(authError.message);
+    } else {
+      track('auth.verification_email_sent');
+      setSuccess(`Verification email sent to ${target}. Check your inbox.`);
+      setCooldown(RESEND_COOLDOWN_SECONDS);
+    }
+    setLoading(false);
+  };
+
+  const enterForgotMode = () => {
+    setForgotMode(true);
+    setError('');
+    setSuccess('');
+    setUnverifiedEmail('');
+    setCooldown(0);
+  };
+  const exitForgotMode = () => {
+    setForgotMode(false);
+    setError('');
+    setSuccess('');
+    setCooldown(0);
   };
 
   const handleSignUp = async (e) => {
@@ -80,7 +163,7 @@ export function LoginPage({ onBypass }) {
     setLoading(false);
   };
 
-  const handleSubmit = isSignUp ? handleSignUp : handleLogin;
+  const handleSubmit = forgotMode ? handleForgotPassword : isSignUp ? handleSignUp : handleLogin;
 
   return (
     <div className={styles.page}>
@@ -111,11 +194,29 @@ export function LoginPage({ onBypass }) {
           {/* Welcome text */}
           <div className={styles.welcome}>
             <h1 className={styles.welcomeTitle}>
-              <span className={styles.welcomePurple}>{isSignUp ? 'Create ' : 'Welcome '}</span>
-              <span className={styles.welcomeDark}>{isSignUp ? 'Account' : 'Back!'}</span>
+              {forgotMode ? (
+                <>
+                  <span className={styles.welcomePurple}>Reset </span>
+                  <span className={styles.welcomeDark}>Password</span>
+                </>
+              ) : isSignUp ? (
+                <>
+                  <span className={styles.welcomePurple}>Create </span>
+                  <span className={styles.welcomeDark}>Account</span>
+                </>
+              ) : (
+                <>
+                  <span className={styles.welcomePurple}>Welcome </span>
+                  <span className={styles.welcomeDark}>Back!</span>
+                </>
+              )}
             </h1>
             <p className={styles.welcomeSub}>
-              {isSignUp ? 'Sign up to get started with Fold Portal' : 'Sign in to access your Fold Portal'}
+              {forgotMode
+                ? "Enter your email and we'll send you a reset link."
+                : isSignUp
+                  ? 'Sign up to get started with Fold Portal'
+                  : 'Sign in to access your Fold Portal'}
             </p>
           </div>
 
@@ -156,36 +257,38 @@ export function LoginPage({ onBypass }) {
               />
             </div>
 
-            <div className={styles.field}>
-              <div className={styles.labelRow}>
-                <label className={styles.label}>Password</label>
-                {!isSignUp && (
-                  <button type="button" className={styles.forgotLink} onClick={() => {}}>
-                    Forgot Password?
+            {!forgotMode && (
+              <div className={styles.field}>
+                <div className={styles.labelRow}>
+                  <label className={styles.label}>Password</label>
+                  {!isSignUp && (
+                    <button type="button" className={styles.forgotLink} onClick={enterForgotMode}>
+                      Forgot Password?
+                    </button>
+                  )}
+                </div>
+                <div className={styles.passwordWrap}>
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder={isSignUp ? 'Min 6 characters' : 'Enter your password'}
+                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                  />
+                  <button
+                    type="button"
+                    className={styles.eyeBtn}
+                    onClick={() => setShowPassword(v => !v)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-pressed={showPassword}
+                  >
+                    <Icon name={showPassword ? 'solar:eye-linear' : 'solar:eye-closed-linear'} size={16} color="#8A94A8" />
                   </button>
-                )}
+                </div>
               </div>
-              <div className={styles.passwordWrap}>
-                <Input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder={isSignUp ? 'Min 6 characters' : 'Enter your password'}
-                  autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                />
-                <button
-                  type="button"
-                  className={styles.eyeBtn}
-                  onClick={() => setShowPassword(v => !v)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  aria-pressed={showPassword}
-                >
-                  <Icon name={showPassword ? 'solar:eye-linear' : 'solar:eye-closed-linear'} size={16} color="#8A94A8" />
-                </button>
-              </div>
-            </div>
+            )}
 
-            {isSignUp && (
+            {!forgotMode && isSignUp && (
               <div className={styles.field}>
                 <label className={styles.label}>Confirm Password</label>
                 <Input
@@ -195,6 +298,26 @@ export function LoginPage({ onBypass }) {
                   placeholder="Re-enter your password"
                   autoComplete="new-password"
                 />
+              </div>
+            )}
+
+            {/* Unverified-email recovery — surfaced when login fails with
+                Supabase's "Email not confirmed" error. */}
+            {unverifiedEmail && !forgotMode && (
+              <div className={styles.unverifiedNotice}>
+                <Icon name="solar:letter-linear" size={14} color="var(--status-warning)" />
+                <div className={styles.unverifiedBody}>
+                  <strong>Verify your email to continue.</strong>{' '}
+                  We sent a verification link to <strong>{unverifiedEmail}</strong>.
+                  <button
+                    type="button"
+                    className={styles.unverifiedAction}
+                    onClick={handleResendVerification}
+                    disabled={loading || cooldown > 0}
+                  >
+                    {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend verification email'}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -212,24 +335,50 @@ export function LoginPage({ onBypass }) {
               </div>
             )}
 
-            <Button variant="primary" size="L" fullWidth disabled={loading} type="submit">
-              {loading ? (isSignUp ? 'Creating account...' : 'Signing in...') : (isSignUp ? 'Create Account' : 'Login')}
+            <Button
+              variant="primary"
+              size="L"
+              fullWidth
+              disabled={loading || (forgotMode && cooldown > 0)}
+              type="submit"
+            >
+              {forgotMode
+                ? (loading
+                    ? 'Sending reset link...'
+                    : cooldown > 0 ? `Resend in ${cooldown}s` : success ? 'Resend Reset Link' : 'Send Reset Link')
+                : loading
+                  ? (isSignUp ? 'Creating account...' : 'Signing in...')
+                  : (isSignUp ? 'Create Account' : 'Login')}
             </Button>
           </form>
 
-          {/* Toggle login/signup */}
-          <div className={styles.toggleAuth}>
-            <span className={styles.toggleText}>
-              {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-            </span>
-            <button
-              type="button"
-              className={styles.toggleLink}
-              onClick={() => { setIsSignUp(v => !v); setError(''); setSuccess(''); }}
-            >
-              {isSignUp ? 'Sign in' : 'Sign up'}
-            </button>
-          </div>
+          {/* Mode-toggle row — Forgot returns a "Back to login" link;
+              login/signup keep the original switch. */}
+          {forgotMode ? (
+            <div className={styles.toggleAuth}>
+              <button
+                type="button"
+                className={styles.toggleLink}
+                onClick={exitForgotMode}
+              >
+                <Icon name="solar:alt-arrow-left-linear" size={14} color="currentColor" />
+                Back to login
+              </button>
+            </div>
+          ) : (
+            <div className={styles.toggleAuth}>
+              <span className={styles.toggleText}>
+                {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+              </span>
+              <button
+                type="button"
+                className={styles.toggleLink}
+                onClick={() => { setIsSignUp(v => !v); setError(''); setSuccess(''); setUnverifiedEmail(''); }}
+              >
+                {isSignUp ? 'Sign in' : 'Sign up'}
+              </button>
+            </div>
+          )}
 
           {/* Divider */}
           <div className={styles.divider}>
