@@ -1,0 +1,208 @@
+/* ── Patient card ── */
+.patientCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 10px;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+.patientLeft { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.patientInfo { min-width: 0; }
+.patientName {
+  font-size: 15px; font-weight: 500; color: var(--neutral-400);
+  display: flex; align-items: center; gap: 6px; white-space: nowrap;
+}
+.patientNameLink {
+  background: none; border: none; padding: 0;
+  font: inherit; color: inherit; cursor: pointer; font-weight: 500;
+}
+.patientNameLink:hover { color: var(--primary-300); text-decoration: underline; }
+.patientMeta {
+  font-size: 12px; color: var(--neutral-300); margin-top: 3px;
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+}
+.patientMetaDot { color: var(--neutral-200); }
+.patientRight { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.chevronBtn {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 6px;
+  background: var(--primary-300); color: #fff; border: none; cursor: pointer;
+}
+.chevronBtn:hover { background: var(--primary-400); }
+
+/* ── Gap card ── */
+.gapCard {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+.gapCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.gapName {
+  font-size: 15px; font-weight: 500; color: var(--neutral-400); flex: 1; min-width: 0;
+}
+.gapActions { display: flex; align-items: center; gap: 8px; }
+.statusBtn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 6px;
+  border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  font-size: 13px; font-weight: 500; color: var(--neutral-400);
+  cursor: pointer; font-family: 'Inter', sans-serif;
+}
+.statusBtn:hover { border-color: var(--primary-300); color: var(--primary-300); }
+.statusOpen { color: var(--status-warning); }
+.statusCompleted { color: var(--status-success); }
+.statusExcluded { color: var(--neutral-300); }
+
+.assigneeRow {
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 16px 12px;
+  font-size: 13px; color: var(--primary-300); font-weight: 500;
+}
+.assigneeIcon { flex-shrink: 0; }
+
+/* ── Measure year + info banner ── */
+.measureYearRow {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px 0;
+  font-size: 13px; color: var(--neutral-400);
+  font-weight: 400;
+}
+.measureYearLabel { color: var(--neutral-300); }
+.measureYearValue { font-weight: 500; color: var(--neutral-400); }
+
+.infoBanner {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 10px 14px;
+  background: var(--status-info-light, #EFF6FF);
+  border-radius: 8px;
+  margin: 12px 0;
+  font-size: 13px; color: var(--status-info, #1D4ED8); line-height: 1.5;
+}
+.infoBannerIcon { flex-shrink: 0; margin-top: 1px; }
+
+/* ── Accordion sections ── */
+.accordionSection {
+  border-bottom: 0.5px solid var(--neutral-150);
+  padding: 10px 0;
+}
+.accordionBtn {
+  display: flex; align-items: center; gap: 6px;
+  background: none; border: none; cursor: pointer;
+  font-size: 13px; font-weight: 500; color: var(--neutral-400);
+  padding: 2px 0; font-family: 'Inter', sans-serif;
+}
+.accordionBtn:hover { color: var(--neutral-500, var(--neutral-400)); }
+.accordionBtn :global(.iconify) { color: var(--neutral-300); }
+
+/* PatientBanner wrap — gives the banner some breathing room above the gap card */
+.patientBannerWrap { margin-bottom: 16px; }
+
+.suggestedActions {
+  display: flex; align-items: center; gap: 5px;
+  padding: 8px 0 4px;
+  font-size: 13px; font-weight: 500; color: var(--neutral-400);
+}
+.suggestStar { color: var(--primary-300); font-size: 14px; }
+
+/* ── Action buttons ── */
+.actionBtns {
+  display: flex; align-items: center; gap: 8px;
+  padding: 14px 0;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.actionBtn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 7px;
+  border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  font-size: 13px; font-weight: 500; color: var(--neutral-400);
+  cursor: pointer; font-family: 'Inter', sans-serif;
+}
+.actionBtn:hover { border-color: var(--primary-300); color: var(--primary-300); }
+
+/* ── Tabs ── */
+.tabBar {
+  display: flex; align-items: center;
+  border-bottom: 0.5px solid var(--neutral-150);
+  margin-top: 4px;
+  gap: 0;
+  overflow-x: auto;
+}
+.tab {
+  padding: 10px 14px;
+  font-size: 13px; font-weight: 500; color: var(--neutral-300);
+  cursor: pointer; white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+  background: none; border-top: none; border-left: none; border-right: none;
+  font-family: 'Inter', sans-serif;
+}
+.tab:hover { color: var(--neutral-400); }
+.tabActive { color: var(--primary-300); border-bottom-color: var(--primary-300); }
+.tabMore {
+  padding: 10px 10px;
+  font-size: 13px; color: var(--neutral-300);
+  cursor: pointer; background: none; border: none;
+  display: flex; align-items: center; font-family: 'Inter', sans-serif;
+}
+
+/* ── Activity Log ── */
+.activityLog { padding-top: 16px; }
+.dateGroup { margin-bottom: 16px; }
+.dateGroupHeader {
+  display: inline-block;
+  padding: 2px 10px; border-radius: 20px;
+  background: var(--neutral-100);
+  font-size: 11px; font-weight: 600; color: var(--neutral-300);
+  text-transform: uppercase; letter-spacing: .04em;
+  margin-bottom: 12px;
+}
+.activityItem {
+  display: flex; gap: 12px; padding: 0 0 16px 0;
+}
+.activityIconWrap {
+  display: flex; flex-direction: column; align-items: center; flex-shrink: 0;
+}
+.activityIcon {
+  width: 30px; height: 30px; border-radius: 8px;
+  background: var(--neutral-50); border: 0.5px solid var(--neutral-150);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.activityLine { width: 1px; flex: 1; background: var(--neutral-150); margin-top: 4px; min-height: 16px; }
+.activityBody { flex: 1; min-width: 0; padding-top: 4px; }
+.activityTime { font-size: 11px; color: var(--neutral-200); margin-bottom: 2px; }
+.activityTitle { font-size: 13px; font-weight: 500; color: var(--neutral-400); margin-bottom: 2px; }
+.activityUser { font-size: 12px; color: var(--neutral-300); }
+.activityAttachment {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-top: 4px;
+  padding: 3px 8px; border-radius: 5px;
+  background: var(--primary-25);
+  border: 0.5px solid var(--primary-100);
+  font-size: 12px; font-weight: 500; color: var(--primary-300);
+  text-decoration: none;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activityAttachment:hover { background: var(--primary-50); }
+
+/* ── Empty tab ── */
+.emptyTab {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 48px 24px; gap: 8px;
+}
+.emptyTabTitle { font-size: 14px; font-weight: 500; color: var(--neutral-300); margin: 0; }

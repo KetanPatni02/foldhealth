@@ -10,8 +10,16 @@ import { APCM_PATIENTS } from './data/mock';
 import styles from './ApcmBillingTable.module.css';
 import rowStyles from './ApcmBillingRow.module.css';
 
+const PER_PAGE_OPTIONS = [10, 25, 50];
 
-const PER_PAGE_OPTIONS = [10, 20, 50];
+const thStyle = {
+  padding: '8px 14px',
+  fontSize: 12,
+  fontWeight: 500,
+  color: 'var(--neutral-300)',
+  textAlign: 'left',
+  whiteSpace: 'nowrap',
+};
 
 function buildPages(current, total) {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
@@ -45,7 +53,6 @@ export function ApcmBillingTable() {
   const handleCommentChange = (id, value) =>
     setComments(prev => ({ ...prev, [id]: value }));
 
-
   const filtered = useMemo(() => {
     let result = patients.filter(p => p.tab === activeTab);
     if (searchQuery.trim()) {
@@ -76,7 +83,7 @@ export function ApcmBillingTable() {
     setCurrentPage(n);
   };
 
-  // Bulk selection (scoped to current page's ids)
+  // Bulk selection (scoped to current page)
   const allIds = paginated.map(p => p.id);
   const allSelected = allIds.length > 0 && allIds.every(id => selectedIds.includes(id));
   const someSelected = selectedIds.some(id => allIds.includes(id)) && !allSelected;
@@ -90,7 +97,6 @@ export function ApcmBillingTable() {
       : selectedIds.filter(id => !allIds.includes(id))
     );
 
-  // Count selected across all filtered rows (not just current page)
   const allFilteredIds = rows.map(p => p.id);
   const tabSelectedIds = selectedIds.filter(id => allFilteredIds.includes(id));
 
@@ -113,7 +119,7 @@ export function ApcmBillingTable() {
         {/* ── Header bar ── */}
         <div className={styles.headerBar}>
           <div className={styles.headerLeft}>
-            <span className={styles.pageTitle}>APCM Billing</span>
+            <span className={styles.pageTitle}>APCM Worklist</span>
           </div>
 
           <div className={styles.headerRight}>
@@ -149,17 +155,17 @@ export function ApcmBillingTable() {
                     aria-label="Select all"
                   />
                 </th>
-                <th className={`${rowStyles.stickyLeft} ${rowStyles.stickyMember} ${styles.memberTh}`}>Member</th>
-                <th>EHR ID</th>
-                <th>Month</th>
-                <th>Date of Service</th>
-                <th>CPT Code</th>
-                <th style={{ minWidth: 220 }}>ICD Codes</th>
-                <th>Last Encounter</th>
-                <th style={{ minWidth: 220 }}>Reasons</th>
-                <th>Rendering Provider</th>
-                <th style={{ minWidth: 160 }}>Comment</th>
-                <th className={rowStyles.stickyRight}>Actions</th>
+                <th className={`${rowStyles.stickyLeft} ${rowStyles.stickyMember}`} style={{ ...thStyle, borderRight: '1px solid var(--neutral-150)', minWidth: 220 }}>Member</th>
+                <th style={thStyle}>EHR ID</th>
+                <th style={thStyle}>Month</th>
+                <th style={thStyle}>Date of Service</th>
+                <th style={thStyle}>CPT Code</th>
+                <th style={{ ...thStyle, minWidth: 220 }}>ICD Codes</th>
+                <th style={thStyle}>Last Encounter</th>
+                <th style={{ ...thStyle, minWidth: 220 }}>Reasons</th>
+                <th style={thStyle}>Rendering Provider</th>
+                <th style={{ ...thStyle, minWidth: 160 }}>Comment</th>
+                <th className={rowStyles.stickyRight} style={thStyle}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -183,6 +189,7 @@ export function ApcmBillingTable() {
                     key={patient.id}
                     patient={patient}
                     isSelected={selectedIds.includes(patient.id)}
+                    isActive={attestationFor?.includes(patient.id) ?? false}
                     onSelect={toggleSelect}
                     onTriggerBill={handleTriggerBill}
                     onCommentChange={handleCommentChange}

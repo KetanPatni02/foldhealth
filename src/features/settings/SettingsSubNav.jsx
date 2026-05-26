@@ -16,6 +16,7 @@ const MENU_ITEMS = [
   { icon: 'solar:settings-linear', label: 'Automations' },
   { icon: 'solar:library-linear', label: 'Cost Template' },
   { icon: 'solar:user-id-linear', label: 'Memberships' },
+  { icon: 'solar:bill-list-linear', label: 'Billing', key: 'billing' },
   { icon: 'solar:shield-user-linear', label: 'Account' },
 ];
 
