@@ -1091,6 +1091,96 @@
   gap: 8px;
 }
 
+/* ── HEDIS Sign-Off task: consolidated PDF card + completion CTA ── */
+.hedisPdfCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 0.5px solid var(--primary-100);
+  border-radius: 10px;
+  background: var(--primary-25);
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background .15s, border-color .15s;
+}
+.hedisPdfCard:hover {
+  background: var(--primary-50);
+  border-color: var(--primary-300);
+}
+.hedisPdfIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--primary-100);
+  flex-shrink: 0;
+}
+.hedisPdfInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.hedisPdfName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hedisPdfMeta {
+  font-size: 12px;
+  color: var(--neutral-300);
+}
+.hedisPdfOpenBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 50px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  flex-shrink: 0;
+}
+
+.hedisSignOffRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+.hedisSignOffHint {
+  font-size: 12px;
+  color: var(--neutral-300);
+  line-height: 1.5;
+  flex: 1;
+  min-width: 200px;
+}
+.hedisSignOffComplete {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--status-success-light);
+  color: var(--status-success);
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
 .drawerSectionLabel {
   font-size: 14px;
   color: var(--neutral-200);

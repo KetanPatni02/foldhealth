@@ -99,6 +99,10 @@ export function stateToHash(state) {
   };
 
   if (state.activeSubnavList && state.activeSubnavList !== 'TOC') {
+    // HEDIS has its own top-level path
+    if (state.activeSubnavList === 'HEDIS') {
+      return buildHash('hedis');
+    }
     const section = LIST_TO_URL[state.activeSubnavList];
     if (section) {
       return buildHash('population', section);
@@ -127,6 +131,12 @@ export function hashToState(route) {
   if (route.page === 'messages') { updates.activePage = 'messages'; return updates; }
   if (route.page === 'calls') { updates.activePage = 'calls'; return updates; }
   if (route.page === 'tasks') { updates.activePage = 'tasks'; return updates; }
+  if (route.page === 'hedis') {
+    updates.activePage = 'population';
+    updates.activeSubnavList = 'HEDIS';
+    updates.activeTab = 'toc-worklist';
+    return updates;
+  }
   if (route.page === 'email' && route.section) {
     updates.activePage = 'campaign';
     const numId = isNaN(Number(route.section)) ? route.section : Number(route.section);
