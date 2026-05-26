@@ -3,14 +3,12 @@ import { Checkbox } from '../../components/ui/checkbox';
 import { Button } from '../../components/Button/Button';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
-import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
+import { Pagination } from '../../components/Pagination/Pagination';
 import { ApcmBillingRow } from './ApcmBillingRow';
 import { AttestationModal } from './AttestationModal';
 import { APCM_PATIENTS } from './data/mock';
 import styles from './ApcmBillingTable.module.css';
 import rowStyles from './ApcmBillingRow.module.css';
-
-const PER_PAGE_OPTIONS = [10, 25, 50];
 
 const thStyle = {
   padding: '8px 14px',
@@ -21,26 +19,10 @@ const thStyle = {
   whiteSpace: 'nowrap',
 };
 
-function buildPages(current, total) {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  const pages = [];
-  if (current <= 4) {
-    pages.push(1, 2, 3, 4, 5, '…', total);
-  } else if (current >= total - 3) {
-    pages.push(1, '…', total - 4, total - 3, total - 2, total - 1, total);
-  } else {
-    pages.push(1, '…', current - 1, current, current + 1, '…', total);
-  }
-  return pages;
-}
-
-export function ApcmBillingTable() {
+export function ApcmBillingTable({ searchQuery = '' }) {
   const activeTab = 'new-changes';
   const [patients, setPatients] = useState(APCM_PATIENTS);
   const [comments, setComments] = useState({});
-
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters] = useState({});
 
   const [selectedIds, setSelectedIds] = useState([]);
@@ -48,7 +30,6 @@ export function ApcmBillingTable() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  const [goToInput, setGoToInput] = useState('');
 
   const handleCommentChange = (id, value) =>
     setComments(prev => ({ ...prev, [id]: value }));
@@ -110,38 +91,9 @@ export function ApcmBillingTable() {
     setAttestationFor(null);
   };
 
-  const pageNumbers = buildPages(safePage, totalPages);
-
   return (
     <>
       <div className={styles.wrap}>
-
-        {/* ── Header bar ── */}
-        <div className={styles.headerBar}>
-          <div className={styles.headerLeft}>
-            <span className={styles.pageTitle}>APCM Worklist</span>
-          </div>
-
-          <div className={styles.headerRight}>
-            {searchOpen ? (
-              <div className={styles.searchInput}>
-                <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-300)" />
-                <input
-                  autoFocus
-                  type="text"
-                  placeholder="Search member, ID…"
-                  value={searchQuery}
-                  onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                />
-                <button className={styles.searchClose} onClick={() => { setSearchOpen(false); setSearchQuery(''); }}>✕</button>
-              </div>
-            ) : (
-              <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
-            )}
-            <span className={styles.iconDivider} />
-            <ActionButton icon="solar:upload-minimalistic-linear" size="L" tooltip="Export" onClick={() => {}} />
-          </div>
-        </div>
 
         {/* ── Table ── */}
         <div className={styles.scrollWrap}>
@@ -160,12 +112,12 @@ export function ApcmBillingTable() {
                 <th style={thStyle}>Month</th>
                 <th style={thStyle}>Date of Service</th>
                 <th style={thStyle}>CPT Code</th>
-                <th style={{ ...thStyle, minWidth: 220 }}>ICD Codes</th>
+                <th style={{ ...thStyle, minWidth: 360 }}>ICD Codes</th>
                 <th style={thStyle}>Last Encounter</th>
-                <th style={{ ...thStyle, minWidth: 220 }}>Reasons</th>
+                <th style={{ ...thStyle, minWidth: 320 }}>Reasons</th>
                 <th style={thStyle}>Rendering Provider</th>
-                <th style={{ ...thStyle, minWidth: 160 }}>Comment</th>
-                <th className={rowStyles.stickyRight} style={thStyle}>Actions</th>
+                <th style={{ ...thStyle, minWidth: 280 }}>Comment</th>
+                <th className={rowStyles.stickyRight} style={{ ...thStyle, width: '1%' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -200,60 +152,17 @@ export function ApcmBillingTable() {
           </table>
         </div>
 
-        {/* ── Pagination ── */}
+        {/* Shared Pagination component (controlled mode) — same UI as
+            the TOC Worklist + HCC. APCM owns its page state locally, so
+            it passes currentPage/perPage/totalItems + change handlers. */}
         {rows.length > 0 && (
-          <div className={styles.pagination}>
-            <select
-              className={styles.pgPerPage}
-              value={perPage}
-              onChange={e => { setPerPage(Number(e.target.value)); setCurrentPage(1); }}
-            >
-              {PER_PAGE_OPTIONS.map(n => (
-                <option key={n} value={n}>{n} / page</option>
-              ))}
-            </select>
-
-            <button className={styles.pgBtn} disabled={safePage === 1} onClick={() => goToPage(safePage - 1)}>
-              <Icon name="solar:alt-arrow-left-linear" size={14} />
-            </button>
-
-            {pageNumbers.map((p, i) =>
-              p === '…' ? (
-                <span key={`ellipsis-${i}`} className={styles.pgEllipsis}>…</span>
-              ) : (
-                <button
-                  key={p}
-                  className={[styles.pgBtn, safePage === p ? styles.pgBtnActive : ''].join(' ')}
-                  onClick={() => goToPage(p)}
-                >
-                  {p}
-                </button>
-              )
-            )}
-
-            <button className={styles.pgBtn} disabled={safePage === totalPages} onClick={() => goToPage(safePage + 1)}>
-              <Icon name="solar:alt-arrow-right-linear" size={14} />
-            </button>
-
-            <div className={styles.pgGoWrap}>
-              <input
-                type="number"
-                className={styles.pgGoInput}
-                placeholder="Pg #"
-                value={goToInput}
-                min={1}
-                max={totalPages}
-                onChange={e => setGoToInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { goToPage(Number(goToInput)); setGoToInput(''); } }}
-              />
-              <button
-                className={styles.pgGoBtn}
-                onClick={() => { goToPage(Number(goToInput)); setGoToInput(''); }}
-              >
-                Go
-              </button>
-            </div>
-          </div>
+          <Pagination
+            currentPage={safePage}
+            perPage={perPage}
+            totalItems={rows.length}
+            onPageChange={goToPage}
+            onPerPageChange={(n) => { setPerPage(Number(n)); setCurrentPage(1); }}
+          />
         )}
       </div>
 
@@ -292,7 +201,7 @@ export function ApcmBillingTable() {
 
       {attestationFor && (
         <AttestationModal
-          selectedCount={attestationFor.length}
+          patients={patients.filter(p => attestationFor.includes(p.id))}
           onClose={() => setAttestationFor(null)}
           onSubmit={handleAttestationSubmit}
         />

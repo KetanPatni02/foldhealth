@@ -33,7 +33,6 @@ function IcdCell({ icdCodes }) {
     <div className={styles.icdList}>
       {visible.map((icd, i) => (
         <div key={i} className={styles.icdItem}>
-          <span className={styles.icdBullet}>•</span>
           <span>
             <span className={styles.icdCode}>{icd.code}</span>
             {' '}
@@ -44,13 +43,13 @@ function IcdCell({ icdCodes }) {
       {!expanded && remaining > 0 && (
         <button className={styles.icdMoreBtn} onClick={e => { e.stopPropagation(); setExpanded(true); }}>
           +{remaining} more
-          <Icon name="solar:alt-arrow-down-linear" size={10} />
+          <Icon name="solar:alt-arrow-down-linear" size={12} color="currentColor" />
         </button>
       )}
       {expanded && icdCodes.length > 2 && (
         <button className={styles.icdMoreBtn} onClick={e => { e.stopPropagation(); setExpanded(false); }}>
           Show less
-          <Icon name="solar:alt-arrow-up-linear" size={10} />
+          <Icon name="solar:alt-arrow-up-linear" size={12} color="currentColor" />
         </button>
       )}
     </div>
@@ -66,20 +65,11 @@ function ReasonsCell({ reasons }) {
       {reasons.map((r, i) => {
         const title = extractReasonTitle(r);
         const desc = extractReasonBody(r);
-        const isChronic = title.startsWith('Chronic Condition');
         return (
           <div key={i} className={styles.reasonItem}>
-            <span className={styles.reasonIcon}>
-              <Icon
-                name={isChronic ? 'solar:checklist-minimalistic-linear' : 'solar:info-circle-linear'}
-                size={13}
-                color={isChronic ? 'var(--primary-300)' : 'var(--status-warning)'}
-              />
-            </span>
+            <span className={styles.reasonBullet}>&bull;</span>
             <span className={styles.reasonTitleWrap}>
-              <span className={isChronic ? styles.reasonTitleChronic : styles.reasonTitle}>
-                {title}
-              </span>
+              <span className={styles.reasonTitle}>{title}</span>
               {desc && <span className={styles.reasonTooltip}>{desc}</span>}
             </span>
           </div>
@@ -111,17 +101,25 @@ export function ApcmBillingRow({ patient, isSelected, isActive, onSelect, onTrig
         />
       </td>
 
-      {/* Member */}
+      {/* Member — matches TOC Worklist's two-line layout:
+           row 1: name
+           row 2: memberId • LANG_CODE (with tooltip on hover) */}
       <td className={`${styles.stickyLeft} ${styles.stickyMember} ${styles.memberTd}`}>
         <div className={styles.patientCell}>
           <Avatar variant="patient" initials={patientInitials} />
           <div className={styles.patientInfo}>
             <span className={styles.patientName}>{patient.name}</span>
-            <span className={styles.patientId}>{patient.memberId}</span>
-            <button className={styles.langBadge} title={langFull}>
-              {langCode}
-              <span className={styles.langTooltip}>{langFull}</span>
-            </button>
+            <div className={styles.patientMeta}>
+              {patient.memberId} •{' '}
+              <button
+                type="button"
+                className={styles.langBadge}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {langCode}
+                <span className={styles.langTooltip}>Preferred Language: {langFull}</span>
+              </button>
+            </div>
           </div>
         </div>
       </td>
@@ -175,7 +173,9 @@ export function ApcmBillingRow({ patient, isSelected, isActive, onSelect, onTrig
         </div>
       </td>
 
-      {/* Comment */}
+      {/* Comment — inline editable. Auto-grows with content via CSS
+          field-sizing on modern browsers; onInput height nudge below
+          covers Firefox + Safari <17.4 as a fallback. */}
       <td className={styles.commentTd}>
         <textarea
           className={styles.commentTextarea}
@@ -183,6 +183,11 @@ export function ApcmBillingRow({ patient, isSelected, isActive, onSelect, onTrig
           value={patient.comment}
           rows={1}
           onClick={e => e.stopPropagation()}
+          onInput={e => {
+            const el = e.currentTarget;
+            el.style.height = 'auto';
+            el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+          }}
           onChange={e => onCommentChange(patient.id, e.target.value)}
         />
       </td>

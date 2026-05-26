@@ -54,12 +54,9 @@ export function PatientBanner({ initials, name, gender, age, memberId, raf, rafC
             <div className={styles.name}>{name}</div>
             <div className={styles.meta}>
               <span>Patient</span>
-              <span className={styles.dot}>&bull;</span>
-              <span>{gender}</span>
-              <span className={styles.dot}>&bull;</span>
-              <span>{age}</span>
-              <span className={styles.dot}>&bull;</span>
-              <span>{memberId}</span>
+              {gender && (<><span className={styles.dot}>&bull;</span><span>{gender}</span></>)}
+              {age && (<><span className={styles.dot}>&bull;</span><span>{age}</span></>)}
+              {memberId && (<><span className={styles.dot}>&bull;</span><span>{memberId}</span></>)}
               {raf && (
                 <>
                   <span className={styles.dot}>&bull;</span>

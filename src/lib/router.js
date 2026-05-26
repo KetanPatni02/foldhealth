@@ -67,6 +67,9 @@ export function stateToHash(state) {
       const acTab = state.accountTab || 'users';
       return buildHash('settings', 'account', acTab);
     }
+    if (settingsNavItem === 'billing') {
+      return buildHash('settings', 'billing');
+    }
     // Agents section
     if (goalWizardOpen) return buildHash('settings', 'agents', 'goals', goalWizardEditId ? String(goalWizardEditId) : 'new');
     if (goalDetailId) return buildHash('settings', 'agents', 'goals', String(goalDetailId));
@@ -179,6 +182,11 @@ export function hashToState(route) {
     if (route.section === 'account') {
       updates.settingsNavItem = 'account';
       updates.accountTab = route.tab || 'users';
+      return updates;
+    }
+    // APCM Billing section
+    if (route.section === 'billing') {
+      updates.settingsNavItem = 'billing';
       return updates;
     }
     // Agent edit (builder) route: #/settings/agents/edit/{id}
