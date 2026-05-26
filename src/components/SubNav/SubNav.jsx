@@ -1,6 +1,7 @@
 import { useMemo, useEffect } from 'react';
 import { Icon } from '../Icon/Icon';
 import { useAppStore } from '../../store/useAppStore';
+import { HEDIS_MEMBERS } from '../../features/hedis-worklist/data/mock';
 import styles from './SubNav.module.css';
 
 // Define which lists map to which filter criteria
@@ -17,6 +18,8 @@ const SHARED_LISTS = [
   { label: 'AWV', filter: null },
   { label: 'TOC', filter: null },  // default — shows all TOC patients
   { label: 'HCC', filter: null, view: 'hcc' },
+  { label: 'HEDIS', filter: null, view: 'hedis' },
+  { label: 'APCM', filter: null, view: 'apcm' },
   { label: 'High Utilizers', filter: { readmission: 'Yes' } },
   { label: 'DM', filter: null },
 ];
@@ -39,6 +42,8 @@ export function SubNav({ collapsed }) {
     const counts = {};
     for (const list of [...MY_LISTS, ...SHARED_LISTS]) {
       if (list.view === 'hcc') counts[list.label] = hccMembers.length;
+      else if (list.view === 'hedis') counts[list.label] = HEDIS_MEMBERS.length;
+      else if (list.view === 'apcm') counts[list.label] = 17;
       else if (list.label === 'TOC') counts[list.label] = patients.length;
       else counts[list.label] = 0;
     }
