@@ -13,19 +13,20 @@ function App() {
   const routerInit = useRef(false);
   const [session, setSession] = useState(undefined); // undefined = loading, null = unauthenticated
   const [bypassed, setBypassed] = useState(() => sessionStorage.getItem('__auth_bypass') === 'true');
-  // Set when Supabase fires PASSWORD_RECOVERY (user clicked the email link)
-  // OR when the hash is #/reset-password. Either way we hold the user on
-  // ResetPasswordPage until they submit a new password, then sign them out.
-  const [recoveryMode, setRecoveryMode] = useState(
-    () => window.location.hash.startsWith('#/reset-password')
-  );
+  // Set when Supabase fires PASSWORD_RECOVERY OR when the URL hash carries
+  // the recovery tokens directly (e.g. before supabase-js has processed
+  // them). Initial check handles the brief window between mount and the
+  // PASSWORD_RECOVERY event firing.
+  const [recoveryMode, setRecoveryMode] = useState(() => {
+    const h = window.location.hash || '';
+    return /type=recovery/.test(h) || h.startsWith('#/reset-password');
+  });
 
   // Listen for auth state changes
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-    });
-
+    // Subscribe FIRST so we never miss PASSWORD_RECOVERY, which can fire
+    // synchronously from inside the first getSession() call when there
+    // are recovery tokens in the URL.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       // Sentry/Vercel events for major auth transitions. Supabase emits
       // SIGNED_IN once after a successful login (covers password, OAuth
@@ -41,6 +42,10 @@ function App() {
         track('auth.password_recovery_started');
         setRecoveryMode(true);
       }
+      setSession(s);
+    });
+
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
     });
 

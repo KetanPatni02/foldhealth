@@ -72,8 +72,15 @@ export function LoginPage({ onBypass }) {
     setLoading(true);
     setError('');
     setSuccess('');
+    // No hash in redirectTo. Supabase appends its own #access_token=...
+    // hash to whatever URL we give it — stacking that on top of our SPA's
+    // hash route (#/reset-password#access_token=...) prevents supabase-js
+    // from detecting the tokens, so the recovery session is never set.
+    // We land on the bare origin; App.jsx's PASSWORD_RECOVERY listener
+    // routes the user to ResetPasswordPage once supabase-js processes
+    // the URL.
     const { error: authError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/#/reset-password`,
+      redirectTo: window.location.origin,
     });
     if (authError) {
       track('auth.password_reset_failed', { reason: authError.message || 'unknown' });
