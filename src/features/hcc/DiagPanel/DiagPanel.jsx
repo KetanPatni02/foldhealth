@@ -22,27 +22,80 @@ import {
 import { getSweepIcdsForMember } from '../data/sweepIcds';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { RoleTooltip } from '../RoleTooltip';
+import { resolveCurrentAssignee } from '../HccWorklistRow';
+import { ROLE_LABEL } from '../assignment/astranaStaff';
 import styles from './DiagPanel.module.css';
 
-// Small initials-square avatar used to the left of the DOS status pill.
-// Picks orange (coder) tint if a coder is assigned, else purple (support).
-// Hovering reveals a RoleTooltip card with the assignee's full name + role.
-function AssigneeAvatar({ coder, support }) {
-  const nm = (coder || support || '').trim();
-  if (!nm) return null;
-  const parts = nm.split(/[\s.]+/).filter(Boolean);
-  const initials = parts.map((w) => (w[0] || '').toUpperCase()).slice(0, 2).join('') || 'DH';
-  const isCoder = !!coder;
-  const bg = isCoder ? 'var(--secondary-100)' : 'var(--primary-50)';
-  const border = isCoder ? 'var(--secondary-200)' : 'var(--primary-200)';
-  const color = isCoder ? 'var(--secondary-300)' : 'var(--primary-300)';
-  const role = isCoder ? 'Coder' : 'Support Team';
+// Initials-square avatar to the left of the DOS status pill. Reflects the
+// SAME sequential resolver the worklist uses — shows whoever currently owns
+// the DOS based on workflow stage, not "the coder if there's a coder". For
+// records that have advanced past R2/R3 with no next assignee, shows a
+// dashed-outline placeholder. For Billing Ready records, shows a green
+// check chip. Hovering opens a RoleTooltip with the role label.
+function AssigneeAvatar({ member, dosState }) {
+  const a = resolveCurrentAssignee(member, dosState);
+  if (!a) return null;
+
+  // Billing Ready — every stage completed. Green check chip, no person.
+  if (a.kind === 'billing') {
+    return (
+      <RoleTooltip name="Billing Ready" role="All reviews complete" initials="✓" variant="provider">
+        <span
+          style={{
+            width: 24, height: 24, borderRadius: 6,
+            background: 'var(--status-success-light)',
+            border: '0.5px solid rgba(0, 155, 83, 0.3)',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0, color: 'var(--status-success)',
+            fontFamily: 'Inter, sans-serif',
+          }}
+        >
+          <Icon name="solar:check-circle-bold" size={14} color="var(--status-success)" />
+        </span>
+      </RoleTooltip>
+    );
+  }
+
+  // Unassigned next bucket — dashed empty slot. Tooltip surfaces which role
+  // the DOS is waiting on so the affordance isn't a mystery.
+  if (a.kind === 'unassigned') {
+    return (
+      <RoleTooltip
+        name="Unassigned"
+        role={`Awaiting ${ROLE_LABEL[a.role] || a.role}`}
+        initials="—"
+        variant="provider"
+      >
+        <span
+          style={{
+            width: 24, height: 24, borderRadius: 6,
+            background: 'var(--neutral-0)',
+            border: '0.5px dashed var(--neutral-200)',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0, color: 'var(--neutral-200)',
+            fontFamily: 'Inter, sans-serif',
+            fontSize: 12, fontWeight: 500,
+          }}
+        >
+          —
+        </span>
+      </RoleTooltip>
+    );
+  }
+
+  // Active assignee — colour the chip per role (Coder/Reviewers = orange
+  // provider palette, Support stays purple to match the worklist's coder
+  // vs support distinction).
+  const isSupport = a.role === 'support';
+  const bg = isSupport ? 'var(--primary-50)'  : 'var(--secondary-100)';
+  const border = isSupport ? 'var(--primary-200)' : 'var(--secondary-200)';
+  const color = isSupport ? 'var(--primary-300)' : 'var(--secondary-300)';
   return (
     <RoleTooltip
-      name={nm}
-      role={role}
-      initials={initials}
-      variant={isCoder ? 'provider' : 'patient'}
+      name={a.name}
+      role={ROLE_LABEL[a.role] || a.role}
+      initials={a.initials}
+      variant={isSupport ? 'patient' : 'provider'}
     >
       <span
         style={{
@@ -53,7 +106,7 @@ function AssigneeAvatar({ coder, support }) {
           fontFamily: 'Inter, sans-serif',
         }}
       >
-        {initials}
+        {a.initials}
       </span>
     </RoleTooltip>
   );
@@ -415,7 +468,7 @@ export function DiagPanel() {
           )}
         </div>
         <div className={styles.dosRowRight}>
-          <AssigneeAvatar coder={member.cdr} support={member.sup} />
+          <AssigneeAvatar member={member} dosState={dosState} />
           <span className={styles.dosRowDivider} />
           {isSweep ? (
             <span className={styles.sweepBadge}>Sweep Mode</span>

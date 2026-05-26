@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { HccWorklistRow } from './HccWorklistRow';
+import { HccWorklistRow, resolveCurrentAssignee } from './HccWorklistRow';
 import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Icon } from '../../components/Icon/Icon';
@@ -163,39 +163,16 @@ export function HccWorklistTable() {
   const enriched = useMemo(() => hccMembers.map(m => {
     const parts = (m.name || '').trim().split(/\s+/);
     const ageNum = parseInt(String(m.age || '').match(/(\d+)/)?.[1] || '0', 10);
-    // assigneeName drives sort on the Assignee column. Mirrors the resolver
-    // in HccWorklistRow: prefer the engine's per-DOS state, else fall back
-    // to the highest non-terminal role on the member.
+    // assigneeName drives sort on the Assignee column. Reuse the same
+    // sequential resolver the cell uses so sort + display agree.
     const key = m.id && m.dos ? `${m.id}::${m.dos}` : null;
     const ds = key ? hccDosAssignments[key] : null;
-    const HIGH_TO_LOW = ['r3', 'r2', 'r1', 'coder', 'support'];
-    const TERMINAL = new Set(['Completed', 'Reject', 'Rejected', 'Billing Ready']);
-    let assigneeName = '';
-    if (ds) {
-      for (const role of HIGH_TO_LOW) {
-        const rs = ds[role];
-        if (rs?.assignee && rs.status && !TERMINAL.has(rs.status)) {
-          assigneeName = rs.assignee; break;
-        }
-      }
-      if (!assigneeName) {
-        for (const role of HIGH_TO_LOW) {
-          if (ds[role]?.assignee) { assigneeName = ds[role].assignee; break; }
-        }
-      }
-    }
-    if (!assigneeName) {
-      const LEGACY = [m.r3, m.r2, m.r1, m.cdr, m.sup];
-      const LEGACY_S = [m.r3s, m.r2s, m.r1s, m.cdrS, m.supS];
-      for (let i = 0; i < LEGACY.length; i++) {
-        if (LEGACY[i] && LEGACY_S[i] && !TERMINAL.has(LEGACY_S[i])) {
-          assigneeName = LEGACY[i]; break;
-        }
-      }
-      if (!assigneeName) {
-        assigneeName = LEGACY.find(Boolean) || '';
-      }
-    }
+    const resolved = resolveCurrentAssignee(m, ds);
+    const assigneeName =
+      resolved?.kind === 'active'     ? (resolved.name || '')        :
+      resolved?.kind === 'unassigned' ? `~Awaiting ${resolved.role}` :  // ~ pushes to end of A-Z sort
+      resolved?.kind === 'billing'    ? '~Billing Ready'             :
+      '';
     return {
       ...m,
       name_first: parts[0] || '',

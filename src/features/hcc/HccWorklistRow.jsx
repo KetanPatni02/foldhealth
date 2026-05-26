@@ -224,83 +224,99 @@ function Cell({ colKey, hidden, children, ...rest }) {
   );
 }
 
-// Statuses that count as "this role is done with the DOS" — they no longer
-// own the work, so the next role downstream becomes the current assignee.
+// Statuses that count as "this role is done with the DOS" — they hand the
+// work off downstream. The DOS must complete the current stage before it
+// can be picked up by the next role; we never skip backward to a prior
+// completed assignee even if the next stage hasn't been assigned yet.
 const TERMINAL_STATUSES = new Set(['Completed', 'Reject', 'Rejected', 'Billing Ready']);
 
-// Resolve the current "assignee" for a member's active DOS. Walks the role
-// chain from highest (R3) to lowest (Support) and picks the first role with
-// an assignee whose status is non-terminal — that's the person currently
-// holding the DOS. If every role is terminal, falls back to the highest
-// role that ever had an assignee (so completed records still show *who*
-// closed them). Engine state wins; if missing, falls back to the legacy
-// member.sup/cdr/r1/r2/r3 fields so the column renders even before the
-// engine has been seeded for this patient.
-const HIGH_TO_LOW = ['r3', 'r2', 'r1', 'coder', 'support'];
-function resolveCurrentAssignee(member, dosState) {
-  // Engine path (preferred)
+// Sequential workflow order. The first role whose status is NOT terminal
+// is where the DOS currently sits (HCC reality: Support → Coder → R1 →
+// R2 → R3 → Billing). If a stage has no status / 'Assign' placeholder
+// that means it's waiting for someone to pick it up — that's the
+// current bucket but with no assignee yet.
+const STAGES_LOW_TO_HIGH = ['support', 'coder', 'r1', 'r2', 'r3'];
+
+/**
+ * Resolves who currently holds a DOS based on real HCC workflow rules.
+ * Returns one of three shapes:
+ *
+ *   { kind: 'active',     name, initials, role }   // a real person owns it
+ *   { kind: 'unassigned', role }                   // current bucket, no pick yet
+ *   { kind: 'billing' }                            // every stage completed
+ *
+ * Walks LOW→HIGH and stops at the first non-terminal stage. Engine state
+ * wins; legacy `member.sup/cdr/r1/r2/r3` + status fields are the fallback.
+ */
+export function resolveCurrentAssignee(member, dosState) {
+  // ── Engine path ────────────────────────────────────────────────────
   if (dosState) {
-    for (const role of HIGH_TO_LOW) {
+    for (const role of STAGES_LOW_TO_HIGH) {
       const rs = dosState[role];
-      if (rs?.assignee && rs.status && !TERMINAL_STATUSES.has(rs.status)) {
-        const staff = staffById(rs.assignee);
-        return {
-          name:     staff?.name || rs.assignee,
-          initials: staff?.initials || (rs.assignee || '').slice(0, 2),
-          role,
-          status:   rs.status,
-          terminal: false,
-        };
+      const status = rs?.status;
+      const hasReachedStage = !!(status || rs?.assignee);
+      // If this stage hasn't started AND a prior stage was active, the
+      // DOS is sitting at the previous stage — the outer loop already
+      // returned. So reaching here means we're at the next bucket
+      // that's awaiting handoff.
+      if (!hasReachedStage || !status || status === 'Assign') {
+        // Bucket waiting for assignment. If there's an assignee but no
+        // status, treat as active (just-assigned, no work logged yet).
+        if (rs?.assignee && status && status !== 'Assign') {
+          return makeActive(rs.assignee, role, status);
+        }
+        return { kind: 'unassigned', role };
       }
-    }
-    // Everything terminal — show the highest role that ever held it.
-    for (const role of HIGH_TO_LOW) {
-      const rs = dosState[role];
-      if (rs?.assignee) {
-        const staff = staffById(rs.assignee);
-        return {
-          name:     staff?.name || rs.assignee,
-          initials: staff?.initials || (rs.assignee || '').slice(0, 2),
-          role,
-          status:   rs.status,
-          terminal: true,
-        };
+      // Stage has a non-terminal status → DOS lives here right now.
+      if (!TERMINAL_STATUSES.has(status)) {
+        return makeActive(rs?.assignee, role, status);
       }
+      // Otherwise terminal → continue down the chain.
     }
+    // All five stages terminal → Billing Ready.
+    return { kind: 'billing' };
   }
-  // Legacy fallback — read the per-role name/status off the member fields.
-  const LEGACY = [
-    { role: 'r3',      name: member.r3,  status: member.r3s },
-    { role: 'r2',      name: member.r2,  status: member.r2s },
-    { role: 'r1',      name: member.r1,  status: member.r1s },
-    { role: 'coder',   name: member.cdr, status: member.cdrS },
+
+  // ── Legacy fallback (no engine state yet) ──────────────────────────
+  const legacy = [
     { role: 'support', name: member.sup, status: member.supS },
+    { role: 'coder',   name: member.cdr, status: member.cdrS },
+    { role: 'r1',      name: member.r1,  status: member.r1s },
+    { role: 'r2',      name: member.r2,  status: member.r2s },
+    { role: 'r3',      name: member.r3,  status: member.r3s },
   ];
-  // Prefer the highest non-terminal role
-  for (const r of LEGACY) {
-    if (r.name && r.status && !TERMINAL_STATUSES.has(r.status)) {
-      return {
-        name: r.name,
-        initials: nameToInitials(r.name),
-        role: r.role,
-        status: r.status,
-        terminal: false,
-      };
+  for (const r of legacy) {
+    if (!r.name && (!r.status || r.status === 'Assign')) {
+      return { kind: 'unassigned', role: r.role };
+    }
+    if (!r.status || r.status === 'Assign') {
+      return makeActiveLegacy(r.name, r.role, r.status);
+    }
+    if (!TERMINAL_STATUSES.has(r.status)) {
+      return makeActiveLegacy(r.name, r.role, r.status);
     }
   }
-  // …else the highest that has any name at all
-  for (const r of LEGACY) {
-    if (r.name) {
-      return {
-        name: r.name,
-        initials: nameToInitials(r.name),
-        role: r.role,
-        status: r.status || null,
-        terminal: true,
-      };
-    }
-  }
-  return null;
+  return { kind: 'billing' };
+}
+
+function makeActive(staffId, role, status) {
+  const staff = staffById(staffId);
+  return {
+    kind: 'active',
+    name: staff?.name || staffId || null,
+    initials: staff?.initials || (staffId || '').slice(0, 2),
+    role,
+    status,
+  };
+}
+function makeActiveLegacy(name, role, status) {
+  return {
+    kind: 'active',
+    name: name || null,
+    initials: nameToInitials(name || ''),
+    role,
+    status,
+  };
 }
 
 function nameToInitials(name) {
@@ -310,10 +326,46 @@ function nameToInitials(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-// Avatar + name + role badge. Re-uses the same Avatar treatment as RoleStatusCell.
+/**
+ * Renders the current assignee cell with three visual variants:
+ *   - 'active'     → orange provider avatar + name + role (current behaviour)
+ *   - 'unassigned' → empty grey avatar slot + "Unassigned" + role hint
+ *   - 'billing'    → green check chip + "Billing Ready"
+ */
 function AssigneeCell({ member, dosState }) {
   const a = resolveCurrentAssignee(member, dosState);
-  if (!a) return <span className={styles.muted}>—</span>;
+
+  if (!a || (a.kind === 'active' && !a.name)) {
+    return <span className={styles.muted}>—</span>;
+  }
+
+  if (a.kind === 'billing') {
+    return (
+      <div className={styles.assigneeCell}>
+        <span className={styles.billingBadge}>
+          <Icon name="solar:check-circle-bold" size={16} color="var(--status-success)" />
+        </span>
+        <div className={styles.assigneeText}>
+          <span className={styles.assigneeName}>Billing Ready</span>
+          <span className={styles.assigneeRole}>All reviews complete</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (a.kind === 'unassigned') {
+    return (
+      <div className={styles.assigneeCell}>
+        <span className={styles.unassignedSlot} aria-hidden="true" />
+        <div className={styles.assigneeText}>
+          <span className={styles.assigneeNameMuted}>Unassigned</span>
+          <span className={styles.assigneeRole}>Awaiting {ROLE_LABEL[a.role] || a.role}</span>
+        </div>
+      </div>
+    );
+  }
+
+  // active
   return (
     <div className={styles.assigneeCell}>
       <Avatar variant="provider" initials={a.initials} />
