@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { KpiCard, InsightBanner, Card, ProgressBar, StatusPill, safeBarItems, safeTableRows, safeConfigData } from './shared';
+import { KpiCard, InsightBanner, Card, ProgressBar, StatusPill, safeBarItems, safeTableRows, safeConfigData, EmptyState, KpiSkeleton, TableSkeleton, ProgressBarSkeleton } from './shared';
 import s from '../AnalyticsLayout.module.css';
 
 const TABS = ['Productivity', 'Bottlenecks', 'Team', 'Quality', 'Programs'];
@@ -13,19 +13,19 @@ export function CareView({ showToast }) {
   const fetchProgressBars = useAppStore(st => st.fetchProgressBars);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
-  const [prodByCm, setProdByCm] = useState({ columns: [], rows: [] });
-  const [prodStrip, setProdStrip] = useState({});
-  const [careQuality, setCareQuality] = useState([]);
-  const [programsDetail, setProgramsDetail] = useState({ columns: [], rows: [] });
+  const [kpiData, setKpiData] = useState(null);
+  const [prodByCm, setProdByCm] = useState(null);
+  const [prodStrip, setProdStrip] = useState(null);
+  const [careQuality, setCareQuality] = useState(null);
+  const [programsDetail, setProgramsDetail] = useState(null);
   const [tab, setTab] = useState(0);
 
   useEffect(() => {
-    fetchViewKpis('care').then(d => d && setKpiData(d));
-    fetchViewTable('care', 'productivity_by_cm').then(d => d && setProdByCm(d));
-    fetchConfig('care_productivity_strip').then(d => d && setProdStrip(d));
-    fetchProgressBars('care', 'care_quality_metrics').then(d => d && setCareQuality(d));
-    fetchViewTable('care', 'programs_detail').then(d => d && setProgramsDetail(d));
+    fetchViewKpis('care').then(d => setKpiData(d || { kpis: [], insight: null }));
+    fetchViewTable('care', 'productivity_by_cm').then(d => setProdByCm(d || { columns: [], rows: [] }));
+    fetchConfig('care_productivity_strip').then(d => setProdStrip(d || {}));
+    fetchProgressBars('care', 'care_quality_metrics').then(d => setCareQuality(d || []));
+    fetchViewTable('care', 'programs_detail').then(d => setProgramsDetail(d || { columns: [], rows: [] }));
   }, [period]);
 
   const kpis = kpiData?.kpis || [];
@@ -82,16 +82,16 @@ export function CareView({ showToast }) {
         ))}
       </div>
 
-      {tab === 0 && <ProductivityTab stripMetrics={stripMetrics} cmRows={cmRows} showToast={showToast} />}
+      {tab === 0 && <ProductivityTab stripMetrics={stripMetrics} cmRows={cmRows} prodByCmLoading={prodByCm === null} showToast={showToast} />}
       {tab === 1 && <BottlenecksTab showToast={showToast} />}
       {tab === 2 && <TeamTab showToast={showToast} />}
       {tab === 3 && <QualityTab bars={careQuality} showToast={showToast} />}
-      {tab === 4 && <ProgramsTab showToast={showToast} programsDetail={programsDetail} />}
+      {tab === 4 && <ProgramsTab showToast={showToast} programsDetail={programsDetail} programsLoading={programsDetail === null} />}
     </>
   );
 }
 
-function ProductivityTab({ stripMetrics, cmRows, showToast }) {
+function ProductivityTab({ stripMetrics, cmRows, prodByCmLoading, showToast }) {
   // Productivity metrics strip
   const metrics = stripMetrics.length > 0 ? stripMetrics : [
     { label: 'Calls Completed', val: '2,847', target: '3,000', delta: '+5.2%', cls: 'g' },
@@ -145,6 +145,12 @@ function ProductivityTab({ stripMetrics, cmRows, showToast }) {
               <tr><th>Care Manager</th><th className={s.r}>Calls</th><th className={s.r}>Contacts</th><th className={s.r}>CCM Min</th><th className={s.r}>TCM 48h</th><th className={s.r}>Follow-Up</th><th>Status</th></tr>
             </thead>
             <tbody>
+              {prodByCmLoading && (
+                <tr><td colSpan={7} style={{ padding: 0 }}><TableSkeleton rows={5} cols={7} /></td></tr>
+              )}
+              {!prodByCmLoading && (cmRows || []).length === 0 && (
+                <EmptyState colSpan={7} message="No care manager productivity data for this period." icon="solar:users-group-rounded-linear" />
+              )}
               {(cmRows || []).map((row, i) => {
                 const st = row.status;
                 return (
@@ -406,7 +412,7 @@ function QualityTab({ bars, showToast }) {
   );
 }
 
-function ProgramsTab({ showToast, programsDetail }) {
+function ProgramsTab({ showToast, programsDetail, programsLoading }) {
   const pdRows = safeTableRows(programsDetail);
   const programs = [
     { name: 'Chronic Care Management', abbr: 'CCM', color: 'var(--status-info)', members: 4823, eligible: 6100, enrolled: 79, saved: '$1,620K', spent: '$450K', roi: '3.6x',
@@ -446,6 +452,12 @@ function ProgramsTab({ showToast, programsDetail }) {
               <tr><th>Program</th><th className={s.r}>Eligible</th><th className={s.r}>Engaged</th><th>Last Outreach</th><th>Pref Mode</th><th>Language</th><th>Pref Day</th><th className={s.r}>Outreach%</th><th className={s.r}>Engage%</th><th>Action</th></tr>
             </thead>
             <tbody>
+              {programsLoading && (
+                <tr><td colSpan={10} style={{ padding: 0 }}><TableSkeleton rows={5} cols={10} /></td></tr>
+              )}
+              {!programsLoading && pdRows.length === 0 && (
+                <EmptyState colSpan={10} message="No programs detail for this period." icon="solar:clipboard-list-linear" />
+              )}
               {pdRows.map((row, i) => {
                 const engColor = parseInt(row.engage_pct) >= 85 ? 'green' : parseInt(row.engage_pct) >= 70 ? 'amber' : 'red';
                 return (

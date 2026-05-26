@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
-import { KpiCard, InsightBanner, Card, StatusPill, safeTableRows } from './shared';
+import { KpiCard, InsightBanner, Card, StatusPill, safeTableRows, EmptyState, KpiSkeleton, TableSkeleton } from './shared';
 import s from '../AnalyticsLayout.module.css';
 
 export function NetworkView({ showToast }) {
@@ -8,14 +8,14 @@ export function NetworkView({ showToast }) {
   const fetchViewTable = useAppStore(st => st.fetchViewTable);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
-  const [referralLeakage, setReferralLeakage] = useState({ columns: [], rows: [] });
-  const [snfScorecard, setSnfScorecard] = useState({ columns: [], rows: [] });
+  const [kpiData, setKpiData] = useState(null);
+  const [referralLeakage, setReferralLeakage] = useState(null);
+  const [snfScorecard, setSnfScorecard] = useState(null);
 
   useEffect(() => {
-    fetchViewKpis('network').then(d => d && setKpiData(d));
-    fetchViewTable('network', 'referral_leakage').then(d => d && setReferralLeakage(d));
-    fetchViewTable('network', 'snf_scorecard').then(d => d && setSnfScorecard(d));
+    fetchViewKpis('network').then(d => setKpiData(d || { kpis: [], insight: null }));
+    fetchViewTable('network', 'referral_leakage').then(d => setReferralLeakage(d || { columns: [], rows: [] }));
+    fetchViewTable('network', 'snf_scorecard').then(d => setSnfScorecard(d || { columns: [], rows: [] }));
   }, [period]);
 
   const kpis = kpiData?.kpis || [];
@@ -36,11 +36,15 @@ export function NetworkView({ showToast }) {
         />
       )}
 
-      <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        {kpis.map(k => (
-          <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
-        ))}
-      </div>
+      {kpiData === null ? (
+        <KpiSkeleton count={4} />
+      ) : (
+        <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {kpis.map(k => (
+            <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
+          ))}
+        </div>
+      )}
 
       <div className={s.g2}>
         <Card title="Referral Leakage by Specialty" flush>
@@ -50,6 +54,12 @@ export function NetworkView({ showToast }) {
                 <tr><th>Specialty</th><th className={s.r}>Total Referrals</th><th className={s.r}>Out-of-Network</th><th className={s.r}>Leakage %</th><th className={s.r}>Est. Cost Impact</th></tr>
               </thead>
               <tbody>
+                {referralLeakage === null && (
+                  <tr><td colSpan={5} style={{ padding: 0 }}><TableSkeleton rows={5} cols={5} /></td></tr>
+                )}
+                {referralLeakage !== null && leakageRows.length === 0 && (
+                  <EmptyState colSpan={5} message="No referral leakage data for this period." icon="solar:arrow-right-up-linear" />
+                )}
                 {leakageRows.map((row, i) => (
                   <tr key={i}>
                     <td className={s.fw600}>{row.specialty}</td>
@@ -71,6 +81,12 @@ export function NetworkView({ showToast }) {
                 <tr><th>Facility</th><th className={s.r}>Admits</th><th className={s.r}>Avg LOS</th><th className={s.r}>Readmit %</th><th className={s.r}>Cost/Stay</th><th>Status</th></tr>
               </thead>
               <tbody>
+                {snfScorecard === null && (
+                  <tr><td colSpan={6} style={{ padding: 0 }}><TableSkeleton rows={5} cols={6} /></td></tr>
+                )}
+                {snfScorecard !== null && snfRows.length === 0 && (
+                  <EmptyState colSpan={6} message="No SNF scorecard data for this period." icon="solar:hospital-linear" />
+                )}
                 {snfRows.map((row, i) => {
                   const st = row.status;
                   return (

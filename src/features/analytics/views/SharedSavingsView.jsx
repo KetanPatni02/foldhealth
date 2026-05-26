@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { KpiCard, InsightBanner, Card, ProgressBar, safeBarItems, safeTableRows } from './shared';
+import { KpiCard, InsightBanner, Card, ProgressBar, safeBarItems, safeTableRows, KpiSkeleton } from './shared';
 import { SavingsAreaChart } from './charts';
 import s from '../AnalyticsLayout.module.css';
 
@@ -11,14 +11,14 @@ export function SharedSavingsView({ showToast }) {
   const fetchProgressBars = useAppStore(st => st.fetchProgressBars);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
-  const [keyLevers, setKeyLevers] = useState({ columns: [], rows: [] });
-  const [qualityComposite, setQualityComposite] = useState([]);
+  const [kpiData, setKpiData] = useState(null);
+  const [keyLevers, setKeyLevers] = useState(null);
+  const [qualityComposite, setQualityComposite] = useState(null);
 
   useEffect(() => {
-    fetchViewKpis('shared').then(d => d && setKpiData(d));
-    fetchViewTable('shared', 'key_levers').then(d => d && setKeyLevers(d));
-    fetchProgressBars('shared', 'quality_composite').then(d => d && setQualityComposite(d));
+    fetchViewKpis('shared').then(d => setKpiData(d || { kpis: [], insight: null }));
+    fetchViewTable('shared', 'key_levers').then(d => setKeyLevers(d || { columns: [], rows: [] }));
+    fetchProgressBars('shared', 'quality_composite').then(d => setQualityComposite(d || []));
   }, [period]);
 
   const kpis = kpiData?.kpis || [];
@@ -62,11 +62,15 @@ export function SharedSavingsView({ showToast }) {
         />
       )}
 
-      <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        {kpis.map(k => (
-          <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
-        ))}
-      </div>
+      {kpiData === null ? (
+        <KpiSkeleton count={4} />
+      ) : (
+        <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {kpis.map(k => (
+            <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
+          ))}
+        </div>
+      )}
 
       <div className={s.g2}>
         {/* Savings Trajectory Chart */}

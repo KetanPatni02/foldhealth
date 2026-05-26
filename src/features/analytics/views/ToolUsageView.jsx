@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { KpiCard, InsightBanner, Card, ProgressBar, StatusPill, safeTableRows } from './shared';
+import { KpiCard, InsightBanner, Card, ProgressBar, StatusPill, safeTableRows, EmptyState, KpiSkeleton, TableSkeleton } from './shared';
 import s from '../AnalyticsLayout.module.css';
 
 export function ToolUsageView({ showToast }) {
@@ -9,12 +9,12 @@ export function ToolUsageView({ showToast }) {
   const fetchViewTable = useAppStore(st => st.fetchViewTable);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
-  const [adoptionData, setAdoptionData] = useState({ columns: [], rows: [] });
+  const [kpiData, setKpiData] = useState(null);
+  const [adoptionData, setAdoptionData] = useState(null);
 
   useEffect(() => {
-    fetchViewKpis('tools').then(d => d && setKpiData(d));
-    fetchViewTable('tools', 'adoption_by_provider').then(d => d && setAdoptionData(d));
+    fetchViewKpis('tools').then(d => setKpiData(d || { kpis: [], insight: null }));
+    fetchViewTable('tools', 'adoption_by_provider').then(d => setAdoptionData(d || { columns: [], rows: [] }));
   }, [period]);
 
   const kpis = kpiData?.kpis || [];
@@ -35,11 +35,15 @@ export function ToolUsageView({ showToast }) {
         />
       )}
 
-      <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        {kpis.map(k => (
-          <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
-        ))}
-      </div>
+      {kpiData === null ? (
+        <KpiSkeleton count={4} />
+      ) : (
+        <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {kpis.map(k => (
+            <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
+          ))}
+        </div>
+      )}
 
       <div className={s.g2}>
         {/* Sidecar Usage by Provider */}
@@ -69,6 +73,12 @@ export function ToolUsageView({ showToast }) {
               <tr><th>Provider</th><th className={s.r}>Weekly Active</th><th className={s.r}>Alerts Acted</th><th className={s.r}>HCC Gaps Closed</th><th className={s.r}>Avg Response Time</th><th>Status</th></tr>
             </thead>
             <tbody>
+              {adoptionData === null && (
+                <tr><td colSpan={6} style={{ padding: 0 }}><TableSkeleton rows={5} cols={6} /></td></tr>
+              )}
+              {adoptionData !== null && adoptionRows.length === 0 && (
+                <EmptyState colSpan={6} message="No adoption data for this period." icon="solar:user-id-linear" />
+              )}
               {adoptionRows.map((row, i) => {
                 const st = row.status;
                 return (

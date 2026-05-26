@@ -5,7 +5,7 @@ import 'react-resizable/css/styles.css';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
 import { Toggle } from '../../../components/Toggle/Toggle';
-import { KpiCard, InsightBanner, Card, ProgressBar, GhostBtn, safeTableRows, safeBarItems } from './shared';
+import { KpiCard, InsightBanner, Card, ProgressBar, GhostBtn, safeTableRows, safeBarItems, safeConfigData, EmptyState, KpiSkeleton, TableSkeleton, ChartSkeleton, ProgressBarSkeleton } from './shared';
 import { TcocLineChart, SavingsAreaChart } from './charts';
 import s from '../AnalyticsLayout.module.css';
 
@@ -61,15 +61,17 @@ export function ExecutiveView({ showToast, editing = false, resetTick = 0 }) {
   const period = useAppStore(st => st.analyticsPeriod);
   const periodMode = useAppStore(st => st.analyticsPeriodMode);
 
-  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
-  const [tcocData, setTcocData] = useState({});
-  const [costData, setCostData] = useState({ columns: [], rows: [] });
-  const [qualitySummary, setQualitySummary] = useState([]);
+  // null = fetch in flight (renders skeleton). After resolve, state is
+  // either the real data or an empty shape (renders EmptyState).
+  const [kpiData, setKpiData] = useState(null);
+  const [tcocData, setTcocData] = useState(null);
+  const [costData, setCostData] = useState(null);
+  const [qualitySummary, setQualitySummary] = useState(null);
   const [tcocTab, setTcocTab] = useState('all');
   const [tcocMode, setTcocMode] = useState('pmpm');
-  const [costInlineData, setCostInlineData] = useState({});
-  const [savingsData, setSavingsData] = useState({});
-  const [careProgramData, setCareProgramData] = useState({});
+  const [costInlineData, setCostInlineData] = useState(null);
+  const [savingsData, setSavingsData] = useState(null);
+  const [careProgramData, setCareProgramData] = useState(null);
 
   // ── Editable layout state ───────────────────────────────────────────
   // `editing` is controlled by AnalyticsLayout (which renders the
@@ -104,13 +106,16 @@ export function ExecutiveView({ showToast, editing = false, resetTick = 0 }) {
   }, [resetTick]);
 
   useEffect(() => {
-    fetchViewKpis('executive').then(d => d && setKpiData(d));
-    fetchTimeSeries(['tcoc_all','tcoc_ip','tcoc_op','tcoc_ed','tcoc_rx','tcoc_pac']).then(d => d && setTcocData(d));
-    fetchViewTable('executive', 'cost_by_setting_benchmark').then(d => d && setCostData(d));
-    fetchProgressBars('executive', 'executive_quality_summary').then(d => d && setQualitySummary(d));
-    fetchConfig('exec_cost_by_setting_inline').then(d => d && setCostInlineData(d));
-    fetchConfig('exec_savings_trajectory').then(d => d && setSavingsData(d));
-    fetchConfig('exec_care_programs').then(d => d && setCareProgramData(d));
+    // Always resolve to a non-null value so skeletons flip to either
+    // real content or EmptyState. `|| {}` / `|| []` covers null returns
+    // from the store on fetch error or empty Supabase result.
+    fetchViewKpis('executive').then(d => setKpiData(d || { kpis: [], insight: null }));
+    fetchTimeSeries(['tcoc_all','tcoc_ip','tcoc_op','tcoc_ed','tcoc_rx','tcoc_pac']).then(d => setTcocData(d || {}));
+    fetchViewTable('executive', 'cost_by_setting_benchmark').then(d => setCostData(d || { columns: [], rows: [] }));
+    fetchProgressBars('executive', 'executive_quality_summary').then(d => setQualitySummary(d || []));
+    fetchConfig('exec_cost_by_setting_inline').then(d => setCostInlineData(d || {}));
+    fetchConfig('exec_savings_trajectory').then(d => setSavingsData(d || {}));
+    fetchConfig('exec_care_programs').then(d => setCareProgramData(d || {}));
   }, [period, periodMode]);
 
   const kpis = kpiData?.kpis || [];
@@ -126,14 +131,21 @@ export function ExecutiveView({ showToast, editing = false, resetTick = 0 }) {
     { label: 'Depression Screening', value: '83%', pct: 83, color: 'green', sub: 'Target 80% ✓' },
   ];
 
-  const costBySettingInline = costInlineData?.items || [];
+  // fetchConfig returns rows shaped { configData: {...} }. Unwrap via
+  // safeConfigData so reads work whether the source is the DB row or
+  // a future raw-shape fallback. Bug history: prior to this, the view
+  // read top-level keys (savingsData.data_points), which works for the
+  // deleted JS fallbacks but never matches DB-mapped rows.
+  const costInline = safeConfigData(costInlineData);
+  const savings = safeConfigData(savingsData);
+  const carePrograms = safeConfigData(careProgramData)?.rows || [];
 
-  const rawSavings = savingsData?.data_points || [];
+  const costBySettingInline = costInline?.items || [];
+
+  const rawSavings = savings?.data_points || [];
   const savingsTrajectory = periodMode === 'r12'
     ? rawSavings.map(v => v != null ? +(v * 1.15).toFixed(2) : null)
     : rawSavings;
-
-  const carePrograms = careProgramData?.rows || [];
 
   const periodLabel = periodMode === 'ytd' ? 'YTD 2025' : 'Rolling 12M';
 
@@ -149,13 +161,16 @@ export function ExecutiveView({ showToast, editing = false, resetTick = 0 }) {
     />
   ) : null;
 
-  const renderKpiRow = (start, end) => (
-    <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-      {kpis.slice(start, end).map(k => (
-        <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
-      ))}
-    </div>
-  );
+  const renderKpiRow = (start, end) => {
+    if (kpiData === null) return <KpiSkeleton count={end - start} />;
+    return (
+      <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        {kpis.slice(start, end).map(k => (
+          <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
+        ))}
+      </div>
+    );
+  };
 
   const renderDrivers = () => (
     <InsightBanner
@@ -202,7 +217,7 @@ export function ExecutiveView({ showToast, editing = false, resetTick = 0 }) {
         </div>
       }
     >
-      <TcocLineChart tab={tcocTab} data={tcocData} mode={tcocMode} />
+      {tcocData === null ? <ChartSkeleton bars={12} /> : <TcocLineChart tab={tcocTab} data={tcocData} mode={tcocMode} />}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--neutral-100)' }}>
         {costBySettingInline.map(c => (
           <div key={c.label} style={{ textAlign: 'center', padding: '10px 6px', background: 'var(--neutral-0)', border: '1px solid var(--neutral-150)', borderRadius: 6 }}>
@@ -217,9 +232,13 @@ export function ExecutiveView({ showToast, editing = false, resetTick = 0 }) {
 
   const renderQuality = () => (
     <Card title="Quality Summary" actions={<Button variant="ghost" size="S" onClick={() => showToast?.('Opening Quality view')}>Full View &rarr;</Button>}>
-      {qualFallback.map(q => (
-        <ProgressBar key={q.label} label={q.label} value={q.value} pct={q.pct} color={q.color} sub={q.sub} />
-      ))}
+      {qualitySummary === null ? (
+        <ProgressBarSkeleton count={5} />
+      ) : (
+        qualFallback.map(q => (
+          <ProgressBar key={q.label} label={q.label} value={q.value} pct={q.pct} color={q.color} sub={q.sub} />
+        ))
+      )}
     </Card>
   );
 
@@ -242,6 +261,12 @@ export function ExecutiveView({ showToast, editing = false, resetTick = 0 }) {
             </tr>
           </thead>
           <tbody>
+            {careProgramData === null && (
+              <tr><td colSpan={5} style={{ padding: 0 }}><TableSkeleton rows={5} cols={5} /></td></tr>
+            )}
+            {careProgramData !== null && carePrograms.length === 0 && (
+              <EmptyState colSpan={5} message="No care programs configured for this period." icon="solar:heart-pulse-linear" />
+            )}
             {carePrograms.map((p, i) => (
               <tr key={i} style={{ cursor: 'pointer' }} onClick={() => showToast?.(`Navigating to Care Management → Programs → ${p.abbr}`)}>
                 <td className={s.fw600}>{p.abbr}<div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{p.members} mbrs</div></td>
@@ -285,7 +310,13 @@ export function ExecutiveView({ showToast, editing = false, resetTick = 0 }) {
           <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--neutral-200)' }}>Full-year projection</div>
         </div>
       </div>
-      <SavingsAreaChart data={savingsTrajectory} targetLabel="MSR $2.8M" targetValue={2.8} />
+      {savingsData === null ? (
+        <ChartSkeleton bars={12} />
+      ) : savingsTrajectory.length === 0 ? (
+        <EmptyState message="No savings trajectory data for this period." icon="solar:chart-2-linear" />
+      ) : (
+        <SavingsAreaChart data={savingsTrajectory} targetLabel="MSR $2.8M" targetValue={2.8} />
+      )}
       <div style={{ fontSize: 12, color: 'var(--neutral-200)', padding: '8px 14px 4px', borderTop: '1px solid var(--neutral-100)', marginTop: 8 }}>
         MSSP Track 1B &middot; Performance Year 2025 &middot; Quality composite secures maximum sharing rate
       </div>
@@ -300,6 +331,12 @@ export function ExecutiveView({ showToast, editing = false, resetTick = 0 }) {
             <tr><th>Setting</th><th className={s.r}>Actual PMPM</th><th className={s.r}>Benchmark</th><th className={s.r}>Variance</th><th>Status</th></tr>
           </thead>
           <tbody>
+            {costData === null && (
+              <tr><td colSpan={5} style={{ padding: 0 }}><TableSkeleton rows={5} cols={5} /></td></tr>
+            )}
+            {costData !== null && costRows.length === 0 && (
+              <EmptyState colSpan={5} message="No cost-by-setting data for this period." icon="solar:wallet-money-linear" />
+            )}
             {costRows.map((row, i) => {
               const setting = row.setting || row[0];
               const actual = row.actual || row[1];

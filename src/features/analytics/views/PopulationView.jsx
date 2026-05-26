@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { KpiCard, InsightBanner, Card, ProgressBar, safeBarItems, safeTableRows } from './shared';
+import { KpiCard, InsightBanner, Card, ProgressBar, safeBarItems, safeTableRows, EmptyState, KpiSkeleton, TableSkeleton, ProgressBarSkeleton } from './shared';
 import { Icon } from '../../../components/Icon/Icon';
 import s from '../AnalyticsLayout.module.css';
 
@@ -11,18 +11,18 @@ export function PopulationView({ showToast }) {
   const fetchViewTable = useAppStore(st => st.fetchViewTable);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
-  const [riskTiers, setRiskTiers] = useState([]);
-  const [chronicConditions, setChronicConditions] = useState([]);
-  const [memberLists, setMemberLists] = useState({ columns: [], rows: [] });
-  const [sdohScreening, setSdohScreening] = useState([]);
+  const [kpiData, setKpiData] = useState(null);
+  const [riskTiers, setRiskTiers] = useState(null);
+  const [chronicConditions, setChronicConditions] = useState(null);
+  const [memberLists, setMemberLists] = useState(null);
+  const [sdohScreening, setSdohScreening] = useState(null);
 
   useEffect(() => {
-    fetchViewKpis('population').then(d => d && setKpiData(d));
-    fetchProgressBars('population', 'risk_tiers').then(d => d && setRiskTiers(d));
-    fetchProgressBars('population', 'chronic_conditions').then(d => d && setChronicConditions(d));
-    fetchViewTable('population', 'actionable_member_lists').then(d => d && setMemberLists(d));
-    fetchProgressBars('population', 'sdoh_screening').then(d => d && setSdohScreening(d));
+    fetchViewKpis('population').then(d => setKpiData(d || { kpis: [], insight: null }));
+    fetchProgressBars('population', 'risk_tiers').then(d => setRiskTiers(d || []));
+    fetchProgressBars('population', 'chronic_conditions').then(d => setChronicConditions(d || []));
+    fetchViewTable('population', 'actionable_member_lists').then(d => setMemberLists(d || { columns: [], rows: [] }));
+    fetchProgressBars('population', 'sdoh_screening').then(d => setSdohScreening(d || []));
   }, [period]);
 
   const kpis = kpiData?.kpis || [];
@@ -51,23 +51,39 @@ export function PopulationView({ showToast }) {
         />
       )}
 
-      <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        {kpis.map(k => (
-          <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
-        ))}
-      </div>
+      {kpiData === null ? (
+        <KpiSkeleton count={4} />
+      ) : (
+        <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {kpis.map(k => (
+            <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
+          ))}
+        </div>
+      )}
 
       <div className={s.g2}>
         <Card title="Risk Stratification">
-          {riskTierItems.map(r => (
-            <ProgressBar key={r.label} label={r.label} value={r.value} pct={r.pct} color={r.color} />
-          ))}
+          {riskTiers === null ? (
+            <ProgressBarSkeleton count={5} />
+          ) : riskTierItems.length === 0 ? (
+            <EmptyState message="No risk stratification data for this period." icon="solar:graph-up-linear" />
+          ) : (
+            riskTierItems.map(r => (
+              <ProgressBar key={r.label} label={r.label} value={r.value} pct={r.pct} color={r.color} />
+            ))
+          )}
         </Card>
 
         <Card title="Chronic Condition Distribution">
-          {chronicItems.map(c => (
-            <ProgressBar key={c.label} label={c.label} value={c.value} pct={c.pct} color={c.color} />
-          ))}
+          {chronicConditions === null ? (
+            <ProgressBarSkeleton count={5} />
+          ) : chronicItems.length === 0 ? (
+            <EmptyState message="No chronic condition data for this period." icon="solar:heart-pulse-linear" />
+          ) : (
+            chronicItems.map(c => (
+              <ProgressBar key={c.label} label={c.label} value={c.value} pct={c.pct} color={c.color} />
+            ))
+          )}
         </Card>
       </div>
 
@@ -92,9 +108,15 @@ export function PopulationView({ showToast }) {
 
       {/* SDOH Risk Screening */}
       <Card title="SDoH Risk Screening" sub="Progress toward screening targets">
-        {sdohItems.map(item => (
-          <ProgressBar key={item.label} label={item.label} value={item.value} pct={item.pct} color={item.color} sub={item.sub} />
-        ))}
+        {sdohScreening === null ? (
+          <ProgressBarSkeleton count={4} />
+        ) : sdohItems.length === 0 ? (
+          <EmptyState message="No SDoH screening data for this period." icon="solar:user-heart-rounded-linear" />
+        ) : (
+          sdohItems.map(item => (
+            <ProgressBar key={item.label} label={item.label} value={item.value} pct={item.pct} color={item.color} sub={item.sub} />
+          ))
+        )}
       </Card>
 
       <Card title="Actionable Member Lists — Detail" flush>
@@ -104,6 +126,12 @@ export function PopulationView({ showToast }) {
               <tr><th>Cohort</th><th className={s.r}>Members</th><th className={s.r}>Avg TCOC</th><th className={s.r}>Avg RAF</th><th>Top Conditions</th></tr>
             </thead>
             <tbody>
+              {memberLists === null && (
+                <tr><td colSpan={5} style={{ padding: 0 }}><TableSkeleton rows={5} cols={5} /></td></tr>
+              )}
+              {memberLists !== null && memberRows.length === 0 && (
+                <EmptyState colSpan={5} message="No actionable member lists for this period." icon="solar:users-group-rounded-linear" />
+              )}
               {memberRows.map((row, i) => (
                 <tr key={i}>
                   <td className={s.fw600}>{row.cohort}</td>

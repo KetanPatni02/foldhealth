@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { KpiCard, InsightBanner, Card, safeConfigData } from './shared';
+import { KpiCard, InsightBanner, Card, safeConfigData, KpiSkeleton } from './shared';
 import s from '../AnalyticsLayout.module.css';
 
 export function ActionRulesView({ showToast }) {
@@ -9,12 +9,12 @@ export function ActionRulesView({ showToast }) {
   const fetchConfig = useAppStore(st => st.fetchConfig);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
-  const [rulesData, setRulesData] = useState({});
+  const [kpiData, setKpiData] = useState(null);
+  const [rulesData, setRulesData] = useState(null);
 
   useEffect(() => {
-    fetchViewKpis('actionrules').then(d => d && setKpiData(d));
-    fetchConfig('action_rules_data').then(d => d && setRulesData(d));
+    fetchViewKpis('actionrules').then(d => setKpiData(d || { kpis: [], insight: null }));
+    fetchConfig('action_rules_data').then(d => setRulesData(d || {}));
   }, [period]);
 
   const kpis = kpiData?.kpis || [];
@@ -49,11 +49,15 @@ export function ActionRulesView({ showToast }) {
         />
       )}
 
-      <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        {kpis.map(k => (
-          <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
-        ))}
-      </div>
+      {kpiData === null ? (
+        <KpiSkeleton count={4} />
+      ) : (
+        <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {kpis.map(k => (
+            <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
+          ))}
+        </div>
+      )}
 
       <div className={s.g3}>
         <Card style={{ borderTop: '3px solid var(--primary-300)' }} title="1. Inline Actions" sub="User-triggered from dashboard context">

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { KpiCard, InsightBanner, Card, ProgressBar, Tag, safeTableRows } from './shared';
+import { KpiCard, InsightBanner, Card, ProgressBar, Tag, safeTableRows, EmptyState, KpiSkeleton, TableSkeleton } from './shared';
 import s from '../AnalyticsLayout.module.css';
 
 export function QualityView({ showToast }) {
@@ -9,13 +9,13 @@ export function QualityView({ showToast }) {
   const fetchViewTable = useAppStore(st => st.fetchViewTable);
   const period = useAppStore(st => st.analyticsPeriod);
 
-  const [kpiData, setKpiData] = useState({ kpis: [], insight: null });
-  const [qualityMeasures, setQualityMeasures] = useState({ columns: [], rows: [] });
+  const [kpiData, setKpiData] = useState(null);
+  const [qualityMeasures, setQualityMeasures] = useState(null);
   const [measureFilter, setMeasureFilter] = useState('All Measures');
 
   useEffect(() => {
-    fetchViewKpis('quality').then(d => d && setKpiData(d));
-    fetchViewTable('quality', 'quality_measures').then(d => d && setQualityMeasures(d));
+    fetchViewKpis('quality').then(d => setKpiData(d || { kpis: [], insight: null }));
+    fetchViewTable('quality', 'quality_measures').then(d => setQualityMeasures(d || { columns: [], rows: [] }));
   }, [period]);
 
   const kpis = kpiData?.kpis || [];
@@ -49,11 +49,15 @@ export function QualityView({ showToast }) {
         />
       )}
 
-      <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        {kpis.map(k => (
-          <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
-        ))}
-      </div>
+      {kpiData === null ? (
+        <KpiSkeleton count={4} />
+      ) : (
+        <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {kpis.map(k => (
+            <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
+          ))}
+        </div>
+      )}
 
       {/* Measure Performance + Practice-Level Quality */}
       <div className={s.g2}>
@@ -83,6 +87,12 @@ export function QualityView({ showToast }) {
                 </tr>
               </thead>
               <tbody>
+                {qualityMeasures === null && (
+                  <tr><td colSpan={6} style={{ padding: 0 }}><TableSkeleton rows={6} cols={6} /></td></tr>
+                )}
+                {qualityMeasures !== null && measures.length === 0 && (
+                  <EmptyState colSpan={6} message="No quality measures for this filter." icon="solar:medal-ribbon-linear" />
+                )}
                 {measures.map((m, i) => {
                   const rate = m.rate ?? 0;
                   const target = m.target ?? 0;
