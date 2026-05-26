@@ -1516,6 +1516,53 @@ export const useAppStore = create((set, get) => ({
   },
 
   // ─── HCC Worklist (Supabase-backed) ───
+  // ── HEDIS worklist — local state for now, no Supabase backing yet ───────
+  // Activity log per member: { [memberId]: [{ id, type, message, at, by }] }
+  caregapActivity: {},
+  // Status updates applied to the local HEDIS mock data via setHedisMembers.
+  hedisMembers: [],
+  setHedisMembers: (members) => set({ hedisMembers: members }),
+  updateGapStatus: (memberId, gapCode, nextStatus) => {
+    track('hedis.gap_status_updated', { memberId, gapCode, status: nextStatus });
+    set(s => ({
+      hedisMembers: (s.hedisMembers || []).map(m =>
+        m.id !== memberId ? m : {
+          ...m,
+          gaps: (m.gaps || []).map(g => g.code === gapCode ? { ...g, status: nextStatus } : g),
+        }
+      ),
+    }));
+  },
+  bulkUpdateGapStatuses: (memberId, updates) => {
+    // updates: { [gapCode]: nextStatus }
+    track('hedis.gap_status_bulk_updated', { memberId, count: Object.keys(updates || {}).length });
+    set(s => ({
+      hedisMembers: (s.hedisMembers || []).map(m =>
+        m.id !== memberId ? m : {
+          ...m,
+          gaps: (m.gaps || []).map(g => updates[g.code] ? { ...g, status: updates[g.code] } : g),
+        }
+      ),
+    }));
+  },
+  logCareGapActivity: (memberId, entry) => {
+    set(s => ({
+      caregapActivity: {
+        ...s.caregapActivity,
+        [memberId]: [{ id: Date.now(), at: new Date().toISOString(), ...entry }, ...(s.caregapActivity[memberId] || [])],
+      },
+    }));
+  },
+  // Stub: produces a fake task id. Wire to Supabase when the schema lands.
+  createCareGapSignOffTask: (payload) => {
+    track('hedis.signoff_task_created', { memberId: payload?.hedisMemberId });
+    return { id: `signoff-${Date.now()}`, ...payload };
+  },
+  updateSignOffTaskPdf: (taskId, pdfMeta) => {
+    track('hedis.signoff_task_pdf_attached', { taskId });
+    return { id: taskId, pdf: pdfMeta };
+  },
+
   hccMembers: [],
   hccMembersLoading: false,
   fetchHccMembers: async () => {
