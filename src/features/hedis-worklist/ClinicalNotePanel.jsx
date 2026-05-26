@@ -182,7 +182,10 @@ export function ClinicalNotePanel({ member, gapCode, year, onClose, editingTaskI
     }
 
     // AC-2 Submit for Review → all Ready gaps transition to Submitted.
-    bulkUpdateGapStatuses(member.id, readyCodes, 'Submitted', CURRENT_USER);
+    bulkUpdateGapStatuses(
+      member.id,
+      Object.fromEntries(readyCodes.map(c => [c, 'Submitted'])),
+    );
     logCareGapActivity(member.id, {
       title: 'Submitted for review',
       detail: `Ready gaps: ${readyCodes.join(', ')}`,
@@ -214,7 +217,10 @@ export function ClinicalNotePanel({ member, gapCode, year, onClose, editingTaskI
     // AC-3 / AC-10 Direct sign path (provider only) → bypass Submitted +
     // task creation, gaps go straight to Completed.
     const pdf = buildPdf(readyCodes, 'Provider');
-    bulkUpdateGapStatuses(member.id, readyCodes, 'Completed', 'Provider');
+    bulkUpdateGapStatuses(
+      member.id,
+      Object.fromEntries(readyCodes.map(c => [c, 'Completed'])),
+    );
     logCareGapActivity(member.id, {
       title: 'Signed by provider',
       detail: `Direct sign path · ${readyCodes.join(', ')}`,
@@ -236,7 +242,10 @@ export function ClinicalNotePanel({ member, gapCode, year, onClose, editingTaskI
       return;
     }
     const pdf = buildPdf(readyCodes, 'Provider');
-    bulkUpdateGapStatuses(member.id, readyCodes, 'Completed', 'Provider');
+    bulkUpdateGapStatuses(
+      member.id,
+      Object.fromEntries(readyCodes.map(c => [c, 'Completed'])),
+    );
     logCareGapActivity(member.id, {
       title: 'Signed and printed',
       detail: `Direct sign path · ${readyCodes.join(', ')}`,
