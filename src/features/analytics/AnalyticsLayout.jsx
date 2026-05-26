@@ -61,7 +61,13 @@ const PRACTICES = [
 
 // Views that support the editable dashboard pattern (drag/resize cards).
 // As more views are migrated, add their keys here.
-const EDITABLE_VIEWS = new Set(['executive']);
+const EDITABLE_VIEWS = new Set([
+  'executive', 'quality',
+  'aianalytics', 'actionrules', 'platformops', 'network',
+  'population', 'roi', 'risk', 'shared',
+  'sdoh', 'tools', 'utilization',
+  'care', 'financial',
+]);
 
 export function AnalyticsLayout() {
   const view = useAppStore(st => st.analyticsView) || 'executive';
