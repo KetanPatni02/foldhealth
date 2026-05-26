@@ -5,6 +5,7 @@ import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Icon } from '../../components/Icon/Icon';
 import { PdfPreviewOverlay } from '../../components/PdfPreviewOverlay/PdfPreviewOverlay';
+import { Timeline } from '../../components/Timeline/Timeline';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './CareGapDetailDrawer.module.css';
 
@@ -39,44 +40,32 @@ const STATUS_COLOR = {
 
 const TABS = ['Activity Log', 'Outreach', 'Clinical Note', 'Tasks', 'Referrals'];
 
-// Format an ISO timestamp as the activity-log time string (e.g. "05/22/2026 1:07 PM").
-function formatActivityTime(iso) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  const yyyy = d.getFullYear();
-  let hh = d.getHours();
-  const min = String(d.getMinutes()).padStart(2, '0');
+// Map a raw caregapActivity entry into the shape the shared Timeline
+// component expects. The Timeline handles month grouping internally.
+function toTimelineEntry(e, i) {
+  const d = new Date(e.when);
+  const valid = !Number.isNaN(d.getTime());
+  const mm = valid ? String(d.getMonth() + 1).padStart(2, '0') : '';
+  const dd = valid ? String(d.getDate()).padStart(2, '0') : '';
+  const yyyy = valid ? d.getFullYear() : '';
+  let hh = valid ? d.getHours() : 0;
+  const min = valid ? String(d.getMinutes()).padStart(2, '0') : '';
   const ampm = hh >= 12 ? 'PM' : 'AM';
   hh = hh % 12 || 12;
-  return `${mm}/${dd}/${yyyy} ${hh}:${min} ${ampm}`;
-}
-
-// Group an array of ISO-stamped activity entries by their month label,
-// preserving newest-first order.
-function groupActivityByMonth(entries) {
-  if (!entries || entries.length === 0) return [];
-  const monthName = (iso) =>
-    new Date(iso).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  const groups = [];
-  for (const e of entries) {
-    const m = monthName(e.when);
-    let group = groups[groups.length - 1];
-    if (!group || group.date !== m) {
-      group = { date: m, entries: [] };
-      groups.push(group);
-    }
-    group.entries.push({
-      time: formatActivityTime(e.when),
-      title: e.title,
-      user: e.actor || e.user || 'System',
-      icon: e.icon || 'solar:shield-check-linear',
-      detail: e.detail,
-      attachment: e.attachment,
-    });
-  }
-  return groups;
+  return {
+    id: e.id ?? `${e.when}-${i}`,
+    createdAt: e.when,
+    date: valid ? `${mm}/${dd}/${yyyy}` : '',
+    time: valid ? `${hh}:${min} ${ampm}` : '',
+    user: e.actor || e.user || 'System',
+    icon: e.icon || 'solar:shield-check-linear',
+    iconBg: 'var(--neutral-50)',
+    iconBorder: 'color-mix(in srgb, var(--neutral-300) 12%, transparent)',
+    iconColor: 'var(--neutral-300)',
+    details: e.title,
+    category: e.detail,
+    attachment: e.attachment,
+  };
 }
 
 export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
@@ -94,8 +83,9 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   if (!member || !gap) return null;
 
   const measureName = MEASURE_NAMES[gap.code] ?? gap.code;
-  // Activity log entries are stored newest-first per member; show all for now.
-  const activity = groupActivityByMonth(activityEntries);
+  // Adapt raw caregapActivity entries to Timeline's entry shape. The
+  // Timeline component groups by month internally.
+  const timelineEntries = (activityEntries || []).map(toTimelineEntry);
   const statusLocked = status === 'Completed';
 
   // Parse age as "40Y" from "40y 4m"
@@ -259,39 +249,22 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
       {/* ── Tab content ── */}
       {activeTab === 'Activity Log' ? (
         <div className={styles.activityLog}>
-          {activity.map(group => (
-            <div key={group.date} className={styles.dateGroup}>
-              <div className={styles.dateGroupHeader}>{group.date}</div>
-              {group.entries.map((entry, i) => (
-                <div key={i} className={styles.activityItem}>
-                  <div className={styles.activityIconWrap}>
-                    <div className={styles.activityIcon}>
-                      <Icon name={entry.icon} size={15} color="var(--neutral-300)" />
-                    </div>
-                    {i < group.entries.length - 1 && <div className={styles.activityLine} />}
-                  </div>
-                  <div className={styles.activityBody}>
-                    <div className={styles.activityTime}>{entry.time}</div>
-                    <div className={styles.activityTitle}>{entry.title}</div>
-                    <div className={styles.activityUser}>{entry.user}</div>
-                    {entry.attachment?.blob && (
-                      <button
-                        type="button"
-                        className={styles.activityAttachment}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPdfPreview(entry.attachment);
-                        }}
-                      >
-                        <Icon name="solar:paperclip-linear" size={13} color="var(--primary-300)" />
-                        {entry.attachment.filename || 'Consolidated note.pdf'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ))}
+          <Timeline
+            entries={timelineEntries}
+            emptyLabel="No activity yet for this care gap."
+            renderExtra={(entry) =>
+              entry.attachment?.blob ? (
+                <button
+                  type="button"
+                  className={styles.activityAttachment}
+                  onClick={(e) => { e.stopPropagation(); setPdfPreview(entry.attachment); }}
+                >
+                  <Icon name="solar:paperclip-linear" size={13} color="var(--primary-300)" />
+                  {entry.attachment.filename || 'Consolidated note.pdf'}
+                </button>
+              ) : null
+            }
+          />
         </div>
       ) : (
         <div className={styles.emptyTab}>
