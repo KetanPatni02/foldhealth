@@ -68,6 +68,7 @@ function OutreachCell({ member }) {
 
 export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
   const showToast = useAppStore(s => s.showToast);
+  const openQuickView = useAppStore(s => s.openQuickView);
   const primaryGap = member.gaps[0];
   // Single-gap members center their lone item; multi-gap stays top-aligned.
   const tdGap = member.gaps.length === 1
@@ -93,7 +94,13 @@ export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
           <Avatar variant="patient" initials={member.in} />
           <div>
             <div className={styles.patientName}>
-              <button className={styles.patientNameLink} onClick={e => e.stopPropagation()}>
+              <button
+                className={styles.patientNameLink}
+                onClick={e => {
+                  e.stopPropagation();
+                  openQuickView({ id: member.id, name: member.name, initials: member.in, gender: member.gender, age: member.age, memberId: member.memberId, language: member.language });
+                }}
+              >
                 {member.name}
               </button>{' '}
               <span className={styles.patientDemo}>({member.gender}&bull;{member.age})</span>

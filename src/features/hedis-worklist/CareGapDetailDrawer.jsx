@@ -125,6 +125,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
       title="Care Gap Details"
       onClose={onClose}
       noCloseDivider
+      bodyClassName={styles.drawerBody}
       headerRight={
         <div className={styles.headerNav}>
           <ActionButton
@@ -158,6 +159,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
         />
       </div>
 
+      <div className={styles.contentBody}>
       {/* ── Gap header ── */}
       <div className={styles.gapHeader}>
         <div className={styles.gapToolbar}>
@@ -322,6 +324,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
           <p className={styles.emptyTabTitle}>{activeTab} — coming soon</p>
         </div>
       )}
+      </div>
     </Drawer>
     {pdfPreview && (
       <PdfPreviewOverlay

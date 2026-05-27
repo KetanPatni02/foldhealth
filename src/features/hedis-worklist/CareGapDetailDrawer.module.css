@@ -5,8 +5,14 @@
   margin: 0 4px; flex-shrink: 0;
 }
 
-/* PatientBanner wrap — breathing room above the gap header */
-.patientBannerWrap { margin-bottom: 4px; }
+/* Drawer body override — zero out default padding so banner is full-bleed */
+.drawerBody { padding: 0 !important; }
+
+/* PatientBanner stretches edge-to-edge; its own background + border-bottom handle separation */
+.patientBannerWrap { }
+
+/* All content below the banner gets standard horizontal padding */
+.contentBody { padding: 0 24px 24px; }
 
 /* ── Gap header block ── */
 .gapHeader {
