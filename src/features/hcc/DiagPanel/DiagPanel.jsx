@@ -174,7 +174,9 @@ export function DiagPanel() {
   const diagSnapOpen = useAppStore(s => s.diagSnapOpen);
   const setDiagSnapOpen = useAppStore(s => s.setDiagSnapOpen);
   const diagLeftPanel = useAppStore(s => s.diagLeftPanel);
+  const diagActivityIcd = useAppStore(s => s.diagActivityIcd);
   const setDiagLeftPanel = useAppStore(s => s.setDiagLeftPanel);
+  const setDiagTab = useAppStore(s => s.setDiagTab);
 
   const [overriddenOpen, setOverriddenOpen] = useState(false);
   const [closedOpen, setClosedOpen] = useState(false);
@@ -428,7 +430,8 @@ export function DiagPanel() {
       {diagLeftPanel && (
         <LeftWorkspace
           active={diagLeftPanel}
-          onChange={setDiagLeftPanel}
+          icdScope={diagActivityIcd}
+          onChange={setDiagTab}
           onClose={() => setDiagLeftPanel(null)}
           member={member}
         />
@@ -586,8 +589,11 @@ export function DiagPanel() {
             icon="solar:history-linear"
             size="S"
             tooltip="Activity Log"
-            className={diagLeftPanel === 'activity' ? styles.activeIcon : ''}
-            onClick={() => setDiagLeftPanel(diagLeftPanel === 'activity' ? null : 'activity')}
+            /* Only highlight for the DOS-level log — an ICD-scoped activity
+               log (opened from an ICD code) must NOT light up this global
+               icon. */
+            className={diagLeftPanel === 'activity' && !diagActivityIcd ? styles.activeIcon : ''}
+            onClick={() => setDiagLeftPanel(diagLeftPanel === 'activity' && !diagActivityIcd ? null : 'activity')}
           />
           <span className={styles.divider} />
           <ActionButton
@@ -598,7 +604,7 @@ export function DiagPanel() {
           />
           <span className={styles.divider} />
           <ActionButton size="S" tooltip="More" onClick={noop('More')}>
-            <Icon name="custom:menu-dots" size={20} color="var(--neutral-300)" />
+            <Icon name="custom:menu-dots" size={18} color="var(--neutral-300)" />
           </ActionButton>
         </div>
       </div>

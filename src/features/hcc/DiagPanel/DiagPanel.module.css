@@ -504,9 +504,11 @@
   overflow: hidden;
 }
 
-/* When the workspace is open, the right pane takes a fixed-ish slice. */
+/* When the workspace is open, the left (LeftWorkspace) and right (Diagnosis
+   Gaps) panes split the drawer 50-50. Both use flex:1 with equal basis so
+   neither is squeezed. */
 .rightPane {
-  flex: 0 0 480px;
+  flex: 1 1 0;
   min-width: 0;
   display: flex;
   flex-direction: column;

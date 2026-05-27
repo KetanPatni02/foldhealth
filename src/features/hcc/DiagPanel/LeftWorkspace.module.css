@@ -91,6 +91,203 @@
   background: var(--neutral-25);
 }
 
+/* ── Recorded By + Date filter row (Figma 1:45950) ──
+   Filter glyph + two outline chips. First four tabs only. */
+.filterRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  flex-shrink: 0;
+  background: var(--neutral-25);
+}
+.filterChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.filterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 4px 8px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--neutral-300);
+  white-space: nowrap;
+  transition: border-color 0.12s, background 0.12s;
+}
+.filterChip:hover {
+  border-color: var(--neutral-200);
+  background: var(--neutral-50);
+}
+/* DOS-level filter row carries a trailing "Clear All" link button. */
+.filterClearAll {
+  margin-left: auto;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--primary-300);
+  white-space: nowrap;
+}
+.filterClearAll:hover { text-decoration: underline; }
+
+/* ── Outreach tab (DOS-level, Figma 1:48023) ── */
+.outreachList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.outreachRow {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+}
+.outreachIcon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.outreachText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.outreachHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.outreachType {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.outreachTime {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.outreachOutcome {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-400);
+}
+.outreachBy {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+
+/* ── Worklog tab (DOS-level, Figma 42:368051) ──
+   ICD rows × Coder / Reviewer 1–3 columns. */
+.wlTableWrap {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.wlTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Inter', sans-serif;
+}
+.wlTable th {
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  background: var(--neutral-25);
+  border-bottom: 0.5px solid var(--neutral-150);
+  white-space: nowrap;
+}
+.wlIcdHead { min-width: 160px; }
+.wlGroupRow td {
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--neutral-400);
+  background: var(--neutral-50);
+  border-bottom: 0.5px solid var(--neutral-150);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.wlRow td {
+  padding: 8px 10px;
+  border-bottom: 0.5px solid var(--neutral-100);
+  vertical-align: top;
+}
+.wlRow:last-child td { border-bottom: none; }
+.wlIcd {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.wlCode {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.wlDesc {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  line-height: 1.3;
+}
+.wlCell { min-width: 96px; }
+.wlDone {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+.wlDoneText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.wlWho {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-500);
+}
+.wlWhen {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.wlPending {
+  font-size: 13px;
+  color: var(--neutral-200);
+}
+
 .scroll {
   flex: 1;
   overflow-y: auto;
@@ -110,6 +307,42 @@
   text-align: center;
 }
 .empty p { margin: 0; }
+
+/* ── ICD-scope bar — shown when the Activity Log is filtered to one ICD ── */
+.activityScopeBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 8px;
+}
+.activityScopeChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-300);
+  font-variant-numeric: tabular-nums;
+}
+.activityScopeClear {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--neutral-300);
+  transition: color 0.12s;
+}
+.activityScopeClear:hover { color: var(--neutral-400); }
 
 /* ── Activity tab — timeline view ────────────────────────────────────── */
 
@@ -228,6 +461,25 @@
 .tlDot {
   color: var(--neutral-200);
 }
+
+/* "Undo All" link on accept entries — primary-300, sits just under the
+   headline (Figma 278:169610). */
+.tlUndoAll {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--primary-300);
+  width: fit-content;
+}
+.tlUndoAll:hover { text-decoration: underline; }
 
 /* Status transition pills */
 .tlTransition {

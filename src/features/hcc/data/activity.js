@@ -59,11 +59,24 @@ export const ACTIVITY = {
   ],
   "_default": [
     { t:"group", label:"Jan 2026" },
-    { t:"accept",      date:"01/15/2026", time:"10:00 AM", by:"N. Richards",   role:"Reviewer 1",  dos:"03/04/2025", icds:["E11.22"],                  headline:"ICD: E11.22 Status Changed to Accept",
-      details:[{ hcc:"HCC 18 - Diabetes w/ Complications", icd:"E11.22 - Type 2 diabetes with diabetic chronic kidney disease", from:"None", to:"Accepted" }]
+    { t:"status_hcc",  date:"01/24/2026", time:"12:30 PM", by:"Automation",      role:null,          dos:"07/04/2024", icds:["E11.21","I48.91","J44.0"], headline:"HCC 18, HCC 96 and HCC 111 Status Changed", from:"Open", to:"Audited" },
+    { t:"accept",      date:"01/24/2026", time:"12:30 PM", by:"N. Richards",     role:"Reviewer 1",  dos:"07/04/2024", icds:["E11.21","I48.91"],         headline:"2 ICD: E11.21, I48.91 Status Changed to Accept",
+      details:[
+        { hcc:"HCC 18 - Diabetes w/ Complications", icd:"E11.21 - Type 2 diabetes with diabetic nephropathy", from:"None", to:"Accepted" },
+        { hcc:"HCC 96 - Atrial Fibrillation",       icd:"I48.91 - Unspecified atrial fibrillation",          from:"None", to:"Accepted" },
+      ]
     },
-    { t:"upload",      date:"01/14/2026", time:"09:00 AM", by:"A. Beauchamp",  role:"Support Team",dos:null,          icds:["E11.22"],                  headline:"Document Uploaded for HCC18 (E11.22)", file:"Progress Note.pdf", fileType:"Visit Note" },
-    { t:"assign_coder",date:"01/10/2026", time:"09:00 AM", by:"A. Beauchamp",  role:"Support",     dos:null,          icds:["E11.22"],                  headline:"Coder Changed", fromAvatar:{initials:"DH",name:"D. Hintz"}, toAvatar:{initials:"NR",name:"N. Richards"} },
+    { t:"dismiss",     date:"01/21/2026", time:"12:30 PM", by:"Lucy Moen",       role:"Reviewer 2",  dos:"07/04/2024", icds:["I50.9"],                   headline:"ICD: I50.9  Status Changed to Dismiss",
+      details:[{ hcc:"HCC 85 - Congestive Heart Failure", icd:"I50.9 - Heart failure, unspecified", reason:"Condition Not Present (Unsupported, Resolved or Transient)", from:"Accepted", to:"Dismissed" }]
+    },
+    { t:"delete",      date:"01/15/2026", time:"12:30 PM", by:"D. Hintz",        role:"Coder",       dos:"07/04/2024", icds:["F32.1"],                   headline:"ICD: F32.1(Manual) is Deleted",
+      details:[{ hcc:"HCC 58 - Major Depression", icd:"F32.1 - Major depressive disorder, single episode" }]
+    },
+    { t:"upload",      date:"01/14/2026", time:"09:00 AM", by:"A. Beauchamp",    role:"Support Team",dos:"07/04/2024", icds:["E11.21","J44.0"],          headline:"Document Uploaded for HCC18 (E11.21) and HCC111 (J44.0)", file:"Progress Note.pdf", fileType:"Visit Note" },
+    { t:"create",      date:"01/11/2026", time:"12:30 PM", by:"Benjamin Cummings",role:"Reviewer 1", dos:"07/04/2024", icds:["I48.91"],                  headline:"ICD: I48.91 Created Manually" },
+    { t:"override",    date:"01/09/2026", time:"12:30 PM", by:"Automation",      role:null,          dos:"07/04/2024", icds:["J44.0"],                   headline:"HCC 111 Overridden by HCC 112" },
+    { t:"comment",     date:"01/06/2026", time:"12:30 PM", by:"Dr Aldo Richman", role:"Physician",   dos:"07/04/2024", icds:["E11.21","F32.1"],          headline:"Added a Comment for HCC18 (E11.21), HCC58 (F32.1)" },
+    { t:"assign_coder",date:"01/10/2026", time:"09:00 AM", by:"A. Beauchamp",    role:"Support",     dos:"07/04/2024", icds:["E11.21","I48.91","J44.0","I50.9","F32.1"], headline:"Coder Changed", fromAvatar:{initials:"DH",name:"D. Hintz"}, toAvatar:{initials:"NR",name:"N. Richards"} },
   ],
 };
 export const getActivityForMember = (name) => ACTIVITY[name] || ACTIVITY._default || [];

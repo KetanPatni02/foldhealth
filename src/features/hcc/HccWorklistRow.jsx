@@ -639,7 +639,7 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
           />
           <span className={styles.actionsDivider} />
           <ActionButton size="S" tooltip="More actions" onClick={openActions}>
-            <Icon name="custom:menu-dots" size={20} color="var(--neutral-300)" />
+            <Icon name="custom:menu-dots" size={18} color="var(--neutral-300)" />
           </ActionButton>
         </div>
       </td>

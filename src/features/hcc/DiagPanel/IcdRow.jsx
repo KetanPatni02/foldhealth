@@ -35,6 +35,13 @@ export function IcdRow({ icd }) {
   const dismissHccGap = useAppStore(s => s.dismissHccGap);
   const reopenHccGap = useAppStore(s => s.reopenHccGap);
   const showToast = useAppStore(s => s.showToast);
+  const openIcdActivityLog = useAppStore(s => s.openIcdActivityLog);
+  // This card is "selected" when the left panel's Activity Log is scoped to
+  // its code (Figma Selection variant 1:33197 → primary-50 bg, primary-300
+  // border). Clicking the code toggles the scope on/off.
+  const diagActivityIcd = useAppStore(s => s.diagActivityIcd);
+  const clearDiagActivityIcd = useAppStore(s => s.clearDiagActivityIcd);
+  const isSelected = diagActivityIcd === icd.code;
 
   // Unified expansion panel — opens either via the confidence-score badge
   // (panel='confidence', confidence section open) or via Accept on an AI
@@ -124,7 +131,7 @@ export function IcdRow({ icd }) {
 
   return (
     <div
-      className={[styles.row, isClosed ? styles.rowClosed : ''].join(' ')}
+      className={[styles.row, isClosed ? styles.rowClosed : '', isSelected ? styles.rowSelected : ''].join(' ')}
       data-status={icd.status}
     >
       {/* Title sub-stack — code + description, then Last Reviewed, then the
@@ -136,7 +143,13 @@ export function IcdRow({ icd }) {
         <div className={styles.topRow}>
           <span
             className={styles.code}
-            onClick={(e) => { e.stopPropagation(); showToast('Open code details — coming in Phase 3'); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              // Toggle: clicking the already-selected code clears the scope.
+              if (isSelected) clearDiagActivityIcd();
+              else openIcdActivityLog(icd.code);
+            }}
+            title={isSelected ? `Hide activity for ${icd.code}` : `View activity for ${icd.code}`}
           >
             {icd.code}
           </span>
@@ -261,7 +274,7 @@ export function IcdRow({ icd }) {
             onClick={handleMore}
             aria-label="More actions"
           >
-            <Icon name="custom:menu-dots" size={20} color="var(--neutral-300)" />
+            <Icon name="custom:menu-dots" size={18} color="var(--neutral-300)" />
           </button>
         </div>
       </div>
