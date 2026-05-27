@@ -46,7 +46,7 @@ export const HEDIS_MEMBERS = [
   {
     id: 'hd5', in: 'JP', name: 'James Patterson',
     gender: 'M', age: '71y 9m', memberId: '#HPM700800900', language: 'en',
-    gaps: [{ code: 'ABA', status: 'Open' }, { code: 'CBP', status: 'Open' }],
+    gaps: [{ code: 'ABA', status: 'Open', startDate: '05/15/2026' }, { code: 'CBP', status: 'Open', startDate: '05/14/2026' }],
     assignee: null, assigneeInitials: null,
     startDate: '05/15/2026',
     advIllness: 3, frailty: 1, riskLevel: '1_High', tasks: 1,
@@ -58,8 +58,8 @@ export const HEDIS_MEMBERS = [
     id: 'hd6', in: 'AK', name: 'Anita Kumari',
     gender: 'F', age: '55y 6m', memberId: '#HPM111222333', language: 'hi',
     gaps: [
-      { code: 'DM', status: 'Open' },
-      { code: 'KED', status: 'Open', assignee: 'Marcus Chen' },
+      { code: 'DM', status: 'Open', startDate: '05/14/2026' },
+      { code: 'KED', status: 'Open', startDate: '05/13/2026', assignee: 'Marcus Chen' },
     ],
     assignee: 'Isabeth Partida Fra', assigneeInitials: 'IP',
     startDate: '05/14/2026',
@@ -105,11 +105,12 @@ export const HEDIS_MEMBERS = [
     id: 'hd10', in: 'PN', name: 'Patricia Nguyen',
     gender: 'F', age: '44y 11m', memberId: '#HPM777888999', language: 'vi',
     gaps: [
-      { code: 'COL', status: 'Open' },
-      { code: 'BCS', status: 'Open' },
+      { code: 'COL', status: 'Open', startDate: '05/07/2026' },
+      { code: 'BCS', status: 'Open', startDate: '05/06/2026' },
       {
         code: 'CBP',
         status: 'Open',
+        startDate: '05/05/2026',
         assignee: 'Marcus Chen',
         lastEditedBy: 'Marcus Chen',
         lastEditedAt: 'Today, 10:15 AM',
@@ -123,6 +124,7 @@ export const HEDIS_MEMBERS = [
       {
         code: 'KED',
         status: 'Open',
+        startDate: '05/04/2026',
         assignee: 'Sarah Lee',
         lastEditedBy: 'Sarah Lee',
         lastEditedAt: 'Yesterday, 3:45 PM',
@@ -142,7 +144,7 @@ export const HEDIS_MEMBERS = [
   {
     id: 'hd11', in: 'RJ', name: 'Robert Johnson',
     gender: 'M', age: '58y 3m', memberId: '#HPM888999000', language: 'en',
-    gaps: [{ code: 'DM', status: 'Open' }, { code: 'CBP', status: 'Open' }],
+    gaps: [{ code: 'DM', status: 'Open', startDate: '05/05/2026' }, { code: 'CBP', status: 'Open', startDate: '05/04/2026' }],
     assignee: null, assigneeInitials: null,
     startDate: '05/05/2026',
     advIllness: 1, frailty: 0, riskLevel: '2_Mod-High', tasks: null,

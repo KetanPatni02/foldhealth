@@ -27,7 +27,7 @@ import styles from './Drawer.module.css';
  *  - Footer padding: 16px 24px (if present)
  *  - Animation: slideIn .25s ease (translateX)
  */
-export function Drawer({ title, onClose, headerRight, footer, children, className, bodyClassName, headerStyle, titleStyle }) {
+export function Drawer({ title, onClose, headerRight, footer, children, className, bodyClassName, headerStyle, titleStyle, noCloseDivider }) {
   return createPortal(
     <>
       <div className={styles.overlay} onClick={onClose} />
@@ -36,7 +36,7 @@ export function Drawer({ title, onClose, headerRight, footer, children, classNam
           <h2 className={styles.headerTitle} style={titleStyle}>{title}</h2>
           <div className={styles.headerRight}>
             {headerRight}
-            <button className={styles.closeBtn} onClick={onClose}>
+            <button className={`${styles.closeBtn}${noCloseDivider ? ` ${styles.closeBtnNoDivider}` : ''}`} onClick={onClose}>
               <CloseIcon size={20} />
             </button>
           </div>

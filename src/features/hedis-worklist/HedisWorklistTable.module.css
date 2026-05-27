@@ -248,6 +248,13 @@
 .checkTh { padding: 8px 10px !important; width: 36px; }
 .memberTh { padding: 8px 12px !important; border-right: 1px solid var(--neutral-150); }
 
+/* ── Pagination bar ── */
+.paginationBar {
+  border-top: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  flex-shrink: 0;
+}
+
 /* ── Empty / no-results ── */
 .empty {
   display: flex; flex-direction: column; align-items: center;

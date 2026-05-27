@@ -3,6 +3,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { AppLayout } from './layouts/AppLayout';
 import { LoginPage } from './features/auth/LoginPage';
+import { ResetPasswordPage } from './features/auth/ResetPasswordPage';
 import { useAppStore } from './store/useAppStore';
 import { supabase } from './lib/supabase';
 import { initRouter } from './lib/router';
@@ -12,19 +13,39 @@ function App() {
   const routerInit = useRef(false);
   const [session, setSession] = useState(undefined); // undefined = loading, null = unauthenticated
   const [bypassed, setBypassed] = useState(() => sessionStorage.getItem('__auth_bypass') === 'true');
+  // Set when Supabase fires PASSWORD_RECOVERY OR when the URL hash carries
+  // the recovery tokens directly (e.g. before supabase-js has processed
+  // them). Initial check handles the brief window between mount and the
+  // PASSWORD_RECOVERY event firing.
+  const [recoveryMode, setRecoveryMode] = useState(() => {
+    const h = window.location.hash || '';
+    return /type=recovery/.test(h) || h.startsWith('#/reset-password');
+  });
 
   // Listen for auth state changes
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-    });
-
+    // Subscribe FIRST so we never miss PASSWORD_RECOVERY, which can fire
+    // synchronously from inside the first getSession() call when there
+    // are recovery tokens in the URL.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       // Sentry/Vercel events for major auth transitions. Supabase emits
       // SIGNED_IN once after a successful login (covers password, OAuth
-      // callback, and magic-link), and SIGNED_OUT on logout.
-      if (event === 'SIGNED_OUT') track('auth.logout');
-      else if (event === 'SIGNED_IN') track('auth.session_established');
+      // callback, and magic-link), and SIGNED_OUT on logout. PASSWORD_RECOVERY
+      // fires when the user lands here via a password-reset email link;
+      // hold them on ResetPasswordPage instead of dropping into the app.
+      if (event === 'SIGNED_OUT') {
+        track('auth.logout');
+        setRecoveryMode(false);
+      } else if (event === 'SIGNED_IN') {
+        track('auth.session_established');
+      } else if (event === 'PASSWORD_RECOVERY') {
+        track('auth.password_recovery_started');
+        setRecoveryMode(true);
+      }
+      setSession(s);
+    });
+
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
     });
 
@@ -43,6 +64,21 @@ function App() {
   }, []);
 
   const isAuthenticated = session || bypassed;
+
+  // Password recovery — must short-circuit before the regular auth
+  // branches. The recovery email gives the user a temporary session, so
+  // we'd otherwise drop them straight into the app with no way to set
+  // a new password. onDone signs them out and clears the flag.
+  if (recoveryMode) {
+    return (
+      <ResetPasswordPage
+        onDone={() => {
+          setRecoveryMode(false);
+          window.location.hash = '#/login';
+        }}
+      />
+    );
+  }
 
   // Loading state while checking auth
   if (session === undefined && !bypassed) {
