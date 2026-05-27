@@ -42,6 +42,10 @@ keep entries short and specific. Newest at the top.
   both NodePanel and ConversationNode read from it).
 - Drawers across the app use the shared `Drawer` component (700px, 8px
   inset, 16px radius). Action buttons go in `headerRight`, never in `footer`.
+- **Always place a divider between distinct groups of action buttons** in a
+  drawer header. Use `<span className={styles.headerDivider} />` (1px ×
+  16px, `var(--neutral-150)`) and pass `noCloseDivider` to `<Drawer>` so
+  the close button doesn't add a second automatic border.
 - Solar (Iconify) icon set is the default. Reach for `solar:*-linear`
   variants first; only build a custom SVG when no good Solar match exists.
 

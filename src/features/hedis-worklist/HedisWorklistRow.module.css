@@ -117,10 +117,31 @@
 /* Total Gaps cell list */
 .gapList { display: flex; gap: 4px; flex-wrap: wrap; }
 
+/* Gap-specific cell — padding removed from <td> so inner items control spacing */
+.tdGap {
+  padding: 0;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-400);
+  vertical-align: top;
+  white-space: nowrap;
+}
+/* Single-gap rows: center the lone item vertically like other cells */
+.tdGapCenter { vertical-align: middle; }
+/* Right divider — marks the boundary between per-gap and per-member columns */
+.tdGapDivide { border-right: 1px solid var(--neutral-150); }
+
+/* Stacked per-gap items inside a .tdGap cell */
+.gapItems { display: flex; flex-direction: column; }
+.gapItem {
+  padding: 8px 14px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+}
+.gapItem + .gapItem { border-top: 0.5px solid var(--neutral-150); }
+
 /* Gap status */
-.gapStatusCell { display: flex; flex-direction: column; gap: 2px; }
-.gapStatusLine { font-size: 13px; color: var(--neutral-300); white-space: nowrap; }
-.gapStatusCode { font-weight: 500; color: var(--neutral-400); }
 .gapStatusOpen { color: var(--status-warning); font-weight: 500; }
 .gapStatusClosed { color: var(--status-success); font-weight: 500; }
 .gapStatusExcluded { color: var(--neutral-200); font-weight: 500; }
@@ -140,17 +161,15 @@
 .dot.pending { background: var(--neutral-150); }
 
 /* Assignee cell */
-.assigneeCell { display: flex; flex-direction: column; gap: 2px; }
-.assigneeCode { font-size: 12px; color: var(--neutral-300); font-weight: 500; }
-.assigneeName { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--neutral-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+.assigneeName { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--neutral-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
 .assigneeBtn {
   display: inline-flex; align-items: center; gap: 4px;
-  padding: 3px 8px; border-radius: 5px;
-  border: 0.5px solid var(--neutral-150);
-  background: var(--neutral-0);
+  padding: 2px 4px; border-radius: 5px;
+  border: none; background: none;
   font-size: 12px; font-weight: 500; color: var(--neutral-300);
   cursor: pointer; font-family: 'Inter', sans-serif;
 }
+.assigneeBtn:hover { color: var(--primary-300); }
 .assigneeBtn:hover { border-color: var(--primary-300); color: var(--primary-300); }
 
 /* Start date cell */
@@ -176,4 +195,5 @@
   vertical-align: middle;
   white-space: nowrap;
 }
-.actionsBtns { display: flex; align-items: center; gap: 4px; }
+.actionsBtns { display: flex; align-items: center; gap: 8px; }
+.actionsDivider { width: 1px; height: 16px; background: var(--neutral-150); flex-shrink: 0; }

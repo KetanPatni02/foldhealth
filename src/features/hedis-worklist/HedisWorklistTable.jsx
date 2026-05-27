@@ -10,6 +10,7 @@ import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
 import { SortableHeader } from '../../components/Table/SortableHeader';
 import { useTableSort } from '../../components/Table/useTableSort';
+import { Pagination } from '../../components/Pagination/Pagination';
 import styles from './HedisWorklistTable.module.css';
 import rowStyles from './HedisWorklistRow.module.css';
 
@@ -36,6 +37,8 @@ const FILTER_CHIPS = [
 export function HedisWorklistTable() {
   const currentPage = useAppStore(s => s.currentPage);
   const perPage = useAppStore(s => s.perPage);
+  const setCurrentPage = useAppStore(s => s.setCurrentPage);
+  const setPerPage = useAppStore(s => s.setPerPage);
   const showToast = useAppStore(s => s.showToast);
   const hedisMembers = useAppStore(s => s.hedisMembers);
 
@@ -105,6 +108,9 @@ export function HedisWorklistTable() {
   }, [searchQuery, activeFilters, hedisMembers]);
 
   const { sorted, sortKey, sortDir, requestSort } = useTableSort(filtered, 'startDate', 'desc');
+
+  // Reset to page 1 whenever the filtered result set changes size.
+  useEffect(() => { setCurrentPage(1); }, [filtered.length, setCurrentPage]);
 
   const startIdx = (currentPage - 1) * perPage;
   const paginated = sorted.slice(startIdx, startIdx + perPage);
@@ -238,7 +244,7 @@ export function HedisWorklistTable() {
       )}
 
       {/* ── Table ── */}
-      <div className={styles.scrollWrap}>
+      <div className={styles.scrollWrap} style={{ flex: 1 }}>
         <table className={styles.table}>
           <thead>
             <tr>
@@ -258,14 +264,14 @@ export function HedisWorklistTable() {
               <th style={{ padding: '8px 14px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', textAlign: 'left', whiteSpace: 'nowrap' }}>
                 Gap Status
               </th>
-              <th style={{ padding: '8px 14px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', textAlign: 'left', whiteSpace: 'nowrap' }}>
-                Outreach
-              </th>
-              <th style={{ padding: '8px 14px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', textAlign: 'left', whiteSpace: 'nowrap' }}>
+              <th style={{ padding: '8px 14px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', textAlign: 'left', whiteSpace: 'nowrap', minWidth: 200 }}>
                 Assignee
               </th>
               <th style={{ padding: '8px 14px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', textAlign: 'left', whiteSpace: 'nowrap' }}>
                 Start Date
+              </th>
+              <th style={{ padding: '8px 14px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', textAlign: 'left', whiteSpace: 'nowrap' }}>
+                Outreach
               </th>
               <SortableHeader label="AdvIllness" sortKey="advIllness" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} />
               <SortableHeader label="Frailty" sortKey="frailty" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} />
@@ -300,6 +306,17 @@ export function HedisWorklistTable() {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* ── Pagination bar ── */}
+      <div className={styles.paginationBar}>
+        <Pagination
+          totalItems={filtered.length}
+          currentPage={currentPage}
+          perPage={perPage}
+          onPageChange={setCurrentPage}
+          onPerPageChange={setPerPage}
+        />
       </div>
     </div>
 

@@ -69,6 +69,10 @@ function OutreachCell({ member }) {
 export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
   const showToast = useAppStore(s => s.showToast);
   const primaryGap = member.gaps[0];
+  // Single-gap members center their lone item; multi-gap stays top-aligned.
+  const tdGap = member.gaps.length === 1
+    ? `${styles.tdGap} ${styles.tdGapCenter}`
+    : styles.tdGap;
 
   const langShort = (member.language || 'en').toUpperCase();
   const langFull = LANG_MAP[member.language] || member.language;
@@ -105,61 +109,71 @@ export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
         </div>
       </td>
 
-      {/* Total Gaps — neutral <Badge> for every measure code */}
-      <td className={styles.td} onClick={e => e.stopPropagation()}>
-        <div className={styles.gapList}>
+      {/* Total Gaps — one badge per gap, aligned with sibling gap cells */}
+      <td className={tdGap} onClick={e => e.stopPropagation()}>
+        <div className={styles.gapItems}>
           {member.gaps.map(g => (
-            <span key={g.code} onClick={() => onOpenGap?.(member, g.code)} style={{ cursor: 'pointer' }}>
-              <Badge variant="compliance-na" label={g.code} />
-            </span>
+            <div key={g.code} className={styles.gapItem}>
+              <span onClick={() => onOpenGap?.(member, g.code)} style={{ cursor: 'pointer' }}>
+                <Badge variant="compliance-na" label={g.code} />
+              </span>
+            </div>
           ))}
         </div>
       </td>
 
-      {/* Gap Status */}
-      <td className={styles.td}>
-        <div className={styles.gapStatusCell}>
+      {/* Gap Status — one per gap */}
+      <td className={tdGap}>
+        <div className={styles.gapItems}>
           {member.gaps.map(g => (
-            <div key={g.code} className={styles.gapStatusLine}>
-              <span className={styles.gapStatusCode}>{g.code}:</span>{' '}
+            <div key={g.code} className={styles.gapItem}>
               <span className={STATUS_CLASS[g.status] || ''}>{g.status}</span>
             </div>
           ))}
         </div>
       </td>
 
-      {/* Outreach — TOC pattern */}
+      {/* Assignee — per gap, falls back to member-level assignee */}
+      <td className={tdGap} onClick={e => e.stopPropagation()}>
+        <div className={styles.gapItems}>
+          {member.gaps.map(g => {
+            const assignee = g.assignee ?? member.assignee;
+            return (
+              <div key={g.code} className={styles.gapItem}>
+                {assignee ? (
+                  <div className={styles.assigneeName}>
+                    <Icon name="solar:user-linear" size={14} color="var(--neutral-300)" />
+                    <span>{assignee}</span>
+                  </div>
+                ) : (
+                  <button
+                    className={styles.assigneeBtn}
+                    onClick={() => showToast('Assign care manager — coming soon')}
+                  >
+                    <Icon name="solar:user-plus-rounded-linear" size={13} color="var(--neutral-300)" />
+                    Assign
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </td>
+
+      {/* Start Date — per gap, right border divides per-gap from per-member columns */}
+      <td className={`${tdGap} ${styles.tdGapDivide}`}>
+        <div className={styles.gapItems}>
+          {member.gaps.map(g => (
+            <div key={g.code} className={styles.gapItem}>
+              <span className={styles.startDateValue}>{g.startDate ?? member.startDate}</span>
+            </div>
+          ))}
+        </div>
+      </td>
+
+      {/* Outreach — per member */}
       <td className={styles.td}>
         <OutreachCell member={member} />
-      </td>
-
-      {/* Assignee */}
-      <td className={styles.td} onClick={e => e.stopPropagation()}>
-        <div className={styles.assigneeCell}>
-          <span className={styles.assigneeCode}>{primaryGap.code}:</span>
-          {member.assignee ? (
-            <div className={styles.assigneeName}>
-              <Icon name="solar:user-circle-linear" size={14} color="var(--primary-300)" />
-              <span>{member.assignee}</span>
-            </div>
-          ) : (
-            <button
-              className={styles.assigneeBtn}
-              onClick={() => showToast('Assign care manager — coming soon')}
-            >
-              <Icon name="solar:user-plus-rounded-linear" size={13} color="var(--neutral-300)" />
-              Assign
-            </button>
-          )}
-        </div>
-      </td>
-
-      {/* Start Date */}
-      <td className={styles.td}>
-        <div className={styles.startDateCell}>
-          <span className={styles.startDateCode}>{primaryGap.code}:</span>
-          <span className={styles.startDateValue}>{member.startDate}</span>
-        </div>
       </td>
 
       {/* AdvIllness */}
@@ -197,12 +211,14 @@ export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
             tooltip="View care gap details"
             onClick={e => { e.stopPropagation(); onOpenGap?.(member, primaryGap.code); }}
           />
+          <span className={styles.actionsDivider} />
           <ActionButton
             icon="solar:phone-linear"
             size="L"
             tooltip="Call"
             onClick={e => { e.stopPropagation(); showToast('Call — coming soon'); }}
           />
+          <span className={styles.actionsDivider} />
           <ActionButton
             icon="solar:menu-dots-bold"
             size="L"
