@@ -638,12 +638,9 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
             onClick={(e) => { e.stopPropagation(); openDiagPanel(member.id); }}
           />
           <span className={styles.actionsDivider} />
-          <ActionButton
-            icon="solar:menu-dots-bold"
-            size="S"
-            tooltip="More actions"
-            onClick={openActions}
-          />
+          <ActionButton size="S" tooltip="More actions" onClick={openActions}>
+            <Icon name="custom:menu-dots" size={20} color="var(--neutral-300)" />
+          </ActionButton>
         </div>
       </td>
     </tr>

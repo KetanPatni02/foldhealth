@@ -160,7 +160,11 @@ export function DiagPanel() {
   // Assignment-engine read/write — drives the Coder status pill below.
   const hccDosAssignments = useAppStore(s => s.hccDosAssignments);
   const initializeHccPatient = useAppStore(s => s.initializeHccPatient);
+  const hccCompleteSupport = useAppStore(s => s.hccCompleteSupport);
   const hccCompleteCoder = useAppStore(s => s.hccCompleteCoder);
+  const hccCompleteR1 = useAppStore(s => s.hccCompleteR1);
+  const hccCompleteR2 = useAppStore(s => s.hccCompleteR2);
+  const hccCompleteR3 = useAppStore(s => s.hccCompleteR3);
   const hccRequestRecords = useAppStore(s => s.hccRequestRecords);
   const hccMarkInsufficient = useAppStore(s => s.hccMarkInsufficient);
   const hccRejectDos = useAppStore(s => s.hccRejectDos);
@@ -266,7 +270,26 @@ export function DiagPanel() {
   // status pill below and the assignee badge.
   const dosStateKey = member && currentDos ? `${member.id}::${currentDos}` : null;
   const dosState = dosStateKey ? hccDosAssignments[dosStateKey] : null;
-  const coderStatus = dosState?.coder?.status || diagDosStatus || member?.cdrS || 'New';
+
+  // Current bucket the DOS sits in — drives both the status pill (right
+  // side of DOS row) and the AssigneeAvatar (left side) so they always
+  // agree on which role is active.
+  const currentBucket = useMemo(
+    () => resolveCurrentAssignee(member, dosState),
+    [member, dosState],
+  );
+
+  // Status text shown in the pill. Reads from whichever role currently
+  // owns the DOS so we never display the Coder's old "Completed" state
+  // when the workflow has already advanced to a downstream reviewer.
+  const currentStatus = useMemo(() => {
+    if (!currentBucket) return diagDosStatus || 'New';
+    if (currentBucket.kind === 'billing')    return 'Completed';
+    if (currentBucket.kind === 'unassigned') return 'Awaiting';
+    // kind === 'active' — use the role's live status (or a sensible
+    // default when the engine seeded an assignee without a status yet).
+    return currentBucket.status || 'In Progress';
+  }, [currentBucket, diagDosStatus]);
 
   // ── Review-progress stages + ring (drives the With-Coder pill) ──
   const reviewStages = useMemo(
@@ -315,17 +338,47 @@ export function DiagPanel() {
     clearTimeout(closeTimer.current);
   }, []);
 
-  // Bridge from the DosStatusMenu's onChange (status label) to the right
-  // lifecycle transition. The menu is currently rooted in the Coder view.
-  const handleCoderStatusChange = (next) => {
+  // Bridge from the DosStatusMenu's onChange to the right lifecycle
+  // transition for whichever role currently owns the DOS. Some choices
+  // (Record Requested → only Coder; Insufficient / Reject → only Support;
+  // Returned → only reviewers) are role-specific and silently no-op when
+  // the chosen value doesn't apply to the active role.
+  const handleStatusChange = (next) => {
     if (!member || !currentDos) { setDiagDosStatus(next); return; }
-    switch (next) {
-      case 'Completed':         hccCompleteCoder(member.id, currentDos); break;
-      case 'Record Requested':  hccRequestRecords(member.id, currentDos); break;
-      case 'Insufficient':      hccMarkInsufficient(member.id, currentDos, 'current-user', 'Docs incomplete'); break;
-      case 'Reject':            hccRejectDos(member.id, currentDos, 'current-user', 'Docs failed checklist'); break;
-      case 'Returned':          hccReturnDos(member.id, currentDos, 'r1', 'current-user', 'Returned from Coder context'); break;
-      default:                  /* New / Awaiting / In Progress / Record Received are system-driven */ break;
+    const role = currentBucket?.kind === 'active' ? currentBucket.role : null;
+    if (role) {
+      switch (next) {
+        case 'Completed':
+          if (role === 'support') hccCompleteSupport(member.id, currentDos);
+          else if (role === 'coder') hccCompleteCoder(member.id, currentDos);
+          else if (role === 'r1') hccCompleteR1(member.id, currentDos);
+          else if (role === 'r2') hccCompleteR2(member.id, currentDos);
+          else if (role === 'r3') hccCompleteR3(member.id, currentDos);
+          break;
+        case 'Record Requested':
+          if (role === 'coder') hccRequestRecords(member.id, currentDos);
+          break;
+        case 'Insufficient':
+          if (role === 'support') {
+            hccMarkInsufficient(member.id, currentDos, 'current-user', 'Docs incomplete');
+          }
+          break;
+        case 'Reject':
+          if (role === 'support') {
+            hccRejectDos(member.id, currentDos, 'current-user', 'Docs failed checklist');
+          }
+          break;
+        case 'Returned':
+          // Reviewer-only: bounce back to the immediately-prior role
+          // (engine's RETURN_TARGET map handles r1→coder / r2→r1 / r3→r2).
+          if (role === 'r1' || role === 'r2' || role === 'r3') {
+            hccReturnDos(member.id, currentDos, role, 'current-user', `Returned from ${role}`);
+          }
+          break;
+        default:
+          /* New / Awaiting / In Progress / Record Received are system-driven */
+          break;
+      }
     }
     setDiagDosStatus(next);
   };
@@ -474,34 +527,60 @@ export function DiagPanel() {
             <span className={styles.sweepBadge}>Sweep Mode</span>
           ) : (
             <DosStatusMenu
-              value={coderStatus}
-              onChange={handleCoderStatusChange}
+              value={currentStatus}
+              onChange={handleStatusChange}
             />
           )}
         </div>
       </div>
 
-      {/* ── View-by toolbar — sits above Patient Summary so it anchors the
-          section regardless of whether the summary is expanded. ── */}
+      {/* ── DOS toolbar — mirrors Figma node 1:41104. Left cluster:
+          Bulk select + HCC/ICD toggle. Right cluster: + ICD, Filter,
+          Documents, Comments, Activity Log, Search, More. ── */}
       <div className={styles.toolbar}>
-        <div className={styles.viewBy}>
-          <span className={styles.viewByLabel}>View by:</span>
+        <div className={styles.toolbarLeft}>
+          <ActionButton
+            icon="solar:check-square-linear"
+            size="S"
+            tooltip="Bulk Action"
+            onClick={noop('Bulk Action')}
+          />
+          <span className={styles.divider} />
           <Toggle items={VIEW_MODES} active={diagViewMode} onChange={setDiagViewMode} size="S" />
         </div>
 
         <div className={styles.toolbarIcons}>
-          <ActionButton icon="solar:refresh-linear" size="S" tooltip="Refresh" onClick={noop('Refresh')} />
-          <span className={styles.divider} />
           <button type="button" className={styles.addIcdBtn} onClick={noop('Add ICD')}>
             <Icon name="solar:add-circle-linear" size={16} color="var(--primary-300)" />
             <span>ICD</span>
           </button>
           <span className={styles.divider} />
-          <ActionButton icon="solar:check-square-linear" size="S" tooltip="Bulk Action" onClick={noop('Bulk Action')} />
+          <ActionButton
+            icon="custom:filter"
+            size="S"
+            tooltip="Filter"
+            notification
+            count="1"
+            onClick={noop('Filter')}
+          />
           <span className={styles.divider} />
-          <ActionButton icon="custom:filter" size="S" tooltip="Filter" notification count="1" onClick={noop('Filter')} />
+          <ActionButton
+            icon="solar:file-text-linear"
+            size="S"
+            tooltip="Documents"
+            count={String(member?.docStatus?.length || member?.ch || 0)}
+            className={diagLeftPanel === 'documents' ? styles.activeIcon : ''}
+            onClick={() => setDiagLeftPanel(diagLeftPanel === 'documents' ? null : 'documents')}
+          />
           <span className={styles.divider} />
-          <ActionButton icon="solar:sort-vertical-linear" size="S" tooltip="Sort" onClick={noop('Sort')} />
+          <ActionButton
+            icon="solar:chat-square-linear"
+            size="S"
+            tooltip="Comments"
+            count="6"
+            className={diagLeftPanel === 'comments' ? styles.activeIcon : ''}
+            onClick={() => setDiagLeftPanel(diagLeftPanel === 'comments' ? null : 'comments')}
+          />
           <span className={styles.divider} />
           <ActionButton
             icon="solar:history-linear"
@@ -512,14 +591,15 @@ export function DiagPanel() {
           />
           <span className={styles.divider} />
           <ActionButton
-            icon="solar:notes-linear"
+            icon="solar:magnifer-linear"
             size="S"
-            tooltip="Notes"
-            className={diagLeftPanel === 'notes' ? styles.activeIcon : ''}
-            onClick={() => setDiagLeftPanel(diagLeftPanel === 'notes' ? null : 'notes')}
+            tooltip="Search"
+            onClick={() => setSearchOpen(o => !o)}
           />
           <span className={styles.divider} />
-          <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" onClick={() => setSearchOpen(o => !o)} />
+          <ActionButton size="S" tooltip="More" onClick={noop('More')}>
+            <Icon name="custom:menu-dots" size={20} color="var(--neutral-300)" />
+          </ActionButton>
         </div>
       </div>
 

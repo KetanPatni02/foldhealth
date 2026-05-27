@@ -261,7 +261,7 @@ export function IcdRow({ icd }) {
             onClick={handleMore}
             aria-label="More actions"
           >
-            <Icon name="solar:menu-dots-bold" size={16} color="var(--neutral-300)" />
+            <Icon name="custom:menu-dots" size={20} color="var(--neutral-300)" />
           </button>
         </div>
       </div>
