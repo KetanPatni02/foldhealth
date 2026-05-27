@@ -1,6 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { HEDIS_MEMBERS } from './data/mock';
 import { HedisWorklistRow } from './HedisWorklistRow';
 import { CareGapDetailDrawer } from './CareGapDetailDrawer';
 import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
@@ -66,16 +65,16 @@ export function HedisWorklistTable() {
   const closeGapDrawer = () => { setDrawerMemberId(null); setDrawerGapCode(null); };
 
   const yearRef = useRef(null);
-  const setHedisMembers = useAppStore(s => s.setHedisMembers);
+  const fetchHedisMembers = useAppStore(s => s.fetchHedisMembers);
+  const hedisLoading = useAppStore(s => s.hedisLoading);
 
-  // Seed the store's hedisMembers from the local mock the first time this
-  // table mounts and the store is still empty. Idempotent — once seeded
-  // the conditional guard prevents repeated writes.
+  // Fetch from Supabase on first mount; falls back to local mock on error.
   useEffect(() => {
-    if (hedisMembers.length === 0) {
-      setHedisMembers(HEDIS_MEMBERS);
+    if (hedisMembers.length === 0 && !hedisLoading) {
+      fetchHedisMembers();
     }
-  }, [hedisMembers.length, setHedisMembers]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Close year dropdown on outside click
   useEffect(() => {

@@ -18,7 +18,6 @@ import * as hccLifecycle from '../features/hcc/assignment/lifecycle';
 import { hydrateFromMember, dosKey as hccDosKey } from '../features/hcc/assignment/dosState';
 import { DEFAULT_SAMPLING_RATES } from '../features/hcc/assignment/sampling';
 import { staffById as hccStaffById } from '../features/hcc/assignment/astranaStaff';
-import { HEDIS_MEMBERS } from '../features/hedis-worklist/data/mock';
 
 function parseTaskDateStr(str) {
   if (!str || typeof str !== 'string') return null;
@@ -351,9 +350,6 @@ export const useAppStore = create((set, get) => ({
   // Filters
   activeFilters: {},  // { gender: 'F', language: 'es', lace: 'High', ... }
   activeSubnavList: 'TOC',  // which SubNav list is selected
-
-  // HEDIS worklist
-  hedisMembers: HEDIS_MEMBERS,
 
   // Call Details
   _allCallDetails: [],   // full sorted dataset (DB + supplemental local)
@@ -1521,7 +1517,91 @@ export const useAppStore = create((set, get) => ({
   caregapActivity: {},
   // Status updates applied to the local HEDIS mock data via setHedisMembers.
   hedisMembers: [],
+  hedisLoading: false,
   setHedisMembers: (members) => set({ hedisMembers: members }),
+  fetchHedisMembers: async () => {
+    set({ hedisLoading: true });
+    const { data, error } = await supabase
+      .from('hedis_members')
+      .select('*')
+      .order('start_date', { ascending: false });
+    if (error || !data?.length) {
+      if (error) console.warn('fetchHedisMembers — falling back to local mock:', error.message);
+      const { HEDIS_MEMBERS } = await import('../features/hedis-worklist/data/mock');
+      set({ hedisMembers: HEDIS_MEMBERS, hedisLoading: false });
+      return;
+    }
+    set({
+      hedisMembers: data.map(r => ({
+        id:              r.id,
+        in:              r.initials,
+        name:            r.name,
+        gender:          r.gender,
+        age:             r.age,
+        memberId:        r.member_id,
+        language:        r.language || 'en',
+        gaps:            typeof r.gaps === 'string' ? JSON.parse(r.gaps) : (r.gaps || []),
+        assignee:        r.assignee,
+        assigneeInitials: r.assignee_initials,
+        startDate:       r.start_date,
+        advIllness:      r.adv_illness ?? 0,
+        frailty:         r.frailty ?? 0,
+        riskLevel:       r.risk_level,
+        tasks:           r.tasks,
+        outreachDots:    typeof r.outreach_dots === 'string' ? JSON.parse(r.outreach_dots) : (r.outreach_dots || ['pending', 'pending', 'pending']),
+        outreachDate:    r.outreach_date,
+        memberStatus:    r.member_status || 'Active',
+        phone:           r.phone,
+        dob:             r.dob,
+        ipa:             r.ipa,
+        hpCode:          r.hp_code,
+        zip:             r.zip,
+        city:            r.city,
+        state:           r.state,
+      })),
+      hedisLoading: false,
+    });
+  },
+
+  apcmPatients: [],
+  apcmPatientsLoading: false,
+  fetchApcmPatients: async () => {
+    set({ apcmPatientsLoading: true });
+    const { data, error } = await supabase
+      .from('apcm_patients')
+      .select('*')
+      .order('name', { ascending: true });
+    if (error || !data?.length) {
+      if (error) console.warn('fetchApcmPatients — falling back to local mock:', error.message);
+      const { APCM_PATIENTS } = await import('../features/apcm-billing/data/mock');
+      set({ apcmPatients: APCM_PATIENTS, apcmPatientsLoading: false });
+      return;
+    }
+    set({
+      apcmPatients: data.map(r => ({
+        id:                          r.id,
+        name:                        r.name,
+        memberId:                    r.member_id,
+        language:                    r.language || 'en',
+        ehrId:                       r.ehr_id,
+        billingMonth:                r.billing_month,
+        dateOfService:               r.date_of_service,
+        isQmb:                       r.is_qmb,
+        chronicConditionCount:       r.chronic_condition_count,
+        cptCode:                     r.cpt_code,
+        icdCodes:                    typeof r.icd_codes === 'string' ? JSON.parse(r.icd_codes) : (r.icd_codes || []),
+        lastEncounterDate:           r.last_encounter_date,
+        reasons:                     typeof r.reasons === 'string' ? JSON.parse(r.reasons) : (r.reasons || []),
+        renderingProvider:           r.rendering_provider,
+        renderingProviderInitials:   r.rendering_provider_initials,
+        comment:                     r.comment || '',
+        tab:                         r.tab,
+        billingStatus:               r.billing_status,
+        programId:                   r.program_id,
+      })),
+      apcmPatientsLoading: false,
+    });
+  },
   updateGapStatus: (memberId, gapCode, nextStatus) => {
     track('hedis.gap_status_updated', { memberId, gapCode, status: nextStatus });
     set(s => ({

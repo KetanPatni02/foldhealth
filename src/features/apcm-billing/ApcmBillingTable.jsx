@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Button } from '../../components/Button/Button';
 import { Icon } from '../../components/Icon/Icon';
@@ -6,7 +6,7 @@ import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { ApcmBillingRow } from './ApcmBillingRow';
 import { AttestationModal } from './AttestationModal';
-import { APCM_PATIENTS } from './data/mock';
+import { useAppStore } from '../../store/useAppStore';
 import styles from './ApcmBillingTable.module.css';
 import rowStyles from './ApcmBillingRow.module.css';
 
@@ -21,7 +21,26 @@ const thStyle = {
 
 export function ApcmBillingTable({ searchQuery = '' }) {
   const activeTab = 'new-changes';
-  const [patients, setPatients] = useState(APCM_PATIENTS);
+  const storePatients = useAppStore(s => s.apcmPatients);
+  const apcmPatientsLoading = useAppStore(s => s.apcmPatientsLoading);
+  const fetchApcmPatients = useAppStore(s => s.fetchApcmPatients);
+
+  const [patients, setPatients] = useState([]);
+
+  // Fetch from Supabase on first mount; falls back to local mock on error.
+  useEffect(() => {
+    if (storePatients.length === 0 && !apcmPatientsLoading) {
+      fetchApcmPatients();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sync store → local state once data arrives (local state handles UI mutations).
+  useEffect(() => {
+    if (storePatients.length > 0 && patients.length === 0) {
+      setPatients(storePatients);
+    }
+  }, [storePatients, patients.length]);
   const [comments, setComments] = useState({});
   const [activeFilters] = useState({});
 
