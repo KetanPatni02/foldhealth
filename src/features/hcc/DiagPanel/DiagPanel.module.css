@@ -145,28 +145,25 @@
   flex-shrink: 0;
 }
 
-/* ── View-by toolbar ── */
+/* ── DOS toolbar (Figma 1:41104) ── */
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 12px;
+  gap: 8px;
+  padding: 4px 12px 4px 8px;
   height: 40px;
   border-bottom: 0.5px solid var(--neutral-150);
   background: var(--neutral-0);
   flex-shrink: 0;
 }
-.viewBy {
+/* Left cluster — Bulk + view-by toggle. Sits against the left edge. */
+.toolbarLeft {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.viewByLabel {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--neutral-300);
-}
+/* (`.viewBy` / `.viewByLabel` removed — Figma drops the "View by:" prefix
+   so the toggle sits inline with the Bulk action.) */
 /* Animated segmented toggle — mirrors AgentCanvas .toolbarTabs pattern */
 .segmented {
   display: flex;
@@ -215,11 +212,14 @@
   gap: 8px;
   margin-left: auto;
 }
+/* Figma: + ICD pill-link — 16px add icon, 4px gap, 14px Inter Regular
+   primary-300 label. No padding, no border by default; subtle neutral-50
+   bg on hover for affordance. */
 .addIcdBtn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
+  padding: 4px 6px;
   background: none;
   border: none;
   border-radius: 4px;
@@ -229,8 +229,9 @@
 }
 .addIcdBtn:hover { background: var(--neutral-50); }
 .addIcdBtn span {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.2;
   color: var(--primary-300);
 }
 
@@ -503,9 +504,11 @@
   overflow: hidden;
 }
 
-/* When the workspace is open, the right pane takes a fixed-ish slice. */
+/* When the workspace is open, the left (LeftWorkspace) and right (Diagnosis
+   Gaps) panes split the drawer 50-50. Both use flex:1 with equal basis so
+   neither is squeezed. */
 .rightPane {
-  flex: 0 0 480px;
+  flex: 1 1 0;
   min-width: 0;
   display: flex;
   flex-direction: column;

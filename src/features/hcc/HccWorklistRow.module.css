@@ -406,6 +406,40 @@
   color: var(--neutral-300);
   white-space: nowrap;
 }
+
+/* Variant 2 — current bucket has no assignee yet ("Awaiting Reviewer 2").
+   Hollow circle in the avatar slot, muted name text. */
+.unassignedSlot {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--neutral-0);
+  border: 0.5px dashed var(--neutral-200);
+  flex-shrink: 0;
+}
+.assigneeNameMuted {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Variant 3 — every stage completed, DOS is now in Billing. Green check
+   chip in the avatar slot. */
+.billingBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--status-success-light);
+  border: 0.5px solid rgba(0, 155, 83, 0.3);
+  flex-shrink: 0;
+}
 .colProvider    { min-width: 140px; }
 .colPos         { min-width: 100px; }
 .colPosDesc     { min-width: 140px; }

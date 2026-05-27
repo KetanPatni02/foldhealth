@@ -22,27 +22,80 @@ import {
 import { getSweepIcdsForMember } from '../data/sweepIcds';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { RoleTooltip } from '../RoleTooltip';
+import { resolveCurrentAssignee } from '../HccWorklistRow';
+import { ROLE_LABEL } from '../assignment/astranaStaff';
 import styles from './DiagPanel.module.css';
 
-// Small initials-square avatar used to the left of the DOS status pill.
-// Picks orange (coder) tint if a coder is assigned, else purple (support).
-// Hovering reveals a RoleTooltip card with the assignee's full name + role.
-function AssigneeAvatar({ coder, support }) {
-  const nm = (coder || support || '').trim();
-  if (!nm) return null;
-  const parts = nm.split(/[\s.]+/).filter(Boolean);
-  const initials = parts.map((w) => (w[0] || '').toUpperCase()).slice(0, 2).join('') || 'DH';
-  const isCoder = !!coder;
-  const bg = isCoder ? 'var(--secondary-100)' : 'var(--primary-50)';
-  const border = isCoder ? 'var(--secondary-200)' : 'var(--primary-200)';
-  const color = isCoder ? 'var(--secondary-300)' : 'var(--primary-300)';
-  const role = isCoder ? 'Coder' : 'Support Team';
+// Initials-square avatar to the left of the DOS status pill. Reflects the
+// SAME sequential resolver the worklist uses — shows whoever currently owns
+// the DOS based on workflow stage, not "the coder if there's a coder". For
+// records that have advanced past R2/R3 with no next assignee, shows a
+// dashed-outline placeholder. For Billing Ready records, shows a green
+// check chip. Hovering opens a RoleTooltip with the role label.
+function AssigneeAvatar({ member, dosState }) {
+  const a = resolveCurrentAssignee(member, dosState);
+  if (!a) return null;
+
+  // Billing Ready — every stage completed. Green check chip, no person.
+  if (a.kind === 'billing') {
+    return (
+      <RoleTooltip name="Billing Ready" role="All reviews complete" initials="✓" variant="provider">
+        <span
+          style={{
+            width: 24, height: 24, borderRadius: 6,
+            background: 'var(--status-success-light)',
+            border: '0.5px solid rgba(0, 155, 83, 0.3)',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0, color: 'var(--status-success)',
+            fontFamily: 'Inter, sans-serif',
+          }}
+        >
+          <Icon name="solar:check-circle-bold" size={14} color="var(--status-success)" />
+        </span>
+      </RoleTooltip>
+    );
+  }
+
+  // Unassigned next bucket — dashed empty slot. Tooltip surfaces which role
+  // the DOS is waiting on so the affordance isn't a mystery.
+  if (a.kind === 'unassigned') {
+    return (
+      <RoleTooltip
+        name="Unassigned"
+        role={`Awaiting ${ROLE_LABEL[a.role] || a.role}`}
+        initials="—"
+        variant="provider"
+      >
+        <span
+          style={{
+            width: 24, height: 24, borderRadius: 6,
+            background: 'var(--neutral-0)',
+            border: '0.5px dashed var(--neutral-200)',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0, color: 'var(--neutral-200)',
+            fontFamily: 'Inter, sans-serif',
+            fontSize: 12, fontWeight: 500,
+          }}
+        >
+          —
+        </span>
+      </RoleTooltip>
+    );
+  }
+
+  // Active assignee — colour the chip per role (Coder/Reviewers = orange
+  // provider palette, Support stays purple to match the worklist's coder
+  // vs support distinction).
+  const isSupport = a.role === 'support';
+  const bg = isSupport ? 'var(--primary-50)'  : 'var(--secondary-100)';
+  const border = isSupport ? 'var(--primary-200)' : 'var(--secondary-200)';
+  const color = isSupport ? 'var(--primary-300)' : 'var(--secondary-300)';
   return (
     <RoleTooltip
-      name={nm}
-      role={role}
-      initials={initials}
-      variant={isCoder ? 'provider' : 'patient'}
+      name={a.name}
+      role={ROLE_LABEL[a.role] || a.role}
+      initials={a.initials}
+      variant={isSupport ? 'patient' : 'provider'}
     >
       <span
         style={{
@@ -53,7 +106,7 @@ function AssigneeAvatar({ coder, support }) {
           fontFamily: 'Inter, sans-serif',
         }}
       >
-        {initials}
+        {a.initials}
       </span>
     </RoleTooltip>
   );
@@ -107,7 +160,11 @@ export function DiagPanel() {
   // Assignment-engine read/write — drives the Coder status pill below.
   const hccDosAssignments = useAppStore(s => s.hccDosAssignments);
   const initializeHccPatient = useAppStore(s => s.initializeHccPatient);
+  const hccCompleteSupport = useAppStore(s => s.hccCompleteSupport);
   const hccCompleteCoder = useAppStore(s => s.hccCompleteCoder);
+  const hccCompleteR1 = useAppStore(s => s.hccCompleteR1);
+  const hccCompleteR2 = useAppStore(s => s.hccCompleteR2);
+  const hccCompleteR3 = useAppStore(s => s.hccCompleteR3);
   const hccRequestRecords = useAppStore(s => s.hccRequestRecords);
   const hccMarkInsufficient = useAppStore(s => s.hccMarkInsufficient);
   const hccRejectDos = useAppStore(s => s.hccRejectDos);
@@ -117,7 +174,9 @@ export function DiagPanel() {
   const diagSnapOpen = useAppStore(s => s.diagSnapOpen);
   const setDiagSnapOpen = useAppStore(s => s.setDiagSnapOpen);
   const diagLeftPanel = useAppStore(s => s.diagLeftPanel);
+  const diagActivityIcd = useAppStore(s => s.diagActivityIcd);
   const setDiagLeftPanel = useAppStore(s => s.setDiagLeftPanel);
+  const setDiagTab = useAppStore(s => s.setDiagTab);
 
   const [overriddenOpen, setOverriddenOpen] = useState(false);
   const [closedOpen, setClosedOpen] = useState(false);
@@ -213,7 +272,26 @@ export function DiagPanel() {
   // status pill below and the assignee badge.
   const dosStateKey = member && currentDos ? `${member.id}::${currentDos}` : null;
   const dosState = dosStateKey ? hccDosAssignments[dosStateKey] : null;
-  const coderStatus = dosState?.coder?.status || diagDosStatus || member?.cdrS || 'New';
+
+  // Current bucket the DOS sits in — drives both the status pill (right
+  // side of DOS row) and the AssigneeAvatar (left side) so they always
+  // agree on which role is active.
+  const currentBucket = useMemo(
+    () => resolveCurrentAssignee(member, dosState),
+    [member, dosState],
+  );
+
+  // Status text shown in the pill. Reads from whichever role currently
+  // owns the DOS so we never display the Coder's old "Completed" state
+  // when the workflow has already advanced to a downstream reviewer.
+  const currentStatus = useMemo(() => {
+    if (!currentBucket) return diagDosStatus || 'New';
+    if (currentBucket.kind === 'billing')    return 'Completed';
+    if (currentBucket.kind === 'unassigned') return 'Awaiting';
+    // kind === 'active' — use the role's live status (or a sensible
+    // default when the engine seeded an assignee without a status yet).
+    return currentBucket.status || 'In Progress';
+  }, [currentBucket, diagDosStatus]);
 
   // ── Review-progress stages + ring (drives the With-Coder pill) ──
   const reviewStages = useMemo(
@@ -262,17 +340,47 @@ export function DiagPanel() {
     clearTimeout(closeTimer.current);
   }, []);
 
-  // Bridge from the DosStatusMenu's onChange (status label) to the right
-  // lifecycle transition. The menu is currently rooted in the Coder view.
-  const handleCoderStatusChange = (next) => {
+  // Bridge from the DosStatusMenu's onChange to the right lifecycle
+  // transition for whichever role currently owns the DOS. Some choices
+  // (Record Requested → only Coder; Insufficient / Reject → only Support;
+  // Returned → only reviewers) are role-specific and silently no-op when
+  // the chosen value doesn't apply to the active role.
+  const handleStatusChange = (next) => {
     if (!member || !currentDos) { setDiagDosStatus(next); return; }
-    switch (next) {
-      case 'Completed':         hccCompleteCoder(member.id, currentDos); break;
-      case 'Record Requested':  hccRequestRecords(member.id, currentDos); break;
-      case 'Insufficient':      hccMarkInsufficient(member.id, currentDos, 'current-user', 'Docs incomplete'); break;
-      case 'Reject':            hccRejectDos(member.id, currentDos, 'current-user', 'Docs failed checklist'); break;
-      case 'Returned':          hccReturnDos(member.id, currentDos, 'r1', 'current-user', 'Returned from Coder context'); break;
-      default:                  /* New / Awaiting / In Progress / Record Received are system-driven */ break;
+    const role = currentBucket?.kind === 'active' ? currentBucket.role : null;
+    if (role) {
+      switch (next) {
+        case 'Completed':
+          if (role === 'support') hccCompleteSupport(member.id, currentDos);
+          else if (role === 'coder') hccCompleteCoder(member.id, currentDos);
+          else if (role === 'r1') hccCompleteR1(member.id, currentDos);
+          else if (role === 'r2') hccCompleteR2(member.id, currentDos);
+          else if (role === 'r3') hccCompleteR3(member.id, currentDos);
+          break;
+        case 'Record Requested':
+          if (role === 'coder') hccRequestRecords(member.id, currentDos);
+          break;
+        case 'Insufficient':
+          if (role === 'support') {
+            hccMarkInsufficient(member.id, currentDos, 'current-user', 'Docs incomplete');
+          }
+          break;
+        case 'Reject':
+          if (role === 'support') {
+            hccRejectDos(member.id, currentDos, 'current-user', 'Docs failed checklist');
+          }
+          break;
+        case 'Returned':
+          // Reviewer-only: bounce back to the immediately-prior role
+          // (engine's RETURN_TARGET map handles r1→coder / r2→r1 / r3→r2).
+          if (role === 'r1' || role === 'r2' || role === 'r3') {
+            hccReturnDos(member.id, currentDos, role, 'current-user', `Returned from ${role}`);
+          }
+          break;
+        default:
+          /* New / Awaiting / In Progress / Record Received are system-driven */
+          break;
+      }
     }
     setDiagDosStatus(next);
   };
@@ -322,7 +430,8 @@ export function DiagPanel() {
       {diagLeftPanel && (
         <LeftWorkspace
           active={diagLeftPanel}
-          onChange={setDiagLeftPanel}
+          icdScope={diagActivityIcd}
+          onChange={setDiagTab}
           onClose={() => setDiagLeftPanel(null)}
           member={member}
         />
@@ -415,58 +524,88 @@ export function DiagPanel() {
           )}
         </div>
         <div className={styles.dosRowRight}>
-          <AssigneeAvatar coder={member.cdr} support={member.sup} />
+          <AssigneeAvatar member={member} dosState={dosState} />
           <span className={styles.dosRowDivider} />
           {isSweep ? (
             <span className={styles.sweepBadge}>Sweep Mode</span>
           ) : (
             <DosStatusMenu
-              value={coderStatus}
-              onChange={handleCoderStatusChange}
+              value={currentStatus}
+              onChange={handleStatusChange}
             />
           )}
         </div>
       </div>
 
-      {/* ── View-by toolbar — sits above Patient Summary so it anchors the
-          section regardless of whether the summary is expanded. ── */}
+      {/* ── DOS toolbar — mirrors Figma node 1:41104. Left cluster:
+          Bulk select + HCC/ICD toggle. Right cluster: + ICD, Filter,
+          Documents, Comments, Activity Log, Search, More. ── */}
       <div className={styles.toolbar}>
-        <div className={styles.viewBy}>
-          <span className={styles.viewByLabel}>View by:</span>
+        <div className={styles.toolbarLeft}>
+          <ActionButton
+            icon="solar:check-square-linear"
+            size="S"
+            tooltip="Bulk Action"
+            onClick={noop('Bulk Action')}
+          />
+          <span className={styles.divider} />
           <Toggle items={VIEW_MODES} active={diagViewMode} onChange={setDiagViewMode} size="S" />
         </div>
 
         <div className={styles.toolbarIcons}>
-          <ActionButton icon="solar:refresh-linear" size="S" tooltip="Refresh" onClick={noop('Refresh')} />
-          <span className={styles.divider} />
           <button type="button" className={styles.addIcdBtn} onClick={noop('Add ICD')}>
             <Icon name="solar:add-circle-linear" size={16} color="var(--primary-300)" />
             <span>ICD</span>
           </button>
           <span className={styles.divider} />
-          <ActionButton icon="solar:check-square-linear" size="S" tooltip="Bulk Action" onClick={noop('Bulk Action')} />
+          <ActionButton
+            icon="custom:filter"
+            size="S"
+            tooltip="Filter"
+            notification
+            count="1"
+            onClick={noop('Filter')}
+          />
           <span className={styles.divider} />
-          <ActionButton icon="custom:filter" size="S" tooltip="Filter" notification count="1" onClick={noop('Filter')} />
+          <ActionButton
+            icon="solar:file-text-linear"
+            size="S"
+            tooltip="Documents"
+            count={String(member?.docStatus?.length || member?.ch || 0)}
+            className={diagLeftPanel === 'documents' ? styles.activeIcon : ''}
+            onClick={() => setDiagLeftPanel(diagLeftPanel === 'documents' ? null : 'documents')}
+          />
           <span className={styles.divider} />
-          <ActionButton icon="solar:sort-vertical-linear" size="S" tooltip="Sort" onClick={noop('Sort')} />
+          <ActionButton
+            icon="solar:chat-square-linear"
+            size="S"
+            tooltip="Comments"
+            count="6"
+            className={diagLeftPanel === 'comments' ? styles.activeIcon : ''}
+            onClick={() => setDiagLeftPanel(diagLeftPanel === 'comments' ? null : 'comments')}
+          />
           <span className={styles.divider} />
           <ActionButton
             icon="solar:history-linear"
             size="S"
             tooltip="Activity Log"
-            className={diagLeftPanel === 'activity' ? styles.activeIcon : ''}
-            onClick={() => setDiagLeftPanel(diagLeftPanel === 'activity' ? null : 'activity')}
+            /* Only highlight for the DOS-level log — an ICD-scoped activity
+               log (opened from an ICD code) must NOT light up this global
+               icon. */
+            className={diagLeftPanel === 'activity' && !diagActivityIcd ? styles.activeIcon : ''}
+            onClick={() => setDiagLeftPanel(diagLeftPanel === 'activity' && !diagActivityIcd ? null : 'activity')}
           />
           <span className={styles.divider} />
           <ActionButton
-            icon="solar:notes-linear"
+            icon="solar:magnifer-linear"
             size="S"
-            tooltip="Notes"
-            className={diagLeftPanel === 'notes' ? styles.activeIcon : ''}
-            onClick={() => setDiagLeftPanel(diagLeftPanel === 'notes' ? null : 'notes')}
+            tooltip="Search"
+            onClick={() => setSearchOpen(o => !o)}
           />
           <span className={styles.divider} />
-          <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" onClick={() => setSearchOpen(o => !o)} />
+          <ActionButton size="S" tooltip="More" onClick={noop('More')}>
+            <Icon name="custom:menu-dots" size={18} color="var(--neutral-300)" />
+          </ActionButton>
         </div>
       </div>
 

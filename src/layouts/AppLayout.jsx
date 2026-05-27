@@ -15,7 +15,6 @@ import { HccWorklistTable } from '../features/hcc/HccWorklistTable';
 import { HedisWorklistTable } from '../features/hedis-worklist/HedisWorklistTable';
 import { AllPatientsTable } from '../features/all-patients/AllPatientsTable';
 import { SchedulingListTable } from '../features/scheduling-list/SchedulingListTable';
-import { ClaimPreviewDrawer } from '../features/hcc/ClaimPreviewDrawer';
 import { Icon } from '../components/Icon/Icon';
 import { useAppStore } from '../store/useAppStore';
 import { supabase } from '../lib/supabase';
@@ -55,6 +54,7 @@ const BusinessHoursDrawer  = lz(() => import('../features/settings/panels/Busine
 const ComponentWizardDrawer= lz(() => import('../features/settings/panels/ComponentWizardDrawer'),         'ComponentWizardDrawer');
 const DiagPanel            = lz(() => import('../features/hcc/DiagPanel/DiagPanel'),                       'DiagPanel');
 const UploadChartDrawer    = lz(() => import('../features/hcc/UploadChartDrawer'),                         'UploadChartDrawer');
+const ClaimPreviewDrawer   = lz(() => import('../features/hcc/ClaimPreviewDrawer'),                        'ClaimPreviewDrawer');
 
 // Placeholder while a lazy chunk is in flight. Empty div keeps layout stable.
 const LazyFallback = () => <div style={{ flex: 1 }} />;
@@ -400,23 +400,6 @@ export function AppLayout() {
         {activeView}
       </Suspense>
 
-      {showCreateAgent && <CreateAgentDrawer />}
-      {workflowPatient && <WorkflowPanel />}
-      {callPopoverPatient && <CallPopover />}
-      <ActiveCallCard />
-      <InvokeAgentModal />
-      {detailPatient && <DetailDrawer />}
-      {liveDrawerPatient && <LiveDrawer />}
-      {goalDetailId && <GoalDetailDrawer />}
-      {goalWizardOpen && <GoalWizardDrawer />}
-      {componentWizardOpen && <ComponentWizardDrawer />}
-      {chatGroupDetailId && <GroupDetailDrawer />}
-      {agentRulesGroupId && <AgentRulesDrawer />}
-      {businessHoursOpen && <BusinessHoursDrawer />}
-      {diagPanelOpen && <DiagPanel />}
-      <UploadChartDrawer />{/* mounts itself only when hccUploadMember is set */}
-      <ClaimPreviewDrawer />{/* mounts itself only when hccClaimPreview.open is true */}
-      {quickViewPatient && <QuickViewDrawer />}
       <Suspense fallback={null}>
         {showCreateAgent && <CreateAgentDrawer />}
         {workflowPatient && <WorkflowPanel />}
@@ -433,6 +416,7 @@ export function AppLayout() {
         {businessHoursOpen && <BusinessHoursDrawer />}
         {diagPanelOpen && <DiagPanel />}
         <UploadChartDrawer />{/* mounts itself only when hccUploadMember is set */}
+        <ClaimPreviewDrawer />{/* mounts itself only when hccClaimPreview.open is true */}
         {quickViewPatient && <QuickViewDrawer />}
       </Suspense>
       <Toast />

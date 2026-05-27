@@ -2033,7 +2033,19 @@ export const useAppStore = create((set, get) => ({
   // Left-workspace tab: null = drawer at 40vw with only the right pane;
   // any string = drawer expands to 70vw with the matching tab content.
   diagLeftPanel: null,   // 'activity' | 'comments' | 'documents' | 'notes' | 'claims' | null
-  setDiagLeftPanel: (panel) => set({ diagLeftPanel: panel }),
+  // When the Activity Log panel is opened from a specific ICD card (by
+  // clicking the ICD code), this holds that code so the timeline filters to
+  // entries touching it. null = DOS-level (all entries). Opening via the
+  // toolbar Activity Log icon always resets this to null.
+  diagActivityIcd: null,
+  // Toolbar entry points reset the ICD scope (they're DOS-level actions).
+  setDiagLeftPanel: (panel) => set({ diagLeftPanel: panel, diagActivityIcd: null }),
+  // Switching tabs WITHIN the left panel preserves the current scope
+  // (DOS-level stays DOS-level; ICD-level stays scoped to its code).
+  setDiagTab: (panel) => set({ diagLeftPanel: panel }),
+  // Open the left Activity Log scoped to a single ICD code.
+  openIcdActivityLog: (code) => set({ diagLeftPanel: 'activity', diagActivityIcd: code || null }),
+  clearDiagActivityIcd: () => set({ diagActivityIcd: null }),
 
   // Upload chart drawer — member object or null. Opened from ChartPopover's
   // "Upload New Chart" CTA and from the DiagPanel chart-upload action.
@@ -2062,9 +2074,10 @@ export const useAppStore = create((set, get) => ({
     diagSnapFilter: null,
     diagSnapOpen: true,
     diagLeftPanel: opts.leftPanel ?? null,
+    diagActivityIcd: null,
     diagViewMode: 'ICD',
   }),
-  closeDiagPanel: () => set({ diagPanelOpen: false, diagPanelMemberId: null, diagLeftPanel: null }),
+  closeDiagPanel: () => set({ diagPanelOpen: false, diagPanelMemberId: null, diagLeftPanel: null, diagActivityIcd: null }),
   setDiagActiveTab: (tab) => set({ diagActiveTab: tab }),
   setDiagDosFilter: (dos) => set({ diagDosFilter: dos }),
   setDiagViewMode: (mode) => set({ diagViewMode: mode }),

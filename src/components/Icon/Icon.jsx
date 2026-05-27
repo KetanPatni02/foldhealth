@@ -11,9 +11,11 @@ import { IncomingCallIcon } from './IncomingCallIcon';
 import { OutgoingCallIcon } from './OutgoingCallIcon';
 import { EndCallIcon } from './EndCallIcon';
 import { RefreshIcon } from './RefreshIcon';
+import { MenuDotsIcon } from './MenuDotsIcon';
 
 export function Icon({ name, size = 18, color, style, className }) {
   if (name === 'custom:filter') return <FilterIcon size={size} color={color} />;
+  if (name === 'custom:menu-dots') return <MenuDotsIcon size={size} color={color} />;
   if (name === 'custom:sms') return <SmsIcon size={size} color={color} />;
   if (name === 'custom:expand-drawer') return <ExpandDrawerIcon size={size} />;
   if (name === 'custom:campaign') return <CampaignIcon size={size} color={color} />;

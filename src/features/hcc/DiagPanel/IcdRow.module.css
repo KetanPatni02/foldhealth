@@ -22,6 +22,16 @@
   background: var(--neutral-25);
 }
 
+/* Selected state (Figma Selection variant 1:33197) — applied when this
+   card's Activity Log is open in the left panel. Primary-50 fill +
+   primary-300 border so the card reads as the active selection. Wins over
+   hover/closed backgrounds. */
+.rowSelected,
+.rowSelected:hover {
+  background: var(--primary-50);
+  border-color: var(--primary-300);
+}
+
 /* ── Top row: code + description ──────────────────────────────────────── */
 
 /* Title sub-stack wraps .topRow + .lastLine so they sit close together
