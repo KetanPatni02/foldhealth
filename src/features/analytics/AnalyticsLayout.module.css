@@ -445,19 +445,19 @@
   position: relative;
 }
 
-/* Dashed editing border + card-fills-cell. The card surface stretches to
-   match the grid cell (height: 100% on `.gridItem > *`) so the dashed
-   border lays exactly on the grid cell's edge — no gap above OR below.
-   Default layout heights are tuned aggressively (see DEFAULT_LAYOUT in
-   ExecutiveView.jsx) so the cell stays close to the card's natural
-   content height, keeping any internal empty area minimal. */
-.gridContainer.gridEditing .gridItem > * {
+/* Dashed editing border. Cells auto-fit to content (EditableGrid measures
+   the content-height inner wrapper and snaps the cell to it), so the card
+   hugs its content and the border lays on the content edge — no empty fill
+   below. If the user manually grows a panel, the extra space sits below the
+   card inside the taller cell. */
+.gridContainer.gridEditing .gridItemInner > * {
   border: 1px dashed var(--primary-200) !important;
   border-radius: 12px;
 }
 
-.gridItem > * {
-  height: 100%;
+/* Inner wrapper is height:auto so its offsetHeight reflects true content
+   height (the measurement EditableGrid reads). Never force height here. */
+.gridItemInner {
   box-sizing: border-box;
 }
 

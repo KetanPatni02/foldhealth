@@ -67,6 +67,9 @@ export function stateToHash(state) {
       const acTab = state.accountTab || 'users';
       return buildHash('settings', 'account', acTab);
     }
+    if (settingsNavItem === 'billing') {
+      return buildHash('settings', 'billing');
+    }
     // Agents section
     if (goalWizardOpen) return buildHash('settings', 'agents', 'goals', goalWizardEditId ? String(goalWizardEditId) : 'new');
     if (goalDetailId) return buildHash('settings', 'agents', 'goals', String(goalDetailId));
@@ -88,6 +91,7 @@ export function stateToHash(state) {
     'SNP': 'snp',
     'AWV': 'awv',
     'HCC': 'hcc',
+    'HEDIS': 'hedis',
     'High Utilizers': 'high-utilizers',
     'DM': 'dm',
     'My Patients': 'my-patients',
@@ -181,6 +185,11 @@ export function hashToState(route) {
       updates.accountTab = route.tab || 'users';
       return updates;
     }
+    // APCM Billing section
+    if (route.section === 'billing') {
+      updates.settingsNavItem = 'billing';
+      return updates;
+    }
     // Agent edit (builder) route: #/settings/agents/edit/{id}
     if (route.section === 'agents' && route.tab === 'edit' && route.id) {
       updates.activePage = 'builder';
@@ -223,6 +232,7 @@ export function hashToState(route) {
     'snp': 'SNP',
     'awv': 'AWV',
     'hcc': 'HCC',
+    'hedis': 'HEDIS',
     'high-utilizers': 'High Utilizers',
     'dm': 'DM',
     'my-patients': 'My Patients',

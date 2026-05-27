@@ -12,6 +12,7 @@ import { WorklistTable } from '../features/toc-worklist/WorklistTable';
 import { QueueTable } from '../features/toc-queue/QueueTable';
 import { QueueSummaryBar } from '../features/toc-queue/QueueSummaryBar';
 import { HccWorklistTable } from '../features/hcc/HccWorklistTable';
+import { HedisWorklistTable } from '../features/hedis-worklist/HedisWorklistTable';
 import { AllPatientsTable } from '../features/all-patients/AllPatientsTable';
 import { SchedulingListTable } from '../features/scheduling-list/SchedulingListTable';
 import { Icon } from '../components/Icon/Icon';
@@ -138,10 +139,11 @@ function PopulationView() {
   }
 
   const isHcc = activeSubnavList === 'HCC';
+  const isHedis = activeSubnavList === 'HEDIS';
   const isAllPatients = activeSubnavList === 'All Patients';
   const isSchedulingList = activeSubnavList === 'Scheduling List';
   const TOC_LISTS = ['TOC'];
-  const isToc = TOC_LISTS.includes(activeSubnavList) || (!isHcc && !isAllPatients && !isSchedulingList && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'AWV', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
+  const isToc = TOC_LISTS.includes(activeSubnavList) || (!isHcc && !isHedis && !isAllPatients && !isSchedulingList && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'AWV', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
   const isComingSoon = ['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'AWV', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList);
 
   return (
@@ -151,19 +153,21 @@ function PopulationView() {
       <div className={styles.bodyRow}>
         <SubNav collapsed={subnavCollapsed} />
         <div className={styles.content}>
-          {!isHcc && !isComingSoon && !isSchedulingList && <TabBar />}
-          {!isHcc && !isComingSoon && !isSchedulingList && showFilterBar && <FilterBar />}
-          {!isHcc && !isAllPatients && !isComingSoon && !isSchedulingList && activeTab === 'toc-queue' && <QueueSummaryBar />}
+          {!isHcc && !isHedis && !isComingSoon && !isSchedulingList && <TabBar />}
+          {!isHcc && !isHedis && !isComingSoon && !isSchedulingList && showFilterBar && <FilterBar />}
+          {!isHcc && !isHedis && !isAllPatients && !isComingSoon && !isSchedulingList && activeTab === 'toc-queue' && <QueueSummaryBar />}
           {isSchedulingList
             ? <SchedulingListTable />
             : isHcc
               ? <HccWorklistTable />
-              : isAllPatients
-                ? <AllPatientsTable />
-                : isComingSoon
-                  ? <ComingSoonState listName={activeSubnavList} />
-                  : (activeTab === 'toc-worklist' ? <WorklistTable /> : <QueueTable />)}
-          {!isHcc && !isComingSoon && !isSchedulingList && <Pagination />}
+              : isHedis
+                ? <HedisWorklistTable />
+                : isAllPatients
+                  ? <AllPatientsTable />
+                  : isComingSoon
+                    ? <ComingSoonState listName={activeSubnavList} />
+                    : (activeTab === 'toc-worklist' ? <WorklistTable /> : <QueueTable />)}
+          {!isHcc && !isHedis && !isComingSoon && !isSchedulingList && <Pagination />}
         </div>
       </div>
     </div>

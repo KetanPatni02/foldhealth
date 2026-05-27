@@ -3,6 +3,7 @@ import { AgentsTable } from './AgentsTable';
 import { MessagesSettings } from './MessagesSettings';
 import { EmbeddedComponentsSettings } from './EmbeddedComponentsSettings';
 import { AccountPanel } from './AccountPanel';
+import { BillingPanel } from './BillingPanel';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './SettingsLayout.module.css';
 
@@ -19,6 +20,8 @@ export function SettingsLayout() {
         <EmbeddedComponentsSettings />
       ) : settingsNavItem === 'account' ? (
         <AccountPanel />
+      ) : settingsNavItem === 'billing' ? (
+        <BillingPanel />
       ) : (
         <AgentsTable />
       )}

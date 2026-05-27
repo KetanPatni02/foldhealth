@@ -7,15 +7,30 @@ import styles from './Pagination.module.css';
 /**
  * Pagination — page navigator + per-page selector + go-to input.
  *
- * Reads page state from the store (currentPage, perPage) and figures out the
- * total item count based on the active subnav. Callers with their own
- * filtering pipeline can override by passing `totalItems` directly — this is
- * how the HCC worklist hands in its post-filter count so the page numbers
- * stay accurate.
+ * Two usage modes:
+ *
+ * 1. Store-driven (default) — used by the TOC Worklist + HCC worklist.
+ *    Reads currentPage / perPage / searchQuery / etc. from useAppStore
+ *    and derives the total item count from the active subnav.
+ *
+ * 2. Controlled — pass currentPage / perPage / totalItems / onPageChange /
+ *    onPerPageChange. The store reads are skipped and the caller owns state.
+ *    Used by APCM Billing (and any future feature that paginates from
+ *    local state).
  */
-export function Pagination({ totalItems: totalItemsProp } = {}) {
-  const currentPage = useAppStore(s => s.currentPage);
-  const perPage = useAppStore(s => s.perPage);
+export function Pagination({
+  totalItems: totalItemsProp,
+  currentPage: currentPageProp,
+  perPage: perPageProp,
+  onPageChange,
+  onPerPageChange,
+} = {}) {
+  // True when the caller drives state. In this mode all the worklist-specific
+  // derivations (queue early-return, viewBy short-circuit, etc.) are skipped.
+  const controlled = currentPageProp != null && onPageChange != null;
+
+  const storeCurrentPage = useAppStore(s => s.currentPage);
+  const storePerPage = useAppStore(s => s.perPage);
   const patients = useAppStore(s => s.patients);
   const hccMembers = useAppStore(s => s.hccMembers);
   const activeSubnavList = useAppStore(s => s.activeSubnavList);
@@ -23,8 +38,13 @@ export function Pagination({ totalItems: totalItemsProp } = {}) {
   const activeTab = useAppStore(s => s.activeTab);
   const activeFilters = useAppStore(s => s.activeFilters);
   const viewBy = useAppStore(s => s.viewBy);
-  const setCurrentPage = useAppStore(s => s.setCurrentPage);
-  const setPerPage = useAppStore(s => s.setPerPage);
+  const storeSetCurrentPage = useAppStore(s => s.setCurrentPage);
+  const storeSetPerPage = useAppStore(s => s.setPerPage);
+
+  const currentPage = controlled ? currentPageProp : storeCurrentPage;
+  const perPage = perPageProp ?? storePerPage;
+  const setCurrentPage = onPageChange ?? storeSetCurrentPage;
+  const setPerPage = onPerPageChange ?? storeSetPerPage;
 
   const isHcc = activeSubnavList === 'HCC';
   const isAllPatients = activeSubnavList === 'All Patients';
@@ -126,10 +146,11 @@ export function Pagination({ totalItems: totalItemsProp } = {}) {
     return pages;
   };
 
-  // Don't show pagination for queue with empty state
-  if (activeTab === 'toc-queue' && totalItems === 0) return null;
-  // Don't show pagination for outreach status grouped view (uses collapsible sections)
-  if (activeTab === 'toc-worklist' && viewBy === 'status') return null;
+  // Worklist-specific early returns — only apply in store-driven mode.
+  // Don't show pagination for queue with empty state.
+  if (!controlled && activeTab === 'toc-queue' && totalItems === 0) return null;
+  // Don't show pagination for outreach status grouped view (uses collapsible sections).
+  if (!controlled && activeTab === 'toc-worklist' && viewBy === 'status') return null;
 
   return (
     <div className={styles.pagination}>

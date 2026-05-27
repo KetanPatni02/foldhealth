@@ -1,12 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import GridLayout from 'react-grid-layout/legacy';
-import 'react-grid-layout/css/styles.css';
-import 'react-resizable/css/styles.css';
+import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
 import { Toggle } from '../../../components/Toggle/Toggle';
 import { KpiCard, InsightBanner, Card, ProgressBar, GhostBtn, safeTableRows, safeBarItems, safeConfigData, EmptyState, KpiSkeleton, TableSkeleton, ChartSkeleton, ProgressBarSkeleton } from './shared';
 import { TcocLineChart, SavingsAreaChart } from './charts';
+import { EditableGrid } from './EditableGrid';
 import s from '../AnalyticsLayout.module.css';
 
 // ── Editable dashboard config ────────────────────────────────────────────
@@ -14,9 +12,7 @@ import s from '../AnalyticsLayout.module.css';
 // dashboard supports drag-and-drop reordering and resize via react-grid-
 // layout. Layout is persisted per-view to localStorage so each analytics
 // view can have its own customization.
-const STORAGE_KEY = 'analytics-executive-layout-v1';
-const COLS = 12;
-const ROW_HEIGHT = 40;
+const STORAGE_KEY = 'analytics-executive-layout-v2';
 
 // Heights tuned aggressively so each grid cell hugs the card's natural
 // content height. Combined with `height: 100%` on the inner card (in
@@ -35,22 +31,6 @@ const DEFAULT_LAYOUT = [
   { i: 'savings',   x: 0, y: 26, w: 12, h: 7, minW: 6, minH: 5, maxW: 12, maxH: 16 },
   { i: 'costTable', x: 0, y: 33, w: 12, h: 5, minW: 6, minH: 4, maxW: 12, maxH: 14 },
 ];
-
-function loadLayout() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_LAYOUT;
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return DEFAULT_LAYOUT;
-    return parsed;
-  } catch {
-    return DEFAULT_LAYOUT;
-  }
-}
-
-function saveLayout(layout) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(layout)); } catch { /* noop */ }
-}
 
 export function ExecutiveView({ showToast, editing = false, resetTick = 0 }) {
   const fetchViewKpis = useAppStore(st => st.fetchViewKpis);
@@ -72,38 +52,6 @@ export function ExecutiveView({ showToast, editing = false, resetTick = 0 }) {
   const [costInlineData, setCostInlineData] = useState(null);
   const [savingsData, setSavingsData] = useState(null);
   const [careProgramData, setCareProgramData] = useState(null);
-
-  // ── Editable layout state ───────────────────────────────────────────
-  // `editing` is controlled by AnalyticsLayout (which renders the
-  // Customize toggle in the view header). `resetTick` is an incrementing
-  // counter — when it changes, the layout is restored to DEFAULT_LAYOUT.
-  const [layout, setLayout] = useState(loadLayout);
-  const containerRef = useRef(null);
-  const [width, setWidth] = useState(1200);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const update = () => setWidth(el.clientWidth);
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  const handleLayoutChange = useCallback((next) => {
-    setLayout(next);
-    saveLayout(next);
-  }, []);
-
-  // React to reset signal from parent (AnalyticsLayout's Reset button).
-  // Skipping resetTick=0 (initial value) so first mount doesn't clobber a
-  // persisted custom layout.
-  useEffect(() => {
-    if (resetTick === 0) return;
-    setLayout(DEFAULT_LAYOUT);
-    saveLayout(DEFAULT_LAYOUT);
-  }, [resetTick]);
 
   useEffect(() => {
     // Always resolve to a non-null value so skeletons flip to either
@@ -375,36 +323,13 @@ export function ExecutiveView({ showToast, editing = false, resetTick = 0 }) {
     costTable: renderCostTable,
   };
 
-  // Filter out the insight slot when there's no insight to show. The grid
-  // re-flows other items to fill the gap thanks to react-grid-layout's
-  // default vertical compaction.
-  const renderedLayout = insight ? layout : layout.filter(l => l.i !== 'insight');
-
   return (
-    <>
-      <div
-        ref={containerRef}
-        className={[s.gridContainer, editing ? s.gridEditing : ''].filter(Boolean).join(' ')}
-      >
-        <GridLayout
-          className="layout"
-          layout={renderedLayout}
-          cols={COLS}
-          rowHeight={ROW_HEIGHT}
-          width={width}
-          isDraggable={editing}
-          isResizable={editing}
-          onLayoutChange={handleLayoutChange}
-          margin={[12, 12]}
-          containerPadding={[0, 0]}
-        >
-          {renderedLayout.map(l => (
-            <div key={l.i} className={s.gridItem}>
-              {RENDERERS[l.i]?.()}
-            </div>
-          ))}
-        </GridLayout>
-      </div>
-    </>
+    <EditableGrid
+      storageKey={STORAGE_KEY}
+      defaultLayout={DEFAULT_LAYOUT}
+      renderers={RENDERERS}
+      editing={editing}
+      resetTick={resetTick}
+    />
   );
 }
