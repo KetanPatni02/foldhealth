@@ -132,10 +132,10 @@
 
 .colName      { width: 280px; }
 .colCategory  { width: 110px; }
-.colSubject   { width: 220px; }
+.colSubject   { width: 240px; }
 .colDate      { width: 110px; }
-.colUpdatedBy { width: 140px; }
-.colAction    { width: 130px; }
+.colUpdatedBy { width: 150px; }
+.colAction    { width: 110px; }
 
 .headerRow th {
   padding: 10px 16px;
@@ -364,7 +364,8 @@
 .skelChip    { width: 80px; height: 18px; border-radius: 50px; }
 .skelDot     { width: 18px; height: 18px; border-radius: 4px; }
 
-/* Action cell */
+/* Action cell — left-aligned like every other column header / cell. The
+   tight column width (.colAction: 110px) keeps trailing whitespace minimal. */
 .actionCell {
   display: flex;
   align-items: center;
