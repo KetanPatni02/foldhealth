@@ -90,7 +90,9 @@ function EmailRowSkeleton() {
       <td className={styles.tdName}>
         <div className={styles.skelNameRow}>
           <div className={styles.nameLeading}>
-            <span className={`${styles.skelBone} ${styles.skelIcon}`} />
+            <span className={`${styles.leadingLayer} ${styles.leadingVisible}`}>
+              <span className={`${styles.skelBone} ${styles.skelIcon}`} />
+            </span>
           </div>
           <div className={styles.nameStack}>
             <span className={`${styles.skelBone} ${styles.skelTextLg}`} />
@@ -237,7 +239,12 @@ function EmailsTab({
             <tr className={styles.headerRow}>
               <th>
                 <div className={styles.nameHeader}>
-                  {bulkMode ? (
+                  {/* Animated leading slot: collapses to 0 width when off,
+                      checkbox fades + scales in on bulk-mode enter. */}
+                  <span
+                    className={`${styles.headerLeading} ${bulkMode ? styles.headerLeadingOpen : ''}`}
+                    aria-hidden={!bulkMode}
+                  >
                     <Checkbox
                       checked={
                         emails.length > 0 && emails.every(e => selectedIds.has(e.id))
@@ -248,7 +255,7 @@ function EmailsTab({
                       }
                       onCheckedChange={() => onToggleAll(emails)}
                     />
-                  ) : null}
+                  </span>
                   <span>Name</span>
                 </div>
               </th>
@@ -290,20 +297,27 @@ function EmailsTab({
                         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNameClick(); }
                       }}
                     >
-                      {/* Leading slot — same position in both modes so the table
-                          doesn't shift when bulk-select toggles. */}
+                      {/* Leading slot — both icon and checkbox always render,
+                          stacked. They cross-fade on bulk-mode toggle so the
+                          row never jumps. `pointer-events: none` on the
+                          inactive layer keeps clicks routed correctly. */}
                       <div className={styles.nameLeading}>
-                        {bulkMode ? (
+                        <span
+                          className={`${styles.leadingLayer} ${bulkMode ? styles.leadingHidden : styles.leadingVisible}`}
+                          aria-hidden={bulkMode}
+                        >
+                          <Icon name="solar:letter-linear" size={16} color="var(--neutral-300)" />
+                        </span>
+                        <span
+                          className={`${styles.leadingLayer} ${bulkMode ? styles.leadingVisible : styles.leadingHidden}`}
+                          aria-hidden={!bulkMode}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <Checkbox
                             checked={selectedIds.has(campaign.id)}
                             onCheckedChange={() => onToggleId(campaign.id)}
-                            // Stop the click from bubbling to the row handler —
-                            // otherwise we'd double-toggle.
-                            onClick={(e) => e.stopPropagation()}
                           />
-                        ) : (
-                          <Icon name="solar:letter-linear" size={16} color="var(--neutral-300)" />
-                        )}
+                        </span>
                       </div>
                       <div className={styles.nameStack}>
                         <span className={styles.nameText}>{campaign.name}</span>

@@ -146,6 +146,10 @@
   border-bottom: 0.5px solid var(--neutral-150);
   white-space: nowrap;
   background: var(--neutral-0);
+  /* line-height pinned to the Radix Checkbox's outer dimension (16px inner
+     + 2px border = 18px) so toggling bulk-select never changes the header
+     row height. The 18px line box is the floor in both states. */
+  line-height: 18px;
 }
 
 /* Sticky Action column — stays pinned to the right when the table scrolls
@@ -168,7 +172,9 @@
 
 .row {
   border-bottom: 0.5px solid var(--neutral-100);
-  transition: background 0.1s;
+  /* Slightly longer ease so the selected-state highlight settles in instead
+     of snapping when a checkbox flips. */
+  transition: background-color 0.18s cubic-bezier(.4, 0, .2, 1);
 }
 
 .row:hover { background: var(--primary-25, #FDFDFF); }
@@ -217,8 +223,10 @@
 .rowSelected:hover { background: var(--primary-50); }
 
 /* Leading slot — fixed-size container so swapping between Icon (16px) and
-   Checkbox (16px) never shifts the rest of the row by even a pixel. */
+   Checkbox (16px) never shifts the rest of the row by even a pixel. Both
+   layers are stacked absolutely so they can cross-fade. */
 .nameLeading {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -227,11 +235,73 @@
   flex-shrink: 0;
 }
 
-/* Header cell that holds the select-all checkbox + "Name" label. */
+.leadingLayer {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* cubic-bezier(.4,0,.2,1) is the Material "standard" ease — quick out,
+     slow settle. Feels snappy enough for inline UI toggles. */
+  transition: opacity 0.18s cubic-bezier(.4, 0, .2, 1),
+              transform 0.18s cubic-bezier(.4, 0, .2, 1);
+}
+.leadingVisible {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+.leadingHidden {
+  opacity: 0;
+  transform: scale(0.7);
+  pointer-events: none;
+}
+
+/* Header cell that holds the select-all checkbox + "Name" label. The
+   wrapper aligns to the middle of the th's line box so its inline-flex
+   children don't push the cell taller via baseline descenders. */
 .nameHeader {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 0;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+/* Animated header leading slot — width transitions from 0 → 16px when bulk
+   mode activates, plus the checkbox inside fades + scales in. Margin-right
+   animates so the gap between checkbox and "Name" appears smoothly. */
+.headerLeading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0;
+  height: 16px;
+  overflow: visible;
+  opacity: 0;
+  transform: scale(0.7);
+  margin-right: 0;
+  transition: width 0.2s cubic-bezier(.4, 0, .2, 1),
+              opacity 0.18s cubic-bezier(.4, 0, .2, 1),
+              transform 0.18s cubic-bezier(.4, 0, .2, 1),
+              margin-right 0.2s cubic-bezier(.4, 0, .2, 1);
+  pointer-events: none;
+}
+.headerLeadingOpen {
+  width: 16px;
+  opacity: 1;
+  transform: scale(1);
+  margin-right: 10px;
+  pointer-events: auto;
+}
+
+/* Honor OS-level "Reduce motion" — clobbers everything we just defined. */
+@media (prefers-reduced-motion: reduce) {
+  .leadingLayer,
+  .headerLeading,
+  .row {
+    transition: none !important;
+  }
 }
 
 /* Other cells */
