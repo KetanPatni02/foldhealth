@@ -85,7 +85,7 @@ export function HedisWorklistTable() {
   }, [yearOpen]);
 
   const filtered = useMemo(() => {
-    let result = hedisMembers;
+    let result = hedisMembers || [];
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(m =>
