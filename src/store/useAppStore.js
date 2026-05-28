@@ -2952,6 +2952,26 @@ export const useAppStore = create((set, get) => ({
     return fresh;
   },
 
+  // Delete many campaigns in one round trip. Used by the Content → Emails
+  // bulk-select toolbar.
+  deleteCampaignsBulk: async (ids) => {
+    if (!Array.isArray(ids) || ids.length === 0) return false;
+    const { error } = await supabase.from('campaigns').delete().in('id', ids);
+    if (error) {
+      console.error('deleteCampaignsBulk error:', error);
+      get().showToast?.('Could not delete selected emails');
+      return false;
+    }
+    const idSet = new Set(ids);
+    set(s => ({
+      campaigns: s.campaigns.filter(c => !idSet.has(c.id)),
+      contentEmails: s.contentEmails.filter(c => !idSet.has(c.id)),
+      contentEmailsTotal: Math.max(0, s.contentEmailsTotal - ids.length),
+    }));
+    get().showToast?.(`${ids.length} email${ids.length === 1 ? '' : 's'} deleted`);
+    return true;
+  },
+
   deleteCampaign: async (id) => {
     const { error } = await supabase.from('campaigns').delete().eq('id', id);
     if (error) {
