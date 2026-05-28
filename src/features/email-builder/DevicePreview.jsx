@@ -4,7 +4,7 @@ import { renderEmailHtml } from './patchEmailHtml';
 import { Toggle } from '../../components/Toggle/Toggle';
 import styles from './DevicePreview.module.css';
 
-function EmailIframe({ html, renderWidth, theme = 'light' }) {
+export function EmailIframe({ html, renderWidth, theme = 'light' }) {
   const wrapRef = useRef(null);
   const [scale, setScale] = useState(1);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -87,7 +87,7 @@ function EmailIframe({ html, renderWidth, theme = 'light' }) {
   );
 }
 
-function MacBookPro({ width = 900, screen }) {
+export function MacBookPro({ width = 900, screen }) {
   return (
     <div className={styles.macbook} style={{ width, maxWidth: '100%' }}>
       <div className={styles.macScreen}>
@@ -101,7 +101,7 @@ function MacBookPro({ width = 900, screen }) {
   );
 }
 
-function IPhone17Pro({ width = 360, screen }) {
+export function IPhone17Pro({ width = 360, screen }) {
   const baseW = 420;
   const baseH = 885;
   const scale = width / baseW;

@@ -38,6 +38,11 @@ export function stateToHash(state) {
   }
   if (activePage === 'calendar') return buildHash('calendar');
   if (state.editingCampaignId) {
+    // Email builder opened from Settings → Content keeps the settings path so
+    // the URL is sharable AND the close action falls back to #/settings/content/emails.
+    if (state.activePage === 'settings' && state.settingsNavItem === 'content') {
+      return buildHash('settings', 'content', 'emails', String(state.editingCampaignId));
+    }
     return buildHash('email', String(state.editingCampaignId));
   }
   if (state.campaignBuilderId) {
@@ -62,6 +67,10 @@ export function stateToHash(state) {
     if (settingsNavItem === 'embedded-components') {
       const ecTab = state.embeddedComponentsTab || 'domain-registry';
       return buildHash('settings', 'embedded-components', ecTab);
+    }
+    if (settingsNavItem === 'content') {
+      const cTab = state.contentTab || 'emails';
+      return buildHash('settings', 'content', cTab);
     }
     if (settingsNavItem === 'account') {
       const acTab = state.accountTab || 'users';
@@ -187,6 +196,18 @@ export function hashToState(route) {
     if (route.section === 'embedded-components') {
       updates.settingsNavItem = 'embedded-components';
       updates.embeddedComponentsTab = route.tab || 'domain-registry';
+      return updates;
+    }
+    // Content section
+    if (route.section === 'content') {
+      updates.settingsNavItem = 'content';
+      updates.contentTab = route.tab || 'emails';
+      // Per-email edit: #/settings/content/emails/{id} re-opens the email
+      // builder on top of the listing page (AppLayout hydration uses
+      // _pendingEmailEditId to call openEmailBuilder after the campaign loads).
+      if (route.tab === 'emails' && route.id) {
+        updates._pendingEmailEditId = route.id;
+      }
       return updates;
     }
     // Account / IAM section

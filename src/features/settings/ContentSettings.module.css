@@ -1,0 +1,326 @@
+/* ── Outer shell (fills the right pane of SettingsLayout) ── */
+.wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--neutral-0);
+  font-family: 'Inter', sans-serif;
+}
+
+/* ── Tab bar ── */
+.tabBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.tabActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.searchWrap {
+  display: flex;
+  align-items: center;
+}
+
+.searchInput {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0.5px solid var(--primary-300);
+  border-radius: 6px;
+  padding: 0 10px;
+  height: 32px;
+  width: 220px;
+  background: var(--neutral-0);
+}
+
+.searchInput input {
+  border: none;
+  outline: none;
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-400);
+  flex: 1;
+  background: transparent;
+}
+
+.searchInput input::placeholder { color: var(--neutral-200); }
+
+.searchClose {
+  background: none;
+  border: none;
+  color: var(--neutral-300);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+  line-height: 1;
+}
+
+.tabDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+.filterChip {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.tab {
+  height: 40px;
+  padding: 4px 8px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tab:hover { color: var(--neutral-400); }
+
+.tabActive {
+  font-weight: 500;
+  color: var(--primary-300);
+  border-bottom-color: var(--primary-300);
+}
+
+/* ── Content area (scrollable) ── */
+.content {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Table ── */
+.tableWrap {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Inter', sans-serif;
+}
+
+.colName      { width: auto; }
+.colCategory  { width: 140px; }
+.colSubject   { width: 240px; }
+.colDate      { width: 130px; }
+.colUpdatedBy { width: 160px; }
+.colAction    { width: 130px; }
+
+.headerRow th {
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  border-bottom: 0.5px solid var(--neutral-150);
+  white-space: nowrap;
+}
+
+.row {
+  border-bottom: 0.5px solid var(--neutral-100);
+  transition: background 0.1s;
+}
+
+.row:hover { background: var(--primary-25, #FDFDFF); }
+
+/* Name cell */
+.tdName { padding: 10px 16px; }
+
+.nameLink {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.nameStack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nameText {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nameDesc {
+  font-size: 12px;
+  color: var(--neutral-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 480px;
+}
+
+/* Other cells */
+.tdCategory  { padding: 10px 16px; }
+.tdSubject   { padding: 10px 16px; }
+.tdDate      { padding: 10px 16px; }
+.tdUpdatedBy { padding: 10px 16px; }
+.tdAction    { padding: 10px 16px; }
+
+.cellText {
+  font-size: 13px;
+  color: var(--neutral-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.cellMuted {
+  font-size: 13px;
+  color: var(--neutral-200);
+}
+
+/* ── Skeleton (shimmer) — matches the live row layout ── */
+@keyframes skelShimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skelBone {
+  display: inline-block;
+  background: linear-gradient(90deg, var(--neutral-100) 25%, var(--neutral-50) 50%, var(--neutral-100) 75%);
+  background-size: 400px 100%;
+  animation: skelShimmer 1.4s ease-in-out infinite;
+  border-radius: 4px;
+  height: 12px;
+}
+.skelNameRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.skelIcon    { width: 15px; height: 15px; border-radius: 4px; }
+.skelTextLg  { width: 60%; max-width: 180px; height: 14px; }
+.skelTextMd  { width: 80%; max-width: 200px; }
+.skelTextSm  { width: 50%; max-width: 90px; }
+.skelChip    { width: 80px; height: 18px; border-radius: 50px; }
+.skelDot     { width: 18px; height: 18px; border-radius: 4px; }
+
+/* Action cell */
+.actionCell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vDivider {
+  width: 0.5px;
+  height: 14px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+/* Empty state */
+.emptyState {
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--neutral-300);
+  font-size: 13px;
+}
+
+.emptyState p { margin: 10px 0 0; }
+
+/* ── Placeholder tabs ── */
+.placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 60px 20px;
+  color: var(--neutral-300);
+}
+
+.placeholderTitle {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  margin: 0;
+}
+
+.placeholderSub {
+  font-size: 13px;
+  color: var(--neutral-200);
+  margin: 0;
+}
+
+/* ── Row kebab popover (Preview + Delete) ── */
+.overflowScrim {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+}
+
+.overflowMenu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 180px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  padding: 4px;
+}
+
+.overflowItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--neutral-400);
+  text-align: left;
+}
+
+.overflowItem:hover { background: var(--neutral-50); }
+
+.overflowItemDanger { color: var(--status-error); }
+.overflowItemDanger:hover { background: var(--status-error-light); }

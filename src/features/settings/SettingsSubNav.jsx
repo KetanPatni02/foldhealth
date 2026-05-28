@@ -9,7 +9,7 @@ const MENU_ITEMS = [
   { icon: 'solar:phone-linear', label: 'Calls' },
   { icon: 'solar:widget-add-linear', label: 'CRM Widgets' },
   { icon: 'solar:code-square-linear', label: 'Embed', key: 'embedded-components' },
-  { icon: 'solar:documents-linear', label: 'Content' },
+  { icon: 'solar:documents-linear', label: 'Content', key: 'content' },
   { icon: 'solar:watch-square-linear', label: 'Wearables' },
   { icon: 'solar:rocket-linear', label: 'Journeys' },
   { icon: 'solar:ghost-smile-linear', label: 'Agents', key: 'agents' },

@@ -100,6 +100,14 @@ function campaignRowToJs(row) {
     senderName: row.sender_name || '',
     sendFrom: row.send_from || '',
     subjectLine: row.subject_line || '',
+    // Content → Emails surfaces these in the list table.
+    category: row.category || null,
+    updatedAt: row.updated_at || null,
+    updatedBy: row.updated_by || null,
+    // Joined user display name when the fetch selects it via FK
+    // (campaigns.updated_by → profiles.id). campaignRowToJs collapses the
+    // nested object so the UI just reads .updatedByName.
+    updatedByName: row.updated_by_profile?.full_name || null,
   };
 }
 
@@ -122,6 +130,7 @@ const CAMPAIGN_FIELD_MAP = {
   senderName: 'sender_name',
   sendFrom: 'send_from',
   subjectLine: 'subject_line',
+  category: 'category',
 };
 function campaignPatchToDb(patch) {
   const out = {};
@@ -395,6 +404,7 @@ export const useAppStore = create((set, get) => ({
   // Embedded Components
   embeddedComponentsTab: 'domain-registry',
   accountTab: 'users',
+  contentTab: 'emails',
   componentWizardOpen: false,
   componentWizardEditId: null,
   componentPreviewId: null,
@@ -692,6 +702,7 @@ export const useAppStore = create((set, get) => ({
 
   setEmbeddedComponentsTab: (tab) => { set({ embeddedComponentsTab: tab }); updateHash(get); },
   setAccountTab: (tab) => { set({ accountTab: tab }); updateHash(get); },
+  setContentTab: (tab) => { set({ contentTab: tab }); updateHash(get); },
   setComponentWizard: (open, editId = null) => { set({ componentWizardOpen: open, componentWizardEditId: editId }); },
   setComponentPreviewId: (id) => { set({ componentPreviewId: id }); },
 
@@ -2795,6 +2806,166 @@ export const useAppStore = create((set, get) => ({
       .maybeSingle();
     if (error || !data) return null;
     return campaignRowToJs(data);
+  },
+
+  // ── Settings → Content → Emails (server-side paginated) ─────────────────────
+  // Separate slice from `campaigns` so the Settings page can ask for a page
+  // at a time without disturbing the bulk-loaded campaign worklist.
+  contentEmails: [],
+  contentEmailsTotal: 0,
+  contentEmailsLoading: false,
+  fetchContentEmails: async ({ page = 1, perPage = 10, search = '', status = 'all' } = {}) => {
+    set({ contentEmailsLoading: true });
+    const from = (page - 1) * perPage;
+    const to = from + perPage - 1;
+    // Newest-edited first so freshly created or just-touched emails surface
+    // at the top of the list. NULLs LAST keeps rows that predate the
+    // updated_at trigger from hogging the top of the list.
+    //
+    // The select pulls the foreign-keyed profile (updated_by → profiles.id)
+    // so the table can show "Last Updated By" without a second round trip.
+    // If the migration that creates the FK hasn't been applied yet,
+    // PostgREST returns PGRST200 — we fall back to a plain select so the
+    // page still renders.
+    const buildQuery = (select) => {
+      let q = supabase
+        .from('campaigns')
+        .select(select, { count: 'exact' })
+        .eq('channel', 'email')
+        .order('updated_at', { ascending: false, nullsFirst: false })
+        .order('id', { ascending: false });
+      if (status && status !== 'all') q = q.eq('section', status);
+      if (search?.trim()) {
+        const s = search.trim().replace(/[%_]/g, '');
+        q = q.or(`name.ilike.%${s}%,description.ilike.%${s}%`);
+      }
+      return q.range(from, to);
+    };
+
+    let { data, error, count } = await buildQuery(
+      '*, updated_by_profile:profiles!updated_by(id, full_name)',
+    );
+
+    // PGRST200 = "no foreign key relationship" — migration not applied yet.
+    if (error?.code === 'PGRST200') {
+      console.warn(
+        '[fetchContentEmails] FK to profiles missing — run supabase/campaigns_category_updated_by_migration.sql. Falling back to plain select.',
+      );
+      ({ data, error, count } = await buildQuery('*'));
+    }
+    // 42703 = column does not exist (updated_at, category, etc. before migrations applied)
+    if (error?.code === '42703') {
+      console.warn(
+        '[fetchContentEmails] Column missing (likely updated_at). Falling back to id ordering.',
+      );
+      const fb = supabase
+        .from('campaigns')
+        .select('*', { count: 'exact' })
+        .eq('channel', 'email')
+        .order('id', { ascending: false });
+      ({ data, error, count } = await fb.range(from, to));
+    }
+
+    if (error) {
+      console.error('fetchContentEmails error:', JSON.stringify(error, null, 2));
+      set({ contentEmailsLoading: false });
+      return;
+    }
+    set({
+      contentEmails: (data || []).map(campaignRowToJs),
+      contentEmailsTotal: count || 0,
+      contentEmailsLoading: false,
+    });
+  },
+
+  // Settings → Content → Emails opens the EmailBuilder directly (no campaign
+  // builder takeover). Accepts either an existing email campaign or null to
+  // mint a new draft + open it. The router uses activePage='settings' +
+  // settingsNavItem='content' to keep the URL on the content path so closing
+  // returns to #/settings/content/emails.
+  openContentEmailBuilder: async (campaignOrNull) => {
+    let campaign = campaignOrNull;
+    if (!campaign) {
+      set({ campaignBuilderSaving: true });
+      const { data, error } = await supabase
+        .from('campaigns')
+        .insert({
+          name: 'Untitled Email',
+          section: 'draft',
+          channel: 'email',
+          send_via: ['email'],
+          start_mode: 'immediately',
+          campaign_type: 'one_time',
+        })
+        .select('*')
+        .single();
+      set({ campaignBuilderSaving: false });
+      if (error) {
+        console.error('openContentEmailBuilder insert error:', error);
+        get().showToast?.('Could not create email');
+        return null;
+      }
+      campaign = campaignRowToJs(data);
+      set(s => ({ campaigns: [...s.campaigns, campaign] }));
+    }
+    // Clear any stale campaign-builder takeover so the URL routes through
+    // settings/content and closeEmailBuilder lands back on the email list.
+    set({ campaignBuilderId: null });
+    get().openEmailBuilder(campaign);
+    return campaign.id;
+  },
+
+  // Clone an existing campaign — copies every column except the primary key
+  // and timestamps. New copy lands as a draft with a " (Copy)" suffix so it
+  // never re-runs a live campaign by accident.
+  duplicateCampaign: async (id) => {
+    const { data: original, error: fetchErr } = await supabase
+      .from('campaigns')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (fetchErr || !original) {
+      console.error('duplicateCampaign fetch error:', fetchErr);
+      get().showToast?.('Could not duplicate email');
+      return null;
+    }
+    // eslint-disable-next-line no-unused-vars
+    const { id: _id, created_at: _c, updated_at: _u, ...rest } = original;
+    const { data: copy, error: insertErr } = await supabase
+      .from('campaigns')
+      .insert({
+        ...rest,
+        name: `${rest.name || 'Untitled'} (Copy)`,
+        section: 'draft',
+        enabled: false,
+      })
+      .select('*')
+      .single();
+    if (insertErr) {
+      console.error('duplicateCampaign insert error:', insertErr);
+      get().showToast?.('Could not duplicate email');
+      return null;
+    }
+    const fresh = campaignRowToJs(copy);
+    set(s => ({ campaigns: [...s.campaigns, fresh] }));
+    get().showToast?.('Email duplicated');
+    return fresh;
+  },
+
+  deleteCampaign: async (id) => {
+    const { error } = await supabase.from('campaigns').delete().eq('id', id);
+    if (error) {
+      console.error('deleteCampaign error:', error);
+      get().showToast?.('Could not delete email');
+      return false;
+    }
+    set(s => ({
+      campaigns: s.campaigns.filter(c => c.id !== id),
+      contentEmails: s.contentEmails.filter(c => c.id !== id),
+      contentEmailsTotal: Math.max(0, s.contentEmailsTotal - 1),
+    }));
+    get().showToast?.('Email deleted');
+    return true;
   },
 
   saveEmailTemplate: async () => {

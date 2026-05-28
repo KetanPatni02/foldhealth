@@ -6,6 +6,14 @@ keep entries short and specific. Newest at the top.
 
 ## Working agreements
 
+- **Drawer headers: NEVER let the close button draw its own border.**
+  When `headerRight` has action buttons, pass `noCloseDivider` to `<Drawer>`
+  AND insert your own `<span className={styles.headerDivider} />` (1px × 16px,
+  `var(--neutral-150)`) between the last action button and the close button.
+  This rule is the single most-repeated mistake — if you're putting anything
+  in `headerRight`, you almost certainly need both pieces. See
+  `EmailPreviewDrawer.jsx` / `ClinicalNotePanel.jsx` for the canonical
+  pattern. Same divider class goes between distinct action groups.
 - **Use Bun, never npm or pnpm.** Bun is the package manager + script
   runner for this repo. Always use `bun install` (not `npm install` /
   `pnpm install`) and `bun run <script>` (not `npm run` / `pnpm run`).
