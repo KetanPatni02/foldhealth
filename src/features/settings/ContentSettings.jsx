@@ -427,8 +427,18 @@ export function ContentSettings() {
   const setActiveTab = useAppStore(s => s.setContentTab);
 
   const [searchOpen, setSearchOpen]     = useState(false);
+  // searchInputVal is what the input shows (updates on every keystroke);
+  // searchVal is the debounced value passed down to the data layer. Avoids
+  // firing a Supabase request per keystroke.
+  const [searchInputVal, setSearchInputVal] = useState('');
   const [searchVal, setSearchVal]       = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  useEffect(() => {
+    if (searchInputVal === searchVal) return;
+    const t = setTimeout(() => setSearchVal(searchInputVal), 250);
+    return () => clearTimeout(t);
+  }, [searchInputVal, searchVal]);
 
   const [previewCampaign, setPreviewCampaign] = useState(null);
   const [deleteTarget, setDeleteTarget]       = useState(null);
@@ -532,12 +542,12 @@ export function ContentSettings() {
                     autoFocus
                     type="text"
                     placeholder="Search emails..."
-                    value={searchVal}
-                    onChange={e => setSearchVal(e.target.value)}
+                    value={searchInputVal}
+                    onChange={e => setSearchInputVal(e.target.value)}
                   />
                   <button
                     className={styles.searchClose}
-                    onClick={() => { setSearchOpen(false); setSearchVal(''); }}
+                    onClick={() => { setSearchOpen(false); setSearchInputVal(''); setSearchVal(''); }}
                   >✕</button>
                 </div>
               ) : (

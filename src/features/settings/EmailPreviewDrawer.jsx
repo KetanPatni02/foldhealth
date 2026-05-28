@@ -5,6 +5,7 @@ import { Button } from '../../components/Button/Button';
 import { EmailIframe, MacBookPro, IPhone17Pro } from '../email-builder/DevicePreview';
 import { renderEmailHtml } from '../email-builder/patchEmailHtml';
 import { makeInitialDocument } from '../email-builder/initialDocument';
+import { useAppStore } from '../../store/useAppStore';
 import styles from './EmailPreviewDrawer.module.css';
 
 const VIEW_ITEMS = [
@@ -27,13 +28,36 @@ const VIEW_ITEMS = [
  */
 export function EmailPreviewDrawer({ campaign, onClose, onEdit }) {
   const [view, setView] = useState('email');
+  const fetchCampaignById = useAppStore(s => s.fetchCampaignById);
+
+  // The Content → Emails list query excludes the heavy `email_template`
+  // JSONB to keep the table fast. When that row is passed in, fetch the
+  // full record now so we render the actual saved email instead of the
+  // generic initial document.
+  const [fullCampaign, setFullCampaign] = useState(
+    campaign?.emailTemplate !== undefined ? campaign : null
+  );
+  useEffect(() => {
+    if (!campaign?.id) return;
+    if (campaign.emailTemplate !== undefined) {
+      setFullCampaign(campaign);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const full = await fetchCampaignById(campaign.id);
+      if (!cancelled) setFullCampaign(full || campaign);
+    })();
+    return () => { cancelled = true; };
+  }, [campaign, fetchCampaignById]);
 
   const html = useMemo(() => {
-    const doc = campaign?.emailTemplate || makeInitialDocument(campaign || {});
+    const source = fullCampaign || campaign;
+    const doc = source?.emailTemplate || makeInitialDocument(source || {});
     // wrapperPadding: '0' strips the renderEmailHtml outer <td padding:24px 0>
     // so the preview iframe sits flush against the email's own design.
     return renderEmailHtml(doc, { theme: 'light', wrapperPadding: '0' });
-  }, [campaign]);
+  }, [fullCampaign, campaign]);
 
   // Track stage width so the device mockups can sit inside the 700px drawer
   // without overflowing — mirrors how DevicePreview sizes itself against its

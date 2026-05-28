@@ -66,6 +66,16 @@ const _initialNavStyle = getStoredNavStyle();
 // blocking script handles the color theme but not this one yet).
 applyNavStyle(_initialNavStyle);
 
+// ── Settings → Content → Emails: SWR cache ────────────────────────────────
+// Keyed by `${page}|${perPage}|${searchLowercased}|${status}`. Lives at
+// module scope so cache survives store rebuilds during HMR. Cleared by any
+// campaign mutation (delete / bulk delete / duplicate / draft insert).
+const _contentEmailsCache = new Map();
+const CONTENT_EMAILS_TTL_MS = 60_000;
+function _invalidateContentEmailsCache() {
+  _contentEmailsCache.clear();
+}
+
 // ── Campaign row mapper ──
 // Single source of truth for translating Supabase campaigns rows into the JS
 // shape the UI consumes. Used by both fetchCampaigns (bulk load) and the
@@ -2814,19 +2824,59 @@ export const useAppStore = create((set, get) => ({
   contentEmails: [],
   contentEmailsTotal: 0,
   contentEmailsLoading: false,
-  fetchContentEmails: async ({ page = 1, perPage = 10, search = '', status = 'all' } = {}) => {
-    set({ contentEmailsLoading: true });
+  fetchContentEmails: async ({ page = 1, perPage = 10, search = '', status = 'all', force = false } = {}) => {
+    // ── SWR-style cache ─────────────────────────────────────────────────────
+    // Cache hit → paint cached rows immediately, no shimmer. If fresh
+    // (< CONTENT_EMAILS_TTL_MS), skip the network entirely. If stale, still
+    // serve the cached rows but kick off a background revalidation that
+    // silently swaps in the new data when it lands. Cache is invalidated
+    // by deleteCampaign / deleteCampaignsBulk / duplicateCampaign /
+    // openContentEmailBuilder(null).
+    const cacheKey = `${page}|${perPage}|${(search || '').toLowerCase().trim()}|${status || 'all'}`;
+    const cached = _contentEmailsCache.get(cacheKey);
+    const now = Date.now();
+
+    if (cached) {
+      set({
+        contentEmails: cached.rows,
+        contentEmailsTotal: cached.total,
+        contentEmailsLoading: false,
+      });
+      // Fresh cache — done; no network request.
+      if (!force && now - cached.fetchedAt < CONTENT_EMAILS_TTL_MS) {
+        return;
+      }
+      // Stale cache — continue and revalidate in the background. We
+      // intentionally don't toggle contentEmailsLoading because the user
+      // already sees the cached rows; flickering a shimmer back in would
+      // be worse than letting the swap happen invisibly.
+    } else {
+      set({ contentEmailsLoading: true });
+    }
+
     const from = (page - 1) * perPage;
     const to = from + perPage - 1;
+    // Slim column list — explicitly excludes `email_template` and
+    // `color_variables`. Those JSONB columns can be 10-100KB per row and
+    // we don't render them in the table at all. They're fetched on demand
+    // when Preview / Edit is clicked via fetchCampaignById(id).
+    //
     // Newest-edited first so freshly created or just-touched emails surface
     // at the top of the list. NULLs LAST keeps rows that predate the
     // updated_at trigger from hogging the top of the list.
-    //
-    // The select pulls the foreign-keyed profile (updated_by → profiles.id)
-    // so the table can show "Last Updated By" without a second round trip.
-    // If the migration that creates the FK hasn't been applied yet,
-    // PostgREST returns PGRST200 — we fall back to a plain select so the
-    // page still renders.
+    const LIST_COLUMNS = [
+      'id', 'name', 'description', 'channel', 'section', 'audience', 'dynamic',
+      'health', 'delivered', 'opened', 'start_date', 'duration', 'progress',
+      'executes_in', 'enabled', 'audience_include', 'audience_exclude',
+      'send_via', 'start_mode', 'start_at', 'end_date', 'campaign_type',
+      'sender_name', 'send_from', 'subject_line', 'category', 'updated_at',
+      'updated_by',
+    ].join(', ');
+    // The select also pulls the foreign-keyed profile (updated_by →
+    // profiles.id) so the table can show "Last Updated By" without a second
+    // round trip. If the migration that creates the FK hasn't been applied
+    // yet, PostgREST returns PGRST200 — we fall back to a plain select so
+    // the page still renders.
     const buildQuery = (select) => {
       let q = supabase
         .from('campaigns')
@@ -2843,7 +2893,7 @@ export const useAppStore = create((set, get) => ({
     };
 
     let { data, error, count } = await buildQuery(
-      '*, updated_by_profile:profiles!updated_by(id, full_name)',
+      `${LIST_COLUMNS}, updated_by_profile:profiles!updated_by(id, full_name)`,
     );
 
     // PGRST200 = "no foreign key relationship" — migration not applied yet.
@@ -2851,7 +2901,7 @@ export const useAppStore = create((set, get) => ({
       console.warn(
         '[fetchContentEmails] FK to profiles missing — run supabase/campaigns_category_updated_by_migration.sql. Falling back to plain select.',
       );
-      ({ data, error, count } = await buildQuery('*'));
+      ({ data, error, count } = await buildQuery(LIST_COLUMNS));
     }
     // 42703 = column does not exist (updated_at, category, etc. before migrations applied)
     if (error?.code === '42703') {
@@ -2871,9 +2921,14 @@ export const useAppStore = create((set, get) => ({
       set({ contentEmailsLoading: false });
       return;
     }
+    const rows = (data || []).map(campaignRowToJs);
+    const total = count || 0;
+    // Store the freshly-revalidated data in the cache so the next visit at
+    // this same key returns immediately.
+    _contentEmailsCache.set(cacheKey, { rows, total, fetchedAt: Date.now() });
     set({
-      contentEmails: (data || []).map(campaignRowToJs),
-      contentEmailsTotal: count || 0,
+      contentEmails: rows,
+      contentEmailsTotal: total,
       contentEmailsLoading: false,
     });
   },
@@ -2885,6 +2940,14 @@ export const useAppStore = create((set, get) => ({
   // returns to #/settings/content/emails.
   openContentEmailBuilder: async (campaignOrNull) => {
     let campaign = campaignOrNull;
+    // Slim-list optimisation: if we were passed a row from the list (no
+    // emailTemplate because we excluded it from the list select), fetch the
+    // full row now so the email builder gets the saved doc instead of a
+    // generated initial document.
+    if (campaign && campaign.id && campaign.emailTemplate === undefined) {
+      const full = await get().fetchCampaignById(campaign.id);
+      if (full) campaign = full;
+    }
     if (!campaign) {
       set({ campaignBuilderSaving: true });
       const { data, error } = await supabase
@@ -2907,6 +2970,7 @@ export const useAppStore = create((set, get) => ({
       }
       campaign = campaignRowToJs(data);
       set(s => ({ campaigns: [...s.campaigns, campaign] }));
+      _invalidateContentEmailsCache();
     }
     // Clear any stale campaign-builder takeover so the URL routes through
     // settings/content and closeEmailBuilder lands back on the email list.
@@ -2948,6 +3012,7 @@ export const useAppStore = create((set, get) => ({
     }
     const fresh = campaignRowToJs(copy);
     set(s => ({ campaigns: [...s.campaigns, fresh] }));
+    _invalidateContentEmailsCache();
     get().showToast?.('Email duplicated');
     return fresh;
   },
@@ -2968,6 +3033,7 @@ export const useAppStore = create((set, get) => ({
       contentEmails: s.contentEmails.filter(c => !idSet.has(c.id)),
       contentEmailsTotal: Math.max(0, s.contentEmailsTotal - ids.length),
     }));
+    _invalidateContentEmailsCache();
     get().showToast?.(`${ids.length} email${ids.length === 1 ? '' : 's'} deleted`);
     return true;
   },
@@ -2984,6 +3050,7 @@ export const useAppStore = create((set, get) => ({
       contentEmails: s.contentEmails.filter(c => c.id !== id),
       contentEmailsTotal: Math.max(0, s.contentEmailsTotal - 1),
     }));
+    _invalidateContentEmailsCache();
     get().showToast?.('Email deleted');
     return true;
   },
