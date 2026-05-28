@@ -351,6 +351,10 @@ export const useAppStore = create((set, get) => ({
   activeFilters: {},  // { gender: 'F', language: 'es', lace: 'High', ... }
   activeSubnavList: 'TOC',  // which SubNav list is selected
 
+  // HEDIS worklist state lives at line ~1558 (caregapActivity, hedisMembers,
+  // setHedisMembers, updateGapStatus, etc.) — defined by upstream.
+
+
   // Call Details
   _allCallDetails: [],   // full sorted dataset (DB + supplemental local)
   callDetails: [],
@@ -1633,14 +1637,86 @@ export const useAppStore = create((set, get) => ({
       },
     }));
   },
-  // Stub: produces a fake task id. Wire to Supabase when the schema lands.
-  createCareGapSignOffTask: (payload) => {
-    track('hedis.signoff_task_created', { memberId: payload?.hedisMemberId });
-    return { id: `signoff-${Date.now()}`, ...payload };
+  // Push a real consolidated sign-off task into the existing `tasks` slice so
+  // TasksView surfaces it (one task per patient per Submit-for-Review batch).
+  // Gap codes ride in `task.labels` to satisfy the Gaps-column filter (AC-8).
+  createCareGapSignOffTask: ({ hedisMemberId, gapCodes, state, pdf } = {}) => {
+    track('hedis.signoff_task_created', { memberId: hedisMemberId });
+    const member = get().hedisMembers.find(m => m.id === hedisMemberId);
+    if (!member || !gapCodes || gapCodes.length === 0) return null;
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 1);
+    const id = `tk-hedis-${hedisMemberId}-${Date.now()}`;
+    const task = {
+      id,
+      name: 'Care Gap Review: Clinical Note',
+      description: `Sign off on consolidated note for ${member.name} covering ${gapCodes.length} care gap${gapCodes.length === 1 ? '' : 's'}.`,
+      status: 'pending',
+      priority: 'medium',
+      member: member.name,
+      assigned_to: null,
+      pool: 'HEDIS Sign-Off',
+      labels: [...gapCodes],
+      due_date: dueDate.toISOString().slice(0, 10),
+      created_by: 'Care Manager',
+      meta: `HEDIS Sign-Off · ${state || member.state || 'Unknown state'}`,
+      hedisMemberId,
+      hedisGapCodes: [...gapCodes],
+      state: state || member.state,
+      created_at: new Date().toISOString(),
+      attachments: pdf ? 1 : 0,
+      consolidatedPdf: pdf || null,
+    };
+    set(s => ({ tasks: [task, ...s.tasks] }));
+    return task;
   },
-  updateSignOffTaskPdf: (taskId, pdfMeta) => {
+
+  // Replace the consolidated PDF on an existing sign-off task (reviewer edited
+  // the note). Atomically logs a "Clinical note updated" activity entry so the
+  // history is visible from the patient drawer.
+  updateSignOffTaskPdf: (taskId, pdf, actor = 'NP') => {
     track('hedis.signoff_task_pdf_attached', { taskId });
-    return { id: taskId, pdf: pdfMeta };
+    const task = get().tasks.find(t => t.id === taskId);
+    if (!task || !pdf) return false;
+    set(s => ({
+      tasks: s.tasks.map(t => (
+        t.id === taskId
+          ? { ...t, consolidatedPdf: pdf, attachments: 1, updated_at: new Date().toISOString() }
+          : t
+      )),
+    }));
+    if (task.hedisMemberId) {
+      get().logCareGapActivity(task.hedisMemberId, {
+        title: 'Clinical note updated',
+        detail: `Reviewer edited the consolidated note for ${task.hedisGapCodes?.join(', ')}`,
+        actor,
+        icon: 'solar:pen-new-square-linear',
+        gapCodes: task.hedisGapCodes,
+        attachment: pdf,
+      });
+    }
+    return true;
+  },
+
+  // NP marks the sign-off task complete → every gap in the task transitions to
+  // Completed atomically (AC-13), the task moves to status=completed, and an
+  // activity entry is appended for the patient's history.
+  completeCareGapSignOffTask: (taskId, actor = 'NP') => {
+    const task = get().tasks.find(t => t.id === taskId);
+    if (!task || !task.hedisMemberId) return false;
+    set(s => ({
+      tasks: s.tasks.map(t => (t.id === taskId ? { ...t, status: 'completed' } : t)),
+    }));
+    const updates = Object.fromEntries((task.hedisGapCodes || []).map(c => [c, 'Completed']));
+    get().bulkUpdateGapStatuses(task.hedisMemberId, updates);
+    get().logCareGapActivity(task.hedisMemberId, {
+      title: 'Task completed by NP',
+      detail: `Gaps closed: ${(task.hedisGapCodes || []).join(', ')}`,
+      actor,
+      icon: 'solar:check-circle-linear',
+      gapCodes: task.hedisGapCodes,
+    });
+    return true;
   },
 
   hccMembers: [],
@@ -3376,7 +3452,8 @@ export const useAppStore = create((set, get) => ({
 
     if (error) {
       console.error('Tasks fetch error:', error.message);
-      set({ tasks: [], tasksLoading: false });
+      const localHedisTasks = get().tasks.filter(t => t.hedisMemberId);
+      set({ tasks: [...localHedisTasks], tasksLoading: false });
       return;
     }
 
@@ -3399,7 +3476,11 @@ export const useAppStore = create((set, get) => ({
         .in('id', overdueIds);
     }
 
-    set({ tasks: now, tasksLoading: false });
+    // Preserve any locally-created HEDIS sign-off tasks (prototype only —
+    // they aren't persisted to supabase yet). Without this, navigating to
+    // Tasks after a Submit-for-Review would wipe them out.
+    const localHedisTasks = get().tasks.filter(t => t.hedisMemberId && !now.some(n => n.id === t.id));
+    set({ tasks: [...localHedisTasks, ...now], tasksLoading: false });
   },
 
   createTask: async (task) => {
