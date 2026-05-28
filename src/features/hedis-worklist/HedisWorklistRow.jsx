@@ -25,7 +25,12 @@ const STATUS_CLASS = { Open: styles.gapStatusOpen, Closed: styles.gapStatusClose
 // Outreach cell — mirrors the TOC worklist's outreach pattern
 // (src/features/toc-worklist/WorklistRow.jsx OutreachCell).
 function OutreachCell({ member }) {
-  const dots = member.outreachDots || ['pending', 'pending', 'pending'];
+  // `||` alone isn't enough: a non-array truthy value (e.g. a Supabase JSONB
+  // object that wasn't normalised to an array) would slip through and crash
+  // `.map` below. Use Array.isArray so only real arrays get through.
+  const dots = Array.isArray(member.outreachDots)
+    ? member.outreachDots
+    : ['pending', 'pending', 'pending'];
   const hasSuccess = dots.includes('success');
   const hasFailed = dots.includes('failed') && !hasSuccess;
 
