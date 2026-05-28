@@ -161,16 +161,21 @@
 .dot.pending { background: var(--neutral-150); }
 
 /* Assignee cell */
-.assigneeName { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--neutral-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+.assigneeName {
+  display: flex; align-items: center; gap: 6px;
+  min-width: 0;
+  font-size: 13px; color: var(--neutral-400);
+}
+.assigneeName span {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;
+}
 .assigneeBtn {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 2px 4px; border-radius: 5px;
-  border: none; background: none;
-  font-size: 12px; font-weight: 500; color: var(--neutral-300);
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 0; border: none; background: none;
+  font-size: 13px; font-weight: 400; color: var(--neutral-300);
   cursor: pointer; font-family: 'Inter', sans-serif;
 }
 .assigneeBtn:hover { color: var(--primary-300); }
-.assigneeBtn:hover { border-color: var(--primary-300); color: var(--primary-300); }
 
 /* Start date cell */
 .startDateCell { display: flex; flex-direction: column; gap: 2px; }

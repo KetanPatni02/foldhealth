@@ -201,6 +201,9 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
             </button>
             <span className={styles.headerDivider} />
             <ActionButton icon="solar:clipboard-add-linear" size="L" tooltip="Add Task" onClick={() => showToast('Add Task — coming soon')} />
+            <span className={styles.headerDivider} />
+            <ActionButton icon="solar:notes-linear" size="L" tooltip="Notes" onClick={() => showToast('Notes — coming soon')} />
+            <span className={styles.headerDivider} />
             <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More" onClick={() => showToast('More — coming soon')} />
           </div>
         </div>

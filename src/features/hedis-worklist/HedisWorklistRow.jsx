@@ -166,7 +166,7 @@ export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
                     className={styles.assigneeBtn}
                     onClick={() => showToast('Assign care manager — coming soon')}
                   >
-                    <Icon name="solar:user-plus-rounded-linear" size={13} color="var(--neutral-300)" />
+                    <Icon name="solar:user-plus-rounded-linear" size={14} color="var(--neutral-300)" />
                     Assign
                   </button>
                 )}
