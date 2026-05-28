@@ -69,9 +69,13 @@ function OutreachCell({ member }) {
 export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
   const showToast = useAppStore(s => s.showToast);
   const openQuickView = useAppStore(s => s.openQuickView);
-  const primaryGap = member.gaps[0];
+  const gaps = Array.isArray(member.gaps) ? member.gaps : [];
+  // No usable gaps → skip the row entirely. Without this, `primaryGap` below
+  // would be undefined and the row's click handlers would throw on access.
+  if (gaps.length === 0) return null;
+  const primaryGap = gaps[0];
   // Single-gap members center their lone item; multi-gap stays top-aligned.
-  const tdGap = member.gaps.length === 1
+  const tdGap = gaps.length === 1
     ? `${styles.tdGap} ${styles.tdGapCenter}`
     : styles.tdGap;
 
@@ -119,7 +123,7 @@ export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
       {/* Total Gaps — one badge per gap, aligned with sibling gap cells */}
       <td className={tdGap} onClick={e => e.stopPropagation()}>
         <div className={styles.gapItems}>
-          {member.gaps.map(g => (
+          {gaps.map(g => (
             <div key={g.code} className={styles.gapItem}>
               <span onClick={() => onOpenGap?.(member, g.code)} style={{ cursor: 'pointer' }}>
                 <Badge variant="compliance-na" label={g.code} />
@@ -132,7 +136,7 @@ export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
       {/* Gap Status — one per gap */}
       <td className={tdGap}>
         <div className={styles.gapItems}>
-          {member.gaps.map(g => (
+          {gaps.map(g => (
             <div key={g.code} className={styles.gapItem}>
               <span className={STATUS_CLASS[g.status] || ''}>{g.status}</span>
             </div>
@@ -143,7 +147,7 @@ export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
       {/* Assignee — per gap, falls back to member-level assignee */}
       <td className={tdGap} onClick={e => e.stopPropagation()}>
         <div className={styles.gapItems}>
-          {member.gaps.map(g => {
+          {gaps.map(g => {
             const assignee = g.assignee ?? member.assignee;
             return (
               <div key={g.code} className={styles.gapItem}>
@@ -170,7 +174,7 @@ export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
       {/* Start Date — per gap, right border divides per-gap from per-member columns */}
       <td className={`${tdGap} ${styles.tdGapDivide}`}>
         <div className={styles.gapItems}>
-          {member.gaps.map(g => (
+          {gaps.map(g => (
             <div key={g.code} className={styles.gapItem}>
               <span className={styles.startDateValue}>{g.startDate ?? member.startDate}</span>
             </div>
