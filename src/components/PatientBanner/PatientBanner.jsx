@@ -86,10 +86,10 @@ export function PatientBanner({ initials, name, gender, age, memberId, raf, rafC
           </div>
         </div>
         <div className={styles.actions}>
-          <span className={styles.divider} />
           {onCall && (
-            <ActionButton icon="solar:phone-calling-rounded-linear" size="L" tooltip="Call" onClick={onCall} />
+            <ActionButton icon="solar:phone-calling-rounded-linear" size="L" tooltip="Call" onClick={onCall} tooltipBelow />
           )}
+          <span className={styles.divider} />
           <ActionButton
             icon="solar:alt-arrow-down-linear"
             size="L"
@@ -97,6 +97,7 @@ export function PatientBanner({ initials, name, gender, age, memberId, raf, rafC
             iconColor="var(--primary-300)"
             onClick={() => setExpanded(v => !v)}
             className={expanded ? styles.chevronOpen : ''}
+            tooltipBelow
           />
         </div>
       </div>

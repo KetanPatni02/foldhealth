@@ -293,3 +293,5 @@
   margin-top: 14px;
 }
 .gapDocBtn:hover { border-color: var(--primary-300); color: var(--primary-300); }
+
+.headerDivider { width: 1px; height: 16px; background: var(--neutral-150); flex-shrink: 0; }
