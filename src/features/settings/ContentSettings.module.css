@@ -454,25 +454,32 @@
 
 /* ── Floating bulk action bar (visible during bulk-select with selection) ── */
 @keyframes bulkBarSlide {
-  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
+/* Anchored just above the Pagination component so users can keep selecting
+   across pages without the floating bar covering the page numbers. The
+   Pagination height is ~62px (14px padding + 34px buttons + 14px padding +
+   0.5px border) — bottom 62px puts the bar's bottom edge right on the
+   divider line that separates the table from the pagination. The bar
+   itself sits fully above that line. */
 .bulkBar {
   position: fixed;
-  bottom: 24px;
+  bottom: 62px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 200;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px;
+  padding: 10px 12px;
+  margin-bottom: 8px; /* tiny breathing room from the divider line */
   background: var(--neutral-0);
   border: 1px solid var(--neutral-150);
   border-radius: 8px;
-  box-shadow: 4px 15px 60px 24px rgba(0, 0, 0, 0.15);
-  animation: bulkBarSlide 0.18s ease;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
+  animation: bulkBarSlide 0.2s cubic-bezier(.4, 0, .2, 1);
   white-space: nowrap;
 }
 
