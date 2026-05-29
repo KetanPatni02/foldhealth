@@ -45,6 +45,11 @@ export function stateToHash(state) {
     }
     return buildHash('email', String(state.editingCampaignId));
   }
+  if (state.editingFormId) {
+    // Form builder is always opened from Settings → Content → Forms; keep the
+    // settings path so closing falls back to #/settings/content/forms.
+    return buildHash('settings', 'content', 'forms', String(state.editingFormId));
+  }
   if (state.campaignBuilderId) {
     return buildHash('campaign', String(state.campaignBuilderId));
   }
@@ -207,6 +212,11 @@ export function hashToState(route) {
       // _pendingEmailEditId to call openEmailBuilder after the campaign loads).
       if (route.tab === 'emails' && route.id) {
         updates._pendingEmailEditId = route.id;
+      }
+      // Per-form edit: #/settings/content/forms/{id} re-opens the form builder
+      // on top of the listing page (AppLayout hydration uses _pendingFormEditId).
+      if (route.tab === 'forms' && route.id) {
+        updates._pendingFormEditId = route.id;
       }
       return updates;
     }

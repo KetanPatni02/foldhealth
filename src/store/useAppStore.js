@@ -76,6 +76,39 @@ function _invalidateContentEmailsCache() {
   _contentEmailsCache.clear();
 }
 
+// ── Settings → Content → Forms: SWR cache ─────────────────────────────────
+// Same shape/strategy as the emails cache above. Keyed by
+// `${page}|${perPage}|${searchLowercased}|${status}`; cleared by any form
+// mutation (create draft / duplicate / delete / save).
+const _contentFormsCache = new Map();
+const CONTENT_FORMS_TTL_MS = 60_000;
+function _invalidateContentFormsCache() {
+  _contentFormsCache.clear();
+}
+
+// ── Form row mapper ──
+// Translates a Supabase `forms` row into the JS shape the UI consumes. List
+// fetches omit the heavy `schema`/`scoring` JSONB; the builder pulls the full
+// row via fetchFormById so those land as the saved objects, not defaults.
+function formRowToJs(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description || null,
+    category: row.category || null,
+    status: row.status || 'draft',
+    // Present only on the full-row fetch; undefined on slim list rows so the
+    // builder knows it still needs to hydrate.
+    schema: row.schema,
+    scoring: row.scoring,
+    settings: row.settings || {},
+    responseCount: row.response_count || 0,
+    updatedAt: row.updated_at || null,
+    updatedBy: row.updated_by || null,
+    updatedByName: row.updated_by_profile?.full_name || null,
+  };
+}
+
 // ── Campaign row mapper ──
 // Single source of truth for translating Supabase campaigns rows into the JS
 // shape the UI consumes. Used by both fetchCampaigns (bulk load) and the
@@ -3055,6 +3088,255 @@ export const useAppStore = create((set, get) => ({
     }));
     _invalidateContentEmailsCache();
     get().showToast?.('Email deleted');
+    return true;
+  },
+
+  // ─── Settings → Content → Forms ──────────────────────────────────────────
+  // Slim list of forms for the Content → Forms table. Mirrors the emails
+  // pattern: server-side pagination + search + SWR cache. `editingFormId`
+  // drives the full-screen FormBuilder takeover (see AppLayout + router).
+  contentForms: [],
+  contentFormsTotal: 0,
+  contentFormsLoading: false,
+  editingFormId: null,
+  formBuilderForm: null,
+  formBuilderSaving: false,
+
+  fetchContentForms: async ({ page = 1, perPage = 10, search = '', status = 'all', force = false } = {}) => {
+    const cacheKey = `${page}|${perPage}|${(search || '').toLowerCase().trim()}|${status || 'all'}`;
+    const cached = _contentFormsCache.get(cacheKey);
+    const now = Date.now();
+    if (cached) {
+      set({ contentForms: cached.rows, contentFormsTotal: cached.total, contentFormsLoading: false });
+      if (!force && now - cached.fetchedAt < CONTENT_FORMS_TTL_MS) return;
+    } else {
+      set({ contentFormsLoading: true });
+    }
+
+    const from = (page - 1) * perPage;
+    const to = from + perPage - 1;
+    const LIST_COLUMNS = [
+      'id', 'name', 'description', 'category', 'status', 'response_count',
+      'updated_at', 'updated_by',
+    ].join(', ');
+    const buildQuery = (select) => {
+      let q = supabase
+        .from('forms')
+        .select(select, { count: 'exact' })
+        .order('updated_at', { ascending: false, nullsFirst: false })
+        .order('id', { ascending: false });
+      if (status && status !== 'all') q = q.eq('status', status);
+      if (search?.trim()) {
+        const term = search.trim().replace(/[%_]/g, '');
+        q = q.or(`name.ilike.%${term}%,description.ilike.%${term}%`);
+      }
+      return q.range(from, to);
+    };
+
+    let { data, error, count } = await buildQuery(
+      `${LIST_COLUMNS}, updated_by_profile:profiles!updated_by(id, full_name)`,
+    );
+    if (error?.code === 'PGRST200') {
+      ({ data, error, count } = await buildQuery(LIST_COLUMNS));
+    }
+    // Table not created yet (42P01 / PGRST205) — degrade to an empty list so
+    // the page still renders. The toolbar's "New Form" still opens the builder
+    // against a local draft.
+    if (error && (error.code === '42P01' || error.code === 'PGRST205' || error.code === '42703')) {
+      console.warn('[fetchContentForms] forms table missing — run supabase/forms_migration.sql');
+      _contentFormsCache.set(cacheKey, { rows: [], total: 0, fetchedAt: Date.now() });
+      set({ contentForms: [], contentFormsTotal: 0, contentFormsLoading: false });
+      return;
+    }
+    if (error) {
+      console.error('fetchContentForms error:', JSON.stringify(error, null, 2));
+      set({ contentFormsLoading: false });
+      return;
+    }
+    const rows = (data || []).map(formRowToJs);
+    const total = count || 0;
+    _contentFormsCache.set(cacheKey, { rows, total, fetchedAt: Date.now() });
+    set({ contentForms: rows, contentFormsTotal: total, contentFormsLoading: false });
+  },
+
+  fetchFormById: async (id) => {
+    const { data, error } = await supabase
+      .from('forms')
+      .select('*, updated_by_profile:profiles!updated_by(id, full_name)')
+      .eq('id', id)
+      .single();
+    if (error) {
+      // Retry without the FK join if the relationship isn't set up.
+      const retry = await supabase.from('forms').select('*').eq('id', id).single();
+      if (retry.error) {
+        console.error('fetchFormById error:', retry.error);
+        return null;
+      }
+      return formRowToJs(retry.data);
+    }
+    return formRowToJs(data);
+  },
+
+  // Resolve the current user's profiles.id to stamp as updated_by. The DB
+  // trigger sets updated_by = COALESCE(auth.uid(), NEW.updated_by), so when
+  // auth.uid() is null (e.g. no JWT) the client-supplied id is what sticks —
+  // this is why we stamp it here rather than relying on the trigger alone.
+  // Prefer the already-loaded profile, else fall back to the auth session.
+  _resolveUpdatedBy: async () => {
+    const cup = get().currentUserProfile;
+    if (cup?.id) return cup.id;
+    try {
+      const { data } = await supabase.auth.getUser();
+      return data?.user?.id || null;
+    } catch {
+      return null;
+    }
+  },
+
+  // Open the full-screen builder. Pass an existing form (or its id) to edit, or
+  // null to mint a fresh draft. Falls back to an in-memory draft if the table
+  // hasn't been created yet so the builder is still usable for design.
+  openFormBuilder: async (formOrNull) => {
+    let form = formOrNull;
+    if (form && form.id && form.schema === undefined) {
+      const full = await get().fetchFormById(form.id);
+      if (full) form = full;
+    }
+    if (!form) {
+      set({ formBuilderSaving: true });
+      const updatedBy = await get()._resolveUpdatedBy();
+      const draft = {
+        name: 'Untitled Form',
+        status: 'draft',
+        schema: { items: [] },
+        scoring: { scores: [], criticalTriggers: [] },
+        settings: { layout: 'sectioned' },
+        ...(updatedBy ? { updated_by: updatedBy } : {}),
+      };
+      const { data, error } = await supabase.from('forms').insert(draft).select('*').single();
+      set({ formBuilderSaving: false });
+      if (error) {
+        if (error.code === '42P01' || error.code === 'PGRST205') {
+          get().showToast?.('Run forms_migration.sql to save forms — editing locally for now');
+          form = formRowToJs({ id: `local-${Date.now()}`, ...draft });
+        } else {
+          console.error('openFormBuilder insert error:', error);
+          get().showToast?.('Could not create form');
+          return null;
+        }
+      } else {
+        form = formRowToJs(data);
+        _invalidateContentFormsCache();
+      }
+    }
+    set({ editingFormId: form.id, formBuilderForm: form });
+    return form.id;
+  },
+
+  closeFormBuilder: () => set({ editingFormId: null, formBuilderForm: null }),
+
+  // Persist a patch (name/category/status/schema/scoring/settings) for the
+  // open form. Updates local state optimistically; for a local draft (no DB
+  // row) it just updates state and reports the unsaved condition.
+  saveForm: async (patch = {}) => {
+    const current = get().formBuilderForm;
+    if (!current) return false;
+    const merged = { ...current, ...patch };
+    set({ formBuilderForm: merged, formBuilderSaving: true });
+
+    if (typeof current.id === 'string' && current.id.startsWith('local-')) {
+      set({ formBuilderSaving: false });
+      get().showToast?.('Saved locally — run forms_migration.sql to persist');
+      return false;
+    }
+
+    const dbPatch = {};
+    if (patch.name !== undefined) dbPatch.name = patch.name;
+    if (patch.description !== undefined) dbPatch.description = patch.description;
+    if (patch.category !== undefined) dbPatch.category = patch.category;
+    if (patch.status !== undefined) dbPatch.status = patch.status;
+    if (patch.schema !== undefined) dbPatch.schema = patch.schema;
+    if (patch.scoring !== undefined) dbPatch.scoring = patch.scoring;
+    if (patch.settings !== undefined) dbPatch.settings = patch.settings;
+
+    // Record who made the edit (see _resolveUpdatedBy).
+    const updatedBy = await get()._resolveUpdatedBy();
+    if (updatedBy) dbPatch.updated_by = updatedBy;
+
+    const { data, error } = await supabase
+      .from('forms')
+      .update(dbPatch)
+      .eq('id', current.id)
+      .select('*')
+      .single();
+    set({ formBuilderSaving: false });
+    if (error) {
+      console.error('saveForm error:', error);
+      get().showToast?.('Could not save form');
+      return false;
+    }
+    _invalidateContentFormsCache();
+    set({ formBuilderForm: formRowToJs(data) });
+    get().showToast?.('Form saved');
+    return true;
+  },
+
+  duplicateForm: async (id) => {
+    const { data: original, error: fetchErr } = await supabase.from('forms').select('*').eq('id', id).single();
+    if (fetchErr || !original) {
+      console.error('duplicateForm fetch error:', fetchErr);
+      get().showToast?.('Could not duplicate form');
+      return null;
+    }
+    // eslint-disable-next-line no-unused-vars
+    const { id: _id, created_at: _c, updated_at: _u, response_count: _r, updated_by: _ub, ...rest } = original;
+    const updatedBy = await get()._resolveUpdatedBy();
+    const { data: copy, error: insertErr } = await supabase
+      .from('forms')
+      .insert({ ...rest, name: `${rest.name || 'Untitled'} (Copy)`, status: 'draft', response_count: 0, ...(updatedBy ? { updated_by: updatedBy } : {}) })
+      .select('*')
+      .single();
+    if (insertErr) {
+      console.error('duplicateForm insert error:', insertErr);
+      get().showToast?.('Could not duplicate form');
+      return null;
+    }
+    _invalidateContentFormsCache();
+    get().showToast?.('Form duplicated');
+    return formRowToJs(copy);
+  },
+
+  deleteForm: async (id) => {
+    const { error } = await supabase.from('forms').delete().eq('id', id);
+    if (error) {
+      console.error('deleteForm error:', error);
+      get().showToast?.('Could not delete form');
+      return false;
+    }
+    set(s => ({
+      contentForms: s.contentForms.filter(f => f.id !== id),
+      contentFormsTotal: Math.max(0, s.contentFormsTotal - 1),
+    }));
+    _invalidateContentFormsCache();
+    get().showToast?.('Form deleted');
+    return true;
+  },
+
+  deleteFormsBulk: async (ids) => {
+    if (!Array.isArray(ids) || ids.length === 0) return false;
+    const { error } = await supabase.from('forms').delete().in('id', ids);
+    if (error) {
+      console.error('deleteFormsBulk error:', error);
+      get().showToast?.('Could not delete selected forms');
+      return false;
+    }
+    const idSet = new Set(ids);
+    set(s => ({
+      contentForms: s.contentForms.filter(f => !idSet.has(f.id)),
+      contentFormsTotal: Math.max(0, s.contentFormsTotal - ids.length),
+    }));
+    _invalidateContentFormsCache();
+    get().showToast?.(`${ids.length} form${ids.length === 1 ? '' : 's'} deleted`);
     return true;
   },
 

@@ -20,6 +20,7 @@ import {
   compare,
   contribution,
   isAnswered,
+  optionPoints,
   indexItems,
   ancestorsOf,
 } from './util.js';
@@ -290,7 +291,18 @@ export function evaluate(form, answers = {}) {
   const criticalsTriggered = [];
   triggers.forEach((t, idx) => {
     const a = answers[t.linkId];
-    if (isVisible(t.linkId) && isAnswered(a) && compare(a, t.condition.operator, t.condition.value)) {
+    // For a numeric condition on a scored choice item, compare against the
+    // selected option's score (so "Q9 > 0" means "any answer worth points"),
+    // not the raw option text. String conditions still match the raw value.
+    let cmp = a;
+    if (typeof t.condition.value === 'number') {
+      const item = index[t.linkId];
+      if (item?.type === 'choice' && Array.isArray(item.answerOption)) {
+        const pts = optionPoints(item.answerOption, a);
+        if (typeof pts === 'number') cmp = pts;
+      }
+    }
+    if (isVisible(t.linkId) && isAnswered(a) && compare(cmp, t.condition.operator, t.condition.value)) {
       criticalsTriggered.push({
         triggerId: t.id,
         linkId: t.linkId,

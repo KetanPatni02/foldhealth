@@ -37,6 +37,7 @@ const SettingsLayout    = lz(() => import('../features/settings/SettingsLayout')
 const AgentCanvas       = lz(() => import('../features/agent-builder/AgentCanvas'), 'AgentCanvas');
 const EmailBuilder      = lz(() => import('../features/email-builder/EmailBuilder'), 'EmailBuilder');
 const CampaignBuilder   = lz(() => import('../features/campaign/CampaignBuilder'),  'CampaignBuilder');
+const FormBuilder       = lz(() => import('../features/forms/builder/FormBuilder'), 'FormBuilder');
 
 // Drawers and overlays — only mounted when their state is truthy, so lazy here
 // keeps them out of the entry chunk entirely.
@@ -321,6 +322,23 @@ export function AppLayout() {
     })();
   }, []);
 
+  // Re-open the form builder on page refresh of #/settings/content/forms/{id}.
+  useEffect(() => {
+    const pendingForm = useAppStore.getState()._pendingFormEditId;
+    if (!pendingForm) return;
+    (async () => {
+      const full = await useAppStore.getState().fetchFormById(
+        isNaN(Number(pendingForm)) ? pendingForm : Number(pendingForm),
+      );
+      if (full) {
+        await useAppStore.getState().openFormBuilder(full);
+      } else {
+        useAppStore.setState({ editingFormId: null, formBuilderForm: null });
+      }
+      useAppStore.setState({ _pendingFormEditId: null });
+    })();
+  }, []);
+
   const showCreateAgent = useAppStore(s => s.showCreateAgent);
   const workflowPatient = useAppStore(s => s.workflowPatient);
   const callPopoverPatient = useAppStore(s => s.callPopoverPatient);
@@ -336,6 +354,7 @@ export function AppLayout() {
   const quickViewPatient = useAppStore(s => s.quickViewPatient);
   const editingCampaignId = useAppStore(s => s.editingCampaignId);
   const campaignBuilderId = useAppStore(s => s.campaignBuilderId);
+  const editingFormId = useAppStore(s => s.editingFormId);
 
   // Email Builder is a full-screen takeover when editing a campaign. Wins over
   // the CampaignBuilder so "Edit Template" from inside the campaign builder
@@ -361,6 +380,19 @@ export function AppLayout() {
         <Sidebar />
         <Suspense fallback={<LazyFallback />}>
           <CampaignBuilder />
+        </Suspense>
+        <Toast />
+      </div>
+    );
+  }
+
+  // Form Builder is a focused full-screen takeover (no app sidebar — it has its
+  // own header + close action that returns to #/settings/content/forms).
+  if (editingFormId) {
+    return (
+      <div className={styles.app}>
+        <Suspense fallback={<LazyFallback />}>
+          <FormBuilder />
         </Suspense>
         <Toast />
       </div>

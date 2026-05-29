@@ -178,6 +178,10 @@ Independent of all scores and of form completeness. For each trigger:
 
 - Fire iff its `linkId` is **visible AND answered AND** the value satisfies the
   condition (`> 0`, `= "yes"`, etc.).
+- For a **numeric** condition (e.g. `> 0`) on a scored `choice` item, the
+  comparison uses the selected option's *score*, not the raw option text — so
+  "PHQ-9 Q9 > 0" means "any answer worth points." **String** conditions still
+  match the raw answer value.
 - A trigger fires even when the parent score is `partial`/`empty` — this is the
   whole point (low total, but a self-harm item is positive).
 
