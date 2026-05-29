@@ -19,7 +19,11 @@
   background: var(--neutral-0); border-radius: 16px;
   box-shadow: 0 12px 30px rgba(0,0,0,.06);
   padding: 36px 40px; display: flex; flex-direction: column; gap: 24px;
+  overflow: hidden;
 }
+/* Full-bleed header/footer (cancels the 36px/40px sheet padding) */
+.headerBleed { margin: -36px -40px 0; }
+.footerBleed { margin: 0 -40px -36px; }
 .title { font-size: 22px; font-weight: 600; color: var(--neutral-500); margin: 0; }
 .formDesc { font-size: 14px; color: var(--neutral-300); margin: -12px 0 0; }
 

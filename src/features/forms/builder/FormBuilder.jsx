@@ -32,6 +32,9 @@ import { FieldInput } from './FieldInput';
 import { ScorePanel } from './ScorePanel';
 import { PreviewPanel } from './PreviewPanel';
 import { ResponsesPanel } from './ResponsesPanel';
+import { FormSettings } from './FormSettings';
+
+const DEFAULT_SETTINGS = { layout: 'sectioned', fontFamily: 'Inter', background: '#FFFFFF', header: { enabled: false }, footer: { enabled: false } };
 import styles from './FormBuilder.module.css';
 
 // ── linkId generation + tree helpers (pure) ────────────────────────────────
@@ -246,15 +249,13 @@ function CheckRow({ label, checked, onChange }) {
   );
 }
 
-function Properties({ field, onPatch }) {
+function Properties({ field, onPatch, settings, onSettingsChange }) {
   if (!field) {
+    // Nothing selected → form-level settings (font, background, header/footer).
     return (
       <aside className={styles.props}>
-        <div className={styles.propsHeader}>Properties</div>
-        <div className={styles.propsEmpty}>
-          <Icon name="solar:cursor-linear" size={28} color="var(--neutral-150)" />
-          <p>Select a field to edit its properties.</p>
-        </div>
+        <div className={styles.propsHeader}>Form Settings</div>
+        <FormSettings settings={settings} onChange={onSettingsChange} />
       </aside>
     );
   }
@@ -391,6 +392,7 @@ export function FormBuilder() {
   const [name, setName] = useState(form?.name || 'Untitled Form');
   const [fields, setFields] = useState(() => form?.schema?.items || []);
   const [scoring, setScoring] = useState(() => form?.scoring || { scores: [], criticalTriggers: [] });
+  const [settings, setSettings] = useState(() => ({ ...DEFAULT_SETTINGS, ...(form?.settings || {}) }));
   const [mode, setMode] = useState('edit');
   const [selectedId, setSelectedId] = useState(null);
   const [paletteTab, setPaletteTab] = useState('health');
@@ -406,6 +408,7 @@ export function FormBuilder() {
     setName(form?.name || 'Untitled Form');
     setFields(form?.schema?.items || []);
     setScoring(form?.scoring || { scores: [], criticalTriggers: [] });
+    setSettings({ ...DEFAULT_SETTINGS, ...(form?.settings || {}) });
     setSelectedId(null);
     skipAutoSave.current = true;
   }, [form?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -417,10 +420,10 @@ export function FormBuilder() {
     if (skipAutoSave.current) { skipAutoSave.current = false; return; }
     if (!form?.id || (typeof form.id === 'string' && form.id.startsWith('local-'))) return;
     const t = setTimeout(() => {
-      saveForm({ name, schema: { items: fields }, scoring }, { silent: true });
+      saveForm({ name, schema: { items: fields }, scoring, settings }, { silent: true });
     }, 800);
     return () => clearTimeout(t);
-  }, [name, fields, scoring]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [name, fields, scoring, settings]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -493,7 +496,7 @@ export function FormBuilder() {
     if (selectedId === id) setSelectedId(null);
   };
 
-  const handleSave = () => saveForm({ name, schema: { items: fields }, scoring });
+  const handleSave = () => saveForm({ name, schema: { items: fields }, scoring, settings });
 
   return (
     <div className={styles.builder}>
@@ -542,7 +545,7 @@ export function FormBuilder() {
           <div className={styles.body}>
             <Palette tab={paletteTab} setTab={setPaletteTab} search={search} setSearch={setSearch} custom={[]} />
             <Canvas fields={fields} selectedId={selectedId} onSelect={setSelectedId} onDelete={deleteField} />
-            <Properties field={selectedField} onPatch={patchSelected} />
+            <Properties field={selectedField} onPatch={patchSelected} settings={settings} onSettingsChange={setSettings} />
           </div>
           <DragOverlay>
             {activeDrag ? (
@@ -565,7 +568,7 @@ export function FormBuilder() {
 
       {mode === 'preview' && (
         <div className={styles.body}>
-          <PreviewPanel fields={fields} scoring={scoring} formName={name} />
+          <PreviewPanel fields={fields} scoring={scoring} formName={name} settings={settings} />
         </div>
       )}
 

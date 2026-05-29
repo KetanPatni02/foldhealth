@@ -12,7 +12,11 @@ import { evaluate } from '../scoring/evaluate';
 import { isAnswered } from '../scoring/util';
 import { toQuestionnaire } from '../builder/engineAdapter';
 import { FieldInput } from '../builder/FieldInput';
+import { FormHeader, FormFooter } from '../builder/FormChrome';
+import { getFontStack, injectGoogleFonts } from '../../email-builder/googleFonts';
 import styles from './FormView.module.css';
+
+injectGoogleFonts();
 
 function FormField({ field, answers, onChange, missing }) {
   if (field.type === 'group') {
@@ -104,8 +108,10 @@ export function FormView({ id: propId, isPublic = false }) {
     if (ok) setSubmitted(true);
   };
 
+  const settings = form?.settings;
+
   return (
-    <div className={styles.page}>
+    <div className={styles.page} style={{ background: settings?.background || undefined }}>
       <header className={styles.header}>
         <span className={styles.brand}>
           <Icon name="solar:clipboard-text-linear" size={18} color="var(--primary-300)" />
@@ -129,7 +135,8 @@ export function FormView({ id: propId, isPublic = false }) {
             </div>
           </div>
         ) : (
-          <div className={styles.sheet}>
+          <div className={styles.sheet} style={{ fontFamily: getFontStack(settings?.fontFamily) }}>
+            <FormHeader settings={settings} className={styles.headerBleed} />
             <h1 className={styles.title}>{form.name}</h1>
             {form.description ? <p className={styles.formDesc}>{form.description}</p> : null}
             {items.length === 0 ? (
@@ -141,11 +148,12 @@ export function FormView({ id: propId, isPublic = false }) {
             )}
             {items.length > 0 && (
               <div className={styles.submitRow}>
-                <Button variant="primary" size="XL" disabled={submitting} onClick={handleSubmit}>
+                <Button variant="primary" size="L" disabled={submitting} onClick={handleSubmit}>
                   {submitting ? 'Submitting…' : 'Submit'}
                 </Button>
               </div>
             )}
+            <FormFooter settings={settings} className={styles.footerBleed} />
           </div>
         )}
       </div>

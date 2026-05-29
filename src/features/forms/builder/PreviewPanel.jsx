@@ -1,13 +1,19 @@
 /**
  * Preview tab — fill the form for real and watch the score update live via the
- * scoring engine. The same FieldInput renders here interactively.
+ * scoring engine. Renders the chosen header/footer, font family, background,
+ * and the Submit button so the preview matches the shared/public fill view.
  */
 import { useMemo, useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
+import { Button } from '../../../components/Button/Button';
 import { evaluate } from '../scoring/evaluate';
 import { toQuestionnaire } from './engineAdapter';
 import { FieldInput } from './FieldInput';
+import { FormHeader, FormFooter } from './FormChrome';
+import { getFontStack, injectGoogleFonts } from '../../email-builder/googleFonts';
 import styles from './FormBuilder.module.css';
+
+injectGoogleFonts();
 
 const SEV_COLOR = {
   neutral: 'var(--neutral-300)',
@@ -47,7 +53,7 @@ function PreviewField({ field, value, onChange }) {
   );
 }
 
-export function PreviewPanel({ fields, scoring, formName }) {
+export function PreviewPanel({ fields, scoring, formName, settings }) {
   const [answers, setAnswers] = useState({});
   const setAnswer = (linkId, v) => setAnswers((prev) => ({ ...prev, [linkId]: v }));
 
@@ -68,16 +74,23 @@ export function PreviewPanel({ fields, scoring, formName }) {
 
   return (
     <div className={styles.previewWrap}>
-      <div className={styles.previewScroll}>
-        <div className={styles.previewSheet}>
+      <div className={styles.previewScroll} style={{ background: settings?.background || undefined }}>
+        <div className={styles.previewSheet} style={{ fontFamily: getFontStack(settings?.fontFamily) }}>
+          <FormHeader settings={settings} className={styles.pvHeaderBleed} />
           <h2 className={styles.previewTitle}>{formName}</h2>
           {fields.length === 0 ? (
             <p className={styles.pvEmpty}>Add fields in the Edit tab to preview the form.</p>
           ) : (
-            fields.map((f) => (
-              <PreviewField key={f.linkId} field={f} value={answers} onChange={setAnswer} />
-            ))
+            <>
+              {fields.map((f) => (
+                <PreviewField key={f.linkId} field={f} value={answers} onChange={setAnswer} />
+              ))}
+              <div className={styles.pvSubmitRow}>
+                <Button variant="primary" size="L">Submit</Button>
+              </div>
+            </>
           )}
+          <FormFooter settings={settings} className={styles.pvFooterBleed} />
         </div>
       </div>
 

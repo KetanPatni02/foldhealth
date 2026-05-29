@@ -180,6 +180,28 @@
   gap: 10px; color: var(--neutral-200); font-size: 13px; text-align: center; padding: 24px;
 }
 .propsBody { flex: 1 1 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.propsBody::-webkit-scrollbar { display: none; }
+.propsBody { scrollbar-width: none; }
+
+/* Form settings (Properties empty state) — uses email-builder panel classes */
+.settingRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.settingLabel { font-size: 14px; color: var(--neutral-400); }
+/* Selected header/footer preset card */
+.presetCardSelected { box-shadow: 0 0 0 2px var(--primary-300); border-radius: 10px; }
+.swatchRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.swatch { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--neutral-150); cursor: pointer; padding: 0; }
+.swatchSel { box-shadow: 0 0 0 2px var(--primary-300); border-color: var(--primary-300); }
+.swatchCustom {
+  width: 26px; height: 26px; border-radius: 6px; border: 1px dashed var(--neutral-200);
+  display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; overflow: hidden;
+}
+.swatchCustom input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+/* Submit row in the preview/fill view */
+.pvSubmitRow { display: flex; justify-content: flex-start; padding-top: 8px; }
+/* Full-bleed header/footer inside the preview sheet (cancels the 32px/40px padding) */
+.pvHeaderBleed { margin: -32px -40px 0; }
+.pvFooterBleed { margin: 0 -40px -32px; }
 .propLabel { font-size: 13px; color: var(--neutral-300); margin-top: 4px; }
 .propHint { font-size: 12px; color: var(--neutral-200); margin: -4px 0 2px; }
 .propCheck { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--neutral-300); cursor: pointer; }
@@ -240,6 +262,7 @@
   width: 100%; max-width: 640px; align-self: flex-start;
   background: var(--neutral-0); border-radius: 12px; box-shadow: 0 12px 30px rgba(0,0,0,.06);
   padding: 32px 40px; display: flex; flex-direction: column; gap: 24px;
+  overflow: hidden;
 }
 .previewTitle { font-size: 20px; font-weight: 600; color: var(--neutral-500); margin: 0; }
 .pvEmpty { color: var(--neutral-200); font-size: 14px; }
