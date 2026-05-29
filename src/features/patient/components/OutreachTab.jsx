@@ -584,15 +584,36 @@ const LOG_FOR_OPTIONS = [
   { key: 'hcc-gaps',     label: 'HCC Gaps' },
 ];
 
-/* ── OutreachTab ── */
-export function OutreachTab() {
+/* ── OutreachTab ──
+   Props (all optional; defaults preserve QuickView behavior):
+   - programs           string[]  — pill choices in "Select Programs/Gaps"
+   - programsLabel      string    — section title above the pills
+   - recipientOptions   string[]  — choices for "Called To Number" dropdown
+   - defaultCalledTo    string    — pre-selected Called To Number
+   - defaultLogFor      string    — 'care-program' | 'hcc-gaps'
+   - hideLogForRow      boolean   — hide the "Log Outreach For" radio row
+*/
+export function OutreachTab({
+  programs,
+  programsLabel = 'Select Programs/Gaps',
+  recipientOptions,
+  defaultCalledTo,
+  defaultLogFor = 'hcc-gaps',
+  hideLogForRow = false,
+} = {}) {
+  const PROGRAM_OPTIONS = programs && programs.length ? programs : PROGRAMS;
+  const CALLED_TO_OPTIONS = recipientOptions && recipientOptions.length
+    ? recipientOptions
+    : ['Dr. Katherine Moss (581 824-1591)', 'Carlos Hernandez (555 000-0000)'];
+  const INITIAL_CALLED_TO = defaultCalledTo || CALLED_TO_OPTIONS[0];
+
   const currentUserProfile = useAppStore(s => s.currentUserProfile);
   const [formOpen, setFormOpen] = useState(false);
-  const [logFor, setLogFor] = useState('hcc-gaps');
+  const [logFor, setLogFor] = useState(defaultLogFor);
   const isHccGaps = logFor === 'hcc-gaps';
   const [activityFilter, setActivityFilter] = useState('All');
   const [logGroups, setLogGroups] = useState(INITIAL_LOG_GROUPS);
-  const [type, setType] = useState('Call'); // defaults to Call for HCC Gaps
+  const [type, setType] = useState(defaultLogFor === 'hcc-gaps' ? 'Call' : 'General');
   const [datetime, setDatetime] = useState('');
   const [selectedProgs, setSelectedProgs] = useState([]);
   const [outcome, setOutcome] = useState(null);
@@ -604,7 +625,7 @@ export function OutreachTab() {
   const [callBannerVisible, setCallBannerVisible] = useState(true);
   const [callDirection, setCallDirection] = useState('outgoing');
   const [callViaNumber, setCallViaNumber] = useState('Delores Conn (581 824-1591)');
-  const [calledToNumber, setCalledToNumber] = useState('Dr. Katherine Moss (581 824-1591)');
+  const [calledToNumber, setCalledToNumber] = useState(INITIAL_CALLED_TO);
   const [callType, setCallType] = useState('Provider');
   const [callDurationMin, setCallDurationMin] = useState('00');
   const [callDurationSec, setCallDurationSec] = useState('00');
@@ -685,8 +706,8 @@ export function OutreachTab() {
   };
 
   const resetForm = () => {
-    setLogFor('hcc-gaps');
-    setType('Call');
+    setLogFor(defaultLogFor);
+    setType(defaultLogFor === 'hcc-gaps' ? 'Call' : 'General');
     setDatetime('');
     setSelectedProgs([]);
     setOutcome(null);
@@ -696,7 +717,7 @@ export function OutreachTab() {
     setCallBannerVisible(true);
     setCallDirection('outgoing');
     setCallViaNumber('Delores Conn (581 824-1591)');
-    setCalledToNumber('Dr. Katherine Moss (581 824-1591)');
+    setCalledToNumber(INITIAL_CALLED_TO);
     setCallType('Provider');
     setCallDurationMin('00');
     setCallDurationSec('00');
@@ -760,18 +781,21 @@ export function OutreachTab() {
         </div>
       ) : (
         <div className={styles.formCard}>
-          {/* Log Outreach For selector */}
-          <div className={styles.logForRow}>
-            <span className={styles.logForLabel}>Log Outreach For:</span>
-            {LOG_FOR_OPTIONS.map(opt => (
-              <RadioButton
-                key={opt.key}
-                checked={logFor === opt.key}
-                onChange={() => handleLogForChange(opt.key)}
-                label={opt.label}
-              />
-            ))}
-          </div>
+          {/* Log Outreach For selector — hidden when the host scope is fixed
+              (e.g., the HCC drawer where outreach is HCC-only by definition). */}
+          {!hideLogForRow && (
+            <div className={styles.logForRow}>
+              <span className={styles.logForLabel}>Log Outreach For:</span>
+              {LOG_FOR_OPTIONS.map(opt => (
+                <RadioButton
+                  key={opt.key}
+                  checked={logFor === opt.key}
+                  onChange={() => handleLogForChange(opt.key)}
+                  label={opt.label}
+                />
+              ))}
+            </div>
+          )}
 
           {/* Header: type dropdown + datetime picker */}
           <div className={styles.formHeader}>
@@ -856,7 +880,7 @@ export function OutreachTab() {
                       value={calledToNumber}
                       onChange={setCalledToNumber}
                       placeholder="Select number"
-                      options={['Dr. Katherine Moss (581 824-1591)', 'Carlos Hernandez (555 000-0000)']}
+                      options={CALLED_TO_OPTIONS}
                     />
                   </div>
                   <div className={styles.callFieldWrap}>
@@ -896,11 +920,11 @@ export function OutreachTab() {
             {/* Programs */}
             <div className={styles.section}>
               <div className={styles.sectionLabelRow}>
-                <span className={styles.sectionLabel}>Select Programs/Gaps</span>
+                <span className={styles.sectionLabel}>{programsLabel}</span>
                 <Icon name="solar:info-circle-linear" size={15} color="var(--neutral-300)" />
               </div>
               <div className={styles.programs}>
-                {PROGRAMS.map(prog => (
+                {PROGRAM_OPTIONS.map(prog => (
                   <button
                     key={prog}
                     className={`${styles.progPill} ${selectedProgs.includes(prog) ? styles.progPillSelected : ''}`}

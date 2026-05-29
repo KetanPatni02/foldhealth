@@ -3,9 +3,12 @@ import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Button } from '../../../components/Button/Button';
-import { COMMENTS, DOCUMENTS, NOTES, CLAIMS, OUTREACH } from '../data/ancillary';
+import { Avatar } from '../../../components/Avatar/Avatar';
+import { Badge } from '../../../components/Badge/Badge';
+import { COMMENTS, DOCUMENTS, NOTES, CLAIMS, HISTORY } from '../data/ancillary';
 import { ACTIVITY } from '../data/activity';
-import { getIcdsForMember } from '../data/icds';
+import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
+import { OutreachTab as PatientOutreachTab } from '../../patient/components/OutreachTab';
 import styles from './LeftWorkspace.module.css';
 
 // Two tab sets depending on scope:
@@ -58,7 +61,22 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
   // Pull the activity entries once at this level so the filter row can compute
   // its dropdown options (DOS / HCC / ICD / Recorded By) from the same source
   // the timeline renders from.
-  const rawActivity = ACTIVITY[member?.name] || ACTIVITY._default || [];
+  // Merge live entries (user actions during this session) with the mock log.
+  // Live entries land at the top; we re-insert today's group header if the
+  // first mock entry isn't already a group divider for today.
+  const liveLog = useAppStore(s => s.hccActivityLog[member?.name]);
+  const rawActivity = useMemo(() => {
+    const mock = ACTIVITY[member?.name] || ACTIVITY._default || [];
+    if (!liveLog?.length) return mock;
+    const todayLabel = (() => {
+      const d = new Date();
+      return d.toLocaleString('en-US', { month: 'short', year: 'numeric' }).toUpperCase();
+    })();
+    const header = mock[0]?.t === 'group' && mock[0]?.label === todayLabel
+      ? []
+      : [{ t: 'group', label: todayLabel }];
+    return [...header, ...liveLog, ...mock];
+  }, [liveLog, member?.name]);
 
   // Filter state — DOS is initialized to the currently-viewed DOS from the
   // patient banner so the chip reads "DOS · 07/04/2024" as an indication of
@@ -82,15 +100,13 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
   return (
     <div className={styles.wrap}>
       <div className={styles.tabBar}>
-        <button
-          type="button"
-          className={styles.collapseBtn}
+        <ActionButton
+          icon="solar:alt-arrow-left-linear"
+          size="S"
+          tooltip="Collapse"
           onClick={onClose}
-          aria-label="Collapse workspace"
-          title="Collapse"
-        >
-          <Icon name="solar:alt-arrow-left-linear" size={12} color="var(--neutral-300)" />
-        </button>
+          className={styles.collapseBtn}
+        />
         <span className={styles.tabBarDivider} />
         <div className={styles.tabRow}>
           {tabs.map((t) => {
@@ -112,7 +128,9 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
 
       <div className={styles.body}>
         {/* Filter row. DOS-level → DOS/HCC/ICD/Recorded By/Date + Clear All.
-            ICD-level → Recorded By/Date. Worklog → DOS only. */}
+            ICD-level → Recorded By/Date. Worklog → DOS only. Per-tab actions
+            (Upload, Add Note) sit in the trailing slot to the right of the
+            chips, separated by a vertical divider. */}
         {showFilterRow && (
           <FilterRow
             variant={active === 'worklog' ? 'worklog' : (isDosLevel ? 'dos' : 'icd')}
@@ -120,6 +138,11 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
             options={filterOptions}
             onChange={setFilter}
             onClearAll={clearAllFilters}
+            trailing={
+              active === 'documents' ? <DocumentsTrailingAction member={member} /> :
+              active === 'notes'     ? <NotesTrailingAction />                    :
+              null
+            }
           />
         )}
 
@@ -130,7 +153,7 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
         {active === 'claims'    && <ClaimsTab    member={member} />}
         {active === 'outreach'  && <OutreachTab  member={member} />}
         {active === 'worklog'   && <WorklogTab   member={member} />}
-        {active === 'history'   && <ComingSoonTab label="History"  />}
+        {active === 'history'   && <HistoryTab    member={member} />}
       </div>
     </div>
   );
@@ -226,7 +249,7 @@ function matchesDatePreset(d, preset) {
   return true;
 }
 
-function FilterRow({ variant = 'icd', filters, options, onChange, onClearAll }) {
+function FilterRow({ variant = 'icd', filters, options, onChange, onClearAll, trailing }) {
   const keys = FILTER_KEYS[variant] || FILTER_KEYS.icd;
   const hasAny = keys.some(k => filters?.[k] != null && filters[k] !== '');
   return (
@@ -242,16 +265,27 @@ function FilterRow({ variant = 'icd', filters, options, onChange, onClearAll }) 
             onChange={(v) => onChange?.(k, v)}
           />
         ))}
-      </div>
-      {variant === 'dos' && (
+        {/* Clear All sits inline next to the last filter chip. Always
+            rendered (per Figma) — disabled when no filter is active. */}
         <button
           type="button"
           className={styles.filterClearAll}
           onClick={onClearAll}
           disabled={!hasAny}
         >
+          <Icon
+            name="solar:close-circle-linear"
+            size={12}
+            color={hasAny ? 'var(--primary-300)' : 'var(--neutral-200)'}
+          />
           Clear All
         </button>
+      </div>
+      {trailing && (
+        <>
+          <span className={styles.filterTrailingDivider} />
+          {trailing}
+        </>
       )}
     </div>
   );
@@ -334,7 +368,7 @@ const ACT_ICON = {
   accept:      { icon: 'solar:check-read-linear',            color: 'var(--status-success)',     bg: 'var(--status-success-light)', border: 'rgba(0,155,83,0.2)',      dashed: false },
   dismiss:     { icon: 'solar:close-circle-linear',          color: 'var(--status-error)',       bg: 'var(--status-error-light)',   border: 'rgba(215,40,37,0.2)',     dashed: false },
   delete:      { icon: 'solar:trash-bin-trash-linear',       color: 'var(--status-error)',       bg: 'var(--status-error-light)',   border: 'rgba(215,40,37,0.2)',     dashed: false },
-  upload:      { icon: 'solar:upload-minimalistic-linear',   color: 'var(--primary-300)',        bg: 'var(--primary-50)',           border: 'var(--primary-200)',      dashed: false },
+  upload:      { icon: 'solar:upload-minimalistic-linear',   color: 'var(--neutral-300)',        bg: 'var(--neutral-0)',            border: 'var(--neutral-150)',      dashed: false },
   create:      { icon: 'solar:add-circle-linear',            color: 'var(--secondary-300)',      bg: 'var(--secondary-100)',        border: 'rgba(244,122,62,0.2)',    dashed: false },
   override:    { icon: 'solar:refresh-square-linear',        color: 'var(--secondary-300)',      bg: 'var(--secondary-100)',        border: 'rgba(244,122,62,0.2)',    dashed: false },
   comment:     { icon: 'solar:chat-round-linear',            color: 'var(--neutral-300)',        bg: 'var(--neutral-0)',            border: 'var(--neutral-150)',      dashed: false },
@@ -361,6 +395,15 @@ function ActivityTab({ member, rawEntries: rawEntriesProp, filters }) {
   const activityIcd = useAppStore(s => s.diagActivityIcd);
   const clearIcd = useAppStore(s => s.clearDiagActivityIcd);
 
+  // Track which month groups are collapsed. Empty set = everything expanded.
+  // Keyed by the group's label (e.g. "JAN 2026") which is unique per month.
+  const [collapsed, setCollapsed] = useState(() => new Set());
+  const toggleGroup = (label) => setCollapsed(prev => {
+    const next = new Set(prev);
+    if (next.has(label)) next.delete(label); else next.add(label);
+    return next;
+  });
+
   // Filter by (a) the ICD scope (if opened from a card), and (b) the filter
   // row's chip selections. Keep group headers, then strip any group headers
   // that no longer have any items beneath them.
@@ -383,14 +426,25 @@ function ActivityTab({ member, rawEntries: rawEntriesProp, filters }) {
   // Pre-compute first/last per visual group — needed so the timeline rail
   // can omit the top connector on the first item below a group header and
   // the bottom connector on the last item before the next group / EOL.
-  const items = entries.map((item, i) => {
-    if (item.t === 'group') return { kind: 'group', item, key: `g${i}` };
-    const prev = entries[i - 1];
-    const next = entries[i + 1];
-    const isFirst = !prev || prev.t === 'group';
-    const isLast = !next || next.t === 'group';
-    return { kind: 'item', item, key: `i${i}`, isFirst, isLast };
-  });
+  // Items beneath a collapsed group header are dropped from the render list.
+  const items = (() => {
+    let activeGroup = null; // label of the group whose items are currently being scanned
+    const out = [];
+    entries.forEach((item, i) => {
+      if (item.t === 'group') {
+        activeGroup = item.label;
+        out.push({ kind: 'group', item, key: `g${i}` });
+        return;
+      }
+      if (activeGroup && collapsed.has(activeGroup)) return; // skip hidden
+      const prev = entries[i - 1];
+      const next = entries[i + 1];
+      const isFirst = !prev || prev.t === 'group';
+      const isLast = !next || next.t === 'group';
+      out.push({ kind: 'item', item, key: `i${i}`, isFirst, isLast });
+    });
+    return out;
+  })();
 
   return (
     <div className={styles.scroll}>
@@ -413,10 +467,21 @@ function ActivityTab({ member, rawEntries: rawEntriesProp, filters }) {
       ) : (
         <div className={styles.timeline}>
           {items.map((it) => it.kind === 'group' ? (
-            <div key={it.key} className={styles.activityGroup}>
+            <button
+              key={it.key}
+              type="button"
+              className={[
+                styles.activityGroup,
+                collapsed.has(it.item.label) ? styles.activityGroupCollapsed : '',
+              ].join(' ')}
+              onClick={() => toggleGroup(it.item.label)}
+              aria-expanded={!collapsed.has(it.item.label)}
+            >
               <span>{it.item.label}</span>
-              <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-400)" />
-            </div>
+              <span className={styles.activityGroupChevron}>
+                <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-400)" />
+              </span>
+            </button>
           ) : (
             <ActivityEntry key={it.key} item={it.item} isFirst={it.isFirst} isLast={it.isLast} />
           ))}
@@ -453,7 +518,9 @@ function ActivityEntry({ item, isFirst, isLast }) {
         <div className={styles.tlMeta}>{meta}</div>
         <div className={styles.tlHeadlineRow}>
           <span className={styles.tlHeadline}>{item.headline}</span>
-          {item.details && item.t !== 'accept' && (
+          {/* Details toggle — skipped for accept (uses Undo All) and comment
+              (the comment body renders inline directly below the headline). */}
+          {item.details && item.t !== 'accept' && item.t !== 'comment' && (
             <button
               type="button"
               className={styles.tlDetailsToggle}
@@ -469,6 +536,12 @@ function ActivityEntry({ item, isFirst, isLast }) {
             </button>
           )}
         </div>
+
+        {/* Inline comment body — replaces the Details/expand-card path for
+            comment entries. Plain neutral-300 paragraph under the headline. */}
+        {item.t === 'comment' && item.details?.[0]?.note && (
+          <div className={styles.tlCommentBody}>{item.details[0].note}</div>
+        )}
 
         {/* Accept entries get an "Undo All" affordance (Figma 278:169610)
             instead of a Details expander — matches the inline review flow. */}
@@ -565,153 +638,745 @@ function AvatarPill({ initials, name }) {
   );
 }
 
-// ── Comments tab ─────────────────────────────────────────────────────────
+// Two-letter initials from a "First Last" or "F. Last" name. Used by the
+// generic Avatar in the Comments / Notes / Documents / History list rows.
+const initialsOf = (name = '') =>
+  name.split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join('').toUpperCase();
+
+// ── Comments tab — Figma 1:53466 ─────────────────────────────────────────
+// Timeline view (NOT a card list) matching the Activity Log pattern: each
+// comment is a row with a chat-icon left rail + connector line, a meta line
+// (`date · time · author(role)` + optional Edited badge), and the full body
+// text below. Composer is a single-line input — Enter posts.
 function CommentsTab() {
   const [items, setItems] = useState(COMMENTS);
   const [draft, setDraft] = useState('');
+  const [collapsed, setCollapsed] = useState(() => new Set());
+  const activityIcd = useAppStore(s => s.diagActivityIcd);
+  const addActivityEntry = useAppStore(s => s.addActivityEntry);
 
   const addComment = () => {
     const body = draft.trim();
     if (!body) return;
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const date = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
+    const hours = now.getHours();
+    const time = `${((hours + 11) % 12) + 1}:${pad(now.getMinutes())} ${hours >= 12 ? 'PM' : 'AM'}`;
     setItems(prev => [
-      { id: `c${Date.now()}`, author: 'You', role: 'Coder', time: 'just now', body },
+      { id: `c${Date.now()}`, author: 'You', role: 'Coder', date, time, body },
       ...prev,
     ]);
+    addActivityEntry({
+      t: 'comment', by: 'You', role: 'Coder',
+      icds: activityIcd ? [activityIcd] : undefined,
+      headline: activityIcd ? `Added a Comment for ${activityIcd}` : 'Added a Comment',
+      details: [{ note: body }],
+    });
     setDraft('');
   };
 
+  // Bucket comments by "Mon YYYY" header so the timeline can render a
+  // collapsible group divider above each month chunk.
+  const groups = useMemo(() => groupByMonth(items), [items]);
+
+  const toggleGroup = (label) => setCollapsed(prev => {
+    const next = new Set(prev);
+    if (next.has(label)) next.delete(label); else next.add(label);
+    return next;
+  });
+
   return (
     <div className={styles.scroll}>
-      <div className={styles.composer}>
-        <textarea
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Add a comment for the care team…"
-          className={styles.composerInput}
-          rows={3}
-        />
-        <div className={styles.composerActions}>
-          <Button variant="primary" size="S" disabled={!draft.trim()} onClick={addComment}>
-            Post Comment
-          </Button>
-        </div>
-      </div>
-      <ul className={styles.commentList}>
-        {items.map((c) => (
-          <li key={c.id} className={styles.comment}>
-            <div className={styles.commentHeader}>
-              <span className={styles.commentAuthor}>{c.author}</span>
-              <span className={styles.commentRole}>{c.role}</span>
-              <span className={styles.commentTime}>· {c.time}</span>
+      <input
+        type="text"
+        className={styles.commentComposer}
+        placeholder="Add a comment"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter' && draft.trim()) addComment(); }}
+      />
+      <div className={styles.timeline}>
+        {groups.map((g) => {
+          const isCollapsed = collapsed.has(g.label);
+          return (
+            <div key={g.label}>
+              <button
+                type="button"
+                className={[styles.activityGroup, isCollapsed ? styles.activityGroupCollapsed : ''].join(' ')}
+                onClick={() => toggleGroup(g.label)}
+                aria-expanded={!isCollapsed}
+              >
+                <span>{g.label}</span>
+                <span className={styles.activityGroupChevron}>
+                  <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-400)" />
+                </span>
+              </button>
+              {!isCollapsed && g.items.map((c, i) => (
+                <CommentEntry
+                  key={c.id}
+                  item={c}
+                  isFirst={i === 0}
+                  isLast={i === g.items.length - 1}
+                />
+              ))}
             </div>
-            <div className={styles.commentBody}>{c.body}</div>
-          </li>
-        ))}
-      </ul>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-// ── Documents tab ────────────────────────────────────────────────────────
+// Group an items[] of {date} into [{ label: 'Mon YYYY', items: [...] }] in
+// descending order (newest first), matching the Activity Log convention.
+function groupByMonth(items) {
+  const groups = new Map();
+  const order = [];
+  for (const it of items) {
+    const d = parseEntryDate(it.date) || new Date();
+    const label = d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+    if (!groups.has(label)) {
+      groups.set(label, { label, items: [], _ts: d.getTime() });
+      order.push(label);
+    }
+    groups.get(label).items.push(it);
+  }
+  return order
+    .map(l => groups.get(l))
+    .sort((a, b) => b._ts - a._ts);
+}
+
+function CommentEntry({ item, isFirst, isLast }) {
+  return (
+    <div className={styles.tlRow}>
+      <div className={styles.tlRail}>
+        {!isFirst && <span className={styles.tlConnectorTop} />}
+        <span
+          className={styles.tlIcon}
+          style={{ background: 'var(--neutral-0)', borderColor: 'var(--neutral-150)' }}
+        >
+          <Icon name="solar:chat-round-linear" size={14} color="var(--neutral-300)" />
+        </span>
+        {!isLast && <span className={styles.tlConnectorBottom} />}
+      </div>
+      <div className={[styles.tlBody, isFirst ? styles.tlBodyFirst : '', isLast ? styles.tlBodyLast : ''].join(' ')}>
+        <div className={styles.tlMeta}>
+          {item.date} • {item.time} • {item.author}({item.role})
+          {item.edited && <span className={styles.commentEditedBadge}>Edited</span>}
+        </div>
+        <div className={styles.commentBody}>{item.body}</div>
+      </div>
+    </div>
+  );
+}
+
+// Reusable timeline scaffolding — used by CommentsTab only now. Kept here
+// because other tabs may opt in later; harmless if unused.
+// eslint-disable-next-line no-unused-vars
+function TimelineEntry({ icon, iconColor, iconBg, iconBorder, iconSize = 14, isFirst, isLast, onClick, children }) {
+  const rail = (
+    <div className={styles.tlRail}>
+      {!isFirst && <span className={styles.tlConnectorTop} />}
+      <span
+        className={styles.tlIcon}
+        style={{ background: iconBg || 'var(--neutral-0)', borderColor: iconBorder || 'var(--neutral-150)' }}
+      >
+        <Icon name={icon} size={iconSize} color={iconColor || 'var(--neutral-300)'} />
+      </span>
+      {!isLast && <span className={styles.tlConnectorBottom} />}
+    </div>
+  );
+  const bodyCls = [styles.tlBody, isFirst ? styles.tlBodyFirst : '', isLast ? styles.tlBodyLast : ''].join(' ');
+  if (onClick) {
+    return (
+      <button type="button" className={[styles.tlRow, styles.tlRowClickable].join(' ')} onClick={onClick}>
+        {rail}
+        <div className={bodyCls}>{children}</div>
+      </button>
+    );
+  }
+  return (
+    <div className={styles.tlRow}>
+      {rail}
+      <div className={bodyCls}>{children}</div>
+    </div>
+  );
+}
+
+// Wrap a list of items into [{ label: 'Mon YYYY', items, _ts }] sorted DESC by
+// the most-recent item, then render each group as a collapsible chevron+items
+// block. Caller supplies the row renderer.
+// eslint-disable-next-line no-unused-vars
+function GroupedTimeline({ items, getDate, renderRow, emptyLabel = 'No entries.' }) {
+  const [collapsed, setCollapsed] = useState(() => new Set());
+  const groups = useMemo(() => {
+    const map = new Map();
+    const order = [];
+    for (const it of items) {
+      const d = getDate(it) || new Date();
+      const label = d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+      if (!map.has(label)) {
+        map.set(label, { label, items: [], _ts: d.getTime() });
+        order.push(label);
+      }
+      map.get(label).items.push(it);
+    }
+    return order.map(l => map.get(l)).sort((a, b) => b._ts - a._ts);
+  }, [items, getDate]);
+
+  const toggle = (label) => setCollapsed(prev => {
+    const next = new Set(prev);
+    if (next.has(label)) next.delete(label); else next.add(label);
+    return next;
+  });
+
+  if (!items.length) return <Empty label={emptyLabel} />;
+
+  return (
+    <div className={styles.timeline}>
+      {groups.map((g) => {
+        const isCollapsed = collapsed.has(g.label);
+        return (
+          <div key={g.label}>
+            <button
+              type="button"
+              className={[styles.activityGroup, isCollapsed ? styles.activityGroupCollapsed : ''].join(' ')}
+              onClick={() => toggle(g.label)}
+              aria-expanded={!isCollapsed}
+            >
+              <span>{g.label}</span>
+              <span className={styles.activityGroupChevron}>
+                <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-400)" />
+              </span>
+            </button>
+            {!isCollapsed && g.items.map((it, i) =>
+              renderRow(it, i === 0, i === g.items.length - 1)
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Trailing toolbar action — toggles the inline uploader widget that
+// renders above the documents table (Figma 278:162482). Replaces the old
+// "open the UploadChartDrawer" behavior.
+function DocumentsTrailingAction() {
+  const toggle = useAppStore(s => s.toggleHccDocsUploader);
+  const open = useAppStore(s => s.hccDocsUploaderOpen);
+  return (
+    <button
+      type="button"
+      className={[styles.filterTrailingBtn, open ? styles.filterTrailingBtnActive : ''].join(' ')}
+      onClick={toggle}
+    >
+      <Icon name="solar:upload-minimalistic-linear" size={14} color="var(--primary-300)" />
+      Upload
+    </button>
+  );
+}
+
+// ── Documents tab — Figma 1:54865 ────────────────────────────────────────
+// 2-column table: "Document Name | Status". Rows: file-type icon + filename
+// + (type · date, time · uploadedBy(role)) meta, status Badge, menu-dots.
+const DOC_EXT_LABEL = { pdf: 'PDF', doc: 'DOC', docx: 'DOC', img: 'IMG', png: 'IMG', jpg: 'IMG', xls: 'XLS', xlsx: 'XLS', csv: 'CSV' };
+const DOC_STATUS_BADGE = {
+  passed:  { variant: 'status-completed', label: 'Passed'  },
+  pending: { variant: 'status-queued',    label: 'Pending' },
+  failed:  { variant: 'status-failed',    label: 'Failed'  },
+};
+
 function DocumentsTab() {
+  const showToast = useAppStore(s => s.showToast);
+  const uploaderOpen = useAppStore(s => s.hccDocsUploaderOpen);
+  const uploaded = useAppStore(s => s.hccUploadedDocs);
+  const list = useMemo(() => [...uploaded, ...DOCUMENTS], [uploaded]);
+
   return (
     <div className={styles.scroll}>
-      <ul className={styles.docList}>
-        {DOCUMENTS.map((d) => (
-          <li key={d.id} className={styles.docRow}>
-            <span className={[styles.docStatusDot, styles[`dotStatus_${d.status}`]].join(' ')} />
-            <div className={styles.docText}>
-              <div className={styles.docName}>{d.name}</div>
-              <div className={styles.docMeta}>
-                {d.type} · {d.size} · uploaded by {d.uploadedBy} on {d.uploadedAt}
+      {uploaderOpen && <DocumentsUploader />}
+      <div className={styles.dataTable}>
+        <div className={[styles.dataTableHead, styles.docsGrid].join(' ')}>
+          <span>Document Name</span>
+          <span>Status</span>
+          <span />
+        </div>
+        {list.map((d) => {
+          const status = DOC_STATUS_BADGE[d.status] || DOC_STATUS_BADGE.pending;
+          const extLabel = DOC_EXT_LABEL[d.ext] || d.ext?.toUpperCase() || 'DOC';
+          return (
+            <div key={d.id} className={[styles.dataTableRow, styles.docsGrid].join(' ')}>
+              <div className={styles.docCell}>
+                <span className={styles.docExtIcon} data-ext={d.ext}>
+                  <Icon name="solar:file-text-linear" size={14} color="var(--neutral-300)" />
+                  <span className={styles.docExtTag}>{extLabel}</span>
+                </span>
+                <div className={styles.docCellText}>
+                  <div className={styles.docCellName}>{d.name}</div>
+                  <div className={styles.docCellMeta}>
+                    {d.type} · {d.date}, {d.time} · {d.uploadedBy}({d.role})
+                  </div>
+                </div>
+              </div>
+              <Badge variant={status.variant} label={status.label} />
+              <div className={styles.dataTableActions}>
+                <ActionButton
+                  icon="solar:menu-dots-linear"
+                  size="S"
+                  tooltip="More"
+                  onClick={() => showToast('Document actions — coming soon')}
+                />
               </div>
             </div>
-            <ActionButton icon="solar:eye-linear" size="S" tooltip="Preview" onClick={() => {}} />
-          </li>
-        ))}
-      </ul>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-// ── Notes tab ────────────────────────────────────────────────────────────
+// ── Inline document uploader widget — Figma 278:162482 ───────────────────
+// Three-phase flow:
+//   • empty    → dashed drop-zone with "Choose file"
+//   • uploading → file row with name + size + green progress bar + X cancel
+//   • ready    → file row with refresh/X + Document Type/Category dropdowns
+//                + required Caption input + Upload/Cancel buttons
+// On Upload: appends a 'pending' doc to the listing and logs to the Activity
+// Log (ICD scope → both ICD & DOS-level logs; no scope → DOS-only).
+const DOC_ACCEPT = '.pdf,.doc,.docx,.png,.jpg,.csv,.xls,.xlsx';
+const DOC_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+const DOC_TYPES = ['HCC Document', 'Clinical Note', 'Lab Result', 'Imaging', 'Other'];
+const DOC_CATEGORIES = ['Discharge Summary', 'Consult Note', 'Lab Report', 'Imaging', 'Chart', 'Physical Therapy'];
+
+function formatBytes(n) {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function extFromName(name = '') {
+  const m = name.match(/\.([a-z0-9]+)$/i);
+  return (m?.[1] || '').toLowerCase();
+}
+
+function DocumentsUploader() {
+  const close = useAppStore(s => s.closeHccDocsUploader);
+  const showToast = useAppStore(s => s.showToast);
+  const addActivityEntry = useAppStore(s => s.addActivityEntry);
+  const recordHccUpload = useAppStore(s => s.recordHccUpload);
+  const activityIcd = useAppStore(s => s.diagActivityIcd);
+  const inputRef = useRef(null);
+
+  // empty | uploading | ready
+  const [phase, setPhase] = useState('empty');
+  const [file, setFile] = useState(null);
+  const [progress, setProgress] = useState(0);
+  const [drag, setDrag] = useState(false);
+  const [error, setError] = useState('');
+  const [docType, setDocType] = useState(DOC_TYPES[0]);
+  const [category, setCategory] = useState(DOC_CATEGORIES[0]);
+  const [caption, setCaption] = useState('');
+
+  // Simulated upload — progress 0→100 in ~1.2s, then phase='ready'.
+  useEffect(() => {
+    if (phase !== 'uploading') return;
+    let p = 0;
+    const id = setInterval(() => {
+      p += 8 + Math.random() * 14;
+      if (p >= 100) {
+        setProgress(100);
+        clearInterval(id);
+        setTimeout(() => setPhase('ready'), 120);
+      } else {
+        setProgress(p);
+      }
+    }, 80);
+    return () => clearInterval(id);
+  }, [phase]);
+
+  const reset = () => {
+    setFile(null); setProgress(0); setError(''); setCaption('');
+    setDocType(DOC_TYPES[0]); setCategory(DOC_CATEGORIES[0]);
+    setPhase('empty');
+  };
+  const startUpload = (f) => {
+    if (!f) return;
+    if (f.size > DOC_MAX_BYTES) { setError('File exceeds 5 MB.'); return; }
+    setError(''); setFile(f); setProgress(0); setPhase('uploading');
+  };
+  const pick = () => inputRef.current?.click();
+  const onPicked = (e) => { startUpload(e.target.files?.[0]); e.target.value = ''; };
+  const onDrop = (e) => { e.preventDefault(); setDrag(false); startUpload(e.dataTransfer.files?.[0]); };
+
+  const canSubmit = phase === 'ready' && file && caption.trim();
+  const onSubmit = () => {
+    if (!canSubmit) return;
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const date = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
+    const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const ext = extFromName(file.name);
+    recordHccUpload({
+      id: `du-${Date.now()}`,
+      name: caption.trim(),
+      ext,
+      type: category,
+      uploadedBy: 'You',
+      role: 'Coder',
+      date,
+      time,
+      status: 'pending',
+    });
+    addActivityEntry({
+      t: 'upload', by: 'You', role: 'Coder',
+      icds: activityIcd ? [activityIcd] : undefined,
+      headline: activityIcd
+        ? `Document Uploaded for ${activityIcd}`
+        : 'Document Uploaded',
+      file: file.name,
+      fileType: category,
+    });
+    showToast(`Uploaded ${caption.trim()} — pending review.`);
+    reset(); close();
+  };
+  const onCancel = () => { reset(); close(); };
+
+  // Hidden file input (always mounted so picker works across phases).
+  const hiddenInput = (
+    <input
+      ref={inputRef}
+      type="file"
+      accept={DOC_ACCEPT}
+      className={styles.docDropInput}
+      onChange={onPicked}
+    />
+  );
+
+  return (
+    <div className={styles.docUploader}>
+      <div className={styles.docUploaderHeader}>Upload Document</div>
+      {hiddenInput}
+
+      {phase === 'empty' && (
+        <>
+          <label
+            className={[styles.docDropZone, drag ? styles.docDropZoneActive : ''].join(' ')}
+            onDragEnter={(e) => { e.preventDefault(); setDrag(true); }}
+            onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+            onDragLeave={() => setDrag(false)}
+            onDrop={onDrop}
+            onClick={pick}
+          >
+            <Icon name="solar:upload-minimalistic-linear" size={20} color="var(--neutral-300)" />
+            <span className={styles.docDropText}>
+              Drag and drop file here or{' '}
+              <button type="button" className={styles.docDropChoose} onClick={(e) => { e.stopPropagation(); pick(); }}>
+                Choose file
+              </button>
+            </span>
+          </label>
+          <div className={styles.docUploaderMeta}>
+            <span>Supported formats: PDF, DOC, DOCX, PNG, JPG, CSV, XLS, XLSX</span>
+            <span>Max size: 5 MB</span>
+          </div>
+        </>
+      )}
+
+      {(phase === 'uploading' || phase === 'ready') && (
+        <DocUploaderFileRow
+          file={file}
+          phase={phase}
+          progress={progress}
+          onRefresh={() => { setProgress(0); setPhase('uploading'); }}
+          onRemove={reset}
+        />
+      )}
+
+      {phase === 'ready' && (
+        <div className={styles.docUploaderForm}>
+          <div className={styles.docUploaderFormRow}>
+            <label className={styles.docUploaderField}>
+              <span className={styles.docUploaderFieldLabel}>Document Type</span>
+              <select
+                className={styles.docUploaderSelect}
+                value={docType}
+                onChange={(e) => setDocType(e.target.value)}
+              >
+                {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </label>
+            <label className={styles.docUploaderField}>
+              <span className={styles.docUploaderFieldLabel}>Document Category</span>
+              <select
+                className={styles.docUploaderSelect}
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                {DOC_CATEGORIES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </label>
+          </div>
+          <label className={styles.docUploaderField}>
+            <span className={styles.docUploaderFieldLabel}>
+              Caption <span className={styles.docUploaderRequired}>•</span>
+            </span>
+            <input
+              type="text"
+              className={styles.docUploaderInput}
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              placeholder="HCC80 Evidence Document"
+            />
+          </label>
+        </div>
+      )}
+
+      {error && <div className={styles.docUploaderError}>{error}</div>}
+
+      <div className={styles.docUploaderActions}>
+        <Button
+          variant="primary"
+          size="S"
+          disabled={!canSubmit}
+          onClick={onSubmit}
+        >
+          Upload
+        </Button>
+        <Button variant="secondary" size="S" onClick={onCancel}>Cancel</Button>
+      </div>
+    </div>
+  );
+}
+
+// File-row sub-component used in both 'uploading' (with progress bar + X) and
+// 'ready' (with refresh + X) phases.
+function DocUploaderFileRow({ file, phase, progress, onRefresh, onRemove }) {
+  if (!file) return null;
+  const ext = (extFromName(file.name) || 'doc').toUpperCase().slice(0, 4);
+  return (
+    <div className={styles.docFileRowWrap}>
+      <div className={styles.docFileRow}>
+        <span className={styles.docExtIcon}>
+          <Icon name="solar:file-text-linear" size={14} color="var(--neutral-300)" />
+          <span className={styles.docExtTag}>{ext === 'JPG' || ext === 'PNG' ? 'IMG' : ext}</span>
+        </span>
+        <div className={styles.docFileRowText}>
+          <div className={styles.docFileRowName}>{file.name}</div>
+          <div className={styles.docFileRowSize}>{formatBytes(file.size)}</div>
+        </div>
+        <div className={styles.docFileRowActions}>
+          {phase === 'ready' && (
+            <button type="button" className={styles.docFileRowIconBtn} onClick={onRefresh} aria-label="Re-upload">
+              <Icon name="solar:refresh-circle-linear" size={16} color="var(--neutral-300)" />
+            </button>
+          )}
+          <span className={styles.docFileRowDivider} />
+          <button type="button" className={styles.docFileRowIconBtn} onClick={onRemove} aria-label="Remove">
+            <Icon name="solar:close-circle-linear" size={14} color="var(--neutral-300)" />
+          </button>
+        </div>
+      </div>
+      {phase === 'uploading' && (
+        <div className={styles.docFileProgressTrack}>
+          <div className={styles.docFileProgressBar} style={{ width: `${progress}%` }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Notes tab — Figma 41:358849 ──────────────────────────────────────────
+// Timeline with note icon. Single-line "Add a note" composer.
 function NotesTab() {
+  const [items, setItems] = useState(NOTES);
+  const [draft, setDraft] = useState('');
+  const activityIcd = useAppStore(s => s.diagActivityIcd);
+  const addActivityEntry = useAppStore(s => s.addActivityEntry);
+
+  const addNote = () => {
+    const body = draft.trim();
+    if (!body) return;
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const date = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
+    const hours = now.getHours();
+    const time = `${((hours + 11) % 12) + 1}:${pad(now.getMinutes())} ${hours >= 12 ? 'PM' : 'AM'}`;
+    setItems(prev => [
+      { id: `n${Date.now()}`, author: 'You', role: 'Coder', date, time, body },
+      ...prev,
+    ]);
+    addActivityEntry({
+      t: 'create', by: 'You', role: 'Coder',
+      icds: activityIcd ? [activityIcd] : undefined,
+      headline: activityIcd ? `Added a Note for ${activityIcd}` : 'Added a Note',
+      details: [{ note: body }],
+    });
+    setDraft('');
+  };
+
+  // Persist the Add Note panel state at the tab level so the trailing
+  // "Add Note" toolbar button can open it (state is shared via a tiny
+  // imperative handle on the window — simplest plumbing without a context).
+  if (typeof window !== 'undefined') {
+    window.__hccOpenAddNote = () => {
+      const draftText = draft.trim();
+      if (!draftText) return setDraft(' '); // nudge focus / show composer
+      addNote();
+    };
+  }
+
   return (
     <div className={styles.scroll}>
-      <ul className={styles.noteList}>
-        {NOTES.map((n) => (
-          <li key={n.id} className={styles.note}>
-            <div className={styles.noteHeader}>
-              <span className={styles.noteAvatar}>{n.initials}</span>
-              <span className={styles.noteAuthor}>{n.author}</span>
-              <span className={styles.noteTime}>· {n.time}</span>
+      <div className={styles.dataTable}>
+        <div className={[styles.dataTableHead, styles.notesGrid].join(' ')}>
+          <span>Note Title</span>
+          <span>Status</span>
+          <span>Actions</span>
+        </div>
+        {items.map((n) => (
+          <div key={n.id} className={[styles.dataTableRow, styles.notesGrid].join(' ')}>
+            <div className={styles.noteCell}>
+              <div className={styles.noteCellTime}>{n.date}, {n.time}</div>
+              <div className={styles.noteCellTitle}>{n.title || 'Clinical Progress Note'}</div>
+              <div className={styles.noteCellMeta}>
+                {n.signed ? 'Created & Signed by ' : 'Created by '}
+                {n.author}({n.role})
+              </div>
             </div>
-            <p className={styles.noteBody}>{n.body}</p>
-          </li>
+            <Badge
+              variant="status-completed"
+              icon="solar:pen-new-square-linear"
+              label={n.signed ? 'Signed' : 'Draft'}
+            />
+            <div className={styles.dataTableActions}>
+              <ActionButton
+                icon="solar:eye-linear"
+                size="S"
+                tooltip="Preview"
+                onClick={() => showToast('Preview — coming soon')}
+              />
+              <span className={styles.dataTableActionsDivider} />
+              <ActionButton
+                icon="solar:menu-dots-linear"
+                size="S"
+                tooltip="More"
+                onClick={() => showToast('Note actions — coming soon')}
+              />
+            </div>
+          </div>
         ))}
-      </ul>
+      </div>
+      {/* Inline composer — appears below the table; Enter posts. */}
+      <input
+        type="text"
+        className={[styles.commentComposer, styles.notesComposerInline].join(' ')}
+        placeholder="Add a clinical note (Enter to post)…"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter' && draft.trim()) addNote(); }}
+      />
     </div>
   );
 }
 
-// ── Claims tab ───────────────────────────────────────────────────────────
-function ClaimsTab() {
+// Trailing toolbar action for Notes — focuses the inline note composer.
+function NotesTrailingAction() {
+  return (
+    <button
+      type="button"
+      className={styles.filterTrailingBtn}
+      onClick={() => {
+        const el = document.querySelector(`.${'notesComposerInline'.replace(/./g, c => c)}`)
+          || document.querySelector('input[placeholder^="Add a clinical note"]');
+        el?.focus();
+      }}
+    >
+      <Icon name="solar:pen-new-square-linear" size={14} color="var(--primary-300)" />
+      Add Note
+    </button>
+  );
+}
+
+// ── Claims tab — Figma 41:364778 ─────────────────────────────────────────
+// 4-col table: "Claim ID | DOS | Status | Amount". Claim ID is a primary
+// button — clicking dispatches openHccClaimPreview to open the existing
+// ClaimPreviewDrawer.
+const CLAIM_STATUS_BADGE = {
+  Paid:     'status-completed',
+  Pending:  'status-queued',
+  Billed:   'status-scheduled',
+  Denied:   'status-failed',
+  Rejected: 'status-failed',
+};
+
+function ClaimsTab({ member }) {
+  const openClaimPreview = useAppStore(s => s.openHccClaimPreview);
+
   return (
     <div className={styles.scroll}>
-      <ul className={styles.claimsList}>
+      <div className={styles.dataTable}>
+        <div className={[styles.dataTableHead, styles.claimsGrid].join(' ')}>
+          <span>Claim ID</span>
+          <span>DOS</span>
+          <span>Status</span>
+          <span>Amount</span>
+        </div>
         {CLAIMS.map((c) => (
-          <li key={c.id} className={styles.claim}>
-            <div className={styles.claimHeader}>
-              <span className={styles.claimNumber}>{c.number || c.id}</span>
-              <span className={[styles.claimStatus, styles[`claim_${(c.status || '').toLowerCase()}`]].join(' ')}>
-                {c.status}
-              </span>
-            </div>
-            <div className={styles.claimMeta}>
-              DOS: {c.dos} · Submitted: {c.submittedAt}
-              {c.provider ? ` · ${c.provider}` : ''}
-            </div>
-            {c.amount != null && (
-              <div className={styles.claimAmount}>{c.amount}</div>
-            )}
-          </li>
+          <div key={c.id} className={[styles.dataTableRow, styles.claimsGrid].join(' ')}>
+            <button
+              type="button"
+              className={styles.claimIdLink}
+              onClick={() => openClaimPreview(member, c.dos)}
+            >
+              {c.number || c.id}
+            </button>
+            <span className={styles.claimDate}>{c.dos}</span>
+            <Badge variant={CLAIM_STATUS_BADGE[c.status] || 'toc-new'} label={c.status} />
+            <span className={styles.claimAmount}>{c.amount}</span>
+          </div>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }
 
 // ── Outreach tab (DOS-level) ─────────────────────────────────────────────
-// Outreach attempts logged against the ICDs of the selected DOS (Figma 1:48023).
-function OutreachTab() {
-  const OUTREACH_ICON = {
-    'Phone Call': { icon: 'solar:phone-linear',          color: 'var(--secondary-300)', bg: 'var(--secondary-100)' },
-    SMS:          { icon: 'solar:chat-round-line-linear', color: 'var(--primary-300)',   bg: 'var(--primary-50)' },
-    Email:        { icon: 'solar:letter-linear',          color: 'var(--status-info)',   bg: 'var(--status-info-light)' },
-  };
+// Reuses the patient QuickView OutreachTab so the UX is identical. HCC-only
+// constraints applied via props:
+//   • hideLogForRow + defaultLogFor='hcc-gaps' → log target is locked to HCC.
+//   • Type is locked to Call inside OutreachTab whenever isHccGaps.
+//   • programs = unique HCC codes the patient has — both associated with the
+//     selected DOS (ICDS) AND not-associated-with-DOS (NOT_LINKED).
+//   • Called To Number is pre-populated with the patient's PCP.
+function OutreachTab({ member }) {
+  const { programs, recipient } = useMemo(() => {
+    // Unique HCC codes across the member's ICDS (associated with DOS) and
+    // NOT_LINKED (not associated). Drop any "HCC Not Linked" placeholder.
+    const set = new Set();
+    [...getIcdsForMember(member?.name), ...getNotLinkedForMember(member?.name)]
+      .forEach(i => {
+        if (!i?.hcc || /not\s*linked/i.test(i.hcc)) return;
+        // ICDS stores "HCC 18 - Diabetes…"; show just the leading HCC code.
+        const m = i.hcc.match(/^HCC\s*\d+/);
+        if (m) set.add(m[0].replace(/\s+/g, ' '));
+      });
+    const programs = [...set].sort();
+    // Recipient defaults to the patient's PCP if available.
+    const pcp = member?.pcp ? `${member.pcp} (PCP)` : null;
+    return { programs, recipient: pcp };
+  }, [member?.name, member?.pcp]);
+
   return (
-    <div className={styles.scroll}>
-      <ul className={styles.outreachList}>
-        {OUTREACH.map((o) => {
-          const cfg = OUTREACH_ICON[o.type] || OUTREACH_ICON['Phone Call'];
-          return (
-            <li key={o.id} className={styles.outreachRow}>
-              <span className={styles.outreachIcon} style={{ background: cfg.bg }}>
-                <Icon name={cfg.icon} size={14} color={cfg.color} />
-              </span>
-              <div className={styles.outreachText}>
-                <div className={styles.outreachHeader}>
-                  <span className={styles.outreachType}>{o.type}</span>
-                  <span className={styles.outreachTime}>· {o.time}</span>
-                </div>
-                <div className={styles.outreachOutcome}>{o.outcome}</div>
-                <div className={styles.outreachBy}>by {o.by}</div>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
+    <PatientOutreachTab
+      programs={programs}
+      programsLabel="Select HCC Gaps"
+      recipientOptions={recipient ? [recipient] : undefined}
+      defaultCalledTo={recipient || undefined}
+      defaultLogFor="hcc-gaps"
+      hideLogForRow
+    />
   );
 }
 
@@ -766,10 +1431,20 @@ function WorklogTab({ member }) {
                 <div className={styles.wlDone}>
                   <Icon name="solar:check-read-linear" size={12} color="var(--status-success)" />
                   {isActor && (
-                    <span className={styles.wlDoneText}>
-                      <span className={styles.wlWho}>{nameFromBy(icd.by)}</span>
-                      <span className={styles.wlWhen}>{icd.last}</span>
-                    </span>
+                    <>
+                      <Avatar
+                        variant="generic"
+                        size={18}
+                        initials={initialsOf(nameFromBy(icd.by))}
+                        backgroundColor="var(--primary-50)"
+                        borderColor="var(--primary-200)"
+                        color="var(--primary-300)"
+                      />
+                      <span className={styles.wlDoneText}>
+                        <span className={styles.wlWho}>{nameFromBy(icd.by)}</span>
+                        <span className={styles.wlWhen}>{icd.last}</span>
+                      </span>
+                    </>
                   )}
                 </div>
               ) : (
@@ -807,6 +1482,57 @@ function WorklogTab({ member }) {
             )}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+// ── History tab — Figma 1:65653 ──────────────────────────────────────────
+// 4-col table: "DOS | HCC Code | Claims | ICD Status". Each row is one HCC
+// review for a given DOS. icdStatus drives the trailing status pill button:
+//   accepted → green check  •  dismissed → red close  •  open → grey dash.
+function HistoryTab() {
+  return (
+    <div className={styles.scroll}>
+      <div className={styles.dataTable}>
+        <div className={[styles.dataTableHead, styles.historyGrid].join(' ')}>
+          <span>DOS</span>
+          <span>HCC Code</span>
+          <span>Claims</span>
+          <span>ICD Status</span>
+        </div>
+        {HISTORY.map((h) => (
+          <div key={h.id} className={[styles.dataTableRow, styles.historyGrid].join(' ')}>
+            <span className={styles.historyDos}>{h.dos}</span>
+            <div className={styles.historyHcc}>
+              <div className={styles.historyHccCode}>
+                {h.hccCode} - {h.hccName}
+              </div>
+              <div className={styles.historyHccMeta}>
+                Last Reviewed: {h.reviewedAt} • {h.by} ({h.role})
+              </div>
+            </div>
+            <button type="button" className={styles.historyClaims} title={`${h.claims} claim${h.claims === 1 ? '' : 's'}`}>
+              <Icon name="solar:bill-list-linear" size={12} color="var(--primary-300)" />
+              {h.claims}
+            </button>
+            <span className={styles.historyIcdStatus}>
+              {h.icdStatus === 'accepted' && (
+                <span className={[styles.historyStatusPill, styles.historyStatusAccepted].join(' ')}>
+                  <Icon name="solar:check-read-linear" size={14} color="var(--neutral-0)" />
+                </span>
+              )}
+              {h.icdStatus === 'dismissed' && (
+                <span className={[styles.historyStatusPill, styles.historyStatusDismissed].join(' ')}>
+                  <Icon name="solar:close-circle-linear" size={14} color="var(--neutral-0)" />
+                </span>
+              )}
+              {h.icdStatus !== 'accepted' && h.icdStatus !== 'dismissed' && (
+                <span className={styles.historyStatusDash}>—</span>
+              )}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );

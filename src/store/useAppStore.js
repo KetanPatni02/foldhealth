@@ -196,6 +196,23 @@ function scheduleCampaignSave(id, fn) {
   }, 600));
 }
 
+// Human-readable labels for HCC DOS lifecycle transitions, used by the
+// Activity Log to format "DOS 07/04/2024 — Support Completed" style entries.
+const HCC_TRANSITION_LABEL = {
+  markSupportInProgress: 'Support In Progress',
+  completeSupport:       'Support Completed',
+  markInsufficient:      'Marked Insufficient',
+  rejectDos:             'DOS Rejected',
+  completeCoder:         'Coding Completed',
+  requestRecords:        'Records Requested',
+  recordsReceived:       'Records Received',
+  completeR1:            'Reviewer 1 Completed',
+  completeR2:            'Reviewer 2 Completed',
+  completeR3:            'Reviewer 3 Completed',
+  returnDos:             'DOS Returned',
+  reassignRole:          'Role Reassigned',
+};
+
 export const useAppStore = create((set, get) => ({
   // ─── Theme ───────────────────────────────────────────────────────────
   // `theme` is the user's chosen setting: 'light' | 'dark' | 'system'
@@ -1900,21 +1917,47 @@ export const useAppStore = create((set, get) => ({
   // Optimistic accept/dismiss of an ICD inside the DiagPanel. Updates the
   // local gap list immediately so the UI reflects the new state; the server
   // round-trip is a TODO (Phase 3).
-  acceptHccGap: (code) => set(s => ({
-    hccDiagnosisGaps: s.hccDiagnosisGaps.map(g =>
-      g.code === code ? { ...g, status: 'Accepted' } : g
-    ),
-  })),
-  dismissHccGap: (code, reason) => set(s => ({
-    hccDiagnosisGaps: s.hccDiagnosisGaps.map(g =>
-      g.code === code ? { ...g, status: 'Dismissed', dismissReason: reason ?? g.dismissReason } : g
-    ),
-  })),
-  reopenHccGap: (code) => set(s => ({
-    hccDiagnosisGaps: s.hccDiagnosisGaps.map(g =>
-      g.code === code ? { ...g, status: 'New', dismissReason: null } : g
-    ),
-  })),
+  acceptHccGap: (code) => {
+    set(s => ({
+      hccDiagnosisGaps: s.hccDiagnosisGaps.map(g =>
+        g.code === code ? { ...g, status: 'Accepted' } : g
+      ),
+    }));
+    // ICD-level log entry → carries icds:[code] so it shows in both the
+    // ICD-scoped log AND the DOS-level (global) log.
+    get().addActivityEntry({
+      t: 'accept', by: 'You', role: 'Coder',
+      icds: [code],
+      headline: `Accepted ICD ${code}`,
+      from: 'Open', to: 'Accepted',
+    });
+  },
+  dismissHccGap: (code, reason) => {
+    set(s => ({
+      hccDiagnosisGaps: s.hccDiagnosisGaps.map(g =>
+        g.code === code ? { ...g, status: 'Dismissed', dismissReason: reason ?? g.dismissReason } : g
+      ),
+    }));
+    get().addActivityEntry({
+      t: 'dismiss', by: 'You', role: 'Coder',
+      icds: [code],
+      headline: `Dismissed ICD ${code}${reason ? ` — ${reason}` : ''}`,
+      from: 'Open', to: 'Dismissed',
+    });
+  },
+  reopenHccGap: (code) => {
+    set(s => ({
+      hccDiagnosisGaps: s.hccDiagnosisGaps.map(g =>
+        g.code === code ? { ...g, status: 'New', dismissReason: null } : g
+      ),
+    }));
+    get().addActivityEntry({
+      t: 'status_hcc', by: 'You', role: 'Coder',
+      icds: [code],
+      headline: `Reopened ICD ${code}`,
+      from: 'Dismissed', to: 'Open',
+    });
+  },
 
   selectedHccIds: [],
   selectHccMember: (id) => {
@@ -2117,6 +2160,19 @@ export const useAppStore = create((set, get) => ({
       default:
         result = fn(s.hccDosAssignments, patient, dos, actor);
     }
+    // DOS-level log entry — no `icds`, so it appears only in the global
+    // (DOS-level) Activity Log, not in any ICD-scoped view. Deferred to a
+    // microtask so the addActivityEntry side-effect doesn't run inside the
+    // same set() call.
+    queueMicrotask(() => {
+      const transitionLabel = HCC_TRANSITION_LABEL[kind] || kind;
+      useAppStore.getState().addActivityEntry({
+        t: 'status_dos',
+        by: 'You', role: 'Coder',
+        dos: dosDate,
+        headline: `DOS ${dosDate} — ${transitionLabel}`,
+      });
+    });
     return { hccDosAssignments: result.nextMap };
   }),
 
@@ -2270,6 +2326,64 @@ export const useAppStore = create((set, get) => ({
   // Documents / Comments / Notes count buttons in IcdRow).
   openIcdPanel: (panel, code) => set({ diagLeftPanel: panel, diagActivityIcd: code || null }),
   clearDiagActivityIcd: () => set({ diagActivityIcd: null }),
+
+  // Documents tab — inline uploader widget toggle. Replaces the old drawer
+  // open for the in-drawer Upload button (Figma 278:162482).
+  hccDocsUploaderOpen: false,
+  toggleHccDocsUploader: () => set(s => ({ hccDocsUploaderOpen: !s.hccDocsUploaderOpen })),
+  closeHccDocsUploader: () => set({ hccDocsUploaderOpen: false }),
+
+  // Live-uploaded documents — appended to the static DOCUMENTS list in the
+  // Documents tab so a newly-uploaded file appears at the top with status
+  // 'pending'. Newest-first.
+  hccUploadedDocs: [],
+  recordHccUpload: (doc) => set(s => ({ hccUploadedDocs: [doc, ...s.hccUploadedDocs] })),
+
+  // ── HCC Activity Log (live) ──────────────────────────────────────────
+  // Live entries appended by user actions (accept, dismiss, post comment,
+  // add note, upload document, status change). Merged with the mock ACTIVITY
+  // dataset by the Activity Log tab so anything the user just did appears
+  // at the top of the timeline.
+  //
+  // Shape: { [memberName]: Entry[] } where the newest entry is at index 0.
+  // Entry contract — see src/features/hcc/data/activity.js for the legacy
+  // shape; live entries additionally carry { id, ts } so they can be deduped
+  // and sorted. `icds: [code]` means the entry is ICD-level and will appear
+  // in BOTH the global DOS-level log AND any ICD-scoped log for that code.
+  // No `icds` (or empty array) means DOS-level only.
+  hccActivityLog: {},
+  addActivityEntry: (entry) => set(s => {
+    const memberId = s.diagPanelMemberId;
+    if (!memberId) return {};
+    const member = s.hccMembers.find(m => m.id === memberId);
+    const memberKey = member?.name;
+    if (!memberKey) return {};
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const date = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
+    const hours = now.getHours();
+    const time = `${((hours + 11) % 12) + 1}:${pad(now.getMinutes())} ${hours >= 12 ? 'PM' : 'AM'}`;
+    // Resolve the effective DOS the same way DiagPanel does — fall back to
+    // the first DOS in the member's list when no explicit filter is set.
+    const effectiveDos = s.diagDosFilter || member?.dos_list?.[0]?.date || member?.dos || null;
+    const filled = {
+      id: `live-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      ts: now.getTime(),
+      date, time,
+      dos: effectiveDos,
+      ...entry,
+    };
+    const list = s.hccActivityLog[memberKey] || [];
+    // Dedup guard — React StrictMode in dev double-invokes some store-set
+    // pathways which would otherwise produce two identical entries per click.
+    // Drop a new entry if the previous one has the same type + headline within
+    // the last 1500ms.
+    const last = list[0];
+    if (last && last.t === filled.t && last.headline === filled.headline && (filled.ts - last.ts) < 1500) {
+      return {};
+    }
+    return { hccActivityLog: { ...s.hccActivityLog, [memberKey]: [filled, ...list] } };
+  }),
 
   // Upload chart drawer — member object or null. Opened from ChartPopover's
   // "Upload New Chart" CTA and from the DiagPanel chart-upload action.
