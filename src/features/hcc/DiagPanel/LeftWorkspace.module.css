@@ -3,7 +3,9 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  border-right: 0.5px solid var(--neutral-150);
+  /* Workspace sits on the RIGHT side of the Diagnosis Gaps section, so the
+     divider is on its LEFT edge. */
+  border-left: 0.5px solid var(--neutral-150);
   background: var(--neutral-0);
   font-family: 'Inter', sans-serif;
 }
@@ -129,6 +131,82 @@
   border-color: var(--neutral-200);
   background: var(--neutral-50);
 }
+
+/* Wrap = chip + popover stack (popover positions relative to this). */
+.filterChipWrap {
+  position: relative;
+  display: inline-block;
+}
+
+/* Selected chip — primary-tinted to indicate an active filter. */
+.filterChipSelected {
+  background: var(--primary-50);
+  border-color: var(--primary-200);
+  color: var(--primary-300);
+}
+.filterChipSelected:hover {
+  background: var(--primary-50);
+  border-color: var(--primary-300);
+}
+
+/* Popover dropdown */
+.filterMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 160px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 50;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.filterMenuItem {
+  text-align: left;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-500);
+  white-space: nowrap;
+}
+.filterMenuItem:hover { background: var(--neutral-50); }
+.filterMenuItemActive {
+  background: var(--primary-50);
+  color: var(--primary-300);
+  font-weight: 500;
+}
+.filterMenuItemActive:hover { background: var(--primary-50); }
+.filterMenuEmpty {
+  padding: 8px;
+  font-size: 12px;
+  color: var(--neutral-300);
+  font-family: 'Inter', sans-serif;
+}
+.filterMenuClear {
+  margin-top: 4px;
+  padding: 6px 8px;
+  border: none;
+  border-top: 0.5px solid var(--neutral-150);
+  background: transparent;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-300);
+  text-align: left;
+}
+.filterMenuClear:hover { background: var(--primary-50); }
 /* DOS-level filter row carries a trailing "Clear All" link button. */
 .filterClearAll {
   margin-left: auto;
