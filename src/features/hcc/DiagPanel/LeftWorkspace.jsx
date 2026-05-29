@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
@@ -49,11 +49,35 @@ const FILTERED_TABS = new Set(['activity', 'notes', 'comments', 'documents']);
  *  - onClose   (fn)            Collapse the left workspace.
  *  - member    (member shape)  Data lookup for the tab-content components.
  */
-export function LeftWorkspace({ active, icdScope = null, onChange, onClose, member }) {
+export function LeftWorkspace({ active, icdScope = null, onChange, onClose, member, currentDos = null }) {
   const isDosLevel = !icdScope;
   const tabs = isDosLevel ? DOS_TABS : ICD_TABS;
   // Worklog uses a DOS-only filter; the other filtered tabs use the full set.
   const showFilterRow = FILTERED_TABS.has(active) || (isDosLevel && active === 'worklog');
+
+  // Pull the activity entries once at this level so the filter row can compute
+  // its dropdown options (DOS / HCC / ICD / Recorded By) from the same source
+  // the timeline renders from.
+  const rawActivity = ACTIVITY[member?.name] || ACTIVITY._default || [];
+
+  // Filter state — DOS is initialized to the currently-viewed DOS from the
+  // patient banner so the chip reads "DOS · 07/04/2024" as an indication of
+  // which DOS's activity is being shown. Re-sync if the parent flips DOS.
+  const [filters, setFilters] = useState({
+    dos: currentDos || null, hcc: null, icd: null, by: null, date: null,
+  });
+  useEffect(() => {
+    setFilters(f => f.dos === currentDos ? f : { ...f, dos: currentDos || null });
+  }, [currentDos]);
+
+  const setFilter = (key, value) => setFilters(f => ({ ...f, [key]: value }));
+  const clearAllFilters = () => setFilters({ dos: null, hcc: null, icd: null, by: null, date: null });
+
+  // Options derived from the activity entries (plus DOS list from member).
+  const filterOptions = useMemo(
+    () => computeFilterOptions(rawActivity, member),
+    [rawActivity, member],
+  );
 
   return (
     <div className={styles.wrap}>
@@ -65,7 +89,7 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
           aria-label="Collapse workspace"
           title="Collapse"
         >
-          <Icon name="solar:alt-arrow-right-linear" size={12} color="var(--neutral-300)" />
+          <Icon name="solar:alt-arrow-left-linear" size={12} color="var(--neutral-300)" />
         </button>
         <span className={styles.tabBarDivider} />
         <div className={styles.tabRow}>
@@ -92,10 +116,14 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
         {showFilterRow && (
           <FilterRow
             variant={active === 'worklog' ? 'worklog' : (isDosLevel ? 'dos' : 'icd')}
+            filters={filters}
+            options={filterOptions}
+            onChange={setFilter}
+            onClearAll={clearAllFilters}
           />
         )}
 
-        {active === 'activity'  && <ActivityTab  member={member} />}
+        {active === 'activity'  && <ActivityTab  member={member} rawEntries={rawActivity} filters={filters} />}
         {active === 'comments'  && <CommentsTab  member={member} />}
         {active === 'documents' && <DocumentsTab member={member} />}
         {active === 'notes'     && <NotesTab     member={member} />}
@@ -108,27 +136,120 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
   );
 }
 
-// Filter row — chip set depends on scope (Figma 1:45950 / 1:48023):
+// Filter row chip-key sets per variant (Figma 1:45950 / 1:48023):
 //   • 'icd'     → Recorded By, Date
 //   • 'dos'     → DOS, HCC Code, ICD Code, Recorded By, Date  (+ Clear All)
 //   • 'worklog' → DOS only
-const FILTER_CHIPS = {
-  icd:     ['Recorded By', 'Date'],
-  dos:     ['DOS', 'HCC Code', 'ICD Code', 'Recorded By', 'Date'],
-  worklog: ['DOS'],
+const FILTER_KEYS = {
+  icd:     ['by', 'date'],
+  dos:     ['dos', 'hcc', 'icd', 'by', 'date'],
+  worklog: ['dos'],
+};
+const FILTER_LABEL = {
+  dos:  'DOS',
+  hcc:  'HCC Code',
+  icd:  'ICD Code',
+  by:   'Recorded By',
+  date: 'Date',
 };
 
-function FilterRow({ variant = 'icd' }) {
-  const chips = FILTER_CHIPS[variant] || FILTER_CHIPS.icd;
-  const showClear = variant === 'dos';
+// Preset Date-filter ranges, evaluated against entry.date (MM/DD/YYYY).
+const DATE_PRESETS = ['Today', 'Last 7 days', 'Last 30 days', 'This month'];
+
+/**
+ * Build the dropdown option lists for each filter chip from the activity
+ * entries (plus member.dos_list for the DOS filter).
+ */
+function computeFilterOptions(entries, member) {
+  const dos = new Set((member?.dos_list || []).map(d => d.date).filter(Boolean));
+  const hcc = new Set();
+  const icd = new Set();
+  const by  = new Set();
+  const HCC_RE = /HCC\s*\d+/g;
+  for (const e of entries) {
+    if (e.t === 'group') continue;
+    if (e.dos) dos.add(e.dos);
+    if (e.by)  by.add(e.by);
+    if (Array.isArray(e.icds)) e.icds.forEach(c => icd.add(c));
+    if (typeof e.headline === 'string') {
+      // Normalize "HCC18" / "HCC  18" → "HCC 18" so the dropdown isn't duplicated.
+      (e.headline.match(HCC_RE) || []).forEach(c => hcc.add(c.replace(/^HCC\s*/, 'HCC ')));
+    }
+  }
+  const cmp = (a, b) => a.localeCompare(b);
+  return {
+    dos:  [...dos].sort(cmp),
+    hcc:  [...hcc].sort(cmp),
+    icd:  [...icd].sort(cmp),
+    by:   [...by].sort(cmp),
+    date: DATE_PRESETS,
+  };
+}
+
+/**
+ * Returns true when an entry should be visible given the current filter set.
+ * Each key is independent; a null filter value disables that constraint.
+ */
+function entryMatchesFilters(e, filters) {
+  if (e.t === 'group') return true;
+  if (filters.dos && e.dos !== filters.dos) return false;
+  if (filters.by  && e.by  !== filters.by)  return false;
+  if (filters.icd && !(Array.isArray(e.icds) && e.icds.includes(filters.icd))) return false;
+  if (filters.hcc) {
+    // Match either "HCC 18" or "HCC18" in the headline.
+    const num = filters.hcc.replace(/^HCC\s*/, '');
+    const re = new RegExp(`HCC\\s*${num}\\b`);
+    if (!(typeof e.headline === 'string' && re.test(e.headline))) return false;
+  }
+  if (filters.date) {
+    const d = parseEntryDate(e.date);
+    if (!d || !matchesDatePreset(d, filters.date)) return false;
+  }
+  return true;
+}
+
+function parseEntryDate(str) {
+  if (!str) return null;
+  const m = String(str).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return null;
+  return new Date(+m[3], +m[1] - 1, +m[2]);
+}
+function matchesDatePreset(d, preset) {
+  const now = new Date();
+  const startOfDay = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate());
+  const today = startOfDay(now);
+  const that = startOfDay(d);
+  if (preset === 'Today') return that.getTime() === today.getTime();
+  if (preset === 'Last 7 days')  return today - that >= 0 && today - that <= 7  * 86400000;
+  if (preset === 'Last 30 days') return today - that >= 0 && today - that <= 30 * 86400000;
+  if (preset === 'This month')   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  return true;
+}
+
+function FilterRow({ variant = 'icd', filters, options, onChange, onClearAll }) {
+  const keys = FILTER_KEYS[variant] || FILTER_KEYS.icd;
+  const hasAny = keys.some(k => filters?.[k] != null && filters[k] !== '');
   return (
     <div className={styles.filterRow}>
       <Icon name="solar:filter-linear" size={20} color="var(--neutral-300)" />
       <div className={styles.filterChips}>
-        {chips.map((label) => <FilterChip key={label} label={label} />)}
+        {keys.map((k) => (
+          <FilterChip
+            key={k}
+            label={FILTER_LABEL[k]}
+            value={filters?.[k] ?? null}
+            options={options?.[k] || []}
+            onChange={(v) => onChange?.(k, v)}
+          />
+        ))}
       </div>
-      {showClear && (
-        <button type="button" className={styles.filterClearAll}>
+      {variant === 'dos' && (
+        <button
+          type="button"
+          className={styles.filterClearAll}
+          onClick={onClearAll}
+          disabled={!hasAny}
+        >
           Clear All
         </button>
       )}
@@ -136,12 +257,66 @@ function FilterRow({ variant = 'icd' }) {
   );
 }
 
-function FilterChip({ label }) {
+/**
+ * Filter chip with a click-to-open popover. Shows the label alone when
+ * nothing is selected, or "Label · value" with a primary tint when selected.
+ */
+function FilterChip({ label, value, options, onChange }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  const isSelected = value != null && value !== '';
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
   return (
-    <button type="button" className={styles.filterChip}>
-      <span>{label}</span>
-      <Icon name="solar:alt-arrow-down-linear" size={16} color="var(--neutral-300)" />
-    </button>
+    <div className={styles.filterChipWrap} ref={wrapRef}>
+      <button
+        type="button"
+        className={[styles.filterChip, isSelected ? styles.filterChipSelected : ''].join(' ')}
+        onClick={() => setOpen(o => !o)}
+      >
+        <span>{isSelected ? `${label} · ${value}` : label}</span>
+        <Icon
+          name="solar:alt-arrow-down-linear"
+          size={16}
+          color={isSelected ? 'var(--primary-300)' : 'var(--neutral-300)'}
+        />
+      </button>
+      {open && (
+        <div className={styles.filterMenu} role="listbox">
+          {options.length === 0 ? (
+            <div className={styles.filterMenuEmpty}>No options</div>
+          ) : (
+            options.map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                role="option"
+                aria-selected={opt === value}
+                className={[styles.filterMenuItem, opt === value ? styles.filterMenuItemActive : ''].join(' ')}
+                onClick={() => { onChange?.(opt); setOpen(false); }}
+              >
+                {opt}
+              </button>
+            ))
+          )}
+          {isSelected && (
+            <button
+              type="button"
+              className={styles.filterMenuClear}
+              onClick={() => { onChange?.(null); setOpen(false); }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -179,21 +354,23 @@ const TRANS_BADGE = {
   'In Progress': 'pillInProgress',
 };
 
-function ActivityTab({ member }) {
-  const rawEntries = ACTIVITY[member?.name] || ACTIVITY._default || [];
+function ActivityTab({ member, rawEntries: rawEntriesProp, filters }) {
+  const rawEntries = rawEntriesProp || ACTIVITY[member?.name] || ACTIVITY._default || [];
   // ICD-level scope — when the Activity Log was opened by clicking an ICD
   // code, only show entries that touch that code. null = DOS-level (all).
   const activityIcd = useAppStore(s => s.diagActivityIcd);
   const clearIcd = useAppStore(s => s.clearDiagActivityIcd);
 
-  // Filter to the selected ICD (keep group headers; drop items that don't
-  // reference the code), then strip group headers left with no items.
+  // Filter by (a) the ICD scope (if opened from a card), and (b) the filter
+  // row's chip selections. Keep group headers, then strip any group headers
+  // that no longer have any items beneath them.
   const entries = (() => {
-    if (!activityIcd) return rawEntries;
-    const kept = rawEntries.filter(e =>
-      e.t === 'group' || (Array.isArray(e.icds) && e.icds.includes(activityIcd))
-    );
-    // Remove a group header immediately followed by another group or by EOL.
+    const kept = rawEntries.filter(e => {
+      if (e.t === 'group') return true;
+      if (activityIcd && !(Array.isArray(e.icds) && e.icds.includes(activityIcd))) return false;
+      if (filters && !entryMatchesFilters(e, filters)) return false;
+      return true;
+    });
     return kept.filter((e, i) => {
       if (e.t !== 'group') return true;
       const next = kept[i + 1];

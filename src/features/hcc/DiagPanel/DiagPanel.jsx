@@ -424,21 +424,9 @@ export function DiagPanel() {
       bodyClassName={[styles.body, diagLeftPanel ? styles.bodyExpanded : ''].join(' ')}
       headerStyle={{ display: 'none' }}
     >
-      {/* When expanded, the workspace sits to the LEFT of the regular drawer
-          content. Wrapping both in a flex row keeps the existing panel layout
-          intact when the workspace is closed. */}
-      {diagLeftPanel && (
-        <LeftWorkspace
-          active={diagLeftPanel}
-          icdScope={diagActivityIcd}
-          onChange={setDiagTab}
-          onClose={() => setDiagLeftPanel(null)}
-          member={member}
-        />
-      )}
-
-      <div className={diagLeftPanel ? styles.rightPane : styles.rightPaneFull}>
-      {/* ── Row 1: Title + Close ── */}
+      {/* ── Row 1: Title + Close — spans the FULL drawer width, above both
+          panes, so the close button stays accessible regardless of which
+          pane is expanded. ── */}
       <div className={styles.titleRow}>
         <span className={styles.titleText}>Diagnosis Gaps Details</span>
         <ActionButton size="L" tooltip="Close" onClick={closeDiagPanel}>
@@ -446,6 +434,12 @@ export function DiagPanel() {
         </ActionButton>
       </div>
 
+      {/* When expanded, the workspace sits to the RIGHT of the Diagnosis Gaps
+          section (ICD cards on the left, workspace on the right). The content
+          row contains both panes so the title row above can span the full
+          width. */}
+      <div className={styles.contentRow}>
+      <div className={diagLeftPanel ? styles.rightPane : styles.rightPaneFull}>
       {/* ── Row 2: Patient Banner — mirrors prototype line 1911:
           avatar (40×40) + name on top + single inline meta row
           [Patient · Sex · Age · #MemberId · RAF · 0.265↑] + right-side
@@ -684,6 +678,18 @@ export function DiagPanel() {
         )}
       </div>
       </div>{/* ── /rightPane ── */}
+
+      {diagLeftPanel && (
+        <LeftWorkspace
+          active={diagLeftPanel}
+          icdScope={diagActivityIcd}
+          onChange={setDiagTab}
+          onClose={() => setDiagLeftPanel(null)}
+          member={member}
+          currentDos={currentDos}
+        />
+      )}
+      </div>{/* ── /contentRow ── */}
     </Drawer>
   );
 }
