@@ -11,6 +11,7 @@ import { Checkbox } from '../../components/ui/checkbox';
 import { CloseIcon } from '../../components/Icon/CloseIcon';
 import { useAppStore } from '../../store/useAppStore';
 import { EmailPreviewDrawer } from './EmailPreviewDrawer';
+import { formShareLink } from '../forms/formLink';
 import styles from './ContentSettings.module.css';
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -398,7 +399,7 @@ function EmailsTab({
 // ────────────────────────────────────────────────────────────────────────────
 // Forms tab
 // ────────────────────────────────────────────────────────────────────────────
-function FormRowMenu({ onDuplicate, onDelete }) {
+function FormRowMenu({ onCopyLink, onDuplicate, onDelete }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
   const [pos, setPos] = useState({ top: 0, left: 0 });
@@ -416,6 +417,10 @@ function FormRowMenu({ onDuplicate, onDelete }) {
       {open && createPortal(
         <div className={styles.overflowScrim} onClick={() => setOpen(false)}>
           <div className={styles.overflowMenu} style={{ top: pos.top, left: pos.left }} onClick={e => e.stopPropagation()}>
+            <button className={styles.overflowItem} onClick={wrap(onCopyLink)}>
+              <Icon name="solar:link-linear" size={15} color="var(--neutral-300)" />
+              Copy link
+            </button>
             <button className={styles.overflowItem} onClick={wrap(onDuplicate)}>
               <Icon name="solar:copy-linear" size={15} color="var(--neutral-300)" />
               Duplicate
@@ -468,6 +473,12 @@ function FormsTab({ searchVal, onDuplicate, onDelete, bulkMode, selectedIds, onT
   const loading           = useAppStore(s => s.contentFormsLoading);
   const fetchContentForms = useAppStore(s => s.fetchContentForms);
   const openFormBuilder   = useAppStore(s => s.openFormBuilder);
+  const showToast         = useAppStore(s => s.showToast);
+
+  const copyLink = (form) => {
+    navigator.clipboard?.writeText(formShareLink(form.id));
+    showToast?.('Form link copied to clipboard');
+  };
 
   const [page, setPage]       = useState(1);
   const [perPage, setPerPage] = useState(10);
@@ -576,7 +587,7 @@ function FormsTab({ searchVal, onDuplicate, onDelete, bulkMode, selectedIds, onT
                       <div className={styles.actionCell}>
                         <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit form" onClick={() => openFormBuilder(form)} />
                         <div className={styles.vDivider} />
-                        <FormRowMenu onDuplicate={() => onDuplicate(form)} onDelete={() => onDelete(form)} />
+                        <FormRowMenu onCopyLink={() => copyLink(form)} onDuplicate={() => onDuplicate(form)} onDelete={() => onDelete(form)} />
                       </div>
                     </td>
                   </tr>

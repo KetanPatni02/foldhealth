@@ -27,6 +27,7 @@ import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { useAppStore } from '../../../store/useAppStore';
 import { PALETTE_TABS, paletteFor } from './componentCatalog';
 import { instantiateInstrument } from './validatedInstruments';
+import { formShareLink } from '../formLink';
 import { FieldInput } from './FieldInput';
 import { ScorePanel } from './ScorePanel';
 import { PreviewPanel } from './PreviewPanel';
@@ -375,6 +376,16 @@ export function FormBuilder() {
   const saving = useAppStore((s) => s.formBuilderSaving);
   const saveForm = useAppStore((s) => s.saveForm);
   const closeFormBuilder = useAppStore((s) => s.closeFormBuilder);
+  const showToast = useAppStore((s) => s.showToast);
+
+  const copyShareLink = () => {
+    if (typeof form?.id === 'string' && form.id.startsWith('local-')) {
+      showToast?.('Save the form first to get a shareable link');
+      return;
+    }
+    navigator.clipboard?.writeText(formShareLink(form.id));
+    showToast?.('Form link copied to clipboard');
+  };
 
   const [name, setName] = useState(form?.name || 'Untitled Form');
   const [fields, setFields] = useState(() => form?.schema?.items || []);
@@ -490,6 +501,7 @@ export function FormBuilder() {
         />
 
         <div className={styles.headerRight}>
+          <ActionButton icon="solar:link-linear" size="L" tooltip="Copy share link" onClick={copyShareLink} />
           <ActionButton icon="solar:printer-linear" size="L" tooltip="Print" onClick={() => window.print()} />
           <span className={styles.hDivider} />
           <Button variant="primary" size="L" disabled={saving} onClick={handleSave}>

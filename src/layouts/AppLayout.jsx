@@ -38,6 +38,7 @@ const AgentCanvas       = lz(() => import('../features/agent-builder/AgentCanvas
 const EmailBuilder      = lz(() => import('../features/email-builder/EmailBuilder'), 'EmailBuilder');
 const CampaignBuilder   = lz(() => import('../features/campaign/CampaignBuilder'),  'CampaignBuilder');
 const FormBuilder       = lz(() => import('../features/forms/builder/FormBuilder'), 'FormBuilder');
+const FormView          = lz(() => import('../features/forms/view/FormView'),       'FormView');
 
 // Drawers and overlays — only mounted when their state is truthy, so lazy here
 // keeps them out of the entry chunk entirely.
@@ -355,6 +356,7 @@ export function AppLayout() {
   const editingCampaignId = useAppStore(s => s.editingCampaignId);
   const campaignBuilderId = useAppStore(s => s.campaignBuilderId);
   const editingFormId = useAppStore(s => s.editingFormId);
+  const formViewId = useAppStore(s => s.formViewId);
 
   // Email Builder is a full-screen takeover when editing a campaign. Wins over
   // the CampaignBuilder so "Edit Template" from inside the campaign builder
@@ -380,6 +382,18 @@ export function AppLayout() {
         <Sidebar />
         <Suspense fallback={<LazyFallback />}>
           <CampaignBuilder />
+        </Suspense>
+        <Toast />
+      </div>
+    );
+  }
+
+  // Shareable form fill-view (#/f/{id}) — focused takeover for respondents.
+  if (formViewId) {
+    return (
+      <div className={styles.app}>
+        <Suspense fallback={<LazyFallback />}>
+          <FormView />
         </Suspense>
         <Toast />
       </div>

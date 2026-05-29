@@ -28,6 +28,10 @@ export function stateToHash(state) {
     goalDetailId, goalWizardOpen, goalWizardEditId,
     chatGroupDetailId, agentRulesGroupId, businessHoursOpen } = state;
 
+  // Shareable form fill-view wins over everything — it's a focused takeover.
+  if (state.formViewId) {
+    return buildHash('f', String(state.formViewId));
+  }
   if (activePage === 'builder') {
     const agentId = state.builderAgent?.id;
     return agentId ? buildHash('settings', 'agents', 'edit', String(agentId)) : buildHash('builder');
@@ -132,8 +136,15 @@ export function hashToState(route) {
   const updates = {
     goalDetailId: null, goalWizardOpen: false, goalWizardEditId: null,
     chatGroupDetailId: null, agentRulesGroupId: null, businessHoursOpen: false,
+    formViewId: null,
   };
 
+  // Shareable form fill-view: #/f/{id}
+  if (route.page === 'f' && route.section) {
+    const numId = isNaN(Number(route.section)) ? route.section : Number(route.section);
+    updates.formViewId = numId;
+    return updates;
+  }
   if (route.page === 'builder') { updates.activePage = 'builder'; return updates; }
   if (route.page === 'analytics') {
     updates.activePage = 'analytics';

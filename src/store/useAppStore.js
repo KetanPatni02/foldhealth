@@ -3101,6 +3101,9 @@ export const useAppStore = create((set, get) => ({
   editingFormId: null,
   formBuilderForm: null,
   formBuilderSaving: false,
+  // Shareable form fill-view (#/f/{id}); the router sets formViewId on nav.
+  formViewId: null,
+  closeFormView: () => set({ formViewId: null }),
 
   fetchContentForms: async ({ page = 1, perPage = 10, search = '', status = 'all', force = false } = {}) => {
     const cacheKey = `${page}|${perPage}|${(search || '').toLowerCase().trim()}|${status || 'all'}`;
@@ -3234,6 +3237,23 @@ export const useAppStore = create((set, get) => ({
   },
 
   closeFormBuilder: () => set({ editingFormId: null, formBuilderForm: null }),
+
+  // Persist a filled-out form submission. The DB trigger bumps the form's
+  // response_count. `scores` is the engine result snapshot at submit time.
+  submitFormResponse: async (formId, answers, scores = {}) => {
+    const createdBy = await get()._resolveUpdatedBy();
+    const { error } = await supabase.from('form_responses').insert({
+      form_id: formId,
+      answers,
+      scores,
+      ...(createdBy ? { created_by: createdBy } : {}),
+    });
+    if (error) {
+      console.error('submitFormResponse error:', error);
+      return false;
+    }
+    return true;
+  },
 
   // Persist a patch (name/category/status/schema/scoring/settings) for the
   // open form. Updates local state optimistically; for a local draft (no DB
