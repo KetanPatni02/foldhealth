@@ -188,14 +188,6 @@
 .settingLabel { font-size: 14px; color: var(--neutral-400); }
 /* Selected header/footer preset card */
 .presetCardSelected { box-shadow: 0 0 0 2px var(--primary-300); border-radius: 10px; }
-.swatchRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.swatch { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--neutral-150); cursor: pointer; padding: 0; }
-.swatchSel { box-shadow: 0 0 0 2px var(--primary-300); border-color: var(--primary-300); }
-.swatchCustom {
-  width: 26px; height: 26px; border-radius: 6px; border: 1px dashed var(--neutral-200);
-  display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; overflow: hidden;
-}
-.swatchCustom input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 
 /* Submit row in the preview/fill view */
 .pvSubmitRow { display: flex; justify-content: flex-start; padding-top: 8px; }

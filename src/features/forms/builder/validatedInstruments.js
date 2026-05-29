@@ -29,7 +29,7 @@ export const INSTRUMENTS = [
   {
     key: 'phq9',
     label: 'PHQ-9 (Depression)',
-    icon: 'solar:mood-sad-linear',
+    icon: 'solar:face-scan-circle-linear',
     source: 'Kroenke K, Spitzer RL, Williams JBW. J Gen Intern Med. 2001;16(9):606-613.',
     instruction: PHQ_INSTRUCTION,
     responseOptions: FREQ_0_3,
@@ -67,7 +67,7 @@ export const INSTRUMENTS = [
   {
     key: 'phq2',
     label: 'PHQ-2 (Depression screen)',
-    icon: 'solar:mood-sad-linear',
+    icon: 'solar:face-scan-circle-linear',
     source: 'Kroenke K, Spitzer RL, Williams JBW. Med Care. 2003;41(11):1284-1292.',
     instruction: PHQ_INSTRUCTION,
     responseOptions: FREQ_0_3,

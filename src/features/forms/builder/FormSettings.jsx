@@ -3,16 +3,24 @@
  * selected. Mirrors the email-builder's Design/Template panel layout
  * (section strips, field columns, live preset cards) for visual consistency.
  */
-import { Icon } from '../../../components/Icon/Icon';
 import { Select } from '../../../components/Select/Select';
 import { Switch } from '../../../components/Switch/Switch';
-import { GOOGLE_FONTS } from '../../email-builder/googleFonts';
+import { GOOGLE_FONTS, getFontStack, injectGoogleFonts } from '../../email-builder/googleFonts';
 import { HEADER_PRESETS, FOOTER_PRESETS } from '../../email-builder/headerFooterLibrary';
 import { PresetLivePreview } from '../../email-builder/PresetLivePreview';
+import { ColorInput } from '../../email-builder/ColorInput';
 import email from '../../email-builder/EmailBuilder.module.css';
 import styles from './FormBuilder.module.css';
 
-const BG_SWATCHES = ['#FFFFFF', '#F6F7F8', '#FCFAFF', '#F5FFFA', '#FFF9F0'];
+// Load the web fonts so each dropdown option previews in its own typeface.
+injectGoogleFonts();
+
+// Each option renders in its own font family (preview-in-dropdown).
+const FONT_OPTIONS = GOOGLE_FONTS.map((f) => ({
+  value: f.value,
+  label: f.label,
+  style: { fontFamily: getFontStack(f.value) },
+}));
 
 function PresetGrid({ presets, selectedId, onSelect }) {
   return (
@@ -40,7 +48,6 @@ export function FormSettings({ settings, onChange }) {
   const set = (patch) => onChange({ ...s, ...patch });
   const header = s.header || { enabled: false, presetId: HEADER_PRESETS[0].id };
   const footer = s.footer || { enabled: false, presetId: FOOTER_PRESETS[0].id };
-  const bg = s.background || '#FFFFFF';
 
   return (
     <div className={email.designScroll}>
@@ -50,7 +57,7 @@ export function FormSettings({ settings, onChange }) {
           <label className={email.fieldLabel}>Font family</label>
           <Select
             value={s.fontFamily || 'Inter'}
-            options={GOOGLE_FONTS.map((f) => ({ value: f.value, label: f.label }))}
+            options={FONT_OPTIONS}
             onChange={(v) => set({ fontFamily: v })}
           />
         </div>
@@ -58,21 +65,7 @@ export function FormSettings({ settings, onChange }) {
 
       <div className={email.sectionHeadingStrip}>Background</div>
       <div className={email.sectionContent}>
-        <div className={styles.swatchRow}>
-          {BG_SWATCHES.map((c) => (
-            <button
-              key={c}
-              className={`${styles.swatch} ${bg === c ? styles.swatchSel : ''}`}
-              style={{ background: c }}
-              onClick={() => set({ background: c })}
-              aria-label={`Background ${c}`}
-            />
-          ))}
-          <label className={styles.swatchCustom} title="Custom color">
-            <Icon name="solar:pallete-2-linear" size={15} color="var(--neutral-300)" />
-            <input type="color" value={bg} onChange={(e) => set({ background: e.target.value })} />
-          </label>
-        </div>
+        <ColorInput value={s.background || '#FFFFFF'} onChange={(v) => set({ background: v })} />
       </div>
 
       <div className={email.sectionHeadingStrip}>Header</div>
