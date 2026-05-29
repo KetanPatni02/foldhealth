@@ -37,6 +37,7 @@ export function IcdRow({ icd }) {
   const reopenHccGap = useAppStore(s => s.reopenHccGap);
   const showToast = useAppStore(s => s.showToast);
   const openIcdActivityLog = useAppStore(s => s.openIcdActivityLog);
+  const openIcdPanel = useAppStore(s => s.openIcdPanel);
   // This card is "selected" when the left panel's Activity Log is scoped to
   // its code (Figma Selection variant 1:33197 → primary-50 bg, primary-300
   // border). Clicking the code toggles the scope on/off.
@@ -105,11 +106,6 @@ export function IcdRow({ icd }) {
   const handleMore = (e) => {
     e.stopPropagation();
     showToast('ICD actions — coming in Phase 3');
-  };
-
-  const handleCount = (kind) => (e) => {
-    e.stopPropagation();
-    showToast(`${kind} — coming in Phase 3`);
   };
 
   // Clicking the notes count button opens the unified expansion panel with
@@ -210,12 +206,22 @@ export function IcdRow({ icd }) {
       {/* Footer */}
       <div className={styles.footer}>
         <div className={styles.counts}>
-          <button type="button" className={styles.countBtn} onClick={handleCount('Documents')}>
+          <button
+            type="button"
+            className={styles.countBtn}
+            onClick={(e) => { e.stopPropagation(); openIcdPanel('documents', icd.code); }}
+            aria-label={`Open documents for ${icd.code}`}
+          >
             <Icon name="solar:file-text-linear" size={16} color="var(--neutral-300)" />
             <span>{icd.docs ?? 0}</span>
           </button>
           <span className={styles.countDivider} />
-          <button type="button" className={styles.countBtn} onClick={handleCount('Comments')}>
+          <button
+            type="button"
+            className={styles.countBtn}
+            onClick={(e) => { e.stopPropagation(); openIcdPanel('comments', icd.code); }}
+            aria-label={`Open comments for ${icd.code}`}
+          >
             <Icon name="solar:chat-square-linear" size={16} color="var(--neutral-300)" />
             <span>{icd.cmts ?? 0}</span>
           </button>
