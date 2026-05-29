@@ -15,15 +15,17 @@
 .scroll { scrollbar-width: none; }
 
 .sheet {
+  --px: 40px; --py: 36px;
   width: 100%; max-width: 640px; align-self: flex-start;
   background: var(--neutral-0); border-radius: 16px;
   box-shadow: 0 12px 30px rgba(0,0,0,.06);
-  padding: 36px 40px; display: flex; flex-direction: column; gap: 24px;
+  padding: var(--py) var(--px); display: flex; flex-direction: column; gap: 24px;
   overflow: hidden;
 }
-/* Full-bleed header/footer (cancels the 36px/40px sheet padding) */
-.headerBleed { margin: -36px -40px 0; }
-.footerBleed { margin: 0 -40px -36px; }
+/* Full-bleed header/footer — derived from the sheet padding so it stays in
+   sync when the padding shrinks on mobile. */
+.headerBleed { margin: calc(-1 * var(--py)) calc(-1 * var(--px)) 0; }
+.footerBleed { margin: 0 calc(-1 * var(--px)) calc(-1 * var(--py)); }
 .title { font-size: 22px; font-weight: 600; color: var(--neutral-500); margin: 0; }
 .formDesc { font-size: 14px; color: var(--neutral-300); margin: -12px 0 0; }
 
@@ -40,3 +42,16 @@
 
 .state { color: var(--neutral-300); font-size: 14px; padding: 64px 0; }
 .thanks { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding: 40px 0; }
+
+/* ── Mobile: full-bleed sheet, tighter padding, edge-to-edge ── */
+@media (max-width: 640px) {
+  .scroll { padding: 0; }
+  .sheet {
+    --px: 16px; --py: 20px;
+    max-width: 100%; border-radius: 0; box-shadow: none; min-height: 100%;
+  }
+  .header { padding: 0 12px; }
+  .title { font-size: 20px; }
+  .submitRow { justify-content: stretch; }
+  .submitRow > * { width: 100%; }
+}

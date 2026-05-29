@@ -34,7 +34,12 @@ import { PreviewPanel } from './PreviewPanel';
 import { ResponsesPanel } from './ResponsesPanel';
 import { FormSettings } from './FormSettings';
 
-const DEFAULT_SETTINGS = { layout: 'sectioned', fontFamily: 'Inter', background: '#FFFFFF', header: { enabled: false }, footer: { enabled: false } };
+const DEFAULT_SETTINGS = {
+  layout: 'entire-page', fontFamily: 'Inter', background: '#FFFFFF',
+  header: { enabled: false }, footer: { enabled: false },
+  start: { enabled: true, title: '', description: '', buttonLabel: 'Start' },
+  end: { enabled: true, title: 'Thank you!', description: 'Your response has been recorded.' },
+};
 import styles from './FormBuilder.module.css';
 
 // ── linkId generation + tree helpers (pure) ────────────────────────────────

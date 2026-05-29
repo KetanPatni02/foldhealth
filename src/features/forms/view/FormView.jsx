@@ -1,7 +1,7 @@
 /**
- * Shareable form fill-view (#/f/{id}). Renders the saved form for a logged-in
- * respondent to fill and submit; submission saves to form_responses with an
- * engine-evaluated score snapshot. Reuses FieldInput for the controls.
+ * Shareable form fill-view (#/f/{id}). Renders the saved form via the shared
+ * FormRenderer (honoring the form's layout mode) and submits to form_responses
+ * with an engine-evaluated score snapshot.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
@@ -9,40 +9,13 @@ import { Button } from '../../../components/Button/Button';
 import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { useAppStore } from '../../../store/useAppStore';
 import { evaluate } from '../scoring/evaluate';
-import { isAnswered } from '../scoring/util';
 import { toQuestionnaire } from '../builder/engineAdapter';
-import { FieldInput } from '../builder/FieldInput';
-import { FormHeader, FormFooter } from '../builder/FormChrome';
-import { getFontStack, injectGoogleFonts } from '../../email-builder/googleFonts';
+import { FormRenderer } from '../render/FormRenderer';
+import { normalizeLayout } from '../render/layout';
+import { injectGoogleFonts } from '../../email-builder/googleFonts';
 import styles from './FormView.module.css';
 
 injectGoogleFonts();
-
-function FormField({ field, answers, onChange, missing }) {
-  if (field.type === 'group') {
-    return (
-      <section className={styles.section}>
-        <div className={styles.sectionTitle}>{field.text}</div>
-        {(field.items || []).map((sub) => (
-          <FormField key={sub.linkId} field={sub} answers={answers} onChange={onChange} missing={missing} />
-        ))}
-      </section>
-    );
-  }
-  if (field.type === 'display') {
-    return <div className={styles.field}><FieldInput field={field} interactive={false} /></div>;
-  }
-  return (
-    <div className={styles.field}>
-      <label className={styles.label}>
-        {field.text}{field.required && <span className={styles.req}>*</span>}
-      </label>
-      {field.description ? <p className={styles.desc}>{field.description}</p> : null}
-      <FieldInput field={field} interactive value={answers[field.linkId]} onChange={(v) => onChange(field.linkId, v)} />
-      {missing.has(field.linkId) ? <span className={styles.missing}>This field is required.</span> : null}
-    </div>
-  );
-}
 
 export function FormView({ id: propId, isPublic = false }) {
   const storeFormViewId = useAppStore((s) => s.formViewId);
@@ -54,7 +27,6 @@ export function FormView({ id: propId, isPublic = false }) {
   const [form, setForm] = useState(null);
   const [loading, setLoading] = useState(true);
   const [answers, setAnswers] = useState({});
-  const [missing, setMissing] = useState(() => new Set());
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -71,29 +43,19 @@ export function FormView({ id: propId, isPublic = false }) {
 
   const items = useMemo(() => form?.schema?.items || [], [form]);
   const setAnswer = (linkId, v) => setAnswers((prev) => ({ ...prev, [linkId]: v }));
-
-  // Flatten leaf fields for required-field validation.
-  const leaves = useMemo(() => {
-    const out = [];
-    const walk = (list) => (list || []).forEach((f) => (f.items ? walk(f.items) : out.push(f)));
-    walk(items);
-    return out;
-  }, [items]);
+  const settings = form?.settings;
+  // Paged layouts show their own end screen inside FormRenderer; only the
+  // entire-page layout falls back to this view's thank-you.
+  const paged = normalizeLayout(settings?.layout) !== 'entire-page';
 
   const close = () => {
     if (window.history.length > 1) window.history.back();
     else window.location.hash = '#/home';
   };
 
+  // FormRenderer validates (per step + full form) before calling this; here we
+  // just score + persist.
   const handleSubmit = async () => {
-    const unanswered = leaves.filter(
-      (f) => f.required && f.type !== 'display' && !isAnswered(answers[f.linkId]),
-    );
-    if (unanswered.length) {
-      setMissing(new Set(unanswered.map((f) => f.linkId)));
-      showToast?.(`Please answer ${unanswered.length} required field${unanswered.length === 1 ? '' : 's'}`);
-      return;
-    }
     setSubmitting(true);
     let scoreSnapshot = {};
     try {
@@ -105,10 +67,9 @@ export function FormView({ id: propId, isPublic = false }) {
     } catch { /* submit answers even if scoring fails */ }
     const ok = await submitFormResponse(form.id, answers, scoreSnapshot);
     setSubmitting(false);
-    if (ok) setSubmitted(true);
+    if (ok && !paged) setSubmitted(true); // paged → FormRenderer shows its end screen
+    return ok;
   };
-
-  const settings = form?.settings;
 
   return (
     <div className={styles.page} style={{ background: settings?.background || undefined }}>
@@ -135,26 +96,18 @@ export function FormView({ id: propId, isPublic = false }) {
             </div>
           </div>
         ) : (
-          <div className={styles.sheet} style={{ fontFamily: getFontStack(settings?.fontFamily) }}>
-            <FormHeader settings={settings} className={styles.headerBleed} />
-            <h1 className={styles.title}>{form.name}</h1>
-            {form.description ? <p className={styles.formDesc}>{form.description}</p> : null}
-            {items.length === 0 ? (
-              <p className={styles.desc}>This form has no questions yet.</p>
-            ) : (
-              items.map((f) => (
-                <FormField key={f.linkId} field={f} answers={answers} onChange={setAnswer} missing={missing} />
-              ))
-            )}
-            {items.length > 0 && (
-              <div className={styles.submitRow}>
-                <Button variant="primary" size="L" disabled={submitting} onClick={handleSubmit}>
-                  {submitting ? 'Submitting…' : 'Submit'}
-                </Button>
-              </div>
-            )}
-            <FormFooter settings={settings} className={styles.footerBleed} />
-          </div>
+          <FormRenderer
+            fields={items}
+            settings={settings}
+            formName={form.name}
+            formDescription={form.description}
+            answers={answers}
+            onAnswer={setAnswer}
+            onSubmit={handleSubmit}
+            submitting={submitting}
+            scope="standalone"
+            onValidationFail={(n) => showToast?.(`Please answer ${n} required field${n === 1 ? '' : 's'}`)}
+          />
         )}
       </div>
     </div>

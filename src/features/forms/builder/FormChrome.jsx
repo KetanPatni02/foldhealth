@@ -15,7 +15,7 @@ export function FormHeader({ settings, className }) {
   // Pass the form's font so the header reads cohesively with the body.
   return (
     <div className={className}>
-      <PresetLivePreview preset={headerPresetById(settings.header.presetId)} fontFamily={settings.fontFamily} />
+      <PresetLivePreview preset={headerPresetById(settings.header.presetId)} fontFamily={settings.fontFamily} fluid />
     </div>
   );
 }
@@ -24,7 +24,7 @@ export function FormFooter({ settings, className }) {
   if (!settings?.footer?.enabled) return null;
   return (
     <div className={className}>
-      <PresetLivePreview preset={footerPresetById(settings.footer.presetId)} fontFamily={settings.fontFamily} />
+      <PresetLivePreview preset={footerPresetById(settings.footer.presetId)} fontFamily={settings.fontFamily} fluid />
     </div>
   );
 }

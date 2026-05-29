@@ -1,16 +1,16 @@
 /**
- * Preview tab — fill the form for real and watch the score update live via the
- * scoring engine. Renders the chosen header/footer, font family, background,
- * and the Submit button so the preview matches the shared/public fill view.
+ * Preview tab — renders the form via the shared FormRenderer (which honors the
+ * layout mode: entire-page / by-section / by-question) inside a Web (MacBook) or
+ * Mobile (iPhone) device mockup, with a live score sidebar.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
-import { Button } from '../../../components/Button/Button';
+import { Toggle } from '../../../components/Toggle/Toggle';
 import { evaluate } from '../scoring/evaluate';
 import { toQuestionnaire } from './engineAdapter';
-import { FieldInput } from './FieldInput';
-import { FormHeader, FormFooter } from './FormChrome';
-import { getFontStack, injectGoogleFonts } from '../../email-builder/googleFonts';
+import { FormRenderer } from '../render/FormRenderer';
+import { MacBookPro, IPhone17Pro } from '../../email-builder/DevicePreview';
+import { injectGoogleFonts } from '../../email-builder/googleFonts';
 import styles from './FormBuilder.module.css';
 
 injectGoogleFonts();
@@ -23,39 +23,26 @@ const SEV_COLOR = {
   critical: 'var(--status-error)',
 };
 
-function PreviewField({ field, value, onChange }) {
-  if (field.type === 'group') {
-    return (
-      <div className={styles.pvSection}>
-        <div className={styles.pvSectionTitle}>{field.text}</div>
-        {(field.items || []).map((sub) => (
-          <PreviewField key={sub.linkId} field={sub} value={value} onChange={onChange} />
-        ))}
-      </div>
-    );
-  }
-  if (field.type === 'display') {
-    return <div className={styles.pvField}><FieldInput field={field} interactive={false} /></div>;
-  }
-  return (
-    <div className={styles.pvField}>
-      <label className={styles.pvLabel}>
-        {field.text}{field.required && <span className={styles.req}>*</span>}
-      </label>
-      {field.description ? <p className={styles.pvDesc}>{field.description}</p> : null}
-      <FieldInput
-        field={field}
-        interactive
-        value={value[field.linkId]}
-        onChange={(v) => onChange(field.linkId, v)}
-      />
-    </div>
-  );
-}
+const DEVICES = [
+  { key: 'form', label: 'Form', icon: 'solar:document-text-linear' },
+  { key: 'web', label: 'Web', icon: 'solar:monitor-linear' },
+  { key: 'mobile', label: 'Mobile', icon: 'solar:smartphone-linear' },
+];
 
 export function PreviewPanel({ fields, scoring, formName, settings }) {
   const [answers, setAnswers] = useState({});
+  const [device, setDevice] = useState('form');
   const setAnswer = (linkId, v) => setAnswers((prev) => ({ ...prev, [linkId]: v }));
+
+  const stageRef = useRef(null);
+  const [stageW, setStageW] = useState(0);
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(([entry]) => setStageW(entry.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const result = useMemo(() => {
     const form = {
@@ -71,27 +58,47 @@ export function PreviewPanel({ fields, scoring, formName, settings }) {
   }, [fields, scoring, answers]);
 
   const hasScores = (scoring?.scores?.length || 0) > 0;
+  const avail = Math.max(280, stageW - 48);
+  const macWidth = Math.min(860, avail);
+  const phoneWidth = Math.min(340, Math.max(280, avail * 0.7));
+
+  const body = (compact) => (
+    <FormRenderer
+      fields={fields}
+      settings={settings}
+      formName={formName}
+      answers={answers}
+      onAnswer={setAnswer}
+      compact={compact}
+      scope="embedded"
+      onSubmit={() => true}
+    />
+  );
 
   return (
     <div className={styles.previewWrap}>
-      <div className={styles.previewScroll} style={{ background: settings?.background || undefined }}>
-        <div className={styles.previewSheet} style={{ fontFamily: getFontStack(settings?.fontFamily) }}>
-          <FormHeader settings={settings} className={styles.pvHeaderBleed} />
-          <h2 className={styles.previewTitle}>{formName}</h2>
-          {fields.length === 0 ? (
-            <p className={styles.pvEmpty}>Add fields in the Edit tab to preview the form.</p>
-          ) : (
-            <>
-              {fields.map((f) => (
-                <PreviewField key={f.linkId} field={f} value={answers} onChange={setAnswer} />
-              ))}
-              <div className={styles.pvSubmitRow}>
-                <Button variant="primary" size="L">Submit</Button>
-              </div>
-            </>
-          )}
-          <FormFooter settings={settings} className={styles.pvFooterBleed} />
+      <div className={styles.previewStage} ref={stageRef}>
+        <div className={styles.deviceToolbar}>
+          <Toggle size="S" items={DEVICES} active={device} onChange={setDevice} />
         </div>
+        {device === 'form' ? (
+          <div className={styles.plainArea}>
+            <div className={styles.deviceFormScroll} style={{ background: settings?.background || '#fff' }}>
+              {body(false)}
+            </div>
+          </div>
+        ) : (
+          <div className={styles.deviceArea}>
+            <div className={styles.deviceWrap} key={device}>
+              {device === 'web'
+                ? <MacBookPro width={macWidth} screen={<div className={styles.deviceFormScroll} style={{ background: settings?.background || '#fff' }}>{body(false)}</div>} />
+                : <IPhone17Pro width={phoneWidth} screen={<div className={styles.deviceFormScroll} style={{ background: settings?.background || '#fff' }}>{body(true)}</div>} />}
+              <div className={styles.deviceMeta}>
+                {device === 'web' ? 'MacBook Pro · 16-inch' : 'iPhone 17 Pro · 6.3-inch'}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {(hasScores || result.criticalsTriggered.length > 0) && (

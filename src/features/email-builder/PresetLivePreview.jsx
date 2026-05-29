@@ -30,8 +30,11 @@ function resolvePresetTree(preset) {
  *  - preset (object) — built-in or user preset
  *  - width  (number) — final visible width in px; default 240
  *  - sourceWidth (number) — email canvas width the iframe renders at; default 600
+ *  - fluid (boolean) — when true and the container is narrower than sourceWidth,
+ *    render the iframe at the real width so the email's own responsive CSS
+ *    reflows (genuine mobile layout) instead of scaling a 600px design down.
  */
-export function PresetLivePreview({ preset, width, sourceWidth = 600, fontFamily = 'MODERN_SANS' }) {
+export function PresetLivePreview({ preset, width, sourceWidth = 600, fontFamily = 'MODERN_SANS', fluid = false }) {
   const tree = useMemo(() => resolvePresetTree(preset), [preset]);
   const iframeRef = useRef(null);
   const wrapRef = useRef(null);
@@ -53,6 +56,11 @@ export function PresetLivePreview({ preset, width, sourceWidth = 600, fontFamily
   }, [width]);
 
   const effectiveWidth = typeof width === 'number' ? width : measuredWidth;
+  // Fluid (responsive) below the source width: render the email at the real
+  // width so its @media (max-width:620) rules fire. Otherwise scale 600 → width.
+  const isFluid = fluid && effectiveWidth > 0 && effectiveWidth < sourceWidth;
+  const renderWidth = isFluid ? effectiveWidth : sourceWidth;
+  const scale = isFluid ? 1 : (effectiveWidth > 0 ? effectiveWidth / sourceWidth : 0);
 
   // Build a minimal EmailLayout doc with just this preset as the root's only
   // child, then render it to the same HTML our production exporter produces.
@@ -76,36 +84,33 @@ export function PresetLivePreview({ preset, width, sourceWidth = 600, fontFamily
     return renderEmailHtml(doc, { wrapperPadding: '0' });
   }, [tree, fontFamily]);
 
-  // After the iframe loads its srcdoc, read the rendered body height so the
-  // outer wrapper sizes to the actual preview content.
+  // Measure the rendered body height after load AND whenever the render width
+  // changes (fluid reflow doesn't reload the srcdoc, so re-read on resize).
   useEffect(() => {
     const f = iframeRef.current;
     if (!f) return;
-    const onLoad = () => {
+    const measure = () => {
       try {
-        const body = f.contentDocument?.body;
-        if (body) {
-          const h = Math.ceil(body.scrollHeight);
-          if (h > 0) setInnerHeight(h);
-        }
+        const h = f.contentDocument?.body?.scrollHeight;
+        if (h > 0) setInnerHeight(Math.ceil(h));
       } catch { /* cross-origin or detached */ }
     };
-    f.addEventListener('load', onLoad);
-    return () => f.removeEventListener('load', onLoad);
-  }, [html]);
+    f.addEventListener('load', measure);
+    const raf = requestAnimationFrame(measure);
+    return () => { f.removeEventListener('load', measure); cancelAnimationFrame(raf); };
+  }, [html, renderWidth]);
 
   if (!tree || !html) {
     return <div ref={wrapRef} className={styles.livePreviewWrap} style={{ width: width ?? '100%', height: 80 }} />;
   }
 
-  const scale = effectiveWidth > 0 ? effectiveWidth / sourceWidth : 0;
-  const scaledHeight = scale > 0 ? Math.max(40, Math.ceil(innerHeight * scale)) : 80;
+  const wrapHeight = isFluid ? innerHeight : (scale > 0 ? Math.max(40, Math.ceil(innerHeight * scale)) : 80);
 
   return (
     <div
       ref={wrapRef}
       className={styles.livePreviewWrap}
-      style={{ width: width ?? '100%', height: scaledHeight }}
+      style={{ width: width ?? '100%', height: wrapHeight }}
     >
       <iframe
         ref={iframeRef}
@@ -118,9 +123,9 @@ export function PresetLivePreview({ preset, width, sourceWidth = 600, fontFamily
         scrolling="no"
         className={styles.livePreviewIframe}
         style={{
-          width: sourceWidth,
+          width: renderWidth,
           height: innerHeight,
-          transform: `scale(${scale})`,
+          transform: scale === 1 ? undefined : `scale(${scale})`,
         }}
       />
     </div>
