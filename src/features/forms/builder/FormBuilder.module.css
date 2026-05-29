@@ -259,6 +259,40 @@
 .pvBand { font-size: 12px; font-weight: 500; padding: 3px 8px; border: 1px solid; border-radius: 999px; white-space: nowrap; }
 .pvAlert { display: flex; align-items: center; gap: 8px; padding: 10px; background: var(--status-error-light, #fff5f5); border: 0.5px solid rgba(215,40,37,.2); border-radius: 8px; font-size: 13px; color: var(--status-error); }
 
+/* ── Responses tab ──────────────────────────────────────────────────────── */
+.responsesWrap { flex: 1 1 0; display: flex; flex-direction: column; min-height: 0; }
+.responsesHead {
+  display: flex; align-items: center; gap: 8px;
+  padding: 16px 24px; font-size: 15px; font-weight: 600; color: var(--neutral-400);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.responsesCount {
+  font-size: 12px; font-weight: 600; color: var(--primary-300);
+  background: var(--primary-50); border: 0.5px solid var(--primary-200);
+  border-radius: 999px; padding: 1px 8px;
+}
+.responsesScroll { flex: 1 1 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.responsesScroll::-webkit-scrollbar { display: none; }
+.responsesScroll { scrollbar-width: none; }
+.responsesEmpty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 64px 0; color: var(--neutral-200); font-size: 14px; }
+
+.respCard { width: 100%; max-width: 760px; border: 0.5px solid var(--neutral-150); border-radius: 10px; overflow: hidden; }
+.respHeader {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 12px 14px; border: none; background: var(--neutral-0); cursor: pointer; text-align: left;
+}
+.respHeader:hover { background: var(--neutral-50); }
+.respWho { font-size: 14px; font-weight: 500; color: var(--neutral-500); }
+.respTime { font-size: 12px; color: var(--neutral-300); flex: 1 1 0; }
+.respScores { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.respBadge { font-size: 12px; font-weight: 500; color: var(--neutral-300); border: 1px solid var(--neutral-150); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+.respAlert { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; color: var(--status-error); }
+.respBody { padding: 4px 14px 14px; border-top: 0.5px solid var(--neutral-150); display: flex; flex-direction: column; }
+.respMuted { font-size: 13px; color: var(--neutral-200); padding: 10px 0; }
+.respQA { display: flex; gap: 16px; padding: 8px 0; border-bottom: 0.5px solid var(--neutral-100); }
+.respQ { flex: 1 1 0; font-size: 13px; color: var(--neutral-300); }
+.respA { flex: 1 1 0; font-size: 14px; color: var(--neutral-500); }
+
 /* ── Footer ─────────────────────────────────────────────────────────────── */
 .footer {
   flex-shrink: 0; display: flex; align-items: center; justify-content: center;

@@ -3201,7 +3201,12 @@ export const useAppStore = create((set, get) => ({
   // hasn't been created yet so the builder is still usable for design.
   openFormBuilder: async (formOrNull) => {
     let form = formOrNull;
-    if (form && form.id && form.schema === undefined) {
+    // Accept a bare id (number/string) as well as a form object.
+    if (typeof form === 'number' || typeof form === 'string') {
+      const fetched = await get().fetchFormById(isNaN(Number(form)) ? form : Number(form));
+      if (!fetched) { get().showToast?.('Form not found'); return null; }
+      form = fetched;
+    } else if (form && form.id && form.schema === undefined) {
       const full = await get().fetchFormById(form.id);
       if (full) form = full;
     }
@@ -3255,10 +3260,36 @@ export const useAppStore = create((set, get) => ({
     return true;
   },
 
+  // All submissions for a form (newest first), with the submitter's name when
+  // the created_by → profiles FK resolves.
+  fetchFormResponses: async (formId) => {
+    if (!formId || (typeof formId === 'string' && formId.startsWith('local-'))) return [];
+    const sel = '*, created_by_profile:profiles!created_by(id, full_name)';
+    let { data, error } = await supabase
+      .from('form_responses').select(sel).eq('form_id', formId)
+      .order('created_at', { ascending: false });
+    if (error?.code === 'PGRST200') {
+      ({ data, error } = await supabase
+        .from('form_responses').select('*').eq('form_id', formId)
+        .order('created_at', { ascending: false }));
+    }
+    if (error) {
+      console.error('fetchFormResponses error:', error);
+      return [];
+    }
+    return (data || []).map((r) => ({
+      id: r.id,
+      answers: r.answers || {},
+      scores: r.scores || {},
+      createdAt: r.created_at,
+      submittedByName: r.created_by_profile?.full_name || null,
+    }));
+  },
+
   // Persist a patch (name/category/status/schema/scoring/settings) for the
   // open form. Updates local state optimistically; for a local draft (no DB
   // row) it just updates state and reports the unsaved condition.
-  saveForm: async (patch = {}) => {
+  saveForm: async (patch = {}, opts = {}) => {
     const current = get().formBuilderForm;
     if (!current) return false;
     const merged = { ...current, ...patch };
@@ -3266,7 +3297,7 @@ export const useAppStore = create((set, get) => ({
 
     if (typeof current.id === 'string' && current.id.startsWith('local-')) {
       set({ formBuilderSaving: false });
-      get().showToast?.('Saved locally — run forms_migration.sql to persist');
+      if (!opts.silent) get().showToast?.('Saved locally — run forms_migration.sql to persist');
       return false;
     }
 
@@ -3297,7 +3328,7 @@ export const useAppStore = create((set, get) => ({
     }
     _invalidateContentFormsCache();
     set({ formBuilderForm: formRowToJs(data) });
-    get().showToast?.('Form saved');
+    if (!opts.silent) get().showToast?.('Form saved');
     return true;
   },
 

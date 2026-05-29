@@ -7,7 +7,7 @@
  * The working copy (name / fields / scoring) lives in local state; Save pushes
  * it to Supabase via store.saveForm. Opened/closed through editingFormId.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext, DragOverlay, PointerSensor, KeyboardSensor,
   useSensor, useSensors, useDraggable, useDroppable, closestCenter,
@@ -27,10 +27,11 @@ import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { useAppStore } from '../../../store/useAppStore';
 import { PALETTE_TABS, paletteFor } from './componentCatalog';
 import { instantiateInstrument } from './validatedInstruments';
-import { formShareLink } from '../formLink';
+import { formShareLink, copyToClipboard } from '../formLink';
 import { FieldInput } from './FieldInput';
 import { ScorePanel } from './ScorePanel';
 import { PreviewPanel } from './PreviewPanel';
+import { ResponsesPanel } from './ResponsesPanel';
 import styles from './FormBuilder.module.css';
 
 // ── linkId generation + tree helpers (pure) ────────────────────────────────
@@ -378,13 +379,13 @@ export function FormBuilder() {
   const closeFormBuilder = useAppStore((s) => s.closeFormBuilder);
   const showToast = useAppStore((s) => s.showToast);
 
-  const copyShareLink = () => {
+  const copyShareLink = async () => {
     if (typeof form?.id === 'string' && form.id.startsWith('local-')) {
       showToast?.('Save the form first to get a shareable link');
       return;
     }
-    navigator.clipboard?.writeText(formShareLink(form.id));
-    showToast?.('Form link copied to clipboard');
+    const ok = await copyToClipboard(formShareLink(form.id));
+    showToast?.(ok ? 'Shareable form link copied' : 'Could not copy — link: ' + formShareLink(form.id));
   };
 
   const [name, setName] = useState(form?.name || 'Untitled Form');
@@ -396,13 +397,30 @@ export function FormBuilder() {
   const [search, setSearch] = useState('');
   const [activeDrag, setActiveDrag] = useState(null);
 
+  // Skip the auto-save that the very next render would otherwise trigger right
+  // after we (re)load a form's state — we only want to persist real user edits.
+  const skipAutoSave = useRef(true);
+
   // Re-sync when a different form is opened.
   useEffect(() => {
     setName(form?.name || 'Untitled Form');
     setFields(form?.schema?.items || []);
     setScoring(form?.scoring || { scores: [], criticalTriggers: [] });
     setSelectedId(null);
+    skipAutoSave.current = true;
   }, [form?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-save: debounce-persist edits so nothing is lost if the builder is
+  // closed without an explicit Save. Silent (no toast); the Save button stays
+  // for an explicit, confirmed save. Skips unsaved local drafts.
+  useEffect(() => {
+    if (skipAutoSave.current) { skipAutoSave.current = false; return; }
+    if (!form?.id || (typeof form.id === 'string' && form.id.startsWith('local-'))) return;
+    const t = setTimeout(() => {
+      saveForm({ name, schema: { items: fields }, scoring }, { silent: true });
+    }, 800);
+    return () => clearTimeout(t);
+  }, [name, fields, scoring]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -494,7 +512,7 @@ export function FormBuilder() {
         </div>
 
         <Toggle
-          items={[{ key: 'edit', label: 'Edit Form' }, { key: 'score', label: 'Score' }, { key: 'preview', label: 'Preview' }]}
+          items={[{ key: 'edit', label: 'Edit Form' }, { key: 'score', label: 'Score' }, { key: 'preview', label: 'Preview' }, { key: 'responses', label: 'Responses' }]}
           active={mode}
           onChange={setMode}
           size="M"
@@ -548,6 +566,12 @@ export function FormBuilder() {
       {mode === 'preview' && (
         <div className={styles.body}>
           <PreviewPanel fields={fields} scoring={scoring} formName={name} />
+        </div>
+      )}
+
+      {mode === 'responses' && (
+        <div className={styles.body}>
+          <ResponsesPanel formId={form?.id} fields={fields} />
         </div>
       )}
 

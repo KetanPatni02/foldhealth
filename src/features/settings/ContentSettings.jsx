@@ -11,7 +11,7 @@ import { Checkbox } from '../../components/ui/checkbox';
 import { CloseIcon } from '../../components/Icon/CloseIcon';
 import { useAppStore } from '../../store/useAppStore';
 import { EmailPreviewDrawer } from './EmailPreviewDrawer';
-import { formShareLink } from '../forms/formLink';
+import { formShareLink, copyToClipboard } from '../forms/formLink';
 import styles from './ContentSettings.module.css';
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -475,9 +475,9 @@ function FormsTab({ searchVal, onDuplicate, onDelete, bulkMode, selectedIds, onT
   const openFormBuilder   = useAppStore(s => s.openFormBuilder);
   const showToast         = useAppStore(s => s.showToast);
 
-  const copyLink = (form) => {
-    navigator.clipboard?.writeText(formShareLink(form.id));
-    showToast?.('Form link copied to clipboard');
+  const copyLink = async (form) => {
+    const ok = await copyToClipboard(formShareLink(form.id));
+    showToast?.(ok ? 'Shareable form link copied' : 'Could not copy link');
   };
 
   const [page, setPage]       = useState(1);

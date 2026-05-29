@@ -40,8 +40,9 @@ function FormField({ field, answers, onChange, missing }) {
   );
 }
 
-export function FormView() {
-  const formViewId = useAppStore((s) => s.formViewId);
+export function FormView({ id: propId, isPublic = false }) {
+  const storeFormViewId = useAppStore((s) => s.formViewId);
+  const formViewId = propId ?? storeFormViewId;
   const fetchFormById = useAppStore((s) => s.fetchFormById);
   const submitFormResponse = useAppStore((s) => s.submitFormResponse);
   const showToast = useAppStore((s) => s.showToast);
@@ -110,7 +111,7 @@ export function FormView() {
           <Icon name="solar:clipboard-text-linear" size={18} color="var(--primary-300)" />
           {form?.name || 'Form'}
         </span>
-        <CloseButton onClick={close} />
+        {!isPublic && <CloseButton onClick={close} />}
       </header>
 
       <div className={styles.scroll}>
