@@ -16,9 +16,12 @@ import { RadioGroup, RadioGroupItem } from '../../components/ui/radio-group';
 import { useTableSort } from '../../components/Table/useTableSort';
 import { SortableHeader } from '../../components/Table/SortableHeader';
 import { AuditLogContent } from './panels/AuditLogDrawer';
+import { IdIcon } from '../../components/Icon/IdIcon';
+import { AddIconMinimalist } from '../../components/Icon/AddIconMinimalist';
+import { CreateInsurancePlanDrawer } from './CreateInsurancePlanDrawer';
 import styles from './AccountPanel.module.css';
 
-const ALL_TABS = ['Users', 'Teams', 'Access Control', 'Locations', 'Holiday Configuration', 'Merged Or Delayed', 'Allowed Phone', 'Allowed Emails'];
+const ALL_TABS = ['Users', 'Teams', 'Access Control', 'Locations', 'Insurance Plans', 'Holiday Configuration', 'Merged Or Delayed', 'Allowed Phone', 'Allowed Emails'];
 
 const ROLE_COLORS = {
   'Physician/Doctor': 'ai-care', 'Nurse': 'toc-engaged', 'Medical Assistant': 'status-scheduled',
@@ -207,6 +210,7 @@ export function AccountPanel() {
   const [editingUser, setEditingUser] = useState(null);
   const [viewingUser, setViewingUser] = useState(null);
   const [showInvite, setShowInvite] = useState(false);
+  const [showCreateInsurance, setShowCreateInsurance] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentUserId, setCurrentUserId] = useState(null);
   const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
@@ -409,25 +413,27 @@ export function AccountPanel() {
         <div className={styles.tabs}>
           <OverflowTabs tabs={ALL_TABS} activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
-        <div className={styles.tabActions}>
-          <div className={styles.searchWrap}>
-            {searchOpen ? (
-              <div className={styles.searchInput}>
-                <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
-                <input autoFocus type="text" placeholder="Search users..." value={searchVal} onChange={e => setSearchVal(e.target.value)} />
-                <button className={styles.searchClose} onClick={() => { setSearchOpen(false); setSearchVal(''); }}>&#x2715;</button>
-              </div>
-            ) : (
-              <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
+        {activeTab !== 'Insurance Plans' && (
+          <div className={styles.tabActions}>
+            <div className={styles.searchWrap}>
+              {searchOpen ? (
+                <div className={styles.searchInput}>
+                  <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
+                  <input autoFocus type="text" placeholder="Search users..." value={searchVal} onChange={e => setSearchVal(e.target.value)} />
+                  <button className={styles.searchClose} onClick={() => { setSearchOpen(false); setSearchVal(''); }}>&#x2715;</button>
+                </div>
+              ) : (
+                <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
+              )}
+            </div>
+            <ActionButton icon="custom:filter" size="L" tooltip="Filter" onClick={() => setStatusFilter(f => f === 'all' ? 'active' : f === 'active' ? 'inactive' : f === 'inactive' ? 'invited' : 'all')} />
+            {statusFilter !== 'all' && (
+              <Badge variant={statusFilter === 'active' ? 'status-completed' : statusFilter === 'invited' ? 'status-queued' : 'status-failed'} label={statusFilter} style={{ textTransform: 'capitalize', cursor: 'pointer' }} onClick={() => setStatusFilter('all')} />
             )}
+            <span className={styles.tabDivider} />
+            <Button variant="secondary" size="L" leadingIcon="solar:add-circle-linear" onClick={() => setShowInvite(true)}>Invite User</Button>
           </div>
-          <ActionButton icon="custom:filter" size="L" tooltip="Filter" onClick={() => setStatusFilter(f => f === 'all' ? 'active' : f === 'active' ? 'inactive' : f === 'inactive' ? 'invited' : 'all')} />
-          {statusFilter !== 'all' && (
-            <Badge variant={statusFilter === 'active' ? 'status-completed' : statusFilter === 'invited' ? 'status-queued' : 'status-failed'} label={statusFilter} style={{ textTransform: 'capitalize', cursor: 'pointer' }} onClick={() => setStatusFilter('all')} />
-          )}
-          <span className={styles.tabDivider} />
-          <Button variant="secondary" size="L" leadingIcon="solar:add-circle-linear" onClick={() => setShowInvite(true)}>Invite User</Button>
-        </div>
+        )}
       </div>
 
       <div className={styles.tableWrap}>
@@ -501,6 +507,8 @@ export function AccountPanel() {
               )}
             </>
           )
+        ) : activeTab === 'Insurance Plans' ? (
+          <InsurancePlansTab onCreateNew={() => setShowCreateInsurance(true)} />
         ) : (
           <div className={styles.emptyState}>
             <Icon name="solar:widget-linear" size={40} color="var(--neutral-150)" />
@@ -531,6 +539,11 @@ export function AccountPanel() {
       {/* Invite User Drawer */}
       {showInvite && (
         <InviteUserDrawer onClose={() => setShowInvite(false)} onInvited={() => { setShowInvite(false); fetchUsers(); }} />
+      )}
+
+      {/* Create Insurance Plan Drawer */}
+      {showCreateInsurance && (
+        <CreateInsurancePlanDrawer onClose={() => setShowCreateInsurance(false)} />
       )}
     </div>
   );
@@ -1413,6 +1426,28 @@ function InviteUserDrawer({ onClose, onInvited }) {
     </Drawer>
   );
 }
+
+/* ── Insurance Plans Tab ── */
+
+function InsurancePlansTab({ onCreateNew }) {
+  return (
+    <div className={styles.insuranceEmpty}>
+      <div className={styles.insuranceEmptyOuterRing}>
+        <div className={styles.insuranceEmptyRing}>
+          <div className={styles.insuranceEmptyInner}>
+            <IdIcon size={36} color="var(--neutral-200)" />
+          </div>
+        </div>
+      </div>
+      <p className={styles.insuranceEmptyText}>No Insurance Plans have been Created.</p>
+      <Button variant="primary" size="L" leadingIconElement={<AddIconMinimalist size={16} color="white" />} onClick={onCreateNew}>
+        Create New
+      </Button>
+    </div>
+  );
+}
+
+/* CreateInsurancePlanDrawer is defined in ./CreateInsurancePlanDrawer.jsx */
 
 function EditUserDrawer({ user, onClose, onSave }) {
   const raw = user._raw || {};
