@@ -3,7 +3,7 @@
  * FormRenderer (honoring the form's layout mode) and submits to form_responses
  * with an engine-evaluated score snapshot.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { Button } from '../../../components/Button/Button';
 import { CloseButton } from '../../../components/CloseButton/CloseButton';
@@ -22,6 +22,7 @@ export function FormView({ id: propId, isPublic = false }) {
   const formViewId = propId ?? storeFormViewId;
   const fetchFormById = useAppStore((s) => s.fetchFormById);
   const submitFormResponse = useAppStore((s) => s.submitFormResponse);
+  const savePartialResponse = useAppStore((s) => s.savePartialResponse);
   const showToast = useAppStore((s) => s.showToast);
 
   const [form, setForm] = useState(null);
@@ -29,6 +30,11 @@ export function FormView({ id: propId, isPublic = false }) {
   const [answers, setAnswers] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  // Drop-off tracking: one stable session id per fill (survives a refresh).
+  const sessionIdRef = useRef(null);
+  const submittedRef = useRef(false);
+  const saveTimer = useRef(null);
 
   useEffect(() => {
     let active = true;
@@ -41,8 +47,36 @@ export function FormView({ id: propId, isPublic = false }) {
     return () => { active = false; };
   }, [formViewId, fetchFormById]);
 
+  useEffect(() => {
+    const key = `formSession:${formViewId}`;
+    let sid = null;
+    try { sid = sessionStorage.getItem(key); } catch { /* private mode */ }
+    if (!sid) {
+      sid = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${formViewId}-${Math.random().toString(36).slice(2)}`;
+      try { sessionStorage.setItem(key, sid); } catch { /* ignore */ }
+    }
+    sessionIdRef.current = sid;
+    submittedRef.current = false;
+  }, [formViewId]);
+
   const items = useMemo(() => form?.schema?.items || [], [form]);
   const setAnswer = (linkId, v) => setAnswers((prev) => ({ ...prev, [linkId]: v }));
+
+  const countAnswered = (a) => Object.values(a).filter((v) => v != null && v !== '' && !(Array.isArray(v) && v.length === 0)).length;
+
+  // Auto-save partial progress (debounced) from the first answer onward, so an
+  // abandoned fill is recorded as an in-progress (Pending) response.
+  useEffect(() => {
+    if (submittedRef.current || !form?.id) return undefined;
+    const answered = countAnswered(answers);
+    if (answered === 0) return undefined;
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      if (submittedRef.current) return;
+      savePartialResponse(form.id, { sessionId: sessionIdRef.current, answers, answeredCount: answered });
+    }, 1200);
+    return () => clearTimeout(saveTimer.current);
+  }, [answers, form?.id, savePartialResponse]);
   const settings = form?.settings;
   // Paged layouts show their own end screen inside FormRenderer; only the
   // entire-page layout falls back to this view's thank-you.
@@ -56,6 +90,9 @@ export function FormView({ id: propId, isPublic = false }) {
   // FormRenderer validates (per step + full form) before calling this; here we
   // just score + persist.
   const handleSubmit = async () => {
+    // Stop autosave so a late debounce can't revert the row to in-progress.
+    submittedRef.current = true;
+    clearTimeout(saveTimer.current);
     setSubmitting(true);
     let scoreSnapshot = {};
     try {
@@ -65,8 +102,16 @@ export function FormView({ id: propId, isPublic = false }) {
       );
       scoreSnapshot = { scores: result.scores, criticalsTriggered: result.criticalsTriggered };
     } catch { /* submit answers even if scoring fails */ }
-    const ok = await submitFormResponse(form.id, answers, scoreSnapshot);
+    const ok = await submitFormResponse(form.id, answers, scoreSnapshot, {
+      sessionId: sessionIdRef.current,
+      answeredCount: countAnswered(answers),
+    });
     setSubmitting(false);
+    if (ok) {
+      try { sessionStorage.removeItem(`formSession:${formViewId}`); } catch { /* ignore */ }
+    } else {
+      submittedRef.current = false; // let autosave resume on a failed submit
+    }
     if (ok && !paged) setSubmitted(true); // paged → FormRenderer shows its end screen
     return ok;
   };

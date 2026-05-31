@@ -3357,16 +3357,57 @@ export const useAppStore = create((set, get) => ({
 
   closeFormBuilder: () => set({ editingFormId: null, formBuilderForm: null }),
 
-  // Persist a filled-out form submission. The DB trigger bumps the form's
-  // response_count. `scores` is the engine result snapshot at submit time.
-  submitFormResponse: async (formId, answers, scores = {}) => {
+  // Best-effort autosave of an in-progress fill (drop-off tracking). Upserts one
+  // row per (form_id, session_id); status stays 'in_progress' until submit.
+  // Silently no-ops if the partial-progress migration hasn't been run.
+  savePartialResponse: async (formId, { sessionId, answers, answeredCount = 0 } = {}) => {
+    if (!formId || !sessionId || (typeof formId === 'string' && formId.startsWith('local-'))) return false;
     const createdBy = await get()._resolveUpdatedBy();
-    const { error } = await supabase.from('form_responses').insert({
+    const { error } = await supabase
+      .from('form_responses')
+      .upsert({
+        form_id: formId,
+        session_id: sessionId,
+        answers,
+        answered_count: answeredCount,
+        status: 'in_progress',
+        ...(createdBy ? { created_by: createdBy } : {}),
+      }, { onConflict: 'form_id,session_id' });
+    if (error) {
+      // Missing column/index (migration not run) or RLS — don't break the fill.
+      if (import.meta.env?.DEV) console.warn('savePartialResponse skipped:', error.message);
+      return false;
+    }
+    return true;
+  },
+
+  // Persist a completed form submission. When a sessionId is present we upsert
+  // the existing in-progress row to 'completed' (so it leaves the Pending list);
+  // otherwise we insert a fresh completed row. The DB trigger keeps
+  // forms.response_count in sync. `scores` is the engine snapshot at submit time.
+  submitFormResponse: async (formId, answers, scores = {}, opts = {}) => {
+    const { sessionId, answeredCount } = opts;
+    const createdBy = await get()._resolveUpdatedBy();
+    const base = {
       form_id: formId,
       answers,
       scores,
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+      ...(answeredCount != null ? { answered_count: answeredCount } : {}),
       ...(createdBy ? { created_by: createdBy } : {}),
-    });
+    };
+    let error;
+    if (sessionId) {
+      ({ error } = await supabase
+        .from('form_responses')
+        .upsert({ ...base, session_id: sessionId }, { onConflict: 'form_id,session_id' }));
+      // Fall back to a plain insert if the unique index/columns don't exist yet.
+      if (error) ({ error } = await supabase.from('form_responses').insert({ form_id: formId, answers, scores, ...(createdBy ? { created_by: createdBy } : {}) }));
+    } else {
+      ({ error } = await supabase.from('form_responses').insert(base));
+      if (error) ({ error } = await supabase.from('form_responses').insert({ form_id: formId, answers, scores, ...(createdBy ? { created_by: createdBy } : {}) }));
+    }
     if (error) {
       console.error('submitFormResponse error:', error);
       return false;
@@ -3374,8 +3415,9 @@ export const useAppStore = create((set, get) => ({
     return true;
   },
 
-  // All submissions for a form (newest first), with the submitter's name when
-  // the created_by → profiles FK resolves.
+  // All responses for a form (newest first), with the submitter's name when the
+  // created_by → profiles FK resolves. Includes both completed submissions and
+  // in-progress (Pending) fills; callers split on `status`.
   fetchFormResponses: async (formId) => {
     if (!formId || (typeof formId === 'string' && formId.startsWith('local-'))) return [];
     const sel = '*, created_by_profile:profiles!created_by(id, full_name)';
@@ -3397,6 +3439,11 @@ export const useAppStore = create((set, get) => ({
       scores: r.scores || {},
       createdAt: r.created_at,
       submittedByName: r.created_by_profile?.full_name || null,
+      // Pre-migration rows have no status column → treat as completed.
+      status: r.status || 'completed',
+      startedAt: r.started_at || r.created_at,
+      completedAt: r.completed_at || null,
+      answeredCount: r.answered_count ?? null,
     }));
   },
 

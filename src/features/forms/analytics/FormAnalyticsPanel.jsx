@@ -9,6 +9,7 @@ import { useAppStore } from '../../../store/useAppStore';
 import { InsightView } from './InsightView';
 import { ReportView } from './ReportView';
 import { ResponsesView } from './ResponsesView';
+import { splitByStatus } from './aggregate';
 import styles from './FormAnalyticsPanel.module.css';
 
 const SUB_TABS = [
@@ -24,6 +25,7 @@ export function FormAnalyticsPanel({ formId, fields, scoring, formName }) {
   const [loading, setLoading] = useState(true);
 
   const isLocal = typeof formId === 'string' && String(formId).startsWith('local-');
+  const { completed, pending } = splitByStatus(responses);
 
   useEffect(() => {
     let active = true;
@@ -69,13 +71,13 @@ export function FormAnalyticsPanel({ formId, fields, scoring, formName }) {
           <span className={styles.emptyDesc}>Share the form link to start collecting responses, then return here for insights.</span>
         </div>
       ) : tab === 'responses' ? (
-        <ResponsesView fields={fields} scoring={scoring} formName={formName} responses={responses} />
+        <ResponsesView fields={fields} scoring={scoring} formName={formName} completed={completed} pending={pending} />
       ) : (
         <div className={styles.scrollArea}>
           {tab === 'insight' && (
-            <InsightView fields={fields} scoring={scoring} responses={responses} onViewResponses={() => setTab('responses')} />
+            <InsightView fields={fields} scoring={scoring} completed={completed} pending={pending} onViewResponses={() => setTab('responses')} />
           )}
-          {tab === 'report' && <ReportView fields={fields} responses={responses} />}
+          {tab === 'report' && <ReportView fields={fields} responses={completed} />}
         </div>
       )}
     </div>

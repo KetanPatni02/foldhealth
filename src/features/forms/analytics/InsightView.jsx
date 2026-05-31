@@ -5,21 +5,22 @@
  */
 import { Icon } from '../../../components/Icon/Icon';
 import { DonutChart, AvgScoreLineChart } from './FormCharts';
-import { completionStats, scoreGroupStats, averageScoreSeries } from './aggregate';
+import { completionStats, scoreGroupStats, averageScoreSeries, dropOffStats } from './aggregate';
 import { SEV_COLOR, dateRangeLabel } from './formAnalyticsUi';
 import styles from './FormAnalyticsPanel.module.css';
 
-const RESP_COLORS = ['#7C9CD6', '#B7C8E8', '#7FD1B0'];
+const RESP_COLORS = ['#7FD1B0', '#E0B27C'];
 
-export function InsightView({ fields, scoring, responses, onViewResponses }) {
-  const c = completionStats(fields, responses);
-  const groups = scoreGroupStats(scoring, responses);
-  const series = averageScoreSeries(scoring, responses);
+export function InsightView({ fields, scoring, completed, pending, onViewResponses }) {
+  const all = [...completed, ...pending];
+  const c = completionStats(fields, completed);
+  const drop = dropOffStats(completed, pending);
+  const groups = scoreGroupStats(scoring, completed);
+  const series = averageScoreSeries(scoring, completed);
 
   const donutData = [
-    { label: 'Responded', count: c.responded },
-    { label: 'In Progress', count: c.inProgress },
-    { label: 'Not Started', count: c.notStarted },
+    { label: 'Completed', count: drop.completed },
+    { label: 'In Progress', count: drop.pending },
   ];
 
   return (
@@ -27,7 +28,7 @@ export function InsightView({ fields, scoring, responses, onViewResponses }) {
       <div className={styles.viewHead}>
         <span className={styles.viewTitle}>Form Insights</span>
         <span className={styles.rangeChip}>
-          {dateRangeLabel(responses)}
+          {dateRangeLabel(all)}
           <Icon name="solar:calendar-linear" size={15} color="var(--neutral-300)" />
         </span>
       </div>
@@ -44,8 +45,13 @@ export function InsightView({ fields, scoring, responses, onViewResponses }) {
         </div>
         <div className={styles.statCard}>
           <span className={styles.statLabel}>Responses</span>
-          <span className={styles.statValue}>{c.total}</span>
+          <span className={styles.statValue}>{drop.completed}</span>
           <button className={styles.statLink} onClick={onViewResponses}>View all</button>
+        </div>
+        <div className={styles.statCard}>
+          <span className={styles.statLabel}>Drop-off Rate</span>
+          <span className={styles.statValue} style={{ color: drop.dropOffRate > 0 ? 'var(--status-warning)' : 'var(--neutral-500)' }}>{drop.dropOffRate}%</span>
+          <span className={styles.statSub}>{drop.pending} of {drop.started} left incomplete</span>
         </div>
       </div>
 
@@ -55,14 +61,14 @@ export function InsightView({ fields, scoring, responses, onViewResponses }) {
           <div className={styles.cardHead}>
             <div>
               <div className={styles.cardTitle}>Form Responses</div>
-              <div className={styles.cardSub}>Summary of all the form responses</div>
+              <div className={styles.cardSub}>Completed vs in-progress fills</div>
             </div>
             <div className={styles.totalUsers}>
-              <span className={styles.totalUsersLabel}>Total Responses</span>
-              <span className={styles.totalUsersValue}>{c.total}</span>
+              <span className={styles.totalUsersLabel}>Total Started</span>
+              <span className={styles.totalUsersValue}>{drop.started}</span>
             </div>
           </div>
-          {c.total === 0 ? (
+          {drop.started === 0 ? (
             <div className={styles.emptyAnswers}>No responses yet.</div>
           ) : (
             <div className={styles.donutBlock}>
@@ -86,7 +92,7 @@ export function InsightView({ fields, scoring, responses, onViewResponses }) {
           <div className={styles.cardHead}>
             <div>
               <div className={styles.cardTitle}>Average Score</div>
-              <div className={styles.cardSub}>{dateRangeLabel(responses)}</div>
+              <div className={styles.cardSub}>{dateRangeLabel(all)}</div>
             </div>
             <div className={styles.cardActions}>
               <Icon name="solar:info-circle-linear" size={18} />

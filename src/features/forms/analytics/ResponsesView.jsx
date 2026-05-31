@@ -31,21 +31,25 @@ function QaRow({ field, response, avg }) {
   );
 }
 
-export function ResponsesView({ fields, scoring, formName, responses }) {
+export function ResponsesView({ fields, scoring, formName, completed, pending }) {
   const [query, setQuery] = useState('');
   const [tab, setTab] = useState('responded');
-  const [activeId, setActiveId] = useState(responses[0]?.id ?? null);
+  const [activeId, setActiveId] = useState(completed[0]?.id ?? pending[0]?.id ?? null);
   const leaves = useMemo(() => leafFields(fields), [fields]);
 
-  const filtered = useMemo(() => {
+  const source = tab === 'responded' ? completed : pending;
+  const detailList = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return responses.filter((r) => !q || (r.submittedByName || 'Anonymous').toLowerCase().includes(q));
-  }, [responses, query]);
+    return source.filter((r) => !q || (r.submittedByName || 'Anonymous').toLowerCase().includes(q));
+  }, [source, query]);
 
-  const active = responses.find((r) => r.id === activeId) || filtered[0] || null;
+  const all = useMemo(() => [...completed, ...pending], [completed, pending]);
+  const active = all.find((r) => r.id === activeId) || detailList[0] || null;
+  const activeIsPending = active?.status === 'in_progress';
   const scoreDefs = scoring?.scores || [];
 
-  const detailList = tab === 'responded' ? filtered : [];
+  // Cross-response averages are computed over completed submissions only.
+  const avgSource = completed;
 
   return (
     <div className={styles.respLayout}>
@@ -56,10 +60,10 @@ export function ResponsesView({ fields, scoring, formName, responses }) {
         </div>
         <div className={styles.respTabs}>
           <button className={`${styles.respTab} ${tab === 'responded' ? styles.respTabActive : ''}`} onClick={() => setTab('responded')}>
-            Responded <span className={styles.respTabCount}>{filtered.length}</span>
+            Responded <span className={styles.respTabCount}>{completed.length}</span>
           </button>
           <button className={`${styles.respTab} ${tab === 'pending' ? styles.respTabActive : ''}`} onClick={() => setTab('pending')}>
-            Pending <span className={styles.respTabCount}>0</span>
+            Pending <span className={styles.respTabCount}>{pending.length}</span>
           </button>
         </div>
         <div className={styles.respItems}>
@@ -71,12 +75,15 @@ export function ResponsesView({ fields, scoring, formName, responses }) {
           ) : (
             detailList.map((r) => {
               const name = r.submittedByName || 'Anonymous';
+              const isPending = r.status === 'in_progress';
               return (
                 <button key={r.id} className={`${styles.respItem} ${r.id === active?.id ? styles.respItemActive : ''}`} onClick={() => setActiveId(r.id)}>
                   <span className={styles.avatar}>{initials(name)}</span>
                   <span className={styles.respItemBody}>
                     <span className={styles.respName}>{name}</span>
-                    <span className={styles.respSub}>Received {fmtDate(r.createdAt)}</span>
+                    <span className={styles.respSub}>
+                      {isPending ? `Started ${fmtDate(r.startedAt)}` : `Received ${fmtDate(r.createdAt)}`}
+                    </span>
                   </span>
                   <Icon name="solar:alt-arrow-right-linear" size={14} color="var(--neutral-200)" />
                 </button>
@@ -106,11 +113,13 @@ export function ResponsesView({ fields, scoring, formName, responses }) {
                       <span className={styles.avatar} style={{ width: 40, height: 40, fontSize: 14 }}>{initials(name)}</span>
                       <div>
                         <div className={styles.detailName}>{name}</div>
-                        <div className={styles.detailMeta}>{formName} · response</div>
+                        <div className={styles.detailMeta}>{formName} · {activeIsPending ? 'in progress' : 'response'}</div>
                       </div>
                     </div>
                     <div className={styles.detailDates}>
-                      <div>Received on:<strong>{fmtDate(active.createdAt)}</strong></div>
+                      {activeIsPending
+                        ? <div>Started on:<strong>{fmtDate(active.startedAt)}</strong></div>
+                        : <div>Received on:<strong>{fmtDate(active.createdAt)}</strong></div>}
                     </div>
                   </div>
 
@@ -120,38 +129,52 @@ export function ResponsesView({ fields, scoring, formName, responses }) {
                       <span className={styles.statChip}>Answered <span className={styles.statChipNum}>{comp.answered}</span></span>
                       <span className={styles.statChip}>Not Answered <span className={styles.statChipNum}>{comp.notAnswered}</span></span>
                     </div>
-                    {scoreDefs.length > 0 && (
+                    {!activeIsPending && scoreDefs.length > 0 && (
                       <span className={styles.linkedScores}>{scoreDefs.length} Linked Score Group{scoreDefs.length === 1 ? '' : 's'}</span>
                     )}
                   </div>
 
-                  {/* All questions */}
-                  {leaves.map((f) => (
-                    <QaRow key={f.linkId} field={f} response={active} avg={answerAverage(f, responses)} />
-                  ))}
+                  {/* Questions — for an in-progress fill, only the answered ones. */}
+                  {leaves
+                    .filter((f) => !activeIsPending || (active.answers?.[f.linkId] != null && active.answers[f.linkId] !== ''))
+                    .map((f) => (
+                      <QaRow key={f.linkId} field={f} response={active} avg={answerAverage(f, avgSource)} />
+                    ))}
 
-                  {/* Score group sections */}
-                  {scoreDefs.map((def) => {
-                    const snap = (active.scores?.scores || []).find((s) => s.id === def.id);
-                    const members = (def.sources || []).map((s) => leaves.find((f) => f.linkId === s.linkId)).filter(Boolean);
-                    return (
-                      <div key={def.id}>
-                        <div className={styles.sgSectionHead}>
-                          <span className={styles.sgSectionTitle}>Score Group:<strong> {def.label}</strong></span>
-                          <span className={styles.sgSectionMeta}>
-                            Interpretation:
-                            <strong style={{ color: snap?.band ? SEV_COLOR[snap.band.severity] : 'var(--neutral-400)' }}>
-                              {snap?.band?.label || 'NA'}
-                            </strong>
-                            <span style={{ marginLeft: 16 }}>Score:<strong>{snap?.value ?? '—'}</strong></span>
-                          </span>
-                        </div>
-                        {members.map((f) => (
-                          <QaRow key={f.linkId} field={f} response={active} avg={answerAverage(f, responses)} />
-                        ))}
+                  {activeIsPending ? (
+                    <div className={styles.incompleteBox}>
+                      <Icon name="solar:clipboard-remove-linear" size={36} color="var(--neutral-150)" />
+                      <span className={styles.incompleteTitle}>Form Incomplete</span>
+                      <span className={styles.incompleteDesc}>This user started but hasn’t completed the form yet.</span>
+                      <div className={styles.statusCard}>
+                        <span className={styles.statusCardLabel}>Status</span>
+                        <span className={styles.statusCardValue}>In Progress</span>
                       </div>
-                    );
-                  })}
+                    </div>
+                  ) : (
+                    /* Score group sections (completed responses only) */
+                    scoreDefs.map((def) => {
+                      const snap = (active.scores?.scores || []).find((s) => s.id === def.id);
+                      const members = (def.sources || []).map((s) => leaves.find((f) => f.linkId === s.linkId)).filter(Boolean);
+                      return (
+                        <div key={def.id}>
+                          <div className={styles.sgSectionHead}>
+                            <span className={styles.sgSectionTitle}>Score Group:<strong> {def.label}</strong></span>
+                            <span className={styles.sgSectionMeta}>
+                              Interpretation:
+                              <strong style={{ color: snap?.band ? SEV_COLOR[snap.band.severity] : 'var(--neutral-400)' }}>
+                                {snap?.band?.label || 'NA'}
+                              </strong>
+                              <span style={{ marginLeft: 16 }}>Score:<strong>{snap?.value ?? '—'}</strong></span>
+                            </span>
+                          </div>
+                          {members.map((f) => (
+                            <QaRow key={f.linkId} field={f} response={active} avg={answerAverage(f, avgSource)} />
+                          ))}
+                        </div>
+                      );
+                    })
+                  )}
                 </>
               );
             })()}

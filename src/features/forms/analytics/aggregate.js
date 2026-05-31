@@ -7,6 +7,21 @@
  */
 import { isAnswered } from '../scoring/util';
 
+/** Split raw responses into completed submissions and in-progress (Pending) fills. */
+export function splitByStatus(responses) {
+  const completed = (responses || []).filter((r) => r.status !== 'in_progress');
+  const pending = (responses || []).filter((r) => r.status === 'in_progress');
+  return { completed, pending };
+}
+
+/** Drop-off = started-but-not-completed / started. */
+export function dropOffStats(completed, pending) {
+  const c = completed.length;
+  const p = pending.length;
+  const started = c + p;
+  return { completed: c, pending: p, started, dropOffRate: started ? Math.round((p / started) * 100) : 0 };
+}
+
 /** Flatten the field tree to answerable, non-display leaves. */
 export function leafFields(fields) {
   const out = [];

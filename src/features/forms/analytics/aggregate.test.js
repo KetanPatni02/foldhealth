@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   leafFields, completionStats, questionStats, scoreGroupStats, averageScoreSeries, answerAverage,
+  splitByStatus, dropOffStats,
 } from './aggregate';
 
 const fields = [
@@ -76,6 +77,28 @@ describe('averageScoreSeries', () => {
   });
   it('empty when no scores defined', () => {
     expect(averageScoreSeries({ scores: [] }, responses)).toEqual([]);
+  });
+});
+
+describe('splitByStatus / dropOffStats', () => {
+  const rows = [
+    { id: 1, status: 'completed', answers: {}, scores: {} },
+    { id: 2, status: 'in_progress', answers: {}, scores: {} },
+    { id: 3, status: 'in_progress', answers: {}, scores: {} },
+    { id: 4, answers: {}, scores: {} }, // pre-migration row → completed
+  ];
+  it('splits completed vs in-progress (missing status = completed)', () => {
+    const { completed, pending } = splitByStatus(rows);
+    expect(completed.map((r) => r.id)).toEqual([1, 4]);
+    expect(pending.map((r) => r.id)).toEqual([2, 3]);
+  });
+  it('computes drop-off rate = pending / started', () => {
+    const { completed, pending } = splitByStatus(rows);
+    const d = dropOffStats(completed, pending);
+    expect(d).toEqual({ completed: 2, pending: 2, started: 4, dropOffRate: 50 });
+  });
+  it('drop-off is 0 with no responses', () => {
+    expect(dropOffStats([], [])).toEqual({ completed: 0, pending: 0, started: 0, dropOffRate: 0 });
   });
 });
 
