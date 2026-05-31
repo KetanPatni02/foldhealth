@@ -3215,6 +3215,14 @@ export const useAppStore = create((set, get) => ({
   editingFormId: null,
   formBuilderForm: null,
   formBuilderSaving: false,
+  // Active builder tab + Analytics sub-tab, mirrored into the URL hash so a
+  // refresh restores the exact view. Set by the router (_pending*) on reload.
+  formBuilderMode: 'edit',          // 'edit' | 'score' | 'preview' | 'analytics'
+  formAnalyticsTab: 'insight',      // 'insight' | 'report' | 'responses'
+  _pendingFormMode: null,           // set by router on refresh
+  _pendingFormAnalyticsTab: null,   // set by router on refresh
+  setFormBuilderMode: (mode) => { set({ formBuilderMode: mode }); updateHash(get); },
+  setFormAnalyticsTab: (tab) => { set({ formAnalyticsTab: tab }); updateHash(get); },
   // Shareable form fill-view (#/f/{id}); the router sets formViewId on nav.
   formViewId: null,
   closeFormView: () => set({ formViewId: null }),
@@ -3351,11 +3359,18 @@ export const useAppStore = create((set, get) => ({
         _invalidateContentFormsCache();
       }
     }
-    set({ editingFormId: form.id, formBuilderForm: form });
+    // Always open on the Edit tab; a refresh into a specific tab is applied
+    // afterward by the AppLayout hydration effect (from _pendingFormMode), which
+    // avoids a stale pending value leaking into a later open-from-list.
+    set({ editingFormId: form.id, formBuilderForm: form, formBuilderMode: 'edit', formAnalyticsTab: 'insight' });
+    updateHash(get);
     return form.id;
   },
 
-  closeFormBuilder: () => set({ editingFormId: null, formBuilderForm: null }),
+  closeFormBuilder: () => {
+    set({ editingFormId: null, formBuilderForm: null, formBuilderMode: 'edit', formAnalyticsTab: 'insight' });
+    updateHash(get);
+  },
 
   // Best-effort autosave of an in-progress fill (drop-off tracking). Upserts one
   // row per (form_id, session_id); status stays 'in_progress' until submit.

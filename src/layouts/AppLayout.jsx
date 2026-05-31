@@ -323,7 +323,10 @@ export function AppLayout() {
     })();
   }, []);
 
-  // Re-open the form builder on page refresh of #/settings/content/forms/{id}.
+  // Re-open the form builder on page refresh of
+  // #/settings/content/forms/{id}/{mode}[/{analyticsTab}]. openFormBuilder opens
+  // on Edit; we then restore the tab from _pendingFormMode (via the store setters
+  // so the URL stays in sync).
   useEffect(() => {
     const pendingForm = useAppStore.getState()._pendingFormEditId;
     if (!pendingForm) return;
@@ -332,11 +335,14 @@ export function AppLayout() {
         isNaN(Number(pendingForm)) ? pendingForm : Number(pendingForm),
       );
       if (full) {
+        const { _pendingFormMode: mode, _pendingFormAnalyticsTab: subTab } = useAppStore.getState();
         await useAppStore.getState().openFormBuilder(full);
+        if (mode && mode !== 'edit') useAppStore.getState().setFormBuilderMode(mode);
+        if (mode === 'analytics' && subTab) useAppStore.getState().setFormAnalyticsTab(subTab);
       } else {
         useAppStore.setState({ editingFormId: null, formBuilderForm: null });
       }
-      useAppStore.setState({ _pendingFormEditId: null });
+      useAppStore.setState({ _pendingFormEditId: null, _pendingFormMode: null, _pendingFormAnalyticsTab: null });
     })();
   }, []);
 

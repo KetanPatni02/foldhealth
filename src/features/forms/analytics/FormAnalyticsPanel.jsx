@@ -20,7 +20,9 @@ const SUB_TABS = [
 
 export function FormAnalyticsPanel({ formId, fields, scoring, formName }) {
   const fetchFormResponses = useAppStore((s) => s.fetchFormResponses);
-  const [tab, setTab] = useState('insight');
+  // Sub-tab lives in the store so it's mirrored into the URL (refresh-safe).
+  const tab = useAppStore((s) => s.formAnalyticsTab);
+  const setTab = useAppStore((s) => s.setFormAnalyticsTab);
   const [responses, setResponses] = useState([]);
   const [loading, setLoading] = useState(true);
 

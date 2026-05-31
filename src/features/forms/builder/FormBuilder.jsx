@@ -390,6 +390,9 @@ export function FormBuilder() {
   const saveForm = useAppStore((s) => s.saveForm);
   const closeFormBuilder = useAppStore((s) => s.closeFormBuilder);
   const showToast = useAppStore((s) => s.showToast);
+  // Active tab lives in the store so it's mirrored into the URL (refresh-safe).
+  const mode = useAppStore((s) => s.formBuilderMode);
+  const setMode = useAppStore((s) => s.setFormBuilderMode);
 
   const copyShareLink = async () => {
     if (typeof form?.id === 'string' && form.id.startsWith('local-')) {
@@ -404,7 +407,6 @@ export function FormBuilder() {
   const [fields, setFields] = useState(() => form?.schema?.items || []);
   const [scoring, setScoring] = useState(() => form?.scoring || { scores: [], criticalTriggers: [] });
   const [settings, setSettings] = useState(() => ({ ...DEFAULT_SETTINGS, ...(form?.settings || {}) }));
-  const [mode, setMode] = useState('edit');
   const [selectedId, setSelectedId] = useState(null);
   const [paletteTab, setPaletteTab] = useState('health');
   const [search, setSearch] = useState('');

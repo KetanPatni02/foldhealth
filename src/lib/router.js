@@ -13,6 +13,7 @@ export function parseHash() {
     tab: segments[2] || null,
     id: segments[3] || null,
     sub: segments[4] || null,
+    extra: segments[5] || null,
   };
 }
 
@@ -51,8 +52,14 @@ export function stateToHash(state) {
   }
   if (state.editingFormId) {
     // Form builder is always opened from Settings → Content → Forms; keep the
-    // settings path so closing falls back to #/settings/content/forms.
-    return buildHash('settings', 'content', 'forms', String(state.editingFormId));
+    // settings path so closing falls back to #/settings/content/forms. Each
+    // builder tab gets its own path, and Analytics carries its sub-tab too:
+    //   …/forms/{id}/{mode}            (edit|score|preview|analytics)
+    //   …/forms/{id}/analytics/{tab}   (insight|report|responses)
+    const mode = state.formBuilderMode || 'edit';
+    const parts = ['settings', 'content', 'forms', String(state.editingFormId), mode];
+    if (mode === 'analytics') parts.push(state.formAnalyticsTab || 'insight');
+    return buildHash(...parts);
   }
   if (state.campaignBuilderId) {
     return buildHash('campaign', String(state.campaignBuilderId));
@@ -224,10 +231,15 @@ export function hashToState(route) {
       if (route.tab === 'emails' && route.id) {
         updates._pendingEmailEditId = route.id;
       }
-      // Per-form edit: #/settings/content/forms/{id} re-opens the form builder
-      // on top of the listing page (AppLayout hydration uses _pendingFormEditId).
+      // Per-form edit: #/settings/content/forms/{id}/{mode}[/{analyticsTab}]
+      // re-opens the form builder on top of the listing page (AppLayout
+      // hydration uses _pendingFormEditId; openFormBuilder applies the mode).
       if (route.tab === 'forms' && route.id) {
         updates._pendingFormEditId = route.id;
+        const mode = ['edit', 'score', 'preview', 'analytics'].includes(route.sub) ? route.sub : 'edit';
+        updates._pendingFormMode = mode;
+        updates._pendingFormAnalyticsTab = mode === 'analytics' && ['insight', 'report', 'responses'].includes(route.extra)
+          ? route.extra : 'insight';
       }
       return updates;
     }
