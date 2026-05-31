@@ -31,7 +31,7 @@ import { formShareLink, copyToClipboard } from '../formLink';
 import { FieldInput } from './FieldInput';
 import { ScorePanel } from './ScorePanel';
 import { PreviewPanel } from './PreviewPanel';
-import { ResponsesPanel } from './ResponsesPanel';
+import { FormAnalyticsPanel } from '../analytics/FormAnalyticsPanel';
 import { FormSettings } from './FormSettings';
 
 const DEFAULT_SETTINGS = {
@@ -526,7 +526,7 @@ export function FormBuilder() {
         </div>
 
         <Toggle
-          items={[{ key: 'edit', label: 'Edit Form' }, { key: 'score', label: 'Score' }, { key: 'preview', label: 'Preview' }, { key: 'responses', label: 'Responses' }]}
+          items={[{ key: 'edit', label: 'Edit Form' }, { key: 'score', label: 'Score' }, { key: 'preview', label: 'Preview' }, { key: 'analytics', label: 'Analytics' }]}
           active={mode}
           onChange={setMode}
           size="M"
@@ -583,9 +583,9 @@ export function FormBuilder() {
         </div>
       )}
 
-      {mode === 'responses' && (
+      {mode === 'analytics' && (
         <div className={styles.body}>
-          <ResponsesPanel formId={form?.id} fields={fields} />
+          <FormAnalyticsPanel formId={form?.id} fields={fields} scoring={scoring} formName={name} />
         </div>
       )}
 

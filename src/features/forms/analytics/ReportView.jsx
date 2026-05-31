@@ -1,0 +1,94 @@
+/**
+ * Report tab — question-wise breakdown. One card per question: choice questions
+ * get a distribution donut + legend + "Most Voted"; numeric questions get a
+ * votes bar chart; free-text questions list the answers (with Show more).
+ */
+import { useState } from 'react';
+import { Icon } from '../../../components/Icon/Icon';
+import { DonutChart, VotesBarChart } from './FormCharts';
+import { leafFields, questionStats } from './aggregate';
+import { fieldIcon, SERIES_COLORS } from './formAnalyticsUi';
+import styles from './FormAnalyticsPanel.module.css';
+
+function ChoiceBreakdown({ stats }) {
+  const data = stats.distribution.map((d, i) => ({ ...d, color: SERIES_COLORS[i % SERIES_COLORS.length] }));
+  const top = stats.mostVoted;
+  return (
+    <div className={styles.choiceGrid}>
+      <div className={styles.choiceLegend}>
+        {data.map((d, i) => (
+          <div key={i} className={`${styles.choiceRow} ${top && d.label === top.label && top.count > 0 ? styles.choiceRowTop : ''}`}>
+            <span className={styles.legendDot} style={{ background: d.color }} />
+            <span className={styles.choiceLabel}>{d.label}</span>
+            <span className={styles.choiceCount}>{d.count}</span>
+          </div>
+        ))}
+      </div>
+      <DonutChart data={data} height={180} innerRadius={46} outerRadius={78} />
+      {top && top.count > 0 && (
+        <span className={styles.mostVoted}>Most Voted:<strong>{top.label}</strong></span>
+      )}
+    </div>
+  );
+}
+
+function NumericBreakdown({ stats }) {
+  return (
+    <div className={styles.choiceGrid} style={{ gridTemplateColumns: '1fr auto' }}>
+      <VotesBarChart data={stats.distribution} />
+      {stats.mostVoted && stats.mostVoted.count > 0 && (
+        <span className={styles.mostVoted}>Most Voted:<strong>{stats.mostVoted.label}</strong></span>
+      )}
+    </div>
+  );
+}
+
+function TextBreakdown({ stats }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!stats.answers.length) return <div className={styles.emptyAnswers}>No answers yet.</div>;
+  const shown = expanded ? stats.answers : stats.answers.slice(0, 3);
+  return (
+    <div className={styles.answerList}>
+      {shown.map((a, i) => <div key={i} className={styles.answerRow}>{a}</div>)}
+      {stats.answers.length > 3 && (
+        <button className={styles.showMore} onClick={() => setExpanded((e) => !e)}>
+          {expanded ? 'Show less' : `Show more (${stats.answers.length - 3})`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function ReportView({ fields, responses }) {
+  const leaves = leafFields(fields);
+
+  return (
+    <div className={styles.scrollInner}>
+      <div className={styles.viewHead}>
+        <span className={styles.viewTitle}>Question Wise Report</span>
+      </div>
+
+      {leaves.map((field) => {
+        const stats = questionStats(field, responses);
+        return (
+          <div key={field.linkId} className={styles.qCard}>
+            <div className={styles.qHead}>
+              <span className={styles.qIcon}><Icon name={fieldIcon(field)} size={16} color="#fff" /></span>
+              <div className={styles.qHeadText}>
+                <div className={styles.qText}>{field.text}{field.required && <span className={styles.qReq}>*</span>}</div>
+                <div className={styles.qMeta}>{stats.answeredCount} out of {stats.total} {stats.total === 1 ? 'person' : 'people'} answered this question</div>
+              </div>
+            </div>
+            <div className={styles.qBody}>
+              {stats.kind === 'choice' && <ChoiceBreakdown stats={stats} />}
+              {stats.kind === 'numeric' && <NumericBreakdown stats={stats} />}
+              {stats.kind === 'text' && <TextBreakdown stats={stats} />}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export default ReportView;
