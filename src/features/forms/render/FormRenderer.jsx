@@ -86,7 +86,7 @@ function TypeformChoice({ field, value, onChange }) {
   );
 }
 
-function TypeformQuestion({ field, number, answers, onAnswer, missing, onNext }) {
+function TypeformQuestion({ field, number, answers, onAnswer, missing, onNext, btnSize = 'L' }) {
   if (field.type === 'display') {
     return <div className={styles.tfQuestion}><FieldInput field={field} interactive={false} /></div>;
   }
@@ -114,20 +114,20 @@ function TypeformQuestion({ field, number, answers, onAnswer, missing, onNext })
         )}
         {/* OK ↵ button for text-style inputs (mirrors the Typeform affordance) */}
         {isTextInput && (
-          <Button variant="primary" size="L" className={styles.okBtn} onClick={onNext}>OK <EnterBadge /></Button>
+          <Button variant="primary" size={btnSize} className={styles.okBtn} onClick={onNext}>OK <EnterBadge /></Button>
         )}
       </div>
     </div>
   );
 }
 
-function StartScreen({ start, formName, onStart }) {
+function StartScreen({ start, formName, onStart, btnSize = 'L' }) {
   return (
     <div className={styles.tfScreen}>
       <h1 className={styles.tfScreenTitle}>{start?.title || formName || 'Welcome'}</h1>
       {start?.description ? <p className={styles.tfScreenDesc}>{start.description}</p> : null}
       {/* ↵ badge sits inside the button — Typeform style */}
-      <Button variant="primary" size="L" onClick={onStart}>
+      <Button variant="primary" size={btnSize} onClick={onStart}>
         {start?.buttonLabel || 'Start'}<EnterBadge />
       </Button>
     </div>
@@ -183,10 +183,23 @@ export function FormRenderer({
   const [pos, setPos] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [missing, setMissing] = useState(() => new Set());
+  const [isNarrow, setIsNarrow] = useState(
+    () => typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(max-width: 640px)').matches,
+  );
   const rootRef = useRef(null);
   const advanceTimer = useRef(null);
   const answersRef = useRef(answers);
   useEffect(() => { answersRef.current = answers; }, [answers]);
+
+  // Mobile (compact iPhone frame OR a real ≤640px viewport) → XL buttons.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const mq = window.matchMedia('(max-width: 640px)');
+    const update = () => setIsNarrow(mq.matches);
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  const btnSize = compact || isNarrow ? 'XL' : 'L';
 
   useEffect(() => { setStarted(false); setPos(0); setSubmitted(false); setMissing(new Set()); }, [layout, total]);
   useEffect(() => () => clearTimeout(advanceTimer.current), []);
@@ -309,7 +322,7 @@ export function FormRenderer({
   return (
     <div ref={rootRef} tabIndex={-1} onKeyDown={onKeyDown} className={`${sheetClass} ${styles.pagedRoot}`} style={{ fontFamily }}>
       {screen === 'start' ? (
-        <StartScreen start={startCfg} formName={formName} onStart={() => setStarted(true)} />
+        <StartScreen start={startCfg} formName={formName} onStart={() => setStarted(true)} btnSize={btnSize} />
       ) : screen === 'end' ? (
         <EndScreen end={endCfg} />
       ) : (
@@ -325,13 +338,13 @@ export function FormRenderer({
           {/* Question vertically centered in the remaining space */}
           <div className={styles.pagedMain}>
             <div key={safePos} className={styles.stepBox}>
-              <TypeformQuestion field={currentQ.field} number={safePos + 1} answers={answers} onAnswer={handleAnswer} missing={missing} onNext={goNext} />
+              <TypeformQuestion field={currentQ.field} number={safePos + 1} answers={answers} onAnswer={handleAnswer} missing={missing} onNext={goNext} btnSize={btnSize} />
             </div>
           </div>
           {/* Nav pinned to the bottom of the screen */}
           <div className={styles.stepNav}>
-            <Button variant="ghost" size="L" disabled={safePos === 0 && !startEnabled} onClick={goBack} leadingIcon="solar:arrow-left-linear">Back</Button>
-            <Button variant="primary" size="L" disabled={submitting} onClick={goNext}>
+            <Button variant="ghost" size={btnSize} disabled={safePos === 0 && !startEnabled} onClick={goBack} leadingIcon="solar:arrow-left-linear">Back</Button>
+            <Button variant="primary" size={btnSize} disabled={submitting} onClick={goNext}>
               {isLast ? (submitting ? 'Submitting…' : 'Submit') : <>{' Next '}<EnterBadge /></>}
             </Button>
           </div>
