@@ -8,9 +8,28 @@
   padding: var(--py) var(--px); display: flex; flex-direction: column; gap: 24px;
   overflow: hidden; font-family: 'Inter', sans-serif;
 }
+
+/* Paged (Q-by-Q / section) fills the entire available container — white,
+   no card chrome. Progress pinned top, question centered, nav pinned bottom. */
+.pagedSheet {
+  --px: 72px;
+  width: 100%; min-height: 100%;
+  background: var(--neutral-0);
+  display: flex; flex-direction: column;
+  padding: 40px var(--px) 28px;
+  font-family: 'Inter', sans-serif;
+  overflow: hidden;
+  position: relative;
+}
 .pagedRoot { outline: none; }
+/* Centered question region — grows to fill, pushing the nav to the bottom. */
+.pagedMain { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; overflow-y: auto; }
+.pagedMain::-webkit-scrollbar { display: none; }
+.pagedMain { scrollbar-width: none; }
+.stepperWrap { padding-top: 8px; }
+
 /* Mobile / iPhone-frame layout: compact padding, flush edges. */
-.compact { --px: 16px; --py: 20px; max-width: 100%; border-radius: 0; box-shadow: none; margin: 0; min-height: 100%; gap: 18px; }
+.compact { --px: 24px; padding: 32px var(--px) 20px; }
 
 /* Full-bleed header/footer, derived from the sheet padding so they stay flush. */
 .headerBleed { margin: calc(-1 * var(--py)) calc(-1 * var(--px)) 0; }
@@ -32,10 +51,6 @@
 .submitRow { display: flex; justify-content: flex-start; padding-top: 8px; }
 
 /* ── Paged (section / question) chrome ── */
-.progress { display: flex; align-items: center; gap: 10px; }
-.progressTrack { flex: 1 1 0; height: 4px; border-radius: 999px; background: var(--neutral-100); overflow: hidden; }
-.progressFill { height: 100%; background: var(--primary-300); border-radius: 999px; transition: width .3s ease; }
-.progressText { font-size: 12px; color: var(--neutral-300); white-space: nowrap; font-variant-numeric: tabular-nums; }
 
 .stepBox {
   display: flex; flex-direction: column; gap: 16px;
@@ -46,19 +61,44 @@
 .stepBox .label { font-size: 17px; }
 .stepBox .sectionTitle { font-size: 17px; }
 
-.stepNav { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 4px; }
-.kbdHint { font-size: 12px; color: var(--neutral-200); }
-.kbd {
-  font-family: inherit; font-size: 11px; color: var(--neutral-300);
-  background: var(--neutral-50); border: 0.5px solid var(--neutral-150);
-  border-radius: 4px; padding: 1px 6px;
-}
+/* Nav row pinned to the bottom of the paged sheet. */
+.stepNav { display: flex; align-items: center; gap: 12px; padding-top: 16px; flex-shrink: 0; }
 
 /* Real mobile viewport (the standalone #/f/{id} fill view) — full-bleed,
    compact padding. The transform-scaled iPhone preview uses .compact instead. */
 @media (max-width: 640px) {
   .sheet { --px: 16px; --py: 20px; max-width: 100%; border-radius: 0; box-shadow: none; margin: 0; }
+  .pagedSheet { --px: 22px; padding: 36px var(--px) 20px; }
+  .pagedSheet .tfQText { font-size: 22px; line-height: 1.3; }
+  .pagedSheet .tfBody { padding-left: 0; }
+  .pagedSheet .tfScreenTitle { font-size: 24px; }
+  .pagedSheet .tfHead { gap: 10px; }
+  .pagedSheet .stepNav { gap: 8px; }
+  /* Let the primary action stretch on a phone, Back stays compact. */
+  .pagedSheet .stepNav > :last-child { flex: 1 1 0; justify-content: center; }
 }
+
+/* ↵ enter icon shown after a button label — bare icon, inherits color + size */
+.enterBadge { margin-left: 6px; vertical-align: middle; }
+/* OK button — compact Typeform-style, not full-width */
+.okBtn { align-self: flex-start; }
+
+/* Long-text "Shift + Enter to make a line break" hint */
+.lineBreakHint {
+  display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  font-size: 13px; color: var(--neutral-300); margin-top: -4px;
+}
+.lineBreakHint strong { display: inline-flex; align-items: center; gap: 3px; font-weight: 600; color: var(--neutral-400); }
+.lineBreakHint svg { vertical-align: middle; }
+
+/* ── Progress bar pinned to top of the paged sheet ── */
+.progress {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; gap: 10px; padding: 0 0 0 0;
+}
+.progressTrack { flex: 1 1 0; height: 4px; background: var(--primary-100); overflow: hidden; }
+.progressFill { height: 100%; background: var(--primary-300); border-radius: 0; transition: width .3s ease; }
+.progressText { font-size: 12px; color: var(--neutral-300); white-space: nowrap; padding: 10px 16px; font-variant-numeric: tabular-nums; }
 
 /* ── Typeform-style question (paged modes) ── */
 .tfQuestion { display: flex; flex-direction: column; gap: 24px; padding: 8px 0; }
@@ -71,12 +111,29 @@
 .tfHeadText { flex: 1 1 0; min-width: 0; }
 .tfQText { font-size: 26px; line-height: 1.25; font-weight: 600; color: var(--primary-300); }
 .tfDesc { font-size: 15px; font-style: italic; color: var(--primary-200); margin: 8px 0 0; }
-.tfBody { display: flex; flex-direction: column; gap: 10px; padding-left: 36px; }
+.tfBody { display: flex; flex-direction: column; gap: 16px; padding-left: 36px; }
+
+/* Typeform underline-style input/textarea — override the shared chrome.
+   The shared Input/Textarea apply .tfInput directly to the <input>/<textarea>. */
+.tfInput,
+textarea.tfInput,
+.tfInput > input,
+.tfInput input {
+  border: none !important; border-bottom: 2px solid var(--primary-200) !important; border-radius: 0 !important;
+  background: transparent !important; padding: 12px 0 !important; font-size: 18px !important;
+  color: var(--neutral-500) !important; box-shadow: none !important; outline: none !important;
+  width: 100% !important;
+}
+textarea.tfInput { resize: none; line-height: 1.5; min-height: 48px; }
+.tfInput:focus, .tfInput:focus-within,
+.tfInput:focus-within input { border-bottom-color: var(--primary-300) !important; }
+.tfInput::placeholder,
+.tfInput input::placeholder { color: var(--primary-200) !important; font-style: italic !important; }
 
 .tfOptions { display: flex; flex-direction: column; gap: 12px; max-width: 460px; }
 .tfOption {
   display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
-  padding: 14px 18px; border-radius: 999px; border: 1px solid var(--neutral-150);
+  padding: 14px 18px; border-radius: 6px; border: 1px solid var(--neutral-150);
   background: var(--neutral-50); cursor: pointer; transition: border-color .12s, background .12s;
 }
 .tfOption:hover { border-color: var(--primary-200); background: var(--primary-50); }
@@ -89,10 +146,11 @@
 .tfOptionSel .tfLetter { border-color: var(--primary-300); color: var(--primary-300); }
 .tfOptText { flex: 1 1 0; font-size: 17px; color: var(--neutral-500); }
 
-/* Start / End screens */
+/* Start / End screens — fill the paged sheet and center their content. */
 .tfScreen {
+  flex: 1 1 0; align-self: stretch;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 16px; text-align: center; padding: 56px 16px; min-height: 280px;
+  gap: 16px; text-align: center; padding: 24px 16px; min-height: 0;
 }
 .tfScreenTitle { font-size: 30px; font-weight: 700; color: var(--neutral-500); margin: 0; }
 .tfScreenDesc { font-size: 16px; color: var(--neutral-300); margin: 0; max-width: 420px; line-height: 1.5; }

@@ -44,6 +44,27 @@ function FieldNode({ field, answers, onAnswer, missing }) {
   );
 }
 
+// Keyboard glyph icons (provided by design). currentColor so they inherit.
+function EnterIcon({ size = 14, className }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" className={className} style={{ flexShrink: 0 }}>
+      <path d="M9.5 7L4.5 12L9.5 17M4.5 12L14.5 12C16.1667 12 19.5 11 19.5 7" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function ShiftIcon({ size = 13 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 3 4 11h4v8h8v-8h4L12 3Z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// Bare ↵ icon shown after a button label — inherits the label's color + size.
+function EnterBadge() {
+  return <EnterIcon size="1.05em" className={styles.enterBadge} />;
+}
+
 // ── Typeform-style single question (big text + lettered option cards) ──
 function TypeformChoice({ field, value, onChange }) {
   const multi = field.control === 'checkbox';
@@ -65,10 +86,12 @@ function TypeformChoice({ field, value, onChange }) {
   );
 }
 
-function TypeformQuestion({ field, number, answers, onAnswer, missing }) {
+function TypeformQuestion({ field, number, answers, onAnswer, missing, onNext }) {
   if (field.type === 'display') {
     return <div className={styles.tfQuestion}><FieldInput field={field} interactive={false} /></div>;
   }
+  const isTextInput = ['string', 'text', 'integer', 'decimal', 'date'].includes(field.type);
+  const isChoice = field.type === 'choice';
   return (
     <div className={styles.tfQuestion}>
       <div className={styles.tfHead}>
@@ -79,10 +102,20 @@ function TypeformQuestion({ field, number, answers, onAnswer, missing }) {
         </div>
       </div>
       <div className={styles.tfBody}>
-        {field.type === 'choice'
+        {isChoice
           ? <TypeformChoice field={field} value={answers[field.linkId]} onChange={(v) => onAnswer(field.linkId, v)} />
-          : <FieldInput field={field} interactive value={answers[field.linkId]} onChange={(v) => onAnswer(field.linkId, v)} />}
+          : <FieldInput field={field} interactive value={answers[field.linkId]} onChange={(v) => onAnswer(field.linkId, v)} className={styles.tfInput} />}
         {missing.has(field.linkId) ? <span className={styles.missing}>This field is required.</span> : null}
+        {/* Long text gets the "Shift + Enter = line break" affordance, like Typeform */}
+        {field.type === 'text' && (
+          <span className={styles.lineBreakHint}>
+            <strong>Shift <ShiftIcon /></strong> + <strong>Enter <EnterIcon size={12} /></strong> to make a line break
+          </span>
+        )}
+        {/* OK ↵ button for text-style inputs (mirrors the Typeform affordance) */}
+        {isTextInput && (
+          <Button variant="primary" size="L" className={styles.okBtn} onClick={onNext}>OK <EnterBadge /></Button>
+        )}
       </div>
     </div>
   );
@@ -93,8 +126,10 @@ function StartScreen({ start, formName, onStart }) {
     <div className={styles.tfScreen}>
       <h1 className={styles.tfScreenTitle}>{start?.title || formName || 'Welcome'}</h1>
       {start?.description ? <p className={styles.tfScreenDesc}>{start.description}</p> : null}
-      <Button variant="primary" size="XL" onClick={onStart}>{start?.buttonLabel || 'Start'}</Button>
-      <span className={styles.kbdHint}>press <kbd className={styles.kbd}>Enter ↵</kbd></span>
+      {/* ↵ badge sits inside the button — Typeform style */}
+      <Button variant="primary" size="L" onClick={onStart}>
+        {start?.buttonLabel || 'Start'}<EnterBadge />
+      </Button>
     </div>
   );
 }
@@ -212,7 +247,8 @@ export function FormRenderer({
     if (screen === 'end') return;
     const tag = e.target.tagName;
     const isTextEntry = tag === 'TEXTAREA' || (tag === 'INPUT' && ['text', 'email', 'tel', 'number', 'search', 'date'].includes(e.target.type));
-    if (e.key === 'Enter' && tag !== 'TEXTAREA' && !e.shiftKey) { e.preventDefault(); goNext(); return; }
+    // Enter advances (incl. textarea); Shift+Enter in a textarea makes a line break.
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); goNext(); return; }
     if (isTextEntry) return;
     if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); goNext(); return; }
     if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); goBack(); return; }
@@ -233,7 +269,10 @@ export function FormRenderer({
   }, [safePos, screen, paged]);
 
   const fontFamily = getFontStack(settings?.fontFamily);
-  const sheetClass = `${styles.sheet} ${compact ? styles.compact : ''}`;
+  // Paged views fill the device frame; entire-page keeps the card look.
+  const sheetClass = paged
+    ? `${styles.pagedSheet} ${compact ? styles.compact : ''}`
+    : `${styles.sheet} ${compact ? styles.compact : ''}`;
 
   // ── Entire page ──
   if (!paged) {
@@ -275,21 +314,25 @@ export function FormRenderer({
         <EndScreen end={endCfg} />
       ) : (
         <>
-          {sections ? <SectionStepper sections={sections} current={currentSection} /> : null}
+          {/* Progress bar pinned to the very top edge */}
           <div className={styles.progress}>
             <div className={styles.progressTrack}><div className={styles.progressFill} style={{ width: `${((safePos + 1) / total) * 100}%` }} /></div>
             <span className={styles.progressText}>
               {sections ? `Section ${currentSection + 1} of ${sections.length}` : `${safePos + 1} of ${total}`}
             </span>
           </div>
-          <div key={safePos} className={styles.stepBox}>
-            <TypeformQuestion field={currentQ.field} number={safePos + 1} answers={answers} onAnswer={handleAnswer} missing={missing} />
+          {sections ? <div className={styles.stepperWrap}><SectionStepper sections={sections} current={currentSection} /></div> : null}
+          {/* Question vertically centered in the remaining space */}
+          <div className={styles.pagedMain}>
+            <div key={safePos} className={styles.stepBox}>
+              <TypeformQuestion field={currentQ.field} number={safePos + 1} answers={answers} onAnswer={handleAnswer} missing={missing} onNext={goNext} />
+            </div>
           </div>
+          {/* Nav pinned to the bottom of the screen */}
           <div className={styles.stepNav}>
             <Button variant="ghost" size="L" disabled={safePos === 0 && !startEnabled} onClick={goBack} leadingIcon="solar:arrow-left-linear">Back</Button>
-            <span className={styles.kbdHint}>press <kbd className={styles.kbd}>Enter ↵</kbd></span>
             <Button variant="primary" size="L" disabled={submitting} onClick={goNext}>
-              {isLast ? (submitting ? 'Submitting…' : 'Submit') : 'Next'}
+              {isLast ? (submitting ? 'Submitting…' : 'Submit') : <>{' Next '}<EnterBadge /></>}
             </Button>
           </div>
         </>

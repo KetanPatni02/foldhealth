@@ -12,7 +12,7 @@ import { RadioButton } from '../../../components/RadioButton/RadioButton';
 import { Checkbox } from '../../../components/ui/checkbox';
 import styles from './FormBuilder.module.css';
 
-export function FieldInput({ field, value, onChange, interactive = false, idPrefix = 'f' }) {
+export function FieldInput({ field, value, onChange, interactive = false, idPrefix = 'f', className }) {
   const disabled = !interactive;
   const set = (v) => interactive && onChange?.(v);
   const id = `${idPrefix}-${field.linkId}`;
@@ -22,9 +22,9 @@ export function FieldInput({ field, value, onChange, interactive = false, idPref
     case 'text':
       return (
         <Textarea
-          className={styles.ctl}
+          className={[styles.ctl, className].filter(Boolean).join(' ')}
           rows={3}
-          placeholder={field.placeholder || 'Type your answer'}
+          placeholder={field.placeholder || 'Type your answer here…'}
           value={value ?? ''}
           disabled={disabled}
           onChange={(e) => set(e.target.value)}
@@ -35,7 +35,7 @@ export function FieldInput({ field, value, onChange, interactive = false, idPref
     case 'decimal': {
       const input = (
         <Input
-          className={styles.ctl}
+          className={[styles.ctl, className].filter(Boolean).join(' ')}
           type="number"
           step={field.type === 'decimal' ? '0.01' : '1'}
           placeholder={field.placeholder || '0'}
@@ -127,9 +127,9 @@ export function FieldInput({ field, value, onChange, interactive = false, idPref
     default:
       return (
         <Input
-          className={styles.ctl}
+          className={[styles.ctl, className].filter(Boolean).join(' ')}
           type={field.control === 'email' ? 'email' : field.control === 'tel' ? 'tel' : 'text'}
-          placeholder={field.placeholder || 'Type your answer'}
+          placeholder={field.placeholder || 'Type your answer here…'}
           value={value ?? ''}
           disabled={disabled}
           onChange={(e) => set(e.target.value)}
