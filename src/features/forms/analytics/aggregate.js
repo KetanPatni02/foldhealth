@@ -36,6 +36,31 @@ export function leafFields(fields) {
 const present = (v) => isAnswered(v);
 
 /**
+ * Per-question drop-off (migration-free, derived from partial answers).
+ * For each leaf in base order: `reached` = responses that got at least to it
+ * (answered the previous question), `dropped` = in-progress responses whose
+ * first unanswered question is this one (their bail point). Drop-off is
+ * dropped / reached. Branching is approximated via base order (v1).
+ */
+export function perQuestionDropoff(fields, completed, pending) {
+  const leaves = leafFields(fields);
+  const furthest = (r) => {
+    let mx = -1;
+    leaves.forEach((f, i) => { if (present(r.answers?.[f.linkId])) mx = Math.max(mx, i); });
+    return mx;
+  };
+  const completedFurthest = completed.map(furthest);
+  const pendingFurthest = pending.map(furthest);
+  return leaves.map((f, i) => {
+    let reached = 0;
+    let dropped = 0;
+    completedFurthest.forEach((fu) => { if (fu >= i - 1) reached += 1; });
+    pendingFurthest.forEach((fu) => { if (fu >= i - 1) reached += 1; if (fu + 1 === i) dropped += 1; });
+    return { linkId: f.linkId, text: f.text, reached, dropped, dropOff: reached ? Math.round((dropped / reached) * 100) : 0 };
+  });
+}
+
+/**
  * Completion breakdown across all responses.
  * Responded = every leaf answered; In Progress = some but not all; Not Started =
  * none. completionRate is the average answered-ratio across responses.

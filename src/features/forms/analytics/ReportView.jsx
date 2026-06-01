@@ -3,10 +3,10 @@
  * get a distribution donut + legend + "Most Voted"; numeric questions get a
  * votes bar chart; free-text questions list the answers (with Show more).
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { DonutChart, VotesBarChart } from './FormCharts';
-import { leafFields, questionStats } from './aggregate';
+import { leafFields, questionStats, perQuestionDropoff } from './aggregate';
 import { fieldIcon, SERIES_COLORS } from './formAnalyticsUi';
 import styles from './FormAnalyticsPanel.module.css';
 
@@ -59,8 +59,13 @@ function TextBreakdown({ stats }) {
   );
 }
 
-export function ReportView({ fields, responses }) {
+export function ReportView({ fields, responses, pending = [] }) {
   const leaves = leafFields(fields);
+  const dropMap = useMemo(() => {
+    const m = {};
+    perQuestionDropoff(fields, responses, pending).forEach((d) => { m[d.linkId] = d; });
+    return m;
+  }, [fields, responses, pending]);
 
   return (
     <div className={styles.scrollInner}>
@@ -70,13 +75,22 @@ export function ReportView({ fields, responses }) {
 
       {leaves.map((field) => {
         const stats = questionStats(field, responses);
+        const drop = dropMap[field.linkId];
         return (
           <div key={field.linkId} className={styles.qCard}>
             <div className={styles.qHead}>
               <span className={styles.qIcon}><Icon name={fieldIcon(field)} size={16} color="#fff" /></span>
               <div className={styles.qHeadText}>
                 <div className={styles.qText}>{field.text}{field.required && <span className={styles.qReq}>*</span>}</div>
-                <div className={styles.qMeta}>{stats.answeredCount} out of {stats.total} {stats.total === 1 ? 'person' : 'people'} answered this question</div>
+                <div className={styles.qMeta}>
+                  {stats.answeredCount} out of {stats.total} {stats.total === 1 ? 'person' : 'people'} answered this question
+                  {drop && drop.dropped > 0 && (
+                    <span className={styles.qDropoff}>
+                      <Icon name="solar:arrow-down-linear" size={12} color="var(--status-warning)" />
+                      {drop.dropOff}% dropped off here
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <div className={styles.qBody}>

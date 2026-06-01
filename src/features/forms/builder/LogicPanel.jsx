@@ -286,6 +286,28 @@ export function LogicPanel({ fields, settings, onChange }) {
   const selected = selectedId ? findField(fields, selectedId) : null;
   const applyRule = (linkId, patch) => onChange(updateField(fields, linkId, patch));
 
+  // Drag a handle to wire a rule: field → field adds a show-when condition on
+  // the target; field → ending adds a jump rule on the source. Then select the
+  // edited node so the author fills in the value.
+  const onConnect = (conn) => {
+    const { source, target } = conn;
+    if (!source || !target || source === target) return;
+    if (target.startsWith('ending:')) {
+      const to = target.slice('ending:'.length);
+      const f = findField(fields, source);
+      if (!f || !isAnswerable(f)) return;
+      const jump = [...(f.jump || []), { to, behavior: 'all', conditions: [{ question: source, operator: OPERATOR.EQ, answer: '' }] }];
+      onChange(updateField(fields, source, { jump }));
+      setSelectedId(source);
+    } else {
+      const f = findField(fields, target);
+      if (!f) return;
+      const enableWhen = [...(f.enableWhen || []), { question: source, operator: OPERATOR.EQ, answer: '' }];
+      onChange(updateField(fields, target, { enableWhen }));
+      setSelectedId(target);
+    }
+  };
+
   return (
     <div className={styles.wrap}>
       <div className={styles.canvas}>
@@ -302,8 +324,9 @@ export function LogicPanel({ fields, settings, onChange }) {
             nodeTypes={nodeTypes}
             onNodeClick={(_e, n) => setSelectedId(n.id)}
             onPaneClick={() => setSelectedId(null)}
+            onConnect={onConnect}
             nodesDraggable={false}
-            nodesConnectable={false}
+            nodesConnectable
             elementsSelectable
             fitView
             fitViewOptions={{ padding: 0.25 }}

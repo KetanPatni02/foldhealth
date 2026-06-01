@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   leafFields, completionStats, questionStats, scoreGroupStats, averageScoreSeries, answerAverage,
-  splitByStatus, dropOffStats,
+  splitByStatus, dropOffStats, perQuestionDropoff,
 } from './aggregate';
 
 const fields = [
@@ -99,6 +99,33 @@ describe('splitByStatus / dropOffStats', () => {
   });
   it('drop-off is 0 with no responses', () => {
     expect(dropOffStats([], [])).toEqual({ completed: 0, pending: 0, started: 0, dropOffRate: 0 });
+  });
+});
+
+describe('perQuestionDropoff', () => {
+  const f = [
+    { linkId: 'q1', type: 'string', text: 'Q1' },
+    { linkId: 'q2', type: 'string', text: 'Q2' },
+    { linkId: 'q3', type: 'string', text: 'Q3' },
+  ];
+  const completed = [{ answers: { q1: 'a', q2: 'b', q3: 'c' } }];
+  const pending = [
+    { answers: { q1: 'a' } },          // furthest 0 → drops at q2 (index 1)
+    { answers: { q1: 'a', q2: 'b' } }, // furthest 1 → drops at q3 (index 2)
+    { answers: {} },                   // furthest -1 → drops at q1 (index 0)
+  ];
+  it('attributes each in-progress bail to its first unanswered question', () => {
+    const rows = perQuestionDropoff(f, completed, pending);
+    expect(rows.map((r) => r.dropped)).toEqual([1, 1, 1]); // q1, q2, q3 each lose one
+  });
+  it('reach counts everyone who got at least to the prior question', () => {
+    const rows = perQuestionDropoff(f, completed, pending);
+    // q1 reached by all 4; q2 by completed + (q1-only, q1+q2) = 3; q3 by completed + q1+q2 = 2
+    expect(rows.map((r) => r.reached)).toEqual([4, 3, 2]);
+    expect(rows[0].dropOff).toBe(Math.round((1 / 4) * 100));
+  });
+  it('no pending → zero drop-off', () => {
+    expect(perQuestionDropoff(f, completed, []).every((r) => r.dropOff === 0)).toBe(true);
   });
 });
 

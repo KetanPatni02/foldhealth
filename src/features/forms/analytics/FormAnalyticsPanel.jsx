@@ -66,7 +66,7 @@ export function FormAnalyticsPanel({ formId, fields, scoring, formName }) {
         </div>
       ) : loading ? (
         <div className={styles.empty}><span className={styles.emptyDesc}>Loading…</span></div>
-      ) : responses.length === 0 ? (
+      ) : (completed.length + pending.length) === 0 ? (
         <div className={styles.empty}>
           <Icon name="solar:inbox-linear" size={32} color="var(--neutral-150)" />
           <span className={styles.emptyTitle}>No responses yet</span>
@@ -79,7 +79,7 @@ export function FormAnalyticsPanel({ formId, fields, scoring, formName }) {
           {tab === 'insight' && (
             <InsightView fields={fields} scoring={scoring} completed={completed} pending={pending} onViewResponses={() => setTab('responses')} />
           )}
-          {tab === 'report' && <ReportView fields={fields} responses={completed} />}
+          {tab === 'report' && <ReportView fields={fields} responses={completed} pending={pending} />}
         </div>
       )}
     </div>
