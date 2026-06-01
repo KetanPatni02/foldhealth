@@ -5,6 +5,7 @@ import { EmbeddedComponentsSettings } from './EmbeddedComponentsSettings';
 import { ContentSettings } from './ContentSettings';
 import { AccountPanel } from './AccountPanel';
 import { BillingPanel } from './BillingPanel';
+import { MemberLeadsPanel } from './MemberLeadsPanel';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './SettingsLayout.module.css';
 
@@ -25,6 +26,8 @@ export function SettingsLayout() {
         <AccountPanel />
       ) : settingsNavItem === 'billing' ? (
         <BillingPanel />
+      ) : settingsNavItem === 'member/leads' ? (
+        <MemberLeadsPanel />
       ) : (
         <AgentsTable />
       )}
