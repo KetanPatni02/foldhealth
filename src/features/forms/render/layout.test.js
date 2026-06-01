@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeLayout, buildSteps, buildFlow, leavesOf, requiredLeaves } from './layout';
+import { normalizeLayout, buildSteps, buildFlow, leavesOf, requiredLeaves, isVisible } from './layout';
 
 const group = (id, items) => ({ linkId: id, type: 'group', text: `Group ${id}`, items });
 const choice = (id, opts = { control: 'radio' }) => ({ linkId: id, type: 'choice', text: id, control: opts.control, required: !!opts.required, options: [{ value: 'A' }, { value: 'B' }] });
@@ -79,5 +79,43 @@ describe('leaves', () => {
   });
   it('requiredLeaves excludes display + non-required', () => {
     expect(requiredLeaves(fields).map((f) => f.linkId)).toEqual(['q1', 't1']);
+  });
+});
+
+describe('branching (visibility map drives the flow)', () => {
+  it('isVisible: only an explicit false hides; missing/true are visible', () => {
+    expect(isVisible('x', undefined)).toBe(true);
+    expect(isVisible('x', { x: true })).toBe(true);
+    expect(isVisible('x', {})).toBe(true);
+    expect(isVisible('x', { x: false })).toBe(false);
+  });
+
+  const fields = [text('name', true), choice('pain'), text('describe', true)];
+
+  it('by-question: a hidden leaf is dropped from the flow', () => {
+    const vis = { name: true, pain: true, describe: false };
+    const flow = buildFlow(fields, 'by-question', vis);
+    expect(flow.questions.map((q) => q.field.linkId)).toEqual(['name', 'pain']);
+  });
+
+  it('by-question: revealing the leaf brings it back', () => {
+    const flow = buildFlow(fields, 'by-question', { name: true, pain: true, describe: true });
+    expect(flow.questions.map((q) => q.field.linkId)).toEqual(['name', 'pain', 'describe']);
+  });
+
+  it('requiredLeaves skips hidden required fields (so they do not block submit)', () => {
+    expect(requiredLeaves(fields, { describe: false }).map((f) => f.linkId)).toEqual(['name']);
+  });
+
+  it('by-section: a hidden group is omitted; an emptied section drops out', () => {
+    const secFields = [group('g1', [choice('q1'), choice('q2')]), group('g2', [text('t2')])];
+    const flow = buildFlow(secFields, 'by-section', { g1: false, g2: true, t2: true });
+    expect(flow.sections.map((s) => s.title)).toEqual(['Group g2']);
+    expect(flow.questions.map((q) => q.field.linkId)).toEqual(['t2']);
+  });
+
+  it('hidden group subtree: leavesOf skips its children', () => {
+    const secFields = [group('g1', [choice('q1')]), text('t1')];
+    expect(leavesOf(secFields, { g1: false }).map((f) => f.linkId)).toEqual(['t1']);
   });
 });

@@ -10,6 +10,8 @@ function toItem(f) {
   }
   if (Array.isArray(f.items)) out.item = f.items.map(toItem);
   if (Array.isArray(f.enableWhen)) out.enableWhen = f.enableWhen;
+  if (f.enableBehavior) out.enableBehavior = f.enableBehavior;       // 'all' | 'any'
+  if (f.defaultVisibility) out.defaultVisibility = f.defaultVisibility; // branch-controlled sections
   return out;
 }
 

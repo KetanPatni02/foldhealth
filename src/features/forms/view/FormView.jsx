@@ -144,6 +144,7 @@ export function FormView({ id: propId, isPublic = false }) {
           <FormRenderer
             fields={items}
             settings={settings}
+            scoring={form.scoring}
             formName={form.name}
             formDescription={form.description}
             answers={answers}

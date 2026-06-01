@@ -16,17 +16,20 @@ import { FieldInput } from '../builder/FieldInput';
 import { FormHeader, FormFooter } from '../builder/FormChrome';
 import { getFontStack } from '../../email-builder/googleFonts';
 import { isAnswered } from '../scoring/util';
-import { normalizeLayout, buildFlow, requiredLeaves } from './layout';
+import { evaluate } from '../scoring/evaluate';
+import { toQuestionnaire } from '../builder/engineAdapter';
+import { normalizeLayout, buildFlow, requiredLeaves, isVisible } from './layout';
 import styles from './FormRenderer.module.css';
 
 // ── Entire-page recursive renderer (group / display / leaf) ──
-function FieldNode({ field, answers, onAnswer, missing }) {
+function FieldNode({ field, answers, onAnswer, missing, visibility }) {
+  if (!isVisible(field.linkId, visibility)) return null; // branching: hidden field/group
   if (field.type === 'group') {
     return (
       <div className={styles.section}>
         <div className={styles.sectionTitle}>{field.text}</div>
         {(field.items || []).map((sub) => (
-          <FieldNode key={sub.linkId} field={sub} answers={answers} onAnswer={onAnswer} missing={missing} />
+          <FieldNode key={sub.linkId} field={sub} answers={answers} onAnswer={onAnswer} missing={missing} visibility={visibility} />
         ))}
       </div>
     );
@@ -161,7 +164,7 @@ function SectionStepper({ sections, current }) {
 }
 
 export function FormRenderer({
-  fields = [], settings, formName, formDescription,
+  fields = [], settings, scoring, formName, formDescription,
   answers, onAnswer, onSubmit, submitting, compact,
   scope = 'standalone', onValidationFail, // eslint-disable-line no-unused-vars
 }) {
@@ -169,7 +172,24 @@ export function FormRenderer({
   const paged = layout !== 'entire-page';
   const mode = layout === 'by-question' ? 'by-question' : 'by-section';
 
-  const flow = useMemo(() => (paged ? buildFlow(fields, mode) : { questions: [], sections: null }), [fields, paged, mode]);
+  // Branching: run the (pure) engine over the current answers to get the
+  // visibility map, then drive the flow + validation off it. enableWhen needs
+  // only the questionnaire; score-driven reveals also use `scoring`.
+  const visibility = useMemo(() => {
+    try {
+      return evaluate(
+        { questionnaire: toQuestionnaire(fields), scores: scoring?.scores || [], criticalTriggers: scoring?.criticalTriggers || [] },
+        answers || {},
+      ).visibility;
+    } catch {
+      return {}; // fail-safe: show everything if evaluation throws
+    }
+  }, [fields, scoring, answers]);
+
+  const flow = useMemo(
+    () => (paged ? buildFlow(fields, mode, visibility) : { questions: [], sections: null }),
+    [fields, paged, mode, visibility],
+  );
   const questions = flow.questions;
   const sections = flow.sections;
   const total = questions.length;
@@ -201,7 +221,9 @@ export function FormRenderer({
   }, []);
   const btnSize = compact || isNarrow ? 'XL' : 'L';
 
-  useEffect(() => { setStarted(false); setPos(0); setSubmitted(false); setMissing(new Set()); }, [layout, total]);
+  // Reset on a layout switch or a new/edited form — NOT on `total`, which now
+  // changes as branching reveals/hides questions mid-fill.
+  useEffect(() => { setStarted(false); setPos(0); setSubmitted(false); setMissing(new Set()); }, [layout, fields]);
   useEffect(() => () => clearTimeout(advanceTimer.current), []);
 
   const safePos = Math.min(pos, Math.max(0, total - 1));
@@ -214,7 +236,7 @@ export function FormRenderer({
   });
 
   const doSubmit = async () => {
-    const unanswered = requiredLeaves(fields).filter((f) => !isAnswered(answersRef.current[f.linkId]));
+    const unanswered = requiredLeaves(fields, visibility).filter((f) => !isAnswered(answersRef.current[f.linkId]));
     if (unanswered.length) {
       setMissing(new Set(unanswered.map((f) => f.linkId)));
       onValidationFail?.(unanswered.length);
@@ -298,7 +320,7 @@ export function FormRenderer({
           <p className={styles.empty}>No questions yet.</p>
         ) : (
           <>
-            {fields.map((f) => <FieldNode key={f.linkId} field={f} answers={answers} onAnswer={handleAnswer} missing={missing} />)}
+            {fields.map((f) => <FieldNode key={f.linkId} field={f} answers={answers} onAnswer={handleAnswer} missing={missing} visibility={visibility} />)}
             <div className={styles.submitRow}>
               <Button variant="primary" size="L" disabled={submitting} onClick={doSubmit}>{submitting ? 'Submitting…' : 'Submit'}</Button>
             </div>

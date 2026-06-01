@@ -43,17 +43,26 @@ export function buildSteps(fields, mode) {
   return steps;
 }
 
+/** A field is visible unless the engine's visibility map explicitly marks it false. */
+export function isVisible(linkId, visibility) {
+  return !visibility || visibility[linkId] !== false;
+}
+
 /**
  * Build the one-question-at-a-time flow used by the paged renderers.
  * Both modes show ONE question per screen; they differ in section metadata:
  * - 'by-question': flat list, no sections.
  * - 'by-section': questions grouped into sections (top-level group = a section;
  *   consecutive loose fields = a "Questions" section) for the top stepper.
+ *
+ * `visibility` (optional, from evaluate().visibility) drives branching: any leaf
+ * marked hidden is dropped from the flow, and a section that ends up empty is
+ * omitted. Omit it and the flow is fully linear (legacy behavior).
  * @returns {{questions:{field:object,sectionIndex:number|null}[], sections:{title:string,count:number}[]|null}}
  */
-export function buildFlow(fields, mode) {
+export function buildFlow(fields, mode, visibility) {
   if (mode === 'by-question') {
-    return { questions: leavesOf(fields).map((field) => ({ field, sectionIndex: null })), sections: null };
+    return { questions: leavesOf(fields, visibility).map((field) => ({ field, sectionIndex: null })), sections: null };
   }
   const sections = [];
   const questions = [];
@@ -69,12 +78,14 @@ export function buildFlow(fields, mode) {
   for (const f of fields || []) {
     if (f.type === 'group') {
       flush();
-      const items = leavesOf(f.items);
+      if (!isVisible(f.linkId, visibility)) continue;       // whole section hidden
+      const items = leavesOf(f.items, visibility);
       if (!items.length) continue;
       const si = sections.length;
       sections.push({ title: f.text || 'Section', count: items.length });
       items.forEach((field) => questions.push({ field, sectionIndex: si }));
     } else {
+      if (!isVisible(f.linkId, visibility)) continue;
       if (!bucket) bucket = { title: 'Questions', items: [] };
       bucket.items.push(f);
     }
@@ -83,15 +94,22 @@ export function buildFlow(fields, mode) {
   return { questions, sections };
 }
 
-/** Flatten a list of items to their answerable leaves (descends into groups). */
-export function leavesOf(items) {
+/**
+ * Flatten a list of items to their answerable leaves (descends into groups).
+ * With `visibility`, hidden leaves (and the contents of hidden groups) are skipped.
+ */
+export function leavesOf(items, visibility) {
   const out = [];
-  const walk = (list) => (list || []).forEach((f) => (f.items ? walk(f.items) : out.push(f)));
+  const walk = (list) => (list || []).forEach((f) => {
+    if (!isVisible(f.linkId, visibility)) return;           // skip hidden field / group subtree
+    if (f.items) walk(f.items);
+    else out.push(f);
+  });
   walk(items);
   return out;
 }
 
-/** Required, non-display leaves within a set of items (for validation). */
-export function requiredLeaves(items) {
-  return leavesOf(items).filter((f) => f.required && f.type !== 'display');
+/** Required, non-display, visible leaves within a set of items (for validation). */
+export function requiredLeaves(items, visibility) {
+  return leavesOf(items, visibility).filter((f) => f.required && f.type !== 'display');
 }

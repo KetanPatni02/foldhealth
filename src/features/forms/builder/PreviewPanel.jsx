@@ -66,6 +66,7 @@ export function PreviewPanel({ fields, scoring, formName, settings }) {
     <FormRenderer
       fields={fields}
       settings={settings}
+      scoring={scoring}
       formName={formName}
       answers={answers}
       onAnswer={setAnswer}
