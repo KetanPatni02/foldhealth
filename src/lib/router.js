@@ -236,7 +236,7 @@ export function hashToState(route) {
       // hydration uses _pendingFormEditId; openFormBuilder applies the mode).
       if (route.tab === 'forms' && route.id) {
         updates._pendingFormEditId = route.id;
-        const mode = ['edit', 'score', 'preview', 'analytics'].includes(route.sub) ? route.sub : 'edit';
+        const mode = ['edit', 'logic', 'score', 'preview', 'analytics'].includes(route.sub) ? route.sub : 'edit';
         updates._pendingFormMode = mode;
         updates._pendingFormAnalyticsTab = mode === 'analytics' && ['insight', 'report', 'responses'].includes(route.extra)
           ? route.extra : 'insight';

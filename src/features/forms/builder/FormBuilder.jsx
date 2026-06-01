@@ -30,6 +30,7 @@ import { instantiateInstrument } from './validatedInstruments';
 import { formShareLink, copyToClipboard } from '../formLink';
 import { FieldInput } from './FieldInput';
 import { ScorePanel } from './ScorePanel';
+import { LogicPanel } from './LogicPanel';
 import { PreviewPanel } from './PreviewPanel';
 import { FormAnalyticsPanel } from '../analytics/FormAnalyticsPanel';
 import { FormSettings } from './FormSettings';
@@ -528,7 +529,7 @@ export function FormBuilder() {
         </div>
 
         <Toggle
-          items={[{ key: 'edit', label: 'Edit Form' }, { key: 'score', label: 'Score' }, { key: 'preview', label: 'Preview' }, { key: 'analytics', label: 'Analytics' }]}
+          items={[{ key: 'edit', label: 'Edit Form' }, { key: 'logic', label: 'Logic' }, { key: 'score', label: 'Score' }, { key: 'preview', label: 'Preview' }, { key: 'analytics', label: 'Analytics' }]}
           active={mode}
           onChange={setMode}
           size="M"
@@ -571,6 +572,12 @@ export function FormBuilder() {
             ) : null}
           </DragOverlay>
         </DndContext>
+      )}
+
+      {mode === 'logic' && (
+        <div className={styles.body}>
+          <LogicPanel fields={fields} onChange={setFields} />
+        </div>
       )}
 
       {mode === 'score' && (
