@@ -17,6 +17,17 @@ import styles from './FormView.module.css';
 
 injectGoogleFonts();
 
+/** Collect URL params from both the search string and any `?…` after the hash. */
+function readUrlParams() {
+  const out = {};
+  const add = (qs) => { try { new URLSearchParams(qs).forEach((v, k) => { out[k] = v; }); } catch { /* noop */ } };
+  add((window.location.search || '').replace(/^\?/, ''));
+  const hash = window.location.hash || '';
+  const q = hash.indexOf('?');
+  if (q >= 0) add(hash.slice(q + 1));
+  return out;
+}
+
 export function FormView({ id: propId, isPublic = false }) {
   const storeFormViewId = useAppStore((s) => s.formViewId);
   const formViewId = propId ?? storeFormViewId;
@@ -59,10 +70,25 @@ export function FormView({ id: propId, isPublic = false }) {
     submittedRef.current = false;
   }, [formViewId]);
 
+  // Hidden fields: prefill declared names from URL params (?mrn=…&name=… or a
+  // query after the hash). Seeded values live in `answers` so recall + enableWhen
+  // + scoring can use them; they're excluded from the "started" count below.
+  const hiddenNames = useMemo(() => form?.settings?.hidden || [], [form]);
+  useEffect(() => {
+    if (!form || !hiddenNames.length) return;
+    const params = readUrlParams();
+    const seed = {};
+    hiddenNames.forEach((name) => { if (params[name] != null && params[name] !== '') seed[name] = params[name]; });
+    if (Object.keys(seed).length) setAnswers((prev) => ({ ...seed, ...prev })); // user answers win
+  }, [form, hiddenNames]);
+
   const items = useMemo(() => form?.schema?.items || [], [form]);
   const setAnswer = (linkId, v) => setAnswers((prev) => ({ ...prev, [linkId]: v }));
 
-  const countAnswered = (a) => Object.values(a).filter((v) => v != null && v !== '' && !(Array.isArray(v) && v.length === 0)).length;
+  // Count genuine answers (prefilled hidden fields don't count as "started").
+  const countAnswered = (a) => Object.entries(a)
+    .filter(([k, v]) => !hiddenNames.includes(k) && v != null && v !== '' && !(Array.isArray(v) && v.length === 0))
+    .length;
 
   // Auto-save partial progress (debounced) from the first answer onward, so an
   // abandoned fill is recorded as an in-progress (Pending) response.

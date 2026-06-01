@@ -3,18 +3,97 @@
  * selected. Mirrors the email-builder's Design/Template panel layout
  * (section strips, field columns, live preset cards) for visual consistency.
  */
+import { useState } from 'react';
 import { Select } from '../../../components/Select/Select';
 import { Switch } from '../../../components/Switch/Switch';
 import { Icon } from '../../../components/Icon/Icon';
 import { Input } from '../../../components/Input/Input';
 import { Textarea } from '../../../components/Textarea/Textarea';
+import { Button } from '../../../components/Button/Button';
 import { GOOGLE_FONTS, getFontStack, injectGoogleFonts } from '../../email-builder/googleFonts';
 import { HEADER_PRESETS, FOOTER_PRESETS } from '../../email-builder/headerFooterLibrary';
 import { PresetLivePreview } from '../../email-builder/PresetLivePreview';
 import { ColorInput } from '../../email-builder/ColorInput';
 import { normalizeLayout } from '../render/layout';
+import { endingsOf } from '../render/flow';
 import email from '../../email-builder/EmailBuilder.module.css';
 import styles from './FormBuilder.module.css';
+
+/** Normalize a hidden-field name to lower_snake (URL-param + recall friendly). */
+const normHidden = (raw) => (raw || '').trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+
+function HiddenFields({ s, set }) {
+  const [draft, setDraft] = useState('');
+  const names = s.hidden || [];
+  const add = () => {
+    const n = normHidden(draft);
+    if (n && !names.includes(n)) set({ hidden: [...names, n] });
+    setDraft('');
+  };
+  return (
+    <div className={email.sectionContent}>
+      <p className={styles.settingHint}>Prefill from the share link (<code>?mrn=A123&amp;name=Jane</code>) and reference anywhere with <code>{'{{hidden:name}}'}</code>.</p>
+      {names.length > 0 && (
+        <div className={styles.chipRow}>
+          {names.map((n) => (
+            <span key={n} className={styles.chip}>
+              {n}
+              <button type="button" className={styles.chipX} onClick={() => set({ hidden: names.filter((x) => x !== n) })} aria-label={`Remove ${n}`}>
+                <Icon name="solar:close-circle-linear" size={14} color="var(--neutral-300)" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className={styles.addRow}>
+        <Input className={styles.ctl} value={draft} placeholder="e.g. mrn" onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }} />
+        <Button variant="secondary" size="S" onClick={add} disabled={!normHidden(draft)}>Add</Button>
+      </div>
+    </div>
+  );
+}
+
+function EndingsEditor({ s, set }) {
+  const endings = endingsOf(s);
+  const enabled = endings[0]?.enabled !== false;
+  const write = (next) => set({ endings: next });
+  const update = (i, patch) => write(endings.map((e, idx) => (idx === i ? { ...e, ...patch } : e)));
+  const remove = (i) => write(endings.filter((_, idx) => idx !== i));
+  const add = () => {
+    const used = new Set(endings.map((e) => e.id));
+    let n = endings.length + 1;
+    while (used.has(`end-${n}`)) n += 1;
+    write([...endings, { id: `end-${n}`, title: 'New ending', description: '' }]);
+  };
+  return (
+    <div className={email.sectionContent}>
+      <div className={styles.settingRow}>
+        <span className={styles.settingLabel}>Show end screen</span>
+        <Switch checked={enabled} onChange={(v) => update(0, { enabled: v })} />
+      </div>
+      {enabled && (
+        <>
+          {endings.map((e, i) => (
+            <div key={e.id} className={styles.endingCard}>
+              <div className={styles.endingHead}>
+                <span className={styles.endingTag}>{i === 0 ? 'Default ending' : `Ending ${i + 1}`}</span>
+                {i > 0 && (
+                  <button type="button" className={styles.chipX} onClick={() => remove(i)} aria-label="Remove ending">
+                    <Icon name="solar:trash-bin-minimalistic-linear" size={14} color="var(--neutral-300)" />
+                  </button>
+                )}
+              </div>
+              <Input className={styles.ctl} value={e.title || ''} placeholder="Thank you!" onChange={(ev) => update(i, { title: ev.target.value })} />
+              <Textarea className={styles.ctl} rows={2} value={e.description || ''} placeholder="Your response has been recorded." onChange={(ev) => update(i, { description: ev.target.value })} />
+            </div>
+          ))}
+          <Button variant="ghost" size="S" leadingIcon="solar:add-circle-linear" onClick={add}>Add ending</Button>
+          <p className={styles.settingHint}>Route to a specific ending from the Logic tab (jump rules).</p>
+        </>
+      )}
+    </div>
+  );
+}
 
 const LAYOUT_OPTIONS = [
   { value: 'by-question', icon: 'solar:square-academic-cap-linear', title: 'One question at a time', desc: 'Guided, Typeform-style — one screen per question.' },
@@ -59,7 +138,6 @@ export function FormSettings({ settings, onChange }) {
   const header = s.header || { enabled: false, presetId: HEADER_PRESETS[0].id };
   const footer = s.footer || { enabled: false, presetId: FOOTER_PRESETS[0].id };
   const start = s.start || { enabled: true, buttonLabel: 'Start' };
-  const end = s.end || { enabled: true };
 
   const layout = normalizeLayout(s.layout);
   const paged = layout !== 'entire-page';
@@ -106,6 +184,9 @@ export function FormSettings({ settings, onChange }) {
         <ColorInput value={s.background || '#FFFFFF'} onChange={(v) => set({ background: v })} />
       </div>
 
+      <div className={email.sectionHeadingStrip}>Hidden fields</div>
+      <HiddenFields s={s} set={set} />
+
       {paged ? (
         <>
           {/* Paged layouts replace header/footer with start + end screens. */}
@@ -127,21 +208,8 @@ export function FormSettings({ settings, onChange }) {
             )}
           </div>
 
-          <div className={email.sectionHeadingStrip}>End screen</div>
-          <div className={email.sectionContent}>
-            <div className={styles.settingRow}>
-              <span className={styles.settingLabel}>Show end screen</span>
-              <Switch checked={end.enabled !== false} onChange={(v) => set({ end: { ...end, enabled: v } })} />
-            </div>
-            {end.enabled !== false && (
-              <>
-                <label className={email.fieldLabel}>Title</label>
-                <Input className={styles.ctl} value={end.title || ''} placeholder="Thank you!" onChange={(e) => set({ end: { ...end, title: e.target.value } })} />
-                <label className={email.fieldLabel}>Description</label>
-                <Textarea className={styles.ctl} rows={2} value={end.description || ''} placeholder="Your response has been recorded." onChange={(e) => set({ end: { ...end, description: e.target.value } })} />
-              </>
-            )}
-          </div>
+          <div className={email.sectionHeadingStrip}>Endings</div>
+          <EndingsEditor s={s} set={set} />
         </>
       ) : (
         <>

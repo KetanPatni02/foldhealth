@@ -5,7 +5,9 @@
 
 // ── Parse hash into structured route ──
 export function parseHash() {
-  const raw = window.location.hash.replace(/^#\/?/, '');
+  // Strip any `?query` (e.g. hidden-field params like #/f/12?mrn=A123) before
+  // splitting into path segments — the query is read separately by the view.
+  const raw = window.location.hash.replace(/^#\/?/, '').split('?')[0];
   const segments = raw.split('/').filter(Boolean);
   return {
     page: segments[0] || 'population',

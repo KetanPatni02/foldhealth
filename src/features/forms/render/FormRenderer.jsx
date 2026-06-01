@@ -19,17 +19,19 @@ import { isAnswered } from '../scoring/util';
 import { evaluate } from '../scoring/evaluate';
 import { toQuestionnaire } from '../builder/engineAdapter';
 import { normalizeLayout, buildFlow, requiredLeaves, isVisible } from './layout';
+import { resolveRecall } from './recall';
+import { evalJump, findEnding } from './flow';
 import styles from './FormRenderer.module.css';
 
 // ── Entire-page recursive renderer (group / display / leaf) ──
-function FieldNode({ field, answers, onAnswer, missing, visibility }) {
+function FieldNode({ field, answers, onAnswer, missing, visibility, pipe = (t) => t }) {
   if (!isVisible(field.linkId, visibility)) return null; // branching: hidden field/group
   if (field.type === 'group') {
     return (
       <div className={styles.section}>
-        <div className={styles.sectionTitle}>{field.text}</div>
+        <div className={styles.sectionTitle}>{pipe(field.text)}</div>
         {(field.items || []).map((sub) => (
-          <FieldNode key={sub.linkId} field={sub} answers={answers} onAnswer={onAnswer} missing={missing} visibility={visibility} />
+          <FieldNode key={sub.linkId} field={sub} answers={answers} onAnswer={onAnswer} missing={missing} visibility={visibility} pipe={pipe} />
         ))}
       </div>
     );
@@ -39,8 +41,8 @@ function FieldNode({ field, answers, onAnswer, missing, visibility }) {
   }
   return (
     <div className={styles.field}>
-      <label className={styles.label}>{field.text}{field.required && <span className={styles.req}>*</span>}</label>
-      {field.description ? <p className={styles.desc}>{field.description}</p> : null}
+      <label className={styles.label}>{pipe(field.text)}{field.required && <span className={styles.req}>*</span>}</label>
+      {field.description ? <p className={styles.desc}>{pipe(field.description)}</p> : null}
       <FieldInput field={field} interactive value={answers[field.linkId]} onChange={(v) => onAnswer(field.linkId, v)} />
       {missing.has(field.linkId) ? <span className={styles.missing}>This field is required.</span> : null}
     </div>
@@ -89,7 +91,7 @@ function TypeformChoice({ field, value, onChange }) {
   );
 }
 
-function TypeformQuestion({ field, number, answers, onAnswer, missing, onNext, btnSize = 'L' }) {
+function TypeformQuestion({ field, number, answers, onAnswer, missing, onNext, btnSize = 'L', pipe = (t) => t }) {
   if (field.type === 'display') {
     return <div className={styles.tfQuestion}><FieldInput field={field} interactive={false} /></div>;
   }
@@ -100,8 +102,8 @@ function TypeformQuestion({ field, number, answers, onAnswer, missing, onNext, b
       <div className={styles.tfHead}>
         <span className={styles.tfNum}>{number}</span>
         <div className={styles.tfHeadText}>
-          <div className={styles.tfQText}>{field.text}{field.required && <span className={styles.req}>*</span>}</div>
-          {field.description ? <p className={styles.tfDesc}>{field.description}</p> : null}
+          <div className={styles.tfQText}>{pipe(field.text)}{field.required && <span className={styles.req}>*</span>}</div>
+          {field.description ? <p className={styles.tfDesc}>{pipe(field.description)}</p> : null}
         </div>
       </div>
       <div className={styles.tfBody}>
@@ -124,11 +126,11 @@ function TypeformQuestion({ field, number, answers, onAnswer, missing, onNext, b
   );
 }
 
-function StartScreen({ start, formName, onStart, btnSize = 'L' }) {
+function StartScreen({ start, formName, onStart, btnSize = 'L', pipe }) {
   return (
     <div className={styles.tfScreen}>
-      <h1 className={styles.tfScreenTitle}>{start?.title || formName || 'Welcome'}</h1>
-      {start?.description ? <p className={styles.tfScreenDesc}>{start.description}</p> : null}
+      <h1 className={styles.tfScreenTitle}>{pipe(start?.title || formName || 'Welcome')}</h1>
+      {start?.description ? <p className={styles.tfScreenDesc}>{pipe(start.description)}</p> : null}
       {/* ↵ badge sits inside the button — Typeform style */}
       <Button variant="primary" size={btnSize} onClick={onStart}>
         {start?.buttonLabel || 'Start'}<EnterBadge />
@@ -137,12 +139,12 @@ function StartScreen({ start, formName, onStart, btnSize = 'L' }) {
   );
 }
 
-function EndScreen({ end }) {
+function EndScreen({ ending, pipe }) {
   return (
     <div className={styles.tfScreen}>
       <Icon name="solar:check-circle-bold" size={48} color="var(--status-success)" />
-      <h1 className={styles.tfScreenTitle}>{end?.title || 'Thank you!'}</h1>
-      {end?.description ? <p className={styles.tfScreenDesc}>{end.description}</p> : null}
+      <h1 className={styles.tfScreenTitle}>{pipe(ending?.title || 'Thank you!')}</h1>
+      {ending?.description ? <p className={styles.tfScreenDesc}>{pipe(ending.description)}</p> : null}
     </div>
   );
 }
@@ -172,19 +174,28 @@ export function FormRenderer({
   const paged = layout !== 'entire-page';
   const mode = layout === 'by-question' ? 'by-question' : 'by-section';
 
-  // Branching: run the (pure) engine over the current answers to get the
-  // visibility map, then drive the flow + validation off it. enableWhen needs
-  // only the questionnaire; score-driven reveals also use `scoring`.
-  const visibility = useMemo(() => {
+  // Branching + scores: run the (pure) engine over the current answers once.
+  // visibility drives the flow/validation; the score map feeds recall ({{score:…}}).
+  const evalResult = useMemo(() => {
     try {
       return evaluate(
         { questionnaire: toQuestionnaire(fields), scores: scoring?.scores || [], criticalTriggers: scoring?.criticalTriggers || [] },
         answers || {},
-      ).visibility;
+      );
     } catch {
-      return {}; // fail-safe: show everything if evaluation throws
+      return { visibility: {}, scores: [] }; // fail-safe: show everything
     }
   }, [fields, scoring, answers]);
+  const visibility = evalResult.visibility;
+  const scoreMap = useMemo(() => {
+    const m = {};
+    (evalResult.scores || []).forEach((s) => { if (s.value != null) m[s.id] = s.value; });
+    return m;
+  }, [evalResult]);
+  // Recall context: hidden values live alongside answers (merged at fill time),
+  // so {{field:…}} and {{hidden:…}} both resolve from `answers`.
+  const recallCtx = useMemo(() => ({ answers: answers || {}, scores: scoreMap, hidden: answers || {} }), [answers, scoreMap]);
+  const pipe = (text) => resolveRecall(text, recallCtx);
 
   const flow = useMemo(
     () => (paged ? buildFlow(fields, mode, visibility) : { questions: [], sections: null }),
@@ -202,6 +213,7 @@ export function FormRenderer({
   const [started, setStarted] = useState(false);
   const [pos, setPos] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+  const [endingId, setEndingId] = useState(null); // set when a jump-to-ending fires
   const [missing, setMissing] = useState(() => new Set());
   const [isNarrow, setIsNarrow] = useState(
     () => typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(max-width: 640px)').matches,
@@ -223,7 +235,7 @@ export function FormRenderer({
 
   // Reset on a layout switch or a new/edited form — NOT on `total`, which now
   // changes as branching reveals/hides questions mid-fill.
-  useEffect(() => { setStarted(false); setPos(0); setSubmitted(false); setMissing(new Set()); }, [layout, fields]);
+  useEffect(() => { setStarted(false); setPos(0); setSubmitted(false); setEndingId(null); setMissing(new Set()); }, [layout, fields]);
   useEffect(() => () => clearTimeout(advanceTimer.current), []);
 
   const safePos = Math.min(pos, Math.max(0, total - 1));
@@ -248,6 +260,16 @@ export function FormRenderer({
     if (ok !== false && endEnabled) setSubmitted(true);
   };
 
+  // Jump-to-ending ends the form on a specific ending screen, skipping any
+  // remaining questions (forward-only). Bypasses the full required sweep since
+  // skipped fields are intentionally not asked.
+  const finishWithEnding = async (id) => {
+    clearTimeout(advanceTimer.current);
+    setEndingId(id);
+    const ok = await onSubmit?.();
+    if (ok !== false) setSubmitted(true);
+  };
+
   const goNext = () => {
     clearTimeout(advanceTimer.current);
     const f = currentQ?.field;
@@ -255,6 +277,8 @@ export function FormRenderer({
     if (f.required && f.type !== 'display' && !isAnswered(answersRef.current[f.linkId])) {
       setMissing(new Set([f.linkId])); onValidationFail?.(1); return;
     }
+    const jumpTo = evalJump(f, answersRef.current);
+    if (jumpTo) { finishWithEnding(jumpTo); return; }
     if (safePos < total - 1) setPos(safePos + 1);
     else doSubmit();
   };
@@ -314,13 +338,13 @@ export function FormRenderer({
     return (
       <div className={sheetClass} style={{ fontFamily }}>
         <FormHeader settings={settings} className={styles.headerBleed} />
-        <h2 className={styles.title}>{formName}</h2>
-        {formDescription ? <p className={styles.formDesc}>{formDescription}</p> : null}
+        <h2 className={styles.title}>{pipe(formName)}</h2>
+        {formDescription ? <p className={styles.formDesc}>{pipe(formDescription)}</p> : null}
         {fields.length === 0 ? (
           <p className={styles.empty}>No questions yet.</p>
         ) : (
           <>
-            {fields.map((f) => <FieldNode key={f.linkId} field={f} answers={answers} onAnswer={handleAnswer} missing={missing} visibility={visibility} />)}
+            {fields.map((f) => <FieldNode key={f.linkId} field={f} answers={answers} onAnswer={handleAnswer} missing={missing} visibility={visibility} pipe={pipe} />)}
             <div className={styles.submitRow}>
               <Button variant="primary" size="L" disabled={submitting} onClick={doSubmit}>{submitting ? 'Submitting…' : 'Submit'}</Button>
             </div>
@@ -344,9 +368,9 @@ export function FormRenderer({
   return (
     <div ref={rootRef} tabIndex={-1} onKeyDown={onKeyDown} className={`${sheetClass} ${styles.pagedRoot}`} style={{ fontFamily }}>
       {screen === 'start' ? (
-        <StartScreen start={startCfg} formName={formName} onStart={() => setStarted(true)} btnSize={btnSize} />
+        <StartScreen start={startCfg} formName={formName} onStart={() => setStarted(true)} btnSize={btnSize} pipe={pipe} />
       ) : screen === 'end' ? (
-        <EndScreen end={endCfg} />
+        <EndScreen ending={findEnding(settings, endingId)} pipe={pipe} />
       ) : (
         <>
           {/* Progress bar pinned to the very top edge */}
@@ -360,7 +384,7 @@ export function FormRenderer({
           {/* Question vertically centered in the remaining space */}
           <div className={styles.pagedMain}>
             <div key={safePos} className={styles.stepBox}>
-              <TypeformQuestion field={currentQ.field} number={safePos + 1} answers={answers} onAnswer={handleAnswer} missing={missing} onNext={goNext} btnSize={btnSize} />
+              <TypeformQuestion field={currentQ.field} number={safePos + 1} answers={answers} onAnswer={handleAnswer} missing={missing} onNext={goNext} btnSize={btnSize} pipe={pipe} />
             </div>
           </div>
           {/* Nav pinned to the bottom of the screen */}

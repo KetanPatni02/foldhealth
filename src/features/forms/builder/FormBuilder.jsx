@@ -576,7 +576,7 @@ export function FormBuilder() {
 
       {mode === 'logic' && (
         <div className={styles.body}>
-          <LogicPanel fields={fields} onChange={setFields} />
+          <LogicPanel fields={fields} settings={settings} onChange={setFields} />
         </div>
       )}
 
