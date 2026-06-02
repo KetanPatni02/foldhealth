@@ -2191,7 +2191,24 @@ export const useAppStore = create((set, get) => ({
   },
   hccReassignRole: (pid, dos, role, staffId, actor, reason) => {
     track('hcc.role_reassigned', { memberId: pid, fromRole: null, toRole: role });
-    return useAppStore.getState().transitionHccDos(pid, dos, 'reassignRole', { role, staffId, actor, reason });
+    const result = useAppStore.getState().transitionHccDos(pid, dos, 'reassignRole', { role, staffId, actor, reason });
+    // Also patch the member's legacy role field so the worklist row's
+    // RoleStatusCell (which reads member.sup / .cdr / .r1 / .r2 / .r3
+    // directly) reflects the new assignee immediately. Status flips to
+    // 'New' to switch the cell out of its "Assign" empty state.
+    const staff = hccStaffById(staffId);
+    const fieldByRole = { support: 'sup', coder: 'cdr', r1: 'r1', r2: 'r2', r3: 'r3' };
+    const statusFieldByRole = { support: 'supS', coder: 'cdrS', r1: 'r1s', r2: 'r2s', r3: 'r3s' };
+    const f = fieldByRole[role];
+    const sf = statusFieldByRole[role];
+    if (f && staff) {
+      set(s => ({
+        hccMembers: s.hccMembers.map(m =>
+          m.id === pid ? { ...m, [f]: staff.name, [sf]: 'New' } : m,
+        ),
+      }));
+    }
+    return result;
   },
 
   // Helpers exposed for the UI — resolve a staff id back to a display name.
@@ -2305,6 +2322,82 @@ export const useAppStore = create((set, get) => ({
   // 'pending'. Newest-first.
   hccUploadedDocs: [],
   recordHccUpload: (doc) => set(s => ({ hccUploadedDocs: [doc, ...s.hccUploadedDocs] })),
+
+  // ── HCC Care Team configuration ─────────────────────────────────────
+  // Admin-managed teams for the Phase 2 auto-assignment workflow. The
+  // ConfigureTeamDrawer (Settings → Member/Leads → Care Team) writes here
+  // and the Care Team table reads from it. Newest-first.
+  //
+  // Team shape:
+  //   {
+  //     id, name, kind: 'hcc' | 'care-program' | 'hedis',
+  //     teamType,            // 'Reviewer 1' / 'Coder' / 'SNP' / 'Assignee'…
+  //     allocatedTins: [],   // team-level routing key (Phase 2 spec)
+  //     createdAt, createdBy, lastModifiedAt, lastModifiedBy,
+  //     members: [
+  //       {
+  //         userId, name, initials, roles,  // denormalized for table render
+  //         capacityPct,                    // share of THIS team allocated to them
+  //         assignTo: [{ dim: 'TIN'|'Vendor'|'Coder'|'Reviewer 1'|…, value, pct }],
+  //       },
+  //     ],
+  //   }
+  //
+  // Seeded with the same five rows the Figma reference shows so the table
+  // isn't empty on first load AND every row is editable (no static mock
+  // fallback path needed in the panel).
+  hccCareTeams: [
+    {
+      id: 'seed-rt1', name: 'Reviewer 1 Team', kind: 'hcc',          teamType: 'Reviewer 1',
+      allocatedTins: ['12-3456789'], createdAt: '02/21/2026', createdBy: 'Dina Morries',
+      lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson',
+      members: [
+        { userId: 'MA', name: 'M. Almeda',   initials: 'MA', roles: 'Reviewer 1', capacityPct: 50, assignTo: [{ dim: 'Coder', value: 'DH', pct: 50 }] },
+      ],
+    },
+    {
+      id: 'seed-rt2', name: 'Coder Team', kind: 'hcc', teamType: 'Coder',
+      allocatedTins: ['12-3456789', '98-7654321'], createdAt: '02/21/2026', createdBy: 'Dina Morries',
+      lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson',
+      members: [
+        { userId: 'DH', name: 'Deborah Hintz', initials: 'DH', roles: 'Coder', capacityPct: 60, assignTo: [{ dim: 'TIN', value: '12-3456789', pct: 60 }] },
+        { userId: 'PP', name: 'P. Plourde',    initials: 'PP', roles: 'Coder', capacityPct: 40, assignTo: [{ dim: 'TIN', value: '98-7654321', pct: 30 }] },
+      ],
+    },
+    {
+      id: 'seed-rt3', name: 'SNP Team', kind: 'care-program', teamType: 'SNP',
+      allocatedTins: [], createdAt: '02/21/2026', createdBy: 'Dina Morries',
+      lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson',
+      members: [
+        { userId: 'fallback-1', name: 'Michael Corleone', initials: 'MC', roles: 'Nurse', capacityPct: 60, assignTo: [] },
+        { userId: 'fallback-2', name: 'Larry Sanders',    initials: 'LS', roles: 'Medical Assistant', capacityPct: 60, assignTo: [] },
+      ],
+    },
+    {
+      id: 'seed-rt4', name: 'TOC Team', kind: 'care-program', teamType: 'TCM',
+      allocatedTins: [], createdAt: '02/21/2026', createdBy: 'Dina Morries',
+      lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson',
+      members: [
+        { userId: 'fallback-3', name: 'Tina Turner', initials: 'TT', roles: 'Admin/Practice Manager', capacityPct: 80, assignTo: [] },
+      ],
+    },
+    {
+      id: 'seed-rt5', name: 'Care Gap Team', kind: 'hedis', teamType: 'Assignee',
+      allocatedTins: [], createdAt: '02/21/2026', createdBy: 'Dina Morries',
+      lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson',
+      members: [
+        { userId: 'fallback-4', name: 'Manny Grizwald', initials: 'MG', roles: 'Billing Specialist', capacityPct: 30, assignTo: [] },
+        { userId: 'fallback-5', name: 'Bobby Brown',    initials: 'BB', roles: 'Front Desk Staff/Receptionist', capacityPct: 30, assignTo: [] },
+      ],
+    },
+  ],
+  addHccCareTeam: (team) => set(s => ({ hccCareTeams: [team, ...s.hccCareTeams] })),
+  updateHccCareTeam: (id, patch) => set(s => ({
+    hccCareTeams: s.hccCareTeams.map(t => t.id === id ? { ...t, ...patch } : t),
+  })),
+  deleteHccCareTeam: (id) => set(s => ({
+    hccCareTeams: s.hccCareTeams.filter(t => t.id !== id),
+  })),
 
   // ── HCC Activity Log (live) ──────────────────────────────────────────
   // Live entries appended by user actions (accept, dismiss, post comment,

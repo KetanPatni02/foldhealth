@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Button } from '../../components/Button/Button';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
@@ -6,6 +6,10 @@ import { SearchIconButton } from '../../components/SearchIconButton/SearchIconBu
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
 import { useAppStore } from '../../store/useAppStore';
+import { ConfigureTeamDrawer } from './ConfigureTeamDrawer';
+import { KIND_LABEL, KIND_BADGE_VARIANT } from './teamTypeConfig';
+import { HoverCard } from './HoverCard';
+import hoverStyles from './HoverCard.module.css';
 // Reuse the AgentsTable shell (wrapper / tabBar / tabs / table / etc.) so the
 // Member/Leads Care Team view picks up the same Fold table primitives the
 // rest of Settings uses — only the per-cell visuals are unique here.
@@ -21,14 +25,6 @@ const TABS = [
   { key: 'care-team',      label: 'Care Team' },
 ];
 
-const CARE_TEAMS = [
-  { id: 'rt1', name: 'Reviewer 1 Team', createdAt: '02/21/2026', createdBy: 'Dina Morries', createdFor: 'HCC',          teamType: 'Reviewer 1', users: [{ initials: 'LJ' }],                                  userCount: 20, capacity: 80,  assigned: 50,  assignedTone: 'warning', lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson' },
-  { id: 'rt2', name: 'Coder Team',      createdAt: '02/21/2026', createdBy: 'Dina Morries', createdFor: 'HCC',          teamType: 'Coder',      users: [{ initials: 'SM' }, { initials: 'JL' }],              userCount: 3,  capacity: 100, assigned: 90,  assignedTone: 'success', lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson' },
-  { id: 'rt3', name: 'SNP Team',        createdAt: '02/21/2026', createdBy: 'Dina Morries', createdFor: 'Care Program', teamType: 'SNP',        users: [{ initials: 'NP' }, { initials: 'AR' }],              userCount: 2,  capacity: 120, assigned: 30,  assignedTone: 'error',   lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson' },
-  { id: 'rt4', name: 'TOC Team',        createdAt: '02/21/2026', createdBy: 'Dina Morries', createdFor: 'Care Program', teamType: 'TOC',        users: [{ initials: 'ET' }],                                  userCount: 1,  capacity: 150, assigned: 80,  assignedTone: 'success', lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson' },
-  { id: 'rt5', name: 'Care Gap Team',   createdAt: '02/21/2026', createdBy: 'Dina Morries', createdFor: 'HEDIS',        teamType: 'Assignee',   users: [{ initials: 'AW' }, { initials: 'BC' }, { initials: 'DE' }], userCount: 20, capacity: 60,  assigned: 60,  assignedTone: 'warning', lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson' },
-];
-
 const CREATED_FOR_BADGE = {
   HCC:            { variant: 'toc-oncall',       label: 'HCC' },
   'Care Program': { variant: 'status-scheduled', label: 'Care Program' },
@@ -41,11 +37,32 @@ const ASSIGNED_BAR_COLOR = {
   error:   'var(--status-error)',
 };
 
+// Create-New menu options — clicking any opens ConfigureTeamDrawer with the
+// matching `kind` so the Team Type / Assign-To dimensions adapt.
+const CREATE_NEW_OPTIONS = [
+  { kind: 'care-program', label: 'Care Program Team' },
+  { kind: 'hedis',        label: 'HEDIS Team' },
+  { kind: 'hcc',          label: 'HCC Team' },
+];
+
 export function MemberLeadsPanel() {
   const [activeTab, setActiveTab] = useState('care-team');
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchVal, setSearchVal] = useState('');
-  const showToast = useAppStore(s => s.showToast);
+  const [createOpen, setCreateOpen] = useState(false);
+  const createBtnRef = useRef(null);
+  // drawer state: null when closed; otherwise { kind, editTeam? }
+  const [drawer, setDrawer] = useState(null);
+
+  // Close the Create-New popover on outside click.
+  useEffect(() => {
+    if (!createOpen) return;
+    const onDoc = (e) => {
+      if (!createBtnRef.current?.contains(e.target)) setCreateOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [createOpen]);
 
   return (
     <div className={agentStyles.wrapper}>
@@ -75,21 +92,41 @@ export function MemberLeadsPanel() {
             )}
           </div>
           <span className={agentStyles.tabDivider} />
-          <Button
-            variant="secondary"
-            size="L"
-            leadingIcon="solar:add-circle-linear"
-            onClick={() => showToast('Create New — coming soon')}
-          >
-            Create New
-          </Button>
+          <div className={styles.createWrap} ref={createBtnRef}>
+            <Button
+              variant="secondary"
+              size="L"
+              leadingIcon="solar:add-circle-linear"
+              onClick={() => setCreateOpen(o => !o)}
+            >
+              Create New
+            </Button>
+            {createOpen && (
+              <div className={styles.createMenu}>
+                <div className={styles.createMenuTitle}>Create New</div>
+                {CREATE_NEW_OPTIONS.map(opt => (
+                  <button
+                    key={opt.kind}
+                    type="button"
+                    className={styles.createMenuItem}
+                    onClick={() => { setCreateOpen(false); setDrawer({ kind: opt.kind }); }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Tab content */}
       {activeTab === 'care-team' ? (
         <div className={agentStyles.tableWrap}>
-          <CareTeamTable searchVal={searchVal} />
+          <CareTeamTable
+            searchVal={searchVal}
+            onEdit={(team) => setDrawer({ kind: team.kind, editTeam: team })}
+          />
         </div>
       ) : (
         <div className={styles.empty}>
@@ -97,20 +134,67 @@ export function MemberLeadsPanel() {
           <p>{TABS.find(t => t.key === activeTab)?.label} — coming soon</p>
         </div>
       )}
+
+      {drawer && (
+        <ConfigureTeamDrawer
+          kind={drawer.kind}
+          editTeam={drawer.editTeam || null}
+          onClose={() => setDrawer(null)}
+        />
+      )}
     </div>
   );
 }
 
-function CareTeamTable({ searchVal = '' }) {
+// Promote a store-shape team to the row shape the existing table expects
+// (precomputed users, capacity totals, etc.) so the renderer below stays
+// agnostic of where the data came from.
+function teamToRow(t) {
+  const sumCap = (t.members || []).reduce((s, m) => s + (Number(m.capacityPct) || 0), 0);
+  const sumAssigned = (t.members || []).reduce((s, m) =>
+    s + (m.assignTo || []).reduce((a, r) => a + (Number(r.pct) || 0), 0), 0);
+  const assignedTone = sumAssigned >= 90 ? 'success' : sumAssigned <= 30 ? 'error' : 'warning';
+  const createdFor = KIND_LABEL[t.kind] || t.kind || '';
+  return {
+    id: t.id,
+    kind: t.kind,
+    name: t.name,
+    teamType: t.teamType,
+    createdAt: t.createdAt,
+    createdBy: t.createdBy,
+    createdFor,
+    users: (t.members || []).map(m => ({
+      initials: m.initials,
+      name: m.name,
+      roles: m.roles,
+      capacityPct: m.capacityPct,
+    })),
+    capacity: sumCap,
+    assigned: sumAssigned,
+    assignedTone,
+    lastModifiedAt: t.lastModifiedAt,
+    lastModifiedBy: t.lastModifiedBy,
+    _editable: true,
+    _raw: t,
+  };
+}
+
+function CareTeamTable({ searchVal = '', onEdit }) {
   const showToast = useAppStore(s => s.showToast);
+  const deleteHccCareTeam = useAppStore(s => s.deleteHccCareTeam);
+  const liveTeams = useAppStore(s => s.hccCareTeams);
+
+  // All teams (including seeded mock data) live in the store, so every row
+  // is editable by anyone in the system. No static fallback path.
+  const allRows = liveTeams.map(teamToRow);
   const q = searchVal.trim().toLowerCase();
   const rows = q
-    ? CARE_TEAMS.filter(t =>
-        t.name.toLowerCase().includes(q) ||
-        t.teamType.toLowerCase().includes(q) ||
-        t.createdFor.toLowerCase().includes(q),
+    ? allRows.filter(t =>
+        (t.name || '').toLowerCase().includes(q) ||
+        (t.teamType || '').toLowerCase().includes(q) ||
+        (t.createdFor || '').toLowerCase().includes(q),
       )
-    : CARE_TEAMS;
+    : allRows;
 
   return (
     <table className={agentStyles.table}>
@@ -128,7 +212,9 @@ function CareTeamTable({ searchVal = '' }) {
       </thead>
       <tbody>
         {rows.map(t => {
-          const badge = CREATED_FOR_BADGE[t.createdFor] || { variant: 'toc-new', label: t.createdFor };
+          const badge = CREATED_FOR_BADGE[t.createdFor]
+            || (t.kind && { variant: KIND_BADGE_VARIANT[t.kind], label: KIND_LABEL[t.kind] })
+            || { variant: 'toc-new', label: t.createdFor };
           return (
             <tr key={t.id}>
               <td className={[agentStyles.stickyLeft, agentStyles.colName].filter(Boolean).join(' ')}>
@@ -140,23 +226,50 @@ function CareTeamTable({ searchVal = '' }) {
               <td><Badge variant={badge.variant} label={badge.label} /></td>
               <td>{t.teamType}</td>
               <td>
-                <div className={styles.usersCell}>
-                  <div className={styles.avatarStack}>
-                    {t.users.slice(0, 3).map((u, i) => (
-                      <Avatar
-                        key={i}
-                        variant="generic"
-                        size={20}
-                        initials={u.initials}
-                        backgroundColor="var(--primary-50)"
-                        borderColor="var(--primary-200)"
-                        color="var(--primary-300)"
-                        className={styles.avatarStackItem}
-                      />
-                    ))}
+                <HoverCard
+                  placement="top"
+                  content={
+                    <>
+                      <div className={hoverStyles.cardTitle}>
+                        Team Users <strong>({t.name})</strong>
+                      </div>
+                      {t.users.length === 0 ? (
+                        <div className={hoverStyles.userRowRole}>No members yet.</div>
+                      ) : t.users.map((u, i) => (
+                        // Neutral grey chip — this badge shows capacity USED
+                        // on this team, not remaining capacity, so the tone
+                        // scale (red/yellow/green) was misleading. Keep it
+                        // informational only.
+                        <div key={i} className={hoverStyles.userRow}>
+                          <Avatar variant="assignee" initials={u.initials} />
+                          <div className={hoverStyles.userRowText}>
+                            <span className={hoverStyles.userRowName}>{u.name}</span>
+                            {u.roles && <span className={hoverStyles.userRowRole}>{u.roles}</span>}
+                          </div>
+                          <span className={[hoverStyles.capChip, hoverStyles.capNeutral].join(' ')}>
+                            Capacity: {u.capacityPct || 0}%
+                          </span>
+                        </div>
+                      ))}
+                    </>
+                  }
+                >
+                  <div className={styles.usersCell}>
+                    <div className={styles.avatarStack}>
+                      {t.users.slice(0, 3).map((u, i) => (
+                        <Avatar
+                          key={i}
+                          variant="assignee"
+                          initials={u.initials}
+                          className={styles.avatarStackItem}
+                        />
+                      ))}
+                    </div>
+                    {t.users.length > 3 && (
+                      <span className={styles.userCount}>+{t.users.length - 3}</span>
+                    )}
                   </div>
-                  <span className={styles.userCount}>+{t.userCount}</span>
-                </div>
+                </HoverCard>
               </td>
               <td>{t.capacity}%</td>
               <td>
@@ -181,11 +294,23 @@ function CareTeamTable({ searchVal = '' }) {
               </td>
               <td className={[agentStyles.stickyRight, agentStyles.colActions].filter(Boolean).join(' ')}>
                 <div className={agentStyles.actions}>
-                  <ActionButton icon="solar:pen-linear"       size="L" tooltip="Edit"      onClick={() => showToast('Edit team — coming soon')} />
+                  <ActionButton
+                    icon="solar:pen-new-square-linear"
+                    size="L"
+                    tooltip="Edit"
+                    onClick={() => onEdit?.(t._raw)}
+                  />
                   <span className={agentStyles.actionDivider} />
-                  <ActionButton icon="solar:copy-linear"      size="L" tooltip="Duplicate" onClick={() => showToast('Duplicate team — coming soon')} />
+                  <ActionButton icon="solar:copy-linear" size="L" tooltip="Duplicate" onClick={() => showToast('Duplicate team — coming soon')} />
                   <span className={agentStyles.actionDivider} />
-                  <ActionButton icon="solar:menu-dots-bold"   size="L" tooltip="More"      onClick={() => showToast('More actions — coming soon')} />
+                  <ActionButton
+                    icon="solar:menu-dots-bold"
+                    size="L"
+                    tooltip="More"
+                    onClick={() => {
+                      if (window.confirm(`Delete team "${t.name}"?`)) deleteHccCareTeam(t.id);
+                    }}
+                  />
                 </div>
               </td>
             </tr>
