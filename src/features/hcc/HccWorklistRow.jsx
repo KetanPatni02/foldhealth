@@ -14,7 +14,8 @@ import {
 } from './RowPopovers';
 import { getIcdsForMember, getNotLinkedForMember } from './data/icds';
 import { getStatusSpec } from './statusSpec';
-import { staffById, ROLE_LABEL, ROLES } from './assignment/astranaStaff';
+import { staffById, staffForRole, ROLE_LABEL, ROLES } from './assignment/astranaStaff';
+import { createPortal } from 'react-dom';
 import { dosKey } from './assignment/dosState';
 import styles from './HccWorklistRow.module.css';
 
@@ -110,14 +111,9 @@ function HccEvidenceCell({ count, docStatus, onClick }) {
  * The status itself isn't spelled out — the row legend at the bottom of the
  * worklist explains the icon meanings.
  */
-function RoleStatusCell({ name, status, date }) {
+function RoleStatusCell({ name, status, date, role, memberId, dosDate }) {
   if (!name || !status || status === 'Assign') {
-    return (
-      <div className={styles.roleUnassigned}>
-        <Icon name="solar:user-plus-rounded-linear" size={14} color="var(--neutral-200)" />
-        <span>Assign</span>
-      </div>
-    );
+    return <RoleAssignTrigger role={role} memberId={memberId} dosDate={dosDate} />;
   }
   const spec = getStatusSpec(status);
   return (
@@ -128,6 +124,122 @@ function RoleStatusCell({ name, status, date }) {
         {date && <span className={styles.roleDate}>{date}</span>}
       </span>
     </div>
+  );
+}
+
+/**
+ * Clickable "Assign" cell. Opens a portal popover listing candidate users
+ * for the role (configured Care Team members + Astrana staff for the
+ * matching role). Selecting one dispatches hccReassignRole.
+ */
+function RoleAssignTrigger({ role, memberId, dosDate }) {
+  const btnRef = useRef(null);
+  const [pos, setPos] = useState(null);
+  const teams = useAppStore(s => s.hccCareTeams);
+  const reassign = useAppStore(s => s.hccReassignRole);
+  const showToast = useAppStore(s => s.showToast);
+
+  // role here is the engine key ('support' | 'coder' | 'r1' | 'r2' | 'r3').
+  // Pool = members of HCC teams whose teamType matches this role + Astrana
+  // staff in the same role bucket. Deduped by id; configured teams win.
+  const candidates = (() => {
+    const teamType = ROLE_LABEL[role];
+    const fromTeams = (teams || [])
+      .filter(t => t.kind === 'hcc' && t.teamType === teamType)
+      .flatMap(t => (t.members || []).map(m => ({
+        id: m.userId,
+        name: m.name,
+        initials: m.initials,
+        roles: m.roles,
+        source: 'team',
+        teamName: t.name,
+      })));
+    const seen = new Set(fromTeams.map(c => c.id));
+    const fromAstrana = staffForRole(role)
+      .filter(s => !seen.has(s.id))
+      .map(s => ({
+        id: s.id,
+        name: s.name,
+        initials: s.initials,
+        roles: ROLE_LABEL[s.role],
+        source: 'astrana',
+      }));
+    return [...fromTeams, ...fromAstrana];
+  })();
+
+  const open = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setPos({ top: r.bottom + 4, left: r.left });
+  };
+  const close = () => setPos(null);
+
+  // Close on outside click / escape.
+  useEffect(() => {
+    if (!pos) return;
+    const onDoc = (e) => {
+      if (!btnRef.current?.contains(e.target) && !e.target.closest?.(`.${styles.roleAssignMenu}`)) {
+        close();
+      }
+    };
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [pos]);
+
+  const onPick = (cand) => {
+    if (!memberId || !dosDate) {
+      showToast('Cannot assign — missing patient or DOS context.');
+      close();
+      return;
+    }
+    reassign(memberId, dosDate, role, cand.id, 'current-user', `Assigned via worklist`);
+    showToast(`${cand.name} assigned as ${ROLE_LABEL[role]}.`);
+    close();
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        ref={btnRef}
+        className={styles.roleUnassigned}
+        onClick={(e) => { e.stopPropagation(); pos ? close() : open(); }}
+      >
+        <Icon name="solar:user-plus-rounded-linear" size={14} color="var(--neutral-200)" />
+        <span>Assign</span>
+      </button>
+      {pos && createPortal(
+        <div
+          className={styles.roleAssignMenu}
+          style={{ top: pos.top, left: pos.left }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className={styles.roleAssignTitle}>Assign {ROLE_LABEL[role]}</div>
+          {candidates.length === 0 ? (
+            <div className={styles.roleAssignEmpty}>No candidates available.</div>
+          ) : candidates.map(c => (
+            <button
+              key={c.id}
+              type="button"
+              className={styles.roleAssignItem}
+              onClick={() => onPick(c)}
+            >
+              <Avatar variant="assignee" initials={c.initials} />
+              <span className={styles.roleAssignName}>{c.name}</span>
+              <span className={styles.roleAssignRole}>
+                {c.source === 'team' ? `Team: ${c.teamName}` : c.roles}
+              </span>
+            </button>
+          ))}
+        </div>,
+        document.body,
+      )}
+    </>
   );
 }
 
@@ -432,27 +544,32 @@ const CELL_RENDERERS = {
   // Role columns — bottom-line date = member.date + per-role offset.
   sup: ({ member }) => (
     <td key="sup" data-col="sup" className={styles.colRole}>
-      <RoleStatusCell name={member.sup} status={member.supS} date={addDaysToDate(member.date, ROLE_OFFSET.sup)} />
+      <RoleStatusCell name={member.sup} status={member.supS} date={addDaysToDate(member.date, ROLE_OFFSET.sup)}
+        role="support" memberId={member.id} dosDate={member.date} />
     </td>
   ),
   cdr: ({ member }) => (
     <td key="cdr" data-col="cdr" className={styles.colRole}>
-      <RoleStatusCell name={member.cdr} status={member.cdrS} date={addDaysToDate(member.date, ROLE_OFFSET.cdr)} />
+      <RoleStatusCell name={member.cdr} status={member.cdrS} date={addDaysToDate(member.date, ROLE_OFFSET.cdr)}
+        role="coder" memberId={member.id} dosDate={member.date} />
     </td>
   ),
   r1: ({ member }) => (
     <td key="r1" data-col="r1" className={styles.colRole}>
-      <RoleStatusCell name={member.r1} status={member.r1s} date={addDaysToDate(member.date, ROLE_OFFSET.r1)} />
+      <RoleStatusCell name={member.r1} status={member.r1s} date={addDaysToDate(member.date, ROLE_OFFSET.r1)}
+        role="r1" memberId={member.id} dosDate={member.date} />
     </td>
   ),
   r2: ({ member }) => (
     <td key="r2" data-col="r2" className={styles.colRole}>
-      <RoleStatusCell name={member.r2} status={member.r2s} date={addDaysToDate(member.date, ROLE_OFFSET.r2)} />
+      <RoleStatusCell name={member.r2} status={member.r2s} date={addDaysToDate(member.date, ROLE_OFFSET.r2)}
+        role="r2" memberId={member.id} dosDate={member.date} />
     </td>
   ),
   r3: ({ member }) => (
     <td key="r3" data-col="r3" className={styles.colRole}>
-      <RoleStatusCell name={member.r3} status={member.r3s} date={addDaysToDate(member.date, ROLE_OFFSET.r3)} />
+      <RoleStatusCell name={member.r3} status={member.r3s} date={addDaysToDate(member.date, ROLE_OFFSET.r3)}
+        role="r3" memberId={member.id} dosDate={member.date} />
     </td>
   ),
   rp: ({ member }) => (

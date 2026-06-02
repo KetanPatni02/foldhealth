@@ -97,6 +97,9 @@ export function stateToHash(state) {
     if (settingsNavItem === 'billing') {
       return buildHash('settings', 'billing');
     }
+    if (settingsNavItem === 'member/leads') {
+      return buildHash('settings', 'member-leads');
+    }
     // Agents section
     if (goalWizardOpen) return buildHash('settings', 'agents', 'goals', goalWizardEditId ? String(goalWizardEditId) : 'new');
     if (goalDetailId) return buildHash('settings', 'agents', 'goals', String(goalDetailId));
@@ -254,6 +257,11 @@ export function hashToState(route) {
     // APCM Billing section
     if (route.section === 'billing') {
       updates.settingsNavItem = 'billing';
+      return updates;
+    }
+    // Member/Leads section (settings → automation → member/leads)
+    if (route.section === 'member-leads') {
+      updates.settingsNavItem = 'member/leads';
       return updates;
     }
     // Agent edit (builder) route: #/settings/agents/edit/{id}
