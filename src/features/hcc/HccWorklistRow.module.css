@@ -480,10 +480,12 @@
    Hollow circle in the avatar slot, muted name text. */
 .unassignedSlot {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 24px;
   height: 24px;
   border-radius: 6px;
-  background: var(--neutral-0);
+  background: var(--neutral-50);
   border: 0.5px dashed var(--neutral-200);
   flex-shrink: 0;
 }

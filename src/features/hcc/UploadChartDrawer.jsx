@@ -71,7 +71,7 @@ export function UploadChartDrawer() {
 
   return (
     <Drawer
-      title={<span className={styles.title}>Upload Chart</span>}
+      title={<span className={styles.title}>Upload Document</span>}
       onClose={handleClose}
       className={styles.drawer}
       bodyClassName={styles.body}

@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
+import { Button } from '../../components/Button/Button';
 import { Checkbox } from '../../components/ui/checkbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Icon } from '../../components/Icon/Icon';
@@ -14,6 +15,7 @@ import {
 } from './RowPopovers';
 import { getIcdsForMember, getNotLinkedForMember } from './data/icds';
 import { getStatusSpec } from './statusSpec';
+import { StatusIcon } from './StatusIcon';
 import { staffById, staffForRole, ROLE_LABEL, ROLES } from './assignment/astranaStaff';
 import { createPortal } from 'react-dom';
 import { dosKey } from './assignment/dosState';
@@ -79,8 +81,22 @@ function summarizeDocs(docStatus = []) {
   return { label: `${pend} Pending`, color: 'var(--status-warning)' };
 }
 
-function HccEvidenceCell({ count, docStatus, onClick }) {
-  if (count == null) return <span className={styles.muted}>—</span>;
+function HccEvidenceCell({ count, docStatus, onClick, onUpload }) {
+  // No chart on file yet → ghost "Upload" link button (Fold Button variant
+  // ghost = transparent bg + neutral-300 text). Click opens the upload
+  // drawer for this member.
+  if (count == null) {
+    return (
+      <Button
+        variant="ghost"
+        size="S"
+        leadingIcon="solar:upload-linear"
+        onClick={(e) => { e.stopPropagation(); onUpload?.(); }}
+      >
+        Upload
+      </Button>
+    );
+  }
   const summary = summarizeDocs(docStatus);
   return (
     <button type="button" className={styles.evidenceTrigger} onClick={onClick}>
@@ -120,7 +136,7 @@ function RoleStatusCell({ name, status, date, role, memberId, dosDate }) {
     <div className={styles.stackCell}>
       <span className={styles.roleName}>{name}</span>
       <span className={styles.roleStatusLine}>
-        <Icon name={spec.icon} size={12} color={spec.color} />
+        <StatusIcon status={status} size={12} color={spec.color} />
         {date && <span className={styles.roleDate}>{date}</span>}
       </span>
     </div>
@@ -468,7 +484,9 @@ function AssigneeCell({ member, dosState }) {
   if (a.kind === 'unassigned') {
     return (
       <div className={styles.assigneeCell}>
-        <span className={styles.unassignedSlot} aria-hidden="true" />
+        <span className={styles.unassignedSlot} aria-hidden="true">
+          <Icon name="solar:user-rounded-linear" size={14} color="var(--neutral-200)" />
+        </span>
         <div className={styles.assigneeText}>
           <span className={styles.assigneeNameMuted}>Unassigned</span>
           <span className={styles.assigneeRole}>Awaiting {ROLE_LABEL[a.role] || a.role}</span>
@@ -529,9 +547,14 @@ const CELL_RENDERERS = {
       <CreateDateCell date={member.date} due={member.due} dueCol={member.dueCol} />
     </td>
   ),
-  evidence: ({ member, openChart }) => (
+  evidence: ({ member, openChart, openUpload }) => (
     <td key="evidence" data-col="evidence" className={styles.colEvidence} onClick={(e) => e.stopPropagation()}>
-      <HccEvidenceCell count={member.ch} docStatus={member.docStatus || []} onClick={openChart} />
+      <HccEvidenceCell
+        count={member.ch}
+        docStatus={member.docStatus || []}
+        onClick={openChart}
+        onUpload={openUpload}
+      />
     </td>
   ),
   // Current assignee — whoever owns the DOS right now per the engine.
@@ -742,7 +765,10 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
       {(columns || []).map((col) => {
         const render = CELL_RENDERERS[col.k];
         if (!render || isHidden(col.k)) return null;
-        return render({ member, dosState, openVisits, openChart, openDiagPanel, openClaimPreview });
+        return render({
+          member, dosState, openVisits, openChart, openDiagPanel, openClaimPreview,
+          openUpload: () => openHccUploadDrawer(member),
+        });
       })}
 
       {/* ── Sticky right: actions ── */}

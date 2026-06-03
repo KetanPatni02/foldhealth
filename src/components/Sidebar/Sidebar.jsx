@@ -25,6 +25,8 @@ export function Sidebar() {
   const activePage = useAppStore(s => s.activePage);
   const requestNavigate = useAppStore(s => s.requestNavigate);
   const setCurrentPage = useAppStore(s => s.setCurrentPage);
+  const setSettingsNavItem = useAppStore(s => s.setSettingsNavItem);
+  const setMemberLeadsTab = useAppStore(s => s.setMemberLeadsTab);
   const [helpOpen, setHelpOpen] = useState(false);
 
   const showToast = useAppStore(s => s.showToast);
@@ -35,6 +37,12 @@ export function Sidebar() {
     e.preventDefault();
     if (!page) return;
     if (implementedPages.includes(page)) {
+      // Settings: force-land on Member/Leads → Care Team every time the
+      // sidebar entry is clicked, regardless of where the user was last.
+      if (page === 'settings') {
+        setSettingsNavItem('member/leads');
+        setMemberLeadsTab('care-team');
+      }
       // requestNavigate handles the open-builder dialog flow for us. For pages
       // that go through cleanly, it routes to setActivePage internally.
       requestNavigate(page);
