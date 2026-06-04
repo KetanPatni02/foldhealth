@@ -209,10 +209,10 @@ export function ChartPopover({ anchorRect, member, onClose, onUpload }) {
         style={{ top, left, width: W }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
-        aria-label="Chart Available"
+        aria-label="Document Available"
       >
         <div className={styles.chartHeader}>
-          <span className={styles.chartHeaderLabel}>Chart Available:</span>
+          <span className={styles.chartHeaderLabel}>Document Available:</span>
           <span className={styles.chartHeaderStatus}>
             <span className={styles.chartHeaderDot} style={{ background: overallColor }} />
             <span style={{ color: overallColor }}>{overallLabel}</span>

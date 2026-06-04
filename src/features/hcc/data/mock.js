@@ -19,7 +19,7 @@ export const HCC_COLUMNS = [
   { k: 'dos',   lb: 'DOS',                w: 140 },
   { k: 'open',  lb: 'Open ICDs',          w: 100 },
   { k: 'date',  lb: 'Create Date',        w: 120 },
-  { k: 'chart', lb: 'Chart Available',    w: 120 },
+  { k: 'chart', lb: 'Document Available', w: 120 },
   { k: 'sup',   lb: 'Support Team',       w: 170 },
   { k: 'cdr',   lb: 'Coder',              w: 170 },
   { k: 'r1',    lb: 'Reviewer 1',         w: 170 },

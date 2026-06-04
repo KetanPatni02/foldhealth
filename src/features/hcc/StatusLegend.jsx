@@ -1,5 +1,5 @@
-import { Icon } from '../../components/Icon/Icon';
 import { LEGEND_STATUSES } from './statusSpec';
+import { StatusIcon } from './StatusIcon';
 import styles from './StatusLegend.module.css';
 
 /**
@@ -17,7 +17,7 @@ export function StatusLegend() {
       <span className={styles.label}>Legend:</span>
       {LEGEND_STATUSES.map((it) => (
         <span key={it.label} className={styles.item}>
-          <Icon name={it.icon} size={13} color={it.color} />
+          <StatusIcon status={it.label} size={13} color={it.color} />
           <span style={{ color: it.color }}>{it.label}</span>
         </span>
       ))}

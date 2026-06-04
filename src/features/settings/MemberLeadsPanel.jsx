@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { Button } from '../../components/Button/Button';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
+import { DestructiveDialog } from '../../components/Modal/DestructiveDialog';
 import { useAppStore } from '../../store/useAppStore';
 import { ConfigureTeamDrawer } from './ConfigureTeamDrawer';
 import { KIND_LABEL, KIND_BADGE_VARIANT } from './teamTypeConfig';
@@ -46,7 +48,10 @@ const CREATE_NEW_OPTIONS = [
 ];
 
 export function MemberLeadsPanel() {
-  const [activeTab, setActiveTab] = useState('care-team');
+  // Active tab is store-backed so deep links like
+  // #/settings/member-leads/care-team survive reloads.
+  const activeTab = useAppStore(s => s.memberLeadsTab);
+  const setActiveTab = useAppStore(s => s.setMemberLeadsTab);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchVal, setSearchVal] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
@@ -182,7 +187,55 @@ function teamToRow(t) {
 function CareTeamTable({ searchVal = '', onEdit }) {
   const showToast = useAppStore(s => s.showToast);
   const deleteHccCareTeam = useAppStore(s => s.deleteHccCareTeam);
+  const addHccCareTeam = useAppStore(s => s.addHccCareTeam);
   const liveTeams = useAppStore(s => s.hccCareTeams);
+
+  // Per-row "more" menu: open state holds {teamId, top, left}; null when closed.
+  const [menu, setMenu] = useState(null);
+  // Destructive confirm dialog. Holds the team being deleted; null when closed.
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  // Outside-click + Escape close the row menu.
+  useEffect(() => {
+    if (!menu) return;
+    const onDoc = (e) => {
+      if (!e.target.closest?.(`.${styles.rowMenu}`)) setMenu(null);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') setMenu(null); };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menu]);
+
+  // Deep-clone a team's members so the duplicate doesn't share Assign-To
+  // row objects with the source. Returns a brand-new team ready for the
+  // store. Keeps members, allocatedTins, teamType, kind, createdFor — just
+  // mints a new id/timestamp and appends "(Copy)" to the name.
+  const duplicateTeam = (src) => {
+    const now = (() => {
+      const d = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()}`;
+    })();
+    addHccCareTeam({
+      ...src,
+      id: `team-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name: `${src.name} (Copy)`,
+      members: (src.members || []).map(m => ({
+        ...m,
+        assignTo: (m.assignTo || []).map(r => ({ ...r })),
+      })),
+      allocatedTins: [...(src.allocatedTins || [])],
+      createdAt: now,
+      createdBy: 'You',
+      lastModifiedAt: now,
+      lastModifiedBy: 'You',
+    });
+    showToast(`Duplicated "${src.name}"`);
+  };
 
   // All teams (including seeded mock data) live in the store, so every row
   // is editable by anyone in the system. No static fallback path.
@@ -197,6 +250,7 @@ function CareTeamTable({ searchVal = '', onEdit }) {
     : allRows;
 
   return (
+    <>
     <table className={agentStyles.table}>
       <thead>
         <tr>
@@ -295,20 +349,26 @@ function CareTeamTable({ searchVal = '', onEdit }) {
               <td className={[agentStyles.stickyRight, agentStyles.colActions].filter(Boolean).join(' ')}>
                 <div className={agentStyles.actions}>
                   <ActionButton
-                    icon="solar:pen-new-square-linear"
+                    icon="solar:pen-linear"
                     size="L"
                     tooltip="Edit"
                     onClick={() => onEdit?.(t._raw)}
                   />
                   <span className={agentStyles.actionDivider} />
-                  <ActionButton icon="solar:copy-linear" size="L" tooltip="Duplicate" onClick={() => showToast('Duplicate team — coming soon')} />
+                  <ActionButton
+                    icon="solar:copy-linear"
+                    size="L"
+                    tooltip="Duplicate"
+                    onClick={() => duplicateTeam(t._raw)}
+                  />
                   <span className={agentStyles.actionDivider} />
                   <ActionButton
                     icon="solar:menu-dots-bold"
                     size="L"
                     tooltip="More"
-                    onClick={() => {
-                      if (window.confirm(`Delete team "${t.name}"?`)) deleteHccCareTeam(t.id);
+                    onClick={(e) => {
+                      const r = e.currentTarget.getBoundingClientRect();
+                      setMenu({ teamId: t.id, teamName: t.name, top: r.bottom + 4, left: r.right - 160 });
                     }}
                   />
                 </div>
@@ -328,5 +388,40 @@ function CareTeamTable({ searchVal = '', onEdit }) {
         )}
       </tbody>
     </table>
+    {menu && createPortal(
+        <div
+          className={styles.rowMenu}
+          style={{ top: menu.top, left: menu.left }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            className={[styles.rowMenuItem, styles.rowMenuItemDanger].join(' ')}
+            onClick={() => {
+              const team = liveTeams.find(t => t.id === menu.teamId);
+              setConfirmDelete(team || { id: menu.teamId, name: menu.teamName });
+              setMenu(null);
+            }}
+          >
+            <Icon name="solar:trash-bin-trash-linear" size={14} color="var(--status-error)" />
+            Delete
+          </button>
+        </div>,
+        document.body,
+      )}
+      {confirmDelete && (
+        <DestructiveDialog
+          title={`Delete "${confirmDelete.name}"?`}
+          description="This action will permanently delete this team and its assignment rules from the system."
+          confirmLabel="Delete Team"
+          onConfirm={() => {
+            deleteHccCareTeam(confirmDelete.id);
+            showToast(`Deleted "${confirmDelete.name}"`);
+            setConfirmDelete(null);
+          }}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+    </>
   );
 }

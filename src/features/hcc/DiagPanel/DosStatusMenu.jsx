@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../components/Icon/Icon';
 import { getStatusSpec } from '../statusSpec';
+import { StatusIcon } from '../StatusIcon';
 import styles from './DosStatusMenu.module.css';
 
 // Items shown in the change-status menu. `value` is the canonical status
@@ -52,7 +53,7 @@ export function DosStatusMenu({ value, onChange, disabled = false }) {
         onClick={pos ? close : open}
       >
         <span className={styles.iconLeading}>
-          <Icon name={spec.icon} size={11} color={spec.color} />
+          <StatusIcon status={value} size={11} color={spec.color} />
         </span>
         <span className={styles.label}>{value}</span>
         {!disabled && (

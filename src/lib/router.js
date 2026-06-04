@@ -98,7 +98,8 @@ export function stateToHash(state) {
       return buildHash('settings', 'billing');
     }
     if (settingsNavItem === 'member/leads') {
-      return buildHash('settings', 'member-leads');
+      const mlTab = state.memberLeadsTab || 'care-team';
+      return buildHash('settings', 'member-leads', mlTab);
     }
     // Agents section
     if (goalWizardOpen) return buildHash('settings', 'agents', 'goals', goalWizardEditId ? String(goalWizardEditId) : 'new');
@@ -262,6 +263,7 @@ export function hashToState(route) {
     // Member/Leads section (settings → automation → member/leads)
     if (route.section === 'member-leads') {
       updates.settingsNavItem = 'member/leads';
+      updates.memberLeadsTab = route.tab || 'care-team';
       return updates;
     }
     // Agent edit (builder) route: #/settings/agents/edit/{id}

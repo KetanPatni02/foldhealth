@@ -213,6 +213,15 @@ const HCC_TRANSITION_LABEL = {
   reassignRole:          'Role Reassigned',
 };
 
+// Maps a shared-list label to the store-state key that holds its active
+// filter selections. Used by the generic saved-filter actions below so that
+// saving / applying a filter on any list writes to the right slice.
+// Lists not listed here fall back to `activeFilters` (the TOC default).
+const LIST_FILTER_KEY = {
+  HCC:   'hccFilters',
+  HEDIS: 'hedisFilters',
+};
+
 export const useAppStore = create((set, get) => ({
   // ─── Theme ───────────────────────────────────────────────────────────
   // `theme` is the user's chosen setting: 'light' | 'dark' | 'system'
@@ -447,7 +456,11 @@ export const useAppStore = create((set, get) => ({
   goalWizardEditId: null,
 
   // Settings navigation (left subnav)
-  settingsNavItem: sessionStorage.getItem('settingsNavItem') || 'agents',
+  settingsNavItem: sessionStorage.getItem('settingsNavItem') || 'member/leads',
+  // Active sub-tab inside Settings → Member/Leads (Tags / Custom Contact Type
+  // / Custom Contact Fields / Code Groups / Worklist / Care Team). Persisted
+  // in the hash so deep links survive.
+  memberLeadsTab: sessionStorage.getItem('memberLeadsTab') || 'care-team',
 
   // Messages section
   messageTab: 'chat-settings',
@@ -741,6 +754,11 @@ export const useAppStore = create((set, get) => ({
     if (from !== item) track('nav.settings_section_changed', { from, to: item });
     sessionStorage.setItem('settingsNavItem', item);
     set({ settingsNavItem: item });
+    updateHash(get);
+  },
+  setMemberLeadsTab: (tab) => {
+    sessionStorage.setItem('memberLeadsTab', tab);
+    set({ memberLeadsTab: tab });
     updateHash(get);
   },
 
@@ -2008,46 +2026,114 @@ export const useAppStore = create((set, get) => ({
   }),
   clearHccVisibleFilters: () => set({ hccVisibleFilterKeys: [] }),
 
-  // Saved filter sets. Each: { id, name, filters: {[k]: string[]} }.
-  hccSavedFilters: [
-    { id: 'sf1', name: 'High Risk Members',  filters: { rl: ['High'] } },
-    { id: 'sf2', name: 'Overdue Incomplete', filters: { supS: ['Assign'], cdrS: ['Assign'] } },
-  ],
-  hccActiveSavedId: null,
-  saveHccFilter: (name) => {
-    track('hcc.filter_saved');
+  // Saved filter sets, keyed by shared-list label (HCC, TOC, SNP, AWV,
+  // HEDIS, High Utilizers, DM). Each entry: { id, name, filters }. Persisted
+  // to localStorage so users keep their saved views across reloads.
+  //
+  // The per-list filter STATE lives elsewhere (hccFilters for HCC,
+  // activeFilters for TOC and other generic lists). LIST_FILTER_KEY below
+  // tells the store which slice to read/write for each list.
+  savedFiltersByList: (() => {
+    try {
+      const raw = localStorage.getItem('savedFiltersByList');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
+    } catch {/* fall through */}
+    // Migrate legacy hccSavedFilters if present so existing data isn't lost.
+    try {
+      const legacy = localStorage.getItem('hccSavedFilters');
+      if (legacy) {
+        const parsed = JSON.parse(legacy);
+        if (Array.isArray(parsed)) return { HCC: parsed };
+      }
+    } catch {/* */}
+    return {
+      HCC: [
+        { id: 'sf1', name: 'High Risk Members',  filters: { rl: ['High'] } },
+        { id: 'sf2', name: 'Overdue Incomplete', filters: { supS: ['Assign'], cdrS: ['Assign'] } },
+      ],
+    };
+  })(),
+  activeSavedIdByList: (() => {
+    try {
+      const raw = localStorage.getItem('activeSavedIdByList');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
+    } catch {/* */}
+    const legacy = localStorage.getItem('hccActiveSavedId');
+    return legacy ? { HCC: legacy } : {};
+  })(),
+  // saveSavedFilter(list, name): read the current filter slice for `list`
+  // and store it under savedFiltersByList[list] as a named view.
+  saveSavedFilter: (list, name) => {
+    track('list.filter_saved', { list });
     set(s => {
       const trimmed = (name || '').trim();
-      if (!trimmed) return {};
+      if (!trimmed || !list) return {};
+      const key = LIST_FILTER_KEY[list] || 'activeFilters';
+      const snapshot = { ...(s[key] || {}) };
       const id = `sf-${Date.now()}`;
+      const cur = s.savedFiltersByList[list] || [];
+      const nextSaved = { ...s.savedFiltersByList, [list]: [...cur, { id, name: trimmed, filters: snapshot }] };
+      const nextActive = { ...s.activeSavedIdByList, [list]: id };
+      try { localStorage.setItem('savedFiltersByList', JSON.stringify(nextSaved)); } catch {/* */}
+      try { localStorage.setItem('activeSavedIdByList', JSON.stringify(nextActive)); } catch {/* */}
+      return { savedFiltersByList: nextSaved, activeSavedIdByList: nextActive };
+    });
+  },
+  renameSavedFilter: (list, id, name) => {
+    track('list.saved_filter_renamed', { list, filterId: id });
+    set(s => {
+      const cur = s.savedFiltersByList[list] || [];
+      const nextList = cur.map(f => f.id === id ? { ...f, name: (name || '').trim() || f.name } : f);
+      const nextSaved = { ...s.savedFiltersByList, [list]: nextList };
+      try { localStorage.setItem('savedFiltersByList', JSON.stringify(nextSaved)); } catch {/* */}
+      return { savedFiltersByList: nextSaved };
+    });
+  },
+  deleteSavedFilter: (list, id) => {
+    track('list.saved_filter_deleted', { list, filterId: id });
+    set(s => {
+      const cur = s.savedFiltersByList[list] || [];
+      const nextList = cur.filter(f => f.id !== id);
+      const nextSaved = { ...s.savedFiltersByList, [list]: nextList };
+      const wasActive = s.activeSavedIdByList[list] === id;
+      const nextActive = { ...s.activeSavedIdByList };
+      if (wasActive) delete nextActive[list];
+      const key = LIST_FILTER_KEY[list] || 'activeFilters';
+      try { localStorage.setItem('savedFiltersByList', JSON.stringify(nextSaved)); } catch {/* */}
+      try { localStorage.setItem('activeSavedIdByList', JSON.stringify(nextActive)); } catch {/* */}
       return {
-        hccSavedFilters: [...s.hccSavedFilters, { id, name: trimmed, filters: { ...s.hccFilters } }],
-        hccActiveSavedId: id,
+        savedFiltersByList: nextSaved,
+        activeSavedIdByList: nextActive,
+        ...(wasActive ? { [key]: {} } : {}),
       };
     });
   },
-  renameHccSavedFilter: (id, name) => {
-    track('hcc.saved_filter_renamed', { filterId: id });
-    set(s => ({
-      hccSavedFilters: s.hccSavedFilters.map(f => f.id === id ? { ...f, name: (name || '').trim() || f.name } : f),
-    }));
-  },
-  deleteHccSavedFilter: (id) => {
-    track('hcc.saved_filter_deleted', { filterId: id });
-    set(s => ({
-      hccSavedFilters: s.hccSavedFilters.filter(f => f.id !== id),
-      hccActiveSavedId: s.hccActiveSavedId === id ? null : s.hccActiveSavedId,
-      hccFilters: s.hccActiveSavedId === id ? {} : s.hccFilters,
-    }));
-  },
-  applyHccSavedFilter: (id) => {
-    track('hcc.saved_filter_applied', { filterId: id });
+  applySavedFilter: (list, id) => {
+    track('list.saved_filter_applied', { list, filterId: id });
     set(s => {
-      const f = s.hccSavedFilters.find(x => x.id === id);
+      const f = (s.savedFiltersByList[list] || []).find(x => x.id === id);
       if (!f) return {};
-      return { hccFilters: { ...f.filters }, hccActiveSavedId: id };
+      const key = LIST_FILTER_KEY[list] || 'activeFilters';
+      const nextActive = { ...s.activeSavedIdByList, [list]: id };
+      try { localStorage.setItem('activeSavedIdByList', JSON.stringify(nextActive)); } catch {/* */}
+      return { [key]: { ...f.filters }, activeSavedIdByList: nextActive };
     });
   },
+
+  // Thin HCC-specific aliases so the existing FilterChipBar's "Save Filter"
+  // button and any other HCC-only callers keep working without rewrites.
+  // (Getters on the state object are not reactive in Zustand — components
+  // that need to subscribe should read `savedFiltersByList.HCC` directly.)
+  saveHccFilter: (name) => useAppStore.getState().saveSavedFilter('HCC', name),
+  renameHccSavedFilter: (id, name) => useAppStore.getState().renameSavedFilter('HCC', id, name),
+  deleteHccSavedFilter: (id) => useAppStore.getState().deleteSavedFilter('HCC', id),
+  applyHccSavedFilter: (id) => useAppStore.getState().applySavedFilter('HCC', id),
 
   // Column visibility — array of column keys that are hidden. Sticky Member/Actions
   // columns are not toggleable so they never appear here.
@@ -2241,7 +2327,55 @@ export const useAppStore = create((set, get) => ({
         ),
       }));
     }
+    // The engine's reassignRole stamps the assignee but leaves status null,
+    // which makes resolveCurrentAssignee() still report this bucket as
+    // unassigned (it only treats the bucket as active when status is both
+    // set and non-'Assign'). Force-stamp a 'New' status so AssigneeAvatar /
+    // AssigneeCell flip immediately to the active state with the new owner.
+    const dosKey = `${pid}::${dos}`;
+    set(s => {
+      const cur = s.hccDosAssignments?.[dosKey];
+      if (!cur || !cur[role]) return {};
+      return {
+        hccDosAssignments: {
+          ...s.hccDosAssignments,
+          [dosKey]: {
+            ...cur,
+            [role]: { ...cur[role], status: 'New' },
+          },
+        },
+      };
+    });
     return result;
+  },
+
+  // Generic role-status patch — used by the DiagPanel status menu for
+  // transitions the engine doesn't have a dedicated AC for (e.g. New →
+  // In Progress on coder/reviewer roles, where the spec assumes work
+  // starts implicitly on assignment). Patches BOTH the engine's dosState
+  // bucket and the legacy member.{role}S field so worklist + DiagPanel
+  // agree on the new status.
+  hccSetRoleStatus: (pid, dos, role, status) => {
+    const fieldByRole       = { support: 'sup',  coder: 'cdr',  r1: 'r1',  r2: 'r2',  r3: 'r3'  };
+    const statusFieldByRole = { support: 'supS', coder: 'cdrS', r1: 'r1s', r2: 'r2s', r3: 'r3s' };
+    const f  = fieldByRole[role];
+    const sf = statusFieldByRole[role];
+    if (!f || !sf) return;
+    const dosKey = `${pid}::${dos}`;
+    set(s => {
+      const next = { hccMembers: s.hccMembers.map(m =>
+        m.id === pid ? { ...m, [sf]: status } : m,
+      ) };
+      const cur = s.hccDosAssignments?.[dosKey];
+      if (cur && cur[role]) {
+        next.hccDosAssignments = {
+          ...s.hccDosAssignments,
+          [dosKey]: { ...cur, [role]: { ...cur[role], status } },
+        };
+      }
+      return next;
+    });
+    track('hcc.role_status_set', { memberId: pid, role, status });
   },
 
   // Helpers exposed for the UI — resolve a staff id back to a display name.

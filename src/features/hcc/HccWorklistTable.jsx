@@ -11,7 +11,6 @@ import { InlineEditable } from '../../components/InlineEditable/InlineEditable';
 import { SortPopover } from '../../components/Popover/SortPopover';
 import { DueDateChip, getDueCategory } from './DueDateChip';
 import { FilterChipBar } from './FilterChipBar';
-import { SavedFiltersRow } from './SavedFiltersRow';
 import { FilterNameDialog } from './FilterNameDialog';
 import { ColumnConfigPopover } from './ColumnConfigPopover';
 import { HCC_COLUMNS, HCC_COL_MAP, MEMBER_SORT_ITEMS, orderColumns } from './columns';
@@ -278,7 +277,8 @@ export function HccWorklistTable() {
       </div>
 
       {filterOpen && <FilterChipBar onSaveFilter={() => setSaveDialogOpen(true)} />}
-      <SavedFiltersRow onRename={(sf) => setRenameTarget(sf)} />
+      {/* Saved filters live exclusively in the left SubNav (under HCC).
+          Inline chip strip removed per UX; rename/delete handled in-sidebar. */}
 
       <FilterNameDialog
         open={saveDialogOpen}

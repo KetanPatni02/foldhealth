@@ -1,9 +1,11 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAppStore } from '../../../store/useAppStore';
 import { Drawer } from '../../../components/Drawer/Drawer';
 import { Icon } from '../../../components/Icon/Icon';
 import { CloseIcon } from '../../../components/Icon/CloseIcon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
+import { Avatar } from '../../../components/Avatar/Avatar';
 import { Toggle } from '../../../components/Toggle/Toggle';
 import { SearchIconButton } from '../../../components/SearchIconButton/SearchIconButton';
 import { HccCard } from './HccGroupRow';
@@ -23,7 +25,7 @@ import { getSweepIcdsForMember } from '../data/sweepIcds';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { RoleTooltip } from '../RoleTooltip';
 import { resolveCurrentAssignee } from '../HccWorklistRow';
-import { ROLE_LABEL } from '../assignment/astranaStaff';
+import { ROLE_LABEL, staffForRole } from '../assignment/astranaStaff';
 import styles from './DiagPanel.module.css';
 
 // Initials-square avatar to the left of the DOS status pill. Reflects the
@@ -32,9 +34,153 @@ import styles from './DiagPanel.module.css';
 // records that have advanced past R2/R3 with no next assignee, shows a
 // dashed-outline placeholder. For Billing Ready records, shows a green
 // check chip. Hovering opens a RoleTooltip with the role label.
-function AssigneeAvatar({ member, dosState }) {
+/**
+ * UnassignedAssignTrigger — interactive dashed avatar slot.
+ * Clicking opens a portal popover with candidates pulled from configured
+ * Care Teams (members whose teamType matches the role) + Astrana staff in
+ * the same role bucket. Selecting a candidate dispatches `hccReassignRole`
+ * so the DOS gains an owner without leaving the DiagPanel.
+ */
+function UnassignedAssignTrigger({ role, memberId, dosDate }) {
+  const btnRef = useRef(null);
+  const [pos, setPos] = useState(null);
+  const teams = useAppStore(s => s.hccCareTeams);
+  const reassign = useAppStore(s => s.hccReassignRole);
+  const showToast = useAppStore(s => s.showToast);
+
+  const candidates = (() => {
+    const teamType = ROLE_LABEL[role];
+    const fromTeams = (teams || [])
+      .filter(t => t.kind === 'hcc' && t.teamType === teamType)
+      .flatMap(t => (t.members || []).map(m => ({
+        id: m.userId, name: m.name, initials: m.initials,
+        roles: m.roles, source: 'team', teamName: t.name,
+      })));
+    const seen = new Set(fromTeams.map(c => c.id));
+    const fromAstrana = staffForRole(role)
+      .filter(s => !seen.has(s.id))
+      .map(s => ({
+        id: s.id, name: s.name, initials: s.initials,
+        roles: ROLE_LABEL[s.role], source: 'astrana',
+      }));
+    return [...fromTeams, ...fromAstrana];
+  })();
+
+  useEffect(() => {
+    if (!pos) return;
+    const onDoc = (e) => {
+      if (!btnRef.current?.contains(e.target)
+          && !e.target.closest?.('[data-assign-menu]')) setPos(null);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') setPos(null); };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [pos]);
+
+  const open = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setPos({ top: r.bottom + 4, left: Math.max(8, r.right - 280) });
+  };
+  const onPick = (cand) => {
+    if (!memberId || !dosDate) {
+      showToast('Cannot assign — missing DOS context.');
+      setPos(null);
+      return;
+    }
+    reassign(memberId, dosDate, role, cand.id, 'current-user', 'Assigned from DiagPanel');
+    showToast(`${cand.name} assigned as ${ROLE_LABEL[role]}.`);
+    setPos(null);
+  };
+
+  return (
+    <RoleTooltip
+      name="Unassigned"
+      role={`Awaiting ${ROLE_LABEL[role] || role} — click to assign`}
+      initials="—"
+      variant="provider"
+    >
+      <button
+        type="button"
+        ref={btnRef}
+        onClick={(e) => { e.stopPropagation(); pos ? setPos(null) : open(); }}
+        style={{
+          width: 24, height: 24, borderRadius: 6,
+          background: 'var(--neutral-50)',
+          border: '0.5px dashed var(--neutral-200)',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0, cursor: 'pointer', padding: 0,
+        }}
+      >
+        <Icon name="solar:user-plus-rounded-linear" size={14} color="var(--neutral-300)" />
+      </button>
+      {pos && createPortal(
+        <div
+          data-assign-menu
+          style={{
+            position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999,
+            minWidth: 280, maxHeight: 280, overflowY: 'auto',
+            background: 'var(--neutral-0)',
+            border: '0.5px solid var(--neutral-150)',
+            borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+            padding: 4, fontFamily: 'Inter, sans-serif',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div style={{
+            fontSize: 12, fontWeight: 500, color: 'var(--neutral-400)',
+            padding: '6px 8px', borderBottom: '0.5px solid var(--neutral-100)',
+            marginBottom: 4,
+          }}>
+            Assign {ROLE_LABEL[role]}
+          </div>
+          {candidates.length === 0 ? (
+            <div style={{ padding: 12, fontSize: 12, color: 'var(--neutral-300)', textAlign: 'center' }}>
+              No candidates available.
+            </div>
+          ) : candidates.map(c => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => onPick(c)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '6px 8px', border: 'none', background: 'transparent',
+                borderRadius: 4, cursor: 'pointer', textAlign: 'left',
+                width: '100%', fontFamily: 'Inter, sans-serif',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--neutral-50)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <Avatar variant="assignee" initials={c.initials} />
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: 'var(--neutral-500)' }}>
+                {c.name}
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--neutral-300)' }}>
+                {c.source === 'team' ? `Team: ${c.teamName}` : c.roles}
+              </span>
+            </button>
+          ))}
+        </div>,
+        document.body,
+      )}
+    </RoleTooltip>
+  );
+}
+
+function AssigneeAvatar({ member, dosState, currentDos }) {
   const a = resolveCurrentAssignee(member, dosState);
   if (!a) return null;
+  // Unassigned slot is interactive — opens a candidate picker so the user
+  // can assign someone from this exact spot. Lives in its own subcomponent
+  // because of the portal + outside-click bookkeeping.
+  if (a.kind === 'unassigned') {
+    return <UnassignedAssignTrigger role={a.role} memberId={member?.id} dosDate={currentDos} />;
+  }
 
   // Billing Ready — every stage completed. Green check chip, no person.
   if (a.kind === 'billing') {
@@ -51,33 +197,6 @@ function AssigneeAvatar({ member, dosState }) {
           }}
         >
           <Icon name="solar:check-circle-bold" size={14} color="var(--status-success)" />
-        </span>
-      </RoleTooltip>
-    );
-  }
-
-  // Unassigned next bucket — dashed empty slot. Tooltip surfaces which role
-  // the DOS is waiting on so the affordance isn't a mystery.
-  if (a.kind === 'unassigned') {
-    return (
-      <RoleTooltip
-        name="Unassigned"
-        role={`Awaiting ${ROLE_LABEL[a.role] || a.role}`}
-        initials="—"
-        variant="provider"
-      >
-        <span
-          style={{
-            width: 24, height: 24, borderRadius: 6,
-            background: 'var(--neutral-0)',
-            border: '0.5px dashed var(--neutral-200)',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, color: 'var(--neutral-200)',
-            fontFamily: 'Inter, sans-serif',
-            fontSize: 12, fontWeight: 500,
-          }}
-        >
-          —
         </span>
       </RoleTooltip>
     );
@@ -169,6 +288,8 @@ export function DiagPanel() {
   const hccMarkInsufficient = useAppStore(s => s.hccMarkInsufficient);
   const hccRejectDos = useAppStore(s => s.hccRejectDos);
   const hccReturnDos = useAppStore(s => s.hccReturnDos);
+  const hccMarkSupportInProgress = useAppStore(s => s.hccMarkSupportInProgress);
+  const hccSetRoleStatus = useAppStore(s => s.hccSetRoleStatus);
   const diagSnapFilter = useAppStore(s => s.diagSnapFilter);
   const setDiagSnapFilter = useAppStore(s => s.setDiagSnapFilter);
   const diagSnapOpen = useAppStore(s => s.diagSnapOpen);
@@ -348,39 +469,55 @@ export function DiagPanel() {
   const handleStatusChange = (next) => {
     if (!member || !currentDos) { setDiagDosStatus(next); return; }
     const role = currentBucket?.kind === 'active' ? currentBucket.role : null;
-    if (role) {
-      switch (next) {
-        case 'Completed':
-          if (role === 'support') hccCompleteSupport(member.id, currentDos);
-          else if (role === 'coder') hccCompleteCoder(member.id, currentDos);
-          else if (role === 'r1') hccCompleteR1(member.id, currentDos);
-          else if (role === 'r2') hccCompleteR2(member.id, currentDos);
-          else if (role === 'r3') hccCompleteR3(member.id, currentDos);
-          break;
-        case 'Record Requested':
-          if (role === 'coder') hccRequestRecords(member.id, currentDos);
-          break;
-        case 'Insufficient':
-          if (role === 'support') {
-            hccMarkInsufficient(member.id, currentDos, 'current-user', 'Docs incomplete');
-          }
-          break;
-        case 'Reject':
-          if (role === 'support') {
-            hccRejectDos(member.id, currentDos, 'current-user', 'Docs failed checklist');
-          }
-          break;
-        case 'Returned':
-          // Reviewer-only: bounce back to the immediately-prior role
-          // (engine's RETURN_TARGET map handles r1→coder / r2→r1 / r3→r2).
-          if (role === 'r1' || role === 'r2' || role === 'r3') {
-            hccReturnDos(member.id, currentDos, role, 'current-user', `Returned from ${role}`);
-          }
-          break;
-        default:
-          /* New / Awaiting / In Progress / Record Received are system-driven */
-          break;
-      }
+    if (!role) { setDiagDosStatus(next); return; }
+
+    // Strategy:
+    //  - If the engine has a dedicated AC for this (role, status) combo,
+    //    fire it so the lifecycle event lands in the activity log AND any
+    //    downstream effects (handoff to next role, sampling, etc.) happen.
+    //  - Otherwise fall back to the generic role-status patcher so the
+    //    user's pick is always reflected on the pill (no silent no-op).
+    switch (next) {
+      case 'Completed':
+        if (role === 'support')      hccCompleteSupport(member.id, currentDos);
+        else if (role === 'coder')   hccCompleteCoder(member.id, currentDos);
+        else if (role === 'r1')      hccCompleteR1(member.id, currentDos);
+        else if (role === 'r2')      hccCompleteR2(member.id, currentDos);
+        else if (role === 'r3')      hccCompleteR3(member.id, currentDos);
+        else                         hccSetRoleStatus(member.id, currentDos, role, 'Completed');
+        break;
+      case 'Record Requested':
+        if (role === 'coder')        hccRequestRecords(member.id, currentDos);
+        else                         hccSetRoleStatus(member.id, currentDos, role, 'Record Requested');
+        break;
+      case 'Insufficient':
+        if (role === 'support')      hccMarkInsufficient(member.id, currentDos, 'current-user', 'Docs incomplete');
+        else                         hccSetRoleStatus(member.id, currentDos, role, 'Insufficient');
+        break;
+      case 'Reject':
+        if (role === 'support')      hccRejectDos(member.id, currentDos, 'current-user', 'Docs failed checklist');
+        else                         hccSetRoleStatus(member.id, currentDos, role, 'Reject');
+        break;
+      case 'Returned':
+        // Engine's RETURN_TARGET map only knows r1→coder / r2→r1 / r3→r2;
+        // for support/coder we just record the status string.
+        if (role === 'r1' || role === 'r2' || role === 'r3') {
+          hccReturnDos(member.id, currentDos, role, 'current-user', `Returned from ${role}`);
+        } else {
+          hccSetRoleStatus(member.id, currentDos, role, 'Returned');
+        }
+        break;
+      case 'In Progress':
+        if (role === 'support')      hccMarkSupportInProgress(member.id, currentDos, 'current-user');
+        else                         hccSetRoleStatus(member.id, currentDos, role, 'In Progress');
+        break;
+      // No dedicated AC — generic patch keeps the pill in sync.
+      case 'New':
+      case 'Awaiting':
+      case 'Record Received':
+      default:
+        hccSetRoleStatus(member.id, currentDos, role, next);
+        break;
     }
     setDiagDosStatus(next);
   };
@@ -518,7 +655,7 @@ export function DiagPanel() {
           )}
         </div>
         <div className={styles.dosRowRight}>
-          <AssigneeAvatar member={member} dosState={dosState} />
+          <AssigneeAvatar member={member} dosState={dosState} currentDos={currentDos} />
           <span className={styles.dosRowDivider} />
           {isSweep ? (
             <span className={styles.sweepBadge}>Sweep Mode</span>

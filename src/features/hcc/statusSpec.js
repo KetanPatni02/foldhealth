@@ -40,16 +40,21 @@ export const STATUS_SPEC = {
     legendOrder: 1,
   },
   'In Progress': {
-    // Half-filled circle — warning amber
+    // Custom 50% pie chart (see StatusIcon — Figma-provided InProgressIcon).
+    // The `icon` Solar name is kept as a fallback for any consumer that
+    // hasn't been switched to StatusIcon yet.
     icon: 'solar:half-circle-bold',
+    custom: 'in-progress',
     color: 'var(--status-warning)',
     bg: 'var(--status-warning-light)',
     border: 'rgba(217, 165, 11, 0.2)',
     legendOrder: 2,
   },
   'Record Received': {
-    // Down-arrow inside an amber coin
+    // Custom Figma icon (amber disc + white download arrow). Solar fallback
+    // kept for any consumer not yet on StatusIcon.
     icon: 'solar:download-minimalistic-bold',
+    custom: 'record-received',
     color: 'var(--status-warning)',
     bg: 'var(--status-warning-light)',
     border: 'rgba(217, 165, 11, 0.2)',
@@ -64,8 +69,10 @@ export const STATUS_SPEC = {
     legendOrder: 4,
   },
   Returned: {
-    // Undo arrow in an orange coin
+    // Custom Figma icon (orange disc + white return arrow). Solar fallback
+    // kept for any consumer not yet on StatusIcon.
     icon: 'solar:undo-left-bold',
+    custom: 'returned',
     color: 'var(--secondary-300)',
     bg: 'var(--secondary-100)',
     border: 'rgba(244, 122, 62, 0.2)',

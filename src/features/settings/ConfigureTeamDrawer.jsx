@@ -10,7 +10,6 @@ import {
   TEAM_TYPE_OPTIONS,
   ASSIGN_TO_DIMENSIONS,
   KIND_LABEL,
-  TIN_DATA,
   LEGACY_TIN_MAP,
   valueOptionsForDimension,
   capacityTone,
@@ -41,11 +40,6 @@ const SYSTEM_USERS = (() => {
   return [...astrana, ...account];
 })();
 
-// Rich TIN list — TIN_DATA from teamTypeConfig (mirrors Figma 2609:12533:
-// TIN number + provider count + currently-assigned %). Used by the
-// Allocated TINs picker.
-const ALL_TINS = TIN_DATA.map(t => t.tin);
-const TIN_BY_NUMBER = Object.fromEntries(TIN_DATA.map(t => [t.tin, t]));
 import drawerStyles from './ConfigureTeamDrawer.module.css';
 
 const NAME_MAX = 150;
@@ -78,26 +72,15 @@ export function ConfigureTeamDrawer({ kind = 'hcc', editTeam = null, onClose }) 
 
   const [name, setName] = useState(editTeam?.name || '');
   const [teamType, setTeamType] = useState(editTeam?.teamType || teamTypeOptions[0]);
-  const [allocatedTins, setAllocatedTins] = useState(() => editTeam?.allocatedTins || []);
-  const [tinPickerOpen, setTinPickerOpen] = useState(false);
-  const tinPickerRef = useRef(null);
+  // Team-level TIN allocation lives on member.assignTo rows (per-user TIN
+  // routing) — no separate team-wide TIN picker. The legacy
+  // editTeam.allocatedTins shape is preserved on save so existing data isn't
+  // discarded if an admin later toggles the UI back.
+  const allocatedTins = editTeam?.allocatedTins || [];
   const [members, setMembers] = useState(() => editTeam?.members || []);
   const [userSearch, setUserSearch] = useState('');
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const searchRef = useRef(null);
-
-  // Close TIN picker on outside click.
-  useEffect(() => {
-    if (!tinPickerOpen) return;
-    const onDoc = (e) => { if (!tinPickerRef.current?.contains(e.target)) setTinPickerOpen(false); };
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, [tinPickerOpen]);
-
-  const toggleTin = (tin) => setAllocatedTins(prev =>
-    prev.includes(tin) ? prev.filter(t => t !== tin) : [...prev, tin],
-  );
-  const removeTin = (tin) => setAllocatedTins(prev => prev.filter(t => t !== tin));
 
   // Re-fit Team Type if the kind prop ever changes (defensive — host typically
   // unmounts/remounts the drawer per kind).
@@ -325,72 +308,6 @@ export function ConfigureTeamDrawer({ kind = 'hcc', editTeam = null, onClose }) 
           </select>
         </div>
 
-        {/* ── Allocated TINs (multi-select chip field) ──
-            The team-level routing key the Phase 2 auto-assignment engine
-            uses to bucket patients. Each TIN is a small provider group;
-            picking 1+ TINs scopes this team to patients with those TINs. */}
-        <div className={drawerStyles.field}>
-          <label className={drawerStyles.label}>Allocated TINs</label>
-          <div className={drawerStyles.userPickerWrap} ref={tinPickerRef}>
-            <button
-              type="button"
-              className={drawerStyles.tinPickerTrigger}
-              onClick={() => setTinPickerOpen(v => !v)}
-            >
-              {allocatedTins.length === 0 ? (
-                <span className={drawerStyles.tinPickerPlaceholder}>
-                  Select one or more TINs
-                </span>
-              ) : (
-                <span className={drawerStyles.tinChipRow}>
-                  {allocatedTins.map(t => (
-                    <span key={t} className={drawerStyles.tinChip}>
-                      {t}
-                      <span
-                        className={drawerStyles.tinChipClose}
-                        onClick={(e) => { e.stopPropagation(); removeTin(t); }}
-                      >
-                        <Icon name="solar:close-circle-linear" size={12} color="var(--neutral-300)" />
-                      </span>
-                    </span>
-                  ))}
-                </span>
-              )}
-              <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" />
-            </button>
-            {tinPickerOpen && (
-              <div className={drawerStyles.userMenu}>
-                <div className={drawerStyles.tinMenuTitle}>Select TIN</div>
-                {ALL_TINS.length === 0 ? (
-                  <div className={drawerStyles.userMenuEmpty}>No TINs configured.</div>
-                ) : TIN_DATA.map(td => {
-                  const checked = allocatedTins.includes(td.tin);
-                  return (
-                    <button
-                      key={td.tin}
-                      type="button"
-                      className={drawerStyles.tinRow}
-                      onClick={() => toggleTin(td.tin)}
-                    >
-                      <span className={drawerStyles.tinIconBubble}>
-                        <Icon name="solar:buildings-2-linear" size={14} color="var(--secondary-300)" />
-                      </span>
-                      <span className={drawerStyles.tinRowText}>
-                        <span className={drawerStyles.tinRowNumber}>{td.tin}</span>
-                        <span className={drawerStyles.tinRowProviders}>{td.providers} Providers</span>
-                      </span>
-                      <span className={drawerStyles.tinRowAssigned}>Assigned: {tinAssignedPct(td.tin)}%</span>
-                      {checked && (
-                        <Icon name="solar:check-circle-bold" size={14} color="var(--primary-300)" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-
         {/* ── Create Team With (searchable user picker) ── */}
         <div className={drawerStyles.field}>
           <label className={drawerStyles.label}>
@@ -460,6 +377,7 @@ export function ConfigureTeamDrawer({ kind = 'hcc', editTeam = null, onClose }) 
                 breakdown={breakdownFor(m.userId)}
                 usersForTin={usersAssignedToTin}
                 tinAssignedPct={tinAssignedPct}
+                staffAvailablePct={(uid) => Math.max(0, 100 - utilizationFor(uid))}
                 onPatch={(patch) => patchMember(m.userId, patch)}
                 onRemove={() => removeMember(m.userId)}
                 onPatchAssignTo={(idx, patch) => patchAssignTo(m.userId, idx, patch)}
@@ -484,7 +402,7 @@ export function ConfigureTeamDrawer({ kind = 'hcc', editTeam = null, onClose }) 
  * Single-select. The trigger looks like an input field with a chevron
  * matching the dimension dropdown to its left.
  */
-function AssignValueSelect({ dim, value, onChange, tinAssignedPct }) {
+function AssignValueSelect({ dim, value, onChange, tinAssignedPct, staffAvailablePct }) {
   const rawOptions = valueOptionsForDimension(dim);
   // Replace each TIN option's stale assignedPct with the live value
   // computed from the draft + saved teams.
@@ -552,6 +470,8 @@ function AssignValueSelect({ dim, value, onChange, tinAssignedPct }) {
               );
             }
             if (opt.kind === 'staff') {
+              // Name on top, role underneath; available % chip on the right.
+              const available = staffAvailablePct ? staffAvailablePct(opt.value) : null;
               return (
                 <button
                   key={opt.value}
@@ -560,8 +480,15 @@ function AssignValueSelect({ dim, value, onChange, tinAssignedPct }) {
                   onClick={onPick}
                 >
                   <Avatar variant="assignee" initials={opt.initials} />
-                  <span className={drawerStyles.userMenuName}>{opt.label}</span>
-                  {opt.role && <span className={drawerStyles.userMenuRole}>{opt.role}</span>}
+                  <span className={drawerStyles.userMenuText}>
+                    <span className={drawerStyles.userMenuName}>{opt.label}</span>
+                    {opt.role && <span className={drawerStyles.userMenuRole}>{opt.role}</span>}
+                  </span>
+                  {available != null && (
+                    <span className={drawerStyles.userMenuAvailable}>
+                      Available: {available}%
+                    </span>
+                  )}
                   {isSelected && (
                     <Icon name="solar:check-circle-bold" size={14} color="var(--primary-300)" />
                   )}
@@ -590,7 +517,7 @@ function AssignValueSelect({ dim, value, onChange, tinAssignedPct }) {
 }
 
 // ── User card with nested Assign To rows ───────────────────────────────
-function UserCard({ member, teamType, priorUtilization, breakdown = [], usersForTin, tinAssignedPct, onPatch, onRemove, onPatchAssignTo }) {
+function UserCard({ member, teamType, priorUtilization, breakdown = [], usersForTin, tinAssignedPct, staffAvailablePct, onPatch, onRemove, onPatchAssignTo }) {
   const dims = ASSIGN_TO_DIMENSIONS[teamType] || [];
   const capacity = Number(member.capacityPct) || 0;
   const totalAssigned = (member.assignTo || []).reduce((sum, r) => sum + (Number(r.pct) || 0), 0);
@@ -676,6 +603,7 @@ function UserCard({ member, teamType, priorUtilization, breakdown = [], usersFor
               value={row.value}
               onChange={(v) => onPatchAssignTo(i, { value: v })}
               tinAssignedPct={tinAssignedPct}
+              staffAvailablePct={staffAvailablePct}
             />
             <div className={drawerStyles.assignPctWrap}>
               <input
