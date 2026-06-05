@@ -19,6 +19,7 @@ import { AuditLogContent } from './panels/AuditLogDrawer';
 import { IdIcon } from '../../components/Icon/IdIcon';
 import { AddIconMinimalist } from '../../components/Icon/AddIconMinimalist';
 import { CreateInsurancePlanDrawer } from './CreateInsurancePlanDrawer';
+import { InsurancePlanViewDrawer } from './InsurancePlanViewDrawer';
 import styles from './AccountPanel.module.css';
 
 const ALL_TABS = ['Users', 'Teams', 'Access Control', 'Locations', 'Insurance Plans', 'Holiday Configuration', 'Merged Or Delayed', 'Allowed Phone', 'Allowed Emails'];
@@ -211,10 +212,19 @@ export function AccountPanel() {
   const [viewingUser, setViewingUser] = useState(null);
   const [showInvite, setShowInvite] = useState(false);
   const [showCreateInsurance, setShowCreateInsurance] = useState(false);
+  const [plans, setPlans] = useState([]);
+  const [planSavedToast, setPlanSavedToast] = useState(false);
+  const [viewingPlan, setViewingPlan] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentUserId, setCurrentUserId] = useState(null);
   const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
   const showToast = useAppStore(s => s.showToast);
+
+  const handleSavePlan = (planData) => {
+    setPlans(prev => [...prev, { id: Date.now(), ...planData }]);
+    setPlanSavedToast(true);
+    setTimeout(() => setPlanSavedToast(false), 3000);
+  };
 
   // Resolve current user + admin status once on mount.
   // Used synchronously by UI (hide buttons) and handlers (guard actions).
@@ -508,7 +518,12 @@ export function AccountPanel() {
             </>
           )
         ) : activeTab === 'Insurance Plans' ? (
-          <InsurancePlansTab onCreateNew={() => setShowCreateInsurance(true)} />
+          <InsurancePlansTab
+            plans={plans}
+            onCreateNew={() => setShowCreateInsurance(true)}
+            onView={(plan) => setViewingPlan(plan)}
+            onDelete={(id) => setPlans(prev => prev.filter(p => p.id !== id))}
+          />
         ) : (
           <div className={styles.emptyState}>
             <Icon name="solar:widget-linear" size={40} color="var(--neutral-150)" />
@@ -543,7 +558,28 @@ export function AccountPanel() {
 
       {/* Create Insurance Plan Drawer */}
       {showCreateInsurance && (
-        <CreateInsurancePlanDrawer onClose={() => setShowCreateInsurance(false)} />
+        <CreateInsurancePlanDrawer
+          onClose={() => setShowCreateInsurance(false)}
+          onSave={handleSavePlan}
+        />
+      )}
+
+      {viewingPlan && (
+        <InsurancePlanViewDrawer
+          plan={viewingPlan}
+          onClose={() => setViewingPlan(null)}
+        />
+      )}
+
+      {planSavedToast && (
+        <div className={styles.toastOverlay}>
+          <div className={styles.toast}>
+            <span className={styles.toastText}>Plan Saved Successfully</span>
+            <button className={styles.toastClose} onClick={() => setPlanSavedToast(false)}>
+              <Icon name="solar:close-circle-linear" size={16} color="white" />
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -1429,20 +1465,83 @@ function InviteUserDrawer({ onClose, onInvited }) {
 
 /* ── Insurance Plans Tab ── */
 
-function InsurancePlansTab({ onCreateNew }) {
-  return (
-    <div className={styles.insuranceEmpty}>
-      <div className={styles.insuranceEmptyOuterRing}>
-        <div className={styles.insuranceEmptyRing}>
-          <div className={styles.insuranceEmptyInner}>
-            <IdIcon size={36} color="var(--neutral-200)" />
+function InsurancePlansTab({ plans = [], onCreateNew, onView, onDelete }) {
+  if (plans.length === 0) {
+    return (
+      <div className={styles.insuranceEmpty}>
+        <div className={styles.insuranceEmptyOuterRing}>
+          <div className={styles.insuranceEmptyRing}>
+            <div className={styles.insuranceEmptyInner}>
+              <Icon name="solar:shield-user-linear" size={24} color="var(--neutral-200)" />
+            </div>
           </div>
         </div>
+        <p className={styles.insuranceEmptyText}>No Insurance Plans have been Created.</p>
+        <Button variant="primary" size="L" leadingIcon="solar:add-circle-linear" onClick={onCreateNew}>
+          Create New
+        </Button>
       </div>
-      <p className={styles.insuranceEmptyText}>No Insurance Plans have been Created.</p>
-      <Button variant="primary" size="L" leadingIconElement={<AddIconMinimalist size={16} color="white" />} onClick={onCreateNew}>
-        Create New
-      </Button>
+    );
+  }
+
+  return (
+    <div className={styles.insuranceTableWrap}>
+      <table className={styles.insuranceTable}>
+        <thead>
+          <tr className={styles.insuranceTableHeader}>
+            <th className={styles.insuranceTh} style={{ width: 180 }}>Plan Logo</th>
+            <th className={styles.insuranceTh}>Plan Name</th>
+            <th className={styles.insuranceTh} style={{ width: 160 }}>Plan Type</th>
+            <th className={styles.insuranceTh} style={{ width: 160 }}>Group Number</th>
+            <th className={styles.insuranceTh} style={{ width: 160 }}>EDI Payer ID</th>
+            <th className={styles.insuranceTh} style={{ width: 180 }}>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {plans.map(plan => (
+            <tr key={plan.id} className={styles.insuranceTableRow}>
+              <td className={styles.insuranceTd}>
+                {(plan.logoPreviewUrl || plan.planLogoUrl) ? (
+                  <img
+                    src={plan.logoPreviewUrl || plan.planLogoUrl}
+                    alt="Logo"
+                    className={styles.insuranceLogoImg}
+                  />
+                ) : (
+                  <span className={styles.insuranceLogoPlaceholder}>—</span>
+                )}
+              </td>
+              <td className={styles.insuranceTd}>
+                <span className={styles.insurancePlanName}>{plan.planName}</span>
+              </td>
+              <td className={styles.insuranceTd}>
+                <span className={styles.insurancePlanTypeBadge}>{plan.planType || '—'}</span>
+              </td>
+              <td className={styles.insuranceTd}>
+                <span className={styles.insuranceCellText}>{plan.groupNumber || '—'}</span>
+              </td>
+              <td className={styles.insuranceTd}>
+                <span className={styles.insuranceCellText}>{plan.ediPayerId || '—'}</span>
+              </td>
+              <td className={styles.insuranceTd}>
+                <div className={styles.insuranceActions}>
+                  <button className={styles.insuranceActionBtn} onClick={() => onView(plan)} title="View">
+                    <Icon name="solar:eye-linear" size={16} color="var(--neutral-300)" />
+                  </button>
+                  <span className={styles.insuranceActionDivider} />
+                  <button className={styles.insuranceActionBtn} title="Edit">
+                    <Icon name="solar:pen-linear" size={16} color="var(--neutral-300)" />
+                  </button>
+                  <span className={styles.insuranceActionDivider} />
+                  <button className={styles.insuranceActionBtn} onClick={() => onDelete(plan.id)} title="Delete">
+                    <Icon name="solar:trash-bin-2-linear" size={16} color="var(--neutral-300)" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

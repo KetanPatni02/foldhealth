@@ -37,11 +37,35 @@
 .stageNavRow {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding-right: 12px;
+  gap: 8px;
+  padding: 0 12px 0 0;
   flex-shrink: 0;
-  border-bottom: 0.5px solid var(--neutral-150);
 }
+
+/* Right side of stage nav row (Show ID Preview + Next) */
+.stageNavRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+/* Back navigation button (step 2) */
+.backNavBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 0 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-300);
+  flex-shrink: 0;
+}
+.backNavBtn:hover { color: var(--neutral-400); }
 
 .stageNav {
   display: flex;
@@ -56,6 +80,10 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
 }
 
 .stageBadge {
@@ -121,6 +149,167 @@
 /* Next button row — sits below the last section, full width */
 .nextBtnRow {
   padding: 4px 0 8px;
+  flex-shrink: 0;
+}
+
+/* ── Step 2: Cost Sharing ── */
+
+/* Scrollable wrapper for all step-2 items; gap matches Figma's 16px column gap */
+.costSharingContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Info banner — blue tint, matches Figma alert component */
+.costSharingAlert {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #F4F8FE;
+  border: 0.5px solid rgba(20, 94, 204, 0.2);
+  border-radius: 4px;
+  padding: 4px 6px;
+  flex-shrink: 0;
+}
+
+.costSharingAlertText {
+  font-size: 12px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-400);
+  flex: 1;
+}
+
+/* Coverage family switch row — bordered card */
+.coverageSwitchRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.coverageSwitchLabel {
+  font-size: 14px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+
+/* Coverage section — flat (no card border), just title + fields */
+.coverageSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+/* Title bar: medium text, bottom divider — matches Figma py-8 px-12 */
+.coverageSectionTitle {
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-400);
+  padding: 8px 12px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+/* Content below the title, horizontal padding matching Figma px-12 */
+.coverageSectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 12px;
+}
+
+/* Sub-group (Copays / Coinsurance) — label + rows */
+.coverageSubGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Sub-group label: regular weight, neutral-400 */
+.coverageSubLabel {
+  font-size: 14px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+
+/* Field row inside a coverage section */
+.coverageRow {
+  display: flex;
+  gap: 12px;
+}
+
+/* Prefix input wrapper ($  + Input) */
+.prefixInputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.prefixSymbol {
+  position: absolute;
+  left: 9px;
+  font-size: 14px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-400);
+  pointer-events: none;
+  z-index: 1;
+  line-height: 1;
+}
+
+.prefixInputField {
+  padding-left: 20px !important;
+  width: 100%;
+}
+
+/* Family accumulator info card */
+.familyAccumulatorCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.familyAccumulatorText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.familyAccumulatorTitle {
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-400);
+  line-height: 1.2;
+}
+
+.familyAccumulatorDesc {
+  font-size: 12px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-300);
+  line-height: 1.4;
+}
+
+/* Back + Save side-by-side */
+.stepTwoBtnRow {
+  display: flex;
+  gap: 8px;
   flex-shrink: 0;
 }
 
@@ -241,6 +430,53 @@
   font-weight: 400;
   color: var(--neutral-200);
   font-family: 'Inter', sans-serif;
+}
+
+/* ── Logo preview (uploaded state) ── */
+.logoPreviewContainer {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  padding: 12px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: var(--neutral-0);
+}
+
+.logoPreviewImg {
+  max-height: 32px;
+  max-width: 147px;
+  object-fit: contain;
+  display: block;
+}
+
+.logoActions {
+  display: flex;
+  gap: 8px;
+  align-self: flex-end;
+}
+
+.logoActionBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--neutral-50);
+  border: 0.5px solid rgba(111,122,144,0.1);
+  font-size: 12px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-300);
+  cursor: pointer;
+}
+
+.logoDeleteBtn {
+  background: #FFF5F5;
+  border-color: rgba(215,40,37,0.1);
+  color: #D72825;
 }
 
 .dropZone {
@@ -394,6 +630,13 @@
   font-family: 'Inter', sans-serif;
 }
 
+.cardLogoImg {
+  max-height: 28px;
+  max-width: 80px;
+  object-fit: contain;
+  display: block;
+}
+
 .cardTypeBadge {
   border-radius: 99px;
   padding: 6px 10px;
@@ -487,6 +730,7 @@
   color: var(--card-text-primary, var(--neutral-400));
   letter-spacing: 0.16px;
   font-family: 'Inter', sans-serif;
+  white-space: nowrap;
 }
 
 /* ── Back Card ── */
@@ -517,7 +761,7 @@
 .backRow {
   display: flex;
   gap: 12px;
-  padding: 2px 0;
+  padding: 1px 0;
 }
 
 .backRowAlignStart {
@@ -532,8 +776,8 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 3px 0;
+  gap: 1px;
+  padding: 2px 0;
 }
 
 .backFieldLabel {
@@ -558,7 +802,7 @@
   height: 0.5px;
   background: var(--card-divider, #bcd2ff);
   width: 100%;
-  margin: 4px 0;
+  margin: 2px 0;
 }
 
 .backAddressBlock {
@@ -568,11 +812,12 @@
 }
 
 .backNote {
-  font-size: 10px;
+  font-size: 9px;
   font-style: italic;
   color: var(--card-text-secondary, var(--neutral-300));
   font-family: 'Inter', sans-serif;
-  margin-top: 4px;
+  margin-top: 2px;
+  line-height: 1.3;
 }
 
 /* ── Preview footer ── */
