@@ -1,12 +1,14 @@
 import { useState, useRef } from 'react';
 import { Drawer }          from '../../components/Drawer/Drawer';
 import { Button }          from '../../components/Button/Button';
-import { Icon }            from '../../components/Icon/Icon';
 import { Input }           from '../../components/Input/Input';
-import { Select }          from '../../components/Select/Select';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
 import { Textarea }        from '../../components/Textarea/Textarea';
 import { Switch }          from '../../components/Switch/Switch';
-import { CardThemePicker, DEFAULT_CARD_THEME } from './CardThemePicker';
+import { DEFAULT_CARD_THEME } from './CardThemePicker';
+import { FieldLabel, PrefixInput, CollapsibleSection } from './InsurancePlanFormUtils';
+import { InsuranceCardPreview } from './InsuranceCardPreview';
+import { Icon }            from '../../components/Icon/Icon';
 import styles from './CreateInsurancePlanDrawer.module.css';
 
 /* ── Static option lists ── */
@@ -20,59 +22,6 @@ const US_STATE_OPTIONS = [
   'NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT',
   'VA','WA','WV','WI','WY',
 ].map(s => ({ value: s, label: s }));
-
-/* ── FieldLabel — label row with optional required dot and info icon ── */
-function FieldLabel({ children, required, info }) {
-  return (
-    <div className={styles.label}>
-      {children}
-      {required && <span className={styles.required} />}
-      {info && (
-        <Icon name="solar:info-circle-linear" size={12} color="var(--neutral-200)" style={{ flexShrink: 0 }} />
-      )}
-    </div>
-  );
-}
-
-/* ── PrefixInput — Input with an inline leading symbol (e.g. "$") ── */
-function PrefixInput({ prefix, ...inputProps }) {
-  return (
-    <div className={styles.prefixInputWrap}>
-      <span className={styles.prefixSymbol}>{prefix}</span>
-      <Input className={styles.prefixInputField} {...inputProps} />
-    </div>
-  );
-}
-
-/* ── CollapsibleSection — reusable accordion card used by each form section ── */
-function CollapsibleSection({ icon, title, children }) {
-  const [collapsed, setCollapsed] = useState(false);
-  return (
-    <div className={styles.sectionCard}>
-      <div
-        className={`${styles.sectionHeader} ${collapsed ? styles.collapsed : ''}`}
-        onClick={() => setCollapsed(v => !v)}
-      >
-        <span className={styles.sectionIconAvatar}>
-          <Icon name={icon} size={14} color="var(--primary-300)" />
-        </span>
-        <span className={styles.sectionTitle}>{title}</span>
-        <Icon
-          name={collapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'}
-          size={12}
-          color="var(--neutral-300)"
-        />
-      </div>
-      <div className={`${styles.collapseOuter} ${collapsed ? styles.collapsed : ''}`}>
-        <div className={styles.collapseInner}>
-          <div className={styles.sectionBody}>
-            {children}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /* ── Main component ── */
 export function CreateInsurancePlanDrawer({ onClose, onSave = () => {} }) {
@@ -93,16 +42,16 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {} }) {
     planWebsiteUrl: '', additionalNote: '',
     pbmName: '', pbmPhone: '', pbmUrl: '',
     rxBin: '', rxPcn: '', rxGroup: '',
-    /* Step 2 — Cost Sharing (field names match Figma labels) */
-    /* individual-only (coverageFamily=false) */
+    /* Step 2 — Cost Sharing */
+    /* individual-only mode (coverageFamily=false) */
     inNetDeductible: '', inNetOopMax: '',
     outNetDeductible: '', outNetOopMax: '',
-    /* individual + family split (coverageFamily=true) */
+    /* family mode (coverageFamily=true) — individual + family split */
     inNetDeductibleInd: '', inNetDeductibleFam: '',
     inNetOopMaxInd: '', inNetOopMaxFam: '',
     outNetDeductibleInd: '', outNetDeductibleFam: '',
     outNetOopMaxInd: '', outNetOopMaxFam: '',
-    /* copays & coinsurance (same in both modes) */
+    /* copays & coinsurance */
     inNetCopayPcp: '', inNetCopaySpecialist: '', inNetCopayUrgent: '', inNetCopayEr: '',
     inNetCoinsurancePcp: '', inNetCoinsuranceSpecialist: '', inNetCoinsuranceUrgent: '', inNetCoinsuranceEr: '',
     outNetCopayPcp: '', outNetCopaySpecialist: '', outNetCopayUrgent: '', outNetCopayEr: '',
@@ -161,12 +110,6 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {} }) {
 
         {/* Stage indicator */}
         <div className={styles.stageNavRow}>
-          {step === 2 && (
-            <button className={styles.backNavBtn} onClick={() => setStep(1)}>
-              <Icon name="solar:alt-arrow-left-linear" size={12} color="var(--neutral-300)" />
-              <span>Back</span>
-            </button>
-          )}
           <div className={styles.stageNav}>
             <button className={styles.stageItem} onClick={() => setStep(1)}>
               <span className={`${styles.stageBadge} ${step === 1 ? styles.stageBadgeActive : styles.stageBadgeInactive}`}>1</span>
@@ -189,9 +132,13 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {} }) {
                 Show ID Preview
               </Button>
             )}
-            {step === 1 && (
+            {step === 1 ? (
               <Button variant="primary" size="L" disabled={!canSave} onClick={() => setStep(2)}>
                 Next
+              </Button>
+            ) : (
+              <Button variant="secondary" size="L" leadingIcon="solar:alt-arrow-left-linear" onClick={() => setStep(1)}>
+                Back
               </Button>
             )}
           </div>
@@ -209,12 +156,12 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {} }) {
                 </div>
                 <div className={styles.field}>
                   <FieldLabel>Plan Type</FieldLabel>
-                  <Select
-                    options={PLAN_TYPE_OPTIONS}
-                    value={form.planType}
-                    onChange={setVal('planType')}
-                    placeholder="Select Plan Type"
-                  />
+                  <Select value={form.planType || undefined} onValueChange={setVal('planType')}>
+                    <SelectTrigger><SelectValue placeholder="Select Plan Type" /></SelectTrigger>
+                    <SelectContent>
+                      {PLAN_TYPE_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -328,12 +275,12 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {} }) {
                   <Input placeholder="City" value={form.city} onChange={set('city')} />
                 </div>
                 <div className={styles.field}>
-                  <Select
-                    options={US_STATE_OPTIONS}
-                    value={form.state}
-                    onChange={setVal('state')}
-                    placeholder="State"
-                  />
+                  <Select value={form.state || undefined} onValueChange={setVal('state')}>
+                    <SelectTrigger><SelectValue placeholder="State" /></SelectTrigger>
+                    <SelectContent>
+                      {US_STATE_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -415,16 +362,41 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {} }) {
               <div className={styles.coverageSectionTitle}>In Network Coverage</div>
               <div className={styles.coverageSectionBody}>
 
-                <div className={styles.coverageRow}>
-                  <div className={styles.field}>
-                    <FieldLabel>Deductible</FieldLabel>
-                    <PrefixInput prefix="$" placeholder="Enter Value" value={form.inNetDeductible} onChange={set('inNetDeductible')} />
+                {coverageFamily ? (
+                  <>
+                    <div className={styles.coverageRow}>
+                      <div className={styles.field}>
+                        <FieldLabel>Individual Deductible</FieldLabel>
+                        <PrefixInput prefix="$" placeholder="Enter Value" value={form.inNetDeductibleInd} onChange={set('inNetDeductibleInd')} />
+                      </div>
+                      <div className={styles.field}>
+                        <FieldLabel>Family Deductible</FieldLabel>
+                        <PrefixInput prefix="$" placeholder="Enter Value" value={form.inNetDeductibleFam} onChange={set('inNetDeductibleFam')} />
+                      </div>
+                    </div>
+                    <div className={styles.coverageRow}>
+                      <div className={styles.field}>
+                        <FieldLabel>Individual OOP Max</FieldLabel>
+                        <PrefixInput prefix="$" placeholder="Enter Value" value={form.inNetOopMaxInd} onChange={set('inNetOopMaxInd')} />
+                      </div>
+                      <div className={styles.field}>
+                        <FieldLabel>Family OOP Max</FieldLabel>
+                        <PrefixInput prefix="$" placeholder="Enter Value" value={form.inNetOopMaxFam} onChange={set('inNetOopMaxFam')} />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className={styles.coverageRow}>
+                    <div className={styles.field}>
+                      <FieldLabel>Deductible</FieldLabel>
+                      <PrefixInput prefix="$" placeholder="Enter Value" value={form.inNetDeductible} onChange={set('inNetDeductible')} />
+                    </div>
+                    <div className={styles.field}>
+                      <FieldLabel>OOP Max</FieldLabel>
+                      <PrefixInput prefix="$" placeholder="Enter Value" value={form.inNetOopMax} onChange={set('inNetOopMax')} />
+                    </div>
                   </div>
-                  <div className={styles.field}>
-                    <FieldLabel>OOP Max</FieldLabel>
-                    <PrefixInput prefix="$" placeholder="Enter Value" value={form.inNetOopMax} onChange={set('inNetOopMax')} />
-                  </div>
-                </div>
+                )}
 
                 <div className={styles.coverageSubGroup}>
                   <span className={styles.coverageSubLabel}>Copays</span>
@@ -482,16 +454,41 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {} }) {
               <div className={styles.coverageSectionTitle}>Out of Network Coverage</div>
               <div className={styles.coverageSectionBody}>
 
-                <div className={styles.coverageRow}>
-                  <div className={styles.field}>
-                    <FieldLabel>Deductible</FieldLabel>
-                    <PrefixInput prefix="$" placeholder="Enter Value" value={form.outNetDeductible} onChange={set('outNetDeductible')} />
+                {coverageFamily ? (
+                  <>
+                    <div className={styles.coverageRow}>
+                      <div className={styles.field}>
+                        <FieldLabel>Individual Deductible</FieldLabel>
+                        <PrefixInput prefix="$" placeholder="Enter Value" value={form.outNetDeductibleInd} onChange={set('outNetDeductibleInd')} />
+                      </div>
+                      <div className={styles.field}>
+                        <FieldLabel>Family Deductible</FieldLabel>
+                        <PrefixInput prefix="$" placeholder="Enter Value" value={form.outNetDeductibleFam} onChange={set('outNetDeductibleFam')} />
+                      </div>
+                    </div>
+                    <div className={styles.coverageRow}>
+                      <div className={styles.field}>
+                        <FieldLabel>Individual OOP Max</FieldLabel>
+                        <PrefixInput prefix="$" placeholder="Enter Value" value={form.outNetOopMaxInd} onChange={set('outNetOopMaxInd')} />
+                      </div>
+                      <div className={styles.field}>
+                        <FieldLabel>Family OOP Max</FieldLabel>
+                        <PrefixInput prefix="$" placeholder="Enter Value" value={form.outNetOopMaxFam} onChange={set('outNetOopMaxFam')} />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className={styles.coverageRow}>
+                    <div className={styles.field}>
+                      <FieldLabel>Deductible</FieldLabel>
+                      <PrefixInput prefix="$" placeholder="Enter Value" value={form.outNetDeductible} onChange={set('outNetDeductible')} />
+                    </div>
+                    <div className={styles.field}>
+                      <FieldLabel>OOP Max</FieldLabel>
+                      <PrefixInput prefix="$" placeholder="Enter Value" value={form.outNetOopMax} onChange={set('outNetOopMax')} />
+                    </div>
                   </div>
-                  <div className={styles.field}>
-                    <FieldLabel>OOP Max</FieldLabel>
-                    <PrefixInput prefix="$" placeholder="Enter Value" value={form.outNetOopMax} onChange={set('outNetOopMax')} />
-                  </div>
-                </div>
+                )}
 
                 <div className={styles.coverageSubGroup}>
                   <span className={styles.coverageSubLabel}>Copays</span>
@@ -544,7 +541,6 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {} }) {
               </div>
             </div>
 
-
           </div>
         )}
 
@@ -564,204 +560,14 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {} }) {
               Hide ID Preview
             </Button>
           </div>
-
-          <div className={styles.previewScroll}>
-
-            {/* Front View */}
-            <div className={styles.cardViewSection}>
-              <span className={`${styles.cardViewLabel} ${styles.cardViewLabelFront}`}>Front View</span>
-              <div
-                className={styles.insuranceCard}
-                style={{
-                  background: cardTheme.bg,
-                  '--card-text-primary':   cardTheme.textPrimary,
-                  '--card-text-secondary': cardTheme.textSecondary,
-                  '--card-divider':        cardTheme.dividerColor,
-                }}
-              >
-                <div className={styles.cardInner}>
-                  <div className={styles.cardTopRow}>
-                    <div className={styles.cardPlanInfo}>
-                      {(logoPreviewUrl || form.planLogoUrl) ? (
-                        <img
-                          src={logoPreviewUrl || form.planLogoUrl}
-                          alt="Plan Logo"
-                          className={styles.cardLogoImg}
-                        />
-                      ) : (
-                        <span className={styles.cardPlanLogo}>{'{Plan Logo}'}</span>
-                      )}
-                      <span className={styles.cardPlanName}>{form.planName || '{Plan Name}'}</span>
-                    </div>
-                    <span
-                      className={styles.cardTypeBadge}
-                      style={{
-                        color:      cardTheme.badgeTextColor,
-                        background: cardTheme.isLight
-                          ? 'linear-gradient(180deg, rgba(130,252,191,0.4) 0%, rgba(6,198,102,0.2) 100%)'
-                          : 'linear-gradient(180deg, rgba(180,252,218,0.22) 0%, rgba(6,198,102,0.1) 100%)',
-                        border: `0.355px solid ${cardTheme.isLight ? 'rgba(120,220,170,0.35)' : 'rgba(180,252,218,0.35)'}`,
-                      }}
-                    >
-                      {form.planType || 'TYPE'}
-                    </span>
-                  </div>
-
-                  <div className={styles.cardMemberSection}>
-                    <div className={styles.cardFieldGroup}>
-                      <span className={styles.cardFieldLabel}>Member Name</span>
-                      <span className={styles.cardFieldValue}>{'{Member Name}'}</span>
-                    </div>
-                    <div className={styles.cardFieldGroup}>
-                      <span className={styles.cardFieldLabel}>Member ID</span>
-                      <span className={styles.cardMemberId}>
-                        {maskMemberId ? '•••-••••-••••-XYXY' : '{Member ID}'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className={styles.cardDivider} />
-
-                  <div className={styles.cardMetaRow}>
-                    <div className={styles.cardMeta}>
-                      <span className={styles.cardMetaLabel}>Sex/DOB</span>
-                      <span className={styles.cardMetaValue}>{'{S • MM/DD/YYYY}'}</span>
-                    </div>
-                    <div className={styles.cardMeta}>
-                      <span className={styles.cardMetaLabel}>Member Code</span>
-                      <span className={styles.cardMetaValue}>{'{Member Code}'}</span>
-                    </div>
-                    <div className={styles.cardMeta}>
-                      <span className={styles.cardMetaLabel}>Group</span>
-                      <span className={styles.cardMetaValue}>{form.groupNumber || '{Group ID}'}</span>
-                    </div>
-                  </div>
-
-                  <div className={styles.cardMetaRow}>
-                    <div className={styles.cardMeta}>
-                      <span className={styles.cardMetaLabel}>Coverage</span>
-                      <span className={styles.cardMetaValue}>Individual</span>
-                    </div>
-                    <div className={styles.cardMeta}>
-                      <span className={styles.cardMetaLabel}>Validity</span>
-                      <span className={styles.cardMetaValue}>-</span>
-                    </div>
-                    <div className={styles.cardMeta} />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Back View */}
-            <div className={`${styles.cardViewSection} ${styles.cardViewSectionLast}`}>
-              <span className={`${styles.cardViewLabel} ${styles.cardViewLabelBack}`}>Back View</span>
-              <div
-                className={styles.backCard}
-                style={{
-                  background: cardTheme.bg,
-                  '--card-text-primary':   cardTheme.textPrimary,
-                  '--card-text-secondary': cardTheme.textSecondary,
-                  '--card-divider':        cardTheme.dividerColor,
-                }}
-              >
-                <div className={styles.backCardInner}>
-                  <div className={styles.backRow}>
-                    <div className={styles.backField}>
-                      <span className={styles.backFieldLabel}>In-Network Deductible</span>
-                      <span className={styles.backFieldValue}>{form.inNetDeductible ? `$${form.inNetDeductible}` : '{$}'}</span>
-                    </div>
-                    <div className={styles.backField}>
-                      <span className={styles.backFieldLabel}>Out of-Network Deductible</span>
-                      <span className={styles.backFieldValue}>{form.outNetDeductible ? `$${form.outNetDeductible}` : '{$}'}</span>
-                    </div>
-                  </div>
-                  <div className={styles.backRow}>
-                    <div className={styles.backField}>
-                      <span className={styles.backFieldLabel}>In-Network OOP Max</span>
-                      <span className={styles.backFieldValue}>{form.inNetOopMax ? `$${form.inNetOopMax}` : '{$}'}</span>
-                    </div>
-                    <div className={styles.backField}>
-                      <span className={styles.backFieldLabel}>Out of-Network OOP Max</span>
-                      <span className={styles.backFieldValue}>{form.outNetOopMax ? `$${form.outNetOopMax}` : '{$}'}</span>
-                    </div>
-                  </div>
-
-                  <div className={styles.backCardDivider} />
-
-                  <div className={styles.backRow}>
-                    <div className={styles.backField}>
-                      <span className={styles.backFieldLabel}>RX BIN</span>
-                      <span className={styles.backFieldValue}>{form.rxBin || '{Rx BIN}'}</span>
-                    </div>
-                    <div className={styles.backField}>
-                      <span className={styles.backFieldLabel}>RX PCN</span>
-                      <span className={styles.backFieldValue}>{form.rxPcn || '{Rx PCN}'}</span>
-                    </div>
-                    <div className={styles.backField}>
-                      <span className={styles.backFieldLabel}>RX Group</span>
-                      <span className={styles.backFieldValue}>{form.rxGroup || '{Rx Group}'}</span>
-                    </div>
-                    <div className={styles.backField}>
-                      <span className={styles.backFieldLabel}>EDI Payer ID</span>
-                      <span className={styles.backFieldValue}>{form.ediPayerId || '{EDI Payer ID}'}</span>
-                    </div>
-                  </div>
-
-                  <div className={styles.backCardDivider} />
-
-                  <div className={`${styles.backRow} ${styles.backRowAlignStart}`}>
-                    <div className={styles.backField}>
-                      <span className={styles.backFieldLabel}>Claims Mailing Address</span>
-                      <div className={styles.backAddressBlock}>
-                        <span className={styles.backFieldValue}>{form.addressLine1 || '{Address Line 1}'}</span>
-                        {form.addressLine2 && <span className={styles.backFieldValue}>{form.addressLine2}</span>}
-                        <span className={styles.backFieldValue}>
-                          {(form.zipcode || form.city || form.state)
-                            ? [form.zipcode, form.city, form.state].filter(Boolean).join(', ')
-                            : '{Zipcode, City, State}'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className={`${styles.backField} ${styles.backFieldGroup}`}>
-                      <div className={styles.backField}>
-                        <span className={styles.backFieldLabel}>Provider Support:</span>
-                        <span className={styles.backFieldValue}>{form.providerSupportPhone || '{Provider Support number}'}</span>
-                      </div>
-                      <div className={styles.backField}>
-                        <span className={styles.backFieldLabel}>Member Support:</span>
-                        <span className={styles.backFieldValue}>{form.memberSupportPhone || '{Member Support number}'}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={styles.backCardDivider} />
-
-                  <div className={styles.backField}>
-                    <span className={styles.backFieldLabel}>For any queries, Please visit:</span>
-                    <span className={styles.backFieldValue}>{form.planWebsiteUrl || '{Plan Website}'}</span>
-                  </div>
-
-                  <div className={styles.backCardDivider} />
-
-                  <p className={styles.backNote}>
-                    {form.additionalNote || 'Note: Please Call your Healthcare provider for any issues related to claims or your health plans or visit the plan website.'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Preview footer */}
-          <div className={styles.previewFooter}>
-            <Switch
-              checked={maskMemberId}
-              onChange={setMaskMemberId}
-              label="Mask Member ID on card"
-            />
-            <span className={styles.previewFooterDivider} />
-            <CardThemePicker theme={cardTheme} onThemeChange={setCardTheme} />
-          </div>
+          <InsuranceCardPreview
+            data={form}
+            logoPreviewUrl={logoPreviewUrl}
+            cardTheme={cardTheme}
+            onThemeChange={setCardTheme}
+            maskMemberId={maskMemberId}
+            onMaskChange={setMaskMemberId}
+          />
         </div>
       )}
 

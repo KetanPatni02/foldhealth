@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Button } from '../../components/Button/Button';
 import { Icon } from '../../components/Icon/Icon';
-import { Switch } from '../../components/Switch/Switch';
-import { CardThemePicker } from './CardThemePicker';
+import { InsuranceCardPreview } from './InsuranceCardPreview';
 import styles from './InsurancePlanViewDrawer.module.css';
 
 /* ── InfoField: label + value read-only display ── */
@@ -31,7 +30,7 @@ function Section({ title, children }) {
 export function InsurancePlanViewDrawer({ plan, onClose }) {
   const [activeTab, setActiveTab] = useState('plan');
   const [maskMemberId, setMaskMemberId] = useState(true);
-  const cardTheme = plan.cardTheme;
+  const { cardTheme } = plan;
 
   return (
     <Drawer
@@ -143,187 +142,19 @@ export function InsurancePlanViewDrawer({ plan, onClose }) {
         </div>
       </div>
 
-      {/* ── Right: card preview ── */}
+      {/* ── Right: card preview (read-only) ── */}
       <div className={styles.rightPanel}>
         <div className={styles.previewHeader}>
           <span className={styles.previewTitle}>Card Preview</span>
         </div>
-        <div className={styles.previewScroll}>
-
-          {/* Front */}
-          <div className={styles.cardViewSection}>
-            <span className={styles.cardViewLabelFront}>Front View</span>
-            <div
-              className={styles.insuranceCard}
-              style={{
-                background: cardTheme?.bg,
-                '--card-text-primary': cardTheme?.textPrimary,
-                '--card-text-secondary': cardTheme?.textSecondary,
-                '--card-divider': cardTheme?.dividerColor,
-              }}
-            >
-              <div className={styles.cardInner}>
-                <div className={styles.cardTopRow}>
-                  <div className={styles.cardPlanInfo}>
-                    {(plan.logoPreviewUrl || plan.planLogoUrl) ? (
-                      <img src={plan.logoPreviewUrl || plan.planLogoUrl} alt="Plan Logo" className={styles.cardLogoImg} />
-                    ) : (
-                      <span className={styles.cardPlanLogo}>{'{Plan Logo}'}</span>
-                    )}
-                    <span className={styles.cardPlanName}>{plan.planName || '{Plan Name}'}</span>
-                  </div>
-                  <span
-                    className={styles.cardTypeBadge}
-                    style={{
-                      color: cardTheme?.badgeTextColor,
-                      background: cardTheme?.isLight
-                        ? 'linear-gradient(180deg, rgba(130,252,191,0.4) 0%, rgba(6,198,102,0.2) 100%)'
-                        : 'linear-gradient(180deg, rgba(180,252,218,0.22) 0%, rgba(6,198,102,0.1) 100%)',
-                      border: `0.355px solid ${cardTheme?.isLight ? 'rgba(120,220,170,0.35)' : 'rgba(180,252,218,0.35)'}`,
-                    }}
-                  >
-                    {plan.planType || 'TYPE'}
-                  </span>
-                </div>
-                <div className={styles.cardMemberSection}>
-                  <div className={styles.cardFieldGroup}>
-                    <span className={styles.cardFieldLabel}>Member Name</span>
-                    <span className={styles.cardFieldValue}>{'{Member Name}'}</span>
-                  </div>
-                  <div className={styles.cardFieldGroup}>
-                    <span className={styles.cardFieldLabel}>Member ID</span>
-                    <span className={styles.cardMemberId}>
-                      {maskMemberId ? '•••-••••-••••-XYXY' : '{Member ID}'}
-                    </span>
-                  </div>
-                </div>
-                <div className={styles.cardDivider} />
-                <div className={styles.cardMetaRow}>
-                  <div className={styles.cardMeta}>
-                    <span className={styles.cardMetaLabel}>Sex/DOB</span>
-                    <span className={styles.cardMetaValue}>{'{S • MM/DD/YYYY}'}</span>
-                  </div>
-                  <div className={styles.cardMeta}>
-                    <span className={styles.cardMetaLabel}>Member Code</span>
-                    <span className={styles.cardMetaValue}>{'{Member Code}'}</span>
-                  </div>
-                  <div className={styles.cardMeta}>
-                    <span className={styles.cardMetaLabel}>Group</span>
-                    <span className={styles.cardMetaValue}>{plan.groupNumber || '{Group ID}'}</span>
-                  </div>
-                </div>
-                <div className={styles.cardMetaRow}>
-                  <div className={styles.cardMeta}>
-                    <span className={styles.cardMetaLabel}>Coverage</span>
-                    <span className={styles.cardMetaValue}>Individual</span>
-                  </div>
-                  <div className={styles.cardMeta}>
-                    <span className={styles.cardMetaLabel}>Validity</span>
-                    <span className={styles.cardMetaValue}>-</span>
-                  </div>
-                  <div className={styles.cardMeta} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Back */}
-          <div className={`${styles.cardViewSection} ${styles.cardViewSectionLast}`}>
-            <span className={styles.cardViewLabelBack}>Back View</span>
-            <div
-              className={styles.backCard}
-              style={{
-                background: cardTheme?.bg,
-                '--card-text-primary': cardTheme?.textPrimary,
-                '--card-text-secondary': cardTheme?.textSecondary,
-                '--card-divider': cardTheme?.dividerColor,
-              }}
-            >
-              <div className={styles.backCardInner}>
-                <div className={styles.backRow}>
-                  <div className={styles.backField}>
-                    <span className={styles.backFieldLabel}>In-Network Deductible</span>
-                    <span className={styles.backFieldValue}>{plan.inNetDeductible ? `$${plan.inNetDeductible}` : '{$}'}</span>
-                  </div>
-                  <div className={styles.backField}>
-                    <span className={styles.backFieldLabel}>Out of-Network Deductible</span>
-                    <span className={styles.backFieldValue}>{plan.outNetDeductible ? `$${plan.outNetDeductible}` : '{$}'}</span>
-                  </div>
-                </div>
-                <div className={styles.backRow}>
-                  <div className={styles.backField}>
-                    <span className={styles.backFieldLabel}>In-Network OOP Max</span>
-                    <span className={styles.backFieldValue}>{plan.inNetOopMax ? `$${plan.inNetOopMax}` : '{$}'}</span>
-                  </div>
-                  <div className={styles.backField}>
-                    <span className={styles.backFieldLabel}>Out of-Network OOP Max</span>
-                    <span className={styles.backFieldValue}>{plan.outNetOopMax ? `$${plan.outNetOopMax}` : '{$}'}</span>
-                  </div>
-                </div>
-                <div className={styles.backCardDivider} />
-                <div className={styles.backRow}>
-                  <div className={styles.backField}>
-                    <span className={styles.backFieldLabel}>RX BIN</span>
-                    <span className={styles.backFieldValue}>{plan.rxBin || '{Rx BIN}'}</span>
-                  </div>
-                  <div className={styles.backField}>
-                    <span className={styles.backFieldLabel}>RX PCN</span>
-                    <span className={styles.backFieldValue}>{plan.rxPcn || '{Rx PCN}'}</span>
-                  </div>
-                  <div className={styles.backField}>
-                    <span className={styles.backFieldLabel}>RX Group</span>
-                    <span className={styles.backFieldValue}>{plan.rxGroup || '{Rx Group}'}</span>
-                  </div>
-                  <div className={styles.backField}>
-                    <span className={styles.backFieldLabel}>EDI Payer ID</span>
-                    <span className={styles.backFieldValue}>{plan.ediPayerId || '{EDI Payer ID}'}</span>
-                  </div>
-                </div>
-                <div className={styles.backCardDivider} />
-                <div className={`${styles.backRow} ${styles.backRowAlignStart}`}>
-                  <div className={styles.backField}>
-                    <span className={styles.backFieldLabel}>Claims Mailing Address</span>
-                    <div className={styles.backAddressBlock}>
-                      <span className={styles.backFieldValue}>{plan.addressLine1 || '{Address Line 1}'}</span>
-                      {plan.addressLine2 && <span className={styles.backFieldValue}>{plan.addressLine2}</span>}
-                      <span className={styles.backFieldValue}>
-                        {(plan.zipcode || plan.city || plan.state)
-                          ? [plan.zipcode, plan.city, plan.state].filter(Boolean).join(', ')
-                          : '{Zipcode, City, State}'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className={`${styles.backField} ${styles.backFieldGroup}`}>
-                    <div className={styles.backField}>
-                      <span className={styles.backFieldLabel}>Provider Support:</span>
-                      <span className={styles.backFieldValue}>{plan.providerSupportPhone || '{Provider Support number}'}</span>
-                    </div>
-                    <div className={styles.backField}>
-                      <span className={styles.backFieldLabel}>Member Support:</span>
-                      <span className={styles.backFieldValue}>{plan.memberSupportPhone || '{Member Support number}'}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className={styles.backCardDivider} />
-                <div className={styles.backField}>
-                  <span className={styles.backFieldLabel}>For any queries, Please visit:</span>
-                  <span className={styles.backFieldValue}>{plan.planWebsiteUrl || '{Plan Website}'}</span>
-                </div>
-                <div className={styles.backCardDivider} />
-                <p className={styles.backNote}>
-                  {plan.additionalNote || 'Note: Please Call your Healthcare provider for any issues related to claims or your health plans or visit the plan website.'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        <div className={styles.previewFooter}>
-          <Switch checked={maskMemberId} onChange={setMaskMemberId} label="Mask Member ID on card" />
-          <span className={styles.previewFooterDivider} />
-          <CardThemePicker theme={cardTheme} onThemeChange={() => {}} />
-        </div>
+        <InsuranceCardPreview
+          data={plan}
+          logoPreviewUrl={plan.logoPreviewUrl}
+          cardTheme={cardTheme}
+          onThemeChange={undefined}
+          maskMemberId={maskMemberId}
+          onMaskChange={setMaskMemberId}
+        />
       </div>
 
     </Drawer>

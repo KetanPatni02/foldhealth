@@ -1,0 +1,117 @@
+/* ── InsurancePlanFormUtils ──
+   Shared form utility components: FieldLabel, PrefixInput, CollapsibleSection.
+*/
+
+/* ── FieldLabel ── */
+.label {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-200);
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.2;
+}
+
+.required {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--status-error, #D72825);
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* ── PrefixInput ── */
+.prefixInputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.prefixSymbol {
+  position: absolute;
+  left: 9px;
+  font-size: 14px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-400);
+  pointer-events: none;
+  z-index: 1;
+  line-height: 1;
+}
+
+.prefixInputField {
+  padding-left: 20px !important;
+  width: 100%;
+}
+
+/* ── CollapsibleSection ── */
+.sectionCard {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--neutral-0);
+  flex-shrink: 0;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  cursor: pointer;
+  background: var(--neutral-0);
+  user-select: none;
+}
+
+.sectionHeader.collapsed {
+  border-bottom: none;
+}
+
+.sectionIconAvatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  font-family: 'Inter', sans-serif;
+  flex: 1;
+}
+
+.sectionBody {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Collapse animation */
+.collapseOuter {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.2s ease;
+  overflow: hidden;
+}
+
+.collapseOuter.collapsed {
+  grid-template-rows: 0fr;
+}
+
+.collapseInner {
+  overflow: hidden;
+  min-height: 0;
+}
