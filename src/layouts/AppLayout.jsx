@@ -54,6 +54,7 @@ const BusinessHoursDrawer  = lz(() => import('../features/settings/panels/Busine
 const ComponentWizardDrawer= lz(() => import('../features/settings/panels/ComponentWizardDrawer'),         'ComponentWizardDrawer');
 const DiagPanel            = lz(() => import('../features/hcc/DiagPanel/DiagPanel'),                       'DiagPanel');
 const UploadChartDrawer    = lz(() => import('../features/hcc/UploadChartDrawer'),                         'UploadChartDrawer');
+const UploadDocumentDrawer = lz(() => import('../features/hcc/upload/UploadDocumentDrawer'),               'UploadDocumentDrawer');
 const ClaimPreviewDrawer   = lz(() => import('../features/hcc/ClaimPreviewDrawer'),                        'ClaimPreviewDrawer');
 
 // Placeholder while a lazy chunk is in flight. Empty div keeps layout stable.
@@ -416,6 +417,7 @@ export function AppLayout() {
         {businessHoursOpen && <BusinessHoursDrawer />}
         {diagPanelOpen && <DiagPanel />}
         <UploadChartDrawer />{/* mounts itself only when hccUploadMember is set */}
+        <UploadDocumentDrawer />{/* mounts itself only when hccUploadSession is set */}
         <ClaimPreviewDrawer />{/* mounts itself only when hccClaimPreview.open is true */}
         {quickViewPatient && <QuickViewDrawer />}
       </Suspense>

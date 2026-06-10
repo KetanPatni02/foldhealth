@@ -2275,22 +2275,29 @@ export const useAppStore = create((set, get) => ({
     track('hcc.dos_returned', { dosId: dos, toRole: fromRole });
     return useAppStore.getState().transitionHccDos(pid, dos, 'returnDos', { fromRole, actor, reason });
   },
-  hccReassignRole: (pid, dos, role, staffId, actor, reason) => {
+  hccReassignRole: (pid, dos, role, staffId, actor, reason, displayName) => {
     track('hcc.role_reassigned', { memberId: pid, fromRole: null, toRole: role });
     const result = useAppStore.getState().transitionHccDos(pid, dos, 'reassignRole', { role, staffId, actor, reason });
     // Also patch the member's legacy role field so the worklist row's
     // RoleStatusCell (which reads member.sup / .cdr / .r1 / .r2 / .r3
     // directly) reflects the new assignee immediately. Status flips to
     // 'New' to switch the cell out of its "Assign" empty state.
+    //
+    // `displayName` is an optional override used by the bulk dialog when
+    // picking a user from the system pool (Account → Users + Astrana
+    // staff). For Account-pool users not in the Astrana roster,
+    // hccStaffById() returns null and the legacy field would never get
+    // patched — the displayName override solves that.
     const staff = hccStaffById(staffId);
+    const name = staff?.name || displayName;
     const fieldByRole = { support: 'sup', coder: 'cdr', r1: 'r1', r2: 'r2', r3: 'r3' };
     const statusFieldByRole = { support: 'supS', coder: 'cdrS', r1: 'r1s', r2: 'r2s', r3: 'r3s' };
     const f = fieldByRole[role];
     const sf = statusFieldByRole[role];
-    if (f && staff) {
+    if (f && name) {
       set(s => ({
         hccMembers: s.hccMembers.map(m =>
-          m.id === pid ? { ...m, [f]: staff.name, [sf]: 'New' } : m,
+          m.id === pid ? { ...m, [f]: name, [sf]: 'New' } : m,
         ),
       }));
     }
@@ -2584,6 +2591,277 @@ export const useAppStore = create((set, get) => ({
   hccUploadMember: null,
   openHccUploadDrawer: (member) => set({ hccUploadMember: member }),
   closeHccUploadDrawer: () => set({ hccUploadMember: null }),
+
+  // ─── HCC Document Upload + OCR Review (Individual Upload path) ──────
+  // Session state for the multi-encounter PDF upload flow described in the
+  // Jira ticket. Lives at app level — drawer is mounted once in AppLayout.
+  //   phase: 'picker' → 'processing' → 'review'
+  //   file:        The selected File object (PDF)
+  //   encounters:  Array of OCR-extracted encounter sections (across all
+  //                patients in the PDF). Each: { tempId, patient:{name,dob,
+  //                matchedMemberId,matchConfidence}, dos, provider, pos,
+  //                posDesc, icds:[{code,valid}], errors:[fieldName] }
+  //   seededMemberId: When opened from an "Upload Document" action on a
+  //                specific patient (AllPatientsRow / QuickView), this is
+  //                that member's id — used to auto-link ambiguous matches.
+  //   summary:     Set after confirm — { created, updated }
+  hccUploadSession: null,
+  startHccUpload: (seededMemberId = null) => set({
+    hccUploadSession: {
+      id: `up-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
+      phase: 'picker',
+      file: null,
+      encounters: [],
+      seededMemberId,
+      summary: null,
+    },
+  }),
+  setHccUploadFile: (file) => set(s => s.hccUploadSession
+    ? { hccUploadSession: { ...s.hccUploadSession, file, phase: 'processing' } }
+    : {}),
+  setHccUploadEncounters: (encounters) => set(s => s.hccUploadSession
+    ? { hccUploadSession: { ...s.hccUploadSession, encounters, phase: 'review' } }
+    : {}),
+  // Append more encounters from a second OCR pass (user clicks "Upload"
+  // again during review). Preserves existing rows + their edits.
+  appendHccUploadEncounters: (encounters) => set(s => s.hccUploadSession
+    ? { hccUploadSession: {
+        ...s.hccUploadSession,
+        encounters: [...s.hccUploadSession.encounters, ...encounters],
+      } }
+    : {}),
+  patchHccUploadEncounter: (idx, patch) => set(s => {
+    if (!s.hccUploadSession) return {};
+    const next = s.hccUploadSession.encounters.map((e, i) => i === idx ? { ...e, ...patch } : e);
+    return { hccUploadSession: { ...s.hccUploadSession, encounters: next } };
+  }),
+  removeHccUploadEncounter: (idx) => set(s => {
+    if (!s.hccUploadSession) return {};
+    return {
+      hccUploadSession: {
+        ...s.hccUploadSession,
+        encounters: s.hccUploadSession.encounters.filter((_, i) => i !== idx),
+      },
+    };
+  }),
+  cancelHccUpload: () => set({ hccUploadSession: null }),
+
+  // Exact match by normalized name + DOB. AC-9 requires 100% confidence —
+  // partial / probabilistic matching is forbidden (HIPAA). Returns the
+  // member object or null.
+  findHccMemberByNameAndDob: (name, dob) => {
+    if (!name || !dob) return null;
+    const norm = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const target = norm(name);
+    const targetDob = String(dob || '').trim();
+    const found = useAppStore.getState().hccMembers.find(m => norm(m.name) === target && (m.dob || '').trim() === targetDob);
+    return found || null;
+  },
+
+  // Atomic create-or-merge for a single OCR encounter. Returns
+  //   { kind: 'created' | 'updated' | 'relatedNew', memberId, dosDate }
+  // so the caller can aggregate a summary for the success toast.
+  // Uniqueness key: memberId + dos + provider + pos.
+  // - Active DOS (any role's status is New / Action Needed):
+  //     merge net-new ICDs into the existing row, attach doc, log activity.
+  // - Completed DOS (all roles terminal):
+  //     create a new DOS entry with relatedDosId pointing at the original
+  //     (and stamp the original's relatedDosIds with the new key).
+  // - Missing DOS: bootstrap via initializeHccPatient, append docStatus,
+  //     increment ch, attach doc + log.
+  hccCreateOrMergeFromEncounter: (enc) => {
+    const s = useAppStore.getState();
+    const memberId = enc.patient?.matchedMemberId;
+    if (!memberId) return { kind: 'skipped' };
+    const member = s.hccMembers.find(m => m.id === memberId);
+    if (!member) return { kind: 'skipped' };
+    const docName = enc._docName || 'Uploaded Document.pdf';
+    const docType = enc._docType || 'Progress Note';
+    const icdCodes = (enc.icds || []).filter(i => i.valid !== false).map(i => i.code);
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const dateStr = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
+
+    // Helper — append to per-member activity log without requiring the
+    // DiagPanel to be open (the upload flow runs from a global drawer).
+    const logActivity = (entry) => {
+      const memberKey = member.name;
+      const ts = now.getTime();
+      const hours = now.getHours();
+      const time = `${((hours + 11) % 12) + 1}:${pad(now.getMinutes())} ${hours >= 12 ? 'PM' : 'AM'}`;
+      set(st => {
+        const list = st.hccActivityLog[memberKey] || [];
+        return {
+          hccActivityLog: {
+            ...st.hccActivityLog,
+            [memberKey]: [{
+              id: `up-${ts}-${Math.random().toString(36).slice(2,5)}`,
+              ts, date: dateStr, time, dos: enc.dos,
+              by: 'You', role: 'Support',
+              ...entry,
+            }, ...list],
+          },
+        };
+      });
+    };
+
+    // Compute existing row's role-statuses for the uniqueness key
+    // (memberId, dos, provider, pos). The engine maps DOS to a dosState
+    // by `${memberId}::${dos}` (no provider/pos in the key) — for the
+    // prototype we treat (memberId, dos) as the row key and compare
+    // provider/pos at the member field level. Real backend would key
+    // strictly on all four.
+    const dosKey = `${memberId}::${enc.dos}`;
+    const existingDosState = s.hccDosAssignments[dosKey];
+    const sameProvider = (member.rp || '').trim() === (enc.provider || '').trim();
+    const samePos = (member.pos || '').trim() === (enc.pos || '').trim();
+    const existsByUniqueKey = !!existingDosState && sameProvider && samePos;
+
+    const TERMINAL = new Set(['Completed', 'Reject', 'Insufficient']);
+    const isAllTerminal = (state) => {
+      if (!state) return false;
+      return ['support', 'coder', 'r1', 'r2', 'r3'].every(r => TERMINAL.has(state[r]?.status));
+    };
+
+    // Branch 1: DOS row exists & all roles terminal → create new row with
+    // relatedDosId. AC-6.
+    if (existsByUniqueKey && isAllTerminal(existingDosState)) {
+      // Append a new DOS to the member's dos_list (or update if already in)
+      const newDosDate = enc.dos;
+      const relatedKey = dosKey;
+      // Bootstrap a fresh entry in dosState under a synthetic suffixed key
+      // so the original Completed row stays untouched.
+      const suffix = `__upload-${now.getTime()}`;
+      const newKey = `${memberId}::${newDosDate}${suffix}`;
+      set(st => ({
+        hccMembers: st.hccMembers.map(m => m.id === memberId ? {
+          ...m,
+          dos_list: [...(m.dos_list || []), { date: newDosDate, label: 'From Upload (post-completion)', labelColor: 'var(--secondary-300)' }],
+          docStatus: [...(m.docStatus || []), 'pending'],
+          ch: (m.ch || 0) + 1,
+          awaitingClaim: true,
+        } : m),
+        hccDosAssignments: {
+          ...st.hccDosAssignments,
+          [newKey]: {
+            patientId: memberId, dosDate: newDosDate,
+            support: { assignee: null, status: 'New', history: [] },
+            coder:   { assignee: null, status: null, history: [] },
+            r1:      { assignee: null, status: null, history: [] },
+            r2:      { assignee: null, status: null, history: [] },
+            r3:      { assignee: null, status: null, history: [] },
+            sampling: { r2: null, r3: null },
+            billingReady: false, asmGenerated: false,
+            relatedDosId: relatedKey,
+            awaitingClaim: true,
+            uploadedDocs: [{ name: docName, type: docType, icds: icdCodes, uploadedAt: now.toISOString() }],
+            activity: [],
+          },
+          [relatedKey]: {
+            ...existingDosState,
+            relatedDosIds: [...(existingDosState.relatedDosIds || []), newKey],
+          },
+        },
+      }));
+      logActivity({
+        t: 'document-upload',
+        headline: `New row created from upload (related DOS ${enc.dos} was completed)`,
+        file: docName, fileType: docType, icds: icdCodes,
+      });
+      return { kind: 'relatedNew', memberId, dosDate: newDosDate };
+    }
+
+    // Branch 2: DOS row exists & active → merge net-new ICDs. AC-5.
+    if (existsByUniqueKey) {
+      const existingIcds = new Set((existingDosState.uploadedDocs || []).flatMap(d => d.icds || []));
+      const netNew = icdCodes.filter(c => !existingIcds.has(c));
+      set(st => ({
+        hccMembers: st.hccMembers.map(m => m.id === memberId ? {
+          ...m,
+          docStatus: [...(m.docStatus || []), 'pending'],
+          ch: (m.ch || 0) + 1,
+        } : m),
+        hccDosAssignments: {
+          ...st.hccDosAssignments,
+          [dosKey]: {
+            ...existingDosState,
+            uploadedDocs: [
+              ...(existingDosState.uploadedDocs || []),
+              { name: docName, type: docType, icds: netNew, uploadedAt: now.toISOString() },
+            ],
+          },
+        },
+      }));
+      logActivity({
+        t: 'icds-merged-via-upload',
+        headline: netNew.length > 0
+          ? `${netNew.length} net-new ICD(s) merged from upload: ${netNew.join(', ')}`
+          : 'Document attached to existing DOS (no net-new ICDs)',
+        file: docName, fileType: docType, icds: netNew,
+      });
+      return { kind: 'updated', memberId, dosDate: enc.dos };
+    }
+
+    // Branch 3: DOS row missing → bootstrap via initializeHccPatient
+    // (which creates engine state per DOS in dos_list), then attach doc.
+    set(st => ({
+      hccMembers: st.hccMembers.map(m => {
+        if (m.id !== memberId) return m;
+        const hadDos = m.dos_list?.some(d => d.date === enc.dos);
+        return {
+          ...m,
+          dos_list: hadDos
+            ? m.dos_list
+            : [...(m.dos_list || []), { date: enc.dos, label: 'From Upload', labelColor: 'var(--secondary-300)' }],
+          docStatus: [...(m.docStatus || []), 'pending'],
+          ch: (m.ch || 0) + 1,
+          tv: hadDos ? m.tv : (m.tv || 0) + 1,
+          rp: m.rp || enc.provider,
+          pos: m.pos || enc.pos,
+          awaitingClaim: true,
+        };
+      }),
+      hccDosAssignments: {
+        ...st.hccDosAssignments,
+        [dosKey]: {
+          patientId: memberId, dosDate: enc.dos,
+          support: { assignee: null, status: 'New', history: [] },
+          coder:   { assignee: null, status: null, history: [] },
+          r1:      { assignee: null, status: null, history: [] },
+          r2:      { assignee: null, status: null, history: [] },
+          r3:      { assignee: null, status: null, history: [] },
+          sampling: { r2: null, r3: null },
+          billingReady: false, asmGenerated: false,
+          awaitingClaim: true,
+          uploadedDocs: [{ name: docName, type: docType, icds: icdCodes, uploadedAt: now.toISOString() }],
+          activity: [],
+        },
+      },
+    }));
+    logActivity({
+      t: 'document-upload',
+      headline: `DOS ${enc.dos} created via document upload`,
+      file: docName, fileType: docType, icds: icdCodes,
+    });
+    return { kind: 'created', memberId, dosDate: enc.dos };
+  },
+
+  // Iterate every reviewed encounter through hccCreateOrMergeFromEncounter
+  // and stash the summary on the session for the drawer's success toast.
+  confirmHccUpload: () => {
+    const s = useAppStore.getState();
+    if (!s.hccUploadSession) return { created: 0, updated: 0 };
+    const docName = s.hccUploadSession.file?.name || 'Uploaded Document.pdf';
+    let created = 0, updated = 0;
+    for (const enc of s.hccUploadSession.encounters) {
+      const result = s.hccCreateOrMergeFromEncounter({ ...enc, _docName: docName });
+      if (result.kind === 'created' || result.kind === 'relatedNew') created++;
+      else if (result.kind === 'updated') updated++;
+    }
+    track('hcc.upload_confirmed', { created, updated });
+    set({ hccUploadSession: null });
+    return { created, updated };
+  },
 
   // ─── Claim preview drawer ─────────────────────────────────────────
   // Opened by clicking a claim-sourced DOS date in the HCC worklist's DOS

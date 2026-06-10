@@ -14,7 +14,7 @@ import styles from './BulkBar.module.css';
  * can pass their own `selectedIds` + `onClear` if they manage a separate
  * selection set (e.g. the HCC worklist uses `selectedHccIds`).
  */
-export function BulkBar({ selectedIds: selectedIdsProp, onClear } = {}) {
+export function BulkBar({ selectedIds: selectedIdsProp, onClear, onChangeAssignee } = {}) {
   const storeSelectedIds = useAppStore(s => s.selectedIds);
   const storeClearSelected = useAppStore(s => s.clearSelected);
   const setShowInvokeModal = useAppStore(s => s.setShowInvokeModal);
@@ -59,7 +59,12 @@ export function BulkBar({ selectedIds: selectedIdsProp, onClear } = {}) {
         <span className={styles.countText}>{selectedIds.length} Selected</span>
       </div>
       <div className={styles.divider} />
-      <Button variant="secondary" size="S" leadingIcon="solar:user-check-rounded-linear" onClick={() => showToast('Change Assignee – coming soon')}>
+      <Button
+        variant="secondary"
+        size="S"
+        leadingIcon="solar:user-check-rounded-linear"
+        onClick={() => onChangeAssignee ? onChangeAssignee(selectedIds) : showToast('Change Assignee – coming soon')}
+      >
         Change Assignee
       </Button>
       <Button variant="secondary" size="S" leadingIcon="solar:bolt-linear" onClick={() => showToast('Run Automation – coming soon')}>
