@@ -4,7 +4,7 @@ import { dbToJs, updatesToDb } from '../lib/patientMapper';
 import { callDetailDbToJs, callDetailJsToDb } from '../lib/callDetailsMapper';
 import { enrichCallRecord } from '../data/callDetailsEnrich';
 import { generateFlowFromPrompt } from '../lib/flowGenerator';
-import { kpiRowToJs, tsRowToJs, tableRowToJs, barRowToJs, configRowToJs, groupTimeSeries } from '../lib/analyticsMapper';
+import { kpiRowToJs, tsRowToJs, tableRowToJs, barRowToJs, configRowToJs, groupTimeSeries } from '../lib/eventMapper';
 import { domainDbToJs, domainJsToDb, componentDbToJs, componentJsToDb, auditLogDbToJs } from '../lib/embedMapper';
 // Fallback datasets (~220KB raw across all of these) are imported lazily
 // inside the fetch actions that consume them, so they don't bloat the entry
@@ -221,6 +221,39 @@ const LIST_FILTER_KEY = {
   HCC:   'hccFilters',
   HEDIS: 'hedisFilters',
 };
+
+// ── Care team row mapper ──
+// Translates a Supabase `care_teams` row to/from the JS shape the
+// ConfigureTeamDrawer + Care Team table consume (see hccCareTeams below).
+function careTeamRowToJs(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    kind: row.kind,
+    teamType: row.team_type,
+    allocatedTins: row.allocated_tins || [],
+    createdAt: row.created_label,
+    createdBy: row.created_by,
+    lastModifiedAt: row.modified_label,
+    lastModifiedBy: row.modified_by,
+    members: row.members || [],
+  };
+}
+function careTeamJsToDb(t) {
+  return {
+    id: t.id,
+    name: t.name,
+    kind: t.kind,
+    team_type: t.teamType,
+    allocated_tins: t.allocatedTins || [],
+    created_label: t.createdAt,
+    created_by: t.createdBy,
+    modified_label: t.lastModifiedAt,
+    modified_by: t.lastModifiedBy,
+    members: t.members || [],
+    updated_at: new Date().toISOString(),
+  };
+}
 
 export const useAppStore = create((set, get) => ({
   // ─── Theme ───────────────────────────────────────────────────────────
@@ -2558,13 +2591,38 @@ export const useAppStore = create((set, get) => ({
       ],
     },
   ],
-  addHccCareTeam: (team) => set(s => ({ hccCareTeams: [team, ...s.hccCareTeams] })),
-  updateHccCareTeam: (id, patch) => set(s => ({
-    hccCareTeams: s.hccCareTeams.map(t => t.id === id ? { ...t, ...patch } : t),
-  })),
-  deleteHccCareTeam: (id) => set(s => ({
-    hccCareTeams: s.hccCareTeams.filter(t => t.id !== id),
-  })),
+  // Load teams from Supabase. Keeps the seeded fallback when the table is
+  // empty or errors (same SWR-style pattern the rest of the store uses).
+  fetchHccCareTeams: async () => {
+    const { data, error } = await supabase
+      .from('care_teams')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (!error && data?.length) {
+      set({ hccCareTeams: data.map(careTeamRowToJs) });
+    }
+  },
+  // Mutations update local state optimistically, then persist to Supabase.
+  addHccCareTeam: (team) => {
+    set(s => ({ hccCareTeams: [team, ...s.hccCareTeams] }));
+    supabase.from('care_teams').insert(careTeamJsToDb(team))
+      .then(({ error }) => { if (error) console.error('addHccCareTeam:', error); });
+  },
+  updateHccCareTeam: (id, patch) => {
+    set(s => ({
+      hccCareTeams: s.hccCareTeams.map(t => t.id === id ? { ...t, ...patch } : t),
+    }));
+    const merged = get().hccCareTeams.find(t => t.id === id);
+    if (merged) {
+      supabase.from('care_teams').upsert(careTeamJsToDb(merged), { onConflict: 'id' })
+        .then(({ error }) => { if (error) console.error('updateHccCareTeam:', error); });
+    }
+  },
+  deleteHccCareTeam: (id) => {
+    set(s => ({ hccCareTeams: s.hccCareTeams.filter(t => t.id !== id) }));
+    supabase.from('care_teams').delete().eq('id', id)
+      .then(({ error }) => { if (error) console.error('deleteHccCareTeam:', error); });
+  },
 
   // ── HCC Activity Log (live) ──────────────────────────────────────────
   // Live entries appended by user actions (accept, dismiss, post comment,

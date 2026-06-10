@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, lazy, Suspense } from 'react';
-import { Analytics } from '@vercel/analytics/react';
-import { SpeedInsights } from '@vercel/speed-insights/react';
+const Analytics = lazy(() => import('@vercel/analytics/react').then(m => ({ default: m.Analytics })).catch(() => ({ default: () => null })));
+const SpeedInsights = lazy(() => import('@vercel/speed-insights/react').then(m => ({ default: m.SpeedInsights })).catch(() => ({ default: () => null })));
 import { AppLayout } from './layouts/AppLayout';
 import { LoginPage } from './features/auth/LoginPage';
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage';
@@ -135,11 +135,11 @@ function App() {
 
   // Authenticated — show app
   return (
-    <>
+    <Suspense fallback={null}>
       <AppLayout />
       <Analytics />
       <SpeedInsights />
-    </>
+    </Suspense>
   );
 }
 
