@@ -30,7 +30,7 @@
 
 /* ── Logo drop zone ── */
 .dropZone {
-  border-radius: 10px;
+  border-radius: 6px;
   min-height: 96px;
   display: flex;
   align-items: center;
@@ -41,7 +41,7 @@
 }
 
 .dropZoneEmpty {
-  border: 1px dashed var(--neutral-200);
+  border: 0.5px dashed var(--neutral-200);
   background: var(--neutral-0);
 }
 
@@ -52,7 +52,7 @@
 /* Checkerboard transparency once a logo is set */
 .dropZoneFilled {
   position: relative;
-  border: 1px solid var(--neutral-150);
+  border: 0.5px solid var(--neutral-150);
   background-color: var(--neutral-0);
   background-image:
     linear-gradient(45deg, var(--neutral-100) 25%, transparent 25%),
@@ -94,53 +94,7 @@
   position: absolute;
   top: 8px;
   right: 8px;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--neutral-150);
-  border-radius: 6px;
-  background: var(--neutral-0);
-  cursor: pointer;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-  transition: border-color 0.15s, background 0.15s;
-}
-
-.removeLogo:hover {
-  border-color: var(--status-error);
-  background: var(--neutral-50);
-}
-
-/* ── Inputs ── */
-.input,
-.textarea {
-  width: 100%;
-  padding: 9px 12px;
-  border: 1px solid var(--neutral-150);
-  border-radius: 8px;
-  font-size: 14px;
-  color: var(--neutral-500);
-  background: var(--neutral-0);
-  transition: border-color 0.15s, box-shadow 0.15s;
-  font-family: inherit;
-}
-
-.input:focus,
-.textarea:focus {
-  outline: none;
-  border-color: var(--primary-300);
-  box-shadow: 0 0 0 2px var(--primary-100);
-}
-
-.input::placeholder,
-.textarea::placeholder {
-  color: var(--neutral-200);
-}
-
-.textarea {
-  resize: vertical;
-  min-height: 84px;
 }
 
 .showNameRow {
@@ -149,8 +103,8 @@
 
 /* ── Preview ── */
 .previewBox {
-  border: 1px solid var(--neutral-150);
-  border-radius: 10px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
   background: var(--neutral-0);
   min-height: 80px;
   padding: 16px 24px;
@@ -167,7 +121,8 @@
 }
 
 .previewLogo {
-  max-height: 32px;
+  height: 32px;
+  width: auto;
   max-width: 220px;
   object-fit: contain;
 }
@@ -227,18 +182,26 @@
   gap: 12px;
 }
 
+/* Single row matches the Input component's chrome: 0.5px border,
+ * 6px radius, same hover + focus states. */
 .socialRow {
   display: flex;
   align-items: stretch;
-  border: 1px solid var(--neutral-150);
-  border-radius: 8px;
+  height: 32px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
   overflow: hidden;
   background: var(--neutral-0);
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.socialRow:hover {
+  border-color: var(--neutral-200);
 }
 
 .socialRow:focus-within {
   border-color: var(--primary-300);
-  box-shadow: 0 0 0 2px var(--primary-100);
+  box-shadow: 0 0 0 2px rgba(140, 90, 226, 0.12);
 }
 
 .socialLabel {
@@ -248,26 +211,29 @@
   width: 140px;
   flex-shrink: 0;
   padding: 0 12px;
-  border-right: 1px solid var(--neutral-150);
+  border-right: 0.5px solid var(--neutral-150);
+  font-family: 'Inter', sans-serif;
   font-size: 14px;
   font-weight: 500;
   color: var(--neutral-500);
 }
 
-.socialInput {
+/* Strip the DS Input's own chrome — the row provides it. */
+.socialRow .socialInput {
   flex: 1;
   min-width: 0;
+  height: 100%;
   border: none;
-  outline: none;
-  padding: 9px 12px;
-  font-size: 14px;
-  font-family: inherit;
-  color: var(--neutral-500);
+  border-radius: 0;
   background: transparent;
+  box-shadow: none;
+  padding: 0 12px;
 }
 
-.socialInput::placeholder {
-  color: var(--neutral-200);
+.socialRow .socialInput:hover,
+.socialRow .socialInput:focus {
+  border: none;
+  box-shadow: none;
 }
 
 .saveButton {

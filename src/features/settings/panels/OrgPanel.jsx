@@ -3,6 +3,8 @@ import { supabase } from '../../../lib/supabase';
 import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
 import { Button } from '../../../components/Button/Button';
+import { Input } from '../../../components/Input/Input';
+import { Textarea } from '../../../components/Textarea/Textarea';
 import { Switch } from '../../../components/Switch/Switch';
 import { FoldhealthLogo } from '../../../components/FoldhealthLogo/FoldhealthLogo';
 import styles from './OrgPanel.module.css';
@@ -157,14 +159,15 @@ export function OrgPanel() {
           {logo ? (
             <>
               <img src={logo} alt="Organization logo" className={styles.logoImg} />
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="S"
+                iconOnly
+                leadingIcon="solar:trash-bin-trash-linear"
                 className={styles.removeLogo}
                 onClick={(e) => { e.stopPropagation(); setLogo(null); }}
                 aria-label="Remove logo"
-              >
-                <Icon name="solar:trash-bin-trash-linear" size={16} color="var(--neutral-400)" />
-              </button>
+              />
             </>
           ) : (
             <div className={styles.dropPrompt}>
@@ -178,8 +181,7 @@ export function OrgPanel() {
       {/* Name */}
       <div className={styles.formGroup}>
         <label className={styles.label}>Name<span className={styles.required}>*</span></label>
-        <input
-          className={styles.input}
+        <Input
           value={name}
           onChange={e => setName(e.target.value)}
           placeholder="Enter the Org Name"
@@ -215,8 +217,7 @@ export function OrgPanel() {
       {/* About */}
       <div className={styles.formGroup}>
         <label className={styles.label}>About</label>
-        <textarea
-          className={styles.textarea}
+        <Textarea
           value={about}
           onChange={e => setAbout(e.target.value)}
           placeholder="Enter Details about your Org"
@@ -234,7 +235,7 @@ export function OrgPanel() {
                 <Icon name={f.icon} size={16} color="var(--neutral-400)" />
                 <span>{f.label}</span>
               </div>
-              <input
+              <Input
                 className={styles.socialInput}
                 value={socials[f.key]}
                 onChange={e => setSocial(f.key, e.target.value)}
