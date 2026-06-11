@@ -39,18 +39,128 @@
   padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
+
+/* Subtitle directly under the drawer header. Matches Figma's tone-200 grey 12px. */
+.pickerSubtitle {
+  margin: -8px 0 0;
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+
+/* Step indicator — numbered chip + label, two steps connected by a hairline. */
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.stepBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--primary-50, #fcfaff);
+  border: 0.5px solid var(--primary-200, #d7c0ff);
+  font: 500 10px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+}
+.stepBadgeIdle {
+  background: var(--neutral-50);
+  border-color: var(--neutral-150);
+  color: var(--neutral-300);
+}
+.stepLabel {
+  font: 500 14px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+}
+.stepLabelIdle { color: var(--neutral-300); }
+.stepDivider {
+  width: 20px;
+  height: 1px;
+  background: var(--neutral-150);
+}
+
+/* Hero illustration — two dashed concentric rings around an icon disc. */
+.hero {
+  align-self: center;
+  position: relative;
+  width: 150px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.heroRingOuter,
+.heroRingMid,
+.heroCenter {
+  position: absolute;
+  border-radius: 50%;
+}
+.heroRingOuter {
+  inset: 0;
+  border: 1px dashed var(--neutral-150);
+}
+.heroRingMid {
+  width: 128px;
+  height: 128px;
+  border: 1px dashed var(--neutral-200);
+}
+.heroCenter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(141.7deg, #f9fafc 12.7%, #f1f2f3 91.4%);
+}
+
+/* How-to banner — light info-blue background, numbered list. */
+.howToBanner {
+  padding: 8px 10px;
+  background: var(--status-info-light, #f4f8fe);
+  border: 0.5px solid rgba(20, 94, 204, 0.2);
+  border-radius: 6px;
+  color: var(--neutral-400, #3a485f);
+  font-family: 'Inter', sans-serif;
+}
+.howToHead {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+  font-size: 12px;
+}
+.howToList {
+  margin: 4px 0 0;
+  padding: 0 0 0 22px;
+  list-style: decimal outside;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.howToList li { padding-left: 2px; }
+.howToList li::marker { color: var(--neutral-400); }
+
+/* Dropzone — Figma simplifies this to a single-line CTA inside a dashed box. */
 .dropZone {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 48px 24px;
-  background: var(--neutral-50);
-  border: 1.5px dashed var(--neutral-200);
-  border-radius: 12px;
+  gap: 10px;
+  padding: 24px;
+  background: transparent;
+  border: 0.5px dashed var(--neutral-150);
+  border-radius: 8px;
   cursor: pointer;
   transition: border-color 0.12s, background 0.12s;
 }
@@ -59,71 +169,99 @@
   border-color: var(--primary-300);
   background: var(--primary-50);
 }
-.dropZoneTitle {
-  font-family: 'Inter', sans-serif;
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--neutral-500);
-  margin-top: 6px;
+.dropZoneCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
-.dropZoneMuted {
-  font-size: 12px;
+.dropZoneTitle {
+  font: 500 14px/1.2 'Inter', sans-serif;
   color: var(--neutral-300);
 }
 .dropZoneLink {
-  font-size: 13px;
-  font-weight: 500;
+  font: 500 14px/1.2 'Inter', sans-serif;
   color: var(--primary-300);
-  text-decoration: underline;
-}
-.dropZoneHint {
-  font-size: 11px;
-  color: var(--neutral-300);
-  margin-top: 6px;
+  text-decoration: none;
 }
 .fileInput { display: none; }
-.demoHint {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  background: var(--primary-50);
-  border: 0.5px solid var(--primary-200);
+
+/* Format / size meta line — flexed apart, left/right. */
+.formatsLine {
+  display: flex;
+  justify-content: space-between;
+  font: 400 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+  margin-top: -10px;
+}
+
+/* Sample document card — icon · text · trailing action / chip row. */
+.sampleCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  border: 0.5px solid var(--neutral-200, #ced4dd);
   border-radius: 8px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  color: var(--neutral-400);
 }
-.demoHint code {
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
-  background: var(--neutral-0);
-  padding: 1px 6px;
-  border-radius: 4px;
-  border: 0.5px solid var(--neutral-150);
-  color: var(--primary-300);
-}
-.demoHintText {
+.sampleIcon {
   display: inline-flex;
-  flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
+  width: 45px;
+  height: 45px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 0.5px solid var(--neutral-300, #8a94a8);
+}
+.sampleText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   gap: 6px;
+}
+.sampleTitle {
+  font: 500 14px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.sampleDesc {
+  font: 400 12px/1.5 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.sampleChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
 }
 .demoChip {
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
-  font-weight: 500;
+  font: 500 11px/1.4 'Inter', sans-serif;
   color: var(--primary-300);
   background: var(--neutral-0);
   border: 0.5px solid var(--primary-200);
   padding: 2px 8px;
   border-radius: 4px;
   cursor: pointer;
-  line-height: 1.4;
 }
 .demoChip:hover {
   background: var(--primary-100);
   border-color: var(--primary-300);
+}
+
+/* Footer info note — white card with leading info icon, neutral subtle text. */
+.footerNote {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-300, #8a94a8);
+  border-radius: 8px;
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.footerNote strong {
+  color: var(--neutral-400);
+  font-weight: 500;
 }
 
 /* ── Phase 2: processing ──────────────────────────────────────────── */

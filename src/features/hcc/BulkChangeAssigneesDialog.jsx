@@ -4,6 +4,7 @@ import { Icon } from '../../components/Icon/Icon';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Button } from '../../components/Button/Button';
 import { Input } from '../../components/Input/Input';
+import { Select } from '../../components/Select/Select';
 import { useAppStore } from '../../store/useAppStore';
 import { ASTRANA_STAFF, ROLE_LABEL, ROLES } from './assignment/astranaStaff';
 import { FALLBACK_USERS } from '../settings/AccountPanel';
@@ -193,7 +194,7 @@ export function BulkChangeAssigneesDialog({ open, selectedIds, onClose, onApplie
 
   if (!open) return null;
 
-  const roleOptions = ROLES.map(r => ({ key: r, label: ROLE_LABEL[r] }));
+  const roleOptions = ROLES.map(r => ({ value: r, label: ROLE_LABEL[r] }));
 
   return createPortal(
     <>
@@ -220,26 +221,14 @@ export function BulkChangeAssigneesDialog({ open, selectedIds, onClose, onApplie
           </span>
         </div>
 
-        <label className={styles.field}>
+        <div className={styles.field}>
           <span className={styles.fieldLabel}>Select Reviewer</span>
-          <div className={styles.selectWrap}>
-            <select
-              className={styles.select}
-              value={role}
-              onChange={(e) => { setRole(e.target.value); setPickedId(null); }}
-            >
-              {roleOptions.map(o => (
-                <option key={o.key} value={o.key}>{o.label}</option>
-              ))}
-            </select>
-            <Icon
-              name="solar:alt-arrow-down-linear"
-              size={12}
-              color="var(--neutral-300)"
-              className={styles.selectChevron}
-            />
-          </div>
-        </label>
+          <Select
+            options={roleOptions}
+            value={role}
+            onChange={(v) => { setRole(v); setPickedId(null); }}
+          />
+        </div>
 
         <div className={styles.searchWrap}>
           <Icon name="solar:magnifer-linear" size={16} color="var(--neutral-300)" className={styles.searchIcon} />

@@ -9,6 +9,28 @@ import { useAppStore } from '../../../store/useAppStore';
 import { runMockOcr, mandatoryFields, POS_LABEL } from './mockOcr';
 import styles from './UploadDocumentDrawer.module.css';
 
+// Accepted file types for clinical document upload. PDFs are the canonical
+// source; Word docs cover dictated notes from EHRs that export to .docx;
+// JPG/PNG cover scanned/photographed encounter sheets and lab reports.
+// Keep the MIME and extension lists in sync — `accept=` uses extensions
+// for cross-OS reliability, the runtime check uses MIME.
+const ACCEPT_EXT  = '.pdf,.doc,.docx,.jpg,.jpeg,.png';
+const ACCEPT_MIME = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'image/jpeg',
+  'image/png',
+]);
+const ACCEPT_LABEL = 'Supported formats: PDF, DOC, JPG, PNG';
+const isAcceptedFile = (file) => {
+  if (!file) return false;
+  if (ACCEPT_MIME.has(file.type)) return true;
+  // Some browsers (older Safari, drag-drop from certain sources) report
+  // an empty MIME — fall back to extension matching.
+  return /\.(pdf|docx?|jpe?g|png)$/i.test(file.name || '');
+};
+
 /**
  * UploadDocumentDrawer — three phases (picker · processing · review).
  * Implements the Jira "Individual Upload" path: Support picks a PDF,
@@ -80,9 +102,10 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
 
   const handleFileSelect = (file) => {
     if (!file) return;
-    // AC-10: PDF only. Filter at both accept attr + MIME check.
-    if (file.type !== 'application/pdf') {
-      showToast('Please upload a PDF file');
+    // Multi-type accept: PDF · DOC/DOCX · JPG · PNG. Filter at both
+    // accept attr + MIME/extension check.
+    if (!isAcceptedFile(file)) {
+      showToast('Please upload a PDF, DOC, JPG, or PNG file');
       return;
     }
     setFile(file);
@@ -118,8 +141,8 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
   // session.encounters.
   const handleAppendUpload = async (file) => {
     if (!file) return;
-    if (file.type !== 'application/pdf') {
-      showToast('Please upload a PDF file');
+    if (!isAcceptedFile(file)) {
+      showToast('Please upload a PDF, DOC, JPG, or PNG file');
       return;
     }
     setAppending(true);
@@ -175,7 +198,7 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
       <input
         ref={appendInputRef}
         type="file"
-        accept="application/pdf"
+        accept={ACCEPT_EXT}
         style={{ display: 'none' }}
         onChange={(e) => handleAppendUpload(e.target.files?.[0])}
       />
@@ -208,6 +231,49 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
     >
       {session.phase === 'picker' && (
         <div className={styles.pickerPhase}>
+          {/* Subtitle — HCC-specific framing under the drawer title. */}
+          <p className={styles.pickerSubtitle}>
+            Upload clinical documents to extract HCC encounters and update the worklist.
+          </p>
+
+          {/* Step indicator — numbered chips mirroring the Figma "1 Upload File · 2 Profile Review"
+              pattern. For HCC the steps are Upload PDF → OCR Review. */}
+          <div className={styles.steps}>
+            <div className={`${styles.step} ${styles.stepActive}`}>
+              <span className={styles.stepBadge}>1</span>
+              <span className={styles.stepLabel}>Upload File</span>
+            </div>
+            <span className={styles.stepDivider} />
+            <div className={styles.step}>
+              <span className={`${styles.stepBadge} ${styles.stepBadgeIdle}`}>2</span>
+              <span className={`${styles.stepLabel} ${styles.stepLabelIdle}`}>OCR Review</span>
+            </div>
+          </div>
+
+          {/* Concentric-ring hero — neutral chrome that frames the upload action. */}
+          <div className={styles.hero} aria-hidden="true">
+            <span className={styles.heroRingOuter} />
+            <span className={styles.heroRingMid} />
+            <span className={styles.heroCenter}>
+              <Icon name="solar:file-text-linear" size={36} color="var(--neutral-300)" />
+            </span>
+          </div>
+
+          {/* How-to info banner. */}
+          <div className={styles.howToBanner}>
+            <div className={styles.howToHead}>
+              <Icon name="solar:info-circle-linear" size={16} color="var(--status-info, #145ECC)" />
+              <span>How to upload HCC documents</span>
+            </div>
+            <ol className={styles.howToList}>
+              <li>Upload a file (PDF, DOC, JPG, or PNG) — clinical notes, SOAP notes, progress notes, or scans</li>
+              <li>OCR extracts patient demographics, DOS, provider, POS, and ICDs</li>
+              <li>Review each encounter and resolve any field-level errors</li>
+              <li>Confirm to create new or merge into existing worklist rows</li>
+            </ol>
+          </div>
+
+          {/* Dropzone. */}
           <label
             className={[styles.dropZone, drag ? styles.dropZoneActive : ''].join(' ')}
             onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
@@ -218,47 +284,69 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
               handleFileSelect(e.dataTransfer.files?.[0]);
             }}
           >
-            <Icon name="solar:upload-minimalistic-linear" size={32} color="var(--neutral-200)" />
-            <span className={styles.dropZoneTitle}>Drag and drop PDF here</span>
-            <span className={styles.dropZoneMuted}>or</span>
-            <span className={styles.dropZoneLink}>Choose file</span>
-            <span className={styles.dropZoneHint}>PDF only — clinical notes, SOAP notes, progress notes</span>
+            <Icon name="solar:upload-minimalistic-linear" size={24} color="var(--neutral-300)" />
+            <div className={styles.dropZoneCta}>
+              <span className={styles.dropZoneTitle}>Drag and drop file here or</span>
+              <span className={styles.dropZoneLink}>Choose file</span>
+            </div>
             <input
               ref={fileInputRef}
               type="file"
-              accept="application/pdf"
+              accept={ACCEPT_EXT}
               className={styles.fileInput}
               onChange={(e) => handleFileSelect(e.target.files?.[0])}
             />
           </label>
-          <div className={styles.demoHint}>
-            <Icon name="solar:info-circle-linear" size={14} color="var(--neutral-300)" />
-            <span className={styles.demoHintText}>
-              Try a demo PDF:
-              {[
-                'demo-single.pdf',
-                'demo-multi-patient.pdf',
-                'demo-same-patient-multi-dos.pdf',
-                'demo-bulk-multi-patient.pdf',
-                'demo-missing-dos.pdf',
-                'demo-dob-mismatch.pdf',
-              ].map((name, i) => (
-                <button
-                  key={name}
-                  type="button"
-                  className={styles.demoChip}
-                  onClick={() => {
-                    // Synthesize a PDF File so the existing handleFileSelect
-                    // → mockOcr pipeline runs unchanged. The filename is what
-                    // the mock OCR keys off to pick which scripted payload
-                    // to return.
-                    const file = new File([new Blob(['%PDF-1.4 demo'])], name, { type: 'application/pdf' });
-                    handleFileSelect(file);
-                  }}
-                >
-                  {name}
-                </button>
-              ))}
+
+          {/* Supported formats line. */}
+          <div className={styles.formatsLine}>
+            <span>{ACCEPT_LABEL}</span>
+            <span>Max size: 25 MB</span>
+          </div>
+
+          {/* Sample document card — the Figma "Download sample" slot, repurposed
+              for HCC as a list of demo PDFs the mock OCR knows how to script. */}
+          <div className={styles.sampleCard}>
+            <span className={styles.sampleIcon}>
+              <Icon name="solar:file-text-linear" size={20} color="var(--neutral-400)" />
+            </span>
+            <div className={styles.sampleText}>
+              <div className={styles.sampleTitle}>Try a demo document</div>
+              <div className={styles.sampleDesc}>
+                Use a sample clinical note to see how OCR extracts encounters and ICDs.
+              </div>
+              <div className={styles.sampleChips}>
+                {[
+                  'demo-single.pdf',
+                  'demo-multi-patient.pdf',
+                  'demo-same-patient-multi-dos.pdf',
+                  'demo-bulk-multi-patient.pdf',
+                  'demo-missing-dos.pdf',
+                  'demo-dob-mismatch.pdf',
+                ].map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    className={styles.demoChip}
+                    onClick={() => {
+                      const file = new File([new Blob(['%PDF-1.4 demo'])], name, { type: 'application/pdf' });
+                      handleFileSelect(file);
+                    }}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Footer info note — what happens after upload. */}
+          <div className={styles.footerNote}>
+            <Icon name="solar:info-circle-linear" size={15} color="var(--neutral-300)" />
+            <span>
+              After OCR completes, you'll review each extracted encounter before it creates or
+              merges into HCC worklist rows. Documents in any source — manual upload or SFTP —
+              are logged in <strong>History</strong>.
             </span>
           </div>
         </div>
@@ -395,7 +483,7 @@ function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, sele
             return (
               <div key={g.memberId || `unmatched-${g.encounters[0]?._idx}`}>
                 <div className={styles.patientGroupBanner}>
-                  <Avatar variant="assignee" initials={member?.in || (displayName.split(' ').map(p => p[0]).slice(0,2).join(''))} />
+                  <Avatar variant="patient" initials={member?.in || (displayName.split(' ').map(p => p[0]).slice(0,2).join(''))} />
                   <span>{displayName}</span>
                   <span className={styles.patientGroupBannerCount}>
                     · {g.encounters.length} encounter{g.encounters.length === 1 ? '' : 's'}
@@ -424,7 +512,7 @@ function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, sele
             <>
               <div className={styles.detailHeader}>
                 <Avatar
-                  variant="assignee"
+                  variant="patient"
                   initials={selectedMember?.in || (selectedEnc.patient?.name || '?').split(' ').map(p => p[0]).slice(0,2).join('')}
                 />
                 <div className={styles.detailHeaderText}>
@@ -570,7 +658,7 @@ function TableRow({ enc, hccMembers, onPatch, onRemove }) {
       <td className={styles.tdPatient}>
         {isMatched ? (
           <div className={styles.tdPatientMatched}>
-            <Avatar variant="assignee" initials={member?.in || (enc.patient.name || '?').split(' ').map(p => p[0]).slice(0,2).join('')} />
+            <Avatar variant="patient" initials={member?.in || (enc.patient.name || '?').split(' ').map(p => p[0]).slice(0,2).join('')} />
             <span className={styles.tdPatientName}>{member?.name || enc.patient.name}</span>
           </div>
         ) : !picking ? (
@@ -599,7 +687,7 @@ function TableRow({ enc, hccMembers, onPatch, onRemove }) {
                   className={styles.tdPatientPickerItem}
                   onClick={() => handleLink(m)}
                 >
-                  <Avatar variant="assignee" initials={m.in} />
+                  <Avatar variant="patient" initials={m.in} />
                   <span>{m.name}</span>
                 </button>
               ))}
@@ -843,7 +931,7 @@ function EncounterCard({ enc, hccMembers, onPatch }) {
                     className={styles.memberPickerItem}
                     onClick={() => handleLinkMember(m)}
                   >
-                    <Avatar variant="assignee" initials={m.in} />
+                    <Avatar variant="patient" initials={m.in} />
                     <span>{m.name}</span>
                     <span className={styles.memberPickerMeta}>{m.memberId}</span>
                   </button>
