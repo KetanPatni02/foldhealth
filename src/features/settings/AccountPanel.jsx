@@ -16,9 +16,14 @@ import { RadioGroup, RadioGroupItem } from '../../components/ui/radio-group';
 import { useTableSort } from '../../components/Table/useTableSort';
 import { SortableHeader } from '../../components/Table/SortableHeader';
 import { AuditLogContent } from './panels/AuditLogDrawer';
+import { IdIcon } from '../../components/Icon/IdIcon';
+import { AddIconMinimalist } from '../../components/Icon/AddIconMinimalist';
+import { CreateInsurancePlanDrawer } from './CreateInsurancePlanDrawer';
+import { InsurancePlanViewDrawer } from './InsurancePlanViewDrawer';
+import { OrgPanel } from './panels/OrgPanel';
 import styles from './AccountPanel.module.css';
 
-const ALL_TABS = ['Users', 'Teams', 'Access Control', 'Locations', 'Holiday Configuration', 'Merged Or Delayed', 'Allowed Phone', 'Allowed Emails'];
+const ALL_TABS = ['Org', 'Users', 'Teams', 'Access Control', 'Locations', 'Insurance Plans', 'Holiday Configuration', 'Merged Or Delayed', 'Allowed Phone', 'Allowed Emails'];
 
 const ROLE_COLORS = {
   'Physician/Doctor': 'ai-care', 'Nurse': 'toc-engaged', 'Medical Assistant': 'status-scheduled',
@@ -196,9 +201,9 @@ export function AccountPanel() {
   const storeTab = useAppStore(s => s.accountTab);
   const setStoreTab = useAppStore(s => s.setAccountTab);
   // Map store key to display name
-  const tabKeyToName = (key) => ALL_TABS.find(t => t.toLowerCase().replace(/ /g, '-') === key) || 'Users';
+  const tabKeyToName = (key) => ALL_TABS.find(t => t.toLowerCase().replace(/ /g, '-') === key) || 'Org';
   const tabNameToKey = (name) => name.toLowerCase().replace(/ /g, '-');
-  const [activeTab, setActiveTabLocal] = useState(tabKeyToName(storeTab || 'users'));
+  const [activeTab, setActiveTabLocal] = useState(tabKeyToName(storeTab || 'org'));
   const setActiveTab = (tab) => { setActiveTabLocal(tab); setStoreTab(tabNameToKey(tab)); };
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -207,10 +212,20 @@ export function AccountPanel() {
   const [editingUser, setEditingUser] = useState(null);
   const [viewingUser, setViewingUser] = useState(null);
   const [showInvite, setShowInvite] = useState(false);
+  const [showCreateInsurance, setShowCreateInsurance] = useState(false);
+  const [plans, setPlans] = useState([]);
+  const [planSavedToast, setPlanSavedToast] = useState(false);
+  const [viewingPlan, setViewingPlan] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentUserId, setCurrentUserId] = useState(null);
   const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
   const showToast = useAppStore(s => s.showToast);
+
+  const handleSavePlan = (planData) => {
+    setPlans(prev => [...prev, { id: Date.now(), ...planData }]);
+    setPlanSavedToast(true);
+    setTimeout(() => setPlanSavedToast(false), 3000);
+  };
 
   // Resolve current user + admin status once on mount.
   // Used synchronously by UI (hide buttons) and handlers (guard actions).
@@ -409,29 +424,33 @@ export function AccountPanel() {
         <div className={styles.tabs}>
           <OverflowTabs tabs={ALL_TABS} activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
-        <div className={styles.tabActions}>
-          <div className={styles.searchWrap}>
-            {searchOpen ? (
-              <div className={styles.searchInput}>
-                <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
-                <input autoFocus type="text" placeholder="Search users..." value={searchVal} onChange={e => setSearchVal(e.target.value)} />
-                <button className={styles.searchClose} onClick={() => { setSearchOpen(false); setSearchVal(''); }}>&#x2715;</button>
-              </div>
-            ) : (
-              <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
+        {activeTab !== 'Insurance Plans' && (
+          <div className={styles.tabActions}>
+            <div className={styles.searchWrap}>
+              {searchOpen ? (
+                <div className={styles.searchInput}>
+                  <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
+                  <input autoFocus type="text" placeholder="Search users..." value={searchVal} onChange={e => setSearchVal(e.target.value)} />
+                  <button className={styles.searchClose} onClick={() => { setSearchOpen(false); setSearchVal(''); }}>&#x2715;</button>
+                </div>
+              ) : (
+                <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
+              )}
+            </div>
+            <ActionButton icon="custom:filter" size="L" tooltip="Filter" onClick={() => setStatusFilter(f => f === 'all' ? 'active' : f === 'active' ? 'inactive' : f === 'inactive' ? 'invited' : 'all')} />
+            {statusFilter !== 'all' && (
+              <Badge variant={statusFilter === 'active' ? 'status-completed' : statusFilter === 'invited' ? 'status-queued' : 'status-failed'} label={statusFilter} style={{ textTransform: 'capitalize', cursor: 'pointer' }} onClick={() => setStatusFilter('all')} />
             )}
+            <span className={styles.tabDivider} />
+            <Button variant="secondary" size="L" leadingIcon="solar:add-circle-linear" onClick={() => setShowInvite(true)}>Invite User</Button>
           </div>
-          <ActionButton icon="custom:filter" size="L" tooltip="Filter" onClick={() => setStatusFilter(f => f === 'all' ? 'active' : f === 'active' ? 'inactive' : f === 'inactive' ? 'invited' : 'all')} />
-          {statusFilter !== 'all' && (
-            <Badge variant={statusFilter === 'active' ? 'status-completed' : statusFilter === 'invited' ? 'status-queued' : 'status-failed'} label={statusFilter} style={{ textTransform: 'capitalize', cursor: 'pointer' }} onClick={() => setStatusFilter('all')} />
-          )}
-          <span className={styles.tabDivider} />
-          <Button variant="secondary" size="L" leadingIcon="solar:add-circle-linear" onClick={() => setShowInvite(true)}>Invite User</Button>
-        </div>
+        )}
       </div>
 
       <div className={styles.tableWrap}>
-        {activeTab === 'Users' ? (
+        {activeTab === 'Org' ? (
+          <OrgPanel />
+        ) : activeTab === 'Users' ? (
           loading ? <TableSkeleton rows={10} /> : (
             <>
               <table className={styles.table}>
@@ -501,6 +520,13 @@ export function AccountPanel() {
               )}
             </>
           )
+        ) : activeTab === 'Insurance Plans' ? (
+          <InsurancePlansTab
+            plans={plans}
+            onCreateNew={() => setShowCreateInsurance(true)}
+            onView={(plan) => setViewingPlan(plan)}
+            onDelete={(id) => setPlans(prev => prev.filter(p => p.id !== id))}
+          />
         ) : (
           <div className={styles.emptyState}>
             <Icon name="solar:widget-linear" size={40} color="var(--neutral-150)" />
@@ -531,6 +557,32 @@ export function AccountPanel() {
       {/* Invite User Drawer */}
       {showInvite && (
         <InviteUserDrawer onClose={() => setShowInvite(false)} onInvited={() => { setShowInvite(false); fetchUsers(); }} />
+      )}
+
+      {/* Create Insurance Plan Drawer */}
+      {showCreateInsurance && (
+        <CreateInsurancePlanDrawer
+          onClose={() => setShowCreateInsurance(false)}
+          onSave={handleSavePlan}
+        />
+      )}
+
+      {viewingPlan && (
+        <InsurancePlanViewDrawer
+          plan={viewingPlan}
+          onClose={() => setViewingPlan(null)}
+        />
+      )}
+
+      {planSavedToast && (
+        <div className={styles.toastOverlay}>
+          <div className={styles.toast}>
+            <span className={styles.toastText}>Plan Saved Successfully</span>
+            <button className={styles.toastClose} onClick={() => setPlanSavedToast(false)}>
+              <Icon name="solar:close-circle-linear" size={16} color="white" />
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -1413,6 +1465,91 @@ function InviteUserDrawer({ onClose, onInvited }) {
     </Drawer>
   );
 }
+
+/* ── Insurance Plans Tab ── */
+
+function InsurancePlansTab({ plans = [], onCreateNew, onView, onDelete }) {
+  if (plans.length === 0) {
+    return (
+      <div className={styles.insuranceEmpty}>
+        <div className={styles.insuranceEmptyOuterRing}>
+          <div className={styles.insuranceEmptyRing}>
+            <div className={styles.insuranceEmptyInner}>
+              <Icon name="solar:shield-user-linear" size={24} color="var(--neutral-200)" />
+            </div>
+          </div>
+        </div>
+        <p className={styles.insuranceEmptyText}>No Insurance Plans have been Created.</p>
+        <Button variant="primary" size="L" leadingIcon="solar:add-circle-linear" onClick={onCreateNew}>
+          Create New
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.insuranceTableWrap}>
+      <table className={styles.insuranceTable}>
+        <thead>
+          <tr className={styles.insuranceTableHeader}>
+            <th className={styles.insuranceTh} style={{ width: 180 }}>Plan Logo</th>
+            <th className={styles.insuranceTh}>Plan Name</th>
+            <th className={styles.insuranceTh} style={{ width: 160 }}>Plan Type</th>
+            <th className={styles.insuranceTh} style={{ width: 160 }}>Group Number</th>
+            <th className={styles.insuranceTh} style={{ width: 160 }}>EDI Payer ID</th>
+            <th className={styles.insuranceTh} style={{ width: 180 }}>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {plans.map(plan => (
+            <tr key={plan.id} className={styles.insuranceTableRow}>
+              <td className={styles.insuranceTd}>
+                {(plan.logoPreviewUrl || plan.planLogoUrl) ? (
+                  <img
+                    src={plan.logoPreviewUrl || plan.planLogoUrl}
+                    alt="Logo"
+                    className={styles.insuranceLogoImg}
+                  />
+                ) : (
+                  <span className={styles.insuranceLogoPlaceholder}>—</span>
+                )}
+              </td>
+              <td className={styles.insuranceTd}>
+                <span className={styles.insurancePlanName}>{plan.planName}</span>
+              </td>
+              <td className={styles.insuranceTd}>
+                <span className={styles.insurancePlanTypeBadge}>{plan.planType || '—'}</span>
+              </td>
+              <td className={styles.insuranceTd}>
+                <span className={styles.insuranceCellText}>{plan.groupNumber || '—'}</span>
+              </td>
+              <td className={styles.insuranceTd}>
+                <span className={styles.insuranceCellText}>{plan.ediPayerId || '—'}</span>
+              </td>
+              <td className={styles.insuranceTd}>
+                <div className={styles.insuranceActions}>
+                  <button className={styles.insuranceActionBtn} onClick={() => onView(plan)} title="View">
+                    <Icon name="solar:eye-linear" size={16} color="var(--neutral-300)" />
+                  </button>
+                  <span className={styles.insuranceActionDivider} />
+                  <button className={styles.insuranceActionBtn} title="Edit">
+                    <Icon name="solar:pen-linear" size={16} color="var(--neutral-300)" />
+                  </button>
+                  <span className={styles.insuranceActionDivider} />
+                  <button className={styles.insuranceActionBtn} onClick={() => onDelete(plan.id)} title="Delete">
+                    <Icon name="solar:trash-bin-2-linear" size={16} color="var(--neutral-300)" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* CreateInsurancePlanDrawer is defined in ./CreateInsurancePlanDrawer.jsx */
 
 function EditUserDrawer({ user, onClose, onSave }) {
   const raw = user._raw || {};

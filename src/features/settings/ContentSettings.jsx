@@ -11,6 +11,7 @@ import { Checkbox } from '../../components/ui/checkbox';
 import { CloseIcon } from '../../components/Icon/CloseIcon';
 import { useAppStore } from '../../store/useAppStore';
 import { EmailPreviewDrawer } from './EmailPreviewDrawer';
+import { formShareLink, copyToClipboard } from '../forms/formLink';
 import styles from './ContentSettings.module.css';
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -396,6 +397,221 @@ function EmailsTab({
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// Forms tab
+// ────────────────────────────────────────────────────────────────────────────
+function FormRowMenu({ onCopyLink, onDuplicate, onDelete }) {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const openMenu = () => {
+    const rect = btnRef.current?.getBoundingClientRect();
+    if (rect) setPos({ top: rect.bottom + 4, left: rect.right - 180 });
+    setOpen(v => !v);
+  };
+  const wrap = (fn) => () => { setOpen(false); fn(); };
+  return (
+    <>
+      <div ref={btnRef} style={{ display: 'inline-flex' }}>
+        <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" onClick={openMenu} />
+      </div>
+      {open && createPortal(
+        <div className={styles.overflowScrim} onClick={() => setOpen(false)}>
+          <div className={styles.overflowMenu} style={{ top: pos.top, left: pos.left }} onClick={e => e.stopPropagation()}>
+            <button className={styles.overflowItem} onClick={wrap(onCopyLink)}>
+              <Icon name="solar:link-linear" size={15} color="var(--neutral-300)" />
+              Copy link
+            </button>
+            <button className={styles.overflowItem} onClick={wrap(onDuplicate)}>
+              <Icon name="solar:copy-linear" size={15} color="var(--neutral-300)" />
+              Duplicate
+            </button>
+            <button className={`${styles.overflowItem} ${styles.overflowItemDanger}`} onClick={wrap(onDelete)}>
+              <Icon name="solar:trash-bin-trash-linear" size={15} color="var(--status-error)" />
+              Delete
+            </button>
+          </div>
+        </div>,
+        document.body,
+      )}
+    </>
+  );
+}
+
+function FormRowSkeleton() {
+  return (
+    <tr className={styles.row}>
+      <td className={styles.tdName}>
+        <div className={styles.skelNameRow}>
+          <div className={styles.nameLeading}>
+            <span className={`${styles.leadingLayer} ${styles.leadingVisible}`}>
+              <span className={`${styles.skelBone} ${styles.skelIcon}`} />
+            </span>
+          </div>
+          <div className={styles.nameStack}>
+            <span className={`${styles.skelBone} ${styles.skelTextLg}`} />
+            <span className={`${styles.skelBone} ${styles.skelTextSm}`} />
+          </div>
+        </div>
+      </td>
+      <td className={styles.tdCategory}><span className={`${styles.skelBone} ${styles.skelChip}`} /></td>
+      <td className={styles.tdSubject}><span className={`${styles.skelBone} ${styles.skelTextSm}`} /></td>
+      <td className={styles.tdDate}><span className={`${styles.skelBone} ${styles.skelTextSm}`} /></td>
+      <td className={styles.tdUpdatedBy}><span className={`${styles.skelBone} ${styles.skelTextMd}`} /></td>
+      <td className={styles.tdAction}>
+        <div className={styles.actionCell}>
+          <span className={`${styles.skelBone} ${styles.skelDot}`} />
+          <span className={`${styles.skelBone} ${styles.skelDot}`} />
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function FormsTab({ searchVal, onDuplicate, onDelete, bulkMode, selectedIds, onToggleId, onToggleAll }) {
+  const forms             = useAppStore(s => s.contentForms);
+  const total             = useAppStore(s => s.contentFormsTotal);
+  const loading           = useAppStore(s => s.contentFormsLoading);
+  const fetchContentForms = useAppStore(s => s.fetchContentForms);
+  const openFormBuilder   = useAppStore(s => s.openFormBuilder);
+  const showToast         = useAppStore(s => s.showToast);
+
+  const copyLink = async (form) => {
+    const ok = await copyToClipboard(formShareLink(form.id));
+    showToast?.(ok ? 'Shareable form link copied' : 'Could not copy link');
+  };
+
+  const [page, setPage]       = useState(1);
+  const [perPage, setPerPage] = useState(10);
+
+  useEffect(() => { setPage(1); }, [searchVal]);
+  useEffect(() => {
+    fetchContentForms?.({ page, perPage, search: searchVal });
+  }, [fetchContentForms, page, perPage, searchVal]);
+
+  return (
+    <>
+      <div className={styles.tableWrap}>
+        <table className={styles.table}>
+          <colgroup>
+            <col className={styles.colName} />
+            <col className={styles.colCategory} />
+            <col className={styles.colSubject} />
+            <col className={styles.colDate} />
+            <col className={styles.colUpdatedBy} />
+            <col className={styles.colAction} />
+          </colgroup>
+          <thead>
+            <tr className={styles.headerRow}>
+              <th>
+                <div className={styles.nameHeader}>
+                  <span className={`${styles.headerLeading} ${bulkMode ? styles.headerLeadingOpen : ''}`} aria-hidden={!bulkMode}>
+                    <Checkbox
+                      checked={
+                        forms.length > 0 && forms.every(f => selectedIds.has(f.id))
+                          ? true
+                          : selectedIds.size > 0 ? 'indeterminate' : false
+                      }
+                      onCheckedChange={() => onToggleAll(forms)}
+                    />
+                  </span>
+                  <span>Name</span>
+                </div>
+              </th>
+              <th>Category</th>
+              <th>Responses</th>
+              <th>Last Updated</th>
+              <th>Last Updated By</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              Array.from({ length: Math.max(1, perPage > 5 ? 5 : perPage) }).map((_, i) => (
+                <FormRowSkeleton key={`fskel-${i}`} />
+              ))
+            ) : forms.length === 0 ? (
+              <tr>
+                <td colSpan={6} className={styles.emptyState}>
+                  <Icon name="solar:document-text-linear" size={32} color="var(--neutral-150)" />
+                  <p>No forms yet. Click “New Form” to build one.</p>
+                </td>
+              </tr>
+            ) : (
+              forms.map(form => {
+                const isSelected = bulkMode && selectedIds.has(form.id);
+                const handleNameClick = () => {
+                  if (bulkMode) onToggleId(form.id);
+                  else openFormBuilder(form);
+                };
+                return (
+                  <tr key={form.id} className={`${styles.row} ${isSelected ? styles.rowSelected : ''}`}>
+                    <td className={styles.tdName}>
+                      <div
+                        className={styles.nameLink}
+                        role="button"
+                        tabIndex={0}
+                        onClick={handleNameClick}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNameClick(); } }}
+                      >
+                        <div className={styles.nameLeading}>
+                          <span className={`${styles.leadingLayer} ${bulkMode ? styles.leadingHidden : styles.leadingVisible}`} aria-hidden={bulkMode}>
+                            <Icon name="solar:document-text-linear" size={16} color="var(--neutral-300)" />
+                          </span>
+                          <span
+                            className={`${styles.leadingLayer} ${bulkMode ? styles.leadingVisible : styles.leadingHidden}`}
+                            aria-hidden={!bulkMode}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Checkbox checked={selectedIds.has(form.id)} onCheckedChange={() => onToggleId(form.id)} />
+                          </span>
+                        </div>
+                        <div className={styles.nameStack}>
+                          <span className={styles.nameText}>{form.name}</span>
+                          {form.description ? <span className={styles.nameDesc}>{form.description}</span> : null}
+                        </div>
+                      </div>
+                    </td>
+                    <td className={styles.tdCategory}>
+                      {form.category ? <Badge variant="ai-neutral" label={form.category} /> : <span className={styles.cellMuted}>—</span>}
+                    </td>
+                    <td className={styles.tdSubject}>
+                      <span className={styles.cellText}>{form.responseCount ?? 0}</span>
+                    </td>
+                    <td className={styles.tdDate}>
+                      <span className={styles.cellText}>{formatRelative(form.updatedAt)}</span>
+                    </td>
+                    <td className={styles.tdUpdatedBy}>
+                      <span className={styles.cellText}>{form.updatedByName || <span className={styles.cellMuted}>—</span>}</span>
+                    </td>
+                    <td className={styles.tdAction}>
+                      <div className={styles.actionCell}>
+                        <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit form" onClick={() => openFormBuilder(form)} />
+                        <div className={styles.vDivider} />
+                        <FormRowMenu onCopyLink={() => copyLink(form)} onDuplicate={() => onDuplicate(form)} onDelete={() => onDelete(form)} />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {total > 0 ? (
+        <Pagination
+          totalItems={total}
+          currentPage={page}
+          perPage={perPage}
+          onPageChange={setPage}
+          onPerPageChange={(n) => { setPerPage(n); setPage(1); }}
+        />
+      ) : null}
+    </>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Placeholder for unbuilt tabs
 // ────────────────────────────────────────────────────────────────────────────
 function PlaceholderTab({ label }) {
@@ -420,6 +636,13 @@ export function ContentSettings() {
   const deleteCampaignsBulk     = useAppStore(s => s.deleteCampaignsBulk);
   const duplicateCampaign       = useAppStore(s => s.duplicateCampaign);
   const fetchContentEmails      = useAppStore(s => s.fetchContentEmails);
+  // Forms
+  const openFormBuilder         = useAppStore(s => s.openFormBuilder);
+  const formBuilderSaving       = useAppStore(s => s.formBuilderSaving);
+  const deleteForm              = useAppStore(s => s.deleteForm);
+  const deleteFormsBulk         = useAppStore(s => s.deleteFormsBulk);
+  const duplicateForm           = useAppStore(s => s.duplicateForm);
+  const fetchContentForms       = useAppStore(s => s.fetchContentForms);
 
   // Tab state lives in the store so the URL hash (#/settings/content/<tab>)
   // round-trips with the active tab.
@@ -470,25 +693,31 @@ export function ContentSettings() {
   const exitBulkMode = () => { setBulkMode(false); clearSelection(); };
 
   const isEmails    = activeTab === 'emails';
+  const isForms     = activeTab === 'forms';
+  const isListTab   = isEmails || isForms;
   const statusBadge = STATUS_FILTER_BADGE[statusFilter];
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
-    const ok = await deleteCampaign(deleteTarget.id);
+    const ok = isForms ? await deleteForm(deleteTarget.id) : await deleteCampaign(deleteTarget.id);
     setDeleting(false);
     if (ok) {
       setDeleteTarget(null);
       // Refresh the current page so totals are accurate.
-      fetchContentEmails?.({ page: 1, perPage: 10, search: searchVal, status: statusFilter });
+      if (isForms) fetchContentForms?.({ page: 1, perPage: 10, search: searchVal, force: true });
+      else fetchContentEmails?.({ page: 1, perPage: 10, search: searchVal, status: statusFilter });
     }
   };
 
-  const handleDuplicate = async (campaign) => {
-    const fresh = await duplicateCampaign(campaign.id);
-    if (fresh) {
-      fetchContentEmails?.({ page: 1, perPage: 10, search: searchVal, status: statusFilter });
+  const handleDuplicate = async (row) => {
+    if (isForms) {
+      const fresh = await duplicateForm(row.id);
+      if (fresh) fetchContentForms?.({ page: 1, perPage: 10, search: searchVal, force: true });
+      return;
     }
+    const fresh = await duplicateCampaign(row.id);
+    if (fresh) fetchContentEmails?.({ page: 1, perPage: 10, search: searchVal, status: statusFilter });
   };
 
   const handleEditFromPreview = () => {
@@ -501,19 +730,20 @@ export function ContentSettings() {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) { setBulkDeleteOpen(false); return; }
     setDeleting(true);
-    const ok = await deleteCampaignsBulk(ids);
+    const ok = isForms ? await deleteFormsBulk(ids) : await deleteCampaignsBulk(ids);
     setDeleting(false);
     if (ok) {
       setBulkDeleteOpen(false);
       clearSelection();
       // Refresh the listing so totals + page contents are accurate.
-      fetchContentEmails?.({ page: 1, perPage: 10, search: searchVal, status: statusFilter });
+      if (isForms) fetchContentForms?.({ page: 1, perPage: 10, search: searchVal, force: true });
+      else fetchContentEmails?.({ page: 1, perPage: 10, search: searchVal, status: statusFilter });
     }
   };
 
-  // Reset bulk mode when leaving the Emails tab.
+  // Reset bulk mode + selection on any tab switch (selections are per-list).
   useEffect(() => {
-    if (activeTab !== 'emails') exitBulkMode();
+    exitBulkMode();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
@@ -532,7 +762,7 @@ export function ContentSettings() {
           ))}
         </div>
 
-        {isEmails ? (
+        {isListTab ? (
           <div className={styles.tabActions}>
             <div className={styles.searchWrap}>
               {searchOpen ? (
@@ -541,7 +771,7 @@ export function ContentSettings() {
                   <input
                     autoFocus
                     type="text"
-                    placeholder="Search emails..."
+                    placeholder={isForms ? 'Search forms...' : 'Search emails...'}
                     value={searchInputVal}
                     onChange={e => setSearchInputVal(e.target.value)}
                   />
@@ -566,35 +796,51 @@ export function ContentSettings() {
             >
               {bulkMode ? <BulkSelectCloseIcon /> : <BulkSelectIcon />}
             </ActionButton>
-            <span className={styles.tabDivider} />
-            <ActionButton
-              icon="custom:filter"
-              size="L"
-              tooltip="Filter"
-              onClick={() => {
-                const idx = STATUS_CYCLE.indexOf(statusFilter);
-                setStatusFilter(STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length]);
-              }}
-            />
-            {statusBadge ? (
-              <span
-                className={styles.filterChip}
-                onClick={() => setStatusFilter('all')}
-                title="Clear filter"
-              >
-                <Badge variant={statusBadge.variant} label={statusBadge.label} />
-              </span>
+            {isEmails ? (
+              <>
+                <span className={styles.tabDivider} />
+                <ActionButton
+                  icon="custom:filter"
+                  size="L"
+                  tooltip="Filter"
+                  onClick={() => {
+                    const idx = STATUS_CYCLE.indexOf(statusFilter);
+                    setStatusFilter(STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length]);
+                  }}
+                />
+                {statusBadge ? (
+                  <span
+                    className={styles.filterChip}
+                    onClick={() => setStatusFilter('all')}
+                    title="Clear filter"
+                  >
+                    <Badge variant={statusBadge.variant} label={statusBadge.label} />
+                  </span>
+                ) : null}
+              </>
             ) : null}
             <span className={styles.tabDivider} />
-            <Button
-              variant="secondary"
-              size="L"
-              leadingIcon="solar:add-circle-linear"
-              disabled={campaignBuilderSaving}
-              onClick={() => openContentEmailBuilder(null)}
-            >
-              {campaignBuilderSaving ? 'Creating…' : 'New Email'}
-            </Button>
+            {isForms ? (
+              <Button
+                variant="secondary"
+                size="L"
+                leadingIcon="solar:add-circle-linear"
+                disabled={formBuilderSaving}
+                onClick={() => openFormBuilder(null)}
+              >
+                {formBuilderSaving ? 'Creating…' : 'New Form'}
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                size="L"
+                leadingIcon="solar:add-circle-linear"
+                disabled={campaignBuilderSaving}
+                onClick={() => openContentEmailBuilder(null)}
+              >
+                {campaignBuilderSaving ? 'Creating…' : 'New Email'}
+              </Button>
+            )}
           </div>
         ) : null}
       </div>
@@ -605,6 +851,16 @@ export function ContentSettings() {
             searchVal={searchVal}
             statusFilter={statusFilter}
             onPreview={setPreviewCampaign}
+            onDuplicate={handleDuplicate}
+            onDelete={setDeleteTarget}
+            bulkMode={bulkMode}
+            selectedIds={selectedIds}
+            onToggleId={toggleId}
+            onToggleAll={toggleAllOnPage}
+          />
+        ) : isForms ? (
+          <FormsTab
+            searchVal={searchVal}
             onDuplicate={handleDuplicate}
             onDelete={setDeleteTarget}
             bulkMode={bulkMode}
@@ -634,8 +890,8 @@ export function ContentSettings() {
           icon="solar:danger-triangle-linear"
           iconColor="var(--status-error)"
           title={`Delete "${deleteTarget.name}"`}
-          description="Are you sure you want to delete this email? This action cannot be undone."
-          confirmLabel="Delete Email"
+          description={`Are you sure you want to delete this ${isForms ? 'form' : 'email'}? This action cannot be undone.`}
+          confirmLabel={isForms ? 'Delete Form' : 'Delete Email'}
           cancelLabel="Cancel"
           variant="error"
           loading={deleting}
@@ -649,9 +905,9 @@ export function ContentSettings() {
         <ConfirmDialog
           icon="solar:danger-triangle-linear"
           iconColor="var(--status-error)"
-          title={`Delete ${selectedIds.size} email${selectedIds.size === 1 ? '' : 's'}`}
-          description="Are you sure you want to delete the selected emails? This action cannot be undone."
-          confirmLabel="Delete Emails"
+          title={`Delete ${selectedIds.size} ${isForms ? 'form' : 'email'}${selectedIds.size === 1 ? '' : 's'}`}
+          description={`Are you sure you want to delete the selected ${isForms ? 'forms' : 'emails'}? This action cannot be undone.`}
+          confirmLabel={isForms ? 'Delete Forms' : 'Delete Emails'}
           cancelLabel="Cancel"
           variant="error"
           loading={deleting}

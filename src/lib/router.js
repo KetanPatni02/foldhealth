@@ -5,7 +5,9 @@
 
 // ── Parse hash into structured route ──
 export function parseHash() {
-  const raw = window.location.hash.replace(/^#\/?/, '');
+  // Strip any `?query` (e.g. hidden-field params like #/f/12?mrn=A123) before
+  // splitting into path segments — the query is read separately by the view.
+  const raw = window.location.hash.replace(/^#\/?/, '').split('?')[0];
   const segments = raw.split('/').filter(Boolean);
   return {
     page: segments[0] || 'population',
@@ -13,6 +15,7 @@ export function parseHash() {
     tab: segments[2] || null,
     id: segments[3] || null,
     sub: segments[4] || null,
+    extra: segments[5] || null,
   };
 }
 
@@ -28,6 +31,10 @@ export function stateToHash(state) {
     goalDetailId, goalWizardOpen, goalWizardEditId,
     chatGroupDetailId, agentRulesGroupId, businessHoursOpen } = state;
 
+  // Shareable form fill-view wins over everything — it's a focused takeover.
+  if (state.formViewId) {
+    return buildHash('f', String(state.formViewId));
+  }
   if (activePage === 'builder') {
     const agentId = state.builderAgent?.id;
     return agentId ? buildHash('settings', 'agents', 'edit', String(agentId)) : buildHash('builder');
@@ -44,6 +51,17 @@ export function stateToHash(state) {
       return buildHash('settings', 'content', 'emails', String(state.editingCampaignId));
     }
     return buildHash('email', String(state.editingCampaignId));
+  }
+  if (state.editingFormId) {
+    // Form builder is always opened from Settings → Content → Forms; keep the
+    // settings path so closing falls back to #/settings/content/forms. Each
+    // builder tab gets its own path, and Analytics carries its sub-tab too:
+    //   …/forms/{id}/{mode}            (edit|score|preview|analytics)
+    //   …/forms/{id}/analytics/{tab}   (insight|report|responses)
+    const mode = state.formBuilderMode || 'edit';
+    const parts = ['settings', 'content', 'forms', String(state.editingFormId), mode];
+    if (mode === 'analytics') parts.push(state.formAnalyticsTab || 'insight');
+    return buildHash(...parts);
   }
   if (state.campaignBuilderId) {
     return buildHash('campaign', String(state.campaignBuilderId));
@@ -131,8 +149,15 @@ export function hashToState(route) {
   const updates = {
     goalDetailId: null, goalWizardOpen: false, goalWizardEditId: null,
     chatGroupDetailId: null, agentRulesGroupId: null, businessHoursOpen: false,
+    formViewId: null,
   };
 
+  // Shareable form fill-view: #/f/{id}
+  if (route.page === 'f' && route.section) {
+    const numId = isNaN(Number(route.section)) ? route.section : Number(route.section);
+    updates.formViewId = numId;
+    return updates;
+  }
   if (route.page === 'builder') { updates.activePage = 'builder'; return updates; }
   if (route.page === 'analytics') {
     updates.activePage = 'analytics';
@@ -211,6 +236,16 @@ export function hashToState(route) {
       // _pendingEmailEditId to call openEmailBuilder after the campaign loads).
       if (route.tab === 'emails' && route.id) {
         updates._pendingEmailEditId = route.id;
+      }
+      // Per-form edit: #/settings/content/forms/{id}/{mode}[/{analyticsTab}]
+      // re-opens the form builder on top of the listing page (AppLayout
+      // hydration uses _pendingFormEditId; openFormBuilder applies the mode).
+      if (route.tab === 'forms' && route.id) {
+        updates._pendingFormEditId = route.id;
+        const mode = ['edit', 'logic', 'score', 'preview', 'analytics'].includes(route.sub) ? route.sub : 'edit';
+        updates._pendingFormMode = mode;
+        updates._pendingFormAnalyticsTab = mode === 'analytics' && ['insight', 'report', 'responses'].includes(route.extra)
+          ? route.extra : 'insight';
       }
       return updates;
     }

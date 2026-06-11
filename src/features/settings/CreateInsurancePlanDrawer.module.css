@@ -1,0 +1,376 @@
+/* ── CreateInsurancePlanDrawer ──
+   Wide two-column drawer: form (left) + card preview (right).
+   Card preview styles → InsuranceCardPreview.module.css
+   Form utility component styles → InsurancePlanFormUtils.module.css
+*/
+
+:global(.insurancePlanPanel) {
+  transition: width 0.3s ease !important;
+}
+
+.widePanel {
+  width: 1200px !important;
+}
+
+.drawerBody {
+  padding: 0 !important;
+  display: flex;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+}
+
+.headerDivider {
+  display: block;
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+  margin: 0 4px;
+}
+
+/* ── Stage indicator ── */
+.stageNavRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 0 0;
+  flex-shrink: 0;
+}
+
+.stageNavRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.stageNav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 12px;
+  flex-shrink: 0;
+}
+
+.stageItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.stageBadge {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  flex-shrink: 0;
+}
+
+.stageBadgeActive {
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  color: var(--primary-300);
+}
+
+.stageBadgeInactive {
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  color: var(--neutral-300);
+}
+
+.stageLabel {
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap;
+}
+
+.stageLabelActive   { color: var(--primary-300); }
+.stageLabelInactive { color: var(--neutral-200); }
+
+.stageConnector {
+  width: 20px;
+  height: 0.5px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+/* ── Left: form panel ── */
+.leftPanel {
+  flex: 0 0 650px;
+  width: 650px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-right: 0.5px solid var(--neutral-150);
+  padding: 12px;
+  gap: 8px;
+}
+
+.leftPanel:last-child {
+  border-right: none;
+}
+
+/* ── Form rows and fields ── */
+.row {
+  display: flex;
+  gap: 12px;
+}
+
+.field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fieldFull {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Address inputs stacked vertically */
+.addressStack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Logo upload ── */
+.orDivider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.orLine {
+  flex: 1;
+  height: 0.5px;
+  background: var(--neutral-150);
+}
+
+.orText {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-200);
+  font-family: 'Inter', sans-serif;
+}
+
+/* ── Logo preview (uploaded state) ── */
+.logoPreviewContainer {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  padding: 12px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: var(--neutral-0);
+}
+
+.logoPreviewImg {
+  max-height: 32px;
+  max-width: 147px;
+  object-fit: contain;
+  display: block;
+}
+
+.logoActions {
+  display: flex;
+  gap: 8px;
+  align-self: flex-end;
+}
+
+.logoActionBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--neutral-50);
+  border: 0.5px solid rgba(111,122,144,0.1);
+  font-size: 12px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-300);
+  cursor: pointer;
+}
+
+.logoDeleteBtn {
+  background: #FFF5F5;
+  border-color: rgba(215,40,37,0.1);
+  color: #D72825;
+}
+
+.dropZone {
+  border: 0.5px dashed var(--neutral-150);
+  border-radius: 8px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  background: var(--neutral-0);
+  transition: background .15s, border-color .15s;
+}
+
+.dropZone:hover { background: var(--neutral-50); border-color: var(--neutral-200); }
+
+.dropZoneText {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  font-family: 'Inter', sans-serif;
+  text-align: center;
+}
+
+.dropZoneLink {
+  color: var(--primary-300);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.dropZoneMeta {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.dropZoneMetaText {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-200);
+  font-family: 'Inter', sans-serif;
+}
+
+/* ── Step 2: Cost Sharing ── */
+
+.costSharingContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+}
+
+.costSharingAlert {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #F4F8FE;
+  border: 0.5px solid rgba(20, 94, 204, 0.2);
+  border-radius: 4px;
+  padding: 4px 6px;
+  flex-shrink: 0;
+}
+
+.costSharingAlertText {
+  font-size: 12px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-400);
+  flex: 1;
+}
+
+.coverageSwitchRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.coverageSwitchLabel {
+  font-size: 14px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+
+.coverageSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.coverageSectionTitle {
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-400);
+  padding: 8px 12px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.coverageSectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 12px;
+}
+
+.coverageSubGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.coverageSubLabel {
+  font-size: 14px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+
+.coverageRow {
+  display: flex;
+  gap: 12px;
+}
+
+/* ── Right: card preview panel shell ── */
+.rightPanel {
+  flex: 0 0 525px;
+  width: 525px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--neutral-0);
+  border-left: 0.5px solid var(--neutral-150);
+}
+
+.previewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  height: 48px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+
+.previewTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500, #16181d);
+  font-family: 'Inter', sans-serif;
+}

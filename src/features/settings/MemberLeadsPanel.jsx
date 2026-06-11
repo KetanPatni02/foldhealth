@@ -52,12 +52,18 @@ export function MemberLeadsPanel() {
   // #/settings/member-leads/care-team survive reloads.
   const activeTab = useAppStore(s => s.memberLeadsTab);
   const setActiveTab = useAppStore(s => s.setMemberLeadsTab);
+  const fetchHccCareTeams = useAppStore(s => s.fetchHccCareTeams);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchVal, setSearchVal] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const createBtnRef = useRef(null);
   // drawer state: null when closed; otherwise { kind, editTeam? }
   const [drawer, setDrawer] = useState(null);
+
+  // Load saved teams from Supabase on mount (falls back to seeds if empty).
+  useEffect(() => {
+    fetchHccCareTeams();
+  }, [fetchHccCareTeams]);
 
   // Close the Create-New popover on outside click.
   useEffect(() => {

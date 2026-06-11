@@ -14,7 +14,7 @@ import { extractSubtree, fingerprintTree } from './blockHelpers';
 import { uploadImage } from './uploadImage';
 import { GOOGLE_FONTS, injectGoogleFonts, availableWeights, normalizeWeight } from './googleFonts';
 import { ColorPicker } from './ColorPicker';
-import { isGradient } from './colorHelpers';
+import { ColorInput } from './ColorInput';
 import { parseLineHeight, formatLineHeight, parseLetterSpacing, formatLetterSpacing } from './dimUnits';
 import { parseHtmlToDocument, collectUnknownFonts } from './htmlToDocument';
 import styles from './EmailBuilder.module.css';
@@ -2716,131 +2716,6 @@ function SelectInput({ label, value, options, onChange }) {
         value={value ?? ''}
         onChange={onChange}
       />
-    </div>
-  );
-}
-
-function ColorInput({ label, value, onChange, allowGradient = true }) {
-  const colorVariables = useAppStore(s => s.colorVariables);
-  const recentlyUsedColors = useAppStore(s => s.recentlyUsedColors);
-  const pushRecentColor = useAppStore(s => s.pushRecentColor);
-  const [open, setOpen] = useState(false);
-  const fieldRef = useRef(null);
-  const popoverRef = useRef(null);
-  const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0 });
-  const v = value || '#FFFFFF';
-  const isGrad = isGradient(v);
-  const displayText = isGrad ? 'Gradient' : (typeof v === 'string' ? v.toUpperCase() : '');
-
-  // Position the portalled popover so it stays fully on-screen, flush
-  // with the right edge of the field. We re-run the calculation on:
-  //   • initial open (+ next rAF, after the right-panel scroll settles)
-  //   • window resize / scroll bubbling
-  //   • the field's own size or position changing (ResizeObserver)
-  // and clamp both axes so the popover never drifts off-screen.
-  useLayoutEffect(() => {
-    if (!open || !fieldRef.current) return;
-    const update = () => {
-      const r = fieldRef.current?.getBoundingClientRect();
-      if (!r) return;
-      const popoverWidth = 264;
-      // The popover has internal scroll so we can constrain its height
-      // tightly against the viewport without losing content.
-      const popoverMaxH = Math.min(window.innerHeight - 16, 720);
-      const margin = 8;
-      // Horizontal: prefer flush-right with the field; if that clips at
-      // the left edge, slide it back in. Final clamp keeps it on-screen.
-      let left = r.right - popoverWidth;
-      if (left < margin) left = Math.min(r.left, window.innerWidth - popoverWidth - margin);
-      left = Math.max(margin, Math.min(left, window.innerWidth - popoverWidth - margin));
-      // Vertical: prefer below; flip above when there's more room there.
-      const spaceBelow = window.innerHeight - r.bottom - margin;
-      const spaceAbove = r.top - margin;
-      let top;
-      if (spaceBelow >= 200 || spaceBelow >= spaceAbove) {
-        top = r.bottom + 4;
-      } else {
-        top = Math.max(margin, r.top - 4 - popoverMaxH);
-      }
-      // Final clamp so we always sit inside the viewport.
-      top = Math.max(margin, Math.min(top, window.innerHeight - margin - 40));
-      setPopoverPos({ top, left });
-    };
-    // Run now, then once more after the next paint so any pending layout
-    // (right-panel scroll, route transitions, font loading) is settled.
-    update();
-    const raf = requestAnimationFrame(update);
-    window.addEventListener('resize', update);
-    window.addEventListener('scroll', update, true);
-    // Watch the field itself so any size/position drift (panel resize,
-    // section expand/collapse) keeps the popover anchored.
-    const ro = new ResizeObserver(update);
-    ro.observe(fieldRef.current);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('resize', update);
-      window.removeEventListener('scroll', update, true);
-      ro.disconnect();
-    };
-  }, [open]);
-
-  // Dismiss on outside click. Both the field button and the portalled
-  // popover count as "inside" so clicking either keeps the picker open.
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e) => {
-      if (fieldRef.current?.contains(e.target)) return;
-      if (popoverRef.current?.contains(e.target)) return;
-      setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  return (
-    <div className={styles.fieldCol} ref={fieldRef}>
-      {label && <label className={styles.fieldLabel}>{label}</label>}
-      <div className={styles.colorInputWrap}>
-        <button
-          type="button"
-          className={styles.colorDotBtn}
-          onClick={() => setOpen(o => !o)}
-          aria-label="Open color picker"
-        >
-          <span
-            className={styles.colorDot}
-            style={{
-              background: v,
-              borderColor: !isGrad && typeof v === 'string' && v.toLowerCase() === '#ffffff' ? '#CED4DD' : (isGrad ? 'transparent' : v),
-            }}
-          />
-        </button>
-        <input
-          type="text"
-          className={styles.colorHex}
-          value={displayText}
-          onChange={e => { if (!isGrad) onChange(e.target.value); }}
-          readOnly={isGrad}
-        />
-      </div>
-      {open && createPortal(
-        <div
-          ref={popoverRef}
-          className={styles.colorPickerPortal}
-          style={{ top: popoverPos.top, left: popoverPos.left }}
-        >
-          <ColorPicker
-            value={v}
-            onChange={onChange}
-            variables={colorVariables}
-            recentlyUsed={recentlyUsedColors}
-            onCommitRecent={pushRecentColor}
-            allowGradient={allowGradient}
-            onClose={() => setOpen(false)}
-          />
-        </div>,
-        document.body,
-      )}
     </div>
   );
 }

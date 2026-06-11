@@ -17,7 +17,13 @@
  *
  * Canonical event names live in /Users/alokk/.claude/plans/i-want-you-to-wondrous-sparrow.md.
  */
-import { track as vercelTrack } from '@vercel/analytics';
+let vercelTrack = () => {};
+import('@vercel/analytics').then(m => {
+  vercelTrack = m.track;
+}).catch(() => {
+  // Silent fallback if blocked by adblockers
+});
+
 import * as Sentry from '@sentry/react';
 import { useAppStore } from '../store/useAppStore';
 
