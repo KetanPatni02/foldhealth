@@ -10,6 +10,10 @@
   flex: 1;
   overflow: auto;
   background: var(--neutral-0);
+  /* Leaves clearance below the last table row so the floating BulkBar
+     (bottom: 120px in BulkBar.module.css) never crops the bottom-most
+     member when the table is scrolled to the end. */
+  padding-bottom: 80px;
 }
 
 /* ── TabBar header (mirrors src/components/TabBar/TabBar.module.css) ── */

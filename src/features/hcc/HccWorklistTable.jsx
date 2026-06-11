@@ -17,6 +17,7 @@ import { HCC_COLUMNS, HCC_COL_MAP, MEMBER_SORT_ITEMS, orderColumns } from './col
 import { memberMatchesFilters } from './filters';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { BulkBar } from '../../components/BulkBar/BulkBar';
+import { BulkChangeAssigneesDialog } from './BulkChangeAssigneesDialog';
 import { StatusLegend } from './StatusLegend';
 import styles from './HccWorklistTable.module.css';
 import rowStyles from './HccWorklistRow.module.css';
@@ -118,6 +119,7 @@ export function HccWorklistTable() {
   const hccFilters = useAppStore(s => s.hccFilters);
   const saveHccFilter = useAppStore(s => s.saveHccFilter);
   const renameHccSavedFilter = useAppStore(s => s.renameHccSavedFilter);
+  const startHccUpload = useAppStore(s => s.startHccUpload);
   const hccHiddenCols = useAppStore(s => s.hccHiddenCols);
   const toggleHccColumn = useAppStore(s => s.toggleHccColumn);
   const hccColumnOrder = useAppStore(s => s.hccColumnOrder);
@@ -144,6 +146,7 @@ export function HccWorklistTable() {
   const [sortPop, setSortPop] = useState(null); // { items, rect }
   const [memberSortPop, setMemberSortPop] = useState(null); // rect
   const [colCfgRect, setColCfgRect] = useState(null);
+  const [bulkAssigneeOpen, setBulkAssigneeOpen] = useState(false);
   const memberThRef = useRef(null);
   const colCfgBtnRef = useRef(null);
 
@@ -248,29 +251,40 @@ export function HccWorklistTable() {
                 </button>
               </div>
             ) : (
-              <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
+              <SearchIconButton title="Search" tooltipBelow onClick={() => setSearchOpen(true)} />
             )}
           </div>
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="custom:filter"
+            icon="solar:filter-linear"
             size="L"
             tooltip={filterOpen ? 'Hide filters' : 'Show filters'}
+            tooltipBelow
             className={filterOpen ? styles.iconActive : ''}
             onClick={() => setFilterOpen(v => !v)}
           />
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="solar:history-linear"
+            icon="solar:clock-circle-linear"
             size="L"
             tooltip="History"
+            tooltipBelow
             onClick={() => showToast('History — coming soon')}
           />
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="solar:upload-minimalistic-linear"
+            icon="solar:upload-square-linear"
+            size="L"
+            tooltip="Upload Document"
+            tooltipBelow
+            onClick={() => startHccUpload(null)}
+          />
+          <span className={styles.iconDivider} />
+          <ActionButton
+            icon="solar:download-square-linear"
             size="L"
             tooltip="Export"
+            tooltipBelow
             onClick={() => showToast('Export — coming soon')}
           />
         </div>
@@ -387,7 +401,17 @@ export function HccWorklistTable() {
 
       <Pagination totalItems={filtered.length} />
 
-      <BulkBar selectedIds={selectedHccIds} onClear={clearHccSelected} />
+      <BulkBar
+        selectedIds={selectedHccIds}
+        onClear={clearHccSelected}
+        onChangeAssignee={() => setBulkAssigneeOpen(true)}
+      />
+      <BulkChangeAssigneesDialog
+        open={bulkAssigneeOpen}
+        selectedIds={selectedHccIds}
+        onClose={() => setBulkAssigneeOpen(false)}
+        onApplied={() => { setBulkAssigneeOpen(false); clearHccSelected(); }}
+      />
 
       {sortPop && (
         <SortPopover

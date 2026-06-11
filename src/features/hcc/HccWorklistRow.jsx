@@ -485,7 +485,7 @@ function AssigneeCell({ member, dosState }) {
     return (
       <div className={styles.assigneeCell}>
         <span className={styles.unassignedSlot} aria-hidden="true">
-          <Icon name="solar:user-rounded-linear" size={14} color="var(--neutral-200)" />
+          <Icon name="solar:user-rounded-linear" size={18} color="var(--neutral-200)" />
         </span>
         <div className={styles.assigneeText}>
           <span className={styles.assigneeNameMuted}>Unassigned</span>

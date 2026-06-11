@@ -477,13 +477,14 @@
 }
 
 /* Variant 2 — current bucket has no assignee yet ("Awaiting Reviewer 2").
-   Hollow circle in the avatar slot, muted name text. */
+   Hollow circle in the avatar slot, muted name text. Sized to match the
+   provider Avatar (32×32) so unassigned and assigned rows align visually. */
 .unassignedSlot {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   border-radius: 6px;
   background: var(--neutral-50);
   border: 0.5px dashed var(--neutral-200);
