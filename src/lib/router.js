@@ -91,7 +91,10 @@ export function stateToHash(state) {
     'High Utilizers': 'high-utilizers',
     'DM': 'dm',
     'My Patients': 'my-patients',
-    'All Patients': 'all-patients'
+    'All Patients': 'all-patients',
+    'pg:All': 'population-groups',
+    'pg:Static': 'population-groups-static',
+    'pg:Dynamic': 'population-groups-dynamic'
   };
 
   if (state.activeSubnavList && state.activeSubnavList !== 'TOC') {
@@ -226,7 +229,10 @@ export function hashToState(route) {
     'high-utilizers': 'High Utilizers',
     'dm': 'DM',
     'my-patients': 'My Patients',
-    'all-patients': 'All Patients'
+    'all-patients': 'All Patients',
+    'population-groups': 'pg:All',
+    'population-groups-static': 'pg:Static',
+    'population-groups-dynamic': 'pg:Dynamic'
   };
 
   if (route.section && URL_TO_LIST[route.section]) {
