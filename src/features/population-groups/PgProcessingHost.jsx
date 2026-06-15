@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { TableIcon, ExpandIcon, MiniCloseIcon } from './components/icons.jsx';
+import { TableIcon } from './components/icons.jsx';
+import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { Button } from '../../components/Button/Button';
 import './popgroups.css';
 
 const PROC_STEPS = [
@@ -51,13 +53,7 @@ export function PgProcessingHost() {
               <div style={{ fontSize:14, fontWeight:600, color:'var(--neutral-400)' }}>Processing File</div>
               <div style={{ fontSize:14, color:'var(--neutral-200)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{pgSession.fileName || pgSession.segName || 'New Group'}</div>
             </div>
-            <button onClick={expand}
-              style={{ width:28, height:28, border:'none', background:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, borderRadius:4 }}
-              onMouseEnter={e => e.currentTarget.style.background='var(--neutral-75)'}
-              onMouseLeave={e => e.currentTarget.style.background='none'}
-              title="Expand">
-              <ExpandIcon size={16} color="var(--neutral-300)" />
-            </button>
+            <ActionButton icon="solar:maximize-square-linear" size="L" tooltip="Expand" onClick={expand} />
           </div>
           <div style={{ padding:'14px 16px' }}>
             {PROC_STEPS.map((step, i) => {
@@ -95,21 +91,10 @@ export function PgProcessingHost() {
               <div style={{ fontSize:14, fontWeight:600, color:'var(--neutral-400)' }}>File Extracted &amp; Processed</div>
               <div style={{ fontSize:14, color:'var(--neutral-300)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{pgSession.fileName || pgSession.segName}</div>
             </div>
-            <button onClick={() => closePgSession()}
-              style={{ width:28, height:28, border:'none', background:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', borderRadius:6 }}
-              onMouseEnter={e => e.currentTarget.style.background='var(--neutral-75)'}
-              onMouseLeave={e => e.currentTarget.style.background='none'}>
-              <MiniCloseIcon />
-            </button>
+            <ActionButton icon="solar:close-circle-linear" size="L" onClick={() => closePgSession()} />
           </div>
           <div style={{ padding:'14px 16px' }}>
-            <button
-              onClick={expand}
-              style={{ width:'100%', height:36, background:'var(--primary-300)', color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:500, cursor:'pointer', fontFamily:'Inter, sans-serif', transition:'background 0.15s' }}
-              onMouseEnter={e => e.currentTarget.style.background='var(--primary-400)'}
-              onMouseLeave={e => e.currentTarget.style.background='var(--primary-300)'}>
-              Show Summary
-            </button>
+            <Button variant="primary" size="L" fullWidth onClick={expand}>Show Summary</Button>
           </div>
         </div>
       )}

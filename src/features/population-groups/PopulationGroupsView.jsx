@@ -8,10 +8,14 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Input as FoldInput } from '../../components/Input/Input';
 import { Textarea } from '../../components/Textarea/Textarea';
+import { Checkbox } from '../../components/ui/checkbox';
+import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { Button } from '../../components/Button/Button';
+import { Avatar } from '../../components/Avatar/Avatar';
 
 import SectionAccordion   from './components/SectionAccordion.jsx';
 import FileChipCard        from './components/FileChipCard.jsx';
-import { TableIcon, MiniCloseIcon, Spinner, ZapIcon, CollapseIcon, ExpandIcon, ReplaceIcon, FileErrorIllustration, CheckRoundIcon } from './components/icons.jsx';
+import { TableIcon, MiniCloseIcon, Spinner, ReplaceIcon, FileErrorIllustration, CheckRoundIcon } from './components/icons.jsx';
 import PaginationBar       from './components/PaginationBar.jsx';
 import { FOLD_DB, FOLD_DB_MAP } from './data/fold-db.js';
 import { parseXlsxDate, fmtAge } from './data/formatters.js';
@@ -32,14 +36,9 @@ const AddSquareLinear            = mkIcon('solar:add-square-linear');
 const AltArrowDownLinear         = mkIcon('solar:alt-arrow-down-linear');
 const CloseCircleLinear          = mkIcon('solar:close-circle-linear');
 const DangerCircleLinear         = mkIcon('solar:danger-circle-linear');
-const DocumentTextLinear         = mkIcon('solar:document-text-linear');
-const FilterLinear               = mkIcon('solar:filter-linear');
 const InfoCircleLinear           = mkIcon('solar:info-circle-linear');
 const MagniferLinear             = mkIcon('solar:magnifer-linear');
-const MenuDotsLinear             = mkIcon('solar:menu-dots-linear');
-const PenLinear                  = mkIcon('solar:pen-linear');
 const SidebarMinimalisticLinear  = mkIcon('solar:sidebar-minimalistic-linear');
-const TrashBinMinimalisticLinear = mkIcon('solar:trash-bin-minimalistic-linear');
 const UsersGroupRoundedLinear    = mkIcon('solar:users-group-rounded-linear');
 
 /* ── CSV parser (replaces xlsx) — handles quoted fields, escaped quotes, CRLF ── */
@@ -774,12 +773,7 @@ function NewModePanel({ matchSummary, uploadFile, csvAllClear, onReupload }) {
             We couldn't read any patient records from this file. Ensure it's a <strong>CSV</strong> with
             {' '}<strong>Patient ID, First Name, Last Name, DOB</strong> columns, then reupload.
           </p>
-          <button
-            onClick={onReupload}
-            style={{ height:36, padding:'0 16px', display:'flex', alignItems:'center', justifyContent:'center', gap:7, border:'0.5px solid var(--neutral-150)', borderRadius:6, background:'#fff', color:'var(--neutral-300)', fontSize:14, fontWeight:500, cursor:'pointer', fontFamily:'Inter, sans-serif' }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            Reupload File
-          </button>
+          <Button variant="secondary" size="L" leadingIcon="solar:refresh-linear" onClick={onReupload}>Reupload File</Button>
         </div>
       </div>
     );
@@ -875,34 +869,8 @@ function NewModePanel({ matchSummary, uploadFile, csvAllClear, onReupload }) {
 
         {/* Buttons row 1433:10247 — gap-12, justify-center, full width */}
         <div style={{ display:'flex', gap:12, justifyContent:'center', alignItems:'flex-start', width:'100%' }}>
-          {/* Primary — same style as drawer "Create" button (enabled) */}
-          <button
-            onClick={downloadErrorFile}
-            style={{ height:36, padding:'0 16px', display:'flex', alignItems:'center', justifyContent:'center', gap:7, border:'none', borderRadius:6, background:'var(--primary-300)', color:'#fff', fontSize:14, fontWeight:500, cursor:'pointer', fontFamily:'Inter, sans-serif', transition:'background 0.15s', whiteSpace:'nowrap' }}
-            onMouseEnter={e => e.currentTarget.style.background='var(--primary-400)'}
-            onMouseLeave={e => e.currentTarget.style.background='var(--primary-300)'}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            Download File with Errors
-          </button>
-
-          {/* Secondary — Reupload */}
-          <button
-            onClick={reuploadFile}
-            style={{ height:36, padding:'0 16px', display:'flex', alignItems:'center', justifyContent:'center', gap:7, border:'0.5px solid var(--neutral-150)', borderRadius:6, background:'#fff', color:'var(--neutral-300)', fontSize:14, fontWeight:500, cursor:'pointer', fontFamily:'Inter, sans-serif', transition:'background 0.15s', whiteSpace:'nowrap' }}
-            onMouseEnter={e => e.currentTarget.style.background='var(--neutral-50)'}
-            onMouseLeave={e => e.currentTarget.style.background='#fff'}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="23 4 23 10 17 10"/>
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-            </svg>
-            Reupload File
-          </button>
+          <Button variant="primary" size="L" leadingIcon="solar:download-minimalistic-linear" onClick={downloadErrorFile}>Download File with Errors</Button>
+          <Button variant="secondary" size="L" leadingIcon="solar:refresh-linear" onClick={reuploadFile}>Reupload File</Button>
         </div>
       </div>
     </div>
@@ -1271,67 +1239,46 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
         </div>
 
         <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0, marginLeft:'auto' }}>
-          {/* ── Inline search bar ── */}
-          <div style={{ display:'flex', alignItems:'center', gap:6, height:32, padding:'0 10px', border:'0.5px solid var(--neutral-150)', borderRadius:6, background:'var(--neutral-0)', width:220 }}>
-            <MagniferLinear size={14} color="var(--neutral-200)" />
-            <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search groups..."
-              style={{ border:'none', outline:'none', fontSize:13, color:'var(--neutral-400)', background:'transparent', flex:1, fontFamily:'Inter, sans-serif' }} />
-            {searchQuery && <div onClick={() => setSearchQuery('')} style={{ cursor:'pointer', display:'flex' }}><CloseCircleLinear size={13} color="var(--neutral-200)" /></div>}
-          </div>
-          {/* ── Dev-mode toggle (shows/hides experimental buttons) ── */}
+          {/* ── Search groups — standard text field ── */}
+          <Input
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search groups..."
+            style={{ width: 220 }}
+          />
+
+          <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
+
+          {/* ── Dev-mode toggle (experimental flows) — disabled for now ──
           <button
             onClick={() => setShowDevButtons(v => !v)}
             title={showDevButtons ? 'Hide experimental flows' : 'Show experimental flows'}
             style={{ width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center', border:`0.5px solid ${showDevButtons ? 'var(--primary-200)' : 'var(--neutral-150)'}`, borderRadius:6, background: showDevButtons ? 'var(--primary-50)' : '#fff', cursor:'pointer', transition:'all 0.15s', flexShrink:0 }}>
-            {/* Flask / beaker icon */}
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M5 1h4M5 1v5L2 12h10L9 6V1" stroke={showDevButtons ? 'var(--primary-300)' : 'var(--neutral-200)'} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
               <circle cx="5.5" cy="9.5" r="0.8" fill={showDevButtons ? 'var(--primary-300)' : 'var(--neutral-200)'}/>
               <circle cx="8" cy="10.5" r="0.6" fill={showDevButtons ? 'var(--primary-300)' : 'var(--neutral-200)'}/>
             </svg>
           </button>
-
-          {/* ── Create Group — opens the file-upload workflow (error card / all-matched review) ── */}
-          <button onClick={openNewModal}
-            style={{ height:32, padding:'0 12px', background:'var(--neutral-0)', color:'var(--neutral-300)', border:'0.5px solid var(--neutral-150)', borderRadius:6, fontSize:13, fontWeight:500, cursor:'pointer', display:'flex', alignItems:'center', gap:5, fontFamily:'Inter, sans-serif', transition:'background 0.15s' }}
-            onMouseEnter={e => { e.currentTarget.style.background='var(--neutral-50)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background='var(--neutral-0)'; }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--neutral-300)" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Create Group
-          </button>
-
-          {/* ── Secondary Create Group — grey/neutral, opens standard CSV flow — commented out for now ──
-          <button onClick={openModal}
-            style={{ height:32, padding:'0 12px', background:'#fff', color:'var(--neutral-300)', border:'0.5px solid var(--neutral-150)', borderRadius:6, fontSize:13, fontWeight:500, cursor:'pointer', display:'flex', alignItems:'center', gap:5, fontFamily:'Inter, sans-serif', transition:'background 0.15s' }}
-            onMouseEnter={e => e.currentTarget.style.background='var(--neutral-50)'}
-            onMouseLeave={e => e.currentTarget.style.background='#fff'}>
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
-              <circle cx="5" cy="4" r="2.5"/>
-              <path d="M1 11c0-2.21 1.79-4 4-4s4 1.79 4 4"/>
-              <path d="M10 6v4M8 8h4"/>
-            </svg>
-            Create Group
-          </button>
           */}
 
+          {/* ── Create Group — opens the file-upload workflow (error card / all-matched review) ── */}
+          <Button variant="secondary" size="L" leadingIcon="solar:add-circle-linear" onClick={openNewModal}>Create Group</Button>
+
+          <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
+
           {/* Import Rule — neutral button, no icon */}
-          <button style={{ height:32, padding:'0 12px', border:'0.5px solid var(--neutral-150)', borderRadius:6, background:'#fff', color:'var(--neutral-300)', fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'Inter, sans-serif', transition:'background 0.15s' }}
-            onMouseEnter={e => e.currentTarget.style.background='var(--neutral-50)'}
-            onMouseLeave={e => e.currentTarget.style.background='#fff'}>
-            Import Rule
-          </button>
-          {/* save icon */}
-          <button style={{ width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center', border:'0.5px solid var(--neutral-150)', borderRadius:6, background:'#fff', cursor:'pointer' }}>
-            <DocumentTextLinear size={15} color="var(--neutral-300)" />
-          </button>
+          <Button variant="secondary" size="L">Import Rule</Button>
+
+          <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
+
+          {/* Bulk actions icon */}
+          <ActionButton icon="solar:checklist-minimalistic-linear" size="L" tooltip="Bulk actions" />
+
+          <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
+
           {/* filter icon with red dot */}
-          <div style={{ position:'relative' }}>
-            <button style={{ width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center', border:'0.5px solid var(--neutral-150)', borderRadius:6, background:'#fff', cursor:'pointer' }}>
-              <FilterLinear size={15} color="var(--neutral-300)" />
-            </button>
-            <div style={{ position:'absolute', top:4, right:4, width:7, height:7, borderRadius:'50%', background:'#EF4444', border:'1.5px solid #fff' }} />
-          </div>
+          <ActionButton icon="solar:filter-linear" size="L" dot tooltip="Filter" />
         </div>
       </div>
 
@@ -1341,7 +1288,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
           <thead>
             <tr style={{ borderBottom:'0.5px solid var(--neutral-150)', background:'var(--neutral-0)', position:'sticky', top:0, zIndex:2 }}>
               <th style={{ width:40, padding:'10px 12px 10px 20px' }}>
-                <div style={{ width:15, height:15, border:'1.5px solid var(--neutral-150)', borderRadius:4 }} />
+                <Checkbox checked={false} aria-label="Select all" />
               </th>
               {[
                 { label:'Group Name', flex:true },
@@ -1370,80 +1317,63 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                   style={{ borderBottom:'0.5px solid var(--neutral-150)', background: isHov ? 'var(--primary-25)' : '#fff', transition:'background 0.1s', cursor:'pointer' }}>
 
                   {/* checkbox */}
-                  <td style={{ padding:'12px 12px 12px 20px', verticalAlign:'middle' }}>
-                    <div onClick={() => setCheckedRows(prev => { const n=new Set(prev); n.has(g.id)?n.delete(g.id):n.add(g.id); return n; })}
-                      style={{ width:15, height:15, borderRadius:4, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:isChecked?'var(--primary-300)':'transparent', border:`1.5px solid ${isChecked?'var(--primary-300)':'var(--neutral-150)'}`, cursor:'pointer', transition:'all 0.15s' }}>
-                      {isChecked && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                    </div>
+                  <td style={{ padding:'12px 12px 12px 20px', verticalAlign:'middle' }} onClick={e => e.stopPropagation()}>
+                    <Checkbox
+                      checked={isChecked}
+                      onCheckedChange={() => setCheckedRows(prev => { const n=new Set(prev); n.has(g.id)?n.delete(g.id):n.add(g.id); return n; })}
+                      aria-label={`Select ${g.name}`}
+                    />
                   </td>
 
                   {/* name + avatar — 0.5px border */}
                   <td style={{ padding:'12px 16px', verticalAlign:'middle' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <div style={{ width:32, height:32, borderRadius:6, background:'var(--primary-100)', border:'0.5px solid var(--primary-200)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                        <UsersGroupRoundedLinear size={16} color="var(--primary-300)" />
-                      </div>
-                      <div style={{ fontSize:13, fontWeight:400, color:'var(--neutral-400)', lineHeight:1.4 }}>{g.name}</div>
+                      <Avatar variant="patient" initials={<UsersGroupRoundedLinear size={16} color="var(--primary-300)" />} />
+                      <div style={{ fontSize:14, fontWeight:400, color:'var(--neutral-400)', lineHeight:1.4 }}>{g.name}</div>
                     </div>
                   </td>
 
                   {/* active members */}
-                  <td style={{ padding:'12px 16px', fontSize:13, color:'var(--neutral-400)', verticalAlign:'middle' }}>
+                  <td style={{ padding:'12px 16px', fontSize:14, color:'var(--neutral-400)', verticalAlign:'middle' }}>
                     {g.count != null ? g.count : '–'}
                   </td>
 
                   {/* inactive members */}
-                  <td style={{ padding:'12px 16px', fontSize:13, color:'var(--neutral-400)', verticalAlign:'middle' }}>
+                  <td style={{ padding:'12px 16px', fontSize:14, color:'var(--neutral-400)', verticalAlign:'middle' }}>
                     {g.inactive != null ? g.inactive : '–'}
                   </td>
 
                   {/* type */}
                   <td style={{ padding:'12px 16px', verticalAlign:'middle' }}>
-                    <span style={{ fontSize:13, fontWeight:400, color:'var(--neutral-300)' }}>
+                    <span style={{ fontSize:14, fontWeight:400, color:'var(--neutral-300)' }}>
                       {g.type}
                     </span>
                   </td>
 
                   {/* created date */}
-                  <td style={{ padding:'12px 16px', fontSize:13, color:'var(--neutral-300)', whiteSpace:'nowrap', verticalAlign:'middle', width:160 }}>
+                  <td style={{ padding:'12px 16px', fontSize:14, color:'var(--neutral-300)', whiteSpace:'nowrap', verticalAlign:'middle', width:160 }}>
                     {g.created}
                   </td>
 
                   {/* updated date */}
-                  <td style={{ padding:'12px 16px', fontSize:13, color:'var(--neutral-300)', whiteSpace:'nowrap', verticalAlign:'middle', width:160 }}>
+                  <td style={{ padding:'12px 16px', fontSize:14, color:'var(--neutral-300)', whiteSpace:'nowrap', verticalAlign:'middle', width:160 }}>
                     {g.updated}
                   </td>
 
                   {/* actions */}
                   <td style={{ padding:'0 12px', verticalAlign:'middle' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:0 }}>
-                      {/* Zap */}
-                      <button data-tip="Run Group" style={{ width:24, height:24, borderRadius:4, border:'none', background:'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}
-                        onMouseEnter={e => e.currentTarget.style.background='var(--neutral-75)'}
-                        onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                        <ZapIcon size={16} color="var(--neutral-300)" />
-                      </button>
+                      {/* Run */}
+                      <ActionButton icon="solar:bolt-linear" size="L" tooltip="Run Group" />
                       <div style={{ width:1, height:16, background:'var(--neutral-150)', margin:'0 4px', flexShrink:0 }} />
                       {/* Edit */}
-                      <button data-tip="Edit Group" style={{ width:28, height:28, borderRadius:4, border:'none', background:'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}
-                        onMouseEnter={e => e.currentTarget.style.background='var(--neutral-75)'}
-                        onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                        <PenLinear size={18} color="var(--neutral-300)" />
-                      </button>
+                      <ActionButton icon="solar:pen-linear" size="L" tooltip="Edit Group" />
                       <div style={{ width:1, height:16, background:'var(--neutral-150)', margin:'0 4px', flexShrink:0 }} />
                       {/* Delete */}
-                      <button data-tip="Delete Group" style={{ width:28, height:28, borderRadius:4, border:'none', background:'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}
-                        onMouseEnter={e => e.currentTarget.style.background='var(--neutral-75)'}
-                        onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                        <TrashBinMinimalisticLinear size={18} color="var(--neutral-300)" />
-                      </button>
+                      <ActionButton icon="solar:trash-bin-minimalistic-linear" size="L" tooltip="Delete Group" />
                       <div style={{ width:1, height:16, background:'var(--neutral-150)', margin:'0 4px', flexShrink:0 }} />
                       {/* More */}
-                      <button data-tip="More Options" style={{ width:28, height:28, borderRadius:4, border:'none', background:'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}
-                        onMouseEnter={e => e.currentTarget.style.background='var(--neutral-75)'}
-                        onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                        <MenuDotsLinear size={18} color="var(--neutral-300)" />
-                      </button>
+                      <ActionButton icon="solar:menu-dots-linear" size="L" tooltip="More Options" />
                     </div>
                   </td>
                 </tr>
@@ -1490,7 +1420,9 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', height:48, padding:'0 16px', borderBottom:'0.5px solid var(--neutral-100)', flexShrink:0 }}>
               <span style={{ fontSize:16, fontWeight:500, color:'var(--neutral-500)', fontFamily:'Inter, sans-serif' }}>Create Audience Group</span>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <button
+                <Button
+                  variant="primary"
+                  size="L"
                   disabled={!canCreate}
                   onClick={() => {
                     if (!canCreate) return;
@@ -1507,16 +1439,14 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                     onGroupCreated?.(newName);
                     showToast('Population Group Added Successfully');
                     closeModal();
-                  }}
-                  style={{ height:30, padding:'0 16px', borderRadius:6, fontSize:14, fontWeight:500, fontFamily:'Inter, sans-serif', cursor: canCreate ? 'pointer' : 'default', transition:'background 0.15s, color 0.15s',
-                    background: canCreatePrimary ? 'var(--primary-300)' : 'var(--neutral-50)',
-                    color:      canCreatePrimary ? '#fff' : canCreate ? 'var(--neutral-300)' : 'var(--neutral-150)',
-                    border:     canCreatePrimary ? 'none' : '0.5px solid var(--neutral-150)',
                   }}>
                   Create
-                </button>
+                </Button>
                 <div style={{ width:'0.5px', height:18, background:'var(--neutral-150)' }} />
-                <button
+                <ActionButton
+                  icon="solar:close-circle-linear"
+                  size="L"
+                  tooltip="Close"
                   onClick={() => {
                     if (isCsvMode && (uploadState === 'loading' || uploadState === 'complete')) {
                       setShowCloseConfirm(true);
@@ -1524,9 +1454,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                       closeModal();
                     }
                   }}
-                  style={{ width:26, height:26, display:'flex', alignItems:'center', justifyContent:'center', border:'none', background:'none', cursor:'pointer', fontSize:20, color:'var(--neutral-300)', fontWeight:300, lineHeight:1, borderRadius:4, transition:'background 0.1s' }}
-                  onMouseEnter={e => e.currentTarget.style.background='var(--neutral-75)'}
-                  onMouseLeave={e => e.currentTarget.style.background='none'}>×</button>
+                />
               </div>
             </div>
 
@@ -1614,7 +1542,10 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                         <div style={{ position:'absolute', height:'100%', width:'45%', background:'linear-gradient(90deg, transparent, var(--primary-300), var(--primary-200), transparent)', borderRadius:2, animation:'pg-progress 1.8s ease-in-out infinite' }} />
                       </div>
                       <div style={{ fontSize:14, color:'var(--neutral-200)', textAlign:'center', lineHeight:1.6 }}>You can minimize this window and<br/>continue working while it processes.</div>
-                      <button
+                      <Button
+                        variant="secondary"
+                        size="L"
+                        leadingIcon="solar:minimize-square-linear"
                         onClick={() => {
                           startPgSession({
                             fileName: uploadFile?.name || '',
@@ -1627,13 +1558,9 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                           });
                           resetModalState();
                           setModalOpen(false);
-                        }}
-                        style={{ height:32, padding:'0 14px', border:'0.5px solid var(--neutral-150)', borderRadius:6, background:'#fff', color:'var(--neutral-300)', fontSize:14, fontWeight:500, cursor:'pointer', fontFamily:'Inter, sans-serif', display:'flex', alignItems:'center', gap:6, transition:'background 0.15s' }}
-                        onMouseEnter={e => e.currentTarget.style.background='var(--neutral-50)'}
-                        onMouseLeave={e => e.currentTarget.style.background='#fff'}>
-                        <CollapseIcon size={16} color="var(--neutral-300)" />
+                        }}>
                         Minimize
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ) : (
@@ -1966,22 +1893,8 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                   </div>
                 </div>
                 <div style={{ display:'flex', gap:8, width:'100%' }}>
-                  <button
-                    onClick={() => setShowCloseConfirm(false)}
-                    style={{ flex:1, height:32, borderRadius:4, border:'0.5px solid var(--neutral-200)', background:'#fff', color:'var(--neutral-300)', fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'Inter, sans-serif', transition:'background 0.1s' }}
-                    onMouseEnter={e => e.currentTarget.style.background='var(--neutral-50)'}
-                    onMouseLeave={e => e.currentTarget.style.background='#fff'}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => { setShowCloseConfirm(false); closeModal(); }}
-                    style={{ flex:1, height:32, borderRadius:4, border:'0.5px solid rgba(217,45,32,0.5)', background:'#FFF1F0', color:'#CF1322', fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'Inter, sans-serif' }}
-                    onMouseEnter={e => e.currentTarget.style.background='#FFE4E0'}
-                    onMouseLeave={e => e.currentTarget.style.background='#FFF1F0'}
-                  >
-                    Quit Anyway
-                  </button>
+                  <Button variant="secondary" size="L" fullWidth onClick={() => setShowCloseConfirm(false)}>Cancel</Button>
+                  <Button variant="danger" size="L" fullWidth onClick={() => { setShowCloseConfirm(false); closeModal(); }}>Quit Anyway</Button>
                 </div>
               </div>
             </>
