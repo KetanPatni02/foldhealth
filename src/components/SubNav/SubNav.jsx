@@ -151,7 +151,20 @@ export function SubNav({ collapsed }) {
         <span className={styles.count}>{patients.length || 0}</span>
       </div>
       <div className={styles.sectionLabel} style={{ marginTop: 8 }}>Population Groups</div>
-      <div className={styles.sectionLabel} style={{ marginTop: 4 }}>Leads &amp; Contacts</div>
+      {[
+        { label: 'All', value: 'pg:All' },
+        { label: 'Static', value: 'pg:Static' },
+        { label: 'Dynamic', value: 'pg:Dynamic' },
+      ].map(item => (
+        <div
+          key={item.value}
+          className={[styles.item, activeSubnavList === item.value ? styles.active : ''].filter(Boolean).join(' ')}
+          onClick={() => { setActiveSubnavList(item.value); clearSelected(); clearHccSelected(); setActiveFilters({}); }}
+        >
+          {item.label}
+        </div>
+      ))}
+      <div className={styles.sectionLabel} style={{ marginTop: 8 }}>Leads &amp; Contacts</div>
 
       {filterMenu && createPortal(
         <>
