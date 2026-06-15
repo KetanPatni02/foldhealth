@@ -30,6 +30,100 @@ export function safeTableRows(data, fallbackRows) {
   return fallbackRows || [];
 }
 
+// ─── Skeletons (shimmer loaders) ───
+// Per-shape placeholders used while a Supabase fetch is in flight.
+// Convention: views start data state at `null` (= loading) and the
+// fetch resolves it to either real data or an empty shape. Render
+// these when the state is still null.
+
+function Bar({ w = '60%', h = 12, style }) {
+  // Single shimmer rectangle. Sized via CSS width/height to match
+  // the real content metric (KPI label height, chart axis height, etc.).
+  return <div className={s.shimmer} style={{ width: w, height: h, ...style }} />;
+}
+
+export function KpiSkeleton({ count = 4 }) {
+  return (
+    <div className={s.kpiGrid} style={{ gridTemplateColumns: `repeat(${count}, 1fr)` }}>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className={s.skeletonKpi}>
+          <Bar w="55%" h={11} />
+          <Bar w="80%" h={26} />
+          <Bar w="40%" h={10} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function TableSkeleton({ rows = 5, cols = 5 }) {
+  return (
+    <div>
+      {Array.from({ length: rows }).map((_, r) => (
+        <div key={r} className={s.skeletonRow}>
+          {Array.from({ length: cols }).map((_, c) => (
+            <Bar key={c} w={c === 0 ? '20%' : '14%'} h={12} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function ChartSkeleton({ bars = 12 }) {
+  // Simulates bar heights that approximate a chart silhouette so the
+  // placeholder reads as "a chart, loading" rather than a generic block.
+  const heights = Array.from({ length: bars }, (_, i) =>
+    30 + Math.round(60 * Math.abs(Math.sin((i / bars) * Math.PI * 1.4)))
+  );
+  return (
+    <div className={s.skeletonChart}>
+      {heights.map((h, i) => (
+        <div key={i} className={`${s.shimmer} ${s.skeletonBar}`} style={{ height: `${h}%` }} />
+      ))}
+    </div>
+  );
+}
+
+export function ProgressBarSkeleton({ count = 4 }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0' }}>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Bar w="35%" h={11} />
+            <Bar w="15%" h={11} />
+          </div>
+          <Bar w="100%" h={6} style={{ borderRadius: 3 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Empty state ───
+// Drop-in placeholder for tables / charts that have no data to render.
+// Use `colSpan` when placed inside a <tbody> for a table; otherwise pass nothing
+// and it renders a standalone centered block.
+export function EmptyState({ message = 'No data available', icon = 'solar:chart-line-linear', colSpan }) {
+  const body = (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      gap: 8, padding: '32px 16px', color: 'var(--neutral-300)',
+      fontSize: 13, textAlign: 'center',
+    }}>
+      <Icon name={icon} size={24} color="var(--neutral-200)" />
+      <span>{message}</span>
+    </div>
+  );
+  if (colSpan) {
+    return (
+      <tr><td colSpan={colSpan} style={{ padding: 0 }}>{body}</td></tr>
+    );
+  }
+  return body;
+}
+
 // ─── KPI Card ───
 export function KpiCard({ value, label, delta, deltaType = 'pos', sub, accentColor }) {
   return (

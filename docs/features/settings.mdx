@@ -1,0 +1,70 @@
+---
+title: Settings
+description: Agent management, goals, embedded components, and platform configuration.
+---
+
+The Settings workspace contains all administrative configuration panels, organized into several sections.
+
+## Agents
+
+### Agent management
+
+A table listing all AI agents with their name, use case, version, voice configuration, last update, and status. Actions include:
+
+- **Call Queue** — View the agent's active and queued calls
+- **Call Analytics** — Performance metrics for the agent
+- **More Options** — Duplicate, delete, audit log
+
+Clicking an agent name opens the Agent Builder workflow editor.
+
+### Goals
+
+Multi-step care program goals with weighted scoring and completion tracking. Goal categories:
+
+- **TCM** — Transitional Care Management
+- **Outreach** — Patient contact and follow-up
+- **Onboarding** — New patient enrollment
+- **Preventive** — Preventive care measures
+- **Billing** — Billing and coding compliance
+
+The **Goal Wizard** is a 4-step creation flow for defining new goals with targets, weights, and completion criteria.
+
+### Knowledge Base
+
+FAQ management for agent training. Add question-answer pairs that agents reference during conversations.
+
+### Compliance Policies
+
+Escalation rules and policy configuration for handling agent failures, patient requests, and compliance triggers.
+
+### Feature Toggles
+
+QA and feature flag management for controlling platform capabilities.
+
+## Embedded Components
+
+### Domain Registry
+
+Whitelist domains for embedded iFrame components with:
+- HIPAA compliance tracking
+- Enable/disable toggle per domain
+- Per-domain audit log
+
+### Component Library
+
+Configure embedded UI components:
+- Prior Auth, Risk Dashboard, HEDIS Tracker, and more
+- Surface placement (Fold Web, Sidecar, Mobile)
+- JWT context scoping
+- 4-step creation wizard (Identity, Surfaces, Context, Preview)
+
+### Audit Log
+
+Timeline-based activity history with color-coded action types, month grouping, and filter pills. Available for all entity types (agents, goals, domains, components).
+
+## Messages
+
+Chat group configuration with:
+- Agent routing rules per group
+- Business hours management
+- Agent rules for conversation flow control

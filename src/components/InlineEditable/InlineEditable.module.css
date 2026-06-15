@@ -1,0 +1,67 @@
+/* ── Click-to-edit single-line text ────────────────────────────────────── */
+
+.text {
+  display: inline-flex;
+  align-items: center;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-500);
+  cursor: text;
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin: -2px -6px;
+  outline: none;
+  transition: background 0.12s, box-shadow 0.12s;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.text:hover {
+  background: var(--neutral-50);
+}
+
+.text:focus-visible {
+  background: var(--neutral-50);
+  box-shadow: 0 0 0 2px var(--primary-100);
+}
+
+.disabled {
+  cursor: default;
+}
+.disabled:hover {
+  background: transparent;
+}
+
+.input {
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-500);
+  background: var(--neutral-0);
+  border: 1.5px solid var(--primary-300);
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin: -3px -7px;
+  outline: none;
+  width: auto;
+  min-width: 80px;
+  max-width: 320px;
+}
+
+.placeholder {
+  color: var(--neutral-200);
+  font-weight: 400;
+}
+
+/* ── Sizes ─────────────────────────────────────────────────────────────── */
+
+.size_M {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.size_L {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 22px;
+}

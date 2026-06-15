@@ -22,7 +22,7 @@
 
 /* ── Form card ── */
 .formCard {
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
   padding: 12px;
@@ -103,7 +103,7 @@
 
 .fieldDropdownMenu {
   position: fixed;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid #E9ECF1;
   border-radius: 8px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
@@ -154,7 +154,7 @@
   gap: 6px;
   height: 32px;
   padding: 0 8px;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-200);
   border-radius: 4px;
   cursor: pointer;
@@ -183,7 +183,7 @@
 
 .typeDropdownMenu {
   position: fixed;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid #E9ECF1;
   border-radius: 8px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
@@ -228,7 +228,7 @@
 /* ── Date/time picker ── */
 .dateInputWrap {
   width: 200px;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-200);
   border-radius: 4px;
   height: 32px;
@@ -342,7 +342,7 @@
 
 .calendarDaySelected {
   background: var(--primary-300) !important;
-  color: #fff !important;
+  color: var(--neutral-0) !important;
   font-weight: 600;
 }
 
@@ -420,7 +420,7 @@
 
 .timeColItemSelected {
   background: var(--primary-300) !important;
-  color: #fff !important;
+  color: var(--neutral-0) !important;
   font-weight: 600;
 }
 
@@ -454,7 +454,7 @@
   border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
-  color: #fff;
+  color: var(--neutral-0);
   background: var(--primary-300);
   cursor: pointer;
   font-family: 'Inter', sans-serif;
@@ -642,7 +642,7 @@
   font-family: 'Inter', sans-serif;
   font-size: 14px;
   font-weight: 500;
-  color: #16181D;
+  color: var(--neutral-500);
   white-space: nowrap;
 }
 
@@ -777,7 +777,7 @@
   top: calc(100% + 4px);
   right: 0;
   min-width: 150px;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 6px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
@@ -867,7 +867,7 @@
   font-size: 14px;
   color: var(--neutral-400);
   resize: vertical;
-  background: #fff;
+  background: var(--neutral-0);
   outline: none;
   box-sizing: border-box;
   line-height: 1.4;
@@ -887,7 +887,7 @@
   font-family: 'Inter', sans-serif;
   font-size: 14px;
   font-weight: 500;
-  color: #16181D;
+  color: var(--neutral-500);
   white-space: nowrap;
 }
 
@@ -935,7 +935,7 @@
 }
 
 .activityFilterTabActive {
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150) !important;
   color: var(--neutral-400);
 }
@@ -985,7 +985,7 @@
   font-family: 'Inter', sans-serif;
   font-size: 14px;
   font-weight: 500;
-  color: #16181D;
+  color: var(--neutral-500);
   line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1047,14 +1047,14 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: #fff;
+  background: var(--neutral-0);
 }
 
 /* Card */
 .logCard {
   flex: 1;
   min-width: 0;
-  background: #fff;
+  background: var(--neutral-0);
   border-radius: 8px;
   padding: 6px;
   margin-bottom: 4px;
@@ -1124,7 +1124,7 @@
   font-family: 'Inter', sans-serif;
   font-size: 14px;
   font-weight: 400;
-  color: #16181D;
+  color: var(--neutral-500);
   line-height: 1.2;
   white-space: nowrap;
   flex-shrink: 0;

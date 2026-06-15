@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Icon } from '../Icon/Icon';
 import { useAppStore } from '../../store/useAppStore';
+import { FilterNameDialog } from '../../features/hcc/FilterNameDialog';
 import styles from './FilterBar.module.css';
 
 const FILTER_DEFS = [
@@ -148,12 +149,21 @@ export function FilterBar() {
   const setFilter = useAppStore(s => s.setFilter);
   const clearAllFilters = useAppStore(s => s.clearAllFilters);
   const patients = useAppStore(s => s.patients);
+  // Saved-filter integration — dispatches to the right per-list bucket
+  // (TOC / SNP / AWV / High Utilizers / DM, …) based on the active list.
+  const activeSubnavList = useAppStore(s => s.activeSubnavList);
+  const saveSavedFilter = useAppStore(s => s.saveSavedFilter);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
   const activeCount = Object.keys(activeFilters).length;
+  const hasActive = activeCount > 0;
+  // The list label this Save button writes to. Defaults to TOC when no
+  // shared list is selected (the FilterBar's natural home).
+  const listForSave = activeSubnavList || 'TOC';
 
   return (
     <div className={styles.filterBar}>
-      {/* Row 1: View By toggle + all filter chips + Clear All */}
+      {/* Row 1: View By toggle + all filter chips + Clear All + Save Filter */}
       <div className={styles.filterRow}>
         <div className={styles.viewByToggle}>
           <button
@@ -183,11 +193,28 @@ export function FilterBar() {
           />
         ))}
 
-        {activeCount > 0 && (
+        {hasActive && (
           <span className={styles.activeCount}>{activeCount} active</span>
         )}
         <button className={styles.clearAll} onClick={clearAllFilters}>Clear All</button>
+        {hasActive && (
+          <button
+            className={styles.saveFilter}
+            onClick={() => setSaveDialogOpen(true)}
+          >
+            Save Filter
+          </button>
+        )}
       </div>
+
+      <FilterNameDialog
+        open={saveDialogOpen}
+        title="Save Filter"
+        submitLabel="Save & Apply"
+        initialName=""
+        onSubmit={(name) => { saveSavedFilter(listForSave, name); setSaveDialogOpen(false); }}
+        onCancel={() => setSaveDialogOpen(false)}
+      />
     </div>
   );
 }

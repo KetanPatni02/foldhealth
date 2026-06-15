@@ -1,0 +1,39 @@
+---
+title: Agent Builder
+description: Visual workflow designer for creating and testing AI conversation agents.
+---
+
+The Agent Builder is a full-screen visual workflow designer for creating AI-powered conversation agents. It uses [XYFlow](https://reactflow.dev) (React Flow) for the node-based canvas.
+
+## Workflow canvas
+
+Agents are composed of **conversation nodes** connected by edges that define the flow of a patient interaction. The canvas supports:
+
+- **Drag and drop** nodes from the side panel
+- **Visual connections** between nodes to define conversation flow
+- **Conditional branching** based on patient responses
+- **Zoom and pan** for navigating complex workflows
+
+## Node types
+
+Nodes are configured in `src/features/agent-builder/nodes/nodeConfig.js`, the single source of truth for both the NodePanel and ConversationNode components.
+
+Each node type defines:
+- Display name and icon
+- Input/output connection points
+- Configuration fields
+- Runtime behavior
+
+## Testing
+
+The built-in **chat panel** lets you preview and test agent conversations before deploying. It simulates the agent interaction flow and displays the conversation in real-time.
+
+## Version history
+
+Workflows support versioning so you can track changes, compare versions, and roll back to previous configurations.
+
+## Accessing the builder
+
+- Navigate to **Settings > Agents** and click an agent name
+- Or use the direct route `/#/builder`
+- The TabBar in the TOC Queue view has an "Edit Configuration" button that opens the builder for the active TOC agent

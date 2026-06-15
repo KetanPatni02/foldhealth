@@ -2,20 +2,22 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { dbToJs, updatesToDb } from '../lib/patientMapper';
 import { callDetailDbToJs, callDetailJsToDb } from '../lib/callDetailsMapper';
-import { patients as fallbackPatients } from '../data/patients';
-import { callDetails as fallbackCallDetails, enrichCallRecord } from '../data/callDetails';
-import { goals as fallbackGoalsData } from '../data/goals';
-import { chatGroups as fallbackChatGroups } from '../data/chatGroups';
+import { enrichCallRecord } from '../data/callDetailsEnrich';
 import { generateFlowFromPrompt } from '../lib/flowGenerator';
-import { kpiRowToJs, tsRowToJs, tableRowToJs, barRowToJs, configRowToJs, groupTimeSeries } from '../lib/analyticsMapper';
+import { kpiRowToJs, tsRowToJs, tableRowToJs, barRowToJs, configRowToJs, groupTimeSeries } from '../lib/eventMapper';
 import { domainDbToJs, domainJsToDb, componentDbToJs, componentJsToDb, auditLogDbToJs } from '../lib/embedMapper';
-import { FALLBACK_KPIS, FALLBACK_TIME_SERIES, FALLBACK_TABLES, FALLBACK_PROGRESS_BARS, FALLBACK_CONFIGS } from '../data/analyticsFallbacks';
-import { FALLBACK_INBOX_ITEMS, FALLBACK_CHANNEL_ITEMS, FALLBACK_CALL_LINES, FALLBACK_CALL_SESSIONS } from '../data/callsConfig';
-import { fallbackTasks } from '../data/tasks';
+// Fallback datasets (~220KB raw across all of these) are imported lazily
+// inside the fetch actions that consume them, so they don't bloat the entry
+// chunk. They're only needed when Supabase returns empty or errors.
 import { updateHash } from '../lib/router';
-import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem } from '../lib/theme';
+import { track } from '../lib/tracking';
+import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem, applyNavStyle, getStoredNavStyle } from '../lib/theme';
 import { createBlock, createBlockTree, collectBlockTree, buildParentMap, cloneBlockTree, extractSubtree, cloneStoredTree } from '../features/email-builder/blockHelpers';
 import { makeInitialDocument } from '../features/email-builder/initialDocument';
+import * as hccLifecycle from '../features/hcc/assignment/lifecycle';
+import { hydrateFromMember, dosKey as hccDosKey } from '../features/hcc/assignment/dosState';
+import { DEFAULT_SAMPLING_RATES } from '../features/hcc/assignment/sampling';
+import { staffById as hccStaffById } from '../features/hcc/assignment/astranaStaff';
 
 function parseTaskDateStr(str) {
   if (!str || typeof str !== 'string') return null;
@@ -59,6 +61,53 @@ const _savedSettingsTab = sessionStorage.getItem('settingsTab');
 // index.html blocking script already applied to <html>.
 const _initialThemeSetting = getStoredTheme();
 const _initialResolvedTheme = getResolvedTheme(_initialThemeSetting);
+const _initialNavStyle = getStoredNavStyle();
+// Apply nav style at module load so it lands before React mounts (the index.html
+// blocking script handles the color theme but not this one yet).
+applyNavStyle(_initialNavStyle);
+
+// ── Settings → Content → Emails: SWR cache ────────────────────────────────
+// Keyed by `${page}|${perPage}|${searchLowercased}|${status}`. Lives at
+// module scope so cache survives store rebuilds during HMR. Cleared by any
+// campaign mutation (delete / bulk delete / duplicate / draft insert).
+const _contentEmailsCache = new Map();
+const CONTENT_EMAILS_TTL_MS = 60_000;
+function _invalidateContentEmailsCache() {
+  _contentEmailsCache.clear();
+}
+
+// ── Settings → Content → Forms: SWR cache ─────────────────────────────────
+// Same shape/strategy as the emails cache above. Keyed by
+// `${page}|${perPage}|${searchLowercased}|${status}`; cleared by any form
+// mutation (create draft / duplicate / delete / save).
+const _contentFormsCache = new Map();
+const CONTENT_FORMS_TTL_MS = 60_000;
+function _invalidateContentFormsCache() {
+  _contentFormsCache.clear();
+}
+
+// ── Form row mapper ──
+// Translates a Supabase `forms` row into the JS shape the UI consumes. List
+// fetches omit the heavy `schema`/`scoring` JSONB; the builder pulls the full
+// row via fetchFormById so those land as the saved objects, not defaults.
+function formRowToJs(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description || null,
+    category: row.category || null,
+    status: row.status || 'draft',
+    // Present only on the full-row fetch; undefined on slim list rows so the
+    // builder knows it still needs to hydrate.
+    schema: row.schema,
+    scoring: row.scoring,
+    settings: row.settings || {},
+    responseCount: row.response_count || 0,
+    updatedAt: row.updated_at || null,
+    updatedBy: row.updated_by || null,
+    updatedByName: row.updated_by_profile?.full_name || null,
+  };
+}
 
 // ── Campaign row mapper ──
 // Single source of truth for translating Supabase campaigns rows into the JS
@@ -94,6 +143,14 @@ function campaignRowToJs(row) {
     senderName: row.sender_name || '',
     sendFrom: row.send_from || '',
     subjectLine: row.subject_line || '',
+    // Content → Emails surfaces these in the list table.
+    category: row.category || null,
+    updatedAt: row.updated_at || null,
+    updatedBy: row.updated_by || null,
+    // Joined user display name when the fetch selects it via FK
+    // (campaigns.updated_by → profiles.id). campaignRowToJs collapses the
+    // nested object so the UI just reads .updatedByName.
+    updatedByName: row.updated_by_profile?.full_name || null,
   };
 }
 
@@ -116,6 +173,7 @@ const CAMPAIGN_FIELD_MAP = {
   senderName: 'sender_name',
   sendFrom: 'send_from',
   subjectLine: 'subject_line',
+  category: 'category',
 };
 function campaignPatchToDb(patch) {
   const out = {};
@@ -138,6 +196,65 @@ function scheduleCampaignSave(id, fn) {
   }, 600));
 }
 
+// Human-readable labels for HCC DOS lifecycle transitions, used by the
+// Activity Log to format "DOS 07/04/2024 — Support Completed" style entries.
+const HCC_TRANSITION_LABEL = {
+  markSupportInProgress: 'Support In Progress',
+  completeSupport:       'Support Completed',
+  markInsufficient:      'Marked Insufficient',
+  rejectDos:             'DOS Rejected',
+  completeCoder:         'Coding Completed',
+  requestRecords:        'Records Requested',
+  recordsReceived:       'Records Received',
+  completeR1:            'Reviewer 1 Completed',
+  completeR2:            'Reviewer 2 Completed',
+  completeR3:            'Reviewer 3 Completed',
+  returnDos:             'DOS Returned',
+  reassignRole:          'Role Reassigned',
+};
+
+// Maps a shared-list label to the store-state key that holds its active
+// filter selections. Used by the generic saved-filter actions below so that
+// saving / applying a filter on any list writes to the right slice.
+// Lists not listed here fall back to `activeFilters` (the TOC default).
+const LIST_FILTER_KEY = {
+  HCC:   'hccFilters',
+  HEDIS: 'hedisFilters',
+};
+
+// ── Care team row mapper ──
+// Translates a Supabase `care_teams` row to/from the JS shape the
+// ConfigureTeamDrawer + Care Team table consume (see hccCareTeams below).
+function careTeamRowToJs(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    kind: row.kind,
+    teamType: row.team_type,
+    allocatedTins: row.allocated_tins || [],
+    createdAt: row.created_label,
+    createdBy: row.created_by,
+    lastModifiedAt: row.modified_label,
+    lastModifiedBy: row.modified_by,
+    members: row.members || [],
+  };
+}
+function careTeamJsToDb(t) {
+  return {
+    id: t.id,
+    name: t.name,
+    kind: t.kind,
+    team_type: t.teamType,
+    allocated_tins: t.allocatedTins || [],
+    created_label: t.createdAt,
+    created_by: t.createdBy,
+    modified_label: t.lastModifiedAt,
+    modified_by: t.lastModifiedBy,
+    members: t.members || [],
+    updated_at: new Date().toISOString(),
+  };
+}
+
 export const useAppStore = create((set, get) => ({
   // ─── Theme ───────────────────────────────────────────────────────────
   // `theme` is the user's chosen setting: 'light' | 'dark' | 'system'
@@ -146,6 +263,8 @@ export const useAppStore = create((set, get) => ({
   theme: _initialThemeSetting,
   resolvedTheme: _initialResolvedTheme,
   setTheme: (next) => {
+    const from = get().theme;
+    track('theme.changed', { from, to: next });
     const resolved = applyTheme(next);
     set({ theme: next, resolvedTheme: resolved });
   },
@@ -160,6 +279,18 @@ export const useAppStore = create((set, get) => ({
     );
   },
   _themeSubscribed: false,
+
+  // ─── Nav style ───────────────────────────────────────────────────────
+  // 'default' = per-theme dark-purple chrome (existing behavior)
+  // 'light'   = light sidebar (white surface, primary purple accent),
+  //             applied consistently across all color themes
+  navStyle: _initialNavStyle,
+  setNavStyle: (next) => {
+    const from = get().navStyle;
+    track('nav.style_changed', { from, to: next });
+    const applied = applyNavStyle(next);
+    set({ navStyle: applied });
+  },
 
   // Pending add-task request — set by CreateNewPopover or WorklistRow "Add Task"
   pendingAddTask: null,
@@ -187,6 +318,7 @@ export const useAppStore = create((set, get) => ({
   createStickyNote: async (note) => {
     const { data, error } = await supabase.from('sticky_notes').insert(note).select().single();
     if (!error && data) {
+      track('note.sticky_created', { noteId: data.id });
       await supabase.from('sticky_note_history').insert({ sticky_note_id: data.id, patient_id: note.patient_id, author_name: note.author_name || 'You', action: 'added a Note', note_text: note.text, ehr_instance: note.ehr_profile || 'Central Profile' });
       get().fetchStickyNotes(note.patient_id);
       get().fetchStickyNoteHistory(note.patient_id);
@@ -194,6 +326,7 @@ export const useAppStore = create((set, get) => ({
     return data;
   },
   updateStickyNote: async (id, updates, patientId) => {
+    track('note.sticky_updated', { noteId: id });
     await supabase.from('sticky_notes').update(updates).eq('id', id);
     if (patientId) {
       await supabase.from('sticky_note_history').insert({ sticky_note_id: id, patient_id: patientId, author_name: updates.author_name || 'You', action: 'Updated a Note', note_text: updates.text, ehr_instance: updates.ehr_profile || 'Central Profile' });
@@ -202,6 +335,7 @@ export const useAppStore = create((set, get) => ({
     }
   },
   deleteStickyNote: async (id, patientId) => {
+    track('note.sticky_deleted', { noteId: id });
     // Log the deletion as an audit activity before removing the note
     const { data: noteData } = await supabase.from('sticky_notes').select('*').eq('id', id).maybeSingle();
     if (noteData) {
@@ -234,6 +368,7 @@ export const useAppStore = create((set, get) => ({
     const note = { patient_id: 'global', text, author_name: 'You', ehr_profile: 'Quick Note' };
     const { data, error } = await supabase.from('sticky_notes').insert(note).select().single();
     if (!error && data) {
+      track('note.quick_created', { noteId: data.id });
       await supabase.from('sticky_note_history').insert({ sticky_note_id: data.id, patient_id: 'global', author_name: 'You', action: 'added a Note', note_text: text, ehr_instance: 'Quick Note' });
       get().fetchQuickNotes();
       get().fetchQuickNoteHistory();
@@ -241,12 +376,14 @@ export const useAppStore = create((set, get) => ({
     return data;
   },
   updateQuickNote: async (id, text) => {
+    track('note.quick_updated', { noteId: id });
     await supabase.from('sticky_notes').update({ text, author_name: 'You' }).eq('id', id);
     await supabase.from('sticky_note_history').insert({ sticky_note_id: id, patient_id: 'global', author_name: 'You', action: 'Updated a Note', note_text: text, ehr_instance: 'Quick Note' });
     get().fetchQuickNotes();
     get().fetchQuickNoteHistory();
   },
   deleteQuickNote: async (id) => {
+    track('note.quick_deleted', { noteId: id });
     const { data: noteData } = await supabase.from('sticky_notes').select('*').eq('id', id).maybeSingle();
     if (noteData) {
       await supabase.from('sticky_note_history').insert({ sticky_note_id: id, patient_id: 'global', author_name: 'You', action: 'deleted a Note', note_text: noteData.text, ehr_instance: 'Quick Note' });
@@ -293,16 +430,24 @@ export const useAppStore = create((set, get) => ({
   selectedPatientId: null,
   patientProfileTab: 'Care Management',
   navigateToPatient: (patientId) => {
+    const from = get().activePage;
+    track('nav.patient_opened', { patientId, from });
     set({ selectedPatientId: patientId });
     const state = get();
     if (state.activePage !== 'population') set({ activePage: 'population' });
-    import('../lib/router').then(m => m.updateHash?.(get()));
+    updateHash?.(get());
   },
   navigateBackToWorklist: () => {
+    const patientId = get().selectedPatientId;
+    track('nav.patient_closed', { patientId });
     set({ selectedPatientId: null });
-    import('../lib/router').then(m => m.updateHash?.(get()));
+    updateHash?.(get());
   },
-  setPatientProfileTab: (tab) => set({ patientProfileTab: tab }),
+  setPatientProfileTab: (tab) => {
+    const from = get().patientProfileTab;
+    track('nav.patient_tab_changed', { patientId: get().selectedPatientId, from, to: tab });
+    set({ patientProfileTab: tab });
+  },
 
   // Table
   patients: [],
@@ -321,6 +466,10 @@ export const useAppStore = create((set, get) => ({
   pgSession: null,            // { fileName, fileSize, segName, status:'loading'|'complete', procStep, startedAt, result }
   pgMinimized: false,
   pgReopenToken: 0,
+
+  // HEDIS worklist state lives at line ~1558 (caregapActivity, hedisMembers,
+  // setHedisMembers, updateGapStatus, etc.) — defined by upstream.
+
 
   // Call Details
   _allCallDetails: [],   // full sorted dataset (DB + supplemental local)
@@ -345,7 +494,11 @@ export const useAppStore = create((set, get) => ({
   goalWizardEditId: null,
 
   // Settings navigation (left subnav)
-  settingsNavItem: sessionStorage.getItem('settingsNavItem') || 'agents',
+  settingsNavItem: sessionStorage.getItem('settingsNavItem') || 'member/leads',
+  // Active sub-tab inside Settings → Member/Leads (Tags / Custom Contact Type
+  // / Custom Contact Fields / Code Groups / Worklist / Care Team). Persisted
+  // in the hash so deep links survive.
+  memberLeadsTab: sessionStorage.getItem('memberLeadsTab') || 'care-team',
 
   // Messages section
   messageTab: 'chat-settings',
@@ -362,6 +515,7 @@ export const useAppStore = create((set, get) => ({
   // Embedded Components
   embeddedComponentsTab: 'domain-registry',
   accountTab: 'users',
+  contentTab: 'emails',
   componentWizardOpen: false,
   componentWizardEditId: null,
   componentPreviewId: null,
@@ -429,26 +583,20 @@ export const useAppStore = create((set, get) => ({
       for (const ep of existing) {
         if (ep.agentAssigned) overrides[ep.id] = ep;
       }
-      const fallbackMap = {};
-      for (const fp of fallbackPatients) {
-        if (fp.agentAssigned) fallbackMap[fp.id] = fp;
-      }
-
       const patients = data.map(dbToJs).map(p => {
         const isPeter = p.name === 'Peter Kim' || p.id === 'p11';
         const mem = overrides[p.id];
-        const fb = fallbackMap[p.id];
         return {
           ...p,
           name: isPeter ? 'Clara Mitchell' : p.name,
           initials: isPeter ? 'CM' : p.initials,
-          // Priority: in-memory invoke state > DB state > fallback seed data
-          agentAssigned: mem?.agentAssigned || p.agentAssigned || fb?.agentAssigned || '',
-          agentRole: mem?.agentRole || p.agentRole || fb?.agentRole || '',
-          onCall: mem ? mem.onCall : (p.onCall || fb?.onCall || false),
-          status: mem ? mem.status : (p.status !== 'scheduled' ? p.status : fb?.status || p.status),
-          callDuration: mem ? mem.callDuration : (p.callDuration || fb?.callDuration),
-          nextAction: mem?.nextAction || p.nextAction || fb?.nextAction,
+          // Priority: in-memory invoke state > DB state
+          agentAssigned: mem?.agentAssigned || p.agentAssigned || '',
+          agentRole: mem?.agentRole || p.agentRole || '',
+          onCall: mem ? mem.onCall : (p.onCall || false),
+          status: mem ? mem.status : p.status,
+          callDuration: mem ? mem.callDuration : p.callDuration,
+          nextAction: mem?.nextAction || p.nextAction,
         };
       });
       // Sort by numeric part of id (p1, p2, ... p10, p11, ...)
@@ -475,24 +623,10 @@ export const useAppStore = create((set, get) => ({
       .neq('call_type', 'ongoing')
       .order('started_at', { ascending: false });
 
-    let combined;
-    if (error) {
-      console.warn('call_details fetch failed, using fallback:', error.message);
-      combined = fallbackCallDetails
-        .filter(c => c.callType !== 'ongoing')
-        .map(enrichCallRecord);
-    } else {
-      const dbRecords = data.map(c => enrichCallRecord(callDetailDbToJs(c)));
-      const dbIds = new Set(dbRecords.map(r => r.id));
-      // Supplement with local-only records (incoming, declined) not yet seeded to DB
-      const supplemental = fallbackCallDetails
-        .filter(c => c.callType !== 'ongoing' && !dbIds.has(c.id))
-        .map(enrichCallRecord);
-      combined = [...dbRecords, ...supplemental];
-    }
-
-    // Sort by startedAt desc — naturally mixes call types by date
-    combined.sort((a, b) => new Date(b.startedAt || 0) - new Date(a.startedAt || 0));
+    if (error) console.warn('call_details fetch failed:', error.message);
+    const combined = (data || [])
+      .map(c => enrichCallRecord(callDetailDbToJs(c)))
+      .sort((a, b) => new Date(b.startedAt || 0) - new Date(a.startedAt || 0));
 
     set({
       _allCallDetails: combined,
@@ -543,13 +677,10 @@ export const useAppStore = create((set, get) => ({
     const linesData = linesRes.status === 'fulfilled' ? (linesRes.value.data || []) : [];
     const sessData = sessRes.status === 'fulfilled' ? (sessRes.value.data || []) : [];
 
-    const allNav = navData.map(mapNav);
     set({
-      callNavItems: allNav.filter(i => i.section === 'inbox').length
-        ? allNav
-        : [...FALLBACK_INBOX_ITEMS, ...FALLBACK_CHANNEL_ITEMS],
-      callLines: linesData.length ? linesData.map(mapLine) : FALLBACK_CALL_LINES,
-      callSessions: sessData.length ? sessData.map(mapSession) : FALLBACK_CALL_SESSIONS,
+      callNavItems: navData.map(mapNav),
+      callLines: linesData.map(mapLine),
+      callSessions: sessData.map(mapSession),
       callsConfigLoading: false,
     });
   },
@@ -566,6 +697,7 @@ export const useAppStore = create((set, get) => ({
 
   // Create a new call record (on agent invoke)
   createCallRecord: (record) => {
+    track('call.record_created', { callId: record?.id });
     set(s => ({ callDetails: [enrichCallRecord(record), ...s.callDetails] }));
     // Persist to Supabase in background
     supabase.from('call_details').insert(callDetailJsToDb(record)).then(({ error }) => {
@@ -594,7 +726,13 @@ export const useAppStore = create((set, get) => ({
   },
 
   // Actions
-  setActivePage: (page) => { sessionStorage.setItem('activePage', page); set({ activePage: page }); updateHash(get); },
+  setActivePage: (page) => {
+    const from = get().activePage;
+    if (from !== page) track('nav.page_changed', { from, to: page });
+    sessionStorage.setItem('activePage', page);
+    set({ activePage: page });
+    updateHash(get);
+  },
 
   // ── Population Groups: persistent create-group CSV processing session ──
   startPgSession: (sess) => set({ pgSession: { ...sess }, pgMinimized: true }),
@@ -632,28 +770,61 @@ export const useAppStore = create((set, get) => ({
     updateHash(get);
   },
   requestAddTask: (opts = {}) => {
+    track('task.create_requested', { source: opts?.source || null });
     sessionStorage.setItem('activePage', 'tasks');
     set({ activePage: 'tasks', pendingAddTask: { member: opts.member || null } });
     updateHash(get);
   },
   clearPendingAddTask: () => set({ pendingAddTask: null }),
-  setActiveTab: (tab) => { sessionStorage.setItem('activeTab', tab); set({ activeTab: tab }); updateHash(get); },
-  setSettingsTab: (tab) => { sessionStorage.setItem('settingsTab', tab); set({ settingsTab: tab }); updateHash(get); },
+  setActiveTab: (tab) => {
+    const from = get().activeTab;
+    if (from !== tab) track('nav.tab_changed', { scope: 'population', from, to: tab });
+    sessionStorage.setItem('activeTab', tab);
+    set({ activeTab: tab });
+    updateHash(get);
+  },
+  setSettingsTab: (tab) => {
+    const from = get().settingsTab;
+    if (from !== tab) track('nav.tab_changed', { scope: 'settings', from, to: tab });
+    sessionStorage.setItem('settingsTab', tab);
+    set({ settingsTab: tab });
+    updateHash(get);
+  },
   setShowCreateAgent: (v) => set({ showCreateAgent: v }),
 
   // Settings nav
-  setSettingsNavItem: (item) => { sessionStorage.setItem('settingsNavItem', item); set({ settingsNavItem: item }); updateHash(get); },
+  setSettingsNavItem: (item) => {
+    const from = get().settingsNavItem;
+    if (from !== item) track('nav.settings_section_changed', { from, to: item });
+    sessionStorage.setItem('settingsNavItem', item);
+    set({ settingsNavItem: item });
+    updateHash(get);
+  },
+  setMemberLeadsTab: (tab) => {
+    sessionStorage.setItem('memberLeadsTab', tab);
+    set({ memberLeadsTab: tab });
+    updateHash(get);
+  },
 
   // Chat Groups actions
   setMessagesUnreadCount: (n) => set({ messagesUnreadCount: n }),
   setPendingChatUserEmail: (email) => set({ pendingChatUserEmail: email }),
   setMessageTab: (tab) => { set({ messageTab: tab }); updateHash(get); },
-  setChatGroupDetailId: (id) => { set({ chatGroupDetailId: id }); updateHash(get); },
-  setAgentRulesGroupId: (id) => { set({ agentRulesGroupId: id }); updateHash(get); },
+  setChatGroupDetailId: (id) => {
+    if (id) track('chat.group_detail_opened', { groupId: id });
+    set({ chatGroupDetailId: id });
+    updateHash(get);
+  },
+  setAgentRulesGroupId: (id) => {
+    if (id) track('chat.rules_opened', { groupId: id });
+    set({ agentRulesGroupId: id });
+    updateHash(get);
+  },
   setBusinessHoursOpen: (open) => { set({ businessHoursOpen: open }); updateHash(get); },
 
   setEmbeddedComponentsTab: (tab) => { set({ embeddedComponentsTab: tab }); updateHash(get); },
   setAccountTab: (tab) => { set({ accountTab: tab }); updateHash(get); },
+  setContentTab: (tab) => { set({ contentTab: tab }); updateHash(get); },
   setComponentWizard: (open, editId = null) => { set({ componentWizardOpen: open, componentWizardEditId: editId }); },
   setComponentPreviewId: (id) => { set({ componentPreviewId: id }); },
 
@@ -709,12 +880,14 @@ export const useAppStore = create((set, get) => ({
         location: data[0].location, updated: new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
         updatedBy: data[0].updated_by || '', activeChats: 0, hasAgent: data[0].has_agent, agentName: data[0].agent_name || '',
       };
+      track('chat.group_created', { groupId: newGroup.id });
       set(s => ({ chatGroupsData: [newGroup, ...(s.chatGroupsData || [])] }));
       get().logAudit('ChatGroup', newGroup.id, newGroup.name, 'created', `Chat group created`, 'Lifecycle');
     }
   },
 
   updateChatGroup: async (id, updates) => {
+    track('chat.group_updated', { groupId: id });
     const dbUpdates = {};
     if (updates.name !== undefined) dbUpdates.name = updates.name;
     if (updates.users !== undefined) dbUpdates.users = updates.users;
@@ -736,6 +909,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   deleteChatGroup: async (id) => {
+    track('chat.group_deleted', { groupId: id });
     const group = (get().chatGroupsData || []).find(g => g.id === id);
     set(s => ({ chatGroupsData: (s.chatGroupsData || []).filter(g => g.id !== id) }));
     const { error } = await supabase.from('chat_groups').delete().eq('id', id);
@@ -761,6 +935,7 @@ export const useAppStore = create((set, get) => ({
         set({ embedDomains: (data || []).map(domainDbToJs), embedDomainsLoading: false });
   },
   addEmbedDomain: async (domain) => {
+    track('embed.domain_added', { domain: domain?.domain || domain?.host || domain?.url || null });
     // Check for duplicate domain
     const existing = get().embedDomains.find(d => d.domain?.toLowerCase() === domain.domain?.toLowerCase());
     if (existing) {
@@ -784,6 +959,7 @@ export const useAppStore = create((set, get) => ({
     return newDomain;
   },
   updateEmbedDomain: async (id, updates) => {
+    track('embed.domain_updated', { domainId: id });
     const oldDomain = get().embedDomains.find(d => d.id === id);
     const dbUpdates = domainJsToDb(updates);
     await supabase.from('embed_domains').update(dbUpdates).eq('id', id);
@@ -799,6 +975,7 @@ export const useAppStore = create((set, get) => ({
     get().logAudit('Domain', id, oldDomain?.domain || '', 'updated', Object.keys(updates).join(', ') + ' changed', 'Configuration', changes);
   },
   deleteEmbedDomain: async (id) => {
+    track('embed.domain_deleted', { domainId: id });
     // Block deletion if components reference this domain
     const compsUsingDomain = get().embedComponents.filter(c => c.domainId === id);
     if (compsUsingDomain.length > 0) {
@@ -815,6 +992,7 @@ export const useAppStore = create((set, get) => ({
     const domain = get().embedDomains.find(d => d.id === id);
     if (!domain) return;
     const newEnabled = !domain.enabled;
+    track('embed.domain_toggled', { domainId: id, enabled: newEnabled });
     await supabase.from('embed_domains').update({ enabled: newEnabled }).eq('id', id);
     set(s => ({ embedDomains: s.embedDomains.map(d => d.id === id ? { ...d, enabled: newEnabled } : d) }));
     get().logAudit('Domain', id, domain.domain, newEnabled ? 'enabled' : 'disabled', newEnabled ? 'Domain enabled' : 'Domain disabled', 'Status',
@@ -831,6 +1009,7 @@ export const useAppStore = create((set, get) => ({
         set({ embedComponents: (data || []).map(componentDbToJs), embedComponentsLoading: false });
   },
   addEmbedComponent: async (comp) => {
+    track('embed.component_added', { componentType: comp?.type || comp?.category || null });
         const row = componentJsToDb(comp);
     const { data, error } = await supabase.from('embed_components').insert(row).select();
     if (error) { console.warn('[store] addEmbedComponent failed:', error.message); return null; }
@@ -840,6 +1019,7 @@ export const useAppStore = create((set, get) => ({
     return newComp;
   },
   updateEmbedComponent: async (id, updates) => {
+    track('embed.component_updated', { componentId: id });
     const oldComp = get().embedComponents.find(c => c.id === id);
     const dbUpdates = componentJsToDb(updates);
     await supabase.from('embed_components').update(dbUpdates).eq('id', id);
@@ -857,6 +1037,7 @@ export const useAppStore = create((set, get) => ({
     get().logAudit('Component', id, oldComp?.name || '', 'updated', Object.keys(updates).join(', ') + ' changed', 'Configuration', changes);
   },
   deleteEmbedComponent: async (id) => {
+    track('embed.component_deleted', { componentId: id });
     const comp = get().embedComponents.find(c => c.id === id);
     await supabase.from('embed_components').delete().eq('id', id);
     set(s => ({ embedComponents: s.embedComponents.filter(c => c.id !== id) }));
@@ -872,6 +1053,7 @@ export const useAppStore = create((set, get) => ({
       [{ field: 'enabled', from: comp.enabled ? 'Enabled' : 'Disabled', to: newEnabled ? 'Enabled' : 'Disabled', type: 'status' }]);
   },
   duplicateEmbedComponent: async (id) => {
+    track('embed.component_duplicated', { componentId: id });
     const comp = get().embedComponents.find(c => c.id === id);
     if (!comp) return null;
         const dup = { ...comp, name: comp.name + ' (Copy)', enabled: false, id: undefined };
@@ -930,15 +1112,18 @@ export const useAppStore = create((set, get) => ({
     const { data, error } = await supabase.from('faqs').insert(row).select();
     if (!error && data && data[0]) {
       const r = data[0];
+      track('chat.faq_created', { faqId: r.id });
       set(s => ({ faqsData: [...(s.faqsData || []), { id: r.id, question: r.question, answer: r.answer, category: r.category, updatedAt: new Date(r.updated_at || r.created_at).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) }] }));
     }
   },
   updateFaq: async (id, updates) => {
+    track('chat.faq_updated', { faqId: id });
     const now = new Date().toISOString();
     await supabase.from('faqs').update({ ...updates, updated_at: now }).eq('id', id);
     set(s => ({ faqsData: (s.faqsData || []).map(f => f.id === id ? { ...f, ...updates, updatedAt: new Date(now).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) } : f) }));
   },
   deleteFaq: async (id) => {
+    track('chat.faq_deleted', { faqId: id });
     await supabase.from('faqs').delete().eq('id', id);
     set(s => ({ faqsData: (s.faqsData || []).filter(f => f.id !== id) }));
   },
@@ -955,10 +1140,12 @@ export const useAppStore = create((set, get) => ({
     const { data, error } = await supabase.from('agent_rules').insert(row).select();
     if (!error && data) {
       const mapped = { id: data[0].id, name: data[0].name, type: 'custom', locked: false, enabled: true, condition: data[0].condition_text, action: data[0].action_text, sortOrder: data[0].sort_order };
+      track('chat.rule_created', { ruleId: mapped.id });
       set(s => ({ agentRulesData: [...(s.agentRulesData || []), mapped] }));
     }
   },
   updateAgentRule: async (id, updates) => {
+    track('chat.rule_updated', { ruleId: id });
     const dbUpdates = {};
     if (updates.name !== undefined) dbUpdates.name = updates.name;
     if (updates.enabled !== undefined) dbUpdates.enabled = updates.enabled;
@@ -968,6 +1155,7 @@ export const useAppStore = create((set, get) => ({
     set(s => ({ agentRulesData: (s.agentRulesData || []).map(r => r.id === id ? { ...r, ...updates } : r) }));
   },
   deleteAgentRule: async (id) => {
+    track('chat.rule_deleted', { ruleId: id });
     await supabase.from('agent_rules').delete().eq('id', id);
     set(s => ({ agentRulesData: (s.agentRulesData || []).filter(r => r.id !== id) }));
   },
@@ -1012,8 +1200,16 @@ export const useAppStore = create((set, get) => ({
   },
 
   // Goals actions
-  setGoalDetailId: (id) => { set({ goalDetailId: id }); updateHash(get); },
-  setGoalWizard: (open, editId) => { set({ goalWizardOpen: open, goalWizardEditId: editId || null }); updateHash(get); },
+  setGoalDetailId: (id) => {
+    if (id) track('goal.detail_opened', { goalId: id });
+    set({ goalDetailId: id });
+    updateHash(get);
+  },
+  setGoalWizard: (open, editId) => {
+    if (open) track('goal.wizard_opened', { mode: editId ? 'edit' : 'new', goalId: editId || null });
+    set({ goalWizardOpen: open, goalWizardEditId: editId || null });
+    updateHash(get);
+  },
 
   fetchGoals: async () => {
     set({ goalsLoading: true });
@@ -1023,8 +1219,8 @@ export const useAppStore = create((set, get) => ({
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.warn('goals fetch failed, using fallback:', error.message);
-      set({ goalsData: fallbackGoalsData, goalsLoading: false });
+      console.warn('goals fetch failed:', error.message);
+      set({ goalsData: [], goalsLoading: false, goalsError: error.message });
     } else {
       // Map DB snake_case → JS camelCase
       const mapped = data.map(row => ({
@@ -1049,6 +1245,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   addGoal: async (goal) => {
+    track('goal.created', { goalId: goal.id, goalKind: goal.kind || goal.program || null });
     // Optimistic update
     set(s => {
       const current = s.goalsData || [];
@@ -1077,6 +1274,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   updateGoal: async (goal) => {
+    track('goal.updated', { goalId: goal.id });
     // Optimistic update
     set(s => {
       const current = s.goalsData || [];
@@ -1102,6 +1300,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   deleteGoal: async (id) => {
+    track('goal.deleted', { goalId: id });
     const goal = (get().goalsData || []).find(g => g.id === id);
     set(s => ({ goalsData: (s.goalsData || []).filter(g => g.id !== id) }));
     const { error } = await supabase.from('goals').delete().eq('id', id);
@@ -1109,20 +1308,35 @@ export const useAppStore = create((set, get) => ({
     if (goal) get().logAudit('Goal', id, goal.name, 'deleted', `Goal deleted`, 'Lifecycle');
   },
 
-  toggleSubnav: () => set(s => ({ subnavCollapsed: !s.subnavCollapsed })),
+  toggleSubnav: () => set(s => {
+    const open = s.subnavCollapsed; // becomes !collapsed after the set, so "open" is the new state
+    track('nav.subnav_toggled', { open });
+    return { subnavCollapsed: !s.subnavCollapsed };
+  }),
   setViewBy: (v) => set({ viewBy: v, currentPage: 1 }),
   setActiveFilters: (filters) => set({ activeFilters: filters, currentPage: 1 }),
-  setFilter: (key, value) => set(s => {
-    const next = { ...s.activeFilters };
-    if (value === null || value === undefined) {
-      delete next[key];
-    } else {
-      next[key] = value;
-    }
-    return { activeFilters: next, currentPage: 1 };
-  }),
-  clearAllFilters: () => set({ activeFilters: {}, currentPage: 1 }),
-  setActiveSubnavList: (list) => { set({ activeSubnavList: list, currentPage: 1 }); updateHash(get); },
+  setFilter: (key, value) => {
+    track('worklist.filter_applied', { filterKey: key, filterValue: value });
+    set(s => {
+      const next = { ...s.activeFilters };
+      if (value === null || value === undefined) {
+        delete next[key];
+      } else {
+        next[key] = value;
+      }
+      return { activeFilters: next, currentPage: 1 };
+    });
+  },
+  clearAllFilters: () => {
+    track('worklist.filters_cleared_all');
+    set({ activeFilters: {}, currentPage: 1 });
+  },
+  setActiveSubnavList: (list) => {
+    const from = get().activeSubnavList;
+    if (from !== list) track('nav.list_changed', { from, to: list });
+    set({ activeSubnavList: list, currentPage: 1 });
+    updateHash(get);
+  },
 
   fetchAgents: async () => {
     set({ agentsLoading: true });
@@ -1146,6 +1360,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   updateAgent: async (id, updates) => {
+    track('builder.agent_updated', { agentId: id });
     const agent = get().agents.find(a => a.id === id);
     set(s => ({
       agents: s.agents.map(a => a.id === id ? { ...a, ...updates } : a)
@@ -1156,6 +1371,7 @@ export const useAppStore = create((set, get) => ({
 
   // ─── Agent Builder actions ───
   openBuilder: (agent, prompt) => {
+    track('builder.opened', { agentId: agent?.id });
     sessionStorage.setItem('activePage', 'builder');
     set({ builderAgent: agent, activePage: 'builder', builderSelectedNode: null, builderPrompt: prompt || '' });
     get().fetchFlow(agent.id, prompt);
@@ -1163,6 +1379,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   closeBuilder: () => {
+    track('builder.closed', { agentId: get().builderAgent?.id });
     sessionStorage.setItem('activePage', 'settings');
     set({ builderAgent: null, builderFlow: null, builderSelectedNode: null, builderVersions: [], builderPrompt: '', builderConfig: null, activePage: 'settings', _pendingAgentId: null });
     updateHash(get);
@@ -1213,6 +1430,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   saveAgentConfig: async (agentId, configData) => {
+    track('builder.agent_config_saved', { agentId });
     const row = {
       agent_id: agentId,
       agent_role: configData.agentRole,
@@ -1332,6 +1550,7 @@ export const useAppStore = create((set, get) => ({
   saveFlow: async (nodes, edges, viewport) => {
     const { builderFlow, builderAgent } = get();
     if (!builderFlow || !builderAgent) return;
+    track('builder.flow_saved', { agentId: builderAgent.id, flowId: builderFlow.id });
 
     const updates = { nodes, edges, viewport, updated_at: new Date().toISOString() };
     set(s => ({ builderFlow: { ...s.builderFlow, ...updates } }));
@@ -1343,6 +1562,7 @@ export const useAppStore = create((set, get) => ({
   createFlowVersion: async (nodes, edges, viewport) => {
     const { builderFlow, builderAgent } = get();
     if (!builderFlow || !builderAgent) return;
+    track('builder.flow_version_created', { agentId: builderAgent.id, versionId: builderFlow.id });
 
     // Mark old as not current
     await supabase.from('agent_flows').update({ is_current: false }).eq('id', builderFlow.id);
@@ -1379,6 +1599,7 @@ export const useAppStore = create((set, get) => ({
   switchFlowVersion: async (flowId) => {
     const { builderAgent } = get();
     if (!builderAgent) return;
+    track('builder.flow_version_switched', { agentId: builderAgent.id, versionId: flowId });
 
     // Unset current
     await supabase.from('agent_flows').update({ is_current: false }).eq('agent_id', builderAgent.id).eq('is_current', true);
@@ -1399,18 +1620,249 @@ export const useAppStore = create((set, get) => ({
   },
 
   setCurrentPage: (page) => set({ currentPage: page }),
-  setPerPage: (pp) => set({ perPage: pp, currentPage: 1 }),
-  setSearchQuery: (q) => set({ searchQuery: q, currentPage: 1 }),
+  setPerPage: (pp) => {
+    track('worklist.page_size_changed', { size: pp });
+    set({ perPage: pp, currentPage: 1 });
+  },
+  setSearchQuery: (q) => {
+    const prev = get().searchQuery;
+    if (q && q !== prev) track('worklist.search_executed', { queryLength: q.length });
+    else if (!q && prev) track('worklist.search_cleared');
+    set({ searchQuery: q, currentPage: 1 });
+  },
 
-  selectPatient: (id) => set(s => ({
-    selectedIds: s.selectedIds.includes(id)
-      ? s.selectedIds.filter(x => x !== id)
-      : [...s.selectedIds, id]
-  })),
-  selectAll: (ids) => set({ selectedIds: ids }),
-  clearSelected: () => set({ selectedIds: [] }),
+  selectPatient: (id) => {
+    track('worklist.row_selected', { patientId: id });
+    set(s => ({
+      selectedIds: s.selectedIds.includes(id)
+        ? s.selectedIds.filter(x => x !== id)
+        : [...s.selectedIds, id]
+    }));
+  },
+  selectAll: (ids) => {
+    track('worklist.row_select_all', { count: Array.isArray(ids) ? ids.length : 0 });
+    set({ selectedIds: ids });
+  },
+  clearSelected: () => {
+    track('worklist.row_select_cleared');
+    set({ selectedIds: [] });
+  },
 
   // ─── HCC Worklist (Supabase-backed) ───
+  // ── HEDIS worklist — local state for now, no Supabase backing yet ───────
+  // Activity log per member: { [memberId]: [{ id, type, message, at, by }] }
+  caregapActivity: {
+    hd1: [
+      { id: 'a1-1', when: '2026-05-14T14:30:00', actor: 'Delores Conn (Co-Ordinator)', icon: 'solar:phone-calling-linear', iconBg: 'var(--primary-100)', iconBorder: 'color-mix(in srgb, var(--primary-300) 20%, transparent)', iconColor: 'var(--primary-300)', title: '4th Outreach — Outgoing Call', detail: 'Completed, Engaged' },
+      { id: 'a1-2', when: '2026-04-28T11:15:00', actor: 'Alok Kumar', icon: 'solar:clipboard-text-linear', iconBg: 'var(--status-success-light)', iconBorder: 'color-mix(in srgb, var(--status-success) 20%, transparent)', iconColor: 'var(--status-success)', title: 'Status changed: Open → Closed', detail: 'Manually closed after care was documented' },
+      { id: 'a1-3', when: '2026-04-10T09:00:00', actor: 'Dr. Aldo Richman', icon: 'solar:document-add-linear', iconBg: 'var(--secondary-100)', iconBorder: 'color-mix(in srgb, var(--secondary-300) 20%, transparent)', iconColor: 'var(--secondary-300)', title: 'Clinical Note Added', detail: 'BP reading 118/76 — within target range' },
+      { id: 'a1-4', when: '2026-03-22T16:00:00', actor: 'Delores Conn (Co-Ordinator)', icon: 'solar:phone-linear', iconBg: 'var(--status-error-light)', iconBorder: 'color-mix(in srgb, var(--status-error) 25%, transparent)', iconColor: 'var(--status-error)', title: '1st Outreach — Patient Chat', detail: 'Scheduled with PCP' },
+    ],
+    hd2: [
+      { id: 'a2-1', when: '2026-05-10T10:00:00', actor: 'Sarah Lee', icon: 'solar:phone-calling-linear', iconBg: 'var(--primary-100)', iconBorder: 'color-mix(in srgb, var(--primary-300) 20%, transparent)', iconColor: 'var(--primary-300)', title: '2nd Outreach — Outgoing Call', detail: 'No answer — voicemail left' },
+      { id: 'a2-2', when: '2026-04-18T13:45:00', actor: 'Marcus Chen', icon: 'solar:clipboard-add-linear', iconBg: 'var(--neutral-50)', iconBorder: 'color-mix(in srgb, var(--neutral-300) 12%, transparent)', iconColor: 'var(--neutral-300)', title: 'Task Added', detail: 'Follow up for colorectal screening referral' },
+    ],
+  },
+  // Status updates applied to the local HEDIS mock data via setHedisMembers.
+  hedisMembers: [],
+  hedisLoading: false,
+  setHedisMembers: (members) => set({ hedisMembers: members }),
+  fetchHedisMembers: async () => {
+    set({ hedisLoading: true });
+    const { data, error } = await supabase
+      .from('hedis_members')
+      .select('*')
+      .order('start_date', { ascending: false });
+    if (error || !data?.length) {
+      if (error) console.warn('fetchHedisMembers — falling back to local mock:', error.message);
+      const { HEDIS_MEMBERS } = await import('../features/hedis-worklist/data/mock');
+      set({ hedisMembers: HEDIS_MEMBERS, hedisLoading: false });
+      return;
+    }
+    set({
+      hedisMembers: data.map(r => ({
+        id:              r.id,
+        in:              r.initials,
+        name:            r.name,
+        gender:          r.gender,
+        age:             r.age,
+        memberId:        r.member_id,
+        language:        r.language || 'en',
+        gaps:            typeof r.gaps === 'string' ? JSON.parse(r.gaps) : (r.gaps || []),
+        assignee:        r.assignee,
+        assigneeInitials: r.assignee_initials,
+        startDate:       r.start_date,
+        advIllness:      r.adv_illness ?? 0,
+        frailty:         r.frailty ?? 0,
+        riskLevel:       r.risk_level,
+        tasks:           r.tasks,
+        outreachDots:    typeof r.outreach_dots === 'string' ? JSON.parse(r.outreach_dots) : (r.outreach_dots || ['pending', 'pending', 'pending']),
+        outreachDate:    r.outreach_date,
+        memberStatus:    r.member_status || 'Active',
+        phone:           r.phone,
+        dob:             r.dob,
+        ipa:             r.ipa,
+        hpCode:          r.hp_code,
+        zip:             r.zip,
+        city:            r.city,
+        state:           r.state,
+      })),
+      hedisLoading: false,
+    });
+  },
+
+  apcmPatients: [],
+  apcmPatientsLoading: false,
+  fetchApcmPatients: async () => {
+    set({ apcmPatientsLoading: true });
+    const { data, error } = await supabase
+      .from('apcm_patients')
+      .select('*')
+      .order('name', { ascending: true });
+    if (error || !data?.length) {
+      if (error) console.warn('fetchApcmPatients — falling back to local mock:', error.message);
+      const { APCM_PATIENTS } = await import('../features/apcm-billing/data/mock');
+      set({ apcmPatients: APCM_PATIENTS, apcmPatientsLoading: false });
+      return;
+    }
+    set({
+      apcmPatients: data.map(r => ({
+        id:                          r.id,
+        name:                        r.name,
+        memberId:                    r.member_id,
+        language:                    r.language || 'en',
+        ehrId:                       r.ehr_id,
+        billingMonth:                r.billing_month,
+        dateOfService:               r.date_of_service,
+        isQmb:                       r.is_qmb,
+        chronicConditionCount:       r.chronic_condition_count,
+        cptCode:                     r.cpt_code,
+        icdCodes:                    typeof r.icd_codes === 'string' ? JSON.parse(r.icd_codes) : (r.icd_codes || []),
+        lastEncounterDate:           r.last_encounter_date,
+        reasons:                     typeof r.reasons === 'string' ? JSON.parse(r.reasons) : (r.reasons || []),
+        renderingProvider:           r.rendering_provider,
+        renderingProviderInitials:   r.rendering_provider_initials,
+        comment:                     r.comment || '',
+        tab:                         r.tab,
+        billingStatus:               r.billing_status,
+        programId:                   r.program_id,
+      })),
+      apcmPatientsLoading: false,
+    });
+  },
+  updateGapStatus: (memberId, gapCode, nextStatus) => {
+    track('hedis.gap_status_updated', { memberId, gapCode, status: nextStatus });
+    set(s => ({
+      hedisMembers: (s.hedisMembers || []).map(m =>
+        m.id !== memberId ? m : {
+          ...m,
+          gaps: (m.gaps || []).map(g => g.code === gapCode ? { ...g, status: nextStatus } : g),
+        }
+      ),
+    }));
+  },
+  bulkUpdateGapStatuses: (memberId, updates) => {
+    // updates: { [gapCode]: nextStatus }
+    track('hedis.gap_status_bulk_updated', { memberId, count: Object.keys(updates || {}).length });
+    set(s => ({
+      hedisMembers: (s.hedisMembers || []).map(m =>
+        m.id !== memberId ? m : {
+          ...m,
+          gaps: (m.gaps || []).map(g => updates[g.code] ? { ...g, status: updates[g.code] } : g),
+        }
+      ),
+    }));
+  },
+  logCareGapActivity: (memberId, entry) => {
+    set(s => ({
+      caregapActivity: {
+        ...s.caregapActivity,
+        [memberId]: [{ id: Date.now(), at: new Date().toISOString(), ...entry }, ...(s.caregapActivity[memberId] || [])],
+      },
+    }));
+  },
+  // Push a real consolidated sign-off task into the existing `tasks` slice so
+  // TasksView surfaces it (one task per patient per Submit-for-Review batch).
+  // Gap codes ride in `task.labels` to satisfy the Gaps-column filter (AC-8).
+  createCareGapSignOffTask: ({ hedisMemberId, gapCodes, state, pdf } = {}) => {
+    track('hedis.signoff_task_created', { memberId: hedisMemberId });
+    const member = get().hedisMembers.find(m => m.id === hedisMemberId);
+    if (!member || !gapCodes || gapCodes.length === 0) return null;
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 1);
+    const id = `tk-hedis-${hedisMemberId}-${Date.now()}`;
+    const task = {
+      id,
+      name: 'Care Gap Review: Clinical Note',
+      description: `Sign off on consolidated note for ${member.name} covering ${gapCodes.length} care gap${gapCodes.length === 1 ? '' : 's'}.`,
+      status: 'pending',
+      priority: 'medium',
+      member: member.name,
+      assigned_to: null,
+      pool: 'HEDIS Sign-Off',
+      labels: [...gapCodes],
+      due_date: dueDate.toISOString().slice(0, 10),
+      created_by: 'Care Manager',
+      meta: `HEDIS Sign-Off · ${state || member.state || 'Unknown state'}`,
+      hedisMemberId,
+      hedisGapCodes: [...gapCodes],
+      state: state || member.state,
+      created_at: new Date().toISOString(),
+      attachments: pdf ? 1 : 0,
+      consolidatedPdf: pdf || null,
+    };
+    set(s => ({ tasks: [task, ...s.tasks] }));
+    return task;
+  },
+
+  // Replace the consolidated PDF on an existing sign-off task (reviewer edited
+  // the note). Atomically logs a "Clinical note updated" activity entry so the
+  // history is visible from the patient drawer.
+  updateSignOffTaskPdf: (taskId, pdf, actor = 'NP') => {
+    track('hedis.signoff_task_pdf_attached', { taskId });
+    const task = get().tasks.find(t => t.id === taskId);
+    if (!task || !pdf) return false;
+    set(s => ({
+      tasks: s.tasks.map(t => (
+        t.id === taskId
+          ? { ...t, consolidatedPdf: pdf, attachments: 1, updated_at: new Date().toISOString() }
+          : t
+      )),
+    }));
+    if (task.hedisMemberId) {
+      get().logCareGapActivity(task.hedisMemberId, {
+        title: 'Clinical note updated',
+        detail: `Reviewer edited the consolidated note for ${task.hedisGapCodes?.join(', ')}`,
+        actor,
+        icon: 'solar:pen-new-square-linear',
+        gapCodes: task.hedisGapCodes,
+        attachment: pdf,
+      });
+    }
+    return true;
+  },
+
+  // NP marks the sign-off task complete → every gap in the task transitions to
+  // Completed atomically (AC-13), the task moves to status=completed, and an
+  // activity entry is appended for the patient's history.
+  completeCareGapSignOffTask: (taskId, actor = 'NP') => {
+    const task = get().tasks.find(t => t.id === taskId);
+    if (!task || !task.hedisMemberId) return false;
+    set(s => ({
+      tasks: s.tasks.map(t => (t.id === taskId ? { ...t, status: 'completed' } : t)),
+    }));
+    const updates = Object.fromEntries((task.hedisGapCodes || []).map(c => [c, 'Completed']));
+    get().bulkUpdateGapStatuses(task.hedisMemberId, updates);
+    get().logCareGapActivity(task.hedisMemberId, {
+      title: 'Task completed by NP',
+      detail: `Gaps closed: ${(task.hedisGapCodes || []).join(', ')}`,
+      actor,
+      icon: 'solar:check-circle-linear',
+      gapCodes: task.hedisGapCodes,
+    });
+    return true;
+  },
+
   hccMembers: [],
   hccMembersLoading: false,
   fetchHccMembers: async () => {
@@ -1420,13 +1872,29 @@ export const useAppStore = create((set, get) => ({
       .select('*')
       .order('create_date', { ascending: false });
     if (error) {
-      console.error('fetchHccMembers error:', error.message);
-      set({ hccMembers: [], hccMembersLoading: false });
+      // Phase 2f — Supabase error: fall back to the full local mock so the
+      // worklist still has rows. Logs the error so we don't silently swap
+      // backends without noticing.
+      console.warn('fetchHccMembers error — falling back to local mock:', error.message);
+      const { HCC_MEMBERS } = await import('../features/hcc/data/mock');
+      set({ hccMembers: HCC_MEMBERS, hccMembersLoading: false });
+      return;
+    }
+    // Empty result set: same fallback.
+    if (!data || data.length === 0) {
+      const { HCC_MEMBERS } = await import('../features/hcc/data/mock');
+      set({ hccMembers: HCC_MEMBERS, hccMembersLoading: false });
       return;
     }
     const POS_MAP = { 'Walk-in': { code: '11', desc: 'Office' }, Telehealth: { code: '02', desc: 'Telehealth' } };
+    // Phase 2f — when Supabase rows are missing prototype-shape fields
+    // (dos_list, docStatus, cv/tv), fall back to the local rich mock keyed
+    // by name. This keeps the DiagPanel's DosSelector + Snapshot tiles
+    // populated even when the backend hasn't seeded that data yet.
+    const { HCC_MEMBER_BY_NAME } = await import('../features/hcc/data/mock');
     const members = (data || []).map(row => {
-      const dosList = row.dos_list || [];
+      const mock = HCC_MEMBER_BY_NAME[row.name] || {};
+      const dosList = (row.dos_list && row.dos_list.length) ? row.dos_list : (mock.dos_list || []);
       const pos = POS_MAP[row.visit_type] || { code: '', desc: row.visit_type || '' };
       return {
         id: row.id,
@@ -1435,13 +1903,15 @@ export const useAppStore = create((set, get) => ({
         name: row.name,
         g: row.gender,
         age: row.age,
-        cv: row.current_visit,
-        tv: row.total_visits,
+        cv: row.current_visit ?? mock.cv ?? null,
+        tv: row.total_visits  ?? mock.tv ?? null,
         dos_list: dosList,
-        dos: dosList[row.current_visit ? row.current_visit - 1 : 0]?.date,
-        visits: row.current_visit && row.total_visits ? `${row.current_visit} of ${row.total_visits} Visits` : null,
-        ch: row.chart_count,
-        docStatus: row.doc_status || [],
+        dos: dosList[(row.current_visit ?? mock.cv) ? (row.current_visit ?? mock.cv) - 1 : 0]?.date,
+        visits: (row.current_visit ?? mock.cv) && (row.total_visits ?? mock.tv)
+          ? `${row.current_visit ?? mock.cv} of ${row.total_visits ?? mock.tv} Visits`
+          : null,
+        ch: row.chart_count ?? mock.ch ?? null,
+        docStatus: (row.doc_status && row.doc_status.length) ? row.doc_status : (mock.docStatus || []),
         open: row.open_icds,
         date: row.create_date,
         due: row.due_label,
@@ -1506,14 +1976,462 @@ export const useAppStore = create((set, get) => ({
     set({ hccDiagnosisGaps: gaps, hccDiagnosisGapsLoading: false });
   },
 
+  // Optimistic accept/dismiss of an ICD inside the DiagPanel. Updates the
+  // local gap list immediately so the UI reflects the new state; the server
+  // round-trip is a TODO (Phase 3).
+  acceptHccGap: (code) => {
+    set(s => ({
+      hccDiagnosisGaps: s.hccDiagnosisGaps.map(g =>
+        g.code === code ? { ...g, status: 'Accepted' } : g
+      ),
+    }));
+    // ICD-level log entry → carries icds:[code] so it shows in both the
+    // ICD-scoped log AND the DOS-level (global) log.
+    get().addActivityEntry({
+      t: 'accept', by: 'You', role: 'Coder',
+      icds: [code],
+      headline: `Accepted ICD ${code}`,
+      from: 'Open', to: 'Accepted',
+    });
+  },
+  dismissHccGap: (code, reason) => {
+    set(s => ({
+      hccDiagnosisGaps: s.hccDiagnosisGaps.map(g =>
+        g.code === code ? { ...g, status: 'Dismissed', dismissReason: reason ?? g.dismissReason } : g
+      ),
+    }));
+    get().addActivityEntry({
+      t: 'dismiss', by: 'You', role: 'Coder',
+      icds: [code],
+      headline: `Dismissed ICD ${code}${reason ? ` — ${reason}` : ''}`,
+      from: 'Open', to: 'Dismissed',
+    });
+  },
+  reopenHccGap: (code) => {
+    set(s => ({
+      hccDiagnosisGaps: s.hccDiagnosisGaps.map(g =>
+        g.code === code ? { ...g, status: 'New', dismissReason: null } : g
+      ),
+    }));
+    get().addActivityEntry({
+      t: 'status_hcc', by: 'You', role: 'Coder',
+      icds: [code],
+      headline: `Reopened ICD ${code}`,
+      from: 'Dismissed', to: 'Open',
+    });
+  },
+
   selectedHccIds: [],
-  selectHccMember: (id) => set(s => ({
-    selectedHccIds: s.selectedHccIds.includes(id)
-      ? s.selectedHccIds.filter(x => x !== id)
-      : [...s.selectedHccIds, id]
-  })),
+  selectHccMember: (id) => {
+    track('hcc.member_selected', { memberId: id });
+    set(s => ({
+      selectedHccIds: s.selectedHccIds.includes(id)
+        ? s.selectedHccIds.filter(x => x !== id)
+        : [...s.selectedHccIds, id]
+    }));
+  },
   selectAllHcc: (ids) => set({ selectedHccIds: ids }),
   clearHccSelected: () => set({ selectedHccIds: [] }),
+
+  // ─── HCC worklist sub-header state ───
+  hccListTitle: 'HCC List',
+  setHccListTitle: (title) => set({ hccListTitle: title }),
+  hccDueDateFilter: null, // null | 'Overdue' | 'Due Today' | 'Due This Week' | 'Due Next Week' | 'Due More Than 2 Weeks'
+  setHccDueDateFilter: (cat) => set({ hccDueDateFilter: cat }),
+
+  // ─── HCC worklist filter state ───
+  // hccFilters: { [filterKey]: string[] } — empty object = no filters applied.
+  hccFilters: {},
+  setHccFilter: (k, vals) => {
+    track('hcc.filter_applied', { filterKey: k, filterValue: vals });
+    set(s => {
+      const next = { ...s.hccFilters };
+      if (!vals || !vals.length) delete next[k];
+      else next[k] = vals;
+      // Changing a filter detaches us from any "applied saved filter" highlight
+      return { hccFilters: next, hccActiveSavedId: null };
+    });
+  },
+  clearHccFilters: () => {
+    track('hcc.filters_cleared_all');
+    set({ hccFilters: {}, hccActiveSavedId: null });
+  },
+
+  // Which filter chip keys appear in the chip row. The MoreFiltersPopover
+  // toggles entries in this set. Initialized to the primary keys on first read.
+  hccVisibleFilterKeys: null, // null → fall back to PRIMARY_FILTER_KEYS in components
+  toggleHccVisibleFilter: (k) => set(s => {
+    // Lazy-initialize from primary keys
+    const current = s.hccVisibleFilterKeys
+      ? new Set(s.hccVisibleFilterKeys)
+      : new Set(['my','rl','coh','g','open','chart','supS','cdrS','r1s','dec']);
+    if (current.has(k)) current.delete(k); else current.add(k);
+    return { hccVisibleFilterKeys: [...current] };
+  }),
+  clearHccVisibleFilters: () => set({ hccVisibleFilterKeys: [] }),
+
+  // Saved filter sets, keyed by shared-list label (HCC, TOC, SNP, AWV,
+  // HEDIS, High Utilizers, DM). Each entry: { id, name, filters }. Persisted
+  // to localStorage so users keep their saved views across reloads.
+  //
+  // The per-list filter STATE lives elsewhere (hccFilters for HCC,
+  // activeFilters for TOC and other generic lists). LIST_FILTER_KEY below
+  // tells the store which slice to read/write for each list.
+  savedFiltersByList: (() => {
+    try {
+      const raw = localStorage.getItem('savedFiltersByList');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
+    } catch {/* fall through */}
+    // Migrate legacy hccSavedFilters if present so existing data isn't lost.
+    try {
+      const legacy = localStorage.getItem('hccSavedFilters');
+      if (legacy) {
+        const parsed = JSON.parse(legacy);
+        if (Array.isArray(parsed)) return { HCC: parsed };
+      }
+    } catch {/* */}
+    return {
+      HCC: [
+        { id: 'sf1', name: 'High Risk Members',  filters: { rl: ['High'] } },
+        { id: 'sf2', name: 'Overdue Incomplete', filters: { supS: ['Assign'], cdrS: ['Assign'] } },
+      ],
+    };
+  })(),
+  activeSavedIdByList: (() => {
+    try {
+      const raw = localStorage.getItem('activeSavedIdByList');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
+    } catch {/* */}
+    const legacy = localStorage.getItem('hccActiveSavedId');
+    return legacy ? { HCC: legacy } : {};
+  })(),
+  // saveSavedFilter(list, name): read the current filter slice for `list`
+  // and store it under savedFiltersByList[list] as a named view.
+  saveSavedFilter: (list, name) => {
+    track('list.filter_saved', { list });
+    set(s => {
+      const trimmed = (name || '').trim();
+      if (!trimmed || !list) return {};
+      const key = LIST_FILTER_KEY[list] || 'activeFilters';
+      const snapshot = { ...(s[key] || {}) };
+      const id = `sf-${Date.now()}`;
+      const cur = s.savedFiltersByList[list] || [];
+      const nextSaved = { ...s.savedFiltersByList, [list]: [...cur, { id, name: trimmed, filters: snapshot }] };
+      const nextActive = { ...s.activeSavedIdByList, [list]: id };
+      try { localStorage.setItem('savedFiltersByList', JSON.stringify(nextSaved)); } catch {/* */}
+      try { localStorage.setItem('activeSavedIdByList', JSON.stringify(nextActive)); } catch {/* */}
+      return { savedFiltersByList: nextSaved, activeSavedIdByList: nextActive };
+    });
+  },
+  renameSavedFilter: (list, id, name) => {
+    track('list.saved_filter_renamed', { list, filterId: id });
+    set(s => {
+      const cur = s.savedFiltersByList[list] || [];
+      const nextList = cur.map(f => f.id === id ? { ...f, name: (name || '').trim() || f.name } : f);
+      const nextSaved = { ...s.savedFiltersByList, [list]: nextList };
+      try { localStorage.setItem('savedFiltersByList', JSON.stringify(nextSaved)); } catch {/* */}
+      return { savedFiltersByList: nextSaved };
+    });
+  },
+  deleteSavedFilter: (list, id) => {
+    track('list.saved_filter_deleted', { list, filterId: id });
+    set(s => {
+      const cur = s.savedFiltersByList[list] || [];
+      const nextList = cur.filter(f => f.id !== id);
+      const nextSaved = { ...s.savedFiltersByList, [list]: nextList };
+      const wasActive = s.activeSavedIdByList[list] === id;
+      const nextActive = { ...s.activeSavedIdByList };
+      if (wasActive) delete nextActive[list];
+      const key = LIST_FILTER_KEY[list] || 'activeFilters';
+      try { localStorage.setItem('savedFiltersByList', JSON.stringify(nextSaved)); } catch {/* */}
+      try { localStorage.setItem('activeSavedIdByList', JSON.stringify(nextActive)); } catch {/* */}
+      return {
+        savedFiltersByList: nextSaved,
+        activeSavedIdByList: nextActive,
+        ...(wasActive ? { [key]: {} } : {}),
+      };
+    });
+  },
+  applySavedFilter: (list, id) => {
+    track('list.saved_filter_applied', { list, filterId: id });
+    set(s => {
+      const f = (s.savedFiltersByList[list] || []).find(x => x.id === id);
+      if (!f) return {};
+      const key = LIST_FILTER_KEY[list] || 'activeFilters';
+      const nextActive = { ...s.activeSavedIdByList, [list]: id };
+      try { localStorage.setItem('activeSavedIdByList', JSON.stringify(nextActive)); } catch {/* */}
+      return { [key]: { ...f.filters }, activeSavedIdByList: nextActive };
+    });
+  },
+
+  // Thin HCC-specific aliases so the existing FilterChipBar's "Save Filter"
+  // button and any other HCC-only callers keep working without rewrites.
+  // (Getters on the state object are not reactive in Zustand — components
+  // that need to subscribe should read `savedFiltersByList.HCC` directly.)
+  saveHccFilter: (name) => useAppStore.getState().saveSavedFilter('HCC', name),
+  renameHccSavedFilter: (id, name) => useAppStore.getState().renameSavedFilter('HCC', id, name),
+  deleteHccSavedFilter: (id) => useAppStore.getState().deleteSavedFilter('HCC', id),
+  applyHccSavedFilter: (id) => useAppStore.getState().applySavedFilter('HCC', id),
+
+  // Column visibility — array of column keys that are hidden. Sticky Member/Actions
+  // columns are not toggleable so they never appear here.
+  hccHiddenCols: [],
+  toggleHccColumn: (k) => {
+    track('hcc.column_toggled', { column: k });
+    set(s => {
+      const next = new Set(s.hccHiddenCols);
+      if (next.has(k)) next.delete(k); else next.add(k);
+      return { hccHiddenCols: [...next] };
+    });
+  },
+  clearHccHiddenCols: () => set({ hccHiddenCols: [] }),
+
+  // Column ordering — array of column keys in the user's preferred order.
+  // Empty array means "use HCC_COLUMNS default order". Drag-to-reorder in the
+  // Show Columns popover writes here; HccWorklistTable + ColumnConfigPopover
+  // apply this order via `orderColumns(HCC_COLUMNS, hccColumnOrder)`.
+  hccColumnOrder: [],
+  reorderHccColumns: (fromKey, toKey) => set(s => {
+    if (!fromKey || !toKey || fromKey === toKey) return {};
+    track('hcc.columns_reordered', { from: fromKey, to: toKey });
+    // Seed the order from the static default the first time we move anything.
+    const base = s.hccColumnOrder.length
+      ? [...s.hccColumnOrder]
+      : (s._hccDefaultColumnKeys || []);
+    if (!base.length) return {};
+    const from = base.indexOf(fromKey);
+    const to = base.indexOf(toKey);
+    if (from < 0 || to < 0) return {};
+    base.splice(to, 0, base.splice(from, 1)[0]);
+    return { hccColumnOrder: base };
+  }),
+  // Stash the default key order once at app boot so reorderHccColumns can seed
+  // itself without importing columns.js (avoids a circular dep).
+  _hccDefaultColumnKeys: [],
+  setHccDefaultColumnKeys: (keys) => set(s => (
+    s._hccDefaultColumnKeys.length ? {} : { _hccDefaultColumnKeys: keys }
+  )),
+  clearHccColumnOrder: () => set({ hccColumnOrder: [] }),
+
+  // ─── HCC DOS-level assignment engine ─────────────────────────────────
+  // Per-(patient, DOS) assignment state keyed as `${patientId}::${dosDate}`.
+  // The shape is defined in features/hcc/assignment/dosState.js. Lifecycle
+  // transitions live in features/hcc/assignment/lifecycle.js — this slice
+  // just stores the result and exposes thin wrappers per AC.
+  hccDosAssignments: {},
+  // Client-level config — sampling rates can be overridden per client.
+  hccConfig: {
+    astrana: true,
+    samplingRates: { ...DEFAULT_SAMPLING_RATES },
+    slaCloseDays: 7,
+  },
+
+  // Look up the DOS-state record. Lazy-hydrates from the legacy member fields
+  // the first time a (patient, DOS) is read so the worklist's existing display
+  // values don't disappear.
+  getHccDosState: (patientId, dosDate) => {
+    const key = hccDosKey(patientId, dosDate);
+    const map = useAppStore.getState().hccDosAssignments;
+    if (map[key]) return map[key];
+    const patient = useAppStore.getState().hccMembers.find(m => m.id === patientId);
+    if (!patient) return null;
+    const idx = (patient.dos_list || []).findIndex(d => d.date === dosDate);
+    const hydrated = hydrateFromMember(patient, dosDate, idx < 0 ? 0 : idx);
+    set(s => ({ hccDosAssignments: { ...s.hccDosAssignments, [key]: hydrated } }));
+    return hydrated;
+  },
+
+  // Initialize Support assignment for every DOS on a patient (AC-1).
+  initializeHccPatient: (patientId) => set(s => {
+    const patient = s.hccMembers.find(m => m.id === patientId);
+    if (!patient) return {};
+    const { nextMap } = hccLifecycle.initializePatient(s.hccDosAssignments, patient, {
+      astrana: s.hccConfig.astrana,
+      slaCloseDays: s.hccConfig.slaCloseDays,
+    });
+    return { hccDosAssignments: nextMap };
+  }),
+
+  // Generic dispatcher — `kind` corresponds to a lifecycle.js export. Each
+  // call rebuilds `hccDosAssignments` immutably. UI components use the named
+  // wrappers below; this is the single chokepoint for the engine.
+  transitionHccDos: (patientId, dosDate, kind, payload = {}) => set(s => {
+    const fn = hccLifecycle[kind];
+    if (typeof fn !== 'function') {
+      console.warn(`transitionHccDos: unknown kind "${kind}"`);
+      return {};
+    }
+    const patient = s.hccMembers.find(m => m.id === patientId);
+    if (!patient) return {};
+    const dos = (patient.dos_list || []).find(d => d.date === dosDate) || { date: dosDate };
+    const actor = payload.actor || 'current-user';
+    let result;
+    switch (kind) {
+      case 'markInsufficient':
+      case 'rejectDos':
+        result = fn(s.hccDosAssignments, patient, dos, actor, payload.reason);
+        break;
+      case 'returnDos':
+        result = fn(s.hccDosAssignments, patient, dos, payload.fromRole, actor, payload.reason);
+        break;
+      case 'reassignRole':
+        result = fn(s.hccDosAssignments, patient, dos, payload.role, payload.staffId, actor, payload.reason);
+        break;
+      case 'completeR1':
+      case 'completeR2':
+        result = fn(s.hccDosAssignments, patient, dos, actor, s.hccConfig.samplingRates);
+        break;
+      default:
+        result = fn(s.hccDosAssignments, patient, dos, actor);
+    }
+    // DOS-level log entry — no `icds`, so it appears only in the global
+    // (DOS-level) Activity Log, not in any ICD-scoped view. Deferred to a
+    // microtask so the addActivityEntry side-effect doesn't run inside the
+    // same set() call.
+    queueMicrotask(() => {
+      const transitionLabel = HCC_TRANSITION_LABEL[kind] || kind;
+      useAppStore.getState().addActivityEntry({
+        t: 'status_dos',
+        by: 'You', role: 'Coder',
+        dos: dosDate,
+        headline: `DOS ${dosDate} — ${transitionLabel}`,
+      });
+    });
+    return { hccDosAssignments: result.nextMap };
+  }),
+
+  // Convenience wrappers — one per AC transition so consumers don't have to
+  // remember string kinds. They forward to transitionHccDos above.
+  hccMarkSupportInProgress: (pid, dos, actor) => {
+    track('hcc.support_started', { memberId: pid });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'markSupportInProgress', { actor });
+  },
+  hccCompleteSupport: (pid, dos, actor) => {
+    track('hcc.support_completed', { memberId: pid });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'completeSupport', { actor });
+  },
+  hccMarkInsufficient: (pid, dos, actor, reason) => {
+    track('hcc.insufficient_marked', { memberId: pid, dosId: dos, reason });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'markInsufficient', { actor, reason });
+  },
+  hccRejectDos: (pid, dos, actor, reason) => {
+    track('hcc.dos_rejected', { dosId: dos, reason });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'rejectDos', { actor, reason });
+  },
+  hccCompleteCoder: (pid, dos, actor) => {
+    track('hcc.coder_completed', { memberId: pid });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'completeCoder', { actor });
+  },
+  hccRequestRecords: (pid, dos, actor) => {
+    track('hcc.records_requested', { memberId: pid });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'requestRecords', { actor });
+  },
+  hccRecordsReceived: (pid, dos, actor) => {
+    track('hcc.records_received', { memberId: pid });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'recordsReceived', { actor });
+  },
+  hccCompleteR1: (pid, dos, actor) => {
+    track('hcc.review_completed', { memberId: pid, level: 'r1' });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'completeR1', { actor });
+  },
+  hccCompleteR2: (pid, dos, actor) => {
+    track('hcc.review_completed', { memberId: pid, level: 'r2' });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'completeR2', { actor });
+  },
+  hccCompleteR3: (pid, dos, actor) => {
+    track('hcc.review_completed', { memberId: pid, level: 'r3' });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'completeR3', { actor });
+  },
+  hccReturnDos: (pid, dos, fromRole, actor, reason) => {
+    track('hcc.dos_returned', { dosId: dos, toRole: fromRole });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'returnDos', { fromRole, actor, reason });
+  },
+  hccReassignRole: (pid, dos, role, staffId, actor, reason, displayName) => {
+    track('hcc.role_reassigned', { memberId: pid, fromRole: null, toRole: role });
+    const result = useAppStore.getState().transitionHccDos(pid, dos, 'reassignRole', { role, staffId, actor, reason });
+    // Also patch the member's legacy role field so the worklist row's
+    // RoleStatusCell (which reads member.sup / .cdr / .r1 / .r2 / .r3
+    // directly) reflects the new assignee immediately. Status flips to
+    // 'New' to switch the cell out of its "Assign" empty state.
+    //
+    // `displayName` is an optional override used by the bulk dialog when
+    // picking a user from the system pool (Account → Users + Astrana
+    // staff). For Account-pool users not in the Astrana roster,
+    // hccStaffById() returns null and the legacy field would never get
+    // patched — the displayName override solves that.
+    const staff = hccStaffById(staffId);
+    const name = staff?.name || displayName;
+    const fieldByRole = { support: 'sup', coder: 'cdr', r1: 'r1', r2: 'r2', r3: 'r3' };
+    const statusFieldByRole = { support: 'supS', coder: 'cdrS', r1: 'r1s', r2: 'r2s', r3: 'r3s' };
+    const f = fieldByRole[role];
+    const sf = statusFieldByRole[role];
+    if (f && name) {
+      set(s => ({
+        hccMembers: s.hccMembers.map(m =>
+          m.id === pid ? { ...m, [f]: name, [sf]: 'New' } : m,
+        ),
+      }));
+    }
+    // The engine's reassignRole stamps the assignee but leaves status null,
+    // which makes resolveCurrentAssignee() still report this bucket as
+    // unassigned (it only treats the bucket as active when status is both
+    // set and non-'Assign'). Force-stamp a 'New' status so AssigneeAvatar /
+    // AssigneeCell flip immediately to the active state with the new owner.
+    const dosKey = `${pid}::${dos}`;
+    set(s => {
+      const cur = s.hccDosAssignments?.[dosKey];
+      if (!cur || !cur[role]) return {};
+      return {
+        hccDosAssignments: {
+          ...s.hccDosAssignments,
+          [dosKey]: {
+            ...cur,
+            [role]: { ...cur[role], status: 'New' },
+          },
+        },
+      };
+    });
+    return result;
+  },
+
+  // Generic role-status patch — used by the DiagPanel status menu for
+  // transitions the engine doesn't have a dedicated AC for (e.g. New →
+  // In Progress on coder/reviewer roles, where the spec assumes work
+  // starts implicitly on assignment). Patches BOTH the engine's dosState
+  // bucket and the legacy member.{role}S field so worklist + DiagPanel
+  // agree on the new status.
+  hccSetRoleStatus: (pid, dos, role, status) => {
+    const fieldByRole       = { support: 'sup',  coder: 'cdr',  r1: 'r1',  r2: 'r2',  r3: 'r3'  };
+    const statusFieldByRole = { support: 'supS', coder: 'cdrS', r1: 'r1s', r2: 'r2s', r3: 'r3s' };
+    const f  = fieldByRole[role];
+    const sf = statusFieldByRole[role];
+    if (!f || !sf) return;
+    const dosKey = `${pid}::${dos}`;
+    set(s => {
+      const next = { hccMembers: s.hccMembers.map(m =>
+        m.id === pid ? { ...m, [sf]: status } : m,
+      ) };
+      const cur = s.hccDosAssignments?.[dosKey];
+      if (cur && cur[role]) {
+        next.hccDosAssignments = {
+          ...s.hccDosAssignments,
+          [dosKey]: { ...cur, [role]: { ...cur[role], status } },
+        };
+      }
+      return next;
+    });
+    track('hcc.role_status_set', { memberId: pid, role, status });
+  },
+
+  // Helpers exposed for the UI — resolve a staff id back to a display name.
+  hccStaffName: (staffId) => (hccStaffById(staffId)?.name || staffId || ''),
+  hccStaffInitials: (staffId) => (hccStaffById(staffId)?.initials || ''),
 
   // ─── All Patients (unified TOC + HCC view, Supabase-backed) ───
   allPatients: [],
@@ -1580,15 +2498,498 @@ export const useAppStore = create((set, get) => ({
   diagPanelMemberId: null,
   diagActiveTab: 'Codes',
   diagDosFilter: null,      // null = first DOS (member.dos_list[0]); 'ALL' = sweep; else a date string
-  diagViewMode: 'HCC',      // 'HCC' (grouped) | 'ICD' (flat)
-  openDiagPanel: (id) => set({
+  diagViewMode: 'ICD',      // 'ICD' (flat sections, default) | 'HCC' (grouped)
+  diagHighlightCode: null,
+  // Status pill next to the DOS selector (current DOS's worklist status).
+  diagDosStatus: 'New',
+  setDiagDosStatus: (s) => set({ diagDosStatus: s }),
+  // Snapshot-tile filter: 'Open' | 'Suspect' | 'Recapture' | 'Other' | null.
+  diagSnapFilter: null,
+  setDiagSnapFilter: (f) => set({ diagSnapFilter: f }),
+  // Patient Gap Snapshot section collapsed/expanded.
+  diagSnapOpen: true,
+  setDiagSnapOpen: (open) => set({ diagSnapOpen: open }),
+  // Left-workspace tab: null = drawer at 40vw with only the right pane;
+  // any string = drawer expands to 70vw with the matching tab content.
+  diagLeftPanel: null,   // 'activity' | 'comments' | 'documents' | 'notes' | 'claims' | null
+  // When the Activity Log panel is opened from a specific ICD card (by
+  // clicking the ICD code), this holds that code so the timeline filters to
+  // entries touching it. null = DOS-level (all entries). Opening via the
+  // toolbar Activity Log icon always resets this to null.
+  diagActivityIcd: null,
+  // Toolbar entry points reset the ICD scope (they're DOS-level actions).
+  setDiagLeftPanel: (panel) => set({ diagLeftPanel: panel, diagActivityIcd: null }),
+  // Switching tabs WITHIN the left panel preserves the current scope
+  // (DOS-level stays DOS-level; ICD-level stays scoped to its code).
+  setDiagTab: (panel) => set({ diagLeftPanel: panel }),
+  // Open the left Activity Log scoped to a single ICD code.
+  openIcdActivityLog: (code) => set({ diagLeftPanel: 'activity', diagActivityIcd: code || null }),
+  // Open any left panel tab scoped to a single ICD code (used by the per-card
+  // Documents / Comments / Notes count buttons in IcdRow).
+  openIcdPanel: (panel, code) => set({ diagLeftPanel: panel, diagActivityIcd: code || null }),
+  clearDiagActivityIcd: () => set({ diagActivityIcd: null }),
+
+  // Documents tab — inline uploader widget toggle. Replaces the old drawer
+  // open for the in-drawer Upload button (Figma 278:162482).
+  hccDocsUploaderOpen: false,
+  toggleHccDocsUploader: () => set(s => ({ hccDocsUploaderOpen: !s.hccDocsUploaderOpen })),
+  closeHccDocsUploader: () => set({ hccDocsUploaderOpen: false }),
+
+  // Live-uploaded documents — appended to the static DOCUMENTS list in the
+  // Documents tab so a newly-uploaded file appears at the top with status
+  // 'pending'. Newest-first.
+  hccUploadedDocs: [],
+  recordHccUpload: (doc) => set(s => ({ hccUploadedDocs: [doc, ...s.hccUploadedDocs] })),
+
+  // ── HCC Care Team configuration ─────────────────────────────────────
+  // Admin-managed teams for the Phase 2 auto-assignment workflow. The
+  // ConfigureTeamDrawer (Settings → Member/Leads → Care Team) writes here
+  // and the Care Team table reads from it. Newest-first.
+  //
+  // Team shape:
+  //   {
+  //     id, name, kind: 'hcc' | 'care-program' | 'hedis',
+  //     teamType,            // 'Reviewer 1' / 'Coder' / 'SNP' / 'Assignee'…
+  //     allocatedTins: [],   // team-level routing key (Phase 2 spec)
+  //     createdAt, createdBy, lastModifiedAt, lastModifiedBy,
+  //     members: [
+  //       {
+  //         userId, name, initials, roles,  // denormalized for table render
+  //         capacityPct,                    // share of THIS team allocated to them
+  //         assignTo: [{ dim: 'TIN'|'Vendor'|'Coder'|'Reviewer 1'|…, value, pct }],
+  //       },
+  //     ],
+  //   }
+  //
+  // Seeded with the same five rows the Figma reference shows so the table
+  // isn't empty on first load AND every row is editable (no static mock
+  // fallback path needed in the panel).
+  hccCareTeams: [
+    {
+      id: 'seed-rt1', name: 'Reviewer 1 Team', kind: 'hcc',          teamType: 'Reviewer 1',
+      allocatedTins: ['12-3456789'], createdAt: '02/21/2026', createdBy: 'Dina Morries',
+      lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson',
+      members: [
+        { userId: 'MA', name: 'M. Almeda',   initials: 'MA', roles: 'Reviewer 1', capacityPct: 50, assignTo: [{ dim: 'Coder', value: 'DH', pct: 50 }] },
+      ],
+    },
+    {
+      id: 'seed-rt2', name: 'Coder Team', kind: 'hcc', teamType: 'Coder',
+      allocatedTins: ['12-3456789', '98-7654321'], createdAt: '02/21/2026', createdBy: 'Dina Morries',
+      lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson',
+      members: [
+        { userId: 'DH', name: 'Deborah Hintz', initials: 'DH', roles: 'Coder', capacityPct: 60, assignTo: [{ dim: 'TIN', value: '12-3456789', pct: 60 }] },
+        { userId: 'PP', name: 'P. Plourde',    initials: 'PP', roles: 'Coder', capacityPct: 40, assignTo: [{ dim: 'TIN', value: '98-7654321', pct: 30 }] },
+      ],
+    },
+    {
+      id: 'seed-rt3', name: 'SNP Team', kind: 'care-program', teamType: 'SNP',
+      allocatedTins: [], createdAt: '02/21/2026', createdBy: 'Dina Morries',
+      lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson',
+      members: [
+        { userId: 'fallback-1', name: 'Michael Corleone', initials: 'MC', roles: 'Nurse', capacityPct: 60, assignTo: [] },
+        { userId: 'fallback-2', name: 'Larry Sanders',    initials: 'LS', roles: 'Medical Assistant', capacityPct: 60, assignTo: [] },
+      ],
+    },
+    {
+      id: 'seed-rt4', name: 'TOC Team', kind: 'care-program', teamType: 'TCM',
+      allocatedTins: [], createdAt: '02/21/2026', createdBy: 'Dina Morries',
+      lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson',
+      members: [
+        { userId: 'fallback-3', name: 'Tina Turner', initials: 'TT', roles: 'Admin/Practice Manager', capacityPct: 80, assignTo: [] },
+      ],
+    },
+    {
+      id: 'seed-rt5', name: 'Care Gap Team', kind: 'hedis', teamType: 'Assignee',
+      allocatedTins: [], createdAt: '02/21/2026', createdBy: 'Dina Morries',
+      lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson',
+      members: [
+        { userId: 'fallback-4', name: 'Manny Grizwald', initials: 'MG', roles: 'Billing Specialist', capacityPct: 30, assignTo: [] },
+        { userId: 'fallback-5', name: 'Bobby Brown',    initials: 'BB', roles: 'Front Desk Staff/Receptionist', capacityPct: 30, assignTo: [] },
+      ],
+    },
+  ],
+  // Load teams from Supabase. Keeps the seeded fallback when the table is
+  // empty or errors (same SWR-style pattern the rest of the store uses).
+  fetchHccCareTeams: async () => {
+    const { data, error } = await supabase
+      .from('care_teams')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (!error && data?.length) {
+      set({ hccCareTeams: data.map(careTeamRowToJs) });
+    }
+  },
+  // Mutations update local state optimistically, then persist to Supabase.
+  addHccCareTeam: (team) => {
+    set(s => ({ hccCareTeams: [team, ...s.hccCareTeams] }));
+    supabase.from('care_teams').insert(careTeamJsToDb(team))
+      .then(({ error }) => { if (error) console.error('addHccCareTeam:', error); });
+  },
+  updateHccCareTeam: (id, patch) => {
+    set(s => ({
+      hccCareTeams: s.hccCareTeams.map(t => t.id === id ? { ...t, ...patch } : t),
+    }));
+    const merged = get().hccCareTeams.find(t => t.id === id);
+    if (merged) {
+      supabase.from('care_teams').upsert(careTeamJsToDb(merged), { onConflict: 'id' })
+        .then(({ error }) => { if (error) console.error('updateHccCareTeam:', error); });
+    }
+  },
+  deleteHccCareTeam: (id) => {
+    set(s => ({ hccCareTeams: s.hccCareTeams.filter(t => t.id !== id) }));
+    supabase.from('care_teams').delete().eq('id', id)
+      .then(({ error }) => { if (error) console.error('deleteHccCareTeam:', error); });
+  },
+
+  // ── HCC Activity Log (live) ──────────────────────────────────────────
+  // Live entries appended by user actions (accept, dismiss, post comment,
+  // add note, upload document, status change). Merged with the mock ACTIVITY
+  // dataset by the Activity Log tab so anything the user just did appears
+  // at the top of the timeline.
+  //
+  // Shape: { [memberName]: Entry[] } where the newest entry is at index 0.
+  // Entry contract — see src/features/hcc/data/activity.js for the legacy
+  // shape; live entries additionally carry { id, ts } so they can be deduped
+  // and sorted. `icds: [code]` means the entry is ICD-level and will appear
+  // in BOTH the global DOS-level log AND any ICD-scoped log for that code.
+  // No `icds` (or empty array) means DOS-level only.
+  hccActivityLog: {},
+  addActivityEntry: (entry) => set(s => {
+    const memberId = s.diagPanelMemberId;
+    if (!memberId) return {};
+    const member = s.hccMembers.find(m => m.id === memberId);
+    const memberKey = member?.name;
+    if (!memberKey) return {};
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const date = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
+    const hours = now.getHours();
+    const time = `${((hours + 11) % 12) + 1}:${pad(now.getMinutes())} ${hours >= 12 ? 'PM' : 'AM'}`;
+    // Resolve the effective DOS the same way DiagPanel does — fall back to
+    // the first DOS in the member's list when no explicit filter is set.
+    const effectiveDos = s.diagDosFilter || member?.dos_list?.[0]?.date || member?.dos || null;
+    const filled = {
+      id: `live-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      ts: now.getTime(),
+      date, time,
+      dos: effectiveDos,
+      ...entry,
+    };
+    const list = s.hccActivityLog[memberKey] || [];
+    // Dedup guard — React StrictMode in dev double-invokes some store-set
+    // pathways which would otherwise produce two identical entries per click.
+    // Drop a new entry if the previous one has the same type + headline within
+    // the last 1500ms.
+    const last = list[0];
+    if (last && last.t === filled.t && last.headline === filled.headline && (filled.ts - last.ts) < 1500) {
+      return {};
+    }
+    return { hccActivityLog: { ...s.hccActivityLog, [memberKey]: [filled, ...list] } };
+  }),
+
+  // Upload chart drawer — member object or null. Opened from ChartPopover's
+  // "Upload New Chart" CTA and from the DiagPanel chart-upload action.
+  hccUploadMember: null,
+  openHccUploadDrawer: (member) => set({ hccUploadMember: member }),
+  closeHccUploadDrawer: () => set({ hccUploadMember: null }),
+
+  // ─── HCC Document Upload + OCR Review (Individual Upload path) ──────
+  // Session state for the multi-encounter PDF upload flow described in the
+  // Jira ticket. Lives at app level — drawer is mounted once in AppLayout.
+  //   phase: 'picker' → 'processing' → 'review'
+  //   file:        The selected File object (PDF)
+  //   encounters:  Array of OCR-extracted encounter sections (across all
+  //                patients in the PDF). Each: { tempId, patient:{name,dob,
+  //                matchedMemberId,matchConfidence}, dos, provider, pos,
+  //                posDesc, icds:[{code,valid}], errors:[fieldName] }
+  //   seededMemberId: When opened from an "Upload Document" action on a
+  //                specific patient (AllPatientsRow / QuickView), this is
+  //                that member's id — used to auto-link ambiguous matches.
+  //   summary:     Set after confirm — { created, updated }
+  hccUploadSession: null,
+  startHccUpload: (seededMemberId = null) => set({
+    hccUploadSession: {
+      id: `up-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
+      phase: 'picker',
+      file: null,
+      encounters: [],
+      seededMemberId,
+      summary: null,
+    },
+  }),
+  setHccUploadFile: (file) => set(s => s.hccUploadSession
+    ? { hccUploadSession: { ...s.hccUploadSession, file, phase: 'processing' } }
+    : {}),
+  setHccUploadEncounters: (encounters) => set(s => s.hccUploadSession
+    ? { hccUploadSession: { ...s.hccUploadSession, encounters, phase: 'review' } }
+    : {}),
+  // Append more encounters from a second OCR pass (user clicks "Upload"
+  // again during review). Preserves existing rows + their edits.
+  appendHccUploadEncounters: (encounters) => set(s => s.hccUploadSession
+    ? { hccUploadSession: {
+        ...s.hccUploadSession,
+        encounters: [...s.hccUploadSession.encounters, ...encounters],
+      } }
+    : {}),
+  patchHccUploadEncounter: (idx, patch) => set(s => {
+    if (!s.hccUploadSession) return {};
+    const next = s.hccUploadSession.encounters.map((e, i) => i === idx ? { ...e, ...patch } : e);
+    return { hccUploadSession: { ...s.hccUploadSession, encounters: next } };
+  }),
+  removeHccUploadEncounter: (idx) => set(s => {
+    if (!s.hccUploadSession) return {};
+    return {
+      hccUploadSession: {
+        ...s.hccUploadSession,
+        encounters: s.hccUploadSession.encounters.filter((_, i) => i !== idx),
+      },
+    };
+  }),
+  cancelHccUpload: () => set({ hccUploadSession: null }),
+
+  // Exact match by normalized name + DOB. AC-9 requires 100% confidence —
+  // partial / probabilistic matching is forbidden (HIPAA). Returns the
+  // member object or null.
+  findHccMemberByNameAndDob: (name, dob) => {
+    if (!name || !dob) return null;
+    const norm = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const target = norm(name);
+    const targetDob = String(dob || '').trim();
+    const found = useAppStore.getState().hccMembers.find(m => norm(m.name) === target && (m.dob || '').trim() === targetDob);
+    return found || null;
+  },
+
+  // Atomic create-or-merge for a single OCR encounter. Returns
+  //   { kind: 'created' | 'updated' | 'relatedNew', memberId, dosDate }
+  // so the caller can aggregate a summary for the success toast.
+  // Uniqueness key: memberId + dos + provider + pos.
+  // - Active DOS (any role's status is New / Action Needed):
+  //     merge net-new ICDs into the existing row, attach doc, log activity.
+  // - Completed DOS (all roles terminal):
+  //     create a new DOS entry with relatedDosId pointing at the original
+  //     (and stamp the original's relatedDosIds with the new key).
+  // - Missing DOS: bootstrap via initializeHccPatient, append docStatus,
+  //     increment ch, attach doc + log.
+  hccCreateOrMergeFromEncounter: (enc) => {
+    const s = useAppStore.getState();
+    const memberId = enc.patient?.matchedMemberId;
+    if (!memberId) return { kind: 'skipped' };
+    const member = s.hccMembers.find(m => m.id === memberId);
+    if (!member) return { kind: 'skipped' };
+    const docName = enc._docName || 'Uploaded Document.pdf';
+    const docType = enc._docType || 'Progress Note';
+    const icdCodes = (enc.icds || []).filter(i => i.valid !== false).map(i => i.code);
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const dateStr = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
+
+    // Helper — append to per-member activity log without requiring the
+    // DiagPanel to be open (the upload flow runs from a global drawer).
+    const logActivity = (entry) => {
+      const memberKey = member.name;
+      const ts = now.getTime();
+      const hours = now.getHours();
+      const time = `${((hours + 11) % 12) + 1}:${pad(now.getMinutes())} ${hours >= 12 ? 'PM' : 'AM'}`;
+      set(st => {
+        const list = st.hccActivityLog[memberKey] || [];
+        return {
+          hccActivityLog: {
+            ...st.hccActivityLog,
+            [memberKey]: [{
+              id: `up-${ts}-${Math.random().toString(36).slice(2,5)}`,
+              ts, date: dateStr, time, dos: enc.dos,
+              by: 'You', role: 'Support',
+              ...entry,
+            }, ...list],
+          },
+        };
+      });
+    };
+
+    // Compute existing row's role-statuses for the uniqueness key
+    // (memberId, dos, provider, pos). The engine maps DOS to a dosState
+    // by `${memberId}::${dos}` (no provider/pos in the key) — for the
+    // prototype we treat (memberId, dos) as the row key and compare
+    // provider/pos at the member field level. Real backend would key
+    // strictly on all four.
+    const dosKey = `${memberId}::${enc.dos}`;
+    const existingDosState = s.hccDosAssignments[dosKey];
+    const sameProvider = (member.rp || '').trim() === (enc.provider || '').trim();
+    const samePos = (member.pos || '').trim() === (enc.pos || '').trim();
+    const existsByUniqueKey = !!existingDosState && sameProvider && samePos;
+
+    const TERMINAL = new Set(['Completed', 'Reject', 'Insufficient']);
+    const isAllTerminal = (state) => {
+      if (!state) return false;
+      return ['support', 'coder', 'r1', 'r2', 'r3'].every(r => TERMINAL.has(state[r]?.status));
+    };
+
+    // Branch 1: DOS row exists & all roles terminal → create new row with
+    // relatedDosId. AC-6.
+    if (existsByUniqueKey && isAllTerminal(existingDosState)) {
+      // Append a new DOS to the member's dos_list (or update if already in)
+      const newDosDate = enc.dos;
+      const relatedKey = dosKey;
+      // Bootstrap a fresh entry in dosState under a synthetic suffixed key
+      // so the original Completed row stays untouched.
+      const suffix = `__upload-${now.getTime()}`;
+      const newKey = `${memberId}::${newDosDate}${suffix}`;
+      set(st => ({
+        hccMembers: st.hccMembers.map(m => m.id === memberId ? {
+          ...m,
+          dos_list: [...(m.dos_list || []), { date: newDosDate, label: 'From Upload (post-completion)', labelColor: 'var(--secondary-300)' }],
+          docStatus: [...(m.docStatus || []), 'pending'],
+          ch: (m.ch || 0) + 1,
+          awaitingClaim: true,
+        } : m),
+        hccDosAssignments: {
+          ...st.hccDosAssignments,
+          [newKey]: {
+            patientId: memberId, dosDate: newDosDate,
+            support: { assignee: null, status: 'New', history: [] },
+            coder:   { assignee: null, status: null, history: [] },
+            r1:      { assignee: null, status: null, history: [] },
+            r2:      { assignee: null, status: null, history: [] },
+            r3:      { assignee: null, status: null, history: [] },
+            sampling: { r2: null, r3: null },
+            billingReady: false, asmGenerated: false,
+            relatedDosId: relatedKey,
+            awaitingClaim: true,
+            uploadedDocs: [{ name: docName, type: docType, icds: icdCodes, uploadedAt: now.toISOString() }],
+            activity: [],
+          },
+          [relatedKey]: {
+            ...existingDosState,
+            relatedDosIds: [...(existingDosState.relatedDosIds || []), newKey],
+          },
+        },
+      }));
+      logActivity({
+        t: 'document-upload',
+        headline: `New row created from upload (related DOS ${enc.dos} was completed)`,
+        file: docName, fileType: docType, icds: icdCodes,
+      });
+      return { kind: 'relatedNew', memberId, dosDate: newDosDate };
+    }
+
+    // Branch 2: DOS row exists & active → merge net-new ICDs. AC-5.
+    if (existsByUniqueKey) {
+      const existingIcds = new Set((existingDosState.uploadedDocs || []).flatMap(d => d.icds || []));
+      const netNew = icdCodes.filter(c => !existingIcds.has(c));
+      set(st => ({
+        hccMembers: st.hccMembers.map(m => m.id === memberId ? {
+          ...m,
+          docStatus: [...(m.docStatus || []), 'pending'],
+          ch: (m.ch || 0) + 1,
+        } : m),
+        hccDosAssignments: {
+          ...st.hccDosAssignments,
+          [dosKey]: {
+            ...existingDosState,
+            uploadedDocs: [
+              ...(existingDosState.uploadedDocs || []),
+              { name: docName, type: docType, icds: netNew, uploadedAt: now.toISOString() },
+            ],
+          },
+        },
+      }));
+      logActivity({
+        t: 'icds-merged-via-upload',
+        headline: netNew.length > 0
+          ? `${netNew.length} net-new ICD(s) merged from upload: ${netNew.join(', ')}`
+          : 'Document attached to existing DOS (no net-new ICDs)',
+        file: docName, fileType: docType, icds: netNew,
+      });
+      return { kind: 'updated', memberId, dosDate: enc.dos };
+    }
+
+    // Branch 3: DOS row missing → bootstrap via initializeHccPatient
+    // (which creates engine state per DOS in dos_list), then attach doc.
+    set(st => ({
+      hccMembers: st.hccMembers.map(m => {
+        if (m.id !== memberId) return m;
+        const hadDos = m.dos_list?.some(d => d.date === enc.dos);
+        return {
+          ...m,
+          dos_list: hadDos
+            ? m.dos_list
+            : [...(m.dos_list || []), { date: enc.dos, label: 'From Upload', labelColor: 'var(--secondary-300)' }],
+          docStatus: [...(m.docStatus || []), 'pending'],
+          ch: (m.ch || 0) + 1,
+          tv: hadDos ? m.tv : (m.tv || 0) + 1,
+          rp: m.rp || enc.provider,
+          pos: m.pos || enc.pos,
+          awaitingClaim: true,
+        };
+      }),
+      hccDosAssignments: {
+        ...st.hccDosAssignments,
+        [dosKey]: {
+          patientId: memberId, dosDate: enc.dos,
+          support: { assignee: null, status: 'New', history: [] },
+          coder:   { assignee: null, status: null, history: [] },
+          r1:      { assignee: null, status: null, history: [] },
+          r2:      { assignee: null, status: null, history: [] },
+          r3:      { assignee: null, status: null, history: [] },
+          sampling: { r2: null, r3: null },
+          billingReady: false, asmGenerated: false,
+          awaitingClaim: true,
+          uploadedDocs: [{ name: docName, type: docType, icds: icdCodes, uploadedAt: now.toISOString() }],
+          activity: [],
+        },
+      },
+    }));
+    logActivity({
+      t: 'document-upload',
+      headline: `DOS ${enc.dos} created via document upload`,
+      file: docName, fileType: docType, icds: icdCodes,
+    });
+    return { kind: 'created', memberId, dosDate: enc.dos };
+  },
+
+  // Iterate every reviewed encounter through hccCreateOrMergeFromEncounter
+  // and stash the summary on the session for the drawer's success toast.
+  confirmHccUpload: () => {
+    const s = useAppStore.getState();
+    if (!s.hccUploadSession) return { created: 0, updated: 0 };
+    const docName = s.hccUploadSession.file?.name || 'Uploaded Document.pdf';
+    let created = 0, updated = 0;
+    for (const enc of s.hccUploadSession.encounters) {
+      const result = s.hccCreateOrMergeFromEncounter({ ...enc, _docName: docName });
+      if (result.kind === 'created' || result.kind === 'relatedNew') created++;
+      else if (result.kind === 'updated') updated++;
+    }
+    track('hcc.upload_confirmed', { created, updated });
+    set({ hccUploadSession: null });
+    return { created, updated };
+  },
+
+  // ─── Claim preview drawer ─────────────────────────────────────────
+  // Opened by clicking a claim-sourced DOS date in the HCC worklist's DOS
+  // column. Only claim-sourced DOSs (member.dosFromClaim !== false) are
+  // clickable; manually-entered DOSs render in grey as static text.
+  hccClaimPreview: { open: false, member: null, dosDate: null },
+  openHccClaimPreview: (member, dosDate) =>
+    set({ hccClaimPreview: { open: true, member, dosDate: dosDate || member?.dos || null } }),
+  closeHccClaimPreview: () =>
+    set({ hccClaimPreview: { open: false, member: null, dosDate: null } }),
+  openDiagPanel: (id, opts = {}) => set({
     diagPanelOpen: true,
     diagPanelMemberId: id,
     diagActiveTab: 'Codes',
-    diagDosFilter: null,
-    diagViewMode: 'HCC',
+    // `initialDos` and `highlightCode` come from row popovers (Visits → open a
+    // specific DOS, OpenICDs hover → scroll/highlight a specific code).
+    diagDosFilter: opts.initialDos ?? null,
+    diagHighlightCode: opts.highlightCode ?? null,
+    diagDosStatus: opts.dosStatus ?? 'New',
+    diagSnapFilter: null,
+    diagSnapOpen: true,
+    diagLeftPanel: opts.leftPanel ?? null,
+    diagActivityIcd: null,
+    diagViewMode: 'ICD',
   }),
-  closeDiagPanel: () => set({ diagPanelOpen: false, diagPanelMemberId: null }),
+  closeDiagPanel: () => set({ diagPanelOpen: false, diagPanelMemberId: null, diagLeftPanel: null, diagActivityIcd: null }),
   setDiagActiveTab: (tab) => set({ diagActiveTab: tab }),
   setDiagDosFilter: (dos) => set({ diagDosFilter: dos }),
   setDiagViewMode: (mode) => set({ diagViewMode: mode }),
@@ -1767,6 +3168,7 @@ export const useAppStore = create((set, get) => ({
   closeCallPopover: () => set({ callPopoverPatient: null, callPopoverBtnRef: null }),
 
   startActiveCall: (patientId) => {
+    track('call.started', { patientId });
     const state = get();
     if (state.activeCallTimerRef) clearInterval(state.activeCallTimerRef);
     const updates = { status: 'oncall', onCall: true, callDuration: '00:00' };
@@ -1794,6 +3196,7 @@ export const useAppStore = create((set, get) => ({
 
   endActiveCall: () => {
     const { activeCallTimerRef, activeCallPatient, activeCallSeconds } = get();
+    track('call.ended', { patientId: activeCallPatient, durationSec: activeCallSeconds });
     if (activeCallTimerRef) clearInterval(activeCallTimerRef);
     const updates = { status: 'scheduled', onCall: false, callDuration: formatDuration(activeCallSeconds) };
     set(s => ({
@@ -1888,7 +3291,7 @@ export const useAppStore = create((set, get) => ({
         .from('analytics_kpis').select('*')
         .eq('tenant_id', t).eq('view_key', viewId).eq('period', p)
         .maybeSingle();
-      if (error || !data) return FALLBACK_KPIS[viewId] || { kpis: [], insight: null };
+      if (error || !data) return { kpis: [], insight: null };
       return kpiRowToJs(data);
     });
   },
@@ -1900,11 +3303,7 @@ export const useAppStore = create((set, get) => ({
       const { data, error } = await supabase
         .from('analytics_time_series').select('*')
         .eq('tenant_id', t).in('series_key', seriesKeys).eq('period', p);
-      if (error || !data?.length) {
-        const result = {};
-        seriesKeys.forEach(k => { if (FALLBACK_TIME_SERIES[k]) result[k] = FALLBACK_TIME_SERIES[k]; });
-        return result;
-      }
+      if (error || !data?.length) return {};
       return groupTimeSeries(data);
     });
   },
@@ -1917,7 +3316,7 @@ export const useAppStore = create((set, get) => ({
         .from('analytics_tables').select('*')
         .eq('tenant_id', t).eq('table_key', tableKey).eq('period', p)
         .maybeSingle();
-      if (error || !data) return FALLBACK_TABLES[tableKey] || { columns: [], rows: [] };
+      if (error || !data) return { columns: [], rows: [] };
       return tableRowToJs(data);
     });
   },
@@ -1930,7 +3329,7 @@ export const useAppStore = create((set, get) => ({
         .from('analytics_progress_bars').select('*')
         .eq('tenant_id', t).eq('bar_key', barKey).eq('period', p)
         .maybeSingle();
-      if (error || !data) return FALLBACK_PROGRESS_BARS[barKey] || [];
+      if (error || !data) return [];
       return barRowToJs(data);
     });
   },
@@ -1943,7 +3342,7 @@ export const useAppStore = create((set, get) => ({
         .from('analytics_configs').select('*')
         .eq('tenant_id', t).eq('config_key', configKey)
         .maybeSingle();
-      if (error || !data) return FALLBACK_CONFIGS[configKey] || {};
+      if (error || !data) return {};
       return configRowToJs(data);
     });
   },
@@ -2021,6 +3420,7 @@ export const useAppStore = create((set, get) => ({
   // draft row first so we have an id to PATCH against on every subsequent
   // field edit (no need for a separate "create" submit step).
   openCampaignBuilder: async (campaignOrNull) => {
+    track('campaign.builder_opened', { campaignId: campaignOrNull?.id || null });
     if (campaignOrNull?.id) {
       set({ campaignBuilderId: campaignOrNull.id });
       updateHash(get);
@@ -2055,6 +3455,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   closeCampaignBuilder: () => {
+    track('campaign.builder_closed');
     set({ campaignBuilderId: null });
     updateHash(get);
   },
@@ -2065,6 +3466,7 @@ export const useAppStore = create((set, get) => ({
   updateCampaignFields: (patch) => {
     const id = get().campaignBuilderId;
     if (!id) return;
+    track('campaign.fields_updated', { fields: Object.keys(patch || {}) });
     set(s => ({
       campaigns: s.campaigns.map(c => c.id === id ? { ...c, ...patch } : c),
     }));
@@ -2084,6 +3486,7 @@ export const useAppStore = create((set, get) => ({
   runCampaignNow: async () => {
     const id = get().campaignBuilderId;
     if (!id) return false;
+    track('campaign.run_now', { campaignId: id });
     // Flush pending debounced save synchronously so we don't lose the latest
     // field edit racing with this request.
     const pending = _campaignSaveTimers.get(id);
@@ -2110,6 +3513,7 @@ export const useAppStore = create((set, get) => ({
   openEmailTemplateFromCampaign: () => {
     const id = get().campaignBuilderId;
     if (!id) return;
+    track('email.template_opened_from_campaign', { campaignId: id });
     const campaign = get().campaigns.find(c => c.id === id);
     if (!campaign) return;
     get().openEmailBuilder(campaign);
@@ -2138,9 +3542,609 @@ export const useAppStore = create((set, get) => ({
     return campaignRowToJs(data);
   },
 
+  // ── Settings → Content → Emails (server-side paginated) ─────────────────────
+  // Separate slice from `campaigns` so the Settings page can ask for a page
+  // at a time without disturbing the bulk-loaded campaign worklist.
+  contentEmails: [],
+  contentEmailsTotal: 0,
+  contentEmailsLoading: false,
+  fetchContentEmails: async ({ page = 1, perPage = 10, search = '', status = 'all', force = false } = {}) => {
+    // ── SWR-style cache ─────────────────────────────────────────────────────
+    // Cache hit → paint cached rows immediately, no shimmer. If fresh
+    // (< CONTENT_EMAILS_TTL_MS), skip the network entirely. If stale, still
+    // serve the cached rows but kick off a background revalidation that
+    // silently swaps in the new data when it lands. Cache is invalidated
+    // by deleteCampaign / deleteCampaignsBulk / duplicateCampaign /
+    // openContentEmailBuilder(null).
+    const cacheKey = `${page}|${perPage}|${(search || '').toLowerCase().trim()}|${status || 'all'}`;
+    const cached = _contentEmailsCache.get(cacheKey);
+    const now = Date.now();
+
+    if (cached) {
+      set({
+        contentEmails: cached.rows,
+        contentEmailsTotal: cached.total,
+        contentEmailsLoading: false,
+      });
+      // Fresh cache — done; no network request.
+      if (!force && now - cached.fetchedAt < CONTENT_EMAILS_TTL_MS) {
+        return;
+      }
+      // Stale cache — continue and revalidate in the background. We
+      // intentionally don't toggle contentEmailsLoading because the user
+      // already sees the cached rows; flickering a shimmer back in would
+      // be worse than letting the swap happen invisibly.
+    } else {
+      set({ contentEmailsLoading: true });
+    }
+
+    const from = (page - 1) * perPage;
+    const to = from + perPage - 1;
+    // Slim column list — explicitly excludes `email_template` and
+    // `color_variables`. Those JSONB columns can be 10-100KB per row and
+    // we don't render them in the table at all. They're fetched on demand
+    // when Preview / Edit is clicked via fetchCampaignById(id).
+    //
+    // Newest-edited first so freshly created or just-touched emails surface
+    // at the top of the list. NULLs LAST keeps rows that predate the
+    // updated_at trigger from hogging the top of the list.
+    const LIST_COLUMNS = [
+      'id', 'name', 'description', 'channel', 'section', 'audience', 'dynamic',
+      'health', 'delivered', 'opened', 'start_date', 'duration', 'progress',
+      'executes_in', 'enabled', 'audience_include', 'audience_exclude',
+      'send_via', 'start_mode', 'start_at', 'end_date', 'campaign_type',
+      'sender_name', 'send_from', 'subject_line', 'category', 'updated_at',
+      'updated_by',
+    ].join(', ');
+    // The select also pulls the foreign-keyed profile (updated_by →
+    // profiles.id) so the table can show "Last Updated By" without a second
+    // round trip. If the migration that creates the FK hasn't been applied
+    // yet, PostgREST returns PGRST200 — we fall back to a plain select so
+    // the page still renders.
+    const buildQuery = (select) => {
+      let q = supabase
+        .from('campaigns')
+        .select(select, { count: 'exact' })
+        .eq('channel', 'email')
+        .order('updated_at', { ascending: false, nullsFirst: false })
+        .order('id', { ascending: false });
+      if (status && status !== 'all') q = q.eq('section', status);
+      if (search?.trim()) {
+        const s = search.trim().replace(/[%_]/g, '');
+        q = q.or(`name.ilike.%${s}%,description.ilike.%${s}%`);
+      }
+      return q.range(from, to);
+    };
+
+    let { data, error, count } = await buildQuery(
+      `${LIST_COLUMNS}, updated_by_profile:profiles!updated_by(id, full_name)`,
+    );
+
+    // PGRST200 = "no foreign key relationship" — migration not applied yet.
+    if (error?.code === 'PGRST200') {
+      console.warn(
+        '[fetchContentEmails] FK to profiles missing — run supabase/campaigns_category_updated_by_migration.sql. Falling back to plain select.',
+      );
+      ({ data, error, count } = await buildQuery(LIST_COLUMNS));
+    }
+    // 42703 = column does not exist (updated_at, category, etc. before migrations applied)
+    if (error?.code === '42703') {
+      console.warn(
+        '[fetchContentEmails] Column missing (likely updated_at). Falling back to id ordering.',
+      );
+      const fb = supabase
+        .from('campaigns')
+        .select('*', { count: 'exact' })
+        .eq('channel', 'email')
+        .order('id', { ascending: false });
+      ({ data, error, count } = await fb.range(from, to));
+    }
+
+    if (error) {
+      console.error('fetchContentEmails error:', JSON.stringify(error, null, 2));
+      set({ contentEmailsLoading: false });
+      return;
+    }
+    const rows = (data || []).map(campaignRowToJs);
+    const total = count || 0;
+    // Store the freshly-revalidated data in the cache so the next visit at
+    // this same key returns immediately.
+    _contentEmailsCache.set(cacheKey, { rows, total, fetchedAt: Date.now() });
+    set({
+      contentEmails: rows,
+      contentEmailsTotal: total,
+      contentEmailsLoading: false,
+    });
+  },
+
+  // Settings → Content → Emails opens the EmailBuilder directly (no campaign
+  // builder takeover). Accepts either an existing email campaign or null to
+  // mint a new draft + open it. The router uses activePage='settings' +
+  // settingsNavItem='content' to keep the URL on the content path so closing
+  // returns to #/settings/content/emails.
+  openContentEmailBuilder: async (campaignOrNull) => {
+    let campaign = campaignOrNull;
+    // Slim-list optimisation: if we were passed a row from the list (no
+    // emailTemplate because we excluded it from the list select), fetch the
+    // full row now so the email builder gets the saved doc instead of a
+    // generated initial document.
+    if (campaign && campaign.id && campaign.emailTemplate === undefined) {
+      const full = await get().fetchCampaignById(campaign.id);
+      if (full) campaign = full;
+    }
+    if (!campaign) {
+      set({ campaignBuilderSaving: true });
+      const { data, error } = await supabase
+        .from('campaigns')
+        .insert({
+          name: 'Untitled Email',
+          section: 'draft',
+          channel: 'email',
+          send_via: ['email'],
+          start_mode: 'immediately',
+          campaign_type: 'one_time',
+        })
+        .select('*')
+        .single();
+      set({ campaignBuilderSaving: false });
+      if (error) {
+        console.error('openContentEmailBuilder insert error:', error);
+        get().showToast?.('Could not create email');
+        return null;
+      }
+      campaign = campaignRowToJs(data);
+      set(s => ({ campaigns: [...s.campaigns, campaign] }));
+      _invalidateContentEmailsCache();
+    }
+    // Clear any stale campaign-builder takeover so the URL routes through
+    // settings/content and closeEmailBuilder lands back on the email list.
+    set({ campaignBuilderId: null });
+    get().openEmailBuilder(campaign);
+    return campaign.id;
+  },
+
+  // Clone an existing campaign — copies every column except the primary key
+  // and timestamps. New copy lands as a draft with a " (Copy)" suffix so it
+  // never re-runs a live campaign by accident.
+  duplicateCampaign: async (id) => {
+    const { data: original, error: fetchErr } = await supabase
+      .from('campaigns')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (fetchErr || !original) {
+      console.error('duplicateCampaign fetch error:', fetchErr);
+      get().showToast?.('Could not duplicate email');
+      return null;
+    }
+    // eslint-disable-next-line no-unused-vars
+    const { id: _id, created_at: _c, updated_at: _u, ...rest } = original;
+    const { data: copy, error: insertErr } = await supabase
+      .from('campaigns')
+      .insert({
+        ...rest,
+        name: `${rest.name || 'Untitled'} (Copy)`,
+        section: 'draft',
+        enabled: false,
+      })
+      .select('*')
+      .single();
+    if (insertErr) {
+      console.error('duplicateCampaign insert error:', insertErr);
+      get().showToast?.('Could not duplicate email');
+      return null;
+    }
+    const fresh = campaignRowToJs(copy);
+    set(s => ({ campaigns: [...s.campaigns, fresh] }));
+    _invalidateContentEmailsCache();
+    get().showToast?.('Email duplicated');
+    return fresh;
+  },
+
+  // Delete many campaigns in one round trip. Used by the Content → Emails
+  // bulk-select toolbar.
+  deleteCampaignsBulk: async (ids) => {
+    if (!Array.isArray(ids) || ids.length === 0) return false;
+    const { error } = await supabase.from('campaigns').delete().in('id', ids);
+    if (error) {
+      console.error('deleteCampaignsBulk error:', error);
+      get().showToast?.('Could not delete selected emails');
+      return false;
+    }
+    const idSet = new Set(ids);
+    set(s => ({
+      campaigns: s.campaigns.filter(c => !idSet.has(c.id)),
+      contentEmails: s.contentEmails.filter(c => !idSet.has(c.id)),
+      contentEmailsTotal: Math.max(0, s.contentEmailsTotal - ids.length),
+    }));
+    _invalidateContentEmailsCache();
+    get().showToast?.(`${ids.length} email${ids.length === 1 ? '' : 's'} deleted`);
+    return true;
+  },
+
+  deleteCampaign: async (id) => {
+    const { error } = await supabase.from('campaigns').delete().eq('id', id);
+    if (error) {
+      console.error('deleteCampaign error:', error);
+      get().showToast?.('Could not delete email');
+      return false;
+    }
+    set(s => ({
+      campaigns: s.campaigns.filter(c => c.id !== id),
+      contentEmails: s.contentEmails.filter(c => c.id !== id),
+      contentEmailsTotal: Math.max(0, s.contentEmailsTotal - 1),
+    }));
+    _invalidateContentEmailsCache();
+    get().showToast?.('Email deleted');
+    return true;
+  },
+
+  // ─── Settings → Content → Forms ──────────────────────────────────────────
+  // Slim list of forms for the Content → Forms table. Mirrors the emails
+  // pattern: server-side pagination + search + SWR cache. `editingFormId`
+  // drives the full-screen FormBuilder takeover (see AppLayout + router).
+  contentForms: [],
+  contentFormsTotal: 0,
+  contentFormsLoading: false,
+  editingFormId: null,
+  formBuilderForm: null,
+  formBuilderSaving: false,
+  // Active builder tab + Analytics sub-tab, mirrored into the URL hash so a
+  // refresh restores the exact view. Set by the router (_pending*) on reload.
+  formBuilderMode: 'edit',          // 'edit' | 'score' | 'preview' | 'analytics'
+  formAnalyticsTab: 'insight',      // 'insight' | 'report' | 'responses'
+  _pendingFormMode: null,           // set by router on refresh
+  _pendingFormAnalyticsTab: null,   // set by router on refresh
+  setFormBuilderMode: (mode) => { set({ formBuilderMode: mode }); updateHash(get); },
+  setFormAnalyticsTab: (tab) => { set({ formAnalyticsTab: tab }); updateHash(get); },
+  // Shareable form fill-view (#/f/{id}); the router sets formViewId on nav.
+  formViewId: null,
+  closeFormView: () => set({ formViewId: null }),
+
+  fetchContentForms: async ({ page = 1, perPage = 10, search = '', status = 'all', force = false } = {}) => {
+    const cacheKey = `${page}|${perPage}|${(search || '').toLowerCase().trim()}|${status || 'all'}`;
+    const cached = _contentFormsCache.get(cacheKey);
+    const now = Date.now();
+    if (cached) {
+      set({ contentForms: cached.rows, contentFormsTotal: cached.total, contentFormsLoading: false });
+      if (!force && now - cached.fetchedAt < CONTENT_FORMS_TTL_MS) return;
+    } else {
+      set({ contentFormsLoading: true });
+    }
+
+    const from = (page - 1) * perPage;
+    const to = from + perPage - 1;
+    const LIST_COLUMNS = [
+      'id', 'name', 'description', 'category', 'status', 'response_count',
+      'updated_at', 'updated_by',
+    ].join(', ');
+    const buildQuery = (select) => {
+      let q = supabase
+        .from('forms')
+        .select(select, { count: 'exact' })
+        .order('updated_at', { ascending: false, nullsFirst: false })
+        .order('id', { ascending: false });
+      if (status && status !== 'all') q = q.eq('status', status);
+      if (search?.trim()) {
+        const term = search.trim().replace(/[%_]/g, '');
+        q = q.or(`name.ilike.%${term}%,description.ilike.%${term}%`);
+      }
+      return q.range(from, to);
+    };
+
+    let { data, error, count } = await buildQuery(
+      `${LIST_COLUMNS}, updated_by_profile:profiles!updated_by(id, full_name)`,
+    );
+    if (error?.code === 'PGRST200') {
+      ({ data, error, count } = await buildQuery(LIST_COLUMNS));
+    }
+    // Table not created yet (42P01 / PGRST205) — degrade to an empty list so
+    // the page still renders. The toolbar's "New Form" still opens the builder
+    // against a local draft.
+    if (error && (error.code === '42P01' || error.code === 'PGRST205' || error.code === '42703')) {
+      console.warn('[fetchContentForms] forms table missing — run supabase/forms_migration.sql');
+      _contentFormsCache.set(cacheKey, { rows: [], total: 0, fetchedAt: Date.now() });
+      set({ contentForms: [], contentFormsTotal: 0, contentFormsLoading: false });
+      return;
+    }
+    if (error) {
+      console.error('fetchContentForms error:', JSON.stringify(error, null, 2));
+      set({ contentFormsLoading: false });
+      return;
+    }
+    const rows = (data || []).map(formRowToJs);
+    const total = count || 0;
+    _contentFormsCache.set(cacheKey, { rows, total, fetchedAt: Date.now() });
+    set({ contentForms: rows, contentFormsTotal: total, contentFormsLoading: false });
+  },
+
+  fetchFormById: async (id) => {
+    const { data, error } = await supabase
+      .from('forms')
+      .select('*, updated_by_profile:profiles!updated_by(id, full_name)')
+      .eq('id', id)
+      .single();
+    if (error) {
+      // Retry without the FK join if the relationship isn't set up.
+      const retry = await supabase.from('forms').select('*').eq('id', id).single();
+      if (retry.error) {
+        console.error('fetchFormById error:', retry.error);
+        return null;
+      }
+      return formRowToJs(retry.data);
+    }
+    return formRowToJs(data);
+  },
+
+  // Resolve the current user's profiles.id to stamp as updated_by. The DB
+  // trigger sets updated_by = COALESCE(auth.uid(), NEW.updated_by), so when
+  // auth.uid() is null (e.g. no JWT) the client-supplied id is what sticks —
+  // this is why we stamp it here rather than relying on the trigger alone.
+  // Prefer the already-loaded profile, else fall back to the auth session.
+  _resolveUpdatedBy: async () => {
+    const cup = get().currentUserProfile;
+    if (cup?.id) return cup.id;
+    try {
+      const { data } = await supabase.auth.getUser();
+      return data?.user?.id || null;
+    } catch {
+      return null;
+    }
+  },
+
+  // Open the full-screen builder. Pass an existing form (or its id) to edit, or
+  // null to mint a fresh draft. Falls back to an in-memory draft if the table
+  // hasn't been created yet so the builder is still usable for design.
+  openFormBuilder: async (formOrNull) => {
+    let form = formOrNull;
+    // Accept a bare id (number/string) as well as a form object.
+    if (typeof form === 'number' || typeof form === 'string') {
+      const fetched = await get().fetchFormById(isNaN(Number(form)) ? form : Number(form));
+      if (!fetched) { get().showToast?.('Form not found'); return null; }
+      form = fetched;
+    } else if (form && form.id && form.schema === undefined) {
+      const full = await get().fetchFormById(form.id);
+      if (full) form = full;
+    }
+    if (!form) {
+      set({ formBuilderSaving: true });
+      const updatedBy = await get()._resolveUpdatedBy();
+      const draft = {
+        name: 'Untitled Form',
+        status: 'draft',
+        schema: { items: [] },
+        scoring: { scores: [], criticalTriggers: [] },
+        settings: { layout: 'sectioned' },
+        ...(updatedBy ? { updated_by: updatedBy } : {}),
+      };
+      const { data, error } = await supabase.from('forms').insert(draft).select('*').single();
+      set({ formBuilderSaving: false });
+      if (error) {
+        if (error.code === '42P01' || error.code === 'PGRST205') {
+          get().showToast?.('Run forms_migration.sql to save forms — editing locally for now');
+          form = formRowToJs({ id: `local-${Date.now()}`, ...draft });
+        } else {
+          console.error('openFormBuilder insert error:', error);
+          get().showToast?.('Could not create form');
+          return null;
+        }
+      } else {
+        form = formRowToJs(data);
+        _invalidateContentFormsCache();
+      }
+    }
+    // Always open on the Edit tab; a refresh into a specific tab is applied
+    // afterward by the AppLayout hydration effect (from _pendingFormMode), which
+    // avoids a stale pending value leaking into a later open-from-list.
+    set({ editingFormId: form.id, formBuilderForm: form, formBuilderMode: 'edit', formAnalyticsTab: 'insight' });
+    updateHash(get);
+    return form.id;
+  },
+
+  closeFormBuilder: () => {
+    set({ editingFormId: null, formBuilderForm: null, formBuilderMode: 'edit', formAnalyticsTab: 'insight' });
+    updateHash(get);
+  },
+
+  // Best-effort autosave of an in-progress fill (drop-off tracking). Upserts one
+  // row per (form_id, session_id); status stays 'in_progress' until submit.
+  // Silently no-ops if the partial-progress migration hasn't been run.
+  savePartialResponse: async (formId, { sessionId, answers, answeredCount = 0 } = {}) => {
+    if (!formId || !sessionId || (typeof formId === 'string' && formId.startsWith('local-'))) return false;
+    const createdBy = await get()._resolveUpdatedBy();
+    const { error } = await supabase
+      .from('form_responses')
+      .upsert({
+        form_id: formId,
+        session_id: sessionId,
+        answers,
+        answered_count: answeredCount,
+        status: 'in_progress',
+        ...(createdBy ? { created_by: createdBy } : {}),
+      }, { onConflict: 'form_id,session_id' });
+    if (error) {
+      // Missing column/index (migration not run) or RLS — don't break the fill.
+      if (import.meta.env?.DEV) console.warn('savePartialResponse skipped:', error.message);
+      return false;
+    }
+    return true;
+  },
+
+  // Persist a completed form submission. When a sessionId is present we upsert
+  // the existing in-progress row to 'completed' (so it leaves the Pending list);
+  // otherwise we insert a fresh completed row. The DB trigger keeps
+  // forms.response_count in sync. `scores` is the engine snapshot at submit time.
+  submitFormResponse: async (formId, answers, scores = {}, opts = {}) => {
+    const { sessionId, answeredCount } = opts;
+    const createdBy = await get()._resolveUpdatedBy();
+    const base = {
+      form_id: formId,
+      answers,
+      scores,
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+      ...(answeredCount != null ? { answered_count: answeredCount } : {}),
+      ...(createdBy ? { created_by: createdBy } : {}),
+    };
+    let error;
+    if (sessionId) {
+      ({ error } = await supabase
+        .from('form_responses')
+        .upsert({ ...base, session_id: sessionId }, { onConflict: 'form_id,session_id' }));
+      // Fall back to a plain insert if the unique index/columns don't exist yet.
+      if (error) ({ error } = await supabase.from('form_responses').insert({ form_id: formId, answers, scores, ...(createdBy ? { created_by: createdBy } : {}) }));
+    } else {
+      ({ error } = await supabase.from('form_responses').insert(base));
+      if (error) ({ error } = await supabase.from('form_responses').insert({ form_id: formId, answers, scores, ...(createdBy ? { created_by: createdBy } : {}) }));
+    }
+    if (error) {
+      console.error('submitFormResponse error:', error);
+      return false;
+    }
+    return true;
+  },
+
+  // All responses for a form (newest first), with the submitter's name when the
+  // created_by → profiles FK resolves. Includes both completed submissions and
+  // in-progress (Pending) fills; callers split on `status`.
+  fetchFormResponses: async (formId) => {
+    if (!formId || (typeof formId === 'string' && formId.startsWith('local-'))) return [];
+    const sel = '*, created_by_profile:profiles!created_by(id, full_name)';
+    let { data, error } = await supabase
+      .from('form_responses').select(sel).eq('form_id', formId)
+      .order('created_at', { ascending: false });
+    if (error?.code === 'PGRST200') {
+      ({ data, error } = await supabase
+        .from('form_responses').select('*').eq('form_id', formId)
+        .order('created_at', { ascending: false }));
+    }
+    if (error) {
+      console.error('fetchFormResponses error:', error);
+      return [];
+    }
+    return (data || []).map((r) => ({
+      id: r.id,
+      answers: r.answers || {},
+      scores: r.scores || {},
+      createdAt: r.created_at,
+      submittedByName: r.created_by_profile?.full_name || null,
+      // Pre-migration rows have no status column → treat as completed.
+      status: r.status || 'completed',
+      startedAt: r.started_at || r.created_at,
+      completedAt: r.completed_at || null,
+      answeredCount: r.answered_count ?? null,
+    }));
+  },
+
+  // Persist a patch (name/category/status/schema/scoring/settings) for the
+  // open form. Updates local state optimistically; for a local draft (no DB
+  // row) it just updates state and reports the unsaved condition.
+  saveForm: async (patch = {}, opts = {}) => {
+    const current = get().formBuilderForm;
+    if (!current) return false;
+    const merged = { ...current, ...patch };
+    set({ formBuilderForm: merged, formBuilderSaving: true });
+
+    if (typeof current.id === 'string' && current.id.startsWith('local-')) {
+      set({ formBuilderSaving: false });
+      if (!opts.silent) get().showToast?.('Saved locally — run forms_migration.sql to persist');
+      return false;
+    }
+
+    const dbPatch = {};
+    if (patch.name !== undefined) dbPatch.name = patch.name;
+    if (patch.description !== undefined) dbPatch.description = patch.description;
+    if (patch.category !== undefined) dbPatch.category = patch.category;
+    if (patch.status !== undefined) dbPatch.status = patch.status;
+    if (patch.schema !== undefined) dbPatch.schema = patch.schema;
+    if (patch.scoring !== undefined) dbPatch.scoring = patch.scoring;
+    if (patch.settings !== undefined) dbPatch.settings = patch.settings;
+
+    // Record who made the edit (see _resolveUpdatedBy).
+    const updatedBy = await get()._resolveUpdatedBy();
+    if (updatedBy) dbPatch.updated_by = updatedBy;
+
+    const { data, error } = await supabase
+      .from('forms')
+      .update(dbPatch)
+      .eq('id', current.id)
+      .select('*')
+      .single();
+    set({ formBuilderSaving: false });
+    if (error) {
+      console.error('saveForm error:', error);
+      get().showToast?.('Could not save form');
+      return false;
+    }
+    _invalidateContentFormsCache();
+    set({ formBuilderForm: formRowToJs(data) });
+    if (!opts.silent) get().showToast?.('Form saved');
+    return true;
+  },
+
+  duplicateForm: async (id) => {
+    const { data: original, error: fetchErr } = await supabase.from('forms').select('*').eq('id', id).single();
+    if (fetchErr || !original) {
+      console.error('duplicateForm fetch error:', fetchErr);
+      get().showToast?.('Could not duplicate form');
+      return null;
+    }
+    // eslint-disable-next-line no-unused-vars
+    const { id: _id, created_at: _c, updated_at: _u, response_count: _r, updated_by: _ub, ...rest } = original;
+    const updatedBy = await get()._resolveUpdatedBy();
+    const { data: copy, error: insertErr } = await supabase
+      .from('forms')
+      .insert({ ...rest, name: `${rest.name || 'Untitled'} (Copy)`, status: 'draft', response_count: 0, ...(updatedBy ? { updated_by: updatedBy } : {}) })
+      .select('*')
+      .single();
+    if (insertErr) {
+      console.error('duplicateForm insert error:', insertErr);
+      get().showToast?.('Could not duplicate form');
+      return null;
+    }
+    _invalidateContentFormsCache();
+    get().showToast?.('Form duplicated');
+    return formRowToJs(copy);
+  },
+
+  deleteForm: async (id) => {
+    const { error } = await supabase.from('forms').delete().eq('id', id);
+    if (error) {
+      console.error('deleteForm error:', error);
+      get().showToast?.('Could not delete form');
+      return false;
+    }
+    set(s => ({
+      contentForms: s.contentForms.filter(f => f.id !== id),
+      contentFormsTotal: Math.max(0, s.contentFormsTotal - 1),
+    }));
+    _invalidateContentFormsCache();
+    get().showToast?.('Form deleted');
+    return true;
+  },
+
+  deleteFormsBulk: async (ids) => {
+    if (!Array.isArray(ids) || ids.length === 0) return false;
+    const { error } = await supabase.from('forms').delete().in('id', ids);
+    if (error) {
+      console.error('deleteFormsBulk error:', error);
+      get().showToast?.('Could not delete selected forms');
+      return false;
+    }
+    const idSet = new Set(ids);
+    set(s => ({
+      contentForms: s.contentForms.filter(f => !idSet.has(f.id)),
+      contentFormsTotal: Math.max(0, s.contentFormsTotal - ids.length),
+    }));
+    _invalidateContentFormsCache();
+    get().showToast?.(`${ids.length} form${ids.length === 1 ? '' : 's'} deleted`);
+    return true;
+  },
+
   saveEmailTemplate: async () => {
     const s = get();
     if (!s.editingCampaignId || !s.emailDocument) return false;
+    track('email.template_saved', { templateId: s.editingCampaignId });
     const { error } = await supabase
       .from('campaigns')
       .update({
@@ -2212,6 +4216,7 @@ export const useAppStore = create((set, get) => ({
   },
   undoEmailEdit: () => set(s => {
     if (!s.emailDocument || s.emailHistory.length === 0) return {};
+    track('email.undo');
     const prev = s.emailHistory[s.emailHistory.length - 1];
     return {
       emailHistory: s.emailHistory.slice(0, -1),
@@ -2222,6 +4227,7 @@ export const useAppStore = create((set, get) => ({
   }),
   redoEmailEdit: () => set(s => {
     if (!s.emailDocument || s.emailFuture.length === 0) return {};
+    track('email.redo');
     const next = s.emailFuture[0];
     return {
       emailFuture: s.emailFuture.slice(1),
@@ -2268,6 +4274,7 @@ export const useAppStore = create((set, get) => ({
   // Swap the existing header/footer for a different preset. Replaces by role
   // marker stored on the block; falls back to first/last child by convention.
   replaceHeaderFooter: (role, presetTree) => {
+    track('email.header_footer_replaced', { role });
     get()._pushEmailHistory();
     return set(s => {
       if (!s.emailDocument) return {};
@@ -2296,6 +4303,7 @@ export const useAppStore = create((set, get) => ({
     });
   },
   openEmailBuilder: (campaign) => {
+    track('email.template_opened', { campaignId: campaign?.id });
     const saved = campaign.emailTemplate;
     const defaultVars = [
       { name: 'Brand', hex: '#7C5CFA' },
@@ -2331,6 +4339,7 @@ export const useAppStore = create((set, get) => ({
     updateHash(get);
   },
   closeEmailBuilder: () => {
+    track('email.template_closed');
     set({ editingCampaignId: null, editingCampaignName: null, emailDocument: null, selectedBlockId: 'root', selectedColumnIdx: null, bulkSelectedIds: [], htmlPreviewOverride: null, emailHistory: [], emailFuture: [], _lastEmailHistoryTime: 0 });
     updateHash(get);
   },
@@ -2501,6 +4510,8 @@ export const useAppStore = create((set, get) => ({
     return { bulkSelectedIds: ids, selectedBlockId: ids.length === 1 ? ids[0] : null };
   }),
   updateBlock: (id, updater) => {
+    const blockType = get().emailDocument?.[id]?.type || null;
+    track('email.block_updated', { blockType });
     get()._pushEmailHistory();
     set(s => {
       if (!s.emailDocument || !s.emailDocument[id]) return {};
@@ -2510,6 +4521,7 @@ export const useAppStore = create((set, get) => ({
     });
   },
   addBlock: (type) => {
+    track('email.block_added', { blockType: type });
     get()._pushEmailHistory();
     return set(s => {
     if (!s.emailDocument) return {};
@@ -2548,6 +4560,8 @@ export const useAppStore = create((set, get) => ({
   // columnIdx (0-2) chooses which column. Index is the insert position in
   // that children list.
   moveBlock: (blockId, target) => {
+    const blockType = get().emailDocument?.[blockId]?.type || null;
+    track('email.block_moved', { blockType, from: blockId, to: target?.parentId });
     get()._pushEmailHistory();
     return set(s => {
     if (!s.emailDocument || blockId === target.parentId) return {};
@@ -2726,6 +4740,8 @@ export const useAppStore = create((set, get) => ({
   },
 
   removeBlock: (id) => {
+    const blockType = get().emailDocument?.[id]?.type || null;
+    track('email.block_removed', { blockType });
     get()._pushEmailHistory();
     return set(s => {
       if (!s.emailDocument || id === 'root' || !s.emailDocument[id]) return {};
@@ -2784,67 +4800,16 @@ export const useAppStore = create((set, get) => ({
 
   fetchTasks: async () => {
     set({ tasksLoading: true });
-    let { data, error } = await supabase
+    const { data, error } = await supabase
       .from('tasks')
       .select('*')
       .order('created_at', { ascending: true });
 
-    if (!error && data) {
-      // Seed any missing demo task (matched by name). Users may genuinely
-      // create multiple tasks with the same name, so we no longer dedupe.
-      const existingNames = new Set(data.map(t => t.name));
-      const missing = fallbackTasks.filter(t => !existingNames.has(t.name));
-      if (missing.length > 0) {
-        // Insert parents first (no parent_task_id), then subtasks (look up parent name → real id)
-        const parents = missing.filter(t => !t.parent_task_id).map(({ id, parent_task_id, ...rest }) => rest);
-        const subtasks = missing.filter(t => t.parent_task_id);
-        let insertOk = true;
-
-        if (parents.length > 0) {
-          let { error: pErr } = await supabase.from('tasks').insert(parents);
-          if (pErr && /column .* does not exist|schema cache/.test(pErr.message || '')) {
-            const legacy = parents.map(({ pool, mentions, completed_at, description, ...rest }) => rest);
-            ({ error: pErr } = await supabase.from('tasks').insert(legacy));
-          }
-          if (pErr) { console.error('Tasks seed error (parents):', pErr.message); insertOk = false; }
-        }
-
-        if (insertOk && subtasks.length > 0) {
-          // Refetch to get real ids of inserted parents
-          const { data: now } = await supabase.from('tasks').select('id, name');
-          const nameToId = new Map((now || []).map(r => [r.name, r.id]));
-          const subRows = subtasks.map(({ id, ...rest }) => ({
-            ...rest,
-            parent_task_id: nameToId.get(rest.parent_task) || null,
-          }));
-          let { error: sErr } = await supabase.from('tasks').insert(subRows);
-          if (sErr && /column .* does not exist|schema cache/.test(sErr.message || '')) {
-            const legacy = subRows.map(({ pool, mentions, completed_at, description, parent_task_id, ...rest }) => rest);
-            ({ error: sErr } = await supabase.from('tasks').insert(legacy));
-          }
-          if (sErr) console.warn('Tasks seed error (subtasks):', sErr.message);
-        }
-
-        const refetch = await supabase.from('tasks').select('*').order('created_at', { ascending: true });
-        data = refetch.data;
-        error = refetch.error;
-      }
-    }
-
     if (error) {
       console.error('Tasks fetch error:', error.message);
-      // Hard fallback: show local demo data so the page is never empty
-      set({ tasks: fallbackTasks, tasksLoading: false });
+      const localHedisTasks = get().tasks.filter(t => t.hedisMemberId);
+      set({ tasks: [...localHedisTasks], tasksLoading: false });
       return;
-    }
-
-    // Soft fallback: if DB returned fewer tasks than the demo set (e.g. because
-    // production DB doesn't have the seed and the seed insert failed silently),
-    // merge in any fallback tasks whose name isn't already present.
-    if ((data?.length || 0) < fallbackTasks.length) {
-      const existingNames = new Set((data || []).map(t => t.name));
-      const extras = fallbackTasks.filter(t => !existingNames.has(t.name));
-      data = [...(data || []), ...extras];
     }
 
     // Auto-mark overdue pending tasks as missed
@@ -2866,10 +4831,15 @@ export const useAppStore = create((set, get) => ({
         .in('id', overdueIds);
     }
 
-    set({ tasks: now, tasksLoading: false });
+    // Preserve any locally-created HEDIS sign-off tasks (prototype only —
+    // they aren't persisted to supabase yet). Without this, navigating to
+    // Tasks after a Submit-for-Review would wipe them out.
+    const localHedisTasks = get().tasks.filter(t => t.hedisMemberId && !now.some(n => n.id === t.id));
+    set({ tasks: [...localHedisTasks, ...now], tasksLoading: false });
   },
 
   createTask: async (task) => {
+    track('task.created', { taskId: task?.id, taskType: task?.type || null });
     const normalized = { ...task };
     if (normalized.status === 'pending' && isPastDate(normalized.due_date)) {
       normalized.status = 'missed';
@@ -2903,6 +4873,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   updateTask: async (id, updates) => {
+    track('task.updated', { taskId: id });
     const prev = get().tasks.find(t => t.id === id);
     const merged = { ...(prev || {}), ...updates };
     const final = { ...updates };
@@ -2978,6 +4949,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   deleteTask: async (id) => {
+    track('task.deleted', { taskId: id });
     const prev = get().tasks;
     // Cascade-delete subtasks locally too
     set(s => ({ tasks: s.tasks.filter(t => t.id !== id && t.parent_task_id !== id) }));
@@ -3044,6 +5016,7 @@ export const useAppStore = create((set, get) => ({
   createTaskLabel: async (name) => {
     const trimmed = name.trim();
     if (!trimmed) return null;
+    track('task.label_created', { label: trimmed });
     set(s => s.taskLabels.includes(trimmed) ? s : { taskLabels: [...s.taskLabels, trimmed].sort() });
     const { error } = await supabase.from('task_labels').insert({ name: trimmed });
     if (error && error.code !== '23505') {
@@ -3066,6 +5039,7 @@ export const useAppStore = create((set, get) => ({
     }
   },
   claimTask: async (taskId) => {
+    track('task.claimed', { taskId });
     const me = get().currentUserProfile;
     const claimer = me?.name || 'Current User';
     const claimerId = me?.id || null;

@@ -1,0 +1,68 @@
+/* Logic tab — node map (left) + rule editor (right). */
+.wrap { flex: 1 1 0; display: flex; min-height: 0; background: var(--neutral-50); font-family: 'Inter', sans-serif; }
+
+/* React-Flow canvas */
+.canvas { flex: 1 1 0; min-width: 0; position: relative; }
+.canvas :global(.react-flow__attribution) { display: none; }
+.canvas :global(.react-flow__controls) { box-shadow: var(--shadow-card); border-radius: 8px; overflow: hidden; }
+.canvas :global(.react-flow__controls-button) { border-bottom: 0.5px solid var(--neutral-150); background: var(--neutral-0); }
+.canvas :global(.react-flow__edge-textbg) { fill: var(--neutral-0); }
+
+/* Node */
+.node {
+  display: flex; align-items: center; gap: 8px;
+  min-width: 200px; max-width: 280px; padding: 9px 12px;
+  background: var(--neutral-0); border: 1px solid var(--neutral-150); border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04); cursor: pointer; transition: border-color .12s, box-shadow .12s;
+}
+.node:hover { border-color: var(--primary-200); }
+.nodeSelected { border-color: var(--primary-300); box-shadow: 0 0 0 2px var(--primary-100); }
+.nodeGroup { background: var(--neutral-50); border-style: dashed; }
+.endingNode { min-width: 150px; background: var(--status-success-light, #ecfdf3); border-color: rgba(0,155,83,.25); }
+.nodeNum {
+  flex-shrink: 0; width: 18px; height: 18px; border-radius: 5px; display: flex; align-items: center; justify-content: center;
+  background: var(--neutral-100); color: var(--neutral-400); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.nodeSelected .nodeNum { background: var(--primary-100); color: var(--primary-300); }
+.nodeText { flex: 1 1 0; min-width: 0; font-size: 13px; color: var(--neutral-500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.req { color: var(--status-error); margin-left: 2px; }
+.nodeRule { flex-shrink: 0; display: inline-flex; }
+.handle { width: 7px; height: 7px; background: var(--neutral-200); border: none; }
+
+/* Right editor */
+.side { width: 340px; flex-shrink: 0; border-left: 0.5px solid var(--neutral-150); background: var(--neutral-0); overflow-y: auto; }
+.editor { padding: 18px; display: flex; flex-direction: column; gap: 16px; }
+.editorHead { display: flex; align-items: center; gap: 8px; }
+.editorTitle { font-size: 15px; font-weight: 600; color: var(--neutral-500); }
+.editorHint { font-size: 13px; color: var(--neutral-300); line-height: 1.5; margin: 0; }
+.sectionLabel { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--neutral-300); }
+
+/* Jump-to-ending section */
+.jumpSection { display: flex; flex-direction: column; gap: 12px; padding-top: 14px; border-top: 0.5px solid var(--neutral-150); }
+.jumpCard { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 0.5px solid var(--neutral-150); border-radius: 8px; background: var(--neutral-50); }
+.jumpHead { display: flex; align-items: center; gap: 8px; }
+.jumpHead > :nth-child(2) { flex: 1 1 0; }
+.visToggle { }
+
+.behaviorRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.behaviorLabel { font-size: 12px; color: var(--neutral-300); }
+
+.condList { display: flex; flex-direction: column; gap: 12px; }
+.cond { position: relative; display: flex; align-items: flex-start; gap: 8px; }
+.condJoin { position: absolute; top: -9px; left: 0; font-size: 10px; font-weight: 700; letter-spacing: .04em; color: var(--primary-300); background: var(--neutral-0); padding: 0 4px; }
+.condGrid { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 0.5px solid var(--neutral-150); border-radius: 8px; background: var(--neutral-50); }
+.condRemove { flex-shrink: 0; margin-top: 10px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; background: none; border-radius: 6px; cursor: pointer; }
+.condRemove:hover { background: var(--neutral-100); }
+
+/* Empty states */
+.empty, .sideEmpty {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; text-align: center; padding: 24px;
+}
+.sideEmpty { position: static; height: 100%; }
+.emptyTitle { font-size: 14px; font-weight: 600; color: var(--neutral-400); }
+.emptyDesc { font-size: 12px; color: var(--neutral-300); max-width: 240px; line-height: 1.5; }
+
+@media (max-width: 880px) {
+  .side { width: 280px; }
+}

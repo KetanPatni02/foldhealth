@@ -140,6 +140,14 @@ The platform follows the **Fold Health design system** with strict adherence to:
 
 ## Recent Changes
 
+### Analytics — Customize (drag/resize) on every view + auto-fit widgets (May 2026)
+- **Customize everywhere.** The Customize/Done/Reset controls now appear on all 15 analytics views (previously Executive-only). `EDITABLE_VIEWS` in `AnalyticsLayout.jsx` gates the buttons; every view (flat + tabbed) opts in.
+- **Single shared `EditableGrid` component.** New `src/features/analytics/views/EditableGrid.jsx` owns layout state, localStorage persistence, container width, per-item content measurement, manual-resize pinning, and reset. All 13 flat views and the 11 Care/Financial sub-tabs render through it; the interim `useEditableGrid` hook and per-view grid plumbing were removed.
+- **Tabbed views get per-tab grids.** Each tab in Care Management and Financial Analytics has its own independent layout (own storage key); switching tabs swaps grids. Reset affects the visible tab.
+- **Auto-fit widgets — no more empty space.** Each panel's cell auto-snaps to its content height (measured via ResizeObserver), so widgets hug their content instead of stretching to a fixed cell. Verified to within 1–5px.
+- **Granular resize.** Grid `rowHeight` dropped 40 → 2 (margin 4), so vertical resize/auto-fit steps are ~6px instead of ~52px. Drag a panel's handle and it pins to your size (opts out of auto-fit) until Reset.
+- Layout storage keys bumped `v1` → `v2` so stale layouts don't carry over the model change.
+
 ### Email Builder — HTML import: Tier A/B/C parser improvements + RawHtml block (May 2026)
 - **Tier A — User choice at Confirm.** The HTML-paste banner now offers two buttons: "Keep as raw HTML" (sets `customHtml`, clears `childrenIds` → iframe path with pixel-perfect fidelity) and "Import as blocks" (existing parser path with full structural editing).
 - **Tier B — Parser fidelity polish for production emails.**

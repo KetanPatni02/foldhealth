@@ -1,0 +1,228 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 18, 27, 0.36);
+  z-index: 200;
+}
+
+.dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 430px;
+  max-height: 88vh;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-100);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 12px;
+  z-index: 201;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Header */
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  margin: 0;
+  line-height: 1.2;
+}
+.subtitle {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-200);
+  margin: 0;
+  line-height: 1.2;
+}
+.subtitle strong {
+  font-weight: 500;
+  color: var(--neutral-300);
+}
+
+/* Info banner */
+.infoBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #F4F8FE;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--neutral-400);
+  line-height: 1.35;
+}
+.infoBanner svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* Field label + select */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fieldLabel {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-200);
+}
+.selectWrap {
+  position: relative;
+  width: 100%;
+}
+.select {
+  width: 100%;
+  height: 32px;
+  padding: 0 28px 0 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-500);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-200);
+  border-radius: 4px;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+.select:focus { border-color: var(--primary-300); }
+.selectChevron {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* Search */
+.searchWrap {
+  position: relative;
+  width: 100%;
+}
+.searchIcon {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 1;
+}
+.searchInput {
+  padding-left: 30px;
+}
+
+/* Candidate list */
+.list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 0.5px solid transparent;
+}
+.empty {
+  padding: 16px 8px;
+  font-size: 12px;
+  color: var(--neutral-300);
+  text-align: center;
+}
+
+/* Row sits at ~40px content height so the hover background hugs the
+   avatar + text closely (no airy top/bottom gap). The 6px list gap then
+   adds the breathing room between rows. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+.row:hover { background: var(--neutral-50); }
+.rowChecked { background: var(--primary-50); }
+.rowChecked:hover { background: var(--primary-100); }
+
+.radio {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--neutral-150);
+  background: var(--neutral-0);
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.radioChecked {
+  border-color: var(--primary-300);
+}
+.radioDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary-300);
+}
+
+.unassignedAvatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+
+.rowText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rowName {
+  font-size: 14px;
+  font-weight: 400;
+  color: #344054;
+  line-height: 1.2;
+}
+.rowRoles {
+  font-size: 12px;
+  font-weight: 400;
+  color: #98A2B3;
+  line-height: 1.2;
+}
+
+/* Footer — two buttons share the row equally. We don't use Button's
+   `fullWidth` because two fullWidth buttons inside a flex row collapse
+   onto each other; instead make the row a flex container and let each
+   child stretch via flex:1. */
+.footer {
+  display: flex;
+  gap: 8px;
+  padding-top: 4px;
+}
+.footer > * {
+  flex: 1;
+}

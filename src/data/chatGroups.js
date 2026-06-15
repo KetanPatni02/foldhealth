@@ -1,21 +1,5 @@
-export const chatGroups = [
-  { id: 1, name: 'Test Raj New', users: ['Alexa Daly'], roles: ['Guardian', 'Nurse Guardian'], location: 'Global Template', updated: '03/13/2026', updatedBy: 'Dr. Sumit Kawale', activeChats: 0, hasAgent: true, agentName: 'Care Assistant' },
-  { id: 2, name: 'Global Test Group JJSHB', users: ['Alexa Daly'], roles: [], location: 'Global Template', updated: '01/05/2026', updatedBy: 'Dr. Sumit Kawale', activeChats: 2, hasAgent: false },
-  { id: 3, name: 'Sumit Test Extended', users: ['Dr. Sumit Kawale'], roles: [], location: 'Global Template', updated: '01/05/2026', updatedBy: 'Dr. Sumit Kawale', activeChats: 13, hasAgent: true, agentName: 'FAQ Bot' },
-  { id: 4, name: 'Sumitk15decv2 Kawale', users: ['Dr. Sumit Kawale'], roles: [], location: 'Global Template', updated: '01/05/2026', updatedBy: 'Dr. Sumit Kawale', activeChats: 1, hasAgent: false },
-  { id: 5, name: 'Pop Group Automation Test', users: ['Dr. Sumit Kawale'], roles: [], location: 'Global Template', updated: '01/05/2026', updatedBy: 'Dr. Sumit Kawale', activeChats: 5, hasAgent: false },
-  { id: 6, name: '30dec Athena PA', users: ['Alexa Daly'], roles: [], location: 'Global Template', updated: '12/30/2025', updatedBy: 'Pooja Athenademo', activeChats: 0, hasAgent: true, agentName: 'Care Assistant' },
-];
-
-// Currently selected participants for a group (editable)
-export const groupParticipants = [
-  { id: 'u1', name: 'Alexa Daly', role: 'Business/Practice Owner, Physician', type: 'user', isAgent: false },
-  { id: 'u2', name: 'Care Assistant', role: 'AI Agent · FAQ Responder', type: 'agent', isAgent: true },
-  { id: 'r1', name: 'Guardian', role: 'Care Team Role', type: 'role', isAgent: false },
-  { id: 'r2', name: 'Nurse Guardian', role: 'Care Team Role', type: 'role', isAgent: false },
-];
-
-// All available users for search/add
+// Config defaults used by Group/AgentRules drawers. Not DB fallback data
+// (the seed chatGroups list was removed). Marked TODO to migrate into DB.
 export const availableUsers = [
   { id: 'u1', name: 'Alexa Daly', role: 'Business/Practice Owner, Physician', type: 'user', isAgent: false },
   { id: 'u2', name: 'Care Assistant', role: 'AI Agent · FAQ Responder', type: 'agent', isAgent: true },

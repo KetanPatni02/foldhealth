@@ -1,0 +1,117 @@
+---
+title: Data Flow
+description: Data fetching, mappers, fallbacks, and seeding patterns.
+---
+
+Fold Health fetches data from Supabase, transforms it through mapper modules, and caches it in the Zustand store. A fallback system ensures the app works even when the database is unavailable.
+
+## Data flow overview
+
+```
+Supabase DB
+  ↓ select / insert / update
+Mapper (dbToJs / jsToDb)
+  ↓ transform snake_case → camelCase
+Zustand Store
+  ↓ selector subscription
+React Component
+```
+
+## Mapper modules
+
+Mappers live in `src/lib/` and translate between database column naming (snake_case) and JavaScript convention (camelCase).
+
+| Mapper | File | Tables |
+|--------|------|--------|
+| Patient | `src/lib/patientMapper.js` | `patients`, `all_patients` |
+| Call Details | `src/lib/callDetailsMapper.js` | `call_details` |
+| Analytics | `src/lib/analyticsMapper.js` | `analytics_kpis`, `analytics_time_series`, `analytics_tables` |
+| Embedded | `src/lib/embedMapper.js` | `embed_domains`, `embed_components` |
+
+Each mapper exports:
+- `dbToJs(row)` — database row to JavaScript object
+- `jsToDb(obj)` — JavaScript object to database row
+
+## Fetching pattern
+
+All data fetching happens inside Zustand store actions. There is no separate hooks layer.
+
+```jsx
+// In useAppStore
+fetchPatients: async () => {
+  set({ patientsLoading: true });
+  const { data, error } = await supabase
+    .from('patients')
+    .select('*');
+  
+  if (error) {
+    console.warn('[patients] fetch failed:', error.message);
+    set({ patients: fallbackPatients, patientsLoading: false });
+    return;
+  }
+  
+  set({
+    patients: data.map(dbToJs),
+    patientsLoading: false,
+  });
+}
+```
+
+## Fallback data
+
+If Supabase is unreachable, the app falls back to in-memory seed data from `src/data/`.
+
+| Fallback file | Data |
+|---------------|------|
+| `fallbackPatients` | Patient records |
+| `fallbackCallDetails` | Call history |
+| `fallbackGoalsData` | Goals and programs |
+| `fallbackChatGroups` | Chat group configs |
+
+Fallbacks are merged with database results on fetch, ensuring the UI always has data to display.
+
+## Auto-seeding
+
+On first load, `src/lib/seedDatabase.js` checks whether key tables are empty and populates them with fallback data.
+
+**Trigger:** Runs once per session (tracked by a `sessionStorage` flag).
+
+**Operation:** Uses `upsert(..., { onConflict: 'id' })` for idempotent re-seeding.
+
+**Tables seeded (27):**
+- `patients`, `call_details`, `goals`, `chat_groups`
+- `faqs`, `agent_rules`, `chat_participants`
+- `business_hours`, `holidays`
+- `analytics_kpis`, `analytics_time_series`, `analytics_tables`, `analytics_progress_bars`, `analytics_configs`
+- `embed_domains`, `embed_components`
+- `audit_logs`, `call_nav_items`, `call_lines`, `call_sessions`
+- `tasks`, `appointments`, `appointment_types`
+
+## Debounced saves
+
+The Campaign Builder uses a debounced save pattern to prevent excessive writes during rapid editing.
+
+```jsx
+scheduleCampaignSave(id, fn) // coalesces edits into a single DB write per 600ms
+```
+
+## Optimistic updates
+
+Store actions update local state immediately, then persist to the database. If the database write fails, the error is logged but the local state remains.
+
+```jsx
+updateGoal: async (id, updates) => {
+  // Optimistic local update
+  set(state => ({
+    goalsData: state.goalsData.map(g =>
+      g.id === id ? { ...g, ...updates } : g
+    )
+  }));
+  // Persist to DB
+  const { error } = await supabase
+    .from('goals')
+    .update(jsToDb(updates))
+    .eq('id', id);
+  if (error) console.warn('[goals] update failed:', error.message);
+}
+```

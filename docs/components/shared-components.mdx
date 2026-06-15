@@ -1,0 +1,256 @@
+---
+title: Shared Components
+description: Reusable UI primitives in src/components.
+---
+
+All shared components live in `src/components/`. These are reusable primitives — feature-specific components belong in `src/features/`.
+
+## Core controls
+
+### Button
+
+```
+src/components/Button/Button.jsx
+```
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `variant` | string | `primary`, `secondary`, `tertiary`, `ghost`, `alt`, `success`, `danger`, `dangerFilled`, `info` |
+| `size` | string | `S`, `L`, `XL` |
+| `leadingIcon` | string | Iconify icon name |
+| `trailingIcon` | string | Iconify icon name |
+| `iconOnly` | boolean | Icon-only mode |
+| `fullWidth` | boolean | Full container width |
+| `disabled` | boolean | Disabled state |
+
+### ActionButton
+
+```
+src/components/ActionButton/ActionButton.jsx
+```
+
+Square icon-only toolbar button with optional tooltip, badge, dot, and chevron.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `icon` | string | Iconify icon name |
+| `size` | string | `S`, `L`, `XL` |
+| `state` | string | `active`, `disabled`, `error` |
+| `tooltip` | string | Tooltip text |
+| `notification` | boolean | Show notification dot |
+| `count` | number | Badge count |
+| `chevron` | boolean | Show dropdown chevron |
+
+### Toggle
+
+```
+src/components/Toggle/Toggle.jsx
+```
+
+Animated segmented control with sliding pill indicator.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `items` | array | `string[]` or `{key, label, icon}[]` |
+| `active` | string | Currently active item |
+| `onChange` | function | Selection callback |
+| `size` | string | `S`, `M` |
+
+### Switch
+
+```
+src/components/Switch/Switch.jsx
+```
+
+Toggle control (32x19px track, 16x16px knob).
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `checked` | boolean | On/off state |
+| `onChange` | function | Toggle callback |
+| `disabled` | boolean | Disabled state |
+| `label` | string | Accessible label |
+
+## Form inputs
+
+### Input
+
+```
+src/components/Input/Input.jsx
+```
+
+Text input (32px height, 6px radius, primary-300 focus ring). Accepts all standard HTML input props.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `variant` | string | `default`, `error` |
+
+### Select
+
+```
+src/components/Select/Select.jsx
+```
+
+Single-select dropdown matching Input height and radius.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `options` | array | `[{value, label, disabled?}]` |
+| `value` | string | Current value |
+| `onChange` | function | Change callback |
+| `placeholder` | string | Placeholder text |
+| `menuAlign` | string | `left`, `right` |
+
+### Textarea
+
+```
+src/components/Textarea/Textarea.jsx
+```
+
+Multiline input matching Input design. Supports `variant` (`default`, `error`).
+
+## Display
+
+### Badge
+
+```
+src/components/Badge/Badge.jsx
+```
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `variant` | string | Status variant |
+| `label` | string | Badge text |
+| `icon` | string | Leading icon |
+| `dot` | boolean | Status dot indicator |
+
+### Avatar
+
+```
+src/components/Avatar/Avatar.jsx
+```
+
+Multi-variant avatar component.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `variant` | string | `patient`, `agent`, `provider`, `assignee`, `icon`, `generic` |
+| `initials` | string | Fallback text |
+| `agentName` | string | Agent display name |
+| `size` | number | Pixel size |
+
+### Icon
+
+```
+src/components/Icon/Icon.jsx
+```
+
+Wraps Iconify icons and custom SVG icons. Supports all `solar:*-linear` and `solar:*-bold` names plus custom names like `custom:filter`.
+
+## Layout
+
+### Drawer
+
+```
+src/components/Drawer/Drawer.jsx
+```
+
+Floating right-side panel (700px width, 8px inset from viewport, 16px border-radius). Renders via `createPortal`.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `title` | string | Header title |
+| `onClose` | function | Close callback |
+| `headerRight` | node | Action buttons in header |
+| `footer` | node | Footer content |
+
+<Warning>Action buttons go in `headerRight`, never in `footer`.</Warning>
+
+### Sidebar
+
+```
+src/components/Sidebar/Sidebar.jsx
+```
+
+Main navigation with 10 nav items: Home, Population, Calendar, Tasks, Messages, Calls, Leads, Campaign, Analytics, Settings. Always rendered with dark chrome (`--sidebar-bg`).
+
+### TopBar
+
+```
+src/components/TopBar/TopBar.jsx
+```
+
+Header bar with breadcrumbs, search, user menu, and contextual actions.
+
+### SubNav
+
+```
+src/components/SubNav/SubNav.jsx
+```
+
+Secondary navigation for worklist selection within the Population page.
+
+## Data display
+
+### TabBar
+
+```
+src/components/TabBar/TabBar.jsx
+```
+
+Horizontal tab bar with search, filter toggle, history, and export action buttons. State-driven via `useAppStore`.
+
+### FilterBar
+
+```
+src/components/FilterBar/FilterBar.jsx
+```
+
+Collapsible row of filter chips with dropdowns. Supports 12 filter types: gender, language, LACE acuity, TOC status, and more.
+
+### Pagination
+
+```
+src/components/Pagination/Pagination.jsx
+```
+
+Bottom pagination bar with page numbers, per-page dropdown, and go-to-page input.
+
+### EmptyState
+
+```
+src/components/EmptyState/EmptyState.jsx
+```
+
+Centered placeholder with icon, heading, description, and optional CTA button.
+
+## Overlays
+
+### ConfirmDialog
+
+```
+src/components/Modal/ConfirmDialog.jsx
+```
+
+Confirmation dialog with configurable icon, title, description, and action buttons.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `variant` | string | `error`, `primary` |
+| `title` | string | Dialog title |
+| `description` | string | Body text |
+| `confirmLabel` | string | Confirm button text |
+| `onConfirm` | function | Confirm callback |
+| `onCancel` | function | Cancel callback |
+
+## Radix UI primitives
+
+Headless components in `src/components/ui/` wrap Radix UI:
+
+- `alert-dialog.jsx` — AlertDialog
+- `dialog.jsx` — Dialog
+- `checkbox.jsx` — Checkbox
+- `radio-group.jsx` — RadioGroup
+- `select.jsx` — Select (used by Pagination)
+- `slider.jsx` — Slider
+- `tooltip.jsx` — Tooltip

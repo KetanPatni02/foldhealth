@@ -73,7 +73,7 @@
 /* ── Type: Primary ── */
 .primary {
   background: var(--primary-300);
-  color: var(--neutral-0);
+  color: #FFFFFF;
 }
 .primary:hover:not(:disabled) {
   background: var(--primary-400);

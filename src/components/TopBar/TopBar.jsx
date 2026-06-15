@@ -155,6 +155,17 @@ const menuItemStyle = {
   fontSize: 14, fontWeight: 500, color: 'var(--neutral-400)', transition: 'background .1s',
 };
 
+// Map settingsNavItem → breadcrumb label so the URL/section state drives what
+// the user sees ("Settings / <thing>"). Keys mirror SettingsSubNav.
+const SETTINGS_BREADCRUMB = {
+  agents: 'Automation',
+  messages: 'Messages',
+  'embedded-components': 'Embed',
+  content: 'Content',
+  account: 'Account',
+  billing: 'Billing',
+};
+
 export function TopBar() {
   const activePage = useAppStore(s => s.activePage);
   const showCreateNew = useAppStore(s => s.showCreateNew);
@@ -185,6 +196,7 @@ export function TopBar() {
   const isCalls = activePage === 'calls';
   const isTasks = activePage === 'tasks';
   const isCampaign = activePage === 'campaign';
+  const settingsNavItem = useAppStore(s => s.settingsNavItem);
   const selectedPatientId = useAppStore(s => s.selectedPatientId);
   const navigateBackToWorklist = useAppStore(s => s.navigateBackToWorklist);
   const navigateToPatient = useAppStore(s => s.navigateToPatient);
@@ -253,7 +265,7 @@ export function TopBar() {
             <>
               <a className={styles.breadcrumbLink} href="#" onClick={e => e.preventDefault()}>Settings</a>
               <span className={styles.sep}>/</span>
-              <span className={styles.breadcrumbCurrent}>Automation</span>
+              <span className={styles.breadcrumbCurrent}>{SETTINGS_BREADCRUMB[settingsNavItem] || 'Automation'}</span>
             </>
           ) : (
             <>
@@ -312,7 +324,7 @@ export function TopBar() {
 
       <div className={styles.right}>
         <ActionButton
-          icon="solar:bell-outline"
+          icon="solar:bell-linear"
           size="L"
           tooltip="Notifications"
         />

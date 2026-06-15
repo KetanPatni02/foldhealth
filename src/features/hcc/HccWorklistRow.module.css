@@ -91,20 +91,34 @@
   color: var(--neutral-200);
   margin-top: 3px;
 }
+/* Plain text-link badge — sits inside .patientMeta. Grey by default, picks
+   up the primary-300 underline on hover. Tooltip wrapper stays unchanged. */
 .langBadge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 6px;
-  background: var(--primary-100);
-  color: var(--primary-300);
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 500;
+  background: transparent;
+  color: var(--neutral-300);
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: normal;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border: 0.5px solid color-mix(in srgb, var(--primary-300) 20%, transparent);
   position: relative;
-  cursor: default;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.12s;
+}
+.langBadge:hover {
+  color: var(--primary-300);
+  text-decoration: underline;
+  text-decoration-color: var(--primary-300);
+  text-underline-offset: 2px;
+}
+.langBadge:focus-visible {
+  outline: 2px solid var(--primary-300);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 .langTooltip {
   display: none;
@@ -134,6 +148,29 @@
   min-width: 0;
 }
 
+/* ── Clickable trigger wrapper (HCC Evidence) ──
+   Behaves like a button in markup but visually mirrors the old stack cell. */
+.evidenceTrigger {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  align-items: flex-start;
+  border-radius: 4px;
+  transition: background 0.12s;
+}
+.evidenceTrigger:hover {
+  background: var(--neutral-50);
+}
+
 /* ── Last Visit cell — purple date + visits count ── */
 .lastVisitDate {
   font-size: 14px;
@@ -143,8 +180,68 @@
   white-space: nowrap;
 }
 .lastVisitMeta {
+  /* Matches prototype: dotted-underlined clickable visit count */
   font-size: 12px;
   color: var(--neutral-400);
+  white-space: nowrap;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.lastVisitVisitsBtn:hover .lastVisitMeta {
+  color: var(--primary-300);
+}
+
+/* ── Split-button layout for the DOS cell ──
+   The date line and the "X of Y Visits" sub-line each carry their own click
+   target so a claim-sourced date can open the Claim Preview while the visits
+   link still opens the all-DOSs popover. */
+.lastVisitStack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* Date button — purple, no underline by default, no hover bg */
+.lastVisitDateBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+/* Visits button — just a wrapper for the underlined "X of Y Visits" text */
+.lastVisitVisitsBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  line-height: 1;
+}
+
+/* Date hover (claim variant only): visited link feel */
+.lastVisitDateBtn:hover .lastVisitDate {
+  text-decoration: underline;
+  text-decoration-color: var(--primary-300);
+  text-underline-offset: 2px;
+}
+
+/* Non-claim variant — plain grey date (no button wrapper) */
+.lastVisitDateMuted {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
@@ -204,17 +301,95 @@
 .roleStatusLine {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   font-size: 12px;
   white-space: nowrap;
+  color: var(--neutral-300);
+  /* Visible label below the role name is the *date*; the status is encoded
+     by the icon's color. The legend at the bottom of the worklist explains
+     the icon meanings. */
+}
+.roleDate {
+  font-size: 12px;
+  color: var(--neutral-300);
+  font-variant-numeric: tabular-nums;
 }
 .roleUnassigned {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px;
+  gap: 4px;
+  padding: 4px 6px;
   font-size: 14px;
-  color: var(--neutral-150);
+  color: var(--neutral-200);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  border-radius: 4px;
+  transition: background 0.12s, color 0.12s;
+}
+.roleUnassigned:hover {
+  background: var(--primary-25);
+  color: var(--primary-300);
+}
+
+/* ── Assign popover — portal-rendered list of candidate users. ── */
+.roleAssignMenu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 260px;
+  max-width: 340px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.02);
+  padding: 6px;
+  font-family: 'Inter', sans-serif;
+}
+.roleAssignTitle {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  padding: 6px 8px 4px;
+  border-bottom: 0.5px solid var(--neutral-100);
+  margin-bottom: 2px;
+}
+.roleAssignItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+.roleAssignItem:hover { background: var(--neutral-50); }
+.roleAssignName {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.roleAssignRole {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+.roleAssignEmpty {
+  padding: 10px;
+  font-size: 12px;
+  color: var(--neutral-300);
+  text-align: center;
 }
 
 /* ── RAF Impact badge — green with up arrow (or red with down) ── */
@@ -268,7 +443,75 @@
 .colOpen        { min-width: 90px; }
 .colDate        { min-width: 110px; }
 .colEvidence    { min-width: 110px; }
+.colAssignee    { min-width: 170px; }
 .colRole        { min-width: 150px; }
+
+/* Assignee cell — Avatar + 2-line stack (name on top, current role below).
+   Mirrors the Member cell's typography so the column reads as a person. */
+.assigneeCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.assigneeText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1.2;
+}
+.assigneeName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.assigneeRole {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+
+/* Variant 2 — current bucket has no assignee yet ("Awaiting Reviewer 2").
+   Hollow circle in the avatar slot, muted name text. Sized to match the
+   provider Avatar (32×32) so unassigned and assigned rows align visually. */
+.unassignedSlot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--neutral-50);
+  border: 0.5px dashed var(--neutral-200);
+  flex-shrink: 0;
+}
+.assigneeNameMuted {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Variant 3 — every stage completed, DOS is now in Billing. Green check
+   chip in the avatar slot. */
+.billingBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--status-success-light);
+  border: 0.5px solid rgba(0, 155, 83, 0.3);
+  flex-shrink: 0;
+}
 .colProvider    { min-width: 140px; }
 .colPos         { min-width: 100px; }
 .colPosDesc     { min-width: 140px; }
@@ -282,11 +525,24 @@
 .colRl          { min-width: 90px; }
 .colAd          { min-width: 90px; }
 .colFr          { min-width: 80px; }
-.colActions     { min-width: 56px; }
+.colActions     { min-width: 90px; }
 
 .actionsCell {
   text-align: center;
   padding: 8px 10px !important;
+}
+
+.actionsRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.actionsDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
 }
 
 /* ── Open ICDs hover popover ── */
@@ -370,7 +626,8 @@
 .openIcdsRow:last-child { border-bottom: none; }
 
 .openIcdsCode {
-  font-family: 'SF Mono', ui-monospace, Menlo, monospace;
+  font-family: 'Inter', sans-serif;
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
   font-weight: 600;
   color: var(--primary-300);

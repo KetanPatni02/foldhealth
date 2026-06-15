@@ -13,6 +13,7 @@ const LANG_MAP = { en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese'
 
 function DropdownMenu({ row, onClose }) {
   const showToast = useAppStore(s => s.showToast);
+  const startHccUpload = useAppStore(s => s.startHccUpload);
 
   const COMM = [
     { l: 'Send SMS', i: 'solar:chat-round-line-linear' },
@@ -22,8 +23,15 @@ function DropdownMenu({ row, onClose }) {
   ];
   const CARE = [
     'Send Assessment', 'Add Task', 'Initiate Protocol',
-    'Send Education', 'Warm Referral', 'Add to Program', 'Upload File',
+    'Send Education', 'Warm Referral', 'Add to Program',
   ];
+
+  const handleUploadFile = () => {
+    // Pre-seed the upload session with this patient so ambiguous OCR
+    // matches auto-link to them in the review panel (AC-1 + AC-9 helper).
+    startHccUpload(row?.id || null);
+    onClose();
+  };
 
   return (
     <div className={rowStyles.dropdown} onClick={e => e.stopPropagation()}>
@@ -42,10 +50,14 @@ function DropdownMenu({ row, onClose }) {
           {l}
         </button>
       ))}
+      <button className={rowStyles.dropdownItem} onClick={handleUploadFile}>
+        <Icon name="solar:upload-linear" size={18} color="var(--neutral-300)" />
+        Upload File
+      </button>
       <div className={rowStyles.dropdownDivider} />
       <div className={rowStyles.dropdownSection}>Automation</div>
       <button className={rowStyles.dropdownItem} onClick={() => { showToast('Run Automation – coming soon'); onClose(); }}>
-        <Icon name="solar:bolt-outline" size={18} color="var(--neutral-300)" />
+        <Icon name="solar:bolt-linear" size={18} color="var(--neutral-300)" />
         Run Automation
       </button>
       <div className={rowStyles.dropdownDivider} />
@@ -176,10 +188,14 @@ export function AllPatientsRow({ row, isSelected, onSelect }) {
             </div>
             <div className={rowStyles.patientMeta}>
               {row.memberId} •{' '}
-              <span className={rowStyles.langBadge}>
+              <button
+                type="button"
+                className={rowStyles.langBadge}
+                onClick={(e) => e.stopPropagation()}
+              >
                 {(row.language || 'en').toUpperCase()}
                 <span className={rowStyles.langTooltip}>Preferred Language: {LANG_MAP[row.language] || 'English'}</span>
-              </span>
+              </button>
             </div>
           </div>
         </div>

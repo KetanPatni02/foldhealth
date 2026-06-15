@@ -558,7 +558,7 @@ export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointm
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--neutral-50)', borderRadius: 8, padding: 8 }}>
             <div style={{ flex: 1 }}>
               <Select value={apptStatus} onValueChange={handleStatusChange} disabled={isPastAppointment}>
-                <SelectTrigger className="h-8 text-sm w-[120px]" style={{ background: 'white' }}>
+                <SelectTrigger className="h-8 text-sm w-[120px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -579,7 +579,7 @@ export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointm
               {showMoreMenu && (
                 <>
                   <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setShowMoreMenu(false)} />
-                  <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 9999, background: 'white', border: '0.5px solid var(--neutral-100)', borderRadius: 8, boxShadow: '0 4px 24px -4px rgba(0,0,0,0.12)', padding: 8, minWidth: 180, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 9999, background: 'var(--neutral-0)', border: '0.5px solid var(--neutral-100)', borderRadius: 8, boxShadow: '0 4px 24px -4px rgba(0,0,0,0.12)', padding: 8, minWidth: 180, display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <button onClick={() => { showToast('Booking link copied!'); setShowMoreMenu(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 4, border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, color: 'var(--neutral-400)', fontFamily: 'Inter, sans-serif', width: '100%', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--neutral-50)'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>
                       <Icon name="solar:link-linear" size={16} color="var(--neutral-300)" /> Send Booking Link
                     </button>
@@ -881,7 +881,7 @@ export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointm
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 14, color: 'var(--neutral-300)' }}>Repeats every</span>
                       <input type="number" min={1} max={30} value={recurFrequency} onChange={e => setRecurFrequency(parseInt(e.target.value) || 1)} style={{ width: 50, height: 28, border: '0.5px solid var(--neutral-200)', borderRadius: 4, textAlign: 'center', fontSize: 14, fontFamily: 'Inter, sans-serif', color: 'var(--neutral-400)', padding: '0 8px' }} />
-                      <select value={recurUnit} onChange={e => { setRecurUnit(e.target.value); if (e.target.value === 'Day(s)') setRecurDays([]); }} style={{ height: 28, border: '0.5px solid var(--neutral-200)', borderRadius: 4, fontSize: 14, fontFamily: 'Inter, sans-serif', color: 'var(--neutral-400)', padding: '0 8px', background: 'white' }}>
+                      <select value={recurUnit} onChange={e => { setRecurUnit(e.target.value); if (e.target.value === 'Day(s)') setRecurDays([]); }} style={{ height: 28, border: '0.5px solid var(--neutral-200)', borderRadius: 4, fontSize: 14, fontFamily: 'Inter, sans-serif', color: 'var(--neutral-400)', padding: '0 8px', background: 'var(--neutral-0)' }}>
                         <option value="Day(s)">Day/s</option>
                         <option value="Week(s)">Week/s</option>
                       </select>
@@ -889,7 +889,7 @@ export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointm
                       {recurUnit === 'Week(s)' && (
                         <div style={{ display: 'flex', gap: 4 }}>
                           {[{ key: 'Sun', label: 'S' }, { key: 'Mon', label: 'M' }, { key: 'Tue', label: 'T' }, { key: 'Wed', label: 'W' }, { key: 'Thu', label: 'T' }, { key: 'Fri', label: 'F' }, { key: 'Sat', label: 'S' }].map(d => (
-                            <button key={d.key} onClick={() => setRecurDays(prev => prev.includes(d.key) ? prev.filter(x => x !== d.key) : [...prev, d.key])} style={{ width: 24, height: 24, border: 'none', borderRadius: 4, fontSize: 12, fontFamily: 'Inter, sans-serif', color: recurDays.includes(d.key) ? '#fff' : 'var(--neutral-300)', background: recurDays.includes(d.key) ? 'var(--primary-300)' : 'white', cursor: 'pointer', fontWeight: 500, boxShadow: recurDays.includes(d.key) ? 'none' : 'inset 0 0 0 0.5px var(--neutral-200)' }}>
+                            <button key={d.key} onClick={() => setRecurDays(prev => prev.includes(d.key) ? prev.filter(x => x !== d.key) : [...prev, d.key])} style={{ width: 24, height: 24, border: 'none', borderRadius: 4, fontSize: 12, fontFamily: 'Inter, sans-serif', color: recurDays.includes(d.key) ? 'var(--neutral-0)' : 'var(--neutral-300)', background: recurDays.includes(d.key) ? 'var(--primary-300)' : 'var(--neutral-0)', cursor: 'pointer', fontWeight: 500, boxShadow: recurDays.includes(d.key) ? 'none' : 'inset 0 0 0 0.5px var(--neutral-200)' }}>
                               {d.label}
                             </button>
                           ))}

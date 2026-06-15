@@ -69,7 +69,7 @@ function TimelineItem({ entry, isFirst, isLast }) {
                 {d.icd && <code className={styles.detailCode}>{d.icd}</code>}
                 {d.from && <span className={styles.transPillFrom}>{d.from}</span>}
                 {d.from && d.to && (
-                  <Icon name="solar:arrow-right-linear" size={11} color="var(--neutral-300)" />
+                  <Icon name="solar:arrow-right-linear" size={12} color="var(--neutral-300)" />
                 )}
                 {d.to && <span className={styles.transPillTo}>{d.to}</span>}
                 {d.reason && <span className={styles.detailReason}>&ldquo;{d.reason}&rdquo;</span>}

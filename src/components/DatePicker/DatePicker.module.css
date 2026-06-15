@@ -1,0 +1,50 @@
+.input {
+  height: 36px;
+  padding: 0 10px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: var(--neutral-0);
+  color: var(--neutral-400);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.2;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+  /* Native date input has a calendar icon — leave room for it. */
+  min-width: 140px;
+  outline: none;
+}
+
+.input:hover:not(:disabled) {
+  border-color: var(--neutral-200);
+}
+
+.input:focus {
+  border-color: var(--primary-300);
+  box-shadow: 0 0 0 3px rgba(140, 90, 226, 0.12); /* primary-300 @ 12% */
+}
+
+.input:disabled {
+  background: var(--neutral-50);
+  color: var(--neutral-200);
+  cursor: not-allowed;
+}
+
+.error {
+  border-color: var(--status-error);
+}
+
+.error:focus {
+  border-color: var(--status-error);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12); /* status-error @ 12% */
+}
+
+/* Calendar icon — keep it neutral so it doesn't fight the field color. */
+.input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 120ms ease;
+}
+.input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}

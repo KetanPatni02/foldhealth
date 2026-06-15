@@ -11,6 +11,7 @@ export function QuickViewDrawer() {
   const closeQuickView = useAppStore(s => s.closeQuickView);
   const navigateToPatient = useAppStore(s => s.navigateToPatient);
   const showToast = useAppStore(s => s.showToast);
+  const startHccUpload = useAppStore(s => s.startHccUpload);
 
   if (!patient) return null;
 
@@ -19,6 +20,13 @@ export function QuickViewDrawer() {
   function handleViewFullProfile() {
     closeQuickView();
     navigateToPatient(patient.id);
+  }
+
+  function handleUploadDocument() {
+    // Pre-seed with this patient so an ambiguous OCR match auto-links to
+    // them. Drawer mounts at app level, so closing QuickView isn't
+    // required — but we keep the drawer for context.
+    startHccUpload(patient.id);
   }
 
   const title = (
@@ -35,6 +43,13 @@ export function QuickViewDrawer() {
 
   const headerRight = (
     <>
+      <ActionButton
+        icon="solar:upload-linear"
+        size="S"
+        tooltip="Upload Document"
+        onClick={handleUploadDocument}
+      />
+      <span className={styles.headerDivider} />
       <button className={styles.profileLink} onClick={handleViewFullProfile}>
         View Full Profile
         <Icon name="solar:arrow-right-linear" size={16} />

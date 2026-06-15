@@ -141,6 +141,21 @@
 
 .clearAll:hover { color: var(--primary-300); }
 
+/* Save Filter — same link style as Clear All but tinted primary to draw
+   the eye since saving is the commit action. Mirrors the HCC
+   FilterChipBar pattern. */
+.saveFilter {
+  font-size: 13px;
+  color: var(--primary-300);
+  cursor: pointer;
+  text-decoration: underline;
+  background: none;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  margin-left: 8px;
+}
+.saveFilter:hover { color: var(--primary-400); }
+
 .activeCount {
   display: inline-flex;
   align-items: center;

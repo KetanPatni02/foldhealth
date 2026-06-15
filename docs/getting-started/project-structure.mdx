@@ -1,0 +1,63 @@
+---
+title: Project Structure
+description: How the Fold Health codebase is organized.
+---
+
+## Directory layout
+
+```
+src/
+├── components/        # Shared, reusable UI components
+│   ├── Button/
+│   ├── Input/
+│   ├── Drawer/
+│   ├── Badge/
+│   ├── Select/
+│   ├── Icon/
+│   ├── ActionButton/
+│   ├── Avatar/
+│   ├── Sidebar/
+│   ├── TopBar/
+│   ├── TabBar/
+│   ├── FilterBar/
+│   ├── Pagination/
+│   └── ...
+├── features/          # Feature modules (one folder per domain)
+│   ├── toc-worklist/  # TOC patient worklist
+│   ├── toc-queue/     # Agent assignment queue
+│   ├── hcc/           # HCC worklist + diagnosis panel
+│   ├── all-patients/  # Unified patient roster
+│   ├── scheduling-list/ # Scheduling list view
+│   ├── analytics/     # 15+ analytics dashboards
+│   ├── agent-builder/ # Visual workflow designer
+│   ├── home/          # Home dashboard
+│   ├── calendar/      # Calendar view
+│   ├── tasks/         # Task management
+│   ├── calls/         # Call history and management
+│   ├── messages/      # Messaging interface
+│   ├── campaign/      # Campaign management
+│   ├── email-builder/ # Email template builder
+│   ├── patient/       # Patient detail view
+│   ├── settings/      # Admin configuration panels
+│   └── auth/          # Authentication
+├── store/             # Zustand state management
+│   └── useAppStore.js # Single centralized store
+├── lib/               # Utilities
+│   ├── router.js      # Hash-based router
+│   ├── supabase.js    # Supabase client
+│   ├── theme.js       # Theme system
+│   └── patientMapper.js # DB-to-app data mappers
+├── data/              # Mock / fallback data
+├── tokens/            # Design tokens
+│   └── tokens.css     # Colors, spacing, typography
+└── layouts/
+    └── AppLayout.jsx  # Root layout with sidebar + routing
+```
+
+## Conventions
+
+- **One component per folder** with a `.jsx` file and optional `.module.css`
+- **Features are self-contained** — each feature folder has its own components, styles, and data
+- **Shared components** in `src/components/` are reusable primitives consumed across features
+- **No barrel exports** — import directly from the component file
+- **CSS Modules** for scoped styles, design tokens via CSS custom properties

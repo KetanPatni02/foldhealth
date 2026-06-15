@@ -1,0 +1,90 @@
+---
+title: Authentication
+description: Sign-up, sign-in, OAuth, session management, and user profiles.
+---
+
+Fold Health uses **Supabase Auth** for all authentication flows.
+
+## Auth flows
+
+### Email/password sign-up
+
+```
+src/features/auth/LoginPage.jsx
+```
+
+Creates a new user with email, password, and metadata (first name, last name). Sends a confirmation email with redirect back to the app.
+
+### Email/password sign-in
+
+Standard credential-based login via `supabase.auth.signInWithPassword()`.
+
+### Google OAuth
+
+```jsx
+supabase.auth.signInWithOAuth({
+  provider: 'google',
+  options: { redirectTo: window.location.origin },
+});
+```
+
+Redirects to Google, then back to the app on success.
+
+### Password reset
+
+Sends a reset email via `supabase.auth.resetPasswordForEmail()` with redirect to `/#/reset-password`.
+
+### Sign out
+
+Called from `TopBar.jsx`:
+
+```jsx
+supabase.auth.signOut();
+```
+
+## Session management
+
+```
+src/App.jsx
+```
+
+On mount, the app:
+1. Fetches the current session with `supabase.auth.getSession()`
+2. Subscribes to auth state changes with `supabase.auth.onAuthStateChange()`
+3. Updates a React state (`session`) that gates rendering of the authenticated layout
+
+The subscription is cleaned up on unmount.
+
+## Profile sync
+
+```
+src/layouts/AppLayout.jsx
+```
+
+After authentication, the app upserts a row in the `profiles` table with user metadata:
+
+```jsx
+await supabase.from('profiles').upsert({
+  id: user.id,
+  email: user.email,
+  full_name: user.user_metadata?.full_name,
+  // ...
+});
+```
+
+This keeps the `profiles` table in sync with Supabase Auth state.
+
+## User management
+
+```
+src/features/settings/AccountPanel.jsx
+```
+
+Admin users can manage team members:
+- View all profiles
+- Delete users via the `delete-user` Edge Function (removes from both Auth and profiles)
+- Fallback: direct `profiles.delete()` if the Edge Function is unavailable
+
+## Auth state in components
+
+Components access the current user through the session object passed via props or context. The `profiles` table provides extended user data (display name, avatar URL, preferences).

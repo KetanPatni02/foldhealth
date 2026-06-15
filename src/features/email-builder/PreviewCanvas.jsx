@@ -947,7 +947,7 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
     ) : props.url ? (
       <img src={props.url} alt={props.alt || ''} style={imgStyle} />
     ) : (
-      <div style={{ padding: 24, border: '1px dashed #CED4DD', borderRadius: 8, color: '#9CA3AF', fontSize: 12, width: imgStyle.width }}>
+      <div style={{ padding: 24, border: '1px dashed var(--neutral-150)', borderRadius: 8, color: 'var(--neutral-200)', fontSize: 12, width: imgStyle.width }}>
         No image
       </div>
     );
@@ -1097,7 +1097,7 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
             <a key={p.id} href={p.url || '#'} onClick={e => e.preventDefault()} title={p.label} style={{ display: 'inline-flex' }}>
               {p.iconUrl
                 ? <img src={p.iconUrl} alt={p.label} width={iconSize} height={iconSize} style={{ display: 'block' }} />
-                : <div style={{ width: iconSize, height: iconSize, borderRadius: 4, border: '1px dashed #CED4DD', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#9CA3AF' }}>?</div>}
+                : <div style={{ width: iconSize, height: iconSize, borderRadius: 4, border: '1px dashed var(--neutral-150)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'var(--neutral-200)' }}>?</div>}
             </a>
           ))}
         </div>

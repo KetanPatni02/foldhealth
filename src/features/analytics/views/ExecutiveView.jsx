@@ -1,14 +1,38 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { FALLBACK_KPIS, FALLBACK_TIME_SERIES, FALLBACK_TABLES, FALLBACK_PROGRESS_BARS, FALLBACK_CONFIGS } from '../../../data/analyticsFallbacks';
-import { Icon } from '../../../components/Icon/Icon';
 import { Toggle } from '../../../components/Toggle/Toggle';
-import { KpiCard, InsightBanner, Card, ProgressBar, GhostBtn, safeTableRows, safeBarItems } from './shared';
+import { KpiCard, InsightBanner, Card, ProgressBar, GhostBtn, safeTableRows, safeBarItems, safeConfigData, EmptyState, KpiSkeleton, TableSkeleton, ChartSkeleton, ProgressBarSkeleton } from './shared';
 import { TcocLineChart, SavingsAreaChart } from './charts';
+import { EditableGrid } from './EditableGrid';
 import s from '../AnalyticsLayout.module.css';
 
-export function ExecutiveView({ showToast }) {
+// ── Editable dashboard config ────────────────────────────────────────────
+// Mirrors the pattern in src/features/home/HomeView.jsx so the Executive
+// dashboard supports drag-and-drop reordering and resize via react-grid-
+// layout. Layout is persisted per-view to localStorage so each analytics
+// view can have its own customization.
+const STORAGE_KEY = 'analytics-executive-layout-v2';
+
+// Heights tuned aggressively so each grid cell hugs the card's natural
+// content height. Combined with `height: 100%` on the inner card (in
+// AnalyticsLayout.module.css), this gives a dashed editing border that
+// snaps to the grid cell with no visible gap above or below content.
+// Users can resize up via the bottom-right handle if they want more
+// breathing room.
+const DEFAULT_LAYOUT = [
+  { i: 'insight',   x: 0, y: 0,  w: 12, h: 3, minW: 4, minH: 2, maxW: 12, maxH: 5  },
+  { i: 'kpi1',      x: 0, y: 3,  w: 12, h: 3, minW: 6, minH: 3, maxW: 12, maxH: 5  },
+  { i: 'kpi2',      x: 0, y: 6,  w: 12, h: 3, minW: 6, minH: 3, maxW: 12, maxH: 5  },
+  { i: 'drivers',   x: 0, y: 9,  w: 12, h: 3, minW: 4, minH: 2, maxW: 12, maxH: 5  },
+  { i: 'tcoc',      x: 0, y: 12, w: 12, h: 7, minW: 6, minH: 5, maxW: 12, maxH: 20 },
+  { i: 'quality',   x: 0, y: 19, w: 6,  h: 7, minW: 3, minH: 5, maxW: 12, maxH: 16 },
+  { i: 'care',      x: 6, y: 19, w: 6,  h: 7, minW: 3, minH: 5, maxW: 12, maxH: 16 },
+  { i: 'savings',   x: 0, y: 26, w: 12, h: 7, minW: 6, minH: 5, maxW: 12, maxH: 16 },
+  { i: 'costTable', x: 0, y: 33, w: 12, h: 5, minW: 6, minH: 4, maxW: 12, maxH: 14 },
+];
+
+export function ExecutiveView({ showToast, editing = false, resetTick = 0 }) {
   const fetchViewKpis = useAppStore(st => st.fetchViewKpis);
   const fetchTimeSeries = useAppStore(st => st.fetchTimeSeries);
   const fetchViewTable = useAppStore(st => st.fetchViewTable);
@@ -17,247 +41,295 @@ export function ExecutiveView({ showToast }) {
   const period = useAppStore(st => st.analyticsPeriod);
   const periodMode = useAppStore(st => st.analyticsPeriodMode);
 
-  const fb = FALLBACK_KPIS.executive || { kpis: [], insight: null };
-  const [kpiData, setKpiData] = useState(fb);
-  const [tcocData, setTcocData] = useState(FALLBACK_TIME_SERIES);
-  const [costData, setCostData] = useState(FALLBACK_TABLES.cost_by_setting_benchmark);
-  const [qualitySummary, setQualitySummary] = useState(FALLBACK_PROGRESS_BARS.executive_quality_summary);
+  // null = fetch in flight (renders skeleton). After resolve, state is
+  // either the real data or an empty shape (renders EmptyState).
+  const [kpiData, setKpiData] = useState(null);
+  const [tcocData, setTcocData] = useState(null);
+  const [costData, setCostData] = useState(null);
+  const [qualitySummary, setQualitySummary] = useState(null);
   const [tcocTab, setTcocTab] = useState('all');
-  const [tcocMode, setTcocMode] = useState('pmpm'); // 'pmpm' | 'total'
-  const [costInlineData, setCostInlineData] = useState(FALLBACK_CONFIGS.exec_cost_by_setting_inline);
-  const [savingsData, setSavingsData] = useState(FALLBACK_CONFIGS.exec_savings_trajectory);
-  const [careProgramData, setCareProgramData] = useState(FALLBACK_CONFIGS.exec_care_programs);
+  const [tcocMode, setTcocMode] = useState('pmpm');
+  const [costInlineData, setCostInlineData] = useState(null);
+  const [savingsData, setSavingsData] = useState(null);
+  const [careProgramData, setCareProgramData] = useState(null);
 
   useEffect(() => {
-    fetchViewKpis('executive').then(d => d && setKpiData(d));
-    fetchTimeSeries(['tcoc_all','tcoc_ip','tcoc_op','tcoc_ed','tcoc_rx','tcoc_pac']).then(d => d && setTcocData(d));
-    fetchViewTable('executive', 'cost_by_setting_benchmark').then(d => d && setCostData(d));
-    fetchProgressBars('executive', 'executive_quality_summary').then(d => d && setQualitySummary(d));
-    fetchConfig('exec_cost_by_setting_inline').then(d => d && setCostInlineData(d));
-    fetchConfig('exec_savings_trajectory').then(d => d && setSavingsData(d));
-    fetchConfig('exec_care_programs').then(d => d && setCareProgramData(d));
+    // Always resolve to a non-null value so skeletons flip to either
+    // real content or EmptyState. `|| {}` / `|| []` covers null returns
+    // from the store on fetch error or empty Supabase result.
+    fetchViewKpis('executive').then(d => setKpiData(d || { kpis: [], insight: null }));
+    fetchTimeSeries(['tcoc_all','tcoc_ip','tcoc_op','tcoc_ed','tcoc_rx','tcoc_pac']).then(d => setTcocData(d || {}));
+    fetchViewTable('executive', 'cost_by_setting_benchmark').then(d => setCostData(d || { columns: [], rows: [] }));
+    fetchProgressBars('executive', 'executive_quality_summary').then(d => setQualitySummary(d || []));
+    fetchConfig('exec_cost_by_setting_inline').then(d => setCostInlineData(d || {}));
+    fetchConfig('exec_savings_trajectory').then(d => setSavingsData(d || {}));
+    fetchConfig('exec_care_programs').then(d => setCareProgramData(d || {}));
   }, [period, periodMode]);
 
-  const kpis = kpiData?.kpis || fb.kpis || [];
-  const insight = kpiData?.insight || fb.insight;
-  const costRows = safeTableRows(costData, (FALLBACK_TABLES.cost_by_setting_benchmark || {}).rows);
+  const kpis = kpiData?.kpis || [];
+  const insight = kpiData?.insight || null;
+  const costRows = safeTableRows(costData);
   const qualityItems = safeBarItems(qualitySummary);
 
-  // Fallback quality summary if not from DB
   const qualFallback = qualityItems.length > 0 ? qualityItems : [
-    { label: 'AWV Completion', value: '61%', pct: 61, color: 'amber', sub: 'Target 80% \u00B7 847 unscheduled' },
-    { label: 'Diabetes HbA1c Control', value: '72%', pct: 72, color: 'teal', sub: 'Target 70% \u2713' },
+    { label: 'AWV Completion', value: '61%', pct: 61, color: 'amber', sub: 'Target 80% · 847 unscheduled' },
+    { label: 'Diabetes HbA1c Control', value: '72%', pct: 72, color: 'teal', sub: 'Target 70% ✓' },
     { label: 'BP Control (<140/90)', value: '64%', pct: 64, color: 'purple', sub: 'Target 70%' },
     { label: 'Colorectal Screening', value: '58%', pct: 58, color: 'red', sub: 'Target 65%' },
-    { label: 'Depression Screening', value: '83%', pct: 83, color: 'green', sub: 'Target 80% \u2713' },
+    { label: 'Depression Screening', value: '83%', pct: 83, color: 'green', sub: 'Target 80% ✓' },
   ];
 
-  // Cost by setting inline data (from DB or fallback)
-  const costBySettingInline = costInlineData?.items || FALLBACK_CONFIGS.exec_cost_by_setting_inline?.items || [];
+  // fetchConfig returns rows shaped { configData: {...} }. Unwrap via
+  // safeConfigData so reads work whether the source is the DB row or
+  // a future raw-shape fallback. Bug history: prior to this, the view
+  // read top-level keys (savingsData.data_points), which works for the
+  // deleted JS fallbacks but never matches DB-mapped rows.
+  const costInline = safeConfigData(costInlineData);
+  const savings = safeConfigData(savingsData);
+  const carePrograms = safeConfigData(careProgramData)?.rows || [];
 
-  // Shared savings trajectory data — period mode adjusts values
-  const rawSavings = savingsData?.data_points || FALLBACK_CONFIGS.exec_savings_trajectory?.data_points || [];
+  const costBySettingInline = costInline?.items || [];
+
+  const rawSavings = savings?.data_points || [];
   const savingsTrajectory = periodMode === 'r12'
     ? rawSavings.map(v => v != null ? +(v * 1.15).toFixed(2) : null)
     : rawSavings;
 
-  // Care program data (from DB or fallback)
-  const carePrograms = careProgramData?.rows || FALLBACK_CONFIGS.exec_care_programs?.rows || [];
-
   const periodLabel = periodMode === 'ytd' ? 'YTD 2025' : 'Rolling 12M';
 
-  return (
-    <>
-      {/* AI Insight Summary */}
-      {insight && (
-        <InsightBanner
-          icon={insight.icon}
-          title={insight.title}
-          variant={insight.variant}
-          text={insight.text}
-          buttons={insight.buttons || []}
-          showToast={showToast}
-        />
+  // ── Per-key content renderers ───────────────────────────────────────
+  const renderInsight = () => insight ? (
+    <InsightBanner
+      icon={insight.icon}
+      title={insight.title}
+      variant={insight.variant}
+      text={insight.text}
+      buttons={insight.buttons || []}
+      showToast={showToast}
+    />
+  ) : null;
+
+  const renderKpiRow = (start, end) => {
+    if (kpiData === null) return <KpiSkeleton count={end - start} />;
+    return (
+      <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        {kpis.slice(start, end).map(k => (
+          <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
+        ))}
+      </div>
+    );
+  };
+
+  const renderDrivers = () => (
+    <InsightBanner
+      icon="solar:chart-linear"
+      title="Key Drivers — Where to Focus"
+      text="Cost: <strong>Inpatient $23 over benchmark</strong> driven by readmission spike at 3 facilities. Quality: <strong>AWV 19pp below target</strong>. Risk: <strong>962 HCC suspects open</strong> = $2.1M revenue at risk. Engagement: <strong>SMS-first converting at 61%</strong> vs 29% phone."
+      buttons={[
+        { label: 'Financial', navTo: 'financial' },
+        { label: 'Quality', navTo: 'quality' },
+        { label: 'Risk', navTo: 'risk' },
+      ]}
+      showToast={showToast}
+    />
+  );
+
+  const renderTcoc = () => (
+    <Card
+      title="TCOC Trend & Cost by Setting"
+      sub={periodLabel}
+      actions={
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Toggle
+            items={[
+              { key: 'pmpm', label: 'PMPM' },
+              { key: 'total', label: 'Total Cost' },
+            ]}
+            active={tcocMode}
+            onChange={setTcocMode}
+            size="S"
+          />
+          <Toggle
+            items={[
+              { key: 'all', label: 'All' },
+              { key: 'ip', label: 'Inpatient' },
+              { key: 'op', label: 'Outpatient' },
+              { key: 'ed', label: 'ED' },
+              { key: 'rx', label: 'Pharmacy' },
+              { key: 'pac', label: 'PAC' },
+            ]}
+            active={tcocTab}
+            onChange={setTcocTab}
+            size="S"
+          />
+        </div>
+      }
+    >
+      {tcocData === null ? <ChartSkeleton bars={12} /> : <TcocLineChart tab={tcocTab} data={tcocData} mode={tcocMode} />}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--neutral-100)' }}>
+        {costBySettingInline.map(c => (
+          <div key={c.label} style={{ textAlign: 'center', padding: '10px 6px', background: 'var(--neutral-0)', border: '1px solid var(--neutral-150)', borderRadius: 6 }}>
+            <div style={{ fontSize: 12, color: 'var(--neutral-200)', marginBottom: 4 }}>{c.label}</div>
+            <div style={{ fontSize: 20, fontWeight: 500, color: c.color, lineHeight: 1.2 }}>{c.value}</div>
+            <div style={{ fontSize: 12, color: 'var(--neutral-300)', marginTop: 3 }}>{c.note}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+
+  const renderQuality = () => (
+    <Card title="Quality Summary" actions={<Button variant="ghost" size="S" onClick={() => showToast?.('Opening Quality view')}>Full View &rarr;</Button>}>
+      {qualitySummary === null ? (
+        <ProgressBarSkeleton count={5} />
+      ) : (
+        qualFallback.map(q => (
+          <ProgressBar key={q.label} label={q.label} value={q.value} pct={q.pct} color={q.color} sub={q.sub} />
+        ))
       )}
+    </Card>
+  );
 
-      <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        {kpis.slice(0, 4).map(k => (
-          <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
-        ))}
+  const renderCare = () => (
+    <Card
+      title="Care Program Command Center"
+      sub={`8 programs · $7.3M saved · 3.7× blended ROI`}
+      actions={<Button variant="ghost" size="S" onClick={() => showToast?.('Opening Care Management view')}>Full Program View &rarr;</Button>}
+      flush
+    >
+      <div className={s.tblWrap}>
+        <table className={s.tbl}>
+          <thead>
+            <tr>
+              <th>Program</th>
+              <th className={s.r}>Status</th>
+              <th className={s.r}>Saved</th>
+              <th className={s.r}>ROI</th>
+              <th>Top Alert</th>
+            </tr>
+          </thead>
+          <tbody>
+            {careProgramData === null && (
+              <tr><td colSpan={5} style={{ padding: 0 }}><TableSkeleton rows={5} cols={5} /></td></tr>
+            )}
+            {careProgramData !== null && carePrograms.length === 0 && (
+              <EmptyState colSpan={5} message="No care programs configured for this period." icon="solar:heart-pulse-linear" />
+            )}
+            {carePrograms.map((p, i) => (
+              <tr key={i} style={{ cursor: 'pointer' }} onClick={() => showToast?.(`Navigating to Care Management → Programs → ${p.abbr}`)}>
+                <td className={s.fw600}>{p.abbr}<div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{p.members} mbrs</div></td>
+                <td className={s.r}>
+                  <span className={`${s.stPill} ${p.status === 'green' ? s.stGreen : p.status === 'amber' ? s.stAmber : s.stRed}`}>
+                    {p.status === 'green' ? 'On Track' : p.status === 'amber' ? 'Review' : 'At Risk'}
+                  </span>
+                </td>
+                <td className={`${s.r} ${s.mono} ${s.valG}`}>{p.saved}</td>
+                <td className={`${s.r} ${s.mono}`} style={{ fontWeight: 500 }}>{p.roi}</td>
+                <td style={{ fontSize: 12, color: p.status === 'red' ? 'var(--status-error)' : 'var(--status-warning)', maxWidth: 200 }}>{p.alert}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
+    </Card>
+  );
 
-      <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-        {kpis.slice(4, 8).map(k => (
-          <KpiCard key={k.key} value={k.value} label={k.label} delta={k.delta} deltaType={k.deltaType} sub={k.sub} accentColor={k.accentColor} />
-        ))}
-      </div>
-
-      {/* Key Drivers Insight Banner */}
-      <InsightBanner
-        icon="solar:chart-linear"
-        title="Key Drivers \u2014 Where to Focus"
-        text="Cost: <strong>Inpatient $23 over benchmark</strong> driven by readmission spike at 3 facilities. Quality: <strong>AWV 19pp below target</strong>. Risk: <strong>962 HCC suspects open</strong> = $2.1M revenue at risk. Engagement: <strong>SMS-first converting at 61%</strong> vs 29% phone."
-        buttons={[
-          { label: 'Financial', navTo: 'financial' },
-          { label: 'Quality', navTo: 'quality' },
-          { label: 'Risk', navTo: 'risk' },
-        ]}
-        showToast={showToast}
-      />
-
-      {/* TCOC Trend */}
-      <Card
-        title="TCOC Trend & Cost by Setting"
-        sub={periodLabel}
-        actions={
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <Toggle
-              items={[
-                { key: 'pmpm', label: 'PMPM' },
-                { key: 'total', label: 'Total Cost' },
-              ]}
-              active={tcocMode}
-              onChange={setTcocMode}
-              size="S"
-            />
-            <Toggle
-              items={[
-                { key: 'all', label: 'All' },
-                { key: 'ip', label: 'Inpatient' },
-                { key: 'op', label: 'Outpatient' },
-                { key: 'ed', label: 'ED' },
-                { key: 'rx', label: 'Pharmacy' },
-                { key: 'pac', label: 'PAC' },
-              ]}
-              active={tcocTab}
-              onChange={setTcocTab}
-              size="S"
-            />
-          </div>
-        }
-      >
-        <TcocLineChart tab={tcocTab} data={tcocData} mode={tcocMode} />
-
-        {/* Cost by setting inline grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--neutral-100)' }}>
-          {costBySettingInline.map(c => (
-            <div key={c.label} style={{ textAlign: 'center', padding: '10px 6px', background: 'var(--neutral-0)', border: '1px solid var(--neutral-150)', borderRadius: 6 }}>
-              <div style={{ fontSize: 12, color: 'var(--neutral-200)', marginBottom: 4 }}>{c.label}</div>
-              <div style={{ fontSize: 20, fontWeight: 500, color: c.color, lineHeight: 1.2 }}>{c.value}</div>
-              <div style={{ fontSize: 12, color: 'var(--neutral-300)', marginTop: 3 }}>{c.note}</div>
-            </div>
-          ))}
+  const renderSavings = () => (
+    <Card
+      title="Shared Savings Trajectory"
+      sub={periodLabel}
+      actions={<Button variant="ghost" size="S" onClick={() => showToast?.('Opening Shared Savings view')}>Full View &rarr;</Button>}
+    >
+      <div style={{ display: 'flex', gap: 20, marginBottom: 12, flexWrap: 'wrap', alignItems: 'baseline' }}>
+        <div>
+          <div style={{ fontSize: 24, fontWeight: 500, color: 'var(--status-success)' }}>{periodMode === 'r12' ? '$1.8M' : '$1.2M'}</div>
+          <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--neutral-200)' }}>Savings {periodMode === 'r12' ? 'Rolling 12M' : 'YTD'}</div>
         </div>
-      </Card>
-
-      {/* Quality Summary + Care Program Command Center */}
-      <div className={s.g2}>
-        <Card title="Quality Summary" actions={<Button variant="ghost" size="S" onClick={() => showToast?.('Opening Quality view')}>Full View &rarr;</Button>}>
-          {qualFallback.map(q => (
-            <ProgressBar key={q.label} label={q.label} value={q.value} pct={q.pct} color={q.color} sub={q.sub} />
-          ))}
-        </Card>
-
-        <Card
-          title="Care Program Command Center"
-          sub={`8 programs \u00B7 $7.3M saved \u00B7 3.7\u00D7 blended ROI`}
-          actions={<Button variant="ghost" size="S" onClick={() => showToast?.('Opening Care Management view')}>Full Program View &rarr;</Button>}
-          flush
-        >
-          <div className={s.tblWrap}>
-            <table className={s.tbl}>
-              <thead>
-                <tr>
-                  <th>Program</th>
-                  <th className={s.r}>Status</th>
-                  <th className={s.r}>Saved</th>
-                  <th className={s.r}>ROI</th>
-                  <th>Top Alert</th>
-                </tr>
-              </thead>
-              <tbody>
-                {carePrograms.map((p, i) => (
-                  <tr key={i} style={{ cursor: 'pointer' }} onClick={() => showToast?.(`Navigating to Care Management → Programs → ${p.abbr}`)}>
-                    <td className={s.fw600}>{p.abbr}<div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{p.members} mbrs</div></td>
-                    <td className={s.r}>
-                      <span className={`${s.stPill} ${p.status === 'green' ? s.stGreen : p.status === 'amber' ? s.stAmber : s.stRed}`}>
-                        {p.status === 'green' ? 'On Track' : p.status === 'amber' ? 'Review' : 'At Risk'}
-                      </span>
-                    </td>
-                    <td className={`${s.r} ${s.mono} ${s.valG}`}>{p.saved}</td>
-                    <td className={`${s.r} ${s.mono}`} style={{ fontWeight: 500 }}>{p.roi}</td>
-                    <td style={{ fontSize: 12, color: p.status === 'red' ? 'var(--status-error)' : 'var(--status-warning)', maxWidth: 200 }}>{p.alert}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      </div>
-
-      {/* Shared Savings Trajectory */}
-      <Card
-        title="Shared Savings Trajectory"
-        sub={periodLabel}
-        actions={<Button variant="ghost" size="S" onClick={() => showToast?.('Opening Shared Savings view')}>Full View &rarr;</Button>}
-      >
-        <div style={{ display: 'flex', gap: 20, marginBottom: 12, flexWrap: 'wrap', alignItems: 'baseline' }}>
-          <div>
-            <div style={{ fontSize: 24, fontWeight: 500, color: 'var(--status-success)' }}>{periodMode === 'r12' ? '$1.8M' : '$1.2M'}</div>
-            <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--neutral-200)' }}>Savings {periodMode === 'r12' ? 'Rolling 12M' : 'YTD'}</div>
-          </div>
-          <div style={{ borderLeft: '1px solid var(--neutral-100)', paddingLeft: 16 }}>
-            <div style={{ fontSize: 24, fontWeight: 500, color: 'var(--status-warning)' }}>{periodMode === 'r12' ? '82%' : '78%'}</div>
-            <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--neutral-200)' }}>Prob. of hitting MSR</div>
-          </div>
-          <div style={{ borderLeft: '1px solid var(--neutral-100)', paddingLeft: 16 }}>
-            <div style={{ fontSize: 24, fontWeight: 500, color: 'var(--neutral-500)' }}>4.1</div>
-            <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--neutral-200)' }}>Quality Composite</div>
-          </div>
-          <div style={{ borderLeft: '1px solid var(--neutral-100)', paddingLeft: 16 }}>
-            <div style={{ fontSize: 24, fontWeight: 500, color: 'var(--neutral-500)' }}>{periodMode === 'r12' ? '$3.8M' : '$3.2M'}</div>
-            <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--neutral-200)' }}>Full-year projection</div>
-          </div>
+        <div style={{ borderLeft: '1px solid var(--neutral-100)', paddingLeft: 16 }}>
+          <div style={{ fontSize: 24, fontWeight: 500, color: 'var(--status-warning)' }}>{periodMode === 'r12' ? '82%' : '78%'}</div>
+          <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--neutral-200)' }}>Prob. of hitting MSR</div>
         </div>
+        <div style={{ borderLeft: '1px solid var(--neutral-100)', paddingLeft: 16 }}>
+          <div style={{ fontSize: 24, fontWeight: 500, color: 'var(--neutral-500)' }}>4.1</div>
+          <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--neutral-200)' }}>Quality Composite</div>
+        </div>
+        <div style={{ borderLeft: '1px solid var(--neutral-100)', paddingLeft: 16 }}>
+          <div style={{ fontSize: 24, fontWeight: 500, color: 'var(--neutral-500)' }}>{periodMode === 'r12' ? '$3.8M' : '$3.2M'}</div>
+          <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--neutral-200)' }}>Full-year projection</div>
+        </div>
+      </div>
+      {savingsData === null ? (
+        <ChartSkeleton bars={12} />
+      ) : savingsTrajectory.length === 0 ? (
+        <EmptyState message="No savings trajectory data for this period." icon="solar:chart-2-linear" />
+      ) : (
         <SavingsAreaChart data={savingsTrajectory} targetLabel="MSR $2.8M" targetValue={2.8} />
-        <div style={{ fontSize: 12, color: 'var(--neutral-200)', padding: '8px 14px 4px', borderTop: '1px solid var(--neutral-100)', marginTop: 8 }}>
-          MSSP Track 1B &middot; Performance Year 2025 &middot; Quality composite secures maximum sharing rate
-        </div>
-      </Card>
+      )}
+      <div style={{ fontSize: 12, color: 'var(--neutral-200)', padding: '8px 14px 4px', borderTop: '1px solid var(--neutral-100)', marginTop: 8 }}>
+        MSSP Track 1B &middot; Performance Year 2025 &middot; Quality composite secures maximum sharing rate
+      </div>
+    </Card>
+  );
 
-      {/* Cost by Setting Benchmark Table */}
-      <Card title="Cost by Setting \u2014 Benchmark Comparison" flush>
-        <div className={s.tblWrap}>
-          <table className={s.tbl}>
-            <thead>
-              <tr><th>Setting</th><th className={s.r}>Actual PMPM</th><th className={s.r}>Benchmark</th><th className={s.r}>Variance</th><th>Status</th></tr>
-            </thead>
-            <tbody>
-              {costRows.map((row, i) => {
-                const setting = row.setting || row[0];
-                const actual = row.actual || row[1];
-                const bench = row.benchmark || row[2];
-                const variance = row.variance || row[3];
-                const st = row.status || row[4];
-                return (
-                  <tr key={i}>
-                    <td className={s.fw600}>{setting}</td>
-                    <td className={`${s.r} ${s.mono}`}>{actual}</td>
-                    <td className={`${s.r} ${s.mono}`}>{bench}</td>
-                    <td className={`${s.r} ${st === 'green' ? s.valG : st === 'red' ? s.valR : st === 'amber' ? s.valA : ''}`}>{variance}</td>
-                    <td>
-                      <span className={`${s.stPill} ${st === 'green' ? s.stGreen : st === 'red' ? s.stRed : st === 'amber' ? s.stAmber : s.stNeutral}`}>
-                        {st === 'green' ? 'Below' : st === 'red' ? 'Above' : st === 'amber' ? 'Watch' : 'At'}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-    </>
+  const renderCostTable = () => (
+    <Card title="Cost by Setting — Benchmark Comparison" flush>
+      <div className={s.tblWrap}>
+        <table className={s.tbl}>
+          <thead>
+            <tr><th>Setting</th><th className={s.r}>Actual PMPM</th><th className={s.r}>Benchmark</th><th className={s.r}>Variance</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {costData === null && (
+              <tr><td colSpan={5} style={{ padding: 0 }}><TableSkeleton rows={5} cols={5} /></td></tr>
+            )}
+            {costData !== null && costRows.length === 0 && (
+              <EmptyState colSpan={5} message="No cost-by-setting data for this period." icon="solar:wallet-money-linear" />
+            )}
+            {costRows.map((row, i) => {
+              const setting = row.setting || row[0];
+              const actual = row.actual || row[1];
+              const bench = row.benchmark || row[2];
+              const variance = row.variance || row[3];
+              const st = row.status || row[4];
+              return (
+                <tr key={i}>
+                  <td className={s.fw600}>{setting}</td>
+                  <td className={`${s.r} ${s.mono}`}>{actual}</td>
+                  <td className={`${s.r} ${s.mono}`}>{bench}</td>
+                  <td className={`${s.r} ${st === 'green' ? s.valG : st === 'red' ? s.valR : st === 'amber' ? s.valA : ''}`}>{variance}</td>
+                  <td>
+                    <span className={`${s.stPill} ${st === 'green' ? s.stGreen : st === 'red' ? s.stRed : st === 'amber' ? s.stAmber : s.stNeutral}`}>
+                      {st === 'green' ? 'Below' : st === 'red' ? 'Above' : st === 'amber' ? 'Watch' : 'At'}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+
+  const RENDERERS = {
+    insight: renderInsight,
+    kpi1: () => renderKpiRow(0, 4),
+    kpi2: () => renderKpiRow(4, 8),
+    drivers: renderDrivers,
+    tcoc: renderTcoc,
+    quality: renderQuality,
+    care: renderCare,
+    savings: renderSavings,
+    costTable: renderCostTable,
+  };
+
+  return (
+    <EditableGrid
+      storageKey={STORAGE_KEY}
+      defaultLayout={DEFAULT_LAYOUT}
+      renderers={RENDERERS}
+      editing={editing}
+      resetTick={resetTick}
+    />
   );
 }
-

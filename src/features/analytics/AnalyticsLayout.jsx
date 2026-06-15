@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
 import { useAppStore } from '../../store/useAppStore';
@@ -59,6 +59,16 @@ const PRACTICES = [
   { value: 'summit', label: 'Summit Internal Medicine' },
 ];
 
+// Views that support the editable dashboard pattern (drag/resize cards).
+// As more views are migrated, add their keys here.
+const EDITABLE_VIEWS = new Set([
+  'executive', 'quality',
+  'aianalytics', 'actionrules', 'platformops', 'network',
+  'population', 'roi', 'risk', 'shared',
+  'sdoh', 'tools', 'utilization',
+  'care', 'financial',
+]);
+
 export function AnalyticsLayout() {
   const view = useAppStore(st => st.analyticsView) || 'executive';
   const setAnalyticsView = useAppStore(st => st.setAnalyticsView);
@@ -66,6 +76,18 @@ export function AnalyticsLayout() {
   const canvasRef = useRef(null);
   const ViewComponent = VIEW_MAP[view] || ExecutiveView;
   const meta = VIEW_TITLES[view] || VIEW_TITLES.executive;
+
+  // Edit-mode state for the editable dashboard pattern. Lives at this level
+  // so the Customize/Done + Reset buttons can render in the view header
+  // (next to Export) instead of in a separate row inside each view.
+  const [editingDashboard, setEditingDashboard] = useState(false);
+  const [resetTick, setResetTick] = useState(0);
+  const isEditableView = EDITABLE_VIEWS.has(view);
+  const editing = editingDashboard && isEditableView;
+
+  // Auto-exit edit mode when switching views — avoids stale state when the
+  // user navigates to a non-editable view while editing.
+  useEffect(() => { setEditingDashboard(false); }, [view]);
 
   const analyticsPeriod = useAppStore(st => st.analyticsPeriod);
   const analyticsPractice = useAppStore(st => st.analyticsPractice);
@@ -241,12 +263,27 @@ export function AnalyticsLayout() {
                 <Icon name="solar:download-minimalistic-linear" size={14} />
                 Export
               </button>
+              {isEditableView && editing && (
+                <button className={s.filterBtn} onClick={() => setResetTick(t => t + 1)}>
+                  <Icon name="solar:refresh-linear" size={14} />
+                  Reset
+                </button>
+              )}
+              {isEditableView && (
+                <button
+                  className={[s.filterBtn, editing ? s.filterBtnActive : ''].filter(Boolean).join(' ')}
+                  onClick={() => setEditingDashboard(v => !v)}
+                >
+                  <Icon name={editing ? 'solar:check-circle-linear' : 'solar:pen-linear'} size={14} />
+                  {editing ? 'Done' : 'Customize'}
+                </button>
+              )}
             </div>
           </div>
 
           {/* Active view */}
           <ViewErrorBoundary key={view}>
-            <ViewComponent showToast={showToast} />
+            <ViewComponent showToast={showToast} editing={editing} resetTick={resetTick} />
           </ViewErrorBoundary>
         </div>
       </div>

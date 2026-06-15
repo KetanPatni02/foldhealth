@@ -25,6 +25,49 @@
 export const THEME_STORAGE_KEY = 'theme';
 export const THEME_VALUES = ['light', 'dark', 'blue', 'plum', 'system'];
 
+/**
+ * Nav style — independent of color theme.
+ * 'default' keeps the per-theme dark-purple chrome.
+ * 'light'   applies a hardcoded light sidebar across every color theme
+ *           via [data-nav-style="light"] in tokens.css.
+ */
+export const NAV_STYLE_STORAGE_KEY = 'navStyle';
+export const NAV_STYLE_VALUES = ['default', 'light'];
+
+export function getStoredNavStyle() {
+  try {
+    const v = localStorage.getItem(NAV_STYLE_STORAGE_KEY);
+    return NAV_STYLE_VALUES.includes(v) ? v : 'default';
+  } catch {
+    return 'default';
+  }
+}
+
+export function persistNavStyle(value) {
+  try {
+    localStorage.setItem(NAV_STYLE_STORAGE_KEY, value);
+  } catch {
+    /* localStorage unavailable */
+  }
+}
+
+/** Apply nav style to <html>. 'default' removes the attribute entirely. */
+export function applyNavStyle(value) {
+  if (typeof document === 'undefined') return value;
+  const safe = NAV_STYLE_VALUES.includes(value) ? value : 'default';
+  const root = document.documentElement;
+  if (safe === 'default') root.removeAttribute('data-nav-style');
+  else root.setAttribute('data-nav-style', safe);
+  persistNavStyle(safe);
+  return safe;
+}
+
+export function initNavStyle() {
+  const value = getStoredNavStyle();
+  applyNavStyle(value);
+  return value;
+}
+
 /** Resolve a setting ('system') down to an actual rendered theme. */
 export function getResolvedTheme(setting) {
   if (setting === 'system') {

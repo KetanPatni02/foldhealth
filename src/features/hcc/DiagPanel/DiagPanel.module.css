@@ -1,5 +1,10 @@
-/* Keep standard Drawer width (700px) — no override needed */
-.panel {}
+/* Smooth width transition when the workspace pane opens/closes — pairs
+   with the workspace's swipe-in animation for a "something is coming in"
+   feel rather than a jarring snap to the wider size. */
+.panel {
+  transition: width 280ms cubic-bezier(0.32, 0.72, 0.36, 1),
+              max-width 280ms cubic-bezier(0.32, 0.72, 0.36, 1) !important;
+}
 
 /* Drawer body override — full-bleed, scrollable */
 .body {
@@ -18,11 +23,15 @@
 }
 
 /* ── Title row — Figma: pl-12 pr-12 py-6, border-bottom 0.5px grey-150 ── */
+/* ── Title row — matches prototype's 44px header (line 1900) ─────────── */
 .titleRow {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  padding: 6px 12px;
+  padding: 8px 12px;
+  height: 44px;
+  box-sizing: border-box;
   border-bottom: 0.5px solid var(--neutral-150);
   background: var(--neutral-0);
   flex-shrink: 0;
@@ -30,33 +39,36 @@
 }
 .titleText {
   flex: 1;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
-  color: var(--neutral-400);
+  color: var(--neutral-500);
 }
 
-/* ── Patient banner — Figma: px-12 py-8, gap-24 between info and actions ── */
+/* ── Patient banner — matches prototype's 57px row (line 1911) ───────── */
 .patientBanner {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  border-bottom: 0.5px solid var(--neutral-150);
+  padding: 0 12px;
+  height: 57px;
+  box-sizing: border-box;
+  border-bottom: 0.5px solid var(--neutral-100);
   background: var(--neutral-0);
   flex-shrink: 0;
 }
 
 .avatar {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
   border-radius: 8px;
-  background: #F5F0FF;
-  border: 0.5px solid #D7C0FF;
+  background: var(--primary-100);
+  border: 0.5px solid var(--primary-200);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: 'Inter', sans-serif;
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 400;
   color: var(--primary-300);
   flex-shrink: 0;
@@ -67,8 +79,14 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-left: 0; /* avatar gap comes from parent's gap:8px */
+  gap: 2px;
+  overflow: hidden;
+}
+
+.memberNameRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .memberName {
@@ -77,17 +95,25 @@
   font-weight: 500;
   color: var(--neutral-400);
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .memberMeta {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 400;
   color: var(--neutral-300);
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.metaDot {
+  color: var(--neutral-200);
+  font-size: 13px;
 }
 .rafLabel { color: var(--neutral-300); }
 .rafValue {
@@ -97,17 +123,16 @@
 .rafImpact {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 22px;
-  min-width: 22px;
-  padding: 2px 6px;
-  margin-left: 2px;
+  gap: 2px;
+  height: 20px;
+  padding: 2px 5px;
+  margin-left: 4px;
   background: var(--status-success-light);
   border: 0.5px solid rgba(0, 155, 83, 0.2);
   border-radius: 4px;
   color: var(--status-success);
   font-variant-numeric: tabular-nums;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .bannerActions {
@@ -125,28 +150,25 @@
   flex-shrink: 0;
 }
 
-/* ── View-by toolbar ── */
+/* ── DOS toolbar (Figma 1:41104) ── */
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 12px;
+  gap: 8px;
+  padding: 4px 12px 4px 8px;
   height: 40px;
   border-bottom: 0.5px solid var(--neutral-150);
   background: var(--neutral-0);
   flex-shrink: 0;
 }
-.viewBy {
+/* Left cluster — Bulk + view-by toggle. Sits against the left edge. */
+.toolbarLeft {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.viewByLabel {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--neutral-300);
-}
+/* (`.viewBy` / `.viewByLabel` removed — Figma drops the "View by:" prefix
+   so the toggle sits inline with the Bulk action.) */
 /* Animated segmented toggle — mirrors AgentCanvas .toolbarTabs pattern */
 .segmented {
   display: flex;
@@ -195,11 +217,14 @@
   gap: 8px;
   margin-left: auto;
 }
+/* Figma: + ICD pill-link — 16px add icon, 4px gap, 14px Inter Regular
+   primary-300 label. No padding, no border by default; subtle neutral-50
+   bg on hover for affordance. */
 .addIcdBtn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
+  padding: 4px 6px;
   background: none;
   border: none;
   border-radius: 4px;
@@ -209,8 +234,9 @@
 }
 .addIcdBtn:hover { background: var(--neutral-50); }
 .addIcdBtn span {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.2;
   color: var(--primary-300);
 }
 
@@ -313,4 +339,293 @@
   color: var(--neutral-300);
   font-size: 13px;
   text-align: center;
+}
+
+/* ── DOS row (Phase 2a) ───────────────────────────────────────────────── */
+
+.dosRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 12px;
+  height: 40px;
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-100);
+  flex-shrink: 0;
+}
+
+.dosRowLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.dosRowRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.dosRowDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+/* With-<Stage> pill in the DOS row. Hover opens ReviewProgressPopover.
+   The leading ring is rendered by <ProgressRing> from
+   ReviewProgressPopover.jsx — no static CSS half-circle anymore. */
+.withCoderPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--neutral-50);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  flex-shrink: 0;
+  cursor: default;
+  transition: background 0.12s;
+}
+.withCoderPill:hover,
+.withCoderPill:focus-visible {
+  background: var(--neutral-100);
+}
+.withCoderPill:focus-visible {
+  outline: 2px solid var(--primary-300);
+  outline-offset: 2px;
+}
+
+.sweepBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--status-warning-light);
+  border: 0.5px solid rgba(217, 165, 11, 0.2);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--status-warning);
+}
+
+/* ── Sweep mode list (Phase 2d) ─────────────────────────────────────── */
+
+.sweepWrap {
+  display: flex;
+  flex-direction: column;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.sweepBanner {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  background: linear-gradient(to right, var(--status-warning-light), var(--neutral-0));
+  border-bottom: 0.5px solid rgba(217, 165, 11, 0.2);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--status-warning);
+}
+
+.sweepHeaderRow {
+  display: flex;
+  align-items: center;
+  padding: 5px 14px;
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-100);
+  font-family: 'Inter', sans-serif;
+}
+
+.sweepHeaderCode {
+  width: 78px;
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--neutral-200);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sweepHeaderDesc {
+  flex: 1;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--neutral-200);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sweepHeaderActions {
+  width: 72px;
+  text-align: right;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--neutral-200);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sweepList {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Phase 3a: panel expansion + split layout ─────────────────────────── */
+
+/* When a left workspace is open, widen the drawer and split into two panes. */
+.panelExpanded {
+  width: 1280px !important;
+  max-width: calc(100vw - 16px) !important;
+}
+
+.bodyExpanded {
+  /* Body stays flex-column so the title row spans the full drawer width.
+     The internal .contentRow handles the side-by-side panes. */
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
+/* Holds the two panes side-by-side beneath the full-width title row. When
+   the workspace is closed, this just wraps the single (full-width) pane. */
+.contentRow {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+
+/* When the workspace is closed, the right pane is the whole drawer body. */
+.rightPaneFull {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* When the workspace is open, the left (LeftWorkspace) and right (Diagnosis
+   Gaps) panes split the drawer 50-50. Both use flex:1 with equal basis so
+   neither is squeezed. */
+.rightPane {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-left: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+}
+
+/* Highlight tone for toolbar action buttons whose corresponding left
+   workspace tab is currently open. */
+.activeIcon {
+  background: var(--primary-100) !important;
+  color: var(--primary-300) !important;
+}
+
+/* ── Flat ICD list (View by: ICD) ─────────────────────────────────────── */
+
+.flatIcdWrap {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+}
+
+.flatIcdHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--neutral-50);
+  border-bottom: 0.5px solid var(--neutral-100);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-300);
+}
+
+.flatIcdHeaderRight {
+  font-weight: 400;
+  color: var(--neutral-200);
+}
+
+.flatIcdList {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── ICD-mode sections (prototype's 4-section layout) ──────────────── */
+
+.icdSections {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: 'Inter', sans-serif;
+}
+
+.icdSection {
+  background: transparent;
+}
+
+.icdSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px 8px 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.icdSectionTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+
+.icdSectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.icdSectionEmpty {
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--neutral-200);
+}
+
+.unitySuggestedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(140, 90, 226, 0.08);
+  border: 0.5px solid var(--primary-200);
+  font-size: 11px;
+  color: var(--primary-300);
+  margin-left: 2px;
 }
