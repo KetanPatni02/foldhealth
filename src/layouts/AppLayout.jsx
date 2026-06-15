@@ -14,6 +14,8 @@ import { QueueSummaryBar } from '../features/toc-queue/QueueSummaryBar';
 import { HccWorklistTable } from '../features/hcc/HccWorklistTable';
 import { HedisWorklistTable } from '../features/hedis-worklist/HedisWorklistTable';
 import { AllPatientsTable } from '../features/all-patients/AllPatientsTable';
+import { PopulationGroupsView } from '../features/population-groups/PopulationGroupsView';
+import { PgProcessingHost } from '../features/population-groups/PgProcessingHost';
 import { SchedulingListTable } from '../features/scheduling-list/SchedulingListTable';
 import { Icon } from '../components/Icon/Icon';
 import { useAppStore } from '../store/useAppStore';
@@ -121,6 +123,7 @@ function ToastSuccess() {
 
 function PopulationView() {
   const subnavCollapsed = useAppStore(s => s.subnavCollapsed);
+  const toggleSubnav = useAppStore(s => s.toggleSubnav);
   const activeTab = useAppStore(s => s.activeTab);
   const showFilterBar = useAppStore(s => s.showFilterBar);
   const activeSubnavList = useAppStore(s => s.activeSubnavList);
@@ -144,10 +147,14 @@ function PopulationView() {
   const isHcc = activeSubnavList === 'HCC';
   const isHedis = activeSubnavList === 'HEDIS';
   const isAllPatients = activeSubnavList === 'All Patients';
+  const isPopulationGroup = activeSubnavList.startsWith('pg:');
   const isSchedulingList = activeSubnavList === 'Scheduling List';
   const TOC_LISTS = ['TOC'];
-  const isToc = TOC_LISTS.includes(activeSubnavList) || (!isHcc && !isHedis && !isAllPatients && !isSchedulingList && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'AWV', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
+  const isToc = TOC_LISTS.includes(activeSubnavList) || (!isHcc && !isHedis && !isAllPatients && !isSchedulingList && !isPopulationGroup && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'AWV', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
   const isComingSoon = ['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'AWV', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList);
+  const pgFilter = activeSubnavList === 'pg:Static' ? 'Static' : activeSubnavList === 'pg:Dynamic' ? 'Dynamic' : 'All';
+
+  const chromeless = isHcc || isHedis || isComingSoon || isPopulationGroup || isSchedulingList;
 
   return (
     <div className={styles.main}>
@@ -156,9 +163,9 @@ function PopulationView() {
       <div className={styles.bodyRow}>
         <SubNav collapsed={subnavCollapsed} />
         <div className={styles.content}>
-          {!isHcc && !isHedis && !isComingSoon && !isSchedulingList && <TabBar />}
-          {!isHcc && !isHedis && !isComingSoon && !isSchedulingList && showFilterBar && <FilterBar />}
-          {!isHcc && !isHedis && !isAllPatients && !isComingSoon && !isSchedulingList && activeTab === 'toc-queue' && <QueueSummaryBar />}
+          {!chromeless && <TabBar />}
+          {!chromeless && showFilterBar && <FilterBar />}
+          {!isHcc && !isHedis && !isAllPatients && !isComingSoon && !isSchedulingList && !isPopulationGroup && activeTab === 'toc-queue' && <QueueSummaryBar />}
           {isSchedulingList
             ? <SchedulingListTable />
             : isHcc
@@ -167,10 +174,12 @@ function PopulationView() {
                 ? <HedisWorklistTable />
                 : isAllPatients
                   ? <AllPatientsTable />
-                  : isComingSoon
-                    ? <ComingSoonState listName={activeSubnavList} />
-                    : (activeTab === 'toc-worklist' ? <WorklistTable /> : <QueueTable />)}
-          {!isHcc && !isHedis && !isComingSoon && !isSchedulingList && <Pagination />}
+                  : isPopulationGroup
+                    ? <PopulationGroupsView activeFilter={pgFilter} onToggleSidebar={toggleSubnav} />
+                    : isComingSoon
+                      ? <ComingSoonState listName={activeSubnavList} />
+                      : (activeTab === 'toc-worklist' ? <WorklistTable /> : <QueueTable />)}
+          {!chromeless && <Pagination />}
         </div>
       </div>
     </div>
@@ -472,6 +481,7 @@ export function AppLayout() {
         <UploadDocumentDrawer />{/* mounts itself only when hccUploadSession is set */}
         <ClaimPreviewDrawer />{/* mounts itself only when hccClaimPreview.open is true */}
         {quickViewPatient && <QuickViewDrawer />}
+        <PgProcessingHost />
       </Suspense>
       <Toast />
       <ToastSuccess />

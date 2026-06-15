@@ -505,6 +505,11 @@ export const useAppStore = create((set, get) => ({
   activeFilters: {},  // { gender: 'F', language: 'es', lace: 'High', ... }
   activeSubnavList: 'TOC',  // which SubNav list is selected
 
+  // ── Population Groups: persistent create-group CSV processing session ──
+  pgSession: null,            // { fileName, fileSize, segName, status:'loading'|'complete', procStep, startedAt, result }
+  pgMinimized: false,
+  pgReopenToken: 0,
+
   // HEDIS worklist state lives at line ~1558 (caregapActivity, hedisMembers,
   // setHedisMembers, updateGapStatus, etc.) — defined by upstream.
 
@@ -771,6 +776,12 @@ export const useAppStore = create((set, get) => ({
     set({ activePage: page });
     updateHash(get);
   },
+
+  // ── Population Groups: persistent create-group CSV processing session ──
+  startPgSession: (sess) => set({ pgSession: { ...sess }, pgMinimized: true }),
+  updatePgSession: (patch) => set(s => ({ pgSession: s.pgSession ? { ...s.pgSession, ...patch } : null })),
+  expandPgSession: () => set(s => ({ pgMinimized: false, pgReopenToken: s.pgReopenToken + 1 })),
+  closePgSession: () => set({ pgSession: null, pgMinimized: false }),
 
   // Navigation guard for full-screen takeovers. When the user clicks a Sidebar
   // entry while the EmailBuilder or CampaignBuilder is open, we don't want the
