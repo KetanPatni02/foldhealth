@@ -14,6 +14,25 @@ import styles from './UploadDocumentDrawer.module.css';
 // JPG/PNG cover scanned/photographed encounter sheets and lab reports.
 // Keep the MIME and extension lists in sync — `accept=` uses extensions
 // for cross-OS reliability, the runtime check uses MIME.
+// Numbered step indicator shared between the picker (active=1) and the
+// review phases (active=2). Keeps both surfaces visually anchored to the
+// same flow so the user knows where they are.
+function StepIndicator({ activeStep = 1 }) {
+  return (
+    <div className={styles.steps}>
+      <div className={styles.step}>
+        <span className={`${styles.stepBadge}${activeStep >= 1 ? '' : ` ${styles.stepBadgeIdle}`}`}>1</span>
+        <span className={`${styles.stepLabel}${activeStep >= 1 ? '' : ` ${styles.stepLabelIdle}`}`}>Upload File</span>
+      </div>
+      <span className={styles.stepDivider} />
+      <div className={styles.step}>
+        <span className={`${styles.stepBadge}${activeStep >= 2 ? '' : ` ${styles.stepBadgeIdle}`}`}>2</span>
+        <span className={`${styles.stepLabel}${activeStep >= 2 ? '' : ` ${styles.stepLabelIdle}`}`}>OCR Review</span>
+      </div>
+    </div>
+  );
+}
+
 const ACCEPT_EXT  = '.pdf,.doc,.docx,.jpg,.jpeg,.png';
 const ACCEPT_MIME = new Set([
   'application/pdf',
@@ -70,6 +89,23 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
   const [filter, setFilter] = useState('all'); // all | error | mismatched | ready
   const [layout, setLayout] = useState('card'); // card | table
   const [appending, setAppending] = useState(false);
+  // Bulk-select state for the table layout. A Set of encounter `_idx`
+  // (the position in session.encounters). Empty = no selection → Confirm
+  // falls back to "apply all" behavior (matches the card layout). Non-empty
+  // → Confirm applies only selected, marks the rest as rejected, and the
+  // History summary entry lists both buckets.
+  const [selectedIdxs, setSelectedIdxs] = useState(() => new Set());
+  const toggleSelected = (idx) => setSelectedIdxs(prev => {
+    const next = new Set(prev);
+    if (next.has(idx)) next.delete(idx); else next.add(idx);
+    return next;
+  });
+  const setSelectedAll = (idxs, all) => setSelectedIdxs(prev => {
+    const next = new Set(prev);
+    if (all) idxs.forEach(i => next.add(i));
+    else     idxs.forEach(i => next.delete(i));
+    return next;
+  });
   const fileInputRef = useRef(null);
   const appendInputRef = useRef(null);
 
@@ -122,18 +158,44 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
     return Array.from(map.values());
   }, [session.encounters]);
 
+  // Confirm gates on validity. In table layout with bulk selection active
+  // we only validate the SELECTED rows — the unselected ones are about to
+  // be rejected, so their errors / unmatched state don't block the action.
+  // In card layout (or table with no selection) all encounters must be
+  // valid, matching the original AC-8 / AC-9 contract.
   const canConfirm = useMemo(() => {
-    if (!session.encounters?.length) return false;
-    return session.encounters.every(e =>
-      e.patient?.matchedMemberId &&        // AC-9: 100%-match enforced
-      (!e.errors || e.errors.length === 0) // AC-8: no missing mandatories
-    );
-  }, [session.encounters]);
+    const all = session.encounters || [];
+    if (!all.length) return false;
+    const isValid = (e) =>
+      e.patient?.matchedMemberId &&
+      (!e.errors || e.errors.length === 0);
+    if (layout === 'table' && selectedIdxs.size > 0) {
+      // Validate only the selected encounters.
+      return Array.from(selectedIdxs).every(idx => {
+        const e = all[idx];
+        return e && isValid(e);
+      });
+    }
+    return all.every(isValid);
+  }, [session.encounters, layout, selectedIdxs]);
 
   const handleConfirm = () => {
     if (!canConfirm) return;
-    const summary = confirm();
-    showToast(`${summary.created} row${summary.created === 1 ? '' : 's'} created, ${summary.updated} updated`);
+    // If the user has bulk-selected rows in table layout, only those get
+    // applied. Others are rejected and recorded in the activity log.
+    const acceptedIdxs = (layout === 'table' && selectedIdxs.size > 0)
+      ? Array.from(selectedIdxs)
+      : null;
+    const summary = confirm(acceptedIdxs ? { acceptedIdxs } : undefined);
+    const created = summary.created || 0;
+    const updated = summary.updated || 0;
+    const rejected = summary.rejected || 0;
+    const parts = [];
+    if (created) parts.push(`${created} created`);
+    if (updated) parts.push(`${updated} updated`);
+    if (rejected) parts.push(`${rejected} rejected`);
+    showToast(parts.length ? parts.join(', ') : 'No changes applied');
+    setSelectedIdxs(new Set());
   };
 
   // Append more encounters from a second PDF without dropping the
@@ -236,19 +298,7 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
             Upload clinical documents to extract HCC encounters and update the worklist.
           </p>
 
-          {/* Step indicator — numbered chips mirroring the Figma "1 Upload File · 2 Profile Review"
-              pattern. For HCC the steps are Upload PDF → OCR Review. */}
-          <div className={styles.steps}>
-            <div className={`${styles.step} ${styles.stepActive}`}>
-              <span className={styles.stepBadge}>1</span>
-              <span className={styles.stepLabel}>Upload File</span>
-            </div>
-            <span className={styles.stepDivider} />
-            <div className={styles.step}>
-              <span className={`${styles.stepBadge} ${styles.stepBadgeIdle}`}>2</span>
-              <span className={`${styles.stepLabel} ${styles.stepLabelIdle}`}>OCR Review</span>
-            </div>
-          </div>
+          <StepIndicator activeStep={1} />
 
           {/* Concentric-ring hero — neutral chrome that frames the upload action. */}
           <div className={styles.hero} aria-hidden="true">
@@ -374,6 +424,10 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
           filter={filter}
           setFilter={setFilter}
           layout={layout}
+          selectedIdxs={selectedIdxs}
+          toggleSelected={toggleSelected}
+          setSelectedAll={setSelectedAll}
+          sourceFileName={session.file?.name}
         />
       )}
     </Drawer>
@@ -390,7 +444,7 @@ function encounterStatus(enc) {
   return 'ready';
 }
 
-function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, selectedIdx, setSelectedIdx, filter, setFilter, layout }) {
+function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, selectedIdx, setSelectedIdx, filter, setFilter, layout, selectedIdxs, toggleSelected, setSelectedAll, sourceFileName }) {
   // Aggregate counts per status for the filter chips. The bucket keys
   // here must match what encounterStatus() returns ('error' singular,
   // 'mismatched', 'ready') — historically had a typo where the chip
@@ -435,6 +489,10 @@ function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, sele
 
   return (
     <div className={styles.reviewPhase}>
+      {/* Step indicator — mirrors the picker phase but with step 2 active. */}
+      <div className={styles.reviewSteps}>
+        <StepIndicator activeStep={2} />
+      </div>
       {/* Stats bar + filter chips */}
       <div className={styles.statsBar}>
         <div className={styles.statsSummary}>
@@ -462,6 +520,18 @@ function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, sele
         </div>
       </div>
 
+      {/* Selection summary — only meaningful in table layout. */}
+      {layout === 'table' && selectedIdxs.size > 0 && (
+        <div className={styles.selectionBar}>
+          <Icon name="solar:check-square-linear" size={14} color="var(--primary-300)" />
+          <span>
+            <strong>{selectedIdxs.size}</strong> of {encounters.length} selected
+            {' · '}
+            on Confirm the other {encounters.length - selectedIdxs.size} will be rejected
+          </span>
+        </div>
+      )}
+
       {/* Layout body — master-detail or editable table. */}
       {layout === 'table' ? (
         <TableLayout
@@ -470,6 +540,10 @@ function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, sele
           hccMembers={hccMembers}
           patchEnc={patchEnc}
           handleRemove={handleRemove}
+          sourceFileName={sourceFileName}
+          selectedIdxs={selectedIdxs}
+          toggleSelected={toggleSelected}
+          setSelectedAll={setSelectedAll}
         />
       ) : (
       <div className={styles.masterDetail}>
@@ -554,7 +628,7 @@ function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, sele
  * scale. Patient column shows the matched member's name (or a "Link
  * patient" picker for unmatched rows).
  */
-function TableLayout({ visibleGroups, encounters, hccMembers, patchEnc, handleRemove }) {
+function TableLayout({ visibleGroups, encounters, hccMembers, patchEnc, handleRemove, selectedIdxs, toggleSelected, setSelectedAll, sourceFileName }) {
   // Flatten visibleGroups back into a single ordered list of encounters
   // (we still want patient grouping visible via row banding, but the
   // table layout reads row-by-row, not nested).
@@ -587,11 +661,24 @@ function TableLayout({ visibleGroups, encounters, hccMembers, patchEnc, handleRe
     return <div className={styles.tableEmpty}>No encounters match this filter.</div>;
   }
 
+  const visibleIdxs = rows.map(r => r._idx);
+  const allSelected = visibleIdxs.length > 0 && visibleIdxs.every(i => selectedIdxs?.has(i));
+  const someSelected = visibleIdxs.some(i => selectedIdxs?.has(i));
+
   return (
     <div className={styles.tableWrap}>
       <table className={styles.encTable}>
         <thead>
           <tr>
+            <th className={styles.thCheck}>
+              <input
+                type="checkbox"
+                aria-label="Select all encounters"
+                checked={allSelected}
+                ref={el => { if (el) el.indeterminate = !allSelected && someSelected; }}
+                onChange={(e) => setSelectedAll?.(visibleIdxs, e.target.checked)}
+              />
+            </th>
             <th className={styles.thPatient}>Patient</th>
             <th>DOB</th>
             <th>DOS</th>
@@ -611,6 +698,9 @@ function TableLayout({ visibleGroups, encounters, hccMembers, patchEnc, handleRe
               hccMembers={hccMembers}
               onPatch={(patch) => patchField(enc._idx, patch)}
               onRemove={() => handleRemove(enc._idx)}
+              checked={selectedIdxs?.has(enc._idx) || false}
+              onToggle={() => toggleSelected?.(enc._idx)}
+              sourceFileName={sourceFileName}
             />
           ))}
         </tbody>
@@ -619,7 +709,7 @@ function TableLayout({ visibleGroups, encounters, hccMembers, patchEnc, handleRe
   );
 }
 
-function TableRow({ enc, hccMembers, onPatch, onRemove }) {
+function TableRow({ enc, hccMembers, onPatch, onRemove, checked, onToggle, sourceFileName }) {
   const status = encounterStatus(enc);
   const errors = new Set(enc.errors || []);
   const isMatched = !!enc.patient?.matchedMemberId;
@@ -654,6 +744,14 @@ function TableRow({ enc, hccMembers, onPatch, onRemove }) {
 
   return (
     <tr className={rowCls}>
+      <td className={styles.tdCheck}>
+        <input
+          type="checkbox"
+          aria-label="Select encounter"
+          checked={!!checked}
+          onChange={onToggle}
+        />
+      </td>
       {/* Patient — read-only when matched, picker when not. */}
       <td className={styles.tdPatient}>
         {isMatched ? (
@@ -742,6 +840,14 @@ function TableRow({ enc, hccMembers, onPatch, onRemove }) {
         </span>
       </td>
       <td className={styles.tdActions}>
+        <button
+          type="button"
+          className={styles.tdLinkDocBtn}
+          aria-label="View source document"
+          title={sourceFileName ? `Source: ${sourceFileName}` : 'Source document'}
+        >
+          <Icon name="solar:paperclip-linear" size={14} color="var(--neutral-300)" />
+        </button>
         <button
           type="button"
           className={styles.tdRemoveBtn}

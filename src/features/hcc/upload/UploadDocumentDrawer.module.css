@@ -301,6 +301,24 @@
   height: 100%;
   min-height: 0;
 }
+.reviewSteps {
+  padding: 16px 20px 0;
+}
+
+/* Bulk-selection summary banner — only visible in table layout when at
+   least one row is checked. */
+.selectionBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  background: var(--primary-50);
+  border-top: 0.5px solid var(--primary-200);
+  border-bottom: 0.5px solid var(--primary-200);
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.selectionBar strong { color: var(--primary-300); font-weight: 500; }
 
 /* Stats + filter chips */
 .statsBar {
@@ -664,6 +682,10 @@
 .thPatient { padding-left: 16px; min-width: 200px; }
 .thNarrow  { width: 70px; }
 .thStatus  { width: 130px; }
+.thCheck   { width: 36px; padding-left: 16px; padding-right: 4px; }
+.tdCheck   { width: 36px; padding-left: 16px; padding-right: 4px; vertical-align: middle; }
+.tdCheck input,
+.thCheck input { cursor: pointer; }
 .thActions { width: 60px; text-align: center; padding-right: 16px; }
 
 .encTableRow {
@@ -786,7 +808,8 @@
 .icdOverflow:hover { background: var(--neutral-100); }
 
 .tdStatus { width: 130px; }
-.tdActions { width: 60px; text-align: center; }
+.tdActions { width: 86px; text-align: center; white-space: nowrap; }
+.tdLinkDocBtn,
 .tdRemoveBtn {
   background: transparent;
   border: none;
@@ -797,6 +820,8 @@
   align-items: center;
   justify-content: center;
 }
+.tdLinkDocBtn { margin-right: 2px; }
+.tdLinkDocBtn:hover { background: var(--neutral-50); }
 .tdRemoveBtn:hover { background: var(--status-error-light); }
 
 /* Mismatch banner */

@@ -367,17 +367,38 @@ function HistoryEntry({ row, isFirst, isLast }) {
           </div>
         )}
 
-        {/* Expanded details — generic key/value dump for payload fields. */}
+        {/* Expanded details — generic key/value dump for payload fields.
+            Arrays of {patientName, dos} (e.g. acceptedList / rejectedList
+            on batch.processing_completed) render as a per-row list so the
+            "accepted vs rejected" summary is scannable instead of JSON. */}
         {expanded && hasDetails && (
           <div className={styles.tlDetailsCard}>
-            {detailRows.map(([k, v], i) => (
-              <div key={i} className={styles.tlDetailRow}>
-                <div className={styles.tlDetailText}>
-                  <div className={styles.tlDetailHcc}>{k}</div>
-                  <div className={styles.tlDetailIcd}>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</div>
+            {detailRows.map(([k, v], i) => {
+              const isPatientList = Array.isArray(v) && v.length > 0
+                && typeof v[0] === 'object' && ('patientName' in v[0] || 'dos' in v[0]);
+              return (
+                <div key={i} className={styles.tlDetailRow}>
+                  <div className={styles.tlDetailText}>
+                    <div className={styles.tlDetailHcc}>{k}{Array.isArray(v) ? ` (${v.length})` : ''}</div>
+                    {isPatientList ? (
+                      <div className={styles.tlDetailIcd}>
+                        {v.map((item, j) => (
+                          <div key={j}>
+                            {item.patientName || '(unmatched)'}
+                            {item.dos ? ` · DOS ${item.dos}` : ''}
+                            {item.kind ? ` · ${item.kind}` : ''}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className={styles.tlDetailIcd}>
+                        {typeof v === 'object' ? JSON.stringify(v) : String(v)}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

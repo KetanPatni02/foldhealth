@@ -3241,33 +3241,63 @@ export const useAppStore = create((set, get) => ({
 
   // Iterate every reviewed encounter through hccCreateOrMergeFromEncounter
   // and stash the summary on the session for the drawer's success toast.
-  confirmHccUpload: () => {
+  // confirmHccUpload({ acceptedIdxs? })
+  // When `acceptedIdxs` is omitted, every encounter is applied (legacy
+  // behavior matching the card layout). When provided, only the indices
+  // in the set are applied; the rest emit `encounter.rejected` events and
+  // are summarised in the resulting `batch.processing_completed` payload
+  // under `acceptedList` / `rejectedList` so the History drawer can show
+  // both lists in its details expander.
+  confirmHccUpload: ({ acceptedIdxs } = {}) => {
     const s = useAppStore.getState();
-    if (!s.hccUploadSession) return { created: 0, updated: 0 };
+    if (!s.hccUploadSession) return { created: 0, updated: 0, rejected: 0 };
     const batchId = s.hccUploadSession.id;
     const docName = s.hccUploadSession.file?.name || 'Uploaded Document.pdf';
+    const accepted = acceptedIdxs ? new Set(acceptedIdxs) : null;
+    const acceptedList = [];
+    const rejectedList = [];
     let created = 0, updated = 0;
-    for (const enc of s.hccUploadSession.encounters) {
-      const result = s.hccCreateOrMergeFromEncounter({ ...enc, _docName: docName });
-      if (result.kind === 'created' || result.kind === 'relatedNew') created++;
-      else if (result.kind === 'updated') updated++;
-    }
-    track('hcc.upload_confirmed', { created, updated });
-    // Summary event so the History drawer shows the batch boundary.
-    const total = s.hccUploadSession.encounters.length;
+    s.hccUploadSession.encounters.forEach((enc, idx) => {
+      const isAccepted = accepted ? accepted.has(idx) : true;
+      const patientName = enc.patient?.name || '(unmatched)';
+      if (isAccepted) {
+        const result = s.hccCreateOrMergeFromEncounter({ ...enc, _docName: docName });
+        if (result.kind === 'created' || result.kind === 'relatedNew') created++;
+        else if (result.kind === 'updated') updated++;
+        acceptedList.push({ patientName, dos: enc.dos, kind: result.kind });
+      } else {
+        rejectedList.push({ patientName, dos: enc.dos });
+        useAppStore.getState().logHccActivity({
+          eventName: 'encounter.rejected',
+          scope:     { patientId: enc.patient?.matchedMemberId || null, dos: enc.dos, batchId, source: 'manual' },
+          payload:   {
+            actor: 'You',
+            patientName,
+            dos: enc.dos,
+            reason: 'Not selected for bulk confirm',
+          },
+        });
+      }
+    });
+    const rejected = rejectedList.length;
+    track('hcc.upload_confirmed', { created, updated, rejected });
+    // Summary event — payload includes both lists so the History drawer's
+    // details expander shows accepted/rejected patients individually.
     useAppStore.getState().logHccActivity({
       eventName: 'batch.processing_completed',
       scope:     { batchId, source: 'manual' },
       payload:   {
         batchId,
         approvedCount: created + updated,
-        rejectedCount: 0,
-        pendingCount: total - created - updated,
+        rejectedCount: rejected,
+        pendingCount: 0,
+        acceptedList,
+        rejectedList,
         actor: 'You',
       },
     });
     set({ hccUploadSession: null });
-    return { created, updated };
+    return { created, updated, rejected };
   },
 
   // ─── Claim preview drawer ─────────────────────────────────────────
