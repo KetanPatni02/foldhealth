@@ -1,0 +1,879 @@
+/* ── Drawer shell ─────────────────────────────────────────────────── */
+/* Two widths: a narrow picker shell (35vw) and an expanded review shell
+   (70vw) that appears once a file lands and OCR results come in. The
+   transition is animated so the change reads as the drawer "growing" to
+   accommodate the review panel. Both forms cap at sensible bounds so
+   ultra-wide / ultra-narrow viewports stay usable. */
+.drawer {
+  width: 35vw;
+  min-width: 460px;
+  max-width: 720px;
+  transition: width 0.24s ease-out, min-width 0.24s ease-out, max-width 0.24s ease-out;
+}
+.drawerExpanded {
+  width: 70vw;
+  min-width: 900px;
+  max-width: 1400px;
+}
+.body {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.title {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.titleHint {
+  margin-left: 6px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+
+/* ── Phase 1: file picker ────────────────────────────────────────── */
+.pickerPhase {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.dropZone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 48px 24px;
+  background: var(--neutral-50);
+  border: 1.5px dashed var(--neutral-200);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.dropZone:hover,
+.dropZoneActive {
+  border-color: var(--primary-300);
+  background: var(--primary-50);
+}
+.dropZoneTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  margin-top: 6px;
+}
+.dropZoneMuted {
+  font-size: 12px;
+  color: var(--neutral-300);
+}
+.dropZoneLink {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-300);
+  text-decoration: underline;
+}
+.dropZoneHint {
+  font-size: 11px;
+  color: var(--neutral-300);
+  margin-top: 6px;
+}
+.fileInput { display: none; }
+.demoHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-400);
+}
+.demoHint code {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  background: var(--neutral-0);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 0.5px solid var(--neutral-150);
+  color: var(--primary-300);
+}
+.demoHintText {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.demoChip {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--primary-300);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--primary-200);
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.demoChip:hover {
+  background: var(--primary-100);
+  border-color: var(--primary-300);
+}
+
+/* ── Phase 2: processing ──────────────────────────────────────────── */
+.processingPhase {
+  padding: 80px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.spinner {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid var(--neutral-150);
+  border-top-color: var(--primary-300);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.processingTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.processingHint {
+  font-size: 12px;
+  color: var(--neutral-300);
+}
+
+/* ── Phase 3: review (master-detail) ──────────────────────────────── */
+.reviewPhase {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Stats + filter chips */
+.statsBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.statsSummary {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--neutral-400);
+}
+.statsSummary strong {
+  color: var(--neutral-500);
+  font-weight: 600;
+}
+.filterChips {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.filterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 16px;
+  cursor: pointer;
+}
+.filterChip:hover { background: var(--neutral-100); }
+.filterChipActive {
+  background: var(--primary-100);
+  color: var(--primary-300);
+  border-color: var(--primary-200);
+}
+.filterChipCount {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Master-detail split */
+.masterDetail {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(360px, 0.9fr) minmax(440px, 1.1fr);
+  overflow: hidden;
+}
+.master {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 0.5px solid var(--neutral-150);
+  overflow-y: auto;
+  background: var(--neutral-50);
+}
+.detail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--neutral-0);
+}
+
+/* Patient group banner in the master list */
+.patientGroupBanner {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--neutral-100);
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+.patientGroupBannerCount {
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.unmatchedBadge {
+  background: var(--status-error-light);
+  color: var(--status-error);
+  border: 0.5px solid rgba(215, 40, 37, 0.2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  margin-left: auto;
+}
+
+/* Master row — one per encounter */
+.masterRow {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  font-family: 'Inter', sans-serif;
+}
+.masterRow:hover { background: var(--neutral-50); }
+.masterRowSelected {
+  background: var(--primary-50);
+  border-left-color: var(--primary-300);
+}
+.masterRowSelected:hover { background: var(--primary-50); }
+.masterRowError    { border-left-color: var(--status-error); }
+.masterRowMismatch { border-left-color: var(--status-warning); }
+.masterRowMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.masterRowDos {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  font-variant-numeric: tabular-nums;
+}
+.masterRowMeta {
+  font-size: 11px;
+  color: var(--neutral-300);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.masterRowChips {
+  display: inline-flex;
+  gap: 4px;
+}
+.masterStatusChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 4px;
+  border: 0.5px solid;
+  white-space: nowrap;
+}
+.masterStatusReady {
+  background: var(--status-success-light);
+  color: var(--status-success);
+  border-color: rgba(0, 155, 83, 0.2);
+}
+.masterStatusError {
+  background: var(--status-error-light);
+  color: var(--status-error);
+  border-color: rgba(215, 40, 37, 0.2);
+}
+.masterStatusMismatch {
+  background: var(--status-warning-light);
+  color: var(--status-warning);
+  border-color: rgba(217, 165, 11, 0.2);
+}
+.masterRemoveBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.masterRemoveBtn:hover { background: var(--status-error-light); }
+
+.masterEmpty {
+  padding: 40px 24px;
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--neutral-300);
+}
+
+/* Detail panel */
+.detail {
+  padding: 0;
+}
+.detailHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: var(--neutral-50);
+}
+.detailHeaderText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.detailHeaderName {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+.detailHeaderMeta {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-300);
+}
+.detailRemoveBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--status-error);
+  background: transparent;
+  border: 0.5px solid var(--status-error);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.detailRemoveBtn:hover { background: var(--status-error-light); }
+.detailBody {
+  padding: 16px 20px 24px;
+}
+.detailEmpty {
+  padding: 60px 24px;
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--neutral-300);
+}
+
+/* Encounter card (lives inside .detailBody now) */
+.encounterCard {
+  background: var(--neutral-0);
+}
+
+/* ── Header layout toggle (Option 1 / Option 2) ──────────────────── */
+.layoutToggle {
+  display: inline-flex;
+  align-items: center;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+.layoutToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.layoutToggleBtn:hover { color: var(--neutral-500); }
+.layoutToggleBtnActive {
+  background: var(--neutral-0);
+  color: var(--primary-300);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+.headerDivider {
+  display: inline-block;
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  margin: 0 4px;
+}
+
+/* Upload-more button — primary-link styled, sits between the layout
+   toggle and the Confirm button. Used to append more OCR results
+   without leaving the review phase. */
+.uploadMoreBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-300);
+  background: transparent;
+  border: 0.5px solid var(--primary-300);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.uploadMoreBtn:hover:not(:disabled) { background: var(--primary-100); }
+.uploadMoreBtn:disabled { cursor: not-allowed; opacity: 0.7; }
+.uploadMoreSpinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--primary-200);
+  border-top-color: var(--primary-300);
+  animation: spin 0.8s linear infinite;
+}
+
+/* ── Option 2 — editable table ────────────────────────────────────── */
+.tableWrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.tableEmpty {
+  padding: 60px 24px;
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--neutral-300);
+}
+.encTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+}
+.encTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--neutral-50);
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--neutral-400);
+  padding: 10px 10px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  white-space: nowrap;
+}
+.thPatient { padding-left: 16px; min-width: 200px; }
+.thNarrow  { width: 70px; }
+.thStatus  { width: 130px; }
+.thActions { width: 60px; text-align: center; padding-right: 16px; }
+
+.encTableRow {
+  border-bottom: 0.5px solid var(--neutral-100);
+  border-left: 3px solid transparent;
+  transition: background 0.08s;
+}
+.encTableRow:hover { background: var(--neutral-50); }
+.encTableRow > td { padding: 8px 10px; vertical-align: middle; }
+.encTableRow > td:first-child { padding-left: 16px; }
+.encTableRow > td:last-child { padding-right: 16px; }
+.encTableRowError    { border-left-color: var(--status-error); background: var(--status-error-light); }
+.encTableRowMismatch { border-left-color: var(--status-warning); background: var(--status-warning-light); }
+
+.tdPatient { min-width: 200px; }
+.tdPatientMatched {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.tdPatientName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.tdPatientLinkBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--status-error);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--status-error);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.tdPatientLinkBtn:hover { background: var(--status-error-light); }
+.tdPatientPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 200px;
+}
+.tdPatientPickerList {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  padding: 2px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.tdPatientPickerItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-500);
+}
+.tdPatientPickerItem:hover { background: var(--neutral-50); }
+
+.tdInput {
+  width: 100%;
+  padding: 5px 7px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-500);
+  background: var(--neutral-0);
+  border: 0.5px solid transparent;
+  border-radius: 4px;
+  outline: none;
+  box-sizing: border-box;
+}
+.tdInput:hover  { border-color: var(--neutral-150); }
+.tdInput:focus  { border-color: var(--primary-300); background: var(--neutral-0); }
+.tdInputError {
+  border-color: var(--status-error);
+  background: var(--neutral-0);
+}
+.tdNarrow .tdInput { text-align: center; }
+
+.tdIcds { min-width: 140px; }
+.tdIcdsEmpty {
+  font-size: 12px;
+  color: var(--neutral-300);
+}
+.tdIcdsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+.tdIcdsRow .icdChip {
+  padding: 1px 4px 1px 6px;
+  font-size: 11px;
+}
+.icdOverflow {
+  padding: 1px 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.icdOverflow:hover { background: var(--neutral-100); }
+
+.tdStatus { width: 130px; }
+.tdActions { width: 60px; text-align: center; }
+.tdRemoveBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.tdRemoveBtn:hover { background: var(--status-error-light); }
+
+/* Mismatch banner */
+.mismatchBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--status-error);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.mismatchText {
+  flex: 1;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-500);
+  min-width: 200px;
+}
+.linkBtn {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-300);
+  background: transparent;
+  border: 0.5px solid var(--primary-300);
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.linkBtn:hover { background: var(--primary-100); }
+
+/* Member picker */
+.memberPicker {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.memberPickerInput {
+  width: 100%;
+  padding: 6px 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--neutral-500);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-200);
+  border-radius: 6px;
+  outline: none;
+  box-sizing: border-box;
+}
+.memberPickerList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  padding: 4px;
+}
+.memberPickerItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--neutral-500);
+}
+.memberPickerItem:hover { background: var(--neutral-50); }
+.memberPickerMeta {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--neutral-300);
+}
+
+/* Encounter editable grid */
+.encounterGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fieldLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.fieldRequired {
+  color: var(--status-error);
+  margin-left: 2px;
+}
+.fieldInput {
+  width: 100%;
+  padding: 7px 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--neutral-500);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  outline: none;
+  box-sizing: border-box;
+}
+.fieldInput:focus { border-color: var(--primary-300); }
+.fieldError .fieldInput { border-color: var(--status-error); background: var(--status-error-light); }
+.fieldErrorText {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--status-error);
+}
+.fieldHint {
+  font-size: 11px;
+  color: var(--neutral-300);
+}
+
+/* ICDs section */
+.icdsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.icdsLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.icdsHint {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--neutral-300);
+  font-weight: 400;
+}
+.icdsChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.icdsEmpty {
+  font-size: 12px;
+  color: var(--neutral-300);
+  font-style: italic;
+}
+.icdChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 8px;
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-300);
+}
+.icdChipInvalid {
+  background: var(--neutral-50);
+  border-color: var(--neutral-150);
+  color: var(--neutral-300);
+  text-decoration: line-through;
+}
+.icdChipClose {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 1px;
+  display: inline-flex;
+  border-radius: 2px;
+}
+.icdChipClose:hover { background: rgba(0, 0, 0, 0.04); }
+
+/* Encounter footer (remove) */
+.encounterFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+  border-top: 0.5px dashed var(--neutral-150);
+}
+.removeEncounterBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--status-error);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.removeEncounterBtn:hover { background: var(--status-error-light); }

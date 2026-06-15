@@ -1,0 +1,1686 @@
+.wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  /* Workspace sits on the RIGHT side of the Diagnosis Gaps section, so the
+     divider is on its LEFT edge. */
+  border-left: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  font-family: 'Inter', sans-serif;
+  /* Smooth swipe-in when the panel opens (drawer width transitions at the
+     same time — see DiagPanel.module.css .panel/.panelExpanded). */
+  animation: leftWsSwipeIn 280ms cubic-bezier(0.32, 0.72, 0.36, 1);
+  will-change: transform, opacity;
+}
+@keyframes leftWsSwipeIn {
+  from { transform: translateX(40px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wrap { animation: none; }
+}
+
+/* ── Tab bar ──────────────────────────────────────────────────────────── */
+
+.tabBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 4px;
+  border-bottom: 0.5px solid var(--neutral-100);
+  background: var(--neutral-0);
+  flex-shrink: 0;
+}
+
+/* Marker class on the ActionButton-based collapse trigger so the tab bar
+   layout doesn't shift. ActionButton already supplies its own
+   sizing/hover/tooltip per the Fold design system. */
+.collapseBtn { flex-shrink: 0; }
+
+.tabBarDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+.tabRow {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  overflow-x: auto;
+  flex: 1;
+  scrollbar-width: none;
+}
+.tabRow::-webkit-scrollbar { display: none; }
+
+.tab {
+  /* Prototype style: text-only tab with a 2px primary-300 underline when
+     active. No icon, no count pill — count is baked into the label
+     as "Comments(3)". */
+  display: inline-flex;
+  align-items: center;
+  padding: 11px 10px;
+  border: none;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tab:hover { color: var(--neutral-400); }
+
+.tabActive {
+  color: var(--primary-300);
+  font-weight: 500;
+  border-bottom-color: var(--primary-300);
+}
+.tabActive:hover { color: var(--primary-300); }
+
+/* ── Body / scroll ───────────────────────────────────────────────────── */
+
+.body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--neutral-0);
+}
+
+/* ── Recorded By + Date filter row (Figma 1:45950) ──
+   Filter glyph + two outline chips. First four tabs only. */
+.filterRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  flex-shrink: 0;
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.filterChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.filterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 4px 8px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--neutral-300);
+  white-space: nowrap;
+  transition: border-color 0.12s, background 0.12s;
+}
+.filterChip:hover {
+  border-color: var(--neutral-200);
+  background: var(--neutral-50);
+}
+
+/* Wrap = chip + popover stack (popover positions relative to this). */
+.filterChipWrap {
+  position: relative;
+  display: inline-block;
+}
+
+/* Selected chip — primary-tinted to indicate an active filter. */
+.filterChipSelected {
+  background: var(--primary-50);
+  border-color: var(--primary-200);
+  color: var(--primary-300);
+}
+.filterChipSelected:hover {
+  background: var(--primary-50);
+  border-color: var(--primary-300);
+}
+
+/* Popover dropdown */
+.filterMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 160px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 50;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.filterMenuItem {
+  text-align: left;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-500);
+  white-space: nowrap;
+}
+.filterMenuItem:hover { background: var(--neutral-50); }
+.filterMenuItemActive {
+  background: var(--primary-50);
+  color: var(--primary-300);
+  font-weight: 500;
+}
+.filterMenuItemActive:hover { background: var(--primary-50); }
+.filterMenuEmpty {
+  padding: 8px;
+  font-size: 12px;
+  color: var(--neutral-300);
+  font-family: 'Inter', sans-serif;
+}
+.filterMenuClear {
+  margin-top: 4px;
+  padding: 6px 8px;
+  border: none;
+  border-top: 0.5px solid var(--neutral-150);
+  background: transparent;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-300);
+  text-align: left;
+}
+.filterMenuClear:hover { background: var(--primary-50); }
+/* Clear All — sits inline next to the last filter chip. Always rendered;
+   disabled (dimmed + no-cursor) when no filter is active. */
+.filterClearAll {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--primary-300);
+  white-space: nowrap;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+.filterClearAll:hover:not(:disabled) {
+  background: var(--primary-50);
+}
+.filterClearAll:disabled {
+  color: var(--neutral-200);
+  cursor: not-allowed;
+}
+
+/* ── Outreach tab (DOS-level, Figma 1:48023) ── */
+.outreachList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.outreachRow {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+}
+.outreachIcon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.outreachText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.outreachHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.outreachType {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.outreachTime {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.outreachOutcome {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-400);
+}
+.outreachBy {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+
+/* ── Worklog tab (DOS-level, Figma 42:368051) ──
+   ICD rows × Coder / Reviewer 1–3 columns. */
+.wlTableWrap {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.wlTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Inter', sans-serif;
+}
+.wlTable th {
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  background: var(--neutral-25);
+  border-bottom: 0.5px solid var(--neutral-150);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.wlIcdHead { min-width: 160px; }
+.wlGroupRow td {
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--neutral-400);
+  background: var(--neutral-50);
+  border-bottom: 0.5px solid var(--neutral-150);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.wlRow td {
+  padding: 8px 10px;
+  border-bottom: 0.5px solid var(--neutral-100);
+  vertical-align: top;
+  transition: background 0.12s;
+}
+.wlRow:last-child td { border-bottom: none; }
+.wlRow:hover td { background: var(--neutral-25); }
+.wlIcd {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.wlCode {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.wlDesc {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  line-height: 1.3;
+}
+.wlCell { min-width: 96px; }
+.wlDone {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+.wlDoneText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.wlWho {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-500);
+}
+.wlWhen {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.wlPending {
+  font-size: 13px;
+  color: var(--neutral-200);
+}
+
+.scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--neutral-300);
+  font-size: 13px;
+  padding: 32px 16px;
+  text-align: center;
+}
+.empty p { margin: 0; }
+
+/* ── ICD-scope bar — shown when the Activity Log is filtered to one ICD ── */
+.activityScopeBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 8px;
+}
+.activityScopeChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-300);
+  font-variant-numeric: tabular-nums;
+}
+.activityScopeClear {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--neutral-300);
+  transition: color 0.12s;
+}
+.activityScopeClear:hover { color: var(--neutral-400); }
+
+/* ── Activity tab — timeline view ────────────────────────────────────── */
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Month header — clickable to expand/collapse the group's entries. */
+.activityGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 0 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--neutral-400);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  user-select: none;
+}
+.activityGroup:hover { color: var(--neutral-500); }
+.activityGroupChevron {
+  transition: transform 0.15s;
+  flex-shrink: 0;
+  display: inline-flex;
+}
+.activityGroupCollapsed .activityGroupChevron {
+  transform: rotate(-90deg);
+}
+
+/* Row: left rail + body */
+.tlRow {
+  display: flex;
+  gap: 8px;
+}
+
+/* Left rail — top connector + icon + bottom connector */
+.tlRail {
+  width: 24px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.tlConnectorTop {
+  width: 0.5px;
+  height: 14px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+/* Bottom connector flows from the icon directly into the next row — no
+   top margin so the line reads continuous between entries. */
+.tlConnectorBottom {
+  width: 0.5px;
+  flex: 1;
+  background: var(--neutral-150);
+}
+
+.tlIcon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 0.5px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.tlIconDashed {
+  border-style: dashed;
+}
+
+/* Body — meta + headline + supporting blocks */
+.tlBody {
+  flex: 1;
+  min-width: 0;
+  padding-top: 14px;
+  padding-bottom: 20px;
+}
+.tlBodyFirst {
+  padding-top: 2px;
+}
+.tlBodyLast {
+  padding-bottom: 4px;
+}
+
+.tlMeta {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  line-height: 1.4;
+  margin-bottom: 3px;
+}
+
+.tlHeadlineRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.tlHeadline {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-400);
+  line-height: 1.4;
+}
+
+.tlDetailsToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--neutral-300);
+}
+
+.tlDot {
+  color: var(--neutral-200);
+}
+
+/* "Undo All" link on accept entries — primary-300, sits just under the
+   headline (Figma 278:169610). */
+.tlUndoAll {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--primary-300);
+  width: fit-content;
+}
+.tlUndoAll:hover { text-decoration: underline; }
+
+/* Status transition pills */
+.tlTransition {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.tlPill {
+  padding: 2px 6px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 4px;
+  border: 0.5px solid;
+  font-size: 12px;
+}
+
+.pillOpen,
+.pillNew {
+  color: var(--status-warning);
+  background: var(--status-warning-light);
+  border-color: rgba(217, 165, 11, 0.2);
+}
+.pillInProgress,
+.pillAudited {
+  color: var(--primary-300);
+  background: var(--primary-50);
+  border-color: rgba(140, 90, 226, 0.2);
+}
+.pillAccepted,
+.pillCompleted {
+  color: var(--status-success);
+  background: var(--status-success-light);
+  border-color: rgba(0, 155, 83, 0.2);
+}
+.pillDismissed,
+.pillReturned {
+  color: var(--status-error);
+  background: var(--status-error-light);
+  border-color: rgba(215, 40, 37, 0.2);
+}
+.pillDeleted,
+.pillNone {
+  color: var(--neutral-300);
+  background: var(--neutral-50);
+  border-color: var(--neutral-150);
+}
+
+/* Outreach tag link */
+.tlTag {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--status-info);
+  cursor: pointer;
+}
+
+/* File attachment card */
+.tlAttachment {
+  margin-top: 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-50);
+  max-width: 100%;
+}
+
+.tlFileBubble {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tlFileText {
+  flex: 1;
+  min-width: 0;
+}
+
+.tlFileName {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+
+.tlFileType {
+  font-size: 11px;
+  color: var(--neutral-300);
+}
+
+.tlFilePreview {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.tlFilePreview:hover {
+  background: var(--neutral-100);
+}
+
+/* Coder/assignee avatar transition */
+.tlAvatarTransition {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 7px;
+  flex-wrap: wrap;
+}
+
+.avatarPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px 3px 4px;
+  border-radius: 18px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+}
+
+.avatarBubble {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--primary-100);
+  color: var(--primary-300);
+  border: 0.5px solid var(--primary-200);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.avatarName {
+  font-size: 13px;
+  color: var(--neutral-400);
+}
+
+/* Expanded details card */
+.tlDetailsCard {
+  margin-top: 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tlDetailRow {
+  padding: 8px 12px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.tlDetailRow:last-child {
+  border-bottom: none;
+}
+
+.tlDetailText {
+  flex: 1;
+  min-width: 0;
+}
+
+.tlDetailHcc {
+  font-size: 12px;
+  color: var(--neutral-300);
+  line-height: 1.4;
+}
+
+.tlDetailIcd {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+.tlDetailReason {
+  font-size: 12px;
+  color: var(--neutral-300);
+  margin-top: 2px;
+}
+
+.tlDetailNote {
+  font-size: 12px;
+  color: var(--neutral-300);
+  margin-top: 2px;
+  padding: 3px 6px;
+  background: var(--neutral-50);
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.tlDetailBadges {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* ── Composer (shared by Comments + Notes) ───────────────────────────── */
+
+.composer {
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.composerInput {
+  width: 100%;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--neutral-500);
+  resize: vertical;
+  min-height: 60px;
+  box-sizing: border-box;
+  padding: 0;
+}
+
+.composerInput::placeholder { color: var(--neutral-200); }
+
+.composerActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ── Comments tab single-line composer (Figma 1:53466) ────────────────
+   Bordered input with placeholder; Enter posts. Renders above the
+   timeline, no separate Post button. */
+.commentComposer {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-500);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.commentComposer:focus {
+  border-color: var(--primary-300);
+  box-shadow: 0 0 0 2px var(--primary-100);
+}
+.commentComposer::placeholder { color: var(--neutral-300); }
+
+/* Inline "Edited" badge that follows the author/role in a comment's meta
+   line — outlined chip, no fill. */
+.commentEditedBadge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 4px;
+}
+
+/* Comment body text — full-width, multi-line, sits below the meta line. */
+.commentBody {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-500);
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+/* Inline comment body inside the Activity Log timeline — used when an
+   entry is t:'comment'. Plain neutral-300 paragraph under the headline. */
+.tlCommentBody {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  line-height: 1.5;
+  margin-top: 2px;
+}
+
+/* Clickable timeline row (Claims uses it) — strip button defaults so the
+   row matches the static .tlRow but is keyboard-focusable. */
+.tlRowClickable {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+.tlRowClickable:hover .tlBody { background: var(--neutral-25); border-radius: 6px; }
+
+/* Inline action button used by the Documents timeline (Preview link). */
+.tlActionsRow {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+}
+.tlInlineAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-300);
+}
+.tlInlineAction:hover { text-decoration: underline; }
+
+/* Documents tab — filename row with file icon + status dot. */
+.docHeadline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.docHeadlineName {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Claims tab — headline row: claim number + status badge inline. */
+.claimHeadline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.claimHeadlineNum {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--primary-300);
+}
+.claimHeadlineAmount {
+  font-weight: 500;
+  color: var(--neutral-500);
+  font-variant-numeric: tabular-nums;
+}
+
+/* History tab — headline row: action Badge + target inline. */
+.historyHeadline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.historyTargetInline {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Shared data-table primitives for Documents / Notes / Claims / History.
+   Header row + body rows share the same grid template (per-tab class)
+   so columns stay aligned.
+   ───────────────────────────────────────────────────────────────────── */
+.dataTable {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+}
+.dataTableHead {
+  background: var(--neutral-25);
+  border-bottom: 0.5px solid var(--neutral-150);
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  letter-spacing: 0.02em;
+}
+.dataTableHead span {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.dataTableRow {
+  padding: 10px 12px;
+  border-bottom: 0.5px solid var(--neutral-100);
+  align-items: center;
+  font-size: 13px;
+  color: var(--neutral-500);
+  transition: background 0.12s;
+}
+.dataTableRow:last-child { border-bottom: none; }
+.dataTableRow:hover { background: var(--neutral-25); }
+.dataTableActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  justify-self: end;
+}
+.dataTableActionsDivider {
+  display: inline-block;
+  width: 1px;
+  height: 14px;
+  background: var(--neutral-150);
+}
+
+/* ── Documents grid + cells ───────────────────────────────────────────── */
+.docsGrid {
+  display: grid;
+  grid-template-columns: 1fr 110px 40px;
+  gap: 12px;
+}
+.docCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.docExtIcon {
+  position: relative;
+  width: 32px;
+  height: 36px;
+  border-radius: 4px;
+  background: var(--neutral-25);
+  border: 0.5px solid var(--neutral-150);
+  display: inline-flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 4px;
+  flex-shrink: 0;
+}
+.docExtTag {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Inter', sans-serif;
+  font-size: 7px;
+  font-weight: 600;
+  color: var(--neutral-300);
+  letter-spacing: 0.04em;
+}
+.docCellText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.docCellName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.docCellMeta {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Notes grid + cells ───────────────────────────────────────────────── */
+.notesGrid {
+  display: grid;
+  grid-template-columns: 1fr 100px 80px;
+  gap: 12px;
+}
+.noteCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.noteCellTime {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.noteCellTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.noteCellMeta {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+/* Inline composer that sits below the Notes table. */
+.notesComposerInline { margin-top: 12px; margin-bottom: 0; }
+
+/* ── Claims grid + cells ──────────────────────────────────────────────── */
+.claimsGrid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 0.9fr 0.9fr;
+  gap: 12px;
+}
+.claimIdLink {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--primary-300);
+  text-align: left;
+  justify-self: start;
+}
+.claimIdLink:hover { text-decoration: underline; }
+.claimDate {
+  color: var(--neutral-400);
+  font-variant-numeric: tabular-nums;
+}
+.claimAmount {
+  font-weight: 500;
+  color: var(--neutral-500);
+  font-variant-numeric: tabular-nums;
+  justify-self: start;
+}
+
+/* ── History grid + cells ─────────────────────────────────────────────── */
+.historyGrid {
+  display: grid;
+  grid-template-columns: 100px 1fr 60px 80px;
+  gap: 12px;
+}
+.historyDos {
+  color: var(--neutral-500);
+  font-size: 14px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.historyHcc {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.historyHccCode {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.historyHccMeta {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+/* Claims count chip — small purple-tinted button. */
+.historyClaims {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: var(--primary-50);
+  color: var(--primary-300);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  justify-self: start;
+}
+.historyClaims:hover { background: var(--primary-100); }
+.historyIcdStatus {
+  display: inline-flex;
+  justify-self: start;
+}
+.historyStatusPill {
+  width: 28px;
+  height: 22px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.historyStatusAccepted { background: var(--status-success); }
+.historyStatusDismissed { background: var(--status-error); }
+.historyStatusDash {
+  width: 28px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--neutral-200);
+  font-size: 14px;
+}
+
+/* ── Filter row trailing slot (Upload / Add Note buttons) ─────────────── */
+.filterTrailingDivider {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  margin: 0 4px;
+}
+.filterTrailingBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-300);
+  white-space: nowrap;
+}
+.filterTrailingBtn:hover { text-decoration: underline; }
+.filterTrailingBtnActive {
+  background: var(--primary-50);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+.filterTrailingBtnActive:hover { text-decoration: none; }
+
+/* ── Inline document uploader widget — Figma 278:162482 ─────────────────
+   Grey-tinted card with drop-zone, supported-format hint, Upload/Cancel.
+   Renders above the documents table when the toolbar Upload toggle is on. */
+.docUploader {
+  background: var(--neutral-25);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.docUploaderHeader {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.docDropZone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  background: var(--neutral-0);
+  border: 1px dashed var(--neutral-200);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.docDropZone:hover { background: var(--primary-25); border-color: var(--primary-200); }
+.docDropZoneActive { background: var(--primary-50); border-color: var(--primary-300); }
+.docDropText {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.docDropChoose {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 500;
+  color: var(--primary-300);
+}
+.docDropChoose:hover { text-decoration: underline; }
+.docDropInput { display: none; }
+.docUploaderMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.docUploaderError {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--status-error);
+}
+.docUploaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* File row used in 'uploading' (with progress bar) and 'ready' phases. */
+.docFileRowWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.docFileRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+}
+.docFileRowText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.docFileRowName {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.docFileRowSize {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.docFileRowActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.docFileRowDivider {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+}
+.docFileRowIconBtn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.docFileRowIconBtn:hover { background: var(--neutral-50); }
+
+/* Progress bar — green track that fills horizontally during 'uploading'. */
+.docFileProgressTrack {
+  width: 100%;
+  height: 4px;
+  background: var(--neutral-100);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.docFileProgressBar {
+  height: 100%;
+  background: var(--status-success);
+  border-radius: 2px;
+  transition: width 0.12s linear;
+}
+
+/* 'Ready' form — Document Type / Category dropdowns + Caption input. */
+.docUploaderForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.docUploaderFormRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.docUploaderField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.docUploaderFieldLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.docUploaderRequired { color: var(--status-error); margin-left: 2px; }
+.docUploaderSelect,
+.docUploaderInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-500);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.docUploaderSelect:focus,
+.docUploaderInput:focus {
+  border-color: var(--primary-300);
+  box-shadow: 0 0 0 2px var(--primary-100);
+}
+.docUploaderSelect {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236F7A90' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='m19 9-7 6-7-6'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+
+/* ── Shared list shell — used by Comments and Notes ──────────────────── */
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.listRow {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+}
+.listAvatar { flex-shrink: 0; margin-top: 2px; }
+.listBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.listHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.listTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.listRoleChip {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--primary-300);
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+.listMeta {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.listBodyText {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-400);
+  line-height: 1.45;
+}
+.listActions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Documents tab ───────────────────────────────────────────────────── */
+
+.docStatusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 13px;
+}
+.dotStatus_passed  { background: var(--status-success); }
+.dotStatus_pending { background: var(--neutral-200); }
+.dotStatus_failed  { background: var(--status-error); }
+
+.docFileIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-100);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Dashed entry row at the top of the Documents list that opens the
+   UploadChartDrawer. Matches Figma 1-54865's "upload" pattern. */
+.docUploadRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px;
+  border: 1px dashed var(--neutral-200);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.docUploadRow:hover {
+  background: var(--primary-25);
+  border-color: var(--primary-200);
+}
+.docUploadHint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+
+/* ── Claims tab ──────────────────────────────────────────────────────── */
+
+.claimsTable {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--neutral-0);
+}
+.claimsHead,
+.claimsRow {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr 1fr 0.9fr;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+}
+.claimsHead {
+  background: var(--neutral-25);
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.claimsRow {
+  border-bottom: 0.5px solid var(--neutral-100);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--neutral-500);
+}
+.claimsRow:last-child { border-bottom: none; }
+.claimsRow:hover { background: var(--neutral-25); }
+.claimId {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--primary-300);
+  text-align: left;
+}
+.claimId:hover { text-decoration: underline; }
+.claimDate { color: var(--neutral-400); font-variant-numeric: tabular-nums; }
+.claimAmount {
+  font-weight: 500;
+  color: var(--neutral-500);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── History tab ─────────────────────────────────────────────────────── */
+
+.historyList {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  overflow: hidden;
+}
+.historyRow {
+  display: grid;
+  grid-template-columns: 132px 1fr 110px 1.4fr;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.historyRow:last-child { border-bottom: none; }
+.historyRow:hover { background: var(--neutral-25); }
+.historyTime {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  font-variant-numeric: tabular-nums;
+}
+.historyActor {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.historyActorName {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.historyActorRole {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.historyTarget {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

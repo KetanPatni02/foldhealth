@@ -19,8 +19,26 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src')
     }
   },
+  build: {
+    // No manualChunks. Earlier attempts to group recharts into a
+    // 'vendor-charts' chunk caused Rolldown's CJS interop to hoist React's
+    // require_* wrappers into that chunk, which then dragged vendor-charts
+    // into the entry's static import graph — defeating lazy-loading and
+    // forcing recharts onto the first-paint critical path.
+    //
+    // Auto-chunking respects the lazy() boundaries in AppLayout: recharts
+    // lands in its own chunk that only loads when an analytics view mounts.
+    chunkSizeWarningLimit: 1000,
+  },
   test: {
     projects: [{
+      extends: true,
+      test: {
+        name: 'unit',
+        environment: 'node',
+        include: ['src/**/*.test.{js,jsx}'],
+      },
+    }, {
       extends: true,
       plugins: [
       // The plugin will run tests for the stories defined in your Storybook config

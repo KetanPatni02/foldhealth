@@ -1,0 +1,336 @@
+/* Full-screen form builder. Tokens only — Inter, Fold greys/purple. */
+
+.builder {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  background: var(--neutral-0);
+  font-family: 'Inter', sans-serif;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 56px;
+  padding: 0 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+.headerLeft { display: flex; align-items: center; gap: 8px; flex: 1 1 0; min-width: 0; }
+.crumb {
+  border: none; background: none; cursor: pointer;
+  font-size: 14px; color: var(--neutral-300); padding: 0;
+}
+.crumb:hover { color: var(--primary-300); }
+.crumbSep { color: var(--neutral-200); font-size: 14px; }
+.nameInput {
+  border: none; background: none; outline: none;
+  font-size: 14px; font-weight: 500; color: var(--neutral-400);
+  padding: 4px 6px; border-radius: 4px; max-width: 280px;
+}
+.nameInput:hover, .nameInput:focus { background: var(--neutral-50); }
+
+.headerRight { display: flex; align-items: center; gap: 12px; flex: 1 1 0; justify-content: flex-end; }
+.hDivider { width: 0.5px; height: 16px; background: var(--neutral-150); }
+
+/* ── Body layout ────────────────────────────────────────────────────────── */
+.body { flex: 1 1 0; display: flex; min-height: 0; }
+
+/* Hide scrollbars on the builder's scroll regions (still scrollable). */
+.palList, .canvasWrap, .propsBody, .previewScroll, .pvResultBody,
+.scoreFieldList, .bandList {
+  scrollbar-width: none;            /* Firefox */
+  -ms-overflow-style: none;         /* legacy Edge */
+}
+.palList::-webkit-scrollbar, .canvasWrap::-webkit-scrollbar,
+.propsBody::-webkit-scrollbar, .previewScroll::-webkit-scrollbar,
+.pvResultBody::-webkit-scrollbar, .scoreFieldList::-webkit-scrollbar,
+.bandList::-webkit-scrollbar { display: none; }   /* WebKit */
+
+/* ── Palette ────────────────────────────────────────────────────────────── */
+.palette {
+  width: 300px; flex-shrink: 0;
+  border-right: 0.5px solid var(--neutral-150);
+  display: flex; flex-direction: column; min-height: 0;
+}
+.palTabs {
+  display: flex; gap: 12px; align-items: center;
+  height: 48px; padding: 0 12px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.palTab {
+  border: none; background: none; cursor: pointer;
+  font-size: 13px; color: var(--neutral-300);
+  padding: 5px 6px; border-radius: 4px; white-space: nowrap;
+}
+.palTabActive {
+  background: var(--neutral-50); color: var(--neutral-400);
+  border: 0.5px solid var(--neutral-150);
+}
+.palSearch {
+  display: flex; align-items: center; gap: 8px;
+  margin: 8px 12px; padding: 8px;
+  border: 0.5px solid var(--neutral-200); border-radius: 4px;
+}
+.palSearch input { border: none; outline: none; flex: 1; font-size: 14px; color: var(--neutral-400); background: none; }
+.palSearch input::placeholder { color: var(--neutral-200); }
+.palList { flex: 1 1 0; overflow-y: auto; padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.palEmpty { color: var(--neutral-200); font-size: 13px; text-align: center; padding: 24px 8px; }
+
+.palItem {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px; border: 0.5px solid var(--neutral-150); border-radius: 8px;
+  background: var(--neutral-0); cursor: grab; user-select: none;
+}
+.palItem:hover { border-color: var(--primary-200); background: var(--primary-50); }
+.palItemGhost { box-shadow: 0 8px 24px rgba(0,0,0,.12); cursor: grabbing; }
+.palIconAvatar {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; flex-shrink: 0;
+  background: var(--primary-50); border: 0.5px solid var(--primary-200); border-radius: 8px;
+}
+.palLabel { flex: 1 1 0; font-size: 14px; color: var(--neutral-500); min-width: 0; }
+.dragDots { flex-shrink: 0; display: flex; }
+.validatedBadge {
+  display: flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; flex-shrink: 0;
+  background: var(--status-success-light, #f5fffa); border-radius: 999px;
+}
+.lockedBanner {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--neutral-300);
+  background: var(--status-success-light, #f5fffa);
+  border: 0.5px solid rgba(0,155,83,.25); border-radius: 6px; padding: 8px;
+}
+
+/* ── Canvas ─────────────────────────────────────────────────────────────── */
+.canvasWrap {
+  flex: 1 1 0; min-width: 0; background: var(--neutral-50);
+  border-right: 0.5px solid var(--neutral-150);
+  overflow-y: auto; padding: 16px; display: flex; justify-content: center;
+}
+.sheet {
+  width: 100%; max-width: 700px;
+  background: var(--neutral-0); border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.06);
+  padding: 24px 32px; display: flex; flex-direction: column; gap: 16px;
+  align-self: flex-start; min-height: 200px;
+}
+.sheetOver { outline: 2px dashed var(--primary-200); outline-offset: -8px; }
+.canvasEmpty {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  color: var(--neutral-200); font-size: 14px; padding: 64px 0;
+}
+
+.card {
+  position: relative; display: flex; gap: 8px;
+  padding: 14px 12px 14px 8px; border-radius: 8px;
+  border: 1px solid transparent; cursor: pointer;
+}
+.card:hover { border-color: var(--neutral-150); background: var(--neutral-50); }
+.cardSelected { border-color: var(--primary-200); background: var(--primary-50); }
+.cardDrag {
+  border: none; background: none; cursor: grab; padding: 2px;
+  align-self: flex-start; display: flex; opacity: .6;
+}
+.cardDrag:hover { opacity: 1; }
+.cardBody { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.cardDelete {
+  position: absolute; top: 10px; right: 10px;
+  border: none; background: none; cursor: pointer; padding: 4px;
+  border-radius: 4px; opacity: 0; transition: opacity .12s;
+}
+.card:hover .cardDelete, .cardSelected .cardDelete { opacity: 1; }
+.cardDelete:hover { background: var(--status-error-light, #fff5f5); }
+
+.qLabel { font-size: 14px; color: var(--neutral-400); font-weight: 500; }
+.req { color: var(--status-error); margin-left: 2px; }
+.qDesc { font-size: 13px; color: var(--neutral-300); }
+
+.groupBlock { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+.groupTitle {
+  font-size: 14px; font-weight: 600; color: var(--neutral-400);
+  padding-bottom: 8px; border-bottom: 0.5px solid var(--neutral-150);
+}
+.groupFields { display: flex; flex-direction: column; gap: 12px; }
+.subField {
+  display: flex; flex-direction: column; gap: 6px; align-items: stretch;
+  text-align: left; border: 1px solid transparent; border-radius: 6px;
+  padding: 8px; background: none; cursor: pointer; width: 100%;
+}
+.subField:hover { background: var(--neutral-50); border-color: var(--neutral-150); }
+.subFieldSel { border-color: var(--primary-200); background: var(--neutral-0); }
+
+/* ── Properties ─────────────────────────────────────────────────────────── */
+.props {
+  width: 324px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0;
+  border-left: 0.5px solid var(--neutral-150);
+}
+.propsHeader {
+  height: 48px; display: flex; align-items: center; padding: 0 16px;
+  font-size: 16px; font-weight: 500; color: var(--neutral-400);
+  border-bottom: 0.5px solid var(--neutral-150); flex-shrink: 0;
+}
+.propsEmpty {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; color: var(--neutral-200); font-size: 13px; text-align: center; padding: 24px;
+}
+.propsBody { flex: 1 1 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.propsBody::-webkit-scrollbar { display: none; }
+.propsBody { scrollbar-width: none; }
+
+/* Form settings (Properties empty state) — uses email-builder panel classes */
+.settingRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.settingLabel { font-size: 14px; color: var(--neutral-400); }
+.settingHint { font-size: 12px; color: var(--neutral-300); line-height: 1.5; margin: 0 0 4px; }
+.settingHint code { font-family: ui-monospace, monospace; font-size: 11px; background: var(--neutral-50); border: 0.5px solid var(--neutral-150); border-radius: 4px; padding: 0 4px; color: var(--neutral-400); }
+
+/* Hidden-field chips */
+.chipRow { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--neutral-500); background: var(--neutral-50); border: 0.5px solid var(--neutral-150); border-radius: 999px; padding: 3px 6px 3px 10px; }
+.chipX { display: inline-flex; border: none; background: none; cursor: pointer; padding: 0; }
+.addRow { display: flex; align-items: center; gap: 8px; }
+.addRow .ctl { flex: 1 1 0; }
+
+/* Endings editor */
+.endingCard { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 0.5px solid var(--neutral-150); border-radius: 8px; margin-bottom: 10px; background: var(--neutral-0); }
+.endingHead { display: flex; align-items: center; justify-content: space-between; }
+.endingTag { font-size: 12px; font-weight: 600; color: var(--neutral-400); }
+/* Selected header/footer preset card */
+.presetCardSelected { box-shadow: 0 0 0 2px var(--primary-300); border-radius: 10px; }
+
+/* Layout (view mode) radio cards */
+.layoutCards { display: flex; flex-direction: column; gap: 8px; }
+.layoutCard {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 10px; border: 0.5px solid var(--neutral-150); border-radius: 8px;
+  background: var(--neutral-0); cursor: pointer;
+}
+.layoutCard:hover { border-color: var(--primary-200); background: var(--primary-50); }
+.layoutCardSel { border-color: var(--primary-300); box-shadow: 0 0 0 1px var(--primary-300); background: var(--primary-50); }
+.layoutCardIcon {
+  display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0;
+  background: var(--neutral-50); border: 0.5px solid var(--neutral-150); border-radius: 8px;
+}
+.layoutCardSel .layoutCardIcon { background: var(--neutral-0); border-color: var(--primary-200); }
+.layoutCardMain { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.layoutCardTitle { font-size: 14px; font-weight: 500; color: var(--neutral-500); }
+.layoutCardDesc { font-size: 12px; color: var(--neutral-300); }
+
+/* Submit row in the preview/fill view */
+.pvSubmitRow { display: flex; justify-content: flex-start; padding-top: 8px; }
+/* Full-bleed header/footer inside the preview sheet (cancels the 32px/40px padding) */
+.pvHeaderBleed { margin: calc(-1 * var(--py)) calc(-1 * var(--px)) 0; }
+.pvFooterBleed { margin: 0 calc(-1 * var(--px)) calc(-1 * var(--py)); }
+.propLabel { font-size: 13px; color: var(--neutral-300); margin-top: 4px; }
+.propHint { font-size: 12px; color: var(--neutral-200); margin: -4px 0 2px; }
+.propCheck { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--neutral-300); cursor: pointer; }
+
+.optRow { display: flex; align-items: center; gap: 6px; }
+.optText { flex: 1 1 0; min-width: 0; }
+.optScore { width: 56px; flex-shrink: 0; }
+.optRemove { border: none; background: none; cursor: pointer; padding: 2px; display: flex; }
+.optAdd {
+  display: flex; align-items: center; gap: 6px; border: none; background: none;
+  cursor: pointer; color: var(--primary-300); font-size: 14px; padding: 4px 0; margin-top: 2px;
+}
+
+/* ── Field inputs (shared canvas/preview) ───────────────────────────────── */
+/* Shared primitives (Input/Textarea/Select) fill their field column. */
+.ctl { width: 100%; }
+.fiInputWrap { position: relative; display: flex; align-items: center; width: 100%; }
+.fiPrefix { position: absolute; left: 10px; z-index: 1; color: var(--neutral-300); font-size: 14px; }
+.fiCurrencyInput { width: 100%; padding-left: 20px; }
+.fiOptions { display: flex; flex-direction: column; gap: 10px; }
+.fiOptionRow { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--neutral-300); }
+.fiOptionRow input { width: 18px; height: 18px; accent-color: var(--primary-300); }
+.fiCheckRow { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--neutral-400); }
+.fiCheckRow input { width: 18px; height: 18px; accent-color: var(--primary-300); }
+.fiParagraph { font-size: 14px; color: var(--neutral-300); line-height: 1.5; margin: 0; }
+.fiImage {
+  display: flex; align-items: center; justify-content: center;
+  height: 120px; border: 1px dashed var(--neutral-150); border-radius: 6px; color: var(--neutral-200); font-size: 13px;
+}
+
+/* ── Score tab ──────────────────────────────────────────────────────────── */
+.scoreGrid { flex: 1 1 0; display: grid; grid-template-columns: 1fr 1fr 1fr; min-height: 0; }
+.scoreCol { display: flex; flex-direction: column; min-height: 0; border-right: 0.5px solid var(--neutral-150); }
+.scoreCol:last-child { border-right: none; }
+.scoreColHead { padding: 16px; font-size: 14px; font-weight: 600; color: var(--neutral-400); border-bottom: 0.5px solid var(--neutral-150); }
+.scoreEmpty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; color: var(--neutral-200); font-size: 13px; text-align: center; }
+.scoreFieldList { padding: 12px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+.scoreFieldItem { display: flex; align-items: center; gap: 8px; padding: 8px; border: 0.5px solid var(--neutral-150); border-radius: 6px; font-size: 14px; color: var(--neutral-400); background: var(--neutral-0); width: 100%; }
+.scoreFieldItem span:nth-child(2) { flex: 1 1 0; min-width: 0; }
+.scoreFieldItemSel { border-color: var(--primary-200); background: var(--primary-50); }
+.scoreFieldPts { font-size: 12px; color: var(--neutral-300); white-space: nowrap; }
+.scoreConfig { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.rangePill { margin-top: 6px; padding: 8px 12px; background: var(--primary-50); border: 0.5px solid var(--primary-200); border-radius: 6px; font-size: 13px; color: var(--neutral-300); }
+.rangePill strong { color: var(--primary-300); }
+.scoreSourcesRow { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--neutral-300); }
+.linkBtn { border: none; background: none; cursor: pointer; color: var(--primary-300); font-size: 13px; }
+.bandList { padding: 12px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+.bandRow { display: flex; align-items: center; gap: 6px; }
+.bandNum { width: 52px; flex-shrink: 0; }
+.bandDash { color: var(--neutral-200); }
+.bandLabel { flex: 1 1 0; min-width: 0; }
+.bandSevSel { width: 116px; flex-shrink: 0; }
+
+/* ── Preview tab ────────────────────────────────────────────────────────── */
+.previewWrap { flex: 1 1 0; display: flex; min-height: 0; }
+
+/* Device-mockup stage (Web / Mobile) */
+.previewStage { flex: 1 1 0; display: flex; flex-direction: column; min-height: 0; background: var(--neutral-0); }
+.deviceToolbar { display: flex; justify-content: center; padding: 12px; border-bottom: 0.5px solid var(--neutral-150); flex-shrink: 0; }
+.deviceArea { flex: 1 1 0; overflow: auto; display: grid; place-items: center; padding: 24px; }
+/* "Form" preview — the form on its own, no device frame. */
+.plainArea { flex: 1 1 0; min-height: 0; background: var(--neutral-50); }
+.deviceArea::-webkit-scrollbar { width: 8px; height: 8px; }
+.deviceArea::-webkit-scrollbar-thumb { background: var(--neutral-150); border-radius: 4px; }
+.deviceWrap { display: grid; place-items: center; width: 100%; }
+.deviceMeta { margin-top: 16px; text-align: center; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--neutral-200); }
+/* Scroll surface that fills the device screen and holds the form sheet. */
+.deviceFormScroll { width: 100%; height: 100%; overflow-y: auto; display: flex; justify-content: center; }
+.deviceFormScroll::-webkit-scrollbar { display: none; }
+.deviceFormScroll { scrollbar-width: none; }
+
+.previewSheet {
+  --px: 40px; --py: 32px;
+  width: 100%; max-width: 640px; align-self: flex-start;
+  background: var(--neutral-0); border-radius: 12px; box-shadow: 0 12px 30px rgba(0,0,0,.06);
+  padding: var(--py) var(--px); display: flex; flex-direction: column; gap: 24px;
+  overflow: hidden; margin: 24px 0;
+}
+/* Mobile layout inside the iPhone frame: compact padding, flush edges. */
+.previewSheetMobile { --px: 16px; --py: 20px; max-width: 100%; border-radius: 0; box-shadow: none; margin: 0; min-height: 100%; gap: 18px; }
+.previewTitle { font-size: 20px; font-weight: 600; color: var(--neutral-500); margin: 0; }
+.pvEmpty { color: var(--neutral-200); font-size: 14px; }
+.pvSection { display: flex; flex-direction: column; gap: 16px; padding: 16px; border: 0.5px solid var(--neutral-150); border-radius: 8px; }
+.pvSectionTitle { font-size: 15px; font-weight: 600; color: var(--neutral-400); }
+.pvField { display: flex; flex-direction: column; gap: 6px; }
+.pvLabel { font-size: 14px; font-weight: 500; color: var(--neutral-400); }
+.pvDesc { font-size: 13px; color: var(--neutral-300); margin: 0; }
+
+.previewResult { width: 300px; flex-shrink: 0; border-left: 0.5px solid var(--neutral-150); display: flex; flex-direction: column; }
+.pvResultBody { flex: 1 1 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.pvScoreCard { display: flex; align-items: center; gap: 12px; padding: 12px; border: 0.5px solid var(--neutral-150); border-radius: 8px; }
+.pvScoreVal { font-size: 28px; font-weight: 700; color: var(--neutral-500); min-width: 40px; }
+.pvScoreMeta { flex: 1 1 0; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pvScoreName { font-size: 14px; color: var(--neutral-400); font-weight: 500; }
+.pvScoreStatus { font-size: 12px; color: var(--neutral-200); text-transform: capitalize; }
+.pvBand { font-size: 12px; font-weight: 500; padding: 3px 8px; border: 1px solid; border-radius: 999px; white-space: nowrap; }
+.pvAlert { display: flex; align-items: center; gap: 8px; padding: 10px; background: var(--status-error-light, #fff5f5); border: 0.5px solid rgba(215,40,37,.2); border-radius: 8px; font-size: 13px; color: var(--status-error); }
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+.footer {
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  padding: 6px 12px; border-top: 0.5px solid var(--neutral-150);
+}
+.footerNote {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--status-warning);
+  border: 0.5px solid rgba(217,165,11,.2); border-radius: 4px; padding: 4px 8px;
+}

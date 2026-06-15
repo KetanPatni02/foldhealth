@@ -86,7 +86,7 @@
   border: 0.5px solid transparent;
   border-radius: 8px;
   background:
-    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(var(--neutral-0), var(--neutral-0)) padding-box,
     linear-gradient(to right, #FF907F 0%, #FF57CD 51%, #68A7FF 96%) border-box;
   display: flex;
   flex-direction: column;
@@ -164,7 +164,7 @@
   background-clip: text;
   align-self: flex-start;
   flex-shrink: 0;
-  background-color: #fff;
+  background-color: var(--neutral-0);
   line-height: 1;
 }
 

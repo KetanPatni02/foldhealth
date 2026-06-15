@@ -4,14 +4,39 @@ import { renderEmailHtml } from './patchEmailHtml';
 import { Toggle } from '../../components/Toggle/Toggle';
 import styles from './DevicePreview.module.css';
 
-function EmailIframe({ html, renderWidth }) {
+export function EmailIframe({ html, renderWidth, theme = 'light' }) {
   const wrapRef = useRef(null);
   const [scale, setScale] = useState(1);
   const [size, setSize] = useState({ w: 0, h: 0 });
 
+  // Preview surface mirrors the in-component theme toggle, not the app theme —
+  // recipients see emails on a device with its own light/dark setting, so the
+  // iframe and its wrapper must paint together to prevent a white flash before
+  // the email HTML loads.
+  const previewBg = theme === 'dark' ? '#0F1117' : '#fff';
+
+  // Inject a thin transparent scrollbar into the iframe document so the email
+  // preview doesn't render with the OS-default scrollbar (which paints as a
+  // wide dark bar over the rendered design). Preview-only — does not affect
+  // the actual email HTML delivered to recipients. Always prepended (no head
+  // matching) and forced with !important so we win the cascade vs whatever
+  // styles the email template ships with.
+  const scrollbarThumb = theme === 'dark' ? 'rgba(255,255,255,0.28)' : 'rgba(0,0,0,0.28)';
+  const scrollbarThumbHover = theme === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)';
+  const scrollbarCss = `<style>
+    html, body { scrollbar-width: thin !important; scrollbar-color: ${scrollbarThumb} transparent !important; }
+    ::-webkit-scrollbar { width: 8px !important; height: 8px !important; background: transparent !important; }
+    ::-webkit-scrollbar-track { background: transparent !important; border: none !important; box-shadow: none !important; }
+    ::-webkit-scrollbar-corner { background: transparent !important; }
+    ::-webkit-scrollbar-thumb { background: ${scrollbarThumb} !important; border-radius: 4px !important; border: 2px solid transparent !important; background-clip: padding-box !important; }
+    ::-webkit-scrollbar-thumb:hover { background: ${scrollbarThumbHover} !important; background-clip: padding-box !important; }
+  </style>`;
+
   // Render the email HTML via srcdoc + sandbox — isolates the iframe from the
   // parent origin so any <script> in the email markup cannot run in the app.
-  const srcDoc = html || '<!DOCTYPE html><html><body></body></html>';
+  // Always prepend the scrollbar style; HTML parsers tolerate <style> outside
+  // <head> and hoist it.
+  const srcDoc = html ? scrollbarCss + html : '<!DOCTYPE html><html><body></body></html>';
 
   useEffect(() => {
     if (!renderWidth) return;
@@ -33,12 +58,13 @@ function EmailIframe({ html, renderWidth }) {
         className={styles.emailIframe}
         sandbox="allow-same-origin"
         srcDoc={srcDoc}
+        style={{ background: previewBg, colorScheme: theme }}
       />
     );
   }
 
   return (
-    <div ref={wrapRef} className={styles.emailIframeScaled}>
+    <div ref={wrapRef} className={styles.emailIframeScaled} style={{ background: previewBg }}>
       <iframe
         title="Email preview"
         sandbox="allow-same-origin"
@@ -53,15 +79,15 @@ function EmailIframe({ html, renderWidth }) {
           top: 0,
           border: 0,
           display: 'block',
-          background: '#fff',
-          colorScheme: 'light',
+          background: previewBg,
+          colorScheme: theme,
         }}
       />
     </div>
   );
 }
 
-function MacBookPro({ width = 900, screen }) {
+export function MacBookPro({ width = 900, screen }) {
   return (
     <div className={styles.macbook} style={{ width, maxWidth: '100%' }}>
       <div className={styles.macScreen}>
@@ -75,7 +101,7 @@ function MacBookPro({ width = 900, screen }) {
   );
 }
 
-function IPhone17Pro({ width = 360, screen }) {
+export function IPhone17Pro({ width = 360, screen }) {
   const baseW = 420;
   const baseH = 885;
   const scale = width / baseW;
@@ -153,9 +179,9 @@ export function DevicePreview({ device }) {
       </div>
       <div className={styles.deviceWrap} key={device}>
         {device === 'desktop' ? (
-          <MacBookPro width={macWidth} screen={<EmailIframe html={emailHtml} renderWidth={1280} />} />
+          <MacBookPro width={macWidth} screen={<EmailIframe html={emailHtml} renderWidth={1280} theme={theme} />} />
         ) : (
-          <IPhone17Pro width={phoneWidth} screen={<EmailIframe html={emailHtml} renderWidth={420} />} />
+          <IPhone17Pro width={phoneWidth} screen={<EmailIframe html={emailHtml} renderWidth={420} theme={theme} />} />
         )}
         <div className={styles.meta}>
           {device === 'desktop' ? 'MacBook Pro · 16-inch' : 'iPhone 17 Pro · 6.3-inch'}

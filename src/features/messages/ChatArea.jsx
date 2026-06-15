@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase';
 import { Icon } from '../../components/Icon/Icon';
 import { Button } from '../../components/Button/Button';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { FormPicker } from '../forms/FormPicker';
+import { formShareLink } from '../forms/formLink';
 import styles from './MessagesView.module.css';
 
 function getInitials(profile) {
@@ -40,6 +42,7 @@ export function ChatArea({ currentUser, otherUser, onConversationUpdate }) {
   const [replyTo, setReplyTo]             = useState(null);
   const [dragOver, setDragOver]           = useState(false);
   const [uploading, setUploading]         = useState(false);
+  const [formPickerOpen, setFormPickerOpen] = useState(false);
 
   const messagesRef   = useRef(null);
   const channelRef    = useRef(null);
@@ -314,6 +317,18 @@ export function ChatArea({ currentUser, otherUser, onConversationUpdate }) {
                         <span>{msg.media_name}</span>
                       </a>
                     )}
+                    {msg.media_url && msg.media_type === 'form' && (
+                      <a href={msg.media_url} className={styles.msgFormCard}>
+                        <span className={styles.msgFormIcon}>
+                          <Icon name="solar:clipboard-text-linear" size={18} color="var(--primary-300)" />
+                        </span>
+                        <span className={styles.msgFormMain}>
+                          <span className={styles.msgFormLabel}>Form</span>
+                          <span className={styles.msgFormName}>{msg.media_name || 'Open form'}</span>
+                        </span>
+                        <Icon name="solar:arrow-right-linear" size={14} color="var(--neutral-300)" />
+                      </a>
+                    )}
                     {msg.content && <span>{msg.content}</span>}
                   </div>
                   {isOwn && (
@@ -382,6 +397,7 @@ export function ChatArea({ currentUser, otherUser, onConversationUpdate }) {
             <ActionButton icon="solar:emoji-funny-square-linear" size="S" tooltip="Emoji" />
             <ActionButton icon="solar:gallery-add-linear"        size="S" tooltip="Image"
               onClick={() => { if (fileInputRef.current) { fileInputRef.current.accept = 'image/*'; fileInputRef.current.click(); } }} />
+            <ActionButton icon="solar:clipboard-text-linear"     size="S" tooltip="Share a form" onClick={() => setFormPickerOpen(true)} />
             <ActionButton icon="solar:clock-circle-linear"       size="S" tooltip="Schedule" />
           </div>
         </div>
@@ -425,6 +441,16 @@ export function ChatArea({ currentUser, otherUser, onConversationUpdate }) {
           onChange={e => { handleFileSelect(e.target.files[0]); e.target.value = ''; }}
         />
       </div>
+
+      {formPickerOpen && (
+        <FormPicker
+          onClose={() => setFormPickerOpen(false)}
+          onSelect={(form) => {
+            setFormPickerOpen(false);
+            doSend({ url: formShareLink(form.id), type: 'form', name: form.name });
+          }}
+        />
+      )}
     </div>
   );
 }

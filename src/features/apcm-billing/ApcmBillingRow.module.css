@@ -1,0 +1,301 @@
+.row {
+  border-bottom: 1px solid var(--neutral-150);
+  transition: background .1s;
+  cursor: default;
+}
+.row:hover { background: var(--primary-25); }
+.row:hover .stickyLeft { background: var(--primary-25) !important; }
+.row:hover .stickyRight { background: var(--primary-25); }
+.rowChecked { background: var(--primary-50); }
+.rowChecked .stickyLeft { background: var(--primary-50) !important; }
+.rowChecked .stickyRight { background: var(--primary-50); }
+.rowActive { background: var(--primary-100); }
+.rowActive .stickyLeft { background: var(--primary-100) !important; }
+.rowActive .stickyRight { background: var(--primary-100); }
+
+/* Sticky positioning */
+.stickyLeft {
+  position: sticky;
+  background: var(--neutral-0);
+  z-index: 3;
+}
+.stickyRight {
+  position: sticky;
+  right: 0;
+  background: var(--neutral-0);
+  border-left: 1px solid var(--neutral-150);
+  box-shadow: -2px 0 6px rgba(0,0,0,.04);
+  z-index: 3;
+}
+.stickyCheck { left: 0; }
+.stickyMember { left: 36px; }
+
+/* Active (drawer open) left-edge accent on check cell */
+.checkTdActive {
+  box-shadow: inset 2px 0 0 0 var(--primary-300);
+}
+
+/* Cells */
+.checkTd { padding: 8px 10px; vertical-align: middle; }
+.memberTd {
+  padding: 8px 12px;
+  border-right: 1px solid var(--neutral-150);
+  vertical-align: middle;
+  min-width: 220px;
+}
+.td {
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-400);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.tdWrap {
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-400);
+  vertical-align: top;
+  white-space: normal;
+  min-width: 320px;
+  max-width: 420px;
+}
+
+/* Em dash placeholder */
+.emDash { font-size: 12px; color: var(--neutral-200); }
+
+/* Member cell — mirrors TOC Worklist (WorklistRow.module.css). */
+.patientCell { display: flex; align-items: center; gap: 12px; }
+.patientInfo { display: flex; flex-direction: column; }
+.patientName { font-size: 14px; font-weight: 500; color: var(--neutral-400); white-space: nowrap; }
+.patientMeta { font-size: 13px; color: var(--neutral-200); margin-top: 3px; }
+
+/* Language badge — inline plain-text link inside .patientMeta. */
+.langBadge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  background: transparent;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: normal;
+}
+.langBadge:hover { color: var(--primary-300); text-decoration: underline; }
+
+/* Tooltip renders ABOVE the badge so it doesn't get clipped by the
+   next row's top border / table overflow. Mirrors TOC Worklist. */
+.langTooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 6px 10px;
+  background: var(--neutral-500);
+  color: var(--neutral-0);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  z-index: 100;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,.14);
+}
+/* Arrow pointing down from the tooltip toward the badge below it. */
+.langTooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--neutral-500);
+}
+.langBadge:hover .langTooltip { display: block; }
+
+/* EHR ID link */
+.ehrLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-300);
+  text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+.ehrLink:hover { text-decoration: underline; }
+
+/* CPT code badge */
+.cptBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .01em;
+}
+.cptG0556 { background: var(--neutral-75); color: var(--neutral-400); border: 0.5px solid var(--neutral-150); }
+.cptG0557 { background: var(--primary-100); color: var(--primary-400); border: 0.5px solid var(--primary-200); }
+.cptG0558 { background: color-mix(in srgb, var(--primary-300) 12%, transparent); color: var(--primary-400); border: 0.5px solid var(--primary-200); }
+
+/* ICD codes */
+.icdList { display: flex; flex-direction: column; gap: 3px; }
+.icdItem { display: flex; align-items: flex-start; font-size: 12px; color: var(--neutral-400); }
+.icdCode { font-weight: 500; color: var(--neutral-400); flex-shrink: 0; }
+.icdDesc { color: var(--neutral-300); white-space: normal; }
+/* Inline expand toggle — primary-colored text + chevron. Stays a
+   <button> for a11y but renders as a plain link. */
+.icdMoreBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-300);
+  cursor: pointer;
+  margin-top: 2px;
+}
+.icdMoreBtn:hover { text-decoration: underline; }
+
+/* Reasons — bullet list, neutral text. Hover any item to reveal a
+   tooltip styled to match the language-badge tooltip elsewhere. */
+.reasonsList { display: flex; flex-direction: column; gap: 4px; }
+.reasonItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  white-space: normal;
+  line-height: 1.4;
+}
+.reasonBullet {
+  color: var(--neutral-300);
+  flex-shrink: 0;
+  line-height: 1.4;
+  margin-top: 1px;
+}
+
+.reasonTitleWrap {
+  position: relative;
+  display: inline-block;
+  cursor: default;
+}
+.reasonTitle {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  white-space: normal;
+}
+.reasonTitleWrap:hover .reasonTitle {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+/* Tooltip — same visual language as .langTooltip: dark neutral-500
+   background, neutral-0 text, arrow pointing down at the trigger,
+   anchored above so it isn't clipped by table chrome below. */
+.reasonTooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  width: 272px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-0);
+  background: var(--neutral-500);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .14);
+  line-height: 1.5;
+  white-space: normal;
+  z-index: 100;
+  pointer-events: none;
+}
+.reasonTooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 16px;
+  border: 5px solid transparent;
+  border-top-color: var(--neutral-500);
+}
+.reasonTitleWrap:hover .reasonTooltip { display: block; }
+
+.noReason { font-size: 12px; color: var(--neutral-200); }
+
+/* Provider cell */
+.providerCell { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.providerName { font-size: 13px; color: var(--neutral-400); }
+
+/* Comment cell */
+.commentTd {
+  padding: 6px 12px;
+  vertical-align: top;
+  min-width: 280px;
+  max-width: 360px;
+}
+/* Comment is rendered as a borderless, transparent textarea so it reads
+   as plain text inside the table cell. No box, no background, no hover
+   chrome — only the caret tells the user they're editing once focused. */
+.commentTextarea {
+  width: 100%;
+  min-height: 24px;
+  max-height: 160px;
+  field-sizing: content;
+  resize: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--neutral-400);
+  outline: none;
+  box-shadow: none;
+  box-sizing: border-box;
+  overflow-y: auto;
+  cursor: text;
+}
+.commentTextarea::placeholder {
+  color: var(--neutral-200);
+  font-style: normal;
+}
+
+/* Actions cell — width: 1% forces the column to shrink to its content
+   width inside a `table { width: 100% }` layout, so the empty stretch
+   that previously sat to the right of the icons is gone. */
+.actionsTd {
+  padding: 8px 12px;
+  vertical-align: middle;
+  white-space: nowrap;
+  width: 1%;
+}
+.actionsBtns { display: flex; align-items: center; gap: 8px; }
+.actionDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}

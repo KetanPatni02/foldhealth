@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { Icon } from '../Icon/Icon';
 import { ActionButton } from '../ActionButton/ActionButton';
 import { Badge } from '../Badge/Badge';
@@ -21,6 +21,7 @@ import styles from './PatientBanner.module.css';
  * @param {boolean}  [rafUp=true] RAF trend direction
  * @param {function} [onCall]   Call button handler
  * @param {string}   [className] Extra class
+ * @param {boolean}  [hidePatientLabel=false] Omit the leading "Patient" meta label
  */
 
 /* Mock patient details for expanded state */
@@ -41,8 +42,16 @@ const MOCK_SYNOPSIS = {
   generatedAt: '2d ago',
 };
 
-export function PatientBanner({ initials, name, gender, age, memberId, raf, rafChange, rafUp = true, onCall, className }) {
+export function PatientBanner({ initials, name, gender, age, memberId, raf, rafChange, rafUp = true, onCall, className, hidePatientLabel = false }) {
   const [expanded, setExpanded] = useState(false);
+
+  // Build the leading meta parts so the dot separators stay correct even
+  // when the "Patient" label is hidden.
+  const metaParts = [];
+  if (!hidePatientLabel) metaParts.push('Patient');
+  if (gender) metaParts.push(gender);
+  if (age) metaParts.push(age);
+  if (memberId) metaParts.push(memberId);
 
   return (
     <div className={`${styles.banner} ${className || ''}`}>
@@ -53,16 +62,15 @@ export function PatientBanner({ initials, name, gender, age, memberId, raf, rafC
           <div className={styles.details}>
             <div className={styles.name}>{name}</div>
             <div className={styles.meta}>
-              <span>Patient</span>
-              <span className={styles.dot}>&bull;</span>
-              <span>{gender}</span>
-              <span className={styles.dot}>&bull;</span>
-              <span>{age}</span>
-              <span className={styles.dot}>&bull;</span>
-              <span>{memberId}</span>
+              {metaParts.map((part, i) => (
+                <Fragment key={i}>
+                  {i > 0 && <span className={styles.dot}>&bull;</span>}
+                  <span>{part}</span>
+                </Fragment>
+              ))}
               {raf && (
                 <>
-                  <span className={styles.dot}>&bull;</span>
+                  {metaParts.length > 0 && <span className={styles.dot}>&bull;</span>}
                   <span>RAF</span>
                   <span className={styles.rafValue}>{raf}</span>
                   {rafChange && (
@@ -78,10 +86,10 @@ export function PatientBanner({ initials, name, gender, age, memberId, raf, rafC
           </div>
         </div>
         <div className={styles.actions}>
-          <span className={styles.divider} />
           {onCall && (
-            <ActionButton icon="solar:phone-calling-rounded-linear" size="L" tooltip="Call" onClick={onCall} />
+            <ActionButton icon="solar:phone-calling-rounded-linear" size="L" tooltip="Call" onClick={onCall} tooltipBelow />
           )}
+          <span className={styles.divider} />
           <ActionButton
             icon="solar:alt-arrow-down-linear"
             size="L"
@@ -89,6 +97,7 @@ export function PatientBanner({ initials, name, gender, age, memberId, raf, rafC
             iconColor="var(--primary-300)"
             onClick={() => setExpanded(v => !v)}
             className={expanded ? styles.chevronOpen : ''}
+            tooltipBelow
           />
         </div>
       </div>

@@ -148,8 +148,10 @@
   color: var(--neutral-400);
 }
 .detailCode {
-  font-family: 'SF Mono', ui-monospace, Menlo, monospace;
-  font-size: 11px;
+  font-family: 'Inter', sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--primary-300);
   background: var(--primary-100);
   padding: 1px 5px;

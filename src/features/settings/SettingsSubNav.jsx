@@ -9,13 +9,14 @@ const MENU_ITEMS = [
   { icon: 'solar:phone-linear', label: 'Calls' },
   { icon: 'solar:widget-add-linear', label: 'CRM Widgets' },
   { icon: 'solar:code-square-linear', label: 'Embed', key: 'embedded-components' },
-  { icon: 'solar:documents-linear', label: 'Content' },
+  { icon: 'solar:documents-linear', label: 'Content', key: 'content' },
   { icon: 'solar:watch-square-linear', label: 'Wearables' },
   { icon: 'solar:rocket-linear', label: 'Journeys' },
   { icon: 'solar:ghost-smile-linear', label: 'Agents', key: 'agents' },
   { icon: 'solar:settings-linear', label: 'Automations' },
   { icon: 'solar:library-linear', label: 'Cost Template' },
   { icon: 'solar:user-id-linear', label: 'Memberships' },
+  { icon: 'solar:bill-list-linear', label: 'Billing', key: 'billing' },
   { icon: 'solar:shield-user-linear', label: 'Account' },
 ];
 

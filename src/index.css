@@ -1,5 +1,18 @@
 @import './tokens/tokens.css';
 
+/* Self-hosted Inter (Latin variable). Single woff2 covers weights 100–900.
+   File is in /public/fonts so it has a stable URL — that lets index.html
+   <link rel="preload"> the font and start fetching it in parallel with
+   the JS/CSS, instead of waiting for this CSS file to parse before the
+   browser discovers the font reference. */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter-latin.woff2') format('woff2-variations');
+}
+
 /* NOTE: Tailwind CSS 4 preflight handles box-sizing/margin/padding reset in @layer base.
    Do NOT add an unlayered * reset here — it would override Tailwind utility classes. */
 
@@ -24,7 +37,8 @@ body {
    they are unaffected. Adding `!important` because the source
    SVG specifies stroke-width inline.
    ═══════════════════════════════════════════════════════════ */
-svg.iconify [stroke]:not([stroke="none"]) {
+svg.iconify [stroke]:not([stroke="none"]),
+svg.iconify [stroke-width="1.5"] {
   stroke-width: 1 !important;
 }
 

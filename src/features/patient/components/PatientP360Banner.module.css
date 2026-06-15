@@ -6,7 +6,7 @@
   padding: 8px 12px;
   min-height: 64px;
   border-bottom: 0.5px solid var(--neutral-150);
-  background: linear-gradient(to right, rgba(255, 218, 246, 0.2) 17%, rgba(255, 255, 255, 0.2));
+  background: linear-gradient(to right, rgba(255, 218, 246, 0.2) 17%, color-mix(in srgb, var(--neutral-0) 20%, transparent));
 }
 .drawerBannerLeft { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
 .drawerAvatar {
@@ -23,16 +23,16 @@
 .drawerMetaDot { font-size: 14px; color: var(--neutral-300); }
 .drawerConsentBadge {
   display: inline-flex; align-items: center; gap: 4px;
-  background: #fffcf5; border: 0.5px solid rgba(217, 165, 11, 0.2); border-radius: 4px;
+  background: var(--status-warning-light); border: 0.5px solid rgba(217, 165, 11, 0.2); border-radius: 4px;
   padding: 2px 6px; font-size: 14px; color: var(--status-warning);
   white-space: nowrap; cursor: pointer; font-family: inherit;
 }
-.drawerConsentBadge:hover { background: #fff8e6; }
+.drawerConsentBadge:hover { background: var(--status-warning-light); }
 .drawerBannerDivider { display: block; width: 0.5px; align-self: stretch; background: var(--neutral-150); flex-shrink: 0; }
 .drawerProfileCard {
   display: flex; flex-direction: column; gap: 4px; padding: 4px 8px;
   border: 0.5px solid rgba(16, 156, 174, 0.25); border-radius: 4px;
-  background: radial-gradient(ellipse at 50% 50%, var(--neutral-0) 53%, #e5fcf4 100%);
+  background: radial-gradient(ellipse at 50% 50%, var(--neutral-0) 53%, color-mix(in srgb, var(--status-success) 8%, var(--neutral-0)) 100%);
   flex-shrink: 0; min-width: 0;
 }
 .drawerProfileRow { display: flex; align-items: center; gap: 4px; }
@@ -174,7 +174,7 @@
 /* Profile dropdown */
 .profileDropdown {
   position: absolute; top: calc(100% + 4px); left: 0; z-index: 9999;
-  width: 340px; background: white; border: 0.5px solid var(--neutral-100);
+  width: 340px; background: var(--neutral-0); border: 0.5px solid var(--neutral-100);
   border-radius: 12px; box-shadow: var(--shadow-popover);
   padding: 12px; display: flex; flex-direction: column; gap: 8px;
 }

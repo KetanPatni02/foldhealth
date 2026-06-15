@@ -1,38 +1,67 @@
-import { useEffect, useRef, useState } from 'react';
-import { Analytics } from '@vercel/analytics/react';
-import { SpeedInsights } from '@vercel/speed-insights/react';
+import { useEffect, useRef, useState, lazy, Suspense } from 'react';
+const Analytics = lazy(() => import('@vercel/analytics/react').then(m => ({ default: m.Analytics })).catch(() => ({ default: () => null })));
+const SpeedInsights = lazy(() => import('@vercel/speed-insights/react').then(m => ({ default: m.SpeedInsights })).catch(() => ({ default: () => null })));
 import { AppLayout } from './layouts/AppLayout';
 import { LoginPage } from './features/auth/LoginPage';
+import { ResetPasswordPage } from './features/auth/ResetPasswordPage';
 import { useAppStore } from './store/useAppStore';
 import { supabase } from './lib/supabase';
 import { initRouter } from './lib/router';
-import { seedDatabaseIfEmpty } from './lib/seedDatabase';
+import { track } from './lib/tracking';
+
+// Public, shareable form fill-view (#/f/{id}) — rendered without auth so a
+// link can be opened by anyone. RLS on forms/form_responses ('Allow all')
+// permits anonymous read + submit.
+const PublicFormView = lazy(() => import('./features/forms/view/FormView').then(m => ({ default: m.FormView })));
 
 function App() {
   const routerInit = useRef(false);
-  const seeded = useRef(false);
   const [session, setSession] = useState(undefined); // undefined = loading, null = unauthenticated
   const [bypassed, setBypassed] = useState(() => sessionStorage.getItem('__auth_bypass') === 'true');
+  // Set when Supabase fires PASSWORD_RECOVERY OR when the URL hash carries
+  // the recovery tokens directly (e.g. before supabase-js has processed
+  // them). Initial check handles the brief window between mount and the
+  // PASSWORD_RECOVERY event firing.
+  const [recoveryMode, setRecoveryMode] = useState(() => {
+    const h = window.location.hash || '';
+    return /type=recovery/.test(h) || h.startsWith('#/reset-password');
+  });
+  // Track the hash so the public-form route reacts to navigation.
+  const [hash, setHash] = useState(() => window.location.hash);
+  useEffect(() => {
+    const onHash = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
 
   // Listen for auth state changes
   useEffect(() => {
+    // Subscribe FIRST so we never miss PASSWORD_RECOVERY, which can fire
+    // synchronously from inside the first getSession() call when there
+    // are recovery tokens in the URL.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      // Sentry/Vercel events for major auth transitions. Supabase emits
+      // SIGNED_IN once after a successful login (covers password, OAuth
+      // callback, and magic-link), and SIGNED_OUT on logout. PASSWORD_RECOVERY
+      // fires when the user lands here via a password-reset email link;
+      // hold them on ResetPasswordPage instead of dropping into the app.
+      if (event === 'SIGNED_OUT') {
+        track('auth.logout');
+        setRecoveryMode(false);
+      } else if (event === 'SIGNED_IN') {
+        track('auth.session_established');
+      } else if (event === 'PASSWORD_RECOVERY') {
+        track('auth.password_recovery_started');
+        setRecoveryMode(true);
+      }
+      setSession(s);
+    });
+
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
-    });
-
     return () => subscription.unsubscribe();
-  }, []);
-
-  // Auto-seed empty tables once (always — RLS is open for prototype)
-  useEffect(() => {
-    if (!seeded.current) {
-      seeded.current = true;
-      seedDatabaseIfEmpty();
-    }
   }, []);
 
   // Initialize hash router (once)
@@ -40,10 +69,28 @@ function App() {
     if (!routerInit.current) {
       routerInit.current = true;
       initRouter(useAppStore);
+      // Smoke test — confirms the analytics + Sentry breadcrumb pipeline is
+      // live on app boot. Remove once full coverage is in place.
+      track('app.booted');
     }
   }, []);
 
   const isAuthenticated = session || bypassed;
+
+  // Password recovery — must short-circuit before the regular auth
+  // branches. The recovery email gives the user a temporary session, so
+  // we'd otherwise drop them straight into the app with no way to set
+  // a new password. onDone signs them out and clears the flag.
+  if (recoveryMode) {
+    return (
+      <ResetPasswordPage
+        onDone={() => {
+          setRecoveryMode(false);
+          window.location.hash = '#/login';
+        }}
+      />
+    );
+  }
 
   // Loading state while checking auth
   if (session === undefined && !bypassed) {
@@ -62,10 +109,23 @@ function App() {
     );
   }
 
+  // Public shareable form link — render the fill-view without auth so anyone
+  // with the link can fill + submit. Authenticated users fall through to the
+  // in-app takeover (AppLayout) which adds the close-to-chat affordance.
+  const publicFormMatch = hash.match(/^#\/f\/([^/?#]+)/);
+  if (publicFormMatch && !isAuthenticated) {
+    const fid = isNaN(Number(publicFormMatch[1])) ? publicFormMatch[1] : Number(publicFormMatch[1]);
+    return (
+      <Suspense fallback={<div style={{ height: '100vh' }} />}>
+        <PublicFormView id={fid} isPublic />
+      </Suspense>
+    );
+  }
+
   // Not authenticated — show login
   if (!isAuthenticated) {
     if (window.location.hash !== '#/login') window.location.hash = '#/login';
-    return <LoginPage onBypass={() => { sessionStorage.setItem('__auth_bypass', 'true'); setBypassed(true); window.location.hash = '#/home'; }} />;
+    return <LoginPage onBypass={() => { track('auth.bypass_used'); sessionStorage.setItem('__auth_bypass', 'true'); setBypassed(true); window.location.hash = '#/home'; }} />;
   }
 
   // Authenticated — clear login hash if present
@@ -75,11 +135,11 @@ function App() {
 
   // Authenticated — show app
   return (
-    <>
+    <Suspense fallback={null}>
       <AppLayout />
       <Analytics />
       <SpeedInsights />
-    </>
+    </Suspense>
   );
 }
 

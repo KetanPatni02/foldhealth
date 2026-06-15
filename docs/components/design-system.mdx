@@ -1,0 +1,125 @@
+---
+title: Design System
+description: Typography, color tokens, themes, icons, and spacing conventions.
+---
+
+Fold Health's design system is token-driven, defined in `src/tokens/tokens.css`, and supports four themes.
+
+## Typography
+
+| Property | Value |
+|----------|-------|
+| Font family | Inter (system-ui fallback) |
+| Base size | 14px |
+| Base weight | 400 |
+| Line height | 1.2 (global), 1.5-1.6 (body text) |
+| Rendering | `-webkit-font-smoothing: antialiased` |
+
+Weight scale: 400 (regular), 500 (medium), 600 (semibold).
+
+## Color tokens
+
+### Primary (brand purple)
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--primary-500` | #1A0647 | Darkest brand |
+| `--primary-400` | #5020A0 | Dark accent |
+| `--primary-300` | #8C5AE2 | Main brand purple |
+| `--primary-200` | #D7C0FF | Light accent |
+| `--primary-100` | #F5F0FF | Backgrounds |
+| `--primary-50` | #FCFAFF | Subtle backgrounds |
+
+### Secondary (orange)
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--secondary-300` | #F47A3E | Main accent |
+| `--secondary-200` | #FBCEB7 | Light |
+| `--secondary-100` | #FEEEE7 | Very light |
+
+### Neutral scale
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--neutral-500` | #16181D | Primary text |
+| `--neutral-400` | #3A485F | Body text |
+| `--neutral-300` | #6F7A90 | Secondary text |
+| `--neutral-200` | #8A94A8 | Muted text |
+| `--neutral-150` | #D0D6E1 | Borders |
+| `--neutral-100` | #E9ECF1 | Light borders |
+| `--neutral-75` | #F3F4F7 | Hover surfaces |
+| `--neutral-50` | #F6F7F8 | Elevated surfaces |
+| `--neutral-0` | #FFFFFF | White |
+
+### Status colors
+
+| Token | Light | Dark |
+|-------|-------|------|
+| `--status-error` | #D72825 | #F15B58 |
+| `--status-warning` | #D9A50B | #F5C429 |
+| `--status-success` | #009B53 | #12B76A |
+| `--status-info` | #145ECC | #5B8DEF |
+
+Each status color has `-light` and `-bright` variants for backgrounds and indicators.
+
+## Shadows
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--shadow-popover` | `0 12px 60px rgba(0,0,0,0.06)` | Popovers, menus |
+| `--shadow-drawer` | `-2px 0 24px rgba(0,0,0,0.04)` | Drawers |
+| `--shadow-card` | `0 1px 3px rgba(0,0,0,0.04)` | Cards |
+
+## Themes
+
+Four themes are supported via `[data-theme]` CSS selectors on `:root`:
+
+| Theme | Primary anchor | Sidebar |
+|-------|---------------|---------|
+| Light | #8C5AE2 (purple) | #1A0647 |
+| Dark | Brightened purple | #1A0647 |
+| Blue | #007BFF | Navy |
+| Plum | #6C0C46 | Deep plum |
+
+Theme transitions animate at 200ms ease on all color and shadow properties.
+
+## Icons
+
+**Primary set:** Solar (Iconify) — `solar:*-linear` variants preferred.
+
+**Stroke normalization:** A global CSS rule in `src/index.css` forces all Solar linear icons from 1.5px stroke to 1px.
+
+**Custom icons:** Fold Health custom SVGs (filter, SMS, campaign, call history) are registered in the `Icon` component and must use `strokeWidth="1"`.
+
+**Size convention:**
+
+| Size | Pixels |
+|------|--------|
+| S | 14px |
+| M | 16px |
+| Default | 18px |
+| L | 20px |
+| XL | 24px |
+
+## Spacing
+
+The spacing system follows an 8px increment grid:
+
+- **Gaps / padding:** 8px, 12px, 16px, 20px, 24px
+- **Drawer padding:** 24px horizontal, 20px vertical
+- **Modal padding:** 16-32px depending on content
+
+## Sidebar chrome
+
+The sidebar is always dark regardless of theme:
+
+| Token | Value |
+|-------|-------|
+| `--sidebar-bg` | #1A0647 |
+| `--sidebar-fg` | rgba(255, 255, 255, 0.85) |
+| `--sidebar-active-bg` | #5020A0 |
+
+## Chart palette
+
+12 chart colors (`--chart-1` through `--chart-12`) are defined for data visualizations. 10 accent hues with dark and light variants are available for tags and chips.

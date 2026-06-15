@@ -129,7 +129,7 @@ function DropdownMenu({ patientId, onClose }) {
       <div className={styles.dropdownDivider} />
       <div className={styles.dropdownSection}>Automation</div>
       <button className={styles.dropdownItem} onClick={() => { showToast('Run Automation – coming soon'); onClose(); }}>
-        <Icon name="solar:bolt-outline" size={18} color="var(--neutral-300)" />
+        <Icon name="solar:bolt-linear" size={18} color="var(--neutral-300)" />
         Run Automation
       </button>
       <div className={styles.dropdownDivider} />
@@ -233,10 +233,14 @@ export function WorklistRow({ patient, isSelected, onSelect }) {
               <div className={styles.patientName}><button className={styles.patientNameLink} onClick={e => { e.stopPropagation(); useAppStore.getState().openQuickView({ id: p.id, name: p.name, initials: p.initials, gender: p.gender, age: p.age, memberId: p.memberId, language: p.language, lace: p.lace }); }}>{p.name}</button> <span className={styles.patientDemo}>({p.gender}•{p.age})</span></div>
               <div className={styles.patientMeta}>
                 {p.memberId} •{' '}
-                <span className={styles.langBadge}>
+                <button
+                  type="button"
+                  className={styles.langBadge}
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {(p.language || 'en').toUpperCase()}
                   <span className={styles.langTooltip}>Preferred Language: {LANG_MAP[p.language] || 'English'}</span>
-                </span>
+                </button>
               </div>
             </div>
           </div>
@@ -299,7 +303,7 @@ export function WorklistRow({ patient, isSelected, onSelect }) {
             <span style={{ position: 'relative' }}>
               <ActionButton
                 ref={callBtnRef}
-                icon="solar:phone-outline"
+                icon="solar:phone-linear"
                 size="L"
                 tooltip={p.status === 'oncall' ? 'View live call' : 'Call patient'}
                 iconColor={p.status === 'oncall' ? '#059669' : undefined}

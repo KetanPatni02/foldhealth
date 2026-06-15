@@ -1,32 +1,113 @@
 .sidebar {
-  width: 64px;
+  width: 72px;
   flex-shrink: 0;
+  box-sizing: border-box;
   background: var(--sidebar-bg);
+  border-right: 0.5px solid var(--sidebar-border, transparent);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 8px 0;
-  overflow-y: auto;
+  align-items: stretch;
+  padding: 8px 4px;
+  /* Outer sidebar never scrolls — only the inner .navItems area does. */
+  overflow: hidden;
   z-index: 100;
 }
 
 .logo {
-  width: 36px;
+  width: 100%;
   height: 36px;
   margin-bottom: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  color: var(--sidebar-logo, #FFFFFF);
 }
 
-/* ── Nav item — 64x64 cell ── */
+/* ── Scrollable middle area for primary nav items ──
+   Extend right past the sidebar's right padding via negative margin so
+   the 4px scrollbar paints in that gutter (sidebar x=68→72) instead of
+   stealing width from the nav items. Items have a FIXED width (64px)
+   and are left-aligned so they stay locked to sidebar x=4→68 whether
+   or not the scrollbar is visible. The outer .sidebar has overflow:
+   hidden which clips anything that would escape.
+   Scrollbar is quiet by default and only brightens when the user hovers
+   into the nav area. */
+.navItems {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin-right: -4px;
+  padding-right: 0;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color .15s ease;
+}
+
+.navItems:hover {
+  scrollbar-color: color-mix(in srgb, var(--sidebar-fg-muted) 35%, transparent) transparent;
+}
+
+.navItems::-webkit-scrollbar {
+  width: 4px;
+  background: transparent;
+}
+
+.navItems::-webkit-scrollbar-track,
+.navItems::-webkit-scrollbar-track-piece {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.navItems::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.navItems::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.navItems::-webkit-scrollbar-thumb {
+  background: transparent;
+  border: none;
+  border-radius: 2px;
+  transition: background .15s ease;
+}
+
+.navItems:hover::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--sidebar-fg-muted) 35%, transparent);
+}
+
+.navItems::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--sidebar-fg-muted) 60%, transparent);
+}
+
+/* ── Bottom section (Help) — pinned beneath the scrollable area ── */
+.bottomSection {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding-top: 4px;
+}
+
+/* ── Nav item — fixed 64×64 tile with a 2px gutter around the inner card ── */
 .item {
   width: 64px;
   height: 64px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2px;
+  box-sizing: border-box;
   cursor: pointer;
   position: relative;
   color: var(--sidebar-fg-muted);
@@ -49,6 +130,7 @@
   transition: background .15s, border-color .15s;
   padding: 2px;
   border: 0.5px solid transparent;
+  box-sizing: border-box;
 }
 
 .item span {
@@ -58,7 +140,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 56px;
+  max-width: 100%;
   text-align: center;
   line-height: 1.2;
   transition: color .15s;
@@ -80,11 +162,11 @@
 }
 
 .item.active span {
-  color: var(--sidebar-fg);
+  color: var(--sidebar-active-fg, var(--sidebar-fg));
 }
 
 .item.active {
-  color: var(--sidebar-fg);
+  color: var(--sidebar-active-fg, var(--sidebar-fg));
 }
 
 /* Active + Hover */
@@ -111,9 +193,4 @@
   align-items: center;
   justify-content: center;
   z-index: 1;
-}
-
-.spacer {
-  flex: 1;
-  min-height: 16px;
 }

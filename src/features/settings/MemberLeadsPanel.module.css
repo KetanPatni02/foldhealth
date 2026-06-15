@@ -1,0 +1,175 @@
+/* ── Settings → Member/Leads → Care Team — per-cell visuals ──
+   The shell (wrapper / tabBar / tabs / table / sticky cols / etc.) comes
+   from AgentsTable.module.css. Only Care-Team-specific cell visuals live
+   here so the structural rhythm matches the rest of Settings. */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 80px 16px;
+  color: var(--neutral-300);
+  font-family: 'Inter', sans-serif;
+  text-align: center;
+}
+.empty p { margin: 0; font-size: 13px; }
+
+/* ── Create New popover ──
+   Small dropdown anchored to the Create New button — Care Program Team /
+   HEDIS Team / HCC Team rows that each open ConfigureTeamDrawer with the
+   matching `kind`. */
+.createWrap {
+  position: relative;
+}
+.createMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 50;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.createMenuTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  padding: 6px 8px 4px;
+  border-bottom: 0.5px solid var(--neutral-100);
+  margin-bottom: 2px;
+}
+.createMenuItem {
+  text-align: left;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 8px 8px;
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-500);
+}
+.createMenuItem:hover { background: var(--neutral-50); }
+
+/* Two-line cell: bold title + neutral-300 sub-meta. Title uses the same
+   500/neutral-400 rhythm as AgentsTable's .nameCell; sub-meta matches the
+   12/neutral-300 sub-text used elsewhere in Settings. */
+.nameCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.nameTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.nameMeta {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+
+/* Team Users — overlapping Avatar (variant="assignee") bubbles + "+N"
+   suffix. Forced to 22x22 so the stack stays compact in the table cell
+   (assignee default is 26x26); the secondary-100 tint and 6px radius
+   come from the Avatar component's own styles. */
+.usersCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.avatarStack {
+  display: inline-flex;
+  align-items: center;
+}
+.avatarStackItem {
+  width: 22px !important;
+  height: 22px !important;
+  font-size: 10px !important;
+  margin-left: -6px;
+  box-shadow: 0 0 0 1.5px var(--neutral-0);
+}
+.avatarStackItem:first-child { margin-left: 0; }
+.userCount {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  margin-left: 4px;
+}
+
+/* Total Assigned — capped 100% bar + percentage to the right. */
+.assignedCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.assignedTrack {
+  flex: 1;
+  height: 6px;
+  background: var(--neutral-100);
+  border-radius: 4px;
+  overflow: hidden;
+  min-width: 60px;
+  max-width: 100px;
+}
+.assignedBar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.12s linear;
+}
+.assignedPct {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Per-row "More" menu portal — positioned absolutely from the trigger. */
+.rowMenu {
+  position: fixed;
+  z-index: 70;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  padding: 4px;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rowMenuItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.rowMenuItem:hover { background: var(--neutral-50); }
+.rowMenuItemDanger { color: var(--status-error); }
+.rowMenuItemDanger:hover { background: var(--status-error-light); }

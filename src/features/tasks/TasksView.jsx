@@ -21,6 +21,8 @@ import { Avatar } from '../../components/Avatar/Avatar';
 import { TopBar } from '../../components/TopBar/TopBar';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { ConfirmDialog } from '../../components/Modal/ConfirmDialog';
+import { PdfPreviewOverlay } from '../../components/PdfPreviewOverlay/PdfPreviewOverlay';
+import { ClinicalNotePanel } from '../hedis-worklist/ClinicalNotePanel';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './TasksView.module.css';
@@ -343,23 +345,48 @@ function RowLabelDropdown({ task, children }) {
 function RowActionMenu({ task }) {
   const [open, setOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [pdfPreview, setPdfPreview] = useState(null);
   const btnRef = useRef(null);
   const updateTask = useAppStore(s => s.updateTask);
   const deleteTask = useAppStore(s => s.deleteTask);
   const showToast = useAppStore(s => s.showToast);
   const allTasks = useAppStore(s => s.tasks);
+  const completeCareGapSignOffTask = useAppStore(s => s.completeCareGapSignOffTask);
   const subCount = allTasks.filter(t => t.parent_task_id === task.id).length;
+
+  // HEDIS sign-off tasks route through a dedicated store action so all gaps
+  // in the task transition to Completed atomically (AC-13).
+  const completeTask = () => {
+    if (task.hedisMemberId) {
+      completeCareGapSignOffTask(task.id, 'NP');
+      showToast('Sign-off task completed — gaps closed');
+    } else {
+      updateTask(task.id, { status: 'completed' });
+      showToast('Task marked as complete');
+    }
+  };
 
   const actions = [];
   if (task.status === 'pending') {
-    actions.push({ key: 'complete', label: 'Mark as Complete', icon: 'solar:check-circle-linear', handler: () => { updateTask(task.id, { status: 'completed' }); showToast('Task marked as complete'); } });
+    actions.push({ key: 'complete', label: 'Mark as Complete', icon: 'solar:check-circle-linear', handler: completeTask });
     actions.push({ key: 'missed', label: 'Mark as Missed', icon: 'solar:close-circle-linear', handler: () => { updateTask(task.id, { status: 'missed' }); showToast('Task marked as missed'); } });
   } else if (task.status === 'missed') {
     actions.push({ key: 'pending', label: 'Mark as Pending', icon: 'solar:clock-circle-linear', handler: () => { updateTask(task.id, { status: 'pending' }); showToast('Task marked as pending'); } });
-    actions.push({ key: 'complete', label: 'Mark as Complete', icon: 'solar:check-circle-linear', handler: () => { updateTask(task.id, { status: 'completed' }); showToast('Task marked as complete'); } });
+    actions.push({ key: 'complete', label: 'Mark as Complete', icon: 'solar:check-circle-linear', handler: completeTask });
   } else if (task.status === 'completed') {
     actions.push({ key: 'pending', label: 'Mark as Pending', icon: 'solar:clock-circle-linear', handler: () => { updateTask(task.id, { status: 'pending' }); showToast('Task marked as pending'); } });
     actions.push({ key: 'missed', label: 'Mark as Missed', icon: 'solar:close-circle-linear', handler: () => { updateTask(task.id, { status: 'missed' }); showToast('Task marked as missed'); } });
+  }
+  // HEDIS sign-off tasks carry the consolidated clinical-note PDF. The
+  // preview is rendered inline via PdfPreviewOverlay so the user stays in
+  // the Tasks view (matches production "preview in the same window").
+  if (task.consolidatedPdf?.blob) {
+    actions.unshift({
+      key: 'view-pdf',
+      label: 'View consolidated PDF',
+      icon: 'solar:document-text-linear',
+      handler: () => setPdfPreview(task.consolidatedPdf),
+    });
   }
   actions.push({ key: 'delete', label: 'Delete', icon: 'solar:trash-bin-trash-linear', danger: true, handler: () => setShowDeleteConfirm(true) });
 
@@ -384,6 +411,13 @@ function RowActionMenu({ task }) {
           </div>
         </div>,
         document.body
+      )}
+      {pdfPreview && (
+        <PdfPreviewOverlay
+          blob={pdfPreview.blob}
+          filename={pdfPreview.filename}
+          onClose={() => setPdfPreview(null)}
+        />
       )}
       {showDeleteConfirm && (
         <ConfirmDialog
@@ -671,7 +705,7 @@ function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo }) {
           onClick={e => { e.stopPropagation(); onToggle(task); }}
           aria-label={isCompleted ? 'Mark incomplete' : 'Mark complete'}
         >
-          {isCompleted && <Icon name="solar:check-read-linear" size={13} color="#fff" />}
+          {isCompleted && <Icon name="solar:check-read-linear" size={13} color="var(--neutral-0)" />}
         </button>
       </div>
 
@@ -858,7 +892,7 @@ function KanbanCardContent({ task }) {
             onClick={(e) => e.stopPropagation()}
             aria-label={isCompleted ? 'Mark incomplete' : 'Mark complete'}
           >
-            {isCompleted && <Icon name="solar:check-read-linear" size={13} color="#fff" />}
+            {isCompleted && <Icon name="solar:check-read-linear" size={13} color="var(--neutral-0)" />}
           </button>
         </div>
 
@@ -1280,7 +1314,7 @@ function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCreated })
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Status</span>
               <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className="h-8 text-sm w-[140px]" style={{ background: 'white' }}>
+                <SelectTrigger className="h-8 text-sm w-[140px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1431,7 +1465,7 @@ function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCreated })
 
 /* ── Task Detail Drawer ── */
 const ASSIGNEE_OPTIONS = ['Dr. JeDee Potter', 'Deborah Hintz', 'Dr. Robert Frost', 'Celia Gerhold'];
-const TASK_POOL_OPTIONS = ['Patient Outreach', 'Care Management', 'Follow-up', 'Documentation'];
+const TASK_POOL_OPTIONS = ['Patient Outreach', 'Care Management', 'Follow-up', 'Documentation', 'HEDIS Sign-Off'];
 const MEMBER_OPTIONS = ['Celia Gerhold', 'Ralph Kessler', 'Robert Langdon', 'Cameron Haley'];
 const PRIORITY_OPTIONS = ['high', 'medium', 'low'];
 const LABEL_OPTIONS = ['Hypertension', 'Exercise', 'Document Collection', 'Medication', 'Diabetes', 'Follow-up'];
@@ -1577,12 +1611,17 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showAddSubtask, setShowAddSubtask] = useState(false);
   const [subtaskName, setSubtaskName] = useState('');
+  const [pdfPreview, setPdfPreview] = useState(null);
+  const [editingNote, setEditingNote] = useState(false);
   const titleRef = useRef(null);
   const updateTask = useAppStore(s => s.updateTask);
   const deleteTask = useAppStore(s => s.deleteTask);
   const createTask = useAppStore(s => s.createTask);
   const claimTask = useAppStore(s => s.claimTask);
+  const completeCareGapSignOffTask = useAppStore(s => s.completeCareGapSignOffTask);
+  const hedisMembers = useAppStore(s => s.hedisMembers);
   const showToast = useAppStore(s => s.showToast);
+  const hedisMember = task.hedisMemberId ? hedisMembers.find(m => m.id === task.hedisMemberId) : null;
   const allTasks = useAppStore(s => s.tasks);
   const taskAuditLogs = useAppStore(s => s.taskAuditLogs);
   const fetchTaskAuditLog = useAppStore(s => s.fetchTaskAuditLog);
@@ -1707,7 +1746,7 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
         {/* Toolbar */}
         <div className={styles.drawerToolbar}>
           <Select value={task.status} onValueChange={handleStatusChange}>
-            <SelectTrigger className="h-8 text-sm w-[120px]" style={{ background: 'white' }}>
+            <SelectTrigger className="h-8 text-sm w-[120px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1849,6 +1888,71 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
           </div>
         </div>
 
+        {/* HEDIS Sign-Off: consolidated PDF + completion CTA. Only renders
+            for tasks created by createCareGapSignOffTask (i.e. hedisMemberId set). */}
+        {task.hedisMemberId && task.consolidatedPdf?.blob && (
+          <div className={styles.drawerSection}>
+            <span className={styles.drawerSectionLabel}>Consolidated Clinical Note</span>
+            <button
+              type="button"
+              className={styles.hedisPdfCard}
+              onClick={() => setPdfPreview(task.consolidatedPdf)}
+            >
+              <span className={styles.hedisPdfIcon}>
+                <Icon name="solar:document-text-linear" size={20} color="var(--primary-300)" />
+              </span>
+              <span className={styles.hedisPdfInfo}>
+                <span className={styles.hedisPdfName}>
+                  {task.consolidatedPdf.filename || 'consolidated-clinical-note.pdf'}
+                </span>
+                <span className={styles.hedisPdfMeta}>
+                  Covers {(task.hedisGapCodes || []).length} care gap{(task.hedisGapCodes || []).length === 1 ? '' : 's'} · click to preview
+                </span>
+              </span>
+              <span className={styles.hedisPdfOpenBadge}>
+                <Icon name="solar:eye-linear" size={14} color="var(--neutral-300)" />
+                Preview
+              </span>
+            </button>
+
+            {task.status !== 'completed' && (
+              <div className={styles.hedisSignOffRow}>
+                {hedisMember && (
+                  <Button
+                    variant="secondary"
+                    size="L"
+                    leadingIcon="solar:pen-new-square-linear"
+                    onClick={() => setEditingNote(true)}
+                  >
+                    Edit clinical note
+                  </Button>
+                )}
+                <Button
+                  variant="primary"
+                  size="L"
+                  leadingIcon="solar:check-circle-linear"
+                  onClick={() => {
+                    completeCareGapSignOffTask(task.id, 'NP');
+                    showToast('Sign-off complete — all gaps marked Completed');
+                    onClose?.();
+                  }}
+                >
+                  Complete sign-off
+                </Button>
+                <span className={styles.hedisSignOffHint}>
+                  Marks all gaps ({(task.hedisGapCodes || []).join(', ')}) as Completed.
+                </span>
+              </div>
+            )}
+            {task.status === 'completed' && (
+              <div className={styles.hedisSignOffComplete}>
+                <Icon name="solar:check-circle-bold" size={16} color="var(--status-success)" />
+                Sign-off complete — gaps closed.
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Description */}
         <div className={styles.drawerSection}>
           <span className={styles.drawerSectionLabel}>Description</span>
@@ -1926,7 +2030,7 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
                     updateTask(sub.id, { status: sub.status === 'completed' ? 'pending' : 'completed' });
                   }}
                 >
-                  {sub.status === 'completed' && <Icon name="solar:check-read-linear" size={13} color="#fff" />}
+                  {sub.status === 'completed' && <Icon name="solar:check-read-linear" size={13} color="var(--neutral-0)" />}
                 </button>
                 <div className={styles.subtaskCardBody}>
                   <div className={styles.subtaskCardRow}>
@@ -2011,8 +2115,8 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
             />
             {commentExpanded && (
               <div className={styles.commentActions}>
-                <button className={styles.commentCancel} onClick={() => { setCommentExpanded(false); setCommentText(''); }}>Cancel</button>
                 <Button variant="primary" size="S" disabled={!commentText.trim()} onClick={handleAddComment}>Comment</Button>
+                <Button variant="secondary" size="S" onClick={() => { setCommentExpanded(false); setCommentText(''); }}>Cancel</Button>
               </div>
             )}
           </div>
@@ -2101,6 +2205,22 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
           variant="error"
           onConfirm={handleDelete}
           onCancel={() => setShowDeleteConfirm(false)}
+        />
+      )}
+      {pdfPreview && (
+        <PdfPreviewOverlay
+          blob={pdfPreview.blob}
+          filename={pdfPreview.filename}
+          onClose={() => setPdfPreview(null)}
+        />
+      )}
+      {editingNote && hedisMember && (
+        <ClinicalNotePanel
+          member={hedisMember}
+          gapCode={task.hedisGapCodes?.[0]}
+          year={2026}
+          editingTaskId={task.id}
+          onClose={() => setEditingNote(false)}
         />
       )}
     </Drawer>
