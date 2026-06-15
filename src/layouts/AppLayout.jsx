@@ -25,6 +25,8 @@ import { QueueTable } from '../features/toc-queue/QueueTable';
 import { QueueSummaryBar } from '../features/toc-queue/QueueSummaryBar';
 import { HccWorklistTable } from '../features/hcc/HccWorklistTable';
 import { AllPatientsTable } from '../features/all-patients/AllPatientsTable';
+import { PopulationGroupsView } from '../features/population-groups/PopulationGroupsView';
+import { PgProcessingHost } from '../features/population-groups/PgProcessingHost';
 import { DiagPanel } from '../features/hcc/DiagPanel/DiagPanel';
 import { QuickViewDrawer } from '../components/QuickViewDrawer/QuickViewDrawer';
 import { Icon } from '../components/Icon/Icon';
@@ -103,6 +105,7 @@ function ToastSuccess() {
 
 function PopulationView() {
   const subnavCollapsed = useAppStore(s => s.subnavCollapsed);
+  const toggleSubnav = useAppStore(s => s.toggleSubnav);
   const activeTab = useAppStore(s => s.activeTab);
   const showFilterBar = useAppStore(s => s.showFilterBar);
   const activeSubnavList = useAppStore(s => s.activeSubnavList);
@@ -123,9 +126,13 @@ function PopulationView() {
 
   const isHcc = activeSubnavList === 'HCC';
   const isAllPatients = activeSubnavList === 'All Patients';
+  const isPopulationGroup = activeSubnavList.startsWith('pg:');
   const TOC_LISTS = ['TOC'];
-  const isToc = TOC_LISTS.includes(activeSubnavList) || (!isHcc && !isAllPatients && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'AWV', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
+  const isToc = TOC_LISTS.includes(activeSubnavList) || (!isHcc && !isAllPatients && !isPopulationGroup && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'AWV', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
   const isComingSoon = ['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'AWV', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList);
+  const pgFilter = activeSubnavList === 'pg:Static' ? 'Static' : activeSubnavList === 'pg:Dynamic' ? 'Dynamic' : 'All';
+
+  const chromeless = isHcc || isComingSoon || isPopulationGroup;
 
   return (
     <div className={styles.main}>
@@ -134,17 +141,19 @@ function PopulationView() {
       <div className={styles.bodyRow}>
         <SubNav collapsed={subnavCollapsed} />
         <div className={styles.content}>
-          {!isHcc && !isComingSoon && <TabBar />}
-          {!isHcc && !isComingSoon && showFilterBar && <FilterBar />}
-          {!isHcc && !isAllPatients && !isComingSoon && activeTab === 'toc-queue' && <QueueSummaryBar />}
+          {!chromeless && <TabBar />}
+          {!chromeless && showFilterBar && <FilterBar />}
+          {!isHcc && !isAllPatients && !isComingSoon && !isPopulationGroup && activeTab === 'toc-queue' && <QueueSummaryBar />}
           {isHcc
             ? <HccWorklistTable />
             : isAllPatients
               ? <AllPatientsTable />
-              : isComingSoon
-                ? <ComingSoonState listName={activeSubnavList} />
-                : (activeTab === 'toc-worklist' ? <WorklistTable /> : <QueueTable />)}
-          {!isHcc && !isComingSoon && <Pagination />}
+              : isPopulationGroup
+                ? <PopulationGroupsView activeFilter={pgFilter} onToggleSidebar={toggleSubnav} />
+                : isComingSoon
+                  ? <ComingSoonState listName={activeSubnavList} />
+                  : (activeTab === 'toc-worklist' ? <WorklistTable /> : <QueueTable />)}
+          {!chromeless && <Pagination />}
         </div>
       </div>
     </div>
@@ -366,6 +375,7 @@ export function AppLayout() {
       {businessHoursOpen && <BusinessHoursDrawer />}
       {diagPanelOpen && <DiagPanel />}
       {quickViewPatient && <QuickViewDrawer />}
+      <PgProcessingHost />
       <Toast />
       <ToastSuccess />
     </div>
