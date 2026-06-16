@@ -6,6 +6,7 @@ import { enrichCallRecord } from '../data/callDetailsEnrich';
 import { generateFlowFromPrompt } from '../lib/flowGenerator';
 import { kpiRowToJs, tsRowToJs, tableRowToJs, barRowToJs, configRowToJs, groupTimeSeries } from '../lib/eventMapper';
 import { domainDbToJs, domainJsToDb, componentDbToJs, componentJsToDb, auditLogDbToJs } from '../lib/embedMapper';
+import { popGroupRowToJs, popGroupJsToDb } from '../lib/popGroupMapper';
 // Fallback datasets (~220KB raw across all of these) are imported lazily
 // inside the fetch actions that consume them, so they don't bloat the entry
 // chunk. They're only needed when Supabase returns empty or errors.
@@ -924,6 +925,38 @@ export const useAppStore = create((set, get) => ({
   // Domain Registry add trigger (used by EmbeddedComponentsSettings to tell DomainRegistryPanel to open add modal)
   domainAddTrigger: false,
   setDomainAddTrigger: (v) => set({ domainAddTrigger: v }),
+
+  // ── Population Groups (Supabase-backed) ──
+  popGroups: [],
+  popGroupsLoading: false,
+  fetchPopGroups: async () => {
+    set({ popGroupsLoading: true });
+    const { data, error } = await supabase
+      .from('population_groups')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.warn('[store] population_groups fetch failed — run supabase/population_groups_migration.sql:', error.message);
+      set({ popGroupsLoading: false });
+      return;
+    }
+    set({ popGroups: (data || []).map(popGroupRowToJs), popGroupsLoading: false });
+  },
+  createPopGroup: async (group) => {
+    const { data, error } = await supabase
+      .from('population_groups')
+      .insert(popGroupJsToDb(group))
+      .select()
+      .single();
+    if (error) {
+      console.warn('[store] createPopGroup failed:', error.message);
+      get().showToast(`Failed to save group: ${error.message}`);
+      return null;
+    }
+    const saved = popGroupRowToJs(data);
+    set(s => ({ popGroups: [saved, ...s.popGroups] }));
+    return saved;
+  },
 
   // ── Embed Domains (Supabase-backed) ──
   embedDomains: [],
