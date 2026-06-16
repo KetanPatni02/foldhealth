@@ -1,0 +1,297 @@
+.container { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: linear-gradient(to right, #fff8fd, white 71%);
+  flex-shrink: 0;
+}
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+}
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+}
+.programTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--neutral-500);
+  white-space: nowrap;
+}
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+}
+.statusIcon { display: flex; align-items: center; flex-shrink: 0; }
+.statusBadgeText {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+.headerDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+.assigneeLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.assigneeName {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--status-success);
+  white-space: nowrap;
+}
+
+/* ── Body ── */
+.body { display: flex; flex: 1; overflow: hidden; }
+
+/* ── Step list sidebar ── */
+.stepList {
+  width: 240px;
+  min-width: 240px;
+  border-right: 0.5px solid var(--neutral-150);
+  overflow-y: auto;
+  background: white;
+}
+.stepItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border: none;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: white;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+  font-family: 'Inter', sans-serif;
+}
+.stepItem:hover { background: rgba(22,24,29,0.02); }
+.stepItemActive {
+  background: #F5F0FF;
+  border-bottom-color: #D7C0FF;
+}
+.stepItemActive::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--primary-300);
+}
+.stepChild { padding-left: 32px; }
+.stepName {
+  font-size: 14px;
+  color: #3A485F;
+  flex: 1;
+}
+.stepNameActive {
+  font-size: 14px;
+  color: var(--primary-300);
+  flex: 1;
+}
+.statusPending {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid #8A94A8;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+.statusCompleted {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--status-success);
+  background: #F5FFFA;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+.mandatoryDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-error);
+  flex-shrink: 0;
+}
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  min-height: 36px;
+  border: none;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: #F8F8F9;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+.sectionHeader:hover { background: #f0f0f2; }
+.sectionName {
+  font-size: 14px;
+  color: #3A485F;
+  flex: 1;
+}
+
+/* ── Right content area ── */
+.content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+.contentHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+.contentTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+.contentActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 4px 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 4px;
+  background: white;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--neutral-300);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.actionBtn:hover { border-color: var(--neutral-200); }
+.reviewedBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 4px 8px;
+  border: 1px solid var(--status-success);
+  border-radius: 4px;
+  background: white;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--status-success);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.reviewedBtn:hover { background: #F5FFFA; }
+
+.contentInner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Content sub-tabs ── */
+.contentSubTabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  flex-shrink: 0;
+}
+.tabDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+.contentTab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--neutral-300);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.contentTab:hover { background: rgba(22,24,29,0.05); }
+.contentTabActive {
+  color: var(--neutral-400);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+}
+
+/* ── Letters table ── */
+.tableWrap { flex: 1; overflow: auto; }
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Inter', sans-serif;
+}
+.table thead th {
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  text-align: left;
+  white-space: nowrap;
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.table tbody tr { border-bottom: 0.5px solid var(--neutral-100); }
+.table tbody tr:hover { background: rgba(22,24,29,0.02); }
+.table tbody td {
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+.fileNameCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--neutral-500);
+}

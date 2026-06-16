@@ -78,7 +78,73 @@ export const PROGRAM_ACTIVITY_BY_MONTH = [
 
 export const PROFILE_TABS = [
   'Overview', 'Timeline', 'Notes', 'Assessments', 'Care Management',
-  'Tasks', 'Documents', 'Orders & Referrals', 'Demographics',
+  'Care Programs', 'Tasks', 'Documents', 'Orders & Referrals', 'Demographics',
+];
+
+export const CARE_PROGRAMS_MOCK = [
+  {
+    id: 'cp-1',
+    name: 'Annual Wellness Visit (AWV)',
+    acuity: 'High',
+    status: 'Enrolled',
+    statusColor: 'var(--status-success)',
+    startDate: '09/01/2024',
+    endDate: '02/19/2024',
+    lastUpdated: '02/19/2024',
+    assignee: 'Aldo Richman',
+    pcp: 'Dr. Robert Frost',
+    progress: 0.75,
+  },
+  {
+    id: 'cp-2',
+    name: 'SNP Care Program (SNP)',
+    acuity: null,
+    status: 'Engaged',
+    statusColor: 'var(--primary-300)',
+    startDate: '03/15/2024',
+    endDate: '02/19/2024',
+    lastUpdated: '02/19/2024',
+    assignee: 'Ivy Ralph',
+    pcp: 'Dr. Robert Frost',
+    progress: 0.6,
+  },
+  {
+    id: 'cp-3',
+    name: 'High Utilizers (HIU)',
+    acuity: null,
+    status: 'New',
+    statusColor: 'var(--primary-300)',
+    startDate: '03/15/2024',
+    endDate: '02/19/2024',
+    lastUpdated: '02/19/2024',
+    assignee: 'Aldo Richman',
+    pcp: 'Dr. John Doe',
+    progress: 0,
+  },
+  {
+    id: 'cp-4',
+    name: 'Transitional Care Management (TCM)',
+    acuity: null,
+    status: 'Unable to Reach',
+    statusColor: 'var(--status-error)',
+    startDate: '03/15/2024',
+    endDate: '02/19/2024',
+    lastUpdated: '02/19/2024',
+    assignee: 'Aldo Richman',
+    pcp: 'Dr. Robert Frost',
+    progress: 0.15,
+  },
+];
+
+export const CP_SUB_TABS = ['All', 'New', 'Enrolled', 'Completed', 'Closed'];
+
+export const CP_FILTERS = [
+  { key: 'assignee', label: 'Assigned to' },
+  { key: 'program', label: 'Care Program' },
+  { key: 'status', label: 'Status' },
+  { key: 'subStatus', label: 'Sub-Status' },
+  { key: 'startDate', label: 'Start Date' },
+  { key: 'endDate', label: 'End Date' },
 ];
 
 export const CM_FILTERS = [
@@ -88,4 +154,37 @@ export const CM_FILTERS = [
   { label: 'Program', active: true, value: 'All' },
   { label: 'Action Type' },
   { label: 'Action Status' },
+];
+
+export const PROGRAM_STEPS_MOCK = [
+  { id: 'step-1', name: 'Outreach', status: 'pending' },
+  { id: 'step-2', name: 'Letters', status: 'completed', mandatory: true },
+  {
+    id: 'step-3', name: 'Program Directives', type: 'section', expanded: true,
+    children: [
+      { id: 'step-3a', name: 'Pre-visit', status: 'completed', mandatory: true },
+      { id: 'step-3b', name: 'HRA', status: 'completed', hasAlert: true },
+      { id: 'step-3c', name: 'BRCSI Assessment', status: 'completed' },
+      { id: 'step-3d', name: 'SNP Assessment', status: 'completed', mandatory: true },
+    ],
+  },
+  {
+    id: 'step-4', name: 'Model of Care', type: 'section', expanded: false,
+    children: [
+      { id: 'step-4a', name: 'Care Plan', status: 'completed', mandatory: true },
+    ],
+  },
+  { id: 'step-5', name: 'ICT Appointment', status: 'completed', mandatory: true },
+  { id: 'step-6', name: 'Post Visit Checklist', status: 'completed', mandatory: true },
+  { id: 'step-7', name: 'Open Care Gaps', status: 'pending' },
+  { id: 'step-8', name: 'Medication Reconciliation', status: 'pending' },
+  { id: 'step-9', name: 'Program Related Task', status: 'pending' },
+  { id: 'step-10', name: 'Program Related Files', status: 'pending', mandatory: true },
+  { id: 'step-11', name: 'Referral Review', status: 'pending', mandatory: true },
+];
+
+export const PROGRAM_LETTERS_MOCK = [
+  { id: 'l-1', fileName: 'AMTX COC UTR Letter', fileType: 'PDF', sentVia: 'Email', lastSent: '02/19/2024', sentBy: 'Delores Conn' },
+  { id: 'l-2', fileName: 'Discharge Summary', fileType: 'PDF', sentVia: 'Mail', lastSent: '02/15/2024', sentBy: 'Aldo Richman' },
+  { id: 'l-3', fileName: 'Welcome Letter', fileType: 'PDF', sentVia: 'Email', lastSent: '01/10/2024', sentBy: 'Ivy Ralph' },
 ];

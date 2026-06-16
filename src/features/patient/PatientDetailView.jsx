@@ -5,6 +5,7 @@ import { PatientP360Banner } from './components/PatientP360Banner';
 import { PatientProfileTabs } from './components/PatientProfileTabs';
 import { ProfileTabBar } from './components/ProfileTabBar';
 import { CareManagementView } from './components/CareManagementView';
+import { CareProgramsTab } from './components/CareProgramsTab';
 import { OverviewTab } from './components/OverviewTab';
 import styles from './PatientDetailView.module.css';
 
@@ -82,6 +83,8 @@ export function PatientDetailView() {
               <OverviewTab />
             ) : activeTab === 'Care Management' ? (
               <CareManagementView />
+            ) : activeTab === 'Care Programs' ? (
+              <CareProgramsTab />
             ) : (
               <TabPlaceholder tabName={activeTab} />
             )}
