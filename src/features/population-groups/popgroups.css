@@ -3,6 +3,32 @@
    keyframe names from inline `animation:` style strings. Scoped by unique
    `pg-`/feature-specific names so they don't collide with app globals. */
 
+/* Create Pop Group drawer — overrides on the shared Drawer panel.
+   Standard shared-Drawer width (700px) until a file is uploaded; widens to a
+   two-column layout during CSV processing. */
+.pg-create-panel {
+  transition: width 0.35s cubic-bezier(0.32, 0, 0.15, 1);
+}
+.pg-create-panel.pg-create-panel--wide {
+  width: min(70vw, 1400px) !important;
+  min-width: 800px;
+}
+/* Body owns no padding — the inner form / two-column panels manage their own. */
+.pg-create-body {
+  padding: 0 !important;
+  overflow: hidden !important;
+  display: flex;
+  flex-direction: column;
+}
+/* Divider between the header's Create button and the close button. */
+.pg-header-divider {
+  display: block;
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
 @keyframes pg-spin      { to { transform: rotate(360deg); } }
 @keyframes pg-spin-rev  { to { transform: rotate(-360deg); } }
 @keyframes pg-pulse     { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.65; transform:scale(0.88); } }
@@ -12,11 +38,6 @@
 @keyframes pg-fade-up   { from { transform: translateY(10px); opacity:0; } to { transform: translateY(0); opacity:1; } }
 @keyframes pg-step-check { from { transform: scale(0) rotate(-20deg); opacity:0; } to { transform: scale(1) rotate(0deg); opacity:1; } }
 @keyframes pg-badge-pop  { 0% { transform: scale(0.4); opacity:0; } 60% { transform: scale(1.15); } 100% { transform: scale(1); opacity:1; } }
-
-@keyframes pg-drawer-in  { from { transform: translateX(100%); opacity:0.4; } to { transform: translateX(0); opacity:1; } }
-@keyframes pg-drawer-out { from { transform: translateX(0); opacity:1; } to { transform: translateX(100%); opacity:0.4; } }
-.drawer-enter { animation: pg-drawer-in  350ms cubic-bezier(0.32,0,0.15,1) forwards; }
-.drawer-exit  { animation: pg-drawer-out 350ms cubic-bezier(0.32,0,0.15,1) forwards; }
 
 @keyframes pg-row-slide-out {
   0%   { transform: translateX(0);    opacity: 1; max-height: 400px; }
@@ -49,5 +70,5 @@
   font-family: 'Inter', sans-serif;
 }
 .pg-btn:hover { background: var(--neutral-50); }
-.pg-btn.active { background: var(--primary-300); color: #fff; border-color: var(--primary-300); font-weight: 500; }
+.pg-btn.active { background: var(--primary-300); color: var(--neutral-0); border-color: var(--primary-300); font-weight: 500; }
 .pg-btn.dots { border: none; background: transparent; cursor: default; color: var(--neutral-300); }
