@@ -2896,7 +2896,11 @@ export const useAppStore = create((set, get) => ({
   // ─── HCC Document Upload + OCR Review (Individual Upload path) ──────
   // Session state for the multi-encounter PDF upload flow described in the
   // Jira ticket. Lives at app level — drawer is mounted once in AppLayout.
-  //   phase: 'picker' → 'processing' → 'review'
+  //   phase: 'chooser' → ('single' | 'picker' | 'sftp')
+  //   - chooser: pick a mode (single encounter / single multi-patient PDF / SFTP)
+  //   - single:  manual single-encounter form (no OCR)
+  //   - picker → processing → review: OCR-driven multi-encounter PDF flow
+  //   - sftp:    informational — show external SFTP path + credentials link
   //   file:        The selected File object (PDF)
   //   encounters:  Array of OCR-extracted encounter sections (across all
   //                patients in the PDF). Each: { tempId, patient:{name,dob,
@@ -2904,19 +2908,26 @@ export const useAppStore = create((set, get) => ({
   //                posDesc, icds:[{code,valid}], errors:[fieldName] }
   //   seededMemberId: When opened from an "Upload Document" action on a
   //                specific patient (AllPatientsRow / QuickView), this is
-  //                that member's id — used to auto-link ambiguous matches.
+  //                that member's id. Bypasses the chooser → straight to picker
+  //                so the patient-context flow stays unchanged.
   //   summary:     Set after confirm — { created, updated }
   hccUploadSession: null,
   startHccUpload: (seededMemberId = null) => set({
     hccUploadSession: {
       id: `up-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
-      phase: 'picker',
+      // From the worklist toolbar (no seededMemberId) → show the chooser
+      // first. From a patient row → skip directly to the existing OCR picker.
+      phase: seededMemberId ? 'picker' : 'chooser',
       file: null,
       encounters: [],
       seededMemberId,
       summary: null,
     },
   }),
+  // Used by the chooser cards to advance into a sub-flow.
+  setHccUploadPhase: (phase) => set(s => s.hccUploadSession
+    ? { hccUploadSession: { ...s.hccUploadSession, phase } }
+    : {}),
   setHccUploadFile: (file) => {
     set(s => s.hccUploadSession
       ? { hccUploadSession: { ...s.hccUploadSession, file, phase: 'processing' } }
@@ -2996,6 +3007,38 @@ export const useAppStore = create((set, get) => ({
       hccUploadSession: {
         ...s.hccUploadSession,
         encounters: s.hccUploadSession.encounters.filter((_, i) => i !== idx),
+      },
+    };
+  }),
+  // Manually add a blank encounter for an existing patient. Used in the
+  // review phase when an OCR pass missed a DOS the user has a separate
+  // document for — they get a fresh row pre-linked to the patient and
+  // fill in DOS / provider / POS / ICDs / doc themselves.
+  addHccUploadEncounter: (member) => set(s => {
+    if (!s.hccUploadSession || !member) return {};
+    const newEnc = {
+      tempId: `manual-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      patient: {
+        name: member.name,
+        dob: member.dob || '',
+        matchedMemberId: member.id,
+        matchConfidence: 100,
+      },
+      dos: '',
+      provider: '',
+      pos: '',
+      posDesc: '',
+      docType: 'Progress Note',
+      icds: [],
+      // Pre-stamp the same error keys the review pipeline expects so the
+      // new row immediately reads as "needs attention" in the filter chips.
+      errors: ['dos', 'provider', 'pos'],
+      _manual: true,
+    };
+    return {
+      hccUploadSession: {
+        ...s.hccUploadSession,
+        encounters: [...s.hccUploadSession.encounters, newEnc],
       },
     };
   }),

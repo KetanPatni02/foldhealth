@@ -5,8 +5,10 @@ import { Icon } from '../../../components/Icon/Icon';
 import { Avatar } from '../../../components/Avatar/Avatar';
 import { Input } from '../../../components/Input/Input';
 import { Toggle } from '../../../components/Toggle/Toggle';
+import { Select } from '../../../components/Select/Select';
 import { useAppStore } from '../../../store/useAppStore';
 import { runMockOcr, mandatoryFields, POS_LABEL } from './mockOcr';
+import { ICDS as ICDS_BY_MEMBER } from '../data/icds';
 import styles from './UploadDocumentDrawer.module.css';
 
 // Accepted file types for clinical document upload. PDFs are the canonical
@@ -67,9 +69,12 @@ export function UploadDocumentDrawer() {
   const appendEncounters = useAppStore(s => s.appendHccUploadEncounters);
   const patchEnc = useAppStore(s => s.patchHccUploadEncounter);
   const removeEnc = useAppStore(s => s.removeHccUploadEncounter);
+  const addEnc = useAppStore(s => s.addHccUploadEncounter);
   const cancel = useAppStore(s => s.cancelHccUpload);
   const confirm = useAppStore(s => s.confirmHccUpload);
+  const setPhase = useAppStore(s => s.setHccUploadPhase);
   const hccMembers = useAppStore(s => s.hccMembers);
+  const createFromEncounter = useAppStore(s => s.hccCreateOrMergeFromEncounter);
   const showToast = useAppStore(s => s.showToast);
 
   if (!session) return null;
@@ -77,13 +82,15 @@ export function UploadDocumentDrawer() {
     session={session}
     setFile={setFile} setEncounters={setEncounters}
     appendEncounters={appendEncounters}
-    patchEnc={patchEnc} removeEnc={removeEnc}
-    cancel={cancel} confirm={confirm}
-    hccMembers={hccMembers} showToast={showToast}
+    patchEnc={patchEnc} removeEnc={removeEnc} addEnc={addEnc}
+    cancel={cancel} confirm={confirm} setPhase={setPhase}
+    hccMembers={hccMembers}
+    createFromEncounter={createFromEncounter}
+    showToast={showToast}
   />;
 }
 
-function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, removeEnc, cancel, confirm, hccMembers, showToast }) {
+function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, removeEnc, addEnc, cancel, confirm, setPhase, hccMembers, createFromEncounter, showToast }) {
   const [drag, setDrag] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [filter, setFilter] = useState('all'); // all | error | mismatched | ready
@@ -219,8 +226,19 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
     }
   };
 
+  const canBack = ['single', 'picker', 'sftp'].includes(session.phase) && !session.seededMemberId;
   const title = (
     <span className={styles.title}>
+      {canBack && (
+        <button
+          type="button"
+          className={styles.titleBackBtn}
+          onClick={() => setPhase('chooser')}
+          aria-label="Back to chooser"
+        >
+          <Icon name="solar:alt-arrow-left-linear" size={16} color="var(--neutral-400)" />
+        </button>
+      )}
       Upload Document
       {session.phase === 'review' && (
         <span className={styles.titleHint}>
@@ -277,10 +295,11 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
   ) : null;
 
   // Drawer expands once OCR is running or done — the review panel needs
-  // the extra width. Picker phase stays narrow.
+  // the extra width. Chooser / picker / single / sftp phases stay narrow.
+  const isWidePhase = session.phase === 'processing' || session.phase === 'review';
   const drawerCls = [
     styles.drawer,
-    session.phase === 'picker' ? '' : styles.drawerExpanded,
+    isWidePhase ? styles.drawerExpanded : '',
   ].filter(Boolean).join(' ');
 
   return (
@@ -291,6 +310,24 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
       bodyClassName={styles.body}
       headerRight={headerRight}
     >
+      {session.phase === 'chooser' && (
+        <ChooserPhase onPick={setPhase} />
+      )}
+
+      {session.phase === 'sftp' && (
+        <SftpPhase showToast={showToast} />
+      )}
+
+      {session.phase === 'single' && (
+        <SinglePhase
+          hccMembers={hccMembers}
+          batchId={session.id}
+          showToast={showToast}
+          createFromEncounter={createFromEncounter}
+          onDone={cancel}
+        />
+      )}
+
       {session.phase === 'picker' && (
         <div className={styles.pickerPhase}>
           {/* Subtitle — HCC-specific framing under the drawer title. */}
@@ -419,6 +456,8 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
           hccMembers={hccMembers}
           patchEnc={patchEnc}
           removeEnc={removeEnc}
+          addEnc={addEnc}
+          setSelectedIdxOnAdd={setSelectedIdx}
           selectedIdx={selectedIdx}
           setSelectedIdx={setSelectedIdx}
           filter={filter}
@@ -444,7 +483,445 @@ function encounterStatus(enc) {
   return 'ready';
 }
 
-function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, selectedIdx, setSelectedIdx, filter, setFilter, layout, selectedIdxs, toggleSelected, setSelectedAll, sourceFileName }) {
+// ── Chooser phase ──────────────────────────────────────────────────
+// Three-card menu shown when the user opens Upload Document from the
+// worklist toolbar (no patient seeded). Mirrors the Figma "Choose how
+// you'd like to add team members" layout — first option primary-tinted,
+// the other two secondary-tinted (matches Fold's purple/orange split).
+function ChooserPhase({ onPick }) {
+  const options = [
+    {
+      key: 'single', tone: 'primary',
+      icon: 'solar:user-rounded-linear',
+      title: 'Add a Single Encounter',
+      desc: 'Manually add one encounter for a patient — pick the patient, add ICDs, attach the document.',
+      cta: 'Add Encounter',
+    },
+    {
+      key: 'picker', tone: 'secondary',
+      icon: 'solar:users-group-rounded-linear',
+      title: 'Upload Single Document',
+      desc: 'Upload one PDF that contains encounters for one or more patients — OCR extracts and groups them for review.',
+      cta: 'Upload PDF',
+    },
+    {
+      key: 'sftp', tone: 'secondary',
+      icon: 'solar:server-2-linear',
+      title: 'Upload Multiple Documents (SFTP)',
+      desc: 'Drop multiple documents on the secure SFTP server — they\'ll be ingested automatically and queued for OCR review.',
+      cta: 'Open SFTP Details',
+    },
+  ];
+  return (
+    <div className={styles.chooserPhase}>
+      <h3 className={styles.chooserHeading}>Choose how you'd like to add encounters</h3>
+      <div className={styles.chooserCards}>
+        {options.map(opt => (
+          <button
+            key={opt.key}
+            type="button"
+            className={`${styles.chooserCard} ${styles[`chooserCard_${opt.tone}`]}`}
+            onClick={() => onPick(opt.key)}
+          >
+            <span className={styles.chooserIcon}>
+              <Icon
+                name={opt.icon}
+                size={28}
+                color={opt.tone === 'primary' ? 'var(--primary-300)' : 'var(--secondary-300)'}
+              />
+            </span>
+            <span className={styles.chooserTitle}>{opt.title}</span>
+            <span className={styles.chooserDesc}>{opt.desc}</span>
+            <span className={`${styles.chooserCta} ${styles[`chooserCta_${opt.tone}`]}`}>
+              {opt.cta}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── SFTP phase ─────────────────────────────────────────────────────
+// Informational card for option 3. The actual SFTP server is set up
+// per-org via Settings → Integrations; here we just surface the path
+// + a copy-to-clipboard affordance + an external link to the
+// credentials manager (stubbed for now).
+function SftpPhase({ showToast }) {
+  const sftpPath = 'sftp://upload.foldhealth.com/<your-org>/hcc/inbox';
+  const copyPath = async () => {
+    try {
+      await navigator.clipboard.writeText(sftpPath);
+      showToast('SFTP path copied to clipboard');
+    } catch {
+      showToast('Could not copy — your browser blocked clipboard access');
+    }
+  };
+  return (
+    <div className={styles.sftpPhase}>
+      <p className={styles.pickerSubtitle}>
+        Bulk-upload via SFTP. Documents dropped at the path below are picked
+        up by Astrana / Support and ingested into the OCR review queue.
+      </p>
+
+      <div className={styles.sftpCard}>
+        <div className={styles.sftpCardHeader}>
+          <Icon name="solar:server-2-linear" size={20} color="var(--secondary-300)" />
+          <span>SFTP inbox</span>
+        </div>
+        <div className={styles.sftpPathRow}>
+          <code className={styles.sftpPath}>{sftpPath}</code>
+          <button type="button" className={styles.sftpCopyBtn} onClick={copyPath}>
+            <Icon name="solar:copy-linear" size={14} color="var(--primary-300)" />
+            Copy
+          </button>
+        </div>
+        <ul className={styles.sftpHints}>
+          <li>Files: PDF, DOC, JPG, PNG</li>
+          <li>Naming: any — OCR resolves patient + DOS from the document contents</li>
+          <li>New files trigger a batch within ~5 minutes</li>
+        </ul>
+      </div>
+
+      <div className={styles.sftpExternal}>
+        <Icon name="solar:link-linear" size={14} color="var(--primary-300)" />
+        <a
+          href="https://foldhealth.example/sftp-credentials"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.sftpExternalLink}
+        >
+          Manage SFTP credentials
+        </a>
+        <span className={styles.sftpExternalHint}>· opens in a new tab</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Single-encounter form (option 1) ───────────────────────────────
+// Manual entry path: pick a patient, add ICD chips, fill the encounter
+// context, attach a document, Confirm. Routes through the existing
+// hccCreateOrMergeFromEncounter so dedup + activity-log wiring all works.
+function SinglePhase({ hccMembers, batchId, showToast, createFromEncounter, onDone }) {
+  const [patient, setPatient] = useState(null);   // selected hccMember or null
+  const [patientQuery, setPatientQuery] = useState('');
+  const [icdQuery, setIcdQuery] = useState('');
+  const [icds, setIcds] = useState([]);             // [{ code, desc, hcc? }]
+  const [dosMode, setDosMode] = useState('existing'); // 'existing' | 'new'
+  const [dos, setDos] = useState('');
+  const [provider, setProvider] = useState('');
+  const [pos, setPos] = useState('11');
+  const [docType, setDocType] = useState('Progress Note');
+  const [condition, setCondition] = useState('');
+  const [file, setFile] = useState(null);
+  const fileInputRef = useRef(null);
+
+  // Patient search — typeahead over hccMembers by name.
+  const patientMatches = useMemo(() => {
+    const q = patientQuery.trim().toLowerCase();
+    if (!q) return hccMembers.slice(0, 6);
+    return hccMembers
+      .filter(m => (m.name || '').toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [hccMembers, patientQuery]);
+
+  // ICD search — flatten all known ICDs across members, then dedup by
+  // code so the user gets a single entry per diagnosis even if it's
+  // attached to multiple patients in the mock.
+  const allIcds = useMemo(() => {
+    const map = new Map();
+    Object.values(ICDS_BY_MEMBER).forEach(list => {
+      (list || []).forEach(item => {
+        if (!map.has(item.code)) map.set(item.code, item);
+      });
+    });
+    return [...map.values()];
+  }, []);
+  const icdMatches = useMemo(() => {
+    const q = icdQuery.trim().toLowerCase();
+    if (!q) return [];
+    return allIcds
+      .filter(i =>
+        (i.code || '').toLowerCase().includes(q) ||
+        (i.desc || '').toLowerCase().includes(q),
+      )
+      .slice(0, 6);
+  }, [allIcds, icdQuery]);
+
+  const addIcd = (item) => {
+    if (icds.some(i => i.code === item.code)) return;
+    setIcds([...icds, item]);
+    setIcdQuery('');
+  };
+  const removeIcd = (code) => setIcds(icds.filter(i => i.code !== code));
+
+  const existingDosList = patient?.dos_list?.map(d => d.date) || [];
+
+  const canConfirm = patient && icds.length > 0 && dos && provider && pos;
+
+  const handleConfirm = () => {
+    if (!canConfirm) return;
+    // Reuse the same create/merge path used by the OCR flow.
+    const result = createFromEncounter({
+      tempId: `single-${Date.now()}`,
+      patient: {
+        name: patient.name,
+        dob: patient.dob,
+        matchedMemberId: patient.id,
+        matchConfidence: 100,
+      },
+      dos,
+      provider,
+      pos,
+      posDesc: POS_LABEL[pos] || '',
+      icds: icds.map(i => ({ code: i.code, valid: true })),
+      _docName: file?.name || `Manual entry — ${condition || 'encounter'}.pdf`,
+      _docType: docType,
+      errors: [],
+    });
+    if (result.kind === 'skipped') {
+      showToast('Could not save — patient not matched');
+      return;
+    }
+    const label = result.kind === 'created'
+      ? `Encounter added for ${patient.name}`
+      : result.kind === 'updated'
+        ? `ICDs merged into existing DOS for ${patient.name}`
+        : `Related DOS created for ${patient.name}`;
+    showToast(label);
+    onDone?.();
+  };
+
+  return (
+    <div className={styles.singlePhase}>
+      <p className={styles.pickerSubtitle}>
+        Add a single encounter manually — pick a patient, attach ICDs, and upload
+        the supporting document.
+      </p>
+
+      {/* Patient picker — same layout as the OCR review's link-patient UI. */}
+      <div className={styles.singleSection}>
+        <label className={styles.singleLabel}>Patient *</label>
+        {patient ? (
+          <div className={styles.singlePatientChip}>
+            <Avatar variant="patient" initials={patient.in} />
+            <div className={styles.singlePatientText}>
+              <div className={styles.singlePatientName}>{patient.name}</div>
+              <div className={styles.singlePatientMeta}>
+                {patient.memberId || patient.member_id || '—'} · DOB {patient.dob || '—'}
+              </div>
+            </div>
+            <button
+              type="button"
+              className={styles.singlePatientChange}
+              onClick={() => { setPatient(null); setPatientQuery(''); }}
+            >
+              Change
+            </button>
+          </div>
+        ) : (
+          <>
+            <Input
+              placeholder="Search Fold patients by name…"
+              value={patientQuery}
+              onChange={(e) => setPatientQuery(e.target.value)}
+              autoFocus
+            />
+            <div className={styles.memberPickerList}>
+              {patientMatches.map(m => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={styles.memberPickerItem}
+                  onClick={() => { setPatient(m); setPatientQuery(''); }}
+                >
+                  <Avatar variant="patient" initials={m.in} />
+                  <span>{m.name}</span>
+                  <span className={styles.memberPickerMeta}>{m.memberId || m.member_id || ''}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ICD typeahead + chip list. */}
+      <div className={styles.singleSection}>
+        <label className={styles.singleLabel}>ICD codes *</label>
+        <Input
+          placeholder="Search by code or description (e.g. E11.9, COPD)…"
+          value={icdQuery}
+          onChange={(e) => setIcdQuery(e.target.value)}
+        />
+        {icdMatches.length > 0 && (
+          <div className={styles.icdMatchList}>
+            {icdMatches.map(m => (
+              <button
+                key={m.code}
+                type="button"
+                className={styles.icdMatchItem}
+                onClick={() => addIcd(m)}
+              >
+                <code className={styles.icdMatchCode}>{m.code}</code>
+                <span className={styles.icdMatchDesc}>{m.desc}</span>
+                {m.hcc && <span className={styles.icdMatchHcc}>{m.hcc.replace(/ - .*$/, '')}</span>}
+              </button>
+            ))}
+          </div>
+        )}
+        {icds.length > 0 && (
+          <div className={styles.icdChosen}>
+            {icds.map(i => (
+              <span key={i.code} className={styles.icdChosenChip}>
+                <code>{i.code}</code>
+                <span className={styles.icdChosenDesc}>{i.desc}</span>
+                <button
+                  type="button"
+                  className={styles.icdChosenRemove}
+                  aria-label={`Remove ${i.code}`}
+                  onClick={() => removeIcd(i.code)}
+                >
+                  <Icon name="solar:close-circle-linear" size={12} color="var(--neutral-300)" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* DOS — existing on the patient OR new. Toggle matches the
+          segmented control used elsewhere in the drawer (Option 1/2). */}
+      <div className={styles.singleSection}>
+        <label className={styles.singleLabel}>Date of Service *</label>
+        <Toggle
+          size="S"
+          items={[
+            { key: 'existing', label: 'Use existing', disabled: !patient || existingDosList.length === 0 },
+            { key: 'new',      label: 'New DOS' },
+          ]}
+          active={dosMode}
+          onChange={setDosMode}
+        />
+        {dosMode === 'existing' && patient ? (
+          <Select
+            options={[
+              { value: '', label: 'Select a DOS…' },
+              ...existingDosList.map(d => ({ value: d, label: d })),
+            ]}
+            value={dos}
+            onChange={setDos}
+            placeholder="Select a DOS…"
+          />
+        ) : (
+          <Input
+            placeholder="MM/DD/YYYY"
+            value={dos}
+            onChange={(e) => setDos(e.target.value)}
+          />
+        )}
+      </div>
+
+      {/* Encounter context — provider · POS · doc type · condition. */}
+      <div className={styles.singleGrid}>
+        <div className={styles.singleField}>
+          <label className={styles.singleLabel}>Rendering Provider *</label>
+          <Input
+            placeholder="Dr. Sarah Connor"
+            value={provider}
+            onChange={(e) => setProvider(e.target.value)}
+          />
+        </div>
+        <div className={styles.singleField}>
+          <label className={styles.singleLabel}>POS *</label>
+          <Select
+            options={Object.entries(POS_LABEL).map(([code, label]) => ({
+              value: code,
+              label: `${code} — ${label}`,
+            }))}
+            value={pos}
+            onChange={setPos}
+          />
+        </div>
+        <div className={styles.singleField}>
+          <label className={styles.singleLabel}>Document Type</label>
+          <Select
+            options={['Progress Note', 'SOAP Note', 'Telehealth Note', 'Visit Summary', 'Lab Report', 'Imaging Report'].map(t => ({
+              value: t,
+              label: t,
+            }))}
+            value={docType}
+            onChange={setDocType}
+          />
+        </div>
+        <div className={styles.singleField}>
+          <label className={styles.singleLabel}>Condition / Notes</label>
+          <Input
+            placeholder="Short clinical note (optional)"
+            value={condition}
+            onChange={(e) => setCondition(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* Document attach. */}
+      <div className={styles.singleSection}>
+        <label className={styles.singleLabel}>Supporting document</label>
+        {file ? (
+          <div className={styles.singleFileChip}>
+            <Icon name="solar:file-text-linear" size={16} color="var(--neutral-400)" />
+            <span className={styles.singleFileName}>{file.name}</span>
+            <button
+              type="button"
+              className={styles.singleFileRemove}
+              onClick={() => { setFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+            >
+              Remove
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className={styles.singleFileBtn}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Icon name="solar:upload-linear" size={14} color="var(--primary-300)" />
+            Attach document
+          </button>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPT_EXT}
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (!f) return;
+            if (!isAcceptedFile(f)) {
+              showToast('Please upload a PDF, DOC, JPG, or PNG file');
+              return;
+            }
+            setFile(f);
+          }}
+        />
+      </div>
+
+      {/* Footer — Confirm. */}
+      <div className={styles.singleFooter}>
+        <Button
+          variant="primary"
+          size="M"
+          disabled={!canConfirm}
+          onClick={handleConfirm}
+        >
+          Add Encounter
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, addEnc, selectedIdx, setSelectedIdx, filter, setFilter, layout, selectedIdxs, toggleSelected, setSelectedAll, sourceFileName }) {
   // Aggregate counts per status for the filter chips. The bucket keys
   // here must match what encounterStatus() returns ('error' singular,
   // 'mismatched', 'ready') — historically had a typo where the chip
@@ -563,6 +1040,29 @@ function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, sele
                     · {g.encounters.length} encounter{g.encounters.length === 1 ? '' : 's'}
                   </span>
                   {!member && <span className={styles.unmatchedBadge}>Unmatched</span>}
+                  {member && (
+                    /* Manual-encounter trigger — spawns a blank encounter
+                       pre-linked to this patient so the user can add a DOS
+                       that wasn't captured by OCR (e.g. a separate scanned
+                       progress note). New row lands at the bottom of the
+                       group and auto-selects so they can fill it in. */
+                    <button
+                      type="button"
+                      className={styles.addEncounterBtn}
+                      onClick={() => {
+                        addEnc?.(member);
+                        // Select the newly-appended row (it's now the last index).
+                        setTimeout(() => {
+                          const total = (encounters || []).length;
+                          setSelectedIdx(total); // post-add the new row is at length-1 of NEW state
+                        }, 0);
+                      }}
+                      title={`Add a new encounter for ${member.name}`}
+                    >
+                      <Icon name="solar:add-circle-linear" size={12} color="var(--primary-300)" />
+                      Add encounter
+                    </button>
+                  )}
                 </div>
                 {g.encounters.map(enc => (
                   <MasterRow
@@ -752,14 +1252,56 @@ function TableRow({ enc, hccMembers, onPatch, onRemove, checked, onToggle, sourc
           onChange={onToggle}
         />
       </td>
-      {/* Patient — read-only when matched, picker when not. */}
+      {/* Patient — chip when matched (clickable to swap), picker when
+          unmatched or when the user has opened the swap UI. */}
       <td className={styles.tdPatient}>
-        {isMatched ? (
-          <div className={styles.tdPatientMatched}>
+        {picking ? (
+          <div className={styles.tdPatientPicker}>
+            <Input
+              autoFocus
+              placeholder="Search by name"
+              value={pickQuery}
+              onChange={(e) => setPickQuery(e.target.value)}
+            />
+            <div className={styles.tdPatientPickerList}>
+              {filteredMembers.map(m => {
+                const isCurrent = m.id === enc.patient?.matchedMemberId;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    className={[styles.tdPatientPickerItem, isCurrent ? styles.tdPatientPickerItemActive : ''].filter(Boolean).join(' ')}
+                    onClick={() => handleLink(m)}
+                  >
+                    <Avatar variant="patient" initials={m.in} />
+                    <span>{m.name}</span>
+                    {isCurrent && <span className={styles.tdPatientPickerCurrent}>Current</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {isMatched && (
+              <button
+                type="button"
+                className={styles.tdPatientPickerCancel}
+                onClick={() => { setPicking(false); setPickQuery(''); }}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        ) : isMatched ? (
+          <button
+            type="button"
+            className={styles.tdPatientMatched}
+            onClick={() => setPicking(true)}
+            title="Change matched patient"
+          >
             <Avatar variant="patient" initials={member?.in || (enc.patient.name || '?').split(' ').map(p => p[0]).slice(0,2).join('')} />
             <span className={styles.tdPatientName}>{member?.name || enc.patient.name}</span>
-          </div>
-        ) : !picking ? (
+            <Icon name="solar:pen-2-linear" size={11} color="var(--neutral-300)" className={styles.tdPatientSwapIcon} />
+          </button>
+        ) : (
           <button
             type="button"
             className={styles.tdPatientLinkBtn}
@@ -769,28 +1311,6 @@ function TableRow({ enc, hccMembers, onPatch, onRemove, checked, onToggle, sourc
             <Icon name="solar:link-linear" size={12} color="var(--status-error)" />
             Link patient…
           </button>
-        ) : (
-          <div className={styles.tdPatientPicker}>
-            <Input
-              autoFocus
-              placeholder="Search by name"
-              value={pickQuery}
-              onChange={(e) => setPickQuery(e.target.value)}
-            />
-            <div className={styles.tdPatientPickerList}>
-              {filteredMembers.map(m => (
-                <button
-                  key={m.id}
-                  type="button"
-                  className={styles.tdPatientPickerItem}
-                  onClick={() => handleLink(m)}
-                >
-                  <Avatar variant="patient" initials={m.in} />
-                  <span>{m.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
         )}
       </td>
       <CellInput
@@ -1009,6 +1529,34 @@ function EncounterCard({ enc, hccMembers, onPatch }) {
     onPatch({ icds: enc.icds.filter(i => i.code !== code) });
   };
 
+  // ── ICD search — flatten the ICD catalog into a unique-by-code list
+  // so users can add a missed code without leaving the review pane.
+  const [icdQuery, setIcdQuery] = useState('');
+  const icdCatalog = useMemo(() => {
+    const map = new Map();
+    Object.values(ICDS_BY_MEMBER).forEach(list => {
+      (list || []).forEach(item => { if (!map.has(item.code)) map.set(item.code, item); });
+    });
+    return [...map.values()];
+  }, []);
+  const icdMatches = useMemo(() => {
+    const q = icdQuery.trim().toLowerCase();
+    if (!q) return [];
+    const existing = new Set((enc.icds || []).map(i => i.code));
+    return icdCatalog
+      .filter(i =>
+        !existing.has(i.code) && (
+          (i.code || '').toLowerCase().includes(q) ||
+          (i.desc || '').toLowerCase().includes(q)
+        ),
+      )
+      .slice(0, 6);
+  }, [icdCatalog, icdQuery, enc.icds]);
+  const addIcd = (item) => {
+    onPatch({ icds: [...(enc.icds || []), { code: item.code, desc: item.desc, valid: true }] });
+    setIcdQuery('');
+  };
+
   return (
     <div className={[styles.encounterCard, isMatched ? '' : styles.encounterCardMismatch].filter(Boolean).join(' ')}>
       {!isMatched && (
@@ -1017,33 +1565,70 @@ function EncounterCard({ enc, hccMembers, onPatch }) {
           <span className={styles.mismatchText}>
             Patient identity could not be matched at 100% confidence. Manually link before confirming.
           </span>
-          {!picking ? (
+          {!picking && (
             <button className={styles.linkBtn} onClick={() => setPicking(true)}>
               Manually link
             </button>
-          ) : (
-            <div className={styles.memberPicker}>
-              <Input
-                placeholder="Search Fold patients by name…"
-                value={pickQuery}
-                onChange={(e) => setPickQuery(e.target.value)}
-                autoFocus
-              />
-              <div className={styles.memberPickerList}>
-                {filteredMembers.map(m => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    className={styles.memberPickerItem}
-                    onClick={() => handleLinkMember(m)}
-                  >
-                    <Avatar variant="patient" initials={m.in} />
-                    <span>{m.name}</span>
-                    <span className={styles.memberPickerMeta}>{m.memberId}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
+          )}
+        </div>
+      )}
+
+      {/* Re-match affordance — visible on matched encounters so the user
+          can swap an auto-matched (or previously-linked) patient. Hidden
+          while the picker is open to avoid two open trigger states. */}
+      {isMatched && !picking && (
+        <div className={styles.rematchRow}>
+          <span className={styles.rematchText}>
+            Matched to{' '}
+            <strong>{enc.patient?.name || 'this patient'}</strong>.
+          </span>
+          <button
+            type="button"
+            className={styles.rematchBtn}
+            onClick={() => setPicking(true)}
+          >
+            <Icon name="solar:refresh-square-linear" size={12} color="var(--primary-300)" />
+            Change patient
+          </button>
+        </div>
+      )}
+
+      {/* Shared picker — opens from either the mismatch banner (Manually
+          link) or the rematch row (Change patient). */}
+      {picking && (
+        <div className={styles.memberPicker}>
+          <Input
+            placeholder="Search Fold patients by name…"
+            value={pickQuery}
+            onChange={(e) => setPickQuery(e.target.value)}
+            autoFocus
+          />
+          <div className={styles.memberPickerList}>
+            {filteredMembers.map(m => {
+              const isCurrent = m.id === enc.patient?.matchedMemberId;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={[styles.memberPickerItem, isCurrent ? styles.memberPickerItemActive : ''].filter(Boolean).join(' ')}
+                  onClick={() => handleLinkMember(m)}
+                >
+                  <Avatar variant="patient" initials={m.in} />
+                  <span>{m.name}</span>
+                  <span className={styles.memberPickerMeta}>{m.memberId}</span>
+                  {isCurrent && <span className={styles.memberPickerCurrent}>Current</span>}
+                </button>
+              );
+            })}
+          </div>
+          {isMatched && (
+            <button
+              type="button"
+              className={styles.memberPickerCancel}
+              onClick={() => { setPicking(false); setPickQuery(''); }}
+            >
+              Cancel
+            </button>
           )}
         </div>
       )}
@@ -1117,6 +1702,32 @@ function EncounterCard({ enc, hccMembers, onPatch }) {
               </button>
             </span>
           ))}
+        </div>
+
+        {/* Add ICD — typeahead over the catalog. Excludes codes already
+            on this encounter so the user doesn't see false duplicates. */}
+        <div className={styles.icdAddRow}>
+          <Input
+            placeholder="Add ICD — search by code or description (e.g. E11.9, COPD)…"
+            value={icdQuery}
+            onChange={(e) => setIcdQuery(e.target.value)}
+          />
+          {icdMatches.length > 0 && (
+            <div className={styles.icdMatchList}>
+              {icdMatches.map(m => (
+                <button
+                  key={m.code}
+                  type="button"
+                  className={styles.icdMatchItem}
+                  onClick={() => addIcd(m)}
+                >
+                  <code className={styles.icdMatchCode}>{m.code}</code>
+                  <span className={styles.icdMatchDesc}>{m.desc}</span>
+                  {m.hcc && <span className={styles.icdMatchHcc}>{m.hcc.replace(/ - .*$/, '')}</span>}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
