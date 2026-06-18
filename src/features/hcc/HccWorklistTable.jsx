@@ -18,6 +18,7 @@ import { memberMatchesFilters } from './filters';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { BulkBar } from '../../components/BulkBar/BulkBar';
 import { BulkChangeAssigneesDialog } from './BulkChangeAssigneesDialog';
+import { HccHistoryDrawer } from './HccHistoryDrawer';
 import { StatusLegend } from './StatusLegend';
 import styles from './HccWorklistTable.module.css';
 import rowStyles from './HccWorklistRow.module.css';
@@ -120,6 +121,7 @@ export function HccWorklistTable() {
   const saveHccFilter = useAppStore(s => s.saveHccFilter);
   const renameHccSavedFilter = useAppStore(s => s.renameHccSavedFilter);
   const startHccUpload = useAppStore(s => s.startHccUpload);
+  const openHccHistoryDrawer = useAppStore(s => s.openHccHistoryDrawer);
   const hccHiddenCols = useAppStore(s => s.hccHiddenCols);
   const toggleHccColumn = useAppStore(s => s.toggleHccColumn);
   const hccColumnOrder = useAppStore(s => s.hccColumnOrder);
@@ -269,7 +271,7 @@ export function HccWorklistTable() {
             size="L"
             tooltip="History"
             tooltipBelow
-            onClick={() => showToast('History — coming soon')}
+            onClick={openHccHistoryDrawer}
           />
           <span className={styles.iconDivider} />
           <ActionButton
@@ -412,6 +414,7 @@ export function HccWorklistTable() {
         onClose={() => setBulkAssigneeOpen(false)}
         onApplied={() => { setBulkAssigneeOpen(false); clearHccSelected(); }}
       />
+      <HccHistoryDrawer />
 
       {sortPop && (
         <SortPopover

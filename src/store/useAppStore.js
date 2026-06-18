@@ -19,6 +19,49 @@ import * as hccLifecycle from '../features/hcc/assignment/lifecycle';
 import { hydrateFromMember, dosKey as hccDosKey } from '../features/hcc/assignment/dosState';
 import { DEFAULT_SAMPLING_RATES } from '../features/hcc/assignment/sampling';
 import { staffById as hccStaffById } from '../features/hcc/assignment/astranaStaff';
+import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activityLog';
+
+// Persist a single HCC role's status (and optionally name) to Supabase.
+// Fire-and-forget — failures log a warning without rolling back the
+// optimistic in-memory update. Used by every HCC status mutation in this
+// slice (transitionHccDos, hccSetRoleStatus, hccReassignRole) so the
+// worklist row survives reload.
+function persistHccMemberRoleStatus(memberId, role, status, name) {
+  const colsByRole = {
+    support: { name: 'support_name',   status: 'support_status'   },
+    coder:   { name: 'coder_name',     status: 'coder_status'     },
+    r1:      { name: 'reviewer1_name', status: 'reviewer1_status' },
+    r2:      { name: 'reviewer2_name', status: 'reviewer2_status' },
+    r3:      { name: 'reviewer3_name', status: 'reviewer3_status' },
+  };
+  const cols = colsByRole[role];
+  if (!cols || !memberId) return;
+  const patch = {};
+  if (status !== undefined) patch[cols.status] = status;
+  if (name !== undefined && name !== null) patch[cols.name] = name;
+  if (Object.keys(patch).length === 0) return;
+  supabase
+    .from('hcc_members')
+    .update(patch)
+    .eq('id', memberId)
+    .then(({ error }) => {
+      if (error) console.warn(`persistHccMemberRoleStatus(${memberId}, ${role}) failed:`, error.message);
+    });
+}
+
+// Append-only HCC activity log writer. Fire-and-forget: the optimistic
+// in-memory append (handled by the caller via set()) is what the timeline
+// renders; the Supabase insert is for durability. Caller passes the same
+// shape as makeActivityRow() — see src/features/hcc/activityLog.js.
+function persistHccActivityRow(row) {
+  if (!row || !row.event_name) return;
+  supabase
+    .from('hcc_activity_log')
+    .insert(row)
+    .then(({ error }) => {
+      if (error) console.warn(`persistHccActivityRow(${row.event_name}) failed:`, error.message);
+    });
+}
 
 function parseTaskDateStr(str) {
   if (!str || typeof str !== 'string') return null;
@@ -2054,6 +2097,45 @@ export const useAppStore = create((set, get) => ({
     });
   },
 
+  // ─── AWV (Annual Wellness Visit) worklist ─────────────────────────────
+  // Mock-driven worklist mirroring the HCC pattern: members + filter chip
+  // state + selection set. Toolbar (Search/Filter/Export/History) and the
+  // bulk-bar wire into the same shared components.
+  awvMembers: (() => {
+    try {
+      // Synchronous import via top-level static would be cleaner, but the
+      // store file already lazy-loads other mocks to keep the initial
+      // bundle small. We pre-seed with an empty array and the worklist's
+      // first render kicks off the fetch.
+      return [];
+    } catch { return []; }
+  })(),
+  awvMembersLoading: false,
+  fetchAwvMembers: async () => {
+    if (useAppStore.getState().awvMembers.length > 0) return;
+    set({ awvMembersLoading: true });
+    const { AWV_MEMBERS } = await import('../features/awv-worklist/data/mock');
+    set({ awvMembers: AWV_MEMBERS, awvMembersLoading: false });
+  },
+  // Multi-value filters keyed by column. Empty array on a key = no filter.
+  awvFilters: {},
+  setAwvFilter: (k, vals) => set(s => {
+    const next = { ...s.awvFilters };
+    if (!vals || vals.length === 0) delete next[k];
+    else next[k] = vals;
+    return { awvFilters: next };
+  }),
+  clearAwvFilters: () => set({ awvFilters: {} }),
+  // Bulk-select state.
+  selectedAwvIds: [],
+  selectAwvMember: (id) => set(s => ({
+    selectedAwvIds: s.selectedAwvIds.includes(id)
+      ? s.selectedAwvIds.filter(x => x !== id)
+      : [...s.selectedAwvIds, id],
+  })),
+  selectAllAwv: (ids) => set({ selectedAwvIds: ids }),
+  clearAwvSelected: () => set({ selectedAwvIds: [] }),
+
   selectedHccIds: [],
   selectHccMember: (id) => {
     track('hcc.member_selected', { memberId: id });
@@ -2294,50 +2376,100 @@ export const useAppStore = create((set, get) => ({
   // Generic dispatcher — `kind` corresponds to a lifecycle.js export. Each
   // call rebuilds `hccDosAssignments` immutably. UI components use the named
   // wrappers below; this is the single chokepoint for the engine.
-  transitionHccDos: (patientId, dosDate, kind, payload = {}) => set(s => {
-    const fn = hccLifecycle[kind];
-    if (typeof fn !== 'function') {
-      console.warn(`transitionHccDos: unknown kind "${kind}"`);
-      return {};
-    }
-    const patient = s.hccMembers.find(m => m.id === patientId);
-    if (!patient) return {};
-    const dos = (patient.dos_list || []).find(d => d.date === dosDate) || { date: dosDate };
-    const actor = payload.actor || 'current-user';
-    let result;
-    switch (kind) {
-      case 'markInsufficient':
-      case 'rejectDos':
-        result = fn(s.hccDosAssignments, patient, dos, actor, payload.reason);
-        break;
-      case 'returnDos':
-        result = fn(s.hccDosAssignments, patient, dos, payload.fromRole, actor, payload.reason);
-        break;
-      case 'reassignRole':
-        result = fn(s.hccDosAssignments, patient, dos, payload.role, payload.staffId, actor, payload.reason);
-        break;
-      case 'completeR1':
-      case 'completeR2':
-        result = fn(s.hccDosAssignments, patient, dos, actor, s.hccConfig.samplingRates);
-        break;
-      default:
-        result = fn(s.hccDosAssignments, patient, dos, actor);
-    }
-    // DOS-level log entry — no `icds`, so it appears only in the global
-    // (DOS-level) Activity Log, not in any ICD-scoped view. Deferred to a
-    // microtask so the addActivityEntry side-effect doesn't run inside the
-    // same set() call.
-    queueMicrotask(() => {
-      const transitionLabel = HCC_TRANSITION_LABEL[kind] || kind;
-      useAppStore.getState().addActivityEntry({
-        t: 'status_dos',
-        by: 'You', role: 'Coder',
-        dos: dosDate,
-        headline: `DOS ${dosDate} — ${transitionLabel}`,
+  //
+  // Diffs the engine's new dosState against the previous one to detect role
+  // status changes, then patches the matching legacy member field
+  // (supS/cdrS/r1s/r2s/r3s) AND persists the change to Supabase so the
+  // worklist row survives reload. This is the single source of persistence
+  // for every AC transition — convenience wrappers below don't need to know
+  // about it.
+  transitionHccDos: (patientId, dosDate, kind, payload = {}) => {
+    let statusChanges = [];
+    set(s => {
+      const fn = hccLifecycle[kind];
+      if (typeof fn !== 'function') {
+        console.warn(`transitionHccDos: unknown kind "${kind}"`);
+        return {};
+      }
+      const patient = s.hccMembers.find(m => m.id === patientId);
+      if (!patient) return {};
+      const dos = (patient.dos_list || []).find(d => d.date === dosDate) || { date: dosDate };
+      const actor = payload.actor || 'current-user';
+      let result;
+      switch (kind) {
+        case 'markInsufficient':
+        case 'rejectDos':
+          result = fn(s.hccDosAssignments, patient, dos, actor, payload.reason);
+          break;
+        case 'returnDos':
+          result = fn(s.hccDosAssignments, patient, dos, payload.fromRole, actor, payload.reason);
+          break;
+        case 'reassignRole':
+          result = fn(s.hccDosAssignments, patient, dos, payload.role, payload.staffId, actor, payload.reason);
+          break;
+        case 'completeR1':
+        case 'completeR2':
+          result = fn(s.hccDosAssignments, patient, dos, actor, s.hccConfig.samplingRates);
+          break;
+        default:
+          result = fn(s.hccDosAssignments, patient, dos, actor);
+      }
+      // Diff role statuses between previous and new dosState. Each changed
+      // role gets queued for legacy-field patch + Supabase write below.
+      const dosKey = `${patientId}::${dosDate}`;
+      const prev = s.hccDosAssignments?.[dosKey] || {};
+      const next = result.nextMap?.[dosKey] || {};
+      ['support', 'coder', 'r1', 'r2', 'r3'].forEach(role => {
+        const ns = next[role]?.status;
+        if (ns && ns !== prev[role]?.status) statusChanges.push({ role, status: ns });
+      });
+      const statusFieldByRole = { support: 'supS', coder: 'cdrS', r1: 'r1s', r2: 'r2s', r3: 'r3s' };
+      const nextMembers = statusChanges.length
+        ? s.hccMembers.map(m => {
+            if (m.id !== patientId) return m;
+            const patched = { ...m };
+            statusChanges.forEach(({ role, status }) => { patched[statusFieldByRole[role]] = status; });
+            return patched;
+          })
+        : s.hccMembers;
+      // DOS-level log entry — no `icds`, so it appears only in the global
+      // (DOS-level) Activity Log, not in any ICD-scoped view. Deferred to a
+      // microtask so the addActivityEntry side-effect doesn't run inside the
+      // same set() call.
+      queueMicrotask(() => {
+        const transitionLabel = HCC_TRANSITION_LABEL[kind] || kind;
+        useAppStore.getState().addActivityEntry({
+          t: 'status_dos',
+          by: 'You', role: 'Coder',
+          dos: dosDate,
+          headline: `DOS ${dosDate} — ${transitionLabel}`,
+        });
+      });
+      return { hccDosAssignments: result.nextMap, hccMembers: nextMembers };
+    });
+    // Fire-and-forget Supabase writes for every role whose status changed.
+    // Also emit a role.status_changed entry into the activity feed so the
+    // History drawer shows each transition (engine-driven cascades like
+    // support→Completed triggering coder→In Progress produce one entry per
+    // changed role).
+    const ROLE_LABEL_T = { support: 'Support', coder: 'Coder', r1: 'Reviewer 1', r2: 'Reviewer 2', r3: 'Reviewer 3' };
+    const patient = useAppStore.getState().hccMembers.find(m => m.id === patientId);
+    statusChanges.forEach(({ role, status }) => {
+      persistHccMemberRoleStatus(patientId, role, status);
+      useAppStore.getState().logHccActivity({
+        eventName: 'role.status_changed',
+        scope:     { patientId, dos: dosDate, source: 'manual' },
+        payload:   {
+          actor: payload.actor || 'You',
+          roleLabel: ROLE_LABEL_T[role] || role,
+          status,
+          patientName: patient?.name,
+          transitionKind: kind,
+        },
       });
     });
-    return { hccDosAssignments: result.nextMap };
-  }),
+    return { nextMap: useAppStore.getState().hccDosAssignments };
+  },
 
   // Convenience wrappers — one per AC transition so consumers don't have to
   // remember string kinds. They forward to transitionHccDos above.
@@ -2387,6 +2519,13 @@ export const useAppStore = create((set, get) => ({
   },
   hccReassignRole: (pid, dos, role, staffId, actor, reason, displayName) => {
     track('hcc.role_reassigned', { memberId: pid, fromRole: null, toRole: role });
+    // Snapshot the pre-reassign display name so the activity log can
+    // show "from → to". Reading after transitionHccDos would already
+    // see the patched value.
+    const fieldByRoleLocal = { support: 'sup', coder: 'cdr', r1: 'r1', r2: 'r2', r3: 'r3' };
+    const preMember = useAppStore.getState().hccMembers.find(m => m.id === pid);
+    const fromName = preMember?.[fieldByRoleLocal[role]] || '—';
+    const patientName = preMember?.name;
     const result = useAppStore.getState().transitionHccDos(pid, dos, 'reassignRole', { role, staffId, actor, reason });
     // Also patch the member's legacy role field so the worklist row's
     // RoleStatusCell (which reads member.sup / .cdr / .r1 / .r2 / .r3
@@ -2411,6 +2550,22 @@ export const useAppStore = create((set, get) => ({
         ),
       }));
     }
+    // Persist to Supabase so the reassignment survives reload.
+    if (name) persistHccMemberRoleStatus(pid, role, 'New', name);
+    // Log to the canonical activity feed for the History drawer.
+    const ROLE_LABEL = { support: 'Support', coder: 'Coder', r1: 'Reviewer 1', r2: 'Reviewer 2', r3: 'Reviewer 3' };
+    useAppStore.getState().logHccActivity({
+      eventName: 'assignee.changed',
+      scope:     { patientId: pid, dos, source: 'manual' },
+      payload:   {
+        actor: actor || 'You',
+        roleLabel: ROLE_LABEL[role] || role,
+        fromName, toName: name,
+        toStaffId: staffId,
+        reason,
+        patientName,
+      },
+    });
     // The engine's reassignRole stamps the assignee but leaves status null,
     // which makes resolveCurrentAssignee() still report this bucket as
     // unassigned (it only treats the bucket as active when status is both
@@ -2458,6 +2613,19 @@ export const useAppStore = create((set, get) => ({
         };
       }
       return next;
+    });
+    persistHccMemberRoleStatus(pid, role, status);
+    const ROLE_LABEL_S = { support: 'Support', coder: 'Coder', r1: 'Reviewer 1', r2: 'Reviewer 2', r3: 'Reviewer 3' };
+    const patient = useAppStore.getState().hccMembers.find(m => m.id === pid);
+    useAppStore.getState().logHccActivity({
+      eventName: 'role.status_changed',
+      scope:     { patientId: pid, dos, source: 'manual' },
+      payload:   {
+        actor: 'You',
+        roleLabel: ROLE_LABEL_S[role] || role,
+        status,
+        patientName: patient?.name,
+      },
     });
     track('hcc.role_status_set', { memberId: pid, role, status });
   },
@@ -2721,6 +2889,76 @@ export const useAppStore = create((set, get) => ({
     return { hccActivityLog: { ...s.hccActivityLog, [memberKey]: [filled, ...list] } };
   }),
 
+  // ─── HCC Activity Log (Supabase-backed, append-only) ─────────────────
+  // Canonical event store described in docs/features/hcc-activity-log-spec.md.
+  // Coexists with the legacy `hccActivityLog` map above while consumers
+  // migrate — every mutation that wants to land in the worklist History
+  // drawer calls logHccActivity().
+  hccActivityFeed: [],         // newest-first list of rows fetched/written this session
+  hccActivityFeedLoading: false,
+  hccHistoryDrawerOpen: false,
+  openHccHistoryDrawer: () => {
+    set({ hccHistoryDrawerOpen: true });
+    // Refresh on open so the drawer reflects any rows written by other
+    // tabs / sessions. Fire-and-forget; the optimistic feed is already
+    // visible while the request is in flight.
+    useAppStore.getState().fetchHccActivityFeed();
+  },
+  closeHccHistoryDrawer: () => set({ hccHistoryDrawerOpen: false }),
+  fetchHccActivityFeed: async (filters = {}) => {
+    set({ hccActivityFeedLoading: true });
+    let q = supabase.from('hcc_activity_log').select('*').order('ts', { ascending: false }).limit(500);
+    if (filters.patientId) q = q.eq('patient_id', filters.patientId);
+    if (filters.batchId)   q = q.eq('batch_id',   filters.batchId);
+    if (filters.category)  q = q.eq('category',   filters.category);
+    if (filters.since)     q = q.gte('ts',        filters.since);
+    const { data, error } = await q;
+    if (error) {
+      // 404 (table missing) or RLS denial. Keep whatever optimistic entries
+      // the session has already accumulated rather than clobbering them.
+      console.warn('fetchHccActivityFeed error:', error.message);
+      set({ hccActivityFeedLoading: false });
+      return;
+    }
+    // Merge fetched rows with optimistic local rows. The `local-*` ids are
+    // session-only; we keep them at the head until the next fetch confirms
+    // them in the DB. If the fetch returns the same row (matched by
+    // event_name + ts within 5s) it replaces the optimistic one.
+    set(s => {
+      const fetched = data || [];
+      const fetchedKeys = new Set(fetched.map(r => `${r.event_name}::${r.ts}`));
+      const surviving = s.hccActivityFeed.filter(r => {
+        if (!String(r.id || '').startsWith('local-')) return false;
+        const ts = new Date(r.ts).getTime();
+        // drop optimistic rows that already appear in the fetched set
+        return !fetched.some(f =>
+          f.event_name === r.event_name &&
+          Math.abs(new Date(f.ts).getTime() - ts) < 5000,
+        );
+      });
+      const merged = [...surviving, ...fetched]
+        .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
+      return { hccActivityFeed: merged, hccActivityFeedLoading: false };
+    });
+  },
+  // logHccActivity({ eventName, scope, payload })
+  // Optimistically prepends to hccActivityFeed, then fires the Supabase
+  // insert. Producers don't await — the in-memory append is the UI's
+  // source of truth for this session.
+  logHccActivity: ({ eventName, scope = {}, payload = {} }) => {
+    const row = buildHccActivityRow(eventName, scope, payload);
+    // Stamp a client-side id + ts so the UI can render before the DB
+    // round-trips. Supabase will assign its own id on insert; we don't
+    // reconcile because reads always come back from the table on next fetch.
+    const optimistic = {
+      id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      ts: new Date().toISOString(),
+      ...row,
+    };
+    set(s => ({ hccActivityFeed: [optimistic, ...s.hccActivityFeed].slice(0, 500) }));
+    persistHccActivityRow(row);
+  },
+
   // Upload chart drawer — member object or null. Opened from ChartPopover's
   // "Upload New Chart" CTA and from the DiagPanel chart-upload action.
   hccUploadMember: null,
@@ -2730,7 +2968,11 @@ export const useAppStore = create((set, get) => ({
   // ─── HCC Document Upload + OCR Review (Individual Upload path) ──────
   // Session state for the multi-encounter PDF upload flow described in the
   // Jira ticket. Lives at app level — drawer is mounted once in AppLayout.
-  //   phase: 'picker' → 'processing' → 'review'
+  //   phase: 'chooser' → ('single' | 'picker' | 'sftp')
+  //   - chooser: pick a mode (single encounter / single multi-patient PDF / SFTP)
+  //   - single:  manual single-encounter form (no OCR)
+  //   - picker → processing → review: OCR-driven multi-encounter PDF flow
+  //   - sftp:    informational — show external SFTP path + credentials link
   //   file:        The selected File object (PDF)
   //   encounters:  Array of OCR-extracted encounter sections (across all
   //                patients in the PDF). Each: { tempId, patient:{name,dob,
@@ -2738,25 +2980,86 @@ export const useAppStore = create((set, get) => ({
   //                posDesc, icds:[{code,valid}], errors:[fieldName] }
   //   seededMemberId: When opened from an "Upload Document" action on a
   //                specific patient (AllPatientsRow / QuickView), this is
-  //                that member's id — used to auto-link ambiguous matches.
+  //                that member's id. Bypasses the chooser → straight to picker
+  //                so the patient-context flow stays unchanged.
   //   summary:     Set after confirm — { created, updated }
   hccUploadSession: null,
   startHccUpload: (seededMemberId = null) => set({
     hccUploadSession: {
       id: `up-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
-      phase: 'picker',
+      // From the worklist toolbar (no seededMemberId) → show the chooser
+      // first. From a patient row → skip directly to the existing OCR picker.
+      phase: seededMemberId ? 'picker' : 'chooser',
       file: null,
       encounters: [],
       seededMemberId,
       summary: null,
     },
   }),
-  setHccUploadFile: (file) => set(s => s.hccUploadSession
-    ? { hccUploadSession: { ...s.hccUploadSession, file, phase: 'processing' } }
+  // Used by the chooser cards to advance into a sub-flow.
+  setHccUploadPhase: (phase) => set(s => s.hccUploadSession
+    ? { hccUploadSession: { ...s.hccUploadSession, phase } }
     : {}),
-  setHccUploadEncounters: (encounters) => set(s => s.hccUploadSession
-    ? { hccUploadSession: { ...s.hccUploadSession, encounters, phase: 'review' } }
-    : {}),
+  setHccUploadFile: (file) => {
+    set(s => s.hccUploadSession
+      ? { hccUploadSession: { ...s.hccUploadSession, file, phase: 'processing' } }
+      : {});
+    const session = useAppStore.getState().hccUploadSession;
+    if (!session) return;
+    // Emit batch + intake + OCR-started events so the History drawer
+    // shows the start of the pipeline. One file = one batch for the
+    // individual-upload path (SFTP batches will produce multiple files).
+    const batchId = session.id;
+    useAppStore.getState().logHccActivity({
+      eventName: 'batch.created',
+      scope:     { batchId, source: 'manual' },
+      payload:   { batchId, fileCount: 1, actor: 'You' },
+    });
+    useAppStore.getState().logHccActivity({
+      eventName: 'file.uploaded',
+      scope:     { batchId, fileId: file?.name, source: 'manual' },
+      payload:   { actor: 'You', fileName: file?.name || 'Uploaded file', pageCount: '—' },
+    });
+    useAppStore.getState().logHccActivity({
+      eventName: 'ocr.started',
+      scope:     { batchId, fileId: file?.name, source: 'system' },
+      payload:   { fileName: file?.name || 'Uploaded file' },
+    });
+  },
+  setHccUploadEncounters: (encounters) => {
+    set(s => s.hccUploadSession
+      ? { hccUploadSession: { ...s.hccUploadSession, encounters, phase: 'review' } }
+      : {});
+    const session = useAppStore.getState().hccUploadSession;
+    if (!session) return;
+    // OCR completed — emit an OCR success event plus a low-confidence
+    // warning per encounter whose `errors` array is non-empty.
+    useAppStore.getState().logHccActivity({
+      eventName: 'ocr.completed',
+      scope:     { batchId: session.id, fileId: session.file?.name, source: 'system' },
+      payload:   {
+        fileName: session.file?.name || 'Uploaded file',
+        encounterCount: encounters.length,
+        pageCount: '—',
+      },
+    });
+    encounters.forEach(enc => {
+      if (Array.isArray(enc.errors) && enc.errors.length > 0) {
+        useAppStore.getState().logHccActivity({
+          eventName: 'ocr.low_confidence',
+          scope:     { batchId: session.id, fileId: session.file?.name, source: 'system' },
+          payload:   {
+            patientName: enc.patient?.name || '(unmatched)',
+            dos: enc.dos,
+            confidencePct: enc.patient?.matchConfidence
+              ? Math.round((enc.patient.matchConfidence || 0) * 100)
+              : '—',
+            thresholdPct: 95,
+          },
+        });
+      }
+    });
+  },
   // Append more encounters from a second OCR pass (user clicks "Upload"
   // again during review). Preserves existing rows + their edits.
   appendHccUploadEncounters: (encounters) => set(s => s.hccUploadSession
@@ -2776,6 +3079,38 @@ export const useAppStore = create((set, get) => ({
       hccUploadSession: {
         ...s.hccUploadSession,
         encounters: s.hccUploadSession.encounters.filter((_, i) => i !== idx),
+      },
+    };
+  }),
+  // Manually add a blank encounter for an existing patient. Used in the
+  // review phase when an OCR pass missed a DOS the user has a separate
+  // document for — they get a fresh row pre-linked to the patient and
+  // fill in DOS / provider / POS / ICDs / doc themselves.
+  addHccUploadEncounter: (member) => set(s => {
+    if (!s.hccUploadSession || !member) return {};
+    const newEnc = {
+      tempId: `manual-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      patient: {
+        name: member.name,
+        dob: member.dob || '',
+        matchedMemberId: member.id,
+        matchConfidence: 100,
+      },
+      dos: '',
+      provider: '',
+      pos: '',
+      posDesc: '',
+      docType: 'Progress Note',
+      icds: [],
+      // Pre-stamp the same error keys the review pipeline expects so the
+      // new row immediately reads as "needs attention" in the filter chips.
+      errors: ['dos', 'provider', 'pos'],
+      _manual: true,
+    };
+    return {
+      hccUploadSession: {
+        ...s.hccUploadSession,
+        encounters: [...s.hccUploadSession.encounters, newEnc],
       },
     };
   }),
@@ -2903,6 +3238,21 @@ export const useAppStore = create((set, get) => ({
         headline: `New row created from upload (related DOS ${enc.dos} was completed)`,
         file: docName, fileType: docType, icds: icdCodes,
       });
+      // Worklist History — encounter approved + related DOS spawned.
+      useAppStore.getState().logHccActivity({
+        eventName: 'encounter.approved',
+        scope:     { patientId: memberId, dos: newDosDate, source: 'manual' },
+        payload:   { actor: 'You', patientName: member.name, dos: newDosDate },
+      });
+      useAppStore.getState().logHccActivity({
+        eventName: 'dedup.related_dos_created',
+        scope:     { patientId: memberId, dos: newDosDate, source: 'manual' },
+        payload:   {
+          patientName: member.name,
+          dos: newDosDate,
+          reason: 'prior DOS already completed',
+        },
+      });
       return { kind: 'relatedNew', memberId, dosDate: newDosDate };
     }
 
@@ -2933,6 +3283,29 @@ export const useAppStore = create((set, get) => ({
           ? `${netNew.length} net-new ICD(s) merged from upload: ${netNew.join(', ')}`
           : 'Document attached to existing DOS (no net-new ICDs)',
         file: docName, fileType: docType, icds: netNew,
+      });
+      // Worklist History — DOS match found + (optional) net-new ICD merge.
+      useAppStore.getState().logHccActivity({
+        eventName: 'encounter.approved',
+        scope:     { patientId: memberId, dos: enc.dos, source: 'manual' },
+        payload:   { actor: 'You', patientName: member.name, dos: enc.dos },
+      });
+      useAppStore.getState().logHccActivity({
+        eventName: 'worklist.row_merged',
+        scope:     { patientId: memberId, dos: enc.dos, source: 'manual' },
+        payload:   { patientName: member.name, dos: enc.dos },
+      });
+      useAppStore.getState().logHccActivity({
+        eventName: 'dedup.dos_match_found',
+        scope:     { patientId: memberId, dos: enc.dos, source: 'manual' },
+        payload:   { patientName: member.name, dos: enc.dos },
+      });
+      netNew.forEach(icd => {
+        useAppStore.getState().logHccActivity({
+          eventName: 'dedup.icd_net_new_merged',
+          scope:     { patientId: memberId, dos: enc.dos, icd, source: 'manual' },
+          payload:   { icd, dos: enc.dos, patientName: member.name },
+        });
       });
       return { kind: 'updated', memberId, dosDate: enc.dos };
     }
@@ -2978,24 +3351,79 @@ export const useAppStore = create((set, get) => ({
       headline: `DOS ${enc.dos} created via document upload`,
       file: docName, fileType: docType, icds: icdCodes,
     });
+    // Worklist History — encounter approved + new worklist row spawned.
+    useAppStore.getState().logHccActivity({
+      eventName: 'encounter.approved',
+      scope:     { patientId: memberId, dos: enc.dos, source: 'manual' },
+      payload:   { actor: 'You', patientName: member.name, dos: enc.dos },
+    });
+    useAppStore.getState().logHccActivity({
+      eventName: 'worklist.row_created',
+      scope:     { patientId: memberId, dos: enc.dos, source: 'manual' },
+      payload:   { patientName: member.name, dos: enc.dos },
+    });
     return { kind: 'created', memberId, dosDate: enc.dos };
   },
 
   // Iterate every reviewed encounter through hccCreateOrMergeFromEncounter
   // and stash the summary on the session for the drawer's success toast.
-  confirmHccUpload: () => {
+  // confirmHccUpload({ acceptedIdxs? })
+  // When `acceptedIdxs` is omitted, every encounter is applied (legacy
+  // behavior matching the card layout). When provided, only the indices
+  // in the set are applied; the rest emit `encounter.rejected` events and
+  // are summarised in the resulting `batch.processing_completed` payload
+  // under `acceptedList` / `rejectedList` so the History drawer can show
+  // both lists in its details expander.
+  confirmHccUpload: ({ acceptedIdxs } = {}) => {
     const s = useAppStore.getState();
-    if (!s.hccUploadSession) return { created: 0, updated: 0 };
+    if (!s.hccUploadSession) return { created: 0, updated: 0, rejected: 0 };
+    const batchId = s.hccUploadSession.id;
     const docName = s.hccUploadSession.file?.name || 'Uploaded Document.pdf';
+    const accepted = acceptedIdxs ? new Set(acceptedIdxs) : null;
+    const acceptedList = [];
+    const rejectedList = [];
     let created = 0, updated = 0;
-    for (const enc of s.hccUploadSession.encounters) {
-      const result = s.hccCreateOrMergeFromEncounter({ ...enc, _docName: docName });
-      if (result.kind === 'created' || result.kind === 'relatedNew') created++;
-      else if (result.kind === 'updated') updated++;
-    }
-    track('hcc.upload_confirmed', { created, updated });
+    s.hccUploadSession.encounters.forEach((enc, idx) => {
+      const isAccepted = accepted ? accepted.has(idx) : true;
+      const patientName = enc.patient?.name || '(unmatched)';
+      if (isAccepted) {
+        const result = s.hccCreateOrMergeFromEncounter({ ...enc, _docName: docName });
+        if (result.kind === 'created' || result.kind === 'relatedNew') created++;
+        else if (result.kind === 'updated') updated++;
+        acceptedList.push({ patientName, dos: enc.dos, kind: result.kind });
+      } else {
+        rejectedList.push({ patientName, dos: enc.dos });
+        useAppStore.getState().logHccActivity({
+          eventName: 'encounter.rejected',
+          scope:     { patientId: enc.patient?.matchedMemberId || null, dos: enc.dos, batchId, source: 'manual' },
+          payload:   {
+            actor: 'You',
+            patientName,
+            dos: enc.dos,
+            reason: 'Not selected for bulk confirm',
+          },
+        });
+      }
+    });
+    const rejected = rejectedList.length;
+    track('hcc.upload_confirmed', { created, updated, rejected });
+    // Summary event — payload includes both lists so the History drawer's
+    // details expander shows accepted/rejected patients individually.
+    useAppStore.getState().logHccActivity({
+      eventName: 'batch.processing_completed',
+      scope:     { batchId, source: 'manual' },
+      payload:   {
+        batchId,
+        approvedCount: created + updated,
+        rejectedCount: rejected,
+        pendingCount: 0,
+        acceptedList,
+        rejectedList,
+        actor: 'You',
+      },
+    });
     set({ hccUploadSession: null });
-    return { created, updated };
+    return { created, updated, rejected };
   },
 
   // ─── Claim preview drawer ─────────────────────────────────────────
@@ -5136,3 +5564,12 @@ export const useAppStore = create((set, get) => ({
     }
   },
 }));
+
+// Dev-only: expose the store on window so the preview harness can read /
+// drive state without spinning up its own module instance. Vite serves the
+// store under both `useAppStore.js` and `useAppStore.js?t=NNN`, which would
+// otherwise create two independent stores; this lets the harness reach the
+// same one the React tree uses.
+if (typeof window !== 'undefined' && import.meta.env?.DEV) {
+  window.__APP_STORE__ = useAppStore;
+}

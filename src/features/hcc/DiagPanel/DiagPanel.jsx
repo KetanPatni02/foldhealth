@@ -8,6 +8,7 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Avatar } from '../../../components/Avatar/Avatar';
 import { Toggle } from '../../../components/Toggle/Toggle';
 import { SearchIconButton } from '../../../components/SearchIconButton/SearchIconButton';
+import { PatientBanner } from '../../../components/PatientBanner/PatientBanner';
 import { HccCard } from './HccGroupRow';
 import { IcdRow } from './IcdRow';
 import { DosSelector } from './DosSelector';
@@ -577,44 +578,21 @@ export function DiagPanel() {
           width. */}
       <div className={styles.contentRow}>
       <div className={diagLeftPanel ? styles.rightPane : styles.rightPaneFull}>
-      {/* ── Row 2: Patient Banner — mirrors prototype line 1911:
-          avatar (40×40) + name on top + single inline meta row
-          [Patient · Sex · Age · #MemberId · RAF · 0.265↑] + right-side
-          phone icon + chevron button. ── */}
-      <div className={styles.patientBanner}>
-        <div className={styles.avatar}>{member.in}</div>
-        <div className={styles.memberInfo}>
-          <div className={styles.memberNameRow}>
-            <span className={styles.memberName}>{member.name}</span>
-            <Icon name="solar:alt-arrow-right-linear" size={12} color="var(--neutral-300)" />
-          </div>
-          <div className={styles.memberMeta}>
-            <span>Patient</span>
-            <span className={styles.metaDot}>&bull;</span>
-            <span>{member.g === 'M' ? 'Male' : member.g === 'F' ? 'Female' : member.g}</span>
-            <span className={styles.metaDot}>&bull;</span>
-            <span>{member.age || '—'}</span>
-            <span className={styles.metaDot}>&bull;</span>
-            <span>{member.memberId || `#${member.id}`}</span>
-            <span className={styles.metaDot}>&bull;</span>
-            <span className={styles.rafLabel}>RAF</span>
-            <span className={styles.rafValue}>{member.raf}</span>
-            <span className={styles.rafImpact}>
-              {rafImpact}
-              <Icon
-                name={member.ru !== false ? 'solar:arrow-up-linear' : 'solar:arrow-down-linear'}
-                size={10}
-                color={member.ru !== false ? 'var(--status-success)' : 'var(--status-error)'}
-              />
-            </span>
-          </div>
-        </div>
-        <div className={styles.bannerActions}>
-          <ActionButton icon="solar:phone-linear" size="S" tooltip="Call" onClick={noop('Call')} />
-          <span className={styles.divider} />
-          <ActionButton icon="solar:alt-arrow-down-linear" size="S" tooltip="More" onClick={noop('More')} />
-        </div>
-      </div>
+      {/* ── Row 2: Patient Banner — shared <PatientBanner> from
+          components/. Maps member.* fields onto the component's props so
+          this drawer renders identical chrome to every other patient-scoped
+          drawer (Care Gap, Quick View, etc.). ── */}
+      <PatientBanner
+        initials={member.in}
+        name={member.name}
+        gender={member.g === 'M' ? 'Male' : member.g === 'F' ? 'Female' : member.g}
+        age={member.age || ''}
+        memberId={member.memberId || `#${member.id}`}
+        raf={member.raf}
+        rafChange={rafImpact}
+        rafUp={member.ru !== false}
+        onCall={noop('Call')}
+      />
 
       {/* ── DOS selector + status pill ── */}
       <div className={styles.dosRow}>

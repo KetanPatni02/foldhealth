@@ -39,18 +39,128 @@
   padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
+
+/* Subtitle directly under the drawer header. Matches Figma's tone-200 grey 12px. */
+.pickerSubtitle {
+  margin: -8px 0 0;
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+
+/* Step indicator — numbered chip + label, two steps connected by a hairline. */
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.stepBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--primary-50, #fcfaff);
+  border: 0.5px solid var(--primary-200, #d7c0ff);
+  font: 500 10px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+}
+.stepBadgeIdle {
+  background: var(--neutral-50);
+  border-color: var(--neutral-150);
+  color: var(--neutral-300);
+}
+.stepLabel {
+  font: 500 14px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+}
+.stepLabelIdle { color: var(--neutral-300); }
+.stepDivider {
+  width: 20px;
+  height: 1px;
+  background: var(--neutral-150);
+}
+
+/* Hero illustration — two dashed concentric rings around an icon disc. */
+.hero {
+  align-self: center;
+  position: relative;
+  width: 150px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.heroRingOuter,
+.heroRingMid,
+.heroCenter {
+  position: absolute;
+  border-radius: 50%;
+}
+.heroRingOuter {
+  inset: 0;
+  border: 1px dashed var(--neutral-150);
+}
+.heroRingMid {
+  width: 128px;
+  height: 128px;
+  border: 1px dashed var(--neutral-200);
+}
+.heroCenter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(141.7deg, #f9fafc 12.7%, #f1f2f3 91.4%);
+}
+
+/* How-to banner — light info-blue background, numbered list. */
+.howToBanner {
+  padding: 8px 10px;
+  background: var(--status-info-light, #f4f8fe);
+  border: 0.5px solid rgba(20, 94, 204, 0.2);
+  border-radius: 6px;
+  color: var(--neutral-400, #3a485f);
+  font-family: 'Inter', sans-serif;
+}
+.howToHead {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+  font-size: 12px;
+}
+.howToList {
+  margin: 4px 0 0;
+  padding: 0 0 0 22px;
+  list-style: decimal outside;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.howToList li { padding-left: 2px; }
+.howToList li::marker { color: var(--neutral-400); }
+
+/* Dropzone — Figma simplifies this to a single-line CTA inside a dashed box. */
 .dropZone {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 48px 24px;
-  background: var(--neutral-50);
-  border: 1.5px dashed var(--neutral-200);
-  border-radius: 12px;
+  gap: 10px;
+  padding: 24px;
+  background: transparent;
+  border: 0.5px dashed var(--neutral-150);
+  border-radius: 8px;
   cursor: pointer;
   transition: border-color 0.12s, background 0.12s;
 }
@@ -59,71 +169,99 @@
   border-color: var(--primary-300);
   background: var(--primary-50);
 }
-.dropZoneTitle {
-  font-family: 'Inter', sans-serif;
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--neutral-500);
-  margin-top: 6px;
+.dropZoneCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
-.dropZoneMuted {
-  font-size: 12px;
+.dropZoneTitle {
+  font: 500 14px/1.2 'Inter', sans-serif;
   color: var(--neutral-300);
 }
 .dropZoneLink {
-  font-size: 13px;
-  font-weight: 500;
+  font: 500 14px/1.2 'Inter', sans-serif;
   color: var(--primary-300);
-  text-decoration: underline;
-}
-.dropZoneHint {
-  font-size: 11px;
-  color: var(--neutral-300);
-  margin-top: 6px;
+  text-decoration: none;
 }
 .fileInput { display: none; }
-.demoHint {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  background: var(--primary-50);
-  border: 0.5px solid var(--primary-200);
+
+/* Format / size meta line — flexed apart, left/right. */
+.formatsLine {
+  display: flex;
+  justify-content: space-between;
+  font: 400 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+  margin-top: -10px;
+}
+
+/* Sample document card — icon · text · trailing action / chip row. */
+.sampleCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  border: 0.5px solid var(--neutral-200, #ced4dd);
   border-radius: 8px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  color: var(--neutral-400);
 }
-.demoHint code {
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
-  background: var(--neutral-0);
-  padding: 1px 6px;
-  border-radius: 4px;
-  border: 0.5px solid var(--neutral-150);
-  color: var(--primary-300);
-}
-.demoHintText {
+.sampleIcon {
   display: inline-flex;
-  flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
+  width: 45px;
+  height: 45px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 0.5px solid var(--neutral-300, #8a94a8);
+}
+.sampleText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   gap: 6px;
+}
+.sampleTitle {
+  font: 500 14px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.sampleDesc {
+  font: 400 12px/1.5 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.sampleChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
 }
 .demoChip {
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
-  font-weight: 500;
+  font: 500 11px/1.4 'Inter', sans-serif;
   color: var(--primary-300);
   background: var(--neutral-0);
   border: 0.5px solid var(--primary-200);
   padding: 2px 8px;
   border-radius: 4px;
   cursor: pointer;
-  line-height: 1.4;
 }
 .demoChip:hover {
   background: var(--primary-100);
   border-color: var(--primary-300);
+}
+
+/* Footer info note — white card with leading info icon, neutral subtle text. */
+.footerNote {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-300, #8a94a8);
+  border-radius: 8px;
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.footerNote strong {
+  color: var(--neutral-400);
+  font-weight: 500;
 }
 
 /* ── Phase 2: processing ──────────────────────────────────────────── */
@@ -163,6 +301,24 @@
   height: 100%;
   min-height: 0;
 }
+.reviewSteps {
+  padding: 16px 20px 0;
+}
+
+/* Bulk-selection summary banner — only visible in table layout when at
+   least one row is checked. */
+.selectionBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  background: var(--primary-50);
+  border-top: 0.5px solid var(--primary-200);
+  border-bottom: 0.5px solid var(--primary-200);
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.selectionBar strong { color: var(--primary-300); font-weight: 500; }
 
 /* Stats + filter chips */
 .statsBar {
@@ -261,6 +417,20 @@
   font-weight: 400;
   color: var(--neutral-300);
 }
+.addEncounterBtn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font: 500 11px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.addEncounterBtn:hover { background: var(--primary-100); }
 .unmatchedBadge {
   background: var(--status-error-light);
   color: var(--status-error);
@@ -526,6 +696,10 @@
 .thPatient { padding-left: 16px; min-width: 200px; }
 .thNarrow  { width: 70px; }
 .thStatus  { width: 130px; }
+.thCheck   { width: 36px; padding-left: 16px; padding-right: 4px; }
+.tdCheck   { width: 36px; padding-left: 16px; padding-right: 4px; vertical-align: middle; }
+.tdCheck input,
+.thCheck input { cursor: pointer; }
 .thActions { width: 60px; text-align: center; padding-right: 16px; }
 
 .encTableRow {
@@ -541,11 +715,27 @@
 .encTableRowMismatch { border-left-color: var(--status-warning); background: var(--status-warning-light); }
 
 .tdPatient { min-width: 200px; }
+/* Matched patient chip — clickable to open the swap picker. Hover
+   surfaces the pen-edit affordance so the cell reads as actionable. */
 .tdPatientMatched {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  padding: 2px 6px 2px 2px;
+  background: transparent;
+  border: 0.5px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
 }
+.tdPatientMatched:hover {
+  background: var(--neutral-50);
+  border-color: var(--neutral-150);
+}
+.tdPatientSwapIcon {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.tdPatientMatched:hover .tdPatientSwapIcon { opacity: 1; }
 .tdPatientName {
   font-size: 13px;
   font-weight: 500;
@@ -598,6 +788,28 @@
   color: var(--neutral-500);
 }
 .tdPatientPickerItem:hover { background: var(--neutral-50); }
+.tdPatientPickerItemActive {
+  background: var(--primary-50);
+}
+.tdPatientPickerCurrent {
+  margin-left: auto;
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--primary-300);
+  background: var(--primary-100);
+  border-radius: 4px;
+}
+.tdPatientPickerCancel {
+  align-self: flex-start;
+  padding: 2px 6px;
+  font: 500 11px/1.4 'Inter', sans-serif;
+  color: var(--neutral-400);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.tdPatientPickerCancel:hover { text-decoration: underline; }
 
 .tdInput {
   width: 100%;
@@ -648,7 +860,8 @@
 .icdOverflow:hover { background: var(--neutral-100); }
 
 .tdStatus { width: 130px; }
-.tdActions { width: 60px; text-align: center; }
+.tdActions { width: 86px; text-align: center; white-space: nowrap; }
+.tdLinkDocBtn,
 .tdRemoveBtn {
   background: transparent;
   border: none;
@@ -659,6 +872,8 @@
   align-items: center;
   justify-content: center;
 }
+.tdLinkDocBtn { margin-right: 2px; }
+.tdLinkDocBtn:hover { background: var(--neutral-50); }
 .tdRemoveBtn:hover { background: var(--status-error-light); }
 
 /* Mismatch banner */
@@ -738,11 +953,61 @@
   color: var(--neutral-500);
 }
 .memberPickerItem:hover { background: var(--neutral-50); }
+.memberPickerItemActive { background: var(--primary-50); }
+.memberPickerItemActive:hover { background: var(--primary-100); }
 .memberPickerMeta {
   margin-left: auto;
   font-size: 11px;
   color: var(--neutral-300);
 }
+.memberPickerCurrent {
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--primary-300);
+  background: var(--primary-100);
+  border-radius: 4px;
+}
+.memberPickerCancel {
+  align-self: flex-start;
+  padding: 4px 8px;
+  font: 500 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-400);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.memberPickerCancel:hover { text-decoration: underline; }
+
+/* Rematch row — shown on matched encounters so the user can swap to a
+   different patient. Light surface, primary-tinted CTA. */
+.rematchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 12px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.rematchText strong { color: var(--neutral-500); font-weight: 500; }
+.rematchBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.rematchBtn:hover { background: var(--primary-100); }
 
 /* Encounter editable grid */
 .encounterGrid {
@@ -821,6 +1086,23 @@
   flex-wrap: wrap;
   gap: 6px;
 }
+
+/* DOS field — toggle stacked above the picker (Select or Input). */
+.dosFieldRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Inline ICD add — typeahead input below the chip row, with the
+   matched-results list rendering directly underneath. Mirrors the
+   pattern used by the SinglePhase form for visual consistency. */
+.icdAddRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
 .icdsEmpty {
   font-size: 12px;
   color: var(--neutral-300);
@@ -877,3 +1159,386 @@
   cursor: pointer;
 }
 .removeEncounterBtn:hover { background: var(--status-error-light); }
+
+/* ── Chooser phase ────────────────────────────────────────────── */
+/* Title-area back button — small chevron-left sitting before the
+   drawer title text. Lets the user step back from a sub-mode to the
+   chooser without closing the drawer. */
+.titleBackBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 6px;
+  margin-left: -4px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.titleBackBtn:hover { background: var(--neutral-50); }
+
+.chooserPhase {
+  padding: 32px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.chooserHeading {
+  margin: 0;
+  text-align: center;
+  font: 500 14px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.chooserCards {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.chooserCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px dashed transparent;
+  cursor: pointer;
+  text-align: center;
+  background: transparent;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.chooserCard:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+.chooserCard_primary {
+  background: var(--primary-50, #fcfaff);
+  border-color: var(--primary-200, #d7c0ff);
+}
+.chooserCard_secondary {
+  background: var(--secondary-100, #fff4ee);
+  border-color: var(--secondary-200, #ffd6c0);
+}
+.chooserIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+}
+.chooserTitle {
+  font: 500 15px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.chooserDesc {
+  font: 400 12px/1.5 'Inter', sans-serif;
+  color: var(--neutral-300);
+  max-width: 380px;
+}
+.chooserCta {
+  margin-top: 6px;
+  padding: 6px 14px;
+  font: 500 13px/1.2 'Inter', sans-serif;
+  border-radius: 6px;
+}
+.chooserCta_primary {
+  color: var(--primary-300);
+  background: var(--primary-100, #ede1ff);
+}
+.chooserCta_secondary {
+  color: var(--secondary-300);
+  background: var(--secondary-200, #ffd6c0);
+}
+
+/* ── SFTP phase (option 3) ───────────────────────────────────── */
+.sftpPhase {
+  padding: 16px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.sftpCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 8px;
+  border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+}
+.sftpCardHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.sftpPathRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--neutral-50);
+  border-radius: 6px;
+  border: 0.5px solid var(--neutral-100);
+}
+.sftpPath {
+  flex: 1;
+  font: 500 12px/1.4 'JetBrains Mono', 'Inter', monospace;
+  color: var(--neutral-500);
+  word-break: break-all;
+}
+.sftpCopyBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.sftpCopyBtn:hover { background: var(--primary-100); }
+.sftpHints {
+  margin: 0;
+  padding-left: 18px;
+  font: 400 12px/1.6 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.sftpExternal {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.sftpExternalLink {
+  color: var(--primary-300);
+  text-decoration: none;
+  font-weight: 500;
+}
+.sftpExternalLink:hover { text-decoration: underline; }
+.sftpExternalHint { font-size: 11px; }
+
+/* ── Single-encounter form (option 1) ────────────────────────── */
+.singlePhase {
+  padding: 16px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+.singleSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.singleLabel {
+  font: 500 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.singlePatientChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+}
+.singlePatientText {
+  display: flex;
+  flex-direction: column;
+}
+.singlePatientName {
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.singlePatientMeta {
+  font: 400 11px/1.3 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.singlePatientChange {
+  margin-left: auto;
+  padding: 4px 10px;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.singlePatientChange:hover { background: var(--primary-100); }
+
+.icdMatchList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  padding: 4px;
+}
+.icdMatchItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  font: 400 12px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.icdMatchItem:hover { background: var(--neutral-50); }
+.icdMatchCode {
+  font: 500 11px/1.2 'JetBrains Mono', 'Inter', monospace;
+  background: var(--primary-50);
+  color: var(--primary-300);
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 0.5px solid var(--primary-200);
+}
+.icdMatchDesc { flex: 1; }
+.icdMatchHcc {
+  font: 500 10px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+  padding: 1px 6px;
+  background: var(--neutral-50);
+  border-radius: 4px;
+}
+.icdChosen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.icdChosenChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px 3px 6px;
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 4px;
+  font: 500 11px/1.4 'Inter', sans-serif;
+  color: var(--primary-300);
+}
+.icdChosenChip code {
+  font-family: 'JetBrains Mono', 'Inter', monospace;
+}
+.icdChosenDesc {
+  font-weight: 400;
+  color: var(--neutral-400);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.icdChosenRemove {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+}
+
+.dosSegmented {
+  display: inline-flex;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  padding: 2px;
+  width: fit-content;
+}
+.dosSegBtn {
+  padding: 4px 10px;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.dosSegBtn:disabled { color: var(--neutral-200); cursor: not-allowed; }
+.dosSegActive {
+  background: var(--neutral-0);
+  color: var(--primary-300);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.dosSelect {
+  height: 32px;
+  padding: 0 8px;
+  font: 400 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  outline: none;
+}
+
+.singleGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.singleField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.singleFileBtn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.singleFileBtn:hover { background: var(--primary-100); }
+.singleFileChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  align-self: flex-start;
+}
+.singleFileName {
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.singleFileRemove {
+  font: 500 11px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.singleFileRemove:hover { color: var(--status-error); text-decoration: underline; }
+
+.singleFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 12px;
+  border-top: 0.5px solid var(--neutral-150);
+}
+
