@@ -2064,6 +2064,45 @@ export const useAppStore = create((set, get) => ({
     });
   },
 
+  // ─── AWV (Annual Wellness Visit) worklist ─────────────────────────────
+  // Mock-driven worklist mirroring the HCC pattern: members + filter chip
+  // state + selection set. Toolbar (Search/Filter/Export/History) and the
+  // bulk-bar wire into the same shared components.
+  awvMembers: (() => {
+    try {
+      // Synchronous import via top-level static would be cleaner, but the
+      // store file already lazy-loads other mocks to keep the initial
+      // bundle small. We pre-seed with an empty array and the worklist's
+      // first render kicks off the fetch.
+      return [];
+    } catch { return []; }
+  })(),
+  awvMembersLoading: false,
+  fetchAwvMembers: async () => {
+    if (useAppStore.getState().awvMembers.length > 0) return;
+    set({ awvMembersLoading: true });
+    const { AWV_MEMBERS } = await import('../features/awv-worklist/data/mock');
+    set({ awvMembers: AWV_MEMBERS, awvMembersLoading: false });
+  },
+  // Multi-value filters keyed by column. Empty array on a key = no filter.
+  awvFilters: {},
+  setAwvFilter: (k, vals) => set(s => {
+    const next = { ...s.awvFilters };
+    if (!vals || vals.length === 0) delete next[k];
+    else next[k] = vals;
+    return { awvFilters: next };
+  }),
+  clearAwvFilters: () => set({ awvFilters: {} }),
+  // Bulk-select state.
+  selectedAwvIds: [],
+  selectAwvMember: (id) => set(s => ({
+    selectedAwvIds: s.selectedAwvIds.includes(id)
+      ? s.selectedAwvIds.filter(x => x !== id)
+      : [...s.selectedAwvIds, id],
+  })),
+  selectAllAwv: (ids) => set({ selectedAwvIds: ids }),
+  clearAwvSelected: () => set({ selectedAwvIds: [] }),
+
   selectedHccIds: [],
   selectHccMember: (id) => {
     track('hcc.member_selected', { memberId: id });
