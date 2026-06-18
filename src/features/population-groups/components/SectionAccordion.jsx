@@ -23,7 +23,7 @@ export default function SectionAccordion({ title, count, badgeColor, gradientFro
           padding: '8px 12px',
           display: 'flex',
           alignItems: 'center',
-          background: `linear-gradient(to right, ${gradientFrom}, #fff)`,
+          background: `linear-gradient(to right, ${gradientFrom}, var(--neutral-0))`,
           borderBottom: '0.5px solid var(--neutral-150)',
           cursor: onToggle ? 'pointer' : 'default',
           fontFamily: 'Inter,sans-serif',
@@ -31,7 +31,7 @@ export default function SectionAccordion({ title, count, badgeColor, gradientFro
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-400)' }}>{title}</span>
-          <span style={{ background: badgeColor, color: '#fff', fontSize: 10, fontWeight: 500, borderRadius: 4, padding: '2px 4px', minWidth: 16, textAlign: 'center' }}>
+          <span style={{ background: badgeColor, color: 'var(--neutral-0)', fontSize: 10, fontWeight: 500, borderRadius: 4, padding: '2px 4px', minWidth: 16, textAlign: 'center' }}>
             {count}
           </span>
         </div>

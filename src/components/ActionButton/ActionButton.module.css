@@ -161,7 +161,8 @@
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.15s, visibility 0.15s;
-  z-index: 9999;
+  /* Sit above every other layer (drawers, modals, toasts) so it's never clipped. */
+  z-index: 2147483647;
 }
 
 /* Tooltip arrow */

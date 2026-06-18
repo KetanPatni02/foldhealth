@@ -1,6 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { TableIcon, ExpandIcon, MiniCloseIcon } from './components/icons.jsx';
+import { TableIcon } from './components/icons.jsx';
+import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { Button } from '../../components/Button/Button';
+import { Avatar } from '../../components/Avatar/Avatar';
 import './popgroups.css';
 
 const PROC_STEPS = [
@@ -42,22 +45,14 @@ export function PgProcessingHost() {
     <div style={{ position:'fixed', bottom:20, right:20, zIndex:3000, animation:'pg-slide-up 0.3s cubic-bezier(0.32,0,0.15,1)' }}>
       {pgSession.status !== 'complete' ? (
         /* Processing */
-        <div style={{ background:'#fff', borderRadius:12, boxShadow:'0 8px 32px rgba(0,0,0,0.15)', border:'0.5px solid var(--neutral-150)', width:400, overflow:'hidden' }}>
+        <div style={{ background:'var(--neutral-0)', borderRadius:12, boxShadow:'0 8px 32px rgba(0,0,0,0.15)', border:'0.5px solid var(--neutral-150)', width:400, overflow:'hidden' }}>
           <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderBottom:'0.5px solid var(--neutral-100)' }}>
-            <div style={{ width:32, height:32, borderRadius:8, background:'var(--primary-100)', border:'0.5px solid var(--primary-200)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <TableIcon color="var(--primary-300)" size={16} />
-            </div>
+            <Avatar variant="icon" size={32} backgroundColor="var(--primary-100)" borderColor="var(--primary-200)" icon={<TableIcon color="var(--primary-300)" size={16} />} />
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ fontSize:14, fontWeight:600, color:'var(--neutral-400)' }}>Processing File</div>
               <div style={{ fontSize:14, color:'var(--neutral-200)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{pgSession.fileName || pgSession.segName || 'New Group'}</div>
             </div>
-            <button onClick={expand}
-              style={{ width:28, height:28, border:'none', background:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, borderRadius:4 }}
-              onMouseEnter={e => e.currentTarget.style.background='var(--neutral-75)'}
-              onMouseLeave={e => e.currentTarget.style.background='none'}
-              title="Expand">
-              <ExpandIcon size={16} color="var(--neutral-300)" />
-            </button>
+            <ActionButton icon="solar:maximize-square-linear" size="L" tooltip="Expand" onClick={expand} />
           </div>
           <div style={{ padding:'14px 16px' }}>
             {PROC_STEPS.map((step, i) => {
@@ -66,8 +61,8 @@ export function PgProcessingHost() {
               return (
                 <div key={i} style={{ display:'flex', alignItems:'center', gap:10, marginBottom: i < PROC_STEPS.length-1 ? 12 : 0 }}>
                   {done ? (
-                    <div style={{ width:20, height:20, borderRadius:'50%', background:'#009B53', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, animation:'pg-step-check 0.25s ease' }}>
-                      <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <div style={{ width:20, height:20, borderRadius:'50%', background:'var(--status-success)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, animation:'pg-step-check 0.25s ease' }}>
+                      <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="var(--neutral-0)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     </div>
                   ) : active ? (
                     <div style={{ width:20, height:20, borderRadius:'50%', border:'2px solid var(--primary-300)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
@@ -76,7 +71,7 @@ export function PgProcessingHost() {
                   ) : (
                     <div style={{ width:20, height:20, borderRadius:'50%', border:'1.5px solid var(--neutral-150)', flexShrink:0 }} />
                   )}
-                  <span style={{ fontSize:14, color: done?'#16a34a' : active?'var(--primary-300)' : 'var(--neutral-200)', fontWeight: (done||active)?500:400, transition:'color 0.2s' }}>
+                  <span style={{ fontSize:14, color: done?'var(--status-success)' : active?'var(--primary-300)' : 'var(--neutral-200)', fontWeight: (done||active)?500:400, transition:'color 0.2s' }}>
                     {step}
                   </span>
                 </div>
@@ -86,30 +81,19 @@ export function PgProcessingHost() {
         </div>
       ) : (
         /* Done */
-        <div style={{ background:'#fff', borderRadius:12, boxShadow:'0 8px 32px rgba(0,0,0,0.15)', border:'0.5px solid #bbf7d0', width:400, overflow:'hidden', animation:'pg-fade-up 0.3s ease' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderBottom:'0.5px solid #dcfce7', background:'linear-gradient(90deg, #f0fdf4 0%, #ffffff 100%)' }}>
-            <div style={{ width:32, height:32, borderRadius:'50%', background:'#009B53', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, animation:'pg-badge-pop 0.4s cubic-bezier(0.34,1.56,0.64,1)' }}>
-              <svg width="16" height="13" viewBox="0 0 16 13" fill="none"><path d="M1.5 6.5L5.5 10.5L14.5 1.5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        <div style={{ background:'var(--neutral-0)', borderRadius:12, boxShadow:'0 8px 32px rgba(0,0,0,0.15)', border:'0.5px solid var(--status-success)', width:400, overflow:'hidden', animation:'pg-fade-up 0.3s ease' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderBottom:'0.5px solid var(--status-success-light)', background:'linear-gradient(90deg, var(--status-success-light) 0%, var(--neutral-0) 100%)' }}>
+            <div style={{ width:32, height:32, borderRadius:'50%', background:'var(--status-success)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, animation:'pg-badge-pop 0.4s cubic-bezier(0.34,1.56,0.64,1)' }}>
+              <svg width="16" height="13" viewBox="0 0 16 13" fill="none"><path d="M1.5 6.5L5.5 10.5L14.5 1.5" stroke="var(--neutral-0)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
             <div style={{ flex:1, minWidth:0 }}>
               <div style={{ fontSize:14, fontWeight:600, color:'var(--neutral-400)' }}>File Extracted &amp; Processed</div>
               <div style={{ fontSize:14, color:'var(--neutral-300)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{pgSession.fileName || pgSession.segName}</div>
             </div>
-            <button onClick={() => closePgSession()}
-              style={{ width:28, height:28, border:'none', background:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', borderRadius:6 }}
-              onMouseEnter={e => e.currentTarget.style.background='var(--neutral-75)'}
-              onMouseLeave={e => e.currentTarget.style.background='none'}>
-              <MiniCloseIcon />
-            </button>
+            <ActionButton icon="solar:close-circle-linear" size="L" onClick={() => closePgSession()} />
           </div>
           <div style={{ padding:'14px 16px' }}>
-            <button
-              onClick={expand}
-              style={{ width:'100%', height:36, background:'var(--primary-300)', color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:500, cursor:'pointer', fontFamily:'Inter, sans-serif', transition:'background 0.15s' }}
-              onMouseEnter={e => e.currentTarget.style.background='var(--primary-400)'}
-              onMouseLeave={e => e.currentTarget.style.background='var(--primary-300)'}>
-              Show Summary
-            </button>
+            <Button variant="primary" size="L" fullWidth onClick={expand}>Show Summary</Button>
           </div>
         </div>
       )}
