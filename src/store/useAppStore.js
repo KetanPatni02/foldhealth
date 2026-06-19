@@ -3081,7 +3081,17 @@ export const useAppStore = create((set, get) => ({
       },
     };
   }),
-  cancelHccUpload: () => set({ hccUploadSession: null }),
+  cancelHccUpload: () => set({ hccUploadSession: null, hccUploadMinimized: false }),
+
+  // ── Background-processing minimize/expand ────────────────────────
+  // After picking a file, the user can close the drawer and continue
+  // working — AI extraction keeps running in the background and a
+  // floating chip (HccUploadProcessingHost) tracks progress + offers a
+  // "Show Records" CTA when extraction completes. Mirrors the
+  // population-groups pgSession / pgMinimized pattern.
+  hccUploadMinimized: false,
+  minimizeHccUpload: () => set({ hccUploadMinimized: true }),
+  expandHccUpload: () => set({ hccUploadMinimized: false }),
 
   // Exact match by normalized name + DOB. AC-9 requires 100% confidence —
   // partial / probabilistic matching is forbidden (HIPAA). Returns the

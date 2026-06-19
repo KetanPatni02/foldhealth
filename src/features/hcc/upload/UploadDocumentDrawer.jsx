@@ -19,6 +19,68 @@ import styles from './UploadDocumentDrawer.module.css';
 // Numbered step indicator shared between the picker (active=1) and the
 // review phases (active=2). Keeps both surfaces visually anchored to the
 // same flow so the user knows where they are.
+/**
+ * ProcessingPhase — shown while the AI extracts encounters from the
+ * uploaded file. Mirrors the population-groups CSV processing surface:
+ * animated hero, headline + filename, hint, and a primary Minimize +
+ * outline Discard action pair. The actual extraction work runs in the
+ * parent's useEffect — this view is purely the "please wait" canvas
+ * the user can step away from.
+ */
+function ProcessingPhase({ fileName, onMinimize, onDiscard }) {
+  return (
+    <div className={styles.processingPhase}>
+      <div className={styles.processingHero}>
+        <div className={styles.processingHeroRing} />
+        <div className={styles.processingHeroInner}>
+          <Icon name="solar:document-medicine-linear" size={32} color="var(--primary-300)" />
+        </div>
+      </div>
+      <div className={styles.processingTitle}>Processing Document…</div>
+      <div className={styles.processingSubtitle}>
+        Running AI extraction on your file <strong>{fileName || 'uploaded file'}</strong>
+      </div>
+      <div className={styles.processingDividerLine} />
+      <div className={styles.processingHint}>
+        You can minimize this window and continue working while it processes.
+      </div>
+      <div className={styles.processingActions}>
+        <Button variant="primary" size="s" onClick={onMinimize}>
+          <Icon name="solar:minimize-square-2-linear" size={14} color="#fff" />
+          Minimize
+        </Button>
+        <Button variant="alt" size="s" onClick={onDiscard}>
+          <Icon name="solar:trash-bin-2-linear" size={14} color="var(--neutral-300)" />
+          Discard
+        </Button>
+      </div>
+      {fileName && (
+        <div className={styles.processingFileCard}>
+          <div className={styles.processingFileIcon}>
+            <Icon name="solar:document-text-linear" size={16} color="var(--neutral-300)" />
+          </div>
+          <div className={styles.processingFileName}>{fileName}</div>
+          <button
+            type="button"
+            className={styles.processingFileEye}
+            title="Preview file"
+          >
+            <Icon name="solar:eye-linear" size={16} color="var(--neutral-300)" />
+          </button>
+        </div>
+      )}
+      <div className={styles.processingInfoBanner}>
+        <Icon name="solar:info-circle-linear" size={16} color="var(--neutral-300)" />
+        <span>
+          Once extraction is complete, you'll review each record before it's added
+          to the HCC worklist. All uploads are saved in the document history on
+          worklist.
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function StepIndicator({ activeStep = 1 }) {
   return (
     <div className={styles.steps}>
@@ -29,7 +91,7 @@ function StepIndicator({ activeStep = 1 }) {
       <span className={styles.stepDivider} />
       <div className={styles.step}>
         <span className={`${styles.stepBadge}${activeStep >= 2 ? '' : ` ${styles.stepBadgeIdle}`}`}>2</span>
-        <span className={`${styles.stepLabel}${activeStep >= 2 ? '' : ` ${styles.stepLabelIdle}`}`}>OCR Review</span>
+        <span className={`${styles.stepLabel}${activeStep >= 2 ? '' : ` ${styles.stepLabelIdle}`}`}>AI Review</span>
       </div>
     </div>
   );
@@ -73,24 +135,57 @@ export function UploadDocumentDrawer() {
   const cancel = useAppStore(s => s.cancelHccUpload);
   const confirm = useAppStore(s => s.confirmHccUpload);
   const setPhase = useAppStore(s => s.setHccUploadPhase);
+  const minimize = useAppStore(s => s.minimizeHccUpload);
+  const minimized = useAppStore(s => s.hccUploadMinimized);
   const hccMembers = useAppStore(s => s.hccMembers);
   const createFromEncounter = useAppStore(s => s.hccCreateOrMergeFromEncounter);
   const showToast = useAppStore(s => s.showToast);
 
-  if (!session) return null;
+  // ── AI extraction effect ──────────────────────────────────────────
+  // Lifted out of Inner so it keeps running even while the drawer is
+  // minimized (HccUploadProcessingHost takes over the UI but the same
+  // mock OCR pass produces the encounters). Pre-seed handling for
+  // patient-context uploads stays here too.
+  useEffect(() => {
+    if (!session || session.phase !== 'processing' || !session.file) return;
+    let cancelled = false;
+    (async () => {
+      const encounters = await runMockOcr(session.file, hccMembers);
+      if (session.seededMemberId) {
+        const seedMember = hccMembers.find(m => m.id === session.seededMemberId);
+        if (seedMember) {
+          for (const enc of encounters) {
+            if (!enc.patient.matchedMemberId) {
+              enc.patient.matchedMemberId = seedMember.id;
+              enc.patient.matchConfidence = 100;
+              enc.patient.name = enc.patient.name || seedMember.name;
+            }
+          }
+        }
+      }
+      if (!cancelled) setEncounters(encounters);
+    })();
+    return () => { cancelled = true; };
+  }, [session?.phase, session?.file, session?.seededMemberId, hccMembers, setEncounters]);
+
+  // When the user closes the drawer while AI extraction is running we hide
+  // the drawer but keep the session alive — HccUploadProcessingHost
+  // (mounted in AppLayout) takes over with a floating progress chip.
+  if (!session || minimized) return null;
   return <Inner
     session={session}
     setFile={setFile} setEncounters={setEncounters}
     appendEncounters={appendEncounters}
     patchEnc={patchEnc} removeEnc={removeEnc} addEnc={addEnc}
     cancel={cancel} confirm={confirm} setPhase={setPhase}
+    minimize={minimize}
     hccMembers={hccMembers}
     createFromEncounter={createFromEncounter}
     showToast={showToast}
   />;
 }
 
-function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, removeEnc, addEnc, cancel, confirm, setPhase, hccMembers, createFromEncounter, showToast }) {
+function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, removeEnc, addEnc, cancel, confirm, setPhase, minimize, hccMembers, createFromEncounter, showToast }) {
   const [drag, setDrag] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [filter, setFilter] = useState('all'); // all | error | mismatched | ready
@@ -116,32 +211,8 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
   const fileInputRef = useRef(null);
   const appendInputRef = useRef(null);
 
-  // ── Phase machine ──────────────────────────────────────────────────
-  // picker → processing → review. Kick OCR when phase enters processing.
-  useEffect(() => {
-    if (session.phase !== 'processing' || !session.file) return;
-    let cancelled = false;
-    (async () => {
-      const encounters = await runMockOcr(session.file, hccMembers);
-      // If a member was pre-seeded (entry from AllPatientsRow / QuickView)
-      // and OCR's match is ambiguous, auto-link the first unmatched
-      // encounter to the seeded member so the user doesn't have to do it.
-      if (session.seededMemberId) {
-        const seedMember = hccMembers.find(m => m.id === session.seededMemberId);
-        if (seedMember) {
-          for (const enc of encounters) {
-            if (!enc.patient.matchedMemberId) {
-              enc.patient.matchedMemberId = seedMember.id;
-              enc.patient.matchConfidence = 100;
-              enc.patient.name = enc.patient.name || seedMember.name;
-            }
-          }
-        }
-      }
-      if (!cancelled) setEncounters(encounters);
-    })();
-    return () => { cancelled = true; };
-  }, [session.phase, session.file, session.seededMemberId, hccMembers, setEncounters]);
+  // (AI extraction effect lives in the parent UploadDocumentDrawer so
+  // it keeps running while the drawer is minimized.)
 
   const handleFileSelect = (file) => {
     if (!file) return;
@@ -227,7 +298,24 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
   };
 
   const canBack = ['single', 'picker', 'sftp'].includes(session.phase) && !session.seededMemberId;
-  const title = (
+  // Phase-specific drawer title. Picker uses a single bold "Upload a
+  // Document" line per Figma 13239:502724 (subtitle dropped in latest
+  // iteration). Other phases keep the legacy treatment.
+  const title = session.phase === 'picker' ? (
+    <span className={styles.titleBlock}>
+      {canBack && (
+        <button
+          type="button"
+          className={styles.titleBackBtn}
+          onClick={() => setPhase('chooser')}
+          aria-label="Back to chooser"
+        >
+          <Icon name="solar:alt-arrow-left-linear" size={16} color="var(--neutral-400)" />
+        </button>
+      )}
+      <span className={styles.titleMain}>Upload a Document</span>
+    </span>
+  ) : (
     <span className={styles.title}>
       {canBack && (
         <button
@@ -248,7 +336,22 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
     </span>
   );
 
-  const headerRight = session.phase === 'review' ? (
+  const headerRight = session.phase === 'picker' ? (
+    <>
+      {/* "Extract Records" — disabled until a file is selected. Once a
+          file lands, setHccUploadFile transitions to 'processing' which
+          unmounts the picker, so this button effectively just signals
+          to the user what the file-select gesture is leading to. */}
+      <Button
+        variant="secondary"
+        size="S"
+        disabled
+      >
+        Extract Records
+      </Button>
+      <span className={styles.headerDivider} />
+    </>
+  ) : session.phase === 'review' ? (
     <>
       {/* Layout toggle: master-detail (card) vs editable table (table).
           Built with the Fold Toggle component so it matches every other
@@ -294,9 +397,10 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
     </>
   ) : null;
 
-  // Drawer expands once OCR is running or done — the review panel needs
-  // the extra width. Chooser / picker / single / sftp phases stay narrow.
-  const isWidePhase = session.phase === 'processing' || session.phase === 'review';
+  // Only the review panel needs the wide canvas (master-detail layout).
+  // Every other phase — including processing — uses the narrow 660px
+  // shell so the centered processing hero reads correctly.
+  const isWidePhase = session.phase === 'review';
   const drawerCls = [
     styles.drawer,
     isWidePhase ? styles.drawerExpanded : '',
@@ -305,7 +409,14 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
   return (
     <Drawer
       title={title}
-      onClose={cancel}
+      onClose={() => {
+        // While AI extraction is running, closing the drawer minimizes
+        // it to a floating progress chip instead of cancelling — the
+        // user can keep working and we re-expand when extraction
+        // completes. Every other phase still fully cancels.
+        if (session.phase === 'processing') minimize();
+        else cancel();
+      }}
       className={drawerCls}
       bodyClassName={styles.body}
       headerRight={headerRight}
@@ -330,123 +441,100 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
 
       {session.phase === 'picker' && (
         <div className={styles.pickerPhase}>
-          {/* Subtitle — HCC-specific framing under the drawer title. */}
-          <p className={styles.pickerSubtitle}>
-            Upload clinical documents to extract HCC encounters and update the worklist.
-          </p>
-
-          <StepIndicator activeStep={1} />
-
-          {/* Concentric-ring hero — neutral chrome that frames the upload action. */}
+          {/* Concentric-ring hero — smaller per Figma (120×120). */}
           <div className={styles.hero} aria-hidden="true">
             <span className={styles.heroRingOuter} />
             <span className={styles.heroRingMid} />
             <span className={styles.heroCenter}>
-              <Icon name="solar:file-text-linear" size={36} color="var(--neutral-300)" />
+              <Icon name="solar:document-medicine-linear" size={32} color="var(--neutral-300)" />
             </span>
           </div>
 
-          {/* How-to info banner. */}
+          {/* Dropzone — sits above the how-to banner per Figma. */}
+          <div className={styles.dropZoneBlock}>
+            <label
+              className={[styles.dropZone, drag ? styles.dropZoneActive : ''].join(' ')}
+              onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+              onDragLeave={() => setDrag(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDrag(false);
+                handleFileSelect(e.dataTransfer.files?.[0]);
+              }}
+            >
+              <Icon name="solar:upload-minimalistic-linear" size={24} color="var(--neutral-300)" />
+              <div className={styles.dropZoneCta}>
+                <span className={styles.dropZoneTitle}>Drag and drop file here or</span>
+                <span className={styles.dropZoneLink}>Choose file</span>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPT_EXT}
+                className={styles.fileInput}
+                onChange={(e) => handleFileSelect(e.target.files?.[0])}
+              />
+            </label>
+
+            {/* Supported formats line — sits directly under the dropzone. */}
+            <div className={styles.formatsLine}>
+              <span>Supported formats: PDF, DOC, JPG, or PNG</span>
+              <span>Max size: 100 MB</span>
+            </div>
+          </div>
+
+          {/* "What happens after you upload" info banner — 3 simplified
+              steps per Figma 1:24203. Drops the explicit "review and
+              merge / new row" footer note since the third step now
+              covers it. */}
           <div className={styles.howToBanner}>
             <div className={styles.howToHead}>
               <Icon name="solar:info-circle-linear" size={16} color="var(--status-info, #145ECC)" />
-              <span>How to upload HCC documents</span>
+              <span>What happens after you upload</span>
             </div>
             <ol className={styles.howToList}>
-              <li>Upload a file (PDF, DOC, JPG, or PNG) — clinical notes, SOAP notes, progress notes, or scans</li>
-              <li>OCR extracts patient demographics, DOS, provider, POS, and ICDs</li>
-              <li>Review each encounter and resolve any field-level errors</li>
-              <li>Confirm to create new or merge into existing worklist rows</li>
+              <li>The system extracts patient demographics, date of service, provider, place of service, and ICD codes.</li>
+              <li>Review each record and fix any flagged fields.</li>
+              <li>Confirm to add a new worklist entry or merge into an existing one.</li>
             </ol>
           </div>
 
-          {/* Dropzone. */}
-          <label
-            className={[styles.dropZone, drag ? styles.dropZoneActive : ''].join(' ')}
-            onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-            onDragLeave={() => setDrag(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDrag(false);
-              handleFileSelect(e.dataTransfer.files?.[0]);
-            }}
-          >
-            <Icon name="solar:upload-minimalistic-linear" size={24} color="var(--neutral-300)" />
-            <div className={styles.dropZoneCta}>
-              <span className={styles.dropZoneTitle}>Drag and drop file here or</span>
-              <span className={styles.dropZoneLink}>Choose file</span>
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={ACCEPT_EXT}
-              className={styles.fileInput}
-              onChange={(e) => handleFileSelect(e.target.files?.[0])}
-            />
-          </label>
-
-          {/* Supported formats line. */}
-          <div className={styles.formatsLine}>
-            <span>{ACCEPT_LABEL}</span>
-            <span>Max size: 25 MB</span>
-          </div>
-
-          {/* Sample document card — the Figma "Download sample" slot, repurposed
-              for HCC as a list of demo PDFs the mock OCR knows how to script. */}
-          <div className={styles.sampleCard}>
-            <span className={styles.sampleIcon}>
-              <Icon name="solar:file-text-linear" size={20} color="var(--neutral-400)" />
-            </span>
-            <div className={styles.sampleText}>
-              <div className={styles.sampleTitle}>Try a demo document</div>
-              <div className={styles.sampleDesc}>
-                Use a sample clinical note to see how OCR extracts encounters and ICDs.
-              </div>
-              <div className={styles.sampleChips}>
-                {[
-                  'demo-single.pdf',
-                  'demo-multi-patient.pdf',
-                  'demo-same-patient-multi-dos.pdf',
-                  'demo-bulk-multi-patient.pdf',
-                  'demo-missing-dos.pdf',
-                  'demo-dob-mismatch.pdf',
-                ].map((name) => (
-                  <button
-                    key={name}
-                    type="button"
-                    className={styles.demoChip}
-                    onClick={() => {
-                      const file = new File([new Blob(['%PDF-1.4 demo'])], name, { type: 'application/pdf' });
-                      handleFileSelect(file);
-                    }}
-                  >
-                    {name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Footer info note — what happens after upload. */}
-          <div className={styles.footerNote}>
-            <Icon name="solar:info-circle-linear" size={15} color="var(--neutral-300)" />
-            <span>
-              After OCR completes, you'll review each extracted encounter before it creates or
-              merges into HCC worklist rows. Documents in any source — manual upload or SFTP —
-              are logged in <strong>History</strong>.
-            </span>
+          {/* Demo PDF chip strip — kept off the main visual surface so the
+              upload flow stays end-to-end testable, but visually de-
+              emphasised so it reads as developer affordance. */}
+          <div className={styles.demoStrip}>
+            <Icon name="solar:test-tube-linear" size={12} color="var(--neutral-300)" />
+            <span className={styles.demoStripLabel}>Try a demo PDF:</span>
+            {[
+              'demo-single.pdf',
+              'demo-multi-patient.pdf',
+              'demo-same-patient-multi-dos.pdf',
+              'demo-bulk-multi-patient.pdf',
+              'demo-missing-dos.pdf',
+              'demo-dob-mismatch.pdf',
+            ].map((name) => (
+              <button
+                key={name}
+                type="button"
+                className={styles.demoChip}
+                onClick={() => {
+                  const file = new File([new Blob(['%PDF-1.4 demo'])], name, { type: 'application/pdf' });
+                  handleFileSelect(file);
+                }}
+              >
+                {name}
+              </button>
+            ))}
           </div>
         </div>
       )}
 
       {session.phase === 'processing' && (
-        <div className={styles.processingPhase}>
-          <div className={styles.spinner} />
-          <div className={styles.processingTitle}>Extracting encounters…</div>
-          <div className={styles.processingHint}>
-            Running OCR on <strong>{session.file?.name}</strong>
-          </div>
-        </div>
+        <ProcessingPhase
+          fileName={session.file?.name}
+          onMinimize={minimize}
+          onDiscard={cancel}
+        />
       )}
 
       {session.phase === 'review' && (
@@ -501,14 +589,14 @@ function ChooserPhase({ onPick }) {
       key: 'picker', tone: 'secondary',
       icon: 'solar:users-group-rounded-linear',
       title: 'Upload Single Document',
-      desc: 'Upload one PDF that contains encounters for one or more patients — OCR extracts and groups them for review.',
+      desc: 'Upload one PDF that contains encounters for one or more patients — AI extracts and groups them for review.',
       cta: 'Upload PDF',
     },
     {
-      key: 'sftp', tone: 'secondary',
+      key: 'sftp', tone: 'neutral',
       icon: 'solar:server-2-linear',
       title: 'Upload Multiple Documents (SFTP)',
-      desc: 'Drop multiple documents on the secure SFTP server — they\'ll be ingested automatically and queued for OCR review.',
+      desc: 'Drop multiple documents on the secure SFTP server — they\'ll be ingested automatically and queued for AI review.',
       cta: 'Open SFTP Details',
     },
   ];
@@ -527,7 +615,11 @@ function ChooserPhase({ onPick }) {
               <Icon
                 name={opt.icon}
                 size={28}
-                color={opt.tone === 'primary' ? 'var(--primary-300)' : 'var(--secondary-300)'}
+                color={
+                  opt.tone === 'primary'   ? 'var(--primary-300)'
+                  : opt.tone === 'neutral' ? 'var(--neutral-400)'
+                  :                          'var(--secondary-300)'
+                }
               />
             </span>
             <span className={styles.chooserTitle}>{opt.title}</span>
@@ -561,7 +653,7 @@ function SftpPhase({ showToast }) {
     <div className={styles.sftpPhase}>
       <p className={styles.pickerSubtitle}>
         Bulk-upload via SFTP. Documents dropped at the path below are picked
-        up by Astrana / Support and ingested into the OCR review queue.
+        up by Astrana / Support and ingested into the AI review queue.
       </p>
 
       <div className={styles.sftpCard}>
@@ -578,7 +670,7 @@ function SftpPhase({ showToast }) {
         </div>
         <ul className={styles.sftpHints}>
           <li>Files: PDF, DOC, JPG, PNG</li>
-          <li>Naming: any — OCR resolves patient + DOS from the document contents</li>
+          <li>Naming: any — AI resolves patient + DOS from the document contents</li>
           <li>New files trigger a batch within ~5 minutes</li>
         </ul>
       </div>
