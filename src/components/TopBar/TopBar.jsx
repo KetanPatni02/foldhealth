@@ -8,6 +8,7 @@ import { CreateNewPopover } from '../CreateNewPopover/CreateNewPopover';
 import { PreferencesDrawer } from '../PreferencesDrawer/PreferencesDrawer';
 import { ScheduleDrawer } from '../ScheduleDrawer/ScheduleDrawer';
 import { ThemePicker } from '../ThemePicker/ThemePicker';
+import { NotificationsPopover } from './NotificationsPopover';
 import { useAppStore } from '../../store/useAppStore';
 import { supabase } from '../../lib/supabase';
 import styles from './TopBar.module.css';
@@ -175,6 +176,10 @@ export function TopBar() {
   const [showProfile, setShowProfile] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const bellRef = useRef(null);
+  const notifications = useAppStore(s => s.notifications) || [];
+  const unreadCount = notifications.filter(n => !n.read).length;
   const [user, setUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
@@ -323,11 +328,21 @@ export function TopBar() {
       </div>
 
       <div className={styles.right}>
-        <ActionButton
-          icon="solar:bell-linear"
-          size="L"
-          tooltip="Notifications"
-        />
+        <div ref={bellRef} className={styles.bellWrap}>
+          <ActionButton
+            icon="solar:bell-linear"
+            size="L"
+            tooltip="Notifications"
+            onClick={() => setShowNotifications(v => !v)}
+          />
+          {unreadCount > 0 && <span className={styles.bellBadge} aria-label={`${unreadCount} unread`} />}
+          {showNotifications && (
+            <NotificationsPopover
+              anchorRef={bellRef}
+              onClose={() => setShowNotifications(false)}
+            />
+          )}
+        </div>
         <div className={styles.createNewWrap}>
           <button
             ref={btnRef}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Drawer } from '../../../components/Drawer/Drawer';
 import { Button } from '../../../components/Button/Button';
 import { Icon } from '../../../components/Icon/Icon';
@@ -6,6 +7,9 @@ import { Avatar } from '../../../components/Avatar/Avatar';
 import { Input } from '../../../components/Input/Input';
 import { Toggle } from '../../../components/Toggle/Toggle';
 import { Select } from '../../../components/Select/Select';
+import { Dropzone } from '../../../components/Dropzone/Dropzone';
+import { ConfidenceBadge } from '../components/ConfidenceBadge';
+import { getScoreStyle, getFieldConfidence } from '../data/confidence';
 import { useAppStore } from '../../../store/useAppStore';
 import { runMockOcr, mandatoryFields, POS_LABEL } from './mockOcr';
 import { ICDS as ICDS_BY_MEMBER } from '../data/icds';
@@ -97,21 +101,22 @@ function StepIndicator({ activeStep = 1 }) {
   );
 }
 
-const ACCEPT_EXT  = '.pdf,.doc,.docx,.jpg,.jpeg,.png';
+const ACCEPT_EXT  = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.tif,.tiff';
 const ACCEPT_MIME = new Set([
   'application/pdf',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'image/jpeg',
   'image/png',
+  'image/tiff',
 ]);
-const ACCEPT_LABEL = 'Supported formats: PDF, DOC, JPG, PNG';
+const ACCEPT_LABEL = 'Supported formats: PDF, DOC, JPG, PNG, TIFF';
 const isAcceptedFile = (file) => {
   if (!file) return false;
   if (ACCEPT_MIME.has(file.type)) return true;
   // Some browsers (older Safari, drag-drop from certain sources) report
   // an empty MIME — fall back to extension matching.
-  return /\.(pdf|docx?|jpe?g|png)$/i.test(file.name || '');
+  return /\.(pdf|docx?|jpe?g|png|tiff?)$/i.test(file.name || '');
 };
 
 /**
@@ -185,12 +190,108 @@ export function UploadDocumentDrawer() {
   />;
 }
 
+/**
+ * PickerUploadQueue — inline list of documents the user has queued
+ * from the picker. Each row shows filename + status (extracting /
+ * ready). A "Review N" CTA opens the multi-doc review drawer once at
+ * least one document has finished OCR. The picker itself stays open
+ * so the user can drop additional files into the queue.
+ */
+function PickerUploadQueue({ cancel }) {
+  const batches = useAppStore(s => s.hccSftpBatches) || [];
+  const openSftpReview = useAppStore(s => s.openHccSftpReview);
+  if (batches.length === 0) return null;
+  const ready = batches.filter(b => b.status === 'done').length;
+  const pending = batches.filter(b => b.status === 'pending').length;
+  return (
+    <div className={styles.pickerQueue}>
+      <div className={styles.pickerQueueHead}>
+        <span className={styles.pickerQueueLabel}>
+          <Icon name="solar:layers-linear" size={12} color="var(--neutral-400)" />
+          Queue · {batches.length} document{batches.length === 1 ? '' : 's'}
+        </span>
+        {pending > 0 && (
+          <span className={styles.pickerQueuePending}>
+            <span className={styles.pickerQueuePendingDot} />
+            {pending} extracting
+          </span>
+        )}
+      </div>
+      <ul className={styles.pickerQueueList}>
+        {batches.map(b => (
+          <li key={b.id} className={styles.pickerQueueItem}>
+            <span className={styles.pickerQueueItemIcon}>
+              {b.status === 'pending' ? (
+                <span className={styles.pickerQueueSpinner} />
+              ) : (
+                <Icon name="solar:check-circle-bold" size={14} color="var(--status-success)" />
+              )}
+            </span>
+            <span className={styles.pickerQueueItemName}>{b.fileName}</span>
+            <span className={styles.pickerQueueItemStatus}>
+              {b.status === 'pending'
+                ? 'Extracting…'
+                : `${b.encounters?.length || 0} encounter${(b.encounters?.length || 0) === 1 ? '' : 's'}`}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        className={styles.pickerQueueReviewBtn}
+        disabled={ready === 0}
+        onClick={() => {
+          cancel?.();      // close the picker drawer
+          openSftpReview?.();
+        }}
+      >
+        <Icon name="solar:eye-linear" size={13} color={ready === 0 ? 'var(--neutral-300)' : '#fff'} />
+        {ready === 0
+          ? 'Waiting for first document…'
+          : pending > 0
+            ? `Review ${ready} ready · ${pending} still extracting`
+            : `Review ${ready} document${ready === 1 ? '' : 's'}`}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Two-line title for the review phase per Figma 32:64519. Top line:
+ * "Document Processed & Extracted". Sub line: "{N} Gaps Recorded ·
+ * {M} Member{s}".
+ */
+function ReviewTitle({ encounters, hccMembers }) {
+  const memberCount = useMemo(() => {
+    const keys = new Set(encounters.map(e => e.patient?.matchedMemberId || `__unmatched-${e.tempId}`));
+    return keys.size;
+  }, [encounters]);
+  return (
+    <span className={styles.reviewTitleBlock}>
+      <span className={styles.reviewTitleTop}>Document Processed &amp; Extracted</span>
+      <span className={styles.reviewTitleSub}>
+        {encounters.length} Gaps Recorded · {memberCount} Member{memberCount === 1 ? '' : 's'}
+      </span>
+    </span>
+  );
+}
+
 function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, removeEnc, addEnc, cancel, confirm, setPhase, minimize, hccMembers, createFromEncounter, showToast }) {
   const [drag, setDrag] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [filter, setFilter] = useState('all'); // all | error | mismatched | ready
-  const [layout, setLayout] = useState('card'); // card | table
+  // Review phase is now table-only per the new Figma — Option 1 / master-detail
+  // is gone. We still keep `layout` as a constant so the existing selection /
+  // bulk-confirm logic that branches on it stays intact.
+  const layout = 'table';
   const [appending, setAppending] = useState(false);
+  const [pagePreview, setPagePreview] = useState(null); // { page } | null
+  const openPagePreview = (page) => setPagePreview({ page: page || 1 });
+  const closePagePreview = () => setPagePreview(null);
+  const maxPage = useMemo(() => {
+    const ps = (session.encounters || []).map(e => e.sourcePage || 0);
+    return ps.length ? Math.max(...ps) : 0;
+  }, [session.encounters]);
   // Bulk-select state for the table layout. A Set of encounter `_idx`
   // (the position in session.encounters). Empty = no selection → Confirm
   // falls back to "apply all" behavior (matches the card layout). Non-empty
@@ -214,15 +315,20 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
   // (AI extraction effect lives in the parent UploadDocumentDrawer so
   // it keeps running while the drawer is minimized.)
 
+  const queueHccDocumentForOcr = useAppStore(s => s.queueHccDocumentForOcr);
   const handleFileSelect = (file) => {
     if (!file) return;
-    // Multi-type accept: PDF · DOC/DOCX · JPG · PNG. Filter at both
+    // Multi-type accept: PDF · DOC/DOCX · JPG · PNG · TIFF. Filter at both
     // accept attr + MIME/extension check.
     if (!isAcceptedFile(file)) {
-      showToast('Please upload a PDF, DOC, JPG, or PNG file');
+      showToast('Please upload a PDF, DOC, JPG, PNG, or TIFF file');
       return;
     }
-    setFile(file);
+    // New behavior: queue the document into the shared multi-doc batch
+    // list so the picker stays open and the user can fire-and-forget
+    // additional uploads. OCR runs in the background; review all
+    // together via the multi-doc drawer.
+    queueHccDocumentForOcr?.(file);
   };
 
   // Group encounters by matched patient (or "unmatched" bucket).
@@ -282,7 +388,7 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
   const handleAppendUpload = async (file) => {
     if (!file) return;
     if (!isAcceptedFile(file)) {
-      showToast('Please upload a PDF, DOC, JPG, or PNG file');
+      showToast('Please upload a PDF, DOC, JPG, PNG, or TIFF file');
       return;
     }
     setAppending(true);
@@ -327,12 +433,9 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
           <Icon name="solar:alt-arrow-left-linear" size={16} color="var(--neutral-400)" />
         </button>
       )}
-      Upload Document
-      {session.phase === 'review' && (
-        <span className={styles.titleHint}>
-          · Review {session.encounters.length} encounter{session.encounters.length === 1 ? '' : 's'}
-        </span>
-      )}
+      {session.phase === 'review'
+        ? <ReviewTitle encounters={session.encounters} hccMembers={hccMembers} />
+        : 'Upload Document'}
     </span>
   );
 
@@ -353,30 +456,28 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
     </>
   ) : session.phase === 'review' ? (
     <>
-      {/* Layout toggle: master-detail (card) vs editable table (table).
-          Built with the Fold Toggle component so it matches every other
-          segmented control in the app (animated sliding pill). */}
-      <Toggle
-        size="S"
-        items={[
-          { key: 'card',  label: 'Option 1' },
-          { key: 'table', label: 'Option 2' },
-        ]}
-        active={layout}
-        onChange={setLayout}
-      />
+      {/* Source-document peek: clicking opens the page-preview drawer
+          at page 1. The badge shows the file's total page count. */}
+      <button
+        type="button"
+        className={styles.headerDocBtn}
+        onClick={() => openPagePreview(1)}
+        title={session.file?.name || 'Source document'}
+      >
+        <Icon name="solar:document-text-linear" size={16} color="var(--neutral-400)" />
+        <span className={styles.headerDocBadge}>{maxPage || 1}</span>
+      </button>
       <span className={styles.headerDivider} />
       {/* Upload-more — append a second PDF's encounters into the current
-          review session without losing edits. Uses Button "alt" variant
-          (outlined primary) so it matches Fold's standard secondary CTA. */}
+          review session without losing edits. */}
       <Button
         variant="alt"
         size="S"
-        leadingIcon={appending ? undefined : 'solar:upload-linear'}
+        leadingIcon={appending ? undefined : 'solar:add-circle-linear'}
         disabled={appending}
         onClick={() => appendInputRef.current?.click()}
       >
-        {appending ? 'Processing…' : 'Upload'}
+        {appending ? 'Processing…' : 'Add Record'}
       </Button>
       <input
         ref={appendInputRef}
@@ -392,7 +493,7 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
         disabled={!canConfirm}
         onClick={handleConfirm}
       >
-        Confirm
+        Add to Worklist
       </Button>
     </>
   ) : null;
@@ -450,38 +551,23 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
             </span>
           </div>
 
-          {/* Dropzone — sits above the how-to banner per Figma. */}
-          <div className={styles.dropZoneBlock}>
-            <label
-              className={[styles.dropZone, drag ? styles.dropZoneActive : ''].join(' ')}
-              onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-              onDragLeave={() => setDrag(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDrag(false);
-                handleFileSelect(e.dataTransfer.files?.[0]);
-              }}
-            >
-              <Icon name="solar:upload-minimalistic-linear" size={24} color="var(--neutral-300)" />
-              <div className={styles.dropZoneCta}>
-                <span className={styles.dropZoneTitle}>Drag and drop file here or</span>
-                <span className={styles.dropZoneLink}>Choose file</span>
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept={ACCEPT_EXT}
-                className={styles.fileInput}
-                onChange={(e) => handleFileSelect(e.target.files?.[0])}
-              />
-            </label>
+          {/* Dropzone — shared <Dropzone> primitive. 4px gap between the
+              drop area and the supporting-formats line. */}
+          <Dropzone
+            accept={ACCEPT_EXT}
+            acceptMime={ACCEPT_MIME}
+            icon="solar:upload-minimalistic-linear"
+            helperText="Supported formats: PDF, DOC, JPG, PNG, or TIFF"
+            secondaryText="Max size: 100 MB"
+            onPick={(f) => handleFileSelect(f)}
+            onReject={() => showToast('Please upload a PDF, DOC, JPG, PNG, or TIFF file')}
+          />
 
-            {/* Supported formats line — sits directly under the dropzone. */}
-            <div className={styles.formatsLine}>
-              <span>Supported formats: PDF, DOC, JPG, or PNG</span>
-              <span>Max size: 100 MB</span>
-            </div>
-          </div>
+          {/* Live upload queue — fills in as the user keeps dropping
+              files. Each row shows the file name + an OCR status
+              spinner/check. Once at least one file is ready the "Review"
+              CTA opens the multi-doc review drawer. */}
+          <PickerUploadQueue cancel={cancel} />
 
           {/* "What happens after you upload" info banner — 3 simplified
               steps per Figma 1:24203. Drops the explicit "review and
@@ -555,6 +641,17 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
           toggleSelected={toggleSelected}
           setSelectedAll={setSelectedAll}
           sourceFileName={session.file?.name}
+          showToast={showToast}
+          openPagePreview={openPagePreview}
+        />
+      )}
+      {pagePreview && (
+        <PagePreviewModal
+          page={pagePreview.page}
+          maxPage={maxPage || 1}
+          fileName={session.file?.name || 'Uploaded document'}
+          onChangePage={(p) => setPagePreview({ page: p })}
+          onClose={closePagePreview}
         />
       )}
     </Drawer>
@@ -641,6 +738,13 @@ function ChooserPhase({ onPick }) {
 // credentials manager (stubbed for now).
 function SftpPhase({ showToast }) {
   const sftpPath = 'sftp://upload.foldhealth.com/<your-org>/hcc/inbox';
+  const simulateSftpIngest = useAppStore(s => s.simulateSftpIngest);
+  const cancel = useAppStore(s => s.cancelHccUpload);
+  const sftpBatches = useAppStore(s => s.hccSftpBatches || []);
+  const openHccSftpReview = useAppStore(s => s.openHccSftpReview);
+  const pendingCount = sftpBatches.filter(b => b.status === 'pending').length;
+  const readyCount = sftpBatches.filter(b => b.status === 'done').length;
+
   const copyPath = async () => {
     try {
       await navigator.clipboard.writeText(sftpPath);
@@ -669,7 +773,7 @@ function SftpPhase({ showToast }) {
           </button>
         </div>
         <ul className={styles.sftpHints}>
-          <li>Files: PDF, DOC, JPG, PNG</li>
+          <li>Files: PDF, DOC, JPG, PNG, TIFF</li>
           <li>Naming: any — AI resolves patient + DOS from the document contents</li>
           <li>New files trigger a batch within ~5 minutes</li>
         </ul>
@@ -686,6 +790,50 @@ function SftpPhase({ showToast }) {
           Manage SFTP credentials
         </a>
         <span className={styles.sftpExternalHint}>· opens in a new tab</span>
+      </div>
+
+      {/* Demo trigger — kicks off a batch of 3 dummy documents through
+          the SFTP path so the multi-doc review drawer can be exercised
+          without an actual SFTP connection. */}
+      <div className={styles.sftpDemo}>
+        <div className={styles.sftpDemoHead}>
+          <Icon name="solar:bolt-linear" size={14} color="var(--primary-300)" />
+          <span>Demo SFTP ingestion</span>
+        </div>
+        <p className={styles.sftpDemoBody}>
+          Simulate 3 documents landing in the SFTP inbox. AI extraction runs
+          in the background; you'll get a bell notification when the batch
+          is ready for review.
+        </p>
+        <div className={styles.sftpDemoActions}>
+          <Button
+            variant="alt"
+            size="S"
+            leadingIcon="solar:cloud-upload-linear"
+            onClick={async () => {
+              cancel?.();  // close this drawer so the user goes back to the worklist
+              await simulateSftpIngest?.();
+            }}
+          >
+            Simulate Ingestion
+          </Button>
+          {(pendingCount > 0 || readyCount > 0) && (
+            <button
+              type="button"
+              className={styles.sftpDemoReviewBtn}
+              onClick={() => { cancel?.(); openHccSftpReview?.(); }}
+            >
+              <Icon
+                name={pendingCount > 0 ? 'solar:loading-linear' : 'solar:document-text-linear'}
+                size={13}
+                color={pendingCount > 0 ? 'var(--neutral-400)' : 'var(--primary-300)'}
+              />
+              {pendingCount > 0
+                ? `Extracting ${pendingCount} file${pendingCount === 1 ? '' : 's'}…`
+                : `Review ${readyCount} ready file${readyCount === 1 ? '' : 's'}`}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -990,7 +1138,7 @@ function SinglePhase({ hccMembers, batchId, showToast, createFromEncounter, onDo
             const f = e.target.files?.[0];
             if (!f) return;
             if (!isAcceptedFile(f)) {
-              showToast('Please upload a PDF, DOC, JPG, or PNG file');
+              showToast('Please upload a PDF, DOC, JPG, PNG, or TIFF file');
               return;
             }
             setFile(f);
@@ -1013,7 +1161,7 @@ function SinglePhase({ hccMembers, batchId, showToast, createFromEncounter, onDo
   );
 }
 
-function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, addEnc, selectedIdx, setSelectedIdx, filter, setFilter, layout, selectedIdxs, toggleSelected, setSelectedAll, sourceFileName }) {
+function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, addEnc, selectedIdx, setSelectedIdx, filter, setFilter, layout, selectedIdxs, toggleSelected, setSelectedAll, sourceFileName, showToast, openPagePreview }) {
   // Aggregate counts per status for the filter chips. The bucket keys
   // here must match what encounterStatus() returns ('error' singular,
   // 'mismatched', 'ready') — historically had a typo where the chip
@@ -1089,17 +1237,62 @@ function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, addE
         </div>
       </div>
 
-      {/* Selection summary — only meaningful in table layout. */}
-      {layout === 'table' && selectedIdxs.size > 0 && (
-        <div className={styles.selectionBar}>
-          <Icon name="solar:check-square-linear" size={14} color="var(--primary-300)" />
-          <span>
-            <strong>{selectedIdxs.size}</strong> of {encounters.length} selected
-            {' · '}
-            on Confirm the other {encounters.length - selectedIdxs.size} will be rejected
-          </span>
+      {/* Bulk-action bar — two quick affordances pulled from the spec:
+          "Accept All High Confidence" selects every encounter with
+          match confidence ≥ 85 and no errors; "Review Flagged (N)"
+          scrolls the first low-confidence / error row into view and
+          jumps the filter to those rows. */}
+      <div className={styles.bulkBar}>
+        <div className={styles.bulkBarLeft}>
+          <button
+            type="button"
+            className={styles.bulkBtnPrimary}
+            onClick={() => {
+              const highConf = encounters
+                .map((e, i) => ({ e, i }))
+                .filter(({ e }) => (e.patient?.matchConfidence ?? 0) >= 85 && (!e.errors || e.errors.length === 0))
+                .map(({ i }) => i);
+              setSelectedAll?.(highConf, true);
+              showToast?.(`${highConf.length} high-confidence encounter${highConf.length === 1 ? '' : 's'} selected`);
+            }}
+          >
+            <Icon name="solar:check-circle-linear" size={13} color="var(--status-success)" />
+            Accept All High Confidence
+          </button>
+          <button
+            type="button"
+            className={styles.bulkBtnSecondary}
+            disabled={counts.error === 0 && !encounters.some(e => (e.patient?.matchConfidence ?? 100) < 60)}
+            onClick={() => {
+              // Switch filter to errors so the user lands on the
+              // flagged rows; if there are no errors but there are
+              // low-confidence rows, surface those instead.
+              const lowConf = encounters.find(e => (e.patient?.matchConfidence ?? 100) < 60);
+              if (counts.error > 0) setFilter('error');
+              else if (counts.mismatched > 0) setFilter('mismatched');
+              else if (lowConf) showToast?.('No errors, but some rows are below 60% confidence');
+              // Scroll the first flagged row into view on the next paint.
+              setTimeout(() => {
+                const row = document.querySelector(`[class*="encTableRowError"], [class*="encTableRowMismatch"]`);
+                row?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }, 50);
+            }}
+          >
+            <Icon name="solar:flag-2-linear" size={13} color="var(--status-warning)" />
+            Review Flagged ({counts.error + counts.mismatched})
+          </button>
         </div>
-      )}
+        {selectedIdxs.size > 0 && (
+          <div className={styles.bulkBarRight}>
+            <Icon name="solar:check-square-linear" size={13} color="var(--primary-300)" />
+            <span>
+              <strong>{selectedIdxs.size}</strong> of {encounters.length} selected
+              {' · '}
+              on Add to Worklist the other {encounters.length - selectedIdxs.size} will be rejected
+            </span>
+          </div>
+        )}
+      </div>
 
       {/* Layout body — master-detail or editable table. */}
       {layout === 'table' ? (
@@ -1113,6 +1306,8 @@ function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, addE
           selectedIdxs={selectedIdxs}
           toggleSelected={toggleSelected}
           setSelectedAll={setSelectedAll}
+          showToast={showToast}
+          openPagePreview={openPagePreview}
         />
       ) : (
       <div className={styles.masterDetail}>
@@ -1220,10 +1415,10 @@ function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, addE
  * scale. Patient column shows the matched member's name (or a "Link
  * patient" picker for unmatched rows).
  */
-function TableLayout({ visibleGroups, encounters, hccMembers, patchEnc, handleRemove, selectedIdxs, toggleSelected, setSelectedAll, sourceFileName }) {
-  // Flatten visibleGroups back into a single ordered list of encounters
-  // (we still want patient grouping visible via row banding, but the
-  // table layout reads row-by-row, not nested).
+function TableLayout({ visibleGroups, encounters, hccMembers, patchEnc, handleRemove, selectedIdxs, toggleSelected, setSelectedAll, sourceFileName, showToast, openPagePreview }) {
+  // Keep the grouped shape — TableLayout now renders patient header rows
+  // followed by their encounter rows so the same-patient cluster is
+  // visually obvious (matches the master-detail panel grouping).
   const rows = useMemo(
     () => visibleGroups.flatMap(g => g.encounters),
     [visibleGroups],
@@ -1271,15 +1466,13 @@ function TableLayout({ visibleGroups, encounters, hccMembers, patchEnc, handleRe
                 onChange={(e) => setSelectedAll?.(visibleIdxs, e.target.checked)}
               />
             </th>
-            <th className={styles.thPatient}>Patient</th>
-            <th>DOB</th>
-            <th>DOS</th>
-            <th>Rendering Provider</th>
-            <th className={styles.thNarrow}>POS</th>
-            <th>Document Type</th>
-            <th>ICD Codes</th>
+            <th className={styles.thPatient}>Member</th>
+            <th className={styles.thDos}>DOS <span className={styles.thRequired}>*</span></th>
+            <th className={styles.thProvider}>Rendering Provider <span className={styles.thRequired}>*</span></th>
+            <th className={styles.thPos}>POS <span className={styles.thRequired}>*</span></th>
+            <th className={styles.thIcds}>ICD Codes</th>
             <th className={styles.thStatus}>Status</th>
-            <th className={styles.thActions}>Actions</th>
+            <th className={styles.thActions}>Action</th>
           </tr>
         </thead>
         <tbody>
@@ -1293,6 +1486,8 @@ function TableLayout({ visibleGroups, encounters, hccMembers, patchEnc, handleRe
               checked={selectedIdxs?.has(enc._idx) || false}
               onToggle={() => toggleSelected?.(enc._idx)}
               sourceFileName={sourceFileName}
+              showToast={showToast}
+              openPagePreview={openPagePreview}
             />
           ))}
         </tbody>
@@ -1301,7 +1496,7 @@ function TableLayout({ visibleGroups, encounters, hccMembers, patchEnc, handleRe
   );
 }
 
-function TableRow({ enc, hccMembers, onPatch, onRemove, checked, onToggle, sourceFileName }) {
+function TableRow({ enc, hccMembers, onPatch, onRemove, checked, onToggle, sourceFileName, showToast, openPagePreview }) {
   const status = encounterStatus(enc);
   const errors = new Set(enc.errors || []);
   const isMatched = !!enc.patient?.matchedMemberId;
@@ -1318,7 +1513,10 @@ function TableRow({ enc, hccMembers, onPatch, onRemove, checked, onToggle, sourc
   const filteredMembers = useMemo(() => {
     const q = pickQuery.trim().toLowerCase();
     if (!q) return hccMembers.slice(0, 6);
-    return hccMembers.filter(m => (m.name || '').toLowerCase().includes(q)).slice(0, 6);
+    return hccMembers.filter(m =>
+      (m.name || '').toLowerCase().includes(q) ||
+      (m.memberId || '').toLowerCase().includes(q)
+    ).slice(0, 6);
   }, [hccMembers, pickQuery]);
 
   const handleLink = (m) => {
@@ -1349,9 +1547,15 @@ function TableRow({ enc, hccMembers, onPatch, onRemove, checked, onToggle, sourc
       <td className={styles.tdPatient}>
         {picking ? (
           <div className={styles.tdPatientPicker}>
+            {enc.patient?.idMismatch && (
+              <div className={styles.tdPatientPickerHint} title="Document's Patient ID didn't match this Fold record exactly.">
+                <Icon name="solar:danger-circle-bold" size={11} color="var(--status-warning)" />
+                Document ID <strong>{enc.patient.patientId}</strong> · Fold ID <strong>{enc.patient.matchedMemberDisplayId || '—'}</strong>
+              </div>
+            )}
             <Input
               autoFocus
-              placeholder="Search by name"
+              placeholder="Search by name or Patient ID"
               value={pickQuery}
               onChange={(e) => setPickQuery(e.target.value)}
             />
@@ -1366,7 +1570,12 @@ function TableRow({ enc, hccMembers, onPatch, onRemove, checked, onToggle, sourc
                     onClick={() => handleLink(m)}
                   >
                     <Avatar variant="patient" initials={m.in} />
-                    <span>{m.name}</span>
+                    <span className={styles.tdPatientPickerItemBody}>
+                      <span className={styles.tdPatientPickerItemName}>{m.name}</span>
+                      {m.memberId && (
+                        <span className={styles.tdPatientPickerItemId}>{m.memberId}</span>
+                      )}
+                    </span>
                     {isCurrent && <span className={styles.tdPatientPickerCurrent}>Current</span>}
                   </button>
                 );
@@ -1390,7 +1599,24 @@ function TableRow({ enc, hccMembers, onPatch, onRemove, checked, onToggle, sourc
             title="Change matched patient"
           >
             <Avatar variant="patient" initials={member?.in || (enc.patient.name || '?').split(' ').map(p => p[0]).slice(0,2).join('')} />
-            <span className={styles.tdPatientName}>{member?.name || enc.patient.name}</span>
+            <span className={styles.tdPatientNameWrap}>
+              <span className={styles.tdPatientName}>{member?.name || enc.patient.name}</span>
+              {member && (
+                <span className={styles.tdPatientMeta}>
+                  {member.g || ''}{member.age ? `·${member.age}` : ''}
+                  {member.memberId ? ` · ${member.memberId}` : ''}
+                </span>
+              )}
+              {enc.patient?.idMismatch && (
+                <span
+                  className={styles.tdPatientIdMismatch}
+                  title={`Document shows ID ${enc.patient.patientId}; Fold has ${member?.memberId || '—'}. Linked by name + DOB.`}
+                >
+                  <Icon name="solar:danger-circle-bold" size={10} color="var(--status-warning)" />
+                  ID mismatch · doc: {enc.patient.patientId}
+                </span>
+              )}
+            </span>
             <Icon name="solar:pen-2-linear" size={11} color="var(--neutral-300)" className={styles.tdPatientSwapIcon} />
           </button>
         ) : (
@@ -1405,60 +1631,72 @@ function TableRow({ enc, hccMembers, onPatch, onRemove, checked, onToggle, sourc
           </button>
         )}
       </td>
-      <CellInput
-        value={enc.patient?.dob || ''}
-        onChange={(v) => onPatch({ patient: { ...enc.patient, dob: v } })}
-        error={errors.has('dob')}
-        placeholder="MM/DD/YYYY"
-      />
-      <CellInput
-        value={enc.dos || ''}
-        onChange={(v) => onPatch({ dos: v })}
-        error={errors.has('dos')}
-        placeholder="MM/DD/YYYY"
-      />
-      <CellInput
-        value={enc.provider || ''}
-        onChange={(v) => onPatch({ provider: v })}
-        error={errors.has('provider')}
-      />
-      <CellInput
-        value={enc.pos || ''}
-        onChange={(v) => onPatch({ pos: v, posDesc: POS_LABEL[v] || '' })}
-        error={errors.has('pos')}
-        narrow
-      />
-      <CellInput
-        value={enc.docType || ''}
-        onChange={(v) => onPatch({ docType: v })}
-      />
-      <td className={styles.tdIcds}>
+      {/* DOS — date input + per-field AI confidence chip. */}
+      <td className={styles.tdField}>
+        <Input
+          variant={errors.has('dos') ? 'error' : 'default'}
+          value={enc.dos || ''}
+          placeholder="Enter DOS"
+          onChange={(e) => onPatch({ dos: e.target.value })}
+          className={styles.tdInput}
+        />
+        <FieldConfidence score={getFieldConfidence(enc, 'dos')} sourcePage={enc.sourcePage} sourceFileName={sourceFileName} onOpenSource={openPagePreview} />
+      </td>
+      {/* Rendering Provider — Select dropdown + confidence chip. */}
+      <td className={styles.tdField}>
+        <ProviderSelect
+          value={enc.provider || ''}
+          onChange={(v) => onPatch({ provider: v })}
+          error={errors.has('provider')}
+        />
+        <FieldConfidence score={getFieldConfidence(enc, 'provider')} sourcePage={enc.sourcePage} sourceFileName={sourceFileName} onOpenSource={openPagePreview} />
+      </td>
+      {/* POS — Select dropdown + confidence chip. */}
+      <td className={styles.tdField}>
+        <PosSelect
+          value={enc.pos || ''}
+          onChange={(v) => onPatch({ pos: v, posDesc: POS_LABEL[v] || '' })}
+          error={errors.has('pos')}
+        />
+        <FieldConfidence score={getFieldConfidence(enc, 'pos')} sourcePage={enc.sourcePage} sourceFileName={sourceFileName} onOpenSource={openPagePreview} />
+      </td>
+      {/* ICD Codes — chip + "+N" overflow + "+" add + confidence chip. */}
+      <td className={styles.tdField}>
         <IcdChipStack
           icds={enc.icds || []}
-          onRemove={(code) => onPatch({ icds: enc.icds.filter(i => i.code !== code) })}
+          onRemove={(code) => onPatch({ icds: (enc.icds || []).filter(i => i.code !== code) })}
+          onAdd={(item) => onPatch({ icds: [...(enc.icds || []), item] })}
+          onEdit={(oldCode, item) => onPatch({
+            icds: (enc.icds || []).map(i => i.code === oldCode ? { ...i, ...item } : i),
+          })}
         />
+        <FieldConfidence score={getFieldConfidence(enc, 'icds')} sourcePage={enc.sourcePage} sourceFileName={sourceFileName} onOpenSource={openPagePreview} />
       </td>
+      {/* Status — second-to-last. Solid-text inline chip with leading icon. */}
       <td className={styles.tdStatus}>
         <span className={[
-          styles.masterStatusChip,
-          status === 'ready' ? styles.masterStatusReady : '',
-          status === 'error' ? styles.masterStatusError : '',
-          status === 'mismatched' ? styles.masterStatusMismatch : '',
+          styles.statusInline,
+          status === 'ready' ? styles.statusInlineReady : '',
+          status === 'error' ? styles.statusInlineError : '',
+          status === 'mismatched' ? styles.statusInlineMismatch : '',
         ].filter(Boolean).join(' ')}>
-          {status === 'ready' && <Icon name="solar:check-circle-bold" size={11} color="var(--status-success)" />}
-          {status === 'error' && <Icon name="solar:danger-triangle-bold" size={11} color="var(--status-error)" />}
-          {status === 'mismatched' && <Icon name="solar:question-circle-bold" size={11} color="var(--status-warning)" />}
-          {status === 'ready' ? 'Ready' : status === 'error' ? 'Missing field' : 'Mismatch'}
+          {status === 'ready' && <Icon name="solar:check-circle-bold" size={13} color="var(--status-success)" />}
+          {status === 'error' && <Icon name="solar:danger-triangle-bold" size={13} color="var(--status-error)" />}
+          {status === 'mismatched' && <Icon name="solar:question-circle-bold" size={13} color="var(--status-warning)" />}
+          {status === 'ready' ? 'Ready' : status === 'error' ? 'Missing Fields' : 'Mismatched'}
         </span>
       </td>
+      {/* Action — last column, sticky-right at right:0 so destructive
+          affordances stay reachable at any horizontal scroll. */}
       <td className={styles.tdActions}>
         <button
           type="button"
           className={styles.tdLinkDocBtn}
-          aria-label="View source document"
-          title={sourceFileName ? `Source: ${sourceFileName}` : 'Source document'}
+          aria-label="View source page"
+          title={enc.sourcePage ? `Source page ${enc.sourcePage}${sourceFileName ? ` of ${sourceFileName}` : ''}` : 'Source document'}
+          onClick={() => openPagePreview?.(enc.sourcePage || 1)}
         >
-          <Icon name="solar:paperclip-linear" size={14} color="var(--neutral-300)" />
+          <Icon name="solar:document-text-linear" size={14} color="var(--neutral-300)" />
         </button>
         <button
           type="button"
@@ -1493,29 +1731,272 @@ function CellInput({ value, onChange, error, placeholder, narrow }) {
  * a "+N" overflow that expands on click. Invalid (non-V28) codes render
  * struck-through.
  */
-function IcdChipStack({ icds, onRemove }) {
-  const [expanded, setExpanded] = useState(false);
-  if (!icds.length) {
-    return <span className={styles.tdIcdsEmpty}>—</span>;
+/**
+ * FieldConfidence — minimal, text-only per-field confidence indicator.
+ *
+ * Renders the percent in the tier color (no pill, no icon). Hover
+ * surfaces a richer popover explaining what the score means + what
+ * the user should do at this tier. If a `sourcePage` is supplied,
+ * shows a "View citation" link in the popover that opens the page
+ * preview at that page. The percent text itself is also clickable
+ * (same action) so the citation is reachable in one tap.
+ */
+function FieldConfidence({ score, sourcePage, sourceFileName, onOpenSource }) {
+  if (typeof score !== 'number') return null;
+  if (score === 0) {
+    return (
+      <span className={[styles.fieldConf, styles.fieldConfMissing].join(' ')} title="No value detected by AI">
+        —
+      </span>
+    );
   }
-  const shown = expanded ? icds : icds.slice(0, 2);
+  let tier = 'Low';
+  let tierCls = styles.fieldConfLow;
+  let helpText = "Below 60%. AI is uncertain — verify against the source document before accepting.";
+  if (score >= 85) {
+    tier = 'High';
+    tierCls = styles.fieldConfHigh;
+    helpText = "85% or above. Strong match between the document and the field — safe to accept.";
+  } else if (score >= 60) {
+    tier = 'Medium';
+    tierCls = styles.fieldConfMedium;
+    helpText = "Between 60-84%. Review recommended before accepting.";
+  }
+  const canCite = typeof onOpenSource === 'function' && sourcePage;
+  const triggerRef = useRef(null);
+  const [hover, setHover] = useState(false);
+  const [pos, setPos] = useState({ left: 0, top: 0 });
+  // Compute popover position on hover so it floats above the trigger
+  // and is anchored to the screen (escapes the table's overflow-clip).
+  useEffect(() => {
+    if (!hover || !triggerRef.current) return;
+    const r = triggerRef.current.getBoundingClientRect();
+    setPos({ left: r.left, top: r.top });
+  }, [hover]);
+  return (
+    <span
+      ref={triggerRef}
+      className={[styles.fieldConfWrap, canCite ? styles.fieldConfWrapClickable : ''].join(' ')}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <button
+        type="button"
+        className={[styles.fieldConf, tierCls].join(' ')}
+        onClick={() => canCite && onOpenSource(sourcePage)}
+        disabled={!canCite}
+      >
+        {score}%
+      </button>
+      {hover && createPortal(
+        <span
+          className={styles.fieldConfPop}
+          role="tooltip"
+          style={{
+            // Position above the trigger; clamp so the popover stays
+            // inside the viewport on narrow screens.
+            left: Math.min(window.innerWidth - 280, Math.max(8, pos.left)),
+            top:  Math.max(8, pos.top - 8),
+          }}
+        >
+          <span className={[styles.fieldConfPopHead, tierCls].join(' ')}>
+            AI Confidence · {tier} ({score}%)
+          </span>
+          <span className={styles.fieldConfPopBody}>{helpText}</span>
+          {canCite && (
+            <button
+              type="button"
+              className={styles.fieldConfPopCite}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onOpenSource(sourcePage);
+              }}
+            >
+              <Icon name="solar:document-text-linear" size={11} color="var(--primary-300)" />
+              View citation · page {sourcePage}
+              {sourceFileName && <span className={styles.fieldConfPopFile}> · {sourceFileName}</span>}
+            </button>
+          )}
+        </span>,
+        document.body,
+      )}
+    </span>
+  );
+}
+
+/**
+ * Provider select — picks from a small canned list. Real EHR data
+ * would back this; for the mock we surface a representative dropdown.
+ */
+function ProviderSelect({ value, onChange, error }) {
+  const options = useMemo(() => [
+    'Dr. Sarah Connor',
+    'Dr. Kevin Brown',
+    'Dr. Laura Wilson',
+    'Dr. Emily Carter',
+    'Dr. Michael Thompson',
+    'Dr. Christopher Davis',
+    'Dr. Sarah Johnson',
+    'Dr. Angela White',
+    'Dr. David Anderson',
+    'Dr. Eamon',
+    'Dr. Helen Yu',
+    'Dr. Indigo I',
+    'Dr. Mallory Hayes',
+    'Dr. Ulysses Horne',
+    'Dr. Tatum',
+    'Dr. Reed MacLeod',
+    'Dr. Susan Park',
+    'Dr. Alan Morse',
+    'Dr. Calvin Reed',
+    'Dr. Karen Mills',
+  ], []);
+  // Make sure the current value is present in the option list so the
+  // Select shows it; otherwise prepend it.
+  const items = useMemo(() => {
+    const set = new Set(options);
+    if (value && !set.has(value)) return [value, ...options];
+    return options;
+  }, [options, value]);
+  return (
+    <Select
+      value={value}
+      onChange={onChange}
+      options={items.map(o => ({ value: o, label: o }))}
+      placeholder="Select provider"
+      variant={error ? 'error' : 'default'}
+    />
+  );
+}
+
+/**
+ * Place-of-service select — backed by the canonical POS_LABEL map so
+ * the dropdown label and underlying code stay in sync.
+ */
+function PosSelect({ value, onChange, error }) {
+  const options = useMemo(() => Object.entries(POS_LABEL).map(([code, label]) => ({
+    value: code,
+    label: `${code}(${label})`,
+  })), []);
+  return (
+    <Select
+      value={value}
+      onChange={onChange}
+      options={options}
+      placeholder="Select POS"
+      variant={error ? 'error' : 'default'}
+    />
+  );
+}
+
+/**
+ * IcdPicker — small inline typeahead anchored to the chip stack's `+`
+ * button. Searches the codebase's ICD library by code or description.
+ * Used for both Add (new ICD) and Edit (replace an existing chip).
+ */
+function IcdPicker({ existingCodes, editingCode, onPick, onClose }) {
+  const [q, setQ] = useState('');
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    const onDocClick = (e) => {
+      if (!wrapRef.current?.contains(e.target)) onClose?.();
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [onClose]);
+
+  const all = useMemo(() => {
+    const map = new Map();
+    Object.values(ICDS_BY_MEMBER).forEach(list => {
+      (list || []).forEach(item => {
+        if (!map.has(item.code)) map.set(item.code, { code: item.code, desc: item.desc, hcc: item.hcc });
+      });
+    });
+    return [...map.values()];
+  }, []);
+
+  const matches = useMemo(() => {
+    const query = q.trim().toLowerCase();
+    if (!query) return all.slice(0, 8);
+    return all
+      .filter(i =>
+        (i.code || '').toLowerCase().includes(query) ||
+        (i.desc || '').toLowerCase().includes(query),
+      )
+      .slice(0, 8);
+  }, [all, q]);
+
+  return (
+    <div ref={wrapRef} className={styles.icdPicker}>
+      <div className={styles.icdPickerHead}>
+        <Icon name="solar:magnifer-linear" size={12} color="var(--neutral-300)" />
+        <input
+          autoFocus
+          className={styles.icdPickerInput}
+          placeholder={editingCode ? `Replace ${editingCode}…` : 'Search ICD by code or description'}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+      </div>
+      <div className={styles.icdPickerList}>
+        {matches.length === 0 ? (
+          <div className={styles.icdPickerEmpty}>No matches</div>
+        ) : matches.map(item => {
+          const alreadyAdded = existingCodes.includes(item.code) && item.code !== editingCode;
+          return (
+            <button
+              key={item.code}
+              type="button"
+              className={[styles.icdPickerItem, alreadyAdded ? styles.icdPickerItemDisabled : ''].filter(Boolean).join(' ')}
+              disabled={alreadyAdded}
+              onClick={() => onPick?.({ code: item.code, desc: item.desc, valid: true })}
+              title={alreadyAdded ? 'Already added to this encounter' : item.desc}
+            >
+              <span className={styles.icdPickerCode}>{item.code}</span>
+              <span className={styles.icdPickerDesc}>{item.desc}</span>
+              {alreadyAdded && <span className={styles.icdPickerHint}>Added</span>}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function IcdChipStack({ icds, onRemove, onAdd, onEdit }) {
+  const [expanded, setExpanded] = useState(false);
+  const [picker, setPicker] = useState(null); // null | 'add' | { editingCode }
+  const shown = expanded ? icds : icds.slice(0, 1);
   const overflow = icds.length - shown.length;
+
+  const handlePicked = (item) => {
+    if (picker?.editingCode) {
+      // Edit-mode: replace the selected chip's code with the new pick.
+      onEdit?.(picker.editingCode, item);
+    } else {
+      onAdd?.(item);
+    }
+    setPicker(null);
+  };
+
   return (
     <div className={styles.tdIcdsRow}>
       {shown.map(icd => (
         <span
           key={icd.code}
           className={[styles.icdChip, icd.valid === false ? styles.icdChipInvalid : ''].filter(Boolean).join(' ')}
-          title={icd.valid === false ? 'Not a V28 HCC code' : undefined}
+          title={icd.desc || (icd.valid === false ? 'Not a V28 HCC code' : 'Click to edit')}
+          onClick={() => setPicker({ editingCode: icd.code })}
         >
           {icd.code}
           <button
             type="button"
             className={styles.icdChipClose}
-            onClick={() => onRemove(icd.code)}
+            onClick={(e) => { e.stopPropagation(); onRemove?.(icd.code); }}
             aria-label={`Remove ${icd.code}`}
           >
-            <Icon name="solar:close-circle-linear" size={10} color="var(--neutral-300)" />
+            <Icon name="solar:close-circle-linear" size={10} color="var(--primary-300)" />
           </button>
         </span>
       ))}
@@ -1523,6 +2004,26 @@ function IcdChipStack({ icds, onRemove }) {
         <button type="button" className={styles.icdOverflow} onClick={() => setExpanded(true)}>
           +{overflow}
         </button>
+      )}
+      {(onAdd || onEdit) && (
+        <div className={styles.icdAddWrap}>
+          <button
+            type="button"
+            className={styles.icdAddBtn}
+            onClick={() => setPicker(picker === 'add' ? null : 'add')}
+            aria-label="Add ICD"
+          >
+            <Icon name="solar:add-circle-linear" size={14} color="var(--neutral-300)" />
+          </button>
+          {picker && (
+            <IcdPicker
+              existingCodes={icds.map(i => i.code)}
+              editingCode={picker.editingCode}
+              onPick={handlePicked}
+              onClose={() => setPicker(null)}
+            />
+          )}
+        </div>
       )}
     </div>
   );
@@ -1850,3 +2351,186 @@ function Field({ label, value, onChange, error, required, placeholder, hint }) {
     </label>
   );
 }
+
+/**
+ * PagePreviewModal — full-screen overlay showing a "scanned page" of the
+ * uploaded document. Backed by a single dummy template (real OCR would
+ * return PDF bytes or a page image URL). Page navigation via prev/next
+ * + jump-to-page input. The dummy template renders the page number,
+ * filename, and a sample chart-note-style body so the user gets a
+ * believable visual.
+ */
+function PagePreviewModal({ page, maxPage, fileName, onChangePage, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose?.();
+      if (e.key === 'ArrowLeft' && page > 1) onChangePage(page - 1);
+      if (e.key === 'ArrowRight' && page < maxPage) onChangePage(page + 1);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [page, maxPage, onChangePage, onClose]);
+
+  return (
+    <div className={styles.previewOverlay} onClick={onClose} role="dialog" aria-modal="true">
+      <div className={styles.previewShell} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.previewHeader}>
+          <div className={styles.previewHeaderTitle}>
+            <Icon name="solar:document-text-linear" size={16} color="var(--neutral-400)" />
+            <span className={styles.previewHeaderName}>{fileName}</span>
+            <span className={styles.previewHeaderPageOf}>Page {page} of {maxPage}</span>
+          </div>
+          <div className={styles.previewHeaderControls}>
+            <button
+              type="button"
+              className={styles.previewNavBtn}
+              disabled={page <= 1}
+              onClick={() => onChangePage(page - 1)}
+              aria-label="Previous page"
+            >
+              <Icon name="solar:alt-arrow-left-linear" size={14} color="var(--neutral-400)" />
+            </button>
+            <span className={styles.previewPageInput}>{page} / {maxPage}</span>
+            <button
+              type="button"
+              className={styles.previewNavBtn}
+              disabled={page >= maxPage}
+              onClick={() => onChangePage(page + 1)}
+              aria-label="Next page"
+            >
+              <Icon name="solar:alt-arrow-right-linear" size={14} color="var(--neutral-400)" />
+            </button>
+            <span className={styles.headerDivider} />
+            <button
+              type="button"
+              className={styles.previewCloseBtn}
+              onClick={onClose}
+              aria-label="Close preview"
+            >
+              <Icon name="solar:close-circle-linear" size={16} color="var(--neutral-400)" />
+            </button>
+          </div>
+        </div>
+        <div className={styles.previewBody}>
+          <DummyPage page={page} fileName={fileName} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Single dummy page — looks like a scanned progress-note template. Deterministic
+ * variation by page so each page reads as a distinct extract.
+ */
+function DummyPage({ page, fileName }) {
+  // Deterministic per-page detail so prev/next reads as moving through a real PDF.
+  const sample = DUMMY_PAGE_SAMPLES[(page - 1) % DUMMY_PAGE_SAMPLES.length];
+  return (
+    <div className={styles.dummyPage}>
+      <div className={styles.dummyPageHeader}>
+        <div>
+          <div className={styles.dummyPageOrg}>Fold Health Medical Group</div>
+          <div className={styles.dummyPageOrgSub}>123 Main Street · San Francisco, CA 94102 · (415) 555-0123</div>
+        </div>
+        <div className={styles.dummyPageHeaderRight}>
+          <div>Document: {fileName}</div>
+          <div>Page {page}</div>
+        </div>
+      </div>
+      <h1 className={styles.dummyPageH1}>Progress Note</h1>
+      <div className={styles.dummyPageMeta}>
+        <div><strong>Patient:</strong> {sample.patient}</div>
+        <div><strong>DOB:</strong> {sample.dob}</div>
+        <div><strong>DOS:</strong> {sample.dos}</div>
+        <div><strong>Provider:</strong> {sample.provider}</div>
+      </div>
+      <div className={styles.dummyPageSection}>
+        <h2 className={styles.dummyPageH2}>Subjective</h2>
+        <p>{sample.subjective}</p>
+      </div>
+      <div className={styles.dummyPageSection}>
+        <h2 className={styles.dummyPageH2}>Objective</h2>
+        <p>{sample.objective}</p>
+      </div>
+      <div className={styles.dummyPageSection}>
+        <h2 className={styles.dummyPageH2}>Assessment &amp; Plan</h2>
+        <p>{sample.assessment}</p>
+        <ul className={styles.dummyPageIcdList}>
+          {sample.icds.map(icd => (
+            <li key={icd.code}><strong>{icd.code}</strong> — {icd.desc}</li>
+          ))}
+        </ul>
+      </div>
+      <div className={styles.dummyPageFooter}>
+        Electronically signed · {sample.provider} · {sample.dos}
+      </div>
+    </div>
+  );
+}
+
+const DUMMY_PAGE_SAMPLES = [
+  {
+    patient: 'William Jammy',
+    dob: '01/15/1965',
+    dos: '02/14/2026',
+    provider: 'Dr. Sarah Connor, MD',
+    subjective: 'Patient reports good adherence to current diabetes regimen. Denies polyuria, polydipsia, or hypoglycemic episodes. Continues to monitor BG twice daily; values trending 110-140 fasting.',
+    objective: 'BP 132/84, HR 76, BMI 31.2. HbA1c 7.6 (last 6 mo: 8.1). LDL 88. eGFR 62. Foot exam normal, monofilament intact.',
+    assessment: 'Type 2 DM with neuropathy — improving control. CHF stable on current regimen.',
+    icds: [
+      { code: 'E11.22', desc: 'T2DM with diabetic chronic kidney disease' },
+      { code: 'I48.91', desc: 'Unspecified atrial fibrillation' },
+    ],
+  },
+  {
+    patient: 'William Jammy',
+    dob: '01/15/1965',
+    dos: '03/15/2026',
+    provider: 'Dr. Sarah Connor, MD',
+    subjective: 'Follow-up for CHF management. Patient reports increased fatigue and 3 lb weight gain over the past two weeks.',
+    objective: 'BP 148/92, HR 88, weight up 3 lb. Mild bibasilar crackles. JVP 8 cm. Trace pretibial edema.',
+    assessment: 'CHF with mild decompensation. Increase furosemide to 40mg BID. Recheck BMP in 1 week.',
+    icds: [
+      { code: 'I50.32', desc: 'Chronic diastolic (congestive) heart failure' },
+    ],
+  },
+  {
+    patient: 'Grace Hill',
+    dob: '04/22/1954',
+    dos: '02/18/2026',
+    provider: 'Dr. Eamon, MD',
+    subjective: 'Patient reports persistent low mood and anhedonia. PHQ-9 = 14. Denies SI. Currently on sertraline 100 mg daily.',
+    objective: 'Affect blunted but appropriate. Speech normal. No psychomotor agitation. Cognition intact.',
+    assessment: 'Major depressive disorder, recurrent, moderate. CKD stage 3b stable. Continue current regimen and re-screen at next visit.',
+    icds: [
+      { code: 'F33.1', desc: 'Major depressive disorder, recurrent, moderate' },
+      { code: 'N18.4', desc: 'CKD stage 4' },
+    ],
+  },
+  {
+    patient: 'Annette Brave',
+    dob: '08/12/1958',
+    dos: '02/20/2026',
+    provider: 'Dr. Mallory Hayes, MD',
+    subjective: 'Routine follow-up. Patient reports good energy. Diabetes well controlled with metformin alone.',
+    objective: 'BP 124/78. HbA1c 6.8. BMI 27.4. Foot exam normal.',
+    assessment: 'T2DM well controlled. Continue current regimen.',
+    icds: [
+      { code: 'E11.42', desc: 'T2DM with diabetic polyneuropathy' },
+    ],
+  },
+  {
+    patient: 'Frank Green',
+    dob: '06/30/1956',
+    dos: '02/22/2026',
+    provider: 'Dr. Indigo I, MD',
+    subjective: 'Telehealth follow-up. Patient reports stable cardiac symptoms, no chest pain or PND.',
+    objective: 'Self-reported BP 138/86, weight stable. Reports good adherence.',
+    assessment: 'CHF and DM stable. No medication changes today.',
+    icds: [
+      { code: 'I50.21', desc: 'Acute systolic heart failure' },
+      { code: 'E11.9', desc: 'T2DM without complications' },
+    ],
+  },
+];

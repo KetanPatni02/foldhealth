@@ -71,3 +71,191 @@
   font: var(--font-body-xs, 400 11px/16px 'Inter');
   opacity: .7;
 }
+
+/* ── Tab bar (Activity | Documents) ───────────────────────────────── */
+.tabBar {
+  display: flex;
+  gap: 4px;
+  margin: 0 -16px 8px;
+  padding: 0 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+.tab:hover { color: var(--neutral-500); }
+.tabActive {
+  color: var(--primary-300);
+  border-bottom-color: var(--primary-300);
+}
+
+/* ── Documents tab ─────────────────────────────────────────────────── */
+.docsTab {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0 16px;
+}
+.docsSummary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-400);
+  align-self: flex-start;
+}
+.docsSummary strong {
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+
+.docsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.docRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: #fff;
+}
+.docRowHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.docIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-150, #e3d6f9);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.docRowMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.docRowName {
+  font: 500 13px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+  word-break: break-word;
+}
+.docRowMeta {
+  font: 400 11px/1.4 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.docStatus {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font: 600 10px/1.6 'Inter', sans-serif;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.docStatusComplete    { background: var(--status-success-light); color: var(--status-success); }
+.docStatusPartial     { background: var(--status-warning-light); color: var(--status-warning); }
+.docStatusReady       { background: var(--status-info-light);    color: var(--status-info); }
+.docStatusProcessing  { background: var(--neutral-100);          color: var(--neutral-400); }
+.docStatusFailed      { background: var(--status-error-light);   color: var(--status-error); }
+
+.docCounters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 6px;
+  border-top: 0.5px solid var(--neutral-100);
+}
+.docCounter {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.docCounter strong {
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+.docReopenBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  color: var(--primary-300);
+  font: 500 12px/1.2 'Inter', sans-serif;
+  cursor: pointer;
+  margin-left: auto;
+}
+.docReopenBtn:hover {
+  background: var(--primary-100);
+}
+.docExpandBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+  background: transparent;
+  border: none;
+  color: var(--neutral-400);
+  font: 400 11px/1.2 'Inter', sans-serif;
+  cursor: pointer;
+}
+.docExpandBtn:hover { color: var(--primary-300); }
+
+.docSkippedList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  background: var(--status-warning-light);
+  border: 0.5px solid rgba(217, 165, 11, 0.2);
+  border-radius: 6px;
+}
+.docSkippedHead {
+  font: 600 11px/1.2 'Inter', sans-serif;
+  color: var(--status-warning);
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.docSkippedItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.docSkippedDos {
+  color: var(--neutral-300);
+}

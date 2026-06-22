@@ -13,6 +13,7 @@ import { updateHash } from '../lib/router';
 import { track } from '../lib/tracking';
 import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem, applyNavStyle, getStoredNavStyle } from '../lib/theme';
 import { createBlock, createBlockTree, collectBlockTree, buildParentMap, cloneBlockTree, extractSubtree, cloneStoredTree } from '../features/email-builder/blockHelpers';
+import { extractEncountersSync } from '../features/hcc/upload/mockOcr';
 import { makeInitialDocument } from '../features/email-builder/initialDocument';
 import * as hccLifecycle from '../features/hcc/assignment/lifecycle';
 import { hydrateFromMember, dosKey as hccDosKey } from '../features/hcc/assignment/dosState';
@@ -296,6 +297,107 @@ function careTeamJsToDb(t) {
     members: t.members || [],
     updated_at: new Date().toISOString(),
   };
+}
+
+/**
+ * Seed historical document-upload batches into the HCC activity feed so
+ * the History drawer's Documents tab has realistic content out of the
+ * box. Each batch reads as a completed upload: a `batch.created`,
+ * `file.uploaded`, `ocr.completed`, and `batch.processing_completed`
+ * row stamped with believable counts and timestamps in the recent
+ * past. Real backend wipes this once Supabase returns rows.
+ */
+function buildSeedHccActivityFeed() {
+  const now = Date.now();
+  const day = 24 * 60 * 60 * 1000;
+  // Older first — we reverse at the end so newest sorts to the top.
+  const batches = [
+    { id: 'seed-b1', file: 'progress-notes-week-of-04-14.pdf', actor: 'Dr. Sarah Connor',
+      approved: 8, rejected: 0, encounters: 8, source: 'manual', daysAgo: 0.2,
+      rejectedList: [] },
+    { id: 'seed-b2', file: 'sftp-overnight-2026-04-12.pdf', actor: 'SFTP',
+      approved: 12, rejected: 3, encounters: 15, source: 'sftp', daysAgo: 1.4,
+      rejectedList: [
+        { patientName: 'Patricia Moore', dos: '04/10/2026' },
+        { patientName: 'Robert Kim', dos: '04/09/2026' },
+        { patientName: 'James Walker', dos: '04/09/2026' },
+      ]},
+    { id: 'seed-b3', file: 'annual-wellness-bulk.pdf', actor: 'You',
+      approved: 5, rejected: 1, encounters: 6, source: 'manual', daysAgo: 3.0,
+      rejectedList: [{ patientName: 'Jane Doe', dos: '04/08/2026' }] },
+    { id: 'seed-b4', file: 'discharge-summaries-april.pdf', actor: 'Dr. Helen Yu',
+      approved: 4, rejected: 0, encounters: 4, source: 'manual', daysAgo: 5.5,
+      rejectedList: [] },
+    { id: 'seed-b5', file: 'multi-patient-chart-batch.pdf', actor: 'M. Singh',
+      approved: 0, rejected: 0, encounters: 0, source: 'sftp', daysAgo: 7.0,
+      rejectedList: [],
+      // Failed extraction — surfaces as Processing/Failed status in the tab.
+      failed: true },
+  ];
+  const rows = [];
+  batches.forEach(b => {
+    const baseTs = new Date(now - b.daysAgo * day);
+    const iso = (offsetMin) => new Date(baseTs.getTime() + offsetMin * 60_000).toISOString();
+    const scope = { batchId: b.id, fileId: b.file, source: b.source };
+    rows.push({
+      id: `${b.id}-c`, ts: iso(0), event_name: 'batch.created',
+      batch_id: b.id, category: 'intake', severity: 'info',
+      actor_name: b.actor,
+      headline: `Batch ${b.id} created — 1 file queued.`,
+      scope,
+      payload: { batchId: b.id, fileCount: 1, fileName: b.file, actor: b.actor },
+    });
+    rows.push({
+      id: `${b.id}-u`, ts: iso(1), event_name: 'file.uploaded',
+      batch_id: b.id, category: 'intake', severity: 'info',
+      actor_name: b.actor,
+      headline: `${b.actor} uploaded ${b.file}.`,
+      scope,
+      payload: { actor: b.actor, fileName: b.file, pageCount: Math.max(1, Math.ceil(b.encounters / 2)) },
+    });
+    if (b.failed) {
+      rows.push({
+        id: `${b.id}-fail`, ts: iso(2), event_name: 'ocr.failed',
+        batch_id: b.id, category: 'ocr', severity: 'error',
+        actor_name: 'System',
+        headline: `OCR failed on ${b.file}.`,
+        scope,
+        payload: { fileName: b.file, reason: 'Could not read PDF — likely corrupt or password-protected.' },
+      });
+    } else {
+      rows.push({
+        id: `${b.id}-oc`, ts: iso(2), event_name: 'ocr.completed',
+        batch_id: b.id, category: 'ocr', severity: 'success',
+        actor_name: 'System',
+        headline: `OCR completed on ${b.file} — ${b.encounters} encounters extracted.`,
+        scope,
+        payload: {
+          fileName: b.file,
+          encounterCount: b.encounters,
+          pageCount: Math.max(1, Math.ceil(b.encounters / 2)),
+        },
+      });
+      rows.push({
+        id: `${b.id}-pc`, ts: iso(3), event_name: 'batch.processing_completed',
+        batch_id: b.id, category: 'intake', severity: 'success',
+        actor_name: b.actor,
+        headline: `Batch ${b.id} complete — ${b.approved} approved, ${b.rejected} rejected.`,
+        scope,
+        payload: {
+          batchId: b.id,
+          fileName: b.file,
+          approvedCount: b.approved,
+          rejectedCount: b.rejected,
+          pendingCount: 0,
+          acceptedList: [],
+          rejectedList: b.rejectedList,
+          actor: b.actor,
+        },
+      });
+    }
+  });
+  // Newest-first.
+  return rows.sort((a, b) => (b.ts || '').localeCompare(a.ts || ''));
 }
 
 export const useAppStore = create((set, get) => ({
@@ -598,6 +700,27 @@ export const useAppStore = create((set, get) => ({
   toast: null,
   toastSuccess: false,
   queueTabDot: false,
+
+  // ─── Notifications (bell-icon dropdown) ───────────────────────────
+  // Newest-first array of { id, type, title, body, ts, read, action }.
+  // The `action` is a string the popover maps to a side-effect (e.g.
+  // 'openHccReview' → expandHccUpload + nav).
+  notifications: [],
+  addNotification: (n) => set(s => ({
+    notifications: [
+      { id: n.id || `n-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, ts: Date.now(), read: false, ...n },
+      ...(s.notifications || []),
+    ].slice(0, 50),  // keep the last 50
+  })),
+  markNotificationRead: (id) => set(s => ({
+    notifications: (s.notifications || []).map(n => n.id === id ? { ...n, read: true } : n),
+  })),
+  markAllNotificationsRead: () => set(s => ({
+    notifications: (s.notifications || []).map(n => ({ ...n, read: true })),
+  })),
+  dismissNotification: (id) => set(s => ({
+    notifications: (s.notifications || []).filter(n => n.id !== id),
+  })),
   callTimerRef: null,
   detailPatient: null,
   detailPatientCalls: [],
@@ -2861,7 +2984,7 @@ export const useAppStore = create((set, get) => ({
   // Coexists with the legacy `hccActivityLog` map above while consumers
   // migrate — every mutation that wants to land in the worklist History
   // drawer calls logHccActivity().
-  hccActivityFeed: [],         // newest-first list of rows fetched/written this session
+  hccActivityFeed: buildSeedHccActivityFeed(),
   hccActivityFeedLoading: false,
   hccHistoryDrawerOpen: false,
   openHccHistoryDrawer: () => {
@@ -2872,6 +2995,262 @@ export const useAppStore = create((set, get) => ({
     useAppStore.getState().fetchHccActivityFeed();
   },
   closeHccHistoryDrawer: () => set({ hccHistoryDrawerOpen: false }),
+
+  // ─── SFTP multi-document review ───────────────────────────────────
+  // The SFTP ingest path lands multiple files in the background. Once
+  // extraction completes we surface a single bell notification; clicking
+  // it opens HccSftpReviewDrawer with a document switcher, a left-side
+  // page preview, and a right-side encounter table per document.
+  hccSftpBatches: [],        // [{ id, fileName, encounters, ingestedAt, status: 'pending' | 'done' }]
+  hccSftpReviewOpen: false,
+  hccSftpActiveBatchId: null,
+  /**
+   * Simulate SFTP picking up N files and running OCR on each. Each file
+   * runs the same async mockOcr (8s) so the chip / banner animations
+   * match the single-doc flow. When the last one lands we add a single
+   * "N SFTP documents ready" notification.
+   */
+  simulateSftpIngest: async (fileNames = ['demo-single.pdf', 'demo-multi-patient.pdf', 'demo-same-patient-multi-dos.pdf']) => {
+    const state = useAppStore.getState();
+    const members = state.hccMembers || [];
+    // Seed pending placeholders so the user can see "3 files in flight".
+    const seeded = fileNames.map((name, i) => ({
+      id: `sftp-${Date.now()}-${i}`,
+      fileName: name,
+      encounters: [],
+      ingestedAt: new Date().toISOString(),
+      status: 'pending',
+    }));
+    set(s => ({ hccSftpBatches: [...(s.hccSftpBatches || []), ...seeded] }));
+    state.showToast?.(`SFTP — extracting ${fileNames.length} document${fileNames.length === 1 ? '' : 's'} in the background`);
+    // Stamp intake events so the Documents tab can surface these
+    // batches even while OCR is still in flight.
+    seeded.forEach(entry => {
+      useAppStore.getState().logHccActivity?.({
+        eventName: 'sftp.file.detected',
+        scope:     { batchId: entry.id, fileId: entry.fileName, source: 'sftp' },
+        payload:   { actor: 'SFTP', fileName: entry.fileName },
+      });
+      useAppStore.getState().logHccActivity?.({
+        eventName: 'batch.created',
+        scope:     { batchId: entry.id, source: 'sftp' },
+        payload:   { batchId: entry.id, fileCount: 1, fileName: entry.fileName, actor: 'SFTP' },
+      });
+      useAppStore.getState().logHccActivity?.({
+        eventName: 'file.uploaded',
+        scope:     { batchId: entry.id, fileId: entry.fileName, source: 'sftp' },
+        payload:   { actor: 'SFTP', fileName: entry.fileName, pageCount: '—' },
+      });
+      useAppStore.getState().logHccActivity?.({
+        eventName: 'ocr.started',
+        scope:     { batchId: entry.id, fileId: entry.fileName, source: 'system' },
+        payload:   { fileName: entry.fileName },
+      });
+    });
+    // Process each file in parallel using the deterministic mockOcr.
+    const { runMockOcr } = await import('../features/hcc/upload/mockOcr');
+    const done = await Promise.all(seeded.map(async (entry) => {
+      const synthFile = { name: entry.fileName, size: 0 };
+      const encounters = await runMockOcr(synthFile, members);
+      return { ...entry, encounters, status: 'done' };
+    }));
+    // Merge results back into the slice (preserve order).
+    set(s => ({
+      hccSftpBatches: (s.hccSftpBatches || []).map(b => done.find(d => d.id === b.id) || b),
+    }));
+    // Stamp ocr.completed per file so the Documents tab knows extraction landed.
+    done.forEach(entry => {
+      useAppStore.getState().logHccActivity?.({
+        eventName: 'ocr.completed',
+        scope:     { batchId: entry.id, fileId: entry.fileName, source: 'system' },
+        payload:   {
+          fileName: entry.fileName,
+          encounterCount: entry.encounters.length,
+          pageCount: Math.max(...entry.encounters.map(e => e.sourcePage || 1), 1),
+        },
+      });
+    });
+    // Notification + toast.
+    const total = done.reduce((sum, b) => sum + (b.encounters?.length || 0), 0);
+    useAppStore.getState().addNotification?.({
+      type: 'hcc.sftp_extraction_complete',
+      title: `${done.length} SFTP document${done.length === 1 ? '' : 's'} ready for review`,
+      body: `${total} encounter${total === 1 ? '' : 's'} extracted across ${done.length} file${done.length === 1 ? '' : 's'}`,
+      action: 'openSftpReview',
+    });
+    useAppStore.getState().showToast?.(`SFTP extraction complete — ${total} encounter${total === 1 ? '' : 's'} ready for review`);
+  },
+  /**
+   * Queue a single uploaded document for background OCR.
+   *
+   * Unlike the legacy single-document flow (which set
+   * `hccUploadSession` and blocked the drawer on a single file at a
+   * time), this path lets the user fire-and-forget any number of
+   * documents in parallel — each OCRs in the background and lands on
+   * the same multi-doc review surface used by SFTP ingestion. The
+   * picker stays open so the user can keep adding files.
+   *
+   * Fires a single bell notification when every queued document has
+   * completed (debounced by the batch state machine).
+   */
+  queueHccDocumentForOcr: async (file) => {
+    const state = useAppStore.getState();
+    const members = state.hccMembers || [];
+    const id = `doc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const fileName = file?.name || 'Uploaded document';
+    const entry = {
+      id,
+      fileName,
+      encounters: [],
+      ingestedAt: new Date().toISOString(),
+      status: 'pending',
+      source: 'manual',
+    };
+    set(s => ({ hccSftpBatches: [...(s.hccSftpBatches || []), entry] }));
+    state.showToast?.(`${fileName} — extracting in the background`);
+
+    // Activity log: stamp the intake + OCR-start events so the History
+    // drawer's Documents tab can surface this batch even while OCR is
+    // still in flight.
+    useAppStore.getState().logHccActivity?.({
+      eventName: 'batch.created',
+      scope:     { batchId: id, source: 'manual' },
+      payload:   { batchId: id, fileCount: 1, fileName, actor: 'You' },
+    });
+    useAppStore.getState().logHccActivity?.({
+      eventName: 'file.uploaded',
+      scope:     { batchId: id, fileId: fileName, source: 'manual' },
+      payload:   { actor: 'You', fileName, pageCount: '—' },
+    });
+    useAppStore.getState().logHccActivity?.({
+      eventName: 'ocr.started',
+      scope:     { batchId: id, fileId: fileName, source: 'system' },
+      payload:   { fileName },
+    });
+
+    const { runMockOcr } = await import('../features/hcc/upload/mockOcr');
+    const encounters = await runMockOcr({ name: fileName, size: file?.size || 0 }, members);
+    // Mark this batch as done.
+    set(s => ({
+      hccSftpBatches: (s.hccSftpBatches || []).map(b => b.id === id
+        ? { ...b, encounters, status: 'done' }
+        : b),
+    }));
+
+    // Stamp ocr.completed so the Documents tab can count encounters
+    // extracted per document.
+    useAppStore.getState().logHccActivity?.({
+      eventName: 'ocr.completed',
+      scope:     { batchId: id, fileId: fileName, source: 'system' },
+      payload:   {
+        fileName,
+        encounterCount: encounters.length,
+        pageCount: Math.max(...encounters.map(e => e.sourcePage || 1), 1),
+      },
+    });
+
+    // If every batch in the queue is now done, fire a single
+    // notification summarising the queue.
+    const after = useAppStore.getState().hccSftpBatches || [];
+    const allDone = after.length > 0 && after.every(b => b.status === 'done');
+    if (allDone) {
+      const total = after.reduce((sum, b) => sum + (b.encounters?.length || 0), 0);
+      useAppStore.getState().addNotification?.({
+        type: 'hcc.documents_ready',
+        title: `${after.length} document${after.length === 1 ? '' : 's'} ready for review`,
+        body: `${total} encounter${total === 1 ? '' : 's'} extracted`,
+        action: 'openSftpReview',
+      });
+      useAppStore.getState().showToast?.(`Extraction complete — ${total} encounter${total === 1 ? '' : 's'} ready for review`);
+    }
+    return id;
+  },
+
+  openHccSftpReview: () => set(s => ({
+    hccSftpReviewOpen: true,
+    hccSftpActiveBatchId: s.hccSftpActiveBatchId
+      || (s.hccSftpBatches || []).find(b => b.status === 'done')?.id
+      || (s.hccSftpBatches || [])[0]?.id
+      || null,
+  })),
+  closeHccSftpReview: () => set({ hccSftpReviewOpen: false }),
+  setHccSftpActiveBatchId: (id) => set({ hccSftpActiveBatchId: id }),
+  /**
+   * Patch one encounter inside an SFTP batch — proxies to the same
+   * shape patchHccUploadEncounter uses (idx + partial). Used by the
+   * SFTP table cells when the user edits a field.
+   */
+  patchHccSftpEncounter: (batchId, idx, patch) => set(s => ({
+    hccSftpBatches: (s.hccSftpBatches || []).map(b => {
+      if (b.id !== batchId) return b;
+      const next = b.encounters.map((e, i) => i === idx ? {
+        ...e,
+        ...patch,
+        patient: { ...e.patient, ...(patch.patient || {}) },
+      } : e);
+      return { ...b, encounters: next };
+    }),
+  })),
+  removeHccSftpEncounter: (batchId, idx) => set(s => ({
+    hccSftpBatches: (s.hccSftpBatches || []).map(b => b.id === batchId
+      ? { ...b, encounters: b.encounters.filter((_, i) => i !== idx) }
+      : b),
+  })),
+  /**
+   * Drop an entire SFTP batch from the queue (called after Add to
+   * Worklist completes, so the batch disappears from the switcher).
+   */
+  removeHccSftpBatch: (batchId) => set(s => {
+    const remaining = (s.hccSftpBatches || []).filter(b => b.id !== batchId);
+    const nextActive = remaining.find(b => b.status === 'done')?.id
+      || remaining[0]?.id
+      || null;
+    return {
+      hccSftpBatches: remaining,
+      hccSftpActiveBatchId: s.hccSftpActiveBatchId === batchId ? nextActive : s.hccSftpActiveBatchId,
+      hccSftpReviewOpen: remaining.length > 0 ? s.hccSftpReviewOpen : false,
+    };
+  }),
+  /**
+   * Re-open a previous upload's skipped records.
+   *
+   * Given a batch summary (filename + rejectedList from the activity
+   * log), re-run the deterministic mock OCR synchronously to rebuild
+   * the original encounter set, filter down to just the patients that
+   * were skipped, and jump straight into the review phase. Skips the
+   * 8-second extraction delay since the user has already seen this
+   * document extract once.
+   *
+   * Real backend would persist the original encounter rows in the
+   * batch record and load them directly — no re-extraction needed.
+   */
+  reopenHccSkippedReview: ({ batchId, fileName, rejectedList }) => {
+    const state = useAppStore.getState();
+    const members = state.hccMembers || [];
+    const synthFile = { name: fileName || 'reopened.pdf', size: 0 };
+    const all = extractEncountersSync(synthFile, members);
+    const wanted = new Set(
+      (rejectedList || []).map(r => `${(r.patientName || '').toLowerCase()}|${r.dos || ''}`)
+    );
+    const filtered = all.filter(enc => {
+      const key = `${(enc.patient?.name || '').toLowerCase()}|${enc.dos || ''}`;
+      return wanted.has(key);
+    });
+    set({
+      hccUploadSession: {
+        id: `reopen-${batchId}-${Date.now()}`,
+        phase: 'review',
+        file: synthFile,
+        encounters: filtered,
+        seededMemberId: null,
+        reopenedFromBatchId: batchId,
+      },
+      hccUploadMinimized: false,
+      hccHistoryDrawerOpen: false,
+    });
+    state.showToast?.(`Re-opened ${filtered.length} skipped record${filtered.length === 1 ? '' : 's'} from ${fileName}`);
+    return filtered.length;
+  },
   fetchHccActivityFeed: async (filters = {}) => {
     set({ hccActivityFeedLoading: true });
     let q = supabase.from('hcc_activity_log').select('*').order('ts', { ascending: false }).limit(500);
@@ -3026,6 +3405,17 @@ export const useAppStore = create((set, get) => ({
         });
       }
     });
+    // Extraction landed — toast + bell notification so the user knows
+    // even if they minimized the drawer and navigated away.
+    const fileName = session.file?.name || 'Uploaded file';
+    const n = encounters.length;
+    useAppStore.getState().addNotification?.({
+      type: 'hcc.extraction_complete',
+      title: 'Document extracted',
+      body: `${fileName} • ${n} encounter${n === 1 ? '' : 's'} ready for review`,
+      action: 'openHccReview',
+    });
+    useAppStore.getState().showToast?.(`Document extracted — ${n} encounter${n === 1 ? '' : 's'} ready for review`);
   },
   // Append more encounters from a second OCR pass (user clicks "Upload"
   // again during review). Preserves existing rows + their edits.

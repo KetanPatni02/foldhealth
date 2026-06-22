@@ -36,10 +36,13 @@ export function HccUploadProcessingHost() {
   useEffect(() => {
     if (!session || session.phase !== 'processing') return;
     if (startedAt.current == null) startedAt.current = Date.now();
+    // ~8s total: each step takes 2s. The fourth step ("Matching patient")
+    // completes when the session phase flips to 'review' — i.e. when the
+    // mockOcr promise resolves (PROCESSING_DELAY_MS = 8000).
     const t = [];
-    t.push(setTimeout(() => setStep(1), 900));
-    t.push(setTimeout(() => setStep(2), 1800));
-    t.push(setTimeout(() => setStep(3), 2700));
+    t.push(setTimeout(() => setStep(1), 2000));
+    t.push(setTimeout(() => setStep(2), 4000));
+    t.push(setTimeout(() => setStep(3), 6000));
     return () => t.forEach(clearTimeout);
   }, [session?.phase]);
 
