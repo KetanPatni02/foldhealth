@@ -805,7 +805,7 @@ function MatchedRow({ p, isLast, onRemove }) {
           </div>
         </div>
       </div>
-      {/* Trash icon always shown; clicking asks to confirm, then slides the row out. */}
+      {/* edit phase 2 — patient delete disabled in the Create review (kept for reference):
       {onRemove && !removing && (
         <button
           onClick={() => setConfirmOpen(true)}
@@ -827,6 +827,7 @@ function MatchedRow({ p, isLast, onRemove }) {
           onCancel={() => setConfirmOpen(false)}
         />
       )}
+      */}
     </div>
   );
 }
@@ -890,6 +891,11 @@ function AddPatientSearch({ matched, onAdd }) {
    - onRemoveMember: enables the hover × remove action on each row
    - onAddMember: shows a "Search and Add Patients" field above the list */
 function AllMatchedPanel({ matched, uploadFile, onReupload, heading = 'All Members Matched; Review Pop Group', onRemoveMember, onAddMember }) {
+  // edit phase 2 — search disabled in the Create review (kept for reference):
+  // const [query, setQuery] = useState('');
+  // const q = query.trim().toLowerCase();
+  // const shown = q ? matched.filter(m => (m.name || '').toLowerCase().includes(q) || String(m.id).toLowerCase().includes(q)) : matched;
+  const shown = matched;
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:16, fontFamily:'Inter, sans-serif', width:'100%', height:'100%', minHeight:0, boxSizing:'border-box', paddingTop:4 }}>
       <p style={{ margin:0, fontSize:16, fontWeight:500, lineHeight:1.2, color:'var(--neutral-500)', flexShrink:0 }}>File Processing Summary</p>
@@ -898,8 +904,21 @@ function AllMatchedPanel({ matched, uploadFile, onReupload, heading = 'All Membe
         <FilePreviewCard fileName={uploadFile.name} sizeMB={(uploadFile.size/1048576).toFixed(1)} onReplace={onReupload} />
       )}
 
-      {/* Search + add patients from the DB into this group */}
+      {/* edit phase 2 — "Search and Add Patients" disabled in the Create review (kept for reference):
       {onAddMember && <AddPatientSearch matched={matched} onAdd={onAddMember} />}
+      */}
+
+      {/* edit phase 2 — search of added patients disabled in the Create review (kept for reference):
+      <div style={{ display:'flex', alignItems:'center', gap:8, height:36, padding:'0 10px', border:'0.5px solid var(--neutral-200)', borderRadius:6, background:'var(--neutral-0)', flexShrink:0 }}>
+        <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
+        <input
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search Patients"
+          style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:14, fontFamily:'Inter, sans-serif', color:'var(--neutral-400)' }}
+        />
+      </div>
+      */}
 
       {/* Review / extracted list — hugs its content; caps at the drawer bottom and scrolls internally */}
       <div style={{ border:'0.5px solid var(--neutral-150)', borderRadius:8, background:'var(--neutral-0)', overflow:'hidden', width:'100%', flex:'0 1 auto', minHeight:0, display:'flex', flexDirection:'column' }}>
@@ -910,8 +929,8 @@ function AllMatchedPanel({ matched, uploadFile, onReupload, heading = 'All Membe
 
         {/* Member rows — hugs content; scrolls only when the card hits the drawer bottom */}
         <div className="thin-scroll" style={{ flex:'0 1 auto', minHeight:0, overflowY:'auto' }}>
-          {matched.map((p, i) => (
-            <MatchedRow key={p.id || i} p={p} isLast={i === matched.length - 1} onRemove={onRemoveMember} />
+          {shown.map((p, i) => (
+            <MatchedRow key={p.id || i} p={p} isLast={i === shown.length - 1} />
           ))}
         </div>
       </div>
