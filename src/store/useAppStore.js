@@ -1123,6 +1123,22 @@ export const useAppStore = create((set, get) => ({
     set(s => ({ popGroups: [saved, ...s.popGroups] }));
     return saved;
   },
+  updatePopGroup: async (id, updates) => {
+    const { data, error } = await supabase
+      .from('population_groups')
+      .update(popGroupJsToDb(updates))
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) {
+      console.warn('[store] updatePopGroup failed:', error.message);
+      get().showToast(`Failed to update group: ${error.message}`);
+      return null;
+    }
+    const saved = popGroupRowToJs(data);
+    set(s => ({ popGroups: s.popGroups.map(g => g.id === id ? saved : g) }));
+    return saved;
+  },
 
   // ── Embed Domains (Supabase-backed) ──
   embedDomains: [],
