@@ -109,10 +109,20 @@ export let FOLD_DB = [
 
 export let FOLD_DB_MAP = Object.fromEntries(FOLD_DB.map(p => [p.id.toUpperCase(), p]));
 
+/* Bundled seed dob keyed by id — fallback when the DB row has no dob column,
+   so member rows can still show Age / DOB. */
+const SEED_DOB = Object.fromEntries(FOLD_DB.map(p => [p.id.toUpperCase(), p.dob]));
+
 /* Swap the in-memory patient DB for live rows from `all_patients`.
-   rows: [{ id, name, dob, pcp }] — dob may be undefined if the column is absent. */
+   rows: [{ id, name, dob, pcp }] — dob may be undefined if the column is absent,
+   in which case we keep the bundled seed dob so Age/DOB still render. */
 export function loadFoldDbFromRows(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return;
-  FOLD_DB = rows.map(r => ({ id: r.id, name: r.name, dob: r.dob || '', pcp: r.pcp || '' }));
+  FOLD_DB = rows.map(r => ({
+    id: r.id,
+    name: r.name,
+    dob: r.dob || SEED_DOB[String(r.id).toUpperCase()] || '',
+    pcp: r.pcp || '',
+  }));
   FOLD_DB_MAP = Object.fromEntries(FOLD_DB.map(p => [String(p.id).toUpperCase(), p]));
 }
