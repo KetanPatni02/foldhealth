@@ -29,7 +29,7 @@ import { isValidV28Code } from './v28Whitelist';
  *   }
  */
 
-const PROCESSING_DELAY_MS = 2500;
+const PROCESSING_DELAY_MS = 8000;
 
 const POS_LABEL = {
   '11': 'Office',
@@ -42,6 +42,50 @@ const mandatoryFields = ['patientName', 'dob', 'dos', 'provider', 'pos'];
 
 function newTempId() {
   return `enc-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+/**
+ * Deterministic graded match-confidence so the same demo file always
+ * produces the same distribution of green / amber / orange chips. The
+ * real backend will compute this from name-distance + DOB-distance +
+ * record-key strength; for the prototype we hash (patientName + dob)
+ * and bucket into four bands so the user sees variance without
+ * random flicker between reloads.
+ */
+function gradedMatchConfidence(patientName, dob) {
+  if (!patientName) return null;
+  let h = 0;
+  const key = `${patientName}|${dob || ''}`;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) & 0xffffffff;
+  const bucket = Math.abs(h) % 10;
+  // Distribution: 60% high (95-100), 25% mid (70-85), 15% low (55-65).
+  if (bucket < 6) return 95 + (Math.abs(h) % 6);   // 95-100
+  if (bucket < 9) return 70 + (Math.abs(h >> 4) % 16); // 70-85
+  return 55 + (Math.abs(h >> 8) % 11);              // 55-65
+}
+
+/**
+ * Source-page assignment. Real OCR returns the PDF page each encounter
+ * was extracted from; the mock walks encounters in order and packs
+ * 1-3 per page so the column shows realistic clustering (some pages
+ * with one encounter, some with multiple). The first encounter starts
+ * at page 1.
+ */
+function assignSourcePages(encounters) {
+  let page = 1;
+  let onPage = 0;
+  const cap = () => 1 + Math.floor(Math.random() * 3); // 1-3 per page
+  let pageCap = cap();
+  encounters.forEach((enc) => {
+    enc.sourcePage = page;
+    onPage += 1;
+    if (onPage >= pageCap) {
+      page += 1;
+      onPage = 0;
+      pageCap = cap();
+    }
+  });
+  return encounters;
 }
 
 function annotateIcds(codes) {
@@ -68,19 +112,107 @@ function resolveByName(hccMembers, name) {
   return hccMembers.find(m => (m.name || '').trim().toLowerCase() === target) || null;
 }
 
+/**
+ * Patient-ID-aware resolution. Real OCR returns the patient ID printed
+ * on the chart note; matching is then:
+ *   1. memberId exact match → strongest, highest confidence
+ *   2. name + DOB exact match → medium; if the OCR'd ID disagrees with
+ *      the resolved member's memberId, the encounter is flagged
+ *      `idMismatch: true` so the reviewer can confirm.
+ *   3. nothing → null (manual link required)
+ *
+ * Returns { member, idMismatch }.
+ */
+function resolveByIdOrName(hccMembers, { patientId, name, dob }) {
+  const cleanId = (patientId || '').trim().toUpperCase();
+  if (cleanId) {
+    const byId = hccMembers.find(m => (m.memberId || '').toUpperCase() === cleanId);
+    if (byId) return { member: byId, idMismatch: false };
+  }
+  // Fallback: name + DOB exact match.
+  const target = (name || '').trim().toLowerCase();
+  const byName = hccMembers.find(m => (m.name || '').trim().toLowerCase() === target);
+  if (byName) {
+    // If the OCR'd ID is present but disagrees with the resolved
+    // member's real memberId, flag it.
+    const idMismatch = !!cleanId && byName.memberId && cleanId !== (byName.memberId || '').toUpperCase();
+    return { member: byName, idMismatch };
+  }
+  return { member: null, idMismatch: false };
+}
+
+/**
+ * Synthesize an OCR'd patient ID for the encounter. Deterministic per
+ * (patientName, dos). For most encounters the result matches the
+ * resolved member's memberId exactly so the row reads as "ID matched".
+ * A small fraction (~15%) gets a one-character mutation so reviewers
+ * see the ID-Mismatch state surface naturally in demos.
+ */
+function ocrPatientId(member, patientName, dos) {
+  if (!member?.memberId) {
+    // Unmatched patient — still emit a plausible looking ID so the
+    // reviewer can see what was extracted from the document.
+    return `M-${hashStr(patientName)}-${hashStr(dos || 'x')}`;
+  }
+  // Hash decides whether to mutate (~15% of matched encounters).
+  const h = Math.abs(hashStr(`${patientName}|${dos}`));
+  if (h % 100 < 15) {
+    // Mutate the last digit so it no longer matches verbatim.
+    return member.memberId.replace(/(\d)$/, (m, d) => String((Number(d) + 1) % 10));
+  }
+  return member.memberId;
+}
+
+function hashStr(s) {
+  let h = 0;
+  for (let i = 0; i < (s || '').length; i++) h = (h * 31 + s.charCodeAt(i)) & 0xffffffff;
+  return String(Math.abs(h) % 9999).padStart(4, '0');
+}
+
 export async function runMockOcr(file, hccMembers) {
   await new Promise(r => setTimeout(r, PROCESSING_DELAY_MS));
+  return assignSourcePages(buildEncountersForFile(file, hccMembers));
+}
+
+/**
+ * Synchronous variant — same encounter set, no artificial delay. Used by
+ * the "Re-open Review" affordance in the History drawer where the user
+ * has already seen extraction land once and just wants to revisit the
+ * skipped records.
+ */
+export function extractEncountersSync(file, hccMembers) {
+  return assignSourcePages(buildEncountersForFile(file, hccMembers));
+}
+
+function buildEncountersForFile(file, hccMembers) {
   const name = (file?.name || '').toLowerCase();
 
   const buildEnc = ({ patientName, dob, dos, provider, pos, icds, docType, matchOverride }) => {
-    const match = matchOverride === null ? null : (matchOverride || resolveByName(hccMembers, patientName));
+    const fallback = matchOverride === null
+      ? { member: null, idMismatch: false }
+      : matchOverride
+        ? { member: matchOverride, idMismatch: false }
+        : resolveByIdOrName(hccMembers, { patientId: null, name: patientName, dob });
+    const match = fallback.member;
+    const patientId = ocrPatientId(match, patientName, dos);
+    // Re-run resolution with the synthesized ID so idMismatch reflects
+    // the OCR'd ID vs the resolved member's true memberId.
+    const resolved = matchOverride === null
+      ? { member: null, idMismatch: false }
+      : matchOverride
+        ? { member: matchOverride, idMismatch: !!match?.memberId && patientId !== match.memberId }
+        : resolveByIdOrName(hccMembers, { patientId, name: patientName, dob });
+    const finalMember = resolved.member || match;
     const enc = {
       tempId: newTempId(),
       patient: {
         name: patientName,
         dob,
-        matchedMemberId: match?.id || null,
-        matchConfidence: match ? 100 : 0,
+        patientId,
+        matchedMemberId: finalMember?.id || null,
+        matchedMemberDisplayId: finalMember?.memberId || null,
+        idMismatch: resolved.idMismatch || false,
+        matchConfidence: finalMember ? gradedMatchConfidence(patientName, dob) : null,
       },
       dos: dos || '',
       provider: provider || '',

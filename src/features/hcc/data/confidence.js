@@ -47,6 +47,37 @@ const DEFAULT_CONFIDENCE = {
 export const getConfidence = (code) => CONFIDENCE_DATA[code] || DEFAULT_CONFIDENCE;
 
 /**
+ * Deterministic per-field confidence score for an encounter.
+ *
+ * Real OCR returns a confidence per extracted field. The mock produces
+ * a stable score in [50, 99] by hashing (patientName, dos, fieldName)
+ * so the same field on the same encounter always reads the same value
+ * across renders (and across reloads given identical input).
+ *
+ * Fields that come back missing (errors[]) get a 0 so the tier chip
+ * flips to Low.
+ */
+export function getFieldConfidence(enc, fieldName) {
+  const errors = enc?.errors || [];
+  // Map UI field name → the error key used by mockOcr.annotateErrors.
+  const ERROR_KEY = { dos: 'dos', provider: 'provider', pos: 'pos', dob: 'dob' };
+  const errKey = ERROR_KEY[fieldName];
+  if (errKey && errors.includes(errKey)) return 0;
+
+  const key = `${enc?.patient?.name || ''}|${enc?.dos || ''}|${fieldName}`;
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) & 0xffffffff;
+  const ah = Math.abs(h);
+  const bucket = ah % 10;
+  // ~55% high, ~30% medium, ~15% low — matches the per-encounter
+  // distribution in mockOcr.gradedMatchConfidence so the two views feel
+  // visually consistent.
+  if (bucket < 5) return 85 + (ah % 15);          // 85-99
+  if (bucket < 8) return 65 + ((ah >> 4) % 20);   // 65-84
+  return 50 + ((ah >> 8) % 12);                    // 50-61
+}
+
+/**
  * Score-tier color mapping. Higher confidence → success green; mid → amber;
  * lower → secondary orange; sub-35 → muted grey.
  */

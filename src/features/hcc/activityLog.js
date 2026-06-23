@@ -14,7 +14,7 @@
 // here is the order the chips render in.
 export const CATEGORIES = {
   intake:   { label: 'Intake',   icon: 'solar:upload-square-linear',  color: 'var(--status-info)' },
-  ocr:      { label: 'OCR',      icon: 'solar:scanner-linear',        color: 'var(--neutral-400)' },
+  ocr:      { label: 'AI',       icon: 'solar:scanner-linear',        color: 'var(--neutral-400)' },
   matching: { label: 'Matching', icon: 'solar:users-group-rounded-linear', color: 'var(--neutral-400)' },
   review:   { label: 'Review',   icon: 'solar:check-read-linear',     color: 'var(--primary-300)' },
   worklist: { label: 'Worklist', icon: 'solar:checklist-minimalistic-linear', color: 'var(--primary-300)' },
@@ -62,9 +62,9 @@ export const EVENTS = {
   'file.rejected.invalid_filename':    E('intake',   'warning', p => tpl('{fileName} skipped — filename does not match expected pattern.', p)),
 
   // OCR
-  'ocr.started':                       E('ocr',      'info',    p => tpl('OCR started for {fileName}.', p)),
+  'ocr.started':                       E('ocr',      'info',    p => tpl('AI extraction started for {fileName}.', p)),
   'ocr.completed':                     E('ocr',      'success', p => tpl('{fileName} processed — {encounterCount} encounters detected across {pageCount} pages.', p)),
-  'ocr.failed':                        E('ocr',      'error',   p => tpl('OCR failed for {fileName} — {errorReason}. File moved to retry queue.', p)),
+  'ocr.failed':                        E('ocr',      'error',   p => tpl('AI extraction failed for {fileName} — {errorReason}. File moved to retry queue.', p)),
   'ocr.low_confidence':                E('ocr',      'warning', p => tpl('Encounter for {patientName} (DOS {dos}) flagged — confidence {confidencePct}% below {thresholdPct}% threshold. Routed to manual review.', p)),
 
   // Patient matching
