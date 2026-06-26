@@ -1,9 +1,17 @@
-/* SFTP review drawer — wider than the standard drawer (90vw) to fit
-   both the page-preview rail and the encounter table comfortably. */
+/* Document Review — promoted from a right-side drawer to a full-
+   screen surface per the latest direction. Overrides Drawer's default
+   panel sizing (90vw, rounded corners, right-inset) so it spans the
+   entire viewport with squared corners. */
 .drawer {
-  width: 90vw;
-  min-width: 90vw;
-  max-width: 90vw;
+  width: 100vw;
+  min-width: 100vw;
+  max-width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+  inset: 0;
+  left: 0;
+  right: 0;
+  margin: 0;
 }
 .body {
   padding: 0;
@@ -12,32 +20,26 @@
   min-height: 0;
 }
 
-/* Two-line title with iconified head and tabular stats */
+/* Single-line title "Document Review" per Figma 121:87283. */
 .titleBlock {
   display: inline-flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-}
-.titleTopRow {
-  display: inline-flex;
   align-items: center;
-  gap: 6px;
-}
-.titleIcon {
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  background: var(--primary-50);
-  border: 0.5px solid var(--primary-150, #e3d6f9);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 .titleTop {
   font: 600 16px/1.2 'Inter', sans-serif;
   color: var(--neutral-500);
   letter-spacing: -0.1px;
+}
+.titleStats {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 400 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.titleStats strong {
+  font-weight: 600;
+  color: var(--neutral-500);
 }
 .titleSub {
   display: inline-flex;
@@ -442,15 +444,19 @@
   min-height: 0;
   overflow: hidden;
 }
+/* Equal 50/50 split now that we're a full-screen surface. */
 .leftPanel {
-  flex: 0 0 40%;
+  flex: 1 1 50%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   border-right: 0.5px solid var(--neutral-150);
   overflow-y: auto;
-  /* Soft warm-grey background so the white "paper" card pops. */
   background: linear-gradient(180deg, var(--neutral-50) 0%, var(--neutral-100) 100%);
 }
 .rightPanel {
-  flex: 1;
+  flex: 1 1 50%;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -767,6 +773,295 @@
 .fieldConfMedium  { background: var(--status-warning-light); color: var(--status-warning); }
 .fieldConfLow     { background: var(--status-error-light);   color: var(--status-error); }
 .fieldConfMissing { background: var(--neutral-100);          color: var(--neutral-300); }
+
+/* ── File strip (left panel header) ────────────────────────────── */
+.fileStrip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: #fff;
+  flex-shrink: 0;
+}
+.fileStripBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 0.5px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+.fileStripBtn:hover {
+  background: var(--neutral-50);
+  border-color: var(--neutral-150);
+}
+.fileStripName {
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.fileStripExternal {
+  width: 26px;
+  height: 26px;
+  border: 0.5px solid var(--neutral-150);
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+}
+.fileStripExternal:hover { border-color: var(--primary-300); }
+.fileStripMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 16px;
+  min-width: 280px;
+  background: #fff;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  padding: 4px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fileStripMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  text-align: left;
+  cursor: pointer;
+}
+.fileStripMenuItem:hover:not(:disabled) { background: var(--primary-50); }
+.fileStripMenuItem:disabled { opacity: 0.5; cursor: not-allowed; }
+.fileStripMenuItemActive { background: var(--primary-50); color: var(--primary-300); }
+.fileStripMenuCount {
+  margin-left: auto;
+  font: 600 10px/1 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+
+/* ── Doc tabs (Pending / Added / Deleted) ─────────────────────── */
+.docTabBar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: #fff;
+  flex-shrink: 0;
+}
+.docTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 6px;
+  margin-right: 16px;
+  border: none;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+  cursor: pointer;
+  margin-bottom: -0.5px;
+}
+.docTab:hover { color: var(--neutral-500); }
+.docTabActive {
+  color: var(--primary-300);
+  border-bottom-color: var(--primary-300);
+}
+.docTabCount {
+  font-weight: 400;
+  color: var(--neutral-300);
+  margin-left: 2px;
+}
+.docTabActive .docTabCount { color: var(--primary-300); }
+.docTabBarSpacer { flex: 1; }
+/* Toolbar buttons (Search, Saved filters, Add New Record) now use
+   ActionButton + Button from the DS — no custom CSS needed. */
+
+/* Status filter row — wraps the shared <Toggle> segmented control
+   inside the Pending tab. Visual styling is owned by Toggle; we only
+   provide padding + bg here. */
+.statusChipsRow {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+/* ── Card stack ────────────────────────────────────────────────── */
+.cardStack {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--neutral-50);
+}
+.cardStackEmpty {
+  padding: 60px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: var(--neutral-300);
+  font: 400 13px/1.4 'Inter', sans-serif;
+}
+
+/* ── Encounter card ───────────────────────────────────────────── */
+.encCard {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 10px;
+  background: #fff;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.encCardHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.encCardIdent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.encCardName {
+  font: 600 14px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.encCardMeta {
+  font: 400 11px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.encCardMetaDot { color: var(--neutral-200); margin: 0 2px; }
+
+/* Status pill is now rendered with the shared <Badge> component
+   (variants: status-completed / status-review / status-failed). No
+   custom class needed; the card just spaces it via .encCardHead's
+   flex gap. */
+
+/* Card actions cluster — `<Button variant="ghost">` and
+   `<ActionButton>` from the DS carry their own styling. We just
+   provide the cluster's flex gap. */
+.encCardActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.encGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 16px;
+}
+.encIcds {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: #fff;
+  min-height: 32px;
+}
+.encIcdChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--primary-50);
+  color: var(--primary-300);
+  font: 500 11px/1.2 'Inter', sans-serif;
+}
+.encIcdClose {
+  width: 14px;
+  height: 14px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.encIcdClose:hover { background: var(--primary-100); }
+
+/* ── Field block (label + gauge + input) ──────────────────────── */
+.fieldBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fieldBlockHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.fieldBlockLabel {
+  font: 500 11px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.fieldBlockReq {
+  color: var(--status-error);
+  margin-left: 2px;
+}
+.fieldBlockBody { }
+
+/* ── Confidence gauge bar ──────────────────────────────────────── */
+.confGauge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.confGaugePct {
+  font: 500 10px/1 'Inter', sans-serif;
+}
+.confGauge_highText   { color: var(--status-success); }
+.confGauge_mediumText { color: var(--status-warning); }
+.confGauge_lowText    { color: var(--status-error); }
+.confGaugeBars {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.confGaugeBar {
+  width: 8px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--neutral-100);
+}
+.confGauge_highBar    { background: var(--status-success); }
+.confGauge_mediumBar  { background: var(--status-warning); }
+.confGauge_lowBar     { background: var(--status-error); }
+.confGauge_offBar     { background: var(--neutral-100); }
+.confGaugeEmpty {
+  font: 400 10px/1 'Inter', sans-serif;
+  color: var(--neutral-200);
+}
 
 .emptyState {
   padding: 80px 40px;

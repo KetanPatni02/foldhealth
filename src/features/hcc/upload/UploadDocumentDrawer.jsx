@@ -191,6 +191,410 @@ export function UploadDocumentDrawer() {
 }
 
 /**
+ * PickerPhase — picker UI per Figma 121:81202 + 223:96599.
+ *
+ * Two-stage flow:
+ *  1. Drop / pick one or more files → they appear in a staged list
+ *     showing an animated "Uploading…" progress bar that completes
+ *     in ~1.5s. Multiple files upload in parallel; user can keep
+ *     dropping more.
+ *  2. Once at least one file is "Complete", the Start Extraction
+ *     footer button activates. Clicking it routes each completed
+ *     file through queueHccDocumentForOcr (the existing background
+ *     OCR queue), closes the drawer, and lets the bell notification
+ *     pick the user up when extraction lands.
+ *
+ * "What happens next?" collapsible accordion sits between the
+ * dropzone and the staged list, default collapsed.
+ */
+function PickerPhase({ showToast, cancel }) {
+  const queueHccDocumentForOcr = useAppStore(s => s.queueHccDocumentForOcr);
+  const sftpBatches = useAppStore(s => s.hccSftpBatches) || [];
+  const openSftpReview = useAppStore(s => s.openHccSftpReview);
+  // Each entry: { id, file, name, size, progress: 0-100, status: 'uploading'|'complete' }
+  const [staged, setStaged] = useState([]);
+  // Once Start Extraction fires we remember the queued batch IDs so we
+  // can render the "Queued Documents" list (matches Figma 211:66363) in
+  // place of the staged list. We also track which staged-row IDs maps
+  // to which batch, so progress on the SFTP side feeds back into the
+  // drawer's row.
+  const [queuedBatchIds, setQueuedBatchIds] = useState([]);
+
+  // Drive the per-file upload progress animations.
+  useEffect(() => {
+    const uploading = staged.filter(s => s.status === 'uploading' && s.progress < 100);
+    if (uploading.length === 0) return;
+    const t = setTimeout(() => {
+      setStaged(prev => prev.map(s => {
+        if (s.status !== 'uploading') return s;
+        const next = Math.min(100, s.progress + (10 + Math.random() * 15));
+        return { ...s, progress: next, status: next >= 100 ? 'complete' : 'uploading' };
+      }));
+    }, 120);
+    return () => clearTimeout(t);
+  }, [staged]);
+
+  const handlePick = (filesOrFile) => {
+    const arr = Array.isArray(filesOrFile) ? filesOrFile : [filesOrFile];
+    const accepted = arr.filter(Boolean).filter(isAcceptedFile);
+    if (accepted.length === 0) {
+      showToast?.('Please upload a PDF, DOC, JPG, PNG, or TIFF file');
+      return;
+    }
+    setStaged(prev => [
+      ...prev,
+      ...accepted.map((file) => ({
+        id: `stg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        file,
+        name: file.name,
+        // Default to ~2.5MB for demo chips (which don't carry a real
+        // file.size) so the row matches Figma's "2.5MB / 30 MB" copy.
+        size: file.size && file.size > 1024 ? file.size : (2.5 * 1024 * 1024),
+        progress: 0,
+        status: 'uploading',
+      })),
+    ]);
+  };
+
+  const removeStaged = (id) => setStaged(prev => prev.filter(s => s.id !== id));
+  const discardAll = () => { setStaged([]); cancel?.(); };
+
+  const completeCount = staged.filter(s => s.status === 'complete').length;
+  const uploadingCount = staged.filter(s => s.status === 'uploading').length;
+
+  const handleStartExtraction = () => {
+    const ready = staged.filter(s => s.status === 'complete');
+    if (ready.length === 0) return;
+    // Queue each completed file. queueHccDocumentForOcr returns the
+    // batch id (Promise<string>) so we can wire row-level state below.
+    const idPromises = ready.map(s => queueHccDocumentForOcr?.(s.file));
+    // Optimistically remember which staged rows became queued.
+    // We use a best-effort match by filename since the action resolves
+    // asynchronously and the new batch entries are appended in order.
+    setQueuedBatchIds(prev => [
+      ...prev,
+      ...ready.map(r => ({ stagedId: r.id, fileName: r.name })),
+    ]);
+    // Drop the staged rows — they're now represented by SFTP batches.
+    setStaged(prev => prev.filter(s => s.status !== 'complete'));
+    showToast?.(`Extracting ${ready.length} document${ready.length === 1 ? '' : 's'} in the background`);
+    // Drawer STAYS open per Figma 211:66363 so the user can watch
+    // progress and add more files. The drawer's onClose handler is
+    // wired to minimize when there are pending batches.
+    void idPromises;
+  };
+
+  // Match our queued staged rows to the live SFTP batches by fileName.
+  // Newest matching batch wins (in case the user queued duplicates).
+  const queuedBatches = useMemo(() => {
+    return queuedBatchIds.map(q => {
+      const matches = sftpBatches.filter(b => b.fileName === q.fileName);
+      return matches[matches.length - 1] || null;
+    }).filter(Boolean);
+  }, [queuedBatchIds, sftpBatches]);
+
+  const hasQueue = queuedBatches.length > 0;
+  const allQueueDone = hasQueue && queuedBatches.every(b => b.status === 'done');
+
+  return (
+    <div className={styles.pickerPhase2}>
+      {/* Dropzone + file list grouped inside a single visual container
+          per Figma 121:84012. The dropzone stays present even after
+          files are added so the user can keep dropping more. */}
+      <div className={[
+        styles.uploadContainer,
+        staged.length > 0 ? styles.uploadContainerWithFiles : '',
+      ].filter(Boolean).join(' ')}>
+        <Dropzone
+          accept={ACCEPT_EXT}
+          acceptMime={ACCEPT_MIME}
+          multiple
+          icon="solar:upload-minimalistic-linear"
+          helperText="Supported formats: PDF, DOC, JPG, or PNG"
+          secondaryText="Max size: 100 MB"
+          onPick={handlePick}
+          onReject={() => showToast?.('Please upload a PDF, DOC, JPG, PNG, or TIFF file')}
+        />
+
+        {/* Staged file list (pre-extraction). Sits inside the upload
+            container so it reads as one component. */}
+        {staged.length > 0 && (
+          <div className={styles.stagedList}>
+            {staged.map(s => (
+              <StagedFileRow
+                key={s.id}
+                file={s}
+                onRemove={() => removeStaged(s.id)}
+                onPreview={() => showToast?.(`Preview ${s.name} — coming soon`)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Footer — Start Extraction + Discard. Only when staged rows
+          exist (pre-extraction). */}
+      {staged.length > 0 && (
+        <div className={styles.pickerFooter}>
+          <Button
+            variant="primary"
+            size="S"
+            disabled={completeCount === 0}
+            onClick={handleStartExtraction}
+          >
+            {uploadingCount > 0
+              ? `Start Extraction · ${completeCount} ready`
+              : `Start Extraction (${completeCount})`}
+          </Button>
+          <Button variant="alt" size="S" onClick={discardAll}>Discard</Button>
+        </div>
+      )}
+
+      <WhatHappensNext />
+
+      {/* Queued Documents — appears below "What happens next?" once
+          Start Extraction fires, per Figma 211:66363. Live-tracks the
+          OCR progress for each queued document; eye opens preview. */}
+      {hasQueue && (
+        <div className={styles.queuedSection}>
+          <div className={styles.queuedHead}>
+            <span className={styles.queuedTitle}>Queued Documents</span>
+            <div className={styles.queuedHeadRight}>
+              <button
+                type="button"
+                className={styles.queuedViewAll}
+                onClick={() => openSftpReview?.()}
+                disabled={!queuedBatches.some(b => b.status === 'done')}
+              >
+                View All Documents
+                <Icon name="solar:arrow-right-up-linear" size={12} color="var(--primary-300)" />
+              </button>
+              <span className={styles.queuedDivider} />
+              <button
+                type="button"
+                className={styles.queuedFilterBtn}
+                title="Filter"
+              >
+                <Icon name="solar:filter-linear" size={14} color="var(--neutral-300)" />
+              </button>
+            </div>
+          </div>
+          <div className={styles.queuedList}>
+            {queuedBatches.map(b => (
+              <QueuedDocRow
+                key={b.id}
+                batch={b}
+                onPreview={() => showToast?.(`Preview ${b.fileName} — coming soon`)}
+                onRemove={() => {
+                  setQueuedBatchIds(prev => prev.filter(q => q.fileName !== b.fileName));
+                }}
+              />
+            ))}
+          </div>
+          {allQueueDone && (
+            <Button
+              variant="primary"
+              size="S"
+              leadingIcon="solar:eye-linear"
+              onClick={() => { cancel?.(); openSftpReview?.(); }}
+            >
+              Review {queuedBatches.length} Document{queuedBatches.length === 1 ? '' : 's'}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Demo helper — quick chips so the prototype is exercisable
+          without an actual file picker. Always visible so the user can
+          drop more demos at any point. */}
+      <div className={styles.demoStrip}>
+        <Icon name="solar:test-tube-linear" size={12} color="var(--neutral-300)" />
+        <span className={styles.demoStripLabel}>Try a demo PDF:</span>
+        {[
+          'demo-single.pdf',
+          'demo-multi-patient.pdf',
+          'demo-same-patient-multi-dos.pdf',
+          'demo-bulk-multi-patient.pdf',
+        ].map(name => (
+          <button
+            key={name}
+            type="button"
+            className={styles.demoChip}
+            onClick={() => {
+              const file = new File([new Blob(['%PDF-1.4 demo'])], name, { type: 'application/pdf' });
+              handlePick(file);
+            }}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * QueuedDocRow — one row in the Queued Documents list (Figma
+ * 211:66363). Shows filename + date + "You" actor, with a
+ * "Processing…" underlined label that fades to a green check + count
+ * when the batch lands.
+ */
+function QueuedDocRow({ batch, onPreview, onRemove }) {
+  const isPending = batch.status === 'pending';
+  const dateLabel = useMemo(() => {
+    if (!batch.ingestedAt) return '';
+    const d = new Date(batch.ingestedAt);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()}`;
+  }, [batch.ingestedAt]);
+  return (
+    <div className={styles.queuedRow}>
+      <span className={styles.queuedRowIcon}>
+        <Icon name="solar:file-text-linear" size={14} color="var(--primary-300)" />
+      </span>
+      <div className={styles.queuedRowMain}>
+        <div className={styles.queuedRowName}>{batch.fileName}</div>
+        <div className={styles.queuedRowMeta}>{dateLabel} · You</div>
+      </div>
+      <div className={styles.queuedRowStatus}>
+        {isPending ? (
+          <span className={styles.queuedProcessing}>Processing…</span>
+        ) : (
+          <span className={styles.queuedDone}>
+            <Icon name="solar:check-circle-bold" size={12} color="var(--status-success)" />
+            {batch.encounters?.length || 0} extracted
+          </span>
+        )}
+      </div>
+      <div className={styles.queuedRowActions}>
+        <button type="button" className={styles.queuedRowAction} onClick={onPreview} title="Preview">
+          <Icon name="solar:eye-linear" size={14} color="var(--neutral-300)" />
+        </button>
+        <button type="button" className={styles.queuedRowAction} onClick={onRemove} title="Remove from queue">
+          <Icon name="solar:close-circle-linear" size={14} color="var(--neutral-300)" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * StagedFileRow — single row in the staged-file list. While uploading
+ * renders an animated progress bar + × remove. Once complete swaps to
+ * a check + eye-preview + trash.
+ */
+function StagedFileRow({ file, onRemove, onPreview }) {
+  const sizeLabel = formatBytes(file.size);
+  const isUploading = file.status === 'uploading';
+  return (
+    <div className={[styles.stagedRow, isUploading ? styles.stagedRowUploading : styles.stagedRowComplete].join(' ')}>
+      <span className={styles.stagedIcon}>
+        <Icon name="solar:file-text-linear" size={14} color="var(--neutral-300)" />
+      </span>
+      <div className={styles.stagedMain}>
+        <div className={styles.stagedName}>{file.name}</div>
+        <div className={styles.stagedMeta}>
+          <span>{sizeLabel} <span className={styles.stagedMetaSep}>/</span> 30 MB</span>
+          <span className={styles.stagedStatus}>
+            {isUploading ? (
+              <>
+                <span className={styles.stagedSpinner} />
+                Uploading…
+              </>
+            ) : (
+              <>
+                <Icon name="solar:check-circle-bold" size={12} color="var(--status-success)" />
+                Complete
+              </>
+            )}
+          </span>
+        </div>
+        {isUploading && (
+          <div className={styles.stagedProgressTrack}>
+            <span
+              className={styles.stagedProgressFill}
+              style={{ width: `${Math.round(file.progress)}%` }}
+            />
+          </div>
+        )}
+      </div>
+      <div className={styles.stagedActions}>
+        {!isUploading && (
+          <button type="button" className={styles.stagedActionBtn} onClick={onPreview} title="Preview">
+            <Icon name="solar:eye-linear" size={14} color="var(--neutral-300)" />
+          </button>
+        )}
+        <button type="button" className={styles.stagedActionBtn} onClick={onRemove} title="Remove">
+          <Icon
+            name={isUploading ? 'solar:close-circle-linear' : 'solar:trash-bin-trash-linear'}
+            size={14}
+            color={isUploading ? 'var(--neutral-300)' : 'var(--status-error)'}
+          />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * WhatHappensNext — collapsible info accordion sitting under the
+ * dropzone. Default collapsed (pill with bulb icon); expanded shows a
+ * 3-step grid explaining the extract → review → confirm flow.
+ */
+function WhatHappensNext() {
+  const [open, setOpen] = useState(false);
+  const STEPS = [
+    {
+      n: 1,
+      title: 'We extract key information',
+      body: 'patient demographics, date of service, provider, place of service, and ICD codes.',
+    },
+    {
+      n: 2,
+      title: 'You review and confirm',
+      body: 'Review each record and fix any flagged fields.',
+    },
+    {
+      n: 3,
+      title: 'Add or merge',
+      body: 'Confirm to add a new worklist entry or merge into an existing one.',
+    },
+  ];
+  return (
+    <div className={[styles.whatNext, open ? styles.whatNextOpen : ''].join(' ')}>
+      <button type="button" className={styles.whatNextHead} onClick={() => setOpen(v => !v)}>
+        <Icon name="solar:lightbulb-bolt-linear" size={14} color="var(--status-info, #145ECC)" />
+        <span className={styles.whatNextHeadLabel}>What happens next?</span>
+        <Icon
+          name={open ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'}
+          size={12}
+          color="var(--status-info, #145ECC)"
+        />
+      </button>
+      {open && (
+        <div className={styles.whatNextSteps}>
+          {STEPS.map(s => (
+            <div key={s.n} className={styles.whatNextCard}>
+              <span className={styles.whatNextNum}>{s.n}</span>
+              <div className={styles.whatNextTitle}>{s.title}</div>
+              <div className={styles.whatNextBody}>{s.body}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Format a byte count as "X.X MB" / "X KB". */
+function formatBytes(bytes) {
+  if (!bytes || bytes < 0) return '0 MB';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
  * PickerUploadQueue — inline list of documents the user has queued
  * from the picker. Each row shows filename + status (extracting /
  * ready). A "Review N" CTA opens the multi-doc review drawer once at
@@ -403,58 +807,24 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
     }
   };
 
-  const canBack = ['single', 'picker', 'sftp'].includes(session.phase) && !session.seededMemberId;
   // Phase-specific drawer title. Picker uses a single bold "Upload a
-  // Document" line per Figma 13239:502724 (subtitle dropped in latest
-  // iteration). Other phases keep the legacy treatment.
+  // Document" line per Figma 121:81202. Back button removed per latest
+  // direction — the popover on the worklist toolbar is the canonical
+  // entry, so there's no chooser to step back to.
   const title = session.phase === 'picker' ? (
     <span className={styles.titleBlock}>
-      {canBack && (
-        <button
-          type="button"
-          className={styles.titleBackBtn}
-          onClick={() => setPhase('chooser')}
-          aria-label="Back to chooser"
-        >
-          <Icon name="solar:alt-arrow-left-linear" size={16} color="var(--neutral-400)" />
-        </button>
-      )}
       <span className={styles.titleMain}>Upload a Document</span>
     </span>
   ) : (
     <span className={styles.title}>
-      {canBack && (
-        <button
-          type="button"
-          className={styles.titleBackBtn}
-          onClick={() => setPhase('chooser')}
-          aria-label="Back to chooser"
-        >
-          <Icon name="solar:alt-arrow-left-linear" size={16} color="var(--neutral-400)" />
-        </button>
-      )}
       {session.phase === 'review'
         ? <ReviewTitle encounters={session.encounters} hccMembers={hccMembers} />
         : 'Upload Document'}
     </span>
   );
 
-  const headerRight = session.phase === 'picker' ? (
-    <>
-      {/* "Extract Records" — disabled until a file is selected. Once a
-          file lands, setHccUploadFile transitions to 'processing' which
-          unmounts the picker, so this button effectively just signals
-          to the user what the file-select gesture is leading to. */}
-      <Button
-        variant="secondary"
-        size="S"
-        disabled
-      >
-        Extract Records
-      </Button>
-      <span className={styles.headerDivider} />
-    </>
-  ) : session.phase === 'review' ? (
+  const headerRight = session.phase === 'picker' ? null
+  : session.phase === 'review' ? (
     <>
       {/* Source-document peek: clicking opens the page-preview drawer
           at page 1. The badge shows the file's total page count. */}
@@ -541,78 +911,10 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
       )}
 
       {session.phase === 'picker' && (
-        <div className={styles.pickerPhase}>
-          {/* Concentric-ring hero — smaller per Figma (120×120). */}
-          <div className={styles.hero} aria-hidden="true">
-            <span className={styles.heroRingOuter} />
-            <span className={styles.heroRingMid} />
-            <span className={styles.heroCenter}>
-              <Icon name="solar:document-medicine-linear" size={32} color="var(--neutral-300)" />
-            </span>
-          </div>
-
-          {/* Dropzone — shared <Dropzone> primitive. 4px gap between the
-              drop area and the supporting-formats line. */}
-          <Dropzone
-            accept={ACCEPT_EXT}
-            acceptMime={ACCEPT_MIME}
-            icon="solar:upload-minimalistic-linear"
-            helperText="Supported formats: PDF, DOC, JPG, PNG, or TIFF"
-            secondaryText="Max size: 100 MB"
-            onPick={(f) => handleFileSelect(f)}
-            onReject={() => showToast('Please upload a PDF, DOC, JPG, PNG, or TIFF file')}
-          />
-
-          {/* Live upload queue — fills in as the user keeps dropping
-              files. Each row shows the file name + an OCR status
-              spinner/check. Once at least one file is ready the "Review"
-              CTA opens the multi-doc review drawer. */}
-          <PickerUploadQueue cancel={cancel} />
-
-          {/* "What happens after you upload" info banner — 3 simplified
-              steps per Figma 1:24203. Drops the explicit "review and
-              merge / new row" footer note since the third step now
-              covers it. */}
-          <div className={styles.howToBanner}>
-            <div className={styles.howToHead}>
-              <Icon name="solar:info-circle-linear" size={16} color="var(--status-info, #145ECC)" />
-              <span>What happens after you upload</span>
-            </div>
-            <ol className={styles.howToList}>
-              <li>The system extracts patient demographics, date of service, provider, place of service, and ICD codes.</li>
-              <li>Review each record and fix any flagged fields.</li>
-              <li>Confirm to add a new worklist entry or merge into an existing one.</li>
-            </ol>
-          </div>
-
-          {/* Demo PDF chip strip — kept off the main visual surface so the
-              upload flow stays end-to-end testable, but visually de-
-              emphasised so it reads as developer affordance. */}
-          <div className={styles.demoStrip}>
-            <Icon name="solar:test-tube-linear" size={12} color="var(--neutral-300)" />
-            <span className={styles.demoStripLabel}>Try a demo PDF:</span>
-            {[
-              'demo-single.pdf',
-              'demo-multi-patient.pdf',
-              'demo-same-patient-multi-dos.pdf',
-              'demo-bulk-multi-patient.pdf',
-              'demo-missing-dos.pdf',
-              'demo-dob-mismatch.pdf',
-            ].map((name) => (
-              <button
-                key={name}
-                type="button"
-                className={styles.demoChip}
-                onClick={() => {
-                  const file = new File([new Blob(['%PDF-1.4 demo'])], name, { type: 'application/pdf' });
-                  handleFileSelect(file);
-                }}
-              >
-                {name}
-              </button>
-            ))}
-          </div>
-        </div>
+        <PickerPhase
+          showToast={showToast}
+          cancel={cancel}
+        />
       )}
 
       {session.phase === 'processing' && (

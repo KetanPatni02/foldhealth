@@ -150,6 +150,346 @@
    referenced by the HCC picker. Kept temporarily for any reuse during
    the migration of the other 4 dropzone sites. */
 
+/* ── Picker phase v2 (Figma 121:81202) ────────────────────────────── */
+.pickerPhase2 {
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Visual container that wraps the dropzone + staged file list so they
+   read as one component per Figma 121:84012. The Dropzone already
+   carries its own dashed-border drop area; this wrapper just provides
+   the soft outer bg so dropzone + helper + file rows feel like one
+   tray. */
+.uploadContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+}
+
+/* When files are staged, the dropzone shrinks vertically — Figma
+   124:84012 trades dropzone real estate for the file list below. The
+   inner zone's :where() selector targets the shared Dropzone primitive
+   without touching its base styles. */
+.uploadContainer:where(.uploadContainerWithFiles) :global([class*="_zone_"]) {
+  padding: 24px;
+}
+.uploadContainerWithFiles { }
+
+/* "What happens next?" collapsible accordion */
+.whatNext {
+  border: 0.5px solid rgba(20, 94, 204, 0.22);
+  border-radius: 8px;
+  background: var(--status-info-light, #f4f8fe);
+  overflow: hidden;
+  transition: background 0.15s;
+}
+.whatNextHead {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+.whatNextHeadLabel {
+  flex: 1;
+  text-align: left;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--status-info, #145ECC);
+}
+.whatNextSteps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 4px 12px 12px;
+}
+.whatNextCard {
+  position: relative;
+  padding: 10px 12px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: #fff;
+}
+.whatNextNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: var(--status-info, #145ECC);
+  color: #fff;
+  font: 600 10px/1 'Inter', sans-serif;
+  margin-bottom: 6px;
+}
+.whatNextTitle {
+  font: 600 12px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+  margin-bottom: 4px;
+}
+.whatNextBody {
+  font: 400 11px/1.4 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+
+/* Staged-file list (uploading → complete) */
+.stagedList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.stagedRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: #fff;
+}
+.stagedRowUploading { }
+.stagedRowComplete { }
+.stagedIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.stagedMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stagedName {
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stagedMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 400 11px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.stagedMetaSep { color: var(--neutral-200); margin: 0 2px; }
+.stagedStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.stagedSpinner {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--primary-150, #e3d6f9);
+  border-top-color: var(--primary-300);
+  animation: spin 0.85s linear infinite;
+}
+.stagedProgressTrack {
+  margin-top: 2px;
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--neutral-100);
+  overflow: hidden;
+}
+.stagedProgressFill {
+  display: block;
+  height: 100%;
+  background: var(--status-success);
+  border-radius: 999px;
+  transition: width 0.18s ease;
+}
+.stagedActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.stagedActionBtn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.stagedActionBtn:hover { background: var(--neutral-50); }
+
+/* Footer for Start Extraction + Discard */
+.pickerFooter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* Queued Documents — Figma 211:66363 */
+.queuedSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 0.5px solid var(--neutral-100);
+}
+.queuedHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.queuedTitle {
+  font: 600 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.queuedHeadRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.queuedViewAll {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+  cursor: pointer;
+  border-radius: 6px;
+}
+.queuedViewAll:hover:not(:disabled) { background: var(--primary-50); }
+.queuedViewAll:disabled { opacity: 0.45; cursor: not-allowed; }
+.queuedDivider {
+  width: 0.5px;
+  height: 14px;
+  background: var(--neutral-150);
+}
+.queuedFilterBtn {
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.queuedFilterBtn:hover { background: var(--neutral-50); }
+.queuedList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.queuedRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: #fff;
+}
+.queuedRowIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-150, #e3d6f9);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.queuedRowMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.queuedRowName {
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.queuedRowMeta {
+  font: 400 11px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.queuedRowStatus {
+  flex-shrink: 0;
+  padding: 0 8px;
+}
+.queuedProcessing {
+  display: inline-block;
+  padding-bottom: 2px;
+  font: 400 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+  background: linear-gradient(90deg, var(--primary-300) 0%, var(--primary-300) 50%, var(--neutral-200) 50%, var(--neutral-200) 100%);
+  background-size: 200% 1px;
+  background-repeat: no-repeat;
+  background-position: 100% 100%;
+  animation: queued-bar 1.4s ease-in-out infinite;
+}
+@keyframes queued-bar {
+  0%   { background-position: 100% 100%; }
+  100% { background-position: -100% 100%; }
+}
+.queuedDone {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--status-success);
+}
+.queuedRowActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.queuedRowAction {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.queuedRowAction:hover { background: var(--neutral-50); }
+
+
 /* ── Picker queue (inline list of background OCR jobs) ─────────────── */
 .pickerQueue {
   margin-top: 4px;

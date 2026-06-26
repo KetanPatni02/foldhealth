@@ -3197,6 +3197,19 @@ export const useAppStore = create((set, get) => ({
       : b),
   })),
   /**
+   * Mark a per-batch encounter as 'added' (sent to worklist) or
+   * 'deleted' (dropped). Used by the Document Review drawer to drive
+   * the Pending / Added / Deleted tab counts without losing the row.
+   * Set status to null to reset back to pending.
+   */
+  setHccSftpEncounterStatus: (batchId, idx, status) => set(s => ({
+    hccSftpBatches: (s.hccSftpBatches || []).map(b => b.id === batchId
+      ? { ...b, encounters: b.encounters.map((e, i) => i === idx
+          ? { ...e, _docStatus: status }
+          : e) }
+      : b),
+  })),
+  /**
    * Drop an entire SFTP batch from the queue (called after Add to
    * Worklist completes, so the batch disappears from the switcher).
    */
