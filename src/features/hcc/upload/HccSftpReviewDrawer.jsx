@@ -4,7 +4,11 @@ import { Icon } from '../../../components/Icon/Icon';
 import { Button } from '../../../components/Button/Button';
 import { Avatar } from '../../../components/Avatar/Avatar';
 import { Input } from '../../../components/Input/Input';
-import { BulkBar } from '../../../components/BulkBar/BulkBar';
+import { Badge } from '../../../components/Badge/Badge';
+import { ActionButton } from '../../../components/ActionButton/ActionButton';
+import { Toggle } from '../../../components/Toggle/Toggle';
+// BulkBar import removed — per-card actions replace the floating bar
+// in the new Document Review layout (Figma 121:87283).
 import { useAppStore } from '../../../store/useAppStore';
 import { getFieldConfidence } from '../data/confidence';
 import { POS_LABEL } from './mockOcr';
@@ -49,6 +53,15 @@ export function HccSftpReviewDrawer() {
   // Per-batch selection state — when the user switches tabs we reset
   // the set so bulk actions only ever apply to the visible batch.
   const [selectedIdxs, setSelectedIdxs] = useState(() => new Set());
+  // Document Review now has three top-level tabs: Pending Review,
+  // Added to Worklist, Deleted. We drive them from each encounter's
+  // _docStatus annotation (set by setHccSftpEncounterStatus).
+  const [docTab, setDocTab] = useState('pending');
+  // Status filter inside the Pending tab — Ready / Mismatch / Error.
+  const [statusFilter, setStatusFilter] = useState('ready');
+  // Doc-switcher popover open state (filename click).
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const setEncounterStatus = useAppStore(s => s.setHccSftpEncounterStatus);
   useEffect(() => { setSelectedIdxs(new Set()); }, [activeBatch?.id]);
   const toggleSelected = (idx) => setSelectedIdxs(prev => {
     const next = new Set(prev);
@@ -129,35 +142,40 @@ export function HccSftpReviewDrawer() {
     setSelectedIdxs(new Set());
   };
 
-  // Header now only carries the close affordance — bulk actions (Add to
-  // Worklist · Delete) moved to the floating <BulkBar>, which appears
-  // when at least one row is selected.
-  const headerRight = null;
+  // Per-batch encounter buckets driven by the new _docStatus field.
+  const activeEncs = activeBatch?.encounters || [];
+  const bucket = (status) => activeEncs.filter(e => (e._docStatus || 'pending') === status);
+  const pendingEncs = bucket('pending');
+  const addedEncs   = bucket('added');
+  const deletedEncs = bucket('deleted');
+
+  const encStatus = (enc) => {
+    if (!enc?.patient?.matchedMemberId) return 'mismatch';
+    if (Array.isArray(enc?.errors) && enc.errors.length > 0) return 'error';
+    return 'ready';
+  };
+  const readyCount    = pendingEncs.filter(e => encStatus(e) === 'ready').length;
+  const mismatchCount = pendingEncs.filter(e => encStatus(e) === 'mismatch').length;
+  const errorCount    = pendingEncs.filter(e => encStatus(e) === 'error').length;
+
+  // Filtered list for the right-pane card stack.
+  const visibleEncs = (
+    docTab === 'pending' ? pendingEncs.filter(e => encStatus(e) === statusFilter)
+    : docTab === 'added'   ? addedEncs
+    :                        deletedEncs
+  );
 
   const title = (
     <span className={styles.titleBlock}>
-      <span className={styles.titleTopRow}>
-        <span className={styles.titleIcon}>
-          <Icon name="solar:cloud-upload-linear" size={14} color="var(--primary-300)" />
-        </span>
-        <span className={styles.titleTop}>SFTP Review</span>
-      </span>
-      <span className={styles.titleSub}>
-        <strong>{stats.docs}</strong>&nbsp;document{stats.docs === 1 ? '' : 's'}
-        <span className={styles.titleSubDot}>·</span>
-        <strong>{stats.totalEncs}</strong>&nbsp;encounter{stats.totalEncs === 1 ? '' : 's'}
-        <span className={styles.titleSubDot}>·</span>
-        <strong>{stats.patients}</strong>&nbsp;patient{stats.patients === 1 ? '' : 's'}
-        {stats.pending > 0 && (
-          <>
-            <span className={styles.titleSubDot}>·</span>
-            <span className={styles.titlePending}>
-              <span className={styles.titlePendingPulse} />
-              {stats.pending} extracting
-            </span>
-          </>
-        )}
-      </span>
+      <span className={styles.titleTop}>Document Review</span>
+    </span>
+  );
+
+  const headerRight = (
+    <span className={styles.titleStats}>
+      <strong>{stats.totalEncs}</strong>&nbsp;Recorded
+      <span className={styles.titleSubDot}>•</span>
+      <strong>{stats.patients}</strong>&nbsp;Members
     </span>
   );
 
@@ -170,35 +188,166 @@ export function HccSftpReviewDrawer() {
       headerRight={headerRight}
       noCloseDivider
     >
-      {/* Two-panel body. The doc switcher now lives inside the left
-          panel's preview header (dropdown style) — see <PagePreview>. */}
       {activeBatch ? (
         <div className={styles.panels}>
-          {/* LEFT — page preview + doc switcher. */}
+          {/* LEFT — filename strip + page preview. */}
           <div className={styles.leftPanel}>
+            <div className={styles.fileStrip}>
+              <button
+                type="button"
+                className={styles.fileStripBtn}
+                onClick={() => setSwitcherOpen(v => !v)}
+                title="Switch document"
+              >
+                <Icon name="solar:document-text-linear" size={14} color="var(--neutral-400)" />
+                <span className={styles.fileStripName}>{activeBatch.fileName}</span>
+                <Icon
+                  name={switcherOpen ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
+                  size={12}
+                  color="var(--neutral-400)"
+                />
+              </button>
+              <button
+                type="button"
+                className={styles.fileStripExternal}
+                title="Open document in new tab"
+              >
+                <Icon name="solar:square-arrow-right-up-linear" size={14} color="var(--neutral-400)" />
+              </button>
+              {switcherOpen && batches.length > 1 && (
+                <div className={styles.fileStripMenu} role="listbox">
+                  {batches.map(b => {
+                    const isActive = b.id === activeBatch.id;
+                    const isPending = b.status === 'pending';
+                    return (
+                      <button
+                        key={b.id}
+                        type="button"
+                        role="option"
+                        aria-selected={isActive}
+                        disabled={isPending}
+                        className={[
+                          styles.fileStripMenuItem,
+                          isActive ? styles.fileStripMenuItemActive : '',
+                        ].filter(Boolean).join(' ')}
+                        onClick={() => { setActiveId(b.id); setSwitcherOpen(false); }}
+                      >
+                        <Icon name="solar:document-text-linear" size={12} color={isActive ? 'var(--primary-300)' : 'var(--neutral-400)'} />
+                        <span>{b.fileName}</span>
+                        <span className={styles.fileStripMenuCount}>{b.encounters?.length || 0}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
             <PagePreview
               activeBatch={activeBatch}
               batches={batches}
               onSelect={(id) => setActiveId(id)}
             />
           </div>
-          {/* RIGHT — slim per-doc toolbar + encounter table. */}
+
+          {/* RIGHT — Pending / Added / Deleted tabs + filter chips +
+              encounter card stack. */}
           <div className={styles.rightPanel}>
-            <DocToolbar
-              batch={activeBatch}
-              setSelectedAll={setSelectedAll}
-              showToast={showToast}
-            />
-            <SftpReviewTable
-              batch={activeBatch}
-              hccMembers={hccMembers}
-              onPatch={(idx, patch) => patchEnc?.(activeBatch.id, idx, patch)}
-              onRemove={(idx) => removeEnc?.(activeBatch.id, idx)}
-              showToast={showToast}
-              selectedIdxs={selectedIdxs}
-              toggleSelected={toggleSelected}
-              setSelectedAll={setSelectedAll}
-            />
+            <div className={styles.docTabBar}>
+              <button
+                type="button"
+                className={[styles.docTab, docTab === 'pending' ? styles.docTabActive : ''].join(' ')}
+                onClick={() => setDocTab('pending')}
+              >
+                Pending Review<span className={styles.docTabCount}>({pendingEncs.length})</span>
+              </button>
+              <button
+                type="button"
+                className={[styles.docTab, docTab === 'added' ? styles.docTabActive : ''].join(' ')}
+                onClick={() => setDocTab('added')}
+              >
+                Added to Worklist<span className={styles.docTabCount}>({addedEncs.length})</span>
+              </button>
+              <button
+                type="button"
+                className={[styles.docTab, docTab === 'deleted' ? styles.docTabActive : ''].join(' ')}
+                onClick={() => setDocTab('deleted')}
+              >
+                Deleted<span className={styles.docTabCount}>({deletedEncs.length})</span>
+              </button>
+              <span className={styles.docTabBarSpacer} />
+              <ActionButton size="S" icon="solar:magnifer-linear" tooltip="Search" />
+              <ActionButton size="S" icon="solar:bookmark-linear" tooltip="Saved filters" />
+              <Button
+                variant="alt"
+                size="S"
+                leadingIcon="solar:add-circle-linear"
+                onClick={() => showToast?.('Add New Record — coming soon')}
+              >
+                Add New Record
+              </Button>
+            </div>
+
+            {/* Filter chips inside the Pending tab — uses the shared
+                <Toggle> primitive so the segmented-control behavior +
+                visuals match every other filter cluster in the app. */}
+            {docTab === 'pending' && (
+              <div className={styles.statusChipsRow}>
+                <Toggle
+                  size="S"
+                  items={[
+                    { key: 'ready',    label: `Ready (${readyCount})` },
+                    { key: 'mismatch', label: `Mismatch (${mismatchCount})` },
+                    { key: 'error',    label: `Error (${errorCount})` },
+                  ]}
+                  active={statusFilter}
+                  onChange={setStatusFilter}
+                />
+              </div>
+            )}
+
+            {/* Encounter card stack — replaces the table. */}
+            <div className={styles.cardStack}>
+              {visibleEncs.length === 0 ? (
+                <div className={styles.cardStackEmpty}>
+                  <Icon name="solar:checklist-minimalistic-linear" size={28} color="var(--neutral-200)" />
+                  <span>
+                    {docTab === 'pending'
+                      ? `No ${statusFilter} encounters left to review`
+                      : docTab === 'added'
+                        ? 'Nothing has been added to the worklist yet'
+                        : 'Nothing has been deleted yet'}
+                  </span>
+                </div>
+              ) : visibleEncs.map((enc) => {
+                const idx = activeEncs.indexOf(enc);
+                return (
+                  <EncounterCard
+                    key={enc.tempId || idx}
+                    enc={enc}
+                    status={encStatus(enc)}
+                    hccMembers={hccMembers}
+                    docTab={docTab}
+                    onPatch={(patch) => patchEnc?.(activeBatch.id, idx, patch)}
+                    onAddToWorklist={() => {
+                      const r = createFromEncounter?.({ ...enc, _docName: activeBatch.fileName });
+                      if (r?.kind === 'skipped') {
+                        showToast?.(`Cannot add — ${r.reason || 'encounter is incomplete'}`);
+                        return;
+                      }
+                      setEncounterStatus?.(activeBatch.id, idx, 'added');
+                      showToast?.(`Added ${enc.patient?.name || 'encounter'} to worklist`);
+                    }}
+                    onDelete={() => {
+                      setEncounterStatus?.(activeBatch.id, idx, 'deleted');
+                      showToast?.(`Deleted ${enc.patient?.name || 'encounter'}`);
+                    }}
+                    onRestore={() => {
+                      setEncounterStatus?.(activeBatch.id, idx, null);
+                      showToast?.(`Restored ${enc.patient?.name || 'encounter'} to pending`);
+                    }}
+                  />
+                );
+              })}
+            </div>
           </div>
         </div>
       ) : (
@@ -206,31 +355,10 @@ export function HccSftpReviewDrawer() {
           <span className={styles.emptyStateBubble}>
             <Icon name="solar:server-2-linear" size={28} color="var(--neutral-300)" />
           </span>
-          <span className={styles.emptyStateTitle}>No SFTP batches in the queue</span>
-          <span className={styles.emptyStateSub}>Documents dropped on the SFTP path appear here once extraction completes.</span>
+          <span className={styles.emptyStateTitle}>No documents in the queue</span>
+          <span className={styles.emptyStateSub}>Documents you upload appear here once extraction completes.</span>
         </div>
       )}
-      {/* Floating bulk-action bar — appears when ≥1 row is selected.
-          Uses the shared <BulkBar> primitive with two prop-driven
-          actions: Add to Worklist (primary) and Delete (destructive). */}
-      <BulkBar
-        selectedIds={Array.from(selectedIdxs).map(String)}
-        onClear={() => setSelectedIdxs(new Set())}
-        actions={[
-          {
-            label: 'Add to Worklist',
-            icon: 'solar:add-circle-linear',
-            variant: 'primary',
-            onClick: handleAddSelectedToWorklist,
-          },
-          {
-            label: 'Delete',
-            icon: 'solar:trash-bin-trash-linear',
-            variant: 'danger',
-            onClick: handleDeleteSelected,
-          },
-        ]}
-      />
     </Drawer>
   );
 }
@@ -675,6 +803,180 @@ function SftpRow({ enc, hccMembers, onPatch, onRemove, showToast, checked, onTog
         </button>
       </td>
     </tr>
+  );
+}
+
+/**
+ * Document Review encounter card — one card per encounter,
+ * stacked vertically. Header: avatar + member identity + Ready /
+ * Mismatch / Error pill + per-card actions. Body: 2-column field
+ * grid (DOS · ICD Codes / Provider · POS) each with an inline
+ * confidence gauge bar matching Figma 121:87283.
+ */
+function EncounterCard({ enc, status, hccMembers, docTab, onPatch, onAddToWorklist, onDelete, onRestore }) {
+  const isMatched = !!enc.patient?.matchedMemberId;
+  const member = isMatched ? hccMembers.find(m => m.id === enc.patient.matchedMemberId) : null;
+  const errors = new Set(enc.errors || []);
+  // Map status → shared Badge variant (uses the existing status- tokens
+  // so this card matches every other status pill in the app).
+  const badgeVariant = (
+    status === 'ready'    ? 'status-completed' :
+    status === 'mismatch' ? 'status-review' :
+                            'status-failed'
+  );
+  const badgeIcon = (
+    status === 'ready'    ? 'solar:check-circle-bold' :
+    status === 'mismatch' ? 'solar:question-circle-bold' :
+                            'solar:danger-triangle-bold'
+  );
+  const statusLabel = status === 'ready' ? 'Ready' : status === 'mismatch' ? 'Mismatch' : 'Error';
+  // Per-field confidence drives the gauge bar next to each label.
+  const fieldConf = (name) => {
+    if (errors.has(name)) return 0;
+    return getFieldConfidence(enc, name);
+  };
+  return (
+    <div className={styles.encCard}>
+      <div className={styles.encCardHead}>
+        <Avatar
+          variant="patient"
+          initials={member?.in || (enc.patient?.name || '?').split(' ').map(p => p[0]).slice(0,2).join('')}
+        />
+        <div className={styles.encCardIdent}>
+          <div className={styles.encCardName}>{member?.name || enc.patient?.name || '(unmatched)'}</div>
+          <div className={styles.encCardMeta}>
+            {member?.g || ''} <span className={styles.encCardMetaDot}>•</span>
+            {member?.age || ''} <span className={styles.encCardMetaDot}>•</span>
+            #{enc.patient?.patientId || enc.patient?.matchedMemberDisplayId || '—'}
+          </div>
+        </div>
+        <Badge variant={badgeVariant} icon={badgeIcon} label={statusLabel} />
+        <div className={styles.encCardActions}>
+          {docTab === 'pending' ? (
+            <>
+              <Button
+                variant="ghost"
+                size="S"
+                leadingIcon="solar:add-circle-linear"
+                disabled={status !== 'ready'}
+                onClick={onAddToWorklist}
+              >
+                Add to Worklist
+              </Button>
+              <ActionButton size="S" icon="solar:bookmark-linear" tooltip="Bookmark" />
+              <ActionButton size="S" icon="solar:trash-bin-trash-linear" tooltip="Delete" onClick={onDelete} />
+            </>
+          ) : (
+            <Button
+              variant="ghost"
+              size="S"
+              leadingIcon="solar:undo-left-round-linear"
+              onClick={onRestore}
+            >
+              Restore
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div className={styles.encGrid}>
+        <FieldBlock label="DOS" required confidence={fieldConf('dos')}>
+          <Input
+            value={enc.dos || ''}
+            placeholder="MM/DD/YYYY"
+            variant={errors.has('dos') ? 'error' : 'default'}
+            onChange={(e) => onPatch({ dos: e.target.value })}
+          />
+        </FieldBlock>
+        <FieldBlock label="ICD Codes" required confidence={fieldConf('icds')}>
+          <div className={styles.encIcds}>
+            {(enc.icds || []).map(icd => (
+              <span key={icd.code} className={styles.encIcdChip}>
+                {icd.code}
+                <button
+                  type="button"
+                  className={styles.encIcdClose}
+                  onClick={() => onPatch({ icds: enc.icds.filter(i => i.code !== icd.code) })}
+                  aria-label={`Remove ${icd.code}`}
+                >
+                  <Icon name="solar:close-circle-linear" size={10} color="var(--primary-300)" />
+                </button>
+              </span>
+            ))}
+          </div>
+        </FieldBlock>
+        <FieldBlock label="Rendering Provider" required confidence={fieldConf('provider')}>
+          <Input
+            value={enc.provider || ''}
+            placeholder="Provider"
+            variant={errors.has('provider') ? 'error' : 'default'}
+            onChange={(e) => onPatch({ provider: e.target.value })}
+          />
+        </FieldBlock>
+        <FieldBlock label="POS" required confidence={fieldConf('pos')}>
+          <Input
+            value={enc.pos ? `${enc.pos} - ${POS_LABEL[enc.pos] || ''}` : ''}
+            placeholder="POS"
+            variant={errors.has('pos') ? 'error' : 'default'}
+            onChange={(e) => {
+              const code = e.target.value.split(' ')[0];
+              onPatch({ pos: code, posDesc: POS_LABEL[code] || '' });
+            }}
+          />
+        </FieldBlock>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * FieldBlock — label + confidence gauge bar + input slot.
+ * Used inside every encounter card cell. The gauge fills based on
+ * confidence: 5 segments tinted green/amber/red per tier.
+ */
+function FieldBlock({ label, required, confidence, children }) {
+  return (
+    <div className={styles.fieldBlock}>
+      <div className={styles.fieldBlockHead}>
+        <span className={styles.fieldBlockLabel}>
+          {label}{required && <span className={styles.fieldBlockReq}>•</span>}
+        </span>
+        <ConfGauge score={confidence} />
+      </div>
+      <div className={styles.fieldBlockBody}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * ConfGauge — 5-segment horizontal gauge that fills based on score.
+ * High (≥85%): full green; Medium (60-84%): mixed amber; Low (<60%):
+ * red. Shows the percent number to the left of the bars.
+ */
+function ConfGauge({ score }) {
+  if (typeof score !== 'number' || score === 0) {
+    return <span className={styles.confGaugeEmpty}>—</span>;
+  }
+  const tier = score >= 85 ? 'high' : score >= 60 ? 'medium' : 'low';
+  // 5 segments. Fill count is proportional to score.
+  const fillCount = Math.max(1, Math.min(5, Math.round((score / 100) * 5)));
+  return (
+    <span className={styles.confGauge}>
+      <span className={[styles.confGaugePct, styles[`confGauge_${tier}Text`]].join(' ')}>{score}%</span>
+      <span className={styles.confGaugeBars}>
+        {Array.from({ length: 5 }).map((_, i) => (
+          <span
+            key={i}
+            className={[
+              styles.confGaugeBar,
+              i < fillCount ? styles[`confGauge_${tier}Bar`] : styles.confGauge_offBar,
+            ].join(' ')}
+          />
+        ))}
+      </span>
+    </span>
   );
 }
 

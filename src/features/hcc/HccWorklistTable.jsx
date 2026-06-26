@@ -18,6 +18,8 @@ import { memberMatchesFilters } from './filters';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { BulkBar } from '../../components/BulkBar/BulkBar';
 import { BulkChangeAssigneesDialog } from './BulkChangeAssigneesDialog';
+import { UploadMenuPopover } from './upload/UploadMenuPopover';
+import { HccUploadProgressRibbon } from './upload/HccUploadProgressRibbon';
 import { HccHistoryDrawer } from './HccHistoryDrawer';
 import { StatusLegend } from './StatusLegend';
 import styles from './HccWorklistTable.module.css';
@@ -149,6 +151,8 @@ export function HccWorklistTable() {
   const [memberSortPop, setMemberSortPop] = useState(null); // rect
   const [colCfgRect, setColCfgRect] = useState(null);
   const [bulkAssigneeOpen, setBulkAssigneeOpen] = useState(false);
+  const [uploadMenuOpen, setUploadMenuOpen] = useState(false);
+  const uploadBtnRef = useRef(null);
   const memberThRef = useRef(null);
   const colCfgBtnRef = useRef(null);
 
@@ -219,6 +223,7 @@ export function HccWorklistTable() {
 
   return (
     <div className={styles.wrap}>
+      <HccUploadProgressRibbon />
       <div className={styles.tabBar}>
         <div className={styles.tabLeft}>
           <InlineEditable
@@ -274,13 +279,21 @@ export function HccWorklistTable() {
             onClick={openHccHistoryDrawer}
           />
           <span className={styles.iconDivider} />
-          <ActionButton
-            icon="solar:upload-square-linear"
-            size="L"
-            tooltip="Upload Document"
-            tooltipBelow
-            onClick={() => startHccUpload(null)}
-          />
+          <div ref={uploadBtnRef} style={{ position: 'relative', display: 'inline-flex' }}>
+            <ActionButton
+              icon="solar:upload-square-linear"
+              size="L"
+              tooltip="Upload Document"
+              tooltipBelow
+              onClick={() => setUploadMenuOpen(v => !v)}
+            />
+            {uploadMenuOpen && (
+              <UploadMenuPopover
+                anchorRef={uploadBtnRef}
+                onClose={() => setUploadMenuOpen(false)}
+              />
+            )}
+          </div>
           <span className={styles.iconDivider} />
           <ActionButton
             icon="solar:download-square-linear"
