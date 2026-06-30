@@ -27,6 +27,7 @@ import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { RoleTooltip } from '../RoleTooltip';
 import { resolveCurrentAssignee } from '../HccWorklistRow';
 import { ROLE_LABEL, staffForRole } from '../assignment/astranaStaff';
+import { canCompleteDos } from '../compliance';
 import styles from './DiagPanel.module.css';
 
 // Initials-square avatar to the left of the DOS status pill. Reflects the
@@ -415,6 +416,25 @@ export function DiagPanel() {
     return currentBucket.status || 'In Progress';
   }, [currentBucket, diagDosStatus]);
 
+  // ── Compliance gate (Astrana spec) ─────────────────────────────────
+  // Mark Complete may only fire on Support → Coder when every document
+  // touching this (member, dos) has all 5 compliance checks passed.
+  // We filter the in-flight SFTP batches to just those whose encounters
+  // include this patient + DOS, then ask the engine. When no batches
+  // are tracked for this DOS the gate is a no-op (legacy path preserved).
+  const hccSftpBatches = useAppStore(s => s.hccSftpBatches) || [];
+  const complianceGates = useMemo(() => {
+    if (!member?.id || !currentDos) return undefined;
+    const docsForDos = hccSftpBatches
+      .filter(b => b.compliance && (b.encounters || []).some(e =>
+        e.patient?.matchedMemberId === member.id && e.dos === currentDos
+      ))
+      .map(b => ({ fileName: b.fileName, ocrTier: b.ocrTier, compliance: b.compliance }));
+    if (docsForDos.length === 0) return undefined;
+    const { ok, reason } = canCompleteDos(docsForDos);
+    return ok ? undefined : { Completed: { enabled: false, reason } };
+  }, [member?.id, currentDos, hccSftpBatches]);
+
   // ── Review-progress stages + ring (drives the With-Coder pill) ──
   const reviewStages = useMemo(
     () => buildReviewStages(member, dosState),
@@ -641,6 +661,7 @@ export function DiagPanel() {
             <DosStatusMenu
               value={currentStatus}
               onChange={handleStatusChange}
+              gates={complianceGates}
             />
           )}
         </div>

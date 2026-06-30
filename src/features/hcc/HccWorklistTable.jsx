@@ -107,6 +107,7 @@ export function HccWorklistTable() {
   const hccMembers = useAppStore(s => s.hccMembers);
   const hccMembersLoading = useAppStore(s => s.hccMembersLoading);
   const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
+  const fetchHccDocuments = useAppStore(s => s.fetchHccDocuments);
   const selectedHccIds = useAppStore(s => s.selectedHccIds);
   const selectAllHcc = useAppStore(s => s.selectAllHcc);
   const clearHccSelected = useAppStore(s => s.clearHccSelected);
@@ -157,6 +158,7 @@ export function HccWorklistTable() {
   const colCfgBtnRef = useRef(null);
 
   useEffect(() => { fetchHccMembers(); }, [fetchHccMembers]);
+  useEffect(() => { fetchHccDocuments?.(); }, [fetchHccDocuments]);
 
   // Whenever the active filter/sort/search/due-date changes, jump back to
   // page 1 so the user doesn't end up on an empty page after the result set
@@ -272,7 +274,7 @@ export function HccWorklistTable() {
           />
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="solar:clock-circle-linear"
+            icon="solar:history-linear"
             size="L"
             tooltip="History"
             tooltipBelow
@@ -281,7 +283,7 @@ export function HccWorklistTable() {
           <span className={styles.iconDivider} />
           <div ref={uploadBtnRef} style={{ position: 'relative', display: 'inline-flex' }}>
             <ActionButton
-              icon="solar:upload-square-linear"
+              icon="solar:upload-minimalistic-linear"
               size="L"
               tooltip="Upload Document"
               tooltipBelow
@@ -296,7 +298,7 @@ export function HccWorklistTable() {
           </div>
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="solar:download-square-linear"
+            icon="solar:file-download-linear"
             size="L"
             tooltip="Export"
             tooltipBelow

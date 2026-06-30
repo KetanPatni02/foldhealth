@@ -1,4 +1,5 @@
 import { isValidV28Code } from './v28Whitelist';
+import { evaluateOcrTier, evaluateCompliance } from '../compliance';
 
 /**
  * Scripted demo OCR.
@@ -493,3 +494,51 @@ function buildEncountersForFile(file, hccMembers) {
 }
 
 export { mandatoryFields, POS_LABEL };
+
+/**
+ * Document pipeline (the canonical entry point going forward).
+ *
+ * Runs OCR + evaluates document-level OCR tier + 5-point compliance in a
+ * single pass, per the Astrana spec. Returns:
+ *
+ *   {
+ *     documentId,                              // stable id for the doc instance
+ *     fileName,
+ *     ocrTier:    'clean' | 'degraded' | 'unreadable',
+ *     compliance: { progressNote, dosCharted, providerNamePrinted,
+ *                   posAvailable, legible },   // see compliance.js
+ *     encounters: [...]                        // [] when ocrTier === 'unreadable'
+ *   }
+ *
+ * Each encounter is stamped with `documentId` so the UI can group encounters
+ * back to their source document (the compliance state is one entity per doc,
+ * not per encounter — a single PDF can carry multiple records).
+ */
+export async function runDocumentPipeline(file, hccMembers) {
+  const encounters = await runMockOcr(file, hccMembers);
+  return buildDocumentResult(file, encounters);
+}
+
+/**
+ * Synchronous variant — same shape as runDocumentPipeline, no artificial
+ * delay. Used by the "Re-open Review" affordance in the History drawer.
+ */
+export function buildDocumentSync(file, hccMembers) {
+  const encounters = extractEncountersSync(file, hccMembers);
+  return buildDocumentResult(file, encounters);
+}
+
+function buildDocumentResult(file, rawEncounters) {
+  const documentId = `doc-${Math.random().toString(36).slice(2, 10)}`;
+  const fileName = file?.name || 'unknown';
+  const ocrTier = evaluateOcrTier(fileName);
+  const sample = rawEncounters[0] || null;
+  const compliance = evaluateCompliance(ocrTier, sample);
+
+  // Unreadable docs short-circuit: no records released downstream. The
+  // doc still appears in the queue (Support needs to see it and re-request).
+  const encounters = ocrTier === 'unreadable' ? [] : rawEncounters;
+  encounters.forEach((e) => { e.documentId = documentId; });
+
+  return { documentId, fileName, ocrTier, compliance, encounters };
+}

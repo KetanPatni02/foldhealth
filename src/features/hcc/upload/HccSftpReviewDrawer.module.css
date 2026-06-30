@@ -1172,3 +1172,64 @@
   color: var(--neutral-300);
   max-width: 320px;
 }
+
+/* ── Compliance block (between file strip and page preview) ──────────── */
+.complianceBlock {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  margin: 8px 0;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: var(--neutral-0);
+  overflow: hidden;
+}
+
+.complianceHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.complianceHeader:hover {
+  background: var(--neutral-50);
+}
+
+.complianceHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.complianceSummary {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+
+.tone_success { color: var(--status-success, #2E8A4E); }
+.tone_warning { color: var(--status-warning, #B6770F); }
+.tone_error   { color: var(--status-error, #D72825); }
+
+.complianceDetail {
+  border-top: 0.5px solid var(--neutral-150);
+  padding: 12px;
+  background: var(--neutral-50);
+}
+
+@media (max-width: 720px) {
+  .complianceHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

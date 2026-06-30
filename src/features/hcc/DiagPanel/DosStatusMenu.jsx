@@ -29,8 +29,12 @@ const STATUS_ITEMS = [
  *  - onChange  (fn(string))    Called with the new status.
  *  - disabled  (boolean)       If true, the pill becomes a non-interactive label
  *                              (e.g. while in sweep mode).
+ *  - gates     ({ [status]: { enabled, reason } })
+ *                              Per-status guards. Disabling 'Completed' with
+ *                              a reason is how the compliance gate surfaces
+ *                              (UI shows a tooltip explaining what's blocking).
  */
-export function DosStatusMenu({ value, onChange, disabled = false }) {
+export function DosStatusMenu({ value, onChange, disabled = false, gates }) {
   const triggerRef = useRef(null);
   const [pos, setPos] = useState(null);
 
@@ -67,6 +71,7 @@ export function DosStatusMenu({ value, onChange, disabled = false }) {
         <Menu
           pos={pos}
           value={value}
+          gates={gates}
           onSelect={(v) => { onChange?.(v); close(); }}
           onClose={close}
         />
@@ -75,7 +80,7 @@ export function DosStatusMenu({ value, onChange, disabled = false }) {
   );
 }
 
-function Menu({ pos, value, onSelect, onClose }) {
+function Menu({ pos, value, gates, onSelect, onClose }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
     document.addEventListener('keydown', onKey);
@@ -95,23 +100,31 @@ function Menu({ pos, value, onSelect, onClose }) {
         <div className={styles.menuItems}>
           {STATUS_ITEMS.map((item) => {
             const isSel = value === item.value;
+            const gate = gates?.[item.value];
+            const blocked = gate && gate.enabled === false;
             return (
               <button
                 key={item.value}
                 type="button"
+                disabled={blocked}
+                title={blocked ? gate.reason : undefined}
                 className={[
                   styles.menuItem,
                   isSel ? styles.menuItemActive : '',
                   item.danger ? styles.menuItemDanger : '',
+                  blocked ? styles.menuItemBlocked : '',
                 ].join(' ')}
-                onClick={() => onSelect(item.value)}
+                onClick={() => { if (!blocked) onSelect(item.value); }}
               >
                 <span className={styles.menuItemLabel}>{item.label}</span>
                 {item.chevron && (
                   <Icon name="solar:alt-arrow-right-linear" size={14} color="var(--neutral-300)" />
                 )}
-                {isSel && !item.chevron && (
+                {isSel && !item.chevron && !blocked && (
                   <Icon name="solar:check-read-linear" size={12} color="var(--primary-300)" />
+                )}
+                {blocked && (
+                  <Icon name="solar:lock-keyhole-minimalistic-linear" size={12} color="var(--neutral-300)" />
                 )}
               </button>
             );

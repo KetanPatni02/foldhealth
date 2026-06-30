@@ -13,6 +13,10 @@ import { Select } from '../../../components/Select/Select';
 import { useAppStore } from '../../../store/useAppStore';
 import { getFieldConfidence } from '../data/confidence';
 import { POS_LABEL } from './mockOcr';
+import { Checkbox } from '../../../components/ui/checkbox';
+import { ComplianceStrip } from '../../../components/ComplianceStrip/ComplianceStrip';
+import { ComplianceReviewPanel } from '../../../components/ComplianceReviewPanel/ComplianceReviewPanel';
+import { OCR_TIER_LABEL, OCR_TIER_TONE, allChecksPassed, anyCheckFailed, anyCheckPending } from '../compliance';
 import styles from './HccSftpReviewDrawer.module.css';
 
 /**
@@ -43,8 +47,14 @@ export function HccSftpReviewDrawer() {
   const removeEnc = useAppStore(s => s.removeHccSftpEncounter);
   const removeBatch = useAppStore(s => s.removeHccSftpBatch);
   const createFromEncounter = useAppStore(s => s.hccCreateOrMergeFromEncounter);
+  const applyComplianceDecision = useAppStore(s => s.applyHccComplianceDecision);
   const hccMembers = useAppStore(s => s.hccMembers) || [];
   const showToast = useAppStore(s => s.showToast);
+  // Per-doc disclosure state: whether the full ComplianceReviewPanel is
+  // expanded for this batch. Defaults to expanded when the doc has anything
+  // needing a Support touch (any fail or pending check) — so the reviewer
+  // doesn't have to discover the panel.
+  const [complianceOpenIds, setComplianceOpenIds] = useState(new Set());
 
   const activeBatch = useMemo(
     () => batches.find(b => b.id === activeId) || batches.find(b => b.status === 'done') || batches[0],
@@ -244,6 +254,30 @@ export function HccSftpReviewDrawer() {
                 </div>
               )}
             </div>
+
+            {/* ── Document compliance summary + review panel ────────
+             * Per the Astrana spec, every document carries an OCR tier
+             * (Clean / Degraded / Unreadable) plus a 5-point compliance
+             * checklist. The compact strip + tier badge is always visible
+             * so Support can see at a glance whether a doc is releasable;
+             * the full review panel expands on click for manual pass/fail.
+             */}
+            {activeBatch.compliance && (
+              <ComplianceBlock
+                batch={activeBatch}
+                expanded={complianceOpenIds.has(activeBatch.id)}
+                onToggle={() => setComplianceOpenIds(prev => {
+                  const next = new Set(prev);
+                  if (next.has(activeBatch.id)) next.delete(activeBatch.id);
+                  else next.add(activeBatch.id);
+                  return next;
+                })}
+                onApplyDecision={({ checkKey, decision, reason }) =>
+                  applyComplianceDecision?.({ batchId: activeBatch.id, checkKey, decision, reason })
+                }
+              />
+            )}
+
             <PagePreview
               activeBatch={activeBatch}
               batches={batches}
@@ -672,12 +706,10 @@ function SftpReviewTable({ batch, hccMembers, onPatch, onRemove, showToast, sele
         <thead>
           <tr>
             <th className={styles.thCheck}>
-              <input
-                type="checkbox"
+              <Checkbox
                 aria-label="Select all encounters"
-                checked={allSelected}
-                ref={el => { if (el) el.indeterminate = !allSelected && someSelected; }}
-                onChange={(e) => setSelectedAll?.(allIdxs, e.target.checked)}
+                checked={allSelected ? true : (someSelected ? 'indeterminate' : false)}
+                onCheckedChange={(v) => setSelectedAll?.(allIdxs, v === true)}
               />
             </th>
             <th className={styles.thMember}>Member</th>
@@ -723,11 +755,10 @@ function SftpRow({ enc, hccMembers, onPatch, onRemove, showToast, checked, onTog
   return (
     <tr className={rowCls}>
       <td className={styles.tdCheck}>
-        <input
-          type="checkbox"
+        <Checkbox
           aria-label="Select encounter"
           checked={!!checked}
-          onChange={onToggle}
+          onCheckedChange={() => onToggle?.({ target: { checked: !checked } })}
         />
       </td>
       <td className={styles.tdMember}>
@@ -1065,6 +1096,70 @@ function ConfGauge({ score }) {
         ))}
       </span>
     </span>
+  );
+}
+
+/**
+ * ComplianceBlock — at-a-glance OCR tier badge + 5-dot strip + expandable
+ * review panel for the active document. Lives between the file switcher
+ * and the page preview on the left side of the drawer.
+ */
+function ComplianceBlock({ batch, expanded, onToggle, onApplyDecision }) {
+  const { ocrTier, compliance, fileName } = batch;
+  const hasIssue = anyCheckFailed(compliance) || anyCheckPending(compliance) || ocrTier === 'unreadable';
+  const ready = ocrTier !== 'unreadable' && allChecksPassed(compliance);
+
+  const summaryLabel = ocrTier === 'unreadable'
+    ? 'Unreadable — Support re-scan'
+    : ready
+      ? 'All 5 checks passed'
+      : hasIssue
+        ? 'Support review required'
+        : 'In review';
+
+  const summaryTone = ocrTier === 'unreadable' || anyCheckFailed(compliance)
+    ? 'error'
+    : ready
+      ? 'success'
+      : 'warning';
+
+  return (
+    <div className={styles.complianceBlock}>
+      <button
+        type="button"
+        className={styles.complianceHeader}
+        onClick={onToggle}
+        aria-expanded={expanded}
+        aria-controls={`compliance-detail-${batch.id}`}
+      >
+        <div className={styles.complianceHeaderLeft}>
+          <Badge variant={OCR_TIER_TONE[ocrTier] || 'warning'} label={`OCR · ${OCR_TIER_LABEL[ocrTier] || 'Unknown'}`} />
+          {ocrTier !== 'unreadable' && (
+            <ComplianceStrip compliance={compliance} size="S" />
+          )}
+          <span className={[styles.complianceSummary, styles[`tone_${summaryTone}`]].join(' ')}>
+            {summaryLabel}
+          </span>
+        </div>
+        <Icon
+          name={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
+          size={14}
+          color="var(--neutral-300)"
+        />
+      </button>
+      {expanded && (
+        <div id={`compliance-detail-${batch.id}`} className={styles.complianceDetail}>
+          <ComplianceReviewPanel
+            fileName={fileName}
+            ocrTier={ocrTier}
+            compliance={compliance}
+            onDecision={({ checkKey, decision, reason, actor }) =>
+              onApplyDecision?.({ checkKey, decision, reason, actor })
+            }
+          />
+        </div>
+      )}
+    </div>
   );
 }
 

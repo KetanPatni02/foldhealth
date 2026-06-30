@@ -118,3 +118,17 @@
 .menuItemDanger .menuItemLabel {
   color: var(--status-error);
 }
+
+/* Compliance-gated items (e.g. Completed while docs are non-compliant). */
+.menuItemBlocked {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.menuItemBlocked .menuItemLabel {
+  color: var(--neutral-300);
+}
+
+.menuItemBlocked:hover {
+  background: transparent;
+}

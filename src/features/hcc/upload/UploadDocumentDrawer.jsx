@@ -8,6 +8,7 @@ import { Input } from '../../../components/Input/Input';
 import { Toggle } from '../../../components/Toggle/Toggle';
 import { Select } from '../../../components/Select/Select';
 import { Dropzone } from '../../../components/Dropzone/Dropzone';
+import { Checkbox } from '../../../components/ui/checkbox';
 import { ConfidenceBadge } from '../components/ConfidenceBadge';
 import { getScoreStyle, getFieldConfidence } from '../data/confidence';
 import { useAppStore } from '../../../store/useAppStore';
@@ -1781,12 +1782,10 @@ function TableLayout({ visibleGroups, encounters, hccMembers, patchEnc, handleRe
         <thead>
           <tr>
             <th className={styles.thCheck}>
-              <input
-                type="checkbox"
+              <Checkbox
                 aria-label="Select all encounters"
-                checked={allSelected}
-                ref={el => { if (el) el.indeterminate = !allSelected && someSelected; }}
-                onChange={(e) => setSelectedAll?.(visibleIdxs, e.target.checked)}
+                checked={allSelected ? true : (someSelected ? 'indeterminate' : false)}
+                onCheckedChange={(v) => setSelectedAll?.(visibleIdxs, v === true)}
               />
             </th>
             <th className={styles.thPatient}>Member</th>
@@ -1858,11 +1857,10 @@ function TableRow({ enc, hccMembers, onPatch, onRemove, checked, onToggle, sourc
   return (
     <tr className={rowCls}>
       <td className={styles.tdCheck}>
-        <input
-          type="checkbox"
+        <Checkbox
           aria-label="Select encounter"
           checked={!!checked}
-          onChange={onToggle}
+          onCheckedChange={() => onToggle?.({ target: { checked: !checked } })}
         />
       </td>
       {/* Patient — chip when matched (clickable to swap), picker when

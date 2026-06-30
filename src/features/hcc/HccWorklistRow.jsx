@@ -90,7 +90,7 @@ function HccEvidenceCell({ count, docStatus, onClick, onUpload }) {
       <Button
         variant="ghost"
         size="S"
-        leadingIcon="solar:upload-linear"
+        leadingIcon="solar:upload-minimalistic-linear"
         onClick={(e) => { e.stopPropagation(); onUpload?.(); }}
       >
         Upload
