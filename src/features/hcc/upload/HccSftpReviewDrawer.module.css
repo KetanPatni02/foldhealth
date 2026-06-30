@@ -854,6 +854,32 @@
   color: var(--neutral-300);
 }
 
+/* ── Reviewing X/Y header + Previous/Next footer (Figma 1:3540) ── */
+.reviewingHeader {
+  padding: 12px 16px 8px;
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: var(--neutral-50);
+}
+
+.reviewingHeader strong {
+  color: var(--neutral-500);
+  font-weight: 600;
+}
+
+.reviewFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  position: sticky;
+  bottom: 0;
+}
+
 /* ── Doc tabs (Pending / Added / Deleted) ─────────────────────── */
 .docTabBar {
   display: flex;

@@ -72,6 +72,12 @@ export function HccSftpReviewDrawer() {
   const [statusFilter, setStatusFilter] = useState('all');
   // Doc-switcher popover open state (filename click).
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  // Card-stack pagination index — drives the "Reviewing: X of Y" indicator
+  // and Previous/Next Record nav at the bottom of the right panel
+  // (Figma 1:3540). Reset whenever the visible set changes.
+  const [focusIdx, setFocusIdx] = useState(0);
+  const cardStackRef = useRef(null);
+  useEffect(() => { setFocusIdx(0); }, [activeId, docTab, statusFilter]);
   const setEncounterStatus = useAppStore(s => s.setHccSftpEncounterStatus);
   useEffect(() => { setSelectedIdxs(new Set()); }, [activeBatch?.id]);
   const toggleSelected = (idx) => setSelectedIdxs(prev => {
@@ -288,6 +294,13 @@ export function HccSftpReviewDrawer() {
           {/* RIGHT — Pending / Added / Deleted tabs + filter chips +
               encounter card stack. */}
           <div className={styles.rightPanel}>
+            {/* "Reviewing: X of Y Records" pagination indicator
+                (Figma 1:3540 — sits above the tab bar). */}
+            {visibleEncs.length > 0 && (
+              <div className={styles.reviewingHeader}>
+                Reviewing: <strong>{Math.min(focusIdx + 1, visibleEncs.length)}</strong> of <strong>{visibleEncs.length}</strong> Records
+              </div>
+            )}
             <div className={styles.docTabBar}>
               <button
                 type="button"
@@ -342,7 +355,7 @@ export function HccSftpReviewDrawer() {
             )}
 
             {/* Encounter card stack — replaces the table. */}
-            <div className={styles.cardStack}>
+            <div ref={cardStackRef} className={styles.cardStack}>
               {visibleEncs.length === 0 ? (
                 /* Empty-state branching:
                    1. "Document Review Completed" hero — every pending
@@ -378,7 +391,7 @@ export function HccSftpReviewDrawer() {
                       </span>
                     </div>
                   )
-              ) : visibleEncs.map((enc) => {
+              ) : visibleEncs.map((enc, visibleI) => {
                 const idx = activeEncs.indexOf(enc);
                 return (
                   <EncounterCard
@@ -387,6 +400,7 @@ export function HccSftpReviewDrawer() {
                     status={encStatus(enc)}
                     hccMembers={hccMembers}
                     docTab={docTab}
+                    cardIdx={visibleI}
                     onPatch={(patch) => patchEnc?.(activeBatch.id, idx, patch)}
                     onAddToWorklist={() => {
                       const r = createFromEncounter?.({ ...enc, _docName: activeBatch.fileName });
@@ -409,6 +423,41 @@ export function HccSftpReviewDrawer() {
                 );
               })}
             </div>
+
+            {/* Previous / Next Record nav — pages through the visible
+                encounter stack (Figma 1:3540). */}
+            {visibleEncs.length > 1 && (
+              <div className={styles.reviewFooter}>
+                <Button
+                  variant="secondary"
+                  size="S"
+                  leadingIcon="solar:alt-arrow-left-linear"
+                  disabled={focusIdx <= 0}
+                  onClick={() => {
+                    const next = Math.max(0, focusIdx - 1);
+                    setFocusIdx(next);
+                    const card = cardStackRef.current?.querySelectorAll('[data-card-idx]')?.[next];
+                    card?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="primary"
+                  size="S"
+                  trailingIcon="solar:alt-arrow-right-linear"
+                  disabled={focusIdx >= visibleEncs.length - 1}
+                  onClick={() => {
+                    const next = Math.min(visibleEncs.length - 1, focusIdx + 1);
+                    setFocusIdx(next);
+                    const card = cardStackRef.current?.querySelectorAll('[data-card-idx]')?.[next];
+                    card?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                >
+                  Next Record
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       ) : (
@@ -907,7 +956,7 @@ function DocReviewCompleted({ total, nextBatch, onPickNext, onBackToWorklist }) 
  * grid (DOS · ICD Codes / Provider · POS) each with an inline
  * confidence gauge bar matching Figma 121:87283.
  */
-function EncounterCard({ enc, status, hccMembers, docTab, onPatch, onAddToWorklist, onDelete, onRestore }) {
+function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, onPatch, onAddToWorklist, onDelete, onRestore }) {
   const isMatched = !!enc.patient?.matchedMemberId;
   const member = isMatched ? hccMembers.find(m => m.id === enc.patient.matchedMemberId) : null;
   const errors = new Set(enc.errors || []);
@@ -930,7 +979,7 @@ function EncounterCard({ enc, status, hccMembers, docTab, onPatch, onAddToWorkli
     return getFieldConfidence(enc, name);
   };
   return (
-    <div className={styles.encCard}>
+    <div className={styles.encCard} data-card-idx={cardIdx}>
       <div className={styles.encCardHead}>
         <Avatar
           variant="patient"

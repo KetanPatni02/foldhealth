@@ -449,6 +449,109 @@
   border-top: 0.5px solid var(--neutral-150);
 }
 
+/* ── Sample documents picker (upload mode, below dropzone) ───────── */
+.samples {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 0.5px dashed var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-50);
+}
+
+.samplesHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  margin-bottom: 6px;
+}
+
+.samplesList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sampleChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.sampleChip:hover {
+  border-color: var(--primary-300);
+  background: var(--primary-50);
+}
+
+.sampleTier {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 8px;
+  text-transform: capitalize;
+}
+
+.tier_clean      { background: var(--status-success-light, #E6F5EC); color: var(--status-success); }
+.tier_degraded   { background: rgba(194, 143, 42, 0.12);             color: var(--status-warning, #C28F2A); }
+.tier_unreadable { background: var(--status-error-light, #FFEDED);   color: var(--status-error); }
+
+/* ── Inline pass pill (next to filename, design reference) ───────── */
+.tierDocNameRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.passPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  border: 0.5px solid transparent;
+}
+
+.passPill_success {
+  background: var(--status-success-light, #E6F5EC);
+  color: var(--status-success);
+  border-color: rgba(46, 138, 78, 0.2);
+}
+
+.passPill_partial {
+  background: rgba(194, 143, 42, 0.12);
+  color: var(--status-warning, #C28F2A);
+  border-color: rgba(194, 143, 42, 0.25);
+}
+
+.passPill_fail {
+  background: var(--status-error-light, #FFEDED);
+  color: var(--status-error);
+  border-color: rgba(215, 40, 37, 0.25);
+}
+
+.passPillDivider {
+  width: 1px;
+  height: 9px;
+  background: currentColor;
+  opacity: 0.3;
+}
+
 /* ── Categorized tier list (results mode, LEFT) ──────────────────── */
 .tierList {
   display: flex;

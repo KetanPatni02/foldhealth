@@ -1,16 +1,14 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
 import { Button } from '../../../components/Button/Button';
-import { Input } from '../../../components/Input/Input';
-import { Select } from '../../../components/Select/Select';
 import { Badge } from '../../../components/Badge/Badge';
 import { Dropzone } from '../../../components/Dropzone/Dropzone';
 import { CloseIcon } from '../../../components/Icon/CloseIcon';
 import { POS_LABEL } from './mockOcr';
 import { Avatar } from '../../../components/Avatar/Avatar';
-import { CHECK_KEYS, OCR_TIER_LABEL, OCR_TIER_TONE } from '../compliance';
+import { OCR_TIER_LABEL, OCR_TIER_TONE } from '../compliance';
 import styles from './IcdCreationScreen.module.css';
 
 /**
@@ -31,6 +29,19 @@ import styles from './IcdCreationScreen.module.css';
  * Wired from the HCC worklist's Upload Document toolbar button.
  */
 
+// Demo files mapped to mockOcr's deterministic outputs — clicking one
+// stages it in the queue exactly as if the user had dropped the real PDF.
+// Each entry shows the OCR tier the file will land in so users can pick
+// the scenario they want to walk through.
+const SAMPLE_FILES = [
+  { name: 'demo-single.pdf',                 tier: 'clean',      label: 'Single encounter (Clean)' },
+  { name: 'demo-bulk.pdf',                   tier: 'clean',      label: 'Bulk · 20+ patients (Clean)' },
+  { name: 'demo-multi-patient.pdf',          tier: 'clean',      label: 'Multi-patient (Clean)' },
+  { name: 'demo-same-patient-multi-dos.pdf', tier: 'clean',      label: 'Same patient · multiple DOS' },
+  { name: 'demo-degraded.pdf',               tier: 'degraded',   label: 'Scanned doc (Degraded)' },
+  { name: 'demo-unreadable.pdf',             tier: 'unreadable', label: 'Fax / failed OCR (Unreadable)' },
+];
+
 const ACCEPT_EXT = '.pdf,.doc,.docx,.jpg,.jpeg,.png';
 const ACCEPT_MIME = new Set([
   'application/pdf',
@@ -50,8 +61,20 @@ export function IcdCreationScreen() {
   const batches = useAppStore(s => s.hccSftpBatches) || [];
   const sessionIds = useAppStore(s => s.icdCreationSessionBatchIds) || [];
   const createFromEncounter = useAppStore(s => s.hccCreateOrMergeFromEncounter);
+  // Reuse the existing manual-entry workflow inside UploadDocumentDrawer
+  // (phase: 'single') so we don't have two competing manual forms.
+  const startHccUpload    = useAppStore(s => s.startHccUpload);
+  const setHccUploadPhase = useAppStore(s => s.setHccUploadPhase);
 
-  const [mode, setMode] = useState('records'); // 'records' | 'manual'
+  const openExistingManualEntry = () => {
+    // Close the ICD Creation surface and hand off to the canonical manual
+    // entry workflow (UploadDocumentDrawer, phase: 'single'). When the
+    // user finishes there, the added records show up next time they open
+    // ICD Creation — no duplicated form to maintain here.
+    close?.();
+    startHccUpload?.(null);
+    setHccUploadPhase?.('single');
+  };
   const [whatNextOpen, setWhatNextOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
   // Staged-files queue — files are added here by the dropzone but OCR
@@ -178,10 +201,9 @@ export function IcdCreationScreen() {
           {/* ── Right: Session records ──────────────────────────────── */}
           <RightColumn
             inResults={inResults}
-            mode={mode}
-            setMode={setMode}
             sessionEncounters={sessionEncounters}
             onAdd={handleAddToWorklist}
+            onAddManually={openExistingManualEntry}
           />
         </div>
       </div>
@@ -193,6 +215,14 @@ export function IcdCreationScreen() {
 // ─── UploadPhase — initial dropzone + queue ─────────────────────────────
 
 function UploadPhase({ queue, extracting, onRemoveQueued, onStart, onDiscard, whatNextOpen, toggleWhatNext, onPick, onReject }) {
+  // Stage a sample as a synthetic File. mockOcr matches on filename so
+  // the deterministic encounter set + tier come back exactly as expected.
+  const pickSample = (s) => {
+    const synthetic = new File([new Blob(['demo'], { type: 'application/pdf' })], s.name, { type: 'application/pdf' });
+    Object.defineProperty(synthetic, 'size', { value: 2_500_000 });
+    onPick(synthetic);
+  };
+
   return (
     <>
       <Dropzone
@@ -205,6 +235,32 @@ function UploadPhase({ queue, extracting, onRemoveQueued, onStart, onDiscard, wh
         helperText="Supported formats: PDF, DOC, JPG, or PNG"
         secondaryText="Max size: 100 MB"
       />
+
+      {queue.length === 0 && (
+        <div className={styles.samples}>
+          <div className={styles.samplesHeader}>
+            <Icon name="solar:gallery-linear" size={12} color="var(--neutral-300)" />
+            <span>Try a sample document</span>
+          </div>
+          <div className={styles.samplesList}>
+            {SAMPLE_FILES.map(s => (
+              <button
+                key={s.name}
+                type="button"
+                className={styles.sampleChip}
+                onClick={() => pickSample(s)}
+                title={s.label}
+              >
+                <Icon name="solar:document-text-linear" size={12} color="var(--primary-300)" />
+                <span>{s.label}</span>
+                <span className={[styles.sampleTier, styles[`tier_${s.tier}`]].join(' ')}>
+                  {s.tier}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {queue.length > 0 && (
         <ul className={styles.queueList}>
@@ -359,27 +415,46 @@ function TierSection({ tier, label, docs, onReview }) {
 }
 
 function TierDocRow({ doc, tier, onReview }) {
-  const passCount = doc.compliance
-    ? CHECK_KEYS.filter(k => doc.compliance[k]?.status === 'pass').length
-    : 0;
-  const total = CHECK_KEYS.length;
+  // Pass count = records (encounters) that came out clean — matched
+  // member + no missing fields + no ID mismatch. Drives the inline
+  // "✓ Pass · X/Y" badge per the design reference.
+  const encounters = doc.encounters || [];
+  const total = encounters.length;
+  const passCount = encounters.filter(e =>
+    !!e.patient?.matchedMemberId
+    && (!Array.isArray(e.errors) || e.errors.length === 0)
+    && !e.patient?.idMismatch
+  ).length;
   const dateLabel = new Date(doc.ingestedAt || Date.now()).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+  const passTone = tier === 'unreadable'
+    ? 'fail'
+    : (passCount === total && total > 0 ? 'success' : 'partial');
 
   return (
     <li className={styles.tierDocRow}>
       <Icon name="solar:document-text-linear" size={20} color="var(--primary-300)" />
       <div className={styles.tierDocMeta}>
-        <div className={styles.tierDocName}>{doc.fileName}</div>
+        <div className={styles.tierDocNameRow}>
+          <span className={styles.tierDocName}>{doc.fileName}</span>
+          {/* Inline check-count badge — sits directly next to the file
+              name per the design reference (✓ Pass · 12/12). */}
+          {total > 0 && (
+            <span className={[styles.passPill, styles[`passPill_${passTone}`]].join(' ')}>
+              <Icon
+                name={passTone === 'success' ? 'solar:check-circle-bold' : passTone === 'fail' ? 'solar:close-circle-bold' : 'solar:danger-circle-bold'}
+                size={11}
+                color="currentColor"
+              />
+              <span>Pass</span>
+              <span className={styles.passPillDivider} />
+              <span>{passCount}/{total}</span>
+            </span>
+          )}
+        </div>
         <div className={styles.tierDocSub}>
-          {dateLabel} · {(doc.encounters || []).length} Records Extracted
+          {dateLabel} · {total} Records Extracted
         </div>
       </div>
-      {tier !== 'unreadable' && (
-        <span className={styles.tierStatusPill}>
-          <Icon name="solar:check-circle-bold" size={12} color="var(--status-success)" />
-          <span>Ready {passCount}/{total} Pass</span>
-        </span>
-      )}
       {tier === 'unreadable' ? (
         <Button variant="secondary" size="S" leadingIcon="solar:refresh-linear">
           Retry
@@ -403,18 +478,11 @@ function TierDocRow({ doc, tier, onReview }) {
 
 // ─── RightColumn — empty / records / manual / tabbed (results mode) ─────
 
-function RightColumn({ inResults, mode, setMode, sessionEncounters, onAdd }) {
-  if (mode === 'manual') {
-    return (
-      <section className={styles.rightCol}>
-        <ManualEntryForm onCancel={() => setMode('records')} onCreated={() => setMode('records')} />
-      </section>
-    );
-  }
+function RightColumn({ inResults, sessionEncounters, onAdd, onAddManually }) {
   if (inResults) {
     return (
       <section className={styles.rightCol}>
-        <TabbedRecords encounters={sessionEncounters} onAdd={onAdd} onAddManually={() => setMode('manual')} />
+        <TabbedRecords encounters={sessionEncounters} onAdd={onAdd} onAddManually={onAddManually} />
       </section>
     );
   }
@@ -429,12 +497,12 @@ function RightColumn({ inResults, mode, setMode, sessionEncounters, onAdd }) {
           <div className={styles.emptyMsg}>
             Records that have been successfully added to the worklist will appear here.
           </div>
-          <Button variant="primary" size="M" leadingIcon="solar:pen-linear" onClick={() => setMode('manual')}>
+          <Button variant="primary" size="M" leadingIcon="solar:pen-linear" onClick={onAddManually}>
             Add Manually
           </Button>
         </div>
       ) : (
-        <RecordsList encounters={sessionEncounters} onAdd={onAdd} onAddManually={() => setMode('manual')} />
+        <RecordsList encounters={sessionEncounters} onAdd={onAdd} onAddManually={onAddManually} />
       )}
     </section>
   );
@@ -638,106 +706,6 @@ function RecordsList({ encounters, onAdd, onAddManually }) {
           </li>
         ))}
       </ul>
-    </div>
-  );
-}
-
-// ─── Right column: manual entry form ───────────────────────────────────
-
-function ManualEntryForm({ onCancel, onCreated }) {
-  const hccMembers = useAppStore(s => s.hccMembers) || [];
-  const createFromEncounter = useAppStore(s => s.hccCreateOrMergeFromEncounter);
-  const showToast = useAppStore(s => s.showToast);
-
-  const [memberId, setMemberId] = useState('');
-  const [dos, setDos] = useState('');
-  const [provider, setProvider] = useState('');
-  const [pos, setPos] = useState('');
-  const [icds, setIcds] = useState('');
-
-  const memberOptions = [
-    { value: '', label: 'Select a member…' },
-    ...hccMembers.map(m => ({ value: m.id, label: m.name })),
-  ];
-
-  const posOptions = [
-    { value: '', label: 'Select POS…' },
-    ...Object.entries(POS_LABEL).map(([code, label]) => ({ value: code, label: `${code} · ${label}` })),
-  ];
-
-  const valid = !!memberId && !!dos && !!provider && !!pos && !!icds.trim();
-
-  const submit = () => {
-    if (!valid) return;
-    const member = hccMembers.find(m => m.id === memberId);
-    const enc = {
-      tempId: `manual-${Date.now()}`,
-      patient: {
-        name: member?.name || '',
-        dob: member?.dob || '',
-        matchedMemberId: member?.id || null,
-        matchedMemberDisplayId: member?.memberId || null,
-        matchConfidence: 100,
-      },
-      dos,
-      provider,
-      pos,
-      posDesc: POS_LABEL[pos] || '',
-      icds: icds.split(/[,\s]+/).filter(Boolean).map(c => ({ code: c.trim().toUpperCase(), valid: true })),
-      docType: 'Manual Entry',
-      errors: [],
-      _docName: 'Manual Entry',
-    };
-    const r = createFromEncounter?.(enc);
-    if (r?.kind === 'created' || r?.kind === 'updated') {
-      showToast?.(`Added to worklist: ${member?.name}`);
-      onCreated?.();
-    }
-  };
-
-  return (
-    <div className={styles.manualForm}>
-      <header className={styles.manualHeader}>
-        <h3 className={styles.recordsTitle}>Add Record Manually</h3>
-        <button type="button" className={styles.linkBtn} onClick={onCancel}>Cancel</button>
-      </header>
-
-      <div className={styles.formGroup}>
-        <label className={styles.label}>Patient<span className={styles.required}>*</span></label>
-        <Select options={memberOptions} value={memberId} onChange={setMemberId} placeholder="Select a member…" />
-      </div>
-
-      <div className={styles.formGroup}>
-        <label className={styles.label}>Date of Service<span className={styles.required}>*</span></label>
-        <Input value={dos} onChange={e => setDos(e.target.value)} placeholder="MM/DD/YYYY" />
-      </div>
-
-      <div className={styles.formGroup}>
-        <label className={styles.label}>Rendering Provider<span className={styles.required}>*</span></label>
-        <Input value={provider} onChange={e => setProvider(e.target.value)} placeholder="Dr. Provider Name" />
-      </div>
-
-      <div className={styles.formGroup}>
-        <label className={styles.label}>POS<span className={styles.required}>*</span></label>
-        <Select options={posOptions} value={pos} onChange={setPos} placeholder="Select POS…" />
-      </div>
-
-      <div className={styles.formGroup}>
-        <label className={styles.label}>ICD Codes<span className={styles.required}>*</span></label>
-        <Input
-          value={icds}
-          onChange={e => setIcds(e.target.value)}
-          placeholder="e.g. E11.22, I50.32, J44.9"
-        />
-        <span className={styles.helper}>Comma or space separated.</span>
-      </div>
-
-      <div className={styles.manualFooter}>
-        <Button variant="secondary" size="L" onClick={onCancel}>Cancel</Button>
-        <Button variant="primary" size="L" disabled={!valid} onClick={submit}>
-          Add to Worklist
-        </Button>
-      </div>
     </div>
   );
 }
