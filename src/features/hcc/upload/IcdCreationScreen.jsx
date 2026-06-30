@@ -9,6 +9,8 @@ import { Badge } from '../../../components/Badge/Badge';
 import { Dropzone } from '../../../components/Dropzone/Dropzone';
 import { CloseIcon } from '../../../components/Icon/CloseIcon';
 import { POS_LABEL } from './mockOcr';
+import { Avatar } from '../../../components/Avatar/Avatar';
+import { CHECK_KEYS, OCR_TIER_LABEL, OCR_TIER_TONE } from '../compliance';
 import styles from './IcdCreationScreen.module.css';
 
 /**
@@ -68,6 +70,11 @@ export function IcdCreationScreen() {
   const sessionEncounters = sessionBatches.flatMap(b =>
     (b.encounters || []).map(e => ({ ...e, _batchId: b.id, _fileName: b.fileName, _ocrTier: b.ocrTier }))
   );
+
+  // Once batches land in this session, the screen transforms from "upload
+  // phase" to "results phase" — dropzone → categorized file list, single
+  // records list → tabbed Pending/Added/Deleted (Figma 1:18602).
+  const inResults = sessionBatches.length > 0;
 
   const handleDrop = (file) => {
     if (!file) return;
@@ -151,151 +158,437 @@ export function IcdCreationScreen() {
               </Button>
             </div>
 
-            <Dropzone
-              accept={ACCEPT_EXT}
-              acceptMime={ACCEPT_MIME}
-              icon="solar:upload-minimalistic-linear"
-              iconSize={28}
-              onPick={handleDrop}
-              onReject={(rejected) => showToast?.(`${rejected[0]?.name}: unsupported format`)}
-              helperText="Supported formats: PDF, DOC, JPG, or PNG"
-              secondaryText="Max size: 100 MB"
-            />
-
-            {/* Staged-files queue — appears between dropzone and footer
-                once the user has dropped one or more files. */}
-            {queue.length > 0 && (
-              <ul className={styles.queueList}>
-                {queue.map((q) => (
-                  <li key={q.id} className={styles.queueRow}>
-                    <Icon name="solar:document-text-linear" size={20} color="var(--primary-300)" />
-                    <div className={styles.queueMeta}>
-                      <div className={styles.queueName}>{q.file?.name || 'Document'}</div>
-                      <div className={styles.queueSub}>
-                        {formatBytes(q.file?.size)} / 100 MB
-                        <span className={styles.queueStatus}>
-                          {q.status === 'extracting' ? (
-                            <>
-                              <span className={styles.dotProcessing} />
-                              <span>Extracting…</span>
-                            </>
-                          ) : (
-                            <>
-                              <Icon name="solar:check-circle-bold" size={12} color="var(--status-success)" />
-                              <span>Complete</span>
-                            </>
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                    <div className={styles.queueActions}>
-                      <button
-                        type="button"
-                        className={styles.queueIconBtn}
-                        title="Preview"
-                        disabled={extracting}
-                      >
-                        <Icon name="solar:eye-linear" size={16} color="var(--neutral-400)" />
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.queueIconBtn}
-                        title="Remove"
-                        onClick={() => handleRemoveQueued(q.id)}
-                        disabled={extracting}
-                      >
-                        <Icon name="solar:trash-bin-trash-linear" size={16} color="var(--neutral-400)" />
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            {/* Start Extraction / Discard footer — only when files queued. */}
-            {queue.length > 0 && (
-              <div className={styles.queueFooter}>
-                <Button
-                  variant="primary"
-                  size="M"
-                  leadingIcon="solar:magic-stick-3-linear"
-                  disabled={extracting}
-                  onClick={handleStartExtraction}
-                >
-                  {extracting ? 'Extracting…' : 'Start Extraction'}
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="M"
-                  disabled={extracting}
-                  onClick={handleDiscardQueue}
-                >
-                  Discard
-                </Button>
-              </div>
-            )}
-
-            {/* "What happens next?" collapsible hint */}
-            <button
-              type="button"
-              className={styles.whatNext}
-              onClick={() => setWhatNextOpen(v => !v)}
-              aria-expanded={whatNextOpen}
-            >
-              <Icon name="solar:lightbulb-bolt-linear" size={14} color="var(--primary-300)" />
-              <span>What happens next?</span>
-              <Icon
-                name={whatNextOpen ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-right-linear'}
-                size={12}
-                color="var(--neutral-300)"
+            {inResults ? (
+              <CategorizedFileList batches={sessionBatches} />
+            ) : (
+              <UploadPhase
+                queue={queue}
+                extracting={extracting}
+                onRemoveQueued={handleRemoveQueued}
+                onStart={handleStartExtraction}
+                onDiscard={handleDiscardQueue}
+                whatNextOpen={whatNextOpen}
+                toggleWhatNext={() => setWhatNextOpen(v => !v)}
+                onPick={handleDrop}
+                onReject={(rejected) => showToast?.(`${rejected[0]?.name}: unsupported format`)}
               />
-            </button>
-            {whatNextOpen && (
-              <ol className={styles.whatNextList}>
-                <li>AI runs OCR + the 5-point compliance check on the document.</li>
-                <li>Pages flagged as Unreadable route to Support for re-scan.</li>
-                <li>Extracted records show on the right — confirm each one to add it to the worklist.</li>
-              </ol>
             )}
           </section>
 
           {/* ── Right: Session records ──────────────────────────────── */}
-          <section className={styles.rightCol}>
-            {mode === 'manual' ? (
-              <ManualEntryForm
-                onCancel={() => setMode('records')}
-                onCreated={() => { setMode('records'); }}
-              />
-            ) : sessionEncounters.length === 0 ? (
-              <div className={styles.emptyState}>
-                <div className={styles.emptyIcon}>
-                  <Icon name="solar:clipboard-text-linear" size={32} color="var(--neutral-200)" />
-                </div>
-                <div className={styles.emptyTitle}>No Records Added Yet</div>
-                <div className={styles.emptyMsg}>
-                  Records that have been successfully added to the worklist will appear here.
-                </div>
-                <Button
-                  variant="primary"
-                  size="M"
-                  leadingIcon="solar:pen-linear"
-                  onClick={() => setMode('manual')}
-                >
-                  Add Manually
-                </Button>
-              </div>
-            ) : (
-              <RecordsList
-                encounters={sessionEncounters}
-                onAdd={handleAddToWorklist}
-                onAddManually={() => setMode('manual')}
-              />
-            )}
-          </section>
+          <RightColumn
+            inResults={inResults}
+            mode={mode}
+            setMode={setMode}
+            sessionEncounters={sessionEncounters}
+            onAdd={handleAddToWorklist}
+          />
         </div>
       </div>
     </>,
     document.body,
+  );
+}
+
+// ─── UploadPhase — initial dropzone + queue ─────────────────────────────
+
+function UploadPhase({ queue, extracting, onRemoveQueued, onStart, onDiscard, whatNextOpen, toggleWhatNext, onPick, onReject }) {
+  return (
+    <>
+      <Dropzone
+        accept={ACCEPT_EXT}
+        acceptMime={ACCEPT_MIME}
+        icon="solar:upload-minimalistic-linear"
+        iconSize={28}
+        onPick={onPick}
+        onReject={onReject}
+        helperText="Supported formats: PDF, DOC, JPG, or PNG"
+        secondaryText="Max size: 100 MB"
+      />
+
+      {queue.length > 0 && (
+        <ul className={styles.queueList}>
+          {queue.map((q) => (
+            <li key={q.id} className={styles.queueRow}>
+              <Icon name="solar:document-text-linear" size={20} color="var(--primary-300)" />
+              <div className={styles.queueMeta}>
+                <div className={styles.queueName}>{q.file?.name || 'Document'}</div>
+                <div className={styles.queueSub}>
+                  {formatBytes(q.file?.size)} / 100 MB
+                  <span className={styles.queueStatus}>
+                    {q.status === 'extracting' ? (
+                      <>
+                        <span className={styles.dotProcessing} />
+                        <span>Extracting…</span>
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="solar:check-circle-bold" size={12} color="var(--status-success)" />
+                        <span>Complete</span>
+                      </>
+                    )}
+                  </span>
+                </div>
+              </div>
+              <div className={styles.queueActions}>
+                <button type="button" className={styles.queueIconBtn} title="Preview" disabled={extracting}>
+                  <Icon name="solar:eye-linear" size={16} color="var(--neutral-400)" />
+                </button>
+                <button
+                  type="button"
+                  className={styles.queueIconBtn}
+                  title="Remove"
+                  onClick={() => onRemoveQueued(q.id)}
+                  disabled={extracting}
+                >
+                  <Icon name="solar:trash-bin-trash-linear" size={16} color="var(--neutral-400)" />
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {queue.length > 0 && (
+        <div className={styles.queueFooter}>
+          <Button
+            variant="primary"
+            size="M"
+            leadingIcon="solar:magic-stick-3-linear"
+            disabled={extracting}
+            onClick={onStart}
+          >
+            {extracting ? 'Extracting…' : 'Start Extraction'}
+          </Button>
+          <Button variant="secondary" size="M" disabled={extracting} onClick={onDiscard}>
+            Discard
+          </Button>
+        </div>
+      )}
+
+      <button
+        type="button"
+        className={styles.whatNext}
+        onClick={toggleWhatNext}
+        aria-expanded={whatNextOpen}
+      >
+        <Icon name="solar:lightbulb-bolt-linear" size={14} color="var(--primary-300)" />
+        <span>What happens next?</span>
+        <Icon
+          name={whatNextOpen ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-right-linear'}
+          size={12}
+          color="var(--neutral-300)"
+        />
+      </button>
+      {whatNextOpen && (
+        <ol className={styles.whatNextList}>
+          <li>AI runs OCR + the 5-point compliance check on the document.</li>
+          <li>Pages flagged as Unreadable route to Support for re-scan.</li>
+          <li>Extracted records show on the right — confirm each one to add it to the worklist.</li>
+        </ol>
+      )}
+    </>
+  );
+}
+
+// ─── CategorizedFileList — post-extraction grouping by OCR tier ─────────
+
+function CategorizedFileList({ batches }) {
+  const openHccSftpReview = useAppStore(s => s.openHccSftpReview);
+  const setActiveBatchId = useAppStore(s => s.setHccSftpActiveBatchId);
+
+  const groups = [
+    { tier: 'clean',      label: 'Clean Documents',      docs: batches.filter(b => b.ocrTier === 'clean') },
+    { tier: 'degraded',   label: 'Degraded Documents',   docs: batches.filter(b => b.ocrTier === 'degraded') },
+    { tier: 'unreadable', label: 'Unreadable Documents', docs: batches.filter(b => b.ocrTier === 'unreadable') },
+  ];
+
+  const openReview = (batchId) => {
+    setActiveBatchId?.(batchId);
+    openHccSftpReview?.();
+  };
+
+  return (
+    <div className={styles.tierList}>
+      {groups.map((g) => g.docs.length > 0 && (
+        <TierSection key={g.tier} tier={g.tier} label={g.label} docs={g.docs} onReview={openReview} />
+      ))}
+    </div>
+  );
+}
+
+function TierSection({ tier, label, docs, onReview }) {
+  const [open, setOpen] = useState(true);
+  const iconName = tier === 'clean'
+    ? 'solar:check-circle-bold'
+    : tier === 'degraded'
+      ? 'solar:danger-circle-bold'
+      : 'solar:close-circle-bold';
+  const iconColor = tier === 'clean'
+    ? 'var(--status-success)'
+    : tier === 'degraded'
+      ? 'var(--status-warning)'
+      : 'var(--status-error)';
+
+  return (
+    <div className={styles.tierSection}>
+      <button
+        type="button"
+        className={styles.tierHeader}
+        onClick={() => setOpen(v => !v)}
+        aria-expanded={open}
+      >
+        <Icon name={iconName} size={14} color={iconColor} />
+        <span className={styles.tierLabel}>{label}</span>
+        <span className={styles.tierCount}>({docs.length})</span>
+        <Icon
+          name={open ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
+          size={12}
+          color="var(--neutral-300)"
+        />
+      </button>
+      {open && (
+        <ul className={styles.tierDocList}>
+          {docs.map(d => (
+            <TierDocRow key={d.id} doc={d} tier={tier} onReview={onReview} />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function TierDocRow({ doc, tier, onReview }) {
+  const passCount = doc.compliance
+    ? CHECK_KEYS.filter(k => doc.compliance[k]?.status === 'pass').length
+    : 0;
+  const total = CHECK_KEYS.length;
+  const dateLabel = new Date(doc.ingestedAt || Date.now()).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+
+  return (
+    <li className={styles.tierDocRow}>
+      <Icon name="solar:document-text-linear" size={20} color="var(--primary-300)" />
+      <div className={styles.tierDocMeta}>
+        <div className={styles.tierDocName}>{doc.fileName}</div>
+        <div className={styles.tierDocSub}>
+          {dateLabel} · {(doc.encounters || []).length} Records Extracted
+        </div>
+      </div>
+      {tier !== 'unreadable' && (
+        <span className={styles.tierStatusPill}>
+          <Icon name="solar:check-circle-bold" size={12} color="var(--status-success)" />
+          <span>Ready {passCount}/{total} Pass</span>
+        </span>
+      )}
+      {tier === 'unreadable' ? (
+        <Button variant="secondary" size="S" leadingIcon="solar:refresh-linear">
+          Retry
+        </Button>
+      ) : (
+        <Button
+          variant="primary"
+          size="S"
+          leadingIcon="solar:magic-stick-3-linear"
+          onClick={() => onReview(doc.id)}
+        >
+          Review
+        </Button>
+      )}
+      <button type="button" className={styles.queueIconBtn} title="More">
+        <Icon name="solar:menu-dots-linear" size={16} color="var(--neutral-400)" />
+      </button>
+    </li>
+  );
+}
+
+// ─── RightColumn — empty / records / manual / tabbed (results mode) ─────
+
+function RightColumn({ inResults, mode, setMode, sessionEncounters, onAdd }) {
+  if (mode === 'manual') {
+    return (
+      <section className={styles.rightCol}>
+        <ManualEntryForm onCancel={() => setMode('records')} onCreated={() => setMode('records')} />
+      </section>
+    );
+  }
+  if (inResults) {
+    return (
+      <section className={styles.rightCol}>
+        <TabbedRecords encounters={sessionEncounters} onAdd={onAdd} onAddManually={() => setMode('manual')} />
+      </section>
+    );
+  }
+  return (
+    <section className={styles.rightCol}>
+      {sessionEncounters.length === 0 ? (
+        <div className={styles.emptyState}>
+          <div className={styles.emptyIcon}>
+            <Icon name="solar:clipboard-text-linear" size={32} color="var(--neutral-200)" />
+          </div>
+          <div className={styles.emptyTitle}>No Records Added Yet</div>
+          <div className={styles.emptyMsg}>
+            Records that have been successfully added to the worklist will appear here.
+          </div>
+          <Button variant="primary" size="M" leadingIcon="solar:pen-linear" onClick={() => setMode('manual')}>
+            Add Manually
+          </Button>
+        </div>
+      ) : (
+        <RecordsList encounters={sessionEncounters} onAdd={onAdd} onAddManually={() => setMode('manual')} />
+      )}
+    </section>
+  );
+}
+
+// ─── TabbedRecords — Pending Review / Added / Deleted (results mode) ─────
+
+function TabbedRecords({ encounters, onAdd, onAddManually }) {
+  const [tab, setTab] = useState('pending');
+
+  const bucket = (s) => encounters.filter(e => (e._docStatus || 'pending') === s);
+  const pendingEncs = bucket('pending');
+  const addedEncs   = bucket('added');
+  const deletedEncs = bucket('deleted');
+
+  const isReady = (enc) => !!enc.patient?.matchedMemberId
+    && (!Array.isArray(enc.errors) || enc.errors.length === 0)
+    && !enc.patient?.idMismatch;
+  const readyEncs = pendingEncs.filter(isReady);
+  const needsReviewEncs = pendingEncs.filter(e => !isReady(e));
+
+  return (
+    <div className={styles.tabbedWrap}>
+      <div className={styles.tabBar}>
+        <button
+          type="button"
+          className={[styles.tab, tab === 'pending' ? styles.tabActive : ''].join(' ')}
+          onClick={() => setTab('pending')}
+        >
+          Pending Review<span className={styles.tabCount}>({pendingEncs.length})</span>
+        </button>
+        <button
+          type="button"
+          className={[styles.tab, tab === 'added' ? styles.tabActive : ''].join(' ')}
+          onClick={() => setTab('added')}
+        >
+          Added to Worklist<span className={styles.tabCount}>({addedEncs.length})</span>
+        </button>
+        <button
+          type="button"
+          className={[styles.tab, tab === 'deleted' ? styles.tabActive : ''].join(' ')}
+          onClick={() => setTab('deleted')}
+        >
+          Deleted<span className={styles.tabCount}>({deletedEncs.length})</span>
+        </button>
+        <span className={styles.tabSpacer} />
+        <Button variant="secondary" size="S" leadingIcon="solar:pen-linear" onClick={onAddManually}>
+          Add New Record
+        </Button>
+      </div>
+
+      <div className={styles.tabBody}>
+        {tab === 'pending' && (
+          <>
+            {readyEncs.length > 0 && (
+              <RecordsSection
+                title="Ready Records"
+                encs={readyEncs}
+                onAdd={onAdd}
+                showAddAll
+                onAddAll={() => readyEncs.forEach(onAdd)}
+              />
+            )}
+            {needsReviewEncs.length > 0 && (
+              <RecordsSection
+                title="Needs Review"
+                encs={needsReviewEncs}
+                onAdd={onAdd}
+                needsReview
+              />
+            )}
+            {pendingEncs.length === 0 && <EmptyTabState message="Nothing pending review." />}
+          </>
+        )}
+        {tab === 'added'   && (addedEncs.length === 0
+          ? <EmptyTabState message="No records added to the worklist yet." />
+          : <RecordsSection title="Added to Worklist" encs={addedEncs} readOnly />
+        )}
+        {tab === 'deleted' && (deletedEncs.length === 0
+          ? <EmptyTabState message="No deleted records." />
+          : <RecordsSection title="Deleted" encs={deletedEncs} readOnly />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EmptyTabState({ message }) {
+  return <div className={styles.tabEmpty}>{message}</div>;
+}
+
+function RecordsSection({ title, encs, onAdd, showAddAll, onAddAll, needsReview, readOnly }) {
+  return (
+    <div className={styles.section}>
+      <header className={styles.sectionHeader}>
+        <div className={styles.sectionTitle}>{title}</div>
+        {showAddAll && (
+          <button type="button" className={styles.linkBtn} onClick={onAddAll}>
+            + Add All to Worklist
+          </button>
+        )}
+      </header>
+      <ul className={styles.sectionList}>
+        {encs.map((enc) => (
+          <ReviewRow key={enc.tempId} enc={enc} onAdd={onAdd} needsReview={needsReview} readOnly={readOnly} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ReviewRow({ enc, onAdd, needsReview, readOnly }) {
+  const initials = (enc.patient?.name || '').split(/\s+/).map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '??';
+  const confidence = enc.patient?.matchConfidence || 0;
+  const issueLabel = enc.patient?.idMismatch
+    ? 'ID Mismatch'
+    : (enc.errors?.length ? 'Missing Field' : null);
+
+  return (
+    <li className={[styles.reviewRow, needsReview ? styles.reviewRowNeeds : ''].filter(Boolean).join(' ')}>
+      <div className={styles.reviewRowMain}>
+        <Avatar variant="assignee" initials={initials} />
+        <div className={styles.reviewRowName}>
+          <div>{enc.patient?.name || 'Unknown patient'}</div>
+          <div className={styles.reviewRowSub}>
+            {enc.patient?.dob ? `DOB ${enc.patient.dob}` : ''} {enc.patient?.matchedMemberDisplayId ? `· ${enc.patient.matchedMemberDisplayId}` : ''}
+          </div>
+        </div>
+        {issueLabel && (
+          <span className={styles.reviewIssueBadge}>
+            <Icon name="solar:danger-triangle-linear" size={11} color="var(--status-warning)" />
+            {issueLabel}
+          </span>
+        )}
+        {!needsReview && !readOnly && (
+          <span className={styles.reviewReadyBadge}>
+            <Icon name="solar:check-circle-bold" size={11} color="var(--status-success)" />
+            <span>Ready</span>
+            <span className={styles.reviewConfidence}>{confidence}%</span>
+          </span>
+        )}
+        {!readOnly && (
+          <button
+            type="button"
+            className={styles.reviewAddBtn}
+            onClick={() => onAdd(enc)}
+            disabled={needsReview}
+            title={needsReview ? 'Resolve issues before adding' : 'Add to worklist'}
+          >
+            + Add
+          </button>
+        )}
+      </div>
+    </li>
   );
 }
 
