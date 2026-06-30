@@ -3055,6 +3055,19 @@ export const useAppStore = create((set, get) => ({
   hccSftpBatches: [],        // [{ id, fileName, ocrTier, compliance, encounters, ingestedAt, status }]
   hccSftpReviewOpen: false,
   hccSftpActiveBatchId: null,
+  // ICD Creation screen — unified upload + manual + SFTP entry surface
+  // (replaces the legacy 3-item popover anchored under the worklist's
+  // Upload Document toolbar button).
+  icdCreationOpen: false,
+  // Batches created during the CURRENT ICD-Creation session so the right
+  // panel's "Records" list only shows what this user just added — not
+  // every historical batch from prior reloads.
+  icdCreationSessionBatchIds: [],
+  openIcdCreation: () => set({ icdCreationOpen: true, icdCreationSessionBatchIds: [] }),
+  closeIcdCreation: () => set({ icdCreationOpen: false }),
+  trackIcdCreationBatch: (batchId) => set(s => ({
+    icdCreationSessionBatchIds: [...new Set([...(s.icdCreationSessionBatchIds || []), batchId])],
+  })),
   /**
    * Load persisted HCC documents from Supabase. Called once on app boot
    * so the SFTP review queue + compliance state survives reloads. The

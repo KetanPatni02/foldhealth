@@ -62,6 +62,7 @@ const UploadChartDrawer    = lz(() => import('../features/hcc/UploadChartDrawer'
 const UploadDocumentDrawer = lz(() => import('../features/hcc/upload/UploadDocumentDrawer'),               'UploadDocumentDrawer');
 const HccUploadProcessingHost = lz(() => import('../features/hcc/upload/HccUploadProcessingHost'),         'HccUploadProcessingHost');
 const HccSftpReviewDrawer  = lz(() => import('../features/hcc/upload/HccSftpReviewDrawer'),                'HccSftpReviewDrawer');
+const IcdCreationScreen    = lz(() => import('../features/hcc/upload/IcdCreationScreen'),                  'IcdCreationScreen');
 const ClaimPreviewDrawer   = lz(() => import('../features/hcc/ClaimPreviewDrawer'),                        'ClaimPreviewDrawer');
 
 // Placeholder while a lazy chunk is in flight. Empty div keeps layout stable.
@@ -487,6 +488,7 @@ export function AppLayout() {
         <UploadDocumentDrawer />{/* mounts itself only when hccUploadSession is set */}
         <HccUploadProcessingHost />{/* floats bottom-right while the upload is minimized */}
         <HccSftpReviewDrawer />{/* mounts itself only when hccSftpReviewOpen is true */}
+        <IcdCreationScreen />{/* mounts itself only when icdCreationOpen is true */}
         <ClaimPreviewDrawer />{/* mounts itself only when hccClaimPreview.open is true */}
         {quickViewPatient && <QuickViewDrawer />}
         <PgProcessingHost />
