@@ -7,6 +7,7 @@ import { Input } from '../../../components/Input/Input';
 import { Badge } from '../../../components/Badge/Badge';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Toggle } from '../../../components/Toggle/Toggle';
+import { Select } from '../../../components/Select/Select';
 // BulkBar import removed — per-card actions replace the floating bar
 // in the new Document Review layout (Figma 121:87283).
 import { useAppStore } from '../../../store/useAppStore';
@@ -57,8 +58,8 @@ export function HccSftpReviewDrawer() {
   // Added to Worklist, Deleted. We drive them from each encounter's
   // _docStatus annotation (set by setHccSftpEncounterStatus).
   const [docTab, setDocTab] = useState('pending');
-  // Status filter inside the Pending tab — Ready / Mismatch / Error.
-  const [statusFilter, setStatusFilter] = useState('ready');
+  // Status filter inside the Pending tab — All / Ready / Mismatch / Error.
+  const [statusFilter, setStatusFilter] = useState('all');
   // Doc-switcher popover open state (filename click).
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const setEncounterStatus = useAppStore(s => s.setHccSftpEncounterStatus);
@@ -158,9 +159,11 @@ export function HccSftpReviewDrawer() {
   const mismatchCount = pendingEncs.filter(e => encStatus(e) === 'mismatch').length;
   const errorCount    = pendingEncs.filter(e => encStatus(e) === 'error').length;
 
-  // Filtered list for the right-pane card stack.
+  // Filtered list for the right-pane card stack. 'all' shows every
+  // pending encounter regardless of status.
   const visibleEncs = (
-    docTab === 'pending' ? pendingEncs.filter(e => encStatus(e) === statusFilter)
+    docTab === 'pending'
+      ? (statusFilter === 'all' ? pendingEncs : pendingEncs.filter(e => encStatus(e) === statusFilter))
     : docTab === 'added'   ? addedEncs
     :                        deletedEncs
   );
@@ -275,7 +278,6 @@ export function HccSftpReviewDrawer() {
               </button>
               <span className={styles.docTabBarSpacer} />
               <ActionButton size="S" icon="solar:magnifer-linear" tooltip="Search" />
-              <ActionButton size="S" icon="solar:bookmark-linear" tooltip="Saved filters" />
               <Button
                 variant="alt"
                 size="S"
@@ -294,6 +296,7 @@ export function HccSftpReviewDrawer() {
                 <Toggle
                   size="S"
                   items={[
+                    { key: 'all',      label: `All (${pendingEncs.length})` },
                     { key: 'ready',    label: `Ready (${readyCount})` },
                     { key: 'mismatch', label: `Mismatch (${mismatchCount})` },
                     { key: 'error',    label: `Error (${errorCount})` },
@@ -307,16 +310,40 @@ export function HccSftpReviewDrawer() {
             {/* Encounter card stack — replaces the table. */}
             <div className={styles.cardStack}>
               {visibleEncs.length === 0 ? (
-                <div className={styles.cardStackEmpty}>
-                  <Icon name="solar:checklist-minimalistic-linear" size={28} color="var(--neutral-200)" />
-                  <span>
-                    {docTab === 'pending'
-                      ? `No ${statusFilter} encounters left to review`
-                      : docTab === 'added'
-                        ? 'Nothing has been added to the worklist yet'
-                        : 'Nothing has been deleted yet'}
-                  </span>
-                </div>
+                /* Empty-state branching:
+                   1. "Document Review Completed" hero — every pending
+                      encounter has been triaged on this doc (Figma
+                      180:63466). Offers a primary Review Next Document
+                      (jumps to the next batch with pending work) and
+                      a secondary Back to Worklist (closes the drawer).
+                   2. Sub-filter empty — Pending tab is non-empty but
+                      the current Ready/Mismatch/Error bucket is. Quiet
+                      one-liner.
+                   3. Other tabs (Added / Deleted) empty — quiet
+                      one-liner explaining the bucket. */
+                docTab === 'pending' && pendingEncs.length === 0 && activeEncs.length > 0
+                  ? (
+                    <DocReviewCompleted
+                      total={activeEncs.length}
+                      nextBatch={batches.find(b => b.id !== activeBatch.id && (b.encounters || []).some(e => (e._docStatus || 'pending') === 'pending'))}
+                      onPickNext={(id) => setActiveId(id)}
+                      onBackToWorklist={close}
+                    />
+                  )
+                  : (
+                    <div className={styles.cardStackEmpty}>
+                      <Icon name="solar:checklist-minimalistic-linear" size={28} color="var(--neutral-200)" />
+                      <span>
+                        {docTab === 'pending'
+                          ? (statusFilter === 'all'
+                              ? 'No encounters left to review on this document'
+                              : `No ${statusFilter} encounters in this document`)
+                          : docTab === 'added'
+                            ? 'Nothing has been added to the worklist yet'
+                            : 'Nothing has been deleted yet'}
+                      </span>
+                    </div>
+                  )
               ) : visibleEncs.map((enc) => {
                 const idx = activeEncs.indexOf(enc);
                 return (
@@ -576,14 +603,9 @@ function PagePreview({ activeBatch, batches, onSelect }) {
 
   return (
     <div className={styles.previewWrap}>
-      <div className={styles.previewHead}>
-        <DocSwitcher
-          activeBatch={activeBatch}
-          batches={batches || []}
-          onSelect={onSelect}
-        />
-        <span className={styles.previewHeadPages}>{pages.length} page{pages.length === 1 ? '' : 's'}</span>
-      </div>
+      {/* Inner preview header removed — the outer file strip at the
+          top of the left panel already shows the filename + switcher,
+          so this row was redundant. */}
       <div className={styles.previewBody}>
         {pages.length === 0 ? (
           <div className={styles.previewEmpty}>
@@ -807,6 +829,47 @@ function SftpRow({ enc, hccMembers, onPatch, onRemove, showToast, checked, onTog
 }
 
 /**
+ * DocReviewCompleted — empty-state hero shown in the Pending tab
+ * once every encounter on the active document has been triaged
+ * (added / deleted). Matches Figma 180:63466.
+ */
+function DocReviewCompleted({ total, nextBatch, onPickNext, onBackToWorklist }) {
+  return (
+    <div className={styles.docCompleted}>
+      <span className={styles.docCompletedBadgeWrap}>
+        <span className={styles.docCompletedRingOuter} />
+        <span className={styles.docCompletedRingInner} />
+        <span className={styles.docCompletedBadge}>
+          <Icon name="solar:check-circle-bold" size={24} color="#fff" />
+        </span>
+      </span>
+      <div className={styles.docCompletedTitle}>Document Review Completed</div>
+      <div className={styles.docCompletedBody}>
+        All {total} extracted record{total === 1 ? ' has' : 's have'} been reviewed.
+      </div>
+      <div className={styles.docCompletedActions}>
+        <Button
+          variant="primary"
+          size="L"
+          disabled={!nextBatch}
+          onClick={() => nextBatch && onPickNext(nextBatch.id)}
+        >
+          Review Next Document
+        </Button>
+        <Button
+          variant="alt"
+          size="L"
+          trailingIcon="solar:arrow-right-up-linear"
+          onClick={onBackToWorklist}
+        >
+          Back to Worklist
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Document Review encounter card — one card per encounter,
  * stacked vertically. Header: avatar + member identity + Ready /
  * Mismatch / Error pill + per-card actions. Body: 2-column field
@@ -863,7 +926,6 @@ function EncounterCard({ enc, status, hccMembers, docTab, onPatch, onAddToWorkli
               >
                 Add to Worklist
               </Button>
-              <ActionButton size="S" icon="solar:bookmark-linear" tooltip="Bookmark" />
               <ActionButton size="S" icon="solar:trash-bin-trash-linear" tooltip="Delete" onClick={onDelete} />
             </>
           ) : (
@@ -924,6 +986,32 @@ function EncounterCard({ enc, status, hccMembers, docTab, onPatch, onAddToWorkli
             }}
           />
         </FieldBlock>
+        {/* Spec J — category is mandatory and correctable inline.
+            Providers often misfile labs as AWVs at upload time; this
+            lets the Support Team correct after the fact. */}
+        <FieldBlock label="Category" required>
+          <Select
+            value={enc.docType || 'Progress Note'}
+            onChange={(v) => onPatch({ docType: v })}
+            options={[
+              { value: 'AWV',           label: 'AWV' },
+              { value: 'Progress Note', label: 'Progress Note' },
+              { value: 'Lab',           label: 'Lab' },
+              { value: 'Other',         label: 'Other' },
+            ]}
+          />
+        </FieldBlock>
+        {/* Duplicate-warning chip — flagged at OCR time when the
+            member's existing dos_list already has this DOS + provider
+            + POS (spec L). */}
+        {enc._duplicateOfMemberId && (
+          <FieldBlock label="">
+            <span className={styles.encDupWarn} title="Same DOS + Provider + POS already exists for this member">
+              <Icon name="solar:danger-triangle-bold" size={11} color="var(--status-warning)" />
+              Possible duplicate — review before adding
+            </span>
+          </FieldBlock>
+        )}
       </div>
     </div>
   );
