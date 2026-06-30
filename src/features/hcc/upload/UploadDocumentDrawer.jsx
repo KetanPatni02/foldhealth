@@ -234,6 +234,11 @@ function PickerPhase({ showToast, cancel }) {
     return () => clearTimeout(t);
   }, [staged]);
 
+  // Spec H — manual UI uploads cap at 15 files OR 100 MB cumulative,
+  // whichever is hit first. SFTP path is unrestricted (handled
+  // server-side, not in the picker).
+  const MAX_FILES = 15;
+  const MAX_BATCH_BYTES = 100 * 1024 * 1024;
   const handlePick = (filesOrFile) => {
     const arr = Array.isArray(filesOrFile) ? filesOrFile : [filesOrFile];
     const accepted = arr.filter(Boolean).filter(isAcceptedFile);
@@ -241,19 +246,36 @@ function PickerPhase({ showToast, cancel }) {
       showToast?.('Please upload a PDF, DOC, JPG, PNG, or TIFF file');
       return;
     }
-    setStaged(prev => [
-      ...prev,
-      ...accepted.map((file) => ({
+    setStaged(prev => {
+      const currentBytes = prev.reduce((s, x) => s + (x.size || 0), 0);
+      const candidateRows = accepted.map((file) => ({
         id: `stg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         file,
         name: file.name,
-        // Default to ~2.5MB for demo chips (which don't carry a real
-        // file.size) so the row matches Figma's "2.5MB / 30 MB" copy.
+        // Default to ~2.5MB for demo chips (no real file.size) so the
+        // row matches Figma's "2.5MB / 30 MB" copy.
         size: file.size && file.size > 1024 ? file.size : (2.5 * 1024 * 1024),
         progress: 0,
         status: 'uploading',
-      })),
-    ]);
+      }));
+      // Enforce the per-batch cap: count + cumulative bytes.
+      const accepted2 = [];
+      let runningCount = prev.length;
+      let runningBytes = currentBytes;
+      let droppedForCount = 0;
+      let droppedForBytes = 0;
+      for (const row of candidateRows) {
+        if (runningCount >= MAX_FILES) { droppedForCount += 1; continue; }
+        if (runningBytes + row.size > MAX_BATCH_BYTES) { droppedForBytes += 1; continue; }
+        accepted2.push(row);
+        runningCount += 1;
+        runningBytes += row.size;
+      }
+      if (droppedForCount > 0 || droppedForBytes > 0) {
+        showToast?.('You can upload up to 15 files or 100 MB at a time via the app. For larger batches, please use SFTP.');
+      }
+      return [...prev, ...accepted2];
+    });
   };
 
   const removeStaged = (id) => setStaged(prev => prev.filter(s => s.id !== id));
@@ -316,39 +338,38 @@ function PickerPhase({ showToast, cancel }) {
           onReject={() => showToast?.('Please upload a PDF, DOC, JPG, PNG, or TIFF file')}
         />
 
-        {/* Staged file list (pre-extraction). Sits inside the upload
-            container so it reads as one component. */}
+        {/* Staged file list + footer (Start Extraction / Discard).
+            Both sit inside the upload container so the dropzone,
+            helper line, file rows, and primary actions read as one
+            component (Figma 121:84012). */}
         {staged.length > 0 && (
-          <div className={styles.stagedList}>
-            {staged.map(s => (
-              <StagedFileRow
-                key={s.id}
-                file={s}
-                onRemove={() => removeStaged(s.id)}
-                onPreview={() => showToast?.(`Preview ${s.name} — coming soon`)}
-              />
-            ))}
-          </div>
+          <>
+            <div className={styles.stagedList}>
+              {staged.map(s => (
+                <StagedFileRow
+                  key={s.id}
+                  file={s}
+                  onRemove={() => removeStaged(s.id)}
+                  onPreview={() => showToast?.(`Preview ${s.name} — coming soon`)}
+                />
+              ))}
+            </div>
+            <div className={styles.pickerFooter}>
+              <Button
+                variant="primary"
+                size="S"
+                disabled={completeCount === 0}
+                onClick={handleStartExtraction}
+              >
+                {uploadingCount > 0
+                  ? `Start Extraction · ${completeCount} ready`
+                  : `Start Extraction (${completeCount})`}
+              </Button>
+              <Button variant="alt" size="S" onClick={discardAll}>Discard</Button>
+            </div>
+          </>
         )}
       </div>
-
-      {/* Footer — Start Extraction + Discard. Only when staged rows
-          exist (pre-extraction). */}
-      {staged.length > 0 && (
-        <div className={styles.pickerFooter}>
-          <Button
-            variant="primary"
-            size="S"
-            disabled={completeCount === 0}
-            onClick={handleStartExtraction}
-          >
-            {uploadingCount > 0
-              ? `Start Extraction · ${completeCount} ready`
-              : `Start Extraction (${completeCount})`}
-          </Button>
-          <Button variant="alt" size="S" onClick={discardAll}>Discard</Button>
-        </div>
-      )}
 
       <WhatHappensNext />
 

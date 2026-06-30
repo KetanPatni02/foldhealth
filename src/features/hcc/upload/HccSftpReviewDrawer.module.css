@@ -924,6 +924,70 @@
   font: 400 13px/1.4 'Inter', sans-serif;
 }
 
+/* ── Document Review Completed hero (Figma 180:63466) ─────────────── */
+.docCompleted {
+  margin: 32px auto 0;
+  max-width: 540px;
+  padding: 48px 32px;
+  background: #fff;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+}
+.docCompletedBadgeWrap {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+.docCompletedRingOuter,
+.docCompletedRingInner {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px dashed var(--status-success);
+}
+.docCompletedRingOuter {
+  inset: 0;
+  opacity: 0.18;
+}
+.docCompletedRingInner {
+  inset: 10px;
+  opacity: 0.32;
+}
+.docCompletedBadge {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--status-success);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(0, 155, 83, 0.3);
+}
+.docCompletedTitle {
+  font: 600 18px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  margin-bottom: 6px;
+}
+.docCompletedBody {
+  font: 400 13px/1.5 'Inter', sans-serif;
+  color: var(--neutral-300);
+  margin-bottom: 22px;
+  max-width: 360px;
+}
+.docCompletedActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 /* ── Encounter card ───────────────────────────────────────────── */
 .encCard {
   border: 0.5px solid var(--neutral-150);
@@ -1008,6 +1072,22 @@
   justify-content: center;
 }
 .encIcdClose:hover { background: var(--primary-100); }
+
+/* Duplicate-warning chip — surfaces when OCR matched a row to an
+   existing dos_list entry on the member (same DOS + provider + POS).
+   Reviewer can still apply, but the row is held in Pending by
+   default so they can confirm intent. */
+.encDupWarn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--status-warning-light);
+  border: 0.5px solid rgba(217, 165, 11, 0.25);
+  border-radius: 6px;
+  font: 500 11px/1.3 'Inter', sans-serif;
+  color: var(--status-warning);
+}
 
 /* ── Field block (label + gauge + input) ──────────────────────── */
 .fieldBlock {

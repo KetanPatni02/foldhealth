@@ -639,19 +639,48 @@ function DocumentsTab({ feed, loading, onReopenReview }) {
     return acc;
   }, { docs: 0, added: 0, skipped: 0 });
 
+  // Spec D — uploader filter. Build the unique uploader list from
+  // the batches array so the dropdown only ever shows people who
+  // have actually uploaded something.
+  const uploaders = useMemo(() => {
+    const set = new Set();
+    batches.forEach(b => { if (b.actorName) set.add(b.actorName); });
+    return ['All uploaders', ...Array.from(set).sort()];
+  }, [batches]);
+  const [uploaderFilter, setUploaderFilter] = useState('All uploaders');
+  const visibleBatches = uploaderFilter === 'All uploaders'
+    ? batches
+    : batches.filter(b => b.actorName === uploaderFilter);
+  const visibleTotals = visibleBatches.reduce((acc, b) => {
+    acc.docs += 1;
+    acc.added += b.approvedCount || 0;
+    acc.skipped += b.rejectedCount || 0;
+    return acc;
+  }, { docs: 0, added: 0, skipped: 0 });
+
   return (
     <div className={hccStyles.docsTab}>
-      {/* Summary strip — quick "X docs · Y added · Z skipped" pulse so the
-          user can gauge backlog without scanning each card. */}
-      <div className={hccStyles.docsSummary}>
-        <span><strong>{totals.docs}</strong> document{totals.docs === 1 ? '' : 's'}</span>
-        <span>·</span>
-        <span><strong style={{ color: 'var(--status-success)' }}>{totals.added}</strong> added</span>
-        <span>·</span>
-        <span><strong style={{ color: 'var(--status-warning)' }}>{totals.skipped}</strong> skipped</span>
+      {/* Summary strip + uploader filter chip — Figma compliance for
+          spec D (filter by uploader). */}
+      <div className={hccStyles.docsHeaderRow}>
+        <div className={hccStyles.docsSummary}>
+          <span><strong>{visibleTotals.docs}</strong> document{visibleTotals.docs === 1 ? '' : 's'}</span>
+          <span>·</span>
+          <span><strong style={{ color: 'var(--status-success)' }}>{visibleTotals.added}</strong> added</span>
+          <span>·</span>
+          <span><strong style={{ color: 'var(--status-warning)' }}>{visibleTotals.skipped}</strong> skipped</span>
+        </div>
+        {uploaders.length > 2 && (
+          <FilterChip
+            label="Uploader"
+            value={uploaderFilter === 'All uploaders' ? null : uploaderFilter}
+            options={uploaders.slice(1)}
+            onChange={(v) => setUploaderFilter(v || 'All uploaders')}
+          />
+        )}
       </div>
       <div className={hccStyles.docsList}>
-        {batches.map(batch => (
+        {visibleBatches.map(batch => (
           <DocumentRow
             key={batch.batchId}
             batch={batch}

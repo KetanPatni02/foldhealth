@@ -3137,6 +3137,48 @@ export const useAppStore = create((set, get) => ({
         : b),
     }));
 
+    // Auto-route: any encounter that's matched to a Fold member AND
+    // has no field-level errors is high-confidence "ready" — apply it
+    // straight to the worklist and tag _docStatus='added' so the
+    // Document Review Pending tab only surfaces error/mismatch rows
+    // (per spec A + K). Same path the user would have walked manually
+    // by clicking Add to Worklist on each card.
+    let autoApplied = 0;
+    let pendingForReview = 0;
+    const updated = encounters.map((enc) => {
+      const ready = !!enc.patient?.matchedMemberId
+        && (!enc.errors || enc.errors.length === 0);
+      if (!ready) {
+        pendingForReview += 1;
+        return enc;
+      }
+      // Duplicate detection — same patient + DOS + provider + POS
+      // already on the member's dos_list? Skip create and flag the
+      // row so the reviewer sees the warning (spec L).
+      const member = state.hccMembers.find(m => m.id === enc.patient.matchedMemberId);
+      const isDup = !!member?.dos_list?.some(d =>
+        d.date === enc.dos
+        && (d.provider || '').toLowerCase() === (enc.provider || '').toLowerCase()
+        && (d.pos || '') === (enc.pos || '')
+      );
+      if (isDup) {
+        pendingForReview += 1;
+        return { ...enc, _duplicateOfMemberId: enc.patient.matchedMemberId };
+      }
+      const r = useAppStore.getState().hccCreateOrMergeFromEncounter?.({ ...enc, _docName: fileName });
+      if (r?.kind === 'created' || r?.kind === 'updated') {
+        autoApplied += 1;
+        return { ...enc, _docStatus: 'added' };
+      }
+      pendingForReview += 1;
+      return enc;
+    });
+    set(s => ({
+      hccSftpBatches: (s.hccSftpBatches || []).map(b => b.id === id
+        ? { ...b, encounters: updated, _autoApplied: autoApplied, _pendingForReview: pendingForReview }
+        : b),
+    }));
+
     // Stamp ocr.completed so the Documents tab can count encounters
     // extracted per document.
     useAppStore.getState().logHccActivity?.({
@@ -3145,23 +3187,37 @@ export const useAppStore = create((set, get) => ({
       payload:   {
         fileName,
         encounterCount: encounters.length,
+        autoApplied,
+        pendingForReview,
         pageCount: Math.max(...encounters.map(e => e.sourcePage || 1), 1),
       },
     });
 
     // If every batch in the queue is now done, fire a single
-    // notification summarising the queue.
+    // consolidated notification using the auto/manual breakdown
+    // (spec B). If pendingForReview is zero, surface that the user
+    // doesn't have to open the doc.
     const after = useAppStore.getState().hccSftpBatches || [];
     const allDone = after.length > 0 && after.every(b => b.status === 'done');
     if (allDone) {
-      const total = after.reduce((sum, b) => sum + (b.encounters?.length || 0), 0);
+      const totalAuto    = after.reduce((s, b) => s + (b._autoApplied || 0), 0);
+      const totalPending = after.reduce((s, b) => s + (b._pendingForReview || 0), 0);
+      const total = totalAuto + totalPending;
+      const docsCount = after.length;
+      const body = totalPending === 0
+        ? `${totalAuto} record${totalAuto === 1 ? '' : 's'} loaded automatically — no manual review needed.`
+        : `${totalAuto} loaded automatically · ${totalPending} waiting for manual intervention.`;
       useAppStore.getState().addNotification?.({
         type: 'hcc.documents_ready',
-        title: `${after.length} document${after.length === 1 ? '' : 's'} ready for review`,
-        body: `${total} encounter${total === 1 ? '' : 's'} extracted`,
+        title: `${total} record${total === 1 ? '' : 's'} ready across ${docsCount} document${docsCount === 1 ? '' : 's'}`,
+        body,
         action: 'openSftpReview',
       });
-      useAppStore.getState().showToast?.(`Extraction complete — ${total} encounter${total === 1 ? '' : 's'} ready for review`);
+      useAppStore.getState().showToast?.(
+        totalPending === 0
+          ? `${totalAuto} record${totalAuto === 1 ? '' : 's'} loaded automatically`
+          : `${totalAuto} auto · ${totalPending} waiting for review`
+      );
     }
     return id;
   },
