@@ -3068,6 +3068,11 @@ export const useAppStore = create((set, get) => ({
   // (the underlying documents reload from Supabase via fetchHccDocuments).
   hccSftpReviewOpen: sessionStorage.getItem('hccSftpReviewOpen') === '1',
   hccSftpActiveBatchId: sessionStorage.getItem('hccSftpActiveBatchId') || null,
+  // Inline review — when true, the Document Review renders INSIDE the ICD
+  // Creation surface (same drawer, no second overlay). Standalone entry
+  // points (bell notification, upload ribbon) keep the floating 700px
+  // drawer and leave this false.
+  hccReviewInline: sessionStorage.getItem('hccReviewInline') === '1',
   // ICD Creation screen — unified upload + manual + SFTP entry surface
   // (replaces the legacy 3-item popover anchored under the worklist's
   // Upload Document toolbar button).
@@ -3083,7 +3088,9 @@ export const useAppStore = create((set, get) => ({
   },
   closeIcdCreation: () => {
     sessionStorage.setItem('icdCreationOpen', '0');
-    set({ icdCreationOpen: false });
+    sessionStorage.setItem('hccReviewInline', '0');
+    sessionStorage.removeItem('hccReviewSourceBatchIds');
+    set({ icdCreationOpen: false, hccReviewInline: false, hccReviewSourceBatchIds: null });
   },
   trackIcdCreationBatch: (batchId) => set(s => {
     const next = [...new Set([...(s.icdCreationSessionBatchIds || []), batchId])];
@@ -3396,6 +3403,31 @@ export const useAppStore = create((set, get) => ({
     sessionStorage.setItem('hccSftpReviewOpen', '0');
     sessionStorage.removeItem('hccReviewSourceBatchIds');
     set({ hccSftpReviewOpen: false, hccReviewSourceBatchIds: null });
+  },
+  // Open review INLINE (inside the ICD Creation surface). Same aggregate
+  // semantics as openHccReviewForBatches, but flags inline mode and does
+  // NOT set hccSftpReviewOpen — so the global floating drawer stays closed
+  // and the review renders in-place instead.
+  openHccReviewInline: (batchIds, focusBatchId) => set(() => {
+    const ordered = focusBatchId
+      ? [focusBatchId, ...batchIds.filter(id => id !== focusBatchId)]
+      : [...batchIds];
+    const activeId = focusBatchId || ordered[0] || null;
+    sessionStorage.setItem('hccReviewInline', '1');
+    sessionStorage.setItem('hccReviewSourceBatchIds', JSON.stringify(ordered));
+    if (activeId) sessionStorage.setItem('hccSftpActiveBatchId', activeId);
+    return {
+      hccReviewInline: true,
+      hccReviewSourceBatchIds: ordered,
+      hccSftpActiveBatchId: activeId,
+    };
+  }),
+  // Exit inline review — returns to the ICD Creation categorized doc list
+  // (leaves the ICD Creation screen itself open).
+  closeHccReviewInline: () => {
+    sessionStorage.setItem('hccReviewInline', '0');
+    sessionStorage.removeItem('hccReviewSourceBatchIds');
+    set({ hccReviewInline: false, hccReviewSourceBatchIds: null });
   },
   setHccSftpActiveBatchId: (id) => {
     if (id) sessionStorage.setItem('hccSftpActiveBatchId', id);

@@ -9,6 +9,7 @@ import { CloseIcon } from '../../../components/Icon/CloseIcon';
 import { POS_LABEL } from './mockOcr';
 import { Avatar } from '../../../components/Avatar/Avatar';
 import { OCR_TIER_LABEL, OCR_TIER_TONE } from '../compliance';
+import { HccSftpReviewDrawer } from './HccSftpReviewDrawer';
 import styles from './IcdCreationScreen.module.css';
 
 /**
@@ -79,15 +80,16 @@ export function IcdCreationScreen() {
     setHccUploadPhase?.('single');
   };
 
-  // Same handoff pattern for Review — close ICD Creation, then open the
-  // Document Review surface in AGGREGATE mode across every document in
-  // this session so the reviewer can page patient-by-patient across all
-  // uploaded docs (the clicked doc is focused first).
-  const openHccReviewForBatches = useAppStore(s => s.openHccReviewForBatches);
+  // Review renders INLINE inside this surface (same drawer, no second
+  // overlay) in AGGREGATE mode across every document in this session, so
+  // the reviewer pages patient-by-patient across all uploaded docs (the
+  // clicked doc is focused first).
+  const openHccReviewInline = useAppStore(s => s.openHccReviewInline);
+  const closeHccReviewInline = useAppStore(s => s.closeHccReviewInline);
+  const reviewInline = useAppStore(s => s.hccReviewInline);
   const openExistingReview = (batchId) => {
-    close?.();
     const ids = sessionBatches.map(b => b.id);
-    openHccReviewForBatches?.(ids.length ? ids : [batchId], batchId);
+    openHccReviewInline?.(ids.length ? ids : [batchId], batchId);
   };
   const [whatNextOpen, setWhatNextOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -176,6 +178,14 @@ export function IcdCreationScreen() {
           </button>
         </header>
 
+        {reviewInline ? (
+          /* Inline Document Review — renders in THIS surface instead of a
+             second drawer (Figma 4001:179835). Back arrow returns to the
+             categorized document list. */
+          <div className={styles.reviewInlineHost}>
+            <HccSftpReviewDrawer inline onExit={closeHccReviewInline} />
+          </div>
+        ) : (
         <div className={styles.body}>
           {/* ── Left: Upload & Review Document ───────────────────────── */}
           <section className={styles.leftCol}>
@@ -217,6 +227,7 @@ export function IcdCreationScreen() {
             onAddManually={openExistingManualEntry}
           />
         </div>
+        )}
       </div>
     </>,
     document.body,
@@ -440,9 +451,15 @@ function TierDocRow({ doc, tier, onReview }) {
         <div className={styles.tierDocNameRow}>
           <span className={styles.tierDocName}>{doc.fileName}</span>
           {/* Inline check-count badge — sits directly next to the file
-              name per the design reference (✓ Pass · 12/12). */}
+              name (✓ Pass · 12/12). Clicking it opens the document review
+              (same target as the Review button). */}
           {total > 0 && (
-            <span className={[styles.passPill, styles[`passPill_${passTone}`]].join(' ')}>
+            <button
+              type="button"
+              className={[styles.passPill, styles[`passPill_${passTone}`], tier !== 'unreadable' ? styles.passPillClickable : ''].filter(Boolean).join(' ')}
+              onClick={tier !== 'unreadable' ? () => onReview(doc.id) : undefined}
+              title={tier !== 'unreadable' ? 'Open document review' : undefined}
+            >
               <Icon
                 name={passTone === 'success' ? 'solar:check-circle-bold' : passTone === 'fail' ? 'solar:close-circle-bold' : 'solar:danger-circle-bold'}
                 size={11}
@@ -451,7 +468,7 @@ function TierDocRow({ doc, tier, onReview }) {
               <span>Pass</span>
               <span className={styles.passPillDivider} />
               <span>{passCount}/{total}</span>
-            </span>
+            </button>
           )}
         </div>
         <div className={styles.tierDocSub}>
