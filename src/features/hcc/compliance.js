@@ -26,29 +26,37 @@
 
 // ─── Check definitions ─────────────────────────────────────────────────
 
+// 7-point document-review checklist (Figma 6:5838). Order matches the
+// dropdown so the strip and popover read top-to-bottom identically.
 export const CHECK_KEYS = [
-  'progressNote',
-  'dosCharted',
-  'providerNamePrinted',
-  'posAvailable',
+  'correctPatient',
   'legible',
+  'dosCharted',
+  'posAvailable',
+  'requiredFields',
+  'signaturePresent',
+  'providerName',
 ];
 
 export const CHECK_LABELS = {
-  progressNote: 'Progress Note / Attachment Available',
-  dosCharted: 'DOS Charted',
-  providerNamePrinted: 'Provider Name Printed',
-  posAvailable: 'POS Available',
-  legible: 'Legible',
+  correctPatient: 'Document belongs to the correct patient',
+  legible: 'Document is legible',
+  dosCharted: 'Date of Service (DOS) is charted',
+  posAvailable: 'Place of Service (POS) is available',
+  requiredFields: 'All required fields are complete',
+  signaturePresent: 'Required signature is present',
+  providerName: 'Provider name is present',
 };
 
-// Short labels for the per-doc dot strip.
+// Short labels for the per-doc dot strip / blocker hints.
 export const CHECK_SHORT_LABELS = {
-  progressNote: 'Note',
-  dosCharted: 'DOS',
-  providerNamePrinted: 'Provider',
-  posAvailable: 'POS',
+  correctPatient: 'Patient',
   legible: 'Legible',
+  dosCharted: 'DOS',
+  posAvailable: 'POS',
+  requiredFields: 'Fields',
+  signaturePresent: 'Signature',
+  providerName: 'Provider',
 };
 
 // ─── OCR tier ──────────────────────────────────────────────────────────
@@ -73,30 +81,40 @@ export const OCR_TIER_TONE = {
 // presents the list as a Select plus a Textarea for free text. Both manual
 // pass and manual fail require a reason.
 export const STANDARD_REASONS = {
-  progressNote: [
-    'Wrong document type',
-    'Wrong patient',
-    'Document not attached',
+  correctPatient: [
+    'Wrong patient on document',
+    'Patient identifiers do not match',
+    'Unable to confirm patient',
+  ],
+  legible: [
+    'Document quality too poor',
+    'Partial page / cut off',
+    'Handwriting not legible',
   ],
   dosCharted: [
     'DOS missing',
     'DOS conflicts with claim',
     'DOS not legible',
   ],
-  providerNamePrinted: [
-    'Signature only, no printed name',
-    'Provider name illegible',
-    'Wrong provider on document',
-  ],
   posAvailable: [
     'POS missing',
     'POS unclear',
     'POS does not match claim',
   ],
-  legible: [
-    'Document quality too poor',
-    'Partial page / cut off',
-    'Handwriting not legible',
+  requiredFields: [
+    'Missing required field',
+    'Field illegible',
+    'Conflicting values',
+  ],
+  signaturePresent: [
+    'No signature on document',
+    'Signature only, no printed attestation',
+    'Signature illegible',
+  ],
+  providerName: [
+    'Provider name not printed',
+    'Provider name illegible',
+    'Wrong provider on document',
   ],
 };
 
@@ -155,41 +173,35 @@ export function evaluateCompliance(ocrTier, sample) {
     return Object.fromEntries(CHECK_KEYS.map(k => [k, pending()]));
   }
 
-  // Clean: AI evaluates per check. Cases where AI cannot be confident
-  // (signature-only on Provider, subjective Legible if anything looks off)
-  // stay pending — they bubble up to Support.
+  // Clean: AI evaluates per check. Checks AI cannot be confident about —
+  // completeness of every required field, and presence of a valid
+  // signature — stay pending so a human confirms them (matches Figma
+  // 6:5838 where those two sit unchecked on an otherwise-clean doc).
   const s = sample || {};
   const result = {};
 
-  // progressNote — pass if a recognised document category is present.
-  // Unknown docType → pending (Support classifies).
-  result.progressNote = s.docType
+  // correctPatient — pass if OCR matched a Fold member with no ID mismatch.
+  result.correctPatient = (s.patient?.matchedMemberId && !s.patient?.idMismatch)
     ? aiPass(now)
-    : pending();
+    : aiFail(now);
+
+  // legible — on Clean docs AI auto-passes (the tier itself implies it).
+  result.legible = aiPass(now);
 
   // dosCharted — pass if DOS field populated; fail if missing.
-  result.dosCharted = s.dos
-    ? aiPass(now)
-    : aiFail(now);
-
-  // providerNamePrinted — pass if provider populated AND not a
-  // signature-only indicator. Mock: deterministic 15% of provider-present
-  // docs route to Support (simulates "signature-only" uncertainty).
-  if (!s.provider) {
-    result.providerNamePrinted = aiFail(now);
-  } else {
-    const signatureUncertain = (hash(`${s.provider}|${s.dos}`) % 100) < 15;
-    result.providerNamePrinted = signatureUncertain ? pending() : aiPass(now);
-  }
+  result.dosCharted = s.dos ? aiPass(now) : aiFail(now);
 
   // posAvailable — pass if POS populated; fail otherwise.
-  result.posAvailable = s.pos
-    ? aiPass(now)
-    : aiFail(now);
+  result.posAvailable = s.pos ? aiPass(now) : aiFail(now);
 
-  // legible — on Clean docs AI auto-passes (the tier itself implies
-  // legibility). Degraded would have short-circuited above.
-  result.legible = aiPass(now);
+  // requiredFields — completeness is a human judgement; AI defers.
+  result.requiredFields = pending();
+
+  // signaturePresent — AI can't reliably confirm a wet/e-signature.
+  result.signaturePresent = pending();
+
+  // providerName — pass if a printed provider name was extracted.
+  result.providerName = s.provider ? aiPass(now) : aiFail(now);
 
   return result;
 }

@@ -44,9 +44,12 @@ const ICD_LOOKUP = (() => {
   return map;
 })();
 import { Checkbox } from '../../../components/ui/checkbox';
-import { ComplianceStrip } from '../../../components/ComplianceStrip/ComplianceStrip';
-import { ComplianceReviewPanel } from '../../../components/ComplianceReviewPanel/ComplianceReviewPanel';
-import { OCR_TIER_LABEL, OCR_TIER_TONE, allChecksPassed, anyCheckFailed, anyCheckPending } from '../compliance';
+import { AuditBadge } from '../../../components/AuditBadge/AuditBadge';
+import { ReasonDialog } from '../../../components/ReasonDialog/ReasonDialog';
+import {
+  OCR_TIER_LABEL, OCR_TIER_TONE, anyCheckFailed, anyCheckPending,
+  CHECK_KEYS, CHECK_LABELS, STANDARD_REASONS,
+} from '../compliance';
 import styles from './HccSftpReviewDrawer.module.css';
 
 /**
@@ -80,11 +83,6 @@ export function HccSftpReviewDrawer() {
   const applyComplianceDecision = useAppStore(s => s.applyHccComplianceDecision);
   const hccMembers = useAppStore(s => s.hccMembers) || [];
   const showToast = useAppStore(s => s.showToast);
-  // Per-doc disclosure state: whether the full ComplianceReviewPanel is
-  // expanded for this batch. Defaults to expanded when the doc has anything
-  // needing a Support touch (any fail or pending check) — so the reviewer
-  // doesn't have to discover the panel.
-  const [complianceOpenIds, setComplianceOpenIds] = useState(new Set());
   const [selectedIdxs, setSelectedIdxs] = useState(() => new Set());
   const [switcherOpen, setSwitcherOpen] = useState(false);
   // Patient pagination index — one step per PATIENT across the review set
@@ -266,6 +264,24 @@ export function HccSftpReviewDrawer() {
                   color="var(--neutral-400)"
                 />
               </button>
+              {/* Inline compliance — OCR tier + a checks badge that opens
+                  the 7-point Document Review checklist (Figma 6:5838). */}
+              {activeBatch.compliance && (
+                <span className={styles.fileStripChecks}>
+                  <Badge
+                    variant={OCR_TIER_TONE[activeBatch.ocrTier] || 'warning'}
+                    label={`OCR · ${OCR_TIER_LABEL[activeBatch.ocrTier] || 'Unknown'}`}
+                  />
+                  <DocChecksBadge
+                    compliance={activeBatch.compliance}
+                    ocrTier={activeBatch.ocrTier}
+                    fileName={activeBatch.fileName}
+                    onApplyDecision={({ checkKey, decision, reason }) =>
+                      applyComplianceDecision?.({ batchId: activeBatch.id, checkKey, decision, reason })
+                    }
+                  />
+                </span>
+              )}
               <button
                 type="button"
                 className={styles.fileStripExternal}
@@ -300,29 +316,6 @@ export function HccSftpReviewDrawer() {
                 </div>
               )}
             </div>
-
-            {/* ── Document compliance summary + review panel ────────
-             * Per the Astrana spec, every document carries an OCR tier
-             * (Clean / Degraded / Unreadable) plus a 5-point compliance
-             * checklist. The compact strip + tier badge is always visible
-             * so Support can see at a glance whether a doc is releasable;
-             * the full review panel expands on click for manual pass/fail.
-             */}
-            {activeBatch.compliance && (
-              <ComplianceBlock
-                batch={activeBatch}
-                expanded={complianceOpenIds.has(activeBatch.id)}
-                onToggle={() => setComplianceOpenIds(prev => {
-                  const next = new Set(prev);
-                  if (next.has(activeBatch.id)) next.delete(activeBatch.id);
-                  else next.add(activeBatch.id);
-                  return next;
-                })}
-                onApplyDecision={({ checkKey, decision, reason }) =>
-                  applyComplianceDecision?.({ batchId: activeBatch.id, checkKey, decision, reason })
-                }
-              />
-            )}
 
             <PagePreview
               activeBatch={activeBatch}
@@ -1445,62 +1438,104 @@ function ConfGauge({ score }) {
  * review panel for the active document. Lives between the file switcher
  * and the page preview on the left side of the drawer.
  */
-function ComplianceBlock({ batch, expanded, onToggle, onApplyDecision }) {
-  const { ocrTier, compliance, fileName } = batch;
-  const hasIssue = anyCheckFailed(compliance) || anyCheckPending(compliance) || ocrTier === 'unreadable';
-  const ready = ocrTier !== 'unreadable' && allChecksPassed(compliance);
+/**
+ * DocChecksBadge — inline pass/fail badge on the file title that opens the
+ * 7-point Document Review checklist popover (Figma 6:5838). The badge
+ * reflects the aggregate: all pass → success "Pass N/N"; any fail → error
+ * "Failed"; otherwise → warning "Review X/N".
+ */
+function DocChecksBadge({ compliance, ocrTier, fileName, onApplyDecision }) {
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(null); // { checkKey, decision }
+  const wrapRef = useRef(null);
 
-  const summaryLabel = ocrTier === 'unreadable'
-    ? 'Unreadable — Support re-scan'
-    : ready
-      ? 'All 5 checks passed'
-      : hasIssue
-        ? 'Support review required'
-        : 'In review';
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
 
-  const summaryTone = ocrTier === 'unreadable' || anyCheckFailed(compliance)
-    ? 'error'
-    : ready
-      ? 'success'
-      : 'warning';
+  const total = CHECK_KEYS.length;
+  const passCount = CHECK_KEYS.filter(k => compliance[k]?.status === 'pass').length;
+  const failed = anyCheckFailed(compliance);
+  const pendingAny = anyCheckPending(compliance);
+
+  const variant = failed ? 'error' : (pendingAny ? 'warning' : 'success');
+  const label = failed ? 'Checks · Failed' : `Checks · ${passCount}/${total}`;
+
+  const submitReason = (reason) => {
+    if (!pending) return;
+    onApplyDecision?.({ checkKey: pending.checkKey, decision: pending.decision, reason });
+    setPending(null);
+  };
 
   return (
-    <div className={styles.complianceBlock}>
-      <button
-        type="button"
-        className={styles.complianceHeader}
-        onClick={onToggle}
-        aria-expanded={expanded}
-        aria-controls={`compliance-detail-${batch.id}`}
-      >
-        <div className={styles.complianceHeaderLeft}>
-          <Badge variant={OCR_TIER_TONE[ocrTier] || 'warning'} label={`OCR · ${OCR_TIER_LABEL[ocrTier] || 'Unknown'}`} />
-          {ocrTier !== 'unreadable' && (
-            <ComplianceStrip compliance={compliance} size="S" />
-          )}
-          <span className={[styles.complianceSummary, styles[`tone_${summaryTone}`]].join(' ')}>
-            {summaryLabel}
-          </span>
-        </div>
-        <Icon
-          name={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
-          size={14}
-          color="var(--neutral-300)"
-        />
+    <span className={styles.docChecks} ref={wrapRef}>
+      <button type="button" className={styles.docChecksTrigger} onClick={() => setOpen(v => !v)}>
+        <Badge variant={variant} label={label} />
+        <Icon name={open ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} size={11} color="var(--neutral-400)" />
       </button>
-      {expanded && (
-        <div id={`compliance-detail-${batch.id}`} className={styles.complianceDetail}>
-          <ComplianceReviewPanel
-            fileName={fileName}
-            ocrTier={ocrTier}
-            compliance={compliance}
-            onDecision={({ checkKey, decision, reason, actor }) =>
-              onApplyDecision?.({ checkKey, decision, reason, actor })
-            }
-          />
+
+      {open && (
+        <div className={styles.docChecksPop} role="dialog" aria-label="Document Review checklist">
+          <div className={styles.docChecksHead}>
+            <Icon name="solar:clipboard-check-linear" size={16} color="var(--neutral-500)" />
+            <div className={styles.docChecksHeadText}>
+              <div className={styles.docChecksTitle}>Document Review</div>
+              <div className={styles.docChecksSub}>Make sure the document meets these criteria</div>
+            </div>
+            <button type="button" className={styles.docChecksClose} onClick={() => setOpen(false)} aria-label="Close">
+              <Icon name="solar:close-circle-linear" size={16} color="var(--neutral-300)" />
+            </button>
+          </div>
+          <ul className={styles.docChecksList}>
+            {CHECK_KEYS.map(k => {
+              const c = compliance[k] || {};
+              const passed = c.status === 'pass';
+              const failedCheck = c.status === 'fail';
+              return (
+                <li key={k} className={styles.docChecksRow}>
+                  <Icon
+                    name={passed ? 'solar:check-circle-bold' : failedCheck ? 'solar:close-circle-bold' : 'solar:record-circle-linear'}
+                    size={16}
+                    color={passed ? 'var(--status-success)' : failedCheck ? 'var(--status-error)' : 'var(--neutral-200)'}
+                  />
+                  <span className={styles.docChecksLabel}>{CHECK_LABELS[k]}</span>
+                  {c.source && <AuditBadge source={c.source} actor={c.actor} at={c.at} />}
+                  {ocrTier !== 'unreadable' && (
+                    <span className={styles.docChecksActions}>
+                      {!passed && (
+                        <button type="button" className={styles.docChecksPass} onClick={() => setPending({ checkKey: k, decision: 'pass' })}>Pass</button>
+                      )}
+                      {!failedCheck && (
+                        <button type="button" className={styles.docChecksFail} onClick={() => setPending({ checkKey: k, decision: 'fail' })}>Fail</button>
+                      )}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          {ocrTier === 'unreadable' && (
+            <div className={styles.docChecksUnreadable}>
+              Document is unreadable — re-scan or re-request before it can be reviewed.
+            </div>
+          )}
         </div>
       )}
-    </div>
+
+      {pending && (
+        <ReasonDialog
+          title={pending.decision === 'pass' ? 'Confirm manual pass' : 'Confirm manual fail'}
+          description={CHECK_LABELS[pending.checkKey]}
+          decision={pending.decision}
+          standardReasons={STANDARD_REASONS[pending.checkKey] || []}
+          onCancel={() => setPending(null)}
+          onSubmit={submitReason}
+        />
+      )}
+    </span>
   );
 }
 

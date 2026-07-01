@@ -785,6 +785,124 @@
   background: #fff;
   flex-shrink: 0;
 }
+
+/* ── Inline document checks (OCR tier + checks badge on the title) ─── */
+.fileStripChecks {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 4px;
+}
+
+.docChecks {
+  position: relative;
+  display: inline-flex;
+}
+
+.docChecksTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.docChecksPop {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 360px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.docChecksHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px 16px 10px;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+
+.docChecksHeadText { flex: 1; min-width: 0; }
+
+.docChecksTitle {
+  font: 600 14px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+
+.docChecksSub {
+  font: 400 12px/1.3 'Inter', sans-serif;
+  color: var(--neutral-300);
+  margin-top: 2px;
+}
+
+.docChecksClose {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 2px;
+  display: inline-flex;
+}
+
+.docChecksList {
+  list-style: none;
+  margin: 0;
+  padding: 6px 8px 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.docChecksRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 6px;
+}
+
+.docChecksRow:hover { background: var(--neutral-50); }
+
+.docChecksLabel {
+  flex: 1;
+  min-width: 0;
+  font: 400 13px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+
+.docChecksActions {
+  display: inline-flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.docChecksRow:hover .docChecksActions { opacity: 1; }
+
+.docChecksPass,
+.docChecksFail {
+  border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font: 500 11px/1 'Inter', sans-serif;
+  cursor: pointer;
+}
+
+.docChecksPass { color: var(--status-success); }
+.docChecksFail { color: var(--status-error); }
+
+.docChecksUnreadable {
+  padding: 10px 16px 14px;
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--status-error);
+}
 .fileStripBtn {
   display: inline-flex;
   align-items: center;
