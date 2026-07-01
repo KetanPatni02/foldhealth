@@ -6,13 +6,43 @@ import { Avatar } from '../../../components/Avatar/Avatar';
 import { Input } from '../../../components/Input/Input';
 import { Badge } from '../../../components/Badge/Badge';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
-import { Toggle } from '../../../components/Toggle/Toggle';
 import { Select } from '../../../components/Select/Select';
 // BulkBar import removed — per-card actions replace the floating bar
 // in the new Document Review layout (Figma 121:87283).
 import { useAppStore } from '../../../store/useAppStore';
 import { getFieldConfidence } from '../data/confidence';
 import { POS_LABEL } from './mockOcr';
+import { ICDS } from '../data/icds';
+
+// Group pending encounters into one entry per patient — a patient with
+// multiple DOS records becomes a single review unit (Figma 1:3574).
+function groupEncountersByPatient(encounters) {
+  const groups = new Map();
+  for (const enc of encounters) {
+    const key = enc.patient?.matchedMemberId
+      ? `m-${enc.patient.matchedMemberId}`
+      : `u-${enc.patient?.name || ''}-${enc.patient?.dob || ''}`;
+    if (!groups.has(key)) {
+      groups.set(key, { key, patient: enc.patient, encounters: [] });
+    }
+    groups.get(key).encounters.push(enc);
+  }
+  return Array.from(groups.values());
+}
+
+// Flat ICD lookup — memoized once at module load so the read-only card can
+// resolve `E11.22` → `{ desc, hcc }` without walking every member every render.
+const ICD_LOOKUP = (() => {
+  const map = new Map();
+  Object.values(ICDS || {}).forEach(list => {
+    (list || []).forEach(entry => {
+      if (entry?.code && !map.has(entry.code)) {
+        map.set(entry.code, { desc: entry.desc || '', hcc: entry.hcc || '' });
+      }
+    });
+  });
+  return map;
+})();
 import { Checkbox } from '../../../components/ui/checkbox';
 import { ComplianceStrip } from '../../../components/ComplianceStrip/ComplianceStrip';
 import { ComplianceReviewPanel } from '../../../components/ComplianceReviewPanel/ComplianceReviewPanel';
@@ -55,29 +85,43 @@ export function HccSftpReviewDrawer() {
   // needing a Support touch (any fail or pending check) — so the reviewer
   // doesn't have to discover the panel.
   const [complianceOpenIds, setComplianceOpenIds] = useState(new Set());
-
-  const activeBatch = useMemo(
-    () => batches.find(b => b.id === activeId) || batches.find(b => b.status === 'done') || batches[0],
-    [batches, activeId],
-  );
-
-  // Per-batch selection state — when the user switches tabs we reset
-  // the set so bulk actions only ever apply to the visible batch.
   const [selectedIdxs, setSelectedIdxs] = useState(() => new Set());
-  // Document Review now has three top-level tabs: Pending Review,
-  // Added to Worklist, Deleted. We drive them from each encounter's
-  // _docStatus annotation (set by setHccSftpEncounterStatus).
-  const [docTab, setDocTab] = useState('pending');
-  // Status filter inside the Pending tab — All / Ready / Mismatch / Error.
-  const [statusFilter, setStatusFilter] = useState('all');
-  // Doc-switcher popover open state (filename click).
   const [switcherOpen, setSwitcherOpen] = useState(false);
-  // Card-stack pagination index — drives the "Reviewing: X of Y" indicator
-  // and Previous/Next Record nav at the bottom of the right panel
-  // (Figma 1:3540). Reset whenever the visible set changes.
+  // Patient pagination index — one step per PATIENT across the review set
+  // (Figma 1:3574). Reset when the review set changes.
   const [focusIdx, setFocusIdx] = useState(0);
   const cardStackRef = useRef(null);
-  useEffect(() => { setFocusIdx(0); }, [activeId, docTab, statusFilter]);
+
+  const sourceBatchIds = useAppStore(s => s.hccReviewSourceBatchIds);
+
+  // Build the ordered "patient slot" list. In aggregate mode (ICD Creation
+  // Review) we span every source document; otherwise just the active batch
+  // (SFTP bell-notification flow). Each slot = { batch, group } so the left
+  // preview + handlers can follow the focused patient back to its document.
+  const review = useMemo(() => {
+    const done = batches.filter(b => b.status === 'done');
+    const src = (sourceBatchIds && sourceBatchIds.length)
+      ? sourceBatchIds.map(id => batches.find(b => b.id === id)).filter(Boolean)
+      : [];
+    const reviewBatches = src.length
+      ? src
+      : [batches.find(b => b.id === activeId) || done[0] || batches[0]].filter(Boolean);
+    const slots = [];
+    reviewBatches.forEach(b => {
+      const pend = (b.encounters || []).filter(e => (e._docStatus || 'pending') === 'pending');
+      groupEncountersByPatient(pend).forEach(group => slots.push({ batch: b, group }));
+    });
+    return { slots };
+  }, [batches, sourceBatchIds, activeId]);
+
+  const focusedSlot = review.slots[focusIdx] || review.slots[0] || null;
+  // The display/active batch follows the focused patient's source document.
+  const activeBatch = focusedSlot?.batch
+    || batches.find(b => b.id === activeId)
+    || batches.find(b => b.status === 'done')
+    || batches[0];
+
+  useEffect(() => { setFocusIdx(0); }, [activeId, (sourceBatchIds || []).join(',')]);
   const setEncounterStatus = useAppStore(s => s.setHccSftpEncounterStatus);
   useEffect(() => { setSelectedIdxs(new Set()); }, [activeBatch?.id]);
   const toggleSelected = (idx) => setSelectedIdxs(prev => {
@@ -171,18 +215,14 @@ export function HccSftpReviewDrawer() {
     if (Array.isArray(enc?.errors) && enc.errors.length > 0) return 'error';
     return 'ready';
   };
-  const readyCount    = pendingEncs.filter(e => encStatus(e) === 'ready').length;
-  const mismatchCount = pendingEncs.filter(e => encStatus(e) === 'mismatch').length;
-  const errorCount    = pendingEncs.filter(e => encStatus(e) === 'error').length;
 
-  // Filtered list for the right-pane card stack. 'all' shows every
-  // pending encounter regardless of status.
-  const visibleEncs = (
-    docTab === 'pending'
-      ? (statusFilter === 'all' ? pendingEncs : pendingEncs.filter(e => encStatus(e) === statusFilter))
-    : docTab === 'added'   ? addedEncs
-    :                        deletedEncs
-  );
+  // Per Figma 1:3574 we review ONE PATIENT at a time. `review.slots`
+  // (computed above) is the ordered patient list — across all source
+  // documents in aggregate mode. focusIdx points at the current patient.
+  const patientSlots = review.slots;
+  const focusedGroup = focusedSlot?.group || null;
+  const visibleEncs = focusedGroup?.encounters || [];
+  const docTab = 'pending'; // hard-coded so empty-state branches keep working
 
   const title = (
     <span className={styles.titleBlock}>
@@ -291,67 +331,40 @@ export function HccSftpReviewDrawer() {
             />
           </div>
 
-          {/* RIGHT — Pending / Added / Deleted tabs + filter chips +
-              encounter card stack. */}
+          {/* RIGHT — minimal "Reviewing: N of M" header + encounter
+              card stack + Previous/Next footer (Figma 1:3540). The
+              earlier Pending/Added/Deleted tab + Ready/Mismatch/Error
+              filter cluster is intentionally removed — the surface now
+              focuses the reviewer on one card at a time. */}
           <div className={styles.rightPanel}>
-            {/* "Reviewing: X of Y Records" pagination indicator
-                (Figma 1:3540 — sits above the tab bar). */}
-            {visibleEncs.length > 0 && (
+            {patientSlots.length > 0 && (
               <div className={styles.reviewingHeader}>
-                Reviewing: <strong>{Math.min(focusIdx + 1, visibleEncs.length)}</strong> of <strong>{visibleEncs.length}</strong> Records
+                <span>
+                  Reviewing: <strong>{Math.min(focusIdx + 1, patientSlots.length)}</strong> of <strong>{patientSlots.length}</strong> {patientSlots.length === 1 ? 'Patient' : 'Patients'}
+                </span>
+                <span className={styles.reviewingHeaderActions}>
+                  <ActionButton size="S" icon="solar:magnifer-linear" tooltip="Search" />
+                  <Button
+                    variant="alt"
+                    size="S"
+                    leadingIcon="solar:add-circle-linear"
+                    onClick={() => showToast?.('Add New Record — coming soon')}
+                  >
+                    Add New Record
+                  </Button>
+                </span>
               </div>
             )}
-            <div className={styles.docTabBar}>
-              <button
-                type="button"
-                className={[styles.docTab, docTab === 'pending' ? styles.docTabActive : ''].join(' ')}
-                onClick={() => setDocTab('pending')}
-              >
-                Pending Review<span className={styles.docTabCount}>({pendingEncs.length})</span>
-              </button>
-              <button
-                type="button"
-                className={[styles.docTab, docTab === 'added' ? styles.docTabActive : ''].join(' ')}
-                onClick={() => setDocTab('added')}
-              >
-                Added to Worklist<span className={styles.docTabCount}>({addedEncs.length})</span>
-              </button>
-              <button
-                type="button"
-                className={[styles.docTab, docTab === 'deleted' ? styles.docTabActive : ''].join(' ')}
-                onClick={() => setDocTab('deleted')}
-              >
-                Deleted<span className={styles.docTabCount}>({deletedEncs.length})</span>
-              </button>
-              <span className={styles.docTabBarSpacer} />
-              <ActionButton size="S" icon="solar:magnifer-linear" tooltip="Search" />
-              <Button
-                variant="alt"
-                size="S"
-                leadingIcon="solar:add-circle-linear"
-                onClick={() => showToast?.('Add New Record — coming soon')}
-              >
-                Add New Record
-              </Button>
-            </div>
 
-            {/* Filter chips inside the Pending tab — uses the shared
-                <Toggle> primitive so the segmented-control behavior +
-                visuals match every other filter cluster in the app. */}
-            {docTab === 'pending' && (
-              <div className={styles.statusChipsRow}>
-                <Toggle
-                  size="S"
-                  items={[
-                    { key: 'all',      label: `All (${pendingEncs.length})` },
-                    { key: 'ready',    label: `Ready (${readyCount})` },
-                    { key: 'mismatch', label: `Mismatch (${mismatchCount})` },
-                    { key: 'error',    label: `Error (${errorCount})` },
-                  ]}
-                  active={statusFilter}
-                  onChange={setStatusFilter}
-                />
-              </div>
+            {/* Patient banner — one per focused patient (Figma 1:3574).
+                Shows the demographics + RAF once so the DOS cards below
+                don't repeat per-card patient info. */}
+            {focusedGroup && (
+              <PatientReviewBanner
+                patient={focusedGroup.patient}
+                member={hccMembers.find(m => m.id === focusedGroup.patient?.matchedMemberId)}
+                encounterCount={focusedGroup.encounters.length}
+              />
             )}
 
             {/* Encounter card stack — replaces the table. */}
@@ -401,6 +414,7 @@ export function HccSftpReviewDrawer() {
                     hccMembers={hccMembers}
                     docTab={docTab}
                     cardIdx={visibleI}
+                    hidePatient
                     onPatch={(patch) => patchEnc?.(activeBatch.id, idx, patch)}
                     onAddToWorklist={() => {
                       const r = createFromEncounter?.({ ...enc, _docName: activeBatch.fileName });
@@ -424,9 +438,10 @@ export function HccSftpReviewDrawer() {
               })}
             </div>
 
-            {/* Previous / Next Record nav — pages through the visible
-                encounter stack (Figma 1:3540). */}
-            {visibleEncs.length > 1 && (
+            {/* Previous / Next Patient nav — pages patient-by-patient
+                across every document in the review set (Figma 1:3574).
+                On the last patient the primary becomes Finish Review. */}
+            {patientSlots.length > 0 && (
               <div className={styles.reviewFooter}>
                 <Button
                   variant="secondary"
@@ -434,28 +449,34 @@ export function HccSftpReviewDrawer() {
                   leadingIcon="solar:alt-arrow-left-linear"
                   disabled={focusIdx <= 0}
                   onClick={() => {
-                    const next = Math.max(0, focusIdx - 1);
-                    setFocusIdx(next);
-                    const card = cardStackRef.current?.querySelectorAll('[data-card-idx]')?.[next];
-                    card?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    setFocusIdx(Math.max(0, focusIdx - 1));
+                    cardStackRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                 >
                   Previous
                 </Button>
-                <Button
-                  variant="primary"
-                  size="S"
-                  trailingIcon="solar:alt-arrow-right-linear"
-                  disabled={focusIdx >= visibleEncs.length - 1}
-                  onClick={() => {
-                    const next = Math.min(visibleEncs.length - 1, focusIdx + 1);
-                    setFocusIdx(next);
-                    const card = cardStackRef.current?.querySelectorAll('[data-card-idx]')?.[next];
-                    card?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }}
-                >
-                  Next Record
-                </Button>
+                {focusIdx >= patientSlots.length - 1 ? (
+                  <Button
+                    variant="primary"
+                    size="S"
+                    trailingIcon="solar:check-circle-linear"
+                    onClick={close}
+                  >
+                    Finish Review
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="S"
+                    trailingIcon="solar:alt-arrow-right-linear"
+                    onClick={() => {
+                      setFocusIdx(Math.min(patientSlots.length - 1, focusIdx + 1));
+                      cardStackRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                  >
+                    Next Patient
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -564,6 +585,59 @@ function DocToolbar({ batch, setSelectedAll, showToast }) {
  * flagged), encounter count, and a "current" marker on the active
  * batch. Picking one switches the panels below.
  */
+/**
+ * PatientReviewBanner — top of the right panel when reviewing a patient's
+ * DOS records. Renders the patient identity once (avatar + name +
+ * demographics + member id + RAF) so the individual DOS cards below
+ * don't repeat it (Figma 1:3574).
+ */
+function PatientReviewBanner({ patient, member, encounterCount }) {
+  const name = member?.name || patient?.name || '(unmatched patient)';
+  const initials = member?.in || name.split(' ').map(p => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?';
+  const gender = member?.g || '';
+  const age = member?.age || '';
+  const memberId = member?.memberId || patient?.matchedMemberDisplayId || patient?.patientId || '—';
+  const raf = member?.raf ?? null;
+  const rafDelta = member?.rafDelta ?? null;
+
+  return (
+    <div className={styles.patientBanner}>
+      <Avatar variant="patient" initials={initials} />
+      <div className={styles.patientBannerBody}>
+        <div className={styles.patientBannerName}>
+          <span>{name}</span>
+          <Icon name="solar:alt-arrow-right-linear" size={14} color="var(--neutral-300)" />
+        </div>
+        <div className={styles.patientBannerMeta}>
+          <span>Patient</span>
+          <span className={styles.patientBannerDot}>•</span>
+          {gender && <><span>{gender}</span><span className={styles.patientBannerDot}>•</span></>}
+          {age && <><span>{age}</span><span className={styles.patientBannerDot}>•</span></>}
+          <span>#{memberId}</span>
+          {raf != null && (
+            <>
+              <span className={styles.patientBannerDot}>•</span>
+              <span>RAF <strong>{Number(raf).toFixed(3)}</strong></span>
+              {rafDelta != null && (
+                <span className={[styles.rafDelta, rafDelta >= 0 ? styles.rafDeltaUp : styles.rafDeltaDown].join(' ')}>
+                  {Number(rafDelta).toFixed(3)}
+                  <Icon name={rafDelta >= 0 ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} size={10} color="currentColor" />
+                </span>
+              )}
+            </>
+          )}
+          <span className={styles.patientBannerDot}>•</span>
+          <span className={styles.patientBannerCount}>{encounterCount} {encounterCount === 1 ? 'DOS record' : 'DOS records'}</span>
+        </div>
+      </div>
+      <div className={styles.patientBannerActions}>
+        <ActionButton size="S" icon="solar:phone-linear" tooltip="Contact patient" />
+        <ActionButton size="S" icon="solar:alt-arrow-down-linear" tooltip="More" />
+      </div>
+    </div>
+  );
+}
+
 function DocSwitcher({ activeBatch, batches, onSelect }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
@@ -956,10 +1030,17 @@ function DocReviewCompleted({ total, nextBatch, onPickNext, onBackToWorklist }) 
  * grid (DOS · ICD Codes / Provider · POS) each with an inline
  * confidence gauge bar matching Figma 121:87283.
  */
-function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, onPatch, onAddToWorklist, onDelete, onRestore }) {
+function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, hidePatient, onPatch, onAddToWorklist, onDelete, onRestore }) {
   const isMatched = !!enc.patient?.matchedMemberId;
   const member = isMatched ? hccMembers.find(m => m.id === enc.patient.matchedMemberId) : null;
   const errors = new Set(enc.errors || []);
+  // Read-only default for high-confidence (Ready) records when we're in
+  // the patient-grouped view. Mismatch/Error records always open in edit
+  // mode so the reviewer can fix them. Pen icon flips into edit; Save
+  // (or X) collapses back to read-only. Legacy hidePatient=false uses
+  // edit mode unconditionally (preserved for other callers of this card).
+  const canReadOnly = hidePatient && status === 'ready';
+  const [isEditing, setIsEditing] = useState(!canReadOnly);
   // Map status → shared Badge variant (uses the existing status- tokens
   // so this card matches every other status pill in the app).
   const badgeVariant = (
@@ -981,19 +1062,36 @@ function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, onPatch, onAd
   return (
     <div className={styles.encCard} data-card-idx={cardIdx}>
       <div className={styles.encCardHead}>
-        <Avatar
-          variant="patient"
-          initials={member?.in || (enc.patient?.name || '?').split(' ').map(p => p[0]).slice(0,2).join('')}
-        />
-        <div className={styles.encCardIdent}>
-          <div className={styles.encCardName}>{member?.name || enc.patient?.name || '(unmatched)'}</div>
-          <div className={styles.encCardMeta}>
-            {member?.g || ''} <span className={styles.encCardMetaDot}>•</span>
-            {member?.age || ''} <span className={styles.encCardMetaDot}>•</span>
-            #{enc.patient?.patientId || enc.patient?.matchedMemberDisplayId || '—'}
+        {hidePatient ? (
+          // Grouped-by-patient view: patient info lives in the banner above.
+          // Card header shows just DOS + status so it reads as a DOS record.
+          <div className={styles.encCardDosHead}>
+            <div className={styles.encCardDosLine}>
+              <span className={styles.encCardDosLabel}>DOS:</span>
+              <span className={styles.encCardDosValue}>{enc.dos || '—'}</span>
+              <Badge variant={badgeVariant} icon={badgeIcon} label={statusLabel} />
+            </div>
+            <div className={styles.encCardDosMeta}>
+              Rendering Provider: {enc.provider || '—'} · POS: {enc.pos ? `${enc.pos}${enc.posDesc ? ' - ' + enc.posDesc : ''}` : '—'}
+            </div>
           </div>
-        </div>
-        <Badge variant={badgeVariant} icon={badgeIcon} label={statusLabel} />
+        ) : (
+          <>
+            <Avatar
+              variant="patient"
+              initials={member?.in || (enc.patient?.name || '?').split(' ').map(p => p[0]).slice(0,2).join('')}
+            />
+            <div className={styles.encCardIdent}>
+              <div className={styles.encCardName}>{member?.name || enc.patient?.name || '(unmatched)'}</div>
+              <div className={styles.encCardMeta}>
+                {member?.g || ''} <span className={styles.encCardMetaDot}>•</span>
+                {member?.age || ''} <span className={styles.encCardMetaDot}>•</span>
+                #{enc.patient?.patientId || enc.patient?.matchedMemberDisplayId || '—'}
+              </div>
+            </div>
+            <Badge variant={badgeVariant} icon={badgeIcon} label={statusLabel} />
+          </>
+        )}
         <div className={styles.encCardActions}>
           {docTab === 'pending' ? (
             <>
@@ -1004,8 +1102,18 @@ function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, onPatch, onAd
                 disabled={status !== 'ready'}
                 onClick={onAddToWorklist}
               >
-                Add to Worklist
+                {hidePatient ? 'Add' : 'Add to Worklist'}
               </Button>
+              {/* Pen icon — only when read-only is available. Toggles the
+                  card between the compact display and the full form. */}
+              {canReadOnly && (
+                <ActionButton
+                  size="S"
+                  icon={isEditing ? 'solar:eye-linear' : 'solar:pen-linear'}
+                  tooltip={isEditing ? 'Collapse edit' : 'Edit record'}
+                  onClick={() => setIsEditing(v => !v)}
+                />
+              )}
               <ActionButton size="S" icon="solar:trash-bin-trash-linear" tooltip="Delete" onClick={onDelete} />
             </>
           ) : (
@@ -1021,6 +1129,62 @@ function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, onPatch, onAd
         </div>
       </div>
 
+      {/* Read-only body — DOS/Provider/POS live in the header above.
+          ICD Codes and Document Type remain interactive here (with
+          per-field confidence pills) because those are the two fields
+          reviewers most commonly correct even on high-confidence
+          records (Figma 3:7620). Static ICD descriptions + HCC
+          mappings sit below the controls. */}
+      {!isEditing && canReadOnly && (
+        <div className={styles.encReadOnly}>
+          <div className={styles.encReadOnlyForm}>
+            <FieldBlock label="ICD Codes" required confidence={fieldConf('icds')} confVariant="tier">
+              <IcdMultiSelect
+                icds={enc.icds || []}
+                onChange={(nextIcds) => onPatch({ icds: nextIcds })}
+              />
+            </FieldBlock>
+            <FieldBlock label="Document Type" required confidence={fieldConf('docType')} confVariant="tier">
+              <Select
+                value={enc.docType || 'Progress Note'}
+                onChange={(v) => onPatch({ docType: v })}
+                options={[
+                  { value: 'AWV',           label: 'AWV' },
+                  { value: 'Progress Note', label: 'Progress Note' },
+                  { value: 'SOAP Note',     label: 'SOAP Note' },
+                  { value: 'Telehealth Note', label: 'Telehealth Note' },
+                  { value: 'Lab',           label: 'Lab' },
+                  { value: 'Other',         label: 'Other' },
+                ]}
+              />
+            </FieldBlock>
+          </div>
+          <ul className={styles.encIcdList}>
+            {(enc.icds || []).map(icd => {
+              const meta = ICD_LOOKUP.get(icd.code);
+              return (
+                <li key={icd.code} className={styles.encIcdRow}>
+                  <span className={styles.encIcdCode}>{icd.code}</span>
+                  <span className={styles.encIcdDesc}>{meta?.desc || 'ICD description not on file'}</span>
+                  {meta?.hcc && (
+                    <span className={styles.encIcdHcc}>
+                      <span className={styles.encIcdHccDot} /> {meta.hcc}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          <div className={styles.encReadOnlyIndex}>
+            Index: <span className={styles.encIndexDot} data-tone="v24" /> v24 · <span className={styles.encIndexDot} data-tone="v28" /> v28
+          </div>
+        </div>
+      )}
+
+      {/* Edit body — full form (existing UI). Shown when the card is in
+          edit mode: any Mismatch/Error record, or a Ready record after
+          the user clicks the pen icon. */}
+      {isEditing && (
       <div className={styles.encGrid}>
         <FieldBlock label="DOS" required confidence={fieldConf('dos')}>
           <Input
@@ -1093,6 +1257,24 @@ function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, onPatch, onAd
           </FieldBlock>
         )}
       </div>
+      )}
+
+      {/* Save / X footer — shown only when the user opened edit mode on
+          a Ready record via the pen icon. Save collapses back to read
+          only. X discards the local flip without touching data. */}
+      {isEditing && canReadOnly && (
+        <div className={styles.encEditFooter}>
+          <Button variant="primary" size="S" onClick={() => setIsEditing(false)}>
+            Save
+          </Button>
+          <ActionButton
+            size="S"
+            icon="solar:close-circle-linear"
+            tooltip="Close editor"
+            onClick={() => setIsEditing(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -1102,19 +1284,129 @@ function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, onPatch, onAd
  * Used inside every encounter card cell. The gauge fills based on
  * confidence: 5 segments tinted green/amber/red per tier.
  */
-function FieldBlock({ label, required, confidence, children }) {
+function FieldBlock({ label, required, confidence, confVariant = 'bars', children }) {
   return (
     <div className={styles.fieldBlock}>
       <div className={styles.fieldBlockHead}>
         <span className={styles.fieldBlockLabel}>
           {label}{required && <span className={styles.fieldBlockReq}>•</span>}
         </span>
-        <ConfGauge score={confidence} />
+        {confVariant === 'tier'
+          ? <ConfTier score={confidence} />
+          : <ConfGauge score={confidence} />}
       </div>
       <div className={styles.fieldBlockBody}>
         {children}
       </div>
     </div>
+  );
+}
+
+/**
+ * IcdMultiSelect — searchable ICD chip input for the read-only DOS card.
+ * Selected codes render as removable chips; the "+" opens a typeahead
+ * over the full ICD catalog. Removing a chip (or picking a new one) flows
+ * through onChange, so the description list below the control stays in
+ * sync automatically (Figma 3:7620).
+ */
+function IcdMultiSelect({ icds, onChange }) {
+  const [searching, setSearching] = useState(false);
+  const [q, setQ] = useState('');
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    if (!searching) return;
+    const onDoc = (e) => { if (!wrapRef.current?.contains(e.target)) { setSearching(false); setQ(''); } };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [searching]);
+
+  const existing = new Set((icds || []).map(i => i.code));
+  const matches = (() => {
+    const query = q.trim().toLowerCase();
+    const all = Array.from(ICD_LOOKUP.entries()).map(([code, meta]) => ({ code, ...meta }));
+    const filtered = query
+      ? all.filter(i => i.code.toLowerCase().includes(query) || (i.desc || '').toLowerCase().includes(query))
+      : all;
+    return filtered.filter(i => !existing.has(i.code)).slice(0, 8);
+  })();
+
+  const addCode = (item) => {
+    onChange([...(icds || []), { code: item.code, valid: true }]);
+    setQ('');
+    setSearching(false);
+  };
+  const removeCode = (code) => onChange((icds || []).filter(i => i.code !== code));
+
+  return (
+    <div className={styles.icdMulti} ref={wrapRef}>
+      <div className={styles.encIcdsInput}>
+        {(icds || []).map(icd => (
+          <span key={icd.code} className={styles.encIcdChip}>
+            {icd.code}
+            <button
+              type="button"
+              className={styles.encIcdClose}
+              onClick={() => removeCode(icd.code)}
+              aria-label={`Remove ${icd.code}`}
+            >
+              <Icon name="solar:close-circle-linear" size={10} color="var(--primary-300)" />
+            </button>
+          </span>
+        ))}
+        <button
+          type="button"
+          className={styles.icdAddBtn}
+          onClick={() => setSearching(v => !v)}
+          aria-label="Add ICD code"
+        >
+          <Icon name="solar:add-circle-linear" size={14} color="var(--primary-300)" />
+        </button>
+      </div>
+      {searching && (
+        <div className={styles.icdSearchPop}>
+          <div className={styles.icdSearchHead}>
+            <Icon name="solar:magnifer-linear" size={12} color="var(--neutral-300)" />
+            <input
+              autoFocus
+              className={styles.icdSearchInput}
+              placeholder="Search ICD by code or description"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </div>
+          <div className={styles.icdSearchList}>
+            {matches.length === 0 ? (
+              <div className={styles.icdSearchEmpty}>No matches</div>
+            ) : matches.map(item => (
+              <button key={item.code} type="button" className={styles.icdSearchItem} onClick={() => addCode(item)} title={item.desc}>
+                <span className={styles.icdSearchCode}>{item.code}</span>
+                <span className={styles.icdSearchDesc}>{item.desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * ConfTier — sparkle + High/Medium/Low label (Figma 3:7620). Used in the
+ * read-only DOS card where the exact percentage is noise; the reviewer
+ * only needs the tier to decide whether to trust or re-check.
+ */
+function ConfTier({ score }) {
+  if (typeof score !== 'number' || score === 0) {
+    return <span className={styles.confTierEmpty}>—</span>;
+  }
+  const tier = score >= 85 ? 'high' : score >= 60 ? 'medium' : 'low';
+  const label = tier === 'high' ? 'High' : tier === 'medium' ? 'Medium' : 'Low';
+  return (
+    <span className={[styles.confTier, styles[`confTier_${tier}`]].join(' ')} title={`AI confidence ${score}%`}>
+      <Icon name="solar:magic-stick-3-bold" size={12} color="currentColor" />
+      {label}
+    </span>
   );
 }
 

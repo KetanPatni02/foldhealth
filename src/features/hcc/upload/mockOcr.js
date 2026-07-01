@@ -477,6 +477,41 @@ function buildEncountersForFile(file, hccMembers) {
     ];
   }
 
+  // ── Single-patient demo docs — each maps to a DISTINCT member so
+  //   uploading several samples produces several unique patients to
+  //   page through in review (one patient per document). ──────────────
+  const SINGLE_PATIENT_DEMOS = {
+    'demo-grace-hill': {
+      name: 'Grace Hill', dob: '04/22/1954',
+      encs: [
+        { dos: '02/18/2026', provider: 'Dr. Eamon', pos: '11', icds: ['F33.1', 'N18.4'], docType: 'Progress Note' },
+        { dos: '04/03/2026', provider: 'Dr. Eamon', pos: '11', icds: ['I50.22'], docType: 'SOAP Note' },
+      ],
+    },
+    'demo-frank-green': {
+      name: 'Frank Green', dob: '06/30/1956',
+      encs: [{ dos: '02/22/2026', provider: 'Dr. Indigo I', pos: '02', icds: ['I50.21', 'E11.9'], docType: 'Telehealth Note' }],
+    },
+    'demo-brian-carter': {
+      name: 'Brian Carter', dob: '11/04/1952',
+      encs: [{ dos: '02/25/2026', provider: 'Dr. Ulysses Horne', pos: '11', icds: ['J44.0', 'C18.9'], docType: 'SOAP Note' }],
+    },
+    'demo-degraded-david-evans': {
+      name: 'David Evans', dob: '03/18/1949',
+      encs: [{ dos: '02/27/2026', provider: 'Dr. Tatum', pos: '11', icds: ['I50.33', 'N18.5'], docType: 'Progress Note' }],
+    },
+  };
+  const singleKey = Object.keys(SINGLE_PATIENT_DEMOS).find(k => name.includes(k));
+  if (singleKey) {
+    const demo = SINGLE_PATIENT_DEMOS[singleKey];
+    const member = hccMembers.find(m => (m.name || '').toLowerCase() === demo.name.toLowerCase());
+    return demo.encs.map(e => buildEnc({
+      patientName: demo.name, dob: demo.dob,
+      dos: e.dos, provider: e.provider, pos: e.pos, icds: e.icds, docType: e.docType,
+      matchOverride: member || null,
+    }));
+  }
+
   // ── Fallback: pick the first member, 1 encounter ──────────────────
   const fallback = hccMembers[0];
   return [

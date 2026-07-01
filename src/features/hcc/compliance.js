@@ -114,6 +114,11 @@ export function evaluateOcrTier(fileName) {
   if (name.includes('demo-degraded') || name.includes('demo-scan')) {
     return 'degraded';
   }
+  // Any other demo file is deterministically Clean so the sample picker
+  // produces predictable categorization for walkthroughs.
+  if (name.includes('demo-')) {
+    return 'clean';
+  }
 
   // Realistic distribution: ~80% clean, ~15% degraded, ~5% unreadable.
   // Hashed so the distribution is stable across reloads but varies by file.
