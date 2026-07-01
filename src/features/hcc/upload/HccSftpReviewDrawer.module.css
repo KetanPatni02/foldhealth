@@ -869,6 +869,9 @@
 
 .docChecksRow:hover { background: var(--neutral-50); }
 
+.docChecksRowFail { background: var(--status-error-light, #FFEDED); }
+.docChecksRowFail:hover { background: var(--status-error-light, #FFEDED); }
+
 .docChecksLabel {
   flex: 1;
   min-width: 0;
@@ -1134,6 +1137,53 @@
   border-radius: 6px;
   background: var(--neutral-0);
   align-items: center;
+  cursor: text;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.encIcdsInputFocus {
+  border-color: var(--primary-300);
+  box-shadow: 0 0 0 2px rgba(140, 90, 226, 0.12);
+}
+
+/* ICD chip = DS Badge wrapped in a click-to-remove affordance. */
+.icdBadgeWrap {
+  display: inline-flex;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.icdBadgeWrap:hover { opacity: 0.75; }
+
+.icdInlineInput {
+  flex: 1;
+  min-width: 90px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: 400 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  padding: 2px 0;
+}
+
+/* Inline DOS/Provider/POS edit row (pen active) */
+.encCardDosInput {
+  max-width: 130px;
+}
+
+.encCardDosEditRow {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.encCardDosEditLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  font: 500 11px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
 }
 
 .icdAddBtn {

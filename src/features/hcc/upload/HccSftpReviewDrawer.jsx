@@ -1057,16 +1057,49 @@ function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, hidePatient, 
       <div className={styles.encCardHead}>
         {hidePatient ? (
           // Grouped-by-patient view: patient info lives in the banner above.
-          // Card header shows just DOS + status so it reads as a DOS record.
+          // Card header shows DOS + status. DOS / Provider / POS are static
+          // text until the pen toggles isEditing, then they become inline
+          // inputs — ICD Codes + Document Type below stay editable regardless.
           <div className={styles.encCardDosHead}>
             <div className={styles.encCardDosLine}>
               <span className={styles.encCardDosLabel}>DOS:</span>
-              <span className={styles.encCardDosValue}>{enc.dos || '—'}</span>
+              {isEditing ? (
+                <Input
+                  value={enc.dos || ''}
+                  placeholder="MM/DD/YYYY"
+                  variant={errors.has('dos') ? 'error' : 'default'}
+                  onChange={(e) => onPatch({ dos: e.target.value })}
+                  className={styles.encCardDosInput}
+                />
+              ) : (
+                <span className={styles.encCardDosValue}>{enc.dos || '—'}</span>
+              )}
               <Badge variant={badgeVariant} icon={badgeIcon} label={statusLabel} />
             </div>
-            <div className={styles.encCardDosMeta}>
-              Rendering Provider: {enc.provider || '—'} · POS: {enc.pos ? `${enc.pos}${enc.posDesc ? ' - ' + enc.posDesc : ''}` : '—'}
-            </div>
+            {isEditing ? (
+              <div className={styles.encCardDosEditRow}>
+                <label className={styles.encCardDosEditLabel}>Rendering Provider
+                  <Input
+                    value={enc.provider || ''}
+                    placeholder="Provider"
+                    variant={errors.has('provider') ? 'error' : 'default'}
+                    onChange={(e) => onPatch({ provider: e.target.value })}
+                  />
+                </label>
+                <label className={styles.encCardDosEditLabel}>POS
+                  <Select
+                    value={enc.pos || ''}
+                    onChange={(v) => onPatch({ pos: v, posDesc: POS_LABEL[v] || '' })}
+                    placeholder="Select POS…"
+                    options={Object.entries(POS_LABEL).map(([code, label]) => ({ value: code, label: `${code} - ${label}` }))}
+                  />
+                </label>
+              </div>
+            ) : (
+              <div className={styles.encCardDosMeta}>
+                Rendering Provider: {enc.provider || '—'} · POS: {enc.pos ? `${enc.pos}${enc.posDesc ? ' - ' + enc.posDesc : ''}` : '—'}
+              </div>
+            )}
           </div>
         ) : (
           <>
@@ -1097,13 +1130,14 @@ function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, hidePatient, 
               >
                 {hidePatient ? 'Add' : 'Add to Worklist'}
               </Button>
-              {/* Pen icon — only when read-only is available. Toggles the
-                  card between the compact display and the full form. */}
+              {/* Pen toggles ONLY the DOS / Provider / POS fields between
+                  static text and inline inputs. ICD Codes + Document Type
+                  stay editable throughout. */}
               {canReadOnly && (
                 <ActionButton
                   size="S"
-                  icon={isEditing ? 'solar:eye-linear' : 'solar:pen-linear'}
-                  tooltip={isEditing ? 'Collapse edit' : 'Edit record'}
+                  icon={isEditing ? 'solar:check-circle-linear' : 'solar:pen-linear'}
+                  tooltip={isEditing ? 'Done editing' : 'Edit DOS, Provider, POS'}
                   onClick={() => setIsEditing(v => !v)}
                 />
               )}
@@ -1122,13 +1156,11 @@ function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, hidePatient, 
         </div>
       </div>
 
-      {/* Read-only body — DOS/Provider/POS live in the header above.
-          ICD Codes and Document Type remain interactive here (with
-          per-field confidence pills) because those are the two fields
-          reviewers most commonly correct even on high-confidence
-          records (Figma 3:7620). Static ICD descriptions + HCC
-          mappings sit below the controls. */}
-      {!isEditing && canReadOnly && (
+      {/* Body — DOS/Provider/POS live in the header (static, or inline
+          inputs when the pen is active). ICD Codes + Document Type are
+          always editable here with per-field confidence tiers (Figma
+          3:7620). Static ICD descriptions + HCC mappings sit below. */}
+      {hidePatient && (
         <div className={styles.encReadOnly}>
           <div className={styles.encReadOnlyForm}>
             <FieldBlock label="ICD Codes" required confidence={fieldConf('icds')} confVariant="tier">
@@ -1174,10 +1206,10 @@ function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, hidePatient, 
         </div>
       )}
 
-      {/* Edit body — full form (existing UI). Shown when the card is in
-          edit mode: any Mismatch/Error record, or a Ready record after
-          the user clicks the pen icon. */}
-      {isEditing && (
+      {/* Legacy full-form layout — only for the non-grouped (non-hidePatient)
+          caller, e.g. the SFTP bell-notification flow that still shows one
+          encounter table per document. */}
+      {!hidePatient && (
       <div className={styles.encGrid}>
         <FieldBlock label="DOS" required confidence={fieldConf('dos')}>
           <Input
@@ -1188,21 +1220,7 @@ function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, hidePatient, 
           />
         </FieldBlock>
         <FieldBlock label="ICD Codes" required confidence={fieldConf('icds')}>
-          <div className={styles.encIcds}>
-            {(enc.icds || []).map(icd => (
-              <span key={icd.code} className={styles.encIcdChip}>
-                {icd.code}
-                <button
-                  type="button"
-                  className={styles.encIcdClose}
-                  onClick={() => onPatch({ icds: enc.icds.filter(i => i.code !== icd.code) })}
-                  aria-label={`Remove ${icd.code}`}
-                >
-                  <Icon name="solar:close-circle-linear" size={10} color="var(--primary-300)" />
-                </button>
-              </span>
-            ))}
-          </div>
+          <IcdMultiSelect icds={enc.icds || []} onChange={(next) => onPatch({ icds: next })} />
         </FieldBlock>
         <FieldBlock label="Rendering Provider" required confidence={fieldConf('provider')}>
           <Input
@@ -1213,19 +1231,13 @@ function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, hidePatient, 
           />
         </FieldBlock>
         <FieldBlock label="POS" required confidence={fieldConf('pos')}>
-          <Input
-            value={enc.pos ? `${enc.pos} - ${POS_LABEL[enc.pos] || ''}` : ''}
-            placeholder="POS"
-            variant={errors.has('pos') ? 'error' : 'default'}
-            onChange={(e) => {
-              const code = e.target.value.split(' ')[0];
-              onPatch({ pos: code, posDesc: POS_LABEL[code] || '' });
-            }}
+          <Select
+            value={enc.pos || ''}
+            onChange={(v) => onPatch({ pos: v, posDesc: POS_LABEL[v] || '' })}
+            placeholder="Select POS…"
+            options={Object.entries(POS_LABEL).map(([code, label]) => ({ value: code, label: `${code} - ${label}` }))}
           />
         </FieldBlock>
-        {/* Spec J — category is mandatory and correctable inline.
-            Providers often misfile labs as AWVs at upload time; this
-            lets the Support Team correct after the fact. */}
         <FieldBlock label="Category" required>
           <Select
             value={enc.docType || 'Progress Note'}
@@ -1238,9 +1250,6 @@ function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, hidePatient, 
             ]}
           />
         </FieldBlock>
-        {/* Duplicate-warning chip — flagged at OCR time when the
-            member's existing dos_list already has this DOS + provider
-            + POS (spec L). */}
         {enc._duplicateOfMemberId && (
           <FieldBlock label="">
             <span className={styles.encDupWarn} title="Same DOS + Provider + POS already exists for this member">
@@ -1250,23 +1259,6 @@ function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, hidePatient, 
           </FieldBlock>
         )}
       </div>
-      )}
-
-      {/* Save / X footer — shown only when the user opened edit mode on
-          a Ready record via the pen icon. Save collapses back to read
-          only. X discards the local flip without touching data. */}
-      {isEditing && canReadOnly && (
-        <div className={styles.encEditFooter}>
-          <Button variant="primary" size="S" onClick={() => setIsEditing(false)}>
-            Save
-          </Button>
-          <ActionButton
-            size="S"
-            icon="solar:close-circle-linear"
-            tooltip="Close editor"
-            onClick={() => setIsEditing(false)}
-          />
-        </div>
       )}
     </div>
   );
@@ -1296,27 +1288,26 @@ function FieldBlock({ label, required, confidence, confVariant = 'bars', childre
 }
 
 /**
- * IcdMultiSelect — searchable ICD chip input for the read-only DOS card.
- * Selected codes render as removable chips; the "+" opens a typeahead
- * over the full ICD catalog. Removing a chip (or picking a new one) flows
- * through onChange, so the description list below the control stays in
- * sync automatically (Figma 3:7620).
+ * IcdMultiSelect — combobox for ICD codes. Selected codes render as DS
+ * Badges (removable); typing directly in the field filters the ICD catalog
+ * and shows matches in a dropdown. Removing/adding flows through onChange
+ * so the description list below stays in sync (Figma 3:7620).
  */
 function IcdMultiSelect({ icds, onChange }) {
-  const [searching, setSearching] = useState(false);
   const [q, setQ] = useState('');
+  const [focused, setFocused] = useState(false);
   const wrapRef = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
-    if (!searching) return;
-    const onDoc = (e) => { if (!wrapRef.current?.contains(e.target)) { setSearching(false); setQ(''); } };
+    const onDoc = (e) => { if (!wrapRef.current?.contains(e.target)) { setFocused(false); setQ(''); } };
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
-  }, [searching]);
+  }, []);
 
   const existing = new Set((icds || []).map(i => i.code));
+  const query = q.trim().toLowerCase();
   const matches = (() => {
-    const query = q.trim().toLowerCase();
     const all = Array.from(ICD_LOOKUP.entries()).map(([code, meta]) => ({ code, ...meta }));
     const filtered = query
       ? all.filter(i => i.code.toLowerCase().includes(query) || (i.desc || '').toLowerCase().includes(query))
@@ -1327,50 +1318,53 @@ function IcdMultiSelect({ icds, onChange }) {
   const addCode = (item) => {
     onChange([...(icds || []), { code: item.code, valid: true }]);
     setQ('');
-    setSearching(false);
+    inputRef.current?.focus();
   };
   const removeCode = (code) => onChange((icds || []).filter(i => i.code !== code));
 
+  const showDropdown = focused && (query.length > 0 || matches.length > 0);
+
   return (
     <div className={styles.icdMulti} ref={wrapRef}>
-      <div className={styles.encIcdsInput}>
+      <div
+        className={[styles.encIcdsInput, focused ? styles.encIcdsInputFocus : ''].filter(Boolean).join(' ')}
+        onClick={() => { setFocused(true); inputRef.current?.focus(); }}
+      >
         {(icds || []).map(icd => (
-          <span key={icd.code} className={styles.encIcdChip}>
-            {icd.code}
-            <button
-              type="button"
-              className={styles.encIcdClose}
-              onClick={() => removeCode(icd.code)}
-              aria-label={`Remove ${icd.code}`}
-            >
-              <Icon name="solar:close-circle-linear" size={10} color="var(--primary-300)" />
-            </button>
+          <span
+            key={icd.code}
+            role="button"
+            tabIndex={0}
+            className={styles.icdBadgeWrap}
+            title={`Remove ${icd.code}`}
+            onClick={(e) => { e.stopPropagation(); removeCode(icd.code); }}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); removeCode(icd.code); } }}
+          >
+            <Badge variant="ai-neutral" label={icd.code} trailingIcon="solar:close-circle-linear" />
           </span>
         ))}
-        <button
-          type="button"
-          className={styles.icdAddBtn}
-          onClick={() => setSearching(v => !v)}
-          aria-label="Add ICD code"
-        >
-          <Icon name="solar:add-circle-linear" size={14} color="var(--primary-300)" />
-        </button>
+        <input
+          ref={inputRef}
+          className={styles.icdInlineInput}
+          placeholder={(icds || []).length ? 'Add code…' : 'Search ICD by code or description'}
+          value={q}
+          onFocus={() => setFocused(true)}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Backspace' && !q && (icds || []).length) {
+              removeCode(icds[icds.length - 1].code);
+            } else if (e.key === 'Enter' && matches[0]) {
+              e.preventDefault();
+              addCode(matches[0]);
+            }
+          }}
+        />
       </div>
-      {searching && (
+      {showDropdown && (
         <div className={styles.icdSearchPop}>
-          <div className={styles.icdSearchHead}>
-            <Icon name="solar:magnifer-linear" size={12} color="var(--neutral-300)" />
-            <input
-              autoFocus
-              className={styles.icdSearchInput}
-              placeholder="Search ICD by code or description"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </div>
           <div className={styles.icdSearchList}>
             {matches.length === 0 ? (
-              <div className={styles.icdSearchEmpty}>No matches</div>
+              <div className={styles.icdSearchEmpty}>No matches for “{q}”</div>
             ) : matches.map(item => (
               <button key={item.code} type="button" className={styles.icdSearchItem} onClick={() => addCode(item)} title={item.desc}>
                 <span className={styles.icdSearchCode}>{item.code}</span>
@@ -1472,9 +1466,12 @@ function DocChecksBadge({ compliance, ocrTier, fileName, onApplyDecision }) {
 
   return (
     <span className={styles.docChecks} ref={wrapRef}>
-      <button type="button" className={styles.docChecksTrigger} onClick={() => setOpen(v => !v)}>
-        <Badge variant={variant} label={label} />
-        <Icon name={open ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} size={11} color="var(--neutral-400)" />
+      <button type="button" className={styles.docChecksTrigger} onClick={() => setOpen(v => !v)} aria-label="Document checks">
+        <Badge
+          variant={variant}
+          label={label}
+          trailingIcon={open ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
+        />
       </button>
 
       {open && (
@@ -1494,25 +1491,21 @@ function DocChecksBadge({ compliance, ocrTier, fileName, onApplyDecision }) {
               const c = compliance[k] || {};
               const passed = c.status === 'pass';
               const failedCheck = c.status === 'fail';
+              const disabled = ocrTier === 'unreadable';
               return (
-                <li key={k} className={styles.docChecksRow}>
-                  <Icon
-                    name={passed ? 'solar:check-circle-bold' : failedCheck ? 'solar:close-circle-bold' : 'solar:record-circle-linear'}
-                    size={16}
-                    color={passed ? 'var(--status-success)' : failedCheck ? 'var(--status-error)' : 'var(--neutral-200)'}
+                <li key={k} className={[styles.docChecksRow, failedCheck ? styles.docChecksRowFail : ''].filter(Boolean).join(' ')}>
+                  {/* Checkbox = manual toggle. Checking → confirm pass;
+                      unchecking a passed check → mark fail. Both capture a
+                      reason via the dialog. */}
+                  <Checkbox
+                    checked={passed}
+                    disabled={disabled}
+                    aria-label={CHECK_LABELS[k]}
+                    onCheckedChange={(v) => setPending({ checkKey: k, decision: v === true ? 'pass' : 'fail' })}
                   />
                   <span className={styles.docChecksLabel}>{CHECK_LABELS[k]}</span>
+                  {failedCheck && <Icon name="solar:close-circle-bold" size={14} color="var(--status-error)" />}
                   {c.source && <AuditBadge source={c.source} actor={c.actor} at={c.at} />}
-                  {ocrTier !== 'unreadable' && (
-                    <span className={styles.docChecksActions}>
-                      {!passed && (
-                        <button type="button" className={styles.docChecksPass} onClick={() => setPending({ checkKey: k, decision: 'pass' })}>Pass</button>
-                      )}
-                      {!failedCheck && (
-                        <button type="button" className={styles.docChecksFail} onClick={() => setPending({ checkKey: k, decision: 'fail' })}>Fail</button>
-                      )}
-                    </span>
-                  )}
                 </li>
               );
             })}
