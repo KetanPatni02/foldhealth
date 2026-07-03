@@ -1,13 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { HccWorklistRow } from './HccWorklistRow';
+import { HccWorklistRow, resolveCurrentAssignee } from './HccWorklistRow';
 import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
-import { SortableHeader } from '../../components/Table/SortableHeader';
 import { useTableSort } from '../../components/Table/useTableSort';
+import { InlineEditable } from '../../components/InlineEditable/InlineEditable';
+import { SortPopover } from '../../components/Popover/SortPopover';
+import { DueDateChip, getDueCategory } from './DueDateChip';
+import { FilterChipBar } from './FilterChipBar';
+import { FilterNameDialog } from './FilterNameDialog';
+import { ColumnConfigPopover } from './ColumnConfigPopover';
+import { HCC_COLUMNS, HCC_COL_MAP, MEMBER_SORT_ITEMS, orderColumns } from './columns';
+import { memberMatchesFilters } from './filters';
+import { Pagination } from '../../components/Pagination/Pagination';
+import { BulkBar } from '../../components/BulkBar/BulkBar';
+import { BulkChangeAssigneesDialog } from './BulkChangeAssigneesDialog';
+import { StatusLegend } from './StatusLegend';
 import styles from './HccWorklistTable.module.css';
 import rowStyles from './HccWorklistRow.module.css';
 
@@ -21,6 +32,74 @@ function EmptyState({ title, message, icon = 'solar:magnifer-linear' }) {
   );
 }
 
+// ── Header cell — opens a SortPopover on click for sortable columns. ──────
+function HccHeaderCell({ column, className, sortKey, sortDir, onOpenSort }) {
+  const ref = useRef(null);
+  const sortField = column.sortField || column.k;
+  const isActive = column.sortable && sortField === sortKey;
+  const handleClick = () => {
+    if (!column.sortable) return;
+    const rect = ref.current?.getBoundingClientRect();
+    if (rect) onOpenSort(column, rect);
+  };
+  return (
+    <th
+      ref={ref}
+      className={[
+        className || '',
+        styles.headerCell,
+        column.sortable ? styles.headerCellSortable : '',
+        isActive ? styles.headerCellActive : '',
+      ].filter(Boolean).join(' ')}
+      onClick={handleClick}
+      data-col={column.k}
+    >
+      <span className={styles.headerLabel}>
+        {column.lb}
+        {column.sortable && (
+          <span className={styles.sortIcon}>
+            {isActive ? (
+              <Icon
+                name={sortDir === 'asc' ? 'solar:arrow-up-linear' : 'solar:arrow-down-linear'}
+                size={12}
+                color="var(--primary-300)"
+              />
+            ) : (
+              <Icon name="solar:sort-vertical-linear" size={12} color="var(--neutral-200)" />
+            )}
+          </span>
+        )}
+      </span>
+    </th>
+  );
+}
+
+// ── Class map per column (preserves existing sticky/width treatments) ─────
+const COL_CLASS = {
+  dos:      rowStyles.colLastVisit,
+  open:     rowStyles.colOpen,
+  date:     rowStyles.colDate,
+  evidence: rowStyles.colEvidence,
+  sup:      rowStyles.colRole,
+  cdr:      rowStyles.colRole,
+  r1:       rowStyles.colRole,
+  r2:       rowStyles.colRole,
+  r3:       rowStyles.colRole,
+  rp:       rowStyles.colProvider,
+  pos:      rowStyles.colPos,
+  posDesc:  rowStyles.colPosDesc,
+  raf:      rowStyles.colRaf,
+  ri:       rowStyles.colRi,
+  ipa:      rowStyles.colIpa,
+  hp:       rowStyles.colHp,
+  pcp:      rowStyles.colPcp,
+  dec:      rowStyles.colDec,
+  coh:      rowStyles.colCoh,
+  rl:       rowStyles.colRl,
+  ad:       rowStyles.colAd,
+  fr:       rowStyles.colFr,
+};
+
 export function HccWorklistTable() {
   const hccMembers = useAppStore(s => s.hccMembers);
   const hccMembersLoading = useAppStore(s => s.hccMembersLoading);
@@ -33,23 +112,92 @@ export function HccWorklistTable() {
   const currentPage = useAppStore(s => s.currentPage);
   const perPage = useAppStore(s => s.perPage);
   const showToast = useAppStore(s => s.showToast);
+  const hccListTitle = useAppStore(s => s.hccListTitle);
+  const setHccListTitle = useAppStore(s => s.setHccListTitle);
+  const hccDueDateFilter = useAppStore(s => s.hccDueDateFilter);
+  const setHccDueDateFilter = useAppStore(s => s.setHccDueDateFilter);
+  const hccFilters = useAppStore(s => s.hccFilters);
+  const saveHccFilter = useAppStore(s => s.saveHccFilter);
+  const renameHccSavedFilter = useAppStore(s => s.renameHccSavedFilter);
+  const startHccUpload = useAppStore(s => s.startHccUpload);
+  const hccHiddenCols = useAppStore(s => s.hccHiddenCols);
+  const toggleHccColumn = useAppStore(s => s.toggleHccColumn);
+  const hccColumnOrder = useAppStore(s => s.hccColumnOrder);
+  const reorderHccColumns = useAppStore(s => s.reorderHccColumns);
+  const setHccDefaultColumnKeys = useAppStore(s => s.setHccDefaultColumnKeys);
+  const clearHccColumnOrder = useAppStore(s => s.clearHccColumnOrder);
+  const clearHccHiddenCols = useAppStore(s => s.clearHccHiddenCols);
+
+  // Seed the store's default-key snapshot once so reorderHccColumns has
+  // something to start from before the user has set any custom order.
+  useEffect(() => {
+    setHccDefaultColumnKeys(HCC_COLUMNS.map(c => c.k));
+  }, [setHccDefaultColumnKeys]);
+
+  const orderedColumns = useMemo(
+    () => orderColumns(HCC_COLUMNS, hccColumnOrder),
+    [hccColumnOrder],
+  );
 
   const [searchOpen, setSearchOpen] = useState(false);
-  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(true);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [renameTarget, setRenameTarget] = useState(null);
+  const [sortPop, setSortPop] = useState(null); // { items, rect }
+  const [memberSortPop, setMemberSortPop] = useState(null); // rect
+  const [colCfgRect, setColCfgRect] = useState(null);
+  const [bulkAssigneeOpen, setBulkAssigneeOpen] = useState(false);
+  const memberThRef = useRef(null);
+  const colCfgBtnRef = useRef(null);
 
   useEffect(() => { fetchHccMembers(); }, [fetchHccMembers]);
 
+  // Whenever the active filter/sort/search/due-date changes, jump back to
+  // page 1 so the user doesn't end up on an empty page after the result set
+  // shrinks. Matches the prototype's behavior (line 4636).
+  const setCurrentPage = useAppStore(s => s.setCurrentPage);
+  useEffect(() => { setCurrentPage(1); }, [hccDueDateFilter, hccFilters, searchQuery, setCurrentPage]);
+
+  // Decorate members with derived sort fields so the Member-column sort axes
+  // (First Name / Last Name / Gender / DOB Year) and a few special table sorts
+  // work with the generic useTableSort comparator.
+  const hccDosAssignments = useAppStore(s => s.hccDosAssignments);
+  const enriched = useMemo(() => hccMembers.map(m => {
+    const parts = (m.name || '').trim().split(/\s+/);
+    const ageNum = parseInt(String(m.age || '').match(/(\d+)/)?.[1] || '0', 10);
+    // assigneeName drives sort on the Assignee column. Reuse the same
+    // sequential resolver the cell uses so sort + display agree.
+    const key = m.id && m.dos ? `${m.id}::${m.dos}` : null;
+    const ds = key ? hccDosAssignments[key] : null;
+    const resolved = resolveCurrentAssignee(m, ds);
+    const assigneeName =
+      resolved?.kind === 'active'     ? (resolved.name || '')        :
+      resolved?.kind === 'unassigned' ? `~Awaiting ${resolved.role}` :  // ~ pushes to end of A-Z sort
+      resolved?.kind === 'billing'    ? '~Billing Ready'             :
+      '';
+    return {
+      ...m,
+      name_first: parts[0] || '',
+      name_last: parts[parts.length - 1] || '',
+      dob: ageNum, // proxy: older age = earlier DOB; matches prototype sort semantics
+      assigneeName,
+    };
+  }), [hccMembers, hccDosAssignments]);
+
   const filtered = useMemo(() => {
-    if (!searchQuery?.trim()) return hccMembers;
-    const q = searchQuery.toLowerCase().trim();
-    return hccMembers.filter(m =>
+    let rows = enriched;
+    if (hccDueDateFilter) rows = rows.filter(m => getDueCategory(m.due) === hccDueDateFilter);
+    if (Object.keys(hccFilters).length) rows = rows.filter(m => memberMatchesFilters(m, hccFilters));
+    const q = searchQuery?.trim().toLowerCase();
+    if (q) rows = rows.filter(m =>
       m.name?.toLowerCase().includes(q) ||
       m.in?.toLowerCase().includes(q) ||
       m.id?.toLowerCase().includes(q)
     );
-  }, [hccMembers, searchQuery]);
+    return rows;
+  }, [enriched, searchQuery, hccDueDateFilter, hccFilters]);
 
-  const { sorted, sortKey, sortDir, requestSort } = useTableSort(filtered, 'date', 'desc');
+  const { sorted, sortKey, sortDir, setSort, clearSort } = useTableSort(filtered, 'date', 'desc');
 
   const startIdx = (currentPage - 1) * perPage;
   const paginated = sorted.slice(startIdx, startIdx + perPage);
@@ -63,15 +211,23 @@ export function HccWorklistTable() {
     else clearHccSelected();
   };
 
+  const hiddenSet = useMemo(() => new Set(hccHiddenCols), [hccHiddenCols]);
+
   if (hccMembersLoading) return <TableSkeleton rows={perPage} />;
 
   return (
     <div className={styles.wrap}>
       <div className={styles.tabBar}>
         <div className={styles.tabLeft}>
-          <div className={`${styles.tabItem} ${styles.tabActive}`}>
-            HCC Worklist
-          </div>
+          <InlineEditable
+            value={hccListTitle}
+            onCommit={setHccListTitle}
+            size="L"
+            maxLength={60}
+            placeholder="HCC List"
+            title="Rename this list"
+          />
+          <DueDateChip value={hccDueDateFilter} onChange={setHccDueDateFilter} />
         </div>
 
         <div className={styles.tabRight}>
@@ -95,82 +251,136 @@ export function HccWorklistTable() {
                 </button>
               </div>
             ) : (
-              <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
+              <SearchIconButton title="Search" tooltipBelow onClick={() => setSearchOpen(true)} />
             )}
           </div>
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="custom:filter"
+            icon="solar:filter-linear"
             size="L"
-            tooltip="Filter"
+            tooltip={filterOpen ? 'Hide filters' : 'Show filters'}
+            tooltipBelow
             className={filterOpen ? styles.iconActive : ''}
-            onClick={() => { setFilterOpen(v => !v); showToast('Filters — coming soon'); }}
+            onClick={() => setFilterOpen(v => !v)}
           />
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="solar:history-linear"
+            icon="solar:clock-circle-linear"
             size="L"
             tooltip="History"
+            tooltipBelow
             onClick={() => showToast('History — coming soon')}
           />
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="solar:upload-minimalistic-linear"
+            icon="solar:upload-square-linear"
+            size="L"
+            tooltip="Upload Document"
+            tooltipBelow
+            onClick={() => startHccUpload(null)}
+          />
+          <span className={styles.iconDivider} />
+          <ActionButton
+            icon="solar:download-square-linear"
             size="L"
             tooltip="Export"
+            tooltipBelow
             onClick={() => showToast('Export — coming soon')}
           />
         </div>
       </div>
+
+      {filterOpen && <FilterChipBar onSaveFilter={() => setSaveDialogOpen(true)} />}
+      {/* Saved filters live exclusively in the left SubNav (under HCC).
+          Inline chip strip removed per UX; rename/delete handled in-sidebar. */}
+
+      <FilterNameDialog
+        open={saveDialogOpen}
+        title="Save Filter"
+        submitLabel="Save & Apply"
+        initialName=""
+        onSubmit={(name) => { saveHccFilter(name); setSaveDialogOpen(false); }}
+        onCancel={() => setSaveDialogOpen(false)}
+      />
+      <FilterNameDialog
+        open={!!renameTarget}
+        title="Rename Filter"
+        submitLabel="Save"
+        initialName={renameTarget?.name || ''}
+        onSubmit={(name) => { renameHccSavedFilter(renameTarget.id, name); setRenameTarget(null); }}
+        onCancel={() => setRenameTarget(null)}
+      />
+
       <div className={styles.scrollWrap}>
         <table className={styles.table}>
-        <thead>
-          <tr>
-            <th
-              className={`${rowStyles.stickyLeft} ${rowStyles.stickyCheck} ${styles.checkTh}`}
-            >
-              <Checkbox
-                checked={someSelected ? 'indeterminate' : allSelected}
-                onCheckedChange={handleSelectAll}
-                aria-label="Select all members"
-              />
-            </th>
-            <th
-              className={`${rowStyles.stickyLeft} ${rowStyles.stickyMember} ${rowStyles.colMember} ${styles.memberTh}`}
-            >
-              Member
-            </th>
+          <thead>
+            <tr>
+              <th className={`${rowStyles.stickyLeft} ${rowStyles.stickyCheck} ${styles.checkTh}`}>
+                <Checkbox
+                  checked={someSelected ? 'indeterminate' : allSelected}
+                  onCheckedChange={handleSelectAll}
+                  aria-label="Select all members"
+                />
+              </th>
+              <th
+                ref={memberThRef}
+                className={`${rowStyles.stickyLeft} ${rowStyles.stickyMember} ${rowStyles.colMember} ${styles.memberTh} ${styles.headerCellSortable}`}
+                onClick={() => {
+                  const rect = memberThRef.current?.getBoundingClientRect();
+                  if (rect) setMemberSortPop(rect);
+                }}
+              >
+                <span className={styles.headerLabel}>
+                  Member
+                  <span className={styles.sortIcon}>
+                    <Icon name="solar:sort-vertical-linear" size={12} color="var(--neutral-200)" />
+                  </span>
+                </span>
+              </th>
 
-            <SortableHeader label="DOS" sortKey="dos" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} className={rowStyles.colLastVisit} />
-            <SortableHeader label="Open ICDs" sortKey="open" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} className={rowStyles.colOpen} />
-            <SortableHeader label="Create Date" sortKey="date" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} className={rowStyles.colDate} />
-            <SortableHeader label="HCC Evidence" sortKey="ch" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} className={rowStyles.colEvidence} />
-            <SortableHeader label="Support Team" sortKey="sup" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} className={rowStyles.colRole} />
-            <SortableHeader label="Coder" sortKey="cdr" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} className={rowStyles.colRole} />
-            <SortableHeader label="Reviewer 1" sortKey="r1" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} className={rowStyles.colRole} />
-            <SortableHeader label="Reviewer 2" sortKey="r2" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} className={rowStyles.colRole} />
-            <SortableHeader label="Reviewer 3" sortKey="r3" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} className={rowStyles.colRole} />
-            <SortableHeader label="Rendering Provider" sortKey="rp" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} className={rowStyles.colProvider} />
-            <th className={rowStyles.colPos}>POS Code</th>
-            <th className={rowStyles.colPosDesc}>POS Description</th>
-            <SortableHeader label="RAF Score" sortKey="raf" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} className={rowStyles.colRaf} />
-            <SortableHeader label="RAF Impact" sortKey="ri" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} className={rowStyles.colRi} />
-            <th className={rowStyles.colIpa}>IPA</th>
-            <th className={rowStyles.colHp}>HP Code</th>
-            <SortableHeader label="PCP" sortKey="pcp" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} className={rowStyles.colPcp} />
-            <SortableHeader label="Decile" sortKey="dec" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} className={rowStyles.colDec} />
-            <th className={rowStyles.colCoh}>Cohort</th>
-            <SortableHeader label="Risk Level" sortKey="rl" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} className={rowStyles.colRl} />
-            <SortableHeader label="Advillness" sortKey="ad" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} className={rowStyles.colAd} />
-            <SortableHeader label="Frailty" sortKey="fr" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} className={rowStyles.colFr} />
+              {orderedColumns.map((col) => (
+                hiddenSet.has(col.k) ? null : (
+                  <HccHeaderCell
+                    key={col.k}
+                    column={col}
+                    className={COL_CLASS[col.k]}
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onOpenSort={(c, rect) => setSortPop({
+                      items: [{ key: c.sortField || c.k, label: c.lb }],
+                      rect,
+                    })}
+                  />
+                )
+              ))}
 
-            <th className={`${rowStyles.stickyRight} ${rowStyles.colActions}`}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {paginated.map(m => <HccWorklistRow key={m.id} member={m} />)}
-        </tbody>
-      </table>
+              <th
+                ref={colCfgBtnRef}
+                className={`${rowStyles.stickyRight} ${rowStyles.colActions} ${styles.actionsTh}`}
+              >
+                <span className={styles.actionsHeaderLabel}>Actions</span>
+                <button
+                  type="button"
+                  className={[styles.colCfgBtn, colCfgRect ? styles.colCfgBtnActive : ''].join(' ')}
+                  title="Show / hide columns"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (colCfgRect) { setColCfgRect(null); return; }
+                    setColCfgRect(e.currentTarget.getBoundingClientRect());
+                  }}
+                >
+                  <ColumnsIcon
+                    size={16}
+                    color={colCfgRect ? 'var(--primary-300)' : 'var(--neutral-300)'}
+                  />
+                </button>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginated.map(m => <HccWorklistRow key={m.id} member={m} hiddenCols={hiddenSet} columns={orderedColumns} />)}
+          </tbody>
+        </table>
 
         {filtered.length === 0 && searchQuery?.trim() && (
           <EmptyState
@@ -186,6 +396,76 @@ export function HccWorklistTable() {
           />
         )}
       </div>
+
+      <StatusLegend />
+
+      <Pagination totalItems={filtered.length} />
+
+      <BulkBar
+        selectedIds={selectedHccIds}
+        onClear={clearHccSelected}
+        onChangeAssignee={() => setBulkAssigneeOpen(true)}
+      />
+      <BulkChangeAssigneesDialog
+        open={bulkAssigneeOpen}
+        selectedIds={selectedHccIds}
+        onClose={() => setBulkAssigneeOpen(false)}
+        onApplied={() => { setBulkAssigneeOpen(false); clearHccSelected(); }}
+      />
+
+      {sortPop && (
+        <SortPopover
+          anchorRect={sortPop.rect}
+          items={sortPop.items}
+          currentKey={sortKey}
+          currentDir={sortDir}
+          onSort={(k, dir) => setSort(k, dir)}
+          onClear={clearSort}
+          onClose={() => setSortPop(null)}
+        />
+      )}
+      {memberSortPop && (
+        <SortPopover
+          anchorRect={memberSortPop}
+          items={MEMBER_SORT_ITEMS}
+          currentKey={sortKey}
+          currentDir={sortDir}
+          onSort={(k, dir) => setSort(k, dir)}
+          onClear={clearSort}
+          onClose={() => setMemberSortPop(null)}
+        />
+      )}
+      {colCfgRect && (
+        <ColumnConfigPopover
+          anchorRect={colCfgRect}
+          columns={orderedColumns}
+          hidden={hiddenSet}
+          onToggle={toggleHccColumn}
+          onReorder={reorderHccColumns}
+          onReset={() => { clearHccColumnOrder(); clearHccHiddenCols(); }}
+          onClose={() => setColCfgRect(null)}
+        />
+      )}
     </div>
+  );
+}
+
+// Custom "columns" glyph — three vertical sections — used by the
+// Show/Hide columns header button. No matching Solar icon, so we inline it.
+function ColumnsIcon({ size = 16, color = 'currentColor' }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M10.0007 5.37023L9.97576 4.87085L10.0007 5.37023ZM10.0007 18.6301L9.97576 19.1295L10.0007 18.6301ZM14.0007 5.37023L14.0255 4.87085L14.0007 5.37023ZM14.0007 18.6301L14.0255 19.1295L14.0007 18.6301ZM5.33398 12.0002H4.83398C4.83398 13.5574 4.83292 14.7756 4.96048 15.7244C5.08997 16.6875 5.3602 17.4475 5.95674 18.0441L6.3103 17.6905L6.66385 17.337C6.28408 16.9572 6.06615 16.4434 5.95156 15.5911C5.83505 14.7245 5.83398 13.5856 5.83398 12.0002H5.33398ZM18.6673 12.0002H18.1673C18.1673 13.5856 18.1663 14.7245 18.0497 15.5911C17.9352 16.4434 17.7172 16.9572 17.3375 17.337L17.691 17.6905L18.0446 18.0441C18.6411 17.4475 18.9113 16.6875 19.0408 15.7244C19.1684 14.7756 19.1673 13.5574 19.1673 12.0002H18.6673ZM18.6673 12.0002H19.1673C19.1673 10.4429 19.1684 9.22474 19.0408 8.27597C18.9113 7.31281 18.6411 6.55279 18.0446 5.95625L17.691 6.30981L17.3375 6.66336C17.7172 7.04313 17.9352 7.55694 18.0497 8.40921C18.1663 9.27587 18.1673 10.4147 18.1673 12.0002H18.6673ZM5.33398 12.0002H5.83398C5.83398 10.4147 5.83505 9.27587 5.95156 8.40921C6.06615 7.55694 6.28408 7.04313 6.66385 6.66336L6.3103 6.30981L5.95674 5.95625C5.3602 6.55279 5.08997 7.31281 4.96048 8.27597C4.83292 9.22474 4.83398 10.4429 4.83398 12.0002H5.33398ZM12.0007 5.3335V4.8335C10.9457 4.8335 10.7256 4.83347 9.97576 4.87085L10.0007 5.37023L10.0255 5.86961C10.7496 5.83352 10.9494 5.8335 12.0007 5.8335V5.3335ZM10.0007 5.37023L9.97576 4.87085C9.23298 4.90787 8.44121 4.9823 7.7433 5.13555C7.06562 5.28437 6.38768 5.52531 5.95674 5.95625L6.3103 6.30981L6.66385 6.66336C6.88207 6.44514 7.31816 6.25274 7.95779 6.11228C8.57719 5.97626 9.30602 5.90548 10.0255 5.86961L10.0007 5.37023ZM12.0007 18.6668V18.1668C10.9494 18.1668 10.7496 18.1668 10.0255 18.1307L10.0007 18.6301L9.97576 19.1295C10.7256 19.1669 10.9457 19.1668 12.0007 19.1668V18.6668ZM10.0007 18.6301L10.0255 18.1307C9.30602 18.0948 8.57719 18.0241 7.95779 17.888C7.31816 17.7476 6.88207 17.5552 6.66385 17.337L6.3103 17.6905L5.95674 18.0441C6.38768 18.475 7.06562 18.716 7.7433 18.8648C8.44121 19.018 9.23298 19.0924 9.97576 19.1295L10.0007 18.6301ZM10.0007 5.37023H9.50065V18.6301H10.0007H10.5007V5.37023H10.0007ZM12.0007 5.3335V5.8335C13.0519 5.8335 13.2517 5.83352 13.9758 5.86961L14.0007 5.37023L14.0255 4.87085C13.2757 4.83347 13.0556 4.8335 12.0007 4.8335V5.3335ZM14.0007 5.37023L13.9758 5.86961C14.6953 5.90548 15.4241 5.97626 16.0435 6.11228C16.6831 6.25274 17.1192 6.44514 17.3375 6.66336L17.691 6.30981L18.0446 5.95625C17.6136 5.52531 16.9357 5.28437 16.258 5.13555C15.5601 4.9823 14.7683 4.90787 14.0255 4.87085L14.0007 5.37023ZM12.0007 18.6668V19.1668C13.0556 19.1668 13.2757 19.1669 14.0255 19.1295L14.0007 18.6301L13.9758 18.1307C13.2517 18.1668 13.0519 18.1668 12.0007 18.1668V18.6668ZM14.0007 18.6301L14.0255 19.1295C14.7683 19.0924 15.5601 19.018 16.258 18.8648C16.9357 18.716 17.6136 18.475 18.0446 18.0441L17.691 17.6905L17.3375 17.337C17.1192 17.5552 16.6831 17.7476 16.0435 17.888C15.4241 18.0241 14.6953 18.0948 13.9758 18.1307L14.0007 18.6301ZM14.0007 5.37023L13.5007 5.37023L13.5007 18.6301H14.0007H14.5007L14.5007 5.37023L14.0007 5.37023Z"
+        fill={color}
+      />
+    </svg>
   );
 }

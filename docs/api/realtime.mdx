@@ -1,0 +1,120 @@
+---
+title: Real-time Features
+description: Supabase real-time subscriptions, broadcast channels, and presence.
+---
+
+Fold Health uses **Supabase Realtime** for live messaging, typing indicators, and profile sync.
+
+## Channels
+
+### Direct message channel
+
+```
+src/features/messages/ChatArea.jsx
+```
+
+Each conversation creates a unique channel scoped to the two participants:
+
+```jsx
+supabase
+  .channel(`dm-${[userId, otherUserId].sort().join('-')}`)
+  .on('postgres_changes', {
+    event: 'INSERT',
+    schema: 'public',
+    table: 'direct_messages',
+  }, handleNewMessage)
+  .on('postgres_changes', {
+    event: 'UPDATE',
+    schema: 'public',
+    table: 'direct_messages',
+  }, handleReadReceipt)
+  .on('broadcast', { event: 'typing' }, handleTyping)
+  .subscribe();
+```
+
+**Events handled:**
+
+| Event | Type | Purpose |
+|-------|------|---------|
+| INSERT on `direct_messages` | Postgres Changes | Append new messages to the conversation |
+| UPDATE on `direct_messages` | Postgres Changes | Handle read receipts |
+| `typing` broadcast | Broadcast | Show/hide typing indicator |
+
+### Message inbox channel
+
+```
+src/features/messages/MessagesView.jsx
+```
+
+A global channel watches for new messages across all conversations:
+
+```jsx
+supabase
+  .channel('msg-inbox')
+  .on('postgres_changes', {
+    event: 'INSERT',
+    schema: 'public',
+    table: 'direct_messages',
+  }, refreshConversationList)
+  .subscribe();
+```
+
+### Profile watcher
+
+```
+src/features/messages/MessagesView.jsx
+```
+
+Watches for changes to any profile (name updates, avatar changes):
+
+```jsx
+supabase
+  .channel('profiles-watch')
+  .on('postgres_changes', {
+    event: '*',
+    schema: 'public',
+    table: 'profiles',
+  }, refreshProfiles)
+  .subscribe();
+```
+
+## Typing indicator
+
+The typing indicator uses Supabase **Broadcast** (ephemeral, no DB persistence):
+
+```jsx
+// Send typing state
+channel.send({
+  type: 'broadcast',
+  event: 'typing',
+  payload: { userId: currentUser.id, isTyping: true },
+});
+```
+
+The receiving client shows a typing indicator while `isTyping` is true, with a timeout to auto-dismiss.
+
+## Channel lifecycle
+
+Channels are:
+- Created when a component mounts (e.g., opening a conversation)
+- Stored in a `useRef` to avoid re-creation on re-renders
+- Unsubscribed and removed on component unmount
+
+```jsx
+useEffect(() => {
+  const channel = supabase.channel('...');
+  channel.subscribe();
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [dependencies]);
+```
+
+## Postgres Changes vs Broadcast
+
+| Feature | Postgres Changes | Broadcast |
+|---------|-----------------|-----------|
+| Source | Database triggers | Client-sent |
+| Persistence | Yes (in DB) | No (ephemeral) |
+| Use case | Messages, read receipts, profile updates | Typing indicator |
+| Delivery | All subscribers | All subscribers |

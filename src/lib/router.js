@@ -5,7 +5,9 @@
 
 // ── Parse hash into structured route ──
 export function parseHash() {
-  const raw = window.location.hash.replace(/^#\/?/, '');
+  // Strip any `?query` (e.g. hidden-field params like #/f/12?mrn=A123) before
+  // splitting into path segments — the query is read separately by the view.
+  const raw = window.location.hash.replace(/^#\/?/, '').split('?')[0];
   const segments = raw.split('/').filter(Boolean);
   return {
     page: segments[0] || 'population',
@@ -13,6 +15,7 @@ export function parseHash() {
     tab: segments[2] || null,
     id: segments[3] || null,
     sub: segments[4] || null,
+    extra: segments[5] || null,
   };
 }
 
@@ -28,6 +31,10 @@ export function stateToHash(state) {
     goalDetailId, goalWizardOpen, goalWizardEditId,
     chatGroupDetailId, agentRulesGroupId, businessHoursOpen } = state;
 
+  // Shareable form fill-view wins over everything — it's a focused takeover.
+  if (state.formViewId) {
+    return buildHash('f', String(state.formViewId));
+  }
   if (activePage === 'builder') {
     const agentId = state.builderAgent?.id;
     return agentId ? buildHash('settings', 'agents', 'edit', String(agentId)) : buildHash('builder');
@@ -38,7 +45,23 @@ export function stateToHash(state) {
   }
   if (activePage === 'calendar') return buildHash('calendar');
   if (state.editingCampaignId) {
+    // Email builder opened from Settings → Content keeps the settings path so
+    // the URL is sharable AND the close action falls back to #/settings/content/emails.
+    if (state.activePage === 'settings' && state.settingsNavItem === 'content') {
+      return buildHash('settings', 'content', 'emails', String(state.editingCampaignId));
+    }
     return buildHash('email', String(state.editingCampaignId));
+  }
+  if (state.editingFormId) {
+    // Form builder is always opened from Settings → Content → Forms; keep the
+    // settings path so closing falls back to #/settings/content/forms. Each
+    // builder tab gets its own path, and Analytics carries its sub-tab too:
+    //   …/forms/{id}/{mode}            (edit|score|preview|analytics)
+    //   …/forms/{id}/analytics/{tab}   (insight|report|responses)
+    const mode = state.formBuilderMode || 'edit';
+    const parts = ['settings', 'content', 'forms', String(state.editingFormId), mode];
+    if (mode === 'analytics') parts.push(state.formAnalyticsTab || 'insight');
+    return buildHash(...parts);
   }
   if (state.campaignBuilderId) {
     return buildHash('campaign', String(state.campaignBuilderId));
@@ -63,9 +86,20 @@ export function stateToHash(state) {
       const ecTab = state.embeddedComponentsTab || 'domain-registry';
       return buildHash('settings', 'embedded-components', ecTab);
     }
+    if (settingsNavItem === 'content') {
+      const cTab = state.contentTab || 'emails';
+      return buildHash('settings', 'content', cTab);
+    }
     if (settingsNavItem === 'account') {
       const acTab = state.accountTab || 'users';
       return buildHash('settings', 'account', acTab);
+    }
+    if (settingsNavItem === 'billing') {
+      return buildHash('settings', 'billing');
+    }
+    if (settingsNavItem === 'member/leads') {
+      const mlTab = state.memberLeadsTab || 'care-team';
+      return buildHash('settings', 'member-leads', mlTab);
     }
     // Agents section
     if (goalWizardOpen) return buildHash('settings', 'agents', 'goals', goalWizardEditId ? String(goalWizardEditId) : 'new');
@@ -88,13 +122,21 @@ export function stateToHash(state) {
     'SNP': 'snp',
     'AWV': 'awv',
     'HCC': 'hcc',
+    'HEDIS': 'hedis',
     'High Utilizers': 'high-utilizers',
     'DM': 'dm',
     'My Patients': 'my-patients',
-    'All Patients': 'all-patients'
+    'All Patients': 'all-patients',
+    'pg:All': 'population-groups',
+    'pg:Static': 'population-groups-static',
+    'pg:Dynamic': 'population-groups-dynamic'
   };
 
   if (state.activeSubnavList && state.activeSubnavList !== 'TOC') {
+    // HEDIS has its own top-level path
+    if (state.activeSubnavList === 'HEDIS') {
+      return buildHash('hedis');
+    }
     const section = LIST_TO_URL[state.activeSubnavList];
     if (section) {
       return buildHash('population', section);
@@ -110,8 +152,15 @@ export function hashToState(route) {
   const updates = {
     goalDetailId: null, goalWizardOpen: false, goalWizardEditId: null,
     chatGroupDetailId: null, agentRulesGroupId: null, businessHoursOpen: false,
+    formViewId: null,
   };
 
+  // Shareable form fill-view: #/f/{id}
+  if (route.page === 'f' && route.section) {
+    const numId = isNaN(Number(route.section)) ? route.section : Number(route.section);
+    updates.formViewId = numId;
+    return updates;
+  }
   if (route.page === 'builder') { updates.activePage = 'builder'; return updates; }
   if (route.page === 'analytics') {
     updates.activePage = 'analytics';
@@ -123,6 +172,12 @@ export function hashToState(route) {
   if (route.page === 'messages') { updates.activePage = 'messages'; return updates; }
   if (route.page === 'calls') { updates.activePage = 'calls'; return updates; }
   if (route.page === 'tasks') { updates.activePage = 'tasks'; return updates; }
+  if (route.page === 'hedis') {
+    updates.activePage = 'population';
+    updates.activeSubnavList = 'HEDIS';
+    updates.activeTab = 'toc-worklist';
+    return updates;
+  }
   if (route.page === 'email' && route.section) {
     updates.activePage = 'campaign';
     const numId = isNaN(Number(route.section)) ? route.section : Number(route.section);
@@ -175,10 +230,43 @@ export function hashToState(route) {
       updates.embeddedComponentsTab = route.tab || 'domain-registry';
       return updates;
     }
+    // Content section
+    if (route.section === 'content') {
+      updates.settingsNavItem = 'content';
+      updates.contentTab = route.tab || 'emails';
+      // Per-email edit: #/settings/content/emails/{id} re-opens the email
+      // builder on top of the listing page (AppLayout hydration uses
+      // _pendingEmailEditId to call openEmailBuilder after the campaign loads).
+      if (route.tab === 'emails' && route.id) {
+        updates._pendingEmailEditId = route.id;
+      }
+      // Per-form edit: #/settings/content/forms/{id}/{mode}[/{analyticsTab}]
+      // re-opens the form builder on top of the listing page (AppLayout
+      // hydration uses _pendingFormEditId; openFormBuilder applies the mode).
+      if (route.tab === 'forms' && route.id) {
+        updates._pendingFormEditId = route.id;
+        const mode = ['edit', 'logic', 'score', 'preview', 'analytics'].includes(route.sub) ? route.sub : 'edit';
+        updates._pendingFormMode = mode;
+        updates._pendingFormAnalyticsTab = mode === 'analytics' && ['insight', 'report', 'responses'].includes(route.extra)
+          ? route.extra : 'insight';
+      }
+      return updates;
+    }
     // Account / IAM section
     if (route.section === 'account') {
       updates.settingsNavItem = 'account';
       updates.accountTab = route.tab || 'users';
+      return updates;
+    }
+    // APCM Billing section
+    if (route.section === 'billing') {
+      updates.settingsNavItem = 'billing';
+      return updates;
+    }
+    // Member/Leads section (settings → automation → member/leads)
+    if (route.section === 'member-leads') {
+      updates.settingsNavItem = 'member/leads';
+      updates.memberLeadsTab = route.tab || 'care-team';
       return updates;
     }
     // Agent edit (builder) route: #/settings/agents/edit/{id}
@@ -223,10 +311,14 @@ export function hashToState(route) {
     'snp': 'SNP',
     'awv': 'AWV',
     'hcc': 'HCC',
+    'hedis': 'HEDIS',
     'high-utilizers': 'High Utilizers',
     'dm': 'DM',
     'my-patients': 'My Patients',
-    'all-patients': 'All Patients'
+    'all-patients': 'All Patients',
+    'population-groups': 'pg:All',
+    'population-groups-static': 'pg:Static',
+    'population-groups-dynamic': 'pg:Dynamic'
   };
 
   if (route.section && URL_TO_LIST[route.section]) {

@@ -1,0 +1,59 @@
+/* ── Title stack (two-line drawer title) ── */
+.titleStack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.2;
+}
+.titleMain { font-size: 15px; font-weight: 600; color: var(--neutral-400); }
+.titleSub  { font-size: 12px; font-weight: 400; color: var(--neutral-300); }
+
+/* Shared 1×16px divider between action groups in the drawer header. Pair
+   with <Drawer noCloseDivider> so the close button doesn't add a second one. */
+.headerDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+/* ── Drawer body override: full-bleed, flex column ── */
+.body {
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Toggle bar (Email / Web / Mobile) ── */
+.toggleBar {
+  display: flex;
+  justify-content: center;
+  padding: 12px 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+
+/* ── Email view: flush against the drawer body, no padding ── */
+.emailPad {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.emailPad > iframe {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+/* ── Device view: center the mockup in the remaining drawer space ── */
+.deviceCenter {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  overflow: auto;
+}

@@ -812,13 +812,13 @@
 }
 
 .goalPass {
-  background: #f0fdf4;
-  border-color: rgba(0, 155, 83, 0.12);
+  background: var(--status-success-light);
+  border-color: color-mix(in srgb, var(--status-success) 12%, transparent);
 }
 
 .goalFail {
   background: var(--status-error-light);
-  border-color: rgba(215, 40, 37, 0.12);
+  border-color: color-mix(in srgb, var(--status-error) 12%, transparent);
 }
 
 .goalCardIcon {

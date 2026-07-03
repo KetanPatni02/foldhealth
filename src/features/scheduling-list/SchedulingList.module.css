@@ -1,0 +1,31 @@
+.tableWrap {
+  flex: 1;
+  overflow: auto;
+  background: var(--neutral-0);
+  position: relative;
+  overscroll-behavior: none;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  gap: 12px;
+  color: var(--neutral-300);
+}
+
+.emptyTitle {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  margin: 0;
+}
+
+.emptyDesc {
+  font-size: 14px;
+  margin: 0;
+  text-align: center;
+  max-width: 320px;
+}

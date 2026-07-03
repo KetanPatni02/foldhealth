@@ -1,0 +1,41 @@
+---
+title: Tech Stack
+description: Technologies and libraries powering the Fold Health platform.
+---
+
+## Core stack
+
+| Layer | Technology | Version |
+|-------|-----------|---------|
+| Framework | React | 19 |
+| Build tool | Vite | 8 |
+| Package manager | Bun | 1.2 |
+| State management | Zustand | 5 |
+| Routing | Custom hash-based router | — |
+| Styling | Tailwind CSS 4 + CSS Modules | 4 |
+| UI primitives | Radix UI | — |
+| Icons | Solar (via Iconify) | — |
+| Charts | Recharts | — |
+| Flow editor | XYFlow (React Flow) | — |
+| Database | Supabase (PostgreSQL) | — |
+| Analytics | Vercel Analytics + Speed Insights | — |
+
+## Why these choices
+
+<AccordionGroup>
+  <Accordion title="React 19 + Vite 8">
+    React 19 provides the latest concurrent features. Vite 8 delivers fast HMR and optimized production builds with Rollup under the hood.
+  </Accordion>
+  <Accordion title="Zustand over Redux">
+    Zustand provides a minimal, hook-based store without boilerplate. A single `useAppStore` manages all application state with slice-based organization.
+  </Accordion>
+  <Accordion title="Tailwind 4 + CSS Modules">
+    Tailwind handles utility classes while CSS Modules scope component-specific styles. Design tokens in `src/tokens/tokens.css` bridge both systems.
+  </Accordion>
+  <Accordion title="Hash-based routing">
+    The app is a pure SPA deployed to static hosts. Hash routing (`/#/population/worklist`) works without server-side rewrites and simplifies deployment.
+  </Accordion>
+  <Accordion title="Supabase">
+    PostgreSQL via Supabase provides real-time subscriptions, row-level security, and a generous free tier. Auth, storage, and edge functions are available as the platform grows.
+  </Accordion>
+</AccordionGroup>

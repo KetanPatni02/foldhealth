@@ -170,7 +170,7 @@
   font-family: 'Inter', sans-serif;
 }
 
-.askUnity:hover { background: var(--primary-200); }
+.askUnity:hover { background: var(--primary-300); color: #FFFFFF; border-color: var(--primary-300); }
 
 .right {
   display: flex;

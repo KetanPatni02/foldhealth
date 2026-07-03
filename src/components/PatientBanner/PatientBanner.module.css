@@ -98,9 +98,10 @@
   flex-shrink: 0;
 }
 
-/* Chevron rotation when expanded */
-.chevronOpen {
+/* Chevron rotation when expanded — only rotate the icon, not the tooltip */
+.chevronOpen svg {
   transform: rotate(180deg);
+  transition: transform 0.2s ease;
 }
 
 /* ── Expandable section ── */

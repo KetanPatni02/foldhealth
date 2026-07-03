@@ -22,7 +22,6 @@
   flex-direction: column;
   animation: slideIn .25s ease;
   box-shadow: var(--shadow-drawer);
-  border: 0.5px solid var(--neutral-150);
   border-radius: 16px;
   overflow: hidden;
 }
@@ -31,12 +30,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 24px 16px;
+  padding: 6px 12px;
+  gap: 8px;
+  border-bottom: 0.5px solid var(--neutral-150);
   flex-shrink: 0;
 }
 
 .headerTitle {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 500;
   color: var(--neutral-400);
   margin: 0;
@@ -51,7 +52,7 @@
 .headerRight {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
@@ -68,6 +69,21 @@
   line-height: 1;
   transition: background .15s, color .15s;
 }
+
+/* Vertical divider between primary action and close — only renders when
+   closeBtn has a sibling (i.e. headerRight has an action), so drawers
+   without a headerRight action stay unaffected. */
+.headerRight > .closeBtn:not(:only-child) {
+  border-left: 1px solid var(--neutral-100);
+  padding-left: 12px;
+  margin-left: 4px;
+}
+/* Opt-out: pass noCloseDivider to Drawer when the caller provides its own divider. */
+.closeBtnNoDivider.closeBtn:not(:only-child) {
+  border-left: none;
+  padding-left: 4px;
+  margin-left: 0;
+}
 .closeBtn:hover {
   background: var(--neutral-100);
   color: var(--neutral-400);
@@ -76,6 +92,7 @@
 .body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 0 24px 24px;
 }
 

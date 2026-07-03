@@ -140,6 +140,19 @@
 }
 .filterBtn:hover { border-color: var(--neutral-200); color: var(--neutral-500); }
 
+/* Active state for the Customize / Done toggle when the dashboard is in
+   edit mode. Applied alongside .filterBtn via classname composition. */
+.filterBtnActive {
+  background: var(--primary-100);
+  color: var(--primary-300);
+  border-color: var(--primary-200);
+}
+.filterBtnActive:hover {
+  background: var(--primary-100);
+  color: var(--primary-300);
+  border-color: var(--primary-200);
+}
+
 /* ──────────────────────────────────────────────
    KPI Cards
    ────────────────────────────────────────────── */
@@ -424,3 +437,100 @@
 .canvas::-webkit-scrollbar-thumb { background: var(--neutral-150); border-radius: 4px; }
 .pnScroll::-webkit-scrollbar { width: 4px; }
 .pnScroll::-webkit-scrollbar-thumb { background: var(--neutral-150); border-radius: 4px; }
+
+/* ── Editable dashboard (drag/resize) — mirrors HomeView.module.css pattern.
+   The Customize / Reset buttons live in the view header (.filterBar) via
+   .filterBtn / .filterBtnActive defined above. */
+.gridContainer {
+  position: relative;
+}
+
+/* Dashed editing border. Cells auto-fit to content (EditableGrid measures
+   the content-height inner wrapper and snaps the cell to it), so the card
+   hugs its content and the border lays on the content edge — no empty fill
+   below. If the user manually grows a panel, the extra space sits below the
+   card inside the taller cell. */
+.gridContainer.gridEditing .gridItemInner > * {
+  border: 1px dashed var(--primary-200) !important;
+  border-radius: 12px;
+}
+
+/* Inner wrapper is height:auto so its offsetHeight reflects true content
+   height (the measurement EditableGrid reads). Never force height here. */
+.gridItemInner {
+  box-sizing: border-box;
+}
+
+/* Edit-mode cursor cue: entire card is the drag handle */
+.gridContainer.gridEditing :global(.react-grid-item):not(:global(.react-grid-placeholder)) {
+  cursor: move;
+}
+
+/* Resize handle: invisible by default, visible in edit mode.
+   Matches HomeView.module.css:849-866. */
+.gridContainer :global(.react-grid-item > .react-resizable-handle) {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s;
+}
+
+.gridContainer.gridEditing :global(.react-grid-item > .react-resizable-handle) {
+  opacity: 0.6;
+  pointer-events: auto;
+}
+
+.gridContainer.gridEditing :global(.react-grid-item:hover > .react-resizable-handle) {
+  opacity: 1;
+}
+
+.gridItem {
+  position: relative;
+  height: 100%;
+  box-sizing: border-box;
+  /* No overflow rule — let react-resizable-handle render at bottom-right
+     of the grid item. Card content overflow is handled internally by the
+     Card component's .cardBody. Cards inside are content-sized; the dashed
+     edit-mode border hugs each card's actual content rather than stretching
+     to fill the grid cell. */
+}
+
+/* ── Shimmer / skeleton loaders ─────────────────────────────────
+   Drop-in placeholders used by the analytics views while Supabase
+   data is in flight. Single keyframe; per-shape sizes come from
+   the React components in shared.jsx. */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--neutral-100) 0%,
+    var(--neutral-150) 50%,
+    var(--neutral-100) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 4px;
+}
+.skeletonKpi {
+  height: 86px;
+  border: 0.5px solid var(--neutral-100);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.skeletonRow {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.skeletonChart {
+  height: 180px;
+  display: flex; align-items: flex-end; gap: 6px;
+  padding: 16px 14px 4px;
+}
+.skeletonBar {
+  flex: 1;
+  border-radius: 4px 4px 0 0;
+}

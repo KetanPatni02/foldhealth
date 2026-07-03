@@ -1,6 +1,9 @@
 .bulkBar {
   position: fixed;
-  bottom: 24px;
+  /* Sit above the worklist's horizontal scroll bar + pagination so both
+     stay accessible while a bulk selection is active. Pagination ~48px,
+     legend strip ~32px, horizontal scroll bar ~16px, plus safety gap. */
+  bottom: 120px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 200;

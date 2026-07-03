@@ -40,7 +40,10 @@ function NodeItem({ node, onDragStart }) {
       >
         <div
           className={styles.nodeIcon}
-          style={{ background: node.drawerBg, borderColor: node.drawerBorder }}
+          style={{
+            background: `color-mix(in srgb, ${node.color} 12%, var(--neutral-0))`,
+            borderColor: `color-mix(in srgb, ${node.color} 25%, transparent)`,
+          }}
         >
           {node.CustomIcon
             ? <node.CustomIcon size={16} color={node.color} />

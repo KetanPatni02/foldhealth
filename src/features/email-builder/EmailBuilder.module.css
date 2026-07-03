@@ -16,7 +16,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 20px;
-  background: #fff;
+  background: var(--neutral-0);
   border-bottom: 0.5px solid var(--neutral-150);
   flex-shrink: 0;
 }
@@ -74,7 +74,7 @@
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
@@ -145,7 +145,7 @@
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
@@ -261,13 +261,27 @@
 
 /* ── Left: Components panel ── */
 .leftPanel {
-  width: 240px;
   flex-shrink: 0;
-  background: #fff;
+  background: var(--neutral-0);
   border-right: 0.5px solid var(--neutral-150);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+}
+
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+}
+.resizeHandle:hover,
+.resizeHandleActive {
+  background: var(--primary-200);
 }
 
 .tabs {
@@ -317,8 +331,9 @@
   flex: 1;
   overflow-y: auto;
   overflow-y: overlay;
+  overflow-x: auto;
   padding: 0;
-  background: #fff;
+  background: var(--neutral-0);
   scrollbar-width: thin;
   scrollbar-color: rgba(58, 72, 95, 0.25) transparent;
 }
@@ -338,7 +353,7 @@
   align-items: center;
   padding: 0 12px;
   margin: 0;
-  background: #fff;
+  background: var(--neutral-0);
   border-bottom: 0.5px solid var(--neutral-150);
   font-family: 'Inter', sans-serif;
   font-size: 14px;
@@ -350,7 +365,7 @@
 
 .componentGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
   gap: 8px;
   padding: 12px;
 }
@@ -365,7 +380,7 @@
   width: 100%;
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
-  background: #fff;
+  background: var(--neutral-0);
   cursor: pointer;
   font-family: 'Inter', sans-serif;
   font-size: 12px;
@@ -746,7 +761,7 @@
   padding: 8px 12px;
   border: 0.5px dashed var(--neutral-200, #8A94A8);
   border-radius: 8px;
-  background: #fff;
+  background: var(--neutral-0);
   cursor: pointer;
   transition: all .12s;
 }
@@ -791,6 +806,8 @@
   font-size: 13px;
   color: var(--neutral-400);
   transition: background .08s;
+  width: fit-content;
+  min-width: 100%;
 }
 
 .layerRow:active { cursor: grabbing; }
@@ -808,10 +825,8 @@
 }
 
 .layerRowText {
-  flex: 1;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex-shrink: 0;
 }
 
 .layerRemove {
@@ -855,7 +870,7 @@
   padding: 0 6px;
   border: 1px solid var(--primary-300);
   border-radius: 3px;
-  background: #fff;
+  background: var(--neutral-0);
   font-family: 'Inter', sans-serif;
   font-size: 13px;
   color: var(--neutral-400);
@@ -871,7 +886,7 @@
   justify-content: center;
   padding: 32px 24px;
   min-width: 0;
-  background: #fff;
+  background: var(--neutral-0);
 }
 
 .canvas {
@@ -968,7 +983,7 @@
 .rightPanel {
   position: relative;
   flex-shrink: 0;
-  background: #fff;
+  background: var(--neutral-0);
   border-left: 0.5px solid var(--neutral-150);
   display: flex;
   flex-direction: column;
@@ -1015,7 +1030,7 @@
 .rightTabs {
   display: flex;
   border-bottom: 0.5px solid var(--neutral-150);
-  background: #fff;
+  background: var(--neutral-0);
   flex-shrink: 0;
 }
 
@@ -1265,7 +1280,7 @@
 .selectWrap {
   position: relative;
   height: 32px;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-200, #8A94A8);
   border-radius: 4px;
   box-sizing: border-box;
@@ -1446,7 +1461,7 @@
   padding: 0 8px;
   border: 0.5px solid var(--neutral-150);
   border-radius: 4px;
-  background: #fff;
+  background: var(--neutral-0);
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   color: var(--neutral-400);
@@ -1595,7 +1610,7 @@
   padding: 0 8px;
   border: 0.5px solid var(--neutral-150);
   border-radius: 4px;
-  background: #fff;
+  background: var(--neutral-0);
   font-family: 'Inter', sans-serif;
   font-size: 13px;
   color: var(--neutral-400);
@@ -1610,7 +1625,7 @@
   padding: 0 8px;
   border: 0.5px solid var(--neutral-150);
   border-radius: 4px;
-  background: #fff;
+  background: var(--neutral-0);
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   color: var(--neutral-300);
@@ -1943,12 +1958,12 @@
 }
 
 .decoToggleBtn:hover {
-  background: #fff;
+  background: var(--neutral-0);
   color: var(--neutral-400);
 }
 
 .decoToggleActive {
-  background: #fff;
+  background: var(--neutral-0);
   color: var(--primary-300);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
@@ -1964,7 +1979,7 @@
   padding: 8px;
   border: 0.5px solid var(--neutral-200, #8A94A8);
   border-radius: 4px;
-  background: #fff;
+  background: var(--neutral-0);
   font-family: 'Inter', sans-serif;
   font-size: 14px;
   color: var(--neutral-400);
@@ -1985,7 +2000,7 @@
   justify-content: space-between;
   gap: 8px;
   padding: 8px 12px;
-  background: #fff;
+  background: var(--neutral-0);
   border-bottom: 0.5px solid var(--neutral-150);
 }
 
@@ -2512,7 +2527,7 @@
   justify-content: center;
   border: 1px solid var(--neutral-150);
   border-radius: 4px;
-  background: #fff;
+  background: var(--neutral-0);
   cursor: pointer;
   padding: 0;
   transition: border-color .12s;
@@ -2581,7 +2596,7 @@
   bottom: -5px;
   width: 10px;
   height: 10px;
-  background: #fff;
+  background: var(--neutral-0);
   border: 1.5px solid var(--primary-300);
   border-radius: 2px;
   cursor: nwse-resize;
@@ -2602,7 +2617,7 @@
   justify-content: center;
   width: 20px;
   height: 20px;
-  background: #fff;
+  background: var(--neutral-0);
   border: 1px solid var(--neutral-150);
   border-radius: 4px;
   cursor: pointer;
@@ -2702,13 +2717,13 @@
   left: 2px;
   width: 2px;
   border-radius: 1px;
-  background: #fff;
+  background: var(--neutral-0);
   box-shadow: 0 0 3px rgba(0,0,0,0.3);
   transition: transform 80ms;
 }
 .colWidthHandle:hover::after {
   transform: scaleY(1.2) scaleX(1.5);
-  background: #fff;
+  background: var(--neutral-0);
 }
 
 .colWidthPresets {
@@ -2725,7 +2740,7 @@
   padding: 4px 6px;
   border: 1px solid var(--neutral-100, #E5E7EB);
   border-radius: 6px;
-  background: #fff;
+  background: var(--neutral-0);
   cursor: pointer;
   flex: 1;
   min-width: 42px;
@@ -2784,7 +2799,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 20px;
-  background: #fff;
+  background: var(--neutral-0);
   border-bottom: 0.5px solid var(--neutral-150);
   height: 56px;
   box-sizing: border-box;
@@ -2811,7 +2826,7 @@
 
 .skLeftPanel {
   width: 240px;
-  background: #fff;
+  background: var(--neutral-0);
   border-right: 0.5px solid var(--neutral-150);
   flex-shrink: 0;
   display: flex;
@@ -2866,7 +2881,7 @@
   display: flex;
   justify-content: center;
   padding: 32px 24px;
-  background: #fff;
+  background: var(--neutral-0);
   overflow: hidden;
 }
 
@@ -2923,7 +2938,7 @@
 
 .skRightPanel {
   width: 320px;
-  background: #fff;
+  background: var(--neutral-0);
   border-left: 0.5px solid var(--neutral-150);
   flex-shrink: 0;
   display: flex;

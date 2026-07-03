@@ -78,7 +78,20 @@ export function CampaignBuilder() {
   const previewHtml = useMemo(() => {
     const doc = campaign?.emailTemplate
       || makeInitialDocument({ name: campaign?.name || 'Untitled Campaign' });
-    return renderEmailHtml(doc);
+    const html = renderEmailHtml(doc);
+    // Prepend a thin transparent scrollbar style so the preview iframe doesn't
+    // render with the OS-default dark scrollbar. Preview-only — does not
+    // affect the actual email HTML delivered to recipients. !important wins
+    // against whatever the email template ships with.
+    const scrollbarCss = `<style>
+      html, body { scrollbar-width: thin !important; scrollbar-color: rgba(0,0,0,0.28) transparent !important; }
+      ::-webkit-scrollbar { width: 8px !important; height: 8px !important; background: transparent !important; }
+      ::-webkit-scrollbar-track { background: transparent !important; border: none !important; box-shadow: none !important; }
+      ::-webkit-scrollbar-corner { background: transparent !important; }
+      ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.28) !important; border-radius: 4px !important; border: 2px solid transparent !important; background-clip: padding-box !important; }
+      ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.45) !important; background-clip: padding-box !important; }
+    </style>`;
+    return scrollbarCss + html;
   }, [campaign?.emailTemplate, campaign?.name]);
 
   if (!campaign) {

@@ -30,9 +30,10 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from '../../components/ui/alert-dialog';
+import { OrgPanel } from './panels/OrgPanel';
 import styles from './AccountPanel.module.css';
 
-const ALL_TABS = ['Users', 'Teams', 'Access Control', 'Locations', 'Insurance Plans', 'Holiday Configuration', 'Merged Or Delayed', 'Allowed Phone', 'Allowed Emails'];
+const ALL_TABS = ['Org', 'Users', 'Teams', 'Access Control', 'Locations', 'Insurance Plans', 'Holiday Configuration', 'Merged Or Delayed', 'Allowed Phone', 'Allowed Emails'];
 
 const ROLE_COLORS = {
   'Physician/Doctor': 'ai-care', 'Nurse': 'toc-engaged', 'Medical Assistant': 'status-scheduled',
@@ -51,7 +52,7 @@ function getInitials(name) {
 const MOCK_ROLES = Object.keys(ROLE_COLORS);
 const MOCK_LOCATIONS = ['Toms River', 'Montebello', 'Sparks', 'Chesapeake', 'Visalia', 'Lowell', 'Palm Bay', 'Lawton', 'Oceanside', 'Merced', 'Oakland Park'];
 
-const FALLBACK_USERS = [
+export const FALLBACK_USERS = [
   { name: 'Amy Brenneman', email: 'amy.brenneman@email.com', role: 'Physician/Doctor', location: 'Toms River', extraRoles: 4, extraLocations: 0 },
   { name: 'Michael Corleone', email: 'michael.corleone@email.com', role: 'Nurse', location: 'Montebello', extraRoles: 9, extraLocations: 12 },
   { name: 'Larry Sanders', email: 'larry.sanders@email.com', role: 'Medical Assistant', location: 'Sparks', extraRoles: 6, extraLocations: 0 },
@@ -210,9 +211,9 @@ export function AccountPanel() {
   const storeTab = useAppStore(s => s.accountTab);
   const setStoreTab = useAppStore(s => s.setAccountTab);
   // Map store key to display name
-  const tabKeyToName = (key) => ALL_TABS.find(t => t.toLowerCase().replace(/ /g, '-') === key) || 'Users';
+  const tabKeyToName = (key) => ALL_TABS.find(t => t.toLowerCase().replace(/ /g, '-') === key) || 'Org';
   const tabNameToKey = (name) => name.toLowerCase().replace(/ /g, '-');
-  const [activeTab, setActiveTabLocal] = useState(tabKeyToName(storeTab || 'users'));
+  const [activeTab, setActiveTabLocal] = useState(tabKeyToName(storeTab || 'org'));
   const setActiveTab = (tab) => { setActiveTabLocal(tab); setStoreTab(tabNameToKey(tab)); };
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -481,7 +482,9 @@ export function AccountPanel() {
       </div>
 
       <div className={styles.tableWrap}>
-        {activeTab === 'Users' ? (
+        {activeTab === 'Org' ? (
+          <OrgPanel />
+        ) : activeTab === 'Users' ? (
           loading ? <TableSkeleton rows={10} /> : (
             <>
               <table className={styles.table}>
