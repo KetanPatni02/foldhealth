@@ -8,8 +8,13 @@
   transition: width 0.3s ease !important;
 }
 
+/* collapsed: 660px section + 24px padding + border, no dead gap */
+.narrowPanel {
+  width: 685px !important;
+}
+
 .widePanel {
-  width: 1200px !important;
+  width: 1210px !important; /* leftPanel 684 + rightPanel 525, no dead gap */
 }
 
 .drawerBody {
@@ -29,13 +34,15 @@
   margin: 0 4px;
 }
 
-/* ── Stage indicator ── */
+/* ── Stage indicator (fixed header — does not scroll) ── */
 .stageNavRow {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 12px 0 0;
+  padding: 2px 12px 2px 0;
   flex-shrink: 0;
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
 }
 
 .stageNavRight {
@@ -106,21 +113,26 @@
   flex-shrink: 0;
 }
 
-/* ── Left: form panel ── */
+/* ── Left: form panel — expands to fill when preview is hidden ── */
 .leftPanel {
-  flex: 0 0 650px;
-  width: 650px;
+  flex: 1;
+  min-width: 0;
+  max-width: 684px;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
-  border-right: 0.5px solid var(--neutral-150);
-  padding: 12px;
-  gap: 8px;
+  overflow: hidden;
 }
 
-.leftPanel:last-child {
-  border-right: none;
+/* Scrollable form body — stage bar above stays fixed */
+.leftScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
 }
 
 /* ── Form rows and fields ── */
@@ -137,6 +149,15 @@
   gap: 4px;
 }
 
+/* Validation supporting text */
+.errorText {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--status-error, #D72825);
+  font-family: 'Inter', sans-serif;
+  line-height: 1.2;
+}
+
 .fieldFull {
   width: 100%;
   display: flex;
@@ -149,6 +170,30 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* Section divider (Figma: 0.5px neutral-150 full-width rule) */
+.sectionDivider {
+  width: 100%;
+  height: 0.5px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+/* Claims Mailing Address group */
+.claimsGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+/* Sub-group heading (Figma: Inter Medium 14px, neutral-300) */
+.groupHeading {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  font-family: 'Inter', sans-serif;
 }
 
 /* ── Logo upload ── */
@@ -181,11 +226,20 @@
   align-items: center;
   gap: 8px;
   background: var(--neutral-0);
+  min-height: 80px;
+}
+
+.logoImgWrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
 }
 
 .logoPreviewImg {
-  max-height: 32px;
-  max-width: 147px;
+  max-height: 40px;
+  max-width: 160px;
   object-fit: contain;
   display: block;
 }
@@ -260,6 +314,19 @@
   font-family: 'Inter', sans-serif;
 }
 
+/* ── Date range row ── */
+.dateRangeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dateArrow {
+  font-size: 14px;
+  color: var(--neutral-200);
+  flex-shrink: 0;
+}
+
 /* ── Step 2: Cost Sharing ── */
 
 .costSharingContent {
@@ -299,11 +366,30 @@
   flex-shrink: 0;
 }
 
+.coverageSwitchTextGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .coverageSwitchLabel {
   font-size: 14px;
   font-weight: 400;
   font-family: 'Inter', sans-serif;
   color: var(--neutral-300);
+}
+
+/* First-line label turns neutral-400 when the family toggle is on */
+.coverageSwitchLabelOn {
+  color: var(--neutral-400);
+}
+
+.coverageSwitchDesc {
+  font-size: 12px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-200);
+  line-height: 1.4;
 }
 
 .coverageSection {
@@ -373,4 +459,188 @@
   font-weight: 500;
   color: var(--neutral-500, #16181d);
   font-family: 'Inter', sans-serif;
+}
+
+/* ── Logo tiles (Plan Identifiers) — Figma 2012:44664 ── */
+.logoTileRow {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+}
+
+.logoTile {
+  flex: 1 0 0;
+  min-width: 0;
+  height: 48px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px;
+  cursor: pointer;
+  overflow: clip;
+  transition: border-color 0.15s, background 0.15s;
+  outline: none;
+}
+
+.logoTile:hover {
+  border-color: var(--primary-200);
+}
+
+.logoTileSelected {
+  background: var(--primary-50) !important;
+  border-color: var(--primary-300) !important;
+}
+
+/* Invisible radio-sized spacer to balance layout so logo stays centered */
+.logoRadioSpacer {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* Avergent logo box: 133px × 32px (Figma) */
+.logoTileImgAvergent {
+  height: 32px;
+  width: 133px;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+/* Prominence / custom logo box: 101px × 32px (Figma) */
+.logoTileImgProminence {
+  height: 32px;
+  width: 101px;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.logoTileUploadLabel {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-400);
+  font-family: 'Inter', sans-serif;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ── Tier accordion ── */
+.tiersHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  flex-shrink: 0;
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.tiersHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tiersHeaderLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  font-family: 'Inter', sans-serif;
+}
+
+/* 3-column field grid (Figma cost-sharing) */
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.tierAccordion {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--neutral-0);
+}
+
+.tierAccordionExpanded {
+  border-color: var(--neutral-150);
+}
+
+/* Active tier (the one being worked on) — Primary 300, 1px border */
+.tierAccordionActive {
+  border: 1px solid var(--primary-300);
+}
+
+.tierHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--neutral-0);
+  transition: background 0.1s;
+  min-height: 44px;
+}
+
+.tierHeader:hover {
+  background: var(--neutral-50);
+}
+
+.tierHeaderLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap;
+}
+
+/* Tier name uses the shared Input component (bordered, Figma 300px) */
+.tierNameInputWrap {
+  width: 300px;
+  flex-shrink: 0;
+}
+
+.tierDeleteBtn {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
+.tierDeleteBtn:hover {
+  background: var(--neutral-50);
+}
+
+/* Trash icon: neutral-300, 1px stroke (CSS overrides the icon's baked stroke-width) */
+.tierTrashIcon {
+  stroke-width: 1px;
+}
+.tierTrashIcon :global(*) {
+  stroke-width: 1px;
+}
+
+.tierBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px;
+  border-top: 0.5px solid var(--neutral-150);
 }
