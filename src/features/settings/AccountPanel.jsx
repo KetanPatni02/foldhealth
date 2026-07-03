@@ -20,6 +20,16 @@ import { IdIcon } from '../../components/Icon/IdIcon';
 import { AddIconMinimalist } from '../../components/Icon/AddIconMinimalist';
 import { CreateInsurancePlanDrawer } from './CreateInsurancePlanDrawer';
 import { InsurancePlanViewDrawer } from './InsurancePlanViewDrawer';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '../../components/ui/alert-dialog';
 import styles from './AccountPanel.module.css';
 
 const ALL_TABS = ['Users', 'Teams', 'Access Control', 'Locations', 'Insurance Plans', 'Holiday Configuration', 'Merged Or Delayed', 'Allowed Phone', 'Allowed Emails'];
@@ -215,13 +225,21 @@ export function AccountPanel() {
   const [plans, setPlans] = useState([]);
   const [planSavedToast, setPlanSavedToast] = useState(false);
   const [viewingPlan, setViewingPlan] = useState(null);
+  const [editingPlan, setEditingPlan] = useState(null);
+  const [deletingPlanId, setDeletingPlanId] = useState(null);
+  const [planSearchOpen, setPlanSearchOpen] = useState(false);
+  const [planSearchVal, setPlanSearchVal] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentUserId, setCurrentUserId] = useState(null);
   const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
   const showToast = useAppStore(s => s.showToast);
 
   const handleSavePlan = (planData) => {
-    setPlans(prev => [...prev, { id: Date.now(), ...planData }]);
+    if (planData.id) {
+      setPlans(prev => prev.map(p => p.id === planData.id ? planData : p));
+    } else {
+      setPlans(prev => [...prev, { id: Date.now(), ...planData }]);
+    }
     setPlanSavedToast(true);
     setTimeout(() => setPlanSavedToast(false), 3000);
   };
@@ -423,7 +441,23 @@ export function AccountPanel() {
         <div className={styles.tabs}>
           <OverflowTabs tabs={ALL_TABS} activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
-        {activeTab !== 'Insurance Plans' && (
+        {activeTab === 'Insurance Plans' ? (
+          <div className={styles.tabActions}>
+            <div className={styles.searchWrap}>
+              {planSearchOpen ? (
+                <div className={styles.searchInput}>
+                  <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
+                  <input autoFocus type="text" placeholder="Search plans..." value={planSearchVal} onChange={e => setPlanSearchVal(e.target.value)} />
+                  <button className={styles.searchClose} onClick={() => { setPlanSearchOpen(false); setPlanSearchVal(''); }}>&#x2715;</button>
+                </div>
+              ) : (
+                <SearchIconButton title="Search" onClick={() => setPlanSearchOpen(true)} />
+              )}
+            </div>
+            <span className={styles.tabDivider} />
+            <Button variant="secondary" size="L" leadingIcon="solar:add-circle-linear" onClick={() => setShowCreateInsurance(true)}>New Insurance Plan</Button>
+          </div>
+        ) : (
           <div className={styles.tabActions}>
             <div className={styles.searchWrap}>
               {searchOpen ? (
@@ -522,7 +556,9 @@ export function AccountPanel() {
             plans={plans}
             onCreateNew={() => setShowCreateInsurance(true)}
             onView={(plan) => setViewingPlan(plan)}
-            onDelete={(id) => setPlans(prev => prev.filter(p => p.id !== id))}
+            onEdit={(plan) => setEditingPlan(plan)}
+            onDeleteRequest={(id) => setDeletingPlanId(id)}
+            searchVal={planSearchVal}
           />
         ) : (
           <div className={styles.emptyState}>
@@ -556,11 +592,13 @@ export function AccountPanel() {
         <InviteUserDrawer onClose={() => setShowInvite(false)} onInvited={() => { setShowInvite(false); fetchUsers(); }} />
       )}
 
-      {/* Create Insurance Plan Drawer */}
-      {showCreateInsurance && (
+      {/* Create / Edit Insurance Plan Drawer */}
+      {(showCreateInsurance || editingPlan) && (
         <CreateInsurancePlanDrawer
-          onClose={() => setShowCreateInsurance(false)}
+          onClose={() => { setShowCreateInsurance(false); setEditingPlan(null); }}
           onSave={handleSavePlan}
+          initialPlan={editingPlan || undefined}
+          mode={editingPlan ? 'edit' : 'create'}
         />
       )}
 
@@ -568,8 +606,36 @@ export function AccountPanel() {
         <InsurancePlanViewDrawer
           plan={viewingPlan}
           onClose={() => setViewingPlan(null)}
+          onEdit={(plan) => { setViewingPlan(null); setEditingPlan(plan); }}
         />
       )}
+
+      {/* Delete Insurance Plan confirm dialog (item 3) */}
+      <AlertDialog open={!!deletingPlanId} onOpenChange={open => !open && setDeletingPlanId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+              <Icon name="solar:trash-bin-2-linear" size={28} color="#D72825" />
+            </div>
+            <AlertDialogTitle>Delete Insurance Plan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Please confirm if you want to permanently delete this insurance plan from the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeletingPlanId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              style={{ background: '#D72825', color: 'white' }}
+              onClick={() => {
+                setPlans(prev => prev.filter(p => p.id !== deletingPlanId));
+                setDeletingPlanId(null);
+              }}
+            >
+              Delete Plan
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {planSavedToast && (
         <div className={styles.toastOverlay}>
@@ -1465,7 +1531,15 @@ function InviteUserDrawer({ onClose, onInvited }) {
 
 /* ── Insurance Plans Tab ── */
 
-function InsurancePlansTab({ plans = [], onCreateNew, onView, onDelete }) {
+function InsurancePlansTab({ plans = [], onCreateNew, onView, onEdit, onDeleteRequest, searchVal = '' }) {
+  const filtered = searchVal
+    ? plans.filter(p =>
+        (p.planName || '').toLowerCase().includes(searchVal.toLowerCase()) ||
+        (p.planType || '').toLowerCase().includes(searchVal.toLowerCase()) ||
+        (p.groupNumber || '').toLowerCase().includes(searchVal.toLowerCase())
+      )
+    : plans;
+
   if (plans.length === 0) {
     return (
       <div className={styles.insuranceEmpty}>
@@ -1498,7 +1572,7 @@ function InsurancePlansTab({ plans = [], onCreateNew, onView, onDelete }) {
           </tr>
         </thead>
         <tbody>
-          {plans.map(plan => (
+          {filtered.map(plan => (
             <tr key={plan.id} className={styles.insuranceTableRow}>
               <td className={styles.insuranceTd}>
                 {(plan.logoPreviewUrl || plan.planLogoUrl) ? (
@@ -1529,11 +1603,11 @@ function InsurancePlansTab({ plans = [], onCreateNew, onView, onDelete }) {
                     <Icon name="solar:eye-linear" size={16} color="var(--neutral-300)" />
                   </button>
                   <span className={styles.insuranceActionDivider} />
-                  <button className={styles.insuranceActionBtn} title="Edit">
+                  <button className={styles.insuranceActionBtn} onClick={() => onEdit?.(plan)} title="Edit">
                     <Icon name="solar:pen-linear" size={16} color="var(--neutral-300)" />
                   </button>
                   <span className={styles.insuranceActionDivider} />
-                  <button className={styles.insuranceActionBtn} onClick={() => onDelete(plan.id)} title="Delete">
+                  <button className={styles.insuranceActionBtn} onClick={() => onDeleteRequest?.(plan.id)} title="Delete">
                     <Icon name="solar:trash-bin-2-linear" size={16} color="var(--neutral-300)" />
                   </button>
                 </div>
