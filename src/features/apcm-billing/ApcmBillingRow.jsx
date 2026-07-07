@@ -3,7 +3,7 @@ import { Icon } from '../../components/Icon/Icon';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Checkbox } from '../../components/ui/checkbox';
-import { LANG_MAP } from './data/mock';
+import { LANG_MAP, getCptCode, CPT_FEES, initialStatusOf } from './data/mock';
 import styles from './ApcmBillingRow.module.css';
 
 const CPT_CLASS = { G0556: styles.cptG0556, G0557: styles.cptG0557, G0558: styles.cptG0558 };
@@ -22,7 +22,7 @@ function extractReasonBody(reason) {
   return dash > -1 ? reason.slice(dash + 2).trim() : '';
 }
 
-function IcdCell({ icdCodes }) {
+function IcdCell({ icdCodes, onToggleChronic }) {
   const [expanded, setExpanded] = useState(false);
   if (!icdCodes?.length) return <span className={styles.emDash}>—</span>;
 
@@ -31,15 +31,37 @@ function IcdCell({ icdCodes }) {
 
   return (
     <div className={styles.icdList}>
-      {visible.map((icd, i) => (
-        <div key={i} className={styles.icdItem}>
-          <span>
-            <span className={styles.icdCode}>{icd.code}</span>
-            {' '}
-            <span className={styles.icdDesc}>{icd.description}</span>
-          </span>
-        </div>
-      ))}
+      {visible.map((icd, i) => {
+        // Unresolved-mapping ICD: SNOMED fan-out was too wide to pick a
+        // single code. Show description only, disable the checkbox (nothing
+        // to bill), and surface a small warning + hint to resolve in Athena.
+        const unresolved = !icd.code;
+        return (
+          <label key={i} className={[styles.icdItem, unresolved ? styles.icdItemUnresolved : ''].filter(Boolean).join(' ')} onClick={e => e.stopPropagation()}>
+            <Checkbox
+              checked={icd.status === 'chronic'}
+              onCheckedChange={() => !unresolved && onToggleChronic?.(icd.code)}
+              disabled={unresolved}
+              aria-label={unresolved
+                ? `${icd.description} — ICD unresolved, cannot mark chronic in Fold`
+                : `Mark ${icd.code} chronic — ${icd.description}`}
+            />
+            <span className={styles.icdText}>
+              {icd.code && <><span className={styles.icdCode}>{icd.code}</span>{' '}</>}
+              <span className={styles.icdDesc}>{icd.description}</span>
+              {icd.wasChronicByProvider && (
+                <span className={styles.chronicProviderTag}> (Marked Chronic by Provider)</span>
+              )}
+              {unresolved && (
+                <span className={styles.unresolvedTag}>
+                  <Icon name="solar:danger-triangle-linear" size={11} color="currentColor" />
+                  ICD mapping unresolved — fix in Athena
+                </span>
+              )}
+            </span>
+          </label>
+        );
+      })}
       {!expanded && remaining > 0 && (
         <button className={styles.icdMoreBtn} onClick={e => { e.stopPropagation(); setExpanded(true); }}>
           +{remaining} more
@@ -79,17 +101,55 @@ function ReasonsCell({ reasons }) {
   );
 }
 
-export function ApcmBillingRow({ patient, isSelected, isActive, onSelect, onTriggerBill, onCommentChange }) {
+export function ApcmBillingRow({ patient, isSelected, isActive, onSelect, onTriggerBill, onCommentChange, onMarkChronic }) {
   const langCode = (patient.language || 'en').toUpperCase();
   const langFull = LANG_MAP[patient.language] || patient.language;
   const patientInitials = getInitials(patient.name);
   const providerInitials = getInitials(patient.renderingProvider);
+
+  // ── Three-state attestation logic (derived from reasons + per-ICD docs flag)
+  // Case A: 1:many ambiguous + chronic-not-selected + has docs in 36mo
+  //         → filter ICD column to documented codes only.
+  // Case B: 1:1 mapping + chronic-not-selected
+  //         → no filter; existing flow (VMG marks chronic in EHR, then attest).
+  // Case C: 1:many ambiguous + chronic-not-selected + NO docs in 36mo
+  //         → surface patient but disable attestation (button + checkbox).
+  // ALSO: resolved ICDs never appear in the ICD column (they're not billable).
+  const isAmbiguous = patient.reasons?.some(r => r.startsWith('Ambiguous ICD-10 from EMR Mapping'));
+  const chronicNotSelected = patient.reasons?.some(r => r.startsWith('Chronic Condition Not Selected'));
+  const nonResolved = patient.icdCodes.filter(c => c.status !== 'resolved');
+  const rawVisibleIcdCodes = (isAmbiguous && chronicNotSelected)
+    ? nonResolved.filter(c => c.documentedInLast36Months !== false)
+    : nonResolved;
+  // Decorate each visible ICD with a `wasChronicByProvider` flag so the row
+  // can render a "(Marked Chronic by Provider)" tag for codes that were
+  // already chronic in Athena when Fold loaded — separates provider-marked
+  // from user-marked-this-session. For null-coded (unresolved) entries the
+  // lookup key is the description since there's no code to index on.
+  const visibleIcdCodes = rawVisibleIcdCodes.map(c => ({
+    ...c,
+    wasChronicByProvider: c.code
+      ? initialStatusOf(patient.id, c.code) === 'chronic'
+      : c.status === 'chronic',
+  }));
+  // Case C: ambiguous 1:many + chronic-not-selected + no docs in 36mo → block.
+  // Unresolved-mapping (code === null) does NOT block — the provider has
+  // already committed via "Marked Chronic by Provider", Fold surfaces the
+  // warning inline, and the biller can still attest on whatever codes exist.
+  const cannotAttest = isAmbiguous && chronicNotSelected && visibleIcdCodes.length === 0;
+
+  // ── Live CPT — computed from the currently-visible chronic count. An
+  // unresolved-mapping ICD (code === null) is excluded even if the provider
+  // marked it chronic — Fold can't put a null code on a claim.
+  const liveChronicCount = visibleIcdCodes.filter(c => c.status === 'chronic' && c.code).length;
+  const liveCpt = getCptCode(patient.isQmb, liveChronicCount);
 
   return (
     <tr className={[
       styles.row,
       isSelected ? styles.rowChecked : '',
       isActive ? styles.rowActive : '',
+      cannotAttest ? styles.rowBlocked : '',
     ].filter(Boolean).join(' ')}>
 
       {/* Checkbox */}
@@ -97,6 +157,7 @@ export function ApcmBillingRow({ patient, isSelected, isActive, onSelect, onTrig
         <Checkbox
           checked={isSelected}
           onCheckedChange={() => onSelect(patient.id)}
+          disabled={cannotAttest}
           aria-label={`Select ${patient.name}`}
         />
       </td>
@@ -145,14 +206,28 @@ export function ApcmBillingRow({ patient, isSelected, isActive, onSelect, onTrig
       {/* Date of Service */}
       <td className={styles.td}>{patient.dateOfService}</td>
 
-      {/* CPT Code */}
+      {/* CPT Code — live-computed from ICD chronic count. Blank until at
+          least one ICD is marked chronic (nothing to bill yet). The (i)
+          rule-schedule popover lives on the column header, not on each
+          row, since the content is identical across all patients. */}
       <td className={styles.td}>
-        <span className={styles.emDash}>—</span>
+        {liveChronicCount === 0 ? (
+          <span className={styles.emDash}>—</span>
+        ) : (
+          <span className={styles.cptInline}>
+            <span className={[styles.cptBadge, CPT_CLASS[liveCpt]].join(' ')}>{liveCpt}</span>
+            <span className={styles.cptFee}>${CPT_FEES[liveCpt]}</span>
+          </span>
+        )}
       </td>
 
-      {/* ICD Codes */}
+      {/* ICD Codes — for Case A/C (ambiguous + chronic-not-selected) only the
+          codes documented on a qualifying encounter in the last 36 months are
+          shown. The hidden candidates remain referenced in the Reasons column. */}
       <td className={styles.tdWrap}>
-        <IcdCell icdCodes={patient.icdCodes} />
+        {visibleIcdCodes.length > 0
+          ? <IcdCell icdCodes={visibleIcdCodes} onToggleChronic={(code) => onMarkChronic?.(patient.id, code)} />
+          : <span className={styles.noReason}>No qualifying Dx documented</span>}
       </td>
 
       {/* Last Encounter */}
@@ -192,14 +267,22 @@ export function ApcmBillingRow({ patient, isSelected, isActive, onSelect, onTrig
         />
       </td>
 
-      {/* Actions */}
+      {/* Actions — Trigger Attestation is disabled for Case C patients (ambiguous +
+          chronic-not-selected + no qualifying Dx in 36mo). Tooltip explains why. */}
       <td className={`${styles.stickyRight} ${styles.actionsTd}`}>
         <div className={styles.actionsBtns}>
           <ActionButton
             icon="solar:bill-list-linear"
             size="L"
-            tooltip="Trigger Bill"
-            onClick={e => { e.stopPropagation(); onTriggerBill([patient.id]); }}
+            state={cannotAttest ? 'disabled' : 'active'}
+            tooltip={cannotAttest
+              ? 'Cannot attest — no qualifying Dx documented in the last 36 months'
+              : 'Trigger Attestation'}
+            onClick={e => {
+              e.stopPropagation();
+              if (cannotAttest) return;
+              onTriggerBill([patient.id]);
+            }}
           />
           <span className={styles.actionDivider} />
           <ActionButton
