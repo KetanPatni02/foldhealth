@@ -27,9 +27,8 @@ function Section({ title, children }) {
   );
 }
 
-export function InsurancePlanViewDrawer({ plan, onClose }) {
+export function InsurancePlanViewDrawer({ plan, onClose, onEdit }) {
   const [activeTab, setActiveTab] = useState('plan');
-  const [maskMemberId, setMaskMemberId] = useState(true);
   const { cardTheme } = plan;
 
   return (
@@ -38,7 +37,7 @@ export function InsurancePlanViewDrawer({ plan, onClose }) {
       onClose={onClose}
       headerRight={
         <>
-          <Button variant="secondary" size="L" leadingIcon="solar:pen-linear" onClick={() => {}}>
+          <Button variant="secondary" size="L" leadingIcon="solar:pen-linear" onClick={() => onEdit?.(plan)}>
             Edit
           </Button>
           <span className={styles.headerDivider} />
@@ -116,26 +115,39 @@ export function InsurancePlanViewDrawer({ plan, onClose }) {
             </>
           ) : (
             <>
-              <Section title="In Network Coverage">
-                <InfoField label="Deductible" value={plan.inNetDeductible ? `$${plan.inNetDeductible}` : undefined} />
-                <InfoField label="OOP Max" value={plan.inNetOopMax ? `$${plan.inNetOopMax}` : undefined} />
-                <InfoField label="PCP Copay" value={plan.inNetCopayPcp ? `$${plan.inNetCopayPcp}` : undefined} />
-                <InfoField label="Specialist Copay" value={plan.inNetCopaySpecialist ? `$${plan.inNetCopaySpecialist}` : undefined} />
-                <InfoField label="Urgent Care Copay" value={plan.inNetCopayUrgent ? `$${plan.inNetCopayUrgent}` : undefined} />
-                <InfoField label="ER Copay" value={plan.inNetCopayEr ? `$${plan.inNetCopayEr}` : undefined} />
-                <InfoField label="PCP Coinsurance" value={plan.inNetCoinsurancePcp ? `$${plan.inNetCoinsurancePcp}` : undefined} />
-                <InfoField label="Specialist Coinsurance" value={plan.inNetCoinsuranceSpecialist ? `$${plan.inNetCoinsuranceSpecialist}` : undefined} />
-                <InfoField label="Urgent Care Coinsurance" value={plan.inNetCoinsuranceUrgent ? `$${plan.inNetCoinsuranceUrgent}` : undefined} />
-                <InfoField label="ER Coinsurance" value={plan.inNetCoinsuranceEr ? `$${plan.inNetCoinsuranceEr}` : undefined} />
-              </Section>
-              <Section title="Out of Network Coverage">
-                <InfoField label="Deductible" value={plan.outNetDeductible ? `$${plan.outNetDeductible}` : undefined} />
-                <InfoField label="OOP Max" value={plan.outNetOopMax ? `$${plan.outNetOopMax}` : undefined} />
-                <InfoField label="PCP Copay" value={plan.outNetCopayPcp ? `$${plan.outNetCopayPcp}` : undefined} />
-                <InfoField label="Specialist Copay" value={plan.outNetCopaySpecialist ? `$${plan.outNetCopaySpecialist}` : undefined} />
-                <InfoField label="Urgent Care Copay" value={plan.outNetCopayUrgent ? `$${plan.outNetCopayUrgent}` : undefined} />
-                <InfoField label="ER Copay" value={plan.outNetCopayEr ? `$${plan.outNetCopayEr}` : undefined} />
-              </Section>
+              {(plan.tiers?.length ? plan.tiers : [plan]).map((tier, i) => (
+                <div key={tier.id ?? i}>
+                  {plan.tiers?.length > 1 && (
+                    <div className={styles.tierViewHeader}>
+                      Tier {i + 1}{tier.tierName ? `: ${tier.tierName}` : ''}
+                    </div>
+                  )}
+                  <Section title="In Network Coverage">
+                    <InfoField label="Deductible" value={tier.inNetDeductible ? `$${tier.inNetDeductible}` : undefined} />
+                    <InfoField label="OOP Max" value={tier.inNetOopMax ? `$${tier.inNetOopMax}` : undefined} />
+                    <InfoField label="PCP Copay" value={tier.inNetCopayPcp ? `$${tier.inNetCopayPcp}` : undefined} />
+                    <InfoField label="Specialist Copay" value={tier.inNetCopaySpecialist ? `$${tier.inNetCopaySpecialist}` : undefined} />
+                    <InfoField label="Urgent Care Copay" value={tier.inNetCopayUrgent ? `$${tier.inNetCopayUrgent}` : undefined} />
+                    <InfoField label="ER Copay" value={tier.inNetCopayEr ? `$${tier.inNetCopayEr}` : undefined} />
+                    <InfoField label="PCP Coinsurance" value={tier.inNetCoinsurancePcp ? `${tier.inNetCoinsurancePcp}%` : undefined} />
+                    <InfoField label="Specialist Coinsurance" value={tier.inNetCoinsuranceSpecialist ? `${tier.inNetCoinsuranceSpecialist}%` : undefined} />
+                    <InfoField label="Urgent Care Coinsurance" value={tier.inNetCoinsuranceUrgent ? `${tier.inNetCoinsuranceUrgent}%` : undefined} />
+                    <InfoField label="ER Coinsurance" value={tier.inNetCoinsuranceEr ? `${tier.inNetCoinsuranceEr}%` : undefined} />
+                  </Section>
+                  <Section title="Out of Network Coverage">
+                    <InfoField label="Deductible" value={tier.outNetDeductible ? `$${tier.outNetDeductible}` : undefined} />
+                    <InfoField label="OOP Max" value={tier.outNetOopMax ? `$${tier.outNetOopMax}` : undefined} />
+                    <InfoField label="PCP Copay" value={tier.outNetCopayPcp ? `$${tier.outNetCopayPcp}` : undefined} />
+                    <InfoField label="Specialist Copay" value={tier.outNetCopaySpecialist ? `$${tier.outNetCopaySpecialist}` : undefined} />
+                    <InfoField label="Urgent Care Copay" value={tier.outNetCopayUrgent ? `$${tier.outNetCopayUrgent}` : undefined} />
+                    <InfoField label="ER Copay" value={tier.outNetCopayEr ? `$${tier.outNetCopayEr}` : undefined} />
+                    <InfoField label="PCP Coinsurance" value={tier.outNetCoinsurancePcp ? `${tier.outNetCoinsurancePcp}%` : undefined} />
+                    <InfoField label="Specialist Coinsurance" value={tier.outNetCoinsuranceSpecialist ? `${tier.outNetCoinsuranceSpecialist}%` : undefined} />
+                    <InfoField label="Urgent Care Coinsurance" value={tier.outNetCoinsuranceUrgent ? `${tier.outNetCoinsuranceUrgent}%` : undefined} />
+                    <InfoField label="ER Coinsurance" value={tier.outNetCoinsuranceEr ? `${tier.outNetCoinsuranceEr}%` : undefined} />
+                  </Section>
+                </div>
+              ))}
             </>
           )}
 
@@ -150,10 +162,10 @@ export function InsurancePlanViewDrawer({ plan, onClose }) {
         <InsuranceCardPreview
           data={plan}
           logoPreviewUrl={plan.logoPreviewUrl}
+          tpaLogoPreviewUrl={plan.tpaLogoPreviewUrl}
           cardTheme={cardTheme}
-          onThemeChange={undefined}
-          maskMemberId={maskMemberId}
-          onMaskChange={setMaskMemberId}
+          logoChoice={plan.logoChoice}
+          coverageFamily={plan.coverageFamily}
         />
       </div>
 

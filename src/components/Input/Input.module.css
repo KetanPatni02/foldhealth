@@ -50,10 +50,10 @@
   cursor: default;
 }
 
-/* Error variant */
+/* Error variant — red border only, background stays white */
 .inputError {
   border-color: var(--status-error);
-  background: var(--status-error-light);
+  background: var(--neutral-0);
 }
 
 .inputError:focus {
