@@ -1,9 +1,10 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Button } from '../../components/Button/Button';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Pagination } from '../../components/Pagination/Pagination';
+import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
 import { ApcmBillingRow } from './ApcmBillingRow';
 import { AttestationModal } from './AttestationModal';
 import { useAppStore } from '../../store/useAppStore';
@@ -26,6 +27,11 @@ export function ApcmBillingTable({ searchQuery = '' }) {
   const fetchApcmPatients = useAppStore(s => s.fetchApcmPatients);
 
   const [patients, setPatients] = useState([]);
+  // Loading gate — true until the first fetch settles. Seeded from cached
+  // store data so revisiting the tab (data already present) skips the
+  // skeleton, while a cold mount shows it from the very first paint.
+  const [didFetch, setDidFetch] = useState(() => storePatients.length > 0);
+  const prevLoading = useRef(false);
 
   // Fetch from Supabase on first mount; falls back to local mock on error.
   useEffect(() => {
@@ -34,6 +40,14 @@ export function ApcmBillingTable({ searchQuery = '' }) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Mark the first fetch as settled once loading flips true → false.
+  useEffect(() => {
+    if (prevLoading.current && !apcmPatientsLoading) setDidFetch(true);
+    prevLoading.current = apcmPatientsLoading;
+  }, [apcmPatientsLoading]);
+
+  const isLoading = apcmPatientsLoading || !didFetch;
 
   // Sync store → local state once data arrives (local state handles UI mutations).
   useEffect(() => {
@@ -140,7 +154,13 @@ export function ApcmBillingTable({ searchQuery = '' }) {
               </tr>
             </thead>
             <tbody>
-              {paginated.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={12} className={styles.loadingCell}>
+                    <TableSkeleton rows={perPage} />
+                  </td>
+                </tr>
+              ) : paginated.length === 0 ? (
                 <tr>
                   <td colSpan={12}>
                     <div className={styles.empty}>
@@ -174,7 +194,7 @@ export function ApcmBillingTable({ searchQuery = '' }) {
         {/* Shared Pagination component (controlled mode) — same UI as
             the TOC Worklist + HCC. APCM owns its page state locally, so
             it passes currentPage/perPage/totalItems + change handlers. */}
-        {rows.length > 0 && (
+        {!isLoading && rows.length > 0 && (
           <Pagination
             currentPage={safePage}
             perPage={perPage}
