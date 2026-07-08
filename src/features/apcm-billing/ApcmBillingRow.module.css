@@ -74,8 +74,19 @@
 
 /* Member cell — mirrors TOC Worklist (WorklistRow.module.css). */
 .patientCell { display: flex; align-items: center; gap: 12px; }
-.patientInfo { display: flex; flex-direction: column; }
-.patientName { font-size: 14px; font-weight: 500; color: var(--neutral-400); white-space: nowrap; }
+.patientInfo { display: flex; flex-direction: column; align-items: flex-start; }
+.patientName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  white-space: nowrap;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.patientName:hover { color: var(--primary-300); text-decoration: underline; }
 .patientMeta { font-size: 13px; color: var(--neutral-200); margin-top: 3px; }
 
 /* Language badge — inline plain-text link inside .patientMeta. */

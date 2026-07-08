@@ -36,6 +36,7 @@ export const ActionButton = forwardRef(function ActionButton({
   chevron = false,
   chevronOpen = false,
   tooltipBelow = false,
+  tooltipLeft = false,
   className,
   iconColor,
   ...rest
@@ -70,7 +71,7 @@ export const ActionButton = forwardRef(function ActionButton({
 
       {/* Styled tooltip bubble */}
       {tooltip && (
-        <span className={`${styles.tooltip} ${tooltipBelow ? styles.tooltipBelow : ''}`}>{tooltip}</span>
+        <span className={`${styles.tooltip} ${tooltipBelow ? styles.tooltipBelow : ''} ${tooltipLeft ? styles.tooltipLeft : ''}`}>{tooltip}</span>
       )}
 
       {/* Notification badge (orange with count) */}

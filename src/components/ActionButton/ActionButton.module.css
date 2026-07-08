@@ -182,6 +182,20 @@
   visibility: visible;
 }
 
+/* Right-anchor the tooltip so it opens leftward — for buttons at a
+   container's right edge, this keeps the bubble from overflowing (and
+   inflating horizontal scroll width). */
+.tooltipLeft {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+.tooltipLeft::after {
+  left: auto;
+  right: 12px;
+  transform: none;
+}
+
 /* Flip tooltip to appear below the button */
 .tooltipBelow {
   bottom: auto;

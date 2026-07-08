@@ -13,7 +13,7 @@
   overscroll-behavior: none;
 }
 
-/* ── Filter bar — multiple inline filters. Wraps on narrow viewports. */
+/* ── Filter bar — ICD + provider filters. Wraps on narrow viewports. */
 .filterBar {
   display: flex;
   align-items: center;
@@ -24,6 +24,10 @@
   background: var(--neutral-0);
   flex-shrink: 0;
 }
+
+/* DS Select wrappers in the filter bar. */
+.icdFilterSelect { min-width: 320px; }
+.providerFilterSelect { min-width: 200px; }
 
 .filterSelect {
   height: 30px;

@@ -101,7 +101,7 @@ function ReasonsCell({ reasons }) {
   );
 }
 
-export function ApcmBillingRow({ patient, isSelected, isActive, onSelect, onTriggerBill, onCommentChange, onMarkChronic }) {
+export function ApcmBillingRow({ patient, isSelected, isActive, onSelect, onTriggerBill, onCommentChange, onMarkChronic, onOpenPatient }) {
   const langCode = (patient.language || 'en').toUpperCase();
   const langFull = LANG_MAP[patient.language] || patient.language;
   const patientInitials = getInitials(patient.name);
@@ -169,7 +169,14 @@ export function ApcmBillingRow({ patient, isSelected, isActive, onSelect, onTrig
         <div className={styles.patientCell}>
           <Avatar variant="patient" initials={patientInitials} />
           <div className={styles.patientInfo}>
-            <span className={styles.patientName}>{patient.name}</span>
+            <button
+              type="button"
+              className={styles.patientName}
+              onClick={(e) => { e.stopPropagation(); onOpenPatient?.(); }}
+              title="View patient"
+            >
+              {patient.name}
+            </button>
             <div className={styles.patientMeta}>
               {patient.memberId} •{' '}
               <button
@@ -274,6 +281,7 @@ export function ApcmBillingRow({ patient, isSelected, isActive, onSelect, onTrig
           <ActionButton
             icon="solar:bill-list-linear"
             size="L"
+            tooltipLeft
             state={cannotAttest ? 'disabled' : 'active'}
             tooltip={cannotAttest
               ? 'Cannot attest — no qualifying Dx documented in the last 36 months'
@@ -288,6 +296,7 @@ export function ApcmBillingRow({ patient, isSelected, isActive, onSelect, onTrig
           <ActionButton
             icon="solar:menu-dots-linear"
             size="L"
+            tooltipLeft
             tooltip="More options"
             onClick={e => { e.stopPropagation(); }}
           />

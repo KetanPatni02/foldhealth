@@ -4,6 +4,7 @@ import { Button } from '../../components/Button/Button';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Pagination } from '../../components/Pagination/Pagination';
+import { Select } from '../../components/Select/Select';
 import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
 import { ApcmBillingRow } from './ApcmBillingRow';
 import { AttestationModal } from './AttestationModal';
@@ -30,11 +31,12 @@ const CPT_RULES = [
   { label: '2+ chronic, QMB (dual)', code: 'G0558', fee: 110 },
 ];
 
-export function ApcmBillingTable({ searchQuery = '' }) {
+export function ApcmBillingTable({ searchQuery = '', filtersOpen = false }) {
   const activeTab = 'new-changes';
   const storePatients = useAppStore(s => s.apcmPatients);
   const apcmPatientsLoading = useAppStore(s => s.apcmPatientsLoading);
   const fetchApcmPatients = useAppStore(s => s.fetchApcmPatients);
+  const openQuickView = useAppStore(s => s.openQuickView);
 
   const [patients, setPatients] = useState([]);
   // Loading gate — true until the first fetch settles. Seeded from cached
@@ -67,10 +69,8 @@ export function ApcmBillingTable({ searchQuery = '' }) {
   }, [storePatients, patients.length]);
   const [comments, setComments] = useState({});
   const [activeFilters] = useState({});
-  // Inline filters. Member covers name/memberId/EHR ID in one input; the
-  // parent BillingPanel's search icon still writes to `searchQuery` and both
-  // are AND-ed at query time.
-  const [memberFilter, setMemberFilter] = useState('');
+  // Inline filters. Member name/ID/EHR ID search lives in the panel's search
+  // bar (searchQuery); the filter bar holds the ICD + provider filters.
   const [icdFilter, setIcdFilter] = useState('');
   const [providerFilter, setProviderFilter] = useState('');
 
@@ -130,22 +130,31 @@ export function ApcmBillingTable({ searchQuery = '' }) {
       );
     };
     result = applyMemberSearch(searchQuery, result);
-    result = applyMemberSearch(memberFilter, result);
 
-    if (icdFilter.trim()) {
-      const q = icdFilter.toLowerCase();
+    if (icdFilter) {
+      // icdFilter is an exact ICD code chosen from the searchable Select.
       // Match only against the codes actually visible in the row — never
       // against hidden ambiguous-candidate codes the user can't see or act on.
-      // Unresolved-mapping ICDs have `code: null` — match on description only.
-      result = result.filter(p => visibleIcdsOf(p).some(c =>
-        (c.code || '').toLowerCase().includes(q) ||
-        (c.description || '').toLowerCase().includes(q)
-      ));
+      result = result.filter(p => visibleIcdsOf(p).some(c => c.code === icdFilter));
     }
     if (providerFilter) result = result.filter(p => p.renderingProvider === providerFilter);
     if (activeFilters.cpt) result = result.filter(p => p.cptCode === activeFilters.cpt);
     return result;
-  }, [patients, activeTab, searchQuery, memberFilter, icdFilter, providerFilter, activeFilters]);
+  }, [patients, activeTab, searchQuery, icdFilter, providerFilter, activeFilters]);
+
+  // Distinct ICD options for the searchable Select — every code visible in the
+  // table, with its description. Sorted by code for a stable list.
+  const icdOptions = useMemo(() => {
+    const map = new Map();
+    for (const p of patients) {
+      for (const c of visibleIcdsOf(p)) {
+        if (c.code && !map.has(c.code)) map.set(c.code, c.description || '');
+      }
+    }
+    return [...map.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([code, desc]) => ({ value: code, label: desc ? `${code} — ${desc}` : code }));
+  }, [patients]);
 
   const rows = useMemo(() =>
     filtered.map(p => ({ ...p, comment: comments[p.id] ?? p.comment })),
@@ -166,7 +175,7 @@ export function ApcmBillingTable({ searchQuery = '' }) {
     return (p.icdCodes || []).every(c => c.documentedInLast36Months === false);
   };
 
-  const anyFilterActive = Boolean(memberFilter || icdFilter || providerFilter);
+  const anyFilterActive = Boolean(icdFilter || providerFilter);
   // IDs of currently-filtered rows that can be attested (excludes Case C
   // blocked patients). Used by the filter-bar Trigger Attestation button.
   const attestableFilteredIds = useMemo(
@@ -181,20 +190,8 @@ export function ApcmBillingTable({ searchQuery = '' }) {
   // bulk action (e.g. typing "E11" still resolves cleanly to E11.9 because
   // E11.8/E11.65 candidates are hidden on Case A rows anyway).
   const bulkTarget = useMemo(() => {
-    if (!icdFilter.trim()) return null;
-    const q = icdFilter.toLowerCase();
-    const codes = new Set();
-    for (const p of rows) {
-      for (const c of visibleIcdsOf(p)) {
-        // Skip unresolved (code: null) — no code to bulk-mark against.
-        if (!c.code) continue;
-        if (c.code.toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q)) {
-          codes.add(c.code);
-        }
-      }
-    }
-    if (codes.size !== 1) return null;
-    const code = [...codes][0];
+    if (!icdFilter) return null;
+    const code = icdFilter; // exact code from the Select
     const actionable = rows.filter(p =>
       visibleIcdsOf(p).some(c => c.code === code && c.status === 'acute')
     ).length;
@@ -286,87 +283,57 @@ export function ApcmBillingTable({ searchQuery = '' }) {
     <>
       <div className={styles.wrap}>
 
-        {/* ── Filter bar — Member (name/ID/EHR), ICD, Provider ── */}
-        <div className={styles.filterBar}>
-          <div className={styles.icdFilterInput}>
-            <Icon name="solar:user-linear" size={13} color="var(--neutral-300)" />
-            <input
-              type="text"
-              placeholder="Filter by member name, ID, or EHR ID…"
-              value={memberFilter}
-              onChange={e => { setMemberFilter(e.target.value); setCurrentPage(1); }}
-            />
-            {memberFilter && (
-              <button
-                type="button"
-                className={styles.icdFilterClear}
-                title="Clear filter"
-                onClick={() => setMemberFilter('')}
-              >
-                <Icon name="solar:close-circle-linear" size={14} color="currentColor" />
-              </button>
-            )}
-          </div>
-
-          <div className={styles.icdFilterInput}>
-            <Icon name="solar:magnifer-linear" size={13} color="var(--neutral-300)" />
-            <input
-              type="text"
-              placeholder="Filter by ICD code or description…"
+        {/* ── Filter bar — toggled by the panel's Filter button. Holds the
+            ICD + provider filters; member (name/ID/EHR) search lives in the
+            panel search bar. ── */}
+        {filtersOpen && (
+          <div className={styles.filterBar}>
+            <Select
+              className={styles.icdFilterSelect}
+              searchable
+              searchPlaceholder="Search ICD code or description…"
+              placeholder="Filter by ICD code…"
               value={icdFilter}
-              onChange={e => { setIcdFilter(e.target.value); setCurrentPage(1); }}
+              options={icdOptions}
+              onChange={v => { setIcdFilter(v); setCurrentPage(1); }}
             />
-            {icdFilter && (
+
+            <Select
+              className={styles.providerFilterSelect}
+              placeholder="All providers"
+              value={providerFilter}
+              options={[{ value: '', label: 'All providers' }, ...PROVIDERS.map(p => ({ value: p, label: p }))]}
+              onChange={v => { setProviderFilter(v); setCurrentPage(1); }}
+            />
+
+            {anyFilterActive && (
               <button
                 type="button"
-                className={styles.icdFilterClear}
-                title="Clear filter"
-                onClick={() => setIcdFilter('')}
+                className={styles.filterClearAll}
+                onClick={() => { setIcdFilter(''); setProviderFilter(''); setCurrentPage(1); }}
               >
-                <Icon name="solar:close-circle-linear" size={14} color="currentColor" />
+                Clear filters
               </button>
             )}
+
+            {/* Filter-scoped chronic-mark. Trigger Attestation is not surfaced here —
+                it lives in the floating bulk bar, driven by ICD-column marks
+                (each chronic-mark auto-selects the row) or the leftmost row
+                checkbox. */}
+            {bulkTarget && bulkTarget.actionable > 0 && (
+              <div className={styles.bulkFilterAction}>
+                <Button
+                  variant="secondary"
+                  size="S"
+                  leadingIcon="solar:check-circle-linear"
+                  onClick={handleBulkMarkChronic}
+                >
+                  Mark {bulkTarget.code} chronic on {bulkTarget.actionable} patient{bulkTarget.actionable === 1 ? '' : 's'}
+                </Button>
+              </div>
+            )}
           </div>
-
-          <select
-            className={styles.filterSelect}
-            value={providerFilter}
-            onChange={e => { setProviderFilter(e.target.value); setCurrentPage(1); }}
-            aria-label="Filter by rendering provider"
-          >
-            <option value="">All providers</option>
-            {PROVIDERS.map(p => (
-              <option key={p} value={p}>{p}</option>
-            ))}
-          </select>
-
-          {(memberFilter || icdFilter || providerFilter) && (
-            <button
-              type="button"
-              className={styles.filterClearAll}
-              onClick={() => { setMemberFilter(''); setIcdFilter(''); setProviderFilter(''); setCurrentPage(1); }}
-            >
-              Clear filters
-            </button>
-          )}
-
-          {/* Filter-scoped chronic-mark. Trigger Attestation is not surfaced here —
-              it lives in the floating bulk bar, driven by ICD-column marks
-              (each chronic-mark auto-selects the row) or the leftmost row
-              checkbox. */}
-          {bulkTarget && bulkTarget.actionable > 0 && (
-            <div className={styles.bulkFilterAction}>
-              <Button
-                variant="secondary"
-                size="S"
-                leadingIcon="solar:check-circle-linear"
-                onClick={handleBulkMarkChronic}
-              >
-                Mark {bulkTarget.code} chronic on {bulkTarget.actionable} patient{bulkTarget.actionable === 1 ? '' : 's'}
-              </Button>
-            </div>
-          )}
-        </div>
+        )}
 
         {/* ── Table ── */}
         <div className={styles.scrollWrap}>
@@ -446,6 +413,12 @@ export function ApcmBillingTable({ searchQuery = '' }) {
                     onTriggerBill={handleTriggerBill}
                     onCommentChange={handleCommentChange}
                     onMarkChronic={handleMarkChronic}
+                    onOpenPatient={() => openQuickView({
+                      id: patient.id,
+                      name: patient.name,
+                      memberId: patient.memberId,
+                      language: patient.language,
+                    })}
                   />
                 ))
               )}
