@@ -1,0 +1,16 @@
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 16px; }
+.filters { display: flex; align-items: center; gap: 8px; }
+.filterBtn { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 4px 8px; border-radius: 4px; border: 0.5px solid var(--neutral-150); background: var(--neutral-0); font-size: 14px; color: var(--neutral-300); font-family: 'Inter', sans-serif; cursor: pointer; white-space: nowrap; }
+.filterActive { background: var(--primary-50); border-color: var(--primary-300); color: var(--primary-300); }
+.searchWrap { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border-radius: 4px; border: 0.5px solid var(--neutral-200); background: var(--neutral-0); width: 300px; }
+.searchInput { border: none; outline: none; background: transparent; font-size: 14px; font-family: 'Inter', sans-serif; color: var(--neutral-400); flex: 1; min-width: 0; }
+.searchInput::placeholder { color: var(--neutral-200); }
+
+.list { display: flex; flex-direction: column; gap: 8px; }
+.card { display: flex; gap: 8px; align-items: flex-start; padding: 8px 12px; border: 0.5px solid var(--neutral-150); border-radius: 8px; }
+.cardBody { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0; }
+.cardTop { display: flex; align-items: center; gap: 6px; }
+.avatar { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: var(--secondary-50); border: 0.5px solid var(--secondary-200); font-size: 14px; color: var(--secondary-300); font-family: 'Inter', sans-serif; flex-shrink: 0; }
+.providerName { font-size: 14px; font-weight: 500; color: var(--neutral-500); font-family: 'Inter', sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.roleBadge { display: inline-flex; align-items: center; justify-content: center; height: 22px; min-width: 22px; padding: 2px 6px; border-radius: 4px; background: var(--neutral-50); border: 0.5px solid rgba(111,122,144,0.1); font-size: 14px; color: var(--neutral-300); font-family: 'Inter', sans-serif; white-space: nowrap; flex-shrink: 0; }
+.cardMeta { font-size: 14px; color: var(--neutral-300); font-family: 'Inter', sans-serif; line-height: 1.2; }

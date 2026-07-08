@@ -1,7 +1,7 @@
 .overview { display: flex; flex-direction: column; gap: 24px; padding: 12px; overflow-y: auto; flex: 1; }
 
 /* Cards */
-.card { border: 0.5px solid var(--neutral-100); border-radius: 8px; background: var(--neutral-0); overflow: hidden; }
+.card { border-radius: 8px; background: var(--neutral-0); }
 
 /* Section header */
 .sectionHeader { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; }
@@ -42,3 +42,19 @@
 
 /* Placeholder */
 .placeholderContent { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 40px; color: var(--neutral-200); font-size: 13px; font-family: 'Inter', sans-serif; }
+
+/* Care Plan Recommendations */
+.recHeader { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; }
+.recTitle { font-size: 14px; font-weight: 500; color: var(--neutral-500); font-family: 'Inter', sans-serif; }
+.costLink { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; color: var(--primary-300); font-family: 'Inter', sans-serif; background: none; border: none; cursor: pointer; }
+.recList { display: flex; flex-direction: column; padding: 0 8px 8px; }
+.recItem { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 0.5px solid var(--neutral-100); }
+.recItem:last-child { border-bottom: none; }
+.stepBadge { display: inline-flex; align-items: center; justify-content: center; min-width: 52px; height: 22px; padding: 2px 8px; border-radius: 4px; background: var(--neutral-50); font-size: 12px; font-weight: 500; color: var(--neutral-300); font-family: 'Inter', sans-serif; white-space: nowrap; flex-shrink: 0; }
+.recBody { display: flex; flex-direction: column; gap: 2px; }
+.recItemTitle { font-size: 14px; font-weight: 500; color: var(--neutral-500); font-family: 'Inter', sans-serif; }
+.recConditions { font-size: 13px; color: var(--neutral-300); font-family: 'Inter', sans-serif; }
+
+/* Progress ring in table */
+.progressCell { display: flex; align-items: center; gap: 6px; }
+.newBadge { font-size: 12px; font-weight: 500; color: var(--status-success); background: var(--status-success-light); padding: 2px 8px; border-radius: 4px; }
