@@ -18,6 +18,8 @@ import { memberMatchesFilters } from './filters';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { BulkBar } from '../../components/BulkBar/BulkBar';
 import { BulkChangeAssigneesDialog } from './BulkChangeAssigneesDialog';
+import { HccUploadProgressRibbon } from './upload/HccUploadProgressRibbon';
+import { HccHistoryDrawer } from './HccHistoryDrawer';
 import { StatusLegend } from './StatusLegend';
 import styles from './HccWorklistTable.module.css';
 import rowStyles from './HccWorklistRow.module.css';
@@ -104,6 +106,8 @@ export function HccWorklistTable() {
   const hccMembers = useAppStore(s => s.hccMembers);
   const hccMembersLoading = useAppStore(s => s.hccMembersLoading);
   const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
+  const fetchHccDocuments = useAppStore(s => s.fetchHccDocuments);
+  const openIcdCreation = useAppStore(s => s.openIcdCreation);
   const selectedHccIds = useAppStore(s => s.selectedHccIds);
   const selectAllHcc = useAppStore(s => s.selectAllHcc);
   const clearHccSelected = useAppStore(s => s.clearHccSelected);
@@ -120,6 +124,7 @@ export function HccWorklistTable() {
   const saveHccFilter = useAppStore(s => s.saveHccFilter);
   const renameHccSavedFilter = useAppStore(s => s.renameHccSavedFilter);
   const startHccUpload = useAppStore(s => s.startHccUpload);
+  const openHccHistoryDrawer = useAppStore(s => s.openHccHistoryDrawer);
   const hccHiddenCols = useAppStore(s => s.hccHiddenCols);
   const toggleHccColumn = useAppStore(s => s.toggleHccColumn);
   const hccColumnOrder = useAppStore(s => s.hccColumnOrder);
@@ -151,6 +156,7 @@ export function HccWorklistTable() {
   const colCfgBtnRef = useRef(null);
 
   useEffect(() => { fetchHccMembers(); }, [fetchHccMembers]);
+  useEffect(() => { fetchHccDocuments?.(); }, [fetchHccDocuments]);
 
   // Whenever the active filter/sort/search/due-date changes, jump back to
   // page 1 so the user doesn't end up on an empty page after the result set
@@ -217,6 +223,7 @@ export function HccWorklistTable() {
 
   return (
     <div className={styles.wrap}>
+      <HccUploadProgressRibbon />
       <div className={styles.tabBar}>
         <div className={styles.tabLeft}>
           <InlineEditable
@@ -265,23 +272,23 @@ export function HccWorklistTable() {
           />
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="solar:clock-circle-linear"
+            icon="solar:history-linear"
             size="L"
             tooltip="History"
             tooltipBelow
-            onClick={() => showToast('History — coming soon')}
+            onClick={openHccHistoryDrawer}
           />
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="solar:upload-square-linear"
+            icon="solar:upload-minimalistic-linear"
             size="L"
             tooltip="Upload Document"
             tooltipBelow
-            onClick={() => startHccUpload(null)}
+            onClick={() => openIcdCreation?.()}
           />
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="solar:download-square-linear"
+            icon="solar:file-download-linear"
             size="L"
             tooltip="Export"
             tooltipBelow
@@ -412,6 +419,7 @@ export function HccWorklistTable() {
         onClose={() => setBulkAssigneeOpen(false)}
         onApplied={() => { setBulkAssigneeOpen(false); clearHccSelected(); }}
       />
+      <HccHistoryDrawer />
 
       {sortPop && (
         <SortPopover

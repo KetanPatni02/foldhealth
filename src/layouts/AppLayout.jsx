@@ -14,6 +14,7 @@ import { QueueSummaryBar } from '../features/toc-queue/QueueSummaryBar';
 import { HccWorklistTable } from '../features/hcc/HccWorklistTable';
 import { HedisWorklistTable } from '../features/hedis-worklist/HedisWorklistTable';
 import { AllPatientsTable } from '../features/all-patients/AllPatientsTable';
+import { AwvWorklistTable } from '../features/awv-worklist/AwvWorklistTable';
 import { PopulationGroupsView } from '../features/population-groups/PopulationGroupsView';
 import { PgProcessingHost } from '../features/population-groups/PgProcessingHost';
 import { SchedulingListTable } from '../features/scheduling-list/SchedulingListTable';
@@ -59,6 +60,9 @@ const ComponentWizardDrawer= lz(() => import('../features/settings/panels/Compon
 const DiagPanel            = lz(() => import('../features/hcc/DiagPanel/DiagPanel'),                       'DiagPanel');
 const UploadChartDrawer    = lz(() => import('../features/hcc/UploadChartDrawer'),                         'UploadChartDrawer');
 const UploadDocumentDrawer = lz(() => import('../features/hcc/upload/UploadDocumentDrawer'),               'UploadDocumentDrawer');
+const HccUploadProcessingHost = lz(() => import('../features/hcc/upload/HccUploadProcessingHost'),         'HccUploadProcessingHost');
+const HccSftpReviewDrawer  = lz(() => import('../features/hcc/upload/HccSftpReviewDrawer'),                'HccSftpReviewDrawer');
+const IcdCreationScreen    = lz(() => import('../features/hcc/upload/IcdCreationScreen'),                  'IcdCreationScreen');
 const ClaimPreviewDrawer   = lz(() => import('../features/hcc/ClaimPreviewDrawer'),                        'ClaimPreviewDrawer');
 
 // Placeholder while a lazy chunk is in flight. Empty div keeps layout stable.
@@ -146,15 +150,16 @@ function PopulationView() {
 
   const isHcc = activeSubnavList === 'HCC';
   const isHedis = activeSubnavList === 'HEDIS';
+  const isAwv = activeSubnavList === 'AWV';
   const isAllPatients = activeSubnavList === 'All Patients';
   const isPopulationGroup = activeSubnavList.startsWith('pg:');
   const isSchedulingList = activeSubnavList === 'Scheduling List';
   const TOC_LISTS = ['TOC'];
-  const isToc = TOC_LISTS.includes(activeSubnavList) || (!isHcc && !isHedis && !isAllPatients && !isSchedulingList && !isPopulationGroup && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'AWV', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
-  const isComingSoon = ['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'AWV', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList);
+  const isToc = TOC_LISTS.includes(activeSubnavList) || (!isHcc && !isHedis && !isAwv && !isAllPatients && !isSchedulingList && !isPopulationGroup && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
+  const isComingSoon = ['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList);
   const pgFilter = activeSubnavList === 'pg:Static' ? 'Static' : activeSubnavList === 'pg:Dynamic' ? 'Dynamic' : 'All';
 
-  const chromeless = isHcc || isHedis || isComingSoon || isPopulationGroup || isSchedulingList;
+  const chromeless = isHcc || isHedis || isAwv || isComingSoon || isPopulationGroup || isSchedulingList;
 
   return (
     <div className={styles.main}>
@@ -165,20 +170,22 @@ function PopulationView() {
         <div className={styles.content}>
           {!chromeless && <TabBar />}
           {!chromeless && showFilterBar && <FilterBar />}
-          {!isHcc && !isHedis && !isAllPatients && !isComingSoon && !isSchedulingList && !isPopulationGroup && activeTab === 'toc-queue' && <QueueSummaryBar />}
+          {!isHcc && !isHedis && !isAwv && !isAllPatients && !isComingSoon && !isSchedulingList && !isPopulationGroup && activeTab === 'toc-queue' && <QueueSummaryBar />}
           {isSchedulingList
             ? <SchedulingListTable />
             : isHcc
               ? <HccWorklistTable />
               : isHedis
                 ? <HedisWorklistTable />
-                : isAllPatients
-                  ? <AllPatientsTable />
-                  : isPopulationGroup
-                    ? <PopulationGroupsView activeFilter={pgFilter} onToggleSidebar={toggleSubnav} />
-                    : isComingSoon
-                      ? <ComingSoonState listName={activeSubnavList} />
-                      : (activeTab === 'toc-worklist' ? <WorklistTable /> : <QueueTable />)}
+                : isAwv
+                  ? <AwvWorklistTable />
+                  : isAllPatients
+                    ? <AllPatientsTable />
+                    : isPopulationGroup
+                      ? <PopulationGroupsView activeFilter={pgFilter} onToggleSidebar={toggleSubnav} />
+                      : isComingSoon
+                        ? <ComingSoonState listName={activeSubnavList} />
+                        : (activeTab === 'toc-worklist' ? <WorklistTable /> : <QueueTable />)}
           {!chromeless && <Pagination />}
         </div>
       </div>
@@ -479,6 +486,9 @@ export function AppLayout() {
         {diagPanelOpen && <DiagPanel />}
         <UploadChartDrawer />{/* mounts itself only when hccUploadMember is set */}
         <UploadDocumentDrawer />{/* mounts itself only when hccUploadSession is set */}
+        <HccUploadProcessingHost />{/* floats bottom-right while the upload is minimized */}
+        <HccSftpReviewDrawer />{/* mounts itself only when hccSftpReviewOpen is true */}
+        <IcdCreationScreen />{/* mounts itself only when icdCreationOpen is true */}
         <ClaimPreviewDrawer />{/* mounts itself only when hccClaimPreview.open is true */}
         {quickViewPatient && <QuickViewDrawer />}
         <PgProcessingHost />

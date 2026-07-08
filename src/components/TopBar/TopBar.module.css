@@ -178,6 +178,24 @@
   gap: 10px;
 }
 
+/* Bell wrap — relative so the unread dot + popover position to the
+   bell button. */
+.bellWrap {
+  position: relative;
+  display: inline-flex;
+}
+.bellBadge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status-error, #e54848);
+  border: 1.5px solid #fff;
+  pointer-events: none;
+}
+
 .iconBtn {
   width: 28px;
   height: 28px;

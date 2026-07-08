@@ -1,0 +1,53 @@
+.strip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.size_S {
+  gap: 4px;
+}
+
+.dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  font: inherit;
+  cursor: default;
+  line-height: 1;
+}
+
+.interactive {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.interactive:hover {
+  background: var(--neutral-50, #F6F7F8);
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+
+.passAi {
+  color: var(--primary-300, #8C5AE2);
+}
+
+.passSupport {
+  color: var(--status-success, #2E8A4E);
+}
+
+.fail {
+  color: var(--status-error, #D72825);
+}
+
+.pending {
+  color: var(--neutral-200, #C8CFDA);
+}

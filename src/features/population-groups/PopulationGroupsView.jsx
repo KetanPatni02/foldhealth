@@ -6,6 +6,10 @@
 
 import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { Icon } from '../../components/Icon/Icon';
+import { ConfirmDialog } from '../../components/Modal/ConfirmDialog';
+import { Badge } from '../../components/Badge/Badge';
+import { CloseIcon } from '../../components/Icon/CloseIcon';
+import { UpdatePopGroupDrawer } from './UpdatePopGroupDrawer';
 import { Input as FoldInput } from '../../components/Input/Input';
 import { Textarea } from '../../components/Textarea/Textarea';
 import { Checkbox } from '../../components/ui/checkbox';
@@ -21,7 +25,7 @@ import { useTableSort } from '../../components/Table/useTableSort';
 
 import SectionAccordion   from './components/SectionAccordion.jsx';
 import FileChipCard        from './components/FileChipCard.jsx';
-import { TableIcon, MiniCloseIcon, Spinner, ReplaceIcon, FileErrorIllustration, CheckRoundIcon } from './components/icons.jsx';
+import { TableIcon, MiniCloseIcon, Spinner, ReplaceIcon, FileErrorIllustration } from './components/icons.jsx';
 import PaginationBar       from './components/PaginationBar.jsx';
 import { FOLD_DB, FOLD_DB_MAP, loadFoldDbFromRows } from './data/fold-db.js';
 import { supabase } from '../../lib/supabase';
@@ -762,8 +766,136 @@ function FilePreviewCard({ fileName, sizeMB, onReplace }) {
   );
 }
 
-/* All-members-matched review state (Figma 2023:9479) — file preview + collapsible matched list. */
-function AllMatchedPanel({ matched, uploadFile, onReupload }) {
+/* One matched/extracted patient row. Shows ID • Age(DOB); the green tick flips
+   to a red remove (×) on hover when onRemove is provided. */
+/* Stable signature of a group's editable fields — used to detect unsaved edits. */
+function groupSignature({ name, description, memberStatus, memberIds }) {
+  return JSON.stringify({
+    name: (name || '').trim(),
+    description: (description || '').trim(),
+    memberStatus: memberStatus || 'All Status',
+    members: (memberIds || []).map(String).sort(),
+  });
+}
+
+function MatchedRow({ p, isLast, onRemove }) {
+  const [hover, setHover] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const initials = (p.name || '').split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
+  const doRemove = () => { setConfirmOpen(false); setRemoving(true); setTimeout(() => onRemove?.(p), 350); };
+  return (
+    <div
+      className={removing ? 'row-removing' : ''}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderBottom: isLast ? 'none' : '0.5px solid var(--neutral-100)', background: (hover || confirmOpen) ? 'var(--primary-25)' : 'transparent', transition:'background 0.1s' }}
+    >
+      <div style={{ display:'flex', alignItems:'center', gap:8, flex:'1 0 0', minWidth:0 }}>
+        <div style={{ width:40, height:40, borderRadius:8, background:'var(--primary-50)', border:'0.5px solid var(--primary-200)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:16, fontWeight:400, color:'var(--primary-300)' }}>
+          {initials}
+        </div>
+        <div style={{ flex:'1 0 0', minWidth:0 }}>
+          <div style={{ fontSize:14, fontWeight:500, color:'var(--neutral-400)', lineHeight:1.2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</div>
+          {/* ID • Age(DOB) — full identity, shown consistently in review + edit */}
+          <div style={{ display:'flex', alignItems:'center', gap:2, fontSize:14, fontWeight:400, color:'var(--neutral-200)', lineHeight:1.2, marginTop:4, whiteSpace:'nowrap', overflow:'hidden' }}>
+            <span style={{ overflow:'hidden', textOverflow:'ellipsis' }}>{p.id}</span>
+            <span>•</span>
+            <span>{fmtAge(p.dob)}</span>
+          </div>
+        </div>
+      </div>
+      {/* edit phase 2 — patient delete disabled in the Create review (kept for reference):
+      {onRemove && !removing && (
+        <button
+          onClick={() => setConfirmOpen(true)}
+          title="Remove patient"
+          style={{ width:24, height:24, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, border:'none', background:'none', padding:0, cursor:'pointer', borderRadius:4 }}
+        >
+          <Icon name="solar:trash-bin-minimalistic-linear" size={20} color="var(--neutral-300)" />
+        </button>
+      )}
+      {confirmOpen && (
+        <ConfirmDialog
+          icon="solar:trash-bin-minimalistic-linear"
+          title="Remove Patient?"
+          description="This Patient will be removed from this Pop group and will need to be added back manually."
+          confirmLabel="Remove Patient"
+          cancelLabel="Cancel"
+          variant="error"
+          onConfirm={doRemove}
+          onCancel={() => setConfirmOpen(false)}
+        />
+      )}
+      */}
+    </div>
+  );
+}
+
+/* Search field above the list — type to find patients from the DB and add them. */
+function AddPatientSearch({ matched, onAdd }) {
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = e => { if (!ref.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+  const have = new Set(matched.map(m => String(m.id).toUpperCase()));
+  const ql = q.trim().toLowerCase();
+  const results = FOLD_DB
+    .filter(p => !have.has(String(p.id).toUpperCase()) && (!ql || p.name.toLowerCase().includes(ql) || String(p.id).toLowerCase().includes(ql)))
+    .slice(0, 50);
+  return (
+    <div ref={ref} style={{ position:'relative', flexShrink:0 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:8, height:36, padding:'0 10px', border:'0.5px solid var(--neutral-200)', borderRadius:6, background:'var(--neutral-0)' }}>
+        <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
+        <input
+          value={q}
+          onChange={e => { setQ(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder="Search and Add Patients"
+          style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:14, fontFamily:'Inter, sans-serif', color:'var(--neutral-400)' }}
+        />
+      </div>
+      {open && results.length > 0 && (
+        <div className="thin-scroll" style={{ position:'absolute', top:'calc(100% + 4px)', left:0, right:0, maxHeight:240, overflowY:'auto', background:'var(--neutral-0)', border:'0.5px solid var(--neutral-150)', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,0.10)', zIndex:2300, padding:4 }}>
+          {results.map(p => (
+            <div
+              key={p.id}
+              onClick={() => { onAdd(p); setQ(''); }}
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'8px', borderRadius:4, cursor:'pointer' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--neutral-50)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <div style={{ width:32, height:32, borderRadius:8, background:'var(--primary-50)', border:'0.5px solid var(--primary-200)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:13, color:'var(--primary-300)' }}>
+                {(p.name || '').split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase()}
+              </div>
+              <div style={{ minWidth:0 }}>
+                <div style={{ fontSize:14, fontWeight:500, color:'var(--neutral-400)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.name}</div>
+                <div style={{ fontSize:12, color:'var(--neutral-200)', whiteSpace:'nowrap' }}>{p.id} • {fmtAge(p.dob)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* All-members-matched review state (Figma 2023:9479) — file preview + matched/extracted list.
+   - heading: section title (review = "All Members Matched…", edit = "Extracted Patients")
+   - onReupload: when omitted, the file-preview replace icon is hidden (edit mode)
+   - onRemoveMember: enables the hover × remove action on each row
+   - onAddMember: shows a "Search and Add Patients" field above the list */
+function AllMatchedPanel({ matched, uploadFile, onReupload, heading = 'All Members Matched; Review Pop Group', onRemoveMember, onAddMember }) {
+  // edit phase 2 — search disabled in the Create review (kept for reference):
+  // const [query, setQuery] = useState('');
+  // const q = query.trim().toLowerCase();
+  // const shown = q ? matched.filter(m => (m.name || '').toLowerCase().includes(q) || String(m.id).toLowerCase().includes(q)) : matched;
+  const shown = matched;
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:16, fontFamily:'Inter, sans-serif', width:'100%', height:'100%', minHeight:0, boxSizing:'border-box', paddingTop:4 }}>
       <p style={{ margin:0, fontSize:16, fontWeight:500, lineHeight:1.2, color:'var(--neutral-500)', flexShrink:0 }}>File Processing Summary</p>
@@ -772,45 +904,45 @@ function AllMatchedPanel({ matched, uploadFile, onReupload }) {
         <FilePreviewCard fileName={uploadFile.name} sizeMB={(uploadFile.size/1048576).toFixed(1)} onReplace={onReupload} />
       )}
 
-      {/* Review pop group — hugs its content; caps at the drawer bottom and scrolls internally */}
+      {/* edit phase 2 — "Search and Add Patients" disabled in the Create review (kept for reference):
+      {onAddMember && <AddPatientSearch matched={matched} onAdd={onAddMember} />}
+      */}
+
+      {/* edit phase 2 — search of added patients disabled in the Create review (kept for reference):
+      <div style={{ display:'flex', alignItems:'center', gap:8, height:36, padding:'0 10px', border:'0.5px solid var(--neutral-200)', borderRadius:6, background:'var(--neutral-0)', flexShrink:0 }}>
+        <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
+        <input
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search Patients"
+          style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:14, fontFamily:'Inter, sans-serif', color:'var(--neutral-400)' }}
+        />
+      </div>
+      */}
+
+      {/* Review / extracted list — hugs its content; caps at the drawer bottom and scrolls internally */}
       <div style={{ border:'0.5px solid var(--neutral-150)', borderRadius:8, background:'var(--neutral-0)', overflow:'hidden', width:'100%', flex:'0 1 auto', minHeight:0, display:'flex', flexDirection:'column' }}>
-        <div style={{ display:'flex', alignItems:'center', padding:'8px 12px', borderBottom:'0.5px solid var(--neutral-150)', background:'linear-gradient(90deg, var(--status-success-light) 0%, var(--neutral-0) 100%)', flexShrink:0 }}>
-          <span style={{ fontSize:14, fontWeight:500, color:'var(--neutral-400)', lineHeight:1.2 }}>All Members Matched; Review Pop Group</span>
+        <div style={{ display:'flex', alignItems:'center', gap:4, padding:'8px 12px', borderBottom:'0.5px solid var(--neutral-150)', background:'linear-gradient(90deg, var(--status-success-light) 0%, var(--neutral-0) 100%)', flexShrink:0 }}>
+          <span style={{ fontSize:14, fontWeight:500, color:'var(--neutral-400)', lineHeight:1.2 }}>Review Population Group</span>
+          <Badge label={String(matched.length)} style={{ background:'var(--status-success)', color:'var(--neutral-0)', borderColor:'var(--status-success)' }} />
         </div>
 
-        {/* Matched member rows — hugs content; scrolls only when the card hits the drawer bottom */}
+        {/* Member rows — hugs content; scrolls only when the card hits the drawer bottom */}
         <div className="thin-scroll" style={{ flex:'0 1 auto', minHeight:0, overflowY:'auto' }}>
-          {matched.map((p, i) => {
-            const initials = (p.name || '').split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
-            return (
-              <div key={p.id || i} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderBottom:'0.5px solid var(--neutral-100)' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:8, flex:'1 0 0', minWidth:0 }}>
-                  <div style={{ width:40, height:40, borderRadius:8, background:'var(--primary-50)', border:'0.5px solid var(--primary-200)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:16, fontWeight:400, color:'var(--primary-300)' }}>
-                    {initials}
-                  </div>
-                  <div style={{ flex:'1 0 0', minWidth:0 }}>
-                    <div style={{ fontSize:14, fontWeight:500, color:'var(--neutral-400)', lineHeight:1.2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</div>
-                    <div style={{ display:'flex', alignItems:'center', gap:2, fontSize:14, fontWeight:400, color:'var(--neutral-200)', lineHeight:1.2, marginTop:4, whiteSpace:'nowrap', overflow:'hidden' }}>
-                      <span style={{ overflow:'hidden', textOverflow:'ellipsis' }}>{p.id}</span>
-                      <span>•</span>
-                      <span>{fmtAge(p.dob)}</span>
-                    </div>
-                  </div>
-                </div>
-                <CheckRoundIcon size={24} />
-              </div>
-            );
-          })}
+          {shown.map((p, i) => (
+            <MatchedRow key={p.id || i} p={p} isLast={i === shown.length - 1} />
+          ))}
         </div>
       </div>
     </div>
   );
 }
 
-function NewModePanel({ matchSummary, uploadFile, csvAllClear, onReupload }) {
-  // All entries matched — show review state
-  if (csvAllClear && matchSummary.matched.length > 0) {
-    return <AllMatchedPanel matched={matchSummary.matched} uploadFile={uploadFile} onReupload={onReupload} />;
+function NewModePanel({ matchSummary, uploadFile, csvAllClear, onReupload, matchedHeading, onRemoveMember, onAddMember }) {
+  // All entries matched — show review state. In edit mode (matchedHeading set) always
+  // show the extracted list, even if empty, rather than the "couldn't read file" card.
+  if (csvAllClear && (matchSummary.matched.length > 0 || matchedHeading)) {
+    return <AllMatchedPanel matched={matchSummary.matched} uploadFile={uploadFile} onReupload={onReupload} heading={matchedHeading} onRemoveMember={onRemoveMember} onAddMember={onAddMember} />;
   }
 
   // Has errors — show download panel
@@ -970,6 +1102,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
   const popGroups      = useAppStore(s => s.popGroups);
   const fetchPopGroups = useAppStore(s => s.fetchPopGroups);
   const createPopGroup = useAppStore(s => s.createPopGroup);
+  const updatePopGroup = useAppStore(s => s.updatePopGroup);
   useEffect(() => { fetchPopGroups(); }, [fetchPopGroups]);
 
   /* Load the real patient directory (all_patients) so CSV uploads are matched
@@ -1047,6 +1180,12 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
 
   /* ── new "Download Errors" Create Group flow ── */
   const [newMode,      setNewMode]      = useState(false);
+  /* ── edit flow (editing a saved static-CSV group) ── */
+  const [editGroupId,  setEditGroupId]  = useState(null);
+  const [editBaseline, setEditBaseline] = useState(null); // signature of the loaded group — drives dirty state
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+  /* edit phase 2 — new "Update Population Group" drawer (replaces the in-create edit reuse) */
+  const [editingGroup, setEditingGroup] = useState(null);
 
   const fileInputRef  = useRef(null);
   const filterDDRef   = useRef(null);
@@ -1107,7 +1246,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
   /* ── helpers ── */
   const resetModalState = () => {
     /* tableMode / smartMode / enhancedMode / tableRows cleared here — state removed */
-    setNewMode(false);
+    setNewMode(false); setEditGroupId(null);
     setSegmentName(''); setDescription(''); setChosenFilter('');
     setMemberStatus('All Status'); setUploadFile(null);
     setUploadState('idle'); setUploadPct(0); setDragOver(false);
@@ -1120,9 +1259,58 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
   };
   const openModal = () => { resetModalState(); setModalOpen(true); };
   const openNewModal = () => { resetModalState(); setNewMode(true); setModalOpen(true); };
+  /* Edit a saved static-CSV group: reopen the matched/complete drawer with its members. */
+  /* ── edit phase 2 ──────────────────────────────────────────────────────────
+     The edit flow is being rebuilt as a dedicated "Update Population Group"
+     drawer (<UpdatePopGroupDrawer>). The old approach reused the create
+     drawer's CSV review state — kept here, commented out, for reference. */
+  const openEditModal = (group) => {
+    setEditingGroup(group);
+  };
+  // const openEditModal = (group) => {
+  //   resetModalState();
+  //   setNewMode(true);
+  //   setEditGroupId(group.id);
+  //   setSegmentName(group.name || '');
+  //   setDescription(group.description || '');
+  //   setChosenFilter('static-csv');
+  //   setMemberStatus(group.memberStatus || 'All Status');
+  //   const members = (group.memberIds || [])
+  //     .map(id => FOLD_DB_MAP[String(id).toUpperCase()])
+  //     .filter(Boolean)
+  //     .map(p => ({ id: p.id, name: p.name, dob: p.dob, mrn: p.id, pcp: p.pcp }));
+  //   setUploadFile({ name: group.fileName || `${group.name || 'patient-list'}.csv`, size: 0 });
+  //   setMatchSummary({ matched: members, notFound: [], duplicates: [] });
+  //   setUploadState('complete');
+  //   setEditBaseline(groupSignature({
+  //     name: group.name || '',
+  //     description: group.description || '',
+  //     memberStatus: group.memberStatus || 'All Status',
+  //     memberIds: members.map(m => m.id),
+  //   }));
+  //   setModalOpen(true);
+  // };
   /* openTableModal / openSmartModal / openEnhancedModal removed */
   const closeModal = () => {
-    setModalOpen(false); setUploadState('idle'); onModalClose?.();
+    setModalOpen(false); setUploadState('idle'); setShowSaveConfirm(false); setEditBaseline(null); onModalClose?.();
+  };
+
+  /* Persist the current group (insert on create, update on edit). Returns true on success. */
+  const saveGroup = async () => {
+    const groupType = chosenFilter === 'dynamic' ? 'Dynamic' : 'Static';
+    const newName = segmentName.trim();
+    const memberIds = matchSummary.matched.map(m => m.id).filter(Boolean);
+    const payload = {
+      name: newName, description: description.trim(), type: groupType,
+      filterType: chosenFilter || null, memberStatus, memberIds,
+      count: previewPatients.length || matchSummary.matched.length, inactive: 0,
+    };
+    const saved = editGroupId ? await updatePopGroup(editGroupId, payload) : await createPopGroup(payload);
+    if (!saved) return false;   // DB error — keep drawer open, toast already shown
+    onGroupCreated?.(newName);
+    showToast(editGroupId ? 'Population Group Updated Successfully' : 'Population Group Added Successfully');
+    closeModal();
+    return true;
   };
 
   const handleFile = file => {
@@ -1288,6 +1476,12 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
 
   const isCsvMode    = chosenFilter === 'static-csv';
   const canCreate    = segmentName.trim() && chosenFilter && (chosenFilter !== 'static-csv' || uploadState === 'complete');
+  /* Edit mode: only "dirty" once name/description/status/members differ from the loaded group. */
+  const isDirty      = editGroupId
+    ? groupSignature({ name: segmentName, description, memberStatus, memberIds: matchSummary.matched.map(m => m.id) }) !== editBaseline
+    : true;
+  /* Save is enabled only when valid AND (create mode OR an edit actually changed something). */
+  const canSave      = canCreate && isDirty;
 
   /* Header / cell styling — matches the Settings → Account → Users table (AccountPanel.module.css) */
   const thStyle = {
@@ -1446,7 +1640,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                       <ActionButton icon="solar:bolt-linear" size="L" tooltip="Run Automation" iconColor="var(--neutral-300)" />
                       <div style={{ width:1, height:16, background:'var(--neutral-150)', margin:'0 4px', flexShrink:0 }} />
                       {/* Edit */}
-                      <ActionButton icon="solar:pen-linear" size="L" tooltip="Edit Group" iconColor="var(--neutral-300)" />
+                      <ActionButton icon="solar:pen-linear" size="L" tooltip="Edit Group" iconColor="var(--neutral-300)" onClick={() => openEditModal(g)} />
                       <div style={{ width:1, height:16, background:'var(--neutral-150)', margin:'0 4px', flexShrink:0 }} />
                       {/* Delete */}
                       <ActionButton icon="solar:trash-bin-minimalistic-linear" size="L" tooltip="Delete Group" iconColor="var(--neutral-300)" />
@@ -1484,9 +1678,13 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {modalOpen && (
         <Drawer
-          title="Create Audience Group"
+          title={editGroupId ? 'Edit Audience Group' : 'Create Audience Group'}
           onClose={() => {
-            if (isCsvMode && (uploadState === 'loading' || uploadState === 'complete')) {
+            if (editGroupId) {
+              // Edit: confirm only when there are unsaved changes; otherwise just close.
+              if (isDirty) setShowSaveConfirm(true);
+              else closeModal();
+            } else if (isCsvMode && (uploadState === 'loading' || uploadState === 'complete')) {
               setShowCloseConfirm(true);
             } else {
               closeModal();
@@ -1497,28 +1695,9 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
               <Button
                 variant="primary"
                 size="L"
-                disabled={!canCreate}
-                onClick={async () => {
-                  if (!canCreate) return;
-                  const groupType = chosenFilter === 'dynamic' ? 'Dynamic' : 'Static';
-                  const newName = segmentName.trim();
-                  const memberIds = matchSummary.matched.map(m => m.id).filter(Boolean);
-                  const saved = await createPopGroup({
-                    name: newName,
-                    description: description.trim(),
-                    type: groupType,
-                    filterType: chosenFilter || null,
-                    memberStatus,
-                    memberIds,
-                    count: previewPatients.length || matchSummary.matched.length,
-                    inactive: 0,
-                  });
-                  if (!saved) return;   // DB error — keep drawer open, toast already shown
-                  onGroupCreated?.(newName);
-                  showToast('Population Group Added Successfully');
-                  closeModal();
-                }}>
-                Create
+                disabled={!canSave}
+                onClick={() => { if (canSave) saveGroup(); }}>
+                {editGroupId ? 'Save' : 'Create'}
               </Button>
               <span className="pg-header-divider" />
             </>
@@ -1641,7 +1820,12 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                         matchSummary={matchSummary}
                         uploadFile={uploadFile}
                         csvAllClear={csvAllClear}
-                        onReupload={() => { setUploadFile(null); setUploadState('idle'); setUploadPct(0); setMatchSummary({ matched:[], notFound:[], duplicates:[] }); setManualSel({}); parsedRef.current = null; }}
+                        matchedHeading={editGroupId ? 'Extracted Patients' : undefined}
+                        onReupload={editGroupId ? undefined : (() => { setUploadFile(null); setUploadState('idle'); setUploadPct(0); setMatchSummary({ matched:[], notFound:[], duplicates:[] }); setManualSel({}); parsedRef.current = null; })}
+                        onRemoveMember={(p) => setMatchSummary(prev => ({ ...prev, matched: prev.matched.filter(m => m.id !== p.id) }))}
+                        onAddMember={(p) => setMatchSummary(prev => prev.matched.some(m => String(m.id) === String(p.id))
+                          ? prev
+                          : ({ ...prev, matched: [...prev.matched, { id: p.id, name: p.name, dob: p.dob, mrn: p.id, pcp: p.pcp }] }))}
                       />
                     ) : (
                       <>
@@ -1943,6 +2127,30 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
         </Drawer>
       )}
 
+      {/* ── edit phase 2: Update Population Group drawer ── */}
+      {editingGroup && (
+        <UpdatePopGroupDrawer
+          group={editingGroup}
+          onClose={() => setEditingGroup(null)}
+          onSubmit={async ({ name, description, members }) => {
+            const saved = await updatePopGroup(editingGroup.id, {
+              name,
+              description,
+              type: editingGroup.type || 'Static',
+              filterType: 'static-csv',
+              memberStatus: editingGroup.memberStatus || 'All Status',
+              memberIds: members.map(m => m.id),
+              count: members.length,
+              inactive: 0,
+            });
+            if (!saved) return;
+            onGroupCreated?.(name);
+            showToast('Population Group Updated Successfully');
+            setEditingGroup(null);
+          }}
+        />
+      )}
+
       {/* ── Close-while-uploading confirmation — reuses DeleteConfirmModal visual pattern ── */}
       {showCloseConfirm && (
         <>
@@ -1971,6 +2179,37 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
               </div>
             </>
           )}
+
+      {/* ── Save-changes confirmation (edit mode, only when dirty) ── */}
+      {showSaveConfirm && (
+        <>
+          <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.25)', zIndex:10000 }} onClick={() => setShowSaveConfirm(false)} />
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:440, maxWidth:'calc(100vw - 32px)', background:'var(--neutral-0)', borderRadius:12, border:'0.5px solid var(--neutral-100)', padding:20, boxShadow:'0 4px 20px rgba(0,0,0,0.14)', zIndex:10001, display:'flex', flexDirection:'column', gap:16, fontFamily:'Inter,sans-serif' }}
+          >
+            <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
+                <span style={{ fontSize:16, fontWeight:500, color:'var(--neutral-400)' }}>Save Changes ?</span>
+                <button onClick={() => setShowSaveConfirm(false)} aria-label="Close" style={{ border:'none', background:'none', padding:2, cursor:'pointer', display:'flex', flexShrink:0 }}>
+                  <CloseIcon size={20} color="var(--neutral-300)" />
+                </button>
+              </div>
+              <p style={{ margin:0, fontSize:14, color:'var(--neutral-200)', lineHeight:1.5 }}>
+                Please confirm to save the changes you made for this population group.
+              </p>
+            </div>
+            <div style={{ display:'flex', gap:8, width:'100%' }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <Button variant="secondary" size="L" fullWidth onClick={() => { setShowSaveConfirm(false); closeModal(); }}>Discard</Button>
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <Button variant="primary" size="L" fullWidth onClick={() => { setShowSaveConfirm(false); saveGroup(); }}>Save Changes</Button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
     </div>
   );

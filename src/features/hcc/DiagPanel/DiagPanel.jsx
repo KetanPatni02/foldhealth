@@ -8,6 +8,7 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Avatar } from '../../../components/Avatar/Avatar';
 import { Toggle } from '../../../components/Toggle/Toggle';
 import { SearchIconButton } from '../../../components/SearchIconButton/SearchIconButton';
+import { PatientBanner } from '../../../components/PatientBanner/PatientBanner';
 import { HccCard } from './HccGroupRow';
 import { IcdRow } from './IcdRow';
 import { DosSelector } from './DosSelector';
@@ -26,6 +27,7 @@ import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { RoleTooltip } from '../RoleTooltip';
 import { resolveCurrentAssignee } from '../HccWorklistRow';
 import { ROLE_LABEL, staffForRole } from '../assignment/astranaStaff';
+import { canCompleteDos } from '../compliance';
 import styles from './DiagPanel.module.css';
 
 // Initials-square avatar to the left of the DOS status pill. Reflects the
@@ -414,6 +416,25 @@ export function DiagPanel() {
     return currentBucket.status || 'In Progress';
   }, [currentBucket, diagDosStatus]);
 
+  // ── Compliance gate (Astrana spec) ─────────────────────────────────
+  // Mark Complete may only fire on Support → Coder when every document
+  // touching this (member, dos) has all 5 compliance checks passed.
+  // We filter the in-flight SFTP batches to just those whose encounters
+  // include this patient + DOS, then ask the engine. When no batches
+  // are tracked for this DOS the gate is a no-op (legacy path preserved).
+  const hccSftpBatches = useAppStore(s => s.hccSftpBatches) || [];
+  const complianceGates = useMemo(() => {
+    if (!member?.id || !currentDos) return undefined;
+    const docsForDos = hccSftpBatches
+      .filter(b => b.compliance && (b.encounters || []).some(e =>
+        e.patient?.matchedMemberId === member.id && e.dos === currentDos
+      ))
+      .map(b => ({ fileName: b.fileName, ocrTier: b.ocrTier, compliance: b.compliance }));
+    if (docsForDos.length === 0) return undefined;
+    const { ok, reason } = canCompleteDos(docsForDos);
+    return ok ? undefined : { Completed: { enabled: false, reason } };
+  }, [member?.id, currentDos, hccSftpBatches]);
+
   // ── Review-progress stages + ring (drives the With-Coder pill) ──
   const reviewStages = useMemo(
     () => buildReviewStages(member, dosState),
@@ -577,44 +598,21 @@ export function DiagPanel() {
           width. */}
       <div className={styles.contentRow}>
       <div className={diagLeftPanel ? styles.rightPane : styles.rightPaneFull}>
-      {/* ── Row 2: Patient Banner — mirrors prototype line 1911:
-          avatar (40×40) + name on top + single inline meta row
-          [Patient · Sex · Age · #MemberId · RAF · 0.265↑] + right-side
-          phone icon + chevron button. ── */}
-      <div className={styles.patientBanner}>
-        <div className={styles.avatar}>{member.in}</div>
-        <div className={styles.memberInfo}>
-          <div className={styles.memberNameRow}>
-            <span className={styles.memberName}>{member.name}</span>
-            <Icon name="solar:alt-arrow-right-linear" size={12} color="var(--neutral-300)" />
-          </div>
-          <div className={styles.memberMeta}>
-            <span>Patient</span>
-            <span className={styles.metaDot}>&bull;</span>
-            <span>{member.g === 'M' ? 'Male' : member.g === 'F' ? 'Female' : member.g}</span>
-            <span className={styles.metaDot}>&bull;</span>
-            <span>{member.age || '—'}</span>
-            <span className={styles.metaDot}>&bull;</span>
-            <span>{member.memberId || `#${member.id}`}</span>
-            <span className={styles.metaDot}>&bull;</span>
-            <span className={styles.rafLabel}>RAF</span>
-            <span className={styles.rafValue}>{member.raf}</span>
-            <span className={styles.rafImpact}>
-              {rafImpact}
-              <Icon
-                name={member.ru !== false ? 'solar:arrow-up-linear' : 'solar:arrow-down-linear'}
-                size={10}
-                color={member.ru !== false ? 'var(--status-success)' : 'var(--status-error)'}
-              />
-            </span>
-          </div>
-        </div>
-        <div className={styles.bannerActions}>
-          <ActionButton icon="solar:phone-linear" size="S" tooltip="Call" onClick={noop('Call')} />
-          <span className={styles.divider} />
-          <ActionButton icon="solar:alt-arrow-down-linear" size="S" tooltip="More" onClick={noop('More')} />
-        </div>
-      </div>
+      {/* ── Row 2: Patient Banner — shared <PatientBanner> from
+          components/. Maps member.* fields onto the component's props so
+          this drawer renders identical chrome to every other patient-scoped
+          drawer (Care Gap, Quick View, etc.). ── */}
+      <PatientBanner
+        initials={member.in}
+        name={member.name}
+        gender={member.g === 'M' ? 'Male' : member.g === 'F' ? 'Female' : member.g}
+        age={member.age || ''}
+        memberId={member.memberId || `#${member.id}`}
+        raf={member.raf}
+        rafChange={rafImpact}
+        rafUp={member.ru !== false}
+        onCall={noop('Call')}
+      />
 
       {/* ── DOS selector + status pill ── */}
       <div className={styles.dosRow}>
@@ -663,6 +661,7 @@ export function DiagPanel() {
             <DosStatusMenu
               value={currentStatus}
               onChange={handleStatusChange}
+              gates={complianceGates}
             />
           )}
         </div>
