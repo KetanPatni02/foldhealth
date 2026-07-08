@@ -269,6 +269,16 @@ const LIST_FILTER_KEY = {
   HEDIS: 'hedisFilters',
 };
 
+// Safe JSON read from sessionStorage — returns fallback on missing/parse error.
+function _readJson(key, fallback) {
+  try {
+    const raw = sessionStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 // ── Care team row mapper ──
 // Translates a Supabase `care_teams` row to/from the JS shape the
 // ConfigureTeamDrawer + Care Team table consume (see hccCareTeams below).
@@ -3053,21 +3063,40 @@ export const useAppStore = create((set, get) => ({
   // it opens HccSftpReviewDrawer with a document switcher, a left-side
   // page preview, and a right-side encounter table per document.
   hccSftpBatches: [],        // [{ id, fileName, ocrTier, compliance, encounters, ingestedAt, status }]
-  hccSftpReviewOpen: false,
-  hccSftpActiveBatchId: null,
+  // These flags rehydrate from sessionStorage so refreshing while the
+  // ICD Creation or Document Review surface is open restores that screen
+  // (the underlying documents reload from Supabase via fetchHccDocuments).
+  hccSftpReviewOpen: sessionStorage.getItem('hccSftpReviewOpen') === '1',
+  hccSftpActiveBatchId: sessionStorage.getItem('hccSftpActiveBatchId') || null,
+  // Inline review — when true, the Document Review renders INSIDE the ICD
+  // Creation surface (same drawer, no second overlay). Standalone entry
+  // points (bell notification, upload ribbon) keep the floating 700px
+  // drawer and leave this false.
+  hccReviewInline: sessionStorage.getItem('hccReviewInline') === '1',
   // ICD Creation screen — unified upload + manual + SFTP entry surface
   // (replaces the legacy 3-item popover anchored under the worklist's
   // Upload Document toolbar button).
-  icdCreationOpen: false,
+  icdCreationOpen: sessionStorage.getItem('icdCreationOpen') === '1',
   // Batches created during the CURRENT ICD-Creation session so the right
   // panel's "Records" list only shows what this user just added — not
   // every historical batch from prior reloads.
-  icdCreationSessionBatchIds: [],
-  openIcdCreation: () => set({ icdCreationOpen: true, icdCreationSessionBatchIds: [] }),
-  closeIcdCreation: () => set({ icdCreationOpen: false }),
-  trackIcdCreationBatch: (batchId) => set(s => ({
-    icdCreationSessionBatchIds: [...new Set([...(s.icdCreationSessionBatchIds || []), batchId])],
-  })),
+  icdCreationSessionBatchIds: _readJson('icdCreationSessionBatchIds', []),
+  openIcdCreation: () => {
+    sessionStorage.setItem('icdCreationOpen', '1');
+    sessionStorage.setItem('icdCreationSessionBatchIds', '[]');
+    set({ icdCreationOpen: true, icdCreationSessionBatchIds: [] });
+  },
+  closeIcdCreation: () => {
+    sessionStorage.setItem('icdCreationOpen', '0');
+    sessionStorage.setItem('hccReviewInline', '0');
+    sessionStorage.removeItem('hccReviewSourceBatchIds');
+    set({ icdCreationOpen: false, hccReviewInline: false, hccReviewSourceBatchIds: null });
+  },
+  trackIcdCreationBatch: (batchId) => set(s => {
+    const next = [...new Set([...(s.icdCreationSessionBatchIds || []), batchId])];
+    sessionStorage.setItem('icdCreationSessionBatchIds', JSON.stringify(next));
+    return { icdCreationSessionBatchIds: next };
+  }),
   /**
    * Load persisted HCC documents from Supabase. Called once on app boot
    * so the SFTP review queue + compliance state survives reloads. The
@@ -3192,7 +3221,8 @@ export const useAppStore = create((set, get) => ({
    * Fires a single bell notification when every queued document has
    * completed (debounced by the batch state machine).
    */
-  queueHccDocumentForOcr: async (file) => {
+  queueHccDocumentForOcr: async (file, opts = {}) => {
+    const { autoApply = true } = opts;
     const state = useAppStore.getState();
     const members = state.hccMembers || [];
     const id = `doc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -3248,6 +3278,17 @@ export const useAppStore = create((set, get) => ({
     // Document Review Pending tab only surfaces error/mismatch rows
     // (per spec A + K). Same path the user would have walked manually
     // by clicking Add to Worklist on each card.
+    //
+    // The ICD Creation review flow passes autoApply:false so EVERY record
+    // stays pending — the reviewer decides per patient what to add.
+    if (!autoApply) {
+      useAppStore.getState().logHccActivity?.({
+        eventName: 'ocr.completed',
+        scope:     { batchId: id, fileId: fileName, source: 'system' },
+        payload:   { fileName, encounterCount: encounters.length, autoApplied: 0, pendingForReview: encounters.length },
+      });
+      return id;
+    }
     let autoApplied = 0;
     let pendingForReview = 0;
     const updated = encounters.map((enc) => {
@@ -3327,15 +3368,71 @@ export const useAppStore = create((set, get) => ({
     return id;
   },
 
-  openHccSftpReview: () => set(s => ({
-    hccSftpReviewOpen: true,
-    hccSftpActiveBatchId: s.hccSftpActiveBatchId
+  // When set, the review drawer aggregates pending encounters across ALL
+  // listed batches and paginates by patient across them (ICD Creation
+  // "Review" flow). null → single-batch mode (SFTP bell-notification flow).
+  hccReviewSourceBatchIds: _readJson('hccReviewSourceBatchIds', null),
+  openHccSftpReview: () => set(s => {
+    const activeId = s.hccSftpActiveBatchId
       || (s.hccSftpBatches || []).find(b => b.status === 'done')?.id
       || (s.hccSftpBatches || [])[0]?.id
-      || null,
-  })),
-  closeHccSftpReview: () => set({ hccSftpReviewOpen: false }),
-  setHccSftpActiveBatchId: (id) => set({ hccSftpActiveBatchId: id }),
+      || null;
+    sessionStorage.setItem('hccSftpReviewOpen', '1');
+    sessionStorage.removeItem('hccReviewSourceBatchIds');
+    if (activeId) sessionStorage.setItem('hccSftpActiveBatchId', activeId);
+    return { hccSftpReviewOpen: true, hccReviewSourceBatchIds: null, hccSftpActiveBatchId: activeId };
+  }),
+  // Open review over a set of documents (aggregate mode). `focusBatchId`
+  // (optional) is ordered first so the reviewer lands on the doc they
+  // clicked Review on.
+  openHccReviewForBatches: (batchIds, focusBatchId) => set(() => {
+    const ordered = focusBatchId
+      ? [focusBatchId, ...batchIds.filter(id => id !== focusBatchId)]
+      : [...batchIds];
+    const activeId = focusBatchId || ordered[0] || null;
+    sessionStorage.setItem('hccSftpReviewOpen', '1');
+    sessionStorage.setItem('hccReviewSourceBatchIds', JSON.stringify(ordered));
+    if (activeId) sessionStorage.setItem('hccSftpActiveBatchId', activeId);
+    return {
+      hccSftpReviewOpen: true,
+      hccReviewSourceBatchIds: ordered,
+      hccSftpActiveBatchId: activeId,
+    };
+  }),
+  closeHccSftpReview: () => {
+    sessionStorage.setItem('hccSftpReviewOpen', '0');
+    sessionStorage.removeItem('hccReviewSourceBatchIds');
+    set({ hccSftpReviewOpen: false, hccReviewSourceBatchIds: null });
+  },
+  // Open review INLINE (inside the ICD Creation surface). Same aggregate
+  // semantics as openHccReviewForBatches, but flags inline mode and does
+  // NOT set hccSftpReviewOpen — so the global floating drawer stays closed
+  // and the review renders in-place instead.
+  openHccReviewInline: (batchIds, focusBatchId) => set(() => {
+    const ordered = focusBatchId
+      ? [focusBatchId, ...batchIds.filter(id => id !== focusBatchId)]
+      : [...batchIds];
+    const activeId = focusBatchId || ordered[0] || null;
+    sessionStorage.setItem('hccReviewInline', '1');
+    sessionStorage.setItem('hccReviewSourceBatchIds', JSON.stringify(ordered));
+    if (activeId) sessionStorage.setItem('hccSftpActiveBatchId', activeId);
+    return {
+      hccReviewInline: true,
+      hccReviewSourceBatchIds: ordered,
+      hccSftpActiveBatchId: activeId,
+    };
+  }),
+  // Exit inline review — returns to the ICD Creation categorized doc list
+  // (leaves the ICD Creation screen itself open).
+  closeHccReviewInline: () => {
+    sessionStorage.setItem('hccReviewInline', '0');
+    sessionStorage.removeItem('hccReviewSourceBatchIds');
+    set({ hccReviewInline: false, hccReviewSourceBatchIds: null });
+  },
+  setHccSftpActiveBatchId: (id) => {
+    if (id) sessionStorage.setItem('hccSftpActiveBatchId', id);
+    set({ hccSftpActiveBatchId: id });
+  },
   /**
    * Patch one encounter inside an SFTP batch — proxies to the same
    * shape patchHccUploadEncounter uses (idx + partial). Used by the

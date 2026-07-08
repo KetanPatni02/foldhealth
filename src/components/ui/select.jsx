@@ -10,7 +10,7 @@ const SelectTrigger = React.forwardRef(({ className, children, ...props }, ref) 
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      'inline-flex h-8 items-center justify-between gap-2 rounded-[4px] border-[0.5px] border-[var(--neutral-100)] bg-[var(--neutral-0)] px-3 py-1 text-[14px] font-normal text-[var(--neutral-400)] leading-[1.2] whitespace-nowrap cursor-pointer focus:outline-none focus:border-[var(--primary-300)] focus:ring-1 focus:ring-[var(--primary-200)] disabled:cursor-not-allowed disabled:opacity-50 [&>span]:truncate',
+      'inline-flex h-8 items-center justify-between gap-2 rounded-[4px] border-[0.5px] border-[var(--neutral-100)] bg-[var(--neutral-0)] px-3 py-1 text-[14px] font-normal text-[var(--neutral-400)] leading-[1.2] whitespace-nowrap cursor-pointer focus:outline-none focus:border-[var(--primary-300)] focus:ring-1 focus:ring-[var(--primary-200)] disabled:cursor-not-allowed disabled:opacity-50 [&>span]:truncate data-[placeholder]:text-[var(--neutral-200)]',
       className
     )}
     style={{ fontFamily: "'Inter', sans-serif" }}
@@ -95,7 +95,7 @@ const SelectItem = React.forwardRef(({ className, children, ...props }, ref) => 
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex w-full cursor-pointer select-none items-center gap-[4px] h-[32px] rounded-[4px] px-[8px] text-[14px] font-normal text-[var(--neutral-500)] leading-[1.2] outline-none hover:bg-[var(--neutral-50)] focus:bg-[var(--neutral-50)] data-[state=checked]:text-[var(--primary-300)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+      'relative flex w-full cursor-pointer select-none items-center gap-[4px] h-[32px] rounded-[4px] px-[8px] text-[14px] font-normal text-[var(--neutral-500)] leading-[1.2] outline-none hover:bg-[var(--neutral-50)] focus:bg-[var(--neutral-50)] data-[state=checked]:bg-[var(--primary-50)] data-[state=checked]:border-[0.5px] data-[state=checked]:border-[var(--primary-200)] data-[state=checked]:text-[var(--primary-300)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       className
     )}
     style={{ fontFamily: "'Inter', sans-serif" }}

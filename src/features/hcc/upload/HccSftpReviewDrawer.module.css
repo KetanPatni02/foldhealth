@@ -20,27 +20,79 @@
   min-height: 0;
 }
 
-/* Single-line title "Document Review" per Figma 121:87283. */
-.titleBlock {
+/* ── Inline review (rendered inside the ICD Creation surface) ──────── */
+.inlineRoot {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  background: #fff;
+}
+.inlineHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  flex-shrink: 0;
+}
+.inlineBack {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s;
 }
-.titleTop {
-  font: 600 16px/1.2 'Inter', sans-serif;
+.inlineBack:hover { background: var(--neutral-50); }
+.inlineBody {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.inlineFooterBar {
+  flex-shrink: 0;
+  padding: 12px 16px;
+  border-top: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+}
+
+/* ── Review nav (top header bar): Previous · label · Next ─────────── */
+.reviewNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+.reviewNavLabel {
+  flex: 1;
+  text-align: center;
+  font: 500 14px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.reviewNavLabel strong {
   color: var(--neutral-500);
-  letter-spacing: -0.1px;
-}
-.titleStats {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font: 400 13px/1.2 'Inter', sans-serif;
-  color: var(--neutral-300);
-}
-.titleStats strong {
   font-weight: 600;
-  color: var(--neutral-500);
 }
+
+/* ── Review footer bar: Delete Record · Add to the Worklist ───────── */
+.reviewFooterBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
 .titleSub {
   display: inline-flex;
   align-items: center;
@@ -785,6 +837,127 @@
   background: #fff;
   flex-shrink: 0;
 }
+
+/* ── Inline document checks (OCR tier + checks badge on the title) ─── */
+.fileStripChecks {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 4px;
+}
+
+.docChecks {
+  position: relative;
+  display: inline-flex;
+}
+
+.docChecksTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.docChecksPop {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 360px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.docChecksHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px 16px 10px;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+
+.docChecksHeadText { flex: 1; min-width: 0; }
+
+.docChecksTitle {
+  font: 600 14px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+
+.docChecksSub {
+  font: 400 12px/1.3 'Inter', sans-serif;
+  color: var(--neutral-300);
+  margin-top: 2px;
+}
+
+.docChecksClose {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 2px;
+  display: inline-flex;
+}
+
+.docChecksList {
+  list-style: none;
+  margin: 0;
+  padding: 6px 8px 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.docChecksRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 6px;
+}
+
+.docChecksRow:hover { background: var(--neutral-50); }
+
+.docChecksRowFail { background: var(--status-error-light, #FFEDED); }
+.docChecksRowFail:hover { background: var(--status-error-light, #FFEDED); }
+
+.docChecksLabel {
+  flex: 1;
+  min-width: 0;
+  font: 400 13px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+
+.docChecksActions {
+  display: inline-flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.docChecksRow:hover .docChecksActions { opacity: 1; }
+
+.docChecksPass,
+.docChecksFail {
+  border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font: 500 11px/1 'Inter', sans-serif;
+  cursor: pointer;
+}
+
+.docChecksPass { color: var(--status-success); }
+.docChecksFail { color: var(--status-error); }
+
+.docChecksUnreadable {
+  padding: 10px 16px 14px;
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--status-error);
+}
 .fileStripBtn {
   display: inline-flex;
   align-items: center;
@@ -854,30 +1027,391 @@
   color: var(--neutral-300);
 }
 
-/* ── Reviewing X/Y header + Previous/Next footer (Figma 1:3540) ── */
-.reviewingHeader {
-  padding: 12px 16px 8px;
-  font: 500 13px/1.2 'Inter', sans-serif;
-  color: var(--neutral-400);
+/* ── Patient banner (Figma 1:3574) ──────────────────────────────── */
+.patientBanner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
   border-bottom: 0.5px solid var(--neutral-150);
-  background: var(--neutral-50);
+  background: var(--neutral-0);
 }
 
-.reviewingHeader strong {
+.patientBannerBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.patientBannerName {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 15px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+
+.patientBannerMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+
+.patientBannerMeta strong {
   color: var(--neutral-500);
   font-weight: 600;
 }
 
-.reviewFooter {
+.patientBannerDot {
+  color: var(--neutral-200);
+}
+
+.rafDelta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.rafDeltaUp {
+  background: var(--status-success-light, #E6F5EC);
+  color: var(--status-success);
+}
+
+.rafDeltaDown {
+  background: var(--status-error-light, #FFEDED);
+  color: var(--status-error);
+}
+
+.patientBannerCount {
+  color: var(--neutral-300);
+}
+
+.patientBannerActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Grouped DOS card header (hidePatient) ──────────────────────── */
+.encCardDosHead {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.encCardDosLine {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.encCardDosLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+
+.encCardDosValue {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+
+.encCardDosMeta {
+  font-size: 12px;
+  color: var(--neutral-400);
+}
+
+/* ── Read-only DOS card body (Figma 1:3574 top card) ────────────── */
+.encReadOnly {
+  padding: 12px 16px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Two-column form row: ICD Codes multi-select + Document Type Select.
+ * Each control keeps its FieldBlock label + confidence pill so the
+ * high/med/low tier reads at a glance even in read-only mode. */
+.encReadOnlyForm {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* Multi-select chip input for ICD codes — mirrors the styling of the
+ * DS Input so the read-only + edit modes read as the same control. */
+.icdMulti {
+  position: relative;
+}
+
+.encIcdsInput {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: var(--neutral-0);
+  align-items: center;
+  cursor: text;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.encIcdsInputFocus {
+  border-color: var(--primary-300);
+  box-shadow: 0 0 0 2px rgba(140, 90, 226, 0.12);
+}
+
+/* ICD chip = DS Badge wrapped in a click-to-remove affordance. */
+.icdBadgeWrap {
+  display: inline-flex;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.icdBadgeWrap:hover { opacity: 0.75; }
+
+.icdInlineInput {
+  flex: 1;
+  min-width: 90px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: 400 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  padding: 2px 0;
+}
+
+/* Expanded edit form (Figma 4001:179835) — DOS/Provider/POS input row,
+ * ICD Codes, and a per-ICD checkbox list. */
+.encEditForm {
+  padding: 12px 16px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.encEditRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+.encIcdCheckList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.encIcdCheckRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.encIcdCheckBody {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.encIcdCheckTitle {
+  font: 400 13px/1.35 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.encIcdCheckTitle strong { font-weight: 600; }
+.encIcdCheckHcc {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 11px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+
+.icdAddBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.icdAddBtn:hover { background: var(--primary-50); }
+
+.icdSearchPop {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.icdSearchHead {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.icdSearchInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  font: 400 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  background: transparent;
+}
+
+.icdSearchList {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.icdSearchItem {
+  display: flex;
+  align-items: baseline;
   gap: 8px;
-  padding: 10px 16px;
-  border-top: 0.5px solid var(--neutral-150);
-  background: var(--neutral-0);
-  position: sticky;
-  bottom: 0;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.icdSearchItem:hover { background: var(--neutral-50); }
+
+.icdSearchCode {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--neutral-500);
+  flex-shrink: 0;
+  min-width: 52px;
+}
+
+.icdSearchDesc {
+  font-size: 12px;
+  color: var(--neutral-400);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icdSearchEmpty {
+  padding: 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--neutral-300);
+}
+
+@media (max-width: 720px) {
+  .encReadOnlyForm { grid-template-columns: 1fr; }
+  .encEditRow { grid-template-columns: 1fr; }
+}
+
+.encIcdList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.encIcdRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 0;
+  border-top: 0.5px solid var(--neutral-100);
+}
+
+.encIcdRow:first-child { border-top: none; }
+
+.encIcdCode {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--neutral-500);
+  flex-shrink: 0;
+}
+
+.encIcdDesc {
+  flex: 1;
+  min-width: 200px;
+  font-size: 13px;
+  color: var(--neutral-400);
+  line-height: 1.4;
+}
+
+.encIcdHcc {
+  font-size: 11px;
+  color: var(--neutral-300);
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--neutral-50);
+}
+
+.encIcdHccDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--primary-300);
+}
+
+.encReadOnlyIndex {
+  font-size: 11px;
+  color: var(--neutral-300);
+  padding-top: 4px;
+  border-top: 0.5px solid var(--neutral-100);
+}
+
+.encIndexDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+
+.encIndexDot[data-tone="v24"] { background: var(--status-error, #D72825); }
+.encIndexDot[data-tone="v28"] { background: var(--status-success, #2E8A4E); }
+
+.encEditFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 8px 16px 12px;
+  border-top: 0.5px solid var(--neutral-100);
+  margin-top: 4px;
 }
 
 /* ── Doc tabs (Pending / Added / Deleted) ─────────────────────── */
@@ -1165,6 +1699,23 @@
 .confGauge_lowBar     { background: var(--status-error); }
 .confGauge_offBar     { background: var(--neutral-100); }
 .confGaugeEmpty {
+  font: 400 10px/1 'Inter', sans-serif;
+  color: var(--neutral-200);
+}
+
+/* ── ConfTier — sparkle + High/Medium/Low (read-only card) ──────── */
+.confTier {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font: 600 12px/1 'Inter', sans-serif;
+}
+
+.confTier_high   { color: var(--status-success, #2E8A4E); }
+.confTier_medium { color: var(--status-warning, #C28F2A); }
+.confTier_low    { color: var(--status-error, #D72825); }
+
+.confTierEmpty {
   font: 400 10px/1 'Inter', sans-serif;
   color: var(--neutral-200);
 }

@@ -1,0 +1,17 @@
+# Design-system critical paths — require owner review on any change.
+# The listed owner is auto-requested as a reviewer; pair with a branch
+# protection rule ("Require review from Code Owners") to make it blocking.
+
+# Design tokens — the single source of truth for color/shadow.
+/src/tokens/                       @designedbyalok
+
+# Shared component primitives — the reusable building blocks.
+/src/components/                   @designedbyalok
+
+# The guardrails themselves must not be weakened without review.
+/eslint.config.js                  @designedbyalok
+/.stylelintrc.json                 @designedbyalok
+/.stylelintignore                  @designedbyalok
+/scripts/ds-guardrails.mjs         @designedbyalok
+/.github/workflows/                @designedbyalok
+/CLAUDE.md                         @designedbyalok

@@ -9,6 +9,7 @@ import { CloseIcon } from '../../../components/Icon/CloseIcon';
 import { POS_LABEL } from './mockOcr';
 import { Avatar } from '../../../components/Avatar/Avatar';
 import { OCR_TIER_LABEL, OCR_TIER_TONE } from '../compliance';
+import { HccSftpReviewDrawer } from './HccSftpReviewDrawer';
 import styles from './IcdCreationScreen.module.css';
 
 /**
@@ -33,13 +34,16 @@ import styles from './IcdCreationScreen.module.css';
 // stages it in the queue exactly as if the user had dropped the real PDF.
 // Each entry shows the OCR tier the file will land in so users can pick
 // the scenario they want to walk through.
+// Each sample maps to a DISTINCT patient so selecting several produces
+// several unique patients to page through in review. Pick a few, then
+// Start Extraction to see them categorized by OCR tier.
 const SAMPLE_FILES = [
-  { name: 'demo-single.pdf',                 tier: 'clean',      label: 'Single encounter (Clean)' },
-  { name: 'demo-bulk.pdf',                   tier: 'clean',      label: 'Bulk · 20+ patients (Clean)' },
-  { name: 'demo-multi-patient.pdf',          tier: 'clean',      label: 'Multi-patient (Clean)' },
-  { name: 'demo-same-patient-multi-dos.pdf', tier: 'clean',      label: 'Same patient · multiple DOS' },
-  { name: 'demo-degraded.pdf',               tier: 'degraded',   label: 'Scanned doc (Degraded)' },
-  { name: 'demo-unreadable.pdf',             tier: 'unreadable', label: 'Fax / failed OCR (Unreadable)' },
+  { name: 'demo-same-patient-multi-dos.pdf', tier: 'clean',      label: 'William Jammy · 3 DOS' },
+  { name: 'demo-grace-hill.pdf',             tier: 'clean',      label: 'Grace Hill · 2 DOS' },
+  { name: 'demo-frank-green.pdf',            tier: 'clean',      label: 'Frank Green · 1 DOS' },
+  { name: 'demo-brian-carter.pdf',           tier: 'clean',      label: 'Brian Carter · 1 DOS' },
+  { name: 'demo-degraded-david-evans.pdf',   tier: 'degraded',   label: 'David Evans (Degraded)' },
+  { name: 'demo-unreadable-fax.pdf',         tier: 'unreadable', label: 'Fax / failed OCR (Unreadable)' },
 ];
 
 const ACCEPT_EXT = '.pdf,.doc,.docx,.jpg,.jpeg,.png';
@@ -74,6 +78,18 @@ export function IcdCreationScreen() {
     close?.();
     startHccUpload?.(null);
     setHccUploadPhase?.('single');
+  };
+
+  // Review renders INLINE inside this surface (same drawer, no second
+  // overlay) in AGGREGATE mode across every document in this session, so
+  // the reviewer pages patient-by-patient across all uploaded docs (the
+  // clicked doc is focused first).
+  const openHccReviewInline = useAppStore(s => s.openHccReviewInline);
+  const closeHccReviewInline = useAppStore(s => s.closeHccReviewInline);
+  const reviewInline = useAppStore(s => s.hccReviewInline);
+  const openExistingReview = (batchId) => {
+    const ids = sessionBatches.map(b => b.id);
+    openHccReviewInline?.(ids.length ? ids : [batchId], batchId);
   };
   const [whatNextOpen, setWhatNextOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -121,14 +137,11 @@ export function IcdCreationScreen() {
     setExtracting(true);
     setQueue(prev => prev.map(q => ({ ...q, status: 'extracting' })));
     // Run extraction on each queued file in parallel via the existing
-    // pipeline. Each landed batch gets tracked so the right panel only
-    // shows THIS session's records.
+    // pipeline. queueOcr returns the created batch id, so tracking is
+    // race-free even though the calls resolve concurrently.
     await Promise.all(queue.map(async (q) => {
-      const before = useAppStore.getState().hccSftpBatches?.length || 0;
-      await queueOcr?.(q.file);
-      const after = useAppStore.getState().hccSftpBatches || [];
-      const newest = after[after.length - 1] || after[0];
-      if (newest && after.length > before) trackBatch?.(newest.id);
+      const id = await queueOcr?.(q.file, { autoApply: false });
+      if (id) trackBatch?.(id);
     }));
     setExtracting(false);
     setQueue([]); // queue clears once results land in the right panel
@@ -165,6 +178,14 @@ export function IcdCreationScreen() {
           </button>
         </header>
 
+        {reviewInline ? (
+          /* Inline Document Review — renders in THIS surface instead of a
+             second drawer (Figma 4001:179835). Back arrow returns to the
+             categorized document list. */
+          <div className={styles.reviewInlineHost}>
+            <HccSftpReviewDrawer inline onExit={closeHccReviewInline} />
+          </div>
+        ) : (
         <div className={styles.body}>
           {/* ── Left: Upload & Review Document ───────────────────────── */}
           <section className={styles.leftCol}>
@@ -182,7 +203,7 @@ export function IcdCreationScreen() {
             </div>
 
             {inResults ? (
-              <CategorizedFileList batches={sessionBatches} />
+              <CategorizedFileList batches={sessionBatches} onReview={openExistingReview} />
             ) : (
               <UploadPhase
                 queue={queue}
@@ -206,6 +227,7 @@ export function IcdCreationScreen() {
             onAddManually={openExistingManualEntry}
           />
         </div>
+        )}
       </div>
     </>,
     document.body,
@@ -236,11 +258,11 @@ function UploadPhase({ queue, extracting, onRemoveQueued, onStart, onDiscard, wh
         secondaryText="Max size: 100 MB"
       />
 
-      {queue.length === 0 && (
+      {!extracting && (
         <div className={styles.samples}>
           <div className={styles.samplesHeader}>
             <Icon name="solar:gallery-linear" size={12} color="var(--neutral-300)" />
-            <span>Try a sample document</span>
+            <span>Try a sample document — pick several to see categorization</span>
           </div>
           <div className={styles.samplesList}>
             {SAMPLE_FILES.map(s => (
@@ -349,25 +371,17 @@ function UploadPhase({ queue, extracting, onRemoveQueued, onStart, onDiscard, wh
 
 // ─── CategorizedFileList — post-extraction grouping by OCR tier ─────────
 
-function CategorizedFileList({ batches }) {
-  const openHccSftpReview = useAppStore(s => s.openHccSftpReview);
-  const setActiveBatchId = useAppStore(s => s.setHccSftpActiveBatchId);
-
+function CategorizedFileList({ batches, onReview }) {
   const groups = [
     { tier: 'clean',      label: 'Clean Documents',      docs: batches.filter(b => b.ocrTier === 'clean') },
     { tier: 'degraded',   label: 'Degraded Documents',   docs: batches.filter(b => b.ocrTier === 'degraded') },
     { tier: 'unreadable', label: 'Unreadable Documents', docs: batches.filter(b => b.ocrTier === 'unreadable') },
   ];
 
-  const openReview = (batchId) => {
-    setActiveBatchId?.(batchId);
-    openHccSftpReview?.();
-  };
-
   return (
     <div className={styles.tierList}>
       {groups.map((g) => g.docs.length > 0 && (
-        <TierSection key={g.tier} tier={g.tier} label={g.label} docs={g.docs} onReview={openReview} />
+        <TierSection key={g.tier} tier={g.tier} label={g.label} docs={g.docs} onReview={onReview} />
       ))}
     </div>
   );
@@ -437,9 +451,15 @@ function TierDocRow({ doc, tier, onReview }) {
         <div className={styles.tierDocNameRow}>
           <span className={styles.tierDocName}>{doc.fileName}</span>
           {/* Inline check-count badge — sits directly next to the file
-              name per the design reference (✓ Pass · 12/12). */}
+              name (✓ Pass · 12/12). Clicking it opens the document review
+              (same target as the Review button). */}
           {total > 0 && (
-            <span className={[styles.passPill, styles[`passPill_${passTone}`]].join(' ')}>
+            <button
+              type="button"
+              className={[styles.passPill, styles[`passPill_${passTone}`], tier !== 'unreadable' ? styles.passPillClickable : ''].filter(Boolean).join(' ')}
+              onClick={tier !== 'unreadable' ? () => onReview(doc.id) : undefined}
+              title={tier !== 'unreadable' ? 'Open document review' : undefined}
+            >
               <Icon
                 name={passTone === 'success' ? 'solar:check-circle-bold' : passTone === 'fail' ? 'solar:close-circle-bold' : 'solar:danger-circle-bold'}
                 size={11}
@@ -448,7 +468,7 @@ function TierDocRow({ doc, tier, onReview }) {
               <span>Pass</span>
               <span className={styles.passPillDivider} />
               <span>{passCount}/{total}</span>
-            </span>
+            </button>
           )}
         </div>
         <div className={styles.tierDocSub}>

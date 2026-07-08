@@ -2,6 +2,52 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import styles from './CardThemePicker.module.css';
 
+/* ── Logo-linked brand themes ── */
+export const AVERGENT_THEME = {
+  name: 'Avergent',
+  bg: 'linear-gradient(143.06deg, #FFFFFF 0%, #FFEEDE 121.47%, #EDAC6C 178.57%)',
+  border: '0.5px solid #FBDDBF',
+  badgeBg: '#FFF6EC',
+  badgeBorderColor: 'rgba(244,122,62,0.2)',
+  badgeText: '#F47A3E',
+  textPrimary: '#16181D',
+  textSecondary: '#6F7A90',
+  dividerColor: '#D0D6E1',
+  footerBg: '#FFA449',
+  footerText: '#FFFFFF',
+  noteBg: '#FFEDDB',
+};
+
+export const PROMINENCE_THEME = {
+  name: 'Prominence',
+  bg: 'linear-gradient(143.06deg, #FFFFFF 0%, #E4FCFF 121.47%, #DFFBFF 178.57%)',
+  border: '0.5px solid #BFE8FB',
+  badgeBg: '#E5F8FB',
+  badgeBorderColor: 'rgba(16,156,174,0.2)',
+  badgeText: '#109CAE',
+  textPrimary: '#16181D',
+  textSecondary: '#6F7A90',
+  dividerColor: '#D0D6E1',
+  footerBg: null,
+  footerText: null,
+  noteBg: '#E4FBFF',
+};
+
+export const NO_THEME = {
+  name: 'None',
+  bg: '#FFFFFF',
+  border: '0.5px solid #D0D6E1',
+  badgeBg: '#F6F7F8',
+  badgeBorderColor: '#D0D6E1',
+  badgeText: '#6F7A90',
+  textPrimary: '#16181D',
+  textSecondary: '#6F7A90',
+  dividerColor: '#D0D6E1',
+  footerBg: '#F6F7F8',
+  footerText: '#3A485F',
+  noteBg: '#F6F7F8',
+};
+
 /* ── Preset themes — exact Figma values, row1: light pastels, row2: dark/vivid ── */
 export const PRESET_THEMES = [
   {

@@ -6,17 +6,50 @@ import { Avatar } from '../../../components/Avatar/Avatar';
 import { Input } from '../../../components/Input/Input';
 import { Badge } from '../../../components/Badge/Badge';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
-import { Toggle } from '../../../components/Toggle/Toggle';
 import { Select } from '../../../components/Select/Select';
 // BulkBar import removed — per-card actions replace the floating bar
 // in the new Document Review layout (Figma 121:87283).
 import { useAppStore } from '../../../store/useAppStore';
 import { getFieldConfidence } from '../data/confidence';
 import { POS_LABEL } from './mockOcr';
+import { ICDS } from '../data/icds';
+
+// Group pending encounters into one entry per patient — a patient with
+// multiple DOS records becomes a single review unit (Figma 1:3574).
+function groupEncountersByPatient(encounters) {
+  const groups = new Map();
+  for (const enc of encounters) {
+    const key = enc.patient?.matchedMemberId
+      ? `m-${enc.patient.matchedMemberId}`
+      : `u-${enc.patient?.name || ''}-${enc.patient?.dob || ''}`;
+    if (!groups.has(key)) {
+      groups.set(key, { key, patient: enc.patient, encounters: [] });
+    }
+    groups.get(key).encounters.push(enc);
+  }
+  return Array.from(groups.values());
+}
+
+// Flat ICD lookup — memoized once at module load so the read-only card can
+// resolve `E11.22` → `{ desc, hcc }` without walking every member every render.
+const ICD_LOOKUP = (() => {
+  const map = new Map();
+  Object.values(ICDS || {}).forEach(list => {
+    (list || []).forEach(entry => {
+      if (entry?.code && !map.has(entry.code)) {
+        map.set(entry.code, { desc: entry.desc || '', hcc: entry.hcc || '' });
+      }
+    });
+  });
+  return map;
+})();
 import { Checkbox } from '../../../components/ui/checkbox';
-import { ComplianceStrip } from '../../../components/ComplianceStrip/ComplianceStrip';
-import { ComplianceReviewPanel } from '../../../components/ComplianceReviewPanel/ComplianceReviewPanel';
-import { OCR_TIER_LABEL, OCR_TIER_TONE, allChecksPassed, anyCheckFailed, anyCheckPending } from '../compliance';
+import { AuditBadge } from '../../../components/AuditBadge/AuditBadge';
+import { ReasonDialog } from '../../../components/ReasonDialog/ReasonDialog';
+import {
+  OCR_TIER_LABEL, OCR_TIER_TONE, anyCheckFailed, anyCheckPending,
+  CHECK_KEYS, CHECK_LABELS, STANDARD_REASONS,
+} from '../compliance';
 import styles from './HccSftpReviewDrawer.module.css';
 
 /**
@@ -37,9 +70,15 @@ import styles from './HccSftpReviewDrawer.module.css';
  * encounters for the active doc to the HCC worklist via the existing
  * confirm path, then drops that doc from the SFTP queue.
  */
-export function HccSftpReviewDrawer() {
-  const open = useAppStore(s => s.hccSftpReviewOpen);
-  const close = useAppStore(s => s.closeHccSftpReview);
+export function HccSftpReviewDrawer({ inline = false, onExit }) {
+  const standaloneOpen = useAppStore(s => s.hccSftpReviewOpen);
+  const inlineOpen = useAppStore(s => s.hccReviewInline);
+  const closeStandalone = useAppStore(s => s.closeHccSftpReview);
+  // Inline (rendered inside ICD Creation) exits back to the categorized doc
+  // list; standalone closes the floating drawer. The global mount stays
+  // hidden while inline review is active so there's only ever one surface.
+  const open = inline ? inlineOpen : (standaloneOpen && !inlineOpen);
+  const close = inline ? (onExit || (() => {})) : closeStandalone;
   const batches = useAppStore(s => s.hccSftpBatches) || [];
   const activeId = useAppStore(s => s.hccSftpActiveBatchId);
   const setActiveId = useAppStore(s => s.setHccSftpActiveBatchId);
@@ -50,34 +89,43 @@ export function HccSftpReviewDrawer() {
   const applyComplianceDecision = useAppStore(s => s.applyHccComplianceDecision);
   const hccMembers = useAppStore(s => s.hccMembers) || [];
   const showToast = useAppStore(s => s.showToast);
-  // Per-doc disclosure state: whether the full ComplianceReviewPanel is
-  // expanded for this batch. Defaults to expanded when the doc has anything
-  // needing a Support touch (any fail or pending check) — so the reviewer
-  // doesn't have to discover the panel.
-  const [complianceOpenIds, setComplianceOpenIds] = useState(new Set());
-
-  const activeBatch = useMemo(
-    () => batches.find(b => b.id === activeId) || batches.find(b => b.status === 'done') || batches[0],
-    [batches, activeId],
-  );
-
-  // Per-batch selection state — when the user switches tabs we reset
-  // the set so bulk actions only ever apply to the visible batch.
   const [selectedIdxs, setSelectedIdxs] = useState(() => new Set());
-  // Document Review now has three top-level tabs: Pending Review,
-  // Added to Worklist, Deleted. We drive them from each encounter's
-  // _docStatus annotation (set by setHccSftpEncounterStatus).
-  const [docTab, setDocTab] = useState('pending');
-  // Status filter inside the Pending tab — All / Ready / Mismatch / Error.
-  const [statusFilter, setStatusFilter] = useState('all');
-  // Doc-switcher popover open state (filename click).
   const [switcherOpen, setSwitcherOpen] = useState(false);
-  // Card-stack pagination index — drives the "Reviewing: X of Y" indicator
-  // and Previous/Next Record nav at the bottom of the right panel
-  // (Figma 1:3540). Reset whenever the visible set changes.
+  // Patient pagination index — one step per PATIENT across the review set
+  // (Figma 1:3574). Reset when the review set changes.
   const [focusIdx, setFocusIdx] = useState(0);
   const cardStackRef = useRef(null);
-  useEffect(() => { setFocusIdx(0); }, [activeId, docTab, statusFilter]);
+
+  const sourceBatchIds = useAppStore(s => s.hccReviewSourceBatchIds);
+
+  // Build the ordered "patient slot" list. In aggregate mode (ICD Creation
+  // Review) we span every source document; otherwise just the active batch
+  // (SFTP bell-notification flow). Each slot = { batch, group } so the left
+  // preview + handlers can follow the focused patient back to its document.
+  const review = useMemo(() => {
+    const done = batches.filter(b => b.status === 'done');
+    const src = (sourceBatchIds && sourceBatchIds.length)
+      ? sourceBatchIds.map(id => batches.find(b => b.id === id)).filter(Boolean)
+      : [];
+    const reviewBatches = src.length
+      ? src
+      : [batches.find(b => b.id === activeId) || done[0] || batches[0]].filter(Boolean);
+    const slots = [];
+    reviewBatches.forEach(b => {
+      const pend = (b.encounters || []).filter(e => (e._docStatus || 'pending') === 'pending');
+      groupEncountersByPatient(pend).forEach(group => slots.push({ batch: b, group }));
+    });
+    return { slots };
+  }, [batches, sourceBatchIds, activeId]);
+
+  const focusedSlot = review.slots[focusIdx] || review.slots[0] || null;
+  // The display/active batch follows the focused patient's source document.
+  const activeBatch = focusedSlot?.batch
+    || batches.find(b => b.id === activeId)
+    || batches.find(b => b.status === 'done')
+    || batches[0];
+
+  useEffect(() => { setFocusIdx(0); }, [activeId, (sourceBatchIds || []).join(',')]);
   const setEncounterStatus = useAppStore(s => s.setHccSftpEncounterStatus);
   useEffect(() => { setSelectedIdxs(new Set()); }, [activeBatch?.id]);
   const toggleSelected = (idx) => setSelectedIdxs(prev => {
@@ -91,20 +139,6 @@ export function HccSftpReviewDrawer() {
     else     idxs.forEach(i => next.delete(i));
     return next;
   });
-
-  // Aggregate quick-stats for the title. MUST run before any early return
-  // to keep the hook order stable across renders.
-  const stats = useMemo(() => {
-    const docs = batches.length;
-    const ready = batches.filter(b => b.status === 'done').length;
-    const pending = batches.filter(b => b.status === 'pending').length;
-    const totalEncs = batches.reduce((sum, b) => sum + (b.encounters?.length || 0), 0);
-    const patientKeys = new Set();
-    batches.forEach(b => (b.encounters || []).forEach(e => {
-      patientKeys.add(e.patient?.matchedMemberId || `__u-${e.tempId}`);
-    }));
-    return { docs, ready, pending, totalEncs, patients: patientKeys.size };
-  }, [batches]);
 
   if (!open) return null;
 
@@ -167,47 +201,112 @@ export function HccSftpReviewDrawer() {
   const deletedEncs = bucket('deleted');
 
   const encStatus = (enc) => {
-    if (!enc?.patient?.matchedMemberId) return 'mismatch';
+    // An ID mismatch is a needs-review state even when a member was matched —
+    // keeps this in lockstep with the ICD Creation "ready" test so mismatch
+    // records open expanded for the reviewer to resolve.
+    if (!enc?.patient?.matchedMemberId || enc?.patient?.idMismatch) return 'mismatch';
     if (Array.isArray(enc?.errors) && enc.errors.length > 0) return 'error';
     return 'ready';
   };
-  const readyCount    = pendingEncs.filter(e => encStatus(e) === 'ready').length;
-  const mismatchCount = pendingEncs.filter(e => encStatus(e) === 'mismatch').length;
-  const errorCount    = pendingEncs.filter(e => encStatus(e) === 'error').length;
 
-  // Filtered list for the right-pane card stack. 'all' shows every
-  // pending encounter regardless of status.
-  const visibleEncs = (
-    docTab === 'pending'
-      ? (statusFilter === 'all' ? pendingEncs : pendingEncs.filter(e => encStatus(e) === statusFilter))
-    : docTab === 'added'   ? addedEncs
-    :                        deletedEncs
+  // Per Figma 1:3574 we review ONE PATIENT at a time. `review.slots`
+  // (computed above) is the ordered patient list — across all source
+  // documents in aggregate mode. focusIdx points at the current patient.
+  const patientSlots = review.slots;
+  const focusedGroup = focusedSlot?.group || null;
+  const visibleEncs = focusedGroup?.encounters || [];
+  const docTab = 'pending'; // hard-coded so empty-state branches keep working
+
+  const goPrev = () => {
+    setFocusIdx(Math.max(0, focusIdx - 1));
+    cardStackRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  const goNext = () => {
+    setFocusIdx(Math.min(patientSlots.length - 1, focusIdx + 1));
+    cardStackRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Footer — Add to the Worklist commits the focused patient's ready DOS
+  // records, then advances. Delete Record drops the focused patient's
+  // pending records from review (Figma 4001:179835).
+  const handleAddPatientToWorklist = () => {
+    if (!activeBatch || !focusedGroup) return;
+    let added = 0;
+    visibleEncs.forEach(enc => {
+      const idx = activeEncs.indexOf(enc);
+      if (idx < 0 || encStatus(enc) !== 'ready') return;
+      const r = createFromEncounter?.({ ...enc, _docName: activeBatch.fileName });
+      if (r?.kind === 'skipped') return;
+      setEncounterStatus?.(activeBatch.id, idx, 'added');
+      added += 1;
+    });
+    showToast?.(added
+      ? `Added ${added} record${added === 1 ? '' : 's'} for ${focusedGroup.patient?.name || 'patient'}`
+      : 'No ready records to add — resolve issues first');
+    if (added && focusIdx < patientSlots.length - 1) goNext();
+  };
+  const handleDeletePatientRecords = () => {
+    if (!activeBatch || !focusedGroup) return;
+    const idxs = visibleEncs.map(enc => activeEncs.indexOf(enc)).filter(i => i >= 0).sort((a, b) => b - a);
+    idxs.forEach(idx => setEncounterStatus?.(activeBatch.id, idx, 'deleted'));
+    showToast?.(`Deleted ${idxs.length} record${idxs.length === 1 ? '' : 's'}`);
+  };
+
+  const readyCount = visibleEncs.filter(e => encStatus(e) === 'ready').length;
+
+  // Top nav — Previous · "Reviewing X of N Patients" · Next Patient.
+  const navBar = patientSlots.length > 0 ? (
+    <div className={styles.reviewNav}>
+      <Button
+        variant="secondary"
+        size="S"
+        leadingIcon="solar:alt-arrow-left-linear"
+        disabled={focusIdx <= 0}
+        onClick={goPrev}
+      >
+        Previous
+      </Button>
+      <span className={styles.reviewNavLabel}>
+        Reviewing: <strong>{Math.min(focusIdx + 1, patientSlots.length)}</strong> of <strong>{patientSlots.length}</strong> {patientSlots.length === 1 ? 'Patient' : 'Patients'}
+      </span>
+      <Button
+        variant="secondary"
+        size="S"
+        trailingIcon="solar:alt-arrow-right-linear"
+        disabled={focusIdx >= patientSlots.length - 1}
+        onClick={goNext}
+      >
+        Next Patient
+      </Button>
+    </div>
+  ) : (
+    <div className={styles.reviewNav}><span className={styles.reviewNavLabel}>Document Review</span></div>
   );
 
-  const title = (
-    <span className={styles.titleBlock}>
-      <span className={styles.titleTop}>Document Review</span>
-    </span>
-  );
+  // Footer — Delete Record · Add to the Worklist.
+  const footerBar = (focusedGroup && visibleEncs.length > 0) ? (
+    <div className={styles.reviewFooterBar}>
+      <Button
+        variant="secondary"
+        size="M"
+        leadingIcon="solar:trash-bin-trash-linear"
+        onClick={handleDeletePatientRecords}
+      >
+        Delete Record
+      </Button>
+      <Button
+        variant="primary"
+        size="M"
+        leadingIcon="solar:add-circle-linear"
+        disabled={readyCount === 0}
+        onClick={handleAddPatientToWorklist}
+      >
+        Add to the Worklist
+      </Button>
+    </div>
+  ) : null;
 
-  const headerRight = (
-    <span className={styles.titleStats}>
-      <strong>{stats.totalEncs}</strong>&nbsp;Recorded
-      <span className={styles.titleSubDot}>•</span>
-      <strong>{stats.patients}</strong>&nbsp;Members
-    </span>
-  );
-
-  return (
-    <Drawer
-      title={title}
-      onClose={close}
-      className={styles.drawer}
-      bodyClassName={styles.body}
-      headerRight={headerRight}
-      noCloseDivider
-    >
-      {activeBatch ? (
+  const panels = activeBatch ? (
         <div className={styles.panels}>
           {/* LEFT — filename strip + page preview. */}
           <div className={styles.leftPanel}>
@@ -226,6 +325,24 @@ export function HccSftpReviewDrawer() {
                   color="var(--neutral-400)"
                 />
               </button>
+              {/* Inline compliance — OCR tier + a checks badge that opens
+                  the 7-point Document Review checklist (Figma 6:5838). */}
+              {activeBatch.compliance && (
+                <span className={styles.fileStripChecks}>
+                  <Badge
+                    variant={OCR_TIER_TONE[activeBatch.ocrTier] || 'warning'}
+                    label={`OCR · ${OCR_TIER_LABEL[activeBatch.ocrTier] || 'Unknown'}`}
+                  />
+                  <DocChecksBadge
+                    compliance={activeBatch.compliance}
+                    ocrTier={activeBatch.ocrTier}
+                    fileName={activeBatch.fileName}
+                    onApplyDecision={({ checkKey, decision, reason }) =>
+                      applyComplianceDecision?.({ batchId: activeBatch.id, checkKey, decision, reason })
+                    }
+                  />
+                </span>
+              )}
               <button
                 type="button"
                 className={styles.fileStripExternal}
@@ -261,29 +378,6 @@ export function HccSftpReviewDrawer() {
               )}
             </div>
 
-            {/* ── Document compliance summary + review panel ────────
-             * Per the Astrana spec, every document carries an OCR tier
-             * (Clean / Degraded / Unreadable) plus a 5-point compliance
-             * checklist. The compact strip + tier badge is always visible
-             * so Support can see at a glance whether a doc is releasable;
-             * the full review panel expands on click for manual pass/fail.
-             */}
-            {activeBatch.compliance && (
-              <ComplianceBlock
-                batch={activeBatch}
-                expanded={complianceOpenIds.has(activeBatch.id)}
-                onToggle={() => setComplianceOpenIds(prev => {
-                  const next = new Set(prev);
-                  if (next.has(activeBatch.id)) next.delete(activeBatch.id);
-                  else next.add(activeBatch.id);
-                  return next;
-                })}
-                onApplyDecision={({ checkKey, decision, reason }) =>
-                  applyComplianceDecision?.({ batchId: activeBatch.id, checkKey, decision, reason })
-                }
-              />
-            )}
-
             <PagePreview
               activeBatch={activeBatch}
               batches={batches}
@@ -291,67 +385,19 @@ export function HccSftpReviewDrawer() {
             />
           </div>
 
-          {/* RIGHT — Pending / Added / Deleted tabs + filter chips +
-              encounter card stack. */}
+          {/* RIGHT — patient banner + encounter card stack. The
+              Previous/Reviewing/Next nav now lives in the top header bar
+              and the Delete/Add actions in the footer (Figma 4001:179835). */}
           <div className={styles.rightPanel}>
-            {/* "Reviewing: X of Y Records" pagination indicator
-                (Figma 1:3540 — sits above the tab bar). */}
-            {visibleEncs.length > 0 && (
-              <div className={styles.reviewingHeader}>
-                Reviewing: <strong>{Math.min(focusIdx + 1, visibleEncs.length)}</strong> of <strong>{visibleEncs.length}</strong> Records
-              </div>
-            )}
-            <div className={styles.docTabBar}>
-              <button
-                type="button"
-                className={[styles.docTab, docTab === 'pending' ? styles.docTabActive : ''].join(' ')}
-                onClick={() => setDocTab('pending')}
-              >
-                Pending Review<span className={styles.docTabCount}>({pendingEncs.length})</span>
-              </button>
-              <button
-                type="button"
-                className={[styles.docTab, docTab === 'added' ? styles.docTabActive : ''].join(' ')}
-                onClick={() => setDocTab('added')}
-              >
-                Added to Worklist<span className={styles.docTabCount}>({addedEncs.length})</span>
-              </button>
-              <button
-                type="button"
-                className={[styles.docTab, docTab === 'deleted' ? styles.docTabActive : ''].join(' ')}
-                onClick={() => setDocTab('deleted')}
-              >
-                Deleted<span className={styles.docTabCount}>({deletedEncs.length})</span>
-              </button>
-              <span className={styles.docTabBarSpacer} />
-              <ActionButton size="S" icon="solar:magnifer-linear" tooltip="Search" />
-              <Button
-                variant="alt"
-                size="S"
-                leadingIcon="solar:add-circle-linear"
-                onClick={() => showToast?.('Add New Record — coming soon')}
-              >
-                Add New Record
-              </Button>
-            </div>
-
-            {/* Filter chips inside the Pending tab — uses the shared
-                <Toggle> primitive so the segmented-control behavior +
-                visuals match every other filter cluster in the app. */}
-            {docTab === 'pending' && (
-              <div className={styles.statusChipsRow}>
-                <Toggle
-                  size="S"
-                  items={[
-                    { key: 'all',      label: `All (${pendingEncs.length})` },
-                    { key: 'ready',    label: `Ready (${readyCount})` },
-                    { key: 'mismatch', label: `Mismatch (${mismatchCount})` },
-                    { key: 'error',    label: `Error (${errorCount})` },
-                  ]}
-                  active={statusFilter}
-                  onChange={setStatusFilter}
-                />
-              </div>
+            {/* Patient banner — one per focused patient (Figma 1:3574).
+                Shows the demographics + RAF once so the DOS cards below
+                don't repeat per-card patient info. */}
+            {focusedGroup && (
+              <PatientReviewBanner
+                patient={focusedGroup.patient}
+                member={hccMembers.find(m => m.id === focusedGroup.patient?.matchedMemberId)}
+                encounterCount={focusedGroup.encounters.length}
+              />
             )}
 
             {/* Encounter card stack — replaces the table. */}
@@ -380,15 +426,7 @@ export function HccSftpReviewDrawer() {
                   : (
                     <div className={styles.cardStackEmpty}>
                       <Icon name="solar:checklist-minimalistic-linear" size={28} color="var(--neutral-200)" />
-                      <span>
-                        {docTab === 'pending'
-                          ? (statusFilter === 'all'
-                              ? 'No encounters left to review on this document'
-                              : `No ${statusFilter} encounters in this document`)
-                          : docTab === 'added'
-                            ? 'Nothing has been added to the worklist yet'
-                            : 'Nothing has been deleted yet'}
-                      </span>
+                      <span>No encounters left to review on this document</span>
                     </div>
                   )
               ) : visibleEncs.map((enc, visibleI) => {
@@ -401,6 +439,7 @@ export function HccSftpReviewDrawer() {
                     hccMembers={hccMembers}
                     docTab={docTab}
                     cardIdx={visibleI}
+                    hidePatient
                     onPatch={(patch) => patchEnc?.(activeBatch.id, idx, patch)}
                     onAddToWorklist={() => {
                       const r = createFromEncounter?.({ ...enc, _docName: activeBatch.fileName });
@@ -423,41 +462,6 @@ export function HccSftpReviewDrawer() {
                 );
               })}
             </div>
-
-            {/* Previous / Next Record nav — pages through the visible
-                encounter stack (Figma 1:3540). */}
-            {visibleEncs.length > 1 && (
-              <div className={styles.reviewFooter}>
-                <Button
-                  variant="secondary"
-                  size="S"
-                  leadingIcon="solar:alt-arrow-left-linear"
-                  disabled={focusIdx <= 0}
-                  onClick={() => {
-                    const next = Math.max(0, focusIdx - 1);
-                    setFocusIdx(next);
-                    const card = cardStackRef.current?.querySelectorAll('[data-card-idx]')?.[next];
-                    card?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="primary"
-                  size="S"
-                  trailingIcon="solar:alt-arrow-right-linear"
-                  disabled={focusIdx >= visibleEncs.length - 1}
-                  onClick={() => {
-                    const next = Math.min(visibleEncs.length - 1, focusIdx + 1);
-                    setFocusIdx(next);
-                    const card = cardStackRef.current?.querySelectorAll('[data-card-idx]')?.[next];
-                    card?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }}
-                >
-                  Next Record
-                </Button>
-              </div>
-            )}
           </div>
         </div>
       ) : (
@@ -468,7 +472,41 @@ export function HccSftpReviewDrawer() {
           <span className={styles.emptyStateTitle}>No documents in the queue</span>
           <span className={styles.emptyStateSub}>Documents you upload appear here once extraction completes.</span>
         </div>
-      )}
+      );
+
+  // Inline (inside ICD Creation) — own top bar + footer, no floating chrome.
+  if (inline) {
+    return (
+      <div className={styles.inlineRoot}>
+        <div className={styles.inlineHeader}>
+          <button
+            type="button"
+            className={styles.inlineBack}
+            onClick={close}
+            title="Back to documents"
+          >
+            <Icon name="solar:alt-arrow-left-linear" size={16} color="var(--neutral-500)" />
+          </button>
+          {navBar}
+        </div>
+        <div className={styles.inlineBody}>{panels}</div>
+        {footerBar && <div className={styles.inlineFooterBar}>{footerBar}</div>}
+      </div>
+    );
+  }
+
+  // Standalone — floating 700px Drawer (bell notification / upload ribbon).
+  return (
+    <Drawer
+      title={navBar}
+      titleStyle={{ flex: 1, width: '100%' }}
+      onClose={close}
+      className={styles.drawer}
+      bodyClassName={styles.body}
+      footer={footerBar}
+      noCloseDivider
+    >
+      {panels}
     </Drawer>
   );
 }
@@ -564,6 +602,59 @@ function DocToolbar({ batch, setSelectedAll, showToast }) {
  * flagged), encounter count, and a "current" marker on the active
  * batch. Picking one switches the panels below.
  */
+/**
+ * PatientReviewBanner — top of the right panel when reviewing a patient's
+ * DOS records. Renders the patient identity once (avatar + name +
+ * demographics + member id + RAF) so the individual DOS cards below
+ * don't repeat it (Figma 1:3574).
+ */
+function PatientReviewBanner({ patient, member, encounterCount }) {
+  const name = member?.name || patient?.name || '(unmatched patient)';
+  const initials = member?.in || name.split(' ').map(p => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?';
+  const gender = member?.g || '';
+  const age = member?.age || '';
+  const memberId = member?.memberId || patient?.matchedMemberDisplayId || patient?.patientId || '—';
+  const raf = member?.raf ?? null;
+  const rafDelta = member?.rafDelta ?? null;
+
+  return (
+    <div className={styles.patientBanner}>
+      <Avatar variant="patient" initials={initials} />
+      <div className={styles.patientBannerBody}>
+        <div className={styles.patientBannerName}>
+          <span>{name}</span>
+          <Icon name="solar:alt-arrow-right-linear" size={14} color="var(--neutral-300)" />
+        </div>
+        <div className={styles.patientBannerMeta}>
+          <span>Patient</span>
+          <span className={styles.patientBannerDot}>•</span>
+          {gender && <><span>{gender}</span><span className={styles.patientBannerDot}>•</span></>}
+          {age && <><span>{age}</span><span className={styles.patientBannerDot}>•</span></>}
+          <span>#{memberId}</span>
+          {raf != null && (
+            <>
+              <span className={styles.patientBannerDot}>•</span>
+              <span>RAF <strong>{Number(raf).toFixed(3)}</strong></span>
+              {rafDelta != null && (
+                <span className={[styles.rafDelta, rafDelta >= 0 ? styles.rafDeltaUp : styles.rafDeltaDown].join(' ')}>
+                  {Number(rafDelta).toFixed(3)}
+                  <Icon name={rafDelta >= 0 ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} size={10} color="currentColor" />
+                </span>
+              )}
+            </>
+          )}
+          <span className={styles.patientBannerDot}>•</span>
+          <span className={styles.patientBannerCount}>{encounterCount} {encounterCount === 1 ? 'DOS record' : 'DOS records'}</span>
+        </div>
+      </div>
+      <div className={styles.patientBannerActions}>
+        <ActionButton size="S" icon="solar:phone-linear" tooltip="Contact patient" />
+        <ActionButton size="S" icon="solar:alt-arrow-down-linear" tooltip="More" />
+      </div>
+    </div>
+  );
+}
+
 function DocSwitcher({ activeBatch, batches, onSelect }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
@@ -956,10 +1047,17 @@ function DocReviewCompleted({ total, nextBatch, onPickNext, onBackToWorklist }) 
  * grid (DOS · ICD Codes / Provider · POS) each with an inline
  * confidence gauge bar matching Figma 121:87283.
  */
-function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, onPatch, onAddToWorklist, onDelete, onRestore }) {
+function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, hidePatient, onPatch, onAddToWorklist, onDelete, onRestore }) {
   const isMatched = !!enc.patient?.matchedMemberId;
   const member = isMatched ? hccMembers.find(m => m.id === enc.patient.matchedMemberId) : null;
   const errors = new Set(enc.errors || []);
+  // Read-only default for high-confidence (Ready) records when we're in
+  // the patient-grouped view. Mismatch/Error records always open in edit
+  // mode so the reviewer can fix them. Pen icon flips into edit; Save
+  // (or X) collapses back to read-only. Legacy hidePatient=false uses
+  // edit mode unconditionally (preserved for other callers of this card).
+  const canReadOnly = hidePatient && status === 'ready';
+  const [isEditing, setIsEditing] = useState(!canReadOnly);
   // Map status → shared Badge variant (uses the existing status- tokens
   // so this card matches every other status pill in the app).
   const badgeVariant = (
@@ -981,33 +1079,84 @@ function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, onPatch, onAd
   return (
     <div className={styles.encCard} data-card-idx={cardIdx}>
       <div className={styles.encCardHead}>
-        <Avatar
-          variant="patient"
-          initials={member?.in || (enc.patient?.name || '?').split(' ').map(p => p[0]).slice(0,2).join('')}
-        />
-        <div className={styles.encCardIdent}>
-          <div className={styles.encCardName}>{member?.name || enc.patient?.name || '(unmatched)'}</div>
-          <div className={styles.encCardMeta}>
-            {member?.g || ''} <span className={styles.encCardMetaDot}>•</span>
-            {member?.age || ''} <span className={styles.encCardMetaDot}>•</span>
-            #{enc.patient?.patientId || enc.patient?.matchedMemberDisplayId || '—'}
+        {hidePatient ? (
+          // Grouped-by-patient view: patient info lives in the banner above.
+          // Card header shows DOS + status + a static Provider/POS meta line
+          // in BOTH states. When expanded, editable inputs render in the body
+          // below (Figma 4001:179835).
+          <div className={styles.encCardDosHead}>
+            <div className={styles.encCardDosLine}>
+              <span className={styles.encCardDosLabel}>DOS:</span>
+              <span className={styles.encCardDosValue}>{enc.dos || '—'}</span>
+              <Badge variant={badgeVariant} icon={badgeIcon} label={statusLabel} />
+            </div>
+            <div className={styles.encCardDosMeta}>
+              Rendering Provider: {enc.provider || '—'} · POS: {enc.pos ? `${enc.pos}${enc.posDesc ? ' - ' + enc.posDesc : ''}` : '—'}
+            </div>
           </div>
-        </div>
-        <Badge variant={badgeVariant} icon={badgeIcon} label={statusLabel} />
+        ) : (
+          <>
+            <Avatar
+              variant="patient"
+              initials={member?.in || (enc.patient?.name || '?').split(' ').map(p => p[0]).slice(0,2).join('')}
+            />
+            <div className={styles.encCardIdent}>
+              <div className={styles.encCardName}>{member?.name || enc.patient?.name || '(unmatched)'}</div>
+              <div className={styles.encCardMeta}>
+                {member?.g || ''} <span className={styles.encCardMetaDot}>•</span>
+                {member?.age || ''} <span className={styles.encCardMetaDot}>•</span>
+                #{enc.patient?.patientId || enc.patient?.matchedMemberDisplayId || '—'}
+              </div>
+            </div>
+            <Badge variant={badgeVariant} icon={badgeIcon} label={statusLabel} />
+          </>
+        )}
         <div className={styles.encCardActions}>
           {docTab === 'pending' ? (
-            <>
-              <Button
-                variant="ghost"
-                size="S"
-                leadingIcon="solar:add-circle-linear"
-                disabled={status !== 'ready'}
-                onClick={onAddToWorklist}
-              >
-                Add to Worklist
-              </Button>
-              <ActionButton size="S" icon="solar:trash-bin-trash-linear" tooltip="Delete" onClick={onDelete} />
-            </>
+            hidePatient && isEditing ? (
+              // Expanded (editing) — Save collapses to read-only; X too.
+              // Figma 4001:179835 shows Save + X in the expanded card header.
+              <>
+                <Button
+                  variant="primary"
+                  size="S"
+                  onClick={() => setIsEditing(false)}
+                >
+                  Save
+                </Button>
+                <ActionButton
+                  size="S"
+                  icon="solar:close-circle-linear"
+                  tooltip="Collapse"
+                  onClick={() => setIsEditing(false)}
+                />
+              </>
+            ) : (
+              // Collapsed (read-only) — Add / view doc / edit (pen) / delete.
+              <>
+                <Button
+                  variant="ghost"
+                  size="S"
+                  leadingIcon="solar:add-circle-linear"
+                  disabled={status !== 'ready'}
+                  onClick={onAddToWorklist}
+                >
+                  {hidePatient ? 'Add' : 'Add to Worklist'}
+                </Button>
+                {hidePatient && (
+                  <>
+                    <ActionButton size="S" icon="solar:document-text-linear" tooltip="View document" />
+                    <ActionButton
+                      size="S"
+                      icon="solar:pen-linear"
+                      tooltip="Edit record"
+                      onClick={() => setIsEditing(true)}
+                    />
+                  </>
+                )}
+                <ActionButton size="S" icon="solar:trash-bin-trash-linear" tooltip="Delete" onClick={onDelete} />
+              </>
+            )
           ) : (
             <Button
               variant="ghost"
@@ -1021,6 +1170,125 @@ function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, onPatch, onAd
         </div>
       </div>
 
+      {/* Body — two states (Figma 4001:179835):
+          • Collapsed (read-only): ICD Codes + Document Type selects, static
+            ICD description list, v24/v28 index.
+          • Expanded (editing): DOS / Provider / POS input row, ICD Codes,
+            and a per-ICD checkbox list (uncheck removes the code). */}
+      {hidePatient && !isEditing && (
+        <div className={styles.encReadOnly}>
+          <div className={styles.encReadOnlyForm}>
+            <FieldBlock label="ICD Codes" required confidence={fieldConf('icds')} confVariant="tier">
+              <IcdMultiSelect
+                icds={enc.icds || []}
+                onChange={(nextIcds) => onPatch({ icds: nextIcds })}
+              />
+            </FieldBlock>
+            <FieldBlock label="Document Type" required confidence={fieldConf('docType')} confVariant="tier">
+              <Select
+                value={enc.docType || 'Progress Note'}
+                onChange={(v) => onPatch({ docType: v })}
+                options={[
+                  { value: 'AWV',           label: 'AWV' },
+                  { value: 'Progress Note', label: 'Progress Note' },
+                  { value: 'SOAP Note',     label: 'SOAP Note' },
+                  { value: 'Telehealth Note', label: 'Telehealth Note' },
+                  { value: 'Lab',           label: 'Lab' },
+                  { value: 'Other',         label: 'Other' },
+                ]}
+              />
+            </FieldBlock>
+          </div>
+          <ul className={styles.encIcdList}>
+            {(enc.icds || []).map(icd => {
+              const meta = ICD_LOOKUP.get(icd.code);
+              return (
+                <li key={icd.code} className={styles.encIcdRow}>
+                  <span className={styles.encIcdCode}>{icd.code}</span>
+                  <span className={styles.encIcdDesc}>{meta?.desc || 'ICD description not on file'}</span>
+                  {meta?.hcc && (
+                    <span className={styles.encIcdHcc}>
+                      <span className={styles.encIcdHccDot} /> {meta.hcc}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          <div className={styles.encReadOnlyIndex}>
+            Index: <span className={styles.encIndexDot} data-tone="v24" /> v24 · <span className={styles.encIndexDot} data-tone="v28" /> v28
+          </div>
+        </div>
+      )}
+
+      {hidePatient && isEditing && (
+        <div className={styles.encEditForm}>
+          <div className={styles.encEditRow}>
+            <FieldBlock label="DOS" required confidence={fieldConf('dos')}>
+              <Input
+                value={enc.dos || ''}
+                placeholder="MM/DD/YYYY"
+                variant={errors.has('dos') ? 'error' : 'default'}
+                onChange={(e) => onPatch({ dos: e.target.value })}
+              />
+            </FieldBlock>
+            <FieldBlock label="Rendering Provider" required confidence={fieldConf('provider')}>
+              <Input
+                value={enc.provider || ''}
+                placeholder="Provider"
+                variant={errors.has('provider') ? 'error' : 'default'}
+                onChange={(e) => onPatch({ provider: e.target.value })}
+              />
+            </FieldBlock>
+            <FieldBlock label="POS" required confidence={fieldConf('pos')}>
+              <Select
+                value={enc.pos || ''}
+                onChange={(v) => onPatch({ pos: v, posDesc: POS_LABEL[v] || '' })}
+                placeholder="Select POS…"
+                options={Object.entries(POS_LABEL).map(([code, label]) => ({ value: code, label: `${code} - ${label}` }))}
+              />
+            </FieldBlock>
+          </div>
+          <FieldBlock label="ICD Codes" required confidence={fieldConf('icds')}>
+            <IcdMultiSelect
+              icds={enc.icds || []}
+              onChange={(nextIcds) => onPatch({ icds: nextIcds })}
+            />
+          </FieldBlock>
+          {/* Per-ICD checkbox list — unchecking a code removes it from the
+              record (and the ICD Codes field above stays in sync). */}
+          <ul className={styles.encIcdCheckList}>
+            {(enc.icds || []).map(icd => {
+              const meta = ICD_LOOKUP.get(icd.code);
+              return (
+                <li key={icd.code} className={styles.encIcdCheckRow}>
+                  <Checkbox
+                    checked
+                    onCheckedChange={(v) => {
+                      if (v !== true) onPatch({ icds: (enc.icds || []).filter(i => i.code !== icd.code) });
+                    }}
+                  />
+                  <div className={styles.encIcdCheckBody}>
+                    <div className={styles.encIcdCheckTitle}>
+                      <strong>{icd.code}</strong> - {meta?.desc || 'ICD description not on file'}
+                    </div>
+                    {meta?.hcc && (
+                      <div className={styles.encIcdCheckHcc}>
+                        <span className={styles.encIcdHccDot} /> {meta.hcc}
+                      </div>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {/* Legacy full-form layout — only for the non-grouped (non-hidePatient)
+          caller, e.g. the SFTP bell-notification flow that still shows one
+          encounter table per document. */}
+      {!hidePatient && (
       <div className={styles.encGrid}>
         <FieldBlock label="DOS" required confidence={fieldConf('dos')}>
           <Input
@@ -1031,21 +1299,7 @@ function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, onPatch, onAd
           />
         </FieldBlock>
         <FieldBlock label="ICD Codes" required confidence={fieldConf('icds')}>
-          <div className={styles.encIcds}>
-            {(enc.icds || []).map(icd => (
-              <span key={icd.code} className={styles.encIcdChip}>
-                {icd.code}
-                <button
-                  type="button"
-                  className={styles.encIcdClose}
-                  onClick={() => onPatch({ icds: enc.icds.filter(i => i.code !== icd.code) })}
-                  aria-label={`Remove ${icd.code}`}
-                >
-                  <Icon name="solar:close-circle-linear" size={10} color="var(--primary-300)" />
-                </button>
-              </span>
-            ))}
-          </div>
+          <IcdMultiSelect icds={enc.icds || []} onChange={(next) => onPatch({ icds: next })} />
         </FieldBlock>
         <FieldBlock label="Rendering Provider" required confidence={fieldConf('provider')}>
           <Input
@@ -1056,19 +1310,13 @@ function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, onPatch, onAd
           />
         </FieldBlock>
         <FieldBlock label="POS" required confidence={fieldConf('pos')}>
-          <Input
-            value={enc.pos ? `${enc.pos} - ${POS_LABEL[enc.pos] || ''}` : ''}
-            placeholder="POS"
-            variant={errors.has('pos') ? 'error' : 'default'}
-            onChange={(e) => {
-              const code = e.target.value.split(' ')[0];
-              onPatch({ pos: code, posDesc: POS_LABEL[code] || '' });
-            }}
+          <Select
+            value={enc.pos || ''}
+            onChange={(v) => onPatch({ pos: v, posDesc: POS_LABEL[v] || '' })}
+            placeholder="Select POS…"
+            options={Object.entries(POS_LABEL).map(([code, label]) => ({ value: code, label: `${code} - ${label}` }))}
           />
         </FieldBlock>
-        {/* Spec J — category is mandatory and correctable inline.
-            Providers often misfile labs as AWVs at upload time; this
-            lets the Support Team correct after the fact. */}
         <FieldBlock label="Category" required>
           <Select
             value={enc.docType || 'Progress Note'}
@@ -1081,9 +1329,6 @@ function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, onPatch, onAd
             ]}
           />
         </FieldBlock>
-        {/* Duplicate-warning chip — flagged at OCR time when the
-            member's existing dos_list already has this DOS + provider
-            + POS (spec L). */}
         {enc._duplicateOfMemberId && (
           <FieldBlock label="">
             <span className={styles.encDupWarn} title="Same DOS + Provider + POS already exists for this member">
@@ -1093,6 +1338,7 @@ function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, onPatch, onAd
           </FieldBlock>
         )}
       </div>
+      )}
     </div>
   );
 }
@@ -1102,19 +1348,131 @@ function EncounterCard({ enc, status, hccMembers, docTab, cardIdx, onPatch, onAd
  * Used inside every encounter card cell. The gauge fills based on
  * confidence: 5 segments tinted green/amber/red per tier.
  */
-function FieldBlock({ label, required, confidence, children }) {
+function FieldBlock({ label, required, confidence, confVariant = 'bars', children }) {
   return (
     <div className={styles.fieldBlock}>
       <div className={styles.fieldBlockHead}>
         <span className={styles.fieldBlockLabel}>
           {label}{required && <span className={styles.fieldBlockReq}>•</span>}
         </span>
-        <ConfGauge score={confidence} />
+        {confVariant === 'tier'
+          ? <ConfTier score={confidence} />
+          : <ConfGauge score={confidence} />}
       </div>
       <div className={styles.fieldBlockBody}>
         {children}
       </div>
     </div>
+  );
+}
+
+/**
+ * IcdMultiSelect — combobox for ICD codes. Selected codes render as DS
+ * Badges (removable); typing directly in the field filters the ICD catalog
+ * and shows matches in a dropdown. Removing/adding flows through onChange
+ * so the description list below stays in sync (Figma 3:7620).
+ */
+function IcdMultiSelect({ icds, onChange }) {
+  const [q, setQ] = useState('');
+  const [focused, setFocused] = useState(false);
+  const wrapRef = useRef(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    const onDoc = (e) => { if (!wrapRef.current?.contains(e.target)) { setFocused(false); setQ(''); } };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, []);
+
+  const existing = new Set((icds || []).map(i => i.code));
+  const query = q.trim().toLowerCase();
+  const matches = (() => {
+    const all = Array.from(ICD_LOOKUP.entries()).map(([code, meta]) => ({ code, ...meta }));
+    const filtered = query
+      ? all.filter(i => i.code.toLowerCase().includes(query) || (i.desc || '').toLowerCase().includes(query))
+      : all;
+    return filtered.filter(i => !existing.has(i.code)).slice(0, 8);
+  })();
+
+  const addCode = (item) => {
+    onChange([...(icds || []), { code: item.code, valid: true }]);
+    setQ('');
+    inputRef.current?.focus();
+  };
+  const removeCode = (code) => onChange((icds || []).filter(i => i.code !== code));
+
+  const showDropdown = focused && (query.length > 0 || matches.length > 0);
+
+  return (
+    <div className={styles.icdMulti} ref={wrapRef}>
+      <div
+        className={[styles.encIcdsInput, focused ? styles.encIcdsInputFocus : ''].filter(Boolean).join(' ')}
+        onClick={() => { setFocused(true); inputRef.current?.focus(); }}
+      >
+        {(icds || []).map(icd => (
+          <span
+            key={icd.code}
+            role="button"
+            tabIndex={0}
+            className={styles.icdBadgeWrap}
+            title={`Remove ${icd.code}`}
+            onClick={(e) => { e.stopPropagation(); removeCode(icd.code); }}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); removeCode(icd.code); } }}
+          >
+            <Badge variant="ai-neutral" label={icd.code} trailingIcon="solar:close-circle-linear" />
+          </span>
+        ))}
+        <input
+          ref={inputRef}
+          className={styles.icdInlineInput}
+          placeholder={(icds || []).length ? 'Add code…' : 'Search ICD by code or description'}
+          value={q}
+          onFocus={() => setFocused(true)}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Backspace' && !q && (icds || []).length) {
+              removeCode(icds[icds.length - 1].code);
+            } else if (e.key === 'Enter' && matches[0]) {
+              e.preventDefault();
+              addCode(matches[0]);
+            }
+          }}
+        />
+      </div>
+      {showDropdown && (
+        <div className={styles.icdSearchPop}>
+          <div className={styles.icdSearchList}>
+            {matches.length === 0 ? (
+              <div className={styles.icdSearchEmpty}>No matches for “{q}”</div>
+            ) : matches.map(item => (
+              <button key={item.code} type="button" className={styles.icdSearchItem} onClick={() => addCode(item)} title={item.desc}>
+                <span className={styles.icdSearchCode}>{item.code}</span>
+                <span className={styles.icdSearchDesc}>{item.desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * ConfTier — sparkle + High/Medium/Low label (Figma 3:7620). Used in the
+ * read-only DOS card where the exact percentage is noise; the reviewer
+ * only needs the tier to decide whether to trust or re-check.
+ */
+function ConfTier({ score }) {
+  if (typeof score !== 'number' || score === 0) {
+    return <span className={styles.confTierEmpty}>—</span>;
+  }
+  const tier = score >= 85 ? 'high' : score >= 60 ? 'medium' : 'low';
+  const label = tier === 'high' ? 'High' : tier === 'medium' ? 'Medium' : 'Low';
+  return (
+    <span className={[styles.confTier, styles[`confTier_${tier}`]].join(' ')} title={`AI confidence ${score}%`}>
+      <Icon name="solar:magic-stick-3-bold" size={12} color="currentColor" />
+      {label}
+    </span>
   );
 }
 
@@ -1153,62 +1511,103 @@ function ConfGauge({ score }) {
  * review panel for the active document. Lives between the file switcher
  * and the page preview on the left side of the drawer.
  */
-function ComplianceBlock({ batch, expanded, onToggle, onApplyDecision }) {
-  const { ocrTier, compliance, fileName } = batch;
-  const hasIssue = anyCheckFailed(compliance) || anyCheckPending(compliance) || ocrTier === 'unreadable';
-  const ready = ocrTier !== 'unreadable' && allChecksPassed(compliance);
+/**
+ * DocChecksBadge — inline pass/fail badge on the file title that opens the
+ * 7-point Document Review checklist popover (Figma 6:5838). The badge
+ * reflects the aggregate: all pass → success "Pass N/N"; any fail → error
+ * "Failed"; otherwise → warning "Review X/N".
+ */
+function DocChecksBadge({ compliance, ocrTier, fileName, onApplyDecision }) {
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(null); // { checkKey, decision }
+  const wrapRef = useRef(null);
 
-  const summaryLabel = ocrTier === 'unreadable'
-    ? 'Unreadable — Support re-scan'
-    : ready
-      ? 'All 5 checks passed'
-      : hasIssue
-        ? 'Support review required'
-        : 'In review';
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
 
-  const summaryTone = ocrTier === 'unreadable' || anyCheckFailed(compliance)
-    ? 'error'
-    : ready
-      ? 'success'
-      : 'warning';
+  const total = CHECK_KEYS.length;
+  const passCount = CHECK_KEYS.filter(k => compliance[k]?.status === 'pass').length;
+  const failed = anyCheckFailed(compliance);
+  const pendingAny = anyCheckPending(compliance);
+
+  const variant = failed ? 'error' : (pendingAny ? 'warning' : 'success');
+  const label = failed ? 'Checks · Failed' : `Checks · ${passCount}/${total}`;
+
+  const submitReason = (reason) => {
+    if (!pending) return;
+    onApplyDecision?.({ checkKey: pending.checkKey, decision: pending.decision, reason });
+    setPending(null);
+  };
 
   return (
-    <div className={styles.complianceBlock}>
-      <button
-        type="button"
-        className={styles.complianceHeader}
-        onClick={onToggle}
-        aria-expanded={expanded}
-        aria-controls={`compliance-detail-${batch.id}`}
-      >
-        <div className={styles.complianceHeaderLeft}>
-          <Badge variant={OCR_TIER_TONE[ocrTier] || 'warning'} label={`OCR · ${OCR_TIER_LABEL[ocrTier] || 'Unknown'}`} />
-          {ocrTier !== 'unreadable' && (
-            <ComplianceStrip compliance={compliance} size="S" />
-          )}
-          <span className={[styles.complianceSummary, styles[`tone_${summaryTone}`]].join(' ')}>
-            {summaryLabel}
-          </span>
-        </div>
-        <Icon
-          name={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
-          size={14}
-          color="var(--neutral-300)"
+    <span className={styles.docChecks} ref={wrapRef}>
+      <button type="button" className={styles.docChecksTrigger} onClick={() => setOpen(v => !v)} aria-label="Document checks">
+        <Badge
+          variant={variant}
+          label={label}
+          trailingIcon={open ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
         />
       </button>
-      {expanded && (
-        <div id={`compliance-detail-${batch.id}`} className={styles.complianceDetail}>
-          <ComplianceReviewPanel
-            fileName={fileName}
-            ocrTier={ocrTier}
-            compliance={compliance}
-            onDecision={({ checkKey, decision, reason, actor }) =>
-              onApplyDecision?.({ checkKey, decision, reason, actor })
-            }
-          />
+
+      {open && (
+        <div className={styles.docChecksPop} role="dialog" aria-label="Document Review checklist">
+          <div className={styles.docChecksHead}>
+            <Icon name="solar:clipboard-check-linear" size={16} color="var(--neutral-500)" />
+            <div className={styles.docChecksHeadText}>
+              <div className={styles.docChecksTitle}>Document Review</div>
+              <div className={styles.docChecksSub}>Make sure the document meets these criteria</div>
+            </div>
+            <button type="button" className={styles.docChecksClose} onClick={() => setOpen(false)} aria-label="Close">
+              <Icon name="solar:close-circle-linear" size={16} color="var(--neutral-300)" />
+            </button>
+          </div>
+          <ul className={styles.docChecksList}>
+            {CHECK_KEYS.map(k => {
+              const c = compliance[k] || {};
+              const passed = c.status === 'pass';
+              const failedCheck = c.status === 'fail';
+              const disabled = ocrTier === 'unreadable';
+              return (
+                <li key={k} className={[styles.docChecksRow, failedCheck ? styles.docChecksRowFail : ''].filter(Boolean).join(' ')}>
+                  {/* Checkbox = manual toggle. Checking → confirm pass;
+                      unchecking a passed check → mark fail. Both capture a
+                      reason via the dialog. */}
+                  <Checkbox
+                    checked={passed}
+                    disabled={disabled}
+                    aria-label={CHECK_LABELS[k]}
+                    onCheckedChange={(v) => setPending({ checkKey: k, decision: v === true ? 'pass' : 'fail' })}
+                  />
+                  <span className={styles.docChecksLabel}>{CHECK_LABELS[k]}</span>
+                  {failedCheck && <Icon name="solar:close-circle-bold" size={14} color="var(--status-error)" />}
+                  {c.source && <AuditBadge source={c.source} actor={c.actor} at={c.at} />}
+                </li>
+              );
+            })}
+          </ul>
+          {ocrTier === 'unreadable' && (
+            <div className={styles.docChecksUnreadable}>
+              Document is unreadable — re-scan or re-request before it can be reviewed.
+            </div>
+          )}
         </div>
       )}
-    </div>
+
+      {pending && (
+        <ReasonDialog
+          title={pending.decision === 'pass' ? 'Confirm manual pass' : 'Confirm manual fail'}
+          description={CHECK_LABELS[pending.checkKey]}
+          decision={pending.decision}
+          standardReasons={STANDARD_REASONS[pending.checkKey] || []}
+          onCancel={() => setPending(null)}
+          onSubmit={submitReason}
+        />
+      )}
+    </span>
   );
 }
 

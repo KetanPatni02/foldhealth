@@ -72,6 +72,15 @@
   min-height: 0;
 }
 
+/* Inline Document Review host — fills the surface below the title bar. */
+.reviewInlineHost {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--neutral-50);
+}
+
 .leftCol,
 .rightCol {
   padding: 20px 24px;
@@ -550,6 +559,16 @@
   height: 9px;
   background: currentColor;
   opacity: 0.3;
+}
+
+/* Clickable pass pill — opens the document review. */
+.passPillClickable {
+  cursor: pointer;
+  transition: filter 0.12s, box-shadow 0.12s;
+}
+.passPillClickable:hover {
+  filter: brightness(0.97);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.04);
 }
 
 /* ── Categorized tier list (results mode, LEFT) ──────────────────── */

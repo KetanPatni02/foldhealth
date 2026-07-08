@@ -254,3 +254,8 @@
 }
 .emptyTitle { font-size: 15px; font-weight: 500; color: var(--neutral-400); margin: 0; }
 .emptyMsg { font-size: 13px; color: var(--neutral-300); margin: 0; text-align: center; max-width: 320px; }
+
+/* ── Loading state ── */
+/* The shared TableSkeleton brings its own row spacing, so the host cell
+   carries no padding and simply lets it fill the table width. */
+.loadingCell { padding: 0; }

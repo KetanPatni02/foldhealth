@@ -1,6 +1,8 @@
 /* ── InsuranceCardPreview ──
    Shared card preview: previewScroll (front + back cards) + previewFooter.
-   Parent drawers render their own rightPanel / previewHeader wrappers.
+   Card front/back match Figma exactly (nodes 1:62576 / 1:62579 and variants).
+   All themes share text colors (#16181D primary, #6F7A90 secondary, #D0D6E1
+   divider); only bg/border/badge/footer/note colors vary (inline from theme).
 */
 
 .previewScroll {
@@ -13,8 +15,8 @@
 /* Front/back view sections */
 .cardViewSection {
   flex: 1;
-  background: var(--neutral-50);
-  border-bottom: 1px solid var(--neutral-150);
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -24,6 +26,7 @@
 
 .cardViewSectionLast {
   border-bottom: none;
+  background: var(--neutral-0);
 }
 
 .cardViewLabel {
@@ -36,232 +39,275 @@
 .cardViewLabelFront { color: var(--neutral-300); }
 .cardViewLabelBack  { color: var(--neutral-200); }
 
-/* ── Insurance Card (Front) ── */
-.insuranceCard {
+/* ══ Card (Front & Back share the shell) ══ */
+.insuranceCard,
+.backCard {
   width: 398px;
-  height: 251.2px;
   border-radius: 16px;
   overflow: hidden;
   position: relative;
-  background: linear-gradient(147.77deg, #eef4ff 0%, #f3f7ff 38%, #b8d0ff 100%);
-  box-shadow: inset 0px -2px 12px rgba(130, 126, 126, 0.25);
   flex-shrink: 0;
-}
-
-.cardInner {
-  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  position: relative;
-  z-index: 1;
+  box-shadow: 0 9px 40px rgba(108, 108, 108, 0.10);
 }
 
-.cardTopRow {
+/* Front: header + content + optional footer, gap 8px */
+.insuranceCard {
+  gap: 8px;
+}
+
+/* ── Front header (logo + badge) ── */
+.cardHeader {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
+  padding: 12px;
+  width: 100%;
 }
 
-.cardPlanInfo {
+.cardLogoBox {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.cardPlanLogo {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--card-text-primary, #151516);
-  font-family: 'Inter', sans-serif;
-}
-
-.cardPlanName {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--card-text-primary, var(--neutral-400));
-  font-family: 'Inter', sans-serif;
+  align-items: center;
+  min-width: 0;
+  height: 32px;
 }
 
 .cardLogoImg {
-  max-height: 28px;
-  max-width: 80px;
+  max-height: 32px;
+  max-width: 133px;
   object-fit: contain;
   display: block;
 }
 
-.cardTypeBadge {
-  border-radius: 99px;
-  padding: 6px 10px;
-  font-size: 10px;
+.cardLogoPlaceholder {
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 1.3px;
-  text-transform: uppercase;
+  color: #16181d;
   font-family: 'Inter', sans-serif;
-  /* color, background, border-color set inline per-theme */
 }
 
-.cardMemberSection {
+/* Group badge — colors from theme via inline style */
+.cardBadge {
+  height: 22px;
+  min-width: 22px;
+  border-radius: 4px;
+  border: 0.5px solid;
+  padding: 2px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Front content ── */
+.cardContent {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 6px;
+  padding: 0 12px;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
-.cardFieldGroup {
+.cardMemberGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.cardField {
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 2px 0;
 }
 
+/* Figma: label 12px Regular #6F7A90 */
 .cardFieldLabel {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--card-text-secondary, #717885);
-  letter-spacing: 1.65px;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 400;
+  color: #6f7a90;
   font-family: 'Inter', sans-serif;
+  line-height: 1.2;
 }
 
+/* Figma: value 16px SemiBold #16181D */
 .cardFieldValue {
   font-size: 16px;
-  font-weight: 500;
-  color: var(--card-text-primary, var(--neutral-400));
-  letter-spacing: 1.1px;
-  text-transform: uppercase;
+  font-weight: 600;
+  color: #16181d;
   font-family: 'Inter', sans-serif;
+  line-height: 1.2;
 }
 
-.cardMemberId {
-  font-size: 16px;
-  font-weight: 500;
-  color: var(--card-text-primary, var(--neutral-400));
-  letter-spacing: 1.5px;
-  font-family: 'Inter', sans-serif;
-}
-
+/* Divider — 0.5px #D0D6E1 full width */
 .cardDivider {
   height: 0.5px;
-  background: var(--card-divider, #c8dbff);
+  background: #d0d6e1;
   width: 100%;
-}
-
-.cardMetaRow {
-  display: flex;
-  gap: 24px;
-}
-
-.cardMeta {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 3px 0;
-}
-
-.cardMetaLabel {
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--card-text-secondary, #717885);
-  letter-spacing: 1.46px;
-  text-transform: uppercase;
-  font-family: 'Inter', sans-serif;
-}
-
-.cardMetaValue {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--card-text-primary, var(--neutral-400));
-  letter-spacing: 0.16px;
-  font-family: 'Inter', sans-serif;
-  white-space: nowrap;
-}
-
-/* ── Back Card ── */
-.backCard {
-  width: 398px;
-  height: 251.2px;
-  border-radius: 16px;
-  overflow: hidden;
-  background: linear-gradient(147.77deg, #eef4ff 0%, #f3f7ff 38%, #b8d0ff 100%);
-  box-shadow: inset 0px -2px 12px rgba(130, 126, 126, 0.25);
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  position: relative;
   flex-shrink: 0;
 }
 
-.backCardInner {
-  position: relative;
-  z-index: 1;
+/* Dependents / Coverage */
+.cardMetaGroup {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  height: 100%;
+  gap: 4px;
+  width: 100%;
+}
+
+.cardMetaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 0;
+}
+
+/* Figma: label 10px Regular #6F7A90 */
+.cardMetaLabel {
+  font-size: 10px;
+  font-weight: 400;
+  color: #6f7a90;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.2;
+}
+
+/* Figma: value 12px Medium #16181D */
+.cardMetaValue {
+  font-size: 12px;
+  font-weight: 500;
+  color: #16181d;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.2;
+}
+
+/* Deductibles / OOP */
+.cardCostGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.cardCostRow {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 2px 0;
+}
+
+.cardCostCell {
+  flex: 1 0 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Footer motto bar — bg/color from theme via inline style */
+.cardFooterBar {
+  padding: 4px 12px;
+  font-size: 8px;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  text-align: center;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+/* ══ Back card ══ */
+.backContent {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+.backTpaRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 4px 0;
+  width: 100%;
+}
+
+.backTpaText {
+  flex: 1 0 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+}
+
+.backTpaLogoImg {
+  height: 32px;
+  max-width: 79px;
+  object-fit: contain;
+  display: block;
+}
+
+.backRxGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
 }
 
 .backRow {
   display: flex;
   gap: 12px;
-  padding: 1px 0;
+  align-items: center;
+  padding: 2px 0;
+  width: 100%;
 }
 
 .backRowAlignStart {
   align-items: flex-start;
 }
 
-.backFieldGroup {
-  gap: 8px;
-}
-
-.backField {
-  flex: 1;
+.backCell {
+  flex: 1 0 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   padding: 2px 0;
-}
-
-.backFieldLabel {
-  font-size: 8px;
-  font-weight: 500;
-  color: var(--card-text-secondary, #717885);
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
-  font-family: 'Inter', sans-serif;
-  white-space: nowrap;
-}
-
-.backFieldValue {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--card-text-primary, var(--neutral-400));
-  letter-spacing: 0.37px;
-  font-family: 'Inter', sans-serif;
-}
-
-.backCardDivider {
-  height: 0.5px;
-  background: var(--card-divider, #bcd2ff);
-  width: 100%;
-  margin: 2px 0;
 }
 
 .backAddressBlock {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
+}
+
+/* Note bar — bg from theme (noteBg), italic 10px #3A485F */
+.backNoteBar {
+  padding: 8px 12px;
+  flex-shrink: 0;
+  width: 100%;
 }
 
 .backNote {
-  font-size: 9px;
+  font-size: 10px;
   font-style: italic;
-  color: var(--card-text-secondary, var(--neutral-300));
+  color: #3a485f;
   font-family: 'Inter', sans-serif;
-  margin-top: 2px;
-  line-height: 1.3;
+  line-height: 1.2;
+  margin: 0;
+  width: 100%;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* ── Preview footer ── */
@@ -270,25 +316,109 @@
   align-items: center;
   gap: 10px;
   justify-content: center;
-  padding: 12px 16px;
+  padding: 10px 16px;
   border-top: 0.5px solid var(--neutral-150);
   flex-shrink: 0;
   background: var(--neutral-0);
+  min-height: 48px;
 }
 
-.previewFooterDivider {
-  width: 0.5px;
-  height: 16px;
-  background: var(--neutral-150);
-  flex-shrink: 0;
+/* ── Theme selector field + dropdown (Figma 2005:76958 / 8:64414) ── */
+.themeSelectWrap {
+  position: relative;
 }
 
-/* Read-only theme dot shown in view-only mode */
-.themeSwatchStatic {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 1px solid rgba(0,0,0,0.1);
+/* Trigger — 260px bordered field, 44px tall */
+.themeSelectBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 260px;
+  height: 44px;
+  padding: 6px 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 4px;
+  background: var(--neutral-0);
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+
+.themeSelectLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.themeSwatch {
+  border-radius: 8px;
   flex-shrink: 0;
-  display: block;
+  box-sizing: border-box;
+}
+
+.themeSelectLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Dropdown — opens above the trigger */
+.themeSelectMenu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-100);
+  border-radius: 4px;
+  padding: 12px;
+  box-shadow: 0 12px 60px -15px rgba(0, 0, 0, 0.06);
+  z-index: 200;
+}
+
+.themeOption {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.themeOptionActive {
+  background: var(--primary-50);
+  border-color: var(--primary-300);
+}
+
+.themeOptionLabel {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-400);
+  font-family: 'Inter', sans-serif;
+}
+
+.themeOptionLabelActive {
+  font-weight: 500;
+}
+
+/* Static theme indicator in view-only mode */
+.themeStaticLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  font-family: 'Inter', sans-serif;
 }

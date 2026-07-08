@@ -188,3 +188,11 @@
   color: var(--neutral-500, #16181d);
   font-family: 'Inter', sans-serif;
 }
+
+.tierViewHeader {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary-300);
+  font-family: 'Inter', sans-serif;
+  padding: 12px 12px 4px;
+}
