@@ -122,8 +122,10 @@ export function ApcmBillingTable({ searchQuery = '' }) {
       const q = icdFilter.toLowerCase();
       // Match only against the codes actually visible in the row — never
       // against hidden ambiguous-candidate codes the user can't see or act on.
+      // Unresolved-mapping ICDs have `code: null` — match on description only.
       result = result.filter(p => visibleIcdsOf(p).some(c =>
-        c.code.toLowerCase().includes(q) || c.description.toLowerCase().includes(q)
+        (c.code || '').toLowerCase().includes(q) ||
+        (c.description || '').toLowerCase().includes(q)
       ));
     }
     if (providerFilter) result = result.filter(p => p.renderingProvider === providerFilter);
@@ -170,7 +172,9 @@ export function ApcmBillingTable({ searchQuery = '' }) {
     const codes = new Set();
     for (const p of rows) {
       for (const c of visibleIcdsOf(p)) {
-        if (c.code.toLowerCase().includes(q) || c.description.toLowerCase().includes(q)) {
+        // Skip unresolved (code: null) — no code to bulk-mark against.
+        if (!c.code) continue;
+        if (c.code.toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q)) {
           codes.add(c.code);
         }
       }
