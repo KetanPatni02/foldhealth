@@ -15,15 +15,20 @@ const preview = {
       test: 'todo',
     },
     backgrounds: {
-      default: 'light',
-      values: [
-        { name: 'light', value: '#FFFFFF' },
-        { name: 'neutral-50', value: '#F6F7F8' },
-        { name: 'dark', value: '#16181D' },
-      ],
+      options: {
+        light: { name: 'light', value: '#FFFFFF' },
+        "neutral-50": { name: 'neutral-50', value: '#F6F7F8' },
+        dark: { name: 'dark', value: '#16181D' }
+      }
     },
     layout: 'centered',
   },
+
+  initialGlobals: {
+    backgrounds: {
+      value: 'light'
+    }
+  }
 };
 
 export default preview;
