@@ -25,5 +25,27 @@ export default defineConfig([globalIgnores(['dist']), {
   },
   rules: {
     'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+    // ── Design-system guardrails (JSX) ──────────────────────────────────
+    // Kept at 'warn' so `bun run lint` stays green against the existing
+    // debt; scripts/ds-guardrails.mjs promotes these to BLOCKING but only
+    // on lines a change actually touches (CI + pre-commit).
+    'no-restricted-syntax': ['warn',
+      {
+        selector: "JSXAttribute[name.name='style'] Literal[value=/#[0-9a-fA-F]{3,8}\\b/]",
+        message: 'Inline hex color — use a design token via CSS Modules (var(--…)), not a raw hex in style={{}}.',
+      },
+      {
+        selector: "JSXAttribute[name.name='style'] TemplateElement[value.raw=/#[0-9a-fA-F]{3,8}\\b/]",
+        message: 'Inline hex color — use a design token via CSS Modules (var(--…)), not a raw hex in style={{}}.',
+      },
+      {
+        selector: "JSXOpeningElement[name.name='Icon'] JSXAttribute[name.name='name'] Literal[value=/-outline/]",
+        message: 'Use the -linear Solar icon variant, never -outline (outline uses heavier fill-based strokes). See CLAUDE.md.',
+      },
+      {
+        selector: "JSXOpeningElement[name.name='Icon'] JSXAttribute[name.name='name'] Literal[value=/^(?!solar:)[a-z]+:/]",
+        message: 'Use Solar (solar:*-linear) icons. Non-Solar icon sets are not part of the design system.',
+      },
+    ],
   },
 }, ...storybook.configs["flat/recommended"]])
