@@ -1,34 +1,32 @@
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../components/Icon/Icon';
-import { getStatusSpec } from '../statusSpec';
 import { ROLES, ROLE_LABEL, staffById } from '../assignment/astranaStaff';
 import styles from './ReviewProgressPopover.module.css';
 
 /**
- * Hover popover anchored to the DOS row's "With Coder" pill. Mirrors the
+ * Hover popover anchored to the DOS row's "With <Stage>" pill. Mirrors the
  * Figma node 1:67779 — a vertical timeline showing the four review stages
- * (Support → Coder → R1 → R2) with each stage's current status, assignee,
- * and date. A connector line between stages turns green for completed
- * segments.
+ * (Support → Coder → R1 → R2). Each stage renders as:
  *
- * Stages are derived from the engine's per-DOS state in
- * `hccDosAssignments`. When the engine hasn't been seeded yet, the legacy
- * `member.sup/cdr/r1/r2` fields are used as a fallback so the popover
- * still renders something useful.
+ *   ┊
+ *   ○   Name (Role)
+ *   ┊   Status (date)
+ *   ┊
+ *
+ * with a uniform Neutral 150 connector line running top-to-bottom behind
+ * the status circles. The "Send to Bill" footer hangs off the same line.
+ *
+ * Stages come from the engine's per-DOS state in `hccDosAssignments`. If
+ * the engine hasn't been seeded yet we fall back to the legacy
+ * `member.sup/cdr/r1/r2` fields so the popover still renders.
  */
 const TERMINAL_STATUSES = new Set(['Completed', 'Billing Ready', 'Reject', 'Rejected']);
 
-/**
- * Build the stage list shown in the popover (and used by the progress ring).
- * Returns one object per role:
- *   { role, label, name, status, date, state: 'done' | 'active' | 'pending' }
- *
- * `dosState` may be undefined — in that case we fall back to the legacy
- * member fields. Either way we always produce four rows so the timeline
- * visually stays consistent.
- */
 export function buildReviewStages(member, dosState) {
-  const visibleRoles = ['support', 'coder', 'r1', 'r2'];
+  // Five sequential stages per the HCC workflow:
+  //   Support → Coder → R1 → R2 → R3 → Billing
+  // Each must complete before the next is reached.
+  const visibleRoles = ['support', 'coder', 'r1', 'r2', 'r3'];
   return visibleRoles.map((role) => {
     const rs = dosState?.[role];
     const legacyMap = {
@@ -36,6 +34,7 @@ export function buildReviewStages(member, dosState) {
       coder:   { name: member?.cdr, status: member?.cdrS },
       r1:      { name: member?.r1,  status: member?.r1s },
       r2:      { name: member?.r2,  status: member?.r2s },
+      r3:      { name: member?.r3,  status: member?.r3s },
     };
     const assigneeId = rs?.assignee || null;
     const staff = assigneeId ? staffById(assigneeId) : null;
@@ -46,8 +45,6 @@ export function buildReviewStages(member, dosState) {
     if (status && TERMINAL_STATUSES.has(status)) state = 'done';
     else if (status && status !== 'Assign') state = 'active';
 
-    // Pick a date for the subtitle — first history entry's timestamp if we
-    // have one, else the DOS date as a stand-in for the prototype.
     const at = rs?.history?.[rs.history.length - 1]?.at;
     const date = at ? new Date(at).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : null;
 
@@ -55,9 +52,7 @@ export function buildReviewStages(member, dosState) {
   });
 }
 
-// Fraction (0..1) of the workflow that's complete. Each done stage = 1/N,
-// the current active stage counts as half (so a DOS sitting in "In Progress"
-// with the Coder shows partial credit).
+// 0..1 fraction of the workflow that's complete.
 export function computeReviewProgress(stages) {
   if (!stages?.length) return 0;
   const N = stages.length;
@@ -77,15 +72,14 @@ export function ReviewProgressPopover({
 }) {
   if (!anchorRect) return null;
 
-  const W = 280;
-  // Sit just below the pill, aligned to its left edge (clamped to viewport).
+  const W = 275;
   const top = anchorRect.bottom + 8;
   const left = Math.min(anchorRect.left, window.innerWidth - W - 8);
 
+  const allDone = stages.every(s => s.state === 'done');
+
   return createPortal(
     <>
-      {/* Invisible bridge so the cursor can travel from pill → popover
-          without triggering the close timer in between. */}
       <div
         className={styles.bridge}
         style={{ top: anchorRect.bottom, left: anchorRect.left, width: anchorRect.width, height: 8 }}
@@ -100,71 +94,61 @@ export function ReviewProgressPopover({
         role="tooltip"
         aria-label="Review progress"
       >
-        <div className={styles.title}>Review Progress</div>
+        <div className={styles.titleRow}>
+          <span className={styles.title}>Review Progress</span>
+        </div>
+
         <ol className={styles.timeline}>
           {stages.map((stage, i) => (
             <StageRow
               key={stage.role}
               stage={stage}
+              isFirst={i === 0}
               isLast={i === stages.length - 1}
-              nextDone={stages[i + 1]?.state === 'done'}
             />
           ))}
         </ol>
-        <button
-          type="button"
-          className={styles.sendToBill}
-          disabled={!stages.every(s => s.state === 'done')}
-          onClick={onClose}
-        >
-          <Icon name="solar:play-linear" size={14} color="currentColor" />
-          <span>Send to Bill</span>
-        </button>
+
+        <div className={styles.footer}>
+          <span className={styles.footerConnector} aria-hidden="true" />
+          <button
+            type="button"
+            className={styles.sendToBill}
+            disabled={!allDone}
+            onClick={onClose}
+          >
+            <Icon name="solar:plain-2-linear" size={12} color="currentColor" />
+            <span>Send to Bill</span>
+          </button>
+        </div>
       </div>
     </>,
     document.body,
   );
 }
 
-function StageRow({ stage, isLast, nextDone }) {
+function StageRow({ stage, isFirst, isLast }) {
   const { state, label, name, status, date } = stage;
 
-  // Icon + colour per stage state. `done` uses the success spec, `active`
-  // uses warning amber (matches statusSpec.js's "In Progress" tone), and
-  // `pending` is a hollow neutral circle.
-  const visual = state === 'done'
-    ? { icon: 'solar:check-circle-bold', color: 'var(--status-success)' }
+  // Subtitle colour follows the status: green / amber / grey.
+  const subtitleClass = state === 'done'
+    ? styles.subtitleDone
     : state === 'active'
-      ? { icon: 'solar:half-circle-bold', color: 'var(--status-warning)' }
-      : { icon: null, color: 'var(--neutral-200)' };
-
-  // Subtitle colour mirrors the icon colour for completed/active stages.
-  const subtitleColor = state === 'done'
-    ? 'var(--status-success)'
-    : state === 'active'
-      ? 'var(--status-warning)'
-      : 'var(--neutral-300)';
-
-  // Connector tint — green when this stage is done AND the next stage has
-  // been started (or done), so the green only spans completed segments.
-  const connectorColor = (state === 'done' && (nextDone || stage.state === 'done'))
-    ? 'var(--status-success)'
-    : 'var(--neutral-150)';
+      ? styles.subtitleActive
+      : styles.subtitlePending;
 
   return (
     <li className={styles.stage}>
-      <div className={styles.markerColumn}>
-        {visual.icon ? (
-          <Icon name={visual.icon} size={16} color={visual.color} />
-        ) : (
-          <span className={styles.pendingDot} />
-        )}
-        {!isLast && (
-          <span
-            className={styles.connector}
-            style={{ background: connectorColor }}
-          />
-        )}
+      <div className={styles.markerCol}>
+        <span
+          className={[styles.connector, isFirst ? styles.connectorHidden : ''].join(' ')}
+          aria-hidden="true"
+        />
+        <StatusBadge state={state} />
+        <span
+          className={[styles.connector, isLast ? styles.connectorHidden : ''].join(' ')}
+          aria-hidden="true"
+        />
       </div>
       <div className={styles.stageBody}>
         <div className={styles.stageTitle}>
@@ -172,7 +156,7 @@ function StageRow({ stage, isLast, nextDone }) {
             ? <>{name} <span className={styles.stageRole}>({label})</span></>
             : label}
         </div>
-        <div className={styles.stageSubtitle} style={{ color: subtitleColor }}>
+        <div className={[styles.stageSubtitle, subtitleClass].join(' ')}>
           {state === 'pending'
             ? 'Not Assigned'
             : <>{status}{date ? ` (${date})` : ''}</>}
@@ -182,13 +166,32 @@ function StageRow({ stage, isLast, nextDone }) {
   );
 }
 
+/**
+ * 16×16 round status badge per Figma. Three variants:
+ *   - done:    success-light bg, success border, white check icon inside
+ *   - active:  warning-light bg, warning border, sun/pending icon inside
+ *   - pending: white bg, neutral-200 border, empty (no inner icon)
+ */
+function StatusBadge({ state }) {
+  if (state === 'done') {
+    return (
+      <span className={[styles.badge, styles.badgeDone].join(' ')}>
+        <Icon name="solar:check-read-linear" size={10} color="var(--status-success)" />
+      </span>
+    );
+  }
+  if (state === 'active') {
+    return (
+      <span className={[styles.badge, styles.badgeActive].join(' ')}>
+        <Icon name="solar:sun-bold" size={11} color="var(--status-warning)" />
+      </span>
+    );
+  }
+  return <span className={[styles.badge, styles.badgePending].join(' ')} />;
+}
+
 // ── Progress ring — used by the trigger pill ─────────────────────────
 
-/**
- * Tiny circular progress ring. `progress` is 0..1. Renders a track + an
- * arc; the arc length is `progress * circumference`. Rotated -90° so 0%
- * starts at the top, growing clockwise.
- */
 export function ProgressRing({ progress = 0, size = 16, stroke = 2 }) {
   const r = (size - stroke) / 2;
   const cx = size / 2;
@@ -203,24 +206,12 @@ export function ProgressRing({ progress = 0, size = 16, stroke = 2 }) {
       aria-hidden="true"
       className={styles.ring}
     >
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--neutral-150)" strokeWidth={stroke} />
       <circle
-        cx={cx}
-        cy={cy}
-        r={r}
-        fill="none"
-        stroke="var(--neutral-150)"
-        strokeWidth={stroke}
-      />
-      <circle
-        cx={cx}
-        cy={cy}
-        r={r}
-        fill="none"
-        stroke="var(--status-success)"
-        strokeWidth={stroke}
+        cx={cx} cy={cy} r={r} fill="none"
+        stroke="var(--status-success)" strokeWidth={stroke}
         strokeLinecap="round"
-        strokeDasharray={c}
-        strokeDashoffset={offset}
+        strokeDasharray={c} strokeDashoffset={offset}
         transform={`rotate(-90 ${cx} ${cy})`}
         style={{ transition: 'stroke-dashoffset 0.25s ease' }}
       />
@@ -228,6 +219,4 @@ export function ProgressRing({ progress = 0, size = 16, stroke = 2 }) {
   );
 }
 
-// Re-export ROLES so DiagPanel can compute its own progress without
-// re-importing from the engine.
 export { ROLES };

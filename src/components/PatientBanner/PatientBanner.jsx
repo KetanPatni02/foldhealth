@@ -2,6 +2,7 @@ import { useState, Fragment } from 'react';
 import { Icon } from '../Icon/Icon';
 import { ActionButton } from '../ActionButton/ActionButton';
 import { Badge } from '../Badge/Badge';
+import { BannerExpandIcon } from '../Icon/BannerExpandIcon';
 import styles from './PatientBanner.module.css';
 
 /**
@@ -86,18 +87,19 @@ export function PatientBanner({ initials, name, gender, age, memberId, raf, rafC
           </div>
         </div>
         <div className={styles.actions}>
-          <span className={styles.divider} />
           {onCall && (
-            <ActionButton icon="solar:phone-calling-rounded-linear" size="L" tooltip="Call" onClick={onCall} />
+            <ActionButton icon="solar:phone-calling-rounded-linear" size="L" tooltip="Call" onClick={onCall} tooltipBelow />
           )}
+          <span className={styles.divider} />
           <ActionButton
-            icon="solar:alt-arrow-down-linear"
             size="L"
             tooltip={expanded ? 'Collapse' : 'Expand'}
-            iconColor="var(--primary-300)"
             onClick={() => setExpanded(v => !v)}
             className={expanded ? styles.chevronOpen : ''}
-          />
+            tooltipBelow
+          >
+            <BannerExpandIcon size={20} />
+          </ActionButton>
         </div>
       </div>
 

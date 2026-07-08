@@ -1,11 +1,14 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAppStore } from '../../../store/useAppStore';
 import { Drawer } from '../../../components/Drawer/Drawer';
 import { Icon } from '../../../components/Icon/Icon';
 import { CloseIcon } from '../../../components/Icon/CloseIcon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
+import { Avatar } from '../../../components/Avatar/Avatar';
 import { Toggle } from '../../../components/Toggle/Toggle';
 import { SearchIconButton } from '../../../components/SearchIconButton/SearchIconButton';
+import { PatientBanner } from '../../../components/PatientBanner/PatientBanner';
 import { HccCard } from './HccGroupRow';
 import { IcdRow } from './IcdRow';
 import { DosSelector } from './DosSelector';
@@ -22,27 +25,198 @@ import {
 import { getSweepIcdsForMember } from '../data/sweepIcds';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { RoleTooltip } from '../RoleTooltip';
+import { resolveCurrentAssignee } from '../HccWorklistRow';
+import { ROLE_LABEL, staffForRole } from '../assignment/astranaStaff';
+import { canCompleteDos } from '../compliance';
 import styles from './DiagPanel.module.css';
 
-// Small initials-square avatar used to the left of the DOS status pill.
-// Picks orange (coder) tint if a coder is assigned, else purple (support).
-// Hovering reveals a RoleTooltip card with the assignee's full name + role.
-function AssigneeAvatar({ coder, support }) {
-  const nm = (coder || support || '').trim();
-  if (!nm) return null;
-  const parts = nm.split(/[\s.]+/).filter(Boolean);
-  const initials = parts.map((w) => (w[0] || '').toUpperCase()).slice(0, 2).join('') || 'DH';
-  const isCoder = !!coder;
-  const bg = isCoder ? 'var(--secondary-100)' : 'var(--primary-50)';
-  const border = isCoder ? 'var(--secondary-200)' : 'var(--primary-200)';
-  const color = isCoder ? 'var(--secondary-300)' : 'var(--primary-300)';
-  const role = isCoder ? 'Coder' : 'Support Team';
+// Initials-square avatar to the left of the DOS status pill. Reflects the
+// SAME sequential resolver the worklist uses — shows whoever currently owns
+// the DOS based on workflow stage, not "the coder if there's a coder". For
+// records that have advanced past R2/R3 with no next assignee, shows a
+// dashed-outline placeholder. For Billing Ready records, shows a green
+// check chip. Hovering opens a RoleTooltip with the role label.
+/**
+ * UnassignedAssignTrigger — interactive dashed avatar slot.
+ * Clicking opens a portal popover with candidates pulled from configured
+ * Care Teams (members whose teamType matches the role) + Astrana staff in
+ * the same role bucket. Selecting a candidate dispatches `hccReassignRole`
+ * so the DOS gains an owner without leaving the DiagPanel.
+ */
+function UnassignedAssignTrigger({ role, memberId, dosDate }) {
+  const btnRef = useRef(null);
+  const [pos, setPos] = useState(null);
+  const teams = useAppStore(s => s.hccCareTeams);
+  const reassign = useAppStore(s => s.hccReassignRole);
+  const showToast = useAppStore(s => s.showToast);
+
+  const candidates = (() => {
+    const teamType = ROLE_LABEL[role];
+    const fromTeams = (teams || [])
+      .filter(t => t.kind === 'hcc' && t.teamType === teamType)
+      .flatMap(t => (t.members || []).map(m => ({
+        id: m.userId, name: m.name, initials: m.initials,
+        roles: m.roles, source: 'team', teamName: t.name,
+      })));
+    const seen = new Set(fromTeams.map(c => c.id));
+    const fromAstrana = staffForRole(role)
+      .filter(s => !seen.has(s.id))
+      .map(s => ({
+        id: s.id, name: s.name, initials: s.initials,
+        roles: ROLE_LABEL[s.role], source: 'astrana',
+      }));
+    return [...fromTeams, ...fromAstrana];
+  })();
+
+  useEffect(() => {
+    if (!pos) return;
+    const onDoc = (e) => {
+      if (!btnRef.current?.contains(e.target)
+          && !e.target.closest?.('[data-assign-menu]')) setPos(null);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') setPos(null); };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [pos]);
+
+  const open = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setPos({ top: r.bottom + 4, left: Math.max(8, r.right - 280) });
+  };
+  const onPick = (cand) => {
+    if (!memberId || !dosDate) {
+      showToast('Cannot assign — missing DOS context.');
+      setPos(null);
+      return;
+    }
+    reassign(memberId, dosDate, role, cand.id, 'current-user', 'Assigned from DiagPanel');
+    showToast(`${cand.name} assigned as ${ROLE_LABEL[role]}.`);
+    setPos(null);
+  };
+
   return (
     <RoleTooltip
-      name={nm}
-      role={role}
-      initials={initials}
-      variant={isCoder ? 'provider' : 'patient'}
+      name="Unassigned"
+      role={`Awaiting ${ROLE_LABEL[role] || role} — click to assign`}
+      initials="—"
+      variant="provider"
+    >
+      <button
+        type="button"
+        ref={btnRef}
+        onClick={(e) => { e.stopPropagation(); pos ? setPos(null) : open(); }}
+        style={{
+          width: 24, height: 24, borderRadius: 6,
+          background: 'var(--neutral-50)',
+          border: '0.5px dashed var(--neutral-200)',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0, cursor: 'pointer', padding: 0,
+        }}
+      >
+        <Icon name="solar:user-plus-rounded-linear" size={14} color="var(--neutral-300)" />
+      </button>
+      {pos && createPortal(
+        <div
+          data-assign-menu
+          style={{
+            position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999,
+            minWidth: 280, maxHeight: 280, overflowY: 'auto',
+            background: 'var(--neutral-0)',
+            border: '0.5px solid var(--neutral-150)',
+            borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+            padding: 4, fontFamily: 'Inter, sans-serif',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div style={{
+            fontSize: 12, fontWeight: 500, color: 'var(--neutral-400)',
+            padding: '6px 8px', borderBottom: '0.5px solid var(--neutral-100)',
+            marginBottom: 4,
+          }}>
+            Assign {ROLE_LABEL[role]}
+          </div>
+          {candidates.length === 0 ? (
+            <div style={{ padding: 12, fontSize: 12, color: 'var(--neutral-300)', textAlign: 'center' }}>
+              No candidates available.
+            </div>
+          ) : candidates.map(c => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => onPick(c)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '6px 8px', border: 'none', background: 'transparent',
+                borderRadius: 4, cursor: 'pointer', textAlign: 'left',
+                width: '100%', fontFamily: 'Inter, sans-serif',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--neutral-50)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <Avatar variant="assignee" initials={c.initials} />
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: 'var(--neutral-500)' }}>
+                {c.name}
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--neutral-300)' }}>
+                {c.source === 'team' ? `Team: ${c.teamName}` : c.roles}
+              </span>
+            </button>
+          ))}
+        </div>,
+        document.body,
+      )}
+    </RoleTooltip>
+  );
+}
+
+function AssigneeAvatar({ member, dosState, currentDos }) {
+  const a = resolveCurrentAssignee(member, dosState);
+  if (!a) return null;
+  // Unassigned slot is interactive — opens a candidate picker so the user
+  // can assign someone from this exact spot. Lives in its own subcomponent
+  // because of the portal + outside-click bookkeeping.
+  if (a.kind === 'unassigned') {
+    return <UnassignedAssignTrigger role={a.role} memberId={member?.id} dosDate={currentDos} />;
+  }
+
+  // Billing Ready — every stage completed. Green check chip, no person.
+  if (a.kind === 'billing') {
+    return (
+      <RoleTooltip name="Billing Ready" role="All reviews complete" initials="✓" variant="provider">
+        <span
+          style={{
+            width: 24, height: 24, borderRadius: 6,
+            background: 'var(--status-success-light)',
+            border: '0.5px solid rgba(0, 155, 83, 0.3)',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0, color: 'var(--status-success)',
+            fontFamily: 'Inter, sans-serif',
+          }}
+        >
+          <Icon name="solar:check-circle-bold" size={14} color="var(--status-success)" />
+        </span>
+      </RoleTooltip>
+    );
+  }
+
+  // Active assignee — colour the chip per role (Coder/Reviewers = orange
+  // provider palette, Support stays purple to match the worklist's coder
+  // vs support distinction).
+  const isSupport = a.role === 'support';
+  const bg = isSupport ? 'var(--primary-50)'  : 'var(--secondary-100)';
+  const border = isSupport ? 'var(--primary-200)' : 'var(--secondary-200)';
+  const color = isSupport ? 'var(--primary-300)' : 'var(--secondary-300)';
+  return (
+    <RoleTooltip
+      name={a.name}
+      role={ROLE_LABEL[a.role] || a.role}
+      initials={a.initials}
+      variant={isSupport ? 'patient' : 'provider'}
     >
       <span
         style={{
@@ -53,7 +227,7 @@ function AssigneeAvatar({ coder, support }) {
           fontFamily: 'Inter, sans-serif',
         }}
       >
-        {initials}
+        {a.initials}
       </span>
     </RoleTooltip>
   );
@@ -107,17 +281,25 @@ export function DiagPanel() {
   // Assignment-engine read/write — drives the Coder status pill below.
   const hccDosAssignments = useAppStore(s => s.hccDosAssignments);
   const initializeHccPatient = useAppStore(s => s.initializeHccPatient);
+  const hccCompleteSupport = useAppStore(s => s.hccCompleteSupport);
   const hccCompleteCoder = useAppStore(s => s.hccCompleteCoder);
+  const hccCompleteR1 = useAppStore(s => s.hccCompleteR1);
+  const hccCompleteR2 = useAppStore(s => s.hccCompleteR2);
+  const hccCompleteR3 = useAppStore(s => s.hccCompleteR3);
   const hccRequestRecords = useAppStore(s => s.hccRequestRecords);
   const hccMarkInsufficient = useAppStore(s => s.hccMarkInsufficient);
   const hccRejectDos = useAppStore(s => s.hccRejectDos);
   const hccReturnDos = useAppStore(s => s.hccReturnDos);
+  const hccMarkSupportInProgress = useAppStore(s => s.hccMarkSupportInProgress);
+  const hccSetRoleStatus = useAppStore(s => s.hccSetRoleStatus);
   const diagSnapFilter = useAppStore(s => s.diagSnapFilter);
   const setDiagSnapFilter = useAppStore(s => s.setDiagSnapFilter);
   const diagSnapOpen = useAppStore(s => s.diagSnapOpen);
   const setDiagSnapOpen = useAppStore(s => s.setDiagSnapOpen);
   const diagLeftPanel = useAppStore(s => s.diagLeftPanel);
+  const diagActivityIcd = useAppStore(s => s.diagActivityIcd);
   const setDiagLeftPanel = useAppStore(s => s.setDiagLeftPanel);
+  const setDiagTab = useAppStore(s => s.setDiagTab);
 
   const [overriddenOpen, setOverriddenOpen] = useState(false);
   const [closedOpen, setClosedOpen] = useState(false);
@@ -213,7 +395,45 @@ export function DiagPanel() {
   // status pill below and the assignee badge.
   const dosStateKey = member && currentDos ? `${member.id}::${currentDos}` : null;
   const dosState = dosStateKey ? hccDosAssignments[dosStateKey] : null;
-  const coderStatus = dosState?.coder?.status || diagDosStatus || member?.cdrS || 'New';
+
+  // Current bucket the DOS sits in — drives both the status pill (right
+  // side of DOS row) and the AssigneeAvatar (left side) so they always
+  // agree on which role is active.
+  const currentBucket = useMemo(
+    () => resolveCurrentAssignee(member, dosState),
+    [member, dosState],
+  );
+
+  // Status text shown in the pill. Reads from whichever role currently
+  // owns the DOS so we never display the Coder's old "Completed" state
+  // when the workflow has already advanced to a downstream reviewer.
+  const currentStatus = useMemo(() => {
+    if (!currentBucket) return diagDosStatus || 'New';
+    if (currentBucket.kind === 'billing')    return 'Completed';
+    if (currentBucket.kind === 'unassigned') return 'Awaiting';
+    // kind === 'active' — use the role's live status (or a sensible
+    // default when the engine seeded an assignee without a status yet).
+    return currentBucket.status || 'In Progress';
+  }, [currentBucket, diagDosStatus]);
+
+  // ── Compliance gate (Astrana spec) ─────────────────────────────────
+  // Mark Complete may only fire on Support → Coder when every document
+  // touching this (member, dos) has all 5 compliance checks passed.
+  // We filter the in-flight SFTP batches to just those whose encounters
+  // include this patient + DOS, then ask the engine. When no batches
+  // are tracked for this DOS the gate is a no-op (legacy path preserved).
+  const hccSftpBatches = useAppStore(s => s.hccSftpBatches) || [];
+  const complianceGates = useMemo(() => {
+    if (!member?.id || !currentDos) return undefined;
+    const docsForDos = hccSftpBatches
+      .filter(b => b.compliance && (b.encounters || []).some(e =>
+        e.patient?.matchedMemberId === member.id && e.dos === currentDos
+      ))
+      .map(b => ({ fileName: b.fileName, ocrTier: b.ocrTier, compliance: b.compliance }));
+    if (docsForDos.length === 0) return undefined;
+    const { ok, reason } = canCompleteDos(docsForDos);
+    return ok ? undefined : { Completed: { enabled: false, reason } };
+  }, [member?.id, currentDos, hccSftpBatches]);
 
   // ── Review-progress stages + ring (drives the With-Coder pill) ──
   const reviewStages = useMemo(
@@ -262,17 +482,63 @@ export function DiagPanel() {
     clearTimeout(closeTimer.current);
   }, []);
 
-  // Bridge from the DosStatusMenu's onChange (status label) to the right
-  // lifecycle transition. The menu is currently rooted in the Coder view.
-  const handleCoderStatusChange = (next) => {
+  // Bridge from the DosStatusMenu's onChange to the right lifecycle
+  // transition for whichever role currently owns the DOS. Some choices
+  // (Record Requested → only Coder; Insufficient / Reject → only Support;
+  // Returned → only reviewers) are role-specific and silently no-op when
+  // the chosen value doesn't apply to the active role.
+  const handleStatusChange = (next) => {
     if (!member || !currentDos) { setDiagDosStatus(next); return; }
+    const role = currentBucket?.kind === 'active' ? currentBucket.role : null;
+    if (!role) { setDiagDosStatus(next); return; }
+
+    // Strategy:
+    //  - If the engine has a dedicated AC for this (role, status) combo,
+    //    fire it so the lifecycle event lands in the activity log AND any
+    //    downstream effects (handoff to next role, sampling, etc.) happen.
+    //  - Otherwise fall back to the generic role-status patcher so the
+    //    user's pick is always reflected on the pill (no silent no-op).
     switch (next) {
-      case 'Completed':         hccCompleteCoder(member.id, currentDos); break;
-      case 'Record Requested':  hccRequestRecords(member.id, currentDos); break;
-      case 'Insufficient':      hccMarkInsufficient(member.id, currentDos, 'current-user', 'Docs incomplete'); break;
-      case 'Reject':            hccRejectDos(member.id, currentDos, 'current-user', 'Docs failed checklist'); break;
-      case 'Returned':          hccReturnDos(member.id, currentDos, 'r1', 'current-user', 'Returned from Coder context'); break;
-      default:                  /* New / Awaiting / In Progress / Record Received are system-driven */ break;
+      case 'Completed':
+        if (role === 'support')      hccCompleteSupport(member.id, currentDos);
+        else if (role === 'coder')   hccCompleteCoder(member.id, currentDos);
+        else if (role === 'r1')      hccCompleteR1(member.id, currentDos);
+        else if (role === 'r2')      hccCompleteR2(member.id, currentDos);
+        else if (role === 'r3')      hccCompleteR3(member.id, currentDos);
+        else                         hccSetRoleStatus(member.id, currentDos, role, 'Completed');
+        break;
+      case 'Record Requested':
+        if (role === 'coder')        hccRequestRecords(member.id, currentDos);
+        else                         hccSetRoleStatus(member.id, currentDos, role, 'Record Requested');
+        break;
+      case 'Insufficient':
+        if (role === 'support')      hccMarkInsufficient(member.id, currentDos, 'current-user', 'Docs incomplete');
+        else                         hccSetRoleStatus(member.id, currentDos, role, 'Insufficient');
+        break;
+      case 'Reject':
+        if (role === 'support')      hccRejectDos(member.id, currentDos, 'current-user', 'Docs failed checklist');
+        else                         hccSetRoleStatus(member.id, currentDos, role, 'Reject');
+        break;
+      case 'Returned':
+        // Engine's RETURN_TARGET map only knows r1→coder / r2→r1 / r3→r2;
+        // for support/coder we just record the status string.
+        if (role === 'r1' || role === 'r2' || role === 'r3') {
+          hccReturnDos(member.id, currentDos, role, 'current-user', `Returned from ${role}`);
+        } else {
+          hccSetRoleStatus(member.id, currentDos, role, 'Returned');
+        }
+        break;
+      case 'In Progress':
+        if (role === 'support')      hccMarkSupportInProgress(member.id, currentDos, 'current-user');
+        else                         hccSetRoleStatus(member.id, currentDos, role, 'In Progress');
+        break;
+      // No dedicated AC — generic patch keeps the pill in sync.
+      case 'New':
+      case 'Awaiting':
+      case 'Record Received':
+      default:
+        hccSetRoleStatus(member.id, currentDos, role, next);
+        break;
     }
     setDiagDosStatus(next);
   };
@@ -316,20 +582,9 @@ export function DiagPanel() {
       bodyClassName={[styles.body, diagLeftPanel ? styles.bodyExpanded : ''].join(' ')}
       headerStyle={{ display: 'none' }}
     >
-      {/* When expanded, the workspace sits to the LEFT of the regular drawer
-          content. Wrapping both in a flex row keeps the existing panel layout
-          intact when the workspace is closed. */}
-      {diagLeftPanel && (
-        <LeftWorkspace
-          active={diagLeftPanel}
-          onChange={setDiagLeftPanel}
-          onClose={() => setDiagLeftPanel(null)}
-          member={member}
-        />
-      )}
-
-      <div className={diagLeftPanel ? styles.rightPane : styles.rightPaneFull}>
-      {/* ── Row 1: Title + Close ── */}
+      {/* ── Row 1: Title + Close — spans the FULL drawer width, above both
+          panes, so the close button stays accessible regardless of which
+          pane is expanded. ── */}
       <div className={styles.titleRow}>
         <span className={styles.titleText}>Diagnosis Gaps Details</span>
         <ActionButton size="L" tooltip="Close" onClick={closeDiagPanel}>
@@ -337,44 +592,27 @@ export function DiagPanel() {
         </ActionButton>
       </div>
 
-      {/* ── Row 2: Patient Banner — mirrors prototype line 1911:
-          avatar (40×40) + name on top + single inline meta row
-          [Patient · Sex · Age · #MemberId · RAF · 0.265↑] + right-side
-          phone icon + chevron button. ── */}
-      <div className={styles.patientBanner}>
-        <div className={styles.avatar}>{member.in}</div>
-        <div className={styles.memberInfo}>
-          <div className={styles.memberNameRow}>
-            <span className={styles.memberName}>{member.name}</span>
-            <Icon name="solar:alt-arrow-right-linear" size={12} color="var(--neutral-300)" />
-          </div>
-          <div className={styles.memberMeta}>
-            <span>Patient</span>
-            <span className={styles.metaDot}>&bull;</span>
-            <span>{member.g === 'M' ? 'Male' : member.g === 'F' ? 'Female' : member.g}</span>
-            <span className={styles.metaDot}>&bull;</span>
-            <span>{member.age || '—'}</span>
-            <span className={styles.metaDot}>&bull;</span>
-            <span>{member.memberId || `#${member.id}`}</span>
-            <span className={styles.metaDot}>&bull;</span>
-            <span className={styles.rafLabel}>RAF</span>
-            <span className={styles.rafValue}>{member.raf}</span>
-            <span className={styles.rafImpact}>
-              {rafImpact}
-              <Icon
-                name={member.ru !== false ? 'solar:arrow-up-linear' : 'solar:arrow-down-linear'}
-                size={10}
-                color={member.ru !== false ? 'var(--status-success)' : 'var(--status-error)'}
-              />
-            </span>
-          </div>
-        </div>
-        <div className={styles.bannerActions}>
-          <ActionButton icon="solar:phone-linear" size="S" tooltip="Call" onClick={noop('Call')} />
-          <span className={styles.divider} />
-          <ActionButton icon="solar:alt-arrow-down-linear" size="S" tooltip="More" onClick={noop('More')} />
-        </div>
-      </div>
+      {/* When expanded, the workspace sits to the RIGHT of the Diagnosis Gaps
+          section (ICD cards on the left, workspace on the right). The content
+          row contains both panes so the title row above can span the full
+          width. */}
+      <div className={styles.contentRow}>
+      <div className={diagLeftPanel ? styles.rightPane : styles.rightPaneFull}>
+      {/* ── Row 2: Patient Banner — shared <PatientBanner> from
+          components/. Maps member.* fields onto the component's props so
+          this drawer renders identical chrome to every other patient-scoped
+          drawer (Care Gap, Quick View, etc.). ── */}
+      <PatientBanner
+        initials={member.in}
+        name={member.name}
+        gender={member.g === 'M' ? 'Male' : member.g === 'F' ? 'Female' : member.g}
+        age={member.age || ''}
+        memberId={member.memberId || `#${member.id}`}
+        raf={member.raf}
+        rafChange={rafImpact}
+        rafUp={member.ru !== false}
+        onCall={noop('Call')}
+      />
 
       {/* ── DOS selector + status pill ── */}
       <div className={styles.dosRow}>
@@ -415,58 +653,95 @@ export function DiagPanel() {
           )}
         </div>
         <div className={styles.dosRowRight}>
-          <AssigneeAvatar coder={member.cdr} support={member.sup} />
+          <AssigneeAvatar member={member} dosState={dosState} currentDos={currentDos} />
           <span className={styles.dosRowDivider} />
           {isSweep ? (
             <span className={styles.sweepBadge}>Sweep Mode</span>
           ) : (
             <DosStatusMenu
-              value={coderStatus}
-              onChange={handleCoderStatusChange}
+              value={currentStatus}
+              onChange={handleStatusChange}
+              gates={complianceGates}
             />
           )}
         </div>
       </div>
 
-      {/* ── View-by toolbar — sits above Patient Summary so it anchors the
-          section regardless of whether the summary is expanded. ── */}
+      {/* ── DOS toolbar — mirrors Figma node 1:41104. Left cluster:
+          Bulk select + HCC/ICD toggle. Right cluster: + ICD, Filter,
+          Documents, Comments, Activity Log, Search, More. ── */}
       <div className={styles.toolbar}>
-        <div className={styles.viewBy}>
-          <span className={styles.viewByLabel}>View by:</span>
+        <div className={styles.toolbarLeft}>
+          <ActionButton
+            icon="solar:check-square-linear"
+            size="S"
+            tooltip="Bulk Action"
+            onClick={noop('Bulk Action')}
+          />
+          <span className={styles.divider} />
           <Toggle items={VIEW_MODES} active={diagViewMode} onChange={setDiagViewMode} size="S" />
         </div>
 
         <div className={styles.toolbarIcons}>
-          <ActionButton icon="solar:refresh-linear" size="S" tooltip="Refresh" onClick={noop('Refresh')} />
-          <span className={styles.divider} />
           <button type="button" className={styles.addIcdBtn} onClick={noop('Add ICD')}>
             <Icon name="solar:add-circle-linear" size={16} color="var(--primary-300)" />
             <span>ICD</span>
           </button>
           <span className={styles.divider} />
-          <ActionButton icon="solar:check-square-linear" size="S" tooltip="Bulk Action" onClick={noop('Bulk Action')} />
+          <ActionButton
+            icon="custom:filter"
+            size="S"
+            tooltip="Filter"
+            notification
+            count="1"
+            onClick={noop('Filter')}
+          />
           <span className={styles.divider} />
-          <ActionButton icon="custom:filter" size="S" tooltip="Filter" notification count="1" onClick={noop('Filter')} />
+          <ActionButton
+            icon="solar:file-text-linear"
+            size="S"
+            tooltip="Documents"
+            count={String(member?.docStatus?.length || member?.ch || 0)}
+            /* Highlight only for the DOS-level Documents panel — an
+               ICD-scoped open (from an ICD card's docs count) must NOT light
+               up this global icon. Same rule as the Activity Log icon. */
+            className={diagLeftPanel === 'documents' && !diagActivityIcd ? styles.activeIcon : ''}
+            onClick={() => setDiagLeftPanel(diagLeftPanel === 'documents' && !diagActivityIcd ? null : 'documents')}
+          />
           <span className={styles.divider} />
-          <ActionButton icon="solar:sort-vertical-linear" size="S" tooltip="Sort" onClick={noop('Sort')} />
+          <ActionButton
+            icon="solar:chat-square-linear"
+            size="S"
+            tooltip="Comments"
+            count="6"
+            className={diagLeftPanel === 'comments' && !diagActivityIcd ? styles.activeIcon : ''}
+            onClick={() => setDiagLeftPanel(diagLeftPanel === 'comments' && !diagActivityIcd ? null : 'comments')}
+          />
           <span className={styles.divider} />
           <ActionButton
             icon="solar:history-linear"
             size="S"
             tooltip="Activity Log"
-            className={diagLeftPanel === 'activity' ? styles.activeIcon : ''}
-            onClick={() => setDiagLeftPanel(diagLeftPanel === 'activity' ? null : 'activity')}
+            /* Only highlight for the DOS-level log — an ICD-scoped activity
+               log (opened from an ICD code) must NOT light up this global
+               icon. */
+            className={diagLeftPanel === 'activity' && !diagActivityIcd ? styles.activeIcon : ''}
+            onClick={() => setDiagLeftPanel(diagLeftPanel === 'activity' && !diagActivityIcd ? null : 'activity')}
           />
           <span className={styles.divider} />
           <ActionButton
-            icon="solar:notes-linear"
+            icon="solar:magnifer-linear"
             size="S"
-            tooltip="Notes"
-            className={diagLeftPanel === 'notes' ? styles.activeIcon : ''}
-            onClick={() => setDiagLeftPanel(diagLeftPanel === 'notes' ? null : 'notes')}
+            tooltip="Search"
+            onClick={() => setSearchOpen(o => !o)}
           />
           <span className={styles.divider} />
-          <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" onClick={() => setSearchOpen(o => !o)} />
+          <ActionButton
+            icon="solar:menu-dots-linear"
+            size="S"
+            tooltip="More"
+            onClick={noop('More')}
+          />
         </div>
       </div>
 
@@ -539,6 +814,18 @@ export function DiagPanel() {
         )}
       </div>
       </div>{/* ── /rightPane ── */}
+
+      {diagLeftPanel && (
+        <LeftWorkspace
+          active={diagLeftPanel}
+          icdScope={diagActivityIcd}
+          onChange={setDiagTab}
+          onClose={() => setDiagLeftPanel(null)}
+          member={member}
+          currentDos={currentDos}
+        />
+      )}
+      </div>{/* ── /contentRow ── */}
     </Drawer>
   );
 }

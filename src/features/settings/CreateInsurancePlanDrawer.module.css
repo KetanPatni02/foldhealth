@@ -1,0 +1,646 @@
+/* ── CreateInsurancePlanDrawer ──
+   Wide two-column drawer: form (left) + card preview (right).
+   Card preview styles → InsuranceCardPreview.module.css
+   Form utility component styles → InsurancePlanFormUtils.module.css
+*/
+
+:global(.insurancePlanPanel) {
+  transition: width 0.3s ease !important;
+}
+
+/* collapsed: 660px section + 24px padding + border, no dead gap */
+.narrowPanel {
+  width: 685px !important;
+}
+
+.widePanel {
+  width: 1210px !important; /* leftPanel 684 + rightPanel 525, no dead gap */
+}
+
+.drawerBody {
+  padding: 0 !important;
+  display: flex;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+}
+
+.headerDivider {
+  display: block;
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+  margin: 0 4px;
+}
+
+/* ── Stage indicator (fixed header — does not scroll) ── */
+.stageNavRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 12px 2px 0;
+  flex-shrink: 0;
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.stageNavRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.stageNav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 12px;
+  flex-shrink: 0;
+}
+
+.stageItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.stageBadge {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  flex-shrink: 0;
+}
+
+.stageBadgeActive {
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  color: var(--primary-300);
+}
+
+.stageBadgeInactive {
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  color: var(--neutral-300);
+}
+
+.stageLabel {
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap;
+}
+
+.stageLabelActive   { color: var(--primary-300); }
+.stageLabelInactive { color: var(--neutral-200); }
+
+.stageConnector {
+  width: 20px;
+  height: 0.5px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+/* ── Left: form panel — expands to fill when preview is hidden ── */
+.leftPanel {
+  flex: 1;
+  min-width: 0;
+  max-width: 684px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Scrollable form body — stage bar above stays fixed */
+.leftScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+
+/* ── Form rows and fields ── */
+.row {
+  display: flex;
+  gap: 12px;
+}
+
+.field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Validation supporting text */
+.errorText {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--status-error, #D72825);
+  font-family: 'Inter', sans-serif;
+  line-height: 1.2;
+}
+
+.fieldFull {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Address inputs stacked vertically */
+.addressStack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Section divider (Figma: 0.5px neutral-150 full-width rule) */
+.sectionDivider {
+  width: 100%;
+  height: 0.5px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+/* Claims Mailing Address group */
+.claimsGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+/* Sub-group heading (Figma: Inter Medium 14px, neutral-300) */
+.groupHeading {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  font-family: 'Inter', sans-serif;
+}
+
+/* ── Logo upload ── */
+.orDivider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.orLine {
+  flex: 1;
+  height: 0.5px;
+  background: var(--neutral-150);
+}
+
+.orText {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-200);
+  font-family: 'Inter', sans-serif;
+}
+
+/* ── Logo preview (uploaded state) ── */
+.logoPreviewContainer {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  padding: 12px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: var(--neutral-0);
+  min-height: 80px;
+}
+
+.logoImgWrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.logoPreviewImg {
+  max-height: 40px;
+  max-width: 160px;
+  object-fit: contain;
+  display: block;
+}
+
+.logoActions {
+  display: flex;
+  gap: 8px;
+  align-self: flex-end;
+}
+
+.logoActionBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--neutral-50);
+  border: 0.5px solid rgba(111,122,144,0.1);
+  font-size: 12px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-300);
+  cursor: pointer;
+}
+
+.logoDeleteBtn {
+  background: #FFF5F5;
+  border-color: rgba(215,40,37,0.1);
+  color: #D72825;
+}
+
+.dropZone {
+  border: 0.5px dashed var(--neutral-150);
+  border-radius: 8px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  background: var(--neutral-0);
+  transition: background .15s, border-color .15s;
+}
+
+.dropZone:hover { background: var(--neutral-50); border-color: var(--neutral-200); }
+
+.dropZoneText {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  font-family: 'Inter', sans-serif;
+  text-align: center;
+}
+
+.dropZoneLink {
+  color: var(--primary-300);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.dropZoneMeta {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.dropZoneMetaText {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-200);
+  font-family: 'Inter', sans-serif;
+}
+
+/* ── Date range row ── */
+.dateRangeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dateArrow {
+  font-size: 14px;
+  color: var(--neutral-200);
+  flex-shrink: 0;
+}
+
+/* ── Step 2: Cost Sharing ── */
+
+.costSharingContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+}
+
+.costSharingAlert {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #F4F8FE;
+  border: 0.5px solid rgba(20, 94, 204, 0.2);
+  border-radius: 4px;
+  padding: 4px 6px;
+  flex-shrink: 0;
+}
+
+.costSharingAlertText {
+  font-size: 12px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-400);
+  flex: 1;
+}
+
+.coverageSwitchRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.coverageSwitchTextGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.coverageSwitchLabel {
+  font-size: 14px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+
+/* First-line label turns neutral-400 when the family toggle is on */
+.coverageSwitchLabelOn {
+  color: var(--neutral-400);
+}
+
+.coverageSwitchDesc {
+  font-size: 12px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-200);
+  line-height: 1.4;
+}
+
+.coverageSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.coverageSectionTitle {
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-400);
+  padding: 8px 12px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.coverageSectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 12px;
+}
+
+.coverageSubGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.coverageSubLabel {
+  font-size: 14px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+
+.coverageRow {
+  display: flex;
+  gap: 12px;
+}
+
+/* ── Right: card preview panel shell ── */
+.rightPanel {
+  flex: 0 0 525px;
+  width: 525px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--neutral-0);
+  border-left: 0.5px solid var(--neutral-150);
+}
+
+.previewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  height: 48px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+
+.previewTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500, #16181d);
+  font-family: 'Inter', sans-serif;
+}
+
+/* ── Logo tiles (Plan Identifiers) — Figma 2012:44664 ── */
+.logoTileRow {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+}
+
+.logoTile {
+  flex: 1 0 0;
+  min-width: 0;
+  height: 48px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px;
+  cursor: pointer;
+  overflow: clip;
+  transition: border-color 0.15s, background 0.15s;
+  outline: none;
+}
+
+.logoTile:hover {
+  border-color: var(--primary-200);
+}
+
+.logoTileSelected {
+  background: var(--primary-50) !important;
+  border-color: var(--primary-300) !important;
+}
+
+/* Invisible radio-sized spacer to balance layout so logo stays centered */
+.logoRadioSpacer {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* Avergent logo box: 133px × 32px (Figma) */
+.logoTileImgAvergent {
+  height: 32px;
+  width: 133px;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+/* Prominence / custom logo box: 101px × 32px (Figma) */
+.logoTileImgProminence {
+  height: 32px;
+  width: 101px;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.logoTileUploadLabel {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-400);
+  font-family: 'Inter', sans-serif;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ── Tier accordion ── */
+.tiersHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  flex-shrink: 0;
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.tiersHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tiersHeaderLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  font-family: 'Inter', sans-serif;
+}
+
+/* 3-column field grid (Figma cost-sharing) */
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.tierAccordion {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--neutral-0);
+}
+
+.tierAccordionExpanded {
+  border-color: var(--neutral-150);
+}
+
+/* Active tier (the one being worked on) — Primary 300, 1px border */
+.tierAccordionActive {
+  border: 1px solid var(--primary-300);
+}
+
+.tierHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--neutral-0);
+  transition: background 0.1s;
+  min-height: 44px;
+}
+
+.tierHeader:hover {
+  background: var(--neutral-50);
+}
+
+.tierHeaderLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap;
+}
+
+/* Tier name uses the shared Input component (bordered, Figma 300px) */
+.tierNameInputWrap {
+  width: 300px;
+  flex-shrink: 0;
+}
+
+.tierDeleteBtn {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
+.tierDeleteBtn:hover {
+  background: var(--neutral-50);
+}
+
+/* Trash icon: neutral-300, 1px stroke (CSS overrides the icon's baked stroke-width) */
+.tierTrashIcon {
+  stroke-width: 1px;
+}
+.tierTrashIcon :global(*) {
+  stroke-width: 1px;
+}
+
+.tierBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px;
+  border-top: 0.5px solid var(--neutral-150);
+}

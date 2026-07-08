@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../components/Icon/Icon';
 import { SmsIcon } from '../../../components/Icon/SmsIcon';
@@ -434,10 +434,70 @@ function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOpen, sho
 }
 
 /* ── LogEntry ── */
-function LogEntry({ log, isLast }) {
+/**
+ * LogRowMenu — `...` overflow menu on each row. Opens a small popover
+ * with Edit / Delete. Replaces the hover edit-pen + trash icons with
+ * the menu surface from Figma 11:258515.
+ */
+function LogRowMenu({ log, onEdit, onDelete }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+  if (!onEdit && !onDelete) return null;
+  return (
+    <span ref={wrapRef} className={styles.logRowMenuWrap}>
+      <button
+        type="button"
+        className={styles.logRowMenuTrigger}
+        onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
+        aria-label="More actions"
+        title="More actions"
+      >
+        <Icon name="solar:menu-dots-linear" size={14} color="var(--neutral-300)" />
+      </button>
+      {open && (
+        <div className={styles.logRowMenu} role="menu">
+          {onEdit && (
+            <button
+              type="button"
+              role="menuitem"
+              className={styles.logRowMenuItem}
+              onClick={(e) => { e.stopPropagation(); setOpen(false); onEdit(log); }}
+            >
+              <Icon name="solar:pen-2-linear" size={13} color="var(--neutral-400)" />
+              Edit
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              role="menuitem"
+              className={[styles.logRowMenuItem, styles.logRowMenuItemDanger].join(' ')}
+              onClick={(e) => { e.stopPropagation(); setOpen(false); onDelete(log); }}
+            >
+              <Icon name="solar:trash-bin-trash-linear" size={13} color="var(--status-error)" />
+              Delete
+            </button>
+          )}
+        </div>
+      )}
+    </span>
+  );
+}
+
+function LogEntry({ log, isLast, onEdit, onDelete }) {
   const [expanded, setExpanded] = useState(false);
   const { icon, flip } = LOG_TYPE_ICON[log.type] || {};
   const hasNote = Boolean(log.note && log.note.trim());
+  // Rows are expandable when they have a note OR carry call details
+  // (the Figma always lets users expand a Call row to surface
+  // via/To/Duration + recording + transcript).
+  const expandable = hasNote || !!log.callDetails;
 
   return (
     <div className={styles.logEntry}>
@@ -465,10 +525,10 @@ function LogEntry({ log, isLast }) {
       {/* Card */}
       <div
         className={`${styles.logCard} ${expanded ? styles.logCardExpanded : ''}`}
-        onClick={e => { e.stopPropagation(); if (hasNote) setExpanded(v => !v); }}
+        onClick={e => { e.stopPropagation(); if (expandable) setExpanded(v => !v); }}
         role="button"
         tabIndex={0}
-        onKeyDown={hasNote ? e => e.key === 'Enter' && setExpanded(v => !v) : undefined}
+        onKeyDown={expandable ? e => e.key === 'Enter' && setExpanded(v => !v) : undefined}
       >
         <div className={styles.logBody}>
           <div className={styles.logMeta}>
@@ -477,32 +537,127 @@ function LogEntry({ log, isLast }) {
             <span>{log.time}</span>
             <span className={styles.logMetaDot}>•</span>
             <span>{log.author}</span>
+            {log.outreachSource && (
+              <>
+                <span className={styles.logMetaDot}>•</span>
+                <span className={styles.logMetaSource} title={`Source: ${log.outreachSource}`}>
+                  via {log.outreachSource}
+                </span>
+              </>
+            )}
           </div>
           <div className={styles.logTitleRow}>
             <span className={styles.logTitle}>{log.title}</span>
-            {log.programs.map(p => (
-              <span key={p} className={styles.logProgBadge}>{p}</span>
-            ))}
-            {hasNote && (
-              <Icon
-                name={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
-                size={12}
-                color="var(--neutral-300)"
-                className={styles.logChevron}
-              />
-            )}
+            {(log.programs || []).length > 0
+              ? log.programs.map(p => (
+                  <span key={p} className={styles.logProgBadge}>{p}</span>
+                ))
+              : <span className={styles.logContactBadge} title="Outreach recorded at contact level — not tied to a care program">Contact-level</span>
+            }
+            <LogRowMenu log={log} onEdit={onEdit} onDelete={onDelete} />
           </div>
           <div className={styles.logOutcomeRow}>
             <span className={styles.logOutcome} style={{ color: log.outcomeColor }}>
               {log.outcome}
             </span>
+            {expandable && (
+              <button
+                type="button"
+                className={styles.logViewNoteBtn}
+                onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
+              >
+                <span className={styles.logViewNoteDot}>·</span>
+                View Note
+                <Icon
+                  name={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
+                  size={11}
+                  color="var(--neutral-400)"
+                />
+              </button>
+            )}
+            {log.type === 'Call' && log.callDetailsMissing && (
+              <span className={styles.logCallNoDetails} title="External call — call details not available">
+                <Icon name="solar:info-circle-linear" size={10} color="var(--neutral-300)" />
+                Call details unavailable
+              </span>
+            )}
           </div>
 
-          {expanded && hasNote && (
-            <div className={styles.logExpandedContent}>
-              <p className={styles.logExpandedNote}>
-                <span className={styles.logNoteLabel}>Note: </span>{log.note}
-              </p>
+          {expanded && (hasNote || log.callDetails) && (
+            <div className={styles.logExpandedCard}>
+              {log.type === 'Call' && log.callDetails ? (
+                /* Call expanded view — Figma 11:258515. Bordered
+                   card: Call Details meta · "Note :" + transcript
+                   card · plain note · Call Recording + Transcript
+                   buttons. */
+                <>
+                  <div className={styles.logExpandedLabel}>Call Details:</div>
+                  <div className={styles.logExpandedCallMeta}>
+                    via: <strong>{log.callDetails.via}</strong>
+                    <span className={styles.logExpandedMetaDot}>·</span>
+                    To: <strong>{log.callDetails.to}</strong>
+                    <span className={styles.logExpandedMetaDot}>·</span>
+                    Duration: <strong>{log.callDetails.durationMin}mins</strong>
+                  </div>
+
+                  {(hasNote || (Array.isArray(log.callDetails.transcript) && log.callDetails.transcript.length > 0)) && (
+                    <div className={styles.logExpandedNoteLabel}>Note :</div>
+                  )}
+
+                  {Array.isArray(log.callDetails.transcript) && log.callDetails.transcript.length > 0 && (
+                    <div className={styles.logTranscriptCard}>
+                      <div className={styles.logTranscriptCaption}>Call Transcript</div>
+                      {log.callDetails.transcript.slice(0, 2).map((t, i) => (
+                        <div key={i} className={styles.logTranscriptLine}>
+                          <div>{t.speaker} - {t.t}</div>
+                          <div>{t.text}</div>
+                        </div>
+                      ))}
+                      {log.callDetails.transcript.length > 2 && (
+                        <button type="button" className={styles.logTranscriptMore}>
+                          Show More
+                          <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--primary-300)" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {hasNote && (
+                    <p className={styles.logExpandedNote}>{log.note}</p>
+                  )}
+
+                  <div className={styles.logExpandedActions}>
+                    {log.callDetails.recordingUrl && (
+                      <button type="button" className={styles.logExpandedAction}>
+                        <Icon name="solar:play-circle-linear" size={13} color="var(--neutral-400)" />
+                        Call Recording
+                      </button>
+                    )}
+                    {log.callDetails.transcriptUrl && (
+                      <button type="button" className={styles.logExpandedAction}>
+                        <Icon name="solar:document-text-linear" size={13} color="var(--neutral-400)" />
+                        Transcript
+                      </button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                /* Non-Call expanded view — Figma 3:52173. Bordered
+                   card with Date & Time + Duration meta and a plain
+                   "Note :" body. */
+                <>
+                  <div className={styles.logExpandedLabel}>Date &amp; Time:</div>
+                  <div className={styles.logExpandedCallMeta}>
+                    {log.date} <span className={styles.logExpandedMetaDot}>·</span> Duration: <strong>5mins</strong>
+                  </div>
+                  {hasNote && (
+                    <>
+                      <div className={styles.logExpandedNoteLabel}>Note :</div>
+                      <p className={styles.logExpandedNote}>{log.note}</p>
+                    </>
+                  )}
+                </>
+              )}
             </div>
           )}
         </div>
@@ -512,7 +667,7 @@ function LogEntry({ log, isLast }) {
 }
 
 /* ── LogGroup ── */
-function LogGroup({ label, logs }) {
+function LogGroup({ label, logs, onEdit, onDelete }) {
   const [collapsed, setCollapsed] = useState(false);
   return (
     <div className={styles.logGroup}>
@@ -532,7 +687,13 @@ function LogGroup({ label, logs }) {
       {!collapsed && (
         <div className={styles.logGroupEntries}>
           {logs.map((log, i) => (
-            <LogEntry key={log.id} log={log} isLast={i === logs.length - 1} />
+            <LogEntry
+              key={log.id}
+              log={log}
+              isLast={i === logs.length - 1}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
           ))}
         </div>
       )}
@@ -547,6 +708,9 @@ const ACTIVITY_FILTERS = [
   { key: 'Note', dot: '#145ECC' },
 ];
 
+// One seed row per supported communication type so the timeline
+// exercises every TypeDropdown option. Each row uses representative
+// outcomes per the MLOV outreach_step_outcomes table.
 const INITIAL_LOG_GROUPS = [
   {
     id: 'jan-2025', label: 'Jan 2025',
@@ -555,25 +719,80 @@ const INITIAL_LOG_GROUPS = [
         id: 1, type: 'Call', date: '01/29', time: '02:30 PM',
         author: 'Delores Conn (Co-Ordinator)',
         title: 'Outgoing Call', programs: ['SNP'],
-        outcome: 'Enrolled', outcomeColor: 'var(--status-success)', note: '',
+        outcome: 'Enrolled', outcomeColor: 'var(--status-success)',
+        note: 'Patient confirmed enrollment in SNP care plan, agreed to Friday TOC follow-up.',
+        callDetails: {
+          via: '(581) 824-1591', to: '(336) 812-2923', durationMin: 5,
+          recordingUrl: '#', transcriptUrl: '#',
+          transcript: [
+            { speaker: 'Delores Conn', t: '00:09', text: 'Hi, Annette. Thanks for taking the time to speak with me today. How are you feeling?' },
+            { speaker: 'Annette Brave', t: '00:27', text: "Hi, Doctor. I've been feeling pretty tired lately. And I've noticed a bit of shortness of breath over the past week…" },
+          ],
+        },
+      },
+      // Astrana-sourced (contact-level, no care program) — exercises
+      // the /api/v2/outreach POST surface with
+      // `outreachSource: "Astrana"` and no careProgramTypeCode /
+      // careProgramId. Surfaces the attribution chip and the
+      // "Contact-level" badge. callDetailsMissing flags that the call
+      // wasn't placed through Fold/Twilio.
+      {
+        id: 2, type: 'Call', date: '01/24', time: '09:15 AM',
+        author: 'Marie Beauchamp (External CM)',
+        title: 'Incoming Call', programs: [],
+        outreachSource: 'Astrana',
+        outcome: 'Spoke with patient', outcomeColor: 'var(--status-success)',
+        note: 'External care manager reached patient to confirm Friday telehealth visit.',
+        callDetailsMissing: true,
       },
       {
-        id: 2, type: 'Call', date: '01/21', time: '12:30 PM',
-        author: 'Delores Conn (Co-Ordinator)',
-        title: 'Outgoing Call', programs: ['SNP'],
-        outcome: 'Requested Call back', outcomeColor: 'var(--status-error)', note: '',
-      },
-      {
-        id: 3, type: 'SMS', date: '01/13', time: '10:30 AM',
+        id: 3, type: 'SMS', date: '01/21', time: '12:30 PM',
         author: 'Delores Conn (Co-Ordinator)',
         title: 'Outgoing SMS', programs: ['SNP'],
-        outcome: 'Inactive Phone Line / Wrong Number', outcomeColor: 'var(--status-error)', note: '',
+        outcome: 'Inactive Phone Line / Wrong Number', outcomeColor: 'var(--status-error)',
+        note: 'Patient acknowledged appointment reminder, will arrive 5 min early.',
       },
       {
-        id: 4, type: 'General', date: '01/11', time: '12:30 PM',
+        id: 4, type: 'Email', date: '01/19', time: '10:15 AM',
+        author: 'A. Beauchamp (Support)',
+        title: 'Outgoing Email', programs: ['TOC'],
+        outcome: 'Sent', outcomeColor: 'var(--status-success)',
+        note: 'Sent post-discharge summary + medication reconciliation form.',
+      },
+      {
+        id: 5, type: 'In Person', date: '01/17', time: '02:00 PM',
+        author: 'Dr. Helen Yu (Provider)',
+        title: 'In-Person Visit', programs: ['AWV'],
+        outcome: 'Visit Completed', outcomeColor: 'var(--status-success)',
+        note: 'Annual wellness visit done in clinic. Vitals captured, screening complete.',
+      },
+      {
+        id: 6, type: 'Virtual', date: '01/15', time: '11:00 AM',
+        author: 'Dr. Helen Yu (Provider)',
+        title: 'Virtual Visit', programs: ['TOC'],
+        outcome: 'Visit Completed', outcomeColor: 'var(--status-success)',
+        note: 'Telehealth follow-up after hospital discharge. Reviewed meds; no red flags.',
+      },
+      {
+        id: 7, type: 'Chat', date: '01/13', time: '04:30 PM',
         author: 'Delores Conn (Co-Ordinator)',
-        title: 'General', programs: ['SNP'],
-        outcome: 'Provider Communication', outcomeColor: 'var(--status-warning)', note: '',
+        title: 'Chat Message', programs: ['SNP'],
+        outcome: 'Replied', outcomeColor: 'var(--status-success)',
+        note: 'Patient responded in app chat — confirmed insurance card uploaded.',
+      },
+      {
+        id: 8, type: 'Letter', date: '01/11', time: '12:30 PM',
+        author: 'Delores Conn (Co-Ordinator)',
+        title: 'Outgoing Letter', programs: ['SNP'],
+        outcome: 'Mailed', outcomeColor: 'var(--status-warning)',
+        note: 'Mailed annual benefit summary letter via USPS.',
+      },
+      {
+        id: 9, type: 'General', date: '01/09', time: '09:00 AM',
+        author: 'Delores Conn (Co-Ordinator)',
+        title: 'General Outreach', programs: ['SNP'],
+        outcome: 'Provider Communication', outcomeColor: 'var(--status-warning)',
+        note: 'Coordinated with PCP office on referral status for cardiology consult.',
       },
     ],
   },
@@ -584,15 +803,39 @@ const LOG_FOR_OPTIONS = [
   { key: 'hcc-gaps',     label: 'HCC Gaps' },
 ];
 
-/* ── OutreachTab ── */
-export function OutreachTab() {
+/* ── OutreachTab ──
+   Props (all optional; defaults preserve QuickView behavior):
+   - programs           string[]  — pill choices in "Select Programs/Gaps"
+   - programsLabel      string    — section title above the pills
+   - recipientOptions   string[]  — choices for "Called To Number" dropdown
+   - defaultCalledTo    string    — pre-selected Called To Number
+   - defaultLogFor      string    — 'care-program' | 'hcc-gaps'
+   - hideLogForRow      boolean   — hide the "Log Outreach For" radio row
+*/
+export function OutreachTab({
+  programs,
+  programsLabel = 'Select Programs/Gaps',
+  recipientOptions,
+  defaultCalledTo,
+  defaultLogFor = 'hcc-gaps',
+  hideLogForRow = false,
+} = {}) {
+  const PROGRAM_OPTIONS = programs && programs.length ? programs : PROGRAMS;
+  const CALLED_TO_OPTIONS = recipientOptions && recipientOptions.length
+    ? recipientOptions
+    : ['Dr. Katherine Moss (581 824-1591)', 'Carlos Hernandez (555 000-0000)'];
+  const INITIAL_CALLED_TO = defaultCalledTo || CALLED_TO_OPTIONS[0];
+
   const currentUserProfile = useAppStore(s => s.currentUserProfile);
   const [formOpen, setFormOpen] = useState(false);
-  const [logFor, setLogFor] = useState('hcc-gaps');
+  // Id of the row currently being edited (null = creating a new one).
+  // When set, handleSave updates that row in place instead of pushing.
+  const [editingId, setEditingId] = useState(null);
+  const [logFor, setLogFor] = useState(defaultLogFor);
   const isHccGaps = logFor === 'hcc-gaps';
   const [activityFilter, setActivityFilter] = useState('All');
   const [logGroups, setLogGroups] = useState(INITIAL_LOG_GROUPS);
-  const [type, setType] = useState('Call'); // defaults to Call for HCC Gaps
+  const [type, setType] = useState(defaultLogFor === 'hcc-gaps' ? 'Call' : 'General');
   const [datetime, setDatetime] = useState('');
   const [selectedProgs, setSelectedProgs] = useState([]);
   const [outcome, setOutcome] = useState(null);
@@ -604,7 +847,7 @@ export function OutreachTab() {
   const [callBannerVisible, setCallBannerVisible] = useState(true);
   const [callDirection, setCallDirection] = useState('outgoing');
   const [callViaNumber, setCallViaNumber] = useState('Delores Conn (581 824-1591)');
-  const [calledToNumber, setCalledToNumber] = useState('Dr. Katherine Moss (581 824-1591)');
+  const [calledToNumber, setCalledToNumber] = useState(INITIAL_CALLED_TO);
   const [callType, setCallType] = useState('Provider');
   const [callDurationMin, setCallDurationMin] = useState('00');
   const [callDurationSec, setCallDurationSec] = useState('00');
@@ -685,8 +928,8 @@ export function OutreachTab() {
   };
 
   const resetForm = () => {
-    setLogFor('hcc-gaps');
-    setType('Call');
+    setLogFor(defaultLogFor);
+    setType(defaultLogFor === 'hcc-gaps' ? 'Call' : 'General');
     setDatetime('');
     setSelectedProgs([]);
     setOutcome(null);
@@ -696,7 +939,7 @@ export function OutreachTab() {
     setCallBannerVisible(true);
     setCallDirection('outgoing');
     setCallViaNumber('Delores Conn (581 824-1591)');
-    setCalledToNumber('Dr. Katherine Moss (581 824-1591)');
+    setCalledToNumber(INITIAL_CALLED_TO);
     setCallType('Provider');
     setCallDurationMin('00');
     setCallDurationSec('00');
@@ -729,6 +972,18 @@ export function OutreachTab() {
     });
 
     setLogGroups(prev => {
+      // EDIT path — replace the row in place. We keep the row's
+      // original month group so the visual position doesn't shift; the
+      // editor only mutates fields, not date/time-derived grouping.
+      if (editingId != null) {
+        return prev.map(g => ({
+          ...g,
+          logs: g.logs.map(l => l.id === editingId
+            ? { ...l, ...newEntries[0], id: editingId }
+            : l),
+        }));
+      }
+      // CREATE path — append into the appropriate month group.
       const idx = prev.findIndex(g => g.id === monthKey);
       if (idx >= 0) {
         const updated = [...prev];
@@ -738,11 +993,56 @@ export function OutreachTab() {
       return [{ id: monthKey, label: monthLabel, logs: newEntries }, ...prev];
     });
 
+    setEditingId(null);
     resetForm();
     setFormOpen(false);
   };
 
-  const handleDiscard = () => { resetForm(); setFormOpen(false); };
+  const handleDiscard = () => { resetForm(); setFormOpen(false); setEditingId(null); };
+
+  /**
+   * Edit an existing log entry — opens the inline form pre-filled
+   * with the row's data. Save will replace the row in place (see
+   * editingId branch in handleSave). Maps 1-to-1 with the API's
+   * PUT /api/v2/outreach/{outreachId} surface.
+   */
+  const handleEdit = (log) => {
+    setEditingId(log.id);
+    setFormOpen(true);
+    setType(log.type || 'General');
+    setSelectedProgs(Array.isArray(log.programs) ? log.programs : []);
+    setOutcome(log.outcome ? 'successful' : null);
+    // Hydrate date/time from the entry's display strings. The form's
+    // datetime input takes a free-form string so this is safe to round-
+    // trip back.
+    setDatetime(`${log.date} ${log.time}`);
+    // Note panel — single shared (no per-program split for edits).
+    setSeparateNotes(false);
+    setSharedPanel({ expanded: true, outcomes: log.outcome ? [log.outcome] : [], note: log.note || '', outcomeOpen: false });
+    // Call details restore (when present).
+    if (log.callDetails) {
+      setCallViaNumber(log.callDetails.via || '');
+      setCalledToNumber(log.callDetails.to || '');
+      const totalSec = (log.callDetails.durationMin || 0) * 60;
+      setCallDurationMin(String(Math.floor(totalSec / 60)).padStart(2, '0'));
+      setCallDurationSec(String(totalSec % 60).padStart(2, '0'));
+    }
+  };
+
+  /**
+   * Delete an existing log entry — confirms then removes. Real wiring
+   * would DELETE /api/v2/outreach/{outreachId}; here we drop the row
+   * from local state.
+   */
+  const handleDelete = (log) => {
+    if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
+      const ok = window.confirm(`Delete this ${log.type.toLowerCase()} outreach from ${log.date}?`);
+      if (!ok) return;
+    }
+    setLogGroups(prev => prev
+      .map(g => ({ ...g, logs: g.logs.filter(l => l.id !== log.id) }))
+      .filter(g => g.logs.length > 0));
+  };
 
   return (
     <div className={styles.wrapper}>
@@ -760,18 +1060,21 @@ export function OutreachTab() {
         </div>
       ) : (
         <div className={styles.formCard}>
-          {/* Log Outreach For selector */}
-          <div className={styles.logForRow}>
-            <span className={styles.logForLabel}>Log Outreach For:</span>
-            {LOG_FOR_OPTIONS.map(opt => (
-              <RadioButton
-                key={opt.key}
-                checked={logFor === opt.key}
-                onChange={() => handleLogForChange(opt.key)}
-                label={opt.label}
-              />
-            ))}
-          </div>
+          {/* Log Outreach For selector — hidden when the host scope is fixed
+              (e.g., the HCC drawer where outreach is HCC-only by definition). */}
+          {!hideLogForRow && (
+            <div className={styles.logForRow}>
+              <span className={styles.logForLabel}>Log Outreach For:</span>
+              {LOG_FOR_OPTIONS.map(opt => (
+                <RadioButton
+                  key={opt.key}
+                  checked={logFor === opt.key}
+                  onChange={() => handleLogForChange(opt.key)}
+                  label={opt.label}
+                />
+              ))}
+            </div>
+          )}
 
           {/* Header: type dropdown + datetime picker */}
           <div className={styles.formHeader}>
@@ -856,7 +1159,7 @@ export function OutreachTab() {
                       value={calledToNumber}
                       onChange={setCalledToNumber}
                       placeholder="Select number"
-                      options={['Dr. Katherine Moss (581 824-1591)', 'Carlos Hernandez (555 000-0000)']}
+                      options={CALLED_TO_OPTIONS}
                     />
                   </div>
                   <div className={styles.callFieldWrap}>
@@ -896,11 +1199,11 @@ export function OutreachTab() {
             {/* Programs */}
             <div className={styles.section}>
               <div className={styles.sectionLabelRow}>
-                <span className={styles.sectionLabel}>Select Programs/Gaps</span>
+                <span className={styles.sectionLabel}>{programsLabel}</span>
                 <Icon name="solar:info-circle-linear" size={15} color="var(--neutral-300)" />
               </div>
               <div className={styles.programs}>
-                {PROGRAMS.map(prog => (
+                {PROGRAM_OPTIONS.map(prog => (
                   <button
                     key={prog}
                     className={`${styles.progPill} ${selectedProgs.includes(prog) ? styles.progPillSelected : ''}`}
@@ -1058,7 +1361,13 @@ export function OutreachTab() {
 
       {/* Activity log */}
       {logGroups.map(group => (
-        <LogGroup key={group.id} label={group.label} logs={group.logs} />
+        <LogGroup
+          key={group.id}
+          label={group.label}
+          logs={group.logs}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
       ))}
     </div>
   );

@@ -4,8 +4,10 @@ import { dbToJs, updatesToDb } from '../lib/patientMapper';
 import { callDetailDbToJs, callDetailJsToDb } from '../lib/callDetailsMapper';
 import { enrichCallRecord } from '../data/callDetailsEnrich';
 import { generateFlowFromPrompt } from '../lib/flowGenerator';
-import { kpiRowToJs, tsRowToJs, tableRowToJs, barRowToJs, configRowToJs, groupTimeSeries } from '../lib/analyticsMapper';
+import { kpiRowToJs, tsRowToJs, tableRowToJs, barRowToJs, configRowToJs, groupTimeSeries } from '../lib/eventMapper';
 import { domainDbToJs, domainJsToDb, componentDbToJs, componentJsToDb, auditLogDbToJs } from '../lib/embedMapper';
+import { popGroupRowToJs, popGroupJsToDb } from '../lib/popGroupMapper';
+import { hccDocumentRowToJs, hccDocumentJsToDb } from '../lib/hccDocumentMapper';
 // Fallback datasets (~220KB raw across all of these) are imported lazily
 // inside the fetch actions that consume them, so they don't bloat the entry
 // chunk. They're only needed when Supabase returns empty or errors.
@@ -13,11 +15,56 @@ import { updateHash } from '../lib/router';
 import { track } from '../lib/tracking';
 import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem, applyNavStyle, getStoredNavStyle } from '../lib/theme';
 import { createBlock, createBlockTree, collectBlockTree, buildParentMap, cloneBlockTree, extractSubtree, cloneStoredTree } from '../features/email-builder/blockHelpers';
+import { extractEncountersSync } from '../features/hcc/upload/mockOcr';
+import { applyManualDecision as applyHccManualComplianceDecision } from '../features/hcc/compliance';
 import { makeInitialDocument } from '../features/email-builder/initialDocument';
 import * as hccLifecycle from '../features/hcc/assignment/lifecycle';
 import { hydrateFromMember, dosKey as hccDosKey } from '../features/hcc/assignment/dosState';
 import { DEFAULT_SAMPLING_RATES } from '../features/hcc/assignment/sampling';
 import { staffById as hccStaffById } from '../features/hcc/assignment/astranaStaff';
+import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activityLog';
+
+// Persist a single HCC role's status (and optionally name) to Supabase.
+// Fire-and-forget — failures log a warning without rolling back the
+// optimistic in-memory update. Used by every HCC status mutation in this
+// slice (transitionHccDos, hccSetRoleStatus, hccReassignRole) so the
+// worklist row survives reload.
+function persistHccMemberRoleStatus(memberId, role, status, name) {
+  const colsByRole = {
+    support: { name: 'support_name',   status: 'support_status'   },
+    coder:   { name: 'coder_name',     status: 'coder_status'     },
+    r1:      { name: 'reviewer1_name', status: 'reviewer1_status' },
+    r2:      { name: 'reviewer2_name', status: 'reviewer2_status' },
+    r3:      { name: 'reviewer3_name', status: 'reviewer3_status' },
+  };
+  const cols = colsByRole[role];
+  if (!cols || !memberId) return;
+  const patch = {};
+  if (status !== undefined) patch[cols.status] = status;
+  if (name !== undefined && name !== null) patch[cols.name] = name;
+  if (Object.keys(patch).length === 0) return;
+  supabase
+    .from('hcc_members')
+    .update(patch)
+    .eq('id', memberId)
+    .then(({ error }) => {
+      if (error) console.warn(`persistHccMemberRoleStatus(${memberId}, ${role}) failed:`, error.message);
+    });
+}
+
+// Append-only HCC activity log writer. Fire-and-forget: the optimistic
+// in-memory append (handled by the caller via set()) is what the timeline
+// renders; the Supabase insert is for durability. Caller passes the same
+// shape as makeActivityRow() — see src/features/hcc/activityLog.js.
+function persistHccActivityRow(row) {
+  if (!row || !row.event_name) return;
+  supabase
+    .from('hcc_activity_log')
+    .insert(row)
+    .then(({ error }) => {
+      if (error) console.warn(`persistHccActivityRow(${row.event_name}) failed:`, error.message);
+    });
+}
 
 function parseTaskDateStr(str) {
   if (!str || typeof str !== 'string') return null;
@@ -66,6 +113,49 @@ const _initialNavStyle = getStoredNavStyle();
 // blocking script handles the color theme but not this one yet).
 applyNavStyle(_initialNavStyle);
 
+// ── Settings → Content → Emails: SWR cache ────────────────────────────────
+// Keyed by `${page}|${perPage}|${searchLowercased}|${status}`. Lives at
+// module scope so cache survives store rebuilds during HMR. Cleared by any
+// campaign mutation (delete / bulk delete / duplicate / draft insert).
+const _contentEmailsCache = new Map();
+const CONTENT_EMAILS_TTL_MS = 60_000;
+function _invalidateContentEmailsCache() {
+  _contentEmailsCache.clear();
+}
+
+// ── Settings → Content → Forms: SWR cache ─────────────────────────────────
+// Same shape/strategy as the emails cache above. Keyed by
+// `${page}|${perPage}|${searchLowercased}|${status}`; cleared by any form
+// mutation (create draft / duplicate / delete / save).
+const _contentFormsCache = new Map();
+const CONTENT_FORMS_TTL_MS = 60_000;
+function _invalidateContentFormsCache() {
+  _contentFormsCache.clear();
+}
+
+// ── Form row mapper ──
+// Translates a Supabase `forms` row into the JS shape the UI consumes. List
+// fetches omit the heavy `schema`/`scoring` JSONB; the builder pulls the full
+// row via fetchFormById so those land as the saved objects, not defaults.
+function formRowToJs(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description || null,
+    category: row.category || null,
+    status: row.status || 'draft',
+    // Present only on the full-row fetch; undefined on slim list rows so the
+    // builder knows it still needs to hydrate.
+    schema: row.schema,
+    scoring: row.scoring,
+    settings: row.settings || {},
+    responseCount: row.response_count || 0,
+    updatedAt: row.updated_at || null,
+    updatedBy: row.updated_by || null,
+    updatedByName: row.updated_by_profile?.full_name || null,
+  };
+}
+
 // ── Campaign row mapper ──
 // Single source of truth for translating Supabase campaigns rows into the JS
 // shape the UI consumes. Used by both fetchCampaigns (bulk load) and the
@@ -100,6 +190,14 @@ function campaignRowToJs(row) {
     senderName: row.sender_name || '',
     sendFrom: row.send_from || '',
     subjectLine: row.subject_line || '',
+    // Content → Emails surfaces these in the list table.
+    category: row.category || null,
+    updatedAt: row.updated_at || null,
+    updatedBy: row.updated_by || null,
+    // Joined user display name when the fetch selects it via FK
+    // (campaigns.updated_by → profiles.id). campaignRowToJs collapses the
+    // nested object so the UI just reads .updatedByName.
+    updatedByName: row.updated_by_profile?.full_name || null,
   };
 }
 
@@ -122,6 +220,7 @@ const CAMPAIGN_FIELD_MAP = {
   senderName: 'sender_name',
   sendFrom: 'send_from',
   subjectLine: 'subject_line',
+  category: 'category',
 };
 function campaignPatchToDb(patch) {
   const out = {};
@@ -142,6 +241,176 @@ function scheduleCampaignSave(id, fn) {
     _campaignSaveTimers.delete(id);
     fn();
   }, 600));
+}
+
+// Human-readable labels for HCC DOS lifecycle transitions, used by the
+// Activity Log to format "DOS 07/04/2024 — Support Completed" style entries.
+const HCC_TRANSITION_LABEL = {
+  markSupportInProgress: 'Support In Progress',
+  completeSupport:       'Support Completed',
+  markInsufficient:      'Marked Insufficient',
+  rejectDos:             'DOS Rejected',
+  completeCoder:         'Coding Completed',
+  requestRecords:        'Records Requested',
+  recordsReceived:       'Records Received',
+  completeR1:            'Reviewer 1 Completed',
+  completeR2:            'Reviewer 2 Completed',
+  completeR3:            'Reviewer 3 Completed',
+  returnDos:             'DOS Returned',
+  reassignRole:          'Role Reassigned',
+};
+
+// Maps a shared-list label to the store-state key that holds its active
+// filter selections. Used by the generic saved-filter actions below so that
+// saving / applying a filter on any list writes to the right slice.
+// Lists not listed here fall back to `activeFilters` (the TOC default).
+const LIST_FILTER_KEY = {
+  HCC:   'hccFilters',
+  HEDIS: 'hedisFilters',
+};
+
+// Safe JSON read from sessionStorage — returns fallback on missing/parse error.
+function _readJson(key, fallback) {
+  try {
+    const raw = sessionStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+// ── Care team row mapper ──
+// Translates a Supabase `care_teams` row to/from the JS shape the
+// ConfigureTeamDrawer + Care Team table consume (see hccCareTeams below).
+function careTeamRowToJs(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    kind: row.kind,
+    teamType: row.team_type,
+    allocatedTins: row.allocated_tins || [],
+    createdAt: row.created_label,
+    createdBy: row.created_by,
+    lastModifiedAt: row.modified_label,
+    lastModifiedBy: row.modified_by,
+    members: row.members || [],
+  };
+}
+function careTeamJsToDb(t) {
+  return {
+    id: t.id,
+    name: t.name,
+    kind: t.kind,
+    team_type: t.teamType,
+    allocated_tins: t.allocatedTins || [],
+    created_label: t.createdAt,
+    created_by: t.createdBy,
+    modified_label: t.lastModifiedAt,
+    modified_by: t.lastModifiedBy,
+    members: t.members || [],
+    updated_at: new Date().toISOString(),
+  };
+}
+
+/**
+ * Seed historical document-upload batches into the HCC activity feed so
+ * the History drawer's Documents tab has realistic content out of the
+ * box. Each batch reads as a completed upload: a `batch.created`,
+ * `file.uploaded`, `ocr.completed`, and `batch.processing_completed`
+ * row stamped with believable counts and timestamps in the recent
+ * past. Real backend wipes this once Supabase returns rows.
+ */
+function buildSeedHccActivityFeed() {
+  const now = Date.now();
+  const day = 24 * 60 * 60 * 1000;
+  // Older first — we reverse at the end so newest sorts to the top.
+  const batches = [
+    { id: 'seed-b1', file: 'progress-notes-week-of-04-14.pdf', actor: 'Dr. Sarah Connor',
+      approved: 8, rejected: 0, encounters: 8, source: 'manual', daysAgo: 0.2,
+      rejectedList: [] },
+    { id: 'seed-b2', file: 'sftp-overnight-2026-04-12.pdf', actor: 'SFTP',
+      approved: 12, rejected: 3, encounters: 15, source: 'sftp', daysAgo: 1.4,
+      rejectedList: [
+        { patientName: 'Patricia Moore', dos: '04/10/2026' },
+        { patientName: 'Robert Kim', dos: '04/09/2026' },
+        { patientName: 'James Walker', dos: '04/09/2026' },
+      ]},
+    { id: 'seed-b3', file: 'annual-wellness-bulk.pdf', actor: 'You',
+      approved: 5, rejected: 1, encounters: 6, source: 'manual', daysAgo: 3.0,
+      rejectedList: [{ patientName: 'Jane Doe', dos: '04/08/2026' }] },
+    { id: 'seed-b4', file: 'discharge-summaries-april.pdf', actor: 'Dr. Helen Yu',
+      approved: 4, rejected: 0, encounters: 4, source: 'manual', daysAgo: 5.5,
+      rejectedList: [] },
+    { id: 'seed-b5', file: 'multi-patient-chart-batch.pdf', actor: 'M. Singh',
+      approved: 0, rejected: 0, encounters: 0, source: 'sftp', daysAgo: 7.0,
+      rejectedList: [],
+      // Failed extraction — surfaces as Processing/Failed status in the tab.
+      failed: true },
+  ];
+  const rows = [];
+  batches.forEach(b => {
+    const baseTs = new Date(now - b.daysAgo * day);
+    const iso = (offsetMin) => new Date(baseTs.getTime() + offsetMin * 60_000).toISOString();
+    const scope = { batchId: b.id, fileId: b.file, source: b.source };
+    rows.push({
+      id: `${b.id}-c`, ts: iso(0), event_name: 'batch.created',
+      batch_id: b.id, category: 'intake', severity: 'info',
+      actor_name: b.actor,
+      headline: `Batch ${b.id} created — 1 file queued.`,
+      scope,
+      payload: { batchId: b.id, fileCount: 1, fileName: b.file, actor: b.actor },
+    });
+    rows.push({
+      id: `${b.id}-u`, ts: iso(1), event_name: 'file.uploaded',
+      batch_id: b.id, category: 'intake', severity: 'info',
+      actor_name: b.actor,
+      headline: `${b.actor} uploaded ${b.file}.`,
+      scope,
+      payload: { actor: b.actor, fileName: b.file, pageCount: Math.max(1, Math.ceil(b.encounters / 2)) },
+    });
+    if (b.failed) {
+      rows.push({
+        id: `${b.id}-fail`, ts: iso(2), event_name: 'ocr.failed',
+        batch_id: b.id, category: 'ocr', severity: 'error',
+        actor_name: 'System',
+        headline: `OCR failed on ${b.file}.`,
+        scope,
+        payload: { fileName: b.file, reason: 'Could not read PDF — likely corrupt or password-protected.' },
+      });
+    } else {
+      rows.push({
+        id: `${b.id}-oc`, ts: iso(2), event_name: 'ocr.completed',
+        batch_id: b.id, category: 'ocr', severity: 'success',
+        actor_name: 'System',
+        headline: `OCR completed on ${b.file} — ${b.encounters} encounters extracted.`,
+        scope,
+        payload: {
+          fileName: b.file,
+          encounterCount: b.encounters,
+          pageCount: Math.max(1, Math.ceil(b.encounters / 2)),
+        },
+      });
+      rows.push({
+        id: `${b.id}-pc`, ts: iso(3), event_name: 'batch.processing_completed',
+        batch_id: b.id, category: 'intake', severity: 'success',
+        actor_name: b.actor,
+        headline: `Batch ${b.id} complete — ${b.approved} approved, ${b.rejected} rejected.`,
+        scope,
+        payload: {
+          batchId: b.id,
+          fileName: b.file,
+          approvedCount: b.approved,
+          rejectedCount: b.rejected,
+          pendingCount: 0,
+          acceptedList: [],
+          rejectedList: b.rejectedList,
+          actor: b.actor,
+        },
+      });
+    }
+  });
+  // Newest-first.
+  return rows.sort((a, b) => (b.ts || '').localeCompare(a.ts || ''));
 }
 
 export const useAppStore = create((set, get) => ({
@@ -351,8 +620,14 @@ export const useAppStore = create((set, get) => ({
   activeFilters: {},  // { gender: 'F', language: 'es', lace: 'High', ... }
   activeSubnavList: 'TOC',  // which SubNav list is selected
 
+  // ── Population Groups: persistent create-group CSV processing session ──
+  pgSession: null,            // { fileName, fileSize, segName, status:'loading'|'complete', procStep, startedAt, result }
+  pgMinimized: false,
+  pgReopenToken: 0,
+
   // HEDIS worklist state lives at line ~1558 (caregapActivity, hedisMembers,
   // setHedisMembers, updateGapStatus, etc.) — defined by upstream.
+
 
   // Call Details
   _allCallDetails: [],   // full sorted dataset (DB + supplemental local)
@@ -377,7 +652,11 @@ export const useAppStore = create((set, get) => ({
   goalWizardEditId: null,
 
   // Settings navigation (left subnav)
-  settingsNavItem: sessionStorage.getItem('settingsNavItem') || 'agents',
+  settingsNavItem: sessionStorage.getItem('settingsNavItem') || 'member/leads',
+  // Active sub-tab inside Settings → Member/Leads (Tags / Custom Contact Type
+  // / Custom Contact Fields / Code Groups / Worklist / Care Team). Persisted
+  // in the hash so deep links survive.
+  memberLeadsTab: sessionStorage.getItem('memberLeadsTab') || 'care-team',
 
   // Messages section
   messageTab: 'chat-settings',
@@ -394,6 +673,7 @@ export const useAppStore = create((set, get) => ({
   // Embedded Components
   embeddedComponentsTab: 'domain-registry',
   accountTab: 'users',
+  contentTab: 'emails',
   componentWizardOpen: false,
   componentWizardEditId: null,
   componentPreviewId: null,
@@ -433,6 +713,27 @@ export const useAppStore = create((set, get) => ({
   toast: null,
   toastSuccess: false,
   queueTabDot: false,
+
+  // ─── Notifications (bell-icon dropdown) ───────────────────────────
+  // Newest-first array of { id, type, title, body, ts, read, action }.
+  // The `action` is a string the popover maps to a side-effect (e.g.
+  // 'openHccReview' → expandHccUpload + nav).
+  notifications: [],
+  addNotification: (n) => set(s => ({
+    notifications: [
+      { id: n.id || `n-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, ts: Date.now(), read: false, ...n },
+      ...(s.notifications || []),
+    ].slice(0, 50),  // keep the last 50
+  })),
+  markNotificationRead: (id) => set(s => ({
+    notifications: (s.notifications || []).map(n => n.id === id ? { ...n, read: true } : n),
+  })),
+  markAllNotificationsRead: () => set(s => ({
+    notifications: (s.notifications || []).map(n => ({ ...n, read: true })),
+  })),
+  dismissNotification: (id) => set(s => ({
+    notifications: (s.notifications || []).filter(n => n.id !== id),
+  })),
   callTimerRef: null,
   detailPatient: null,
   detailPatientCalls: [],
@@ -612,6 +913,12 @@ export const useAppStore = create((set, get) => ({
     updateHash(get);
   },
 
+  // ── Population Groups: persistent create-group CSV processing session ──
+  startPgSession: (sess) => set({ pgSession: { ...sess }, pgMinimized: true }),
+  updatePgSession: (patch) => set(s => ({ pgSession: s.pgSession ? { ...s.pgSession, ...patch } : null })),
+  expandPgSession: () => set(s => ({ pgMinimized: false, pgReopenToken: s.pgReopenToken + 1 })),
+  closePgSession: () => set({ pgSession: null, pgMinimized: false }),
+
   // Navigation guard for full-screen takeovers. When the user clicks a Sidebar
   // entry while the EmailBuilder or CampaignBuilder is open, we don't want the
   // page to silently change underneath them — instead we ask the open builder
@@ -672,6 +979,11 @@ export const useAppStore = create((set, get) => ({
     set({ settingsNavItem: item });
     updateHash(get);
   },
+  setMemberLeadsTab: (tab) => {
+    sessionStorage.setItem('memberLeadsTab', tab);
+    set({ memberLeadsTab: tab });
+    updateHash(get);
+  },
 
   // Chat Groups actions
   setMessagesUnreadCount: (n) => set({ messagesUnreadCount: n }),
@@ -691,6 +1003,7 @@ export const useAppStore = create((set, get) => ({
 
   setEmbeddedComponentsTab: (tab) => { set({ embeddedComponentsTab: tab }); updateHash(get); },
   setAccountTab: (tab) => { set({ accountTab: tab }); updateHash(get); },
+  setContentTab: (tab) => { set({ contentTab: tab }); updateHash(get); },
   setComponentWizard: (open, editId = null) => { set({ componentWizardOpen: open, componentWizardEditId: editId }); },
   setComponentPreviewId: (id) => { set({ componentPreviewId: id }); },
 
@@ -790,6 +1103,54 @@ export const useAppStore = create((set, get) => ({
   // Domain Registry add trigger (used by EmbeddedComponentsSettings to tell DomainRegistryPanel to open add modal)
   domainAddTrigger: false,
   setDomainAddTrigger: (v) => set({ domainAddTrigger: v }),
+
+  // ── Population Groups (Supabase-backed) ──
+  popGroups: [],
+  popGroupsLoading: false,
+  fetchPopGroups: async () => {
+    set({ popGroupsLoading: true });
+    const { data, error } = await supabase
+      .from('population_groups')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.warn('[store] population_groups fetch failed — run supabase/population_groups_migration.sql:', error.message);
+      set({ popGroupsLoading: false });
+      return;
+    }
+    set({ popGroups: (data || []).map(popGroupRowToJs), popGroupsLoading: false });
+  },
+  createPopGroup: async (group) => {
+    const { data, error } = await supabase
+      .from('population_groups')
+      .insert(popGroupJsToDb(group))
+      .select()
+      .single();
+    if (error) {
+      console.warn('[store] createPopGroup failed:', error.message);
+      get().showToast(`Failed to save group: ${error.message}`);
+      return null;
+    }
+    const saved = popGroupRowToJs(data);
+    set(s => ({ popGroups: [saved, ...s.popGroups] }));
+    return saved;
+  },
+  updatePopGroup: async (id, updates) => {
+    const { data, error } = await supabase
+      .from('population_groups')
+      .update(popGroupJsToDb(updates))
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) {
+      console.warn('[store] updatePopGroup failed:', error.message);
+      get().showToast(`Failed to update group: ${error.message}`);
+      return null;
+    }
+    const saved = popGroupRowToJs(data);
+    set(s => ({ popGroups: s.popGroups.map(g => g.id === id ? saved : g) }));
+    return saved;
+  },
 
   // ── Embed Domains (Supabase-backed) ──
   embedDomains: [],
@@ -1517,10 +1878,105 @@ export const useAppStore = create((set, get) => ({
   // ─── HCC Worklist (Supabase-backed) ───
   // ── HEDIS worklist — local state for now, no Supabase backing yet ───────
   // Activity log per member: { [memberId]: [{ id, type, message, at, by }] }
-  caregapActivity: {},
+  caregapActivity: {
+    hd1: [
+      { id: 'a1-1', when: '2026-05-14T14:30:00', actor: 'Delores Conn (Co-Ordinator)', icon: 'solar:phone-calling-linear', iconBg: 'var(--primary-100)', iconBorder: 'color-mix(in srgb, var(--primary-300) 20%, transparent)', iconColor: 'var(--primary-300)', title: '4th Outreach — Outgoing Call', detail: 'Completed, Engaged' },
+      { id: 'a1-2', when: '2026-04-28T11:15:00', actor: 'Alok Kumar', icon: 'solar:clipboard-text-linear', iconBg: 'var(--status-success-light)', iconBorder: 'color-mix(in srgb, var(--status-success) 20%, transparent)', iconColor: 'var(--status-success)', title: 'Status changed: Open → Closed', detail: 'Manually closed after care was documented' },
+      { id: 'a1-3', when: '2026-04-10T09:00:00', actor: 'Dr. Aldo Richman', icon: 'solar:document-add-linear', iconBg: 'var(--secondary-100)', iconBorder: 'color-mix(in srgb, var(--secondary-300) 20%, transparent)', iconColor: 'var(--secondary-300)', title: 'Clinical Note Added', detail: 'BP reading 118/76 — within target range' },
+      { id: 'a1-4', when: '2026-03-22T16:00:00', actor: 'Delores Conn (Co-Ordinator)', icon: 'solar:phone-linear', iconBg: 'var(--status-error-light)', iconBorder: 'color-mix(in srgb, var(--status-error) 25%, transparent)', iconColor: 'var(--status-error)', title: '1st Outreach — Patient Chat', detail: 'Scheduled with PCP' },
+    ],
+    hd2: [
+      { id: 'a2-1', when: '2026-05-10T10:00:00', actor: 'Sarah Lee', icon: 'solar:phone-calling-linear', iconBg: 'var(--primary-100)', iconBorder: 'color-mix(in srgb, var(--primary-300) 20%, transparent)', iconColor: 'var(--primary-300)', title: '2nd Outreach — Outgoing Call', detail: 'No answer — voicemail left' },
+      { id: 'a2-2', when: '2026-04-18T13:45:00', actor: 'Marcus Chen', icon: 'solar:clipboard-add-linear', iconBg: 'var(--neutral-50)', iconBorder: 'color-mix(in srgb, var(--neutral-300) 12%, transparent)', iconColor: 'var(--neutral-300)', title: 'Task Added', detail: 'Follow up for colorectal screening referral' },
+    ],
+  },
   // Status updates applied to the local HEDIS mock data via setHedisMembers.
   hedisMembers: [],
+  hedisLoading: false,
   setHedisMembers: (members) => set({ hedisMembers: members }),
+  fetchHedisMembers: async () => {
+    set({ hedisLoading: true });
+    const { data, error } = await supabase
+      .from('hedis_members')
+      .select('*')
+      .order('start_date', { ascending: false });
+    if (error || !data?.length) {
+      if (error) console.warn('fetchHedisMembers — falling back to local mock:', error.message);
+      const { HEDIS_MEMBERS } = await import('../features/hedis-worklist/data/mock');
+      set({ hedisMembers: HEDIS_MEMBERS, hedisLoading: false });
+      return;
+    }
+    set({
+      hedisMembers: data.map(r => ({
+        id:              r.id,
+        in:              r.initials,
+        name:            r.name,
+        gender:          r.gender,
+        age:             r.age,
+        memberId:        r.member_id,
+        language:        r.language || 'en',
+        gaps:            typeof r.gaps === 'string' ? JSON.parse(r.gaps) : (r.gaps || []),
+        assignee:        r.assignee,
+        assigneeInitials: r.assignee_initials,
+        startDate:       r.start_date,
+        advIllness:      r.adv_illness ?? 0,
+        frailty:         r.frailty ?? 0,
+        riskLevel:       r.risk_level,
+        tasks:           r.tasks,
+        outreachDots:    typeof r.outreach_dots === 'string' ? JSON.parse(r.outreach_dots) : (r.outreach_dots || ['pending', 'pending', 'pending']),
+        outreachDate:    r.outreach_date,
+        memberStatus:    r.member_status || 'Active',
+        phone:           r.phone,
+        dob:             r.dob,
+        ipa:             r.ipa,
+        hpCode:          r.hp_code,
+        zip:             r.zip,
+        city:            r.city,
+        state:           r.state,
+      })),
+      hedisLoading: false,
+    });
+  },
+
+  apcmPatients: [],
+  apcmPatientsLoading: false,
+  fetchApcmPatients: async () => {
+    set({ apcmPatientsLoading: true });
+    const { data, error } = await supabase
+      .from('apcm_patients')
+      .select('*')
+      .order('name', { ascending: true });
+    if (error || !data?.length) {
+      if (error) console.warn('fetchApcmPatients — falling back to local mock:', error.message);
+      const { APCM_PATIENTS } = await import('../features/apcm-billing/data/mock');
+      set({ apcmPatients: APCM_PATIENTS, apcmPatientsLoading: false });
+      return;
+    }
+    set({
+      apcmPatients: data.map(r => ({
+        id:                          r.id,
+        name:                        r.name,
+        memberId:                    r.member_id,
+        language:                    r.language || 'en',
+        ehrId:                       r.ehr_id,
+        billingMonth:                r.billing_month,
+        dateOfService:               r.date_of_service,
+        isQmb:                       r.is_qmb,
+        chronicConditionCount:       r.chronic_condition_count,
+        cptCode:                     r.cpt_code,
+        icdCodes:                    typeof r.icd_codes === 'string' ? JSON.parse(r.icd_codes) : (r.icd_codes || []),
+        lastEncounterDate:           r.last_encounter_date,
+        reasons:                     typeof r.reasons === 'string' ? JSON.parse(r.reasons) : (r.reasons || []),
+        renderingProvider:           r.rendering_provider,
+        renderingProviderInitials:   r.rendering_provider_initials,
+        comment:                     r.comment || '',
+        tab:                         r.tab,
+        billingStatus:               r.billing_status,
+        programId:                   r.program_id,
+      })),
+      apcmPatientsLoading: false,
+    });
+  },
   updateGapStatus: (memberId, gapCode, nextStatus) => {
     track('hedis.gap_status_updated', { memberId, gapCode, status: nextStatus });
     set(s => ({
@@ -1750,21 +2206,86 @@ export const useAppStore = create((set, get) => ({
   // Optimistic accept/dismiss of an ICD inside the DiagPanel. Updates the
   // local gap list immediately so the UI reflects the new state; the server
   // round-trip is a TODO (Phase 3).
-  acceptHccGap: (code) => set(s => ({
-    hccDiagnosisGaps: s.hccDiagnosisGaps.map(g =>
-      g.code === code ? { ...g, status: 'Accepted' } : g
-    ),
+  acceptHccGap: (code) => {
+    set(s => ({
+      hccDiagnosisGaps: s.hccDiagnosisGaps.map(g =>
+        g.code === code ? { ...g, status: 'Accepted' } : g
+      ),
+    }));
+    // ICD-level log entry → carries icds:[code] so it shows in both the
+    // ICD-scoped log AND the DOS-level (global) log.
+    get().addActivityEntry({
+      t: 'accept', by: 'You', role: 'Coder',
+      icds: [code],
+      headline: `Accepted ICD ${code}`,
+      from: 'Open', to: 'Accepted',
+    });
+  },
+  dismissHccGap: (code, reason) => {
+    set(s => ({
+      hccDiagnosisGaps: s.hccDiagnosisGaps.map(g =>
+        g.code === code ? { ...g, status: 'Dismissed', dismissReason: reason ?? g.dismissReason } : g
+      ),
+    }));
+    get().addActivityEntry({
+      t: 'dismiss', by: 'You', role: 'Coder',
+      icds: [code],
+      headline: `Dismissed ICD ${code}${reason ? ` — ${reason}` : ''}`,
+      from: 'Open', to: 'Dismissed',
+    });
+  },
+  reopenHccGap: (code) => {
+    set(s => ({
+      hccDiagnosisGaps: s.hccDiagnosisGaps.map(g =>
+        g.code === code ? { ...g, status: 'New', dismissReason: null } : g
+      ),
+    }));
+    get().addActivityEntry({
+      t: 'status_hcc', by: 'You', role: 'Coder',
+      icds: [code],
+      headline: `Reopened ICD ${code}`,
+      from: 'Dismissed', to: 'Open',
+    });
+  },
+
+  // ─── AWV (Annual Wellness Visit) worklist ─────────────────────────────
+  // Mock-driven worklist mirroring the HCC pattern: members + filter chip
+  // state + selection set. Toolbar (Search/Filter/Export/History) and the
+  // bulk-bar wire into the same shared components.
+  awvMembers: (() => {
+    try {
+      // Synchronous import via top-level static would be cleaner, but the
+      // store file already lazy-loads other mocks to keep the initial
+      // bundle small. We pre-seed with an empty array and the worklist's
+      // first render kicks off the fetch.
+      return [];
+    } catch { return []; }
+  })(),
+  awvMembersLoading: false,
+  fetchAwvMembers: async () => {
+    if (useAppStore.getState().awvMembers.length > 0) return;
+    set({ awvMembersLoading: true });
+    const { AWV_MEMBERS } = await import('../features/awv-worklist/data/mock');
+    set({ awvMembers: AWV_MEMBERS, awvMembersLoading: false });
+  },
+  // Multi-value filters keyed by column. Empty array on a key = no filter.
+  awvFilters: {},
+  setAwvFilter: (k, vals) => set(s => {
+    const next = { ...s.awvFilters };
+    if (!vals || vals.length === 0) delete next[k];
+    else next[k] = vals;
+    return { awvFilters: next };
+  }),
+  clearAwvFilters: () => set({ awvFilters: {} }),
+  // Bulk-select state.
+  selectedAwvIds: [],
+  selectAwvMember: (id) => set(s => ({
+    selectedAwvIds: s.selectedAwvIds.includes(id)
+      ? s.selectedAwvIds.filter(x => x !== id)
+      : [...s.selectedAwvIds, id],
   })),
-  dismissHccGap: (code, reason) => set(s => ({
-    hccDiagnosisGaps: s.hccDiagnosisGaps.map(g =>
-      g.code === code ? { ...g, status: 'Dismissed', dismissReason: reason ?? g.dismissReason } : g
-    ),
-  })),
-  reopenHccGap: (code) => set(s => ({
-    hccDiagnosisGaps: s.hccDiagnosisGaps.map(g =>
-      g.code === code ? { ...g, status: 'New', dismissReason: null } : g
-    ),
-  })),
+  selectAllAwv: (ids) => set({ selectedAwvIds: ids }),
+  clearAwvSelected: () => set({ selectedAwvIds: [] }),
 
   selectedHccIds: [],
   selectHccMember: (id) => {
@@ -1815,46 +2336,114 @@ export const useAppStore = create((set, get) => ({
   }),
   clearHccVisibleFilters: () => set({ hccVisibleFilterKeys: [] }),
 
-  // Saved filter sets. Each: { id, name, filters: {[k]: string[]} }.
-  hccSavedFilters: [
-    { id: 'sf1', name: 'High Risk Members',  filters: { rl: ['High'] } },
-    { id: 'sf2', name: 'Overdue Incomplete', filters: { supS: ['Assign'], cdrS: ['Assign'] } },
-  ],
-  hccActiveSavedId: null,
-  saveHccFilter: (name) => {
-    track('hcc.filter_saved');
+  // Saved filter sets, keyed by shared-list label (HCC, TOC, SNP, AWV,
+  // HEDIS, High Utilizers, DM). Each entry: { id, name, filters }. Persisted
+  // to localStorage so users keep their saved views across reloads.
+  //
+  // The per-list filter STATE lives elsewhere (hccFilters for HCC,
+  // activeFilters for TOC and other generic lists). LIST_FILTER_KEY below
+  // tells the store which slice to read/write for each list.
+  savedFiltersByList: (() => {
+    try {
+      const raw = localStorage.getItem('savedFiltersByList');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
+    } catch {/* fall through */}
+    // Migrate legacy hccSavedFilters if present so existing data isn't lost.
+    try {
+      const legacy = localStorage.getItem('hccSavedFilters');
+      if (legacy) {
+        const parsed = JSON.parse(legacy);
+        if (Array.isArray(parsed)) return { HCC: parsed };
+      }
+    } catch {/* */}
+    return {
+      HCC: [
+        { id: 'sf1', name: 'High Risk Members',  filters: { rl: ['High'] } },
+        { id: 'sf2', name: 'Overdue Incomplete', filters: { supS: ['Assign'], cdrS: ['Assign'] } },
+      ],
+    };
+  })(),
+  activeSavedIdByList: (() => {
+    try {
+      const raw = localStorage.getItem('activeSavedIdByList');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
+    } catch {/* */}
+    const legacy = localStorage.getItem('hccActiveSavedId');
+    return legacy ? { HCC: legacy } : {};
+  })(),
+  // saveSavedFilter(list, name): read the current filter slice for `list`
+  // and store it under savedFiltersByList[list] as a named view.
+  saveSavedFilter: (list, name) => {
+    track('list.filter_saved', { list });
     set(s => {
       const trimmed = (name || '').trim();
-      if (!trimmed) return {};
+      if (!trimmed || !list) return {};
+      const key = LIST_FILTER_KEY[list] || 'activeFilters';
+      const snapshot = { ...(s[key] || {}) };
       const id = `sf-${Date.now()}`;
+      const cur = s.savedFiltersByList[list] || [];
+      const nextSaved = { ...s.savedFiltersByList, [list]: [...cur, { id, name: trimmed, filters: snapshot }] };
+      const nextActive = { ...s.activeSavedIdByList, [list]: id };
+      try { localStorage.setItem('savedFiltersByList', JSON.stringify(nextSaved)); } catch {/* */}
+      try { localStorage.setItem('activeSavedIdByList', JSON.stringify(nextActive)); } catch {/* */}
+      return { savedFiltersByList: nextSaved, activeSavedIdByList: nextActive };
+    });
+  },
+  renameSavedFilter: (list, id, name) => {
+    track('list.saved_filter_renamed', { list, filterId: id });
+    set(s => {
+      const cur = s.savedFiltersByList[list] || [];
+      const nextList = cur.map(f => f.id === id ? { ...f, name: (name || '').trim() || f.name } : f);
+      const nextSaved = { ...s.savedFiltersByList, [list]: nextList };
+      try { localStorage.setItem('savedFiltersByList', JSON.stringify(nextSaved)); } catch {/* */}
+      return { savedFiltersByList: nextSaved };
+    });
+  },
+  deleteSavedFilter: (list, id) => {
+    track('list.saved_filter_deleted', { list, filterId: id });
+    set(s => {
+      const cur = s.savedFiltersByList[list] || [];
+      const nextList = cur.filter(f => f.id !== id);
+      const nextSaved = { ...s.savedFiltersByList, [list]: nextList };
+      const wasActive = s.activeSavedIdByList[list] === id;
+      const nextActive = { ...s.activeSavedIdByList };
+      if (wasActive) delete nextActive[list];
+      const key = LIST_FILTER_KEY[list] || 'activeFilters';
+      try { localStorage.setItem('savedFiltersByList', JSON.stringify(nextSaved)); } catch {/* */}
+      try { localStorage.setItem('activeSavedIdByList', JSON.stringify(nextActive)); } catch {/* */}
       return {
-        hccSavedFilters: [...s.hccSavedFilters, { id, name: trimmed, filters: { ...s.hccFilters } }],
-        hccActiveSavedId: id,
+        savedFiltersByList: nextSaved,
+        activeSavedIdByList: nextActive,
+        ...(wasActive ? { [key]: {} } : {}),
       };
     });
   },
-  renameHccSavedFilter: (id, name) => {
-    track('hcc.saved_filter_renamed', { filterId: id });
-    set(s => ({
-      hccSavedFilters: s.hccSavedFilters.map(f => f.id === id ? { ...f, name: (name || '').trim() || f.name } : f),
-    }));
-  },
-  deleteHccSavedFilter: (id) => {
-    track('hcc.saved_filter_deleted', { filterId: id });
-    set(s => ({
-      hccSavedFilters: s.hccSavedFilters.filter(f => f.id !== id),
-      hccActiveSavedId: s.hccActiveSavedId === id ? null : s.hccActiveSavedId,
-      hccFilters: s.hccActiveSavedId === id ? {} : s.hccFilters,
-    }));
-  },
-  applyHccSavedFilter: (id) => {
-    track('hcc.saved_filter_applied', { filterId: id });
+  applySavedFilter: (list, id) => {
+    track('list.saved_filter_applied', { list, filterId: id });
     set(s => {
-      const f = s.hccSavedFilters.find(x => x.id === id);
+      const f = (s.savedFiltersByList[list] || []).find(x => x.id === id);
       if (!f) return {};
-      return { hccFilters: { ...f.filters }, hccActiveSavedId: id };
+      const key = LIST_FILTER_KEY[list] || 'activeFilters';
+      const nextActive = { ...s.activeSavedIdByList, [list]: id };
+      try { localStorage.setItem('activeSavedIdByList', JSON.stringify(nextActive)); } catch {/* */}
+      return { [key]: { ...f.filters }, activeSavedIdByList: nextActive };
     });
   },
+
+  // Thin HCC-specific aliases so the existing FilterChipBar's "Save Filter"
+  // button and any other HCC-only callers keep working without rewrites.
+  // (Getters on the state object are not reactive in Zustand — components
+  // that need to subscribe should read `savedFiltersByList.HCC` directly.)
+  saveHccFilter: (name) => useAppStore.getState().saveSavedFilter('HCC', name),
+  renameHccSavedFilter: (id, name) => useAppStore.getState().renameSavedFilter('HCC', id, name),
+  deleteHccSavedFilter: (id) => useAppStore.getState().deleteSavedFilter('HCC', id),
+  applyHccSavedFilter: (id) => useAppStore.getState().applySavedFilter('HCC', id),
 
   // Column visibility — array of column keys that are hidden. Sticky Member/Actions
   // columns are not toggleable so they never appear here.
@@ -1938,37 +2527,100 @@ export const useAppStore = create((set, get) => ({
   // Generic dispatcher — `kind` corresponds to a lifecycle.js export. Each
   // call rebuilds `hccDosAssignments` immutably. UI components use the named
   // wrappers below; this is the single chokepoint for the engine.
-  transitionHccDos: (patientId, dosDate, kind, payload = {}) => set(s => {
-    const fn = hccLifecycle[kind];
-    if (typeof fn !== 'function') {
-      console.warn(`transitionHccDos: unknown kind "${kind}"`);
-      return {};
-    }
-    const patient = s.hccMembers.find(m => m.id === patientId);
-    if (!patient) return {};
-    const dos = (patient.dos_list || []).find(d => d.date === dosDate) || { date: dosDate };
-    const actor = payload.actor || 'current-user';
-    let result;
-    switch (kind) {
-      case 'markInsufficient':
-      case 'rejectDos':
-        result = fn(s.hccDosAssignments, patient, dos, actor, payload.reason);
-        break;
-      case 'returnDos':
-        result = fn(s.hccDosAssignments, patient, dos, payload.fromRole, actor, payload.reason);
-        break;
-      case 'reassignRole':
-        result = fn(s.hccDosAssignments, patient, dos, payload.role, payload.staffId, actor, payload.reason);
-        break;
-      case 'completeR1':
-      case 'completeR2':
-        result = fn(s.hccDosAssignments, patient, dos, actor, s.hccConfig.samplingRates);
-        break;
-      default:
-        result = fn(s.hccDosAssignments, patient, dos, actor);
-    }
-    return { hccDosAssignments: result.nextMap };
-  }),
+  //
+  // Diffs the engine's new dosState against the previous one to detect role
+  // status changes, then patches the matching legacy member field
+  // (supS/cdrS/r1s/r2s/r3s) AND persists the change to Supabase so the
+  // worklist row survives reload. This is the single source of persistence
+  // for every AC transition — convenience wrappers below don't need to know
+  // about it.
+  transitionHccDos: (patientId, dosDate, kind, payload = {}) => {
+    let statusChanges = [];
+    set(s => {
+      const fn = hccLifecycle[kind];
+      if (typeof fn !== 'function') {
+        console.warn(`transitionHccDos: unknown kind "${kind}"`);
+        return {};
+      }
+      const patient = s.hccMembers.find(m => m.id === patientId);
+      if (!patient) return {};
+      const dos = (patient.dos_list || []).find(d => d.date === dosDate) || { date: dosDate };
+      const actor = payload.actor || 'current-user';
+      let result;
+      switch (kind) {
+        case 'markInsufficient':
+        case 'rejectDos':
+          result = fn(s.hccDosAssignments, patient, dos, actor, payload.reason);
+          break;
+        case 'returnDos':
+          result = fn(s.hccDosAssignments, patient, dos, payload.fromRole, actor, payload.reason);
+          break;
+        case 'reassignRole':
+          result = fn(s.hccDosAssignments, patient, dos, payload.role, payload.staffId, actor, payload.reason);
+          break;
+        case 'completeR1':
+        case 'completeR2':
+          result = fn(s.hccDosAssignments, patient, dos, actor, s.hccConfig.samplingRates);
+          break;
+        default:
+          result = fn(s.hccDosAssignments, patient, dos, actor);
+      }
+      // Diff role statuses between previous and new dosState. Each changed
+      // role gets queued for legacy-field patch + Supabase write below.
+      const dosKey = `${patientId}::${dosDate}`;
+      const prev = s.hccDosAssignments?.[dosKey] || {};
+      const next = result.nextMap?.[dosKey] || {};
+      ['support', 'coder', 'r1', 'r2', 'r3'].forEach(role => {
+        const ns = next[role]?.status;
+        if (ns && ns !== prev[role]?.status) statusChanges.push({ role, status: ns });
+      });
+      const statusFieldByRole = { support: 'supS', coder: 'cdrS', r1: 'r1s', r2: 'r2s', r3: 'r3s' };
+      const nextMembers = statusChanges.length
+        ? s.hccMembers.map(m => {
+            if (m.id !== patientId) return m;
+            const patched = { ...m };
+            statusChanges.forEach(({ role, status }) => { patched[statusFieldByRole[role]] = status; });
+            return patched;
+          })
+        : s.hccMembers;
+      // DOS-level log entry — no `icds`, so it appears only in the global
+      // (DOS-level) Activity Log, not in any ICD-scoped view. Deferred to a
+      // microtask so the addActivityEntry side-effect doesn't run inside the
+      // same set() call.
+      queueMicrotask(() => {
+        const transitionLabel = HCC_TRANSITION_LABEL[kind] || kind;
+        useAppStore.getState().addActivityEntry({
+          t: 'status_dos',
+          by: 'You', role: 'Coder',
+          dos: dosDate,
+          headline: `DOS ${dosDate} — ${transitionLabel}`,
+        });
+      });
+      return { hccDosAssignments: result.nextMap, hccMembers: nextMembers };
+    });
+    // Fire-and-forget Supabase writes for every role whose status changed.
+    // Also emit a role.status_changed entry into the activity feed so the
+    // History drawer shows each transition (engine-driven cascades like
+    // support→Completed triggering coder→In Progress produce one entry per
+    // changed role).
+    const ROLE_LABEL_T = { support: 'Support', coder: 'Coder', r1: 'Reviewer 1', r2: 'Reviewer 2', r3: 'Reviewer 3' };
+    const patient = useAppStore.getState().hccMembers.find(m => m.id === patientId);
+    statusChanges.forEach(({ role, status }) => {
+      persistHccMemberRoleStatus(patientId, role, status);
+      useAppStore.getState().logHccActivity({
+        eventName: 'role.status_changed',
+        scope:     { patientId, dos: dosDate, source: 'manual' },
+        payload:   {
+          actor: payload.actor || 'You',
+          roleLabel: ROLE_LABEL_T[role] || role,
+          status,
+          patientName: patient?.name,
+          transitionKind: kind,
+        },
+      });
+    });
+    return { nextMap: useAppStore.getState().hccDosAssignments };
+  },
 
   // Convenience wrappers — one per AC transition so consumers don't have to
   // remember string kinds. They forward to transitionHccDos above.
@@ -2016,9 +2668,117 @@ export const useAppStore = create((set, get) => ({
     track('hcc.dos_returned', { dosId: dos, toRole: fromRole });
     return useAppStore.getState().transitionHccDos(pid, dos, 'returnDos', { fromRole, actor, reason });
   },
-  hccReassignRole: (pid, dos, role, staffId, actor, reason) => {
+  hccReassignRole: (pid, dos, role, staffId, actor, reason, displayName) => {
     track('hcc.role_reassigned', { memberId: pid, fromRole: null, toRole: role });
-    return useAppStore.getState().transitionHccDos(pid, dos, 'reassignRole', { role, staffId, actor, reason });
+    // Snapshot the pre-reassign display name so the activity log can
+    // show "from → to". Reading after transitionHccDos would already
+    // see the patched value.
+    const fieldByRoleLocal = { support: 'sup', coder: 'cdr', r1: 'r1', r2: 'r2', r3: 'r3' };
+    const preMember = useAppStore.getState().hccMembers.find(m => m.id === pid);
+    const fromName = preMember?.[fieldByRoleLocal[role]] || '—';
+    const patientName = preMember?.name;
+    const result = useAppStore.getState().transitionHccDos(pid, dos, 'reassignRole', { role, staffId, actor, reason });
+    // Also patch the member's legacy role field so the worklist row's
+    // RoleStatusCell (which reads member.sup / .cdr / .r1 / .r2 / .r3
+    // directly) reflects the new assignee immediately. Status flips to
+    // 'New' to switch the cell out of its "Assign" empty state.
+    //
+    // `displayName` is an optional override used by the bulk dialog when
+    // picking a user from the system pool (Account → Users + Astrana
+    // staff). For Account-pool users not in the Astrana roster,
+    // hccStaffById() returns null and the legacy field would never get
+    // patched — the displayName override solves that.
+    const staff = hccStaffById(staffId);
+    const name = staff?.name || displayName;
+    const fieldByRole = { support: 'sup', coder: 'cdr', r1: 'r1', r2: 'r2', r3: 'r3' };
+    const statusFieldByRole = { support: 'supS', coder: 'cdrS', r1: 'r1s', r2: 'r2s', r3: 'r3s' };
+    const f = fieldByRole[role];
+    const sf = statusFieldByRole[role];
+    if (f && name) {
+      set(s => ({
+        hccMembers: s.hccMembers.map(m =>
+          m.id === pid ? { ...m, [f]: name, [sf]: 'New' } : m,
+        ),
+      }));
+    }
+    // Persist to Supabase so the reassignment survives reload.
+    if (name) persistHccMemberRoleStatus(pid, role, 'New', name);
+    // Log to the canonical activity feed for the History drawer.
+    const ROLE_LABEL = { support: 'Support', coder: 'Coder', r1: 'Reviewer 1', r2: 'Reviewer 2', r3: 'Reviewer 3' };
+    useAppStore.getState().logHccActivity({
+      eventName: 'assignee.changed',
+      scope:     { patientId: pid, dos, source: 'manual' },
+      payload:   {
+        actor: actor || 'You',
+        roleLabel: ROLE_LABEL[role] || role,
+        fromName, toName: name,
+        toStaffId: staffId,
+        reason,
+        patientName,
+      },
+    });
+    // The engine's reassignRole stamps the assignee but leaves status null,
+    // which makes resolveCurrentAssignee() still report this bucket as
+    // unassigned (it only treats the bucket as active when status is both
+    // set and non-'Assign'). Force-stamp a 'New' status so AssigneeAvatar /
+    // AssigneeCell flip immediately to the active state with the new owner.
+    const dosKey = `${pid}::${dos}`;
+    set(s => {
+      const cur = s.hccDosAssignments?.[dosKey];
+      if (!cur || !cur[role]) return {};
+      return {
+        hccDosAssignments: {
+          ...s.hccDosAssignments,
+          [dosKey]: {
+            ...cur,
+            [role]: { ...cur[role], status: 'New' },
+          },
+        },
+      };
+    });
+    return result;
+  },
+
+  // Generic role-status patch — used by the DiagPanel status menu for
+  // transitions the engine doesn't have a dedicated AC for (e.g. New →
+  // In Progress on coder/reviewer roles, where the spec assumes work
+  // starts implicitly on assignment). Patches BOTH the engine's dosState
+  // bucket and the legacy member.{role}S field so worklist + DiagPanel
+  // agree on the new status.
+  hccSetRoleStatus: (pid, dos, role, status) => {
+    const fieldByRole       = { support: 'sup',  coder: 'cdr',  r1: 'r1',  r2: 'r2',  r3: 'r3'  };
+    const statusFieldByRole = { support: 'supS', coder: 'cdrS', r1: 'r1s', r2: 'r2s', r3: 'r3s' };
+    const f  = fieldByRole[role];
+    const sf = statusFieldByRole[role];
+    if (!f || !sf) return;
+    const dosKey = `${pid}::${dos}`;
+    set(s => {
+      const next = { hccMembers: s.hccMembers.map(m =>
+        m.id === pid ? { ...m, [sf]: status } : m,
+      ) };
+      const cur = s.hccDosAssignments?.[dosKey];
+      if (cur && cur[role]) {
+        next.hccDosAssignments = {
+          ...s.hccDosAssignments,
+          [dosKey]: { ...cur, [role]: { ...cur[role], status } },
+        };
+      }
+      return next;
+    });
+    persistHccMemberRoleStatus(pid, role, status);
+    const ROLE_LABEL_S = { support: 'Support', coder: 'Coder', r1: 'Reviewer 1', r2: 'Reviewer 2', r3: 'Reviewer 3' };
+    const patient = useAppStore.getState().hccMembers.find(m => m.id === pid);
+    useAppStore.getState().logHccActivity({
+      eventName: 'role.status_changed',
+      scope:     { patientId: pid, dos, source: 'manual' },
+      payload:   {
+        actor: 'You',
+        roleLabel: ROLE_LABEL_S[role] || role,
+        status,
+        patientName: patient?.name,
+      },
+    });
+    track('hcc.role_status_set', { memberId: pid, role, status });
   },
 
   // Helpers exposed for the UI — resolve a staff id back to a display name.
@@ -2104,13 +2864,1254 @@ export const useAppStore = create((set, get) => ({
   // Left-workspace tab: null = drawer at 40vw with only the right pane;
   // any string = drawer expands to 70vw with the matching tab content.
   diagLeftPanel: null,   // 'activity' | 'comments' | 'documents' | 'notes' | 'claims' | null
-  setDiagLeftPanel: (panel) => set({ diagLeftPanel: panel }),
+  // When the Activity Log panel is opened from a specific ICD card (by
+  // clicking the ICD code), this holds that code so the timeline filters to
+  // entries touching it. null = DOS-level (all entries). Opening via the
+  // toolbar Activity Log icon always resets this to null.
+  diagActivityIcd: null,
+  // Toolbar entry points reset the ICD scope (they're DOS-level actions).
+  setDiagLeftPanel: (panel) => set({ diagLeftPanel: panel, diagActivityIcd: null }),
+  // Switching tabs WITHIN the left panel preserves the current scope
+  // (DOS-level stays DOS-level; ICD-level stays scoped to its code).
+  setDiagTab: (panel) => set({ diagLeftPanel: panel }),
+  // Open the left Activity Log scoped to a single ICD code.
+  openIcdActivityLog: (code) => set({ diagLeftPanel: 'activity', diagActivityIcd: code || null }),
+  // Open any left panel tab scoped to a single ICD code (used by the per-card
+  // Documents / Comments / Notes count buttons in IcdRow).
+  openIcdPanel: (panel, code) => set({ diagLeftPanel: panel, diagActivityIcd: code || null }),
+  clearDiagActivityIcd: () => set({ diagActivityIcd: null }),
+
+  // Documents tab — inline uploader widget toggle. Replaces the old drawer
+  // open for the in-drawer Upload button (Figma 278:162482).
+  hccDocsUploaderOpen: false,
+  toggleHccDocsUploader: () => set(s => ({ hccDocsUploaderOpen: !s.hccDocsUploaderOpen })),
+  closeHccDocsUploader: () => set({ hccDocsUploaderOpen: false }),
+
+  // Live-uploaded documents — appended to the static DOCUMENTS list in the
+  // Documents tab so a newly-uploaded file appears at the top with status
+  // 'pending'. Newest-first.
+  hccUploadedDocs: [],
+  recordHccUpload: (doc) => set(s => ({ hccUploadedDocs: [doc, ...s.hccUploadedDocs] })),
+
+  // ── HCC Care Team configuration ─────────────────────────────────────
+  // Admin-managed teams for the Phase 2 auto-assignment workflow. The
+  // ConfigureTeamDrawer (Settings → Member/Leads → Care Team) writes here
+  // and the Care Team table reads from it. Newest-first.
+  //
+  // Team shape:
+  //   {
+  //     id, name, kind: 'hcc' | 'care-program' | 'hedis',
+  //     teamType,            // 'Reviewer 1' / 'Coder' / 'SNP' / 'Assignee'…
+  //     allocatedTins: [],   // team-level routing key (Phase 2 spec)
+  //     createdAt, createdBy, lastModifiedAt, lastModifiedBy,
+  //     members: [
+  //       {
+  //         userId, name, initials, roles,  // denormalized for table render
+  //         capacityPct,                    // share of THIS team allocated to them
+  //         assignTo: [{ dim: 'TIN'|'Vendor'|'Coder'|'Reviewer 1'|…, value, pct }],
+  //       },
+  //     ],
+  //   }
+  //
+  // Seeded with the same five rows the Figma reference shows so the table
+  // isn't empty on first load AND every row is editable (no static mock
+  // fallback path needed in the panel).
+  hccCareTeams: [
+    {
+      id: 'seed-rt1', name: 'Reviewer 1 Team', kind: 'hcc',          teamType: 'Reviewer 1',
+      allocatedTins: ['12-3456789'], createdAt: '02/21/2026', createdBy: 'Dina Morries',
+      lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson',
+      members: [
+        { userId: 'MA', name: 'M. Almeda',   initials: 'MA', roles: 'Reviewer 1', capacityPct: 50, assignTo: [{ dim: 'Coder', value: 'DH', pct: 50 }] },
+      ],
+    },
+    {
+      id: 'seed-rt2', name: 'Coder Team', kind: 'hcc', teamType: 'Coder',
+      allocatedTins: ['12-3456789', '98-7654321'], createdAt: '02/21/2026', createdBy: 'Dina Morries',
+      lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson',
+      members: [
+        { userId: 'DH', name: 'Deborah Hintz', initials: 'DH', roles: 'Coder', capacityPct: 60, assignTo: [{ dim: 'TIN', value: '12-3456789', pct: 60 }] },
+        { userId: 'PP', name: 'P. Plourde',    initials: 'PP', roles: 'Coder', capacityPct: 40, assignTo: [{ dim: 'TIN', value: '98-7654321', pct: 30 }] },
+      ],
+    },
+    {
+      id: 'seed-rt3', name: 'SNP Team', kind: 'care-program', teamType: 'SNP',
+      allocatedTins: [], createdAt: '02/21/2026', createdBy: 'Dina Morries',
+      lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson',
+      members: [
+        { userId: 'fallback-1', name: 'Michael Corleone', initials: 'MC', roles: 'Nurse', capacityPct: 60, assignTo: [] },
+        { userId: 'fallback-2', name: 'Larry Sanders',    initials: 'LS', roles: 'Medical Assistant', capacityPct: 60, assignTo: [] },
+      ],
+    },
+    {
+      id: 'seed-rt4', name: 'TOC Team', kind: 'care-program', teamType: 'TCM',
+      allocatedTins: [], createdAt: '02/21/2026', createdBy: 'Dina Morries',
+      lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson',
+      members: [
+        { userId: 'fallback-3', name: 'Tina Turner', initials: 'TT', roles: 'Admin/Practice Manager', capacityPct: 80, assignTo: [] },
+      ],
+    },
+    {
+      id: 'seed-rt5', name: 'Care Gap Team', kind: 'hedis', teamType: 'Assignee',
+      allocatedTins: [], createdAt: '02/21/2026', createdBy: 'Dina Morries',
+      lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson',
+      members: [
+        { userId: 'fallback-4', name: 'Manny Grizwald', initials: 'MG', roles: 'Billing Specialist', capacityPct: 30, assignTo: [] },
+        { userId: 'fallback-5', name: 'Bobby Brown',    initials: 'BB', roles: 'Front Desk Staff/Receptionist', capacityPct: 30, assignTo: [] },
+      ],
+    },
+  ],
+  // Load teams from Supabase. Keeps the seeded fallback when the table is
+  // empty or errors (same SWR-style pattern the rest of the store uses).
+  fetchHccCareTeams: async () => {
+    const { data, error } = await supabase
+      .from('care_teams')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (!error && data?.length) {
+      set({ hccCareTeams: data.map(careTeamRowToJs) });
+    }
+  },
+  // Mutations update local state optimistically, then persist to Supabase.
+  addHccCareTeam: (team) => {
+    set(s => ({ hccCareTeams: [team, ...s.hccCareTeams] }));
+    supabase.from('care_teams').insert(careTeamJsToDb(team))
+      .then(({ error }) => { if (error) console.error('addHccCareTeam:', error); });
+  },
+  updateHccCareTeam: (id, patch) => {
+    set(s => ({
+      hccCareTeams: s.hccCareTeams.map(t => t.id === id ? { ...t, ...patch } : t),
+    }));
+    const merged = get().hccCareTeams.find(t => t.id === id);
+    if (merged) {
+      supabase.from('care_teams').upsert(careTeamJsToDb(merged), { onConflict: 'id' })
+        .then(({ error }) => { if (error) console.error('updateHccCareTeam:', error); });
+    }
+  },
+  deleteHccCareTeam: (id) => {
+    set(s => ({ hccCareTeams: s.hccCareTeams.filter(t => t.id !== id) }));
+    supabase.from('care_teams').delete().eq('id', id)
+      .then(({ error }) => { if (error) console.error('deleteHccCareTeam:', error); });
+  },
+
+  // ── HCC Activity Log (live) ──────────────────────────────────────────
+  // Live entries appended by user actions (accept, dismiss, post comment,
+  // add note, upload document, status change). Merged with the mock ACTIVITY
+  // dataset by the Activity Log tab so anything the user just did appears
+  // at the top of the timeline.
+  //
+  // Shape: { [memberName]: Entry[] } where the newest entry is at index 0.
+  // Entry contract — see src/features/hcc/data/activity.js for the legacy
+  // shape; live entries additionally carry { id, ts } so they can be deduped
+  // and sorted. `icds: [code]` means the entry is ICD-level and will appear
+  // in BOTH the global DOS-level log AND any ICD-scoped log for that code.
+  // No `icds` (or empty array) means DOS-level only.
+  hccActivityLog: {},
+  addActivityEntry: (entry) => set(s => {
+    const memberId = s.diagPanelMemberId;
+    if (!memberId) return {};
+    const member = s.hccMembers.find(m => m.id === memberId);
+    const memberKey = member?.name;
+    if (!memberKey) return {};
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const date = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
+    const hours = now.getHours();
+    const time = `${((hours + 11) % 12) + 1}:${pad(now.getMinutes())} ${hours >= 12 ? 'PM' : 'AM'}`;
+    // Resolve the effective DOS the same way DiagPanel does — fall back to
+    // the first DOS in the member's list when no explicit filter is set.
+    const effectiveDos = s.diagDosFilter || member?.dos_list?.[0]?.date || member?.dos || null;
+    const filled = {
+      id: `live-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      ts: now.getTime(),
+      date, time,
+      dos: effectiveDos,
+      ...entry,
+    };
+    const list = s.hccActivityLog[memberKey] || [];
+    // Dedup guard — React StrictMode in dev double-invokes some store-set
+    // pathways which would otherwise produce two identical entries per click.
+    // Drop a new entry if the previous one has the same type + headline within
+    // the last 1500ms.
+    const last = list[0];
+    if (last && last.t === filled.t && last.headline === filled.headline && (filled.ts - last.ts) < 1500) {
+      return {};
+    }
+    return { hccActivityLog: { ...s.hccActivityLog, [memberKey]: [filled, ...list] } };
+  }),
+
+  // ─── HCC Activity Log (Supabase-backed, append-only) ─────────────────
+  // Canonical event store described in docs/features/hcc-activity-log-spec.md.
+  // Coexists with the legacy `hccActivityLog` map above while consumers
+  // migrate — every mutation that wants to land in the worklist History
+  // drawer calls logHccActivity().
+  hccActivityFeed: buildSeedHccActivityFeed(),
+  hccActivityFeedLoading: false,
+  hccHistoryDrawerOpen: false,
+  openHccHistoryDrawer: () => {
+    set({ hccHistoryDrawerOpen: true });
+    // Refresh on open so the drawer reflects any rows written by other
+    // tabs / sessions. Fire-and-forget; the optimistic feed is already
+    // visible while the request is in flight.
+    useAppStore.getState().fetchHccActivityFeed();
+  },
+  closeHccHistoryDrawer: () => set({ hccHistoryDrawerOpen: false }),
+
+  // ─── SFTP multi-document review ───────────────────────────────────
+  // The SFTP ingest path lands multiple files in the background. Once
+  // extraction completes we surface a single bell notification; clicking
+  // it opens HccSftpReviewDrawer with a document switcher, a left-side
+  // page preview, and a right-side encounter table per document.
+  hccSftpBatches: [],        // [{ id, fileName, ocrTier, compliance, encounters, ingestedAt, status }]
+  // These flags rehydrate from sessionStorage so refreshing while the
+  // ICD Creation or Document Review surface is open restores that screen
+  // (the underlying documents reload from Supabase via fetchHccDocuments).
+  hccSftpReviewOpen: sessionStorage.getItem('hccSftpReviewOpen') === '1',
+  hccSftpActiveBatchId: sessionStorage.getItem('hccSftpActiveBatchId') || null,
+  // Inline review — when true, the Document Review renders INSIDE the ICD
+  // Creation surface (same drawer, no second overlay). Standalone entry
+  // points (bell notification, upload ribbon) keep the floating 700px
+  // drawer and leave this false.
+  hccReviewInline: sessionStorage.getItem('hccReviewInline') === '1',
+  // ICD Creation screen — unified upload + manual + SFTP entry surface
+  // (replaces the legacy 3-item popover anchored under the worklist's
+  // Upload Document toolbar button).
+  icdCreationOpen: sessionStorage.getItem('icdCreationOpen') === '1',
+  // Batches created during the CURRENT ICD-Creation session so the right
+  // panel's "Records" list only shows what this user just added — not
+  // every historical batch from prior reloads.
+  icdCreationSessionBatchIds: _readJson('icdCreationSessionBatchIds', []),
+  openIcdCreation: () => {
+    sessionStorage.setItem('icdCreationOpen', '1');
+    sessionStorage.setItem('icdCreationSessionBatchIds', '[]');
+    set({ icdCreationOpen: true, icdCreationSessionBatchIds: [] });
+  },
+  closeIcdCreation: () => {
+    sessionStorage.setItem('icdCreationOpen', '0');
+    sessionStorage.setItem('hccReviewInline', '0');
+    sessionStorage.removeItem('hccReviewSourceBatchIds');
+    set({ icdCreationOpen: false, hccReviewInline: false, hccReviewSourceBatchIds: null });
+  },
+  trackIcdCreationBatch: (batchId) => set(s => {
+    const next = [...new Set([...(s.icdCreationSessionBatchIds || []), batchId])];
+    sessionStorage.setItem('icdCreationSessionBatchIds', JSON.stringify(next));
+    return { icdCreationSessionBatchIds: next };
+  }),
+  /**
+   * Load persisted HCC documents from Supabase. Called once on app boot
+   * so the SFTP review queue + compliance state survives reloads. The
+   * table is shared org-wide (no per-user RLS) so any Support member
+   * sees the same queue.
+   */
+  fetchHccDocuments: async () => {
+    const { data, error } = await supabase
+      .from('hcc_documents')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('fetchHccDocuments:', error);
+      return;
+    }
+    if (data?.length) {
+      set({ hccSftpBatches: data.map(hccDocumentRowToJs) });
+    }
+  },
+  /**
+   * Persist (insert-or-update) one document. Fire-and-forget — local
+   * state already reflects the change before this completes.
+   */
+  persistHccDocument: (batch) => {
+    if (!batch) return;
+    supabase
+      .from('hcc_documents')
+      .upsert(hccDocumentJsToDb(batch), { onConflict: 'id' })
+      .then(({ error }) => { if (error) console.error('persistHccDocument:', error); });
+  },
+  /**
+   * Simulate SFTP picking up N files and running OCR on each. Each file
+   * runs the same async mockOcr (8s) so the chip / banner animations
+   * match the single-doc flow. When the last one lands we add a single
+   * "N SFTP documents ready" notification.
+   */
+  simulateSftpIngest: async (fileNames = ['demo-single.pdf', 'demo-multi-patient.pdf', 'demo-same-patient-multi-dos.pdf']) => {
+    const state = useAppStore.getState();
+    const members = state.hccMembers || [];
+    // Seed pending placeholders so the user can see "3 files in flight".
+    const seeded = fileNames.map((name, i) => ({
+      id: `sftp-${Date.now()}-${i}`,
+      fileName: name,
+      encounters: [],
+      ingestedAt: new Date().toISOString(),
+      status: 'pending',
+    }));
+    set(s => ({ hccSftpBatches: [...(s.hccSftpBatches || []), ...seeded] }));
+    state.showToast?.(`SFTP — extracting ${fileNames.length} document${fileNames.length === 1 ? '' : 's'} in the background`);
+    // Stamp intake events so the Documents tab can surface these
+    // batches even while OCR is still in flight.
+    seeded.forEach(entry => {
+      useAppStore.getState().logHccActivity?.({
+        eventName: 'sftp.file.detected',
+        scope:     { batchId: entry.id, fileId: entry.fileName, source: 'sftp' },
+        payload:   { actor: 'SFTP', fileName: entry.fileName },
+      });
+      useAppStore.getState().logHccActivity?.({
+        eventName: 'batch.created',
+        scope:     { batchId: entry.id, source: 'sftp' },
+        payload:   { batchId: entry.id, fileCount: 1, fileName: entry.fileName, actor: 'SFTP' },
+      });
+      useAppStore.getState().logHccActivity?.({
+        eventName: 'file.uploaded',
+        scope:     { batchId: entry.id, fileId: entry.fileName, source: 'sftp' },
+        payload:   { actor: 'SFTP', fileName: entry.fileName, pageCount: '—' },
+      });
+      useAppStore.getState().logHccActivity?.({
+        eventName: 'ocr.started',
+        scope:     { batchId: entry.id, fileId: entry.fileName, source: 'system' },
+        payload:   { fileName: entry.fileName },
+      });
+    });
+    // Process each file in parallel using the document pipeline (OCR +
+    // OCR tier + 5-point compliance, in one pass per the Astrana spec).
+    const { runDocumentPipeline } = await import('../features/hcc/upload/mockOcr');
+    const persist = useAppStore.getState().persistHccDocument;
+    const done = await Promise.all(seeded.map(async (entry) => {
+      const synthFile = { name: entry.fileName, size: 0 };
+      const { ocrTier, compliance, encounters } = await runDocumentPipeline(synthFile, members);
+      const completed = { ...entry, encounters, ocrTier, compliance, status: 'done', source: 'sftp' };
+      // Persist to Supabase so SFTP queue + compliance survive reloads.
+      persist?.(completed);
+      return completed;
+    }));
+    // Merge results back into the slice (preserve order).
+    set(s => ({
+      hccSftpBatches: (s.hccSftpBatches || []).map(b => done.find(d => d.id === b.id) || b),
+    }));
+    // Stamp ocr.completed per file so the Documents tab knows extraction landed.
+    done.forEach(entry => {
+      useAppStore.getState().logHccActivity?.({
+        eventName: 'ocr.completed',
+        scope:     { batchId: entry.id, fileId: entry.fileName, source: 'system' },
+        payload:   {
+          fileName: entry.fileName,
+          encounterCount: entry.encounters.length,
+          pageCount: Math.max(...entry.encounters.map(e => e.sourcePage || 1), 1),
+        },
+      });
+    });
+    // Notification + toast.
+    const total = done.reduce((sum, b) => sum + (b.encounters?.length || 0), 0);
+    useAppStore.getState().addNotification?.({
+      type: 'hcc.sftp_extraction_complete',
+      title: `${done.length} SFTP document${done.length === 1 ? '' : 's'} ready for review`,
+      body: `${total} encounter${total === 1 ? '' : 's'} extracted across ${done.length} file${done.length === 1 ? '' : 's'}`,
+      action: 'openSftpReview',
+    });
+    useAppStore.getState().showToast?.(`SFTP extraction complete — ${total} encounter${total === 1 ? '' : 's'} ready for review`);
+  },
+  /**
+   * Queue a single uploaded document for background OCR.
+   *
+   * Unlike the legacy single-document flow (which set
+   * `hccUploadSession` and blocked the drawer on a single file at a
+   * time), this path lets the user fire-and-forget any number of
+   * documents in parallel — each OCRs in the background and lands on
+   * the same multi-doc review surface used by SFTP ingestion. The
+   * picker stays open so the user can keep adding files.
+   *
+   * Fires a single bell notification when every queued document has
+   * completed (debounced by the batch state machine).
+   */
+  queueHccDocumentForOcr: async (file, opts = {}) => {
+    const { autoApply = true } = opts;
+    const state = useAppStore.getState();
+    const members = state.hccMembers || [];
+    const id = `doc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const fileName = file?.name || 'Uploaded document';
+    const entry = {
+      id,
+      fileName,
+      encounters: [],
+      ingestedAt: new Date().toISOString(),
+      status: 'pending',
+      source: 'manual',
+    };
+    set(s => ({ hccSftpBatches: [...(s.hccSftpBatches || []), entry] }));
+    state.showToast?.(`${fileName} — extracting in the background`);
+
+    // Activity log: stamp the intake + OCR-start events so the History
+    // drawer's Documents tab can surface this batch even while OCR is
+    // still in flight.
+    useAppStore.getState().logHccActivity?.({
+      eventName: 'batch.created',
+      scope:     { batchId: id, source: 'manual' },
+      payload:   { batchId: id, fileCount: 1, fileName, actor: 'You' },
+    });
+    useAppStore.getState().logHccActivity?.({
+      eventName: 'file.uploaded',
+      scope:     { batchId: id, fileId: fileName, source: 'manual' },
+      payload:   { actor: 'You', fileName, pageCount: '—' },
+    });
+    useAppStore.getState().logHccActivity?.({
+      eventName: 'ocr.started',
+      scope:     { batchId: id, fileId: fileName, source: 'system' },
+      payload:   { fileName },
+    });
+
+    const { runDocumentPipeline } = await import('../features/hcc/upload/mockOcr');
+    const { ocrTier, compliance, encounters } = await runDocumentPipeline(
+      { name: fileName, size: file?.size || 0 },
+      members,
+    );
+    // Mark this batch as done.
+    set(s => ({
+      hccSftpBatches: (s.hccSftpBatches || []).map(b => b.id === id
+        ? { ...b, encounters, ocrTier, compliance, status: 'done' }
+        : b),
+    }));
+    // Persist the completed document.
+    const completed = useAppStore.getState().hccSftpBatches.find(b => b.id === id);
+    useAppStore.getState().persistHccDocument?.(completed);
+
+    // Auto-route: any encounter that's matched to a Fold member AND
+    // has no field-level errors is high-confidence "ready" — apply it
+    // straight to the worklist and tag _docStatus='added' so the
+    // Document Review Pending tab only surfaces error/mismatch rows
+    // (per spec A + K). Same path the user would have walked manually
+    // by clicking Add to Worklist on each card.
+    //
+    // The ICD Creation review flow passes autoApply:false so EVERY record
+    // stays pending — the reviewer decides per patient what to add.
+    if (!autoApply) {
+      useAppStore.getState().logHccActivity?.({
+        eventName: 'ocr.completed',
+        scope:     { batchId: id, fileId: fileName, source: 'system' },
+        payload:   { fileName, encounterCount: encounters.length, autoApplied: 0, pendingForReview: encounters.length },
+      });
+      return id;
+    }
+    let autoApplied = 0;
+    let pendingForReview = 0;
+    const updated = encounters.map((enc) => {
+      const ready = !!enc.patient?.matchedMemberId
+        && (!enc.errors || enc.errors.length === 0);
+      if (!ready) {
+        pendingForReview += 1;
+        return enc;
+      }
+      // Duplicate detection — same patient + DOS + provider + POS
+      // already on the member's dos_list? Skip create and flag the
+      // row so the reviewer sees the warning (spec L).
+      const member = state.hccMembers.find(m => m.id === enc.patient.matchedMemberId);
+      const isDup = !!member?.dos_list?.some(d =>
+        d.date === enc.dos
+        && (d.provider || '').toLowerCase() === (enc.provider || '').toLowerCase()
+        && (d.pos || '') === (enc.pos || '')
+      );
+      if (isDup) {
+        pendingForReview += 1;
+        return { ...enc, _duplicateOfMemberId: enc.patient.matchedMemberId };
+      }
+      const r = useAppStore.getState().hccCreateOrMergeFromEncounter?.({ ...enc, _docName: fileName });
+      if (r?.kind === 'created' || r?.kind === 'updated') {
+        autoApplied += 1;
+        return { ...enc, _docStatus: 'added' };
+      }
+      pendingForReview += 1;
+      return enc;
+    });
+    set(s => ({
+      hccSftpBatches: (s.hccSftpBatches || []).map(b => b.id === id
+        ? { ...b, encounters: updated, _autoApplied: autoApplied, _pendingForReview: pendingForReview }
+        : b),
+    }));
+
+    // Stamp ocr.completed so the Documents tab can count encounters
+    // extracted per document.
+    useAppStore.getState().logHccActivity?.({
+      eventName: 'ocr.completed',
+      scope:     { batchId: id, fileId: fileName, source: 'system' },
+      payload:   {
+        fileName,
+        encounterCount: encounters.length,
+        autoApplied,
+        pendingForReview,
+        pageCount: Math.max(...encounters.map(e => e.sourcePage || 1), 1),
+      },
+    });
+
+    // If every batch in the queue is now done, fire a single
+    // consolidated notification using the auto/manual breakdown
+    // (spec B). If pendingForReview is zero, surface that the user
+    // doesn't have to open the doc.
+    const after = useAppStore.getState().hccSftpBatches || [];
+    const allDone = after.length > 0 && after.every(b => b.status === 'done');
+    if (allDone) {
+      const totalAuto    = after.reduce((s, b) => s + (b._autoApplied || 0), 0);
+      const totalPending = after.reduce((s, b) => s + (b._pendingForReview || 0), 0);
+      const total = totalAuto + totalPending;
+      const docsCount = after.length;
+      const body = totalPending === 0
+        ? `${totalAuto} record${totalAuto === 1 ? '' : 's'} loaded automatically — no manual review needed.`
+        : `${totalAuto} loaded automatically · ${totalPending} waiting for manual intervention.`;
+      useAppStore.getState().addNotification?.({
+        type: 'hcc.documents_ready',
+        title: `${total} record${total === 1 ? '' : 's'} ready across ${docsCount} document${docsCount === 1 ? '' : 's'}`,
+        body,
+        action: 'openSftpReview',
+      });
+      useAppStore.getState().showToast?.(
+        totalPending === 0
+          ? `${totalAuto} record${totalAuto === 1 ? '' : 's'} loaded automatically`
+          : `${totalAuto} auto · ${totalPending} waiting for review`
+      );
+    }
+    return id;
+  },
+
+  // When set, the review drawer aggregates pending encounters across ALL
+  // listed batches and paginates by patient across them (ICD Creation
+  // "Review" flow). null → single-batch mode (SFTP bell-notification flow).
+  hccReviewSourceBatchIds: _readJson('hccReviewSourceBatchIds', null),
+  openHccSftpReview: () => set(s => {
+    const activeId = s.hccSftpActiveBatchId
+      || (s.hccSftpBatches || []).find(b => b.status === 'done')?.id
+      || (s.hccSftpBatches || [])[0]?.id
+      || null;
+    sessionStorage.setItem('hccSftpReviewOpen', '1');
+    sessionStorage.removeItem('hccReviewSourceBatchIds');
+    if (activeId) sessionStorage.setItem('hccSftpActiveBatchId', activeId);
+    return { hccSftpReviewOpen: true, hccReviewSourceBatchIds: null, hccSftpActiveBatchId: activeId };
+  }),
+  // Open review over a set of documents (aggregate mode). `focusBatchId`
+  // (optional) is ordered first so the reviewer lands on the doc they
+  // clicked Review on.
+  openHccReviewForBatches: (batchIds, focusBatchId) => set(() => {
+    const ordered = focusBatchId
+      ? [focusBatchId, ...batchIds.filter(id => id !== focusBatchId)]
+      : [...batchIds];
+    const activeId = focusBatchId || ordered[0] || null;
+    sessionStorage.setItem('hccSftpReviewOpen', '1');
+    sessionStorage.setItem('hccReviewSourceBatchIds', JSON.stringify(ordered));
+    if (activeId) sessionStorage.setItem('hccSftpActiveBatchId', activeId);
+    return {
+      hccSftpReviewOpen: true,
+      hccReviewSourceBatchIds: ordered,
+      hccSftpActiveBatchId: activeId,
+    };
+  }),
+  closeHccSftpReview: () => {
+    sessionStorage.setItem('hccSftpReviewOpen', '0');
+    sessionStorage.removeItem('hccReviewSourceBatchIds');
+    set({ hccSftpReviewOpen: false, hccReviewSourceBatchIds: null });
+  },
+  // Open review INLINE (inside the ICD Creation surface). Same aggregate
+  // semantics as openHccReviewForBatches, but flags inline mode and does
+  // NOT set hccSftpReviewOpen — so the global floating drawer stays closed
+  // and the review renders in-place instead.
+  openHccReviewInline: (batchIds, focusBatchId) => set(() => {
+    const ordered = focusBatchId
+      ? [focusBatchId, ...batchIds.filter(id => id !== focusBatchId)]
+      : [...batchIds];
+    const activeId = focusBatchId || ordered[0] || null;
+    sessionStorage.setItem('hccReviewInline', '1');
+    sessionStorage.setItem('hccReviewSourceBatchIds', JSON.stringify(ordered));
+    if (activeId) sessionStorage.setItem('hccSftpActiveBatchId', activeId);
+    return {
+      hccReviewInline: true,
+      hccReviewSourceBatchIds: ordered,
+      hccSftpActiveBatchId: activeId,
+    };
+  }),
+  // Exit inline review — returns to the ICD Creation categorized doc list
+  // (leaves the ICD Creation screen itself open).
+  closeHccReviewInline: () => {
+    sessionStorage.setItem('hccReviewInline', '0');
+    sessionStorage.removeItem('hccReviewSourceBatchIds');
+    set({ hccReviewInline: false, hccReviewSourceBatchIds: null });
+  },
+  setHccSftpActiveBatchId: (id) => {
+    if (id) sessionStorage.setItem('hccSftpActiveBatchId', id);
+    set({ hccSftpActiveBatchId: id });
+  },
+  /**
+   * Patch one encounter inside an SFTP batch — proxies to the same
+   * shape patchHccUploadEncounter uses (idx + partial). Used by the
+   * SFTP table cells when the user edits a field.
+   */
+  patchHccSftpEncounter: (batchId, idx, patch) => set(s => ({
+    hccSftpBatches: (s.hccSftpBatches || []).map(b => {
+      if (b.id !== batchId) return b;
+      const next = b.encounters.map((e, i) => i === idx ? {
+        ...e,
+        ...patch,
+        patient: { ...e.patient, ...(patch.patient || {}) },
+      } : e);
+      return { ...b, encounters: next };
+    }),
+  })),
+  removeHccSftpEncounter: (batchId, idx) => set(s => ({
+    hccSftpBatches: (s.hccSftpBatches || []).map(b => b.id === batchId
+      ? { ...b, encounters: b.encounters.filter((_, i) => i !== idx) }
+      : b),
+  })),
+  /**
+   * Mark a per-batch encounter as 'added' (sent to worklist) or
+   * 'deleted' (dropped). Used by the Document Review drawer to drive
+   * the Pending / Added / Deleted tab counts without losing the row.
+   * Set status to null to reset back to pending.
+   */
+  setHccSftpEncounterStatus: (batchId, idx, status) => set(s => ({
+    hccSftpBatches: (s.hccSftpBatches || []).map(b => b.id === batchId
+      ? { ...b, encounters: b.encounters.map((e, i) => i === idx
+          ? { ...e, _docStatus: status }
+          : e) }
+      : b),
+  })),
+  /**
+   * Apply a Support manual decision to one compliance check on a
+   * specific batch. Per spec, every manual pass AND every manual fail
+   * carries a reason. Throws (via applyManualDecision) if reason missing.
+   *
+   *   batchId   — the hccSftpBatches[] id
+   *   checkKey  — one of CHECK_KEYS (compliance.js)
+   *   decision  — 'pass' | 'fail'
+   *   reason    — { code?, freeText? }   (at least one required)
+   *   actor     — display name; defaults to current user / 'Support'
+   *
+   * Stamps an activity-log event so the audit trail records WHO passed
+   * what, WHEN, and WHY — distinct from AI auto-passes.
+   */
+  applyHccComplianceDecision: ({ batchId, checkKey, decision, reason, actor }) => {
+    set(s => ({
+      hccSftpBatches: (s.hccSftpBatches || []).map(b => {
+        if (b.id !== batchId || !b.compliance) return b;
+        const next = applyHccManualComplianceDecision(b.compliance[checkKey], {
+          decision,
+          actor: actor || 'Support',
+          reason,
+        });
+        return { ...b, compliance: { ...b.compliance, [checkKey]: next } };
+      }),
+    }));
+    // Persist the updated compliance to Supabase so the decision survives
+    // a reload (HCC audits must be able to reconstruct who passed what,
+    // when, and why).
+    const updated = useAppStore.getState().hccSftpBatches.find(b => b.id === batchId);
+    useAppStore.getState().persistHccDocument?.(updated);
+    // Audit-trail event — names the actor so HCC submission audits can
+    // tell AI auto-passes apart from Support overrides.
+    useAppStore.getState().logHccActivity?.({
+      eventName: decision === 'pass' ? 'compliance.passed' : 'compliance.failed',
+      scope:     { batchId, source: 'support' },
+      payload:   {
+        check: checkKey,
+        actor: actor || 'Support',
+        reasonCode: reason?.code || null,
+        reasonText: reason?.freeText || '',
+      },
+    });
+  },
+  /**
+   * Drop an entire SFTP batch from the queue (called after Add to
+   * Worklist completes, so the batch disappears from the switcher).
+   */
+  removeHccSftpBatch: (batchId) => {
+    set(s => {
+      const remaining = (s.hccSftpBatches || []).filter(b => b.id !== batchId);
+      const nextActive = remaining.find(b => b.status === 'done')?.id
+        || remaining[0]?.id
+        || null;
+      return {
+        hccSftpBatches: remaining,
+        hccSftpActiveBatchId: s.hccSftpActiveBatchId === batchId ? nextActive : s.hccSftpActiveBatchId,
+        hccSftpReviewOpen: remaining.length > 0 ? s.hccSftpReviewOpen : false,
+      };
+    });
+    // Drop the persisted row too.
+    supabase.from('hcc_documents').delete().eq('id', batchId)
+      .then(({ error }) => { if (error) console.error('removeHccSftpBatch:', error); });
+  },
+  /**
+   * Re-open a previous upload's skipped records.
+   *
+   * Given a batch summary (filename + rejectedList from the activity
+   * log), re-run the deterministic mock OCR synchronously to rebuild
+   * the original encounter set, filter down to just the patients that
+   * were skipped, and jump straight into the review phase. Skips the
+   * 8-second extraction delay since the user has already seen this
+   * document extract once.
+   *
+   * Real backend would persist the original encounter rows in the
+   * batch record and load them directly — no re-extraction needed.
+   */
+  reopenHccSkippedReview: ({ batchId, fileName, rejectedList }) => {
+    const state = useAppStore.getState();
+    const members = state.hccMembers || [];
+    const synthFile = { name: fileName || 'reopened.pdf', size: 0 };
+    const all = extractEncountersSync(synthFile, members);
+    const wanted = new Set(
+      (rejectedList || []).map(r => `${(r.patientName || '').toLowerCase()}|${r.dos || ''}`)
+    );
+    const filtered = all.filter(enc => {
+      const key = `${(enc.patient?.name || '').toLowerCase()}|${enc.dos || ''}`;
+      return wanted.has(key);
+    });
+    set({
+      hccUploadSession: {
+        id: `reopen-${batchId}-${Date.now()}`,
+        phase: 'review',
+        file: synthFile,
+        encounters: filtered,
+        seededMemberId: null,
+        reopenedFromBatchId: batchId,
+      },
+      hccUploadMinimized: false,
+      hccHistoryDrawerOpen: false,
+    });
+    state.showToast?.(`Re-opened ${filtered.length} skipped record${filtered.length === 1 ? '' : 's'} from ${fileName}`);
+    return filtered.length;
+  },
+  fetchHccActivityFeed: async (filters = {}) => {
+    set({ hccActivityFeedLoading: true });
+    let q = supabase.from('hcc_activity_log').select('*').order('ts', { ascending: false }).limit(500);
+    if (filters.patientId) q = q.eq('patient_id', filters.patientId);
+    if (filters.batchId)   q = q.eq('batch_id',   filters.batchId);
+    if (filters.category)  q = q.eq('category',   filters.category);
+    if (filters.since)     q = q.gte('ts',        filters.since);
+    const { data, error } = await q;
+    if (error) {
+      // 404 (table missing) or RLS denial. Keep whatever optimistic entries
+      // the session has already accumulated rather than clobbering them.
+      console.warn('fetchHccActivityFeed error:', error.message);
+      set({ hccActivityFeedLoading: false });
+      return;
+    }
+    // Merge fetched rows with optimistic local rows. The `local-*` ids are
+    // session-only; we keep them at the head until the next fetch confirms
+    // them in the DB. If the fetch returns the same row (matched by
+    // event_name + ts within 5s) it replaces the optimistic one.
+    set(s => {
+      const fetched = data || [];
+      const fetchedKeys = new Set(fetched.map(r => `${r.event_name}::${r.ts}`));
+      const surviving = s.hccActivityFeed.filter(r => {
+        if (!String(r.id || '').startsWith('local-')) return false;
+        const ts = new Date(r.ts).getTime();
+        // drop optimistic rows that already appear in the fetched set
+        return !fetched.some(f =>
+          f.event_name === r.event_name &&
+          Math.abs(new Date(f.ts).getTime() - ts) < 5000,
+        );
+      });
+      const merged = [...surviving, ...fetched]
+        .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
+      return { hccActivityFeed: merged, hccActivityFeedLoading: false };
+    });
+  },
+  // logHccActivity({ eventName, scope, payload })
+  // Optimistically prepends to hccActivityFeed, then fires the Supabase
+  // insert. Producers don't await — the in-memory append is the UI's
+  // source of truth for this session.
+  logHccActivity: ({ eventName, scope = {}, payload = {} }) => {
+    const row = buildHccActivityRow(eventName, scope, payload);
+    // Stamp a client-side id + ts so the UI can render before the DB
+    // round-trips. Supabase will assign its own id on insert; we don't
+    // reconcile because reads always come back from the table on next fetch.
+    const optimistic = {
+      id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      ts: new Date().toISOString(),
+      ...row,
+    };
+    set(s => ({ hccActivityFeed: [optimistic, ...s.hccActivityFeed].slice(0, 500) }));
+    persistHccActivityRow(row);
+  },
 
   // Upload chart drawer — member object or null. Opened from ChartPopover's
   // "Upload New Chart" CTA and from the DiagPanel chart-upload action.
   hccUploadMember: null,
   openHccUploadDrawer: (member) => set({ hccUploadMember: member }),
   closeHccUploadDrawer: () => set({ hccUploadMember: null }),
+
+  // ─── HCC Document Upload + OCR Review (Individual Upload path) ──────
+  // Session state for the multi-encounter PDF upload flow described in the
+  // Jira ticket. Lives at app level — drawer is mounted once in AppLayout.
+  //   phase: 'chooser' → ('single' | 'picker' | 'sftp')
+  //   - chooser: pick a mode (single encounter / single multi-patient PDF / SFTP)
+  //   - single:  manual single-encounter form (no OCR)
+  //   - picker → processing → review: OCR-driven multi-encounter PDF flow
+  //   - sftp:    informational — show external SFTP path + credentials link
+  //   file:        The selected File object (PDF)
+  //   encounters:  Array of OCR-extracted encounter sections (across all
+  //                patients in the PDF). Each: { tempId, patient:{name,dob,
+  //                matchedMemberId,matchConfidence}, dos, provider, pos,
+  //                posDesc, icds:[{code,valid}], errors:[fieldName] }
+  //   seededMemberId: When opened from an "Upload Document" action on a
+  //                specific patient (AllPatientsRow / QuickView), this is
+  //                that member's id. Bypasses the chooser → straight to picker
+  //                so the patient-context flow stays unchanged.
+  //   summary:     Set after confirm — { created, updated }
+  hccUploadSession: null,
+  startHccUpload: (seededMemberId = null) => set({
+    hccUploadSession: {
+      id: `up-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
+      // From the worklist toolbar (no seededMemberId) → show the chooser
+      // first. From a patient row → skip directly to the existing OCR picker.
+      phase: seededMemberId ? 'picker' : 'chooser',
+      file: null,
+      encounters: [],
+      seededMemberId,
+      summary: null,
+    },
+  }),
+  // Used by the chooser cards to advance into a sub-flow.
+  setHccUploadPhase: (phase) => set(s => s.hccUploadSession
+    ? { hccUploadSession: { ...s.hccUploadSession, phase } }
+    : {}),
+  setHccUploadFile: (file) => {
+    set(s => s.hccUploadSession
+      ? { hccUploadSession: { ...s.hccUploadSession, file, phase: 'processing' } }
+      : {});
+    const session = useAppStore.getState().hccUploadSession;
+    if (!session) return;
+    // Emit batch + intake + OCR-started events so the History drawer
+    // shows the start of the pipeline. One file = one batch for the
+    // individual-upload path (SFTP batches will produce multiple files).
+    const batchId = session.id;
+    useAppStore.getState().logHccActivity({
+      eventName: 'batch.created',
+      scope:     { batchId, source: 'manual' },
+      payload:   { batchId, fileCount: 1, actor: 'You' },
+    });
+    useAppStore.getState().logHccActivity({
+      eventName: 'file.uploaded',
+      scope:     { batchId, fileId: file?.name, source: 'manual' },
+      payload:   { actor: 'You', fileName: file?.name || 'Uploaded file', pageCount: '—' },
+    });
+    useAppStore.getState().logHccActivity({
+      eventName: 'ocr.started',
+      scope:     { batchId, fileId: file?.name, source: 'system' },
+      payload:   { fileName: file?.name || 'Uploaded file' },
+    });
+  },
+  setHccUploadEncounters: (encounters) => {
+    set(s => s.hccUploadSession
+      ? { hccUploadSession: { ...s.hccUploadSession, encounters, phase: 'review' } }
+      : {});
+    const session = useAppStore.getState().hccUploadSession;
+    if (!session) return;
+    // OCR completed — emit an OCR success event plus a low-confidence
+    // warning per encounter whose `errors` array is non-empty.
+    useAppStore.getState().logHccActivity({
+      eventName: 'ocr.completed',
+      scope:     { batchId: session.id, fileId: session.file?.name, source: 'system' },
+      payload:   {
+        fileName: session.file?.name || 'Uploaded file',
+        encounterCount: encounters.length,
+        pageCount: '—',
+      },
+    });
+    encounters.forEach(enc => {
+      if (Array.isArray(enc.errors) && enc.errors.length > 0) {
+        useAppStore.getState().logHccActivity({
+          eventName: 'ocr.low_confidence',
+          scope:     { batchId: session.id, fileId: session.file?.name, source: 'system' },
+          payload:   {
+            patientName: enc.patient?.name || '(unmatched)',
+            dos: enc.dos,
+            confidencePct: enc.patient?.matchConfidence
+              ? Math.round((enc.patient.matchConfidence || 0) * 100)
+              : '—',
+            thresholdPct: 95,
+          },
+        });
+      }
+    });
+    // Extraction landed — toast + bell notification so the user knows
+    // even if they minimized the drawer and navigated away.
+    const fileName = session.file?.name || 'Uploaded file';
+    const n = encounters.length;
+    useAppStore.getState().addNotification?.({
+      type: 'hcc.extraction_complete',
+      title: 'Document extracted',
+      body: `${fileName} • ${n} encounter${n === 1 ? '' : 's'} ready for review`,
+      action: 'openHccReview',
+    });
+    useAppStore.getState().showToast?.(`Document extracted — ${n} encounter${n === 1 ? '' : 's'} ready for review`);
+  },
+  // Append more encounters from a second OCR pass (user clicks "Upload"
+  // again during review). Preserves existing rows + their edits.
+  appendHccUploadEncounters: (encounters) => set(s => s.hccUploadSession
+    ? { hccUploadSession: {
+        ...s.hccUploadSession,
+        encounters: [...s.hccUploadSession.encounters, ...encounters],
+      } }
+    : {}),
+  patchHccUploadEncounter: (idx, patch) => set(s => {
+    if (!s.hccUploadSession) return {};
+    const next = s.hccUploadSession.encounters.map((e, i) => i === idx ? { ...e, ...patch } : e);
+    return { hccUploadSession: { ...s.hccUploadSession, encounters: next } };
+  }),
+  removeHccUploadEncounter: (idx) => set(s => {
+    if (!s.hccUploadSession) return {};
+    return {
+      hccUploadSession: {
+        ...s.hccUploadSession,
+        encounters: s.hccUploadSession.encounters.filter((_, i) => i !== idx),
+      },
+    };
+  }),
+  // Manually add a blank encounter for an existing patient. Used in the
+  // review phase when an OCR pass missed a DOS the user has a separate
+  // document for — they get a fresh row pre-linked to the patient and
+  // fill in DOS / provider / POS / ICDs / doc themselves.
+  addHccUploadEncounter: (member) => set(s => {
+    if (!s.hccUploadSession || !member) return {};
+    const newEnc = {
+      tempId: `manual-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      patient: {
+        name: member.name,
+        dob: member.dob || '',
+        matchedMemberId: member.id,
+        matchConfidence: 100,
+      },
+      dos: '',
+      provider: '',
+      pos: '',
+      posDesc: '',
+      docType: 'Progress Note',
+      icds: [],
+      // Pre-stamp the same error keys the review pipeline expects so the
+      // new row immediately reads as "needs attention" in the filter chips.
+      errors: ['dos', 'provider', 'pos'],
+      _manual: true,
+    };
+    return {
+      hccUploadSession: {
+        ...s.hccUploadSession,
+        encounters: [...s.hccUploadSession.encounters, newEnc],
+      },
+    };
+  }),
+  cancelHccUpload: () => set({ hccUploadSession: null, hccUploadMinimized: false }),
+
+  // ── Background-processing minimize/expand ────────────────────────
+  // After picking a file, the user can close the drawer and continue
+  // working — AI extraction keeps running in the background and a
+  // floating chip (HccUploadProcessingHost) tracks progress + offers a
+  // "Show Records" CTA when extraction completes. Mirrors the
+  // population-groups pgSession / pgMinimized pattern.
+  hccUploadMinimized: false,
+  minimizeHccUpload: () => set({ hccUploadMinimized: true }),
+  expandHccUpload: () => set({ hccUploadMinimized: false }),
+
+  // Exact match by normalized name + DOB. AC-9 requires 100% confidence —
+  // partial / probabilistic matching is forbidden (HIPAA). Returns the
+  // member object or null.
+  findHccMemberByNameAndDob: (name, dob) => {
+    if (!name || !dob) return null;
+    const norm = (s) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const target = norm(name);
+    const targetDob = String(dob || '').trim();
+    const found = useAppStore.getState().hccMembers.find(m => norm(m.name) === target && (m.dob || '').trim() === targetDob);
+    return found || null;
+  },
+
+  // Atomic create-or-merge for a single OCR encounter. Returns
+  //   { kind: 'created' | 'updated' | 'relatedNew', memberId, dosDate }
+  // so the caller can aggregate a summary for the success toast.
+  // Uniqueness key: memberId + dos + provider + pos.
+  // - Active DOS (any role's status is New / Action Needed):
+  //     merge net-new ICDs into the existing row, attach doc, log activity.
+  // - Completed DOS (all roles terminal):
+  //     create a new DOS entry with relatedDosId pointing at the original
+  //     (and stamp the original's relatedDosIds with the new key).
+  // - Missing DOS: bootstrap via initializeHccPatient, append docStatus,
+  //     increment ch, attach doc + log.
+  hccCreateOrMergeFromEncounter: (enc) => {
+    const s = useAppStore.getState();
+    const memberId = enc.patient?.matchedMemberId;
+    if (!memberId) return { kind: 'skipped' };
+    const member = s.hccMembers.find(m => m.id === memberId);
+    if (!member) return { kind: 'skipped' };
+    const docName = enc._docName || 'Uploaded Document.pdf';
+    const docType = enc._docType || 'Progress Note';
+    const icdCodes = (enc.icds || []).filter(i => i.valid !== false).map(i => i.code);
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const dateStr = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
+
+    // Helper — append to per-member activity log without requiring the
+    // DiagPanel to be open (the upload flow runs from a global drawer).
+    const logActivity = (entry) => {
+      const memberKey = member.name;
+      const ts = now.getTime();
+      const hours = now.getHours();
+      const time = `${((hours + 11) % 12) + 1}:${pad(now.getMinutes())} ${hours >= 12 ? 'PM' : 'AM'}`;
+      set(st => {
+        const list = st.hccActivityLog[memberKey] || [];
+        return {
+          hccActivityLog: {
+            ...st.hccActivityLog,
+            [memberKey]: [{
+              id: `up-${ts}-${Math.random().toString(36).slice(2,5)}`,
+              ts, date: dateStr, time, dos: enc.dos,
+              by: 'You', role: 'Support',
+              ...entry,
+            }, ...list],
+          },
+        };
+      });
+    };
+
+    // Compute existing row's role-statuses for the uniqueness key
+    // (memberId, dos, provider, pos). The engine maps DOS to a dosState
+    // by `${memberId}::${dos}` (no provider/pos in the key) — for the
+    // prototype we treat (memberId, dos) as the row key and compare
+    // provider/pos at the member field level. Real backend would key
+    // strictly on all four.
+    const dosKey = `${memberId}::${enc.dos}`;
+    const existingDosState = s.hccDosAssignments[dosKey];
+    const sameProvider = (member.rp || '').trim() === (enc.provider || '').trim();
+    const samePos = (member.pos || '').trim() === (enc.pos || '').trim();
+    const existsByUniqueKey = !!existingDosState && sameProvider && samePos;
+
+    const TERMINAL = new Set(['Completed', 'Reject', 'Insufficient']);
+    const isAllTerminal = (state) => {
+      if (!state) return false;
+      return ['support', 'coder', 'r1', 'r2', 'r3'].every(r => TERMINAL.has(state[r]?.status));
+    };
+
+    // Branch 1: DOS row exists & all roles terminal → create new row with
+    // relatedDosId. AC-6.
+    if (existsByUniqueKey && isAllTerminal(existingDosState)) {
+      // Append a new DOS to the member's dos_list (or update if already in)
+      const newDosDate = enc.dos;
+      const relatedKey = dosKey;
+      // Bootstrap a fresh entry in dosState under a synthetic suffixed key
+      // so the original Completed row stays untouched.
+      const suffix = `__upload-${now.getTime()}`;
+      const newKey = `${memberId}::${newDosDate}${suffix}`;
+      set(st => ({
+        hccMembers: st.hccMembers.map(m => m.id === memberId ? {
+          ...m,
+          dos_list: [...(m.dos_list || []), { date: newDosDate, label: 'From Upload (post-completion)', labelColor: 'var(--secondary-300)' }],
+          docStatus: [...(m.docStatus || []), 'pending'],
+          ch: (m.ch || 0) + 1,
+          awaitingClaim: true,
+        } : m),
+        hccDosAssignments: {
+          ...st.hccDosAssignments,
+          [newKey]: {
+            patientId: memberId, dosDate: newDosDate,
+            support: { assignee: null, status: 'New', history: [] },
+            coder:   { assignee: null, status: null, history: [] },
+            r1:      { assignee: null, status: null, history: [] },
+            r2:      { assignee: null, status: null, history: [] },
+            r3:      { assignee: null, status: null, history: [] },
+            sampling: { r2: null, r3: null },
+            billingReady: false, asmGenerated: false,
+            relatedDosId: relatedKey,
+            awaitingClaim: true,
+            uploadedDocs: [{ name: docName, type: docType, icds: icdCodes, uploadedAt: now.toISOString() }],
+            activity: [],
+          },
+          [relatedKey]: {
+            ...existingDosState,
+            relatedDosIds: [...(existingDosState.relatedDosIds || []), newKey],
+          },
+        },
+      }));
+      logActivity({
+        t: 'document-upload',
+        headline: `New row created from upload (related DOS ${enc.dos} was completed)`,
+        file: docName, fileType: docType, icds: icdCodes,
+      });
+      // Worklist History — encounter approved + related DOS spawned.
+      useAppStore.getState().logHccActivity({
+        eventName: 'encounter.approved',
+        scope:     { patientId: memberId, dos: newDosDate, source: 'manual' },
+        payload:   { actor: 'You', patientName: member.name, dos: newDosDate },
+      });
+      useAppStore.getState().logHccActivity({
+        eventName: 'dedup.related_dos_created',
+        scope:     { patientId: memberId, dos: newDosDate, source: 'manual' },
+        payload:   {
+          patientName: member.name,
+          dos: newDosDate,
+          reason: 'prior DOS already completed',
+        },
+      });
+      return { kind: 'relatedNew', memberId, dosDate: newDosDate };
+    }
+
+    // Branch 2: DOS row exists & active → merge net-new ICDs. AC-5.
+    if (existsByUniqueKey) {
+      const existingIcds = new Set((existingDosState.uploadedDocs || []).flatMap(d => d.icds || []));
+      const netNew = icdCodes.filter(c => !existingIcds.has(c));
+      set(st => ({
+        hccMembers: st.hccMembers.map(m => m.id === memberId ? {
+          ...m,
+          docStatus: [...(m.docStatus || []), 'pending'],
+          ch: (m.ch || 0) + 1,
+        } : m),
+        hccDosAssignments: {
+          ...st.hccDosAssignments,
+          [dosKey]: {
+            ...existingDosState,
+            uploadedDocs: [
+              ...(existingDosState.uploadedDocs || []),
+              { name: docName, type: docType, icds: netNew, uploadedAt: now.toISOString() },
+            ],
+          },
+        },
+      }));
+      logActivity({
+        t: 'icds-merged-via-upload',
+        headline: netNew.length > 0
+          ? `${netNew.length} net-new ICD(s) merged from upload: ${netNew.join(', ')}`
+          : 'Document attached to existing DOS (no net-new ICDs)',
+        file: docName, fileType: docType, icds: netNew,
+      });
+      // Worklist History — DOS match found + (optional) net-new ICD merge.
+      useAppStore.getState().logHccActivity({
+        eventName: 'encounter.approved',
+        scope:     { patientId: memberId, dos: enc.dos, source: 'manual' },
+        payload:   { actor: 'You', patientName: member.name, dos: enc.dos },
+      });
+      useAppStore.getState().logHccActivity({
+        eventName: 'worklist.row_merged',
+        scope:     { patientId: memberId, dos: enc.dos, source: 'manual' },
+        payload:   { patientName: member.name, dos: enc.dos },
+      });
+      useAppStore.getState().logHccActivity({
+        eventName: 'dedup.dos_match_found',
+        scope:     { patientId: memberId, dos: enc.dos, source: 'manual' },
+        payload:   { patientName: member.name, dos: enc.dos },
+      });
+      netNew.forEach(icd => {
+        useAppStore.getState().logHccActivity({
+          eventName: 'dedup.icd_net_new_merged',
+          scope:     { patientId: memberId, dos: enc.dos, icd, source: 'manual' },
+          payload:   { icd, dos: enc.dos, patientName: member.name },
+        });
+      });
+      return { kind: 'updated', memberId, dosDate: enc.dos };
+    }
+
+    // Branch 3: DOS row missing → bootstrap via initializeHccPatient
+    // (which creates engine state per DOS in dos_list), then attach doc.
+    set(st => ({
+      hccMembers: st.hccMembers.map(m => {
+        if (m.id !== memberId) return m;
+        const hadDos = m.dos_list?.some(d => d.date === enc.dos);
+        return {
+          ...m,
+          dos_list: hadDos
+            ? m.dos_list
+            : [...(m.dos_list || []), { date: enc.dos, label: 'From Upload', labelColor: 'var(--secondary-300)' }],
+          docStatus: [...(m.docStatus || []), 'pending'],
+          ch: (m.ch || 0) + 1,
+          tv: hadDos ? m.tv : (m.tv || 0) + 1,
+          rp: m.rp || enc.provider,
+          pos: m.pos || enc.pos,
+          awaitingClaim: true,
+        };
+      }),
+      hccDosAssignments: {
+        ...st.hccDosAssignments,
+        [dosKey]: {
+          patientId: memberId, dosDate: enc.dos,
+          support: { assignee: null, status: 'New', history: [] },
+          coder:   { assignee: null, status: null, history: [] },
+          r1:      { assignee: null, status: null, history: [] },
+          r2:      { assignee: null, status: null, history: [] },
+          r3:      { assignee: null, status: null, history: [] },
+          sampling: { r2: null, r3: null },
+          billingReady: false, asmGenerated: false,
+          awaitingClaim: true,
+          uploadedDocs: [{ name: docName, type: docType, icds: icdCodes, uploadedAt: now.toISOString() }],
+          activity: [],
+        },
+      },
+    }));
+    logActivity({
+      t: 'document-upload',
+      headline: `DOS ${enc.dos} created via document upload`,
+      file: docName, fileType: docType, icds: icdCodes,
+    });
+    // Worklist History — encounter approved + new worklist row spawned.
+    useAppStore.getState().logHccActivity({
+      eventName: 'encounter.approved',
+      scope:     { patientId: memberId, dos: enc.dos, source: 'manual' },
+      payload:   { actor: 'You', patientName: member.name, dos: enc.dos },
+    });
+    useAppStore.getState().logHccActivity({
+      eventName: 'worklist.row_created',
+      scope:     { patientId: memberId, dos: enc.dos, source: 'manual' },
+      payload:   { patientName: member.name, dos: enc.dos },
+    });
+    return { kind: 'created', memberId, dosDate: enc.dos };
+  },
+
+  // Iterate every reviewed encounter through hccCreateOrMergeFromEncounter
+  // and stash the summary on the session for the drawer's success toast.
+  // confirmHccUpload({ acceptedIdxs? })
+  // When `acceptedIdxs` is omitted, every encounter is applied (legacy
+  // behavior matching the card layout). When provided, only the indices
+  // in the set are applied; the rest emit `encounter.rejected` events and
+  // are summarised in the resulting `batch.processing_completed` payload
+  // under `acceptedList` / `rejectedList` so the History drawer can show
+  // both lists in its details expander.
+  confirmHccUpload: ({ acceptedIdxs } = {}) => {
+    const s = useAppStore.getState();
+    if (!s.hccUploadSession) return { created: 0, updated: 0, rejected: 0 };
+    const batchId = s.hccUploadSession.id;
+    const docName = s.hccUploadSession.file?.name || 'Uploaded Document.pdf';
+    const accepted = acceptedIdxs ? new Set(acceptedIdxs) : null;
+    const acceptedList = [];
+    const rejectedList = [];
+    let created = 0, updated = 0;
+    s.hccUploadSession.encounters.forEach((enc, idx) => {
+      const isAccepted = accepted ? accepted.has(idx) : true;
+      const patientName = enc.patient?.name || '(unmatched)';
+      if (isAccepted) {
+        const result = s.hccCreateOrMergeFromEncounter({ ...enc, _docName: docName });
+        if (result.kind === 'created' || result.kind === 'relatedNew') created++;
+        else if (result.kind === 'updated') updated++;
+        acceptedList.push({ patientName, dos: enc.dos, kind: result.kind });
+      } else {
+        rejectedList.push({ patientName, dos: enc.dos });
+        useAppStore.getState().logHccActivity({
+          eventName: 'encounter.rejected',
+          scope:     { patientId: enc.patient?.matchedMemberId || null, dos: enc.dos, batchId, source: 'manual' },
+          payload:   {
+            actor: 'You',
+            patientName,
+            dos: enc.dos,
+            reason: 'Not selected for bulk confirm',
+          },
+        });
+      }
+    });
+    const rejected = rejectedList.length;
+    track('hcc.upload_confirmed', { created, updated, rejected });
+    // Summary event — payload includes both lists so the History drawer's
+    // details expander shows accepted/rejected patients individually.
+    useAppStore.getState().logHccActivity({
+      eventName: 'batch.processing_completed',
+      scope:     { batchId, source: 'manual' },
+      payload:   {
+        batchId,
+        approvedCount: created + updated,
+        rejectedCount: rejected,
+        pendingCount: 0,
+        acceptedList,
+        rejectedList,
+        actor: 'You',
+      },
+    });
+    set({ hccUploadSession: null });
+    return { created, updated, rejected };
+  },
 
   // ─── Claim preview drawer ─────────────────────────────────────────
   // Opened by clicking a claim-sourced DOS date in the HCC worklist's DOS
@@ -2133,9 +4134,10 @@ export const useAppStore = create((set, get) => ({
     diagSnapFilter: null,
     diagSnapOpen: true,
     diagLeftPanel: opts.leftPanel ?? null,
+    diagActivityIcd: null,
     diagViewMode: 'ICD',
   }),
-  closeDiagPanel: () => set({ diagPanelOpen: false, diagPanelMemberId: null, diagLeftPanel: null }),
+  closeDiagPanel: () => set({ diagPanelOpen: false, diagPanelMemberId: null, diagLeftPanel: null, diagActivityIcd: null }),
   setDiagActiveTab: (tab) => set({ diagActiveTab: tab }),
   setDiagDosFilter: (dos) => set({ diagDosFilter: dos }),
   setDiagViewMode: (mode) => set({ diagViewMode: mode }),
@@ -2686,6 +4688,605 @@ export const useAppStore = create((set, get) => ({
       .maybeSingle();
     if (error || !data) return null;
     return campaignRowToJs(data);
+  },
+
+  // ── Settings → Content → Emails (server-side paginated) ─────────────────────
+  // Separate slice from `campaigns` so the Settings page can ask for a page
+  // at a time without disturbing the bulk-loaded campaign worklist.
+  contentEmails: [],
+  contentEmailsTotal: 0,
+  contentEmailsLoading: false,
+  fetchContentEmails: async ({ page = 1, perPage = 10, search = '', status = 'all', force = false } = {}) => {
+    // ── SWR-style cache ─────────────────────────────────────────────────────
+    // Cache hit → paint cached rows immediately, no shimmer. If fresh
+    // (< CONTENT_EMAILS_TTL_MS), skip the network entirely. If stale, still
+    // serve the cached rows but kick off a background revalidation that
+    // silently swaps in the new data when it lands. Cache is invalidated
+    // by deleteCampaign / deleteCampaignsBulk / duplicateCampaign /
+    // openContentEmailBuilder(null).
+    const cacheKey = `${page}|${perPage}|${(search || '').toLowerCase().trim()}|${status || 'all'}`;
+    const cached = _contentEmailsCache.get(cacheKey);
+    const now = Date.now();
+
+    if (cached) {
+      set({
+        contentEmails: cached.rows,
+        contentEmailsTotal: cached.total,
+        contentEmailsLoading: false,
+      });
+      // Fresh cache — done; no network request.
+      if (!force && now - cached.fetchedAt < CONTENT_EMAILS_TTL_MS) {
+        return;
+      }
+      // Stale cache — continue and revalidate in the background. We
+      // intentionally don't toggle contentEmailsLoading because the user
+      // already sees the cached rows; flickering a shimmer back in would
+      // be worse than letting the swap happen invisibly.
+    } else {
+      set({ contentEmailsLoading: true });
+    }
+
+    const from = (page - 1) * perPage;
+    const to = from + perPage - 1;
+    // Slim column list — explicitly excludes `email_template` and
+    // `color_variables`. Those JSONB columns can be 10-100KB per row and
+    // we don't render them in the table at all. They're fetched on demand
+    // when Preview / Edit is clicked via fetchCampaignById(id).
+    //
+    // Newest-edited first so freshly created or just-touched emails surface
+    // at the top of the list. NULLs LAST keeps rows that predate the
+    // updated_at trigger from hogging the top of the list.
+    const LIST_COLUMNS = [
+      'id', 'name', 'description', 'channel', 'section', 'audience', 'dynamic',
+      'health', 'delivered', 'opened', 'start_date', 'duration', 'progress',
+      'executes_in', 'enabled', 'audience_include', 'audience_exclude',
+      'send_via', 'start_mode', 'start_at', 'end_date', 'campaign_type',
+      'sender_name', 'send_from', 'subject_line', 'category', 'updated_at',
+      'updated_by',
+    ].join(', ');
+    // The select also pulls the foreign-keyed profile (updated_by →
+    // profiles.id) so the table can show "Last Updated By" without a second
+    // round trip. If the migration that creates the FK hasn't been applied
+    // yet, PostgREST returns PGRST200 — we fall back to a plain select so
+    // the page still renders.
+    const buildQuery = (select) => {
+      let q = supabase
+        .from('campaigns')
+        .select(select, { count: 'exact' })
+        .eq('channel', 'email')
+        .order('updated_at', { ascending: false, nullsFirst: false })
+        .order('id', { ascending: false });
+      if (status && status !== 'all') q = q.eq('section', status);
+      if (search?.trim()) {
+        const s = search.trim().replace(/[%_]/g, '');
+        q = q.or(`name.ilike.%${s}%,description.ilike.%${s}%`);
+      }
+      return q.range(from, to);
+    };
+
+    let { data, error, count } = await buildQuery(
+      `${LIST_COLUMNS}, updated_by_profile:profiles!updated_by(id, full_name)`,
+    );
+
+    // PGRST200 = "no foreign key relationship" — migration not applied yet.
+    if (error?.code === 'PGRST200') {
+      console.warn(
+        '[fetchContentEmails] FK to profiles missing — run supabase/campaigns_category_updated_by_migration.sql. Falling back to plain select.',
+      );
+      ({ data, error, count } = await buildQuery(LIST_COLUMNS));
+    }
+    // 42703 = column does not exist (updated_at, category, etc. before migrations applied)
+    if (error?.code === '42703') {
+      console.warn(
+        '[fetchContentEmails] Column missing (likely updated_at). Falling back to id ordering.',
+      );
+      const fb = supabase
+        .from('campaigns')
+        .select('*', { count: 'exact' })
+        .eq('channel', 'email')
+        .order('id', { ascending: false });
+      ({ data, error, count } = await fb.range(from, to));
+    }
+
+    if (error) {
+      console.error('fetchContentEmails error:', JSON.stringify(error, null, 2));
+      set({ contentEmailsLoading: false });
+      return;
+    }
+    const rows = (data || []).map(campaignRowToJs);
+    const total = count || 0;
+    // Store the freshly-revalidated data in the cache so the next visit at
+    // this same key returns immediately.
+    _contentEmailsCache.set(cacheKey, { rows, total, fetchedAt: Date.now() });
+    set({
+      contentEmails: rows,
+      contentEmailsTotal: total,
+      contentEmailsLoading: false,
+    });
+  },
+
+  // Settings → Content → Emails opens the EmailBuilder directly (no campaign
+  // builder takeover). Accepts either an existing email campaign or null to
+  // mint a new draft + open it. The router uses activePage='settings' +
+  // settingsNavItem='content' to keep the URL on the content path so closing
+  // returns to #/settings/content/emails.
+  openContentEmailBuilder: async (campaignOrNull) => {
+    let campaign = campaignOrNull;
+    // Slim-list optimisation: if we were passed a row from the list (no
+    // emailTemplate because we excluded it from the list select), fetch the
+    // full row now so the email builder gets the saved doc instead of a
+    // generated initial document.
+    if (campaign && campaign.id && campaign.emailTemplate === undefined) {
+      const full = await get().fetchCampaignById(campaign.id);
+      if (full) campaign = full;
+    }
+    if (!campaign) {
+      set({ campaignBuilderSaving: true });
+      const { data, error } = await supabase
+        .from('campaigns')
+        .insert({
+          name: 'Untitled Email',
+          section: 'draft',
+          channel: 'email',
+          send_via: ['email'],
+          start_mode: 'immediately',
+          campaign_type: 'one_time',
+        })
+        .select('*')
+        .single();
+      set({ campaignBuilderSaving: false });
+      if (error) {
+        console.error('openContentEmailBuilder insert error:', error);
+        get().showToast?.('Could not create email');
+        return null;
+      }
+      campaign = campaignRowToJs(data);
+      set(s => ({ campaigns: [...s.campaigns, campaign] }));
+      _invalidateContentEmailsCache();
+    }
+    // Clear any stale campaign-builder takeover so the URL routes through
+    // settings/content and closeEmailBuilder lands back on the email list.
+    set({ campaignBuilderId: null });
+    get().openEmailBuilder(campaign);
+    return campaign.id;
+  },
+
+  // Clone an existing campaign — copies every column except the primary key
+  // and timestamps. New copy lands as a draft with a " (Copy)" suffix so it
+  // never re-runs a live campaign by accident.
+  duplicateCampaign: async (id) => {
+    const { data: original, error: fetchErr } = await supabase
+      .from('campaigns')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (fetchErr || !original) {
+      console.error('duplicateCampaign fetch error:', fetchErr);
+      get().showToast?.('Could not duplicate email');
+      return null;
+    }
+    // eslint-disable-next-line no-unused-vars
+    const { id: _id, created_at: _c, updated_at: _u, ...rest } = original;
+    const { data: copy, error: insertErr } = await supabase
+      .from('campaigns')
+      .insert({
+        ...rest,
+        name: `${rest.name || 'Untitled'} (Copy)`,
+        section: 'draft',
+        enabled: false,
+      })
+      .select('*')
+      .single();
+    if (insertErr) {
+      console.error('duplicateCampaign insert error:', insertErr);
+      get().showToast?.('Could not duplicate email');
+      return null;
+    }
+    const fresh = campaignRowToJs(copy);
+    set(s => ({ campaigns: [...s.campaigns, fresh] }));
+    _invalidateContentEmailsCache();
+    get().showToast?.('Email duplicated');
+    return fresh;
+  },
+
+  // Delete many campaigns in one round trip. Used by the Content → Emails
+  // bulk-select toolbar.
+  deleteCampaignsBulk: async (ids) => {
+    if (!Array.isArray(ids) || ids.length === 0) return false;
+    const { error } = await supabase.from('campaigns').delete().in('id', ids);
+    if (error) {
+      console.error('deleteCampaignsBulk error:', error);
+      get().showToast?.('Could not delete selected emails');
+      return false;
+    }
+    const idSet = new Set(ids);
+    set(s => ({
+      campaigns: s.campaigns.filter(c => !idSet.has(c.id)),
+      contentEmails: s.contentEmails.filter(c => !idSet.has(c.id)),
+      contentEmailsTotal: Math.max(0, s.contentEmailsTotal - ids.length),
+    }));
+    _invalidateContentEmailsCache();
+    get().showToast?.(`${ids.length} email${ids.length === 1 ? '' : 's'} deleted`);
+    return true;
+  },
+
+  deleteCampaign: async (id) => {
+    const { error } = await supabase.from('campaigns').delete().eq('id', id);
+    if (error) {
+      console.error('deleteCampaign error:', error);
+      get().showToast?.('Could not delete email');
+      return false;
+    }
+    set(s => ({
+      campaigns: s.campaigns.filter(c => c.id !== id),
+      contentEmails: s.contentEmails.filter(c => c.id !== id),
+      contentEmailsTotal: Math.max(0, s.contentEmailsTotal - 1),
+    }));
+    _invalidateContentEmailsCache();
+    get().showToast?.('Email deleted');
+    return true;
+  },
+
+  // ─── Settings → Content → Forms ──────────────────────────────────────────
+  // Slim list of forms for the Content → Forms table. Mirrors the emails
+  // pattern: server-side pagination + search + SWR cache. `editingFormId`
+  // drives the full-screen FormBuilder takeover (see AppLayout + router).
+  contentForms: [],
+  contentFormsTotal: 0,
+  contentFormsLoading: false,
+  editingFormId: null,
+  formBuilderForm: null,
+  formBuilderSaving: false,
+  // Active builder tab + Analytics sub-tab, mirrored into the URL hash so a
+  // refresh restores the exact view. Set by the router (_pending*) on reload.
+  formBuilderMode: 'edit',          // 'edit' | 'score' | 'preview' | 'analytics'
+  formAnalyticsTab: 'insight',      // 'insight' | 'report' | 'responses'
+  _pendingFormMode: null,           // set by router on refresh
+  _pendingFormAnalyticsTab: null,   // set by router on refresh
+  setFormBuilderMode: (mode) => { set({ formBuilderMode: mode }); updateHash(get); },
+  setFormAnalyticsTab: (tab) => { set({ formAnalyticsTab: tab }); updateHash(get); },
+  // Shareable form fill-view (#/f/{id}); the router sets formViewId on nav.
+  formViewId: null,
+  closeFormView: () => set({ formViewId: null }),
+
+  fetchContentForms: async ({ page = 1, perPage = 10, search = '', status = 'all', force = false } = {}) => {
+    const cacheKey = `${page}|${perPage}|${(search || '').toLowerCase().trim()}|${status || 'all'}`;
+    const cached = _contentFormsCache.get(cacheKey);
+    const now = Date.now();
+    if (cached) {
+      set({ contentForms: cached.rows, contentFormsTotal: cached.total, contentFormsLoading: false });
+      if (!force && now - cached.fetchedAt < CONTENT_FORMS_TTL_MS) return;
+    } else {
+      set({ contentFormsLoading: true });
+    }
+
+    const from = (page - 1) * perPage;
+    const to = from + perPage - 1;
+    const LIST_COLUMNS = [
+      'id', 'name', 'description', 'category', 'status', 'response_count',
+      'updated_at', 'updated_by',
+    ].join(', ');
+    const buildQuery = (select) => {
+      let q = supabase
+        .from('forms')
+        .select(select, { count: 'exact' })
+        .order('updated_at', { ascending: false, nullsFirst: false })
+        .order('id', { ascending: false });
+      if (status && status !== 'all') q = q.eq('status', status);
+      if (search?.trim()) {
+        const term = search.trim().replace(/[%_]/g, '');
+        q = q.or(`name.ilike.%${term}%,description.ilike.%${term}%`);
+      }
+      return q.range(from, to);
+    };
+
+    let { data, error, count } = await buildQuery(
+      `${LIST_COLUMNS}, updated_by_profile:profiles!updated_by(id, full_name)`,
+    );
+    if (error?.code === 'PGRST200') {
+      ({ data, error, count } = await buildQuery(LIST_COLUMNS));
+    }
+    // Table not created yet (42P01 / PGRST205) — degrade to an empty list so
+    // the page still renders. The toolbar's "New Form" still opens the builder
+    // against a local draft.
+    if (error && (error.code === '42P01' || error.code === 'PGRST205' || error.code === '42703')) {
+      console.warn('[fetchContentForms] forms table missing — run supabase/forms_migration.sql');
+      _contentFormsCache.set(cacheKey, { rows: [], total: 0, fetchedAt: Date.now() });
+      set({ contentForms: [], contentFormsTotal: 0, contentFormsLoading: false });
+      return;
+    }
+    if (error) {
+      console.error('fetchContentForms error:', JSON.stringify(error, null, 2));
+      set({ contentFormsLoading: false });
+      return;
+    }
+    const rows = (data || []).map(formRowToJs);
+    const total = count || 0;
+    _contentFormsCache.set(cacheKey, { rows, total, fetchedAt: Date.now() });
+    set({ contentForms: rows, contentFormsTotal: total, contentFormsLoading: false });
+  },
+
+  fetchFormById: async (id) => {
+    const { data, error } = await supabase
+      .from('forms')
+      .select('*, updated_by_profile:profiles!updated_by(id, full_name)')
+      .eq('id', id)
+      .single();
+    if (error) {
+      // Retry without the FK join if the relationship isn't set up.
+      const retry = await supabase.from('forms').select('*').eq('id', id).single();
+      if (retry.error) {
+        console.error('fetchFormById error:', retry.error);
+        return null;
+      }
+      return formRowToJs(retry.data);
+    }
+    return formRowToJs(data);
+  },
+
+  // Resolve the current user's profiles.id to stamp as updated_by. The DB
+  // trigger sets updated_by = COALESCE(auth.uid(), NEW.updated_by), so when
+  // auth.uid() is null (e.g. no JWT) the client-supplied id is what sticks —
+  // this is why we stamp it here rather than relying on the trigger alone.
+  // Prefer the already-loaded profile, else fall back to the auth session.
+  _resolveUpdatedBy: async () => {
+    const cup = get().currentUserProfile;
+    if (cup?.id) return cup.id;
+    try {
+      const { data } = await supabase.auth.getUser();
+      return data?.user?.id || null;
+    } catch {
+      return null;
+    }
+  },
+
+  // Open the full-screen builder. Pass an existing form (or its id) to edit, or
+  // null to mint a fresh draft. Falls back to an in-memory draft if the table
+  // hasn't been created yet so the builder is still usable for design.
+  openFormBuilder: async (formOrNull) => {
+    let form = formOrNull;
+    // Accept a bare id (number/string) as well as a form object.
+    if (typeof form === 'number' || typeof form === 'string') {
+      const fetched = await get().fetchFormById(isNaN(Number(form)) ? form : Number(form));
+      if (!fetched) { get().showToast?.('Form not found'); return null; }
+      form = fetched;
+    } else if (form && form.id && form.schema === undefined) {
+      const full = await get().fetchFormById(form.id);
+      if (full) form = full;
+    }
+    if (!form) {
+      set({ formBuilderSaving: true });
+      const updatedBy = await get()._resolveUpdatedBy();
+      const draft = {
+        name: 'Untitled Form',
+        status: 'draft',
+        schema: { items: [] },
+        scoring: { scores: [], criticalTriggers: [] },
+        settings: { layout: 'sectioned' },
+        ...(updatedBy ? { updated_by: updatedBy } : {}),
+      };
+      const { data, error } = await supabase.from('forms').insert(draft).select('*').single();
+      set({ formBuilderSaving: false });
+      if (error) {
+        if (error.code === '42P01' || error.code === 'PGRST205') {
+          get().showToast?.('Run forms_migration.sql to save forms — editing locally for now');
+          form = formRowToJs({ id: `local-${Date.now()}`, ...draft });
+        } else {
+          console.error('openFormBuilder insert error:', error);
+          get().showToast?.('Could not create form');
+          return null;
+        }
+      } else {
+        form = formRowToJs(data);
+        _invalidateContentFormsCache();
+      }
+    }
+    // Always open on the Edit tab; a refresh into a specific tab is applied
+    // afterward by the AppLayout hydration effect (from _pendingFormMode), which
+    // avoids a stale pending value leaking into a later open-from-list.
+    set({ editingFormId: form.id, formBuilderForm: form, formBuilderMode: 'edit', formAnalyticsTab: 'insight' });
+    updateHash(get);
+    return form.id;
+  },
+
+  closeFormBuilder: () => {
+    set({ editingFormId: null, formBuilderForm: null, formBuilderMode: 'edit', formAnalyticsTab: 'insight' });
+    updateHash(get);
+  },
+
+  // Best-effort autosave of an in-progress fill (drop-off tracking). Upserts one
+  // row per (form_id, session_id); status stays 'in_progress' until submit.
+  // Silently no-ops if the partial-progress migration hasn't been run.
+  savePartialResponse: async (formId, { sessionId, answers, answeredCount = 0 } = {}) => {
+    if (!formId || !sessionId || (typeof formId === 'string' && formId.startsWith('local-'))) return false;
+    const createdBy = await get()._resolveUpdatedBy();
+    const { error } = await supabase
+      .from('form_responses')
+      .upsert({
+        form_id: formId,
+        session_id: sessionId,
+        answers,
+        answered_count: answeredCount,
+        status: 'in_progress',
+        ...(createdBy ? { created_by: createdBy } : {}),
+      }, { onConflict: 'form_id,session_id' });
+    if (error) {
+      // Missing column/index (migration not run) or RLS — don't break the fill.
+      if (import.meta.env?.DEV) console.warn('savePartialResponse skipped:', error.message);
+      return false;
+    }
+    return true;
+  },
+
+  // Persist a completed form submission. When a sessionId is present we upsert
+  // the existing in-progress row to 'completed' (so it leaves the Pending list);
+  // otherwise we insert a fresh completed row. The DB trigger keeps
+  // forms.response_count in sync. `scores` is the engine snapshot at submit time.
+  submitFormResponse: async (formId, answers, scores = {}, opts = {}) => {
+    const { sessionId, answeredCount } = opts;
+    const createdBy = await get()._resolveUpdatedBy();
+    const base = {
+      form_id: formId,
+      answers,
+      scores,
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+      ...(answeredCount != null ? { answered_count: answeredCount } : {}),
+      ...(createdBy ? { created_by: createdBy } : {}),
+    };
+    let error;
+    if (sessionId) {
+      ({ error } = await supabase
+        .from('form_responses')
+        .upsert({ ...base, session_id: sessionId }, { onConflict: 'form_id,session_id' }));
+      // Fall back to a plain insert if the unique index/columns don't exist yet.
+      if (error) ({ error } = await supabase.from('form_responses').insert({ form_id: formId, answers, scores, ...(createdBy ? { created_by: createdBy } : {}) }));
+    } else {
+      ({ error } = await supabase.from('form_responses').insert(base));
+      if (error) ({ error } = await supabase.from('form_responses').insert({ form_id: formId, answers, scores, ...(createdBy ? { created_by: createdBy } : {}) }));
+    }
+    if (error) {
+      console.error('submitFormResponse error:', error);
+      return false;
+    }
+    return true;
+  },
+
+  // All responses for a form (newest first), with the submitter's name when the
+  // created_by → profiles FK resolves. Includes both completed submissions and
+  // in-progress (Pending) fills; callers split on `status`.
+  fetchFormResponses: async (formId) => {
+    if (!formId || (typeof formId === 'string' && formId.startsWith('local-'))) return [];
+    const sel = '*, created_by_profile:profiles!created_by(id, full_name)';
+    let { data, error } = await supabase
+      .from('form_responses').select(sel).eq('form_id', formId)
+      .order('created_at', { ascending: false });
+    if (error?.code === 'PGRST200') {
+      ({ data, error } = await supabase
+        .from('form_responses').select('*').eq('form_id', formId)
+        .order('created_at', { ascending: false }));
+    }
+    if (error) {
+      console.error('fetchFormResponses error:', error);
+      return [];
+    }
+    return (data || []).map((r) => ({
+      id: r.id,
+      answers: r.answers || {},
+      scores: r.scores || {},
+      createdAt: r.created_at,
+      submittedByName: r.created_by_profile?.full_name || null,
+      // Pre-migration rows have no status column → treat as completed.
+      status: r.status || 'completed',
+      startedAt: r.started_at || r.created_at,
+      completedAt: r.completed_at || null,
+      answeredCount: r.answered_count ?? null,
+    }));
+  },
+
+  // Persist a patch (name/category/status/schema/scoring/settings) for the
+  // open form. Updates local state optimistically; for a local draft (no DB
+  // row) it just updates state and reports the unsaved condition.
+  saveForm: async (patch = {}, opts = {}) => {
+    const current = get().formBuilderForm;
+    if (!current) return false;
+    const merged = { ...current, ...patch };
+    set({ formBuilderForm: merged, formBuilderSaving: true });
+
+    if (typeof current.id === 'string' && current.id.startsWith('local-')) {
+      set({ formBuilderSaving: false });
+      if (!opts.silent) get().showToast?.('Saved locally — run forms_migration.sql to persist');
+      return false;
+    }
+
+    const dbPatch = {};
+    if (patch.name !== undefined) dbPatch.name = patch.name;
+    if (patch.description !== undefined) dbPatch.description = patch.description;
+    if (patch.category !== undefined) dbPatch.category = patch.category;
+    if (patch.status !== undefined) dbPatch.status = patch.status;
+    if (patch.schema !== undefined) dbPatch.schema = patch.schema;
+    if (patch.scoring !== undefined) dbPatch.scoring = patch.scoring;
+    if (patch.settings !== undefined) dbPatch.settings = patch.settings;
+
+    // Record who made the edit (see _resolveUpdatedBy).
+    const updatedBy = await get()._resolveUpdatedBy();
+    if (updatedBy) dbPatch.updated_by = updatedBy;
+
+    const { data, error } = await supabase
+      .from('forms')
+      .update(dbPatch)
+      .eq('id', current.id)
+      .select('*')
+      .single();
+    set({ formBuilderSaving: false });
+    if (error) {
+      console.error('saveForm error:', error);
+      get().showToast?.('Could not save form');
+      return false;
+    }
+    _invalidateContentFormsCache();
+    set({ formBuilderForm: formRowToJs(data) });
+    if (!opts.silent) get().showToast?.('Form saved');
+    return true;
+  },
+
+  duplicateForm: async (id) => {
+    const { data: original, error: fetchErr } = await supabase.from('forms').select('*').eq('id', id).single();
+    if (fetchErr || !original) {
+      console.error('duplicateForm fetch error:', fetchErr);
+      get().showToast?.('Could not duplicate form');
+      return null;
+    }
+    // eslint-disable-next-line no-unused-vars
+    const { id: _id, created_at: _c, updated_at: _u, response_count: _r, updated_by: _ub, ...rest } = original;
+    const updatedBy = await get()._resolveUpdatedBy();
+    const { data: copy, error: insertErr } = await supabase
+      .from('forms')
+      .insert({ ...rest, name: `${rest.name || 'Untitled'} (Copy)`, status: 'draft', response_count: 0, ...(updatedBy ? { updated_by: updatedBy } : {}) })
+      .select('*')
+      .single();
+    if (insertErr) {
+      console.error('duplicateForm insert error:', insertErr);
+      get().showToast?.('Could not duplicate form');
+      return null;
+    }
+    _invalidateContentFormsCache();
+    get().showToast?.('Form duplicated');
+    return formRowToJs(copy);
+  },
+
+  deleteForm: async (id) => {
+    const { error } = await supabase.from('forms').delete().eq('id', id);
+    if (error) {
+      console.error('deleteForm error:', error);
+      get().showToast?.('Could not delete form');
+      return false;
+    }
+    set(s => ({
+      contentForms: s.contentForms.filter(f => f.id !== id),
+      contentFormsTotal: Math.max(0, s.contentFormsTotal - 1),
+    }));
+    _invalidateContentFormsCache();
+    get().showToast?.('Form deleted');
+    return true;
+  },
+
+  deleteFormsBulk: async (ids) => {
+    if (!Array.isArray(ids) || ids.length === 0) return false;
+    const { error } = await supabase.from('forms').delete().in('id', ids);
+    if (error) {
+      console.error('deleteFormsBulk error:', error);
+      get().showToast?.('Could not delete selected forms');
+      return false;
+    }
+    const idSet = new Set(ids);
+    set(s => ({
+      contentForms: s.contentForms.filter(f => !idSet.has(f.id)),
+      contentFormsTotal: Math.max(0, s.contentFormsTotal - ids.length),
+    }));
+    _invalidateContentFormsCache();
+    get().showToast?.(`${ids.length} form${ids.length === 1 ? '' : 's'} deleted`);
+    return true;
   },
 
   saveEmailTemplate: async () => {
@@ -3650,3 +6251,12 @@ export const useAppStore = create((set, get) => ({
     }
   },
 }));
+
+// Dev-only: expose the store on window so the preview harness can read /
+// drive state without spinning up its own module instance. Vite serves the
+// store under both `useAppStore.js` and `useAppStore.js?t=NNN`, which would
+// otherwise create two independent stores; this lets the harness reach the
+// same one the React tree uses.
+if (typeof window !== 'undefined' && import.meta.env?.DEV) {
+  window.__APP_STORE__ = useAppStore;
+}

@@ -1,0 +1,39 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  border: 0.5px solid transparent;
+  cursor: default;
+}
+
+.size_S {
+  font-size: 11px;
+  padding: 2px 6px;
+}
+
+.size_M {
+  font-size: 12px;
+  padding: 3px 8px;
+}
+
+.label {
+  letter-spacing: 0.01em;
+}
+
+.ai {
+  background: var(--primary-50, #F4EEFF);
+  color: var(--primary-300, #8C5AE2);
+  border-color: var(--primary-100, #E2D2FB);
+}
+
+.support {
+  background: var(--status-success-light, #E6F5EC);
+  color: var(--status-success, #2E8A4E);
+  border-color: rgba(46, 138, 78, 0.2);
+}

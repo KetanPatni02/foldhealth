@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Button } from '../../components/Button/Button';
 import { Icon } from '../../components/Icon/Icon';
@@ -6,7 +6,9 @@ import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { ApcmBillingRow } from './ApcmBillingRow';
 import { AttestationModal } from './AttestationModal';
-import { APCM_PATIENTS, PROVIDERS, surfacesForAttestation, visibleIcdsOf } from './data/mock';
+// Patients now come from the Supabase-backed store (fetch below), but the
+// helpers (surface rule, visibility rule, provider list) still live in mock.
+import { PROVIDERS, surfacesForAttestation, visibleIcdsOf } from './data/mock';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './ApcmBillingTable.module.css';
 import rowStyles from './ApcmBillingRow.module.css';
@@ -29,7 +31,26 @@ const CPT_RULES = [
 
 export function ApcmBillingTable({ searchQuery = '' }) {
   const activeTab = 'new-changes';
-  const [patients, setPatients] = useState(APCM_PATIENTS);
+  const storePatients = useAppStore(s => s.apcmPatients);
+  const apcmPatientsLoading = useAppStore(s => s.apcmPatientsLoading);
+  const fetchApcmPatients = useAppStore(s => s.fetchApcmPatients);
+
+  const [patients, setPatients] = useState([]);
+
+  // Fetch from Supabase on first mount; falls back to local mock on error.
+  useEffect(() => {
+    if (storePatients.length === 0 && !apcmPatientsLoading) {
+      fetchApcmPatients();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sync store → local state once data arrives (local state handles UI mutations).
+  useEffect(() => {
+    if (storePatients.length > 0 && patients.length === 0) {
+      setPatients(storePatients);
+    }
+  }, [storePatients, patients.length]);
   const [comments, setComments] = useState({});
   const [activeFilters] = useState({});
   // Inline filters. Member covers name/memberId/EHR ID in one input; the

@@ -276,18 +276,7 @@ export function ClinicalNotePanel({ member, gapCode, year, onClose, editingTaskI
   };
 
   // Header: two-line title + Submit-for-Review primary + overflow kebab + close.
-  const drawerTitle = (
-    <div className={styles.titleStack}>
-      <span className={styles.titleMain}>
-        {editingTaskId ? 'Edit Clinical Note' : 'Consolidated Clinical Note'}
-      </span>
-      <span className={styles.titleSub}>
-        {editingTaskId
-          ? `Reviewer edit — ${orderedGaps.length} measure${orderedGaps.length === 1 ? '' : 's'}`
-          : `In Progress — ${orderedGaps.length} measure${orderedGaps.length === 1 ? '' : 's'}`}
-      </span>
-    </div>
-  );
+  const drawerTitle = editingTaskId ? 'Edit Clinical Note' : 'Consolidated Clinical Note';
 
   const ageShort = member.age ? member.age.split('y')[0] + 'Y' : '';
 
@@ -295,6 +284,7 @@ export function ClinicalNotePanel({ member, gapCode, year, onClose, editingTaskI
     <Drawer
       title={drawerTitle}
       onClose={onClose}
+      noCloseDivider
       bodyClassName={styles.body}
       headerRight={
         <HeaderActions
@@ -487,6 +477,7 @@ function HeaderActions({ onSubmitForReview, onSaveDraft, onSaveAndSign, onSignAn
           onClick={openMenu}
         />
       </div>
+      <span className={styles.headerDivider} />
       {open && createPortal(
         <div className={styles.overflowScrim} onClick={() => setOpen(false)}>
           <div

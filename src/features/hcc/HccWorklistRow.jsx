@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
+import { Button } from '../../components/Button/Button';
 import { Checkbox } from '../../components/ui/checkbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Icon } from '../../components/Icon/Icon';
@@ -14,7 +15,9 @@ import {
 } from './RowPopovers';
 import { getIcdsForMember, getNotLinkedForMember } from './data/icds';
 import { getStatusSpec } from './statusSpec';
-import { staffById, ROLE_LABEL, ROLES } from './assignment/astranaStaff';
+import { StatusIcon } from './StatusIcon';
+import { staffById, staffForRole, ROLE_LABEL, ROLES } from './assignment/astranaStaff';
+import { createPortal } from 'react-dom';
 import { dosKey } from './assignment/dosState';
 import styles from './HccWorklistRow.module.css';
 
@@ -78,8 +81,22 @@ function summarizeDocs(docStatus = []) {
   return { label: `${pend} Pending`, color: 'var(--status-warning)' };
 }
 
-function HccEvidenceCell({ count, docStatus, onClick }) {
-  if (count == null) return <span className={styles.muted}>—</span>;
+function HccEvidenceCell({ count, docStatus, onClick, onUpload }) {
+  // No chart on file yet → ghost "Upload" link button (Fold Button variant
+  // ghost = transparent bg + neutral-300 text). Click opens the upload
+  // drawer for this member.
+  if (count == null) {
+    return (
+      <Button
+        variant="ghost"
+        size="S"
+        leadingIcon="solar:upload-minimalistic-linear"
+        onClick={(e) => { e.stopPropagation(); onUpload?.(); }}
+      >
+        Upload
+      </Button>
+    );
+  }
   const summary = summarizeDocs(docStatus);
   return (
     <button type="button" className={styles.evidenceTrigger} onClick={onClick}>
@@ -110,24 +127,135 @@ function HccEvidenceCell({ count, docStatus, onClick }) {
  * The status itself isn't spelled out — the row legend at the bottom of the
  * worklist explains the icon meanings.
  */
-function RoleStatusCell({ name, status, date }) {
+function RoleStatusCell({ name, status, date, role, memberId, dosDate }) {
   if (!name || !status || status === 'Assign') {
-    return (
-      <div className={styles.roleUnassigned}>
-        <Icon name="solar:user-plus-rounded-linear" size={14} color="var(--neutral-200)" />
-        <span>Assign</span>
-      </div>
-    );
+    return <RoleAssignTrigger role={role} memberId={memberId} dosDate={dosDate} />;
   }
   const spec = getStatusSpec(status);
   return (
     <div className={styles.stackCell}>
       <span className={styles.roleName}>{name}</span>
       <span className={styles.roleStatusLine}>
-        <Icon name={spec.icon} size={12} color={spec.color} />
+        <StatusIcon status={status} size={12} color={spec.color} />
         {date && <span className={styles.roleDate}>{date}</span>}
       </span>
     </div>
+  );
+}
+
+/**
+ * Clickable "Assign" cell. Opens a portal popover listing candidate users
+ * for the role (configured Care Team members + Astrana staff for the
+ * matching role). Selecting one dispatches hccReassignRole.
+ */
+function RoleAssignTrigger({ role, memberId, dosDate }) {
+  const btnRef = useRef(null);
+  const [pos, setPos] = useState(null);
+  const teams = useAppStore(s => s.hccCareTeams);
+  const reassign = useAppStore(s => s.hccReassignRole);
+  const showToast = useAppStore(s => s.showToast);
+
+  // role here is the engine key ('support' | 'coder' | 'r1' | 'r2' | 'r3').
+  // Pool = members of HCC teams whose teamType matches this role + Astrana
+  // staff in the same role bucket. Deduped by id; configured teams win.
+  const candidates = (() => {
+    const teamType = ROLE_LABEL[role];
+    const fromTeams = (teams || [])
+      .filter(t => t.kind === 'hcc' && t.teamType === teamType)
+      .flatMap(t => (t.members || []).map(m => ({
+        id: m.userId,
+        name: m.name,
+        initials: m.initials,
+        roles: m.roles,
+        source: 'team',
+        teamName: t.name,
+      })));
+    const seen = new Set(fromTeams.map(c => c.id));
+    const fromAstrana = staffForRole(role)
+      .filter(s => !seen.has(s.id))
+      .map(s => ({
+        id: s.id,
+        name: s.name,
+        initials: s.initials,
+        roles: ROLE_LABEL[s.role],
+        source: 'astrana',
+      }));
+    return [...fromTeams, ...fromAstrana];
+  })();
+
+  const open = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setPos({ top: r.bottom + 4, left: r.left });
+  };
+  const close = () => setPos(null);
+
+  // Close on outside click / escape.
+  useEffect(() => {
+    if (!pos) return;
+    const onDoc = (e) => {
+      if (!btnRef.current?.contains(e.target) && !e.target.closest?.(`.${styles.roleAssignMenu}`)) {
+        close();
+      }
+    };
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [pos]);
+
+  const onPick = (cand) => {
+    if (!memberId || !dosDate) {
+      showToast('Cannot assign — missing patient or DOS context.');
+      close();
+      return;
+    }
+    reassign(memberId, dosDate, role, cand.id, 'current-user', `Assigned via worklist`);
+    showToast(`${cand.name} assigned as ${ROLE_LABEL[role]}.`);
+    close();
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        ref={btnRef}
+        className={styles.roleUnassigned}
+        onClick={(e) => { e.stopPropagation(); pos ? close() : open(); }}
+      >
+        <Icon name="solar:user-plus-rounded-linear" size={14} color="var(--neutral-200)" />
+        <span>Assign</span>
+      </button>
+      {pos && createPortal(
+        <div
+          className={styles.roleAssignMenu}
+          style={{ top: pos.top, left: pos.left }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className={styles.roleAssignTitle}>Assign {ROLE_LABEL[role]}</div>
+          {candidates.length === 0 ? (
+            <div className={styles.roleAssignEmpty}>No candidates available.</div>
+          ) : candidates.map(c => (
+            <button
+              key={c.id}
+              type="button"
+              className={styles.roleAssignItem}
+              onClick={() => onPick(c)}
+            >
+              <Avatar variant="assignee" initials={c.initials} />
+              <span className={styles.roleAssignName}>{c.name}</span>
+              <span className={styles.roleAssignRole}>
+                {c.source === 'team' ? `Team: ${c.teamName}` : c.roles}
+              </span>
+            </button>
+          ))}
+        </div>,
+        document.body,
+      )}
+    </>
   );
 }
 
@@ -224,83 +352,99 @@ function Cell({ colKey, hidden, children, ...rest }) {
   );
 }
 
-// Statuses that count as "this role is done with the DOS" — they no longer
-// own the work, so the next role downstream becomes the current assignee.
+// Statuses that count as "this role is done with the DOS" — they hand the
+// work off downstream. The DOS must complete the current stage before it
+// can be picked up by the next role; we never skip backward to a prior
+// completed assignee even if the next stage hasn't been assigned yet.
 const TERMINAL_STATUSES = new Set(['Completed', 'Reject', 'Rejected', 'Billing Ready']);
 
-// Resolve the current "assignee" for a member's active DOS. Walks the role
-// chain from highest (R3) to lowest (Support) and picks the first role with
-// an assignee whose status is non-terminal — that's the person currently
-// holding the DOS. If every role is terminal, falls back to the highest
-// role that ever had an assignee (so completed records still show *who*
-// closed them). Engine state wins; if missing, falls back to the legacy
-// member.sup/cdr/r1/r2/r3 fields so the column renders even before the
-// engine has been seeded for this patient.
-const HIGH_TO_LOW = ['r3', 'r2', 'r1', 'coder', 'support'];
-function resolveCurrentAssignee(member, dosState) {
-  // Engine path (preferred)
+// Sequential workflow order. The first role whose status is NOT terminal
+// is where the DOS currently sits (HCC reality: Support → Coder → R1 →
+// R2 → R3 → Billing). If a stage has no status / 'Assign' placeholder
+// that means it's waiting for someone to pick it up — that's the
+// current bucket but with no assignee yet.
+const STAGES_LOW_TO_HIGH = ['support', 'coder', 'r1', 'r2', 'r3'];
+
+/**
+ * Resolves who currently holds a DOS based on real HCC workflow rules.
+ * Returns one of three shapes:
+ *
+ *   { kind: 'active',     name, initials, role }   // a real person owns it
+ *   { kind: 'unassigned', role }                   // current bucket, no pick yet
+ *   { kind: 'billing' }                            // every stage completed
+ *
+ * Walks LOW→HIGH and stops at the first non-terminal stage. Engine state
+ * wins; legacy `member.sup/cdr/r1/r2/r3` + status fields are the fallback.
+ */
+export function resolveCurrentAssignee(member, dosState) {
+  // ── Engine path ────────────────────────────────────────────────────
   if (dosState) {
-    for (const role of HIGH_TO_LOW) {
+    for (const role of STAGES_LOW_TO_HIGH) {
       const rs = dosState[role];
-      if (rs?.assignee && rs.status && !TERMINAL_STATUSES.has(rs.status)) {
-        const staff = staffById(rs.assignee);
-        return {
-          name:     staff?.name || rs.assignee,
-          initials: staff?.initials || (rs.assignee || '').slice(0, 2),
-          role,
-          status:   rs.status,
-          terminal: false,
-        };
+      const status = rs?.status;
+      const hasReachedStage = !!(status || rs?.assignee);
+      // If this stage hasn't started AND a prior stage was active, the
+      // DOS is sitting at the previous stage — the outer loop already
+      // returned. So reaching here means we're at the next bucket
+      // that's awaiting handoff.
+      if (!hasReachedStage || !status || status === 'Assign') {
+        // Bucket waiting for assignment. If there's an assignee but no
+        // status, treat as active (just-assigned, no work logged yet).
+        if (rs?.assignee && status && status !== 'Assign') {
+          return makeActive(rs.assignee, role, status);
+        }
+        return { kind: 'unassigned', role };
       }
-    }
-    // Everything terminal — show the highest role that ever held it.
-    for (const role of HIGH_TO_LOW) {
-      const rs = dosState[role];
-      if (rs?.assignee) {
-        const staff = staffById(rs.assignee);
-        return {
-          name:     staff?.name || rs.assignee,
-          initials: staff?.initials || (rs.assignee || '').slice(0, 2),
-          role,
-          status:   rs.status,
-          terminal: true,
-        };
+      // Stage has a non-terminal status → DOS lives here right now.
+      if (!TERMINAL_STATUSES.has(status)) {
+        return makeActive(rs?.assignee, role, status);
       }
+      // Otherwise terminal → continue down the chain.
     }
+    // All five stages terminal → Billing Ready.
+    return { kind: 'billing' };
   }
-  // Legacy fallback — read the per-role name/status off the member fields.
-  const LEGACY = [
-    { role: 'r3',      name: member.r3,  status: member.r3s },
-    { role: 'r2',      name: member.r2,  status: member.r2s },
-    { role: 'r1',      name: member.r1,  status: member.r1s },
-    { role: 'coder',   name: member.cdr, status: member.cdrS },
+
+  // ── Legacy fallback (no engine state yet) ──────────────────────────
+  const legacy = [
     { role: 'support', name: member.sup, status: member.supS },
+    { role: 'coder',   name: member.cdr, status: member.cdrS },
+    { role: 'r1',      name: member.r1,  status: member.r1s },
+    { role: 'r2',      name: member.r2,  status: member.r2s },
+    { role: 'r3',      name: member.r3,  status: member.r3s },
   ];
-  // Prefer the highest non-terminal role
-  for (const r of LEGACY) {
-    if (r.name && r.status && !TERMINAL_STATUSES.has(r.status)) {
-      return {
-        name: r.name,
-        initials: nameToInitials(r.name),
-        role: r.role,
-        status: r.status,
-        terminal: false,
-      };
+  for (const r of legacy) {
+    if (!r.name && (!r.status || r.status === 'Assign')) {
+      return { kind: 'unassigned', role: r.role };
+    }
+    if (!r.status || r.status === 'Assign') {
+      return makeActiveLegacy(r.name, r.role, r.status);
+    }
+    if (!TERMINAL_STATUSES.has(r.status)) {
+      return makeActiveLegacy(r.name, r.role, r.status);
     }
   }
-  // …else the highest that has any name at all
-  for (const r of LEGACY) {
-    if (r.name) {
-      return {
-        name: r.name,
-        initials: nameToInitials(r.name),
-        role: r.role,
-        status: r.status || null,
-        terminal: true,
-      };
-    }
-  }
-  return null;
+  return { kind: 'billing' };
+}
+
+function makeActive(staffId, role, status) {
+  const staff = staffById(staffId);
+  return {
+    kind: 'active',
+    name: staff?.name || staffId || null,
+    initials: staff?.initials || (staffId || '').slice(0, 2),
+    role,
+    status,
+  };
+}
+function makeActiveLegacy(name, role, status) {
+  return {
+    kind: 'active',
+    name: name || null,
+    initials: nameToInitials(name || ''),
+    role,
+    status,
+  };
 }
 
 function nameToInitials(name) {
@@ -310,10 +454,48 @@ function nameToInitials(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-// Avatar + name + role badge. Re-uses the same Avatar treatment as RoleStatusCell.
+/**
+ * Renders the current assignee cell with three visual variants:
+ *   - 'active'     → orange provider avatar + name + role (current behaviour)
+ *   - 'unassigned' → empty grey avatar slot + "Unassigned" + role hint
+ *   - 'billing'    → green check chip + "Billing Ready"
+ */
 function AssigneeCell({ member, dosState }) {
   const a = resolveCurrentAssignee(member, dosState);
-  if (!a) return <span className={styles.muted}>—</span>;
+
+  if (!a || (a.kind === 'active' && !a.name)) {
+    return <span className={styles.muted}>—</span>;
+  }
+
+  if (a.kind === 'billing') {
+    return (
+      <div className={styles.assigneeCell}>
+        <span className={styles.billingBadge}>
+          <Icon name="solar:check-circle-bold" size={16} color="var(--status-success)" />
+        </span>
+        <div className={styles.assigneeText}>
+          <span className={styles.assigneeName}>Billing Ready</span>
+          <span className={styles.assigneeRole}>All reviews complete</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (a.kind === 'unassigned') {
+    return (
+      <div className={styles.assigneeCell}>
+        <span className={styles.unassignedSlot} aria-hidden="true">
+          <Icon name="solar:user-rounded-linear" size={18} color="var(--neutral-200)" />
+        </span>
+        <div className={styles.assigneeText}>
+          <span className={styles.assigneeNameMuted}>Unassigned</span>
+          <span className={styles.assigneeRole}>Awaiting {ROLE_LABEL[a.role] || a.role}</span>
+        </div>
+      </div>
+    );
+  }
+
+  // active
   return (
     <div className={styles.assigneeCell}>
       <Avatar variant="provider" initials={a.initials} />
@@ -365,9 +547,14 @@ const CELL_RENDERERS = {
       <CreateDateCell date={member.date} due={member.due} dueCol={member.dueCol} />
     </td>
   ),
-  evidence: ({ member, openChart }) => (
+  evidence: ({ member, openChart, openUpload }) => (
     <td key="evidence" data-col="evidence" className={styles.colEvidence} onClick={(e) => e.stopPropagation()}>
-      <HccEvidenceCell count={member.ch} docStatus={member.docStatus || []} onClick={openChart} />
+      <HccEvidenceCell
+        count={member.ch}
+        docStatus={member.docStatus || []}
+        onClick={openChart}
+        onUpload={openUpload}
+      />
     </td>
   ),
   // Current assignee — whoever owns the DOS right now per the engine.
@@ -380,27 +567,32 @@ const CELL_RENDERERS = {
   // Role columns — bottom-line date = member.date + per-role offset.
   sup: ({ member }) => (
     <td key="sup" data-col="sup" className={styles.colRole}>
-      <RoleStatusCell name={member.sup} status={member.supS} date={addDaysToDate(member.date, ROLE_OFFSET.sup)} />
+      <RoleStatusCell name={member.sup} status={member.supS} date={addDaysToDate(member.date, ROLE_OFFSET.sup)}
+        role="support" memberId={member.id} dosDate={member.date} />
     </td>
   ),
   cdr: ({ member }) => (
     <td key="cdr" data-col="cdr" className={styles.colRole}>
-      <RoleStatusCell name={member.cdr} status={member.cdrS} date={addDaysToDate(member.date, ROLE_OFFSET.cdr)} />
+      <RoleStatusCell name={member.cdr} status={member.cdrS} date={addDaysToDate(member.date, ROLE_OFFSET.cdr)}
+        role="coder" memberId={member.id} dosDate={member.date} />
     </td>
   ),
   r1: ({ member }) => (
     <td key="r1" data-col="r1" className={styles.colRole}>
-      <RoleStatusCell name={member.r1} status={member.r1s} date={addDaysToDate(member.date, ROLE_OFFSET.r1)} />
+      <RoleStatusCell name={member.r1} status={member.r1s} date={addDaysToDate(member.date, ROLE_OFFSET.r1)}
+        role="r1" memberId={member.id} dosDate={member.date} />
     </td>
   ),
   r2: ({ member }) => (
     <td key="r2" data-col="r2" className={styles.colRole}>
-      <RoleStatusCell name={member.r2} status={member.r2s} date={addDaysToDate(member.date, ROLE_OFFSET.r2)} />
+      <RoleStatusCell name={member.r2} status={member.r2s} date={addDaysToDate(member.date, ROLE_OFFSET.r2)}
+        role="r2" memberId={member.id} dosDate={member.date} />
     </td>
   ),
   r3: ({ member }) => (
     <td key="r3" data-col="r3" className={styles.colRole}>
-      <RoleStatusCell name={member.r3} status={member.r3s} date={addDaysToDate(member.date, ROLE_OFFSET.r3)} />
+      <RoleStatusCell name={member.r3} status={member.r3s} date={addDaysToDate(member.date, ROLE_OFFSET.r3)}
+        role="r3" memberId={member.id} dosDate={member.date} />
     </td>
   ),
   rp: ({ member }) => (
@@ -573,7 +765,10 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
       {(columns || []).map((col) => {
         const render = CELL_RENDERERS[col.k];
         if (!render || isHidden(col.k)) return null;
-        return render({ member, dosState, openVisits, openChart, openDiagPanel, openClaimPreview });
+        return render({
+          member, dosState, openVisits, openChart, openDiagPanel, openClaimPreview,
+          openUpload: () => openHccUploadDrawer(member),
+        });
       })}
 
       {/* ── Sticky right: actions ── */}
@@ -581,14 +776,14 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
         <div className={styles.actionsRow}>
           <ActionButton
             icon="solar:eye-linear"
-            size="S"
+            size="L"
             tooltip="View Diagnosis Gaps"
             onClick={(e) => { e.stopPropagation(); openDiagPanel(member.id); }}
           />
           <span className={styles.actionsDivider} />
           <ActionButton
-            icon="solar:menu-dots-bold"
-            size="S"
+            icon="solar:menu-dots-linear"
+            size="L"
             tooltip="More actions"
             onClick={openActions}
           />

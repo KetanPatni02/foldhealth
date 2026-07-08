@@ -65,7 +65,7 @@ export function Select({
         aria-expanded={open}
         onClick={() => !disabled && setOpen(o => !o)}
       >
-        <span className={styles.triggerLabel}>
+        <span className={styles.triggerLabel} style={selected?.style}>
           {selected?.label ?? placeholder}
         </span>
         <Icon
@@ -94,6 +94,7 @@ export function Select({
                   isActive ? styles.itemActive : '',
                   opt.disabled ? styles.itemDisabled : '',
                 ].filter(Boolean).join(' ')}
+                style={opt.style}
                 onClick={() => {
                   if (opt.disabled) return;
                   onChange(opt.value);

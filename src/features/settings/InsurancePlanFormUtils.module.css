@@ -1,0 +1,310 @@
+/* ── InsurancePlanFormUtils ──
+   Shared form utility components: FieldLabel, PrefixInput, CollapsibleSection,
+   DateRangePicker.
+*/
+
+/* ── FieldLabel info-icon button ── */
+.infoBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+/* ── Additional Note editor (mirrors task-details Description field) ── */
+.noteEditor {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  width: 100%;
+}
+
+.noteEditable {
+  min-height: 60px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--neutral-400);
+  outline: none;
+  line-height: 1.5;
+  resize: vertical;
+  overflow-y: auto;
+  font-family: 'Inter', sans-serif;
+}
+
+.noteEditable:empty:before {
+  content: attr(data-placeholder);
+  color: var(--neutral-200);
+  pointer-events: none;
+}
+
+.noteToolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-top: 0.5px solid var(--neutral-100);
+  background: var(--neutral-50);
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+}
+
+.noteCount {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-200);
+  font-family: 'Inter', sans-serif;
+}
+
+/* ── DateRangePicker ── */
+.rangeWrap {
+  position: relative;
+  width: 100%;
+}
+
+.rangeTrigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 4px;
+  background: var(--neutral-0);
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.rangeTrigger:hover { border-color: var(--neutral-200); }
+
+.rangeTrigger:focus-visible {
+  outline: none;
+  border-color: var(--primary-300);
+  box-shadow: 0 0 0 2px rgba(140, 90, 226, 0.12);
+}
+
+.rangeValue,
+.rangePlaceholder {
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  border-bottom: 1px solid transparent;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rangeValue { color: var(--neutral-400); }
+.rangePlaceholder { color: var(--neutral-200); }
+
+/* Active date segment — Primary 300 1px underline flush with the field's bottom edge */
+.rangeSegActive {
+  border-bottom-color: var(--primary-300);
+}
+
+.calPopover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 100;
+  width: 280px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.calHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.calNav {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.calNav:hover { background: var(--neutral-50); }
+
+.calTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  font-family: 'Inter', sans-serif;
+}
+
+.calGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.calDayLabel {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-200);
+  font-family: 'Inter', sans-serif;
+}
+
+.calDay {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-400);
+  font-family: 'Inter', sans-serif;
+  transition: background 0.1s;
+}
+
+.calDay:hover { background: var(--primary-50); }
+
+.calDayInRange {
+  background: var(--primary-50);
+  border-radius: 0;
+}
+
+.calDayEndpoint {
+  background: var(--primary-300);
+  color: var(--neutral-0);
+}
+
+.calDayEndpoint:hover { background: var(--primary-400); }
+
+/* ── FieldLabel ── */
+.label {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-200);
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.2;
+}
+
+.required {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--status-error, #D72825);
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* ── PrefixInput ── */
+.prefixInputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.prefixSymbol {
+  position: absolute;
+  left: 9px;
+  font-size: 14px;
+  font-weight: 400;
+  font-family: 'Inter', sans-serif;
+  color: var(--neutral-400);
+  pointer-events: none;
+  z-index: 1;
+  line-height: 1;
+}
+
+.prefixInputField {
+  padding-left: 20px !important;
+  width: 100%;
+}
+
+/* ── CollapsibleSection ── */
+.sectionCard {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--neutral-0);
+  flex-shrink: 0;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  cursor: pointer;
+  background: var(--neutral-0);
+  user-select: none;
+}
+
+.sectionHeader.collapsed {
+  border-bottom: none;
+}
+
+/* sectionIconAvatar removed — icon renders directly in header (item 20) */
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  font-family: 'Inter', sans-serif;
+  flex: 1;
+}
+
+.sectionBody {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Collapse animation */
+.collapseOuter {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.2s ease;
+  overflow: hidden;
+}
+
+.collapseOuter.collapsed {
+  grid-template-rows: 0fr;
+}
+
+.collapseInner {
+  overflow: hidden;
+  min-height: 0;
+}
+

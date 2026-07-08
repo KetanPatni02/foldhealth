@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { HccWorklistRow } from './HccWorklistRow';
+import { HccWorklistRow, resolveCurrentAssignee } from './HccWorklistRow';
 import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Icon } from '../../components/Icon/Icon';
@@ -11,13 +11,15 @@ import { InlineEditable } from '../../components/InlineEditable/InlineEditable';
 import { SortPopover } from '../../components/Popover/SortPopover';
 import { DueDateChip, getDueCategory } from './DueDateChip';
 import { FilterChipBar } from './FilterChipBar';
-import { SavedFiltersRow } from './SavedFiltersRow';
 import { FilterNameDialog } from './FilterNameDialog';
 import { ColumnConfigPopover } from './ColumnConfigPopover';
 import { HCC_COLUMNS, HCC_COL_MAP, MEMBER_SORT_ITEMS, orderColumns } from './columns';
 import { memberMatchesFilters } from './filters';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { BulkBar } from '../../components/BulkBar/BulkBar';
+import { BulkChangeAssigneesDialog } from './BulkChangeAssigneesDialog';
+import { HccUploadProgressRibbon } from './upload/HccUploadProgressRibbon';
+import { HccHistoryDrawer } from './HccHistoryDrawer';
 import { StatusLegend } from './StatusLegend';
 import styles from './HccWorklistTable.module.css';
 import rowStyles from './HccWorklistRow.module.css';
@@ -104,6 +106,8 @@ export function HccWorklistTable() {
   const hccMembers = useAppStore(s => s.hccMembers);
   const hccMembersLoading = useAppStore(s => s.hccMembersLoading);
   const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
+  const fetchHccDocuments = useAppStore(s => s.fetchHccDocuments);
+  const openIcdCreation = useAppStore(s => s.openIcdCreation);
   const selectedHccIds = useAppStore(s => s.selectedHccIds);
   const selectAllHcc = useAppStore(s => s.selectAllHcc);
   const clearHccSelected = useAppStore(s => s.clearHccSelected);
@@ -119,6 +123,8 @@ export function HccWorklistTable() {
   const hccFilters = useAppStore(s => s.hccFilters);
   const saveHccFilter = useAppStore(s => s.saveHccFilter);
   const renameHccSavedFilter = useAppStore(s => s.renameHccSavedFilter);
+  const startHccUpload = useAppStore(s => s.startHccUpload);
+  const openHccHistoryDrawer = useAppStore(s => s.openHccHistoryDrawer);
   const hccHiddenCols = useAppStore(s => s.hccHiddenCols);
   const toggleHccColumn = useAppStore(s => s.toggleHccColumn);
   const hccColumnOrder = useAppStore(s => s.hccColumnOrder);
@@ -145,10 +151,12 @@ export function HccWorklistTable() {
   const [sortPop, setSortPop] = useState(null); // { items, rect }
   const [memberSortPop, setMemberSortPop] = useState(null); // rect
   const [colCfgRect, setColCfgRect] = useState(null);
+  const [bulkAssigneeOpen, setBulkAssigneeOpen] = useState(false);
   const memberThRef = useRef(null);
   const colCfgBtnRef = useRef(null);
 
   useEffect(() => { fetchHccMembers(); }, [fetchHccMembers]);
+  useEffect(() => { fetchHccDocuments?.(); }, [fetchHccDocuments]);
 
   // Whenever the active filter/sort/search/due-date changes, jump back to
   // page 1 so the user doesn't end up on an empty page after the result set
@@ -163,39 +171,16 @@ export function HccWorklistTable() {
   const enriched = useMemo(() => hccMembers.map(m => {
     const parts = (m.name || '').trim().split(/\s+/);
     const ageNum = parseInt(String(m.age || '').match(/(\d+)/)?.[1] || '0', 10);
-    // assigneeName drives sort on the Assignee column. Mirrors the resolver
-    // in HccWorklistRow: prefer the engine's per-DOS state, else fall back
-    // to the highest non-terminal role on the member.
+    // assigneeName drives sort on the Assignee column. Reuse the same
+    // sequential resolver the cell uses so sort + display agree.
     const key = m.id && m.dos ? `${m.id}::${m.dos}` : null;
     const ds = key ? hccDosAssignments[key] : null;
-    const HIGH_TO_LOW = ['r3', 'r2', 'r1', 'coder', 'support'];
-    const TERMINAL = new Set(['Completed', 'Reject', 'Rejected', 'Billing Ready']);
-    let assigneeName = '';
-    if (ds) {
-      for (const role of HIGH_TO_LOW) {
-        const rs = ds[role];
-        if (rs?.assignee && rs.status && !TERMINAL.has(rs.status)) {
-          assigneeName = rs.assignee; break;
-        }
-      }
-      if (!assigneeName) {
-        for (const role of HIGH_TO_LOW) {
-          if (ds[role]?.assignee) { assigneeName = ds[role].assignee; break; }
-        }
-      }
-    }
-    if (!assigneeName) {
-      const LEGACY = [m.r3, m.r2, m.r1, m.cdr, m.sup];
-      const LEGACY_S = [m.r3s, m.r2s, m.r1s, m.cdrS, m.supS];
-      for (let i = 0; i < LEGACY.length; i++) {
-        if (LEGACY[i] && LEGACY_S[i] && !TERMINAL.has(LEGACY_S[i])) {
-          assigneeName = LEGACY[i]; break;
-        }
-      }
-      if (!assigneeName) {
-        assigneeName = LEGACY.find(Boolean) || '';
-      }
-    }
+    const resolved = resolveCurrentAssignee(m, ds);
+    const assigneeName =
+      resolved?.kind === 'active'     ? (resolved.name || '')        :
+      resolved?.kind === 'unassigned' ? `~Awaiting ${resolved.role}` :  // ~ pushes to end of A-Z sort
+      resolved?.kind === 'billing'    ? '~Billing Ready'             :
+      '';
     return {
       ...m,
       name_first: parts[0] || '',
@@ -238,6 +223,7 @@ export function HccWorklistTable() {
 
   return (
     <div className={styles.wrap}>
+      <HccUploadProgressRibbon />
       <div className={styles.tabBar}>
         <div className={styles.tabLeft}>
           <InlineEditable
@@ -272,14 +258,15 @@ export function HccWorklistTable() {
                 </button>
               </div>
             ) : (
-              <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
+              <SearchIconButton title="Search" tooltipBelow onClick={() => setSearchOpen(true)} />
             )}
           </div>
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="custom:filter"
+            icon="solar:filter-linear"
             size="L"
             tooltip={filterOpen ? 'Hide filters' : 'Show filters'}
+            tooltipBelow
             className={filterOpen ? styles.iconActive : ''}
             onClick={() => setFilterOpen(v => !v)}
           />
@@ -288,20 +275,31 @@ export function HccWorklistTable() {
             icon="solar:history-linear"
             size="L"
             tooltip="History"
-            onClick={() => showToast('History — coming soon')}
+            tooltipBelow
+            onClick={openHccHistoryDrawer}
           />
           <span className={styles.iconDivider} />
           <ActionButton
             icon="solar:upload-minimalistic-linear"
             size="L"
+            tooltip="Upload Document"
+            tooltipBelow
+            onClick={() => openIcdCreation?.()}
+          />
+          <span className={styles.iconDivider} />
+          <ActionButton
+            icon="solar:file-download-linear"
+            size="L"
             tooltip="Export"
+            tooltipBelow
             onClick={() => showToast('Export — coming soon')}
           />
         </div>
       </div>
 
       {filterOpen && <FilterChipBar onSaveFilter={() => setSaveDialogOpen(true)} />}
-      <SavedFiltersRow onRename={(sf) => setRenameTarget(sf)} />
+      {/* Saved filters live exclusively in the left SubNav (under HCC).
+          Inline chip strip removed per UX; rename/delete handled in-sidebar. */}
 
       <FilterNameDialog
         open={saveDialogOpen}
@@ -410,7 +408,18 @@ export function HccWorklistTable() {
 
       <Pagination totalItems={filtered.length} />
 
-      <BulkBar selectedIds={selectedHccIds} onClear={clearHccSelected} />
+      <BulkBar
+        selectedIds={selectedHccIds}
+        onClear={clearHccSelected}
+        onChangeAssignee={() => setBulkAssigneeOpen(true)}
+      />
+      <BulkChangeAssigneesDialog
+        open={bulkAssigneeOpen}
+        selectedIds={selectedHccIds}
+        onClose={() => setBulkAssigneeOpen(false)}
+        onApplied={() => { setBulkAssigneeOpen(false); clearHccSelected(); }}
+      />
+      <HccHistoryDrawer />
 
       {sortPop && (
         <SortPopover

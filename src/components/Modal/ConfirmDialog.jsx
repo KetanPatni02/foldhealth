@@ -48,7 +48,7 @@ export function ConfirmDialog({
         </div>
 
         {/* Text */}
-        <AlertDialogHeader className="items-center text-center gap-1">
+        <AlertDialogHeader className="items-center text-center sm:text-center gap-1">
           <AlertDialogTitle className="text-base font-medium text-[var(--neutral-400)] leading-tight">
             {title}
           </AlertDialogTitle>

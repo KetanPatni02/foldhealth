@@ -25,7 +25,12 @@ const STATUS_CLASS = { Open: styles.gapStatusOpen, Closed: styles.gapStatusClose
 // Outreach cell — mirrors the TOC worklist's outreach pattern
 // (src/features/toc-worklist/WorklistRow.jsx OutreachCell).
 function OutreachCell({ member }) {
-  const dots = member.outreachDots || ['pending', 'pending', 'pending'];
+  // `||` alone isn't enough: a non-array truthy value (e.g. a Supabase JSONB
+  // object that wasn't normalised to an array) would slip through and crash
+  // `.map` below. Use Array.isArray so only real arrays get through.
+  const dots = Array.isArray(member.outreachDots)
+    ? member.outreachDots
+    : ['pending', 'pending', 'pending'];
   const hasSuccess = dots.includes('success');
   const hasFailed = dots.includes('failed') && !hasSuccess;
 
@@ -69,9 +74,13 @@ function OutreachCell({ member }) {
 export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
   const showToast = useAppStore(s => s.showToast);
   const openQuickView = useAppStore(s => s.openQuickView);
-  const primaryGap = member.gaps[0];
+  const gaps = Array.isArray(member.gaps) ? member.gaps : [];
+  // No usable gaps → skip the row entirely. Without this, `primaryGap` below
+  // would be undefined and the row's click handlers would throw on access.
+  if (gaps.length === 0) return null;
+  const primaryGap = gaps[0];
   // Single-gap members center their lone item; multi-gap stays top-aligned.
-  const tdGap = member.gaps.length === 1
+  const tdGap = gaps.length === 1
     ? `${styles.tdGap} ${styles.tdGapCenter}`
     : styles.tdGap;
 
@@ -119,7 +128,7 @@ export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
       {/* Total Gaps — one badge per gap, aligned with sibling gap cells */}
       <td className={tdGap} onClick={e => e.stopPropagation()}>
         <div className={styles.gapItems}>
-          {member.gaps.map(g => (
+          {gaps.map(g => (
             <div key={g.code} className={styles.gapItem}>
               <span onClick={() => onOpenGap?.(member, g.code)} style={{ cursor: 'pointer' }}>
                 <Badge variant="compliance-na" label={g.code} />
@@ -132,7 +141,7 @@ export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
       {/* Gap Status — one per gap */}
       <td className={tdGap}>
         <div className={styles.gapItems}>
-          {member.gaps.map(g => (
+          {gaps.map(g => (
             <div key={g.code} className={styles.gapItem}>
               <span className={STATUS_CLASS[g.status] || ''}>{g.status}</span>
             </div>
@@ -143,13 +152,13 @@ export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
       {/* Assignee — per gap, falls back to member-level assignee */}
       <td className={tdGap} onClick={e => e.stopPropagation()}>
         <div className={styles.gapItems}>
-          {member.gaps.map(g => {
+          {gaps.map(g => {
             const assignee = g.assignee ?? member.assignee;
             return (
               <div key={g.code} className={styles.gapItem}>
                 {assignee ? (
                   <div className={styles.assigneeName}>
-                    <Icon name="solar:user-linear" size={14} color="var(--neutral-300)" />
+                    <Icon name="solar:user-linear" size={14} color="var(--neutral-400)" />
                     <span>{assignee}</span>
                   </div>
                 ) : (
@@ -157,7 +166,7 @@ export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
                     className={styles.assigneeBtn}
                     onClick={() => showToast('Assign care manager — coming soon')}
                   >
-                    <Icon name="solar:user-plus-rounded-linear" size={13} color="var(--neutral-300)" />
+                    <Icon name="solar:user-linear" size={14} color="var(--neutral-200)" />
                     Assign
                   </button>
                 )}
@@ -170,7 +179,7 @@ export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
       {/* Start Date — per gap, right border divides per-gap from per-member columns */}
       <td className={`${tdGap} ${styles.tdGapDivide}`}>
         <div className={styles.gapItems}>
-          {member.gaps.map(g => (
+          {gaps.map(g => (
             <div key={g.code} className={styles.gapItem}>
               <span className={styles.startDateValue}>{g.startDate ?? member.startDate}</span>
             </div>

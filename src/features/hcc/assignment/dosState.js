@@ -180,12 +180,15 @@ export function inferStaffIdFromName(name) {
 // Hydrate a per-DOS state from the legacy member fields. Used once at boot
 // per (member, dos) so the engine has somewhere to read from before the user
 // drives any transitions. Returns a fully-formed DosState.
-export function hydrateFromMember(member, dosDate, idx = 0) {
-  // Only the first DOS gets the legacy assignees — additional DOSs for the
-  // same patient inherit those values through the Astrana pin, so we leave
-  // them blank and let the engine fill them.
+//
+// We now seed every DOS identically from the legacy fields (previously
+// only DOS index 0 was seeded, which left later DOSs in a "Support
+// Awaiting" state that diverged from the rest of the worklist). The
+// Astrana invariant still holds — every DOS of a patient is pinned to
+// the same staff member at every role — and the engine can override
+// per-DOS state via real lifecycle transitions later.
+export function hydrateFromMember(member, dosDate, _idx = 0) {
   const initial = blankDosState(member.id, dosDate);
-  if (idx !== 0) return initial;
 
   const seed = [
     { role: 'support', name: member.sup, status: member.supS },

@@ -14,7 +14,7 @@ export const HCC_COLUMNS = [
   { k: 'dos',     lb: 'DOS',                 sortable: true,  sortField: 'dos' },
   { k: 'open',    lb: 'Open ICDs',           sortable: true,  sortField: 'open' },
   { k: 'date',    lb: 'Create Date',         sortable: true,  sortField: 'date' },
-  { k: 'evidence',lb: 'Chart Available',     sortable: true,  sortField: 'ch' },
+  { k: 'evidence',lb: 'Document Available',  sortable: true,  sortField: 'ch' },
   // Current assignee — derived from the assignment engine. Shows whoever is
   // actively working the DOS right now (e.g. if the DOS is in R2's bucket,
   // shows the R2 reviewer). Sorted by the assignee's display name.

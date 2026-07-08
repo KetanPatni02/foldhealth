@@ -8,6 +8,7 @@ import { CreateNewPopover } from '../CreateNewPopover/CreateNewPopover';
 import { PreferencesDrawer } from '../PreferencesDrawer/PreferencesDrawer';
 import { ScheduleDrawer } from '../ScheduleDrawer/ScheduleDrawer';
 import { ThemePicker } from '../ThemePicker/ThemePicker';
+import { NotificationsPopover } from './NotificationsPopover';
 import { useAppStore } from '../../store/useAppStore';
 import { supabase } from '../../lib/supabase';
 import styles from './TopBar.module.css';
@@ -155,6 +156,17 @@ const menuItemStyle = {
   fontSize: 14, fontWeight: 500, color: 'var(--neutral-400)', transition: 'background .1s',
 };
 
+// Map settingsNavItem → breadcrumb label so the URL/section state drives what
+// the user sees ("Settings / <thing>"). Keys mirror SettingsSubNav.
+const SETTINGS_BREADCRUMB = {
+  agents: 'Automation',
+  messages: 'Messages',
+  'embedded-components': 'Embed',
+  content: 'Content',
+  account: 'Account',
+  billing: 'Billing',
+};
+
 export function TopBar() {
   const activePage = useAppStore(s => s.activePage);
   const showCreateNew = useAppStore(s => s.showCreateNew);
@@ -164,6 +176,10 @@ export function TopBar() {
   const [showProfile, setShowProfile] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const bellRef = useRef(null);
+  const notifications = useAppStore(s => s.notifications) || [];
+  const unreadCount = notifications.filter(n => !n.read).length;
   const [user, setUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
@@ -185,6 +201,7 @@ export function TopBar() {
   const isCalls = activePage === 'calls';
   const isTasks = activePage === 'tasks';
   const isCampaign = activePage === 'campaign';
+  const settingsNavItem = useAppStore(s => s.settingsNavItem);
   const selectedPatientId = useAppStore(s => s.selectedPatientId);
   const navigateBackToWorklist = useAppStore(s => s.navigateBackToWorklist);
   const navigateToPatient = useAppStore(s => s.navigateToPatient);
@@ -253,7 +270,13 @@ export function TopBar() {
             <>
               <a className={styles.breadcrumbLink} href="#" onClick={e => e.preventDefault()}>Settings</a>
               <span className={styles.sep}>/</span>
-              <span className={styles.breadcrumbCurrent}>Automation</span>
+              <span className={styles.breadcrumbCurrent}>{SETTINGS_BREADCRUMB[settingsNavItem] || 'Automation'}</span>
+            </>
+          ) : activeSubnavList?.startsWith('pg:') ? (
+            <>
+              <a className={styles.breadcrumbLink} href="#" onClick={e => e.preventDefault()}>Population</a>
+              <span className={styles.sep}>/</span>
+              <span className={styles.breadcrumbCurrent}>Pop groups</span>
             </>
           ) : (
             <>
@@ -311,11 +334,21 @@ export function TopBar() {
       </div>
 
       <div className={styles.right}>
-        <ActionButton
-          icon="solar:bell-linear"
-          size="L"
-          tooltip="Notifications"
-        />
+        <div ref={bellRef} className={styles.bellWrap}>
+          <ActionButton
+            icon="solar:bell-linear"
+            size="L"
+            tooltip="Notifications"
+            onClick={() => setShowNotifications(v => !v)}
+          />
+          {unreadCount > 0 && <span className={styles.bellBadge} aria-label={`${unreadCount} unread`} />}
+          {showNotifications && (
+            <NotificationsPopover
+              anchorRef={bellRef}
+              onClose={() => setShowNotifications(false)}
+            />
+          )}
+        </div>
         <div className={styles.createNewWrap}>
           <button
             ref={btnRef}

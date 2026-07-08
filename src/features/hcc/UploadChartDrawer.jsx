@@ -28,6 +28,12 @@ export function UploadChartDrawer() {
   const member = useAppStore(s => s.hccUploadMember);
   const close = useAppStore(s => s.closeHccUploadDrawer);
   const showToast = useAppStore(s => s.showToast);
+  // Log the upload to the Diagnosis Gaps Activity Log when the drawer was
+  // launched from inside the DiagPanel. addActivityEntry resolves member +
+  // current DOS from store state automatically; ICD-scope is picked up from
+  // diagActivityIcd so the entry shows in both the ICD and DOS-level logs.
+  const addActivityEntry = useAppStore(s => s.addActivityEntry);
+  const activityIcd = useAppStore(s => s.diagActivityIcd);
 
   const fileInputRef = useRef(null);
   const [file, setFile] = useState(null);
@@ -40,6 +46,15 @@ export function UploadChartDrawer() {
   const ok = !!(file && caption.trim() && docType);
 
   const handleUpload = () => {
+    addActivityEntry({
+      t: 'upload', by: 'You', role: 'Coder',
+      icds: activityIcd ? [activityIcd] : undefined,
+      headline: activityIcd
+        ? `Document Uploaded for ${activityIcd}`
+        : 'Document Uploaded',
+      file: file.name,
+      fileType: docType,
+    });
     showToast(`Uploaded ${file.name} (${docType}) — wiring Supabase storage in a follow-up.`);
     setFile(null);
     setCaption('');
@@ -56,7 +71,7 @@ export function UploadChartDrawer() {
 
   return (
     <Drawer
-      title={<span className={styles.title}>Upload Chart</span>}
+      title={<span className={styles.title}>Upload Document</span>}
       onClose={handleClose}
       className={styles.drawer}
       bodyClassName={styles.body}

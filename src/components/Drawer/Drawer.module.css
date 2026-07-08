@@ -20,9 +20,8 @@
   z-index: 401;
   display: flex;
   flex-direction: column;
-  animation: slideIn .25s ease;
+  animation: slideIn 0.25s ease;
   box-shadow: var(--shadow-drawer);
-  border: 0.5px solid var(--neutral-150);
   border-radius: 16px;
   overflow: hidden;
 }
@@ -31,12 +30,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 24px 16px;
+  height: 48px;
+  padding: 0 12px 0 16px;
+  gap: 8px;
+  border-bottom: 0.5px solid var(--neutral-150);
   flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .headerTitle {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 500;
   color: var(--neutral-400);
   margin: 0;
@@ -66,7 +69,9 @@
   align-items: center;
   justify-content: center;
   line-height: 1;
-  transition: background .15s, color .15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 /* Vertical divider between primary action and close — only renders when
@@ -91,6 +96,7 @@
 .body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 0 24px 24px;
 }
 
@@ -104,6 +110,10 @@
 }
 
 @keyframes slideIn {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }

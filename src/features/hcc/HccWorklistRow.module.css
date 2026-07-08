@@ -318,9 +318,78 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px;
+  padding: 4px 6px;
   font-size: 14px;
   color: var(--neutral-200);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  border-radius: 4px;
+  transition: background 0.12s, color 0.12s;
+}
+.roleUnassigned:hover {
+  background: var(--primary-25);
+  color: var(--primary-300);
+}
+
+/* ── Assign popover — portal-rendered list of candidate users. ── */
+.roleAssignMenu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 260px;
+  max-width: 340px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.02);
+  padding: 6px;
+  font-family: 'Inter', sans-serif;
+}
+.roleAssignTitle {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  padding: 6px 8px 4px;
+  border-bottom: 0.5px solid var(--neutral-100);
+  margin-bottom: 2px;
+}
+.roleAssignItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+.roleAssignItem:hover { background: var(--neutral-50); }
+.roleAssignName {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.roleAssignRole {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+.roleAssignEmpty {
+  padding: 10px;
+  font-size: 12px;
+  color: var(--neutral-300);
+  text-align: center;
 }
 
 /* ── RAF Impact badge — green with up arrow (or red with down) ── */
@@ -405,6 +474,43 @@
   font-weight: 400;
   color: var(--neutral-300);
   white-space: nowrap;
+}
+
+/* Variant 2 — current bucket has no assignee yet ("Awaiting Reviewer 2").
+   Hollow circle in the avatar slot, muted name text. Sized to match the
+   provider Avatar (32×32) so unassigned and assigned rows align visually. */
+.unassignedSlot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--neutral-50);
+  border: 0.5px dashed var(--neutral-200);
+  flex-shrink: 0;
+}
+.assigneeNameMuted {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Variant 3 — every stage completed, DOS is now in Billing. Green check
+   chip in the avatar slot. */
+.billingBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--status-success-light);
+  border: 0.5px solid rgba(0, 155, 83, 0.3);
+  flex-shrink: 0;
 }
 .colProvider    { min-width: 140px; }
 .colPos         { min-width: 100px; }

@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import { Analytics } from '@vercel/analytics/react';
-import { SpeedInsights } from '@vercel/speed-insights/react';
+import { useEffect, useRef, useState, lazy, Suspense } from 'react';
+const Analytics = lazy(() => import('@vercel/analytics/react').then(m => ({ default: m.Analytics })).catch(() => ({ default: () => null })));
+const SpeedInsights = lazy(() => import('@vercel/speed-insights/react').then(m => ({ default: m.SpeedInsights })).catch(() => ({ default: () => null })));
 import { AppLayout } from './layouts/AppLayout';
 import { LoginPage } from './features/auth/LoginPage';
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage';
@@ -8,6 +8,11 @@ import { useAppStore } from './store/useAppStore';
 import { supabase } from './lib/supabase';
 import { initRouter } from './lib/router';
 import { track } from './lib/tracking';
+
+// Public, shareable form fill-view (#/f/{id}) — rendered without auth so a
+// link can be opened by anyone. RLS on forms/form_responses ('Allow all')
+// permits anonymous read + submit.
+const PublicFormView = lazy(() => import('./features/forms/view/FormView').then(m => ({ default: m.FormView })));
 
 function App() {
   const routerInit = useRef(false);
@@ -21,6 +26,13 @@ function App() {
     const h = window.location.hash || '';
     return /type=recovery/.test(h) || h.startsWith('#/reset-password');
   });
+  // Track the hash so the public-form route reacts to navigation.
+  const [hash, setHash] = useState(() => window.location.hash);
+  useEffect(() => {
+    const onHash = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
 
   // Listen for auth state changes
   useEffect(() => {
@@ -97,6 +109,19 @@ function App() {
     );
   }
 
+  // Public shareable form link — render the fill-view without auth so anyone
+  // with the link can fill + submit. Authenticated users fall through to the
+  // in-app takeover (AppLayout) which adds the close-to-chat affordance.
+  const publicFormMatch = hash.match(/^#\/f\/([^/?#]+)/);
+  if (publicFormMatch && !isAuthenticated) {
+    const fid = isNaN(Number(publicFormMatch[1])) ? publicFormMatch[1] : Number(publicFormMatch[1]);
+    return (
+      <Suspense fallback={<div style={{ height: '100vh' }} />}>
+        <PublicFormView id={fid} isPublic />
+      </Suspense>
+    );
+  }
+
   // Not authenticated — show login
   if (!isAuthenticated) {
     if (window.location.hash !== '#/login') window.location.hash = '#/login';
@@ -110,11 +135,11 @@ function App() {
 
   // Authenticated — show app
   return (
-    <>
+    <Suspense fallback={null}>
       <AppLayout />
       <Analytics />
       <SpeedInsights />
-    </>
+    </Suspense>
   );
 }
 

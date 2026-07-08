@@ -1,18 +1,27 @@
+import { useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
-import { PATIENT_SYNOPSIS, RECENT_NOTES, ACTIVE_CARE_PROGRAMS, UPCOMING_APPOINTMENTS } from '../data/overviewMock';
+import { HealthMapWidget } from './HealthMapWidget';
+import { ProgressRing } from '../../hcc/DiagPanel/ReviewProgressPopover';
+import { AppointmentsDrawer } from './AppointmentsDrawer';
+import { PATIENT_SYNOPSIS, RECENT_NOTES, ACTIVE_CARE_PROGRAMS, UPCOMING_APPOINTMENTS, CARE_PLAN_RECOMMENDATIONS } from '../data/overviewMock';
 import styles from './OverviewTab.module.css';
 
-function SectionHeader({ title, onAdd, viewAll }) {
+function SectionHeader({ title, onAdd, viewAll, viewByDropdown, onViewAll }) {
   return (
     <div className={styles.sectionHeader}>
       <span className={styles.sectionTitle}>{title}</span>
       <div className={styles.sectionActions}>
+        {viewByDropdown && (
+          <button className={styles.viewAllLink} style={{ color: 'var(--neutral-300)' }}>
+            View By: Upcoming <Icon name="solar:alt-arrow-down-linear" size={14} color="var(--neutral-300)" />
+          </button>
+        )}
         {onAdd && <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add" onClick={onAdd} />}
         {viewAll && (
           <>
             <span className={styles.actionDivider} />
-            <button className={styles.viewAllLink}>View All <Icon name="solar:alt-arrow-right-linear" size={14} color="var(--primary-300)" /></button>
+            <button className={styles.viewAllLink} onClick={onViewAll}>View All <Icon name="solar:alt-arrow-right-linear" size={14} color="var(--primary-300)" /></button>
           </>
         )}
       </div>
@@ -54,10 +63,7 @@ function PatientSynopsis() {
           </div>
         </div>
         <div className={styles.synopsisRight}>
-          <div className={styles.healthMapPlaceholder}>
-            <Icon name="solar:graph-linear" size={32} color="var(--neutral-150)" />
-            <span>Health Map</span>
-          </div>
+          <HealthMapWidget compact />
         </div>
       </div>
     </div>
@@ -81,7 +87,7 @@ function RecentNotesTable() {
             </tr>
           </thead>
           <tbody>
-            {RECENT_NOTES.map(note => (
+            {RECENT_NOTES.slice(0, 3).map(note => (
               <tr key={note.id}>
                 <td><input type="checkbox" className={styles.checkbox} /></td>
                 <td>
@@ -115,6 +121,7 @@ function ActiveCareProgramsTable() {
         <table className={styles.table}>
           <thead>
             <tr>
+              <th></th>
               <th>Program Name</th>
               <th>Status</th>
               <th>Start Date</th>
@@ -125,15 +132,24 @@ function ActiveCareProgramsTable() {
             </tr>
           </thead>
           <tbody>
-            {ACTIVE_CARE_PROGRAMS.map(prog => (
+            {ACTIVE_CARE_PROGRAMS.slice(0, 3).map(prog => (
               <tr key={prog.id}>
+                <td><input type="checkbox" className={styles.checkbox} /></td>
                 <td>
-                  <div className={styles.programName}>
-                    <Icon name="solar:calendar-mark-linear" size={14} color="var(--primary-300)" />
-                    {prog.name}
+                  <div className={styles.progressCell}>
+                    <ProgressRing progress={prog.progress} size={16} stroke={2} />
+                    <span>{prog.name}</span>
                   </div>
                 </td>
-                <td><span className={styles.statusLink}>{prog.status}</span></td>
+                <td>
+                  {prog.statusLink ? (
+                    <span className={styles.statusLink}>{prog.status}</span>
+                  ) : prog.statusNew ? (
+                    <span className={styles.newBadge}>{prog.status}</span>
+                  ) : (
+                    <span style={{ color: 'var(--neutral-300)' }}>{prog.status}</span>
+                  )}
+                </td>
                 <td>{prog.startDate}</td>
                 <td>{prog.endDate}</td>
                 <td>{prog.lastUpdated}</td>
@@ -148,31 +164,40 @@ function ActiveCareProgramsTable() {
   );
 }
 
-function UpcomingAppointmentsTable() {
+function UpcomingAppointmentsTable({ onViewAll }) {
   return (
     <div className={styles.card}>
-      <SectionHeader title="Upcoming Appointments" onAdd={() => {}} viewAll />
+      <SectionHeader title="Upcoming Appointments & Reminders" viewByDropdown onAdd={() => {}} viewAll onViewAll={onViewAll} />
       <div className={styles.tableWrap}>
         <table className={styles.table}>
           <thead>
             <tr>
+              <th></th>
+              <th>Title</th>
               <th>Type</th>
-              <th>Date</th>
-              <th>Time</th>
-              <th>Provider</th>
-              <th>Location</th>
-              <th>Status</th>
+              <th>Date & Time</th>
+              <th>Assignee</th>
+              <th>Created By</th>
             </tr>
           </thead>
           <tbody>
-            {UPCOMING_APPOINTMENTS.map(appt => (
+            {UPCOMING_APPOINTMENTS.slice(0, 3).map(appt => (
               <tr key={appt.id}>
+                <td><input type="checkbox" className={styles.checkbox} /></td>
+                <td>
+                  <div className={styles.noteTitle}>{appt.title}</div>
+                  <div className={styles.noteSub}>{appt.subtitle}</div>
+                </td>
                 <td>{appt.type}</td>
-                <td>{appt.date}</td>
-                <td>{appt.time}</td>
-                <td>{appt.provider}</td>
-                <td>{appt.location}</td>
-                <td><span className={styles.statusBadge}>{appt.status}</span></td>
+                <td>
+                  <div>{appt.date}</div>
+                  <div className={styles.dateText}>{appt.time}</div>
+                </td>
+                <td>{appt.assignee}</td>
+                <td>
+                  <div>{appt.createdBy}</div>
+                  <div className={styles.dateText}>{appt.createdDate}</div>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -185,23 +210,40 @@ function UpcomingAppointmentsTable() {
 function CareRecommendations() {
   return (
     <div className={styles.card}>
-      <SectionHeader title="Care Plan Recommendations" />
-      <div className={styles.placeholderContent}>
-        <Icon name="solar:clipboard-heart-linear" size={32} color="var(--neutral-150)" />
-        <span>AI-powered care plan recommendations will appear here</span>
+      <div className={styles.recHeader}>
+        <span className={styles.recTitle}>Care Plan Recommendations</span>
+        <button className={styles.costLink}>
+          View Cost Projection <Icon name="solar:alt-arrow-right-linear" size={14} color="var(--primary-300)" />
+        </button>
+      </div>
+      <div className={styles.recList}>
+        {CARE_PLAN_RECOMMENDATIONS.slice(0, 3).map(rec => (
+          <div key={rec.step} className={styles.recItem}>
+            <span className={styles.stepBadge}>Step {rec.step}</span>
+            <div className={styles.recBody}>
+              <span className={styles.recItemTitle}>{rec.title}</span>
+              <span className={styles.recConditions}>Conditions Addressed: {rec.conditions}</span>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
 export function OverviewTab() {
+  const [showAppointments, setShowAppointments] = useState(false);
+
   return (
     <div className={styles.overview}>
       <PatientSynopsis />
       <RecentNotesTable />
       <ActiveCareProgramsTable />
-      <UpcomingAppointmentsTable />
+      <UpcomingAppointmentsTable onViewAll={() => setShowAppointments(true)} />
       <CareRecommendations />
+      {showAppointments && <AppointmentsDrawer onClose={() => setShowAppointments(false)} />}
     </div>
   );
 }
+
+

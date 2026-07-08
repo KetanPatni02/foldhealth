@@ -14,8 +14,10 @@ import { QueueSummaryBar } from '../features/toc-queue/QueueSummaryBar';
 import { HccWorklistTable } from '../features/hcc/HccWorklistTable';
 import { HedisWorklistTable } from '../features/hedis-worklist/HedisWorklistTable';
 import { AllPatientsTable } from '../features/all-patients/AllPatientsTable';
+import { AwvWorklistTable } from '../features/awv-worklist/AwvWorklistTable';
+import { PopulationGroupsView } from '../features/population-groups/PopulationGroupsView';
+import { PgProcessingHost } from '../features/population-groups/PgProcessingHost';
 import { SchedulingListTable } from '../features/scheduling-list/SchedulingListTable';
-import { ClaimPreviewDrawer } from '../features/hcc/ClaimPreviewDrawer';
 import { Icon } from '../components/Icon/Icon';
 import { useAppStore } from '../store/useAppStore';
 import { supabase } from '../lib/supabase';
@@ -38,6 +40,8 @@ const SettingsLayout    = lz(() => import('../features/settings/SettingsLayout')
 const AgentCanvas       = lz(() => import('../features/agent-builder/AgentCanvas'), 'AgentCanvas');
 const EmailBuilder      = lz(() => import('../features/email-builder/EmailBuilder'), 'EmailBuilder');
 const CampaignBuilder   = lz(() => import('../features/campaign/CampaignBuilder'),  'CampaignBuilder');
+const FormBuilder       = lz(() => import('../features/forms/builder/FormBuilder'), 'FormBuilder');
+const FormView          = lz(() => import('../features/forms/view/FormView'),       'FormView');
 
 // Drawers and overlays — only mounted when their state is truthy, so lazy here
 // keeps them out of the entry chunk entirely.
@@ -55,6 +59,11 @@ const BusinessHoursDrawer  = lz(() => import('../features/settings/panels/Busine
 const ComponentWizardDrawer= lz(() => import('../features/settings/panels/ComponentWizardDrawer'),         'ComponentWizardDrawer');
 const DiagPanel            = lz(() => import('../features/hcc/DiagPanel/DiagPanel'),                       'DiagPanel');
 const UploadChartDrawer    = lz(() => import('../features/hcc/UploadChartDrawer'),                         'UploadChartDrawer');
+const UploadDocumentDrawer = lz(() => import('../features/hcc/upload/UploadDocumentDrawer'),               'UploadDocumentDrawer');
+const HccUploadProcessingHost = lz(() => import('../features/hcc/upload/HccUploadProcessingHost'),         'HccUploadProcessingHost');
+const HccSftpReviewDrawer  = lz(() => import('../features/hcc/upload/HccSftpReviewDrawer'),                'HccSftpReviewDrawer');
+const IcdCreationScreen    = lz(() => import('../features/hcc/upload/IcdCreationScreen'),                  'IcdCreationScreen');
+const ClaimPreviewDrawer   = lz(() => import('../features/hcc/ClaimPreviewDrawer'),                        'ClaimPreviewDrawer');
 
 // Placeholder while a lazy chunk is in flight. Empty div keeps layout stable.
 const LazyFallback = () => <div style={{ flex: 1 }} />;
@@ -118,6 +127,7 @@ function ToastSuccess() {
 
 function PopulationView() {
   const subnavCollapsed = useAppStore(s => s.subnavCollapsed);
+  const toggleSubnav = useAppStore(s => s.toggleSubnav);
   const activeTab = useAppStore(s => s.activeTab);
   const showFilterBar = useAppStore(s => s.showFilterBar);
   const activeSubnavList = useAppStore(s => s.activeSubnavList);
@@ -140,11 +150,16 @@ function PopulationView() {
 
   const isHcc = activeSubnavList === 'HCC';
   const isHedis = activeSubnavList === 'HEDIS';
+  const isAwv = activeSubnavList === 'AWV';
   const isAllPatients = activeSubnavList === 'All Patients';
+  const isPopulationGroup = activeSubnavList.startsWith('pg:');
   const isSchedulingList = activeSubnavList === 'Scheduling List';
   const TOC_LISTS = ['TOC'];
-  const isToc = TOC_LISTS.includes(activeSubnavList) || (!isHcc && !isHedis && !isAllPatients && !isSchedulingList && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'AWV', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
-  const isComingSoon = ['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'AWV', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList);
+  const isToc = TOC_LISTS.includes(activeSubnavList) || (!isHcc && !isHedis && !isAwv && !isAllPatients && !isSchedulingList && !isPopulationGroup && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
+  const isComingSoon = ['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList);
+  const pgFilter = activeSubnavList === 'pg:Static' ? 'Static' : activeSubnavList === 'pg:Dynamic' ? 'Dynamic' : 'All';
+
+  const chromeless = isHcc || isHedis || isAwv || isComingSoon || isPopulationGroup || isSchedulingList;
 
   return (
     <div className={styles.main}>
@@ -153,21 +168,25 @@ function PopulationView() {
       <div className={styles.bodyRow}>
         <SubNav collapsed={subnavCollapsed} />
         <div className={styles.content}>
-          {!isHcc && !isHedis && !isComingSoon && !isSchedulingList && <TabBar />}
-          {!isHcc && !isHedis && !isComingSoon && !isSchedulingList && showFilterBar && <FilterBar />}
-          {!isHcc && !isHedis && !isAllPatients && !isComingSoon && !isSchedulingList && activeTab === 'toc-queue' && <QueueSummaryBar />}
+          {!chromeless && <TabBar />}
+          {!chromeless && showFilterBar && <FilterBar />}
+          {!isHcc && !isHedis && !isAwv && !isAllPatients && !isComingSoon && !isSchedulingList && !isPopulationGroup && activeTab === 'toc-queue' && <QueueSummaryBar />}
           {isSchedulingList
             ? <SchedulingListTable />
             : isHcc
               ? <HccWorklistTable />
               : isHedis
                 ? <HedisWorklistTable />
-                : isAllPatients
-                  ? <AllPatientsTable />
-                  : isComingSoon
-                    ? <ComingSoonState listName={activeSubnavList} />
-                    : (activeTab === 'toc-worklist' ? <WorklistTable /> : <QueueTable />)}
-          {!isHcc && !isHedis && !isComingSoon && !isSchedulingList && <Pagination />}
+                : isAwv
+                  ? <AwvWorklistTable />
+                  : isAllPatients
+                    ? <AllPatientsTable />
+                    : isPopulationGroup
+                      ? <PopulationGroupsView activeFilter={pgFilter} onToggleSidebar={toggleSubnav} />
+                      : isComingSoon
+                        ? <ComingSoonState listName={activeSubnavList} />
+                        : (activeTab === 'toc-worklist' ? <WorklistTable /> : <QueueTable />)}
+          {!chromeless && <Pagination />}
         </div>
       </div>
     </div>
@@ -321,6 +340,29 @@ export function AppLayout() {
     })();
   }, []);
 
+  // Re-open the form builder on page refresh of
+  // #/settings/content/forms/{id}/{mode}[/{analyticsTab}]. openFormBuilder opens
+  // on Edit; we then restore the tab from _pendingFormMode (via the store setters
+  // so the URL stays in sync).
+  useEffect(() => {
+    const pendingForm = useAppStore.getState()._pendingFormEditId;
+    if (!pendingForm) return;
+    (async () => {
+      const full = await useAppStore.getState().fetchFormById(
+        isNaN(Number(pendingForm)) ? pendingForm : Number(pendingForm),
+      );
+      if (full) {
+        const { _pendingFormMode: mode, _pendingFormAnalyticsTab: subTab } = useAppStore.getState();
+        await useAppStore.getState().openFormBuilder(full);
+        if (mode && mode !== 'edit') useAppStore.getState().setFormBuilderMode(mode);
+        if (mode === 'analytics' && subTab) useAppStore.getState().setFormAnalyticsTab(subTab);
+      } else {
+        useAppStore.setState({ editingFormId: null, formBuilderForm: null });
+      }
+      useAppStore.setState({ _pendingFormEditId: null, _pendingFormMode: null, _pendingFormAnalyticsTab: null });
+    })();
+  }, []);
+
   const showCreateAgent = useAppStore(s => s.showCreateAgent);
   const workflowPatient = useAppStore(s => s.workflowPatient);
   const callPopoverPatient = useAppStore(s => s.callPopoverPatient);
@@ -336,6 +378,8 @@ export function AppLayout() {
   const quickViewPatient = useAppStore(s => s.quickViewPatient);
   const editingCampaignId = useAppStore(s => s.editingCampaignId);
   const campaignBuilderId = useAppStore(s => s.campaignBuilderId);
+  const editingFormId = useAppStore(s => s.editingFormId);
+  const formViewId = useAppStore(s => s.formViewId);
 
   // Email Builder is a full-screen takeover when editing a campaign. Wins over
   // the CampaignBuilder so "Edit Template" from inside the campaign builder
@@ -361,6 +405,31 @@ export function AppLayout() {
         <Sidebar />
         <Suspense fallback={<LazyFallback />}>
           <CampaignBuilder />
+        </Suspense>
+        <Toast />
+      </div>
+    );
+  }
+
+  // Shareable form fill-view (#/f/{id}) — focused takeover for respondents.
+  if (formViewId) {
+    return (
+      <div className={styles.app}>
+        <Suspense fallback={<LazyFallback />}>
+          <FormView />
+        </Suspense>
+        <Toast />
+      </div>
+    );
+  }
+
+  // Form Builder is a focused full-screen takeover (no app sidebar — it has its
+  // own header + close action that returns to #/settings/content/forms).
+  if (editingFormId) {
+    return (
+      <div className={styles.app}>
+        <Suspense fallback={<LazyFallback />}>
+          <FormBuilder />
         </Suspense>
         <Toast />
       </div>
@@ -400,23 +469,6 @@ export function AppLayout() {
         {activeView}
       </Suspense>
 
-      {showCreateAgent && <CreateAgentDrawer />}
-      {workflowPatient && <WorkflowPanel />}
-      {callPopoverPatient && <CallPopover />}
-      <ActiveCallCard />
-      <InvokeAgentModal />
-      {detailPatient && <DetailDrawer />}
-      {liveDrawerPatient && <LiveDrawer />}
-      {goalDetailId && <GoalDetailDrawer />}
-      {goalWizardOpen && <GoalWizardDrawer />}
-      {componentWizardOpen && <ComponentWizardDrawer />}
-      {chatGroupDetailId && <GroupDetailDrawer />}
-      {agentRulesGroupId && <AgentRulesDrawer />}
-      {businessHoursOpen && <BusinessHoursDrawer />}
-      {diagPanelOpen && <DiagPanel />}
-      <UploadChartDrawer />{/* mounts itself only when hccUploadMember is set */}
-      <ClaimPreviewDrawer />{/* mounts itself only when hccClaimPreview.open is true */}
-      {quickViewPatient && <QuickViewDrawer />}
       <Suspense fallback={null}>
         {showCreateAgent && <CreateAgentDrawer />}
         {workflowPatient && <WorkflowPanel />}
@@ -433,7 +485,13 @@ export function AppLayout() {
         {businessHoursOpen && <BusinessHoursDrawer />}
         {diagPanelOpen && <DiagPanel />}
         <UploadChartDrawer />{/* mounts itself only when hccUploadMember is set */}
+        <UploadDocumentDrawer />{/* mounts itself only when hccUploadSession is set */}
+        <HccUploadProcessingHost />{/* floats bottom-right while the upload is minimized */}
+        <HccSftpReviewDrawer />{/* mounts itself only when hccSftpReviewOpen is true */}
+        <IcdCreationScreen />{/* mounts itself only when icdCreationOpen is true */}
+        <ClaimPreviewDrawer />{/* mounts itself only when hccClaimPreview.open is true */}
         {quickViewPatient && <QuickViewDrawer />}
+        <PgProcessingHost />
       </Suspense>
       <Toast />
       <ToastSuccess />

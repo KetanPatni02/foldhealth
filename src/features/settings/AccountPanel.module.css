@@ -926,3 +926,230 @@
   color: var(--neutral-300);
   margin: 0;
 }
+
+/* ── Insurance Plans empty state ── */
+.insuranceEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 64px 24px;
+  flex: 1;
+  background: var(--neutral-0);
+}
+
+/* Outermost dotted ring */
+.insuranceEmptyOuterRing {
+  width: 152px;
+  height: 152px;
+  border-radius: 50%;
+  border: 1.5px dotted var(--neutral-100);
+  background: var(--neutral-0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Middle dashed ring */
+.insuranceEmptyRing {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--neutral-100);
+  background: var(--neutral-0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Solid inner circle */
+.insuranceEmptyInner {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: var(--neutral-50);
+  border: 1px solid var(--neutral-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.insuranceEmptyText {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  margin: 0;
+}
+
+/* Form helpers for full-width fields in two-col grid */
+.formFieldFull {
+  grid-column: 1 / -1;
+}
+
+/* ── Insurance Plans Table ── */
+.insuranceTableWrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.insuranceTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Inter', sans-serif;
+}
+
+.insuranceTableHeader {
+  border-bottom: 0.5px solid var(--neutral-75, #f3f4f7);
+}
+
+.insuranceTh {
+  text-align: left;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.insuranceTableRow {
+  border-bottom: 0.5px solid var(--neutral-75, #f3f4f7);
+  transition: background 0.1s ease;
+}
+
+.insuranceTableRow:hover {
+  background: var(--primary-25, #fdfdff);
+}
+
+.insuranceTd {
+  padding: 12px;
+  vertical-align: middle;
+}
+
+.insuranceLogoImg {
+  max-height: 24px;
+  max-width: 80px;
+  object-fit: contain;
+  display: block;
+}
+
+.insuranceLogoPlaceholder {
+  color: var(--neutral-200);
+  font-size: 14px;
+}
+
+.insurancePlanName {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-400);
+}
+
+.insurancePlanTypeBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  height: 22px;
+  background: var(--neutral-50);
+  border: 0.5px solid rgba(111,122,144,0.1);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap;
+}
+
+.insuranceCellText {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+
+.insuranceActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.insuranceActionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.insuranceActionBtn:hover {
+  background: var(--neutral-50);
+}
+
+.insuranceActionDivider {
+  display: block;
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+/* ── Toast ── */
+.toastOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 9999;
+  pointer-events: none;
+  padding-top: 12px;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #009B53;
+  border-radius: 8px;
+  padding: 4px 4px 4px 12px;
+  pointer-events: all;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  animation: toastIn 0.2s ease;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.toastText {
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  color: white;
+  white-space: nowrap;
+}
+
+.toastClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.toastClose:hover {
+  opacity: 1;
+  background: rgba(255,255,255,0.15);
+}

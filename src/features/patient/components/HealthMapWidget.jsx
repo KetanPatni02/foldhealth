@@ -149,7 +149,7 @@ function LoadingState({ onComplete }) {
 }
 
 /* ── Main widget ── */
-export function HealthMapWidget() {
+export function HealthMapWidget({ compact = false }) {
   const [view, setView] = useState('generated'); // 'open' | 'generated' | 'patientGenerated' | 'shared'
   const [activeToggle, setActiveToggle] = useState('clinic');
   const [feedback, setFeedback] = useState(null);
@@ -210,7 +210,7 @@ export function HealthMapWidget() {
           {isLoading ? (
             <LoadingState onComplete={() => setView('generated')} />
           ) : (
-            <div className={styles.chartArea}>
+            <div className={styles.chartArea} style={compact ? { height: 260 } : undefined}>
               <div className={styles.chartInner}>
                 <HealthRadarChart data={chartData} />
               </div>
