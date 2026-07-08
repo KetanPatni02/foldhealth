@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Button } from '../../components/Button/Button';
+import { Badge } from '../../components/Badge/Badge';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Pagination } from '../../components/Pagination/Pagination';
@@ -143,7 +144,9 @@ export function ApcmBillingTable({ searchQuery = '', filtersOpen = false }) {
   }, [patients, activeTab, searchQuery, icdFilter, providerFilter, activeFilters]);
 
   // Distinct ICD options for the searchable Select — every code visible in the
-  // table, with its description. Sorted by code for a stable list.
+  // table. The ICD code is the primary detail (shown as a small badge in the
+  // trigger + as line 1 in the dropdown); the description is secondary (line 2)
+  // and searchable. Sorted by code for a stable list.
   const icdOptions = useMemo(() => {
     const map = new Map();
     for (const p of patients) {
@@ -153,7 +156,17 @@ export function ApcmBillingTable({ searchQuery = '', filtersOpen = false }) {
     }
     return [...map.entries()]
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([code, desc]) => ({ value: code, label: desc ? `${code} — ${desc}` : code }));
+      .map(([code, desc]) => ({
+        value: code,
+        searchText: `${code} ${desc}`,
+        triggerLabel: <Badge variant="ai-neutral" label={code} />,
+        label: (
+          <span className={styles.icdOption}>
+            <span className={styles.icdOptionCode}>{code}</span>
+            {desc && <span className={styles.icdOptionDesc}>{desc}</span>}
+          </span>
+        ),
+      }));
   }, [patients]);
 
   const rows = useMemo(() =>

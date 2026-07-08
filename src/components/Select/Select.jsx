@@ -60,8 +60,11 @@ export function Select({
 
   const selected = options.find(o => o.value === value);
   const q = query.trim().toLowerCase();
+  // Options may carry a `searchText` (plain string) so `label` can be a
+  // rich node (e.g. two-line code + description) while search still matches
+  // both. Falls back to the label when it's a string.
   const shownOptions = searchable && q
-    ? options.filter(o => String(o.label).toLowerCase().includes(q))
+    ? options.filter(o => (o.searchText != null ? o.searchText : String(o.label)).toLowerCase().includes(q))
     : options;
 
   return (
@@ -80,7 +83,7 @@ export function Select({
         onClick={() => !disabled && setOpen(o => !o)}
       >
         <span className={styles.triggerLabel} style={selected?.style}>
-          {selected?.label ?? placeholder}
+          {selected ? (selected.triggerLabel ?? selected.label) : placeholder}
         </span>
         <Icon
           name="solar:alt-arrow-down-linear"

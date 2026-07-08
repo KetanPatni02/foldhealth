@@ -25,9 +25,30 @@
   flex-shrink: 0;
 }
 
-/* DS Select wrappers in the filter bar. */
-.icdFilterSelect { min-width: 320px; }
-.providerFilterSelect { min-width: 200px; }
+/* DS Select wrappers in the filter bar. The DS Select .wrap is width:100%,
+   so give these a fixed width (higher specificity via .filterBar) to keep
+   both filters on one row instead of stacking. */
+.filterBar .icdFilterSelect { width: 280px; flex: 0 0 auto; }
+.filterBar .providerFilterSelect { width: 220px; flex: 0 0 auto; }
+
+/* Two-line ICD option — code (primary) over description (secondary). */
+.icdOption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.icdOptionCode {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.icdOptionDesc {
+  font-size: 12px;
+  color: var(--neutral-300);
+  white-space: normal;
+  line-height: 1.3;
+}
 
 .filterSelect {
   height: 30px;
