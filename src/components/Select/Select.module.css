@@ -92,6 +92,36 @@
   min-width: 100%;
 }
 
+/* Searchable variant — sticky filter input pinned to the top of the menu. */
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  margin: -4px -4px 4px;
+  position: sticky;
+  top: -4px;
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
+  z-index: 1;
+}
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+  color: var(--neutral-400);
+}
+.searchInput::placeholder { color: var(--neutral-200); }
+.emptyOption {
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--neutral-300);
+  text-align: center;
+}
+
 .item {
   display: flex;
   align-items: center;

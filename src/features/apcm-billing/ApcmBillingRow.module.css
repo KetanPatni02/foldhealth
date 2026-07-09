@@ -13,6 +13,13 @@
 .rowActive .stickyLeft { background: var(--primary-100) !important; }
 .rowActive .stickyRight { background: var(--primary-100); }
 
+/* Attestation blocked — dim the wide/data cells (Member, ICD Codes, Reasons)
+   so the row reads as inactive, but keep the small info cells (EHR ID,
+   Month, DoS, CPT, Last Encounter, Provider) at full opacity so the EHR
+   link stays a clickable exit ramp — provider fixes the mapping in Athena. */
+.rowBlocked .tdWrap,
+.rowBlocked .memberTd { opacity: 0.6; }
+
 /* Sticky positioning */
 .stickyLeft {
   position: sticky;
@@ -67,8 +74,19 @@
 
 /* Member cell — mirrors TOC Worklist (WorklistRow.module.css). */
 .patientCell { display: flex; align-items: center; gap: 12px; }
-.patientInfo { display: flex; flex-direction: column; }
-.patientName { font-size: 14px; font-weight: 500; color: var(--neutral-400); white-space: nowrap; }
+.patientInfo { display: flex; flex-direction: column; align-items: flex-start; }
+.patientName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  white-space: nowrap;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.patientName:hover { color: var(--primary-300); text-decoration: underline; }
 .patientMeta { font-size: 13px; color: var(--neutral-200); margin-top: 3px; }
 
 /* Language badge — inline plain-text link inside .patientMeta. */
@@ -154,11 +172,53 @@
 .cptG0557 { background: var(--primary-100); color: var(--primary-400); border: 0.5px solid var(--primary-200); }
 .cptG0558 { background: color-mix(in srgb, var(--primary-300) 12%, transparent); color: var(--primary-400); border: 0.5px solid var(--primary-200); }
 
-/* ICD codes */
-.icdList { display: flex; flex-direction: column; gap: 3px; }
-.icdItem { display: flex; align-items: flex-start; font-size: 12px; color: var(--neutral-400); }
+/* ICD codes — checkbox left, then code + description. Clicking the row
+   label toggles the checkbox for a bigger hit target. */
+.icdList { display: flex; flex-direction: column; gap: 6px; }
+.icdItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--neutral-400);
+  cursor: pointer;
+}
+.icdText { flex: 1; min-width: 0; padding-top: 1px; }
 .icdCode { font-weight: 500; color: var(--neutral-400); flex-shrink: 0; }
 .icdDesc { color: var(--neutral-300); white-space: normal; }
+
+/* Provenance tag — shown inline after the description for ICDs that arrived
+   already-chronic from Athena. Mirrors the prod screen's green label style
+   so users can distinguish provider-marked from user-marked-this-session. */
+.chronicProviderTag {
+  color: var(--status-success);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Unresolved-mapping tag — inline warning under the description for ICD
+   entries where Fold couldn't confidently pick a single code. */
+.unresolvedTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  color: var(--status-warning);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.icdItemUnresolved .icdDesc { color: var(--neutral-400); font-style: italic; }
+
+/* CPT live-preview: baseline (strikethrough) → live badge + fee + (i) trigger. */
+.cptInline { display: inline-flex; align-items: center; gap: 6px; }
+.cptFee {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  font-variant-numeric: tabular-nums;
+}
 /* Inline expand toggle — primary-colored text + chevron. Stays a
    <button> for a11y but renders as a plain link. */
 .icdMoreBtn {

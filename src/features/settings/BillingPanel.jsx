@@ -13,6 +13,7 @@ export function BillingPanel() {
   const [activeTab, setActiveTab] = useState('apcm');
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   return (
     <div className={styles.wrapper}>
@@ -39,7 +40,7 @@ export function BillingPanel() {
                 <input
                   autoFocus
                   type="text"
-                  placeholder="Search member, ID…"
+                  placeholder="Search member, ID, or EHR ID…"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                 />
@@ -54,13 +55,18 @@ export function BillingPanel() {
               <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
             )}
           </div>
-          <ActionButton icon="custom:filter" size="L" tooltip="Filter" onClick={() => {}} />
+          <ActionButton
+            icon="custom:filter"
+            size="L"
+            tooltip={filtersOpen ? 'Hide filters' : 'Filter'}
+            onClick={() => setFiltersOpen(o => !o)}
+          />
           <ActionButton icon="solar:upload-minimalistic-linear" size="L" tooltip="Export" onClick={() => {}} />
         </div>
       </div>
 
       <div className={styles.content}>
-        {activeTab === 'apcm' && <ApcmBillingTable searchQuery={searchQuery} />}
+        {activeTab === 'apcm' && <ApcmBillingTable searchQuery={searchQuery} filtersOpen={filtersOpen} />}
       </div>
     </div>
   );

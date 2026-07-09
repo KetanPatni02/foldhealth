@@ -32,6 +32,13 @@ keep entries short and specific. Newest at the top.
   Button, Toggle, Badge, Select, Slider, Switch, ConfirmDialog, etc.
   Search the components folder before writing a new one. New components
   should themselves be reusable primitives, not one-offs.
+- **Filter badges: always use `src/components/FilterChip`.** Every filter
+  across the app must use this one component so filter badges look and
+  behave identically (`Label ⌄` inactive → `Label : Value ✕` active, with a
+  popover of options, optional `searchable`/`iconKind`). Never re-implement a
+  `*FilterChip` or use a plain `Select`/`<select>` as a filter — the
+  guardrails flag re-implementations. Migrate legacy filter UI to
+  `FilterChip` when you touch it.
 - **Follow the Fold Health typography system.** Inter is the only font.
   Use size/weight/color tokens from `src/tokens/tokens.css` — don't
   hand-pick `font-size`, `font-weight`, or hex colors.

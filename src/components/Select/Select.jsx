@@ -28,9 +28,13 @@ export function Select({
   className,
   id,
   menuAlign = 'left',
+  searchable = false,
+  searchPlaceholder = 'Search…',
 }) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const wrapRef = useRef(null);
+  const searchRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
@@ -48,7 +52,20 @@ export function Select({
     };
   }, [open]);
 
+  // Reset the query each time the menu closes; focus the search on open.
+  useEffect(() => {
+    if (open && searchable) searchRef.current?.focus();
+    if (!open) setQuery('');
+  }, [open, searchable]);
+
   const selected = options.find(o => o.value === value);
+  const q = query.trim().toLowerCase();
+  // Options may carry a `searchText` (plain string) so `label` can be a
+  // rich node (e.g. two-line code + description) while search still matches
+  // both. Falls back to the label when it's a string.
+  const shownOptions = searchable && q
+    ? options.filter(o => (o.searchText != null ? o.searchText : String(o.label)).toLowerCase().includes(q))
+    : options;
 
   return (
     <div ref={wrapRef} className={[styles.wrap, className || ''].filter(Boolean).join(' ')}>
@@ -66,7 +83,7 @@ export function Select({
         onClick={() => !disabled && setOpen(o => !o)}
       >
         <span className={styles.triggerLabel} style={selected?.style}>
-          {selected?.label ?? placeholder}
+          {selected ? (selected.triggerLabel ?? selected.label) : placeholder}
         </span>
         <Icon
           name="solar:alt-arrow-down-linear"
@@ -80,7 +97,24 @@ export function Select({
           role="listbox"
           className={[styles.menu, menuAlign === 'right' ? styles.menuRight : ''].filter(Boolean).join(' ')}
         >
-          {options.map(opt => {
+          {searchable && (
+            <li className={styles.searchRow}>
+              <Icon name="solar:magnifer-linear" size={13} color="var(--neutral-300)" />
+              <input
+                ref={searchRef}
+                type="text"
+                className={styles.searchInput}
+                placeholder={searchPlaceholder}
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                onKeyDown={e => e.stopPropagation()}
+              />
+            </li>
+          )}
+          {shownOptions.length === 0 && (
+            <li className={styles.emptyOption} aria-disabled>No matches</li>
+          )}
+          {shownOptions.map(opt => {
             const isActive = opt.value === value;
             return (
               <li

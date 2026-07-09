@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState } from 'react';
 import { Icon } from '../Icon/Icon';
+import { FilterChip } from '../FilterChip/FilterChip';
 import { useAppStore } from '../../store/useAppStore';
 import { FilterNameDialog } from '../../features/hcc/FilterNameDialog';
 import styles from './FilterBar.module.css';
@@ -70,76 +71,15 @@ const FILTER_DEFS = [
   { key: 'agentAssigned', label: 'Agent', optionsFromData: true },
 ];
 
-function FilterChip({ filterDef, value, onSet, onClear, patients }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  const options = useMemo(() => {
-    if (filterDef.optionsFromData) {
-      const unique = [...new Set(patients.map(p => p[filterDef.key]).filter(Boolean))];
-      return unique.sort().map(a => ({ value: a, label: a }));
-    }
-    return filterDef.options || [];
-  }, [filterDef, patients]);
-
-  const selectedLabel = value ? options.find(o => o.value === value)?.label || value : null;
-
-  return (
-    <div className={styles.chipWrap} ref={ref}>
-      <button
-        className={[styles.chip, value ? styles.active : ''].filter(Boolean).join(' ')}
-        onClick={() => setOpen(v => !v)}
-      >
-        {filterDef.label}
-        {selectedLabel && <>
-          <span style={{ color: 'var(--primary-200)' }}>:</span>
-          <span className={styles.chipValue}>{selectedLabel}</span>
-        </>}
-        {value ? (
-          <span
-            className={styles.chipClear}
-            onClick={(e) => { e.stopPropagation(); onClear(); setOpen(false); }}
-          >
-            ✕
-          </span>
-        ) : (
-          <Icon name="solar:alt-arrow-down-linear" size={14} />
-        )}
-      </button>
-      {open && (
-        <div className={styles.dropdown}>
-          {options.map(opt => (
-            <button
-              key={opt.value}
-              className={[styles.dropdownItem, value === opt.value ? styles.selected : ''].filter(Boolean).join(' ')}
-              onClick={() => {
-                if (value === opt.value) {
-                  onClear();
-                } else {
-                  onSet(opt.value);
-                }
-                setOpen(false);
-              }}
-            >
-              <span className={styles.dropdownCheck}>
-                {value === opt.value ? '✓' : ''}
-              </span>
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+// Resolve a filter def's options — either static, or derived from the live
+// patient rows (optionsFromData). Kept here so the shared FilterChip stays
+// data-agnostic.
+function resolveOptions(filterDef, patients) {
+  if (filterDef.optionsFromData) {
+    const unique = [...new Set((patients || []).map(p => p[filterDef.key]).filter(Boolean))];
+    return unique.sort().map(a => ({ value: a, label: a }));
+  }
+  return filterDef.options || [];
 }
 
 export function FilterBar() {
@@ -185,11 +125,12 @@ export function FilterBar() {
         {FILTER_DEFS.map(fd => (
           <FilterChip
             key={fd.key}
-            filterDef={fd}
+            label={fd.label}
             value={activeFilters[fd.key] || null}
+            options={resolveOptions(fd, patients)}
+            searchable={!!fd.optionsFromData}
             onSet={(val) => setFilter(fd.key, val)}
             onClear={() => setFilter(fd.key, null)}
-            patients={patients}
           />
         ))}
 
