@@ -1381,10 +1381,11 @@ function OutreachTab({ member }) {
 }
 
 // ── Worklog tab (DOS-level) ──────────────────────────────────────────────
-// Table of every ICD on the selected DOS × work done by each Coder / Reviewer
-// 1–3 (Support intentionally excluded — Figma 42:368051). Cells show a ✓ + the
-// person + date once a role has acted, or "—" while still pending.
-const WORKLOG_ROLES = ['Coder', 'Reviewer 1', 'Reviewer 2', 'Reviewer 3'];
+// Table of every ICD on the selected DOS × work done by each Coder / Reviewer /
+// Reviewer 2 (Support intentionally excluded — Figma 42:368051). "Reviewer 3"
+// does not exist. Cells show a ✓ + the person + date once a role has acted,
+// or "—" while still pending.
+const WORKLOG_ROLES = ['Coder', 'Reviewer', 'Reviewer 2'];
 
 // Parse the trailing "(Role)" off an ICD's `by` field → role index, or -1.
 function roleIndexFromBy(by = '') {

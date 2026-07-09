@@ -153,6 +153,11 @@
 .headerCell {
   /* Inherit positioning from base .table thead th — just add interaction state. */
 }
+/* Right bracket of the DOS group in the header — mirrors the body's
+   POS-column border-right so the group's vertical divider runs full
+   height (Figma 4672:131830). The left bracket is the Member column's
+   own border-right. */
+.headerCell[data-col="pos"] { border-right: 1px solid var(--neutral-150); }
 .headerCellSortable {
   cursor: pointer;
   user-select: none;

@@ -14,7 +14,9 @@ import { QueueSummaryBar } from '../features/toc-queue/QueueSummaryBar';
 import { HccWorklistTable } from '../features/hcc/HccWorklistTable';
 import { HedisWorklistTable } from '../features/hedis-worklist/HedisWorklistTable';
 import { AllPatientsTable } from '../features/all-patients/AllPatientsTable';
-import { AwvWorklistTable } from '../features/awv-worklist/AwvWorklistTable';
+// AWV route now redirects into the unified HCC worklist with the Visit
+// Type filter pre-set to AWV. `AwvWorklistTable` is retained on disk
+// but no longer mounted (see effect below).
 import { PopulationGroupsView } from '../features/population-groups/PopulationGroupsView';
 import { PgProcessingHost } from '../features/population-groups/PgProcessingHost';
 import { SchedulingListTable } from '../features/scheduling-list/SchedulingListTable';
@@ -62,6 +64,7 @@ const UploadChartDrawer    = lz(() => import('../features/hcc/UploadChartDrawer'
 const UploadDocumentDrawer = lz(() => import('../features/hcc/upload/UploadDocumentDrawer'),               'UploadDocumentDrawer');
 const HccUploadProcessingHost = lz(() => import('../features/hcc/upload/HccUploadProcessingHost'),         'HccUploadProcessingHost');
 const HccSftpReviewDrawer  = lz(() => import('../features/hcc/upload/HccSftpReviewDrawer'),                'HccSftpReviewDrawer');
+const HccAddDosDrawer      = lz(() => import('../features/hcc/HccAddDosDrawer'),                           'HccAddDosDrawer');
 const IcdCreationScreen    = lz(() => import('../features/hcc/upload/IcdCreationScreen'),                  'IcdCreationScreen');
 const ClaimPreviewDrawer   = lz(() => import('../features/hcc/ClaimPreviewDrawer'),                        'ClaimPreviewDrawer');
 // Archived HCC worklist — a frozen fork of the HCC feature (src/features/
@@ -156,6 +159,13 @@ function PopulationView() {
   const isHccArchived = activeSubnavList === 'HCC (Archived)';
   const isHedis = activeSubnavList === 'HEDIS';
   const isAwv = activeSubnavList === 'AWV';
+  // WS3 — AWV route now redirects into the unified worklist with the
+  // Visit Type filter pre-set to AWV-only. Bookmarks / muscle memory
+  // for /awv still land somewhere useful.
+  const setHccFilter = useAppStore(s => s.setHccFilter);
+  useEffect(() => {
+    if (isAwv) setHccFilter('vt', ['AWV']);
+  }, [isAwv, setHccFilter]);
   const isAllPatients = activeSubnavList === 'All Patients';
   const isPopulationGroup = activeSubnavList.startsWith('pg:');
   const isSchedulingList = activeSubnavList === 'Scheduling List';
@@ -185,7 +195,7 @@ function PopulationView() {
               : isHedis
                 ? <HedisWorklistTable />
                 : isAwv
-                  ? <AwvWorklistTable />
+                  ? <HccWorklistTable />
                   : isAllPatients
                     ? <AllPatientsTable />
                     : isPopulationGroup
@@ -495,6 +505,7 @@ export function AppLayout() {
         <UploadDocumentDrawer />{/* mounts itself only when hccUploadSession is set */}
         <HccUploadProcessingHost />{/* floats bottom-right while the upload is minimized */}
         <HccSftpReviewDrawer />{/* mounts itself only when hccSftpReviewOpen is true */}
+        <HccAddDosDrawer />{/* mounts itself only when hccAddDosMember is set */}
         <IcdCreationScreen />{/* mounts itself only when icdCreationOpen is true */}
         <ClaimPreviewDrawer />{/* mounts itself only when hccClaimPreview.open is true */}
         {quickViewPatient && <QuickViewDrawer />}

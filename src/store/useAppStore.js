@@ -31,11 +31,10 @@ import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activity
 // worklist row survives reload.
 function persistHccMemberRoleStatus(memberId, role, status, name) {
   const colsByRole = {
-    support: { name: 'support_name',   status: 'support_status'   },
-    coder:   { name: 'coder_name',     status: 'coder_status'     },
-    r1:      { name: 'reviewer1_name', status: 'reviewer1_status' },
-    r2:      { name: 'reviewer2_name', status: 'reviewer2_status' },
-    r3:      { name: 'reviewer3_name', status: 'reviewer3_status' },
+    support:   { name: 'support_name',   status: 'support_status'   },
+    coder:     { name: 'coder_name',     status: 'coder_status'     },
+    reviewer:  { name: 'reviewer1_name', status: 'reviewer1_status' },
+    reviewer2: { name: 'reviewer2_name', status: 'reviewer2_status' },
   };
   const cols = colsByRole[role];
   if (!cols || !memberId) return;
@@ -253,9 +252,8 @@ const HCC_TRANSITION_LABEL = {
   completeCoder:         'Coding Completed',
   requestRecords:        'Records Requested',
   recordsReceived:       'Records Received',
-  completeR1:            'Reviewer 1 Completed',
-  completeR2:            'Reviewer 2 Completed',
-  completeR3:            'Reviewer 3 Completed',
+  completeReviewer:      'Reviewer Completed',
+  completeReviewer2:     'Reviewer 2 Completed',
   returnDos:             'DOS Returned',
   reassignRole:          'Role Reassigned',
 };
@@ -2093,6 +2091,135 @@ export const useAppStore = create((set, get) => ({
   hccMembers: [],
   hccMembersLoading: false,
   fetchHccMembers: async () => {
+    // Local helpers scoped to this action — stamp the WS1/WS8 grouping
+    // fields onto each worklist row deterministically so the demo is
+    // stable across reloads. Real backends would materialize these at
+    // ingest time instead.
+    const _hash = (s) => { let h = 0; const str = String(s || ''); for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) & 0xffffffff; return Math.abs(h); };
+    const _mdyToDate = (s) => { const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s || '')); return m ? new Date(+m[3], +m[1] - 1, +m[2]) : null; };
+    const _parseDueOffsetDays = (due) => {
+      const s = String(due || '');
+      const num = parseInt(s.match(/(\d+)/)?.[1] || '0', 10);
+      if (/week/i.test(s)) return num * 7;
+      if (/(\d+)D\b/i.test(s) || /Days?/i.test(s)) return num;
+      if (/Today/i.test(s)) return 0;
+      return 30;
+    };
+    const _slaTargetIso = (createDate, dueStr) => {
+      const created = _mdyToDate(createDate);
+      if (!created) return null;
+      const days = _parseDueOffsetDays(dueStr);
+      const overdue = /Overdue/i.test(String(dueStr || ''));
+      const offDays = overdue ? -days : days;
+      return new Date(created.getTime() + offDays * 86400000).toISOString();
+    };
+    const _createdIso = (createDate) => (_mdyToDate(createDate) || new Date()).toISOString();
+    // Assign visitType, arrivalOrder, sourceDocumentIds deterministically.
+    // ~30% AWV, ~60% doc-first, and doc-first rows sharing a patient name
+    // cluster into the same source-document bucket so mini-sweep groups
+    // materialize naturally on load.
+    const normalizeWorklistRow = (row) => {
+      const nameSeed = _hash(row.name || '');
+      const visitType = (row.visitType) || ((nameSeed % 10) < 3 ? 'AWV' : 'HCC');
+      // arrivalOrder is per-patient so every row for the same patient
+      // shares a source-document bucket in mini-sweep mode.
+      const arrivalOrder = row.arrivalOrder || ((nameSeed % 10) < 6 ? 'doc-first' : 'claim-first');
+      // Doc bucket keys off the patient's name + create-date YEAR so
+      // multiple rows for the same patient in the same intake year
+      // cluster into one mini-sweep. Later years spawn a new doc.
+      const year = /(\d{4})/.exec(row.date || '')?.[1] || '';
+      const sourceDocumentIds = row.sourceDocumentIds || (
+        arrivalOrder === 'doc-first' ? [`seed-doc-${_hash((row.name || '') + '|' + year)}`] : []
+      );
+      const createdAt = row.createdAt || _createdIso(row.date);
+      const slaTargetAt = row.slaTargetAt || _slaTargetIso(row.date, row.due);
+      // Per-DOS enrichment (Figma 4680:138476): each dos_list entry carries
+      // its own visit type / provider / POS / open-ICD count so an expanded
+      // mini-sweep shows realistic distinct visits. Entry 0 mirrors the
+      // record's own fields (collapsed row stays consistent with the
+      // record-level columns); entries 1+ vary through fixed pools.
+      const VT_POOL = ['AWV', 'IPPE', 'TCM', 'Telehealth Visit', 'Annual Physical'];
+      const PROV_POOL = [
+        { name: 'Dr. Marcus Osei',  pos: '21', posDesc: 'Inpatient Hospital' },
+        { name: 'Dr. Aisha Mehta',  pos: '20', posDesc: 'Urgent Care Facility' },
+        { name: 'Dr. Indigo Bolen', pos: '12', posDesc: 'Home' },
+        { name: 'Dr. Karen Mills',  pos: '34', posDesc: 'Hospice' },
+      ];
+      const dos_list = Array.isArray(row.dos_list)
+        ? row.dos_list.map((d, idx) => {
+            if (d && d.vt && d.provider) return d; // already enriched
+            if (idx === 0) {
+              return {
+                ...d,
+                vt: d?.vt || visitType,
+                provider: d?.provider || row.rp || '—',
+                pos: d?.pos || row.pos || '',
+                posDesc: d?.posDesc || row.posDesc || '',
+                open: d?.open ?? row.open ?? 0,
+              };
+            }
+            const eh = _hash((row.name || '') + (d?.date || '') + idx);
+            const variant = PROV_POOL[eh % PROV_POOL.length];
+            return {
+              ...d,
+              vt: d?.vt || VT_POOL[eh % VT_POOL.length],
+              provider: d?.provider || variant.name,
+              pos: d?.pos || variant.pos,
+              posDesc: d?.posDesc || variant.posDesc,
+              open: d?.open ?? (1 + (eh % 12)),
+            };
+          })
+        : row.dos_list;
+      return { ...row, visitType, arrivalOrder, sourceDocumentIds, createdAt, slaTargetAt, dos_list };
+    };
+    // WS3 — port AWV mock rows into the unified worklist shape so the
+    // Visit Type filter has real rows to surface. Some AWV fields don't
+    // exist on HCC (npAppt, status, dueLabel); we bridge the ones that
+    // do (dec/ad/fr/rl/pcp/rp) and leave the rest empty.
+    const portAwvRow = (a, i) => ({
+      id: a.id || `awv-${i}`,
+      memberId: a.memberId,
+      in: a.in,
+      name: a.name,
+      g: a.g,
+      age: a.age,
+      cv: null, tv: null,
+      dos_list: [{ date: a.due, label: a.dueLabel, labelColor: a.dueCol }],
+      dos: a.due,
+      visits: null,
+      ch: null,
+      docStatus: [],
+      open: 0,
+      date: a.due,
+      due: a.dueLabel,
+      dueCol: a.dueCol,
+      sup: a.assignee, supS: a.status,
+      cdr: null, cdrS: 'Assign',
+      r1: null, r1s: 'Assign',
+      r2: null, r2s: 'Assign',
+      rp: null,
+      vt: null,
+      raf: null, ri: null, ru: null,
+      ipa: null, hp: null, pcp: null,
+      dec: a.dec, coh: null,
+      rl: a.rl, ad: a.ad, fr: a.fr,
+      language: 'en',
+      pos: '', posDesc: '',
+      visitType: 'AWV',
+    });
+    const finalize = async (baseRows) => {
+      const { AWV_MEMBERS } = await import('../features/awv-worklist/data/mock');
+      const awvRows = (AWV_MEMBERS || []).map(portAwvRow);
+      const all = [...baseRows, ...awvRows];
+      // Count rows per patient name so patients with 2+ rows get force-
+      // routed to doc-first (they need to cluster into a mini-sweep).
+      const nameCounts = all.reduce((acc, r) => { acc[r.name] = (acc[r.name] || 0) + 1; return acc; }, {});
+      return all.map(row => normalizeWorklistRow({
+        ...row,
+        arrivalOrder: row.arrivalOrder || (nameCounts[row.name] > 1 ? 'doc-first' : undefined),
+      }));
+    };
+
     set({ hccMembersLoading: true });
     const { data, error } = await supabase
       .from('hcc_members')
@@ -2104,13 +2231,13 @@ export const useAppStore = create((set, get) => ({
       // backends without noticing.
       console.warn('fetchHccMembers error — falling back to local mock:', error.message);
       const { HCC_MEMBERS } = await import('../features/hcc/data/mock');
-      set({ hccMembers: HCC_MEMBERS, hccMembersLoading: false });
+      set({ hccMembers: await finalize(HCC_MEMBERS), hccMembersLoading: false });
       return;
     }
     // Empty result set: same fallback.
     if (!data || data.length === 0) {
       const { HCC_MEMBERS } = await import('../features/hcc/data/mock');
-      set({ hccMembers: HCC_MEMBERS, hccMembersLoading: false });
+      set({ hccMembers: await finalize(HCC_MEMBERS), hccMembersLoading: false });
       return;
     }
     const POS_MAP = { 'Walk-in': { code: '11', desc: 'Office' }, Telehealth: { code: '02', desc: 'Telehealth' } };
@@ -2147,7 +2274,6 @@ export const useAppStore = create((set, get) => ({
         cdr: row.coder_name, cdrS: row.coder_status,
         r1: row.reviewer1_name, r1s: row.reviewer1_status,
         r2: row.reviewer2_name, r2s: row.reviewer2_status,
-        r3: row.reviewer3_name, r3s: row.reviewer3_status,
         rp: row.rendering_provider,
         vt: row.visit_type,
         raf: row.raf_score,
@@ -2166,7 +2292,7 @@ export const useAppStore = create((set, get) => ({
         posDesc: pos.desc,
       };
     });
-    set({ hccMembers: members, hccMembersLoading: false });
+    set({ hccMembers: await finalize(members), hccMembersLoading: false });
   },
 
   // HCC Diagnosis Gaps (fetched per member from Supabase)
@@ -2300,7 +2426,7 @@ export const useAppStore = create((set, get) => ({
   clearHccSelected: () => set({ selectedHccIds: [] }),
 
   // ─── HCC worklist sub-header state ───
-  hccListTitle: 'HCC List',
+  hccListTitle: 'Worklist',
   setHccListTitle: (title) => set({ hccListTitle: title }),
   hccDueDateFilter: null, // null | 'Overdue' | 'Due Today' | 'Due This Week' | 'Due Next Week' | 'Due More Than 2 Weeks'
   setHccDueDateFilter: (cat) => set({ hccDueDateFilter: cat }),
@@ -2309,7 +2435,7 @@ export const useAppStore = create((set, get) => ({
   // hccFilters: { [filterKey]: string[] } — empty object = no filters applied.
   hccFilters: {},
   setHccFilter: (k, vals) => {
-    track('hcc.filter_applied', { filterKey: k, filterValue: vals });
+    track('hcc.filter_applied', { filterKey: k, filterValue: Array.isArray(vals) ? vals.join(',') : vals });
     set(s => {
       const next = { ...s.hccFilters };
       if (!vals || !vals.length) delete next[k];
@@ -2501,14 +2627,14 @@ export const useAppStore = create((set, get) => ({
   // Look up the DOS-state record. Lazy-hydrates from the legacy member fields
   // the first time a (patient, DOS) is read so the worklist's existing display
   // values don't disappear.
-  getHccDosState: (patientId, dosDate) => {
-    const key = hccDosKey(patientId, dosDate);
+  getHccDosState: (patientId, dosDate, renderingProvider, pos) => {
+    const key = hccDosKey(patientId, dosDate, renderingProvider, pos);
     const map = useAppStore.getState().hccDosAssignments;
     if (map[key]) return map[key];
     const patient = useAppStore.getState().hccMembers.find(m => m.id === patientId);
     if (!patient) return null;
     const idx = (patient.dos_list || []).findIndex(d => d.date === dosDate);
-    const hydrated = hydrateFromMember(patient, dosDate, idx < 0 ? 0 : idx);
+    const hydrated = hydrateFromMember(patient, dosDate, idx < 0 ? 0 : idx, renderingProvider, pos);
     set(s => ({ hccDosAssignments: { ...s.hccDosAssignments, [key]: hydrated } }));
     return hydrated;
   },
@@ -2530,7 +2656,7 @@ export const useAppStore = create((set, get) => ({
   //
   // Diffs the engine's new dosState against the previous one to detect role
   // status changes, then patches the matching legacy member field
-  // (supS/cdrS/r1s/r2s/r3s) AND persists the change to Supabase so the
+  // (supS/cdrS/r1s/r2s) AND persists the change to Supabase so the
   // worklist row survives reload. This is the single source of persistence
   // for every AC transition — convenience wrappers below don't need to know
   // about it.
@@ -2558,23 +2684,28 @@ export const useAppStore = create((set, get) => ({
         case 'reassignRole':
           result = fn(s.hccDosAssignments, patient, dos, payload.role, payload.staffId, actor, payload.reason);
           break;
-        case 'completeR1':
-        case 'completeR2':
+        case 'completeReviewer':
           result = fn(s.hccDosAssignments, patient, dos, actor, s.hccConfig.samplingRates);
+          break;
+        case 'completeReviewer2':
+          // Takes the full config (not just samplingRates) — completeReviewer2
+          // also runs the Phase 0 (WR7) validateAsmReadinessConfig guard, which
+          // reads config.minReviewsBeforeAsm alongside samplingRates.
+          result = fn(s.hccDosAssignments, patient, dos, actor, s.hccConfig);
           break;
         default:
           result = fn(s.hccDosAssignments, patient, dos, actor);
       }
       // Diff role statuses between previous and new dosState. Each changed
       // role gets queued for legacy-field patch + Supabase write below.
-      const dosKey = `${patientId}::${dosDate}`;
-      const prev = s.hccDosAssignments?.[dosKey] || {};
-      const next = result.nextMap?.[dosKey] || {};
-      ['support', 'coder', 'r1', 'r2', 'r3'].forEach(role => {
+      const compositeKey = hccDosKey(patientId, dosDate, dos.provider, dos.pos);
+      const prev = s.hccDosAssignments?.[compositeKey] || {};
+      const next = result.nextMap?.[compositeKey] || {};
+      ['support', 'coder', 'reviewer', 'reviewer2'].forEach(role => {
         const ns = next[role]?.status;
         if (ns && ns !== prev[role]?.status) statusChanges.push({ role, status: ns });
       });
-      const statusFieldByRole = { support: 'supS', coder: 'cdrS', r1: 'r1s', r2: 'r2s', r3: 'r3s' };
+      const statusFieldByRole = { support: 'supS', coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
       const nextMembers = statusChanges.length
         ? s.hccMembers.map(m => {
             if (m.id !== patientId) return m;
@@ -2603,7 +2734,7 @@ export const useAppStore = create((set, get) => ({
     // History drawer shows each transition (engine-driven cascades like
     // support→Completed triggering coder→In Progress produce one entry per
     // changed role).
-    const ROLE_LABEL_T = { support: 'Support', coder: 'Coder', r1: 'Reviewer 1', r2: 'Reviewer 2', r3: 'Reviewer 3' };
+    const ROLE_LABEL_T = { support: 'Support', coder: 'Coder', reviewer: 'Reviewer', reviewer2: 'Reviewer 2' };
     const patient = useAppStore.getState().hccMembers.find(m => m.id === patientId);
     statusChanges.forEach(({ role, status }) => {
       persistHccMemberRoleStatus(patientId, role, status);
@@ -2652,17 +2783,13 @@ export const useAppStore = create((set, get) => ({
     track('hcc.records_received', { memberId: pid });
     return useAppStore.getState().transitionHccDos(pid, dos, 'recordsReceived', { actor });
   },
-  hccCompleteR1: (pid, dos, actor) => {
-    track('hcc.review_completed', { memberId: pid, level: 'r1' });
-    return useAppStore.getState().transitionHccDos(pid, dos, 'completeR1', { actor });
+  hccCompleteReviewer: (pid, dos, actor) => {
+    track('hcc.review_completed', { memberId: pid, level: 'reviewer' });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'completeReviewer', { actor });
   },
-  hccCompleteR2: (pid, dos, actor) => {
-    track('hcc.review_completed', { memberId: pid, level: 'r2' });
-    return useAppStore.getState().transitionHccDos(pid, dos, 'completeR2', { actor });
-  },
-  hccCompleteR3: (pid, dos, actor) => {
-    track('hcc.review_completed', { memberId: pid, level: 'r3' });
-    return useAppStore.getState().transitionHccDos(pid, dos, 'completeR3', { actor });
+  hccCompleteReviewer2: (pid, dos, actor) => {
+    track('hcc.review_completed', { memberId: pid, level: 'reviewer2' });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'completeReviewer2', { actor });
   },
   hccReturnDos: (pid, dos, fromRole, actor, reason) => {
     track('hcc.dos_returned', { dosId: dos, toRole: fromRole });
@@ -2673,10 +2800,11 @@ export const useAppStore = create((set, get) => ({
     // Snapshot the pre-reassign display name so the activity log can
     // show "from → to". Reading after transitionHccDos would already
     // see the patched value.
-    const fieldByRoleLocal = { support: 'sup', coder: 'cdr', r1: 'r1', r2: 'r2', r3: 'r3' };
+    const fieldByRoleLocal = { support: 'sup', coder: 'cdr', reviewer: 'r1', reviewer2: 'r2' };
     const preMember = useAppStore.getState().hccMembers.find(m => m.id === pid);
     const fromName = preMember?.[fieldByRoleLocal[role]] || '—';
     const patientName = preMember?.name;
+    const dosEntry = (preMember?.dos_list || []).find(d => d.date === dos);
     const result = useAppStore.getState().transitionHccDos(pid, dos, 'reassignRole', { role, staffId, actor, reason });
     // Also patch the member's legacy role field so the worklist row's
     // RoleStatusCell (which reads member.sup / .cdr / .r1 / .r2 / .r3
@@ -2690,8 +2818,8 @@ export const useAppStore = create((set, get) => ({
     // patched — the displayName override solves that.
     const staff = hccStaffById(staffId);
     const name = staff?.name || displayName;
-    const fieldByRole = { support: 'sup', coder: 'cdr', r1: 'r1', r2: 'r2', r3: 'r3' };
-    const statusFieldByRole = { support: 'supS', coder: 'cdrS', r1: 'r1s', r2: 'r2s', r3: 'r3s' };
+    const fieldByRole = { support: 'sup', coder: 'cdr', reviewer: 'r1', reviewer2: 'r2' };
+    const statusFieldByRole = { support: 'supS', coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
     const f = fieldByRole[role];
     const sf = statusFieldByRole[role];
     if (f && name) {
@@ -2704,7 +2832,7 @@ export const useAppStore = create((set, get) => ({
     // Persist to Supabase so the reassignment survives reload.
     if (name) persistHccMemberRoleStatus(pid, role, 'New', name);
     // Log to the canonical activity feed for the History drawer.
-    const ROLE_LABEL = { support: 'Support', coder: 'Coder', r1: 'Reviewer 1', r2: 'Reviewer 2', r3: 'Reviewer 3' };
+    const ROLE_LABEL = { support: 'Support', coder: 'Coder', reviewer: 'Reviewer', reviewer2: 'Reviewer 2' };
     useAppStore.getState().logHccActivity({
       eventName: 'assignee.changed',
       scope:     { patientId: pid, dos, source: 'manual' },
@@ -2722,14 +2850,14 @@ export const useAppStore = create((set, get) => ({
     // unassigned (it only treats the bucket as active when status is both
     // set and non-'Assign'). Force-stamp a 'New' status so AssigneeAvatar /
     // AssigneeCell flip immediately to the active state with the new owner.
-    const dosKey = `${pid}::${dos}`;
+    const compositeKey = hccDosKey(pid, dos, dosEntry?.provider, dosEntry?.pos);
     set(s => {
-      const cur = s.hccDosAssignments?.[dosKey];
+      const cur = s.hccDosAssignments?.[compositeKey];
       if (!cur || !cur[role]) return {};
       return {
         hccDosAssignments: {
           ...s.hccDosAssignments,
-          [dosKey]: {
+          [compositeKey]: {
             ...cur,
             [role]: { ...cur[role], status: 'New' },
           },
@@ -2746,27 +2874,29 @@ export const useAppStore = create((set, get) => ({
   // bucket and the legacy member.{role}S field so worklist + DiagPanel
   // agree on the new status.
   hccSetRoleStatus: (pid, dos, role, status) => {
-    const fieldByRole       = { support: 'sup',  coder: 'cdr',  r1: 'r1',  r2: 'r2',  r3: 'r3'  };
-    const statusFieldByRole = { support: 'supS', coder: 'cdrS', r1: 'r1s', r2: 'r2s', r3: 'r3s' };
+    const fieldByRole       = { support: 'sup',  coder: 'cdr',  reviewer: 'r1',  reviewer2: 'r2'  };
+    const statusFieldByRole = { support: 'supS', coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
     const f  = fieldByRole[role];
     const sf = statusFieldByRole[role];
     if (!f || !sf) return;
-    const dosKey = `${pid}::${dos}`;
+    const member = useAppStore.getState().hccMembers.find(m => m.id === pid);
+    const dosEntry = (member?.dos_list || []).find(d => d.date === dos);
+    const compositeKey = hccDosKey(pid, dos, dosEntry?.provider, dosEntry?.pos);
     set(s => {
       const next = { hccMembers: s.hccMembers.map(m =>
         m.id === pid ? { ...m, [sf]: status } : m,
       ) };
-      const cur = s.hccDosAssignments?.[dosKey];
+      const cur = s.hccDosAssignments?.[compositeKey];
       if (cur && cur[role]) {
         next.hccDosAssignments = {
           ...s.hccDosAssignments,
-          [dosKey]: { ...cur, [role]: { ...cur[role], status } },
+          [compositeKey]: { ...cur, [role]: { ...cur[role], status } },
         };
       }
       return next;
     });
     persistHccMemberRoleStatus(pid, role, status);
-    const ROLE_LABEL_S = { support: 'Support', coder: 'Coder', r1: 'Reviewer 1', r2: 'Reviewer 2', r3: 'Reviewer 3' };
+    const ROLE_LABEL_S = { support: 'Support', coder: 'Coder', reviewer: 'Reviewer', reviewer2: 'Reviewer 2' };
     const patient = useAppStore.getState().hccMembers.find(m => m.id === pid);
     useAppStore.getState().logHccActivity({
       eventName: 'role.status_changed',
@@ -2901,14 +3031,14 @@ export const useAppStore = create((set, get) => ({
   // Team shape:
   //   {
   //     id, name, kind: 'hcc' | 'care-program' | 'hedis',
-  //     teamType,            // 'Reviewer 1' / 'Coder' / 'SNP' / 'Assignee'…
+  //     teamType,            // 'Reviewer' / 'Coder' / 'SNP' / 'Assignee'…
   //     allocatedTins: [],   // team-level routing key (Phase 2 spec)
   //     createdAt, createdBy, lastModifiedAt, lastModifiedBy,
   //     members: [
   //       {
   //         userId, name, initials, roles,  // denormalized for table render
   //         capacityPct,                    // share of THIS team allocated to them
-  //         assignTo: [{ dim: 'TIN'|'Vendor'|'Coder'|'Reviewer 1'|…, value, pct }],
+  //         assignTo: [{ dim: 'TIN'|'Vendor'|'Coder'|'Reviewer'|…, value, pct }],
   //       },
   //     ],
   //   }
@@ -2918,11 +3048,11 @@ export const useAppStore = create((set, get) => ({
   // fallback path needed in the panel).
   hccCareTeams: [
     {
-      id: 'seed-rt1', name: 'Reviewer 1 Team', kind: 'hcc',          teamType: 'Reviewer 1',
+      id: 'seed-rt1', name: 'Reviewer Team', kind: 'hcc',          teamType: 'Reviewer',
       allocatedTins: ['12-3456789'], createdAt: '02/21/2026', createdBy: 'Dina Morries',
       lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson',
       members: [
-        { userId: 'MA', name: 'M. Almeda',   initials: 'MA', roles: 'Reviewer 1', capacityPct: 50, assignTo: [{ dim: 'Coder', value: 'DH', pct: 50 }] },
+        { userId: 'MA', name: 'M. Almeda',   initials: 'MA', roles: 'Reviewer', capacityPct: 50, assignTo: [{ dim: 'Coder', value: 'DH', pct: 50 }] },
       ],
     },
     {
@@ -3311,7 +3441,7 @@ export const useAppStore = create((set, get) => ({
         pendingForReview += 1;
         return { ...enc, _duplicateOfMemberId: enc.patient.matchedMemberId };
       }
-      const r = useAppStore.getState().hccCreateOrMergeFromEncounter?.({ ...enc, _docName: fileName });
+      const r = useAppStore.getState().hccCreateOrMergeFromEncounter?.({ ...enc, _docName: fileName, _batchId: id });
       if (r?.kind === 'created' || r?.kind === 'updated') {
         autoApplied += 1;
         return { ...enc, _docStatus: 'added' };
@@ -3631,6 +3761,13 @@ export const useAppStore = create((set, get) => ({
   openHccUploadDrawer: (member) => set({ hccUploadMember: member }),
   closeHccUploadDrawer: () => set({ hccUploadMember: null }),
 
+  // ─── Per-patient "Add DOS" drawer (Figma 4684:127213 / 4687:127406) ──
+  // Opened from the worklist row Actions column. Holds the member whose
+  // DOS we're adding; null when closed.
+  hccAddDosMember: null,
+  openHccAddDos: (member) => set({ hccAddDosMember: member }),
+  closeHccAddDos: () => set({ hccAddDosMember: null }),
+
   // ─── HCC Document Upload + OCR Review (Individual Upload path) ──────
   // Session state for the multi-encounter PDF upload flow described in the
   // Jira ticket. Lives at app level — drawer is mounted once in AppLayout.
@@ -3693,19 +3830,66 @@ export const useAppStore = create((set, get) => ({
     });
   },
   setHccUploadEncounters: (encounters) => {
-    set(s => s.hccUploadSession
-      ? { hccUploadSession: { ...s.hccUploadSession, encounters, phase: 'review' } }
-      : {});
     const session = useAppStore.getState().hccUploadSession;
     if (!session) return;
-    // OCR completed — emit an OCR success event plus a low-confidence
-    // warning per encounter whose `errors` array is non-empty.
+    // Unified Document Review surface — the legacy in-drawer review
+    // table is gone. Adopt the OCR output as a new SFTP batch, run the
+    // same auto-routing pipeline as the multi-doc queue, then open the
+    // full-screen Document Review drawer. The legacy upload session is
+    // cancelled below since it's no longer needed.
+    const fileName = session.file?.name || 'Uploaded document';
+    const batchId = `doc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const state = useAppStore.getState();
+    const members = state.hccMembers || [];
+    let autoApplied = 0;
+    let pendingForReview = 0;
+    const routed = encounters.map((enc) => {
+      const ready = !!enc.patient?.matchedMemberId
+        && (!enc.errors || enc.errors.length === 0);
+      if (!ready) { pendingForReview += 1; return enc; }
+      const member = members.find(m => m.id === enc.patient.matchedMemberId);
+      const isDup = !!member?.dos_list?.some(d =>
+        d.date === enc.dos
+        && (d.provider || '').toLowerCase() === (enc.provider || '').toLowerCase()
+        && (d.pos || '') === (enc.pos || '')
+      );
+      if (isDup) { pendingForReview += 1; return { ...enc, _duplicateOfMemberId: enc.patient.matchedMemberId }; }
+      const r = useAppStore.getState().hccCreateOrMergeFromEncounter?.({ ...enc, _docName: fileName, _batchId: batchId });
+      if (r?.kind === 'created' || r?.kind === 'updated') {
+        autoApplied += 1;
+        return { ...enc, _docStatus: 'added' };
+      }
+      pendingForReview += 1;
+      return enc;
+    });
+    const newBatch = {
+      id: batchId,
+      fileName,
+      encounters: routed,
+      ingestedAt: new Date().toISOString(),
+      status: 'done',
+      source: 'manual',
+      _autoApplied: autoApplied,
+      _pendingForReview: pendingForReview,
+      actorName: 'You',
+    };
+    set(s => ({
+      hccSftpBatches: [...(s.hccSftpBatches || []), newBatch],
+      hccSftpActiveBatchId: batchId,
+      hccSftpReviewOpen: true,
+      // Cancel the legacy session — Document Review now owns this flow.
+      hccUploadSession: null,
+    }));
+    // Activity log — point at the new SFTP batch id since the legacy
+    // session is gone now.
     useAppStore.getState().logHccActivity({
       eventName: 'ocr.completed',
-      scope:     { batchId: session.id, fileId: session.file?.name, source: 'system' },
+      scope:     { batchId, fileId: fileName, source: 'system' },
       payload:   {
-        fileName: session.file?.name || 'Uploaded file',
+        fileName,
         encounterCount: encounters.length,
+        autoApplied,
+        pendingForReview,
         pageCount: '—',
       },
     });
@@ -3713,7 +3897,7 @@ export const useAppStore = create((set, get) => ({
       if (Array.isArray(enc.errors) && enc.errors.length > 0) {
         useAppStore.getState().logHccActivity({
           eventName: 'ocr.low_confidence',
-          scope:     { batchId: session.id, fileId: session.file?.name, source: 'system' },
+          scope:     { batchId, fileId: fileName, source: 'system' },
           payload:   {
             patientName: enc.patient?.name || '(unmatched)',
             dos: enc.dos,
@@ -3725,17 +3909,23 @@ export const useAppStore = create((set, get) => ({
         });
       }
     });
-    // Extraction landed — toast + bell notification so the user knows
-    // even if they minimized the drawer and navigated away.
-    const fileName = session.file?.name || 'Uploaded file';
-    const n = encounters.length;
+    // Extraction-complete notification mirrors the multi-doc queue
+    // behavior — auto/pending breakdown, deep-link into the Document
+    // Review drawer.
+    const body = pendingForReview === 0
+      ? `${autoApplied} record${autoApplied === 1 ? '' : 's'} loaded automatically — no manual review needed.`
+      : `${autoApplied} loaded automatically · ${pendingForReview} waiting for manual intervention.`;
     useAppStore.getState().addNotification?.({
       type: 'hcc.extraction_complete',
       title: 'Document extracted',
-      body: `${fileName} • ${n} encounter${n === 1 ? '' : 's'} ready for review`,
-      action: 'openHccReview',
+      body,
+      action: 'openSftpReview',
     });
-    useAppStore.getState().showToast?.(`Document extracted — ${n} encounter${n === 1 ? '' : 's'} ready for review`);
+    useAppStore.getState().showToast?.(
+      pendingForReview === 0
+        ? `${autoApplied} record${autoApplied === 1 ? '' : 's'} loaded automatically`
+        : `${autoApplied} auto · ${pendingForReview} waiting for review`
+    );
   },
   // Append more encounters from a second OCR pass (user clicks "Upload"
   // again during review). Preserves existing rows + their edits.
@@ -3836,6 +4026,17 @@ export const useAppStore = create((set, get) => ({
     const docType = enc._docType || 'Progress Note';
     const icdCodes = (enc.icds || []).filter(i => i.valid !== false).map(i => i.code);
     const now = new Date();
+    // WS1/WS8 — every upload-sourced row belongs to a mini-sweep. Stamp
+    // the batch id onto `sourceDocumentIds` and force `arrivalOrder` to
+    // 'doc-first' so the grouping engine buckets this row alongside its
+    // siblings under the same document.
+    const batchId = enc._batchId || `doc-${docName}`;
+    const stampSourceDoc = (m) => ({
+      ...m,
+      arrivalOrder: 'doc-first',
+      sourceDocumentIds: Array.from(new Set([...(m.sourceDocumentIds || []), batchId])),
+      createdAt: m.createdAt || now.toISOString(),
+    });
     const pad = (n) => String(n).padStart(2, '0');
     const dateStr = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
 
@@ -3862,22 +4063,17 @@ export const useAppStore = create((set, get) => ({
       });
     };
 
-    // Compute existing row's role-statuses for the uniqueness key
-    // (memberId, dos, provider, pos). The engine maps DOS to a dosState
-    // by `${memberId}::${dos}` (no provider/pos in the key) — for the
-    // prototype we treat (memberId, dos) as the row key and compare
-    // provider/pos at the member field level. Real backend would key
-    // strictly on all four.
-    const dosKey = `${memberId}::${enc.dos}`;
+    // Composite key: Patient ID + DOS + Rendering Provider + POS. The key
+    // itself now disambiguates two DOS rows sharing a date but differing
+    // provider/POS, so there's no need for a separate member-field compare.
+    const dosKey = hccDosKey(memberId, enc.dos, enc.provider, enc.pos);
     const existingDosState = s.hccDosAssignments[dosKey];
-    const sameProvider = (member.rp || '').trim() === (enc.provider || '').trim();
-    const samePos = (member.pos || '').trim() === (enc.pos || '').trim();
-    const existsByUniqueKey = !!existingDosState && sameProvider && samePos;
+    const existsByUniqueKey = !!existingDosState;
 
     const TERMINAL = new Set(['Completed', 'Reject', 'Insufficient']);
     const isAllTerminal = (state) => {
       if (!state) return false;
-      return ['support', 'coder', 'r1', 'r2', 'r3'].every(r => TERMINAL.has(state[r]?.status));
+      return ['support', 'coder', 'reviewer', 'reviewer2'].every(r => TERMINAL.has(state[r]?.status));
     };
 
     // Branch 1: DOS row exists & all roles terminal → create new row with
@@ -3889,25 +4085,25 @@ export const useAppStore = create((set, get) => ({
       // Bootstrap a fresh entry in dosState under a synthetic suffixed key
       // so the original Completed row stays untouched.
       const suffix = `__upload-${now.getTime()}`;
-      const newKey = `${memberId}::${newDosDate}${suffix}`;
+      const newKey = `${hccDosKey(memberId, newDosDate, enc.provider, enc.pos)}${suffix}`;
       set(st => ({
-        hccMembers: st.hccMembers.map(m => m.id === memberId ? {
+        hccMembers: st.hccMembers.map(m => m.id === memberId ? stampSourceDoc({
           ...m,
-          dos_list: [...(m.dos_list || []), { date: newDosDate, label: 'From Upload (post-completion)', labelColor: 'var(--secondary-300)' }],
+          dos_list: [...(m.dos_list || []), { date: newDosDate, label: 'From Upload (post-completion)', labelColor: 'var(--secondary-300)', provider: enc.provider, pos: enc.pos, posDesc: enc.posDesc }],
           docStatus: [...(m.docStatus || []), 'pending'],
           ch: (m.ch || 0) + 1,
           awaitingClaim: true,
-        } : m),
+        }) : m),
         hccDosAssignments: {
           ...st.hccDosAssignments,
           [newKey]: {
             patientId: memberId, dosDate: newDosDate,
-            support: { assignee: null, status: 'New', history: [] },
-            coder:   { assignee: null, status: null, history: [] },
-            r1:      { assignee: null, status: null, history: [] },
-            r2:      { assignee: null, status: null, history: [] },
-            r3:      { assignee: null, status: null, history: [] },
-            sampling: { r2: null, r3: null },
+            renderingProvider: enc.provider, pos: enc.pos,
+            support:   { assignee: null, status: 'New', history: [] },
+            coder:     { assignee: null, status: null, history: [] },
+            reviewer:  { assignee: null, status: null, history: [] },
+            reviewer2: { assignee: null, status: null, history: [] },
+            sampling: { reviewer2: null },
             billingReady: false, asmGenerated: false,
             relatedDosId: relatedKey,
             awaitingClaim: true,
@@ -3948,11 +4144,11 @@ export const useAppStore = create((set, get) => ({
       const existingIcds = new Set((existingDosState.uploadedDocs || []).flatMap(d => d.icds || []));
       const netNew = icdCodes.filter(c => !existingIcds.has(c));
       set(st => ({
-        hccMembers: st.hccMembers.map(m => m.id === memberId ? {
+        hccMembers: st.hccMembers.map(m => m.id === memberId ? stampSourceDoc({
           ...m,
           docStatus: [...(m.docStatus || []), 'pending'],
           ch: (m.ch || 0) + 1,
-        } : m),
+        }) : m),
         hccDosAssignments: {
           ...st.hccDosAssignments,
           [dosKey]: {
@@ -4003,29 +4199,29 @@ export const useAppStore = create((set, get) => ({
       hccMembers: st.hccMembers.map(m => {
         if (m.id !== memberId) return m;
         const hadDos = m.dos_list?.some(d => d.date === enc.dos);
-        return {
+        return stampSourceDoc({
           ...m,
           dos_list: hadDos
             ? m.dos_list
-            : [...(m.dos_list || []), { date: enc.dos, label: 'From Upload', labelColor: 'var(--secondary-300)' }],
+            : [...(m.dos_list || []), { date: enc.dos, label: 'From Upload', labelColor: 'var(--secondary-300)', provider: enc.provider, pos: enc.pos, posDesc: enc.posDesc }],
           docStatus: [...(m.docStatus || []), 'pending'],
           ch: (m.ch || 0) + 1,
           tv: hadDos ? m.tv : (m.tv || 0) + 1,
           rp: m.rp || enc.provider,
           pos: m.pos || enc.pos,
           awaitingClaim: true,
-        };
+        });
       }),
       hccDosAssignments: {
         ...st.hccDosAssignments,
         [dosKey]: {
           patientId: memberId, dosDate: enc.dos,
-          support: { assignee: null, status: 'New', history: [] },
-          coder:   { assignee: null, status: null, history: [] },
-          r1:      { assignee: null, status: null, history: [] },
-          r2:      { assignee: null, status: null, history: [] },
-          r3:      { assignee: null, status: null, history: [] },
-          sampling: { r2: null, r3: null },
+          renderingProvider: enc.provider, pos: enc.pos,
+          support:   { assignee: null, status: 'New', history: [] },
+          coder:     { assignee: null, status: null, history: [] },
+          reviewer:  { assignee: null, status: null, history: [] },
+          reviewer2: { assignee: null, status: null, history: [] },
+          sampling: { reviewer2: null },
           billingReady: false, asmGenerated: false,
           awaitingClaim: true,
           uploadedDocs: [{ name: docName, type: docType, icds: icdCodes, uploadedAt: now.toISOString() }],

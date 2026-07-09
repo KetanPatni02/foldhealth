@@ -1,0 +1,295 @@
+.body { padding: 0 24px 24px; }
+
+.headerDivider {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  margin: 0 4px;
+}
+
+/* ── Patient header ─────────────────────────────────────────────── */
+.patientHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0 16px;
+}
+.patientText { display: flex; flex-direction: column; gap: 2px; }
+.patientName {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 15px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.patientMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 400 13px/1.3 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+
+/* ── DOS block ──────────────────────────────────────────────────── */
+.dosBlock {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.dosBlockHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dosBlockTitle {
+  font: 600 14px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.trashBtn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  border-radius: 6px;
+}
+.trashBtn:hover { background: var(--neutral-50); }
+.dosBlockHead .trashBtn { margin-left: auto; }
+
+/* ── Documents subsection ───────────────────────────────────────── */
+.docsSection { display: flex; flex-direction: column; gap: 8px; }
+.docsHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.docsLabel { font: 600 13px/1.2 'Inter', sans-serif; color: var(--neutral-500); }
+.uploadLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+}
+.docCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+}
+.docIcon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--primary-50);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.docMeta { flex: 1; min-width: 0; }
+.docName { font: 500 13px/1.3 'Inter', sans-serif; color: var(--neutral-500); }
+.docSub {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font: 400 11px/1.4 'Inter', sans-serif;
+  color: var(--neutral-300);
+  margin-top: 2px;
+}
+.docUploaded { display: inline-flex; align-items: center; gap: 3px; color: var(--status-success); }
+.docAction {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  border-radius: 6px;
+}
+.docAction:hover { background: var(--neutral-50); }
+
+/* ── Field grid ─────────────────────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.fieldHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.fieldLabel {
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.req { color: var(--status-error); margin-left: 2px; }
+.hint {
+  font: 400 11px/1.3 'Inter', sans-serif;
+  color: var(--neutral-300);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.hintError { color: var(--status-error); }
+
+/* ── Confidence gauge + citation trigger ────────────────────────── */
+.gauge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: 600 11px/1 'Inter', sans-serif;
+}
+.gauge_high   { color: var(--status-success); }
+.gauge_medium { color: var(--status-warning); }
+.gauge_low    { color: var(--status-error); }
+.gauge:hover { text-decoration: underline; }
+
+/* ── ICD Codes ──────────────────────────────────────────────────── */
+.icdSection { display: flex; flex-direction: column; gap: 10px; }
+.icdRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--neutral-100);
+}
+.icdCode {
+  font: 600 13px/1.4 'Inter', sans-serif;
+  color: var(--neutral-500);
+  flex-shrink: 0;
+  min-width: 52px;
+}
+.icdMain { flex: 1; min-width: 0; }
+.icdDesc { font: 400 13px/1.4 'Inter', sans-serif; color: var(--neutral-500); }
+.icdHcc { font: 400 12px/1.4 'Inter', sans-serif; color: var(--neutral-300); margin-top: 2px; }
+.icdRow .gauge { margin-top: 2px; }
+
+/* ── Add More DOS ───────────────────────────────────────────────── */
+.addMore {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px dashed var(--neutral-200);
+  border-radius: 12px;
+  background: var(--primary-25);
+  cursor: pointer;
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+}
+.addMore:hover { background: var(--primary-50); }
+
+/* ── Demo document chip (empty state) ───────────────────────────── */
+.demoRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: -6px;
+}
+.demoLabel { font: 400 12px/1.3 'Inter', sans-serif; color: var(--neutral-300); }
+.demoChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 0.5px solid var(--primary-200);
+  border-radius: 999px;
+  background: var(--primary-50);
+  color: var(--primary-300);
+  font: 500 12px/1.2 'Inter', sans-serif;
+  cursor: pointer;
+}
+.demoChip:hover { background: var(--primary-100); }
+
+/* ── Source document preview modal ──────────────────────────────── */
+.previewOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: color-mix(in srgb, var(--neutral-500) 40%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+.previewModal {
+  width: 640px;
+  max-width: 100%;
+  max-height: 88vh;
+  background: var(--neutral-0);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 64px color-mix(in srgb, black 28%, transparent);
+}
+.previewBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+.previewFile {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.previewClose { background: none; border: none; cursor: pointer; display: inline-flex; padding: 2px; }
+.previewSheet {
+  overflow-y: auto;
+  padding: 32px 40px;
+}
+.sheetOrg { font: 700 15px/1.3 'Inter', sans-serif; color: var(--neutral-500); }
+.sheetOrgSub { font: 400 11px/1.4 'Inter', sans-serif; color: var(--neutral-300); margin-bottom: 20px; }
+.sheetH1 {
+  font: 600 18px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+  border-bottom: 1px solid var(--neutral-150);
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+}
+.sheetMeta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 24px;
+  font: 400 13px/1.5 'Inter', sans-serif;
+  color: var(--neutral-500);
+  margin-bottom: 20px;
+}
+.sheetSection { margin-bottom: 20px; }
+.sheetH2 { font: 600 13px/1.3 'Inter', sans-serif; color: var(--neutral-400); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px; }
+.sheetIcds { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.sheetIcds li { font: 400 13px/1.5 'Inter', sans-serif; color: var(--neutral-500); }
+.sheetHcc { color: var(--neutral-300); }
+.sheetFooter {
+  margin-top: 24px;
+  padding-top: 14px;
+  border-top: 1px solid var(--neutral-150);
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-300);
+  font-style: italic;
+}
