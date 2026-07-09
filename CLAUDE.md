@@ -6,6 +6,15 @@ keep entries short and specific. Newest at the top.
 
 ## Working agreements
 
+- **Building any new UI? Invoke the `fold-feature-builder` skill FIRST.**
+  For every request that generates, builds, creates, scaffolds, or adds new
+  front-end code (a component, page, screen, view, table, drawer, modal, form,
+  dashboard, or feature), run the `fold-feature-builder` skill before writing
+  code. It enforces the design system (reusable `src/components` primitives,
+  Inter typography, tokens, Solar `*-linear` icons, the shared `FilterChip`)
+  and requires that any data shown in the UI is persisted to Supabase — with a
+  parallel migration + seed, and a note telling the user to ask **Alok Kumar**
+  to run the migration and seed the database.
 - **Drawer headers: NEVER let the close button draw its own border.**
   When `headerRight` has action buttons, pass `noCloseDivider` to `<Drawer>`
   AND insert your own `<span className={styles.headerDivider} />` (1px × 16px,
