@@ -1,0 +1,96 @@
+/* Ribbon — full-bleed banner that sits above the worklist when one
+   or more documents are extracting in the background. Edge-to-edge,
+   no rounded corners. */
+.ribbon {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 20px;
+  margin: 0 0 8px;
+  border-top: 0.5px solid var(--primary-200, #e3d6f9);
+  border-bottom: 0.5px solid var(--primary-200, #e3d6f9);
+  border-radius: 0;
+  background: linear-gradient(90deg, var(--primary-50) 0%, #ffffff 60%);
+  font-family: 'Inter', sans-serif;
+  animation: ribbon-in 0.18s ease-out;
+}
+@keyframes ribbon-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.ribbonComplete {
+  background: linear-gradient(90deg, var(--status-success-light) 0%, #ffffff 60%);
+  border-top-color: rgba(0, 155, 83, 0.2);
+  border-bottom-color: rgba(0, 155, 83, 0.2);
+}
+
+.ribbonLabel {
+  font: 400 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.ribbonLabel strong {
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+
+.ribbonProgressTrack {
+  flex: 1;
+  min-width: 100px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--primary-100);
+  overflow: hidden;
+}
+.ribbonProgressFill {
+  display: block;
+  height: 100%;
+  background: var(--primary-300);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.ribbonSpacer { flex: 1; }
+
+.ribbonView {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 0.5px solid var(--primary-200);
+  background: #fff;
+  border-radius: 6px;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+  cursor: pointer;
+}
+.ribbonView:hover { background: var(--primary-50); }
+
+.ribbonCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border: none;
+  background: var(--primary-300);
+  border-radius: 6px;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.ribbonCta:hover { background: var(--primary-400, #7c4ad1); }
+
+.ribbonClose {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ribbonClose:hover { background: var(--neutral-50); }

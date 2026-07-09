@@ -1,0 +1,3002 @@
+/* ── Drawer shell ─────────────────────────────────────────────────── */
+/* Fixed 660px width across every phase (chooser, picker, processing,
+   review, single, sftp). The previous narrow/wide split was confusing
+   when the drawer "grew" during AI extraction — a single width keeps
+   the layout calm. */
+.drawer {
+  width: 660px;
+  min-width: 660px;
+  max-width: 660px;
+  transition: width 0.24s ease-out, min-width 0.24s ease-out, max-width 0.24s ease-out;
+}
+.drawerExpanded {
+  width: 75vw;
+  min-width: 75vw;
+  max-width: 75vw;
+}
+.body {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.title {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+/* Two-line picker header — bold 18px title + 12px grey subtitle stacked. */
+.titleBlock {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-family: 'Inter', sans-serif;
+}
+.titleStack {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.2;
+}
+.titleMain {
+  font: 500 18px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.titleSub {
+  font: 400 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.titleHint {
+  margin-left: 6px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+
+/* ── Phase 1: file picker ────────────────────────────────────────── */
+.pickerPhase {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Subtitle directly under the drawer header. Matches Figma's tone-200 grey 12px. */
+.pickerSubtitle {
+  margin: -8px 0 0;
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+
+/* Step indicator — numbered chip + label, two steps connected by a hairline. */
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.stepBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--primary-50, #fcfaff);
+  border: 0.5px solid var(--primary-200, #d7c0ff);
+  font: 500 10px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+}
+.stepBadgeIdle {
+  background: var(--neutral-50);
+  border-color: var(--neutral-150);
+  color: var(--neutral-300);
+}
+.stepLabel {
+  font: 500 14px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+}
+.stepLabelIdle { color: var(--neutral-300); }
+.stepDivider {
+  width: 20px;
+  height: 1px;
+  background: var(--neutral-150);
+}
+
+/* Hero illustration — two dashed concentric rings around an icon disc.
+   Sized to Figma (120 outer / 102 middle / 84 inner). */
+.hero {
+  align-self: center;
+  position: relative;
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+}
+.heroRingOuter,
+.heroRingMid,
+.heroCenter {
+  position: absolute;
+  border-radius: 50%;
+}
+.heroRingOuter {
+  inset: 0;
+  border: 1px dashed var(--neutral-150);
+}
+.heroRingMid {
+  width: 102px;
+  height: 102px;
+  border: 1px dashed var(--neutral-200);
+}
+.heroCenter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 84px;
+  height: 84px;
+  background: linear-gradient(141.7deg, #f9fafc 12.7%, #f1f2f3 91.4%);
+}
+
+/* Dropzone now provided by src/components/Dropzone — the old
+   .dropZoneBlock / .dropZone / .formatsLine rules below are no longer
+   referenced by the HCC picker. Kept temporarily for any reuse during
+   the migration of the other 4 dropzone sites. */
+
+/* ── Picker phase v2 (Figma 121:81202) ────────────────────────────── */
+.pickerPhase2 {
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Visual container that wraps the dropzone + staged file list so they
+   read as one component per Figma 121:84012. The Dropzone already
+   carries its own dashed-border drop area; this wrapper just provides
+   the soft outer bg so dropzone + helper + file rows feel like one
+   tray. */
+.uploadContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+}
+
+/* When files are staged, the dropzone shrinks vertically — Figma
+   124:84012 trades dropzone real estate for the file list below. The
+   inner zone's :where() selector targets the shared Dropzone primitive
+   without touching its base styles. */
+.uploadContainer:where(.uploadContainerWithFiles) :global([class*="_zone_"]) {
+  padding: 24px;
+}
+.uploadContainerWithFiles { }
+
+/* "What happens next?" collapsible accordion */
+.whatNext {
+  border: 0.5px solid rgba(20, 94, 204, 0.22);
+  border-radius: 8px;
+  background: var(--status-info-light, #f4f8fe);
+  overflow: hidden;
+  transition: background 0.15s;
+}
+.whatNextHead {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+.whatNextHeadLabel {
+  flex: 1;
+  text-align: left;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--status-info, #145ECC);
+}
+.whatNextSteps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 4px 12px 12px;
+}
+.whatNextCard {
+  position: relative;
+  padding: 10px 12px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: #fff;
+}
+.whatNextNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: var(--status-info, #145ECC);
+  color: #fff;
+  font: 600 10px/1 'Inter', sans-serif;
+  margin-bottom: 6px;
+}
+.whatNextTitle {
+  font: 600 12px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+  margin-bottom: 4px;
+}
+.whatNextBody {
+  font: 400 11px/1.4 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+
+/* Staged-file list (uploading → complete) */
+.stagedList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.stagedRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: #fff;
+}
+.stagedRowUploading { }
+.stagedRowComplete { }
+.stagedIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.stagedMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stagedName {
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stagedMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 400 11px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.stagedMetaSep { color: var(--neutral-200); margin: 0 2px; }
+.stagedStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.stagedSpinner {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--primary-150, #e3d6f9);
+  border-top-color: var(--primary-300);
+  animation: spin 0.85s linear infinite;
+}
+.stagedProgressTrack {
+  margin-top: 2px;
+  width: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--neutral-100);
+  overflow: hidden;
+}
+.stagedProgressFill {
+  display: block;
+  height: 100%;
+  background: var(--status-success);
+  border-radius: 999px;
+  transition: width 0.18s ease;
+}
+.stagedActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.stagedActionBtn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.stagedActionBtn:hover { background: var(--neutral-50); }
+
+/* Footer for Start Extraction + Discard */
+.pickerFooter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* Queued Documents — Figma 211:66363 */
+.queuedSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 0.5px solid var(--neutral-100);
+}
+.queuedHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.queuedTitle {
+  font: 600 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.queuedHeadRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.queuedViewAll {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+  cursor: pointer;
+  border-radius: 6px;
+}
+.queuedViewAll:hover:not(:disabled) { background: var(--primary-50); }
+.queuedViewAll:disabled { opacity: 0.45; cursor: not-allowed; }
+.queuedDivider {
+  width: 0.5px;
+  height: 14px;
+  background: var(--neutral-150);
+}
+.queuedFilterBtn {
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.queuedFilterBtn:hover { background: var(--neutral-50); }
+.queuedList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.queuedRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: #fff;
+}
+.queuedRowIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-150, #e3d6f9);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.queuedRowMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.queuedRowName {
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.queuedRowMeta {
+  font: 400 11px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.queuedRowStatus {
+  flex-shrink: 0;
+  padding: 0 8px;
+}
+.queuedProcessing {
+  display: inline-block;
+  padding-bottom: 2px;
+  font: 400 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+  background: linear-gradient(90deg, var(--primary-300) 0%, var(--primary-300) 50%, var(--neutral-200) 50%, var(--neutral-200) 100%);
+  background-size: 200% 1px;
+  background-repeat: no-repeat;
+  background-position: 100% 100%;
+  animation: queued-bar 1.4s ease-in-out infinite;
+}
+@keyframes queued-bar {
+  0%   { background-position: 100% 100%; }
+  100% { background-position: -100% 100%; }
+}
+.queuedDone {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--status-success);
+}
+.queuedRowActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.queuedRowAction {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.queuedRowAction:hover { background: var(--neutral-50); }
+
+
+/* ── Picker queue (inline list of background OCR jobs) ─────────────── */
+.pickerQueue {
+  margin-top: 4px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+.pickerQueueHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 0.5px solid var(--neutral-100);
+  background: var(--neutral-50);
+}
+.pickerQueueLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 11px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.pickerQueuePending {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 500 11px/1.2 'Inter', sans-serif;
+  color: var(--status-info);
+}
+.pickerQueuePendingDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-info);
+  animation: picker-queue-pulse 1.2s ease-in-out infinite;
+}
+@keyframes picker-queue-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+.pickerQueueList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.pickerQueueItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 0.5px solid var(--neutral-50);
+  font-family: 'Inter', sans-serif;
+}
+.pickerQueueItem:last-child { border-bottom: none; }
+.pickerQueueItemIcon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.pickerQueueSpinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--primary-150, #e3d6f9);
+  border-top-color: var(--primary-300);
+  animation: spin 0.85s linear infinite;
+}
+.pickerQueueItemName {
+  flex: 1;
+  min-width: 0;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pickerQueueItemStatus {
+  font: 400 11px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.pickerQueueReviewBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  background: var(--primary-300);
+  color: #fff;
+  font: 500 13px/1.2 'Inter', sans-serif;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.pickerQueueReviewBtn:hover:not(:disabled) {
+  background: var(--primary-400, #7c4ad1);
+}
+.pickerQueueReviewBtn:disabled {
+  background: var(--neutral-50);
+  color: var(--neutral-300);
+  cursor: not-allowed;
+  border-top: 0.5px solid var(--neutral-100);
+}
+
+/* Demo PDF chip strip — single line under the footer note. Greyed out
+   so it reads as a developer affordance, not a primary surface. */
+.demoStrip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  border-top: 0.5px dashed var(--neutral-150);
+  font: 400 11px/1.4 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.demoStripLabel {
+  margin-right: 4px;
+}
+
+/* How-to banner — light info-blue background, numbered list. */
+.howToBanner {
+  padding: 8px 10px;
+  background: var(--status-info-light, #f4f8fe);
+  border: 0.5px solid rgba(20, 94, 204, 0.2);
+  border-radius: 6px;
+  color: var(--neutral-400, #3a485f);
+  font-family: 'Inter', sans-serif;
+}
+.howToHead {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+  font-size: 12px;
+}
+.howToList {
+  margin: 4px 0 0;
+  padding: 0 0 0 22px;
+  list-style: decimal outside;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.howToList li { padding-left: 2px; }
+.howToList li::marker { color: var(--neutral-400); }
+
+/* Dropzone — Figma simplifies this to a single-line CTA inside a dashed box. */
+.dropZone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  background: transparent;
+  border: 0.5px dashed var(--neutral-150);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.dropZone:hover,
+.dropZoneActive {
+  border-color: var(--primary-300);
+  background: var(--primary-50);
+}
+.dropZoneCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dropZoneTitle {
+  font: 500 14px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.dropZoneLink {
+  font: 500 14px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+  text-decoration: none;
+}
+.fileInput { display: none; }
+
+/* Format / size meta line — flexed apart, left/right. */
+.formatsLine {
+  display: flex;
+  justify-content: space-between;
+  font: 400 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+  margin-top: -10px;
+}
+
+/* Sample document card — icon · text · trailing action / chip row. */
+.sampleCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  border: 0.5px solid var(--neutral-200, #ced4dd);
+  border-radius: 8px;
+}
+.sampleIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 45px;
+  height: 45px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 0.5px solid var(--neutral-300, #8a94a8);
+}
+.sampleText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sampleTitle {
+  font: 500 14px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.sampleDesc {
+  font: 400 12px/1.5 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.sampleChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.demoChip {
+  font: 500 11px/1.4 'Inter', sans-serif;
+  color: var(--primary-300);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--primary-200);
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.demoChip:hover {
+  background: var(--primary-100);
+  border-color: var(--primary-300);
+}
+
+/* Footer info note — white card with leading info icon, neutral subtle text. */
+.footerNote {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-300, #8a94a8);
+  border-radius: 8px;
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.footerNote strong {
+  color: var(--neutral-400);
+  font-weight: 500;
+}
+
+/* ── Phase 2: processing ──────────────────────────────────────────── */
+/* Modelled after Figma 22:39481. Centered hero with animated ring,
+   headline + filename, divider, hint, primary Minimize + outline Discard
+   actions, file card, and an info banner footer. */
+.processingPhase {
+  padding: 48px 32px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.processingHero {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+.processingHeroRing {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--primary-100);
+  border-top-color: var(--primary-300);
+  animation: spin 1.2s linear infinite;
+}
+.processingHeroInner {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--primary-50, #f6f1ff);
+  border: 0.5px solid var(--primary-150, #e3d6f9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.processingTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--neutral-500);
+  margin-top: 4px;
+}
+.processingSubtitle {
+  font-size: 13px;
+  color: var(--neutral-300);
+  text-align: center;
+  max-width: 420px;
+}
+.processingSubtitle strong {
+  color: var(--neutral-400);
+  font-weight: 500;
+}
+.processingDividerLine {
+  width: 240px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--neutral-150) 50%, transparent 100%);
+  margin: 8px 0 4px;
+}
+.processingHint {
+  font-size: 12px;
+  color: var(--neutral-300);
+  text-align: center;
+  max-width: 320px;
+  line-height: 1.4;
+}
+.processingActions {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+}
+.processingFileCard {
+  margin-top: 16px;
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: #fff;
+}
+.processingFileIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.processingFileName {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.processingFileEye {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.processingFileEye:hover { background: var(--neutral-50); }
+.processingInfoBanner {
+  margin-top: 8px;
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 12px;
+  color: var(--neutral-300);
+  line-height: 1.45;
+}
+.processingInfoBanner > :first-child { flex-shrink: 0; margin-top: 1px; }
+
+/* ── Phase 3: review (master-detail) ──────────────────────────────── */
+.reviewPhase {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.reviewSteps {
+  padding: 16px 20px 0;
+}
+
+/* Bulk-action bar — sits below the filter chips with two CTAs on the
+   left (Accept All High Confidence + Review Flagged) and the selection
+   summary on the right when something is checked. */
+.bulkBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 20px;
+  border-top: 0.5px solid var(--neutral-100);
+  border-bottom: 0.5px solid var(--neutral-100);
+  background: #fff;
+}
+.bulkBarLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.bulkBarRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.bulkBarRight strong { color: var(--primary-300); font-weight: 500; }
+.bulkBtnPrimary,
+.bulkBtnSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  cursor: pointer;
+  background: #fff;
+  border: 0.5px solid var(--neutral-150);
+  color: var(--neutral-500);
+  transition: background 0.1s, border-color 0.1s;
+}
+.bulkBtnPrimary:hover,
+.bulkBtnSecondary:hover {
+  background: var(--neutral-50);
+  border-color: var(--primary-300);
+  color: var(--primary-300);
+}
+.bulkBtnSecondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.bulkBtnSecondary:disabled:hover {
+  background: #fff;
+  border-color: var(--neutral-150);
+  color: var(--neutral-500);
+}
+
+/* Bulk-selection summary banner — only visible in table layout when at
+   least one row is checked. */
+.selectionBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  background: var(--primary-50);
+  border-top: 0.5px solid var(--primary-200);
+  border-bottom: 0.5px solid var(--primary-200);
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.selectionBar strong { color: var(--primary-300); font-weight: 500; }
+
+/* Stats + filter chips */
+.statsBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.statsSummary {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--neutral-400);
+}
+.statsSummary strong {
+  color: var(--neutral-500);
+  font-weight: 600;
+}
+.filterChips {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.filterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 16px;
+  cursor: pointer;
+}
+.filterChip:hover { background: var(--neutral-100); }
+.filterChipActive {
+  background: var(--primary-100);
+  color: var(--primary-300);
+  border-color: var(--primary-200);
+}
+.filterChipCount {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Master-detail split */
+.masterDetail {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(360px, 0.9fr) minmax(440px, 1.1fr);
+  overflow: hidden;
+}
+.master {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 0.5px solid var(--neutral-150);
+  overflow-y: auto;
+  background: var(--neutral-50);
+}
+.detail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--neutral-0);
+}
+
+/* Patient group banner in the master list */
+.patientGroupBanner {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--neutral-100);
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+.patientGroupBannerCount {
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.addEncounterBtn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font: 500 11px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.addEncounterBtn:hover { background: var(--primary-100); }
+.unmatchedBadge {
+  background: var(--status-error-light);
+  color: var(--status-error);
+  border: 0.5px solid rgba(215, 40, 37, 0.2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  margin-left: auto;
+}
+
+/* Master row — one per encounter */
+.masterRow {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  font-family: 'Inter', sans-serif;
+}
+.masterRow:hover { background: var(--neutral-50); }
+.masterRowSelected {
+  background: var(--primary-50);
+  border-left-color: var(--primary-300);
+}
+.masterRowSelected:hover { background: var(--primary-50); }
+.masterRowError    { border-left-color: var(--status-error); }
+.masterRowMismatch { border-left-color: var(--status-warning); }
+.masterRowMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.masterRowDos {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  font-variant-numeric: tabular-nums;
+}
+.masterRowMeta {
+  font-size: 11px;
+  color: var(--neutral-300);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.masterRowChips {
+  display: inline-flex;
+  gap: 4px;
+}
+.masterStatusChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 4px;
+  border: 0.5px solid;
+  white-space: nowrap;
+}
+.masterStatusReady {
+  background: var(--status-success-light);
+  color: var(--status-success);
+  border-color: rgba(0, 155, 83, 0.2);
+}
+.masterStatusError {
+  background: var(--status-error-light);
+  color: var(--status-error);
+  border-color: rgba(215, 40, 37, 0.2);
+}
+.masterStatusMismatch {
+  background: var(--status-warning-light);
+  color: var(--status-warning);
+  border-color: rgba(217, 165, 11, 0.2);
+}
+.masterRemoveBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.masterRemoveBtn:hover { background: var(--status-error-light); }
+
+.masterEmpty {
+  padding: 40px 24px;
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--neutral-300);
+}
+
+/* Detail panel */
+.detail {
+  padding: 0;
+}
+.detailHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: var(--neutral-50);
+}
+.detailHeaderText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.detailHeaderName {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+.detailHeaderMeta {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-300);
+}
+.detailRemoveBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--status-error);
+  background: transparent;
+  border: 0.5px solid var(--status-error);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.detailRemoveBtn:hover { background: var(--status-error-light); }
+.detailBody {
+  padding: 16px 20px 24px;
+}
+.detailEmpty {
+  padding: 60px 24px;
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--neutral-300);
+}
+
+/* Encounter card (lives inside .detailBody now) */
+.encounterCard {
+  background: var(--neutral-0);
+}
+
+/* ── Header layout toggle (Option 1 / Option 2) ──────────────────── */
+.layoutToggle {
+  display: inline-flex;
+  align-items: center;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+.layoutToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.layoutToggleBtn:hover { color: var(--neutral-500); }
+.layoutToggleBtnActive {
+  background: var(--neutral-0);
+  color: var(--primary-300);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+.headerDivider {
+  display: inline-block;
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  margin: 0 4px;
+}
+
+/* Upload-more button — primary-link styled, sits between the layout
+   toggle and the Confirm button. Used to append more OCR results
+   without leaving the review phase. */
+.uploadMoreBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-300);
+  background: transparent;
+  border: 0.5px solid var(--primary-300);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.uploadMoreBtn:hover:not(:disabled) { background: var(--primary-100); }
+.uploadMoreBtn:disabled { cursor: not-allowed; opacity: 0.7; }
+.uploadMoreSpinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--primary-200);
+  border-top-color: var(--primary-300);
+  animation: spin 0.8s linear infinite;
+}
+
+/* ── Option 2 — editable table ────────────────────────────────────── */
+.tableWrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.tableEmpty {
+  padding: 60px 24px;
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--neutral-300);
+}
+.encTable {
+  /* min-width drives the horizontal scroll inside .tableWrap once the
+     drawer is narrower than the sum of fixed-width middle columns +
+     the two sticky rails. ~1180px lets the middle row breathe; on a
+     wide screen the table just stretches to 100%. */
+  width: 100%;
+  min-width: 1180px;
+  border-collapse: collapse;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+}
+.encTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--neutral-50);
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--neutral-400);
+  padding: 10px 10px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  white-space: nowrap;
+}
+.thPatient { padding-left: 16px; min-width: 200px; }
+.thNarrow  { width: 70px; }
+.thStatus  { width: 130px; }
+.thCheck   { width: 36px; padding-left: 16px; padding-right: 4px; }
+.tdCheck   { width: 36px; padding-left: 16px; padding-right: 4px; vertical-align: middle; }
+.tdCheck input,
+.thCheck input { cursor: pointer; }
+.thActions { width: 72px; text-align: center; padding: 10px 8px; }
+.thPage    { width: 64px; }
+.thStatus  { width: 150px; padding-left: 16px; padding-right: 16px; }
+.thDos     { width: 150px; }
+.thProvider{ width: 200px; }
+.thPos     { width: 170px; }
+.thIcds    { min-width: 220px; }
+.thRequired { color: var(--status-error); margin-left: 2px; }
+
+/* Field cell — wraps an editable input/select with a per-field
+   confidence chip below it. Adds breathing room so the chip doesn't
+   crash into the next row's input. */
+.tdField {
+  padding: 8px 8px 6px;
+  vertical-align: top;
+}
+.tdField > :first-child { display: block; }
+
+/* ── Sticky-left / sticky-right columns ────────────────────────────
+   The middle columns scroll horizontally; the checkbox + Member rail
+   stays pinned on the left, and the Action column stays pinned on the
+   right so destructive affordances stay reachable at any scroll
+   position. Header cells use the existing `position: sticky; top: 0`
+   for the vertical sticky — we layer horizontal sticky on top by
+   bumping z-index where the two stickies meet. */
+.encTable thead .thCheck,
+.encTable tbody .tdCheck {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: #fff;
+}
+.encTable thead .thCheck { background: var(--neutral-50); z-index: 4; }
+
+.encTable thead .thPatient,
+.encTable tbody .tdPatient {
+  position: sticky;
+  left: 36px; /* width of the checkbox column */
+  z-index: 3;
+  background: #fff;
+  /* Right shadow so the sticky rail reads as a "fold" against the
+     scrolled-under middle columns. */
+  box-shadow: 1px 0 0 var(--neutral-100), 6px 0 12px -8px rgba(0, 0, 0, 0.08);
+}
+.encTable thead .thPatient { background: var(--neutral-50); z-index: 4; }
+
+/* Action is the rightmost column and gets pinned at right:0.
+   Status sits to its immediate left and is pinned at right:{action
+   width} so both stay reachable at any scroll position. */
+.encTable thead .thActions,
+.encTable tbody .tdActions {
+  position: sticky;
+  right: 0;
+  z-index: 3;
+  background: #fff;
+  box-shadow: -1px 0 0 var(--neutral-100), -6px 0 12px -8px rgba(0, 0, 0, 0.08);
+}
+.encTable thead .thActions { background: var(--neutral-50); z-index: 4; }
+
+.encTable thead .thStatus,
+.encTable tbody .tdStatus {
+  position: sticky;
+  right: 72px; /* width of the Action column */
+  z-index: 3;
+  background: #fff;
+  box-shadow: -1px 0 0 var(--neutral-100);
+}
+.encTable thead .thStatus { background: var(--neutral-50); z-index: 4; }
+
+/* When the row is in error/mismatch state the sticky cells need to
+   pick up the tinted background, otherwise the scrolled-under middle
+   shows a different color than the pinned edges. */
+.encTableRowError    .tdCheck,
+.encTableRowError    .tdPatient,
+.encTableRowError    .tdActions,
+.encTableRowError    .tdStatus     { background: var(--status-error-light); }
+.encTableRowMismatch .tdCheck,
+.encTableRowMismatch .tdPatient,
+.encTableRowMismatch .tdActions,
+.encTableRowMismatch .tdStatus     { background: var(--status-warning-light); }
+.encTableRow:hover   .tdCheck,
+.encTableRow:hover   .tdPatient,
+.encTableRow:hover   .tdActions,
+.encTableRow:hover   .tdStatus     { background: var(--neutral-50); }
+
+/* Group-header row — sits above every patient cluster. */
+.groupHeaderRow {
+  background: var(--neutral-50);
+  position: sticky;
+  z-index: 0;
+}
+.groupHeaderRow:hover { background: var(--neutral-50); }
+.groupHeaderCell {
+  padding: 8px 16px;
+  font: 600 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  border-top: 0.5px solid var(--neutral-150);
+  border-bottom: 0.5px solid var(--neutral-150);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.groupHeaderCheck {
+  margin-right: 4px;
+  cursor: pointer;
+}
+.groupHeaderUnmatched {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--status-error-light);
+}
+.groupHeaderName { font-weight: 600; }
+.groupHeaderCount {
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+
+/* Source-page chip — clickable, opens a (stubbed) preview. */
+.tdPage {
+  padding: 8px 10px;
+  vertical-align: middle;
+}
+.tdPageChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: #fff;
+  font: 500 11px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+  cursor: pointer;
+}
+.tdPageChip:hover {
+  border-color: var(--primary-300);
+  color: var(--primary-300);
+}
+.tdPageEmpty {
+  font-size: 12px;
+  color: var(--neutral-200);
+}
+
+.encTableRow {
+  border-bottom: 0.5px solid var(--neutral-100);
+  border-left: 3px solid transparent;
+  transition: background 0.08s;
+}
+.encTableRow:hover { background: var(--neutral-50); }
+.encTableRow > td { padding: 8px 10px; vertical-align: middle; }
+.encTableRow > td:first-child { padding-left: 16px; }
+.encTableRow > td:last-child { padding-right: 16px; }
+.encTableRowError    { border-left-color: var(--status-error); background: var(--status-error-light); }
+.encTableRowMismatch { border-left-color: var(--status-warning); background: var(--status-warning-light); }
+
+.tdPatient { min-width: 200px; }
+/* Matched patient chip — clickable to open the swap picker. Hover
+   surfaces the pen-edit affordance so the cell reads as actionable. */
+.tdPatientMatched {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 6px 2px 2px;
+  background: transparent;
+  border: 0.5px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.tdPatientMatched:hover {
+  background: var(--neutral-50);
+  border-color: var(--neutral-150);
+}
+.tdPatientSwapIcon {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.tdPatientMatched:hover .tdPatientSwapIcon { opacity: 1; }
+.tdPatientNameWrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+}
+.tdPatientName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.tdPatientMatchChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-family: 'Inter', sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.tdPatientLinkBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--status-error);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--status-error);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.tdPatientLinkBtn:hover { background: var(--status-error-light); }
+.tdPatientPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 200px;
+}
+.tdPatientPickerList {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  padding: 2px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.tdPatientPickerItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-500);
+}
+.tdPatientPickerItem:hover { background: var(--neutral-50); }
+.tdPatientPickerItemActive {
+  background: var(--primary-50);
+}
+.tdPatientPickerItemBody {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.tdPatientPickerItemName {
+  font-size: 12px;
+  color: var(--neutral-500);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tdPatientPickerItemId {
+  font: 400 10px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+
+/* Mismatch hint banner that sits above the search input when the
+   reviewer opens the swap picker on an idMismatch row. */
+.tdPatientPickerHint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--status-warning-light);
+  border: 0.5px solid rgba(217, 165, 11, 0.25);
+  border-radius: 6px;
+  font: 400 11px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.tdPatientPickerHint strong {
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+
+/* Inline ID-Mismatch chip under the patient name in matched cells. */
+.tdPatientIdMismatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 3px;
+  padding: 1px 5px;
+  background: var(--status-warning-light);
+  color: var(--status-warning);
+  border-radius: 999px;
+  font: 600 9px/1.3 'Inter', sans-serif;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.tdPatientPickerCurrent {
+  margin-left: auto;
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--primary-300);
+  background: var(--primary-100);
+  border-radius: 4px;
+}
+.tdPatientPickerCancel {
+  align-self: flex-start;
+  padding: 2px 6px;
+  font: 500 11px/1.4 'Inter', sans-serif;
+  color: var(--neutral-400);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.tdPatientPickerCancel:hover { text-decoration: underline; }
+
+.tdInput {
+  width: 100%;
+  padding: 5px 7px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-500);
+  background: var(--neutral-0);
+  border: 0.5px solid transparent;
+  border-radius: 4px;
+  outline: none;
+  box-sizing: border-box;
+}
+.tdInput:hover  { border-color: var(--neutral-150); }
+.tdInput:focus  { border-color: var(--primary-300); background: var(--neutral-0); }
+.tdInputError {
+  border-color: var(--status-error);
+  background: var(--neutral-0);
+}
+.tdNarrow .tdInput { text-align: center; }
+
+.tdIcds { min-width: 140px; }
+.tdIcdsEmpty {
+  font-size: 12px;
+  color: var(--neutral-300);
+}
+.tdIcdsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+/* Wrap pairs each ICD chip with its confidence badge so they wrap as
+   a unit when the column gets narrow. */
+.icdChipWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.tdIcdsRow .icdChip {
+  padding: 1px 4px 1px 6px;
+  font-size: 11px;
+}
+.icdOverflow {
+  padding: 1px 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.icdOverflow:hover { background: var(--neutral-100); }
+
+.tdStatus { width: 130px; }
+.tdActions { width: 86px; text-align: center; white-space: nowrap; }
+.tdLinkDocBtn,
+.tdRemoveBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.tdLinkDocBtn { margin-right: 2px; }
+.tdLinkDocBtn:hover { background: var(--neutral-50); }
+.tdRemoveBtn:hover { background: var(--status-error-light); }
+
+/* Mismatch banner */
+.mismatchBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--status-error);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.mismatchText {
+  flex: 1;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-500);
+  min-width: 200px;
+}
+.linkBtn {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-300);
+  background: transparent;
+  border: 0.5px solid var(--primary-300);
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.linkBtn:hover { background: var(--primary-100); }
+
+/* Member picker */
+.memberPicker {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.memberPickerInput {
+  width: 100%;
+  padding: 6px 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--neutral-500);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-200);
+  border-radius: 6px;
+  outline: none;
+  box-sizing: border-box;
+}
+.memberPickerList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  padding: 4px;
+}
+.memberPickerItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--neutral-500);
+}
+.memberPickerItem:hover { background: var(--neutral-50); }
+.memberPickerItemActive { background: var(--primary-50); }
+.memberPickerItemActive:hover { background: var(--primary-100); }
+.memberPickerMeta {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--neutral-300);
+}
+.memberPickerCurrent {
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--primary-300);
+  background: var(--primary-100);
+  border-radius: 4px;
+}
+.memberPickerCancel {
+  align-self: flex-start;
+  padding: 4px 8px;
+  font: 500 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-400);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.memberPickerCancel:hover { text-decoration: underline; }
+
+/* Rematch row — shown on matched encounters so the user can swap to a
+   different patient. Light surface, primary-tinted CTA. */
+.rematchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 12px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.rematchText strong { color: var(--neutral-500); font-weight: 500; }
+.rematchBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.rematchBtn:hover { background: var(--primary-100); }
+
+/* Encounter editable grid */
+.encounterGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fieldLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.fieldRequired {
+  color: var(--status-error);
+  margin-left: 2px;
+}
+.fieldInput {
+  width: 100%;
+  padding: 7px 10px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--neutral-500);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  outline: none;
+  box-sizing: border-box;
+}
+.fieldInput:focus { border-color: var(--primary-300); }
+.fieldError .fieldInput { border-color: var(--status-error); background: var(--status-error-light); }
+.fieldErrorText {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--status-error);
+}
+.fieldHint {
+  font-size: 11px;
+  color: var(--neutral-300);
+}
+
+/* ICDs section */
+.icdsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.icdsLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.icdsHint {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--neutral-300);
+  font-weight: 400;
+}
+.icdsChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* DOS field — toggle stacked above the picker (Select or Input). */
+.dosFieldRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Inline ICD add — typeahead input below the chip row, with the
+   matched-results list rendering directly underneath. Mirrors the
+   pattern used by the SinglePhase form for visual consistency. */
+.icdAddRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+.icdsEmpty {
+  font-size: 12px;
+  color: var(--neutral-300);
+  font-style: italic;
+}
+.icdChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 8px;
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-300);
+}
+.icdChipInvalid {
+  background: var(--neutral-50);
+  border-color: var(--neutral-150);
+  color: var(--neutral-300);
+  text-decoration: line-through;
+}
+.icdChipClose {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 1px;
+  display: inline-flex;
+  border-radius: 2px;
+}
+.icdChipClose:hover { background: rgba(0, 0, 0, 0.04); }
+
+/* Encounter footer (remove) */
+.encounterFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+  border-top: 0.5px dashed var(--neutral-150);
+}
+.removeEncounterBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--status-error);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.removeEncounterBtn:hover { background: var(--status-error-light); }
+
+/* ── Chooser phase ────────────────────────────────────────────── */
+/* Title-area back button — small chevron-left sitting before the
+   drawer title text. Lets the user step back from a sub-mode to the
+   chooser without closing the drawer. */
+.titleBackBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 6px;
+  margin-left: -4px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.titleBackBtn:hover { background: var(--neutral-50); }
+
+.chooserPhase {
+  padding: 32px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.chooserHeading {
+  margin: 0;
+  text-align: center;
+  font: 500 14px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.chooserCards {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.chooserCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px dashed transparent;
+  cursor: pointer;
+  text-align: center;
+  background: transparent;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.chooserCard:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+.chooserCard_primary {
+  background: var(--primary-50, #fcfaff);
+  border-color: var(--primary-200, #d7c0ff);
+}
+.chooserCard_secondary {
+  background: var(--secondary-100, #fff4ee);
+  border-color: var(--secondary-200, #ffd6c0);
+}
+/* Neutral tone — used for utility / passive options like SFTP where
+   the action isn't a direct upload, it's a credential / config jump. */
+.chooserCard_neutral {
+  background: var(--neutral-50, #f6f7f8);
+  border-color: var(--neutral-150, #d0d6e1);
+}
+.chooserIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+}
+.chooserTitle {
+  font: 500 15px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.chooserDesc {
+  font: 400 12px/1.5 'Inter', sans-serif;
+  color: var(--neutral-300);
+  max-width: 380px;
+}
+.chooserCta {
+  margin-top: 6px;
+  padding: 6px 14px;
+  font: 500 13px/1.2 'Inter', sans-serif;
+  border-radius: 6px;
+}
+.chooserCta_primary {
+  color: var(--primary-300);
+  background: var(--primary-100, #ede1ff);
+}
+.chooserCta_secondary {
+  color: var(--secondary-300);
+  background: var(--secondary-200, #ffd6c0);
+}
+.chooserCta_neutral {
+  color: var(--neutral-400);
+  background: var(--neutral-100, #e7eaf0);
+}
+
+/* ── SFTP phase (option 3) ───────────────────────────────────── */
+.sftpPhase {
+  padding: 16px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.sftpCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 8px;
+  border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+}
+.sftpCardHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.sftpPathRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--neutral-50);
+  border-radius: 6px;
+  border: 0.5px solid var(--neutral-100);
+}
+.sftpPath {
+  flex: 1;
+  font: 500 12px/1.4 'JetBrains Mono', 'Inter', monospace;
+  color: var(--neutral-500);
+  word-break: break-all;
+}
+.sftpCopyBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.sftpCopyBtn:hover { background: var(--primary-100); }
+.sftpHints {
+  margin: 0;
+  padding-left: 18px;
+  font: 400 12px/1.6 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.sftpExternal {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.sftpExternalLink {
+  color: var(--primary-300);
+  text-decoration: none;
+  font-weight: 500;
+}
+.sftpExternalLink:hover { text-decoration: underline; }
+.sftpExternalHint { font-size: 11px; }
+
+/* SFTP demo trigger — sits below the credentials link, lets the user
+   exercise the multi-doc review workflow without an actual SFTP. */
+.sftpDemo {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 0.5px dashed var(--primary-200);
+  border-radius: 8px;
+  background: var(--primary-50);
+}
+.sftpDemoHead {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 12px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.sftpDemoBody {
+  margin: 6px 0 10px;
+  font: 400 12px/1.5 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.sftpDemoActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sftpDemoReviewBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: #fff;
+  border: 0.5px solid var(--primary-300);
+  color: var(--primary-300);
+  font: 500 12px/1.2 'Inter', sans-serif;
+  cursor: pointer;
+}
+.sftpDemoReviewBtn:hover { background: var(--primary-50); }
+
+/* ── Single-encounter form (option 1) ────────────────────────── */
+.singlePhase {
+  padding: 16px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+.singleSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.singleLabel {
+  font: 500 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.singlePatientChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+}
+.singlePatientText {
+  display: flex;
+  flex-direction: column;
+}
+.singlePatientName {
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.singlePatientMeta {
+  font: 400 11px/1.3 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.singlePatientChange {
+  margin-left: auto;
+  padding: 4px 10px;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.singlePatientChange:hover { background: var(--primary-100); }
+
+.icdMatchList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  padding: 4px;
+}
+.icdMatchItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  font: 400 12px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.icdMatchItem:hover { background: var(--neutral-50); }
+.icdMatchCode {
+  font: 500 11px/1.2 'JetBrains Mono', 'Inter', monospace;
+  background: var(--primary-50);
+  color: var(--primary-300);
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 0.5px solid var(--primary-200);
+}
+.icdMatchDesc { flex: 1; }
+.icdMatchHcc {
+  font: 500 10px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+  padding: 1px 6px;
+  background: var(--neutral-50);
+  border-radius: 4px;
+}
+.icdChosen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.icdChosenChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px 3px 6px;
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 4px;
+  font: 500 11px/1.4 'Inter', sans-serif;
+  color: var(--primary-300);
+}
+.icdChosenChip code {
+  font-family: 'JetBrains Mono', 'Inter', monospace;
+}
+.icdChosenDesc {
+  font-weight: 400;
+  color: var(--neutral-400);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.icdChosenRemove {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+}
+
+.dosSegmented {
+  display: inline-flex;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  padding: 2px;
+  width: fit-content;
+}
+.dosSegBtn {
+  padding: 4px 10px;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.dosSegBtn:disabled { color: var(--neutral-200); cursor: not-allowed; }
+.dosSegActive {
+  background: var(--neutral-0);
+  color: var(--primary-300);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.dosSelect {
+  height: 32px;
+  padding: 0 8px;
+  font: 400 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  outline: none;
+}
+
+.singleGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.singleField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.singleFileBtn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.singleFileBtn:hover { background: var(--primary-100); }
+.singleFileChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  align-self: flex-start;
+}
+.singleFileName {
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.singleFileRemove {
+  font: 500 11px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.singleFileRemove:hover { color: var(--status-error); text-decoration: underline; }
+
+.singleFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 12px;
+  border-top: 0.5px solid var(--neutral-150);
+}
+
+/* ── Review title (Figma 32:64519) ─────────────────────────────────── */
+.reviewTitleBlock {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  line-height: 1.2;
+}
+.reviewTitleTop {
+  font: 600 16px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.reviewTitleSub {
+  font: 400 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+
+/* ── Header-right doc button (page preview entry) ──────────────────── */
+.headerDocBtn {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+.headerDocBtn:hover {
+  border-color: var(--primary-300);
+}
+.headerDocBadge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--primary-300);
+  color: #fff;
+  font: 600 10px/1.6 'Inter', sans-serif;
+  text-align: center;
+}
+
+/* ── Member cell meta line (under the name) ───────────────────────── */
+.tdPatientMeta {
+  font: 400 11px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+
+/* ── Status (Figma: solid label, no pill background) ──────────────── */
+.statusInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 13px/1.2 'Inter', sans-serif;
+}
+.statusInlineReady    { color: var(--status-success); }
+.statusInlineError    { color: var(--status-error); }
+.statusInlineMismatch { color: var(--status-warning); }
+
+/* ── Per-field confidence (text-only, tier-tinted) ────────────────── */
+/* Quiet treatment: just the percent number in the tier color, no pill,
+   no icon. Hover surfaces a richer popover with a citation link. */
+.fieldConfWrap {
+  position: relative;
+  display: inline-block;
+  margin-top: 3px;
+}
+.fieldConf {
+  display: inline-block;
+  padding: 0;
+  background: transparent;
+  border: none;
+  font: 500 10px/1.4 'Inter', sans-serif;
+  letter-spacing: 0.1px;
+  white-space: nowrap;
+  cursor: default;
+}
+.fieldConfWrapClickable .fieldConf { cursor: pointer; }
+.fieldConfWrapClickable .fieldConf:hover { text-decoration: underline; }
+.fieldConf::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  margin-right: 4px;
+  background: currentColor;
+  vertical-align: middle;
+}
+.fieldConfHigh    { color: var(--status-success); }
+.fieldConfMedium  { color: var(--status-warning); }
+.fieldConfLow     { color: var(--status-error); }
+.fieldConfMissing {
+  color: var(--neutral-200);
+  font-weight: 400;
+}
+.fieldConfMissing::before { background: var(--neutral-200); }
+
+/* ── Hover popover (portaled to document.body) ────────────────────── */
+/* JS computes left/top via getBoundingClientRect; the transform pulls
+   the popover up by its own height so it sits above the trigger. */
+.fieldConfPop {
+  position: fixed;
+  width: 260px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  z-index: 4100;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: 'Inter', sans-serif;
+  text-align: left;
+  pointer-events: auto;
+  transform: translateY(-100%);
+  animation: field-conf-pop 0.12s ease-out;
+}
+@keyframes field-conf-pop {
+  from { opacity: 0; transform: translateY(calc(-100% + 4px)); }
+  to   { opacity: 1; transform: translateY(-100%); }
+}
+.fieldConfPopHead {
+  font: 600 12px/1.2 'Inter', sans-serif;
+  /* Tier classes paint the text color via the shared
+     .fieldConfHigh/Medium/Low rules above. */
+}
+.fieldConfPopHead::before { content: none; }
+.fieldConfPopBody {
+  font: 400 11px/1.45 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.fieldConfPopCite {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  padding: 5px 8px;
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 6px;
+  font: 500 11px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fieldConfPopCite:hover { background: var(--primary-100); }
+.fieldConfPopFile {
+  color: var(--neutral-300);
+  font-weight: 400;
+}
+
+/* ── Legacy AI Confidence cell (kept for any leftover refs) ───────── */
+.tdConf {
+  padding: 8px 10px;
+  vertical-align: middle;
+}
+.tdConfWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.tdConfPct {
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.tdConfTier {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font: 600 10px/1.6 'Inter', sans-serif;
+  color: #fff;
+  letter-spacing: 0.2px;
+}
+.tdConfTierHigh   { background: var(--status-success); }
+.tdConfTierReview { background: var(--status-warning); }
+.tdConfTierLow    { background: var(--status-error); }
+.tdConfEmpty {
+  font-size: 12px;
+  color: var(--neutral-200);
+}
+
+/* ── Provider / POS cells — Select trigger sized for the row ──────── */
+.tdProviderCell,
+.tdPosCell {
+  padding: 6px 8px;
+  vertical-align: middle;
+}
+.tdProviderCell > div,
+.tdPosCell > div {
+  width: 100%;
+}
+
+/* ── ICD chip refresh (one-chip primary, +N overflow, + add) ──────── */
+.icdChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 2px 8px;
+  border-radius: 999px;
+  background: var(--primary-50);
+  color: var(--primary-300);
+  font: 500 11px/1.4 'Inter', sans-serif;
+  border: 0.5px solid transparent;
+}
+.icdChipInvalid {
+  background: var(--status-error-light);
+  color: var(--status-error);
+  text-decoration: line-through;
+}
+.icdOverflow {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  color: var(--neutral-400);
+  font: 500 11px/1 'Inter', sans-serif;
+  cursor: pointer;
+}
+.icdOverflow:hover {
+  background: var(--primary-50);
+  color: var(--primary-300);
+  border-color: var(--primary-200);
+}
+.icdAddWrap {
+  position: relative;
+  display: inline-flex;
+}
+.icdAddBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.icdAddBtn:hover { background: var(--neutral-50); }
+
+/* Chip is now click-to-edit. Pointer + faint hover ring keeps the
+   affordance discoverable without crowding the row visually. */
+.icdChip { cursor: pointer; transition: background 0.1s; }
+.icdChip:hover {
+  background: var(--primary-100);
+}
+
+/* ── Inline ICD picker popover ───────────────────────────────────── */
+.icdPicker {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 320px;
+  max-height: 280px;
+  background: #fff;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+  animation: icd-pop 0.12s ease-out;
+}
+@keyframes icd-pop {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.icdPickerHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.icdPickerInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  font: 400 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  background: transparent;
+}
+.icdPickerInput::placeholder { color: var(--neutral-300); }
+.icdPickerList {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 220px;
+}
+.icdPickerItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  border-bottom: 0.5px solid var(--neutral-50);
+}
+.icdPickerItem:hover { background: var(--primary-50); }
+.icdPickerItem:last-child { border-bottom: none; }
+.icdPickerItemDisabled { cursor: not-allowed; opacity: 0.55; }
+.icdPickerItemDisabled:hover { background: #fff; }
+.icdPickerCode {
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--primary-300);
+  min-width: 56px;
+}
+.icdPickerDesc {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--neutral-400);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.icdPickerHint {
+  font-size: 10px;
+  color: var(--neutral-300);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.icdPickerEmpty {
+  padding: 16px;
+  text-align: center;
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+
+/* ── Page-preview modal ───────────────────────────────────────────── */
+.previewOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 18, 27, 0.45);
+  z-index: 4000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+.previewShell {
+  width: min(880px, 100%);
+  max-height: 92vh;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: preview-pop 0.18s ease-out;
+}
+@keyframes preview-pop {
+  from { opacity: 0; transform: scale(0.98); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.previewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: var(--neutral-50);
+}
+.previewHeaderTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.previewHeaderName {
+  font: 500 14px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 360px;
+}
+.previewHeaderPageOf {
+  font: 400 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.previewHeaderControls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.previewNavBtn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0.5px solid var(--neutral-150);
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.previewNavBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.previewNavBtn:not(:disabled):hover { border-color: var(--primary-300); }
+.previewPageInput {
+  min-width: 64px;
+  padding: 4px 10px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+  background: #fff;
+  text-align: center;
+}
+.previewCloseBtn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.previewCloseBtn:hover { background: var(--neutral-100); }
+.previewBody {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--neutral-100);
+  padding: 24px;
+  display: flex;
+  justify-content: center;
+}
+
+/* Dummy scanned-page template */
+.dummyPage {
+  width: 100%;
+  max-width: 680px;
+  background: #fff;
+  border: 0.5px solid var(--neutral-150);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  padding: 32px 40px;
+  font: 400 13px/1.5 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.dummyPageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 12px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-size: 11px;
+  color: var(--neutral-300);
+}
+.dummyPageOrg { font-weight: 600; color: var(--neutral-500); font-size: 13px; }
+.dummyPageOrgSub { margin-top: 2px; }
+.dummyPageHeaderRight { text-align: right; line-height: 1.4; }
+.dummyPageH1 {
+  margin: 16px 0 8px;
+  font: 700 18px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.dummyPageMeta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 24px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--neutral-400);
+}
+.dummyPageSection {
+  margin-top: 14px;
+}
+.dummyPageH2 {
+  margin: 0 0 4px;
+  font: 600 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.dummyPageIcdList {
+  margin: 6px 0 0;
+  padding: 0 0 0 20px;
+  font-size: 12px;
+}
+.dummyPageIcdList li { padding: 2px 0; }
+.dummyPageFooter {
+  margin-top: 24px;
+  padding-top: 12px;
+  border-top: 0.5px dashed var(--neutral-150);
+  font-size: 11px;
+  color: var(--neutral-300);
+  font-style: italic;
+}
+
