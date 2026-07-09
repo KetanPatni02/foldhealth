@@ -46,6 +46,18 @@ export default defineConfig([globalIgnores(['dist']), {
         selector: "JSXOpeningElement[name.name='Icon'] JSXAttribute[name.name='name'] Literal[value=/^(?!solar:)[a-z]+:/]",
         message: 'Use Solar (solar:*-linear) icons. Non-Solar icon sets are not part of the design system.',
       },
+      // Filter badges must be consistent app-wide — use the shared
+      // src/components/FilterChip. The `.+` prefix matches re-implementations
+      // (TaskFilterChip, MyFilterChip, …) while excluding the canonical
+      // FilterChip itself. See CONTRIBUTING.md → Filter badges.
+      {
+        selector: "FunctionDeclaration[id.name=/.+FilterChip$/]",
+        message: 'Do not re-implement a filter chip — use the shared src/components/FilterChip so filter badges stay identical app-wide. See CONTRIBUTING.md.',
+      },
+      {
+        selector: "VariableDeclarator[id.name=/.+FilterChip$/][init.callee]",
+        message: 'Do not re-implement a filter chip — use the shared src/components/FilterChip so filter badges stay identical app-wide. See CONTRIBUTING.md.',
+      },
     ],
   },
 }, ...storybook.configs["flat/recommended"]])
