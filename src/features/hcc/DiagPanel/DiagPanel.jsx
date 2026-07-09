@@ -27,6 +27,7 @@ import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { RoleTooltip } from '../RoleTooltip';
 import { resolveCurrentAssignee } from '../HccWorklistRow';
 import { ROLE_LABEL, staffForRole } from '../assignment/astranaStaff';
+import { dosKey } from '../assignment/dosState';
 import styles from './DiagPanel.module.css';
 
 // Initials-square avatar to the left of the DOS status pill. Reflects the
@@ -282,9 +283,8 @@ export function DiagPanel() {
   const initializeHccPatient = useAppStore(s => s.initializeHccPatient);
   const hccCompleteSupport = useAppStore(s => s.hccCompleteSupport);
   const hccCompleteCoder = useAppStore(s => s.hccCompleteCoder);
-  const hccCompleteR1 = useAppStore(s => s.hccCompleteR1);
-  const hccCompleteR2 = useAppStore(s => s.hccCompleteR2);
-  const hccCompleteR3 = useAppStore(s => s.hccCompleteR3);
+  const hccCompleteReviewer = useAppStore(s => s.hccCompleteReviewer);
+  const hccCompleteReviewer2 = useAppStore(s => s.hccCompleteReviewer2);
   const hccRequestRecords = useAppStore(s => s.hccRequestRecords);
   const hccMarkInsufficient = useAppStore(s => s.hccMarkInsufficient);
   const hccRejectDos = useAppStore(s => s.hccRejectDos);
@@ -391,8 +391,13 @@ export function DiagPanel() {
   }, [member?.id, initializeHccPatient]);
 
   // Live engine state for the currently-selected DOS. Used to drive the
-  // status pill below and the assignee badge.
-  const dosStateKey = member && currentDos ? `${member.id}::${currentDos}` : null;
+  // status pill below and the assignee badge. Composite key includes
+  // Rendering Provider + POS so two DOS sharing a date but differing
+  // provider/POS never collapse into the same engine record.
+  const currentDosEntry = currentDos ? dosList.find(d => d.date === currentDos) : null;
+  const dosStateKey = member && currentDos
+    ? dosKey(member.id, currentDos, currentDosEntry?.provider, currentDosEntry?.pos)
+    : null;
   const dosState = dosStateKey ? hccDosAssignments[dosStateKey] : null;
 
   // Current bucket the DOS sits in — drives both the status pill (right
@@ -480,12 +485,11 @@ export function DiagPanel() {
     //    user's pick is always reflected on the pill (no silent no-op).
     switch (next) {
       case 'Completed':
-        if (role === 'support')      hccCompleteSupport(member.id, currentDos);
-        else if (role === 'coder')   hccCompleteCoder(member.id, currentDos);
-        else if (role === 'r1')      hccCompleteR1(member.id, currentDos);
-        else if (role === 'r2')      hccCompleteR2(member.id, currentDos);
-        else if (role === 'r3')      hccCompleteR3(member.id, currentDos);
-        else                         hccSetRoleStatus(member.id, currentDos, role, 'Completed');
+        if (role === 'support')       hccCompleteSupport(member.id, currentDos);
+        else if (role === 'coder')    hccCompleteCoder(member.id, currentDos);
+        else if (role === 'reviewer') hccCompleteReviewer(member.id, currentDos);
+        else if (role === 'reviewer2')hccCompleteReviewer2(member.id, currentDos);
+        else                          hccSetRoleStatus(member.id, currentDos, role, 'Completed');
         break;
       case 'Record Requested':
         if (role === 'coder')        hccRequestRecords(member.id, currentDos);
@@ -500,9 +504,9 @@ export function DiagPanel() {
         else                         hccSetRoleStatus(member.id, currentDos, role, 'Reject');
         break;
       case 'Returned':
-        // Engine's RETURN_TARGET map only knows r1→coder / r2→r1 / r3→r2;
+        // Engine's RETURN_TARGET map only knows reviewer→coder / reviewer2→reviewer;
         // for support/coder we just record the status string.
-        if (role === 'r1' || role === 'r2' || role === 'r3') {
+        if (role === 'reviewer' || role === 'reviewer2') {
           hccReturnDos(member.id, currentDos, role, 'current-user', `Returned from ${role}`);
         } else {
           hccSetRoleStatus(member.id, currentDos, role, 'Returned');

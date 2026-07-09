@@ -7,12 +7,13 @@ import { Input } from '../../components/Input/Input';
 import { Select } from '../../components/Select/Select';
 import { useAppStore } from '../../store/useAppStore';
 import { ASTRANA_STAFF, ROLE_LABEL, ROLES } from './assignment/astranaStaff';
+import { dosKey } from './assignment/dosState';
 import { FALLBACK_USERS } from '../settings/AccountPanel';
 import styles from './BulkChangeAssigneesDialog.module.css';
 
 // Merged system-user pool — Account → Users + Astrana HCC staff, deduped
 // by id. Astrana wins on conflict because it carries `role` engine keys
-// (`support` / `coder` / `r1` / `r2` / `r3`) the assignment engine uses.
+// (`support` / `coder` / `reviewer` / `reviewer2`) the assignment engine uses.
 // Same pool the ConfigureTeamDrawer's user picker draws from, so bulk
 // reassignment can reach every user the admin can already configure
 // onto a Care Team.
@@ -22,7 +23,7 @@ const SYSTEM_USERS = (() => {
     name: s.name,
     initials: s.initials,
     rolesLabel: ROLE_LABEL[s.role] || s.role,
-    engineRole: s.role, // 'support' | 'coder' | 'r1' | 'r2' | 'r3'
+    engineRole: s.role, // 'support' | 'coder' | 'reviewer' | 'reviewer2'
     source: 'astrana',
   }));
   const astranaIds = new Set(astrana.map(u => u.id));
@@ -44,7 +45,7 @@ const SYSTEM_USERS = (() => {
  *
  * Opens from the HCC worklist's BulkBar "Change Assignee" action when one
  * or more rows are selected. Lets the user pick a role (Support / Coder /
- * Reviewer 1-3) and a single candidate from that role's pool (configured
+ * Reviewer / Reviewer 2) and a single candidate from that role's pool (configured
  * Care Team members + Astrana roster), then applies the assignment to
  * every selected DOS (one per selected member's first DOS — the bulk
  * batch).
@@ -70,11 +71,10 @@ const TERMINAL_STATUSES = new Set(['Completed', 'Reject', 'Insufficient']);
 // Map engine role key → the legacy member field that holds that role's
 // status. Used as a fallback when the engine dosState entry is missing.
 const STATUS_FIELD_BY_ROLE = {
-  support: 'supS',
-  coder:   'cdrS',
-  r1:      'r1s',
-  r2:      'r2s',
-  r3:      'r3s',
+  support:   'supS',
+  coder:     'cdrS',
+  reviewer:  'r1s',
+  reviewer2: 'r2s',
 };
 
 export function BulkChangeAssigneesDialog({ open, selectedIds, onClose, onApplied }) {
@@ -149,8 +149,9 @@ export function BulkChangeAssigneesDialog({ open, selectedIds, onClose, onApplie
   // engine's dosState since that's the source of truth; falls back to
   // the legacy member field when the engine hasn't seeded a record yet.
   const isRoleCompleted = (member, dos) => {
-    const dosKey = `${member.id}::${dos}`;
-    const engineStatus = hccDosAssignments?.[dosKey]?.[role]?.status;
+    const dosEntry = (member.dos_list || []).find(d => d.date === dos);
+    const key = dosKey(member.id, dos, dosEntry?.provider, dosEntry?.pos);
+    const engineStatus = hccDosAssignments?.[key]?.[role]?.status;
     if (engineStatus) return TERMINAL_STATUSES.has(engineStatus);
     const legacyStatus = member[STATUS_FIELD_BY_ROLE[role]];
     return TERMINAL_STATUSES.has(legacyStatus);

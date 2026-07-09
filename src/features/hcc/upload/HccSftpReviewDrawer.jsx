@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Drawer } from '../../../components/Drawer/Drawer';
 import { Icon } from '../../../components/Icon/Icon';
 import { Button } from '../../../components/Button/Button';
@@ -62,6 +63,10 @@ export function HccSftpReviewDrawer() {
   const [statusFilter, setStatusFilter] = useState('all');
   // Doc-switcher popover open state (filename click).
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  // Ref to the left-pane preview scroll container. Used by the per-field
+  // confidence pills to scroll the matching page into view and pulse a
+  // highlight on the cited encounter when the user clicks them.
+  const previewBodyRef = useRef(null);
   const setEncounterStatus = useAppStore(s => s.setHccSftpEncounterStatus);
   useEffect(() => { setSelectedIdxs(new Set()); }, [activeBatch?.id]);
   const toggleSelected = (idx) => setSelectedIdxs(prev => {
@@ -75,6 +80,24 @@ export function HccSftpReviewDrawer() {
     else     idxs.forEach(i => next.delete(i));
     return next;
   });
+
+  // Scroll the left-pane preview to the cited page and pulse a brief
+  // highlight on the matching encounter's field row so the reviewer
+  // can verify the AI's extraction against the source document.
+  const citeField = (page, encTempId, field) => {
+    const root = previewBodyRef.current;
+    if (!root) return;
+    const pageEl = root.querySelector(`[data-preview-page="${page}"]`);
+    if (!pageEl) return;
+    pageEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const target = encTempId
+      ? root.querySelector(`[data-preview-page="${page}"] [data-preview-enc="${encTempId}"] [data-preview-field="${field}"]`)
+        || root.querySelector(`[data-preview-page="${page}"] [data-preview-enc="${encTempId}"]`)
+      : pageEl;
+    if (!target) return;
+    target.classList.add(styles.previewHighlight);
+    setTimeout(() => target.classList.remove(styles.previewHighlight), 1600);
+  };
 
   // Aggregate quick-stats for the title. MUST run before any early return
   // to keep the hook order stable across renders.
@@ -109,7 +132,7 @@ export function HccSftpReviewDrawer() {
       const valid = enc.patient?.matchedMemberId && (!enc.errors || enc.errors.length === 0);
       const include = useSelection ? selectedIdxs.has(idx) : true;
       if (!include || !valid) { skipped += 1; return; }
-      const r = createFromEncounter?.({ ...enc, _docName: activeBatch.fileName });
+      const r = createFromEncounter?.({ ...enc, _docName: activeBatch.fileName, _batchId: activeBatch.id });
       if (r?.kind === 'created') { created += 1; appliedIdxs.push(idx); }
       else if (r?.kind === 'updated') { updated += 1; appliedIdxs.push(idx); }
       else { skipped += 1; }
@@ -167,6 +190,23 @@ export function HccSftpReviewDrawer() {
     : docTab === 'added'   ? addedEncs
     :                        deletedEncs
   );
+
+  // Group encounters by patient so one card == one patient, with N DOS
+  // blocks inside. Insertion-ordered Map preserves the document's
+  // chronological appearance. Matched encounters group by member id;
+  // unmatched fall back to extracted name + DOB. Plain const — not a
+  // hook — so it stays compatible with the early-return above.
+  const visibleGroups = (() => {
+    const map = new Map();
+    visibleEncs.forEach((enc) => {
+      const key = enc.patient?.matchedMemberId
+        ? `m:${enc.patient.matchedMemberId}`
+        : `u:${(enc.patient?.name || '').toLowerCase()}|${enc.patient?.dob || ''}`;
+      if (!map.has(key)) map.set(key, { key, encs: [] });
+      map.get(key).encs.push(enc);
+    });
+    return Array.from(map.values());
+  })();
 
   const title = (
     <span className={styles.titleBlock}>
@@ -248,6 +288,7 @@ export function HccSftpReviewDrawer() {
               activeBatch={activeBatch}
               batches={batches}
               onSelect={(id) => setActiveId(id)}
+              previewRef={previewBodyRef}
             />
           </div>
 
@@ -344,36 +385,34 @@ export function HccSftpReviewDrawer() {
                       </span>
                     </div>
                   )
-              ) : visibleEncs.map((enc) => {
-                const idx = activeEncs.indexOf(enc);
-                return (
-                  <EncounterCard
-                    key={enc.tempId || idx}
-                    enc={enc}
-                    status={encStatus(enc)}
-                    hccMembers={hccMembers}
-                    docTab={docTab}
-                    onPatch={(patch) => patchEnc?.(activeBatch.id, idx, patch)}
-                    onAddToWorklist={() => {
-                      const r = createFromEncounter?.({ ...enc, _docName: activeBatch.fileName });
-                      if (r?.kind === 'skipped') {
-                        showToast?.(`Cannot add — ${r.reason || 'encounter is incomplete'}`);
-                        return;
-                      }
-                      setEncounterStatus?.(activeBatch.id, idx, 'added');
-                      showToast?.(`Added ${enc.patient?.name || 'encounter'} to worklist`);
-                    }}
-                    onDelete={() => {
-                      setEncounterStatus?.(activeBatch.id, idx, 'deleted');
-                      showToast?.(`Deleted ${enc.patient?.name || 'encounter'}`);
-                    }}
-                    onRestore={() => {
-                      setEncounterStatus?.(activeBatch.id, idx, null);
-                      showToast?.(`Restored ${enc.patient?.name || 'encounter'} to pending`);
-                    }}
-                  />
-                );
-              })}
+              ) : visibleGroups.map((group) => (
+                <PatientCard
+                  key={group.key}
+                  group={group}
+                  hccMembers={hccMembers}
+                  docTab={docTab}
+                  encStatus={encStatus}
+                  onCite={citeField}
+                  patchEnc={(enc, patch) => patchEnc?.(activeBatch.id, activeEncs.indexOf(enc), patch)}
+                  onAddToWorklist={(enc) => {
+                    const r = createFromEncounter?.({ ...enc, _docName: activeBatch.fileName, _batchId: activeBatch.id });
+                    if (r?.kind === 'skipped') {
+                      showToast?.(`Cannot add — ${r.reason || 'encounter is incomplete'}`);
+                      return;
+                    }
+                    setEncounterStatus?.(activeBatch.id, activeEncs.indexOf(enc), 'added');
+                    showToast?.(`Added ${enc.patient?.name || 'encounter'} to worklist`);
+                  }}
+                  onDelete={(enc) => {
+                    setEncounterStatus?.(activeBatch.id, activeEncs.indexOf(enc), 'deleted');
+                    showToast?.(`Deleted ${enc.patient?.name || 'encounter'}`);
+                  }}
+                  onRestore={(enc) => {
+                    setEncounterStatus?.(activeBatch.id, activeEncs.indexOf(enc), null);
+                    showToast?.(`Restored ${enc.patient?.name || 'encounter'} to pending`);
+                  }}
+                />
+              ))}
             </div>
           </div>
         </div>
@@ -588,7 +627,7 @@ function DocSwitcher({ activeBatch, batches, onSelect }) {
   );
 }
 
-function PagePreview({ activeBatch, batches, onSelect }) {
+function PagePreview({ activeBatch, batches, onSelect, previewRef }) {
   const fileName = activeBatch?.fileName || 'Uploaded document';
   const encounters = activeBatch?.encounters || [];
   const pages = useMemo(() => {
@@ -603,31 +642,29 @@ function PagePreview({ activeBatch, batches, onSelect }) {
 
   return (
     <div className={styles.previewWrap}>
-      {/* Inner preview header removed — the outer file strip at the
-          top of the left panel already shows the filename + switcher,
-          so this row was redundant. */}
-      <div className={styles.previewBody}>
+      <div className={styles.previewBody} ref={previewRef}>
         {pages.length === 0 ? (
           <div className={styles.previewEmpty}>
             <Icon name="solar:document-linear" size={20} color="var(--neutral-200)" />
             <span>No pages extracted</span>
           </div>
         ) : pages.map(([page, encs]) => (
-          <div key={page} className={styles.previewPage}>
+          <div key={page} className={styles.previewPage} data-preview-page={page}>
             <div className={styles.previewPageHeader}>
               <div className={styles.previewPageOrg}>Fold Health Medical Group</div>
               <div className={styles.previewPagePagenum}>Page {page} · {fileName}</div>
             </div>
             <h2 className={styles.previewPageH1}>Progress Note</h2>
             {encs.map((enc, i) => (
-              <div key={i} className={styles.previewPageEnc}>
+              <div key={enc.tempId || i} className={styles.previewPageEnc} data-preview-enc={enc.tempId}>
                 <div className={styles.previewPageMeta}>
-                  <div><strong>Patient:</strong> {enc.patient?.name || '—'}</div>
-                  <div><strong>DOB:</strong> {enc.patient?.dob || '—'}</div>
-                  <div><strong>DOS:</strong> {enc.dos || '—'}</div>
-                  <div><strong>Provider:</strong> {enc.provider || '—'}</div>
+                  <div data-preview-field="patient"><strong>Patient:</strong> {enc.patient?.name || '—'}</div>
+                  <div data-preview-field="dob"><strong>DOB:</strong> {enc.patient?.dob || '—'}</div>
+                  <div data-preview-field="dos"><strong>DOS:</strong> {enc.dos || '—'}</div>
+                  <div data-preview-field="provider"><strong>Provider:</strong> {enc.provider || '—'}</div>
+                  <div data-preview-field="pos"><strong>POS:</strong> {enc.pos || '—'}{enc.posDesc ? ` — ${enc.posDesc}` : ''}</div>
                 </div>
-                <div className={styles.previewPageSection}>
+                <div className={styles.previewPageSection} data-preview-field="icds">
                   <h3 className={styles.previewPageH2}>Assessment &amp; Plan</h3>
                   <ul className={styles.previewPageIcds}>
                     {(enc.icds || []).map(icd => (
@@ -870,18 +907,152 @@ function DocReviewCompleted({ total, nextBatch, onPickNext, onBackToWorklist }) 
 }
 
 /**
- * Document Review encounter card — one card per encounter,
- * stacked vertically. Header: avatar + member identity + Ready /
- * Mismatch / Error pill + per-card actions. Body: 2-column field
- * grid (DOS · ICD Codes / Provider · POS) each with an inline
- * confidence gauge bar matching Figma 121:87283.
+ * Document Review patient card — one card per patient. Header shows
+ * the matched member identity once, followed by N "encounter blocks"
+ * — one per DOS surfaced in this document. Each block carries its own
+ * Ready/Mismatch/Error pill, per-DOS actions, and the editable field
+ * grid (DOS · ICD · Provider · POS · Category). Single-DOS patients
+ * render with no DOS-count chip and no separators.
  */
-function EncounterCard({ enc, status, hccMembers, docTab, onPatch, onAddToWorklist, onDelete, onRestore }) {
-  const isMatched = !!enc.patient?.matchedMemberId;
-  const member = isMatched ? hccMembers.find(m => m.id === enc.patient.matchedMemberId) : null;
+function PatientCard({ group, hccMembers, docTab, encStatus, patchEnc, onAddToWorklist, onDelete, onRestore, onCite }) {
+  const first = group.encs[0];
+  const isMatched = !!first?.patient?.matchedMemberId;
+  const member = isMatched ? hccMembers.find(m => m.id === first.patient.matchedMemberId) : null;
+  const displayName = member?.name || first?.patient?.name || '(unmatched)';
+  const initials = member?.in || displayName.split(' ').map(p => p[0]).slice(0, 2).join('');
+  return (
+    <div className={styles.encCard}>
+      <div className={styles.encCardHead}>
+        <Avatar variant="patient" initials={initials} />
+        <div className={styles.encCardIdent}>
+          <div className={styles.encCardName}>{displayName}</div>
+          <div className={styles.encCardMeta}>
+            {member?.g || ''} <span className={styles.encCardMetaDot}>•</span>
+            {member?.age || ''} <span className={styles.encCardMetaDot}>•</span>
+            #{first?.patient?.patientId || first?.patient?.matchedMemberDisplayId || '—'}
+          </div>
+        </div>
+        {group.encs.length > 1 && (
+          <span className={styles.encGroupCount}>
+            {group.encs.length} DOS
+          </span>
+        )}
+      </div>
+      {group.encs.map((enc, i) => (
+        <EncounterBlock
+          key={enc.tempId || `${group.key}:${i}`}
+          enc={enc}
+          status={encStatus(enc)}
+          docTab={docTab}
+          isFirst={i === 0}
+          onPatch={(patch) => patchEnc(enc, patch)}
+          onAddToWorklist={() => onAddToWorklist(enc)}
+          onDelete={() => onDelete(enc)}
+          onRestore={() => onRestore(enc)}
+          onCite={onCite}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * One DOS row inside a PatientCard. Renders the status pill + actions
+ * at the top, then the editable 2-column field grid.
+ */
+/**
+ * Status badge with a hover tooltip explaining *why* this row is
+ * flagged. Tooltip is portaled to escape the card's overflow. No tip
+ * when `reason` is empty (e.g. Ready rows) — just renders the Badge.
+ */
+function StatusBadgeWithTip({ variant, icon, label, reason, tone }) {
+  const wrapRef = useRef(null);
+  const [hover, setHover] = useState(false);
+  const [pos, setPos] = useState({ left: 0, top: 0 });
+  useEffect(() => {
+    if (!hover || !wrapRef.current) return;
+    const r = wrapRef.current.getBoundingClientRect();
+    setPos({ left: r.left, top: r.bottom + 6 });
+  }, [hover]);
+  if (!reason) {
+    return <Badge variant={variant} icon={icon} label={label} />;
+  }
+  return (
+    <span
+      ref={wrapRef}
+      className={styles.statusTipWrap}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <Badge variant={variant} icon={icon} label={label} />
+      {hover && createPortal(
+        <span
+          role="tooltip"
+          className={[
+            styles.statusTip,
+            tone === 'mismatch' ? styles.statusTipMismatch : styles.statusTipError,
+          ].join(' ')}
+          style={{
+            left: Math.min(window.innerWidth - 320, Math.max(8, pos.left)),
+            top: pos.top,
+          }}
+        >
+          {reason}
+        </span>,
+        document.body
+      )}
+    </span>
+  );
+}
+
+/**
+ * Run the 10-point document-level checklist against an encounter.
+ * Most checks derive from the data the OCR pipeline already
+ * surfaces (errors[], matched member, dos, icds, etc.). The three
+ * the pipeline doesn't report directly today — signature,
+ * legibility, doctype sanity — are mock-stubbed via a deterministic
+ * hash so demos show a sprinkling of failures rather than 100%
+ * passes everywhere.
+ *
+ * Returns { checks, status, failureCount, hasSupportingDoc }. The
+ * verdict flips to 'passed' once any failure is acknowledged with a
+ * supporting document upload (`enc._supportingDocName`).
+ */
+function runDocChecks(enc) {
+  const errs = new Set(enc?.errors || []);
+  const seed = (enc?.tempId || '') + (enc?.dos || '');
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) & 0xffffffff;
+  const mod = Math.abs(h);
+  const inDateRange = (() => {
+    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(enc?.dos || '');
+    if (!m) return false;
+    const yr = Number(m[3]);
+    return yr >= 2022 && yr <= 2027;
+  })();
+  const checks = [
+    { id: 'signature',     label: 'Signature present',                    passed: (mod % 23) !== 0 },
+    { id: 'legible',       label: 'Document is legible',                  passed: (mod % 41) !== 0 },
+    { id: 'right_patient', label: 'Document belongs to this patient',     passed: !!enc?.patient?.matchedMemberId && !enc?.patient?.idMismatch },
+    { id: 'date_range',    label: 'Date of service within valid range',   passed: inDateRange },
+    { id: 'dos',           label: 'Date of service is charted',           passed: !!enc?.dos && !errs.has('dos') },
+    { id: 'provider',      label: 'Rendering provider name is printed',   passed: !!enc?.provider && !errs.has('provider') },
+    { id: 'pos',           label: 'Place of service is available',        passed: !!enc?.pos && !errs.has('pos') },
+  ];
+  const failureCount = checks.filter(c => !c.passed).length;
+  const hasSupportingDoc = !!enc?._supportingDocName;
+  const verdict = (failureCount === 0 || hasSupportingDoc) ? 'passed' : 'failed';
+  return { checks, status: verdict, failureCount, hasSupportingDoc };
+}
+
+function EncounterBlock({ enc, status, docTab, isFirst, onPatch, onAddToWorklist, onDelete, onRestore, onCite }) {
   const errors = new Set(enc.errors || []);
-  // Map status → shared Badge variant (uses the existing status- tokens
-  // so this card matches every other status pill in the app).
+  const docChecks = runDocChecks(enc);
+  // Doc-checks pass either organically, with a supporting doc attached,
+  // or when the reviewer manually marked the row as passed (OCR
+  // override). The Add-to-Worklist gate widens accordingly.
+  const docChecksEffectivePass = docChecks.status === 'passed' || !!enc?._manuallyPassed;
+  const canAddToWorklist = docChecksEffectivePass && status === 'ready';
   const badgeVariant = (
     status === 'ready'    ? 'status-completed' :
     status === 'mismatch' ? 'status-review' :
@@ -893,36 +1064,57 @@ function EncounterCard({ enc, status, hccMembers, docTab, onPatch, onAddToWorkli
                             'solar:danger-triangle-bold'
   );
   const statusLabel = status === 'ready' ? 'Ready' : status === 'mismatch' ? 'Mismatch' : 'Error';
-  // Per-field confidence drives the gauge bar next to each label.
   const fieldConf = (name) => {
     if (errors.has(name)) return 0;
     return getFieldConfidence(enc, name);
   };
+  // Explain *why* this row is flagged. Mismatch → no roster member, or
+  // OCR'd ID disagrees with the matched member's ID. Error → which
+  // required field(s) couldn't be read from the document.
+  let reason = null;
+  if (status === 'mismatch') {
+    if (enc.patient?.idMismatch) {
+      reason = `Member ID on document (#${enc.patient.patientId || '—'}) doesn't match the linked member's ID`;
+    } else {
+      const bits = [];
+      if (enc.patient?.name) bits.push(`"${enc.patient.name}"`);
+      if (enc.patient?.dob) bits.push(`DOB ${enc.patient.dob}`);
+      reason = `No member found for ${bits.join(' · ') || 'this patient'} in your roster`;
+    }
+  } else if (status === 'error') {
+    const labelMap = { dos: 'DOS', icds: 'ICD codes', provider: 'Provider', pos: 'POS' };
+    const list = (enc.errors || []).map(e => labelMap[e] || e);
+    if (list.length) {
+      reason = `Missing required ${list.length > 1 ? 'fields' : 'field'}: ${list.join(', ')}`;
+    }
+  }
   return (
-    <div className={styles.encCard}>
-      <div className={styles.encCardHead}>
-        <Avatar
-          variant="patient"
-          initials={member?.in || (enc.patient?.name || '?').split(' ').map(p => p[0]).slice(0,2).join('')}
+    <div className={[styles.encBlock, isFirst ? '' : styles.encBlockSep].join(' ')}>
+      <div className={styles.encBlockHead}>
+        <StatusBadgeWithTip
+          variant={badgeVariant}
+          icon={badgeIcon}
+          label={statusLabel}
+          reason={reason}
+          tone={status}
         />
-        <div className={styles.encCardIdent}>
-          <div className={styles.encCardName}>{member?.name || enc.patient?.name || '(unmatched)'}</div>
-          <div className={styles.encCardMeta}>
-            {member?.g || ''} <span className={styles.encCardMetaDot}>•</span>
-            {member?.age || ''} <span className={styles.encCardMetaDot}>•</span>
-            #{enc.patient?.patientId || enc.patient?.matchedMemberDisplayId || '—'}
-          </div>
-        </div>
-        <Badge variant={badgeVariant} icon={badgeIcon} label={statusLabel} />
+        <DocChecksPill
+          result={docChecks}
+          manuallyPassed={!!enc?._manuallyPassed}
+          supportingDocName={enc?._supportingDocName}
+          onMarkPassed={() => onPatch({ _manuallyPassed: true })}
+          onUploadSupportingDoc={(file) => onPatch({ _supportingDocName: file.name })}
+        />
         <div className={styles.encCardActions}>
           {docTab === 'pending' ? (
             <>
               <Button
-                variant="ghost"
+                variant="tertiary"
                 size="S"
                 leadingIcon="solar:add-circle-linear"
-                disabled={status !== 'ready'}
+                disabled={!canAddToWorklist}
                 onClick={onAddToWorklist}
+                className={styles.encAddBtn}
               >
                 Add to Worklist
               </Button>
@@ -942,7 +1134,7 @@ function EncounterCard({ enc, status, hccMembers, docTab, onPatch, onAddToWorkli
       </div>
 
       <div className={styles.encGrid}>
-        <FieldBlock label="DOS" required confidence={fieldConf('dos')}>
+        <FieldBlock label="DOS" required confidence={fieldConf('dos')} sourcePage={enc.sourcePage} onCite={onCite ? () => onCite(enc.sourcePage || 1, enc.tempId, 'dos') : null}>
           <Input
             value={enc.dos || ''}
             placeholder="MM/DD/YYYY"
@@ -950,7 +1142,7 @@ function EncounterCard({ enc, status, hccMembers, docTab, onPatch, onAddToWorkli
             onChange={(e) => onPatch({ dos: e.target.value })}
           />
         </FieldBlock>
-        <FieldBlock label="ICD Codes" required confidence={fieldConf('icds')}>
+        <FieldBlock label="ICD Codes" required confidence={fieldConf('icds')} sourcePage={enc.sourcePage} onCite={onCite ? () => onCite(enc.sourcePage || 1, enc.tempId, 'icds') : null}>
           <div className={styles.encIcds}>
             {(enc.icds || []).map(icd => (
               <span key={icd.code} className={styles.encIcdChip}>
@@ -967,7 +1159,7 @@ function EncounterCard({ enc, status, hccMembers, docTab, onPatch, onAddToWorkli
             ))}
           </div>
         </FieldBlock>
-        <FieldBlock label="Rendering Provider" required confidence={fieldConf('provider')}>
+        <FieldBlock label="Rendering Provider" required confidence={fieldConf('provider')} sourcePage={enc.sourcePage} onCite={onCite ? () => onCite(enc.sourcePage || 1, enc.tempId, 'provider') : null}>
           <Input
             value={enc.provider || ''}
             placeholder="Provider"
@@ -975,7 +1167,7 @@ function EncounterCard({ enc, status, hccMembers, docTab, onPatch, onAddToWorkli
             onChange={(e) => onPatch({ provider: e.target.value })}
           />
         </FieldBlock>
-        <FieldBlock label="POS" required confidence={fieldConf('pos')}>
+        <FieldBlock label="POS" required confidence={fieldConf('pos')} sourcePage={enc.sourcePage} onCite={onCite ? () => onCite(enc.sourcePage || 1, enc.tempId, 'pos') : null}>
           <Input
             value={enc.pos ? `${enc.pos} - ${POS_LABEL[enc.pos] || ''}` : ''}
             placeholder="POS"
@@ -986,9 +1178,6 @@ function EncounterCard({ enc, status, hccMembers, docTab, onPatch, onAddToWorkli
             }}
           />
         </FieldBlock>
-        {/* Spec J — category is mandatory and correctable inline.
-            Providers often misfile labs as AWVs at upload time; this
-            lets the Support Team correct after the fact. */}
         <FieldBlock label="Category" required>
           <Select
             value={enc.docType || 'Progress Note'}
@@ -1001,9 +1190,6 @@ function EncounterCard({ enc, status, hccMembers, docTab, onPatch, onAddToWorkli
             ]}
           />
         </FieldBlock>
-        {/* Duplicate-warning chip — flagged at OCR time when the
-            member's existing dos_list already has this DOS + provider
-            + POS (spec L). */}
         {enc._duplicateOfMemberId && (
           <FieldBlock label="">
             <span className={styles.encDupWarn} title="Same DOS + Provider + POS already exists for this member">
@@ -1018,18 +1204,240 @@ function EncounterCard({ enc, status, hccMembers, docTab, onPatch, onAddToWorkli
 }
 
 /**
- * FieldBlock — label + confidence gauge bar + input slot.
- * Used inside every encounter card cell. The gauge fills based on
- * confidence: 5 segments tinted green/amber/red per tier.
+ * FieldBlock — label + confidence pill + input slot. The pill shows
+ * the AI's High/Medium/Low confidence tier for this field and, when
+ * the encounter has a sourcePage, doubles as a citation affordance:
+ * hover reveals "Source · Page N", click scrolls the left-pane PDF
+ * preview to that page and pulses a highlight on the cited row.
  */
-function FieldBlock({ label, required, confidence, children }) {
+/**
+ * Document-level checks inset — collapsible 10-point checklist that
+ * sits at the bottom of every encounter block. Auto-expanded when
+ * any check fails so the reviewer sees the failure inline; collapsed
+ * (one-line "All checks passed") when everything's green. When
+ * failed, exposes an "Upload supporting document" affordance that
+ * acknowledges the failure and unblocks Add to Worklist.
+ */
+/**
+ * Compact pill that sits next to the Ready/Mismatch/Error badge and
+ * shows the X/N doc-checks tally at a glance. On hover, expands into
+ * a portaled popover with the full 7-row checklist. When any check
+ * failed and the reviewer disagrees with the verdict, the popover
+ * exposes two recovery actions: a manual "Mark as Passed" override
+ * (for when OCR misread legible content) or a supporting-doc upload.
+ * Either action unblocks Add to Worklist.
+ */
+function DocChecksPill({ result, manuallyPassed, supportingDocName, onMarkPassed, onUploadSupportingDoc }) {
+  const { checks, status: rawStatus, hasSupportingDoc } = result;
+  // Treat manual override as a pass for the verdict label too.
+  const effectivelyPassed = rawStatus === 'passed' || manuallyPassed;
+  const passedCount = checks.filter(c => c.passed).length;
+  const total = checks.length;
+  const wrapRef = useRef(null);
+  const fileRef = useRef(null);
+  const [hover, setHover] = useState(false);
+  const [tipHover, setTipHover] = useState(false);
+  const [pos, setPos] = useState({ left: 0, top: 0 });
+  const open = hover || tipHover;
+  useEffect(() => {
+    if (!open || !wrapRef.current) return;
+    const r = wrapRef.current.getBoundingClientRect();
+    setPos({ left: r.left, top: r.bottom + 6 });
+  }, [open]);
+  const variant = effectivelyPassed ? 'status-completed' : 'status-failed';
+  const icon = effectivelyPassed ? 'solar:check-circle-bold' : 'solar:danger-triangle-bold';
+  const label = `${passedCount}/${total} Checks`;
+  return (
+    <span
+      ref={wrapRef}
+      className={styles.docPillWrap}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <Badge variant={variant} icon={icon} label={label} />
+      {open && createPortal(
+        <div
+          role="tooltip"
+          className={[styles.docPillTip, effectivelyPassed ? styles.docPillTipPass : styles.docPillTipFail].join(' ')}
+          style={{
+            left: Math.min(window.innerWidth - 320, Math.max(8, pos.left)),
+            top: pos.top,
+          }}
+          onMouseEnter={() => setTipHover(true)}
+          onMouseLeave={() => setTipHover(false)}
+        >
+          <div className={styles.docPillTipHead}>
+            <Icon
+              name={effectivelyPassed ? 'solar:check-circle-bold' : 'solar:danger-triangle-bold'}
+              size={14}
+              color={effectivelyPassed ? 'var(--status-success)' : 'var(--status-error)'}
+            />
+            <span>
+              {effectivelyPassed
+                ? (manuallyPassed ? 'Marked as passed manually' : hasSupportingDoc ? 'Passed with supporting document' : `${passedCount}/${total} checks passed`)
+                : `${total - passedCount} of ${total} checks failed`}
+            </span>
+          </div>
+          <ul className={styles.docPillList}>
+            {checks.map(c => (
+              <li
+                key={c.id}
+                className={[styles.docPillItem, c.passed ? styles.docPillItemOk : styles.docPillItemBad].join(' ')}
+              >
+                <Icon
+                  name={c.passed ? 'solar:check-circle-bold' : 'solar:close-circle-bold'}
+                  size={13}
+                  color={c.passed ? 'var(--status-success)' : 'var(--status-error)'}
+                />
+                <span>{c.label}</span>
+              </li>
+            ))}
+          </ul>
+          {!effectivelyPassed && (
+            <div className={styles.docPillActions}>
+              <Button
+                variant="alt"
+                size="S"
+                leadingIcon="solar:check-square-linear"
+                onClick={onMarkPassed}
+              >
+                Mark as Passed
+              </Button>
+              <Button
+                variant="ghost"
+                size="S"
+                leadingIcon="solar:upload-linear"
+                onClick={() => fileRef.current?.click()}
+              >
+                Upload supporting doc
+              </Button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.tif,.tiff"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  onUploadSupportingDoc?.(f);
+                  if (fileRef.current) fileRef.current.value = '';
+                }}
+              />
+            </div>
+          )}
+          {hasSupportingDoc && (
+            <div className={styles.docPillAttachment}>
+              <Icon name="solar:paperclip-linear" size={12} color="var(--neutral-400)" />
+              <span>{supportingDocName}</span>
+            </div>
+          )}
+        </div>,
+        document.body
+      )}
+    </span>
+  );
+}
+
+function DocChecks({ result, supportingDocName, onUploadSupportingDoc }) {
+  const { checks, status, failureCount, hasSupportingDoc } = result;
+  const [expanded, setExpanded] = useState(status === 'failed');
+  const fileRef = useRef(null);
+  const failedList = checks.filter(c => !c.passed);
+  const verdictLabel = status === 'passed'
+    ? (hasSupportingDoc ? 'Passed (with supporting doc)' : 'Passed')
+    : `Failed — ${failureCount} check${failureCount === 1 ? '' : 's'}`;
+  return (
+    <div className={styles.fieldBlock}>
+      <div className={styles.fieldBlockHead}>
+        <span className={styles.fieldBlockLabel}>
+          Document Checks<span className={styles.fieldBlockReq}>•</span>
+        </span>
+      </div>
+      <div className={styles.fieldBlockBody}>
+        <button
+          type="button"
+          className={styles.docChecksTrigger}
+          onClick={() => setExpanded(v => !v)}
+          aria-expanded={expanded}
+        >
+          <Badge
+            variant={status === 'passed' ? 'status-completed' : 'status-failed'}
+            icon={status === 'passed' ? 'solar:check-circle-bold' : 'solar:danger-triangle-bold'}
+            label={verdictLabel}
+          />
+          <Icon
+            name={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
+            size={14}
+            color="var(--neutral-300)"
+            className={styles.docChecksTriggerCaret}
+          />
+        </button>
+
+        {expanded && (
+          <div className={styles.docChecksPanel}>
+            <ul className={styles.docChecksList}>
+              {checks.map(c => (
+                <li
+                  key={c.id}
+                  className={[styles.docChecksItem, c.passed ? styles.docChecksItemOk : styles.docChecksItemBad].join(' ')}
+                >
+                  <Icon
+                    name={c.passed ? 'solar:check-circle-bold' : 'solar:close-circle-bold'}
+                    size={13}
+                    color={c.passed ? 'var(--status-success)' : 'var(--status-error)'}
+                  />
+                  <span>{c.label}</span>
+                </li>
+              ))}
+            </ul>
+            {status === 'failed' && failedList.length > 0 && (
+              <div className={styles.docChecksFooter}>
+                <span className={styles.docChecksFooterCopy}>
+                  One or more checks failed. Upload a supporting document to add this record anyway.
+                </span>
+                <Button
+                  variant="alt"
+                  size="S"
+                  leadingIcon="solar:upload-linear"
+                  onClick={() => fileRef.current?.click()}
+                >
+                  Upload supporting document
+                </Button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.tif,.tiff"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    onUploadSupportingDoc?.(f);
+                    if (fileRef.current) fileRef.current.value = '';
+                  }}
+                />
+              </div>
+            )}
+            {hasSupportingDoc && (
+              <div className={styles.docChecksAttachment}>
+                <Icon name="solar:paperclip-linear" size={12} color="var(--neutral-400)" />
+                <span>Supporting document: <strong>{supportingDocName}</strong></span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FieldBlock({ label, required, confidence, sourcePage, onCite, children }) {
   return (
     <div className={styles.fieldBlock}>
       <div className={styles.fieldBlockHead}>
         <span className={styles.fieldBlockLabel}>
           {label}{required && <span className={styles.fieldBlockReq}>•</span>}
         </span>
-        <ConfGauge score={confidence} />
+        <ConfPill score={confidence} sourcePage={sourcePage} onCite={onCite} />
       </div>
       <div className={styles.fieldBlockBody}>
         {children}
@@ -1039,31 +1447,61 @@ function FieldBlock({ label, required, confidence, children }) {
 }
 
 /**
- * ConfGauge — 5-segment horizontal gauge that fills based on score.
- * High (≥85%): full green; Medium (60-84%): mixed amber; Low (<60%):
- * red. Shows the percent number to the left of the bars.
+ * ConfPill — replaces the old percent-based gauge with a plain
+ * High/Medium/Low label, mirroring how the AI's underlying tier model
+ * actually reports confidence (the percent number was always derived
+ * from the same tier mapping anyway, so showing it was misleading
+ * precision). When a sourcePage is available the pill becomes a
+ * button with a hover tooltip ("Source · Page N — Click to view")
+ * and clicking it fires `onCite` which scrolls the left-pane preview
+ * to that page and highlights the cited encounter row.
  */
-function ConfGauge({ score }) {
+function ConfPill({ score, sourcePage, onCite }) {
+  const wrapRef = useRef(null);
+  const [hover, setHover] = useState(false);
+  const [pos, setPos] = useState({ left: 0, top: 0 });
+  useEffect(() => {
+    if (!hover || !wrapRef.current) return;
+    const r = wrapRef.current.getBoundingClientRect();
+    setPos({ left: r.left, top: r.bottom + 6 });
+  }, [hover]);
   if (typeof score !== 'number' || score === 0) {
-    return <span className={styles.confGaugeEmpty}>—</span>;
+    return <span className={styles.confPillEmpty}>—</span>;
   }
   const tier = score >= 85 ? 'high' : score >= 60 ? 'medium' : 'low';
-  // 5 segments. Fill count is proportional to score.
-  const fillCount = Math.max(1, Math.min(5, Math.round((score / 100) * 5)));
+  const label = tier === 'high' ? 'High' : tier === 'medium' ? 'Medium' : 'Low';
+  const canCite = typeof onCite === 'function' && !!sourcePage;
+  const cls = [styles.confPill, styles[`confPill_${tier}`], canCite ? styles.confPillClickable : ''].join(' ');
+  if (!canCite) {
+    return <span className={cls}>{label}</span>;
+  }
   return (
-    <span className={styles.confGauge}>
-      <span className={[styles.confGaugePct, styles[`confGauge_${tier}Text`]].join(' ')}>{score}%</span>
-      <span className={styles.confGaugeBars}>
-        {Array.from({ length: 5 }).map((_, i) => (
-          <span
-            key={i}
-            className={[
-              styles.confGaugeBar,
-              i < fillCount ? styles[`confGauge_${tier}Bar`] : styles.confGauge_offBar,
-            ].join(' ')}
-          />
-        ))}
-      </span>
+    <span
+      ref={wrapRef}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <button
+        type="button"
+        className={cls}
+        onClick={(e) => { e.preventDefault(); onCite(); }}
+      >
+        {label}
+      </button>
+      {hover && createPortal(
+        <span
+          role="tooltip"
+          className={styles.confPillTip}
+          style={{
+            left: Math.min(window.innerWidth - 220, Math.max(8, pos.left)),
+            top: pos.top,
+          }}
+        >
+          <span className={styles.confPillTipHead}>Source · Page {sourcePage}</span>
+          <span className={styles.confPillTipSub}>Click to view in document</span>
+        </span>,
+        document.body
+      )}
     </span>
   );
 }

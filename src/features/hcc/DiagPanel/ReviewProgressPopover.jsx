@@ -6,7 +6,7 @@ import styles from './ReviewProgressPopover.module.css';
 /**
  * Hover popover anchored to the DOS row's "With <Stage>" pill. Mirrors the
  * Figma node 1:67779 — a vertical timeline showing the four review stages
- * (Support → Coder → R1 → R2). Each stage renders as:
+ * (Support → Coder → Reviewer → Reviewer 2). Each stage renders as:
  *
  *   ┊
  *   ○   Name (Role)
@@ -23,18 +23,18 @@ import styles from './ReviewProgressPopover.module.css';
 const TERMINAL_STATUSES = new Set(['Completed', 'Billing Ready', 'Reject', 'Rejected']);
 
 export function buildReviewStages(member, dosState) {
-  // Five sequential stages per the HCC workflow:
-  //   Support → Coder → R1 → R2 → R3 → Billing
-  // Each must complete before the next is reached.
-  const visibleRoles = ['support', 'coder', 'r1', 'r2', 'r3'];
+  // Four sequential stages per the HCC workflow:
+  //   Support → Coder → Reviewer → Reviewer 2 → Billing
+  // Each must complete before the next is reached. "Reviewer 3" does not
+  // exist — Reviewer 2 is always the terminal review stage.
+  const visibleRoles = ['support', 'coder', 'reviewer', 'reviewer2'];
   return visibleRoles.map((role) => {
     const rs = dosState?.[role];
     const legacyMap = {
-      support: { name: member?.sup, status: member?.supS },
-      coder:   { name: member?.cdr, status: member?.cdrS },
-      r1:      { name: member?.r1,  status: member?.r1s },
-      r2:      { name: member?.r2,  status: member?.r2s },
-      r3:      { name: member?.r3,  status: member?.r3s },
+      support:   { name: member?.sup, status: member?.supS },
+      coder:     { name: member?.cdr, status: member?.cdrS },
+      reviewer:  { name: member?.r1,  status: member?.r1s },
+      reviewer2: { name: member?.r2,  status: member?.r2s },
     };
     const assigneeId = rs?.assignee || null;
     const staff = assigneeId ? staffById(assigneeId) : null;

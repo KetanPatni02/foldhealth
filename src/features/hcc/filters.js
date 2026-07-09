@@ -17,6 +17,7 @@
 
 export const MORE_FILTER_ITEMS = [
   // Primary — shown in chip row by default
+  { k: 'vt',    label: 'Visit Type',           primary: true },
   { k: 'my',    label: 'Measurement Year',     primary: true },
   { k: 'rl',    label: 'Risk Level',           primary: true },
   { k: 'coh',   label: 'Cohort',               primary: true },
@@ -25,7 +26,7 @@ export const MORE_FILTER_ITEMS = [
   { k: 'chart', label: 'Document Available',   primary: true },
   { k: 'supS',  label: 'Support Status',       primary: true },
   { k: 'cdrS',  label: 'Coder Status',         primary: true },
-  { k: 'r1s',   label: 'Reviewer 1 Status',    primary: true },
+  { k: 'r1s',   label: 'Reviewer Status',      primary: true },
   { k: 'dec',   label: 'Decile',               primary: true },
   // Extended — hidden until toggled on via MoreFiltersPopover
   { k: 'cd',    label: 'Create Date',          primary: false },
@@ -37,8 +38,8 @@ export const MORE_FILTER_ITEMS = [
   { k: 'supCD', label: 'Support Completion Date', primary: false },
   { k: 'cdrAD', label: 'Coder Assigned Date',  primary: false },
   { k: 'cdrCD', label: 'Coder Completion Date',primary: false },
-  { k: 'r1AD',  label: 'Rev 1 Assigned Date',  primary: false },
-  { k: 'r1CD',  label: 'Rev 1 Completion Date',primary: false },
+  { k: 'r1AD',  label: 'Reviewer Assigned Date',  primary: false },
+  { k: 'r1CD',  label: 'Reviewer Completion Date',primary: false },
   { k: 'r2s',   label: 'Reviewer 2 Status',    primary: false },
   { k: 'r2AD',  label: 'Rev 2 Assigned Date',  primary: false },
   { k: 'r2CD',  label: 'Rev 2 Completion Date',primary: false },
@@ -51,12 +52,12 @@ export const MORE_FILTER_ITEMS = [
   { k: 'gaps',  label: 'No. Of Gaps',          primary: false },
   { k: 'tin',   label: 'TIN',                  primary: false },
   { k: 'lvd',   label: 'Last Visit Date',      primary: false },
-  { k: 'vt',    label: 'Visit Type',           primary: false },
 ];
 
 export const PRIMARY_FILTER_KEYS = MORE_FILTER_ITEMS.filter(x => x.primary).map(x => x.k);
 
 export const FILTER_DEFS = [
+  { k: 'vt',    label: 'Visit Type',          type: 'multi', opts: ['HCC', 'AWV'] },
   { k: 'my',    label: 'Measurement Year',    type: 'multi', opts: ['2021', '2022', '2023', '2024', '2025'] },
   { k: 'rl',    label: 'Risk Level',          type: 'multi', opts: ['Low', 'Medium', 'High'] },
   { k: 'coh',   label: 'Cohort',              type: 'multi', opts: ['PCP', 'HCC'] },
@@ -65,7 +66,7 @@ export const FILTER_DEFS = [
   { k: 'chart', label: 'Document Available',  type: 'multi', opts: ['Available', 'Not Available'] },
   { k: 'supS',  label: 'Support Status',      type: 'multi', opts: ['Assign', 'In Progress', 'Completed', 'Record Requested', 'Returned'] },
   { k: 'cdrS',  label: 'Coder Status',        type: 'multi', opts: ['Assign', 'In Progress', 'Completed', 'Record Requested', 'Returned'] },
-  { k: 'r1s',   label: 'Reviewer 1 Status',   type: 'multi', opts: ['Assign', 'New', 'In Progress', 'Completed'] },
+  { k: 'r1s',   label: 'Reviewer Status',     type: 'multi', opts: ['Assign', 'New', 'In Progress', 'Completed'] },
   { k: 'r2s',   label: 'Reviewer 2 Status',   type: 'multi', opts: ['Assign', 'New', 'In Progress', 'Completed'] },
   { k: 'dec',   label: 'Decile',              type: 'range', opts: ['1','2','3','4','5','6','7','8','9','10'] },
   // Phase 3d — date-range filters use the shared DateRangePopover.
@@ -93,6 +94,7 @@ export function memberMatchesFilters(member, filters) {
 
 function matchOne(m, k, vals) {
   switch (k) {
+    case 'vt':    return vals.includes(m.visitType);
     case 'rl':    return vals.includes(m.rl);
     case 'coh':   return vals.includes(m.coh);
     case 'g':     {

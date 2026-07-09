@@ -81,6 +81,7 @@ function HccHeaderCell({ column, className, sortKey, sortDir, onOpenSort }) {
 const COL_CLASS = {
   dos:      rowStyles.colLastVisit,
   open:     rowStyles.colOpen,
+  vt:       rowStyles.colVt,
   date:     rowStyles.colDate,
   evidence: rowStyles.colEvidence,
   sup:      rowStyles.colRole,
@@ -205,6 +206,10 @@ export function HccWorklistTable() {
 
   const { sorted, sortKey, sortDir, setSort, clearSort } = useTableSort(filtered, 'date', 'desc');
 
+  // Flat table — one row per record (Figma 4680:138476). A record whose
+  // dos_list bundles multiple visits shows a "View More N" expander in
+  // its own row (handled inside HccWorklistRow); the table itself just
+  // paginates the record list.
   const startIdx = (currentPage - 1) * perPage;
   const paginated = sorted.slice(startIdx, startIdx + perPage);
 
@@ -231,7 +236,7 @@ export function HccWorklistTable() {
             onCommit={setHccListTitle}
             size="L"
             maxLength={60}
-            placeholder="HCC List"
+            placeholder="Worklist"
             title="Rename this list"
           />
           <DueDateChip value={hccDueDateFilter} onChange={setHccDueDateFilter} />
@@ -393,7 +398,14 @@ export function HccWorklistTable() {
             </tr>
           </thead>
           <tbody>
-            {paginated.map(m => <HccWorklistRow key={m.id} member={m} hiddenCols={hiddenSet} columns={orderedColumns} />)}
+            {paginated.map(m => (
+              <HccWorklistRow
+                key={m.id}
+                member={m}
+                hiddenCols={hiddenSet}
+                columns={orderedColumns}
+              />
+            ))}
           </tbody>
         </table>
 
