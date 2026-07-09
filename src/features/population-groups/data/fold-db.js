@@ -1,5 +1,10 @@
-/* ─── Fold Patient Database (100 patients from patient_entries_100.xlsx) ─── */
-export const FOLD_DB = [
+/* ─── Fold Patient Database ───
+   Seed below is the offline fallback (the original patient_entries_100.xlsx).
+   At runtime the Population Groups view replaces this with live rows from the
+   `all_patients` Supabase table via loadFoldDbFromRows(), so CSV uploads are
+   matched against the real patient database. FOLD_DB / FOLD_DB_MAP are `let`
+   exports — ES module live bindings let importers see the swapped-in data. */
+export let FOLD_DB = [
   { id:'FOLD100001', name:'Vikram Gupta',    dob:'2006-08-02', pcp:'Dr. Rao' },
   { id:'FOLD100002', name:'Mira Patel',      dob:'1958-11-13', pcp:'Dr. Shah' },
   { id:'FOLD100003', name:'Diya Kapoor',     dob:'1995-12-06', pcp:'Dr. Iyer' },
@@ -102,4 +107,22 @@ export const FOLD_DB = [
   { id:'FOLD100100', name:'Isha Singh',      dob:'1964-08-23', pcp:'Dr. Iyer' },
 ];
 
-export const FOLD_DB_MAP = Object.fromEntries(FOLD_DB.map(p => [p.id.toUpperCase(), p]));
+export let FOLD_DB_MAP = Object.fromEntries(FOLD_DB.map(p => [p.id.toUpperCase(), p]));
+
+/* Bundled seed dob keyed by id — fallback when the DB row has no dob column,
+   so member rows can still show Age / DOB. */
+const SEED_DOB = Object.fromEntries(FOLD_DB.map(p => [p.id.toUpperCase(), p.dob]));
+
+/* Swap the in-memory patient DB for live rows from `all_patients`.
+   rows: [{ id, name, dob, pcp }] — dob may be undefined if the column is absent,
+   in which case we keep the bundled seed dob so Age/DOB still render. */
+export function loadFoldDbFromRows(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return;
+  FOLD_DB = rows.map(r => ({
+    id: r.id,
+    name: r.name,
+    dob: r.dob || SEED_DOB[String(r.id).toUpperCase()] || '',
+    pcp: r.pcp || '',
+  }));
+  FOLD_DB_MAP = Object.fromEntries(FOLD_DB.map(p => [String(p.id).toUpperCase(), p]));
+}

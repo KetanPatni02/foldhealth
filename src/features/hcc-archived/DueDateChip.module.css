@@ -1,0 +1,128 @@
+/* ── Trigger chip ──────────────────────────────────────────────────────── */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 0.5px solid var(--neutral-150);
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+
+.chip:hover {
+  background: var(--neutral-50);
+  color: var(--neutral-400);
+}
+
+.chipActive {
+  border-color: var(--primary-300);
+  background: var(--primary-50);
+  color: var(--primary-300);
+}
+
+.chipActive:hover {
+  background: var(--primary-100);
+}
+
+/* ── Portaled popover ──────────────────────────────────────────────────── */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 8998;
+  background: transparent;
+}
+
+.popover {
+  position: fixed;
+  z-index: 8999;
+  min-width: 220px;
+  padding: 14px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-100);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  font-family: 'Inter', sans-serif;
+}
+
+.popHeader {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  margin-bottom: 10px;
+}
+
+.optionList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  padding: 2px 0;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.optionLabel {
+  font-size: 14px;
+  color: var(--neutral-400);
+}
+
+.radio {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--neutral-200);
+  background: var(--neutral-0);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.12s;
+}
+
+.radioActive {
+  border-color: var(--primary-300);
+}
+
+.radioDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary-300);
+}
+
+.reset {
+  width: 100%;
+  padding: 7px 0;
+  text-align: center;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--neutral-400);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.reset:hover {
+  background: var(--neutral-50);
+}

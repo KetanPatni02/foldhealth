@@ -11,18 +11,39 @@ export const RECENT_NOTES = [
 ];
 
 export const ACTIVE_CARE_PROGRAMS = [
-  { id: 'cp1', name: 'Annual Wellness Visit (AWV)', status: 'Schedule with PCP', statusLink: true, startDate: '09/01/2024', endDate: '02/19/2024', lastUpdated: '02/19/2024', assignee: 'Aldo Richman', pcp: 'Dr. Rob' },
+  { id: 'cp1', name: 'Annual Wellness Visit (AWV)', progress: 35, status: 'Schedule with PCP', statusLink: true, statusNew: false, startDate: '09/01/2024', endDate: '02/19/2024', lastUpdated: '02/19/2024', assignee: 'Aldo Richman', pcp: 'Dr. Rob' },
+  { id: 'cp2', name: 'Chronic Care Management (CCM)', progress: 60, status: 'Assigned to Nurse', statusLink: false, statusNew: false, startDate: '10/15/2024', endDate: '04/15/2025', lastUpdated: '02/19/2024', assignee: 'Sarah Kim', pcp: 'Dr. Wilson' },
+  { id: 'cp3', name: 'Transitional Care (TCM)', progress: 10, status: 'New', statusLink: false, statusNew: true, startDate: '01/05/2025', endDate: '07/05/2025', lastUpdated: '02/19/2024', assignee: 'Aldo Richman', pcp: 'Dr. Rob' },
 ];
 
 export const UPCOMING_APPOINTMENTS = [
-  { id: 'ua1', type: 'Follow-up Appointment', date: '05/12/2025', time: '10:00 AM', provider: 'Dr. James Wilson', location: 'Fold Health, NY', status: 'Confirmed' },
-  { id: 'ua2', type: 'Diabetes Education Class', date: '06/01/2025', time: '2:00 PM', provider: 'Group Session', location: 'Fold Health, NY', status: 'Scheduled' },
+  { id: 'ua1', title: 'Follow-up Appointment', subtitle: 'In-person visit', type: 'In-Person', date: '05/12/2025', time: '10:00 AM', assignee: 'Dr. James Wilson', createdBy: 'System', createdDate: '02/19/2024' },
+  { id: 'ua2', title: 'Diabetes Education Class', subtitle: 'Group Session', type: 'Virtual', date: '06/01/2025', time: '2:00 PM', assignee: 'Group Session', createdBy: 'Dr. Emily Carter', createdDate: '02/19/2024' },
+  { id: 'ua3', title: 'HIU Nurse Check-in', subtitle: 'Telephonic follow-up', type: 'Phone', date: '05/26/2025', time: '11:00 AM', assignee: 'Sarah Kim', createdBy: 'System', createdDate: '02/19/2024' },
 ];
 
 export const CONDITION_TAGS = [
   { label: 'Diabetes', removable: true },
   { label: 'Hypertension', removable: true },
   { label: 'Needs Transportation', removable: true },
+];
+
+export const CARE_PLAN_RECOMMENDATIONS = [
+  { step: 1, title: 'Lifestyle Modifications', conditions: 'Diabetes (Type 2), Hypertension, Obesity' },
+  { step: 2, title: 'Early Hormonal Therapy', conditions: 'Perimenopause' },
+  { step: 3, title: 'Regular Monitoring', conditions: 'Diabetes (Type 2), Hypertension, Hyperlipidemia' },
+  { step: 4, title: 'Physical Therapy', conditions: 'Lower Back Pain, Osteoarthritis' },
+  { step: 5, title: 'Preventive Migraine Management', conditions: 'Chronic Migraines' },
+];
+
+export const ALL_APPOINTMENTS = [
+  { id: 'a1', name: 'Dr. Matt Spencer', initials: 'MS', role: 'Physician', dateTime: '01/12/2026, 01:27 PM - 01:26 AM', location: 'Fold Wellness Clinic, Florida' },
+  { id: 'a2', name: 'Nurse Jane Holloway', initials: 'JH', role: 'Nursing Staff', dateTime: '01/19/2026, 03:27 AM - 11:23 PM', location: 'Fold Wellness Clinic, Florida' },
+  { id: 'a3', name: 'Dr. Rachel Collins', initials: 'RC', role: 'Psychologist', dateTime: '01/20/2026, 05:39 AM - 05:28 AM', location: 'Fold Wellness Clinic, Florida' },
+  { id: 'a4', name: 'Dr. Liam Moore', initials: 'LM', role: 'Surgeon', dateTime: '01/27/2026, 06:49 AM - 02:12 AM', location: 'Fold Wellness Clinic, Florida' },
+  { id: 'a5', name: 'Nurse Amy Chen', initials: 'AC', role: 'Nursing Staff', dateTime: '02/13/2026, 03:17 AM - 07:44 PM', location: 'Fold Wellness Clinic, Florida' },
+  { id: 'a6', name: 'Dr. Tom Kim', initials: 'TK', role: 'Physiotherapist', dateTime: '02/18/2026, 05:16 PM - 03:08 PM', location: 'Fold Wellness Clinic, Florida' },
+  { id: 'a7', name: 'Nurse Bella Smith', initials: 'BS', role: 'Nursing Staff', dateTime: '02/20/2026, 03:13 AM - 06:31 AM', location: 'Fold Wellness Clinic, Florida' },
 ];
 
 export const HEADER_METRICS = {

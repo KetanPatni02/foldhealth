@@ -272,6 +272,12 @@ export function TopBar() {
               <span className={styles.sep}>/</span>
               <span className={styles.breadcrumbCurrent}>{SETTINGS_BREADCRUMB[settingsNavItem] || 'Automation'}</span>
             </>
+          ) : activeSubnavList?.startsWith('pg:') ? (
+            <>
+              <a className={styles.breadcrumbLink} href="#" onClick={e => e.preventDefault()}>Population</a>
+              <span className={styles.sep}>/</span>
+              <span className={styles.breadcrumbCurrent}>Pop groups</span>
+            </>
           ) : (
             <>
               <a className={styles.breadcrumbLink} href="#" onClick={e => e.preventDefault()}>Population</a>

@@ -1,0 +1,232 @@
+.wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--neutral-0);
+}
+
+.scrollWrap {
+  flex: 1;
+  overflow: auto;
+  background: var(--neutral-0);
+  /* Leaves clearance below the last table row so the floating BulkBar
+     (bottom: 120px in BulkBar.module.css) never crops the bottom-most
+     member when the table is scrolled to the end. */
+  padding-bottom: 80px;
+}
+
+/* ── TabBar header (mirrors src/components/TabBar/TabBar.module.css) ── */
+.tabBar {
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  flex-shrink: 0;
+  justify-content: space-between;
+  min-height: 48px;
+  /* NOT sticky — kept outside the horizontal scroll wrap so it stays anchored */
+}
+
+.tabLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tabItem {
+  display: flex;
+  align-items: center;
+  padding: 10px 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+  gap: 6px;
+  font-family: 'Inter', sans-serif;
+}
+.tabItem:hover { color: var(--neutral-400); }
+.tabActive {
+  color: var(--primary-300);
+  border-bottom-color: var(--primary-300);
+}
+
+.tabRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.searchWrap {
+  display: flex;
+  align-items: center;
+}
+.searchInput {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  height: 36px;
+  border: 0.5px solid var(--primary-300);
+  border-radius: 6px;
+  background: var(--neutral-0);
+  width: 240px;
+}
+.searchInput input {
+  border: none;
+  outline: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-400);
+  flex: 1;
+  min-width: 0;
+}
+.searchInput input::placeholder { color: var(--neutral-200); }
+.searchClose {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--neutral-300);
+  font-size: 16px;
+  padding: 0;
+  display: flex;
+  line-height: 1;
+}
+.searchClose:hover { color: var(--neutral-400); }
+
+.iconDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+.iconActive {
+  background: var(--primary-100);
+  color: var(--primary-300);
+}
+
+/* ── Table ── */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Inter', sans-serif;
+}
+
+.table thead th {
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  text-align: left;
+  white-space: nowrap;
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
+  box-shadow: inset 0 -0.5px 0 0 var(--neutral-150);
+  position: sticky;
+  top: 0; /* tabBar is outside scrollWrap now, so header sticks at top of scroll */
+  z-index: 2;
+  user-select: none;
+  height: 32px;
+}
+
+/* Bump z-index on sticky-left / sticky-right header cells */
+.table thead th[class*="stickyLeft"],
+.table thead th[class*="stickyRight"] {
+  z-index: 4;
+}
+
+/* Header cells for the split member columns */
+.checkTh {
+  padding: 8px 10px !important;
+  width: 36px;
+}
+.memberTh {
+  padding: 8px 12px !important;
+  border-right: 1px solid var(--neutral-150);
+}
+
+/* ── Sortable header cells (opens SortPopover on click) ── */
+.headerCell {
+  /* Inherit positioning from base .table thead th — just add interaction state. */
+}
+.headerCellSortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.12s;
+}
+.headerCellSortable:hover {
+  color: var(--neutral-400);
+}
+.headerCellActive {
+  color: var(--primary-300);
+}
+
+.headerLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sortIcon {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ── Empty state ── */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 64px 24px;
+  color: var(--neutral-300);
+}
+.emptyTitle {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  margin: 0;
+}
+.emptyMessage {
+  font-size: 13px;
+  color: var(--neutral-300);
+  margin: 0;
+  text-align: center;
+  max-width: 320px;
+}
+
+/* ── Actions <th> — embeds the column hide/show trigger ───────────────── */
+
+.actionsTh {
+  padding: 8px 8px !important;
+}
+
+.actionsHeaderLabel {
+  display: inline-block;
+  margin-right: 6px;
+}
+
+.colCfgBtn {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.colCfgBtn:hover { background: var(--neutral-50); }
+
+.colCfgBtnActive {
+  background: var(--primary-50);
+}
+.colCfgBtnActive:hover { background: var(--primary-100); }

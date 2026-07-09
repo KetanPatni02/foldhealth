@@ -1,0 +1,692 @@
+/* ── Row shell — white cells, 71px row height ── */
+.row {
+  border-bottom: 1px solid var(--neutral-150);
+  transition: background 0.1s;
+  cursor: pointer;
+  background: var(--neutral-0);
+}
+.row > td {
+  background: var(--neutral-0);
+  vertical-align: middle;
+  padding: 8px 14px;
+  height: 59px;            /* matches TOC WorklistRow natural row height */
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.row:hover { background: var(--primary-25); }
+.row:hover > td,
+.row:hover [class*="stickyLeft"],
+.row:hover [class*="stickyRight"] { background: var(--primary-25) !important; }
+
+/* ── Sticky columns ── */
+.stickyLeft {
+  position: sticky;
+  background: var(--neutral-0);
+  z-index: 3;
+}
+.stickyRight {
+  position: sticky;
+  right: 0;
+  background: var(--neutral-0);
+  border-left: 1px solid var(--neutral-150);
+  z-index: 3;
+}
+.stickyCheck  { left: 0; padding: 8px 10px !important; }
+.stickyMember { left: 36px; padding: 8px 12px !important; border-right: 1px solid var(--neutral-150); }
+
+/* Selected row */
+.rowChecked,
+.rowChecked > td,
+.rowChecked [class*="stickyLeft"],
+.rowChecked [class*="stickyRight"] {
+  background: var(--primary-50) !important;
+}
+
+/* Active (drawer-open) row */
+.rowActive,
+.rowActive > td,
+.rowActive [class*="stickyLeft"],
+.rowActive [class*="stickyRight"] {
+  background: var(--primary-100) !important;
+}
+.rowActive .stickyCheck { box-shadow: inset 2px 0 0 0 var(--primary-300); }
+
+/* ── Member cell — exact clone of TOC WorklistRow .patientCell ── */
+.checkTd { vertical-align: middle; }
+.memberTd { vertical-align: middle; }
+
+.patientCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.patientName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  white-space: nowrap;
+}
+.patientNameLink {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  font-weight: 500;
+}
+.patientNameLink:hover {
+  color: var(--primary-300);
+  text-decoration: underline;
+}
+.patientDemo {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.patientMeta {
+  font-size: 13px;
+  color: var(--neutral-200);
+  margin-top: 3px;
+}
+/* Plain text-link badge — sits inside .patientMeta. Grey by default, picks
+   up the primary-300 underline on hover. Tooltip wrapper stays unchanged. */
+.langBadge {
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  color: var(--neutral-300);
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: uppercase;
+  position: relative;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.12s;
+}
+.langBadge:hover {
+  color: var(--primary-300);
+  text-decoration: underline;
+  text-decoration-color: var(--primary-300);
+  text-underline-offset: 2px;
+}
+.langBadge:focus-visible {
+  outline: 2px solid var(--primary-300);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.langTooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 6px 10px;
+  background: var(--neutral-500);
+  color: var(--neutral-0);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.langBadge:hover .langTooltip { display: block; }
+
+/* ── Generic 2-line stack layout (Last Visit, Create Date, HCC Evidence, Role) ── */
+.stackCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* ── Clickable trigger wrapper (HCC Evidence) ──
+   Behaves like a button in markup but visually mirrors the old stack cell. */
+.evidenceTrigger {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  align-items: flex-start;
+  border-radius: 4px;
+  transition: background 0.12s;
+}
+.evidenceTrigger:hover {
+  background: var(--neutral-50);
+}
+
+/* ── Last Visit cell — purple date + visits count ── */
+.lastVisitDate {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--primary-300);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.lastVisitMeta {
+  /* Matches prototype: dotted-underlined clickable visit count */
+  font-size: 12px;
+  color: var(--neutral-400);
+  white-space: nowrap;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.lastVisitVisitsBtn:hover .lastVisitMeta {
+  color: var(--primary-300);
+}
+
+/* ── Split-button layout for the DOS cell ──
+   The date line and the "X of Y Visits" sub-line each carry their own click
+   target so a claim-sourced date can open the Claim Preview while the visits
+   link still opens the all-DOSs popover. */
+.lastVisitStack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* Date button — purple, no underline by default, no hover bg */
+.lastVisitDateBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+/* Visits button — just a wrapper for the underlined "X of Y Visits" text */
+.lastVisitVisitsBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  line-height: 1;
+}
+
+/* Date hover (claim variant only): visited link feel */
+.lastVisitDateBtn:hover .lastVisitDate {
+  text-decoration: underline;
+  text-decoration-color: var(--primary-300);
+  text-underline-offset: 2px;
+}
+
+/* Non-claim variant — plain grey date (no button wrapper) */
+.lastVisitDateMuted {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ── Create Date cell — date + due line with clock icon ── */
+.dateText {
+  font-size: 14px;
+  color: var(--neutral-300);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.dueLine {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+/* ── HCC Evidence cell — badge + status dot line ── */
+.evidenceBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: var(--primary-50);
+  border: 0.5px solid rgba(140, 90, 226, 0.2);
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--primary-300);
+  width: max-content;
+}
+.evidenceStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+.evidenceDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Role status cells ── */
+.roleName {
+  font-size: 14px;
+  color: var(--neutral-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.roleStatusLine {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--neutral-300);
+  /* Visible label below the role name is the *date*; the status is encoded
+     by the icon's color. The legend at the bottom of the worklist explains
+     the icon meanings. */
+}
+.roleDate {
+  font-size: 12px;
+  color: var(--neutral-300);
+  font-variant-numeric: tabular-nums;
+}
+.roleUnassigned {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  font-size: 14px;
+  color: var(--neutral-200);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  border-radius: 4px;
+  transition: background 0.12s, color 0.12s;
+}
+.roleUnassigned:hover {
+  background: var(--primary-25);
+  color: var(--primary-300);
+}
+
+/* ── Assign popover — portal-rendered list of candidate users. ── */
+.roleAssignMenu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 260px;
+  max-width: 340px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.02);
+  padding: 6px;
+  font-family: 'Inter', sans-serif;
+}
+.roleAssignTitle {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  padding: 6px 8px 4px;
+  border-bottom: 0.5px solid var(--neutral-100);
+  margin-bottom: 2px;
+}
+.roleAssignItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+.roleAssignItem:hover { background: var(--neutral-50); }
+.roleAssignName {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.roleAssignRole {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+.roleAssignEmpty {
+  padding: 10px;
+  font-size: 12px;
+  color: var(--neutral-300);
+  text-align: center;
+}
+
+/* ── RAF Impact badge — green with up arrow (or red with down) ── */
+.rafImpactBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 0.5px solid transparent;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 400;
+  white-space: nowrap;
+  min-width: 22px;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── POS Code badge (white bg, neutral border) ── */
+.posBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  background: var(--neutral-0);
+  border: 0.5px solid rgba(111, 122, 144, 0.1);
+  border-radius: 4px;
+  font-size: 14px;
+  color: var(--neutral-300);
+  min-width: 22px;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Generic numeric / provider text ── */
+.numText,
+.codeText,
+.providerText {
+  font-size: 14px;
+  color: var(--neutral-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+.numText { font-variant-numeric: tabular-nums; }
+.muted { color: var(--neutral-200); }
+
+/* ── Column widths (match Figma frame 11436:432705 — Table Middle List) ── */
+.colMember      { min-width: 240px; }
+.colLastVisit   { min-width: 100px; }
+.colOpen        { min-width: 90px; }
+.colDate        { min-width: 110px; }
+.colEvidence    { min-width: 110px; }
+.colAssignee    { min-width: 170px; }
+.colRole        { min-width: 150px; }
+
+/* Assignee cell — Avatar + 2-line stack (name on top, current role below).
+   Mirrors the Member cell's typography so the column reads as a person. */
+.assigneeCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.assigneeText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1.2;
+}
+.assigneeName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.assigneeRole {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+
+/* Variant 2 — current bucket has no assignee yet ("Awaiting Reviewer 2").
+   Hollow circle in the avatar slot, muted name text. Sized to match the
+   provider Avatar (32×32) so unassigned and assigned rows align visually. */
+.unassignedSlot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--neutral-50);
+  border: 0.5px dashed var(--neutral-200);
+  flex-shrink: 0;
+}
+.assigneeNameMuted {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Variant 3 — every stage completed, DOS is now in Billing. Green check
+   chip in the avatar slot. */
+.billingBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--status-success-light);
+  border: 0.5px solid rgba(0, 155, 83, 0.3);
+  flex-shrink: 0;
+}
+.colProvider    { min-width: 140px; }
+.colPos         { min-width: 100px; }
+.colPosDesc     { min-width: 140px; }
+.colRaf         { min-width: 100px; }
+.colRi          { min-width: 110px; }
+.colIpa         { min-width: 70px; }
+.colHp          { min-width: 90px; }
+.colPcp         { min-width: 140px; }
+.colDec         { min-width: 80px; }
+.colCoh         { min-width: 80px; }
+.colRl          { min-width: 90px; }
+.colAd          { min-width: 90px; }
+.colFr          { min-width: 80px; }
+.colActions     { min-width: 90px; }
+
+.actionsCell {
+  text-align: center;
+  padding: 8px 10px !important;
+}
+
+.actionsRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.actionsDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+/* ── Open ICDs hover popover ── */
+.openIcdsTrigger {
+  display: inline-flex;
+  cursor: pointer;
+}
+
+.openIcdsPopover {
+  position: fixed;
+  z-index: 250;
+  width: 360px;
+  max-height: 320px;
+  display: flex;
+  flex-direction: column;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+  animation: openIcdsFade 0.15s ease;
+}
+@keyframes openIcdsFade {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.openIcdsHeader {
+  padding: 10px 14px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: var(--neutral-50);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.openIcdsTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--neutral-400);
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.openIcdsCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  padding: 1px 6px;
+  background: var(--status-warning-light);
+  color: var(--status-warning);
+  border: 0.5px solid rgba(217, 165, 11, 0.25);
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.openIcdsBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.openIcdsEmpty {
+  padding: 20px 14px;
+  color: var(--neutral-300);
+  font-size: 12px;
+  text-align: center;
+}
+
+.openIcdsRow {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 0.5px solid var(--neutral-100);
+  align-items: start;
+}
+.openIcdsRow:last-child { border-bottom: none; }
+
+.openIcdsCode {
+  font-family: 'Inter', sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary-300);
+  background: var(--primary-50);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 0.5px solid rgba(140, 90, 226, 0.2);
+  align-self: start;
+  text-align: center;
+}
+.openIcdsDetail {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.openIcdsDesc {
+  font-size: 13px;
+  color: var(--neutral-400);
+  line-height: 1.35;
+}
+.openIcdsMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--neutral-300);
+  align-items: center;
+}
+.openIcdsStatusPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  background: var(--status-warning-light);
+  color: var(--status-warning);
+  border: 0.5px solid rgba(217, 165, 11, 0.2);
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.openIcdsFooter {
+  padding: 8px 14px;
+  border-top: 0.5px solid var(--neutral-150);
+  background: var(--neutral-50);
+}
+.openIcdsOpenBtn {
+  background: none;
+  border: none;
+  padding: 2px 0;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-300);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.openIcdsOpenBtn:hover { text-decoration: underline; }

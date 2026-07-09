@@ -1,211 +1,289 @@
-import { Switch } from '../../components/Switch/Switch';
-import { CardThemePicker } from './CardThemePicker';
+import { useState, useEffect, useRef } from 'react';
+import { Icon } from '../../components/Icon/Icon';
+import { AVERGENT_THEME, PROMINENCE_THEME, NO_THEME } from './CardThemePicker';
 import styles from './InsuranceCardPreview.module.css';
+
+/* Theme selector — bordered field + dropdown (Figma 2005:76958 / 8:64414) */
+function ThemeDropdown({ logoChoice, cardTheme, onThemeChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  if (!onThemeChange || !logoChoice || logoChoice === 'custom') return null;
+
+  const brandTheme = logoChoice === 'avergent' ? AVERGENT_THEME : PROMINENCE_THEME;
+  const brandOptionLabel = logoChoice === 'avergent' ? 'Avergent Theme' : 'Prominence Theme';
+  const brandTriggerLabel = logoChoice === 'avergent' ? 'Avergent Health Theme' : 'Prominence Health Theme';
+  const isBrand = cardTheme?.name === brandTheme.name;
+
+  const Swatch = ({ size }) => (
+    <span
+      className={styles.themeSwatch}
+      style={{ width: size, height: size, background: brandTheme.bg, border: brandTheme.border }}
+    />
+  );
+  const Forbidden = ({ size }) => (
+    <Icon name="solar:forbidden-circle-linear" size={size} color="var(--neutral-300)" />
+  );
+
+  return (
+    <div className={styles.themeSelectWrap} ref={ref}>
+      <button className={styles.themeSelectBtn} onClick={() => setOpen(v => !v)}>
+        <span className={styles.themeSelectLeft}>
+          {isBrand ? <Swatch size={32} /> : <Forbidden size={24} />}
+          <span className={styles.themeSelectLabel}>{isBrand ? brandTriggerLabel : 'No Theme'}</span>
+        </span>
+        <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" />
+      </button>
+
+      {open && (
+        <div className={styles.themeSelectMenu}>
+          <button
+            className={`${styles.themeOption} ${isBrand ? styles.themeOptionActive : ''}`}
+            onClick={() => { onThemeChange(brandTheme); setOpen(false); }}
+          >
+            <Swatch size={24} />
+            <span className={`${styles.themeOptionLabel} ${isBrand ? styles.themeOptionLabelActive : ''}`}>{brandOptionLabel}</span>
+          </button>
+          <button
+            className={`${styles.themeOption} ${!isBrand ? styles.themeOptionActive : ''}`}
+            onClick={() => { onThemeChange(NO_THEME); setOpen(false); }}
+          >
+            <Forbidden size={24} />
+            <span className={`${styles.themeOptionLabel} ${!isBrand ? styles.themeOptionLabelActive : ''}`}>No Theme</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function InsuranceCardPreview({
   data,
   logoPreviewUrl,
+  tpaLogoPreviewUrl,
   cardTheme,
   onThemeChange,
-  maskMemberId,
-  onMaskChange,
+  logoChoice,
+  coverageFamily,
 }) {
+  const isFamily = coverageFamily ?? data?.coverageFamily ?? false;
+
+  const coverageLabel = data?.coverageType || (isFamily ? 'Family' : 'Individual');
+  const noteText = data?.additionalNote?.replace(/<[^>]*>/g, '').trim();
+  const frontLogoUrl = logoPreviewUrl || data?.logoPreviewUrl || data?.planLogoUrl;
+  const backLogoUrl  = tpaLogoPreviewUrl || data?.tpaLogoPreviewUrl || data?.tpaLogoUrl;
+
+  /* The Avergent logo (not the theme) drives the motto line + 341px height */
+  const isAvergentLogo = logoChoice === 'avergent';
+  const cardStyle = {
+    background: cardTheme?.bg,
+    border: cardTheme?.border,
+    height: isAvergentLogo ? 341 : 327,
+  };
+
+  const badgeStyle = {
+    background: cardTheme?.badgeBg,
+    borderColor: cardTheme?.badgeBorderColor,
+    color: cardTheme?.badgeText,
+  };
+
   return (
     <>
       <div className={styles.previewScroll}>
 
-        {/* Front View */}
+        {/* ── Front View ── */}
         <div className={styles.cardViewSection}>
           <span className={`${styles.cardViewLabel} ${styles.cardViewLabelFront}`}>Front View</span>
-          <div
-            className={styles.insuranceCard}
-            style={{
-              background: cardTheme?.bg,
-              '--card-text-primary':   cardTheme?.textPrimary,
-              '--card-text-secondary': cardTheme?.textSecondary,
-              '--card-divider':        cardTheme?.dividerColor,
-            }}
-          >
-            <div className={styles.cardInner}>
-              <div className={styles.cardTopRow}>
-                <div className={styles.cardPlanInfo}>
-                  {(logoPreviewUrl || data?.planLogoUrl) ? (
-                    <img src={logoPreviewUrl || data?.planLogoUrl} alt="Plan Logo" className={styles.cardLogoImg} />
-                  ) : (
-                    <span className={styles.cardPlanLogo}>{'{Plan Logo}'}</span>
-                  )}
-                  <span className={styles.cardPlanName}>{data?.planName || '{Plan Name}'}</span>
-                </div>
-                <span
-                  className={styles.cardTypeBadge}
-                  style={{
-                    color:      cardTheme?.badgeTextColor,
-                    background: cardTheme?.isLight
-                      ? 'linear-gradient(180deg, rgba(130,252,191,0.4) 0%, rgba(6,198,102,0.2) 100%)'
-                      : 'linear-gradient(180deg, rgba(180,252,218,0.22) 0%, rgba(6,198,102,0.1) 100%)',
-                    border: `0.355px solid ${cardTheme?.isLight ? 'rgba(120,220,170,0.35)' : 'rgba(180,252,218,0.35)'}`,
-                  }}
-                >
-                  {data?.planType || 'TYPE'}
-                </span>
-              </div>
+          <div className={styles.insuranceCard} style={cardStyle}>
 
-              <div className={styles.cardMemberSection}>
-                <div className={styles.cardFieldGroup}>
+            {/* Header: logo + group badge */}
+            <div className={styles.cardHeader}>
+              <div className={styles.cardLogoBox}>
+                {frontLogoUrl ? (
+                  <img src={frontLogoUrl} alt="Plan Logo" className={styles.cardLogoImg} />
+                ) : (
+                  <span className={styles.cardLogoPlaceholder}>{'{Plan Logo}'}</span>
+                )}
+              </div>
+              <span className={styles.cardBadge} style={badgeStyle}>
+                GROUP ID : {data?.groupNumber || 'AV032'}
+              </span>
+            </div>
+
+            {/* Content */}
+            <div className={styles.cardContent}>
+              {/* Member Name + Member ID */}
+              <div className={styles.cardMemberGroup}>
+                <div className={styles.cardField}>
                   <span className={styles.cardFieldLabel}>Member Name</span>
-                  <span className={styles.cardFieldValue}>{'{Member Name}'}</span>
+                  <span className={styles.cardFieldValue} style={{ textTransform: 'uppercase' }}>{'{Member Name}'}</span>
                 </div>
-                <div className={styles.cardFieldGroup}>
+                <div className={styles.cardField}>
                   <span className={styles.cardFieldLabel}>Member ID</span>
-                  <span className={styles.cardMemberId}>
-                    {maskMemberId ? '•••-••••-••••-XYXY' : '{Member ID}'}
-                  </span>
+                  <span className={styles.cardFieldValue}>{'{Member ID}'}</span>
                 </div>
               </div>
 
               <div className={styles.cardDivider} />
 
-              <div className={styles.cardMetaRow}>
-                <div className={styles.cardMeta}>
-                  <span className={styles.cardMetaLabel}>Sex/DOB</span>
-                  <span className={styles.cardMetaValue}>{'{S • MM/DD/YYYY}'}</span>
+              {/* Dependents + Coverage */}
+              <div className={styles.cardMetaGroup}>
+                <div className={styles.cardMetaItem}>
+                  <span className={styles.cardMetaLabel}>Dependents</span>
+                  <span className={styles.cardMetaValue}>{'{Dependents}'}</span>
                 </div>
-                <div className={styles.cardMeta}>
-                  <span className={styles.cardMetaLabel}>Member Code</span>
-                  <span className={styles.cardMetaValue}>{'{Member Code}'}</span>
-                </div>
-                <div className={styles.cardMeta}>
-                  <span className={styles.cardMetaLabel}>Group</span>
-                  <span className={styles.cardMetaValue}>{data?.groupNumber || '{Group ID}'}</span>
+                <div className={styles.cardMetaItem}>
+                  <span className={styles.cardMetaLabel}>Coverage</span>
+                  <span className={styles.cardMetaValue}>{coverageLabel}</span>
                 </div>
               </div>
 
-              <div className={styles.cardMetaRow}>
-                <div className={styles.cardMeta}>
-                  <span className={styles.cardMetaLabel}>Coverage</span>
-                  <span className={styles.cardMetaValue}>Individual</span>
+              <div className={styles.cardDivider} />
+
+              {/* Deductibles + OOP */}
+              <div className={styles.cardCostGroup}>
+                <div className={styles.cardCostRow}>
+                  <div className={styles.cardCostCell}>
+                    <span className={styles.cardMetaLabel}>In - network Deductible</span>
+                    <span className={styles.cardMetaValue}>{data?.inNetDeductible ? `$${data.inNetDeductible}` : '{$}'}</span>
+                  </div>
+                  <div className={styles.cardCostCell}>
+                    <span className={styles.cardMetaLabel}>Out of - network Deductible</span>
+                    <span className={styles.cardMetaValue}>{data?.outNetDeductible ? `$${data.outNetDeductible}` : '{$}'}</span>
+                  </div>
                 </div>
-                <div className={styles.cardMeta}>
-                  <span className={styles.cardMetaLabel}>Validity</span>
-                  <span className={styles.cardMetaValue}>-</span>
+                <div className={styles.cardCostRow}>
+                  <div className={styles.cardCostCell}>
+                    <span className={styles.cardMetaLabel}>In - network OOP MAX</span>
+                    <span className={styles.cardMetaValue}>{data?.inNetOopMax ? `$${data.inNetOopMax}` : '{$}'}</span>
+                  </div>
+                  <div className={styles.cardCostCell}>
+                    <span className={styles.cardMetaLabel}>Out of - network OOP MAX</span>
+                    <span className={styles.cardMetaValue}>{data?.outNetOopMax ? `$${data.outNetOopMax}` : '{$}'}</span>
+                  </div>
                 </div>
-                <div className={styles.cardMeta} />
               </div>
             </div>
+
+            {/* Footer motto bar — shown whenever the Avergent logo is selected (any theme) */}
+            {isAvergentLogo && data?.planMotto && (
+              <div
+                className={styles.cardFooterBar}
+                style={{ background: cardTheme?.footerBg || '#FFA449', color: cardTheme?.footerText || '#FFFFFF' }}
+              >
+                {data.planMotto}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Back View */}
+        {/* ── Back View ── */}
         <div className={`${styles.cardViewSection} ${styles.cardViewSectionLast}`}>
           <span className={`${styles.cardViewLabel} ${styles.cardViewLabelBack}`}>Back View</span>
-          <div
-            className={styles.backCard}
-            style={{
-              background: cardTheme?.bg,
-              '--card-text-primary':   cardTheme?.textPrimary,
-              '--card-text-secondary': cardTheme?.textSecondary,
-              '--card-divider':        cardTheme?.dividerColor,
-            }}
-          >
-            <div className={styles.backCardInner}>
+          <div className={styles.backCard} style={cardStyle}>
+
+            <div className={styles.backContent}>
+              {/* TPA logo — only when a TPA logo is provided */}
+              {backLogoUrl && (
+                <>
+                  <div className={styles.backTpaRow}>
+                    <div className={styles.backTpaText}>
+                      <span className={styles.cardMetaLabel}>Third Party Administrator</span>
+                      <img src={backLogoUrl} alt="TPA Logo" className={styles.backTpaLogoImg} />
+                    </div>
+                  </div>
+                  <div className={styles.cardDivider} />
+                </>
+              )}
+
+              {/* RxBIN / RxPCN / RxGroup — only the ones provided */}
+              {(data?.rxBin || data?.rxPcn || data?.rxGroup) && (
+                <>
+                  <div className={styles.backRxGroup}>
+                    {(data?.rxBin || data?.rxPcn) && (
+                      <div className={styles.backRow}>
+                        {data?.rxBin && (
+                          <div className={styles.backCell}>
+                            <span className={styles.cardMetaLabel}>RxBIN</span>
+                            <span className={styles.cardMetaValue}>{data.rxBin}</span>
+                          </div>
+                        )}
+                        {data?.rxPcn && (
+                          <div className={styles.backCell}>
+                            <span className={styles.cardMetaLabel}>RxPCN</span>
+                            <span className={styles.cardMetaValue}>{data.rxPcn}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {data?.rxGroup && (
+                      <div className={styles.backCell}>
+                        <span className={styles.cardMetaLabel}>RxGroup</span>
+                        <span className={styles.cardMetaValue}>{data.rxGroup}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className={styles.cardDivider} />
+                </>
+              )}
+
+              {/* Member Support / Provider Support */}
               <div className={styles.backRow}>
-                <div className={styles.backField}>
-                  <span className={styles.backFieldLabel}>In-Network Deductible</span>
-                  <span className={styles.backFieldValue}>{data?.inNetDeductible ? `$${data.inNetDeductible}` : '{$}'}</span>
+                <div className={styles.backCell}>
+                  <span className={styles.cardMetaLabel}>Member Support</span>
+                  <span className={styles.cardMetaValue}>{data?.memberSupportPhone || '{Member Support}'}</span>
                 </div>
-                <div className={styles.backField}>
-                  <span className={styles.backFieldLabel}>Out of-Network Deductible</span>
-                  <span className={styles.backFieldValue}>{data?.outNetDeductible ? `$${data.outNetDeductible}` : '{$}'}</span>
+                <div className={styles.backCell}>
+                  <span className={styles.cardMetaLabel}>Provider Support</span>
+                  <span className={styles.cardMetaValue}>{data?.providerSupportPhone || '{Provider Support}'}</span>
                 </div>
               </div>
-              <div className={styles.backRow}>
-                <div className={styles.backField}>
-                  <span className={styles.backFieldLabel}>In-Network OOP Max</span>
-                  <span className={styles.backFieldValue}>{data?.inNetOopMax ? `$${data.inNetOopMax}` : '{$}'}</span>
-                </div>
-                <div className={styles.backField}>
-                  <span className={styles.backFieldLabel}>Out of-Network OOP Max</span>
-                  <span className={styles.backFieldValue}>{data?.outNetOopMax ? `$${data.outNetOopMax}` : '{$}'}</span>
-                </div>
-              </div>
 
-              <div className={styles.backCardDivider} />
+              <div className={styles.cardDivider} />
 
-              <div className={styles.backRow}>
-                <div className={styles.backField}>
-                  <span className={styles.backFieldLabel}>RX BIN</span>
-                  <span className={styles.backFieldValue}>{data?.rxBin || '{Rx BIN}'}</span>
-                </div>
-                <div className={styles.backField}>
-                  <span className={styles.backFieldLabel}>RX PCN</span>
-                  <span className={styles.backFieldValue}>{data?.rxPcn || '{Rx PCN}'}</span>
-                </div>
-                <div className={styles.backField}>
-                  <span className={styles.backFieldLabel}>RX Group</span>
-                  <span className={styles.backFieldValue}>{data?.rxGroup || '{Rx Group}'}</span>
-                </div>
-                <div className={styles.backField}>
-                  <span className={styles.backFieldLabel}>EDI Payer ID</span>
-                  <span className={styles.backFieldValue}>{data?.ediPayerId || '{EDI Payer ID}'}</span>
-                </div>
-              </div>
-
-              <div className={styles.backCardDivider} />
-
+              {/* EDI Payer ID / Claims Mailing Address */}
               <div className={`${styles.backRow} ${styles.backRowAlignStart}`}>
-                <div className={styles.backField}>
-                  <span className={styles.backFieldLabel}>Claims Mailing Address</span>
+                <div className={styles.backCell}>
+                  <span className={styles.cardMetaLabel}>EDI Payer ID</span>
+                  <span className={styles.cardMetaValue}>{data?.ediPayerId || '{EDI Payer ID}'}</span>
+                </div>
+                <div className={styles.backCell}>
+                  <span className={styles.cardMetaLabel}>Claims Mailing Address</span>
                   <div className={styles.backAddressBlock}>
-                    <span className={styles.backFieldValue}>{data?.addressLine1 || '{Address Line 1}'}</span>
-                    {data?.addressLine2 && <span className={styles.backFieldValue}>{data.addressLine2}</span>}
-                    <span className={styles.backFieldValue}>
+                    <span className={styles.cardMetaValue}>{data?.addressLine1 || '{Address Line 1}'}</span>
+                    {data?.addressLine2 && <span className={styles.cardMetaValue}>{data.addressLine2}</span>}
+                    <span className={styles.cardMetaValue}>
                       {(data?.zipcode || data?.city || data?.state)
-                        ? [data.zipcode, data.city, data.state].filter(Boolean).join(', ')
-                        : '{Zipcode, City, State}'}
+                        ? [data.city, data.state, data.zipcode].filter(Boolean).join(', ')
+                        : '{City, State, Zipcode}'}
                     </span>
                   </div>
                 </div>
-                <div className={`${styles.backField} ${styles.backFieldGroup}`}>
-                  <div className={styles.backField}>
-                    <span className={styles.backFieldLabel}>Provider Support:</span>
-                    <span className={styles.backFieldValue}>{data?.providerSupportPhone || '{Provider Support number}'}</span>
-                  </div>
-                  <div className={styles.backField}>
-                    <span className={styles.backFieldLabel}>Member Support:</span>
-                    <span className={styles.backFieldValue}>{data?.memberSupportPhone || '{Member Support number}'}</span>
-                  </div>
-                </div>
               </div>
-
-              <div className={styles.backCardDivider} />
-
-              <div className={styles.backField}>
-                <span className={styles.backFieldLabel}>For any queries, Please visit:</span>
-                <span className={styles.backFieldValue}>{data?.planWebsiteUrl || '{Plan Website}'}</span>
-              </div>
-
-              <div className={styles.backCardDivider} />
-
-              <p className={styles.backNote}>
-                {data?.additionalNote || 'Note: Please Call your Healthcare provider for any issues related to claims or your health plans or visit the plan website.'}
-              </p>
             </div>
+
+            {/* Note bar — theme-tinted */}
+            {noteText && (
+              <div className={styles.backNoteBar} style={{ background: cardTheme?.noteBg || '#FFEDDB' }}>
+                <p className={styles.backNote} dangerouslySetInnerHTML={{ __html: data.additionalNote }} />
+              </div>
+            )}
           </div>
         </div>
 
       </div>
 
       <div className={styles.previewFooter}>
-        <Switch checked={maskMemberId} onChange={onMaskChange} label="Mask Member ID on card" />
-        <span className={styles.previewFooterDivider} />
-        {onThemeChange ? (
-          <CardThemePicker theme={cardTheme} onThemeChange={onThemeChange} />
-        ) : (
-          <span
-            className={styles.themeSwatchStatic}
-            style={{ background: cardTheme?.dot }}
-            title={`Theme: ${cardTheme?.name || 'Custom'}`}
-          />
+        <ThemeDropdown logoChoice={logoChoice} cardTheme={cardTheme} onThemeChange={onThemeChange} />
+        {!onThemeChange && cardTheme?.name && (
+          <span className={styles.themeStaticLabel}>{cardTheme.name} Theme</span>
         )}
       </div>
     </>

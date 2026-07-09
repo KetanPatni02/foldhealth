@@ -161,7 +161,8 @@
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.15s, visibility 0.15s;
-  z-index: 9999;
+  /* Sit above every other layer (drawers, modals, toasts) so it's never clipped. */
+  z-index: 2147483647;
 }
 
 /* Tooltip arrow */
@@ -179,6 +180,20 @@
 .root:hover .tooltip {
   opacity: 1;
   visibility: visible;
+}
+
+/* Right-anchor the tooltip so it opens leftward — for buttons at a
+   container's right edge, this keeps the bubble from overflowing (and
+   inflating horizontal scroll width). */
+.tooltipLeft {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+.tooltipLeft::after {
+  left: auto;
+  right: 12px;
+  transform: none;
 }
 
 /* Flip tooltip to appear below the button */

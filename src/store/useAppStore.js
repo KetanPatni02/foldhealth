@@ -6,6 +6,8 @@ import { enrichCallRecord } from '../data/callDetailsEnrich';
 import { generateFlowFromPrompt } from '../lib/flowGenerator';
 import { kpiRowToJs, tsRowToJs, tableRowToJs, barRowToJs, configRowToJs, groupTimeSeries } from '../lib/eventMapper';
 import { domainDbToJs, domainJsToDb, componentDbToJs, componentJsToDb, auditLogDbToJs } from '../lib/embedMapper';
+import { popGroupRowToJs, popGroupJsToDb } from '../lib/popGroupMapper';
+import { hccDocumentRowToJs, hccDocumentJsToDb } from '../lib/hccDocumentMapper';
 // Fallback datasets (~220KB raw across all of these) are imported lazily
 // inside the fetch actions that consume them, so they don't bloat the entry
 // chunk. They're only needed when Supabase returns empty or errors.
@@ -14,6 +16,7 @@ import { track } from '../lib/tracking';
 import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem, applyNavStyle, getStoredNavStyle } from '../lib/theme';
 import { createBlock, createBlockTree, collectBlockTree, buildParentMap, cloneBlockTree, extractSubtree, cloneStoredTree } from '../features/email-builder/blockHelpers';
 import { extractEncountersSync } from '../features/hcc/upload/mockOcr';
+import { applyManualDecision as applyHccManualComplianceDecision } from '../features/hcc/compliance';
 import { makeInitialDocument } from '../features/email-builder/initialDocument';
 import * as hccLifecycle from '../features/hcc/assignment/lifecycle';
 import { hydrateFromMember, dosKey as hccDosKey } from '../features/hcc/assignment/dosState';
@@ -263,6 +266,16 @@ const LIST_FILTER_KEY = {
   HCC:   'hccFilters',
   HEDIS: 'hedisFilters',
 };
+
+// Safe JSON read from sessionStorage — returns fallback on missing/parse error.
+function _readJson(key, fallback) {
+  try {
+    const raw = sessionStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 // ── Care team row mapper ──
 // Translates a Supabase `care_teams` row to/from the JS shape the
@@ -1088,6 +1101,54 @@ export const useAppStore = create((set, get) => ({
   // Domain Registry add trigger (used by EmbeddedComponentsSettings to tell DomainRegistryPanel to open add modal)
   domainAddTrigger: false,
   setDomainAddTrigger: (v) => set({ domainAddTrigger: v }),
+
+  // ── Population Groups (Supabase-backed) ──
+  popGroups: [],
+  popGroupsLoading: false,
+  fetchPopGroups: async () => {
+    set({ popGroupsLoading: true });
+    const { data, error } = await supabase
+      .from('population_groups')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.warn('[store] population_groups fetch failed — run supabase/population_groups_migration.sql:', error.message);
+      set({ popGroupsLoading: false });
+      return;
+    }
+    set({ popGroups: (data || []).map(popGroupRowToJs), popGroupsLoading: false });
+  },
+  createPopGroup: async (group) => {
+    const { data, error } = await supabase
+      .from('population_groups')
+      .insert(popGroupJsToDb(group))
+      .select()
+      .single();
+    if (error) {
+      console.warn('[store] createPopGroup failed:', error.message);
+      get().showToast(`Failed to save group: ${error.message}`);
+      return null;
+    }
+    const saved = popGroupRowToJs(data);
+    set(s => ({ popGroups: [saved, ...s.popGroups] }));
+    return saved;
+  },
+  updatePopGroup: async (id, updates) => {
+    const { data, error } = await supabase
+      .from('population_groups')
+      .update(popGroupJsToDb(updates))
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) {
+      console.warn('[store] updatePopGroup failed:', error.message);
+      get().showToast(`Failed to update group: ${error.message}`);
+      return null;
+    }
+    const saved = popGroupRowToJs(data);
+    set(s => ({ popGroups: s.popGroups.map(g => g.id === id ? saved : g) }));
+    return saved;
+  },
 
   // ── Embed Domains (Supabase-backed) ──
   embedDomains: [],
@@ -3131,9 +3192,71 @@ export const useAppStore = create((set, get) => ({
   // extraction completes we surface a single bell notification; clicking
   // it opens HccSftpReviewDrawer with a document switcher, a left-side
   // page preview, and a right-side encounter table per document.
-  hccSftpBatches: [],        // [{ id, fileName, encounters, ingestedAt, status: 'pending' | 'done' }]
-  hccSftpReviewOpen: false,
-  hccSftpActiveBatchId: null,
+  hccSftpBatches: [],        // [{ id, fileName, ocrTier, compliance, encounters, ingestedAt, status }]
+  // These flags rehydrate from sessionStorage so refreshing while the
+  // ICD Creation or Document Review surface is open restores that screen
+  // (the underlying documents reload from Supabase via fetchHccDocuments).
+  hccSftpReviewOpen: sessionStorage.getItem('hccSftpReviewOpen') === '1',
+  hccSftpActiveBatchId: sessionStorage.getItem('hccSftpActiveBatchId') || null,
+  // Inline review — when true, the Document Review renders INSIDE the ICD
+  // Creation surface (same drawer, no second overlay). Standalone entry
+  // points (bell notification, upload ribbon) keep the floating 700px
+  // drawer and leave this false.
+  hccReviewInline: sessionStorage.getItem('hccReviewInline') === '1',
+  // ICD Creation screen — unified upload + manual + SFTP entry surface
+  // (replaces the legacy 3-item popover anchored under the worklist's
+  // Upload Document toolbar button).
+  icdCreationOpen: sessionStorage.getItem('icdCreationOpen') === '1',
+  // Batches created during the CURRENT ICD-Creation session so the right
+  // panel's "Records" list only shows what this user just added — not
+  // every historical batch from prior reloads.
+  icdCreationSessionBatchIds: _readJson('icdCreationSessionBatchIds', []),
+  openIcdCreation: () => {
+    sessionStorage.setItem('icdCreationOpen', '1');
+    sessionStorage.setItem('icdCreationSessionBatchIds', '[]');
+    set({ icdCreationOpen: true, icdCreationSessionBatchIds: [] });
+  },
+  closeIcdCreation: () => {
+    sessionStorage.setItem('icdCreationOpen', '0');
+    sessionStorage.setItem('hccReviewInline', '0');
+    sessionStorage.removeItem('hccReviewSourceBatchIds');
+    set({ icdCreationOpen: false, hccReviewInline: false, hccReviewSourceBatchIds: null });
+  },
+  trackIcdCreationBatch: (batchId) => set(s => {
+    const next = [...new Set([...(s.icdCreationSessionBatchIds || []), batchId])];
+    sessionStorage.setItem('icdCreationSessionBatchIds', JSON.stringify(next));
+    return { icdCreationSessionBatchIds: next };
+  }),
+  /**
+   * Load persisted HCC documents from Supabase. Called once on app boot
+   * so the SFTP review queue + compliance state survives reloads. The
+   * table is shared org-wide (no per-user RLS) so any Support member
+   * sees the same queue.
+   */
+  fetchHccDocuments: async () => {
+    const { data, error } = await supabase
+      .from('hcc_documents')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('fetchHccDocuments:', error);
+      return;
+    }
+    if (data?.length) {
+      set({ hccSftpBatches: data.map(hccDocumentRowToJs) });
+    }
+  },
+  /**
+   * Persist (insert-or-update) one document. Fire-and-forget — local
+   * state already reflects the change before this completes.
+   */
+  persistHccDocument: (batch) => {
+    if (!batch) return;
+    supabase
+      .from('hcc_documents')
+      .upsert(hccDocumentJsToDb(batch), { onConflict: 'id' })
+      .then(({ error }) => { if (error) console.error('persistHccDocument:', error); });
+  },
   /**
    * Simulate SFTP picking up N files and running OCR on each. Each file
    * runs the same async mockOcr (8s) so the chip / banner animations
@@ -3177,12 +3300,17 @@ export const useAppStore = create((set, get) => ({
         payload:   { fileName: entry.fileName },
       });
     });
-    // Process each file in parallel using the deterministic mockOcr.
-    const { runMockOcr } = await import('../features/hcc/upload/mockOcr');
+    // Process each file in parallel using the document pipeline (OCR +
+    // OCR tier + 5-point compliance, in one pass per the Astrana spec).
+    const { runDocumentPipeline } = await import('../features/hcc/upload/mockOcr');
+    const persist = useAppStore.getState().persistHccDocument;
     const done = await Promise.all(seeded.map(async (entry) => {
       const synthFile = { name: entry.fileName, size: 0 };
-      const encounters = await runMockOcr(synthFile, members);
-      return { ...entry, encounters, status: 'done' };
+      const { ocrTier, compliance, encounters } = await runDocumentPipeline(synthFile, members);
+      const completed = { ...entry, encounters, ocrTier, compliance, status: 'done', source: 'sftp' };
+      // Persist to Supabase so SFTP queue + compliance survive reloads.
+      persist?.(completed);
+      return completed;
     }));
     // Merge results back into the slice (preserve order).
     set(s => ({
@@ -3223,7 +3351,8 @@ export const useAppStore = create((set, get) => ({
    * Fires a single bell notification when every queued document has
    * completed (debounced by the batch state machine).
    */
-  queueHccDocumentForOcr: async (file) => {
+  queueHccDocumentForOcr: async (file, opts = {}) => {
+    const { autoApply = true } = opts;
     const state = useAppStore.getState();
     const members = state.hccMembers || [];
     const id = `doc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -3258,14 +3387,20 @@ export const useAppStore = create((set, get) => ({
       payload:   { fileName },
     });
 
-    const { runMockOcr } = await import('../features/hcc/upload/mockOcr');
-    const encounters = await runMockOcr({ name: fileName, size: file?.size || 0 }, members);
+    const { runDocumentPipeline } = await import('../features/hcc/upload/mockOcr');
+    const { ocrTier, compliance, encounters } = await runDocumentPipeline(
+      { name: fileName, size: file?.size || 0 },
+      members,
+    );
     // Mark this batch as done.
     set(s => ({
       hccSftpBatches: (s.hccSftpBatches || []).map(b => b.id === id
-        ? { ...b, encounters, status: 'done' }
+        ? { ...b, encounters, ocrTier, compliance, status: 'done' }
         : b),
     }));
+    // Persist the completed document.
+    const completed = useAppStore.getState().hccSftpBatches.find(b => b.id === id);
+    useAppStore.getState().persistHccDocument?.(completed);
 
     // Auto-route: any encounter that's matched to a Fold member AND
     // has no field-level errors is high-confidence "ready" — apply it
@@ -3273,6 +3408,17 @@ export const useAppStore = create((set, get) => ({
     // Document Review Pending tab only surfaces error/mismatch rows
     // (per spec A + K). Same path the user would have walked manually
     // by clicking Add to Worklist on each card.
+    //
+    // The ICD Creation review flow passes autoApply:false so EVERY record
+    // stays pending — the reviewer decides per patient what to add.
+    if (!autoApply) {
+      useAppStore.getState().logHccActivity?.({
+        eventName: 'ocr.completed',
+        scope:     { batchId: id, fileId: fileName, source: 'system' },
+        payload:   { fileName, encounterCount: encounters.length, autoApplied: 0, pendingForReview: encounters.length },
+      });
+      return id;
+    }
     let autoApplied = 0;
     let pendingForReview = 0;
     const updated = encounters.map((enc) => {
@@ -3352,15 +3498,71 @@ export const useAppStore = create((set, get) => ({
     return id;
   },
 
-  openHccSftpReview: () => set(s => ({
-    hccSftpReviewOpen: true,
-    hccSftpActiveBatchId: s.hccSftpActiveBatchId
+  // When set, the review drawer aggregates pending encounters across ALL
+  // listed batches and paginates by patient across them (ICD Creation
+  // "Review" flow). null → single-batch mode (SFTP bell-notification flow).
+  hccReviewSourceBatchIds: _readJson('hccReviewSourceBatchIds', null),
+  openHccSftpReview: () => set(s => {
+    const activeId = s.hccSftpActiveBatchId
       || (s.hccSftpBatches || []).find(b => b.status === 'done')?.id
       || (s.hccSftpBatches || [])[0]?.id
-      || null,
-  })),
-  closeHccSftpReview: () => set({ hccSftpReviewOpen: false }),
-  setHccSftpActiveBatchId: (id) => set({ hccSftpActiveBatchId: id }),
+      || null;
+    sessionStorage.setItem('hccSftpReviewOpen', '1');
+    sessionStorage.removeItem('hccReviewSourceBatchIds');
+    if (activeId) sessionStorage.setItem('hccSftpActiveBatchId', activeId);
+    return { hccSftpReviewOpen: true, hccReviewSourceBatchIds: null, hccSftpActiveBatchId: activeId };
+  }),
+  // Open review over a set of documents (aggregate mode). `focusBatchId`
+  // (optional) is ordered first so the reviewer lands on the doc they
+  // clicked Review on.
+  openHccReviewForBatches: (batchIds, focusBatchId) => set(() => {
+    const ordered = focusBatchId
+      ? [focusBatchId, ...batchIds.filter(id => id !== focusBatchId)]
+      : [...batchIds];
+    const activeId = focusBatchId || ordered[0] || null;
+    sessionStorage.setItem('hccSftpReviewOpen', '1');
+    sessionStorage.setItem('hccReviewSourceBatchIds', JSON.stringify(ordered));
+    if (activeId) sessionStorage.setItem('hccSftpActiveBatchId', activeId);
+    return {
+      hccSftpReviewOpen: true,
+      hccReviewSourceBatchIds: ordered,
+      hccSftpActiveBatchId: activeId,
+    };
+  }),
+  closeHccSftpReview: () => {
+    sessionStorage.setItem('hccSftpReviewOpen', '0');
+    sessionStorage.removeItem('hccReviewSourceBatchIds');
+    set({ hccSftpReviewOpen: false, hccReviewSourceBatchIds: null });
+  },
+  // Open review INLINE (inside the ICD Creation surface). Same aggregate
+  // semantics as openHccReviewForBatches, but flags inline mode and does
+  // NOT set hccSftpReviewOpen — so the global floating drawer stays closed
+  // and the review renders in-place instead.
+  openHccReviewInline: (batchIds, focusBatchId) => set(() => {
+    const ordered = focusBatchId
+      ? [focusBatchId, ...batchIds.filter(id => id !== focusBatchId)]
+      : [...batchIds];
+    const activeId = focusBatchId || ordered[0] || null;
+    sessionStorage.setItem('hccReviewInline', '1');
+    sessionStorage.setItem('hccReviewSourceBatchIds', JSON.stringify(ordered));
+    if (activeId) sessionStorage.setItem('hccSftpActiveBatchId', activeId);
+    return {
+      hccReviewInline: true,
+      hccReviewSourceBatchIds: ordered,
+      hccSftpActiveBatchId: activeId,
+    };
+  }),
+  // Exit inline review — returns to the ICD Creation categorized doc list
+  // (leaves the ICD Creation screen itself open).
+  closeHccReviewInline: () => {
+    sessionStorage.setItem('hccReviewInline', '0');
+    sessionStorage.removeItem('hccReviewSourceBatchIds');
+    set({ hccReviewInline: false, hccReviewSourceBatchIds: null });
+  },
+  setHccSftpActiveBatchId: (id) => {
+    if (id) sessionStorage.setItem('hccSftpActiveBatchId', id);
+    set({ hccSftpActiveBatchId: id });
+  },
   /**
    * Patch one encounter inside an SFTP batch — proxies to the same
    * shape patchHccUploadEncounter uses (idx + partial). Used by the
@@ -3396,20 +3598,69 @@ export const useAppStore = create((set, get) => ({
       : b),
   })),
   /**
+   * Apply a Support manual decision to one compliance check on a
+   * specific batch. Per spec, every manual pass AND every manual fail
+   * carries a reason. Throws (via applyManualDecision) if reason missing.
+   *
+   *   batchId   — the hccSftpBatches[] id
+   *   checkKey  — one of CHECK_KEYS (compliance.js)
+   *   decision  — 'pass' | 'fail'
+   *   reason    — { code?, freeText? }   (at least one required)
+   *   actor     — display name; defaults to current user / 'Support'
+   *
+   * Stamps an activity-log event so the audit trail records WHO passed
+   * what, WHEN, and WHY — distinct from AI auto-passes.
+   */
+  applyHccComplianceDecision: ({ batchId, checkKey, decision, reason, actor }) => {
+    set(s => ({
+      hccSftpBatches: (s.hccSftpBatches || []).map(b => {
+        if (b.id !== batchId || !b.compliance) return b;
+        const next = applyHccManualComplianceDecision(b.compliance[checkKey], {
+          decision,
+          actor: actor || 'Support',
+          reason,
+        });
+        return { ...b, compliance: { ...b.compliance, [checkKey]: next } };
+      }),
+    }));
+    // Persist the updated compliance to Supabase so the decision survives
+    // a reload (HCC audits must be able to reconstruct who passed what,
+    // when, and why).
+    const updated = useAppStore.getState().hccSftpBatches.find(b => b.id === batchId);
+    useAppStore.getState().persistHccDocument?.(updated);
+    // Audit-trail event — names the actor so HCC submission audits can
+    // tell AI auto-passes apart from Support overrides.
+    useAppStore.getState().logHccActivity?.({
+      eventName: decision === 'pass' ? 'compliance.passed' : 'compliance.failed',
+      scope:     { batchId, source: 'support' },
+      payload:   {
+        check: checkKey,
+        actor: actor || 'Support',
+        reasonCode: reason?.code || null,
+        reasonText: reason?.freeText || '',
+      },
+    });
+  },
+  /**
    * Drop an entire SFTP batch from the queue (called after Add to
    * Worklist completes, so the batch disappears from the switcher).
    */
-  removeHccSftpBatch: (batchId) => set(s => {
-    const remaining = (s.hccSftpBatches || []).filter(b => b.id !== batchId);
-    const nextActive = remaining.find(b => b.status === 'done')?.id
-      || remaining[0]?.id
-      || null;
-    return {
-      hccSftpBatches: remaining,
-      hccSftpActiveBatchId: s.hccSftpActiveBatchId === batchId ? nextActive : s.hccSftpActiveBatchId,
-      hccSftpReviewOpen: remaining.length > 0 ? s.hccSftpReviewOpen : false,
-    };
-  }),
+  removeHccSftpBatch: (batchId) => {
+    set(s => {
+      const remaining = (s.hccSftpBatches || []).filter(b => b.id !== batchId);
+      const nextActive = remaining.find(b => b.status === 'done')?.id
+        || remaining[0]?.id
+        || null;
+      return {
+        hccSftpBatches: remaining,
+        hccSftpActiveBatchId: s.hccSftpActiveBatchId === batchId ? nextActive : s.hccSftpActiveBatchId,
+        hccSftpReviewOpen: remaining.length > 0 ? s.hccSftpReviewOpen : false,
+      };
+    });
+    // Drop the persisted row too.
+    supabase.from('hcc_documents').delete().eq('id', batchId)
+      .then(({ error }) => { if (error) console.error('removeHccSftpBatch:', error); });
+  },
   /**
    * Re-open a previous upload's skipped records.
    *

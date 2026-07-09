@@ -1,0 +1,140 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 5;
+  font-family: 'Inter', sans-serif;
+}
+
+.chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.chips::-webkit-scrollbar { display: none; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--neutral-300);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.chip:hover {
+  background: var(--neutral-50);
+  color: var(--neutral-400);
+}
+
+.chipActive {
+  background: var(--primary-50);
+  border-color: var(--primary-300);
+  color: var(--primary-300);
+}
+.chipActive:hover {
+  background: var(--primary-100);
+}
+
+.chipLabel {
+  font-size: 14px;
+}
+
+.chipValue {
+  font-weight: 500;
+}
+
+.divider {
+  color: var(--primary-300);
+  margin: 0 1px;
+}
+
+.clearIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  margin-left: 2px;
+  padding: 1px;
+  cursor: pointer;
+}
+.clearIcon:hover {
+  background: var(--primary-100);
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.moreBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 4px;
+  border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--neutral-300);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.moreBtn:hover {
+  background: var(--neutral-50);
+  color: var(--neutral-400);
+}
+
+.moreBtnActive {
+  border-color: var(--primary-300);
+  background: var(--primary-50);
+  color: var(--primary-300);
+}
+
+.vDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+}
+
+.linkBtn {
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--neutral-300);
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.12s;
+}
+.linkBtn:hover { color: var(--neutral-400); }
+
+.linkBtnPrimary {
+  font-weight: 500;
+  color: var(--primary-300);
+}
+.linkBtnPrimary:hover { color: var(--primary-400); }

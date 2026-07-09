@@ -1,0 +1,9 @@
+dist
+node_modules
+storybook-static
+# Archived worklists are frozen verbatim snapshots of prior code.
+src/features/hcc-archived
+# Token source of truth — hex definitions live here by design.
+src/tokens/tokens.css
+# Global resets / @font-face.
+src/index.css

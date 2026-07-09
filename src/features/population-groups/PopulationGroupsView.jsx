@@ -4,16 +4,31 @@
  * antd → Fold Input/Textarea · xlsx → built-in CSV parser · solar-icon-set → Fold <Icon>.
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { Icon } from '../../components/Icon/Icon';
+import { ConfirmDialog } from '../../components/Modal/ConfirmDialog';
+import { Badge } from '../../components/Badge/Badge';
+import { CloseIcon } from '../../components/Icon/CloseIcon';
+import { UpdatePopGroupDrawer } from './UpdatePopGroupDrawer';
 import { Input as FoldInput } from '../../components/Input/Input';
 import { Textarea } from '../../components/Textarea/Textarea';
+import { Checkbox } from '../../components/ui/checkbox';
+import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { Button } from '../../components/Button/Button';
+import { Avatar } from '../../components/Avatar/Avatar';
+import { Drawer } from '../../components/Drawer/Drawer';
+import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
+import { Link } from '../../components/Link/Link';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '../../components/ui/tooltip';
+import { SortableHeader } from '../../components/Table/SortableHeader';
+import { useTableSort } from '../../components/Table/useTableSort';
 
 import SectionAccordion   from './components/SectionAccordion.jsx';
 import FileChipCard        from './components/FileChipCard.jsx';
-import { TableIcon, MiniCloseIcon, Spinner, ZapIcon, CollapseIcon, ExpandIcon, ReplaceIcon, FileErrorIllustration, CheckRoundIcon } from './components/icons.jsx';
+import { TableIcon, MiniCloseIcon, Spinner, ReplaceIcon, FileErrorIllustration } from './components/icons.jsx';
 import PaginationBar       from './components/PaginationBar.jsx';
-import { FOLD_DB, FOLD_DB_MAP } from './data/fold-db.js';
+import { FOLD_DB, FOLD_DB_MAP, loadFoldDbFromRows } from './data/fold-db.js';
+import { supabase } from '../../lib/supabase';
 import { parseXlsxDate, fmtAge } from './data/formatters.js';
 import { parseXlsxArrayBuffer } from './xlsxLite.js';
 import { useAppStore } from '../../store/useAppStore';
@@ -32,15 +47,59 @@ const AddSquareLinear            = mkIcon('solar:add-square-linear');
 const AltArrowDownLinear         = mkIcon('solar:alt-arrow-down-linear');
 const CloseCircleLinear          = mkIcon('solar:close-circle-linear');
 const DangerCircleLinear         = mkIcon('solar:danger-circle-linear');
-const DocumentTextLinear         = mkIcon('solar:document-text-linear');
-const FilterLinear               = mkIcon('solar:filter-linear');
 const InfoCircleLinear           = mkIcon('solar:info-circle-linear');
 const MagniferLinear             = mkIcon('solar:magnifer-linear');
-const MenuDotsLinear             = mkIcon('solar:menu-dots-linear');
-const PenLinear                  = mkIcon('solar:pen-linear');
-const SidebarMinimalisticLinear  = mkIcon('solar:sidebar-minimalistic-linear');
-const TrashBinMinimalisticLinear = mkIcon('solar:trash-bin-minimalistic-linear');
 const UsersGroupRoundedLinear    = mkIcon('solar:users-group-rounded-linear');
+
+/* Bulk-select icon — matches Settings → Content (icon between search and filter) */
+function BulkSelectIcon({ size = 20 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M5.33333 19.2672C5.60948 19.2672 5.83333 19.0434 5.83333 18.7672C5.83333 18.4911 5.60948 18.2672 5.33333 18.2672V18.7672V19.2672ZM18.1667 5.23276C18.1667 5.5089 18.3905 5.73276 18.6667 5.73276C18.9428 5.73276 19.1667 5.5089 19.1667 5.23276H18.6667H18.1667ZM10.6378 12.9816C10.4528 12.7766 10.1367 12.7604 9.93166 12.9454C9.72667 13.1305 9.71047 13.4466 9.89549 13.6516L10.2667 13.3166L10.6378 12.9816ZM12.0199 15.2592L12.3911 14.9242V14.9242L12.0199 15.2592ZM13.6525 15.3008L14.0056 15.6548V15.6548L13.6525 15.3008ZM18.3531 11.3196C18.5486 11.1246 18.549 10.808 18.3541 10.6125C18.1591 10.4169 17.8425 10.4165 17.6469 10.6115L18 10.9655L18.3531 11.3196ZM12 5.23276V5.73276H15.3333V5.23276V4.73276H12V5.23276ZM22 11.6983H21.5V15.5345H22H22.5V11.6983H22ZM15.3333 22V21.5H12V22V22.5H15.3333V22ZM5.33333 15.5345H5.83333V11.6983H5.33333H4.83333V15.5345H5.33333ZM12 22V21.5C10.4149 21.5 9.27493 21.499 8.40708 21.3858C7.55207 21.2744 7.03698 21.062 6.65774 20.6942L6.30964 21.0531L5.96155 21.4121C6.55862 21.9911 7.31736 22.2522 8.27778 22.3774C9.22535 22.501 10.4424 22.5 12 22.5V22ZM5.33333 15.5345H4.83333C4.83333 17.0439 4.83221 18.2277 4.96011 19.1504C5.09023 20.089 5.36234 20.8309 5.96155 21.4121L6.30964 21.0531L6.65774 20.6942C6.28064 20.3285 6.06459 19.8351 5.95064 19.013C5.83446 18.175 5.83333 17.073 5.83333 15.5345H5.33333ZM22 15.5345H21.5C21.5 17.073 21.4989 18.175 21.3827 19.013C21.2687 19.8351 21.0527 20.3285 20.6756 20.6942L21.0237 21.0531L21.3718 21.4121C21.971 20.8309 22.2431 20.089 22.3732 19.1504C22.5011 18.2277 22.5 17.0439 22.5 15.5345H22ZM15.3333 22V22.5C16.891 22.5 18.108 22.501 19.0556 22.3774C20.016 22.2522 20.7747 21.9911 21.3718 21.4121L21.0237 21.0531L20.6756 20.6942C20.2964 21.062 19.7813 21.2744 18.9263 21.3858C18.0584 21.499 16.9184 21.5 15.3333 21.5V22ZM15.3333 5.23276V5.73276C16.9184 5.73276 18.0584 5.73376 18.9263 5.84692C19.7813 5.9584 20.2964 6.17074 20.6756 6.53854L21.0237 6.17961L21.3718 5.82068C20.7747 5.24163 20.016 4.98054 19.0556 4.85531C18.108 4.73176 16.891 4.73276 15.3333 4.73276V5.23276ZM22 11.6983H22.5C22.5 10.1889 22.5011 9.00503 22.3732 8.0824C22.2431 7.14378 21.971 6.40182 21.3718 5.82068L21.0237 6.17961L20.6756 6.53854C21.0527 6.90426 21.2687 7.39769 21.3827 8.21972C21.4989 9.05774 21.5 10.1598 21.5 11.6983H22ZM12 5.23276V4.73276C10.4424 4.73276 9.22535 4.73176 8.27778 4.85531C7.31736 4.98054 6.55862 5.24163 5.96155 5.82068L6.30964 6.17961L6.65774 6.53854C7.03698 6.17074 7.55207 5.9584 8.40708 5.84692C9.27493 5.73376 10.4149 5.73276 12 5.73276V5.23276ZM5.33333 11.6983H5.83333C5.83333 10.1598 5.83446 9.05774 5.95064 8.21972C6.06459 7.39769 6.28064 6.90426 6.65774 6.53854L6.30964 6.17961L5.96155 5.82068C5.36234 6.40182 5.09023 7.14378 4.96011 8.0824C4.83221 9.00503 4.83333 10.1889 4.83333 11.6983H5.33333ZM10.8889 2V2.5H15.3333V2V1.5H10.8889V2ZM2 15.5345H2.5V10.6207H2H1.5V15.5345H2ZM2 15.5345H1.5C1.5 17.6104 3.23079 19.2672 5.33333 19.2672V18.7672V18.2672C3.75398 18.2672 2.5 17.0294 2.5 15.5345H2ZM15.3333 2V2.5C16.9127 2.5 18.1667 3.73783 18.1667 5.23276H18.6667H19.1667C19.1667 3.15688 17.4359 1.5 15.3333 1.5V2ZM10.8889 2V1.5C8.80748 1.5 7.19762 1.499 5.94748 1.66201C4.68449 1.82669 3.71344 2.16668 2.95365 2.90354L3.30175 3.26247L3.64984 3.6214C4.1918 3.09579 4.9192 2.80455 6.07677 2.65361C7.2472 2.501 8.78004 2.5 10.8889 2.5V2ZM2 10.6207H2.5C2.5 8.57421 2.50113 7.09119 2.65798 5.95973C2.81262 4.84425 3.11003 4.14493 3.64984 3.6214L3.30175 3.26247L2.95365 2.90354C2.19172 3.64248 1.83825 4.59035 1.66745 5.82241C1.49887 7.03848 1.5 8.60333 1.5 10.6207H2ZM10.2667 13.3166L9.89549 13.6516L11.6488 15.5942L12.0199 15.2592L12.3911 14.9242L10.6378 12.9816L10.2667 13.3166ZM13.6525 15.3008L14.0056 15.6548L18.3531 11.3196L18 10.9655L17.6469 10.6115L13.2995 14.9467L13.6525 15.3008ZM12.0199 15.2592L11.6488 15.5942C12.2682 16.2805 13.3514 16.3072 14.0056 15.6548L13.6525 15.3008L13.2995 14.9467C13.049 15.1965 12.6263 15.1848 12.3911 14.9242L12.0199 15.2592Z" fill="currentColor"/>
+    </svg>
+  );
+}
+
+/* Group name — clamped to 2 lines; shows the full name via the Tooltip component only when truncated.
+   The structure stays stable (always Tooltip-wrapped) so the measured span node never swaps out;
+   the tooltip only opens when the text is actually truncated. */
+function GroupName({ name }) {
+  const ref = useRef(null);
+  const [truncated, setTruncated] = useState(false);
+  const [open, setOpen] = useState(false);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let cancelled = false;
+    const check = () => { if (!cancelled) setTruncated(el.scrollHeight > el.clientHeight + 1); };
+    check();
+    // The clamped span's box height is fixed, so a font swap grows scrollHeight
+    // without resizing the box — re-check after paint, on resize, and after fonts load.
+    const raf = requestAnimationFrame(check);
+    const timers = [100, 400, 1000].map(d => setTimeout(check, d));
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    if (el.parentElement) ro.observe(el.parentElement);
+    if (document.fonts?.ready) document.fonts.ready.then(check);
+    return () => { cancelled = true; cancelAnimationFrame(raf); timers.forEach(clearTimeout); ro.disconnect(); };
+  }, [name]);
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip open={truncated && open} onOpenChange={setOpen}>
+        <TooltipTrigger asChild>
+          <span
+            ref={ref}
+            style={{ fontSize:14, fontWeight:500, color:'var(--neutral-400)', lineHeight:1.4, minWidth:0, display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden', wordBreak:'break-word' }}
+          >
+            {name}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-sm whitespace-normal">{name}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 
 /* ── CSV parser (replaces xlsx) — handles quoted fields, escaped quotes, CRLF ── */
 function parseCsv(text) {
@@ -170,7 +229,7 @@ function DrawerSelect({ value, onChange, options, placeholder, disabled = false,
           height:32, padding:'0 8px', boxSizing:'border-box',
           border:`0.5px solid ${open ? 'var(--primary-300)' : 'var(--neutral-200)'}`,
           borderRadius:6,
-          background: disabled ? 'var(--neutral-50)' : '#fff',
+          background: disabled ? 'var(--neutral-50)' : 'var(--neutral-0)',
           display:'flex', alignItems:'center', gap:4,
           fontSize:14, fontFamily:'Inter, sans-serif',
           cursor: disabled ? 'not-allowed' : 'pointer',
@@ -185,7 +244,7 @@ function DrawerSelect({ value, onChange, options, placeholder, disabled = false,
         <AltArrowDownLinear size={12} color={disabled ? 'var(--neutral-150)' : 'var(--neutral-200)'} />
       </div>
       {open && (
-        <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, right:0, background:'#fff',
+        <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, right:0, background:'var(--neutral-0)',
           border:'0.5px solid var(--neutral-100)', borderRadius:8,
           boxShadow:'0 4px 16px rgba(0,0,0,0.10)', zIndex:2200, padding:'8px' }}>
           {options.map(opt => (
@@ -193,11 +252,11 @@ function DrawerSelect({ value, onChange, options, placeholder, disabled = false,
               onClick={() => { onChange(opt.value); setOpen(false); }}
               style={{ padding:'7px 10px', fontSize:14, fontFamily:'Inter, sans-serif',
                 color:'var(--neutral-400)', cursor:'pointer', borderRadius:4, marginBottom:2,
-                background: value === opt.value ? 'var(--primary-50)' : '#fff',
+                background: value === opt.value ? 'var(--primary-50)' : 'var(--neutral-0)',
                 border: value === opt.value ? '0.5px solid var(--primary-200)' : '0.5px solid transparent',
                 transition:'background 0.1s' }}
               onMouseEnter={e => { if (value !== opt.value) e.currentTarget.style.background = 'var(--neutral-50)'; }}
-              onMouseLeave={e => { if (value !== opt.value) e.currentTarget.style.background = value === opt.value ? 'var(--primary-50)' : '#fff'; }}>
+              onMouseLeave={e => { if (value !== opt.value) e.currentTarget.style.background = value === opt.value ? 'var(--primary-50)' : 'var(--neutral-0)'; }}>
               {opt.label}
             </div>
           ))}
@@ -214,9 +273,9 @@ function DrawerSelect({ value, onChange, options, placeholder, disabled = false,
 function CellOuter({ err, children }) {
   return (
     <div style={{
-      border: `0.5px solid ${err ? '#d72825' : 'var(--neutral-200)'}`,
+      border: `0.5px solid ${err ? 'var(--status-error)' : 'var(--neutral-200)'}`,
       borderRadius: 4,
-      background: err ? '#fff5f5' : '#fff',
+      background: err ? 'var(--status-error-light)' : 'var(--neutral-0)',
       display: 'flex', alignItems: 'center', overflow: 'hidden',
     }}>
       {children}
@@ -228,14 +287,14 @@ function CellOuter({ err, children }) {
 
 function FigmaMatchedSection({ patients, expanded, onToggle, allDone }) {
   const title        = allDone ? 'Review Pop Group' : 'Matched Members';
-  const gradientFrom = allDone ? '#f0fdf4' : '#f5fffa';
+  const gradientFrom = allDone ? 'var(--status-success-light)' : 'var(--status-success-light)';
   return (
     /* SectionAccordion handles header, badge, chevron, and collapse logic.
        Pass onToggle=undefined when allDone so the header is non-collapsible. */
     <SectionAccordion
       title={title}
       count={patients.length}
-      badgeColor="#009b53"
+      badgeColor="var(--status-success)"
       gradientFrom={gradientFrom}
       expanded={allDone || expanded}
       onToggle={allDone ? undefined : onToggle}
@@ -254,8 +313,8 @@ function FigmaMatchedSection({ patients, expanded, onToggle, allDone }) {
                 <div style={{ fontSize:14, fontWeight:400, color:'var(--neutral-200)' }}>{p.id} · {fmtAge(p.dob)}</div>
               </div>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0 }}>
-                <circle cx="8" cy="8" r="8" fill="#009b53"/>
-                <path d="M4.5 8.5l2.5 2.5 4.5-5" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="8" cy="8" r="8" fill="var(--status-success)"/>
+                <path d="M4.5 8.5l2.5 2.5 4.5-5" stroke="var(--neutral-0)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
           );
@@ -360,7 +419,7 @@ function FigmaIncorrectRow({ row, onAdd, onRemove, isLast, onToast, matchedIds }
   };
 
   return (
-    <div className={isRemoving ? 'row-removing' : ''} style={{ borderBottom: isLast ? 'none' : '0.5px solid #8a94a8', paddingTop: 8, fontFamily: 'Inter,sans-serif' }}>
+    <div className={isRemoving ? 'row-removing' : ''} style={{ borderBottom: isLast ? 'none' : '0.5px solid var(--neutral-200)', paddingTop: 8, fontFamily: 'Inter,sans-serif' }}>
       {/* Column headers — inside each card per Figma */}
       <div style={{ display: 'flex', paddingRight: 12 }}>
         {HDR_COLS.map((h, hi) => (
@@ -399,9 +458,9 @@ function FigmaIncorrectRow({ row, onAdd, onRemove, isLast, onToast, matchedIds }
         <div style={{ width: 130, flexShrink: 0, padding: '2px 12px 8px 12px', display: 'flex', alignItems: 'center' }}>
           <button
             onClick={handleRemoveWithAnim}
-            style={{ height: 30, padding: '0 10px', border: '0.5px solid var(--neutral-200)', borderRadius: 4, background: '#fff', color: 'var(--neutral-300)', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'Inter,sans-serif', whiteSpace: 'nowrap', transition: 'background 0.15s' }}
+            style={{ height: 30, padding: '0 10px', border: '0.5px solid var(--neutral-200)', borderRadius: 4, background: 'var(--neutral-0)', color: 'var(--neutral-300)', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'Inter,sans-serif', whiteSpace: 'nowrap', transition: 'background 0.15s' }}
             onMouseEnter={e => e.currentTarget.style.background = 'var(--neutral-50)'}
-            onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+            onMouseLeave={e => e.currentTarget.style.background = 'var(--neutral-0)'}
           >
             Remove Entry
           </button>
@@ -431,7 +490,7 @@ function FigmaIncorrectRow({ row, onAdd, onRemove, isLast, onToast, matchedIds }
                   /* Show top-centre toast via DOM — bypasses React prop chain */
                   const _t = document.createElement('div');
                   _t.textContent = 'Member added to Matched Members successfully';
-                  Object.assign(_t.style, { position:'fixed', top:'12px', left:'50%', transform:'translateX(-50%)', background:'#009B53', color:'#fff', padding:'8px 20px', borderRadius:'8px', fontSize:'14px', fontWeight:'500', zIndex:'99999', pointerEvents:'none', boxShadow:'0 4px 20px rgba(0,0,0,0.18)', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'center', gap:'8px', whiteSpace:'nowrap' });
+                  Object.assign(_t.style, { position:'fixed', top:'12px', left:'50%', transform:'translateX(-50%)', background:'var(--status-success)', color:'var(--neutral-0)', padding:'8px 20px', borderRadius:'8px', fontSize:'14px', fontWeight:'500', zIndex:'99999', pointerEvents:'none', boxShadow:'0 4px 20px rgba(0,0,0,0.18)', fontFamily:'Inter,sans-serif', display:'flex', alignItems:'center', gap:'8px', whiteSpace:'nowrap' });
                   document.body.appendChild(_t);
                   setTimeout(() => { _t.style.opacity = '0'; _t.style.transition = 'opacity 0.3s'; setTimeout(() => _t.remove(), 350); }, 2500);
                 }}
@@ -449,14 +508,14 @@ function FigmaIncorrectRow({ row, onAdd, onRemove, isLast, onToast, matchedIds }
       {/* Loading state */}
       {loading && !matchPat && (
         <div style={{ padding: '4px 15px 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Spinner size={13} color="#8c5ae2" />
+          <Spinner size={13} color="var(--primary-300)" />
           <span style={{ fontSize: 12, color: 'var(--neutral-200)' }}>Looking up…</span>
         </div>
       )}
 
       {/* No match found — Patient ID entered but not in DB */}
       {hasError && !loading && foldId.length > 4 && (
-        <div style={{ padding: '0 15px 10px', fontSize: 13, fontWeight: 500, color: '#b91c1c' }}>
+        <div style={{ padding: '0 15px 10px', fontSize: 13, fontWeight: 500, color: 'var(--status-error)' }}>
           No match found.
         </div>
       )}
@@ -464,11 +523,11 @@ function FigmaIncorrectRow({ row, onAdd, onRemove, isLast, onToast, matchedIds }
       {/* Error banner — shown when Fold ID is wrong AND no name+DOB match found */}
       {/* {!loading && incorrectOtherField && (
         <div style={{ padding: '0 15px 12px' }}>
-          <div style={{ background:'#fff5f5', border:'0.5px solid rgba(215,40,37,0.1)', borderRadius:4, padding:'4px 6px', display:'flex', alignItems:'center', gap:4 }}>
+          <div style={{ background:'var(--status-error-light)', border:'0.5px solid rgba(215,40,37,0.1)', borderRadius:4, padding:'4px 6px', display:'flex', alignItems:'center', gap:4 }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0 }}>
-              <circle cx="8" cy="8" r="7" stroke="#D72825" strokeWidth="1.2"/>
-              <path d="M8 5v3.5" stroke="#D72825" strokeWidth="1.4" strokeLinecap="round"/>
-              <circle cx="8" cy="11" r="0.7" fill="#D72825"/>
+              <circle cx="8" cy="8" r="7" stroke="var(--status-error)" strokeWidth="1.2"/>
+              <path d="M8 5v3.5" stroke="var(--status-error)" strokeWidth="1.4" strokeLinecap="round"/>
+              <circle cx="8" cy="11" r="0.7" fill="var(--status-error)"/>
             </svg>
             <span style={{ fontSize:12, fontWeight:400, color:'var(--neutral-400)', lineHeight:1.2 }}>
               Enter Correct Fold ID and {incorrectOtherField} to see matches.
@@ -485,8 +544,8 @@ function FigmaIncorrectSection({ entries, expanded, onToggle, onAdd, onRemove, o
     <SectionAccordion
       title="Members With Incorrect Details"
       count={entries.length}
-      badgeColor="#d72825"
-      gradientFrom="#fff5f5"
+      badgeColor="var(--status-error)"
+      gradientFrom="var(--status-error-light)"
       expanded={expanded}
       onToggle={onToggle}
     >
@@ -542,14 +601,14 @@ function FigmaDuplicateSection({ entries, matched, expanded, onToggle, onRemove 
     <SectionAccordion
       title="Duplicate Entries"
       count={entries.length}
-      badgeColor="#d9a50b"
-      gradientFrom="#fffcf5"
+      badgeColor="var(--status-warning)"
+      gradientFrom="var(--status-warning-light)"
       expanded={expanded}
       onToggle={onToggle}
     >
       <div>
           {/* Column headers — shared once at the top */}
-          <div style={{ display:'flex', padding:'4px 0', borderBottom:'0.5px solid #d0d6e1', fontFamily:'Inter,sans-serif' }}>
+          <div style={{ display:'flex', padding:'4px 0', borderBottom:'0.5px solid var(--neutral-150)', fontFamily:'Inter,sans-serif' }}>
             <div style={{ flex:1, minWidth:0, padding:'0 12px 0 24px', ...colHdr }}>Patient ID</div>
             <div style={{ flex:1, minWidth:0, padding:'0 12px', ...colHdr }}>First Name</div>
             <div style={{ flex:1, minWidth:0, padding:'0 12px', ...colHdr }}>Last Name</div>
@@ -571,7 +630,7 @@ function FigmaDuplicateSection({ entries, matched, expanded, onToggle, onRemove 
             dupes.forEach(d => rows.push({ key:'dup:'+d.entryId, entryId: d.entryId, isOrig:false, rawId: d.rawId, rawFn: d.rawFn || '', rawLn: d.rawLn || '', rawDob: d.rawDob || '' }));
 
             return (
-              <div key={rawId} style={{ borderBottom: gi < Object.keys(groups).length - 1 ? '0.5px solid #d0d6e1' : 'none' }}>
+              <div key={rawId} style={{ borderBottom: gi < Object.keys(groups).length - 1 ? '0.5px solid var(--neutral-150)' : 'none' }}>
                 {rows.map((row, ri) => {
                   const isSelected = selKey === row.key;
                   const isRemoving = removing.has(row.key);
@@ -583,8 +642,8 @@ function FigmaDuplicateSection({ entries, matched, expanded, onToggle, onRemove 
                       style={{
                         display:'flex', alignItems:'center',
                         height: 44, /* Fixed height — no layout shift on selection */
-                        borderLeft: isSelected ? '3px solid #D9A50B' : '3px solid transparent',
-                        background: isSelected ? '#FFFCF5' : '#fff',
+                        borderLeft: isSelected ? '3px solid var(--status-warning)' : '3px solid transparent',
+                        background: isSelected ? 'var(--status-warning-light)' : 'var(--neutral-0)',
                         cursor:'pointer', fontFamily:'Inter,sans-serif',
                         /* No inner-pair border — only show separator after last row of a group (handled by parent) */
                         transition:'background 0.15s, border-color 0.15s',
@@ -599,9 +658,9 @@ function FigmaDuplicateSection({ entries, matched, expanded, onToggle, onRemove 
                         {/* Remove Entry always in DOM but invisible when not selected — preserves height */}
                         <button
                           onClick={e => { e.stopPropagation(); if (isSelected) handleRemove(rawId, row.key, row.entryId); }}
-                          style={{ height:30, padding:'0 10px', border:'0.5px solid var(--neutral-200)', borderRadius:4, background:'#fff', color:'var(--neutral-300)', fontSize:12, fontWeight:500, cursor: isSelected ? 'pointer' : 'default', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap', transition:'background 0.15s', opacity: isSelected ? 1 : 0, pointerEvents: isSelected ? 'auto' : 'none' }}
+                          style={{ height:30, padding:'0 10px', border:'0.5px solid var(--neutral-200)', borderRadius:4, background:'var(--neutral-0)', color:'var(--neutral-300)', fontSize:12, fontWeight:500, cursor: isSelected ? 'pointer' : 'default', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap', transition:'background 0.15s', opacity: isSelected ? 1 : 0, pointerEvents: isSelected ? 'auto' : 'none' }}
                           onMouseEnter={e => { if (isSelected) e.currentTarget.style.background='var(--neutral-50)'; }}
-                          onMouseLeave={e => e.currentTarget.style.background='#fff'}
+                          onMouseLeave={e => e.currentTarget.style.background='var(--neutral-0)'}
                         >
                           Remove Entry
                         </button>
@@ -648,9 +707,9 @@ function PreviewPanel({ patients, onBack }) {
       <div className="thin-scroll" style={{ flex:1, overflowY:'auto' }}>
         {patients.map((p, i) => (
           <div key={p.id || i}
-            style={{ display:'grid', gridTemplateColumns:GRID, padding:'7px 14px', borderBottom: i < patients.length-1 ? '0.5px solid var(--neutral-100)' : 'none', background:'#fff', alignItems:'center', gap:8, transition:'background 0.1s' }}
+            style={{ display:'grid', gridTemplateColumns:GRID, padding:'7px 14px', borderBottom: i < patients.length-1 ? '0.5px solid var(--neutral-100)' : 'none', background:'var(--neutral-0)', alignItems:'center', gap:8, transition:'background 0.1s' }}
             onMouseEnter={e => e.currentTarget.style.background='var(--primary-25)'}
-            onMouseLeave={e => e.currentTarget.style.background='#fff'}>
+            onMouseLeave={e => e.currentTarget.style.background='var(--neutral-0)'}>
             <div style={{ fontSize:13, color:'var(--neutral-200)', fontWeight:400 }}>{i+1}</div>
             <div style={{ display:'flex', alignItems:'center', gap:7, minWidth:0 }}>
               <div style={{ width:28, height:28, borderRadius:4, background:'var(--primary-100)', border:'0.5px solid var(--primary-200)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:400, color:'var(--primary-300)', flexShrink:0 }}>
@@ -662,9 +721,9 @@ function PreviewPanel({ patients, onBack }) {
             <div style={{ fontSize:13, color:'var(--neutral-300)' }}>{p.mrn || '—'}</div>
             <div>
               <span style={{ fontSize:12, fontWeight:500, padding:'2px 6px', borderRadius:4,
-                color: p.source==='Matched' ? '#16a34a' : 'var(--primary-300)',
-                background: p.source==='Matched' ? '#f0fdf4' : 'var(--primary-100)',
-                border:`0.5px solid ${p.source==='Matched'?'#bbf7d0':'var(--primary-200)'}`,
+                color: p.source==='Matched' ? 'var(--status-success)' : 'var(--primary-300)',
+                background: p.source==='Matched' ? 'var(--status-success-light)' : 'var(--primary-100)',
+                border:`0.5px solid ${p.source==='Matched'?'var(--status-success)':'var(--primary-200)'}`,
               }}>{p.source}</span>
             </div>
           </div>
@@ -685,7 +744,7 @@ function PreviewPanel({ patients, onBack }) {
    Shared by the processing view and the all-members-matched summary (Figma 2023:9490). */
 function FilePreviewCard({ fileName, sizeMB, onReplace }) {
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:16, padding:12, border:'0.5px solid var(--neutral-150)', borderRadius:8, background:'#fff', width:'100%', boxSizing:'border-box', flexShrink:0 }}>
+    <div style={{ display:'flex', alignItems:'center', gap:16, padding:12, border:'0.5px solid var(--neutral-150)', borderRadius:8, background:'var(--neutral-0)', width:'100%', boxSizing:'border-box', flexShrink:0 }}>
       <div style={{ display:'flex', alignItems:'center', gap:8, flex:'1 0 0', minWidth:0 }}>
         <div style={{ width:32, height:32, borderRadius:8, background:'var(--neutral-50)', border:'0.5px solid var(--neutral-200)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
           <TableIcon color="var(--neutral-300)" size={18} />
@@ -707,55 +766,183 @@ function FilePreviewCard({ fileName, sizeMB, onReplace }) {
   );
 }
 
-/* All-members-matched review state (Figma 2023:9479) — file preview + collapsible matched list. */
-function AllMatchedPanel({ matched, uploadFile, onReupload }) {
+/* One matched/extracted patient row. Shows ID • Age(DOB); the green tick flips
+   to a red remove (×) on hover when onRemove is provided. */
+/* Stable signature of a group's editable fields — used to detect unsaved edits. */
+function groupSignature({ name, description, memberStatus, memberIds }) {
+  return JSON.stringify({
+    name: (name || '').trim(),
+    description: (description || '').trim(),
+    memberStatus: memberStatus || 'All Status',
+    members: (memberIds || []).map(String).sort(),
+  });
+}
+
+function MatchedRow({ p, isLast, onRemove }) {
+  const [hover, setHover] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const initials = (p.name || '').split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
+  const doRemove = () => { setConfirmOpen(false); setRemoving(true); setTimeout(() => onRemove?.(p), 350); };
+  return (
+    <div
+      className={removing ? 'row-removing' : ''}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderBottom: isLast ? 'none' : '0.5px solid var(--neutral-100)', background: (hover || confirmOpen) ? 'var(--primary-25)' : 'transparent', transition:'background 0.1s' }}
+    >
+      <div style={{ display:'flex', alignItems:'center', gap:8, flex:'1 0 0', minWidth:0 }}>
+        <div style={{ width:40, height:40, borderRadius:8, background:'var(--primary-50)', border:'0.5px solid var(--primary-200)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:16, fontWeight:400, color:'var(--primary-300)' }}>
+          {initials}
+        </div>
+        <div style={{ flex:'1 0 0', minWidth:0 }}>
+          <div style={{ fontSize:14, fontWeight:500, color:'var(--neutral-400)', lineHeight:1.2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</div>
+          {/* ID • Age(DOB) — full identity, shown consistently in review + edit */}
+          <div style={{ display:'flex', alignItems:'center', gap:2, fontSize:14, fontWeight:400, color:'var(--neutral-200)', lineHeight:1.2, marginTop:4, whiteSpace:'nowrap', overflow:'hidden' }}>
+            <span style={{ overflow:'hidden', textOverflow:'ellipsis' }}>{p.id}</span>
+            <span>•</span>
+            <span>{fmtAge(p.dob)}</span>
+          </div>
+        </div>
+      </div>
+      {/* edit phase 2 — patient delete disabled in the Create review (kept for reference):
+      {onRemove && !removing && (
+        <button
+          onClick={() => setConfirmOpen(true)}
+          title="Remove patient"
+          style={{ width:24, height:24, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, border:'none', background:'none', padding:0, cursor:'pointer', borderRadius:4 }}
+        >
+          <Icon name="solar:trash-bin-minimalistic-linear" size={20} color="var(--neutral-300)" />
+        </button>
+      )}
+      {confirmOpen && (
+        <ConfirmDialog
+          icon="solar:trash-bin-minimalistic-linear"
+          title="Remove Patient?"
+          description="This Patient will be removed from this Pop group and will need to be added back manually."
+          confirmLabel="Remove Patient"
+          cancelLabel="Cancel"
+          variant="error"
+          onConfirm={doRemove}
+          onCancel={() => setConfirmOpen(false)}
+        />
+      )}
+      */}
+    </div>
+  );
+}
+
+/* Search field above the list — type to find patients from the DB and add them. */
+function AddPatientSearch({ matched, onAdd }) {
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const h = e => { if (!ref.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+  const have = new Set(matched.map(m => String(m.id).toUpperCase()));
+  const ql = q.trim().toLowerCase();
+  const results = FOLD_DB
+    .filter(p => !have.has(String(p.id).toUpperCase()) && (!ql || p.name.toLowerCase().includes(ql) || String(p.id).toLowerCase().includes(ql)))
+    .slice(0, 50);
+  return (
+    <div ref={ref} style={{ position:'relative', flexShrink:0 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:8, height:36, padding:'0 10px', border:'0.5px solid var(--neutral-200)', borderRadius:6, background:'var(--neutral-0)' }}>
+        <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
+        <input
+          value={q}
+          onChange={e => { setQ(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder="Search and Add Patients"
+          style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:14, fontFamily:'Inter, sans-serif', color:'var(--neutral-400)' }}
+        />
+      </div>
+      {open && results.length > 0 && (
+        <div className="thin-scroll" style={{ position:'absolute', top:'calc(100% + 4px)', left:0, right:0, maxHeight:240, overflowY:'auto', background:'var(--neutral-0)', border:'0.5px solid var(--neutral-150)', borderRadius:8, boxShadow:'0 4px 16px rgba(0,0,0,0.10)', zIndex:2300, padding:4 }}>
+          {results.map(p => (
+            <div
+              key={p.id}
+              onClick={() => { onAdd(p); setQ(''); }}
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'8px', borderRadius:4, cursor:'pointer' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--neutral-50)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <div style={{ width:32, height:32, borderRadius:8, background:'var(--primary-50)', border:'0.5px solid var(--primary-200)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:13, color:'var(--primary-300)' }}>
+                {(p.name || '').split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase()}
+              </div>
+              <div style={{ minWidth:0 }}>
+                <div style={{ fontSize:14, fontWeight:500, color:'var(--neutral-400)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.name}</div>
+                <div style={{ fontSize:12, color:'var(--neutral-200)', whiteSpace:'nowrap' }}>{p.id} • {fmtAge(p.dob)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* All-members-matched review state (Figma 2023:9479) — file preview + matched/extracted list.
+   - heading: section title (review = "All Members Matched…", edit = "Extracted Patients")
+   - onReupload: when omitted, the file-preview replace icon is hidden (edit mode)
+   - onRemoveMember: enables the hover × remove action on each row
+   - onAddMember: shows a "Search and Add Patients" field above the list */
+function AllMatchedPanel({ matched, uploadFile, onReupload, heading = 'All Members Matched; Review Pop Group', onRemoveMember, onAddMember }) {
+  // edit phase 2 — search disabled in the Create review (kept for reference):
+  // const [query, setQuery] = useState('');
+  // const q = query.trim().toLowerCase();
+  // const shown = q ? matched.filter(m => (m.name || '').toLowerCase().includes(q) || String(m.id).toLowerCase().includes(q)) : matched;
+  const shown = matched;
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:16, fontFamily:'Inter, sans-serif', width:'100%', height:'100%', minHeight:0, boxSizing:'border-box', paddingTop:4 }}>
-      <p style={{ margin:0, fontSize:16, fontWeight:500, lineHeight:1.2, color:'#16181d', flexShrink:0 }}>File Processing Summary</p>
+      <p style={{ margin:0, fontSize:16, fontWeight:500, lineHeight:1.2, color:'var(--neutral-500)', flexShrink:0 }}>File Processing Summary</p>
 
       {uploadFile && (
         <FilePreviewCard fileName={uploadFile.name} sizeMB={(uploadFile.size/1048576).toFixed(1)} onReplace={onReupload} />
       )}
 
-      {/* Review pop group — fixed header + internally-scrolling patient list */}
-      <div style={{ border:'0.5px solid var(--neutral-150)', borderRadius:8, background:'#fff', overflow:'hidden', width:'100%', flex:'1 1 0', minHeight:0, display:'flex', flexDirection:'column' }}>
-        <div style={{ display:'flex', alignItems:'center', padding:'8px 12px', borderBottom:'0.5px solid var(--neutral-150)', background:'linear-gradient(90deg, #f5fffa 0%, #ffffff 100%)', flexShrink:0 }}>
-          <span style={{ fontSize:14, fontWeight:500, color:'var(--neutral-400)', lineHeight:1.2 }}>All Members Matched; Review Pop Group</span>
+      {/* edit phase 2 — "Search and Add Patients" disabled in the Create review (kept for reference):
+      {onAddMember && <AddPatientSearch matched={matched} onAdd={onAddMember} />}
+      */}
+
+      {/* edit phase 2 — search of added patients disabled in the Create review (kept for reference):
+      <div style={{ display:'flex', alignItems:'center', gap:8, height:36, padding:'0 10px', border:'0.5px solid var(--neutral-200)', borderRadius:6, background:'var(--neutral-0)', flexShrink:0 }}>
+        <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
+        <input
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search Patients"
+          style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:14, fontFamily:'Inter, sans-serif', color:'var(--neutral-400)' }}
+        />
+      </div>
+      */}
+
+      {/* Review / extracted list — hugs its content; caps at the drawer bottom and scrolls internally */}
+      <div style={{ border:'0.5px solid var(--neutral-150)', borderRadius:8, background:'var(--neutral-0)', overflow:'hidden', width:'100%', flex:'0 1 auto', minHeight:0, display:'flex', flexDirection:'column' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:4, padding:'8px 12px', borderBottom:'0.5px solid var(--neutral-150)', background:'linear-gradient(90deg, var(--status-success-light) 0%, var(--neutral-0) 100%)', flexShrink:0 }}>
+          <span style={{ fontSize:14, fontWeight:500, color:'var(--neutral-400)', lineHeight:1.2 }}>Review Population Group</span>
+          <Badge label={String(matched.length)} style={{ background:'var(--status-success)', color:'var(--neutral-0)', borderColor:'var(--status-success)' }} />
         </div>
 
-        {/* Matched member rows — scrolls within this section only */}
-        <div className="thin-scroll" style={{ flex:'1 1 0', minHeight:0, overflowY:'auto' }}>
-          {matched.map((p, i) => {
-            const initials = (p.name || '').split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
-            return (
-              <div key={p.id || i} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderBottom:'0.5px solid var(--neutral-100)' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:8, flex:'1 0 0', minWidth:0 }}>
-                  <div style={{ width:40, height:40, borderRadius:8, background:'var(--primary-50)', border:'0.5px solid var(--primary-200)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:16, fontWeight:400, color:'var(--primary-300)' }}>
-                    {initials}
-                  </div>
-                  <div style={{ flex:'1 0 0', minWidth:0 }}>
-                    <div style={{ fontSize:14, fontWeight:500, color:'var(--neutral-400)', lineHeight:1.2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</div>
-                    <div style={{ display:'flex', alignItems:'center', gap:2, fontSize:14, fontWeight:400, color:'var(--neutral-200)', lineHeight:1.2, marginTop:4, whiteSpace:'nowrap', overflow:'hidden' }}>
-                      <span style={{ overflow:'hidden', textOverflow:'ellipsis' }}>{p.id}</span>
-                      <span>•</span>
-                      <span>{fmtAge(p.dob)}</span>
-                    </div>
-                  </div>
-                </div>
-                <CheckRoundIcon size={24} />
-              </div>
-            );
-          })}
+        {/* Member rows — hugs content; scrolls only when the card hits the drawer bottom */}
+        <div className="thin-scroll" style={{ flex:'0 1 auto', minHeight:0, overflowY:'auto' }}>
+          {shown.map((p, i) => (
+            <MatchedRow key={p.id || i} p={p} isLast={i === shown.length - 1} />
+          ))}
         </div>
       </div>
     </div>
   );
 }
 
-function NewModePanel({ matchSummary, uploadFile, csvAllClear, onReupload }) {
-  // All entries matched — show review state
-  if (csvAllClear && matchSummary.matched.length > 0) {
-    return <AllMatchedPanel matched={matchSummary.matched} uploadFile={uploadFile} onReupload={onReupload} />;
+function NewModePanel({ matchSummary, uploadFile, csvAllClear, onReupload, matchedHeading, onRemoveMember, onAddMember }) {
+  // All entries matched — show review state. In edit mode (matchedHeading set) always
+  // show the extracted list, even if empty, rather than the "couldn't read file" card.
+  if (csvAllClear && (matchSummary.matched.length > 0 || matchedHeading)) {
+    return <AllMatchedPanel matched={matchSummary.matched} uploadFile={uploadFile} onReupload={onReupload} heading={matchedHeading} onRemoveMember={onRemoveMember} onAddMember={onAddMember} />;
   }
 
   // Has errors — show download panel
@@ -766,20 +953,15 @@ function NewModePanel({ matchSummary, uploadFile, csvAllClear, onReupload }) {
   if (!hasIssues && matchSummary.matched.length === 0) {
     return (
       <div style={{ display:'flex', flexDirection:'column', gap:8, padding:'12px 0', fontFamily:'Inter, sans-serif', width:'100%', boxSizing:'border-box' }}>
-        <p style={{ margin:0, fontSize:16, fontWeight:500, lineHeight:1.2, color:'#16181d' }}>File Processing Summary</p>
+        <p style={{ margin:0, fontSize:16, fontWeight:500, lineHeight:1.2, color:'var(--neutral-500)' }}>File Processing Summary</p>
         <FilePreviewCard fileName={uploadFile.name} sizeMB={(uploadFile.size/1048576).toFixed(1)} onReplace={onReupload} />
-        <div style={{ border:'0.5px solid rgba(215,40,37,0.4)', borderRadius:12, padding:48, display:'flex', flexDirection:'column', gap:16, alignItems:'center', background:'linear-gradient(162.29deg, #FFF5F5 1.82%, #FFFFFF 61.18%)' }}>
+        <div style={{ border:'0.5px solid rgba(215,40,37,0.4)', borderRadius:12, padding:48, display:'flex', flexDirection:'column', gap:16, alignItems:'center', background:'linear-gradient(162.29deg, var(--status-error-light) 1.82%, var(--neutral-0) 61.18%)' }}>
           <FileErrorIllustration />
-          <p style={{ margin:0, fontSize:14, lineHeight:1.4, color:'#3a485f', textAlign:'center' }}>
+          <p style={{ margin:0, fontSize:14, lineHeight:1.4, color:'var(--neutral-400)', textAlign:'center' }}>
             We couldn't read any patient records from this file. Ensure it's a <strong>CSV</strong> with
             {' '}<strong>Patient ID, First Name, Last Name, DOB</strong> columns, then reupload.
           </p>
-          <button
-            onClick={onReupload}
-            style={{ height:36, padding:'0 16px', display:'flex', alignItems:'center', justifyContent:'center', gap:7, border:'0.5px solid var(--neutral-150)', borderRadius:6, background:'#fff', color:'var(--neutral-300)', fontSize:14, fontWeight:500, cursor:'pointer', fontFamily:'Inter, sans-serif' }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            Reupload File
-          </button>
+          <Button variant="secondary" size="L" leadingIcon="solar:refresh-linear" onClick={onReupload}>Reupload File</Button>
         </div>
       </div>
     );
@@ -844,9 +1026,9 @@ function NewModePanel({ matchSummary, uploadFile, csvAllClear, onReupload }) {
     /* Frame 1433:10239 — py-12, gap-8, column, items-start */
     <div style={{ display:'flex', flexDirection:'column', gap:8, padding:'12px 0', fontFamily:'Inter, sans-serif', width:'100%', boxSizing:'border-box' }}>
 
-      {/* Heading 1433:10241 — Inter Medium 16 / #16181d / lh 1.2 */}
+      {/* Heading 1433:10241 — Inter Medium 16 / var(--neutral-500) / lh 1.2 */}
       <div style={{ display:'flex', alignItems:'center', width:'100%' }}>
-        <p style={{ margin:0, flex:'1 0 0', minWidth:0, fontSize:16, fontWeight:500, lineHeight:1.2, color:'#16181d', wordBreak:'break-word' }}>
+        <p style={{ margin:0, flex:'1 0 0', minWidth:0, fontSize:16, fontWeight:500, lineHeight:1.2, color:'var(--neutral-500)', wordBreak:'break-word' }}>
           File Processing Summary
         </p>
       </div>
@@ -856,53 +1038,27 @@ function NewModePanel({ matchSummary, uploadFile, csvAllClear, onReupload }) {
         width:'100%', boxSizing:'border-box',
         border:'0.5px solid rgba(215,40,37,0.4)', borderRadius:12, padding:64,
         display:'flex', flexDirection:'column', gap:16, alignItems:'center',
-        background:'linear-gradient(162.29deg, #FFF5F5 1.82%, #FFFFFF 61.18%)',
+        background:'linear-gradient(162.29deg, var(--status-error-light) 1.82%, var(--neutral-0) 61.18%)',
       }}>
 
         {/* Illustration 1433:10245 — 80px */}
         <FileErrorIllustration />
 
-        {/* Body 1433:10246 — 14 / #3a485f / lh 1.2 / center */}
-        <p style={{ margin:0, width:'100%', fontSize:14, lineHeight:1.2, color:'#3a485f', textAlign:'center', wordBreak:'break-word' }}>
+        {/* Body 1433:10246 — 14 / var(--neutral-400) / lh 1.2 / center */}
+        <p style={{ margin:0, width:'100%', fontSize:14, lineHeight:1.2, color:'var(--neutral-400)', textAlign:'center', wordBreak:'break-word' }}>
           Your file has entries with{' '}
-          <span style={{ color:'#d72825', fontWeight:500 }}>incorrect</span>{' '}
-          <span style={{ color:'#d72825', fontWeight:500 }}>details</span>{' '}
+          <span style={{ color:'var(--status-error)', fontWeight:500 }}>incorrect</span>{' '}
+          <span style={{ color:'var(--status-error)', fontWeight:500 }}>details</span>{' '}
           or{' '}
-          <span style={{ color:'#d9a50b', fontWeight:500 }}>duplicate</span>{' '}
-          <span style={{ color:'#d9a50b', fontWeight:500 }}>entries</span>.
+          <span style={{ color:'var(--status-warning)', fontWeight:500 }}>duplicate</span>{' '}
+          <span style={{ color:'var(--status-warning)', fontWeight:500 }}>entries</span>.
           {' '}These are flagged in red and yellow respectively in a file ready to download below. Please download, correct entries, and re-upload here to create a population group.
         </p>
 
         {/* Buttons row 1433:10247 — gap-12, justify-center, full width */}
         <div style={{ display:'flex', gap:12, justifyContent:'center', alignItems:'flex-start', width:'100%' }}>
-          {/* Primary — same style as drawer "Create" button (enabled) */}
-          <button
-            onClick={downloadErrorFile}
-            style={{ height:36, padding:'0 16px', display:'flex', alignItems:'center', justifyContent:'center', gap:7, border:'none', borderRadius:6, background:'var(--primary-300)', color:'#fff', fontSize:14, fontWeight:500, cursor:'pointer', fontFamily:'Inter, sans-serif', transition:'background 0.15s', whiteSpace:'nowrap' }}
-            onMouseEnter={e => e.currentTarget.style.background='var(--primary-400)'}
-            onMouseLeave={e => e.currentTarget.style.background='var(--primary-300)'}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            Download File with Errors
-          </button>
-
-          {/* Secondary — Reupload */}
-          <button
-            onClick={reuploadFile}
-            style={{ height:36, padding:'0 16px', display:'flex', alignItems:'center', justifyContent:'center', gap:7, border:'0.5px solid var(--neutral-150)', borderRadius:6, background:'#fff', color:'var(--neutral-300)', fontSize:14, fontWeight:500, cursor:'pointer', fontFamily:'Inter, sans-serif', transition:'background 0.15s', whiteSpace:'nowrap' }}
-            onMouseEnter={e => e.currentTarget.style.background='var(--neutral-50)'}
-            onMouseLeave={e => e.currentTarget.style.background='#fff'}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="23 4 23 10 17 10"/>
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-            </svg>
-            Reupload File
-          </button>
+          <Button variant="primary" size="L" leadingIcon="solar:download-minimalistic-linear" onClick={downloadErrorFile}>Download File with Errors</Button>
+          <Button variant="secondary" size="L" leadingIcon="solar:refresh-linear" onClick={reuploadFile}>Reupload File</Button>
         </div>
       </div>
     </div>
@@ -933,7 +1089,7 @@ function reclassifyDuplicate(prev, removedEntryId) {
   const dbLn = rest.join(' ');
   const fnOk = sibling.rawFn?.trim().toLowerCase() === dbFn;
   const lnOk = sibling.rawLn?.trim().toLowerCase() === dbLn;
-  const dobOk = sibling.rawDob === dbPat.dob;
+  const dobOk = !dbPat.dob || sibling.rawDob === dbPat.dob;
 
   if (fnOk && lnOk && dobOk) {
     return { ...prev, duplicates: newDups, matched: [...prev.matched, { id: dbPat.id, name: dbPat.name, dob: dbPat.dob, mrn: dbPat.id, pcp: dbPat.pcp }] };
@@ -942,9 +1098,29 @@ function reclassifyDuplicate(prev, removedEntryId) {
 }
 
 function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, miniBarExpandRef, miniBarCloseRef, onModalClose, onBackdropChange, onGroupCreated, onUploadError, onMemberAdded }) {
+  /* ── Supabase-backed groups (see supabase/population_groups_migration.sql) ── */
+  const popGroups      = useAppStore(s => s.popGroups);
+  const fetchPopGroups = useAppStore(s => s.fetchPopGroups);
+  const createPopGroup = useAppStore(s => s.createPopGroup);
+  const updatePopGroup = useAppStore(s => s.updatePopGroup);
+  useEffect(() => { fetchPopGroups(); }, [fetchPopGroups]);
+
+  /* Load the real patient directory (all_patients) so CSV uploads are matched
+     against the DB rather than the bundled seed. Prefers dob when present;
+     falls back gracefully if the column doesn't exist yet. */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      let { data, error } = await supabase.from('all_patients').select('id,name,dob,pcp');
+      if (error) ({ data, error } = await supabase.from('all_patients').select('id,name,pcp'));
+      if (!cancelled && !error && data?.length) loadFoldDbFromRows(data);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   /* ── table state ── */
   const [searchQuery,   setSearchQuery]   = useState('');
-  const [extraGroups,   setExtraGroups]   = useState([]);
+  const [searchOpen,    setSearchOpen]    = useState(false);
   const [checkedRows,   setCheckedRows]   = useState(new Set());
   const [hoveredRow,    setHoveredRow]    = useState(null);
   const [popPage,       setPopPage]       = useState(1);
@@ -990,7 +1166,6 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
   const [criteria,      setCriteria]      = useState([{ attr:'Age', op:'≥', val:'' }]);
 
   /* ── collapsed mini-bar (now owned by the persistent store/host) ── */
-  const [drawerClosing, setDrawerClosing] = useState(false);
 
   const startPgSession  = useAppStore(s => s.startPgSession);
   const expandPgSession = useAppStore(s => s.expandPgSession);
@@ -1005,6 +1180,12 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
 
   /* ── new "Download Errors" Create Group flow ── */
   const [newMode,      setNewMode]      = useState(false);
+  /* ── edit flow (editing a saved static-CSV group) ── */
+  const [editGroupId,  setEditGroupId]  = useState(null);
+  const [editBaseline, setEditBaseline] = useState(null); // signature of the loaded group — drives dirty state
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+  /* edit phase 2 — new "Update Population Group" drawer (replaces the in-create edit reuse) */
+  const [editingGroup, setEditingGroup] = useState(null);
 
   const fileInputRef  = useRef(null);
   const filterDDRef   = useRef(null);
@@ -1065,12 +1246,12 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
   /* ── helpers ── */
   const resetModalState = () => {
     /* tableMode / smartMode / enhancedMode / tableRows cleared here — state removed */
-    setNewMode(false);
+    setNewMode(false); setEditGroupId(null);
     setSegmentName(''); setDescription(''); setChosenFilter('');
     setMemberStatus('All Status'); setUploadFile(null);
     setUploadState('idle'); setUploadPct(0); setDragOver(false);
     setCriteria([{ attr:'Age', op:'≥', val:'' }]);
-    setDrawerClosing(false); setMatchedExp(false);
+    setMatchedExp(false);
     setNotFoundExp(true); setDupExp(true);
     setManualSel({}); setPatDDOpen(null); setShowPreview(false);
     setMatchSummary({ matched:[], notFound:[], duplicates:[] }); setPatSearch('');
@@ -1078,10 +1259,58 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
   };
   const openModal = () => { resetModalState(); setModalOpen(true); };
   const openNewModal = () => { resetModalState(); setNewMode(true); setModalOpen(true); };
+  /* Edit a saved static-CSV group: reopen the matched/complete drawer with its members. */
+  /* ── edit phase 2 ──────────────────────────────────────────────────────────
+     The edit flow is being rebuilt as a dedicated "Update Population Group"
+     drawer (<UpdatePopGroupDrawer>). The old approach reused the create
+     drawer's CSV review state — kept here, commented out, for reference. */
+  const openEditModal = (group) => {
+    setEditingGroup(group);
+  };
+  // const openEditModal = (group) => {
+  //   resetModalState();
+  //   setNewMode(true);
+  //   setEditGroupId(group.id);
+  //   setSegmentName(group.name || '');
+  //   setDescription(group.description || '');
+  //   setChosenFilter('static-csv');
+  //   setMemberStatus(group.memberStatus || 'All Status');
+  //   const members = (group.memberIds || [])
+  //     .map(id => FOLD_DB_MAP[String(id).toUpperCase()])
+  //     .filter(Boolean)
+  //     .map(p => ({ id: p.id, name: p.name, dob: p.dob, mrn: p.id, pcp: p.pcp }));
+  //   setUploadFile({ name: group.fileName || `${group.name || 'patient-list'}.csv`, size: 0 });
+  //   setMatchSummary({ matched: members, notFound: [], duplicates: [] });
+  //   setUploadState('complete');
+  //   setEditBaseline(groupSignature({
+  //     name: group.name || '',
+  //     description: group.description || '',
+  //     memberStatus: group.memberStatus || 'All Status',
+  //     memberIds: members.map(m => m.id),
+  //   }));
+  //   setModalOpen(true);
+  // };
   /* openTableModal / openSmartModal / openEnhancedModal removed */
   const closeModal = () => {
-    setDrawerClosing(true);
-    setTimeout(() => { setModalOpen(false); setUploadState('idle'); setDrawerClosing(false); onModalClose?.(); }, 340);
+    setModalOpen(false); setUploadState('idle'); setShowSaveConfirm(false); setEditBaseline(null); onModalClose?.();
+  };
+
+  /* Persist the current group (insert on create, update on edit). Returns true on success. */
+  const saveGroup = async () => {
+    const groupType = chosenFilter === 'dynamic' ? 'Dynamic' : 'Static';
+    const newName = segmentName.trim();
+    const memberIds = matchSummary.matched.map(m => m.id).filter(Boolean);
+    const payload = {
+      name: newName, description: description.trim(), type: groupType,
+      filterType: chosenFilter || null, memberStatus, memberIds,
+      count: previewPatients.length || matchSummary.matched.length, inactive: 0,
+    };
+    const saved = editGroupId ? await updatePopGroup(editGroupId, payload) : await createPopGroup(payload);
+    if (!saved) return false;   // DB error — keep drawer open, toast already shown
+    onGroupCreated?.(newName);
+    showToast(editGroupId ? 'Population Group Updated Successfully' : 'Population Group Added Successfully');
+    closeModal();
+    return true;
   };
 
   const handleFile = file => {
@@ -1160,7 +1389,8 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
               const dbLn = dbParts.slice(1).join(' ');
               const fnOk  = rawFn.trim().toLowerCase() === dbFn;
               const lnOk  = rawLn.trim().toLowerCase() === dbLn;
-              const dobOk = rawDob === dbPat.dob;
+              /* Validate dob only when the DB carries it; otherwise match on id+name. */
+              const dobOk = !dbPat.dob || rawDob === dbPat.dob;
               if (fnOk && lnOk && dobOk) {
                 matched.push({ id: dbPat.id, name: dbPat.name, dob: dbPat.dob, mrn: dbPat.id, pcp: dbPat.pcp });
               } else {
@@ -1214,20 +1444,28 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
 
   /* ── filtered list ── */
   const activeType = activeFilter === 'Static' || activeFilter === 'Dynamic' ? activeFilter : null;
-  const displayedGroups = [...extraGroups, ...POP_GROUPS].filter(g => {
+  const displayedGroups = [...popGroups, ...POP_GROUPS].filter(g => {
     if (activeType && g.type !== activeType) return false;
     if (searchQuery && !g.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
-  });
+  }).map(g => ({
+    ...g,
+    /* numeric keys so date columns sort chronologically (display stays formatted) */
+    _createdTs: Date.parse(g.created) || 0,
+    _updatedTs: Date.parse(g.updated) || 0,
+  }));
+
+  /* Client-side sorting for member counts + dates — same hook TOC/HCC use */
+  const { sorted: sortedGroups, sortKey: pgSortKey, sortDir: pgSortDir, requestSort: pgRequestSort } = useTableSort(displayedGroups);
 
   /* ── pagination ── */
-  const totalGroups  = displayedGroups.length;
+  const totalGroups  = sortedGroups.length;
   const popTotalPages = Math.max(1, Math.ceil(totalGroups / popPageSize));
   const safePg       = Math.min(popPage, popTotalPages);
-  const pagedGroups  = displayedGroups.slice((safePg - 1) * popPageSize, safePg * popPageSize);
+  const pagedGroups  = sortedGroups.slice((safePg - 1) * popPageSize, safePg * popPageSize);
 
   /* reset to page 1 whenever filter/search changes */
-  useEffect(() => { setPopPage(1); }, [activeFilter, searchQuery]);
+  useEffect(() => { setPopPage(1); }, [activeFilter, searchQuery, pgSortKey, pgSortDir]);
 
   const buildPopPages = () => {
     if (popTotalPages <= 7) return Array.from({ length: popTotalPages }, (_, i) => i + 1);
@@ -1237,9 +1475,22 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
   };
 
   const isCsvMode    = chosenFilter === 'static-csv';
-  const drawerWidth  = (isCsvMode && (uploadState === 'loading' || uploadState === 'complete'))
-                     ? 'min(70vw, 1400px)' : 'min(35vw, 720px)';
   const canCreate    = segmentName.trim() && chosenFilter && (chosenFilter !== 'static-csv' || uploadState === 'complete');
+  /* Edit mode: only "dirty" once name/description/status/members differ from the loaded group. */
+  const isDirty      = editGroupId
+    ? groupSignature({ name: segmentName, description, memberStatus, memberIds: matchSummary.matched.map(m => m.id) }) !== editBaseline
+    : true;
+  /* Save is enabled only when valid AND (create mode OR an edit actually changed something). */
+  const canSave      = canCreate && isDirty;
+
+  /* Header / cell styling — matches the Settings → Account → Users table (AccountPanel.module.css) */
+  const thStyle = {
+    padding: '8px 16px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)',
+    borderBottom: '0.5px solid var(--neutral-150)', background: 'var(--neutral-0)',
+    position: 'sticky', top: 0, zIndex: 2, textAlign: 'left',
+    whiteSpace: 'nowrap', userSelect: 'none',
+  };
+  const tdStyle = { padding: '12px 16px', fontSize: 14, fontWeight: 400, color: 'var(--neutral-300)', verticalAlign: 'middle' };
   const unmatchedAll     = [...matchSummary.notFound]; /* duplicates don't block preview */
   const allResolved      = unmatchedAll.length > 0 && unmatchedAll.every(e => manualSel[e.entryId]);
   /* For the grey default CSV flow: Create is only enabled once all incorrect + duplicate entries are dealt with */
@@ -1259,79 +1510,55 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
   return (
     <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', background:'var(--neutral-0)', minWidth:0, position:'relative' }}>
 
-      {/* ── Sub-header ── */}
-      <div style={{ padding:'10px 20px', borderBottom:'0.5px solid var(--neutral-150)', display:'flex', alignItems:'center', flexShrink:0 }}>
+      {/* ── Sub-header ── (left padding tuned so the collapse icon's left edge aligns with the table checkbox) */}
+      <div style={{ padding:'10px 20px 10px 6px', borderBottom:'0.5px solid var(--neutral-150)', display:'flex', alignItems:'center', flexShrink:0 }}>
         <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-          <button onClick={onToggleSidebar} style={{ width:28, height:28, display:'flex', alignItems:'center', justifyContent:'center', border:'none', borderRadius:6, background:'none', cursor:'pointer', transition:'background 0.1s' }}
-            onMouseEnter={e => e.currentTarget.style.background='var(--neutral-75)'}
-            onMouseLeave={e => e.currentTarget.style.background='none'}>
-            <SidebarMinimalisticLinear size={14} color="var(--neutral-300)" />
-          </button>
+          <ActionButton icon="solar:sidebar-minimalistic-linear" size="L" tooltip="Collapse sidebar" iconColor="var(--neutral-300)" onClick={onToggleSidebar} />
           <span style={{ fontSize:16, fontWeight:600, color:'var(--neutral-400)' }}>Population Groups</span>
         </div>
 
         <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0, marginLeft:'auto' }}>
-          {/* ── Inline search bar ── */}
-          <div style={{ display:'flex', alignItems:'center', gap:6, height:32, padding:'0 10px', border:'0.5px solid var(--neutral-150)', borderRadius:6, background:'var(--neutral-0)', width:220 }}>
-            <MagniferLinear size={14} color="var(--neutral-200)" />
-            <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+          {/* ── Search groups — icon expands to a text field on click (same as app-wide search) ── */}
+          {searchOpen ? (
+            <Input
+              autoFocus
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              onBlur={() => { if (!searchQuery.trim()) setSearchOpen(false); }}
               placeholder="Search groups..."
-              style={{ border:'none', outline:'none', fontSize:13, color:'var(--neutral-400)', background:'transparent', flex:1, fontFamily:'Inter, sans-serif' }} />
-            {searchQuery && <div onClick={() => setSearchQuery('')} style={{ cursor:'pointer', display:'flex' }}><CloseCircleLinear size={13} color="var(--neutral-200)" /></div>}
-          </div>
-          {/* ── Dev-mode toggle (shows/hides experimental buttons) ── */}
+              style={{ width: 220 }}
+            />
+          ) : (
+            <SearchIconButton title="Search groups" onClick={() => setSearchOpen(true)} />
+          )}
+
+          <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
+
+          {/* ── Dev-mode toggle (experimental flows) — disabled for now ──
           <button
             onClick={() => setShowDevButtons(v => !v)}
             title={showDevButtons ? 'Hide experimental flows' : 'Show experimental flows'}
-            style={{ width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center', border:`0.5px solid ${showDevButtons ? 'var(--primary-200)' : 'var(--neutral-150)'}`, borderRadius:6, background: showDevButtons ? 'var(--primary-50)' : '#fff', cursor:'pointer', transition:'all 0.15s', flexShrink:0 }}>
-            {/* Flask / beaker icon */}
+            style={{ width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center', border:`0.5px solid ${showDevButtons ? 'var(--primary-200)' : 'var(--neutral-150)'}`, borderRadius:6, background: showDevButtons ? 'var(--primary-50)' : 'var(--neutral-0)', cursor:'pointer', transition:'all 0.15s', flexShrink:0 }}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M5 1h4M5 1v5L2 12h10L9 6V1" stroke={showDevButtons ? 'var(--primary-300)' : 'var(--neutral-200)'} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
               <circle cx="5.5" cy="9.5" r="0.8" fill={showDevButtons ? 'var(--primary-300)' : 'var(--neutral-200)'}/>
               <circle cx="8" cy="10.5" r="0.6" fill={showDevButtons ? 'var(--primary-300)' : 'var(--neutral-200)'}/>
             </svg>
           </button>
-
-          {/* ── Create Group — opens the file-upload workflow (error card / all-matched review) ── */}
-          <button onClick={openNewModal}
-            style={{ height:32, padding:'0 12px', background:'var(--neutral-0)', color:'var(--neutral-300)', border:'0.5px solid var(--neutral-150)', borderRadius:6, fontSize:13, fontWeight:500, cursor:'pointer', display:'flex', alignItems:'center', gap:5, fontFamily:'Inter, sans-serif', transition:'background 0.15s' }}
-            onMouseEnter={e => { e.currentTarget.style.background='var(--neutral-50)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background='var(--neutral-0)'; }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--neutral-300)" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Create Group
-          </button>
-
-          {/* ── Secondary Create Group — grey/neutral, opens standard CSV flow — commented out for now ──
-          <button onClick={openModal}
-            style={{ height:32, padding:'0 12px', background:'#fff', color:'var(--neutral-300)', border:'0.5px solid var(--neutral-150)', borderRadius:6, fontSize:13, fontWeight:500, cursor:'pointer', display:'flex', alignItems:'center', gap:5, fontFamily:'Inter, sans-serif', transition:'background 0.15s' }}
-            onMouseEnter={e => e.currentTarget.style.background='var(--neutral-50)'}
-            onMouseLeave={e => e.currentTarget.style.background='#fff'}>
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
-              <circle cx="5" cy="4" r="2.5"/>
-              <path d="M1 11c0-2.21 1.79-4 4-4s4 1.79 4 4"/>
-              <path d="M10 6v4M8 8h4"/>
-            </svg>
-            Create Group
-          </button>
           */}
 
+          {/* ── Create Group — opens the file-upload workflow (error card / all-matched review) ── */}
+          <Button variant="secondary" size="L" leadingIcon="solar:add-circle-linear" onClick={openNewModal}>Create Group</Button>
+
+          <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
+
           {/* Import Rule — neutral button, no icon */}
-          <button style={{ height:32, padding:'0 12px', border:'0.5px solid var(--neutral-150)', borderRadius:6, background:'#fff', color:'var(--neutral-300)', fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'Inter, sans-serif', transition:'background 0.15s' }}
-            onMouseEnter={e => e.currentTarget.style.background='var(--neutral-50)'}
-            onMouseLeave={e => e.currentTarget.style.background='#fff'}>
-            Import Rule
-          </button>
-          {/* save icon */}
-          <button style={{ width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center', border:'0.5px solid var(--neutral-150)', borderRadius:6, background:'#fff', cursor:'pointer' }}>
-            <DocumentTextLinear size={15} color="var(--neutral-300)" />
-          </button>
-          {/* filter icon with red dot */}
-          <div style={{ position:'relative' }}>
-            <button style={{ width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center', border:'0.5px solid var(--neutral-150)', borderRadius:6, background:'#fff', cursor:'pointer' }}>
-              <FilterLinear size={15} color="var(--neutral-300)" />
-            </button>
-            <div style={{ position:'absolute', top:4, right:4, width:7, height:7, borderRadius:'50%', background:'#EF4444', border:'1.5px solid #fff' }} />
-          </div>
+          <Button variant="secondary" size="L">Import Rule</Button>
+
+          <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
+
+          {/* Bulk actions icon — matches Settings → Content bulk-select icon (neutral-300) */}
+          <ActionButton size="L" tooltip="Bulk actions" style={{ color: 'var(--neutral-300)' }}><BulkSelectIcon /></ActionButton>
         </div>
       </div>
 
@@ -1339,23 +1566,28 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
       <div className="thin-scroll" style={{ flex:1, overflowY:'auto', overflowX:'auto' }}>
         <table style={{ width:'100%', borderCollapse:'collapse', fontFamily:'Inter, sans-serif', minWidth:900 }}>
           <thead>
-            <tr style={{ borderBottom:'0.5px solid var(--neutral-150)', background:'var(--neutral-0)', position:'sticky', top:0, zIndex:2 }}>
-              <th style={{ width:40, padding:'10px 12px 10px 20px' }}>
-                <div style={{ width:15, height:15, border:'1.5px solid var(--neutral-150)', borderRadius:4 }} />
+            <tr>
+              <th style={{ ...thStyle, width:36, padding:'8px 10px' }}>
+                <Checkbox checked={false} aria-label="Select all" />
               </th>
               {[
-                { label:'Group Name', flex:true },
-                { label:'Active Members' },
-                { label:'Inactive Members' },
+                { label:'Group Name' },
+                { label:'Active Members', sortKey:'count' },
+                { label:'Inactive Members', sortKey:'inactive' },
                 { label:'Type' },
-                { label:'Created Date', w:160 },
-                { label:'Updated Date', w:160 },
+                { label:'Created Date', sortKey:'_createdTs', w:160 },
+                { label:'Updated Date', sortKey:'_updatedTs', w:160 },
                 { label:'Action' },
               ].map(col => (
-                <th key={col.label} style={{ padding:'0 16px', height:36, textAlign:'left', fontSize:12, fontWeight:500, color:'var(--neutral-300)', whiteSpace:'nowrap', background:'var(--neutral-0)', width: col.w ? col.w : undefined, borderBottom:'0.5px solid var(--neutral-150)' }}>
-                  {col.label}
-                  {col.flex && <span style={{ marginLeft:4, color:'var(--neutral-150)' }}>↕</span>}
-                </th>
+                <SortableHeader
+                  key={col.label}
+                  label={col.label}
+                  sortKey={col.sortKey}
+                  currentKey={pgSortKey}
+                  currentDir={pgSortDir}
+                  onSort={pgRequestSort}
+                  style={{ ...thStyle, width: col.w ? col.w : undefined }}
+                />
               ))}
             </tr>
           </thead>
@@ -1367,83 +1599,54 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                 <tr key={g.id}
                   onMouseEnter={() => setHoveredRow(g.id)}
                   onMouseLeave={() => setHoveredRow(null)}
-                  style={{ borderBottom:'0.5px solid var(--neutral-150)', background: isHov ? 'var(--primary-25)' : '#fff', transition:'background 0.1s', cursor:'pointer' }}>
+                  style={{ borderBottom:'0.5px solid var(--neutral-100)', background: isHov ? 'var(--primary-25)' : 'var(--neutral-0)', transition:'background 0.1s', cursor:'pointer' }}>
 
                   {/* checkbox */}
-                  <td style={{ padding:'12px 12px 12px 20px', verticalAlign:'middle' }}>
-                    <div onClick={() => setCheckedRows(prev => { const n=new Set(prev); n.has(g.id)?n.delete(g.id):n.add(g.id); return n; })}
-                      style={{ width:15, height:15, borderRadius:4, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', background:isChecked?'var(--primary-300)':'transparent', border:`1.5px solid ${isChecked?'var(--primary-300)':'var(--neutral-150)'}`, cursor:'pointer', transition:'all 0.15s' }}>
-                      {isChecked && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                    </div>
+                  <td style={{ padding:'12px 10px', verticalAlign:'middle' }} onClick={e => e.stopPropagation()}>
+                    <Checkbox
+                      checked={isChecked}
+                      onCheckedChange={() => setCheckedRows(prev => { const n=new Set(prev); n.has(g.id)?n.delete(g.id):n.add(g.id); return n; })}
+                      aria-label={`Select ${g.name}`}
+                    />
                   </td>
 
-                  {/* name + avatar — 0.5px border */}
-                  <td style={{ padding:'12px 16px', verticalAlign:'middle' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <div style={{ width:32, height:32, borderRadius:6, background:'var(--primary-100)', border:'0.5px solid var(--primary-200)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                        <UsersGroupRoundedLinear size={16} color="var(--primary-300)" />
-                      </div>
-                      <div style={{ fontSize:13, fontWeight:400, color:'var(--neutral-400)', lineHeight:1.4 }}>{g.name}</div>
+                  {/* name + avatar */}
+                  <td style={tdStyle}>
+                    <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
+                      <Avatar variant="patient" initials={<UsersGroupRoundedLinear size={16} color="var(--primary-300)" />} />
+                      <GroupName name={g.name} />
                     </div>
                   </td>
 
                   {/* active members */}
-                  <td style={{ padding:'12px 16px', fontSize:13, color:'var(--neutral-400)', verticalAlign:'middle' }}>
-                    {g.count != null ? g.count : '–'}
-                  </td>
+                  <td style={tdStyle}>{g.count != null ? g.count : '–'}</td>
 
                   {/* inactive members */}
-                  <td style={{ padding:'12px 16px', fontSize:13, color:'var(--neutral-400)', verticalAlign:'middle' }}>
-                    {g.inactive != null ? g.inactive : '–'}
-                  </td>
+                  <td style={tdStyle}>{g.inactive != null ? g.inactive : '–'}</td>
 
                   {/* type */}
-                  <td style={{ padding:'12px 16px', verticalAlign:'middle' }}>
-                    <span style={{ fontSize:13, fontWeight:400, color:'var(--neutral-300)' }}>
-                      {g.type}
-                    </span>
-                  </td>
+                  <td style={tdStyle}>{g.type}</td>
 
                   {/* created date */}
-                  <td style={{ padding:'12px 16px', fontSize:13, color:'var(--neutral-300)', whiteSpace:'nowrap', verticalAlign:'middle', width:160 }}>
-                    {g.created}
-                  </td>
+                  <td style={{ ...tdStyle, whiteSpace:'nowrap', width:160 }}>{g.created}</td>
 
                   {/* updated date */}
-                  <td style={{ padding:'12px 16px', fontSize:13, color:'var(--neutral-300)', whiteSpace:'nowrap', verticalAlign:'middle', width:160 }}>
-                    {g.updated}
-                  </td>
+                  <td style={{ ...tdStyle, whiteSpace:'nowrap', width:160 }}>{g.updated}</td>
 
                   {/* actions */}
                   <td style={{ padding:'0 12px', verticalAlign:'middle' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:0 }}>
-                      {/* Zap */}
-                      <button data-tip="Run Group" style={{ width:24, height:24, borderRadius:4, border:'none', background:'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}
-                        onMouseEnter={e => e.currentTarget.style.background='var(--neutral-75)'}
-                        onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                        <ZapIcon size={16} color="var(--neutral-300)" />
-                      </button>
+                      {/* Run */}
+                      <ActionButton icon="solar:bolt-linear" size="L" tooltip="Run Automation" iconColor="var(--neutral-300)" />
                       <div style={{ width:1, height:16, background:'var(--neutral-150)', margin:'0 4px', flexShrink:0 }} />
                       {/* Edit */}
-                      <button data-tip="Edit Group" style={{ width:28, height:28, borderRadius:4, border:'none', background:'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}
-                        onMouseEnter={e => e.currentTarget.style.background='var(--neutral-75)'}
-                        onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                        <PenLinear size={18} color="var(--neutral-300)" />
-                      </button>
+                      <ActionButton icon="solar:pen-linear" size="L" tooltip="Edit Group" iconColor="var(--neutral-300)" onClick={() => openEditModal(g)} />
                       <div style={{ width:1, height:16, background:'var(--neutral-150)', margin:'0 4px', flexShrink:0 }} />
                       {/* Delete */}
-                      <button data-tip="Delete Group" style={{ width:28, height:28, borderRadius:4, border:'none', background:'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}
-                        onMouseEnter={e => e.currentTarget.style.background='var(--neutral-75)'}
-                        onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                        <TrashBinMinimalisticLinear size={18} color="var(--neutral-300)" />
-                      </button>
+                      <ActionButton icon="solar:trash-bin-minimalistic-linear" size="L" tooltip="Delete Group" iconColor="var(--neutral-300)" />
                       <div style={{ width:1, height:16, background:'var(--neutral-150)', margin:'0 4px', flexShrink:0 }} />
                       {/* More */}
-                      <button data-tip="More Options" style={{ width:28, height:28, borderRadius:4, border:'none', background:'transparent', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}
-                        onMouseEnter={e => e.currentTarget.style.background='var(--neutral-75)'}
-                        onMouseLeave={e => e.currentTarget.style.background='transparent'}>
-                        <MenuDotsLinear size={18} color="var(--neutral-300)" />
-                      </button>
+                      <ActionButton icon="solar:menu-dots-linear" size="L" tooltip="More Options" iconColor="var(--neutral-300)" />
                     </div>
                   </td>
                 </tr>
@@ -1474,61 +1677,35 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
       {/* ── Create Audience Group modal ── */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {modalOpen && (
-        <>
-          <div style={{ position:'fixed', inset:0, background:'rgba(22,24,29,0.25)', zIndex:2000 }} onClick={() => {
-            if (isCsvMode && (uploadState === 'loading' || uploadState === 'complete')) {
+        <Drawer
+          title={editGroupId ? 'Edit Audience Group' : 'Create Audience Group'}
+          onClose={() => {
+            if (editGroupId) {
+              // Edit: confirm only when there are unsaved changes; otherwise just close.
+              if (isDirty) setShowSaveConfirm(true);
+              else closeModal();
+            } else if (isCsvMode && (uploadState === 'loading' || uploadState === 'complete')) {
               setShowCloseConfirm(true);
             } else {
               closeModal();
             }
-          }} />
-          <div onClick={e => e.stopPropagation()}
-            className={drawerClosing ? 'drawer-exit' : 'drawer-enter'}
-            style={{ position:'fixed', top:8, right:8, bottom:8, width:drawerWidth, minWidth: (isCsvMode && (uploadState === 'loading' || uploadState === 'complete')) ? 800 : 360, background:'#fff', borderRadius:12, boxShadow:'-4px 0 32px rgba(0,0,0,0.14)', zIndex:2001, display:'flex', flexDirection:'column', overflow:'hidden', transition:'width 0.35s cubic-bezier(0.32,0,0.15,1)' }}>
-
-            {/* ── Drawer Header ── */}
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', height:48, padding:'0 16px', borderBottom:'0.5px solid var(--neutral-100)', flexShrink:0 }}>
-              <span style={{ fontSize:16, fontWeight:500, color:'var(--neutral-500)', fontFamily:'Inter, sans-serif' }}>Create Audience Group</span>
-              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <button
-                  disabled={!canCreate}
-                  onClick={() => {
-                    if (!canCreate) return;
-                    const now = new Date();
-                    const dateStr = now.toLocaleDateString('en-US', { month:'2-digit', day:'2-digit', year:'numeric' });
-                    const dtStr   = now.toLocaleString('en-US',     { month:'2-digit', day:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true });
-                    const groupType = chosenFilter === 'dynamic' ? 'Dynamic' : 'Static';
-                    const newName = segmentName.trim();
-                    setExtraGroups(g => [{
-                      id: Date.now(), name: newName, type: groupType,
-                      count: previewPatients.length || matchSummary.matched.length,
-                      inactive: 0, created: dateStr, updated: dtStr,
-                    }, ...g]);
-                    onGroupCreated?.(newName);
-                    showToast('Population Group Added Successfully');
-                    closeModal();
-                  }}
-                  style={{ height:30, padding:'0 16px', borderRadius:6, fontSize:14, fontWeight:500, fontFamily:'Inter, sans-serif', cursor: canCreate ? 'pointer' : 'default', transition:'background 0.15s, color 0.15s',
-                    background: canCreatePrimary ? 'var(--primary-300)' : 'var(--neutral-50)',
-                    color:      canCreatePrimary ? '#fff' : canCreate ? 'var(--neutral-300)' : 'var(--neutral-150)',
-                    border:     canCreatePrimary ? 'none' : '0.5px solid var(--neutral-150)',
-                  }}>
-                  Create
-                </button>
-                <div style={{ width:'0.5px', height:18, background:'var(--neutral-150)' }} />
-                <button
-                  onClick={() => {
-                    if (isCsvMode && (uploadState === 'loading' || uploadState === 'complete')) {
-                      setShowCloseConfirm(true);
-                    } else {
-                      closeModal();
-                    }
-                  }}
-                  style={{ width:26, height:26, display:'flex', alignItems:'center', justifyContent:'center', border:'none', background:'none', cursor:'pointer', fontSize:20, color:'var(--neutral-300)', fontWeight:300, lineHeight:1, borderRadius:4, transition:'background 0.1s' }}
-                  onMouseEnter={e => e.currentTarget.style.background='var(--neutral-75)'}
-                  onMouseLeave={e => e.currentTarget.style.background='none'}>×</button>
-              </div>
-            </div>
+          }}
+          headerRight={(
+            <>
+              <Button
+                variant="primary"
+                size="L"
+                disabled={!canSave}
+                onClick={() => { if (canSave) saveGroup(); }}>
+                {editGroupId ? 'Save' : 'Create'}
+              </Button>
+              <span className="pg-header-divider" />
+            </>
+          )}
+          noCloseDivider
+          className={`pg-create-panel${(isCsvMode && (uploadState === 'loading' || uploadState === 'complete')) ? ' pg-create-panel--wide' : ''}`}
+          bodyClassName="pg-create-body"
+        >
 
             {/* ── Drawer Body: two-column when CSV + loading/complete, else single col ── */}
             <ConfigProvider theme={{ token: { fontFamily: 'Inter, sans-serif' } }}>
@@ -1538,7 +1715,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                 {/* LEFT: locked form */}
                 <div className="thin-scroll" style={{ width:'clamp(300px, 38%, 460px)', flexShrink:0, overflowY:'auto', padding:'16px', borderRight:'0.5px solid var(--neutral-100)' }}>
                   <div style={{ marginBottom:16 }}>
-                    <label style={{ display:'block', fontSize:14, fontWeight:400, color:'var(--neutral-200)', marginBottom:5 }}>Create Segment Name <span style={{ color:'#EF4444' }}>•</span></label>
+                    <label style={{ display:'block', fontSize:14, fontWeight:400, color:'var(--neutral-200)', marginBottom:5 }}>Create Segment Name <span style={{ color:'var(--status-error)' }}>•</span></label>
                     <Input
                       value={segmentName}
                       onChange={e => setSegmentName(e.target.value)}
@@ -1556,7 +1733,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                     />
                   </div>
                   <div style={{ marginBottom:16 }}>
-                    <label style={{ display:'block', fontSize:14, fontWeight:400, color:'var(--neutral-200)', marginBottom:5 }}>Choose Filter <span style={{ color:'#EF4444' }}>•</span></label>
+                    <label style={{ display:'block', fontSize:14, fontWeight:400, color:'var(--neutral-200)', marginBottom:5 }}>Choose Filter <span style={{ color:'var(--status-error)' }}>•</span></label>
                     <DrawerSelect
                       value={chosenFilter}
                       onChange={val => { setChosenFilter(val); setUploadFile(null); setUploadState('idle'); setCriteria([{ attr:'Age', op:'≥', val:'' }]); }}
@@ -1565,7 +1742,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                     />
                   </div>
                   <div style={{ marginBottom:16 }}>
-                    <label style={{ display:'block', fontSize:14, fontWeight:400, color:'var(--neutral-200)', marginBottom:5 }}>Frequency <span style={{ color:'#EF4444' }}>•</span></label>
+                    <label style={{ display:'block', fontSize:14, fontWeight:400, color:'var(--neutral-200)', marginBottom:5 }}>Frequency <span style={{ color:'var(--status-error)' }}>•</span></label>
                     <DrawerSelect
                       value="one-time"
                       onChange={() => {}}
@@ -1614,7 +1791,10 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                         <div style={{ position:'absolute', height:'100%', width:'45%', background:'linear-gradient(90deg, transparent, var(--primary-300), var(--primary-200), transparent)', borderRadius:2, animation:'pg-progress 1.8s ease-in-out infinite' }} />
                       </div>
                       <div style={{ fontSize:14, color:'var(--neutral-200)', textAlign:'center', lineHeight:1.6 }}>You can minimize this window and<br/>continue working while it processes.</div>
-                      <button
+                      <Button
+                        variant="secondary"
+                        size="L"
+                        leadingIcon="solar:minimize-square-linear"
                         onClick={() => {
                           startPgSession({
                             fileName: uploadFile?.name || '',
@@ -1627,13 +1807,9 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                           });
                           resetModalState();
                           setModalOpen(false);
-                        }}
-                        style={{ height:32, padding:'0 14px', border:'0.5px solid var(--neutral-150)', borderRadius:6, background:'#fff', color:'var(--neutral-300)', fontSize:14, fontWeight:500, cursor:'pointer', fontFamily:'Inter, sans-serif', display:'flex', alignItems:'center', gap:6, transition:'background 0.15s' }}
-                        onMouseEnter={e => e.currentTarget.style.background='var(--neutral-50)'}
-                        onMouseLeave={e => e.currentTarget.style.background='#fff'}>
-                        <CollapseIcon size={16} color="var(--neutral-300)" />
+                        }}>
                         Minimize
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ) : (
@@ -1644,7 +1820,12 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                         matchSummary={matchSummary}
                         uploadFile={uploadFile}
                         csvAllClear={csvAllClear}
-                        onReupload={() => { setUploadFile(null); setUploadState('idle'); setUploadPct(0); setMatchSummary({ matched:[], notFound:[], duplicates:[] }); setManualSel({}); parsedRef.current = null; }}
+                        matchedHeading={editGroupId ? 'Extracted Patients' : undefined}
+                        onReupload={editGroupId ? undefined : (() => { setUploadFile(null); setUploadState('idle'); setUploadPct(0); setMatchSummary({ matched:[], notFound:[], duplicates:[] }); setManualSel({}); parsedRef.current = null; })}
+                        onRemoveMember={(p) => setMatchSummary(prev => ({ ...prev, matched: prev.matched.filter(m => m.id !== p.id) }))}
+                        onAddMember={(p) => setMatchSummary(prev => prev.matched.some(m => String(m.id) === String(p.id))
+                          ? prev
+                          : ({ ...prev, matched: [...prev.matched, { id: p.id, name: p.name, dob: p.dob, mrn: p.id, pcp: p.pcp }] }))}
                       />
                     ) : (
                       <>
@@ -1655,11 +1836,11 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
 
                         {/* ── Info banner (Figma 1921-9782) — above file chip, hidden on Review Pop Group ── */}
                         {!showPreview && uploadFile && !csvAllClear && (
-                          <div style={{ background:'#f4f8fe', border:'0.5px solid rgba(20,94,204,0.2)', borderRadius:4, padding:6, marginBottom:8, display:'flex', alignItems:'flex-start', gap:4 }}>
+                          <div style={{ background:'var(--status-info-light)', border:'0.5px solid rgba(20,94,204,0.2)', borderRadius:4, padding:6, marginBottom:8, display:'flex', alignItems:'flex-start', gap:4 }}>
                             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0, marginTop:1 }}>
-                              <circle cx="8" cy="8" r="7" stroke="#145ECC" strokeWidth="1.2"/>
-                              <path d="M8 7v4" stroke="#145ECC" strokeWidth="1.4" strokeLinecap="round"/>
-                              <circle cx="8" cy="5.5" r="0.7" fill="#145ECC"/>
+                              <circle cx="8" cy="8" r="7" stroke="var(--status-info)" strokeWidth="1.2"/>
+                              <path d="M8 7v4" stroke="var(--status-info)" strokeWidth="1.4" strokeLinecap="round"/>
+                              <circle cx="8" cy="5.5" r="0.7" fill="var(--status-info)"/>
                             </svg>
                             <span style={{ fontSize:12, fontWeight:400, color:'var(--neutral-400)', lineHeight:1.4 }}>
                               Enter correct values for fold ID &amp; match to recommended entries OR Reupload excel with correct data.
@@ -1729,9 +1910,9 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                                 setMatchSummary({ matched:[], notFound:[], duplicates:[] });
                                 setManualSel({}); setShowPreview(false); parsedRef.current = null;
                               }}
-                              style={{ flex:1, height:34, background:'#fff', color:'var(--neutral-300)', border:'0.5px solid var(--neutral-150)', borderRadius:6, fontSize:14, fontWeight:500, cursor:'pointer', fontFamily:'Inter, sans-serif', transition:'background 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}
+                              style={{ flex:1, height:34, background:'var(--neutral-0)', color:'var(--neutral-300)', border:'0.5px solid var(--neutral-150)', borderRadius:6, fontSize:14, fontWeight:500, cursor:'pointer', fontFamily:'Inter, sans-serif', transition:'background 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}
                               onMouseEnter={e => e.currentTarget.style.background='var(--neutral-50)'}
-                              onMouseLeave={e => e.currentTarget.style.background='#fff'}>
+                              onMouseLeave={e => e.currentTarget.style.background='var(--neutral-0)'}>
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
                               Reupload Document
                             </button>
@@ -1740,7 +1921,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                               onClick={() => setShowPreview(true)}
                               style={{ flex:1, height:34, borderRadius:6, fontSize:14, fontWeight:500, fontFamily:'Inter, sans-serif', transition:'background 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:6, border:'none',
                                 background: (unmatchedAll.length === 0 || allResolved) ? 'var(--primary-300)' : 'var(--neutral-100)',
-                                color:      (unmatchedAll.length === 0 || allResolved) ? '#fff' : 'var(--neutral-200)',
+                                color:      (unmatchedAll.length === 0 || allResolved) ? 'var(--neutral-0)' : 'var(--neutral-200)',
                                 cursor:     (unmatchedAll.length === 0 || allResolved) ? 'pointer' : 'not-allowed',
                               }}
                               onMouseEnter={e => { if (unmatchedAll.length === 0 || allResolved) e.currentTarget.style.background='var(--primary-400)'; }}
@@ -1770,7 +1951,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                   {/* Segment Name */}
                   <div style={{ marginBottom:16 }}>
                     <label style={{ display:'block', fontSize:14, fontWeight:400, color:'var(--neutral-200)', marginBottom:6 }}>
-                      Create Segment Name <span style={{ color:'#EF4444' }}>•</span>
+                      Create Segment Name <span style={{ color:'var(--status-error)' }}>•</span>
                     </label>
                     <Input
                       value={segmentName}
@@ -1794,7 +1975,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                   {/* Choose Filter dropdown */}
                   <div style={{ marginBottom:8 }}>
                     <label style={{ display:'block', fontSize:14, fontWeight:400, color:'var(--neutral-200)', marginBottom:6 }}>
-                      Choose Filter <span style={{ color:'#EF4444' }}>•</span>
+                      Choose Filter <span style={{ color:'var(--status-error)' }}>•</span>
                     </label>
                     <DrawerSelect
                       value={chosenFilter}
@@ -1814,9 +1995,9 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                         </div>
                         <div style={{ padding:'12px 14px' }}>
                           {/* Info box */}
-                          <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background:'#EFF6FF', border:'0.5px solid #BFDBFE', borderRadius:6, marginBottom:12 }}>
-                            <InfoCircleLinear size={14} color="#3B82F6" style={{ flexShrink:0 }} />
-                            <span style={{ fontSize:12, color:'#1D4ED8', lineHeight:1.5 }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background:'var(--status-info-light)', border:'0.5px solid color-mix(in srgb, var(--status-info) 40%, transparent)', borderRadius:6, marginBottom:12 }}>
+                            <InfoCircleLinear size={14} color="var(--status-info)" style={{ flexShrink:0 }} />
+                            <span style={{ fontSize:12, color:'var(--status-info)', lineHeight:1.5 }}>
                               Ensure column names match your ID type — use "EHR ID" for EHR IDs or "Fold Contact ID" for Fold Contact IDs.
                             </span>
                           </div>
@@ -1825,13 +2006,11 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                           {uploadFile && uploadState === 'uploading' ? (
                             /* File selected — show progress */
                             <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', border:'0.5px solid var(--primary-200)', borderRadius:8, background:'var(--primary-50)', marginBottom:10 }}>
-                              <div style={{ width:28, height:28, borderRadius:4, background:'var(--primary-100)', border:'0.5px solid var(--primary-200)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                                <TableIcon color="var(--primary-300)" size={16} />
-                              </div>
+                              <Avatar variant="icon" size={28} backgroundColor="var(--primary-100)" borderColor="var(--primary-200)" icon={<TableIcon color="var(--primary-300)" size={16} />} />
                               <div style={{ flex:1, minWidth:0 }}>
                                 <div style={{ fontSize:14, fontWeight:500, color:'var(--neutral-400)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{uploadFile.name}</div>
                                 <div style={{ marginTop:6, height:4, background:'var(--neutral-100)', borderRadius:2, overflow:'hidden' }}>
-                                  <div style={{ height:'100%', width:`${uploadPct}%`, background: uploadPct < 40 ? '#D97706' : '#15803D', borderRadius:2, transition:'width 0.3s ease, background 0.4s ease' }} />
+                                  <div style={{ height:'100%', width:`${uploadPct}%`, background: uploadPct < 40 ? 'var(--status-warning)' : 'var(--status-success)', borderRadius:2, transition:'width 0.3s ease, background 0.4s ease' }} />
                                 </div>
                                 <div style={{ fontSize:12, color:'var(--neutral-200)', marginTop:3 }}>{uploadPct}%</div>
                               </div>
@@ -1849,20 +2028,20 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                               onDragLeave={() => setDragOver(false)}
                               onDrop={e => { e.preventDefault(); setDragOver(false); const f=e.dataTransfer.files[0]; if(f) handleFile(f); }}
                               onClick={() => fileInputRef.current?.click()}
-                              style={{ border:`1.5px dashed ${dragOver ? 'var(--primary-300)' : 'var(--neutral-150)'}`, borderRadius:8, padding:'28px 16px', textAlign:'center', cursor:'pointer', background: dragOver ? 'var(--primary-50)' : '#fff', transition:'all 0.2s', marginBottom:8 }}>
+                              style={{ border:`1.5px dashed ${dragOver ? 'var(--primary-300)' : 'var(--neutral-150)'}`, borderRadius:8, padding:'28px 16px', textAlign:'center', cursor:'pointer', background: dragOver ? 'var(--primary-50)' : 'var(--neutral-0)', transition:'all 0.2s', marginBottom:8 }}>
                               <input ref={fileInputRef} type="file" accept=".csv,.xls,.xlsx" style={{ display:'none' }} onChange={e => { const f=e.target.files?.[0]; if(f) handleFile(f); }} />
                               <svg width={28} height={28} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ display:'block', margin:'0 auto' }}>
                                 <path d="M3 15c0 2.828 0 4.243.879 5.121C4.757 21 6.172 21 9 21h6c2.828 0 4.243 0 5.121-.879C21 19.243 21 17.828 21 15M12 16V3m0 0 4 4.375M12 3 8 7.375" stroke={dragOver ? 'var(--primary-300)' : 'var(--neutral-300)'} strokeWidth="1"/>
                               </svg>
                               <div style={{ fontSize:14, color:'var(--neutral-300)', marginTop:10 }}>
-                                Drag & drop file here or <span style={{ color:'var(--primary-300)', fontWeight:500, cursor:'pointer' }}>Choose file</span>
+                                Drag & drop file here or <Link>Choose file</Link>
                               </div>
                             </div>
                           )}
                           {/* format info + template */}
                           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                             <span style={{ fontSize:12, color:'var(--neutral-200)' }}>Supported formats: CSV, XLS, XLSX &nbsp;•&nbsp; Max size: 5 MB</span>
-                            <span style={{ fontSize:12, color:'var(--primary-300)', fontWeight:500, cursor:'pointer' }}>Download Template</span>
+                            <Link style={{ fontSize:12 }}>Download Template</Link>
                           </div>
                         </div>
                       </div>
@@ -1881,16 +2060,16 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                             <div key={idx} style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
                               <span style={{ fontSize:14, fontWeight:500, color:'var(--neutral-300)', width:24, textAlign:'center', flexShrink:0 }}>{idx===0?'IF':'AND'}</span>
                               <select className="pg-crit-select" value={c.attr} onChange={e => updateCriterion(idx,'attr',e.target.value)}
-                                style={{ flex:2, padding:'7px 8px', border:'0.5px solid var(--neutral-150)', borderRadius:6, fontSize:14, color:'var(--neutral-400)', fontFamily:'Inter, sans-serif', background:'#fff', outline:'none' }}>
+                                style={{ flex:2, padding:'7px 8px', border:'0.5px solid var(--neutral-150)', borderRadius:6, fontSize:14, color:'var(--neutral-400)', fontFamily:'Inter, sans-serif', background:'var(--neutral-0)', outline:'none' }}>
                                 {CRIT_ATTRS.map(a => <option key={a.label} value={a.label}>{a.label}</option>)}
                               </select>
                               <select className="pg-crit-select" value={c.op} onChange={e => updateCriterion(idx,'op',e.target.value)}
-                                style={{ flex:1.4, padding:'7px 6px', border:'0.5px solid var(--neutral-150)', borderRadius:6, fontSize:14, color:'var(--neutral-400)', fontFamily:'Inter, sans-serif', background:'#fff', outline:'none' }}>
+                                style={{ flex:1.4, padding:'7px 6px', border:'0.5px solid var(--neutral-150)', borderRadius:6, fontSize:14, color:'var(--neutral-400)', fontFamily:'Inter, sans-serif', background:'var(--neutral-0)', outline:'none' }}>
                                 {attrDef.ops.map(op => <option key={op} value={op}>{op}</option>)}
                               </select>
                               {attrDef.type==='select' ? (
                                 <select className="pg-crit-select" value={c.val} onChange={e => updateCriterion(idx,'val',e.target.value)}
-                                  style={{ flex:2, padding:'7px 6px', border:'0.5px solid var(--neutral-150)', borderRadius:6, fontSize:14, color:'var(--neutral-400)', fontFamily:'Inter, sans-serif', background:'#fff', outline:'none' }}>
+                                  style={{ flex:2, padding:'7px 6px', border:'0.5px solid var(--neutral-150)', borderRadius:6, fontSize:14, color:'var(--neutral-400)', fontFamily:'Inter, sans-serif', background:'var(--neutral-0)', outline:'none' }}>
                                   <option value="">Select…</option>
                                   {attrDef.opts.map(o => <option key={o} value={o}>{o}</option>)}
                                 </select>
@@ -1920,7 +2099,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                   {chosenFilter === 'static-csv' && (
                     <div style={{ marginBottom:16 }}>
                       <label style={{ display:'block', fontSize:14, fontWeight:400, color:'var(--neutral-200)', marginBottom:6 }}>
-                        Frequency <span style={{ color:'#EF4444' }}>•</span>
+                        Frequency <span style={{ color:'var(--status-error)' }}>•</span>
                       </label>
                       <DrawerSelect
                         value="one-time"
@@ -1945,19 +2124,43 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
             </div>
             )}
             </ConfigProvider>
-          </div>
+        </Drawer>
+      )}
 
-          {/* ── Destructive close confirmation dialog ── */}
-          {/* ── Close-while-uploading confirmation — reuses DeleteConfirmModal visual pattern ── */}
-          {showCloseConfirm && (
-            <>
+      {/* ── edit phase 2: Update Population Group drawer ── */}
+      {editingGroup && (
+        <UpdatePopGroupDrawer
+          group={editingGroup}
+          onClose={() => setEditingGroup(null)}
+          onSubmit={async ({ name, description, members }) => {
+            const saved = await updatePopGroup(editingGroup.id, {
+              name,
+              description,
+              type: editingGroup.type || 'Static',
+              filterType: 'static-csv',
+              memberStatus: editingGroup.memberStatus || 'All Status',
+              memberIds: members.map(m => m.id),
+              count: members.length,
+              inactive: 0,
+            });
+            if (!saved) return;
+            onGroupCreated?.(name);
+            showToast('Population Group Updated Successfully');
+            setEditingGroup(null);
+          }}
+        />
+      )}
+
+      {/* ── Close-while-uploading confirmation — reuses DeleteConfirmModal visual pattern ── */}
+      {showCloseConfirm && (
+        <>
               <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.25)', zIndex:10000 }} onClick={() => setShowCloseConfirm(false)} />
               <div
                 onClick={e => e.stopPropagation()}
-                style={{ position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:340, background:'#fff', borderRadius:12, border:'0.5px solid var(--neutral-100)', padding:20, boxShadow:'0 4px 20px rgba(0,0,0,0.14)', zIndex:10001, display:'flex', flexDirection:'column', alignItems:'center', gap:16, fontFamily:'Inter,sans-serif' }}
+                style={{ position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:340, background:'var(--neutral-0)', borderRadius:12, border:'0.5px solid var(--neutral-100)', padding:20, boxShadow:'0 4px 20px rgba(0,0,0,0.14)', zIndex:10001, display:'flex', flexDirection:'column', alignItems:'center', gap:16, fontFamily:'Inter,sans-serif' }}
               >
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8, width:'100%' }}>
-                  <DangerCircleLinear size={18} color="#CF1322" strokeWidth={1} />
+                  <DangerCircleLinear size={18} color="var(--status-error)" strokeWidth={1} />
                   <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, width:'100%' }}>
                     <span style={{ fontSize:16, fontWeight:500, color:'var(--neutral-400)', textAlign:'center' }}>Quit without saving?</span>
                     <p style={{ fontSize:14, color:'var(--neutral-200)', textAlign:'center', lineHeight:1.5, margin:0 }}>
@@ -1966,26 +2169,45 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                   </div>
                 </div>
                 <div style={{ display:'flex', gap:8, width:'100%' }}>
-                  <button
-                    onClick={() => setShowCloseConfirm(false)}
-                    style={{ flex:1, height:32, borderRadius:4, border:'0.5px solid var(--neutral-200)', background:'#fff', color:'var(--neutral-300)', fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'Inter, sans-serif', transition:'background 0.1s' }}
-                    onMouseEnter={e => e.currentTarget.style.background='var(--neutral-50)'}
-                    onMouseLeave={e => e.currentTarget.style.background='#fff'}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => { setShowCloseConfirm(false); closeModal(); }}
-                    style={{ flex:1, height:32, borderRadius:4, border:'0.5px solid rgba(217,45,32,0.5)', background:'#FFF1F0', color:'#CF1322', fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'Inter, sans-serif' }}
-                    onMouseEnter={e => e.currentTarget.style.background='#FFE4E0'}
-                    onMouseLeave={e => e.currentTarget.style.background='#FFF1F0'}
-                  >
-                    Quit Anyway
-                  </button>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <Button variant="secondary" size="L" fullWidth onClick={() => setShowCloseConfirm(false)}>Cancel</Button>
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <Button variant="danger" size="L" fullWidth onClick={() => { setShowCloseConfirm(false); closeModal(); }}>Quit Anyway</Button>
+                  </div>
                 </div>
               </div>
             </>
           )}
+
+      {/* ── Save-changes confirmation (edit mode, only when dirty) ── */}
+      {showSaveConfirm && (
+        <>
+          <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.25)', zIndex:10000 }} onClick={() => setShowSaveConfirm(false)} />
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:440, maxWidth:'calc(100vw - 32px)', background:'var(--neutral-0)', borderRadius:12, border:'0.5px solid var(--neutral-100)', padding:20, boxShadow:'0 4px 20px rgba(0,0,0,0.14)', zIndex:10001, display:'flex', flexDirection:'column', gap:16, fontFamily:'Inter,sans-serif' }}
+          >
+            <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
+                <span style={{ fontSize:16, fontWeight:500, color:'var(--neutral-400)' }}>Save Changes ?</span>
+                <button onClick={() => setShowSaveConfirm(false)} aria-label="Close" style={{ border:'none', background:'none', padding:2, cursor:'pointer', display:'flex', flexShrink:0 }}>
+                  <CloseIcon size={20} color="var(--neutral-300)" />
+                </button>
+              </div>
+              <p style={{ margin:0, fontSize:14, color:'var(--neutral-200)', lineHeight:1.5 }}>
+                Please confirm to save the changes you made for this population group.
+              </p>
+            </div>
+            <div style={{ display:'flex', gap:8, width:'100%' }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <Button variant="secondary" size="L" fullWidth onClick={() => { setShowSaveConfirm(false); closeModal(); }}>Discard</Button>
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <Button variant="primary" size="L" fullWidth onClick={() => { setShowSaveConfirm(false); saveGroup(); }}>Save Changes</Button>
+              </div>
+            </div>
+          </div>
         </>
       )}
 

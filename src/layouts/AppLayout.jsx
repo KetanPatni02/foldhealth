@@ -65,7 +65,12 @@ const UploadDocumentDrawer = lz(() => import('../features/hcc/upload/UploadDocum
 const HccUploadProcessingHost = lz(() => import('../features/hcc/upload/HccUploadProcessingHost'),         'HccUploadProcessingHost');
 const HccSftpReviewDrawer  = lz(() => import('../features/hcc/upload/HccSftpReviewDrawer'),                'HccSftpReviewDrawer');
 const HccAddDosDrawer      = lz(() => import('../features/hcc/HccAddDosDrawer'),                           'HccAddDosDrawer');
+const IcdCreationScreen    = lz(() => import('../features/hcc/upload/IcdCreationScreen'),                  'IcdCreationScreen');
 const ClaimPreviewDrawer   = lz(() => import('../features/hcc/ClaimPreviewDrawer'),                        'ClaimPreviewDrawer');
+// Archived HCC worklist — a frozen fork of the HCC feature (src/features/
+// hcc-archived) so upstream HCC changes never alter it. Lazy so it stays out
+// of the entry chunk.
+const HccArchivedWorklistTable = lz(() => import('../features/hcc-archived/HccWorklistTable'),             'HccWorklistTable');
 
 // Placeholder while a lazy chunk is in flight. Empty div keeps layout stable.
 const LazyFallback = () => <div style={{ flex: 1 }} />;
@@ -151,6 +156,7 @@ function PopulationView() {
   }
 
   const isHcc = activeSubnavList === 'HCC';
+  const isHccArchived = activeSubnavList === 'HCC (Archived)';
   const isHedis = activeSubnavList === 'HEDIS';
   const isAwv = activeSubnavList === 'AWV';
   // WS3 — AWV route now redirects into the unified worklist with the
@@ -164,11 +170,11 @@ function PopulationView() {
   const isPopulationGroup = activeSubnavList.startsWith('pg:');
   const isSchedulingList = activeSubnavList === 'Scheduling List';
   const TOC_LISTS = ['TOC'];
-  const isToc = TOC_LISTS.includes(activeSubnavList) || (!isHcc && !isHedis && !isAwv && !isAllPatients && !isSchedulingList && !isPopulationGroup && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
+  const isToc = TOC_LISTS.includes(activeSubnavList) || (!isHcc && !isHccArchived && !isHedis && !isAwv && !isAllPatients && !isSchedulingList && !isPopulationGroup && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
   const isComingSoon = ['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList);
   const pgFilter = activeSubnavList === 'pg:Static' ? 'Static' : activeSubnavList === 'pg:Dynamic' ? 'Dynamic' : 'All';
 
-  const chromeless = isHcc || isHedis || isAwv || isComingSoon || isPopulationGroup || isSchedulingList;
+  const chromeless = isHcc || isHccArchived || isHedis || isAwv || isComingSoon || isPopulationGroup || isSchedulingList;
 
   return (
     <div className={styles.main}>
@@ -179,10 +185,12 @@ function PopulationView() {
         <div className={styles.content}>
           {!chromeless && <TabBar />}
           {!chromeless && showFilterBar && <FilterBar />}
-          {!isHcc && !isHedis && !isAwv && !isAllPatients && !isComingSoon && !isSchedulingList && !isPopulationGroup && activeTab === 'toc-queue' && <QueueSummaryBar />}
+          {!isHcc && !isHccArchived && !isHedis && !isAwv && !isAllPatients && !isComingSoon && !isSchedulingList && !isPopulationGroup && activeTab === 'toc-queue' && <QueueSummaryBar />}
           {isSchedulingList
             ? <SchedulingListTable />
-            : isHcc
+            : isHccArchived
+              ? <HccArchivedWorklistTable />
+              : isHcc
               ? <HccWorklistTable />
               : isHedis
                 ? <HedisWorklistTable />
@@ -498,6 +506,7 @@ export function AppLayout() {
         <HccUploadProcessingHost />{/* floats bottom-right while the upload is minimized */}
         <HccSftpReviewDrawer />{/* mounts itself only when hccSftpReviewOpen is true */}
         <HccAddDosDrawer />{/* mounts itself only when hccAddDosMember is set */}
+        <IcdCreationScreen />{/* mounts itself only when icdCreationOpen is true */}
         <ClaimPreviewDrawer />{/* mounts itself only when hccClaimPreview.open is true */}
         {quickViewPatient && <QuickViewDrawer />}
         <PgProcessingHost />
