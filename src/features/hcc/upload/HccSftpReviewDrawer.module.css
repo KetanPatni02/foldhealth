@@ -94,7 +94,6 @@
   border-radius: 8px;
   background: transparent;
   border: 0.5px solid transparent;
-  font-family: 'Inter', sans-serif;
   cursor: pointer;
   transition: background 0.12s, border-color 0.12s;
 }
@@ -152,7 +151,7 @@
   left: 0;
   right: 0;
   max-height: 320px;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 10px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
@@ -184,10 +183,9 @@
   gap: 10px;
   padding: 8px 12px;
   border: none;
-  background: #fff;
+  background: var(--neutral-0);
   border-bottom: 0.5px solid var(--neutral-50);
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
   text-align: left;
   width: 100%;
 }
@@ -284,7 +282,7 @@
   flex-shrink: 0;
 }
 .tab:hover:not(:disabled) {
-  background: #fff;
+  background: var(--neutral-0);
   border-color: var(--neutral-150);
   color: var(--neutral-500);
 }
@@ -301,7 +299,7 @@
 .tabPending {
   opacity: 0.7;
   cursor: not-allowed;
-  background: #fff;
+  background: var(--neutral-0);
   border-color: var(--neutral-150);
 }
 .tabStatus {
@@ -357,7 +355,7 @@
   gap: 12px;
   padding: 10px 20px;
   border-bottom: 0.5px solid var(--neutral-100);
-  background: #fff;
+  background: var(--neutral-0);
   flex-shrink: 0;
 }
 .docToolbarIcon {
@@ -420,7 +418,7 @@
   gap: 5px;
   padding: 5px 10px;
   border-radius: 6px;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   color: var(--neutral-500);
   font: 500 11px/1.2 'Inter', sans-serif;
@@ -461,7 +459,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: #fff;
+  background: var(--neutral-0);
 }
 
 /* ── Page preview ─────────────────────────────────────────────────── */
@@ -495,7 +493,7 @@
   align-items: center;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   font: 600 10px/1.2 'Inter', sans-serif;
   color: var(--neutral-400);
@@ -520,7 +518,7 @@
    the warm-grey panel background. */
 .previewPage {
   position: relative;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   box-shadow:
     0 1px 2px rgba(15, 18, 27, 0.04),
@@ -623,7 +621,6 @@
   width: 100%;
   min-width: 880px;
   border-collapse: collapse;
-  font-family: 'Inter', sans-serif;
 }
 .table thead th {
   position: sticky;
@@ -783,7 +780,7 @@
   height: 40px;
   padding: 0 16px;
   border-bottom: 0.5px solid var(--neutral-150);
-  background: #fff;
+  background: var(--neutral-0);
   flex-shrink: 0;
 }
 .fileStripBtn {
@@ -795,7 +792,6 @@
   border-radius: 6px;
   background: transparent;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
 }
 .fileStripBtn:hover {
   background: var(--neutral-50);
@@ -809,7 +805,7 @@
   width: 26px;
   height: 26px;
   border: 0.5px solid var(--neutral-150);
-  background: #fff;
+  background: var(--neutral-0);
   border-radius: 6px;
   cursor: pointer;
   display: inline-flex;
@@ -823,7 +819,7 @@
   top: calc(100% + 4px);
   left: 16px;
   min-width: 280px;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
@@ -863,7 +859,7 @@
   height: 40px;
   padding: 0 16px;
   border-bottom: 0.5px solid var(--neutral-150);
-  background: #fff;
+  background: var(--neutral-0);
   flex-shrink: 0;
 }
 .docTab {
@@ -903,7 +899,7 @@
   display: flex;
   align-items: center;
   padding: 10px 16px;
-  background: #fff;
+  background: var(--neutral-0);
   flex-shrink: 0;
 }
 
@@ -932,14 +928,13 @@
   margin: 32px auto 0;
   max-width: 540px;
   padding: 48px 32px;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  font-family: 'Inter', sans-serif;
 }
 .docCompletedBadgeWrap {
   position: relative;
@@ -995,7 +990,7 @@
 .encCard {
   border: 0.5px solid var(--neutral-150);
   border-radius: 10px;
-  background: #fff;
+  background: var(--neutral-0);
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
@@ -1071,9 +1066,9 @@
   max-width: 300px;
   padding: 8px 10px;
   border-radius: 8px;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
-  box-shadow: 0 8px 24px rgba(15, 22, 36, 0.12);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--neutral-500) 12%, transparent);
   font: 400 12px/1.45 'Inter', sans-serif;
   color: var(--neutral-500);
   pointer-events: none;
@@ -1126,10 +1121,10 @@
   z-index: 9999;
   width: 300px;
   padding: 10px 12px;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 10px;
-  box-shadow: 0 12px 32px rgba(15, 22, 36, 0.14);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--neutral-500) 14%, transparent);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1174,7 +1169,7 @@
   gap: 6px;
   padding: 6px 8px;
   background: var(--status-success-light);
-  border: 0.5px solid rgba(0, 155, 83, 0.18);
+  border: 0.5px solid color-mix(in srgb, var(--status-success) 18%, transparent);
   border-radius: 6px;
   font: 400 11px/1.3 'Inter', sans-serif;
   color: var(--neutral-500);
@@ -1188,11 +1183,10 @@
   width: 100%;
   height: 32px;
   padding: 0 8px 0 10px;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-200);
   border-radius: 6px;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
 }
 .docChecksTrigger:hover { border-color: var(--neutral-300); }
 .docChecksTriggerCaret { margin-left: auto; flex-shrink: 0; }
@@ -1243,7 +1237,7 @@
   gap: 6px;
   padding: 6px 8px;
   background: var(--status-success-light);
-  border: 0.5px solid rgba(0, 155, 83, 0.18);
+  border: 0.5px solid color-mix(in srgb, var(--status-success) 18%, transparent);
   border-radius: 6px;
   font: 400 11px/1.3 'Inter', sans-serif;
   color: var(--neutral-500);
@@ -1257,7 +1251,7 @@
   padding: 6px 8px;
   border: 0.5px solid var(--neutral-150);
   border-radius: 6px;
-  background: #fff;
+  background: var(--neutral-0);
   min-height: 32px;
 }
 .encIcdChip {
@@ -1379,19 +1373,19 @@
 .confPill_high {
   color: var(--status-success);
   background: var(--status-success-light);
-  border-color: rgba(0, 155, 83, 0.18);
+  border-color: color-mix(in srgb, var(--status-success) 18%, transparent);
 }
 .confPillDot_high { background: var(--status-success); }
 .confPill_medium {
   color: var(--status-warning);
   background: var(--status-warning-light);
-  border-color: rgba(217, 165, 11, 0.18);
+  border-color: color-mix(in srgb, var(--status-warning) 18%, transparent);
 }
 .confPillDot_medium { background: var(--status-warning); }
 .confPill_low {
   color: var(--status-error);
   background: var(--status-error-light);
-  border-color: rgba(217, 36, 36, 0.18);
+  border-color: color-mix(in srgb, var(--status-error) 18%, transparent);
 }
 .confPillDot_low { background: var(--status-error); }
 .confPillClickable {
@@ -1415,9 +1409,9 @@
   max-width: 220px;
   padding: 8px 10px;
   border-radius: 8px;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
-  box-shadow: 0 8px 24px rgba(15, 22, 36, 0.12);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--neutral-500) 12%, transparent);
   pointer-events: none;
 }
 .confPillTipHead {
@@ -1432,9 +1426,9 @@
 /* Pulse highlight for the cited preview row when the user clicks
    a confidence pill. Auto-removed after 1.6s by the handler. */
 @keyframes previewHighlightPulse {
-  0%   { background: rgba(255, 224, 138, 0.0); box-shadow: 0 0 0 0 rgba(217, 165, 11, 0.0); }
-  20%  { background: rgba(255, 224, 138, 0.55); box-shadow: 0 0 0 4px rgba(217, 165, 11, 0.18); }
-  100% { background: rgba(255, 224, 138, 0.0); box-shadow: 0 0 0 0 rgba(217, 165, 11, 0.0); }
+  0%   { background: transparent; box-shadow: 0 0 0 0 transparent; }
+  20%  { background: color-mix(in srgb, var(--status-warning) 45%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--status-warning) 18%, transparent); }
+  100% { background: transparent; box-shadow: 0 0 0 0 transparent; }
 }
 .previewHighlight {
   animation: previewHighlightPulse 1.6s ease-out;
