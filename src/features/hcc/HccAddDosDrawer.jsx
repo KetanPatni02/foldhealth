@@ -143,7 +143,7 @@ function DocPreview({ extracted, onClose }) {
  * state (Documents card + auto-filled fields with confidence gauges +
  * ICD list), matching Figma 4684:127213 / 4687:127406.
  */
-function DosBlock({ block, onChange, onRemove, showToast }) {
+function DosBlock({ block, onChange, onRemove }) {
   const { extracted } = block;
   const [previewOpen, setPreviewOpen] = useState(false);
   const cite = () => setPreviewOpen(true);
@@ -328,7 +328,6 @@ export function HccAddDosDrawer() {
           block={b}
           onChange={(next) => setBlock(i, next)}
           onRemove={() => removeBlock(i)}
-          showToast={showToast}
         />
       ))}
 

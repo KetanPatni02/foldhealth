@@ -69,18 +69,6 @@ function CreateDateCell({ date, due, dueCol }) {
   );
 }
 
-function summarizeDocs(docStatus = []) {
-  if (docStatus.length === 0) return { label: 'No Charts', color: 'var(--neutral-200)' };
-  const pass = docStatus.filter(s => s === 'passed').length;
-  const fail = docStatus.filter(s => s === 'failed').length;
-  const pend = docStatus.filter(s => s === 'pending').length;
-  if (pass === docStatus.length) return { label: 'All Verified', color: 'var(--status-success)' };
-  if (fail === docStatus.length) return { label: 'All Failed',   color: 'var(--status-error)' };
-  if (pend === docStatus.length) return { label: 'All Pending',  color: 'var(--neutral-200)' };
-  if (fail > 0)                  return { label: `${fail} Failed`, color: 'var(--status-error)' };
-  return { label: `${pend} Pending`, color: 'var(--status-warning)' };
-}
-
 function HccEvidenceCell({ count, docStatus, onClick, onUpload }) {
   // No chart on file yet → ghost "Upload" link button (Fold Button variant
   // ghost = transparent bg + neutral-300 text). Click opens the upload
@@ -870,7 +858,7 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
                         onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
                       >
                         {expanded ? 'View Less' : `View More ${extraCount}`}
-                        <Icon name={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-500)" />
+                        <Icon name={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-300)" />
                       </button>
                     )}
                   </div>

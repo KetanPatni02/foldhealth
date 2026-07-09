@@ -123,7 +123,6 @@ export function HccWorklistTable() {
   const hccFilters = useAppStore(s => s.hccFilters);
   const saveHccFilter = useAppStore(s => s.saveHccFilter);
   const renameHccSavedFilter = useAppStore(s => s.renameHccSavedFilter);
-  const startHccUpload = useAppStore(s => s.startHccUpload);
   const openHccHistoryDrawer = useAppStore(s => s.openHccHistoryDrawer);
   const hccHiddenCols = useAppStore(s => s.hccHiddenCols);
   const toggleHccColumn = useAppStore(s => s.toggleHccColumn);

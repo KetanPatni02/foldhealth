@@ -82,8 +82,6 @@ export const FILTER_DEF_MAP = Object.fromEntries(FILTER_DEFS.map(d => [d.k, d]))
 // ── Predicate helpers — given a member and the active filter state, decide
 // whether the member passes. Used by the worklist `filtered` memo.
 
-const numeric = (x) => parseFloat(x) || 0;
-
 export function memberMatchesFilters(member, filters) {
   for (const [k, vals] of Object.entries(filters)) {
     if (!vals || !vals.length) continue;
