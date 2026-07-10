@@ -2383,11 +2383,18 @@ export const useAppStore = create((set, get) => ({
   // code-level gap status above. Passing the same action twice toggles it
   // off (undo).
   hccGapDosActions: {},
+  // Dismiss reason + note per (code × DOS) — populated by dismissHccGapDos,
+  // surfaced by the "Dismiss Reason" link on a dismissed row.
+  hccGapDosMeta: {},
   setHccGapDosAction: (code, dos, action) => {
     const key = `${code}|${dos}`;
     const prev = get().hccGapDosActions[key];
     const next = prev === action ? null : action;
-    set(s => ({ hccGapDosActions: { ...s.hccGapDosActions, [key]: next } }));
+    set(s => {
+      const meta = { ...s.hccGapDosMeta };
+      if (!next) delete meta[key]; // undo also clears any dismiss reason
+      return { hccGapDosActions: { ...s.hccGapDosActions, [key]: next }, hccGapDosMeta: meta };
+    });
     if (!next) return;
     const labels = {
       accepted: 'Accepted', rejected: 'Rejected',
@@ -2399,6 +2406,21 @@ export const useAppStore = create((set, get) => ({
       icds: [code],
       headline: `${labels[action]} ICD ${code} on DOS ${dos}`,
       from: 'Open', to: labels[action].split(' ')[0],
+    });
+  },
+  // Dismiss a (code × DOS) with a reason + optional note (Figma dismiss
+  // form). Sets the action to 'rejected' and records the reason.
+  dismissHccGapDos: (code, dos, reason, note) => {
+    const key = `${code}|${dos}`;
+    set(s => ({
+      hccGapDosActions: { ...s.hccGapDosActions, [key]: 'rejected' },
+      hccGapDosMeta: { ...s.hccGapDosMeta, [key]: { reason, note: note || '' } },
+    }));
+    get().addActivityEntry({
+      t: 'dismiss', by: 'You', role: 'Coder',
+      icds: [code],
+      headline: `Dismissed ICD ${code} on DOS ${dos} — ${reason}`,
+      from: 'Open', to: 'Dismissed',
     });
   },
 

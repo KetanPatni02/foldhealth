@@ -19,7 +19,7 @@ import {
   buildReviewStages,
   computeReviewProgress,
 } from './ReviewProgressPopover';
-import { getSweepIcdsForMember } from '../data/sweepIcds';
+import { SWEEP_ICD_DATA } from '../data/sweepIcds';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { RoleTooltip } from '../RoleTooltip';
 import { resolveCurrentAssignee } from '../HccWorklistRow';
@@ -294,6 +294,7 @@ export function DiagPanel() {
   const [dosMenuOpen, setDosMenuOpen] = useState(false);
   const dosMenuRef = useRef(null);
   const [addIcdOpen, setAddIcdOpen] = useState(false);
+  const [openDismissKey, setOpenDismissKey] = useState(null);
   const addIcdRef = useRef(null);
   const [focusIdx, setFocusIdx] = useState(0);
 
@@ -487,22 +488,46 @@ export function DiagPanel() {
 
   const sweepByCode = useMemo(() => {
     const m = new Map();
-    if (member?.name) getSweepIcdsForMember(member.name).forEach(s => m.set(s.code, s));
+    // Only a member's OWN sweep mapping (design reference patients). No
+    // `_default` fallback — otherwise generic dates would shadow the
+    // dos_list-derived rows and break worklist grouping coherence.
+    const own = member?.name ? SWEEP_ICD_DATA[member.name] : null;
+    if (own) own.forEach(s => m.set(s.code, s));
     return m;
   }, [member?.name]);
 
-  const cardIcds = useMemo(() => assocICDs
-    .filter(matchQ)
-    .map(icd => {
-      const sweep = sweepByCode.get(icd.code);
-      const base = sweep?.dos_entries?.length
-        ? sweep.dos_entries.map(e => ({ dos: e.dos, claimed: !!e.claimed }))
-        : [{ dos: dosList[0]?.date || member?.dos || '—', claimed: false, manual: icd.type === 'Manual' }];
-      const entries = dosFilter ? base.filter(e => e.dos === dosFilter) : base;
-      return { ...icd, entries };
-    })
-    .filter(c => c.entries.length > 0),
-  [assocICDs, sweepByCode, dosList, dosFilter, q]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Each ICD card lists a row per DOS the code appears on. Grouping mirrors
+  // the worklist: a DOS = one document/encounter (member.dos_list), each
+  // yielding several ICDs. When a member has an explicit sweep mapping
+  // (Annette, design reference) we use it; otherwise we deterministically
+  // spread each ICD across a subset of the record's own DOS dates so the
+  // drawer's grouping always stays coherent with the worklist.
+  const cardIcds = useMemo(() => {
+    const dates = dosList.map(d => d.date).filter(Boolean);
+    return assocICDs
+      .filter(matchQ)
+      .map((icd, idx) => {
+        const sweep = sweepByCode.get(icd.code);
+        let base;
+        if (sweep?.dos_entries?.length) {
+          base = sweep.dos_entries.map(e => ({ dos: e.dos, claimed: !!e.claimed }));
+        } else if (dates.length) {
+          // Chronic conditions (earlier codes) recur across more encounters;
+          // later codes appear on fewer. Deterministic — stable per render.
+          const count = Math.max(1, dates.length - (idx % dates.length));
+          base = dates.slice(0, count).map((d, i) => ({
+            dos: d,
+            claimed: idx === 0 && i === 0,
+            manual: icd.type === 'Manual',
+          }));
+        } else {
+          base = [{ dos: member?.dos || '—', claimed: false, manual: icd.type === 'Manual' }];
+        }
+        const entries = dosFilter ? base.filter(e => e.dos === dosFilter) : base;
+        return { ...icd, entries };
+      })
+      .filter(c => c.entries.length > 0);
+  }, [assocICDs, sweepByCode, dosList, dosFilter, q]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const suspectGroups = useMemo(() => {
     const m = new Map();
@@ -550,8 +575,14 @@ export function DiagPanel() {
         if (!focused) return;
         e.preventDefault();
         const [code, dos] = focused.split('|');
-        const action = { a: 'accepted', x: 'rejected', m: 'missed', d: 'deferred' }[key.toLowerCase()];
-        setHccGapDosAction(code, dos, action);
+        const k = key.toLowerCase();
+        if (k === 'x') {
+          // Reject opens the dismiss-reason form for the focused row
+          // (Figma: X → reason picker, not a silent dismiss).
+          setOpenDismissKey(focused);
+        } else {
+          setHccGapDosAction(code, dos, { a: 'accepted', m: 'missed', d: 'deferred' }[k]);
+        }
       }
     };
     window.addEventListener('keydown', onKey);
@@ -615,6 +646,18 @@ export function DiagPanel() {
       </div>
 
       <div className={styles.contentRow}>
+      {/* Workspace (document preview etc.) sits on the LEFT of the ICD
+          listing (Paper 1UD1 / 5IX) — rendered first so it's the left pane. */}
+      {diagLeftPanel && (
+        <LeftWorkspace
+          active={diagLeftPanel}
+          icdScope={diagActivityIcd}
+          onChange={setDiagTab}
+          onClose={() => setDiagLeftPanel(null)}
+          member={member}
+          currentDos={currentDos}
+        />
+      )}
       <div className={diagLeftPanel ? styles.rightPane : styles.rightPaneFull}>
       {/* ── Row 2: Patient Banner (shared component) ── */}
       <PatientBanner
@@ -835,6 +878,8 @@ export function DiagPanel() {
               onFocusRow={focusRowByKey}
               selectedKeys={selectedKeys}
               onToggleSelect={toggleSelected}
+              openDismissKey={openDismissKey}
+              onOpenDismiss={setOpenDismissKey}
             />
           ))}
 
@@ -882,17 +927,6 @@ export function DiagPanel() {
         </div>
       </div>
       </div>{/* ── /rightPane ── */}
-
-      {diagLeftPanel && (
-        <LeftWorkspace
-          active={diagLeftPanel}
-          icdScope={diagActivityIcd}
-          onChange={setDiagTab}
-          onClose={() => setDiagLeftPanel(null)}
-          member={member}
-          currentDos={currentDos}
-        />
-      )}
       </div>{/* ── /contentRow ── */}
     </Drawer>
   );

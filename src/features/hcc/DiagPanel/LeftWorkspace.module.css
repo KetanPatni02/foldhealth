@@ -3,9 +3,8 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  /* Workspace sits on the RIGHT side of the Diagnosis Gaps section, so the
-     divider is on its LEFT edge. */
-  border-left: 0.5px solid var(--neutral-150);
+  /* Workspace sits on the LEFT of the Diagnosis Gaps section (Paper 1UD1);
+     the divider is provided by the right pane's border-left. */
   background: var(--neutral-0);
   font-family: 'Inter', sans-serif;
   /* Smooth swipe-in when the panel opens (drawer width transitions at the
@@ -14,8 +13,8 @@
   will-change: transform, opacity;
 }
 @keyframes leftWsSwipeIn {
-  from { transform: translateX(40px); opacity: 0; }
-  to   { transform: translateX(0);    opacity: 1; }
+  from { transform: translateX(-40px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
   .wrap { animation: none; }

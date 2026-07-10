@@ -1,108 +1,123 @@
-import { useState } from 'react';
-import { Icon } from '../../../components/Icon/Icon';
+import { useState, useEffect } from 'react';
+import { jsPDF } from 'jspdf';
 import { getIcdsForMember } from '../data/icds';
 import styles from './DocEvidenceViewer.module.css';
 
 /**
  * DocEvidenceViewer — the source-document preview shown in the LeftWorkspace
- * Documents tab when an ICD is selected (Paper 1UD1). Dark PDF-style chrome
- * over a rendered clinical note; the selected ICD's Past-Medical-History
- * line is highlighted as the coding evidence.
+ * Documents tab when an ICD is selected (Paper 1UD1 / 5IX).
  *
- * Demo-stage: the note is synthesized from the member's diagnosis-gap data
- * (a real integration would render the actual source document with OCR
- * bounding-box highlights).
+ * Renders a real PDF (built client-side with jsPDF) inside an <iframe> so the
+ * BROWSER'S native PDF viewer provides the chrome — page nav, zoom, download,
+ * print — rather than a hand-built toolbar. The selected ICD's
+ * Past-Medical-History line is highlighted (yellow fill drawn behind the
+ * text) as the coding evidence.
+ *
+ * Demo-stage: the note is synthesized from the member's diagnosis-gap data;
+ * a real integration would stream the actual source document.
  */
 export function DocEvidenceViewer({ member, icdScope }) {
-  const [zoom, setZoom] = useState(100);
-  const icds = getIcdsForMember(member?.name);
+  const [url, setUrl] = useState(null);
+
+  // Build the blob URL in an effect (not useMemo) so each mount — including
+  // React StrictMode's double-mount — gets a FRESH url and revokes its own
+  // on cleanup. A memoised url would be revoked by the first cleanup and
+  // then reused stale on remount, giving a blank viewer.
+  useEffect(() => {
+    const next = buildNotePdfUrl(member, icdScope);
+    setUrl(next);
+    return () => { if (next) URL.revokeObjectURL(next); };
+  }, [member?.name, member?.dos, icdScope]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!url) return null;
+  return (
+    <iframe
+      key={url}
+      title="Source document"
+      src={url}
+      className={styles.frame}
+    />
+  );
+}
+
+// Build a one-page outpatient note as a PDF blob URL, highlighting the line
+// for `icdScope`. Returns a `blob:` URL (revoke it when done).
+function buildNotePdfUrl(member, icdScope) {
+  if (!member?.name) return null;
+  const icds = getIcdsForMember(member.name);
   const dos = member?.dos_list?.[0]?.date || member?.dos || '—';
   const provider = member?.rp || 'Dr. Aldo Richman';
-  const fileName = `${(member?.name || 'Patient').replace(/\s+/g, '')}_ClinicalNote.pdf`;
+  const first = member.name.split(' ')[0];
 
-  return (
-    <div className={styles.wrap}>
-      <div className={styles.toolbar}>
-        <Icon name="solar:hamburger-menu-linear" size={15} className={styles.toolbarMuted} />
-        <span className={styles.toolbarTitle}>{fileName}</span>
-        <span className={styles.toolbarPage}>
-          <span className={styles.toolbarPageNum}>1</span> / 2
-        </span>
-        <span className={styles.toolbarDivider} />
-        <button type="button" className={styles.toolbarBtn} aria-label="Zoom out" onClick={() => setZoom(z => Math.max(50, z - 10))}>
-          <Icon name="solar:minus-circle-linear" size={14} />
-        </button>
-        <span className={styles.toolbarZoom}>{zoom}%</span>
-        <button type="button" className={styles.toolbarBtn} aria-label="Zoom in" onClick={() => setZoom(z => Math.min(200, z + 10))}>
-          <Icon name="solar:add-circle-linear" size={14} />
-        </button>
-        <span className={styles.toolbarDivider} />
-        <button type="button" className={styles.toolbarBtn} aria-label="Download">
-          <Icon name="solar:download-minimalistic-linear" size={14} />
-        </button>
-        <button type="button" className={styles.toolbarBtn} aria-label="Print" onClick={() => window.print()}>
-          <Icon name="solar:printer-linear" size={14} />
-        </button>
-      </div>
+  const doc = new jsPDF({ unit: 'pt', format: 'letter' }); // 612 × 792 pt
+  const L = 56;               // left margin
+  const R = 612 - 56;         // right edge
+  let y = 64;
 
-      <div className={styles.scroll}>
-        <div className={styles.page} style={{ zoom: zoom / 100 }}>
-          <h1 className={styles.h1}>OUTPATIENT CLINIC VISIT NOTE</h1>
-          <p className={styles.meta}>
-            <strong>Patient:</strong> {member?.name} <strong>Date of Service:</strong> {dos}{' '}
-            <strong>Visit Type:</strong> Follow-up — Chronic Disease Management{' '}
-            <strong>Attending Physician:</strong> {provider}
-          </p>
+  const heading = (text) => {
+    y += 10;
+    doc.setFont('helvetica', 'bold').setFontSize(11).setTextColor(30, 41, 59);
+    doc.text(text, L, y);
+    y += 14;
+  };
+  const para = (text) => {
+    doc.setFont('helvetica', 'normal').setFontSize(10).setTextColor(51, 65, 85);
+    const lines = doc.splitTextToSize(text, R - L);
+    doc.text(lines, L, y);
+    y += lines.length * 14 + 4;
+  };
 
-          <h2 className={styles.h2}>CHIEF COMPLAINT</h2>
-          <p className={styles.body}>
-            Follow-up for chronic condition management and medication review.
-          </p>
-
-          <h2 className={styles.h2}>HISTORY OF PRESENT ILLNESS</h2>
-          <p className={styles.body}>
-            {member?.name?.split(' ')[0]} is a patient with known chronic conditions presenting
-            today for scheduled follow-up. Reports ongoing symptoms consistent with the
-            documented problem list below. Adherent to medications; home readings have been
-            variable. No acute distress at time of visit.
-          </p>
-
-          <h2 className={styles.h2}>PAST MEDICAL HISTORY</h2>
-          <ul className={styles.pmh}>
-            {icds.map(icd => (
-              <li
-                key={icd.code}
-                className={icd.code === icdScope ? styles.hl : undefined}
-              >
-                {icd.desc} ({icd.code})
-              </li>
-            ))}
-          </ul>
-
-          <h2 className={styles.h2}>MEDICATIONS</h2>
-          <ul className={styles.list}>
-            <li>Metformin (dose per medication list)</li>
-            <li>ACE inhibitor / ARB for nephroprotection</li>
-            <li>Insulin regimen as prescribed</li>
-            <li>Nutritional supplementation per dietary plan</li>
-          </ul>
-
-          <h2 className={styles.h2}>ALLERGIES</h2>
-          <p className={styles.body}>NKDA</p>
-
-          <h2 className={styles.h2}>SOCIAL HISTORY</h2>
-          <p className={styles.body}>Lives at home. Support from family. Non-smoker. Denies alcohol use.</p>
-
-          <h2 className={styles.h2}>REVIEW OF SYSTEMS</h2>
-          <p className={styles.body}>
-            Constitutional: no fever or chills. Otherwise negative except as noted in HPI.
-          </p>
-
-          <p className={styles.signoff}>
-            Electronically signed · {provider} · {dos}
-          </p>
-        </div>
-      </div>
-    </div>
+  doc.setFont('helvetica', 'bold').setFontSize(13).setTextColor(15, 23, 42);
+  doc.text('OUTPATIENT CLINIC VISIT NOTE', L, y);
+  y += 20;
+  doc.setFont('helvetica', 'normal').setFontSize(10).setTextColor(51, 65, 85);
+  doc.text(
+    doc.splitTextToSize(
+      `Patient: ${member.name}    Date of Service: ${dos}    Visit Type: Follow-up — Chronic Disease Management    Attending Physician: ${provider}`,
+      R - L,
+    ),
+    L, y,
   );
+  y += 34;
+
+  heading('CHIEF COMPLAINT');
+  para('Follow-up for chronic condition management and medication review.');
+
+  heading('HISTORY OF PRESENT ILLNESS');
+  para(`${first} is a patient with known chronic conditions presenting today for scheduled follow-up. Reports ongoing symptoms consistent with the documented problem list below. Adherent to medications; home readings have been variable. No acute distress at time of visit.`);
+
+  heading('PAST MEDICAL HISTORY');
+  doc.setFont('helvetica', 'normal').setFontSize(10);
+  icds.forEach((icd) => {
+    const line = `•  ${icd.desc} (${icd.code})`;
+    const wrapped = doc.splitTextToSize(line, R - L - 12);
+    const blockH = wrapped.length * 13;
+    if (icd.code === icdScope) {
+      // Evidence highlight — yellow fill behind the matched line.
+      doc.setFillColor(255, 234, 138);
+      doc.rect(L - 3, y - 9, R - L + 6, blockH + 2, 'F');
+    }
+    doc.setTextColor(icd.code === icdScope ? 30 : 51, icd.code === icdScope ? 27 : 65, icd.code === icdScope ? 12 : 85);
+    doc.text(wrapped, L + 8, y);
+    y += blockH + 3;
+  });
+
+  heading('MEDICATIONS');
+  ['Metformin (dose per medication list)', 'ACE inhibitor / ARB for nephroprotection', 'Insulin regimen as prescribed', 'Nutritional supplementation per dietary plan']
+    .forEach((m) => { doc.setFont('helvetica', 'normal').setFontSize(10).setTextColor(51, 65, 85); doc.text(`•  ${m}`, L + 8, y); y += 14; });
+
+  heading('ALLERGIES');
+  para('NKDA');
+  heading('SOCIAL HISTORY');
+  para('Lives at home. Support from family. Non-smoker. Denies alcohol use.');
+  heading('REVIEW OF SYSTEMS');
+  para('Constitutional: no fever or chills. Otherwise negative except as noted in HPI.');
+
+  y += 12;
+  doc.setDrawColor(203, 213, 225).line(L, y, R, y);
+  y += 16;
+  doc.setFont('helvetica', 'italic').setFontSize(9).setTextColor(100, 116, 139);
+  doc.text(`Electronically signed · ${provider} · ${dos}`, L, y);
+
+  return doc.output('bloburl').toString();
 }

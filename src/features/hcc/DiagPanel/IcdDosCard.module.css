@@ -153,11 +153,50 @@
 }
 .rejectBtn:hover { background: var(--neutral-50); }
 .rejectBtnActive {
-  background: var(--status-error);
-  border-color: var(--status-error);
-  color: var(--neutral-0);
+  background: var(--primary-25);
+  border-color: var(--primary-300);
+  color: var(--primary-300);
 }
-.rejectBtnActive:hover { background: var(--status-error); }
+
+/* Resolved-state pills (Figma ICD-Import: Accepted / Dismissed) */
+.acceptedPill,
+.dismissedPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 500 13px/1.3 'Inter', sans-serif;
+  white-space: nowrap;
+}
+.acceptedPill { color: var(--status-success-bright); }
+.dismissedPill { color: var(--status-error); }
+
+.undoBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--neutral-400);
+}
+.undoBtn:hover { background: var(--neutral-50); }
+
+/* "Dismiss Reason ⓘ" link shown on a dismissed row */
+.dismissReasonLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: 400 12px/1.3 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.dismissReasonLink:hover { color: var(--neutral-500); text-decoration: underline; }
 .moreBtn {
   display: inline-flex;
   align-items: center;
@@ -207,4 +246,36 @@
   flex-shrink: 0;
   accent-color: var(--primary-300);
   cursor: pointer;
+}
+
+/* ── Inline dismiss-reason form (Figma 4696:135817) ── */
+.dismissForm {
+  margin: 4px 0 8px;
+  padding: 14px 16px;
+  background: var(--neutral-25);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dismissTitle {
+  font: 600 13px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.reasonList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.noteLabel {
+  font: 400 12px/1.3 'Inter', sans-serif;
+  color: var(--neutral-400);
+  margin-top: 2px;
+}
+.dismissActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
 }
