@@ -11,7 +11,7 @@ import { IcdSearch } from '../../../components/IcdSearch/IcdSearch';
 import { Switch } from '../../../components/Switch/Switch';
 import { IcdRow } from './IcdRow';
 import { IcdDosCard } from './IcdDosCard';
-import { HccSuspectGroup } from './HccSuspectGroup';
+import { SuspectCard } from './HccSuspectGroup';
 import { DosStatusMenu } from './DosStatusMenu';
 import { LeftWorkspace } from './LeftWorkspace';
 import {
@@ -24,7 +24,8 @@ import { SWEEP_ICD_DATA } from '../data/sweepIcds';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { RoleTooltip } from '../RoleTooltip';
 import { resolveCurrentAssignee } from '../HccWorklistRow';
-import { ROLE_LABEL, staffForRole } from '../assignment/astranaStaff';
+import { RoleAssigneePicker } from '../RoleAssigneePicker';
+import { ROLE_LABEL } from '../assignment/astranaStaff';
 import { dosKey } from '../assignment/dosState';
 import styles from './DiagPanel.module.css';
 
@@ -35,140 +36,42 @@ import styles from './DiagPanel.module.css';
 // dashed-outline placeholder. For Billing Ready records, shows a green
 // check chip. Hovering opens a RoleTooltip with the role label.
 /**
- * UnassignedAssignTrigger — interactive dashed avatar slot.
- * Clicking opens a portal popover with candidates pulled from configured
- * Care Teams (members whose teamType matches the role) + Astrana staff in
- * the same role bucket. Selecting a candidate dispatches `hccReassignRole`
- * so the DOS gains an owner without leaving the DiagPanel.
+ * UnassignedAssignTrigger — interactive dashed avatar slot. Clicking opens the
+ * shared searchable RoleAssigneePicker (every platform user), so assigning a
+ * DOS owner from the DiagPanel behaves exactly like the worklist role cells.
  */
 function UnassignedAssignTrigger({ role, memberId, dosDate }) {
-  const btnRef = useRef(null);
-  const [pos, setPos] = useState(null);
-  const teams = useAppStore(s => s.hccCareTeams);
-  const reassign = useAppStore(s => s.hccReassignRole);
-  const showToast = useAppStore(s => s.showToast);
-
-  const candidates = (() => {
-    const teamType = ROLE_LABEL[role];
-    const fromTeams = (teams || [])
-      .filter(t => t.kind === 'hcc' && t.teamType === teamType)
-      .flatMap(t => (t.members || []).map(m => ({
-        id: m.userId, name: m.name, initials: m.initials,
-        roles: m.roles, source: 'team', teamName: t.name,
-      })));
-    const seen = new Set(fromTeams.map(c => c.id));
-    const fromAstrana = staffForRole(role)
-      .filter(s => !seen.has(s.id))
-      .map(s => ({
-        id: s.id, name: s.name, initials: s.initials,
-        roles: ROLE_LABEL[s.role], source: 'astrana',
-      }));
-    return [...fromTeams, ...fromAstrana];
-  })();
-
-  useEffect(() => {
-    if (!pos) return;
-    const onDoc = (e) => {
-      if (!btnRef.current?.contains(e.target)
-          && !e.target.closest?.('[data-assign-menu]')) setPos(null);
-    };
-    const onKey = (e) => { if (e.key === 'Escape') setPos(null); };
-    document.addEventListener('mousedown', onDoc);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDoc);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [pos]);
-
-  const open = () => {
-    const r = btnRef.current?.getBoundingClientRect();
-    if (!r) return;
-    setPos({ top: r.bottom + 4, left: Math.max(8, r.right - 280) });
-  };
-  const onPick = (cand) => {
-    if (!memberId || !dosDate) {
-      showToast('Cannot assign — missing DOS context.');
-      setPos(null);
-      return;
-    }
-    reassign(memberId, dosDate, role, cand.id, 'current-user', 'Assigned from DiagPanel');
-    showToast(`${cand.name} assigned as ${ROLE_LABEL[role]}.`);
-    setPos(null);
-  };
-
   return (
-    <RoleTooltip
-      name="Unassigned"
-      role={`Awaiting ${ROLE_LABEL[role] || role} — click to assign`}
-      initials="—"
-      variant="provider"
-    >
-      <button
-        type="button"
-        ref={btnRef}
-        onClick={(e) => { e.stopPropagation(); pos ? setPos(null) : open(); }}
-        style={{
-          width: 24, height: 24, borderRadius: 6,
-          background: 'var(--neutral-50)',
-          border: '0.5px dashed var(--neutral-200)',
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0, cursor: 'pointer', padding: 0,
-        }}
-      >
-        <Icon name="solar:user-plus-rounded-linear" size={14} color="var(--neutral-300)" />
-      </button>
-      {pos && createPortal(
-        <div
-          data-assign-menu
-          style={{
-            position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999,
-            minWidth: 280, maxHeight: 280, overflowY: 'auto',
-            background: 'var(--neutral-0)',
-            border: '0.5px solid var(--neutral-150)',
-            borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-            padding: 4, fontFamily: 'Inter, sans-serif',
-          }}
-          onClick={(e) => e.stopPropagation()}
+    <RoleAssigneePicker
+      role={role}
+      memberId={memberId}
+      dosDate={dosDate}
+      align="right"
+      reason="Assigned from DiagPanel"
+      trigger={({ ref, onClick }) => (
+        <RoleTooltip
+          name="Unassigned"
+          role={`Awaiting ${ROLE_LABEL[role] || role} — click to assign`}
+          initials="—"
+          variant="provider"
         >
-          <div style={{
-            fontSize: 12, fontWeight: 500, color: 'var(--neutral-400)',
-            padding: '6px 8px', borderBottom: '0.5px solid var(--neutral-100)',
-            marginBottom: 4,
-          }}>
-            Assign {ROLE_LABEL[role]}
-          </div>
-          {candidates.length === 0 ? (
-            <div style={{ padding: 12, fontSize: 12, color: 'var(--neutral-300)', textAlign: 'center' }}>
-              No candidates available.
-            </div>
-          ) : candidates.map(c => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => onPick(c)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '6px 8px', border: 'none', background: 'transparent',
-                borderRadius: 4, cursor: 'pointer', textAlign: 'left',
-                width: '100%', fontFamily: 'Inter, sans-serif',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--neutral-50)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-            >
-              <Avatar variant="assignee" initials={c.initials} />
-              <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: 'var(--neutral-500)' }}>
-                {c.name}
-              </span>
-              <span style={{ fontSize: 11, color: 'var(--neutral-300)' }}>
-                {c.source === 'team' ? `Team: ${c.teamName}` : c.roles}
-              </span>
-            </button>
-          ))}
-        </div>,
-        document.body,
+          <button
+            type="button"
+            ref={ref}
+            onClick={onClick}
+            style={{
+              width: 24, height: 24, borderRadius: 6,
+              background: 'var(--neutral-50)',
+              border: '0.5px dashed var(--neutral-200)',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, cursor: 'pointer', padding: 0,
+            }}
+          >
+            <Icon name="solar:user-plus-rounded-linear" size={14} color="var(--neutral-300)" />
+          </button>
+        </RoleTooltip>
       )}
-    </RoleTooltip>
+    />
   );
 }
 
@@ -209,25 +112,41 @@ function AssigneeAvatar({ member, dosState, currentDos }) {
   const bg = isSupport ? 'var(--primary-50)'  : 'var(--secondary-100)';
   const border = isSupport ? 'var(--primary-200)' : 'var(--secondary-200)';
   const color = isSupport ? 'var(--primary-300)' : 'var(--secondary-300)';
+  // Active assignee is reassignable — matches the worklist: an in-flight step
+  // can change owner. Clicking opens the shared searchable picker.
   return (
-    <RoleTooltip
-      name={a.name}
-      role={ROLE_LABEL[a.role] || a.role}
-      initials={a.initials}
-      variant={isSupport ? 'patient' : 'provider'}
-    >
-      <span
-        style={{
-          width: 24, height: 24, borderRadius: 6,
-          background: bg, border: `0.5px solid ${border}`,
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0, fontSize: 10, fontWeight: 500, color,
-          fontFamily: 'Inter, sans-serif',
-        }}
-      >
-        {a.initials}
-      </span>
-    </RoleTooltip>
+    <RoleAssigneePicker
+      role={a.role}
+      memberId={member?.id}
+      dosDate={currentDos}
+      currentName={a.name}
+      align="right"
+      reason="Reassigned from DiagPanel"
+      trigger={({ ref, onClick }) => (
+        <RoleTooltip
+          name={a.name}
+          role={ROLE_LABEL[a.role] || a.role}
+          initials={a.initials}
+          variant={isSupport ? 'patient' : 'provider'}
+        >
+          <button
+            type="button"
+            ref={ref}
+            onClick={onClick}
+            title="Change assignee"
+            style={{
+              width: 24, height: 24, borderRadius: 6,
+              background: bg, border: `0.5px solid ${border}`,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, fontSize: 10, fontWeight: 500, color,
+              cursor: 'pointer', padding: 0,
+            }}
+          >
+            {a.initials}
+          </button>
+        </RoleTooltip>
+      )}
+    />
   );
 }
 
@@ -548,6 +467,21 @@ export function DiagPanel() {
     }
     return [...m.entries()].map(([hcc, icds]) => ({ hcc, icds }));
   }, [allNotAssoc, q]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Once a suspect / recapture is acted on (any DOS accepted/rejected/deferred/
+  // missed), it graduates up into "ICDs Associated with" — rendered as a normal
+  // ICD card (with a Suspected/Recaptured badge) whose entries are the acted
+  // DOS. Un-acted suspects stay below in the Suspects & Recaptures section.
+  const suspectIcds = useMemo(() => suspectGroups.flatMap(g => g.icds), [suspectGroups]);
+  const actedSuspects = useMemo(() =>
+    suspectIcds
+      .map(icd => ({ icd, keys: Object.keys(hccGapDosActions).filter(k => k.startsWith(`${icd.code}|`)) }))
+      .filter(x => x.keys.length > 0)
+      .map(({ icd, keys }) => ({ ...icd, entries: keys.map(k => ({ dos: k.split('|')[1] })) })),
+    [suspectIcds, hccGapDosActions]);
+  const pendingSuspects = useMemo(() =>
+    suspectIcds.filter(icd => !Object.keys(hccGapDosActions).some(k => k.startsWith(`${icd.code}|`))),
+    [suspectIcds, hccGapDosActions]);
 
   // ── Keyboard model — a focus ring walks the flat list of DOS rows;
   // A/X/M/D act on the focused row, Enter opens the Documents workspace.
@@ -906,7 +840,7 @@ export function DiagPanel() {
         )}
 
         <div className={styles.cardsFlow}>
-          {cardIcds.length === 0 && suspectGroups.length === 0 && (
+          {cardIcds.length === 0 && actedSuspects.length === 0 && pendingSuspects.length === 0 && (
             <div className={styles.empty}>
               <Icon name="solar:file-text-linear" size={32} color="var(--neutral-200)" />
               <p>No diagnosis gaps {q ? 'match your search' : 'recorded yet for this member'}.</p>
@@ -924,20 +858,31 @@ export function DiagPanel() {
               onActed={advanceFocusAfterAction}
             />
           ))}
+          {/* Acted suspects graduate into the associated list as normal cards. */}
+          {actedSuspects.map((icd, i) => (
+            <IcdDosCard
+              key={`acted-suspect-${icd.code}-${i}`}
+              icd={icd}
+              focusKey={focusKey}
+              selectedKeys={selectedKeys}
+              onToggleSelect={toggleSelected}
+              openDismissKey={openDismissKey}
+              onOpenDismiss={setOpenDismissKey}
+              onActed={advanceFocusAfterAction}
+            />
+          ))}
 
-          {suspectGroups.length > 0 && (
+          {pendingSuspects.length > 0 && (
             <div className={styles.assocHeader}>
               <span className={styles.assocTitle}>Suspects and Recaptures</span>
             </div>
           )}
-          {suspectGroups.map((g, i) => (
-            <HccSuspectGroup
-              key={`${g.hcc}-${i}`}
-              hcc={g.hcc}
-              icds={g.icds}
+          {pendingSuspects.map((icd, i) => (
+            <SuspectCard
+              key={`suspect-${icd.code}-${i}`}
+              icd={icd}
               dosList={dosList}
               member={member}
-              defaultOpen={i === 0}
             />
           ))}
         </div>

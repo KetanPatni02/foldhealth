@@ -402,7 +402,7 @@ function DosBlock({ block, providerOptions, onChange, onRemove }) {
 
       {/* ICD Codes */}
       <div className={styles.icdSection}>
-        <span className={styles.fieldLabel}>ICD Codes</span>
+        <span className={styles.fieldLabel}>ICD Codes<span className={styles.req}>•</span></span>
         <IcdSearch
           placeholder="Search and Add ICD Code & Description, HCC Code & Description"
           excludeCodes={(block.icds || []).map(i => i.code)}
@@ -426,6 +426,9 @@ function DosBlock({ block, providerOptions, onChange, onRemove }) {
             </button>
           </div>
         ))}
+        {(block.icds || []).length === 0 && (
+          <div className={styles.icdEmptyHint}>Add at least one ICD code to save this DOS.</div>
+        )}
       </div>
       </div>
     </div>
@@ -456,7 +459,9 @@ export function HccAddDosDrawer() {
 
   if (!member) return null;
 
-  const canSave = blocks.some(b => b.dos && b.provider && b.pos && b.docType);
+  // Every mandatory field must be present — including at least one ICD, so a
+  // worklist record is never created with a zero ICD count.
+  const canSave = blocks.some(b => b.dos && b.provider && b.pos && b.docType && (b.icds?.length > 0));
 
   const setBlock = (idx, next) => setBlocks(bs => bs.map((b, i) => i === idx ? next : b));
   // Deleting the only DOS clears it back to a fresh empty block.

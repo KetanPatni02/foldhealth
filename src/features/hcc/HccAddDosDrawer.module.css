@@ -265,6 +265,11 @@
 
 /* ── ICD Codes ──────────────────────────────────────────────────── */
 .icdSection { display: flex; flex-direction: column; gap: 10px; }
+.icdEmptyHint {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
 .icdRow {
   display: flex;
   align-items: flex-start;

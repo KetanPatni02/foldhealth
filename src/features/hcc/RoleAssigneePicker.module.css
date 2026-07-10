@@ -1,0 +1,84 @@
+/* Shared searchable role-assignee picker popover (worklist + DiagPanel). */
+.menu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 260px;
+  max-width: 320px;
+  max-height: 320px;
+  display: flex;
+  flex-direction: column;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+  padding: 6px;
+}
+.title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  padding: 6px 8px 4px;
+  border-bottom: 0.5px solid var(--neutral-100);
+  margin-bottom: 2px;
+}
+.search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 2px 6px;
+  padding: 5px 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+}
+.input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-500);
+}
+.input::placeholder { color: var(--neutral-300); }
+.list {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+.item:hover { background: var(--neutral-50); }
+.itemActive { background: var(--primary-25); }
+.name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.role {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+.empty {
+  padding: 10px;
+  font-size: 12px;
+  color: var(--neutral-300);
+  text-align: center;
+}

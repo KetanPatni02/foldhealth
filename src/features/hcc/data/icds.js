@@ -182,7 +182,91 @@ export const ICDS = {
     { code:"I48.0",  desc:"Paroxysmal atrial fibrillation",                                              hcc:"HCC 96 - Atrial Fibrillation",       status:"Dismissed",   type:null,       docs:1, cmts:0, notes:0, raf:0.421, last:"08/28/2026", by:"E. Johnson (Support Team)", dismissReason:"Resolved prior to encounter" },
   ],
 };
-export const getIcdsForMember = (name) => ICDS[name] || [];
+// ── Deterministic ICD generator ─────────────────────────────────────────
+// The curated ICDS map above only covers the design-reference patients. The
+// worklist (Supabase) carries many more members, so any patient without a
+// curated entry would otherwise open an empty drawer + empty hover popover.
+// This generator produces a coherent, stable-per-name set of HCC gaps for ANY
+// member so every patient has related ICDs. Multi-DOS association is handled
+// downstream (DiagPanel spreads each ICD across the member's dos_list).
+
+// FNV-1a string hash — stable, so a member always gets the same generated set.
+function hashStr(s) {
+  let h = 2166136261;
+  for (let i = 0; i < String(s).length; i++) {
+    h ^= String(s).charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+// Clinically-common HCC-relevant ICDs (V28 categories), used to compose a
+// member's suspected/open gaps.
+const ICD_POOL = [
+  { code: 'E11.22', desc: 'Type 2 diabetes with diabetic chronic kidney disease',              hcc: 'HCC 37 - Diabetes with Chronic Complications', raf: 0.302 },
+  { code: 'E11.65', desc: 'Type 2 diabetes mellitus with hyperglycemia',                       hcc: 'HCC 38 - Diabetes with Glycemic Complications', raf: 0.166 },
+  { code: 'E11.9',  desc: 'Type 2 diabetes mellitus without complications',                    hcc: 'HCC 36 - Diabetes without Complication', raf: 0.105 },
+  { code: 'I50.9',  desc: 'Heart failure, unspecified',                                        hcc: 'HCC 226 - Heart Failure, Except End-Stage', raf: 0.331 },
+  { code: 'I50.23', desc: 'Acute on chronic systolic (congestive) heart failure',             hcc: 'HCC 224 - Acute on Chronic Heart Failure', raf: 0.389 },
+  { code: 'J44.1',  desc: 'COPD with acute exacerbation',                                      hcc: 'HCC 280 - Chronic Obstructive Pulmonary Disease', raf: 0.331 },
+  { code: 'N18.3',  desc: 'Chronic kidney disease, stage 3',                                   hcc: 'HCC 329 - Chronic Kidney Disease, Stage 3', raf: 0.127 },
+  { code: 'N18.4',  desc: 'Chronic kidney disease, stage 4',                                   hcc: 'HCC 328 - Chronic Kidney Disease, Stage 4', raf: 0.237 },
+  { code: 'F32.1',  desc: 'Major depressive disorder, single episode, moderate',              hcc: 'HCC 155 - Major Depressive Disorder, Moderate', raf: 0.309 },
+  { code: 'F33.1',  desc: 'Major depressive disorder, recurrent, moderate',                    hcc: 'HCC 155 - Major Depressive Disorder, Moderate', raf: 0.309 },
+  { code: 'I48.0',  desc: 'Paroxysmal atrial fibrillation',                                    hcc: 'HCC 238 - Cardiac Arrhythmias and Heart Block', raf: 0.268 },
+  { code: 'I48.91', desc: 'Unspecified atrial fibrillation',                                   hcc: 'HCC 238 - Cardiac Arrhythmias and Heart Block', raf: 0.268 },
+  { code: 'E66.01', desc: 'Morbid (severe) obesity due to excess calories',                    hcc: 'HCC 48 - Morbid Obesity', raf: 0.250 },
+  { code: 'I25.10', desc: 'Atherosclerotic heart disease of native coronary artery',          hcc: 'HCC 264 - Vascular Disease', raf: 0.288 },
+  { code: 'J45.50', desc: 'Severe persistent asthma, uncomplicated',                           hcc: 'HCC 279 - Asthma', raf: 0.271 },
+  { code: 'G47.33', desc: 'Obstructive sleep apnea',                                           hcc: 'HCC Not Linked', raf: 0.000 },
+];
+
+const GEN_STATUS = ['New', 'In Progress', 'New', 'Accepted', 'New'];
+
+// Pick `count` distinct pool entries, stepping by a per-member stride so the
+// selection is varied but deterministic.
+function pickPool(seed, count) {
+  const step = 3 + (seed % 5);
+  const seen = new Set();
+  const out = [];
+  let idx = seed % ICD_POOL.length;
+  while (out.length < count && seen.size < ICD_POOL.length) {
+    if (!seen.has(idx)) { seen.add(idx); out.push(ICD_POOL[idx]); }
+    idx = (idx + step) % ICD_POOL.length;
+  }
+  return out;
+}
+
+function generateIcdsForMember(name) {
+  const h = hashStr(name);
+  const count = 3 + (h % 4); // 3–6 linked/suspect ICDs
+  return pickPool(h, count).map((base) => {
+    const hh = hashStr(`${name}|${base.code}`);
+    const isAI = hh % 3 === 0 && base.hcc !== 'HCC Not Linked';
+    return {
+      code: base.code, desc: base.desc, hcc: base.hcc, raf: base.raf,
+      status: isAI ? 'New' : GEN_STATUS[hh % GEN_STATUS.length],
+      type: isAI ? (hh % 2 ? 'Suspect' : 'Recapture') : null,
+      docs: 1 + (hh % 3), cmts: hh % 2, notes: (hh >> 3) % 2,
+    };
+  });
+}
+
+function generateNotLinkedForMember(name) {
+  const h = hashStr(`${name}::notlinked`);
+  const count = 1 + (h % 2); // 1–2 unlinked suspects/recaptures
+  return pickPool(h, count).map((base) => {
+    const hh = hashStr(`${name}|nl|${base.code}`);
+    return {
+      code: base.code, desc: base.desc, hcc: base.hcc,
+      status: 'New', type: hh % 2 ? 'Suspect' : 'Recapture',
+      docs: 1, cmts: hh % 2,
+    };
+  });
+}
+
+export const getIcdsForMember = (name) =>
+  ICDS[name] || (name ? generateIcdsForMember(name) : []);
 
 
 export const NOT_LINKED = {
@@ -250,7 +334,8 @@ export const NOT_LINKED = {
     { code:"J44.1",   desc:"COPD with acute exacerbation",                                 hcc:"HCC 111 - COPD",                     status:"New", type:"Recapture", docs:1, cmts:0 },
   ],
 };
-export const getNotLinkedForMember = (name) => NOT_LINKED[name] || [];
+export const getNotLinkedForMember = (name) =>
+  NOT_LINKED[name] || (name ? generateNotLinkedForMember(name) : []);
 
 // Single source of truth for "open ICDs" — the worklist count badge AND the
 // hover popover both use this so they can never disagree. Open = not yet

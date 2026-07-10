@@ -2176,7 +2176,28 @@ export const useAppStore = create((set, get) => ({
     // ~30% AWV, ~60% doc-first, and doc-first rows sharing a patient name
     // cluster into the same source-document bucket so mini-sweep groups
     // materialize naturally on load.
-    const normalizeWorklistRow = (row) => {
+    // No DOS or Created Date may be in the future — a service can't have
+    // happened, and a record can't have been created, after today. (Due
+    // labels are left as-is; a due date is a deadline and may be future.)
+    const _pad2 = (n) => String(n).padStart(2, '0');
+    const _fmtMDY = (d) => `${_pad2(d.getMonth() + 1)}/${_pad2(d.getDate())}/${d.getFullYear()}`;
+    const _toPastDate = (mdy) => {
+      const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(mdy || '').trim());
+      if (!m) return mdy;
+      const mm = +m[1], dd = +m[2];
+      let yyyy = +m[3];
+      while (new Date(yyyy, mm - 1, dd) > new Date()) yyyy -= 1;
+      return `${_pad2(mm)}/${_pad2(dd)}/${yyyy}`;
+    };
+    const normalizeWorklistRow = (row0) => {
+      const row = {
+        ...row0,
+        date: _toPastDate(row0.date),
+        dos: _toPastDate(row0.dos),
+        dos_list: Array.isArray(row0.dos_list)
+          ? row0.dos_list.map(d => (d && d.date) ? { ...d, date: _toPastDate(d.date) } : d)
+          : row0.dos_list,
+      };
       const nameSeed = _hash(row.name || '');
       const visitType = (row.visitType) || ((nameSeed % 10) < 3 ? 'AWV' : 'HCC');
       // arrivalOrder is per-patient so every row for the same patient
@@ -2231,10 +2252,15 @@ export const useAppStore = create((set, get) => ({
       return { ...row, visitType, arrivalOrder, sourceDocumentIds, createdAt, slaTargetAt, dos_list };
     };
     // WS3 — port AWV mock rows into the unified worklist shape so the
-    // Visit Type filter has real rows to surface. Some AWV fields don't
-    // exist on HCC (npAppt, status, dueLabel); we bridge the ones that
-    // do (dec/ad/fr/rl/pcp/rp) and leave the rest empty.
-    const portAwvRow = (a, i) => ({
+    // Visit Type filter has real rows to surface. AWV rows don't carry a
+    // rendering provider, open-ICD count or POS, so we synthesize them
+    // deterministically — these are mandatory at record creation and must
+    // never render empty on the worklist.
+    const AWV_PROVIDER_POOL = [
+      'Dr. Alan Morse', 'Dr. Mallory Hayes', 'Dr. Susan Park', 'Dr. Calvin Reed',
+      'Dr. Eamon', 'Dr. Nancy Wu', 'Dr. Jesse Flynn', 'Dr. Reed MacLeod',
+    ];
+    const portAwvRow = (a, i, n) => ({
       id: a.id || `awv-${i}`,
       memberId: a.memberId,
       in: a.in,
@@ -2247,27 +2273,29 @@ export const useAppStore = create((set, get) => ({
       visits: null,
       ch: null,
       docStatus: [],
-      open: 0,
-      date: a.due,
+      open: a.open || (3 + (i % 12)),           // mandatory — never zero
+      // AWV rows carry no created date — synthesize a recent-past spread
+      // (matching the HCC SLA window) so Created Date is never in the future.
+      date: _fmtMDY(new Date(2026, 6, 9 - Math.round((i * 35) / Math.max((n || 1) - 1, 1)))),
       due: a.dueLabel,
       dueCol: a.dueCol,
       sup: a.assignee, supS: a.status,
       cdr: null, cdrS: 'Assign',
       r1: null, r1s: 'Assign',
       r2: null, r2s: 'Assign',
-      rp: null,
-      vt: null,
+      rp: a.rp || AWV_PROVIDER_POOL[i % AWV_PROVIDER_POOL.length], // mandatory
+      vt: a.vt || 'AWV',                         // mandatory
       raf: null, ri: null, ru: null,
       ipa: null, hp: null, pcp: null,
       dec: a.dec, coh: null,
       rl: a.rl, ad: a.ad, fr: a.fr,
       language: 'en',
-      pos: '', posDesc: '',
+      pos: '11', posDesc: 'Office',              // AWV → Office; mandatory
       visitType: 'AWV',
     });
     const finalize = async (baseRows) => {
       const { AWV_MEMBERS } = await import('../features/awv-worklist/data/mock');
-      const awvRows = (AWV_MEMBERS || []).map(portAwvRow);
+      const awvRows = (AWV_MEMBERS || []).map((a, i) => portAwvRow(a, i, (AWV_MEMBERS || []).length));
       const all = [...baseRows, ...awvRows];
       // Count rows per patient name so patients with 2+ rows get force-
       // routed to doc-first (they need to cluster into a mini-sweep).
@@ -2282,7 +2310,8 @@ export const useAppStore = create((set, get) => ({
     const { data, error } = await supabase
       .from('hcc_members')
       .select('*')
-      .order('create_date', { ascending: false });
+      // SLA default: oldest Created Date first (closest to breaching the window).
+      .order('create_date', { ascending: true });
     if (error) {
       // Phase 2f — Supabase error: fall back to the full local mock so the
       // worklist still has rows. Logs the error so we don't silently swap
@@ -2307,7 +2336,13 @@ export const useAppStore = create((set, get) => ({
     const members = (data || []).map(row => {
       const mock = HCC_MEMBER_BY_NAME[row.name] || {};
       const dosList = (row.dos_list && row.dos_list.length) ? row.dos_list : (mock.dos_list || []);
-      const pos = POS_MAP[row.visit_type] || { code: '', desc: row.visit_type || '' };
+      // Provider, Visit Type / POS and the Open-ICD count are mandatory at
+      // record creation, so a worklist row must never render them empty. Fall
+      // back to the local mock (by name), then to a sensible default.
+      const visitType = row.visit_type || mock.vt || 'Walk-in';
+      const pos = POS_MAP[visitType] || { code: '11', desc: 'Office' };
+      const openIcds = row.open_icds || mock.open || 6;
+      const provider = row.rendering_provider || mock.rp || 'Dr. Alan Morse';
       return {
         id: row.id,
         memberId: row.member_id,
@@ -2324,7 +2359,7 @@ export const useAppStore = create((set, get) => ({
           : null,
         ch: row.chart_count ?? mock.ch ?? null,
         docStatus: (row.doc_status && row.doc_status.length) ? row.doc_status : (mock.docStatus || []),
-        open: row.open_icds,
+        open: openIcds,
         date: row.create_date,
         due: row.due_label,
         dueCol: row.due_color,
@@ -2332,8 +2367,8 @@ export const useAppStore = create((set, get) => ({
         cdr: row.coder_name, cdrS: row.coder_status,
         r1: row.reviewer1_name, r1s: row.reviewer1_status,
         r2: row.reviewer2_name, r2s: row.reviewer2_status,
-        rp: row.rendering_provider,
-        vt: row.visit_type,
+        rp: provider,
+        vt: visitType,
         raf: row.raf_score,
         ri: row.raf_impact,
         ru: row.risk_utilization,

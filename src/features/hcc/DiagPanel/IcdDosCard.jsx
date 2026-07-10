@@ -4,20 +4,9 @@ import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
 import { CheckIcon } from '../../../components/Icon/CheckIcon';
 import { CloseIcon } from '../../../components/Icon/CloseIcon';
-import { RadioButton } from '../../../components/RadioButton/RadioButton';
-import { Textarea } from '../../../components/Textarea/Textarea';
-import { Button } from '../../../components/Button/Button';
 import { Checkbox } from '../../../components/ui/checkbox';
+import { DismissReasonForm } from './DismissReasonForm';
 import styles from './IcdDosCard.module.css';
-
-// Dismiss reasons — Figma ICD-Import states (node 4696:135817).
-const DISMISS_REASONS = [
-  'Condition Not Present (Unsupported, Resolved or Transient)',
-  'Condition Ruled Out',
-  'Historical Diagnosis',
-  'Coding Error or Misclassification',
-  'Other',
-];
 
 /**
  * IcdDosCard — one card per ICD with one action row per DOS (Paper 1WXT /
@@ -95,6 +84,11 @@ export function IcdDosCard({ icd, focusKey, selectedKeys, onToggleSelect, openDi
             >
               {icd.desc}
             </span>
+            {(icd.type === 'Suspect' || icd.type === 'Recapture') && (
+              <span className={styles.suspectBadge}>
+                {icd.type === 'Recapture' ? 'Recaptured' : 'Suspected'}
+              </span>
+            )}
           </div>
           {icd.by && (
             <div className={styles.lastLine}>
@@ -260,7 +254,7 @@ function DosActionRow({
       </div>
 
       {dismissOpen && (
-        <DismissForm
+        <DismissReasonForm
           initialReason={meta?.reason || ''}
           initialNote={meta?.note || ''}
           onCancel={onCloseDismiss}
@@ -285,33 +279,3 @@ function DosActionRow({
   );
 }
 
-// Inline dismiss-reason form (Figma 4696:135817) — reason radios + note,
-// Confirm disabled until a reason is chosen.
-function DismissForm({ initialReason, initialNote, onCancel, onConfirm }) {
-  const [reason, setReason] = useState(initialReason);
-  const [note, setNote] = useState(initialNote);
-
-  return (
-    <div className={styles.dismissForm}>
-      <div className={styles.dismissTitle}>Select a reason and add a note to dismiss the diagnosis gap:</div>
-      <div className={styles.reasonList}>
-        {DISMISS_REASONS.map((r) => (
-          <RadioButton
-            key={r}
-            name="dismiss-reason"
-            value={r}
-            label={r}
-            checked={reason === r}
-            onChange={() => setReason(r)}
-          />
-        ))}
-      </div>
-      <div className={styles.noteLabel}>Note</div>
-      <Textarea rows={3} placeholder="Add a Note" value={note} onChange={(e) => setNote(e.target.value)} />
-      <div className={styles.dismissActions}>
-        <Button variant="primary" size="S" disabled={!reason} onClick={() => onConfirm(reason, note)}>Confirm</Button>
-        <Button variant="secondary" size="S" onClick={onCancel}>Cancel</Button>
-      </div>
-    </div>
-  );
-}
