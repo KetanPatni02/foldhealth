@@ -137,6 +137,16 @@
 .checkTd { vertical-align: middle; }
 .memberTd { vertical-align: middle; }
 
+/* Checkbox wrapper — matches the member identity block height (avatar +
+   name + meta) and centers the checkbox, so it aligns to the avatar's
+   vertical center even when the cell top-aligns to the first DOS row of
+   an expanded record. */
+.checkAlign {
+  display: flex;
+  align-items: center;
+  height: 35px;
+}
+
 .patientCell {
   display: flex;
   align-items: center;

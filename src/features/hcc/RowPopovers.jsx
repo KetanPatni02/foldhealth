@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { getRafBreakdown } from './data/raf';
 import { getChartDocs } from './data/chartDocs';
+import { getOpenIcdsForMember } from './data/icds';
 import styles from './RowPopovers.module.css';
 
 // ── Generic hover-popup helpers ───────────────────────────────────────────
@@ -327,21 +328,14 @@ export function ActionsMenuPopover({ anchorRect, onClose, onAction }) {
 export function OpenIcdsHoverPopover({
   anchorRect,
   member,
-  icds,        // ICDs from getICDs(member.name)
-  notLinked,   // ICDs from getNotLinked(member.name)
   onIcdClick,  // (code: string) => void
   onEnter,
   onLeave,
 }) {
   if (!anchorRect) return null;
-  const isAISuggested = (i) => ['Suspect', 'Recapture'].includes(i.type || '');
-  const open = (icds || []).filter(i => i.status !== 'Dismissed' && i.status !== 'Accepted');
-  const linked = open.filter(i => !isAISuggested(i));
-  const notLinkedClean = [
-    ...open.filter(i => isAISuggested(i)),
-    ...(notLinked || []).filter(i => i.status !== 'Dismissed' && i.status !== 'Accepted'),
-  ];
-  const all = [...linked, ...notLinkedClean];
+  // Shared open-ICD computation — identical to the worklist count badge, so
+  // the list here always matches the number shown upfront.
+  const { linked, notLinkedClean, all } = getOpenIcdsForMember(member?.name);
   const dos = member?.dos_list?.[0]?.date || member?.dos || null;
 
   const W = 296;

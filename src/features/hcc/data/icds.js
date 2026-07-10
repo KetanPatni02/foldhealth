@@ -252,3 +252,19 @@ export const NOT_LINKED = {
 };
 export const getNotLinkedForMember = (name) => NOT_LINKED[name] || [];
 
+// Single source of truth for "open ICDs" — the worklist count badge AND the
+// hover popover both use this so they can never disagree. Open = not yet
+// Accepted or Dismissed. AI-suggested (Suspect/Recapture) linked ICDs are
+// grouped with the genuinely unlinked ones, matching the popover's sections.
+const isIcdAISuggested = (i) => ['Suspect', 'Recapture'].includes(i.type || '');
+const isIcdOpen = (i) => i.status !== 'Dismissed' && i.status !== 'Accepted';
+export function getOpenIcdsForMember(name) {
+  const open = getIcdsForMember(name).filter(isIcdOpen);
+  const linked = open.filter((i) => !isIcdAISuggested(i));
+  const notLinkedClean = [
+    ...open.filter(isIcdAISuggested),
+    ...getNotLinkedForMember(name).filter(isIcdOpen),
+  ];
+  return { linked, notLinkedClean, all: [...linked, ...notLinkedClean] };
+}
+

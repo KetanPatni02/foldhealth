@@ -13,7 +13,7 @@ import {
   ActionsMenuPopover,
   OpenIcdsHoverPopover,
 } from './RowPopovers';
-import { getIcdsForMember, getNotLinkedForMember } from './data/icds';
+import { getOpenIcdsForMember } from './data/icds';
 import { getStatusSpec } from './statusSpec';
 import { StatusIcon } from './StatusIcon';
 import { staffById, staffForRole, ROLE_LABEL, ROLES } from './assignment/astranaStaff';
@@ -307,7 +307,10 @@ function addDaysToDate(dateStr, days) {
 }
 const ROLE_OFFSET = { sup: 0, cdr: 7, r1: 14, r2: 21 };
 
-function OpenIcdsCell({ count, member, onOpenWithCode }) {
+function OpenIcdsCell({ member, onOpenWithCode }) {
+  // Count is derived from the SAME open-ICD list the popover renders, so the
+  // badge number always equals the number of ICDs shown on hover.
+  const count = getOpenIcdsForMember(member?.name).all.length;
   const cellRef = useRef(null);
   const openTimer = useRef(null);
   const closeTimer = useRef(null);
@@ -336,7 +339,7 @@ function OpenIcdsCell({ count, member, onOpenWithCode }) {
     clearTimeout(closeTimer.current);
   }, []);
 
-  if (count == null) return <span className={styles.muted}>—</span>;
+  if (!count) return <span className={styles.muted}>—</span>;
 
   return (
     <>
@@ -352,8 +355,6 @@ function OpenIcdsCell({ count, member, onOpenWithCode }) {
         <OpenIcdsHoverPopover
           anchorRect={rect}
           member={member}
-          icds={getIcdsForMember(member?.name)}
-          notLinked={getNotLinkedForMember(member?.name)}
           onIcdClick={onOpenWithCode}
           onEnter={cancelClose}
           onLeave={requestClose}
@@ -578,7 +579,6 @@ const DOS_INNER = {
   ),
   open: (entry, { openDiagPanel, member }) => (
     <OpenIcdsCell
-      count={entry.open ?? member.open}
       member={member}
       onOpenWithCode={(code) => openDiagPanel(member.id, { highlightCode: code, initialDos: entry.date })}
     />
@@ -786,11 +786,15 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
     >
       {/* Sticky left: checkbox */}
       <td className={`${styles.checkTd} ${styles.stickyLeft} ${styles.stickyCheck}`} onClick={(e) => e.stopPropagation()}>
-        <Checkbox
-          checked={checked}
-          onCheckedChange={() => selectHccMember(member.id)}
-          aria-label={`Select ${member.name}`}
-        />
+        {/* Centered against the 32px avatar so the checkbox lines up with
+            the member's avatar, not the top of a (possibly expanded) row. */}
+        <div className={styles.checkAlign}>
+          <Checkbox
+            checked={checked}
+            onCheckedChange={() => selectHccMember(member.id)}
+            aria-label={`Select ${member.name}`}
+          />
+        </div>
       </td>
 
       {/* Sticky left: member identity — renders once, top-aligned. */}
