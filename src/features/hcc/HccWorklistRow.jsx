@@ -308,7 +308,10 @@ function addDaysToDate(dateStr, days) {
 }
 const ROLE_OFFSET = { sup: 0, cdr: 7, r1: 14, r2: 21 };
 
-function OpenIcdsCell({ count, member, onOpenWithCode }) {
+function OpenIcdsCell({ member, onOpenWithCode }) {
+  // Count is derived from the SAME open-ICD list the popover renders, so the
+  // badge number always equals the number of ICDs shown on hover.
+  const count = getOpenIcdsForMember(member?.name).all.length;
   const cellRef = useRef(null);
   const openTimer = useRef(null);
   const closeTimer = useRef(null);
@@ -337,7 +340,7 @@ function OpenIcdsCell({ count, member, onOpenWithCode }) {
     clearTimeout(closeTimer.current);
   }, []);
 
-  if (count == null) return <span className={styles.muted}>—</span>;
+  if (!count) return <span className={styles.muted}>—</span>;
 
   return (
     <>
@@ -353,8 +356,6 @@ function OpenIcdsCell({ count, member, onOpenWithCode }) {
         <OpenIcdsHoverPopover
           anchorRect={rect}
           member={member}
-          icds={getIcdsForMember(member?.name)}
-          notLinked={getNotLinkedForMember(member?.name)}
           onIcdClick={onOpenWithCode}
           onEnter={cancelClose}
           onLeave={requestClose}
@@ -553,17 +554,46 @@ function AssigneeCell({ member, dosState }) {
 // record-level fact rendered once (top-aligned).
 const DOS_LEVEL_COLS = new Set(['dos', 'open', 'vt', 'rp', 'pos']);
 
-// Small circular source badge next to the DOS date (D=Document,
-// C=Claim, M=Manual). Deterministic per date so the demo is stable.
-const DOS_SOURCES = ['D', 'C', 'M'];
-function dosSourceLetter(date) {
-  let h = 0;
-  const s = String(date || '');
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0xffffffff;
-  return DOS_SOURCES[Math.abs(h) % DOS_SOURCES.length];
-}
+// Small circular source badge next to the DOS date (D=Document, C=Claim,
+// M=Manual). Classifier + meta come from the shared `dosSource` module so the
+// badge and the "DOS Source" filter agree on the source per date.
 function DosSourceBadge({ date }) {
-  return <span className={styles.dosSrcBadge} aria-hidden="true">{dosSourceLetter(date)}</span>;
+  const letter = dosSourceLetter(date);
+  const meta = DOS_SOURCE_META[letter] || DOS_SOURCE_META.D;
+  const [pos, setPos] = useState(null);
+  const ref = useRef(null);
+
+  const show = () => {
+    const r = ref.current?.getBoundingClientRect();
+    if (r) setPos({ top: r.bottom + 6, left: r.left + r.width / 2 });
+  };
+  const hide = () => setPos(null);
+
+  return (
+    <span
+      ref={ref}
+      className={[styles.dosSrcBadge, styles[meta.cls]].join(' ')}
+      aria-label={`${meta.label} · ${date}`}
+      onMouseEnter={show}
+      onFocus={show}
+      onMouseLeave={hide}
+      onBlur={hide}
+      tabIndex={0}
+    >
+      {letter}
+      {pos && createPortal(
+        <div className={styles.dosSrcTip} style={{ top: pos.top, left: pos.left }} role="tooltip">
+          <div className={styles.dosSrcTipHead}>
+            <Icon name="solar:document-text-linear" size={12} />
+            {meta.label}
+          </div>
+          <div className={styles.dosSrcTipMeta}>{meta.hint}</div>
+          <div className={styles.dosSrcTipDate}>DOS: {date}</div>
+        </div>,
+        document.body,
+      )}
+    </span>
+  );
 }
 
 // Inner content (NOT the <td>) for each DOS-level column, given one
@@ -579,7 +609,6 @@ const DOS_INNER = {
   ),
   open: (entry, { openDiagPanel, member }) => (
     <OpenIcdsCell
-      count={entry.open ?? member.open}
       member={member}
       onOpenWithCode={(code) => openDiagPanel(member.id, { highlightCode: code, initialDos: entry.date })}
     />
@@ -788,11 +817,15 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
     >
       {/* Sticky left: checkbox */}
       <td className={`${styles.checkTd} ${styles.stickyLeft} ${styles.stickyCheck}`} onClick={(e) => e.stopPropagation()}>
-        <Checkbox
-          checked={checked}
-          onCheckedChange={() => selectHccMember(member.id)}
-          aria-label={`Select ${member.name}`}
-        />
+        {/* Centered against the 32px avatar so the checkbox lines up with
+            the member's avatar, not the top of a (possibly expanded) row. */}
+        <div className={styles.checkAlign}>
+          <Checkbox
+            checked={checked}
+            onCheckedChange={() => selectHccMember(member.id)}
+            aria-label={`Select ${member.name}`}
+          />
+        </div>
       </td>
 
       {/* Sticky left: member identity — renders once, top-aligned. */}

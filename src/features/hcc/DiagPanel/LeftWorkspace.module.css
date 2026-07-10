@@ -1155,6 +1155,104 @@
   justify-self: start;
 }
 
+/* ── Inline claim detail (Figma 10891:325889) ─────────────────────────── */
+.claimDetailHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0 14px;
+}
+.claimBackBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  padding: 2px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.claimBackBtn:hover { background: var(--neutral-75); }
+.claimDetailTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+
+.claimSection {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.claimSectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--neutral-50);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.claimSectionTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neutral-400);
+}
+
+.claimInfoGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding: 12px 14px;
+}
+.claimField {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.claimFieldLabel {
+  font-size: 12px;
+  color: var(--neutral-300);
+}
+.claimFieldValue {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  font-variant-numeric: tabular-nums;
+}
+
+/* CPT / ICD code tables */
+.claimCodeTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+.claimCodeTable thead th {
+  padding: 8px 14px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.claimCodeTable thead th:first-child { width: 130px; }
+.claimCodeTable tbody td {
+  padding: 10px 14px;
+  font-size: 14px;
+  color: var(--neutral-400);
+  vertical-align: top;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.claimCodeTable tbody tr:last-child td { border-bottom: none; }
+.claimCode {
+  font-weight: 500;
+  color: var(--neutral-500);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.claimCodeDesc { color: var(--neutral-400); }
+
 /* ── History grid + cells ─────────────────────────────────────────────── */
 .historyGrid {
   display: grid;

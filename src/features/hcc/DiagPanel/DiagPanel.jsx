@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '../../../store/useAppStore';
 import { Drawer } from '../../../components/Drawer/Drawer';
@@ -8,6 +8,7 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Avatar } from '../../../components/Avatar/Avatar';
 import { PatientBanner } from '../../../components/PatientBanner/PatientBanner';
 import { IcdSearch } from '../../../components/IcdSearch/IcdSearch';
+import { Switch } from '../../../components/Switch/Switch';
 import { IcdRow } from './IcdRow';
 import { IcdDosCard } from './IcdDosCard';
 import { HccSuspectGroup } from './HccSuspectGroup';
@@ -262,8 +263,6 @@ export function DiagPanel() {
   const showToast = useAppStore(s => s.showToast);
   const fetchHccDiagnosisGaps = useAppStore(s => s.fetchHccDiagnosisGaps);
   const diagnosisGaps = useAppStore(s => s.hccDiagnosisGaps);
-  const diagDosFilter = useAppStore(s => s.diagDosFilter);
-  const setDiagDosFilter = useAppStore(s => s.setDiagDosFilter);
   const diagDosStatus = useAppStore(s => s.diagDosStatus);
   const setDiagDosStatus = useAppStore(s => s.setDiagDosStatus);
   // Assignment-engine read/write — drives the Coder stage pill below.
@@ -291,12 +290,16 @@ export function DiagPanel() {
   const [selectedKeys, setSelectedKeys] = useState(() => new Set());
   const [overriddenOpen, setOverriddenOpen] = useState(false);
   const [closedOpen, setClosedOpen] = useState(false);
-  const [dosMenuOpen, setDosMenuOpen] = useState(false);
-  const dosMenuRef = useRef(null);
+  // Expandable "ICDs Associated with N/M DOSs" section (Paper 1ZV3): a row
+  // per DOS with a toggle. Toggling a DOS off hides its ICD rows.
+  const [dosExpanded, setDosExpanded] = useState(false);
+  const [disabledDos, setDisabledDos] = useState(() => new Set());
   const [addIcdOpen, setAddIcdOpen] = useState(false);
   const [openDismissKey, setOpenDismissKey] = useState(null);
   const addIcdRef = useRef(null);
-  const [focusIdx, setFocusIdx] = useState(0);
+  // -1 = no DOS highlighted; a row lights up only once an ICD is selected,
+  // acted on, or reached via the keyboard.
+  const [focusIdx, setFocusIdx] = useState(-1);
 
   // Fetch diagnosis gaps from Supabase when member changes
   useEffect(() => {
@@ -346,9 +349,16 @@ export function DiagPanel() {
     return [];
   }, [member, diagDosStatus]);
 
-  // A concrete date narrows the cards' DOS rows; null / 'All DOSs' shows all.
-  const dosFilter = diagDosFilter && diagDosFilter !== 'All DOSs' ? diagDosFilter : null;
-  const currentDos = dosFilter || dosList[0]?.date || null;
+  // Enabled DOS dates = all except the ones toggled off. Cards show only
+  // entries whose DOS is enabled.
+  const enabledDates = useMemo(
+    () => dosList.map(d => d.date).filter(date => !disabledDos.has(date)),
+    [dosList, disabledDos],
+  );
+  const currentDos = dosList[0]?.date || null;
+
+  // Reset the per-DOS toggles when the member changes.
+  useEffect(() => { setDisabledDos(new Set()); setDosExpanded(false); }, [memberId]);
 
   // Lazily seed the assignment engine for this patient — idempotent.
   useEffect(() => {
@@ -523,11 +533,11 @@ export function DiagPanel() {
         } else {
           base = [{ dos: member?.dos || '—', claimed: false, manual: icd.type === 'Manual' }];
         }
-        const entries = dosFilter ? base.filter(e => e.dos === dosFilter) : base;
+        const entries = base.filter(e => !disabledDos.has(e.dos));
         return { ...icd, entries };
       })
       .filter(c => c.entries.length > 0);
-  }, [assocICDs, sweepByCode, dosList, dosFilter, q]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [assocICDs, sweepByCode, dosList, disabledDos, q]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const suspectGroups = useMemo(() => {
     const m = new Map();
@@ -547,12 +557,29 @@ export function DiagPanel() {
     [cardIcds],
   );
   const focusKey = rowKeys[Math.min(focusIdx, rowKeys.length - 1)] || null;
+  // The ICD being worked on (owns the focused DOS). The document evidence view
+  // follows this so the highlighted note line tracks the active ICD.
+  const activeIcdCode = focusKey ? focusKey.split('|')[0] : null;
 
   useEffect(() => {
     if (focusIdx > 0 && focusIdx >= rowKeys.length) {
       setFocusIdx(Math.max(0, rowKeys.length - 1));
     }
   }, [rowKeys.length, focusIdx]);
+
+  // After acting on a DOS, advance focus to the next un-acted row (searching
+  // forward, wrapping once) — this rolls onto the next ICD when the current
+  // one is fully worked. If nothing is left un-acted, focus stays put.
+  const advanceFocusAfterAction = useCallback((actedKey) => {
+    const actions = useAppStore.getState().hccGapDosActions;
+    const start = rowKeys.indexOf(actedKey);
+    if (start < 0) return;
+    for (let j = 1; j <= rowKeys.length; j++) {
+      const idx = (start + j) % rowKeys.length;
+      const k = rowKeys[idx];
+      if (k !== actedKey && !actions[k]) { setFocusIdx(idx); return; }
+    }
+  }, [rowKeys]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -578,22 +605,26 @@ export function DiagPanel() {
         const k = key.toLowerCase();
         if (k === 'x') {
           // Reject opens the dismiss-reason form for the focused row
-          // (Figma: X → reason picker, not a silent dismiss).
+          // (Figma: X → reason picker, not a silent dismiss). Advance happens
+          // on confirm, via the row's onConfirmDismiss.
           setOpenDismissKey(focused);
         } else {
           setHccGapDosAction(code, dos, { a: 'accepted', m: 'missed', d: 'deferred' }[k]);
+          // a/m/d toggle — only advance when the row ended up acted, not undone.
+          if (useAppStore.getState().hccGapDosActions[focused]) advanceFocusAfterAction(focused);
         }
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [rowKeys, focusIdx, setHccGapDosAction, setDiagLeftPanel]);
+  }, [rowKeys, focusIdx, setHccGapDosAction, setDiagLeftPanel, advanceFocusAfterAction]);
 
-  // Focused row follows the mouse too, so keyboard and pointer agree.
-  const focusRowByKey = (key) => {
-    const idx = rowKeys.indexOf(key);
+  // Selecting an ICD card highlights its first DOS automatically.
+  useEffect(() => {
+    if (!diagActivityIcd) return;
+    const idx = rowKeys.findIndex(k => k.startsWith(`${diagActivityIcd}|`));
     if (idx >= 0) setFocusIdx(idx);
-  };
+  }, [diagActivityIcd]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Bulk selection (row checkboxes → bulk Accept / Reject bar) ──
   const toggleSelected = (key) => setSelectedKeys(prev => {
@@ -611,22 +642,20 @@ export function DiagPanel() {
     setSelectedKeys(new Set());
   };
 
-  // Outside-click close for the DOS-filter menu and the +ICD popover.
+  // Outside-click close for the +ICD popover.
   useEffect(() => {
-    if (!dosMenuOpen && !addIcdOpen) return undefined;
+    if (!addIcdOpen) return undefined;
     const onDoc = (e) => {
-      if (dosMenuOpen && !dosMenuRef.current?.contains(e.target)) setDosMenuOpen(false);
-      if (addIcdOpen && !addIcdRef.current?.contains(e.target)) setAddIcdOpen(false);
+      if (!addIcdRef.current?.contains(e.target)) setAddIcdOpen(false);
     };
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
-  }, [dosMenuOpen, addIcdOpen]);
+  }, [addIcdOpen]);
 
   if (!member) return null;
 
   const rafImpact = (Number(member.ri) || 0).toFixed(3);
   const noop = (label) => () => showToast(`${label} — coming soon`);
-  const shownDosCount = dosFilter ? 1 : dosList.length;
 
   return (
     <Drawer
@@ -651,7 +680,7 @@ export function DiagPanel() {
       {diagLeftPanel && (
         <LeftWorkspace
           active={diagLeftPanel}
-          icdScope={diagActivityIcd}
+          icdScope={diagActivityIcd ? (activeIcdCode ?? diagActivityIcd) : null}
           onChange={setDiagTab}
           onClose={() => setDiagLeftPanel(null)}
           member={member}
@@ -814,37 +843,50 @@ export function DiagPanel() {
 
       {/* ── Body: ICD-first cards + HCC suspect groups + collapsed history ── */}
       <div className={styles.cardsList}>
-        {/* Section header — the DOS link filters which DOS rows show. */}
+        {/* Section header — the DOS badge expands an inline per-DOS panel
+            with toggles (Paper 1ZV3). Toggling a DOS off hides its rows. */}
         <div className={styles.assocHeader}>
           <span className={styles.assocTitle}>ICDs Associated with</span>
-          <span className={styles.dosLinkWrap} ref={dosMenuRef}>
-            <button type="button" className={styles.dosLink} onClick={() => setDosMenuOpen(o => !o)}>
-              {shownDosCount}/{dosList.length} DOSs
-              <Icon name="solar:alt-arrow-right-linear" size={13} color="var(--primary-300)" />
-            </button>
-            {dosMenuOpen && (
-              <div className={styles.dosMenu}>
-                <button
-                  type="button"
-                  className={[styles.dosMenuItem, !dosFilter ? styles.dosMenuItemActive : ''].filter(Boolean).join(' ')}
-                  onClick={() => { setDiagDosFilter(null); setDosMenuOpen(false); }}
-                >
-                  All DOSs
-                </button>
-                {dosList.map(d => (
-                  <button
-                    key={d.date}
-                    type="button"
-                    className={[styles.dosMenuItem, dosFilter === d.date ? styles.dosMenuItemActive : ''].filter(Boolean).join(' ')}
-                    onClick={() => { setDiagDosFilter(d.date); setDosMenuOpen(false); }}
-                  >
-                    {d.date}
-                  </button>
-                ))}
-              </div>
-            )}
-          </span>
+          <button
+            type="button"
+            className={styles.dosBadge}
+            onClick={() => setDosExpanded(o => !o)}
+            aria-expanded={dosExpanded}
+          >
+            {enabledDates.length}/{dosList.length} DOSs
+            <Icon name={dosExpanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--primary-300)" />
+          </button>
         </div>
+
+        {dosExpanded && dosList.length > 0 && (
+          <div className={styles.dosPanel}>
+            {dosList.map(d => {
+              const enabled = !disabledDos.has(d.date);
+              const provider = d.provider || member.rp || '—';
+              const pos = d.pos || d.posDesc || member.pos || member.posDesc || '—';
+              const vt = d.vt || member.vt || 'HCC';
+              return (
+                <div key={d.date} className={styles.dosPanelRow}>
+                  <div className={styles.dosPanelInfo}>
+                    <div className={styles.dosPanelDate}>{d.date}</div>
+                    <div className={styles.dosPanelMeta}>
+                      Rendering Provider: {provider} <span className={styles.dosPanelSep}>•</span> POS: {pos} <span className={styles.dosPanelSep}>•</span> Visit Type: {vt}
+                    </div>
+                  </div>
+                  <Switch
+                    checked={enabled}
+                    ariaLabel={`Toggle DOS ${d.date}`}
+                    onChange={() => setDisabledDos(prev => {
+                      const next = new Set(prev);
+                      if (next.has(d.date)) next.delete(d.date); else next.add(d.date);
+                      return next;
+                    })}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {selectedKeys.size > 0 && (
           <div className={styles.bulkBar}>
@@ -870,16 +912,16 @@ export function DiagPanel() {
               <p>No diagnosis gaps {q ? 'match your search' : 'recorded yet for this member'}.</p>
             </div>
           )}
-          {cardIcds.map(icd => (
+          {cardIcds.map((icd, i) => (
             <IcdDosCard
-              key={icd.code}
+              key={`card-${icd.code}-${i}`}
               icd={icd}
               focusKey={focusKey}
-              onFocusRow={focusRowByKey}
               selectedKeys={selectedKeys}
               onToggleSelect={toggleSelected}
               openDismissKey={openDismissKey}
               onOpenDismiss={setOpenDismissKey}
+              onActed={advanceFocusAfterAction}
             />
           ))}
 
@@ -890,7 +932,7 @@ export function DiagPanel() {
           )}
           {suspectGroups.map((g, i) => (
             <HccSuspectGroup
-              key={g.hcc}
+              key={`${g.hcc}-${i}`}
               hcc={g.hcc}
               icds={g.icds}
               dosList={dosList}

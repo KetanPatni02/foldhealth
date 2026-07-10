@@ -72,19 +72,54 @@
   align-items: center;
   gap: 6px;
 }
+/* DOS source badge — subtle colour-coded circle (Paper 21UX): the letter
+   colours by source (M=manual/orange, C=Cozeva/purple, D=document/grey). */
 .dosSrcBadge {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  border: 1px solid var(--neutral-200);
+  border: 0.5px solid var(--neutral-150);
   background: var(--neutral-50);
-  color: var(--neutral-400);
+  color: var(--neutral-300);
   font: 600 9px/1 'Inter', sans-serif;
   flex-shrink: 0;
+  cursor: default;
+  outline: none;
 }
+.srcDoc    { border-color: var(--neutral-150);   background: var(--neutral-50);   color: var(--neutral-300); }
+.srcClaims { border-color: var(--primary-200);   background: var(--primary-50);   color: var(--primary-300); }
+.srcManual { border-color: var(--secondary-200); background: var(--secondary-50); color: var(--secondary-300); }
+.dosSrcBadge:focus-visible { box-shadow: 0 0 0 2px var(--primary-100); }
+
+/* Hover tooltip — source of the encounter + its date. */
+.dosSrcTip {
+  position: fixed;
+  z-index: 500;
+  transform: translateX(-50%);
+  min-width: 160px;
+  padding: 8px 10px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dosSrcTipHead {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 600 12px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.dosSrcTipMeta { font: 400 11px/1.3 'Inter', sans-serif; color: var(--neutral-300); }
+.dosSrcTipDate { font: 500 11px/1.3 'Inter', sans-serif; color: var(--neutral-400); margin-top: 2px; }
 .posText {
   font: 400 14px/1.3 'Inter', sans-serif;
   color: var(--neutral-400);
@@ -136,6 +171,16 @@
 /* ── Member cell — exact clone of TOC WorklistRow .patientCell ── */
 .checkTd { vertical-align: middle; }
 .memberTd { vertical-align: middle; }
+
+/* Checkbox wrapper — matches the member identity block height (avatar +
+   name + meta) and centers the checkbox, so it aligns to the avatar's
+   vertical center even when the cell top-aligns to the first DOS row of
+   an expanded record. */
+.checkAlign {
+  display: flex;
+  align-items: center;
+  height: 35px;
+}
 
 .patientCell {
   display: flex;

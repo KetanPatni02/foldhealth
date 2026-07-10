@@ -5,16 +5,18 @@ import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { Button } from '../../components/Button/Button';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
 import { useTableSort } from '../../components/Table/useTableSort';
 import { InlineEditable } from '../../components/InlineEditable/InlineEditable';
 import { SortPopover } from '../../components/Popover/SortPopover';
 import { DueDateChip, getDueCategory } from './DueDateChip';
+import { SavedFiltersChip } from './SavedFiltersChip';
 import { FilterChipBar } from './FilterChipBar';
 import { FilterNameDialog } from './FilterNameDialog';
 import { ColumnConfigPopover } from './ColumnConfigPopover';
 import { HCC_COLUMNS, HCC_COL_MAP, MEMBER_SORT_ITEMS, orderColumns } from './columns';
-import { memberMatchesFilters } from './filters';
+import { memberMatchesFilters, countActiveFilters } from './filters';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { BulkBar } from '../../components/BulkBar/BulkBar';
 import { BulkChangeAssigneesDialog } from './BulkChangeAssigneesDialog';
@@ -222,6 +224,7 @@ export function HccWorklistTable() {
   };
 
   const hiddenSet = useMemo(() => new Set(hccHiddenCols), [hccHiddenCols]);
+  const activeFilterCount = countActiveFilters(hccFilters);
 
   if (hccMembersLoading) return <TableSkeleton rows={perPage} />;
 
@@ -242,6 +245,8 @@ export function HccWorklistTable() {
         </div>
 
         <div className={styles.tabRight}>
+          <SavedFiltersChip />
+          <span className={styles.iconDivider} />
           <div className={styles.searchWrap}>
             {searchOpen ? (
               <div className={styles.searchInput}>
@@ -271,26 +276,29 @@ export function HccWorklistTable() {
             size="L"
             tooltip={filterOpen ? 'Hide filters' : 'Show filters'}
             tooltipBelow
+            notification={activeFilterCount > 0}
+            count={activeFilterCount > 0 ? String(activeFilterCount) : undefined}
             className={filterOpen ? styles.iconActive : ''}
             onClick={() => setFilterOpen(v => !v)}
           />
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="solar:clock-circle-linear"
+            icon="solar:download-square-linear"
             size="L"
-            tooltip="History"
+            tooltip="Export"
             tooltipBelow
-            onClick={openHccHistoryDrawer}
+            onClick={() => showToast('Export — coming soon')}
           />
           <span className={styles.iconDivider} />
           <div ref={uploadBtnRef} style={{ position: 'relative', display: 'inline-flex' }}>
-            <ActionButton
-              icon="solar:upload-square-linear"
+            <Button
+              variant="alt"
               size="L"
-              tooltip="Upload Document"
-              tooltipBelow
+              leadingIcon="solar:add-circle-linear"
               onClick={() => setUploadMenuOpen(v => !v)}
-            />
+            >
+              Add Records
+            </Button>
             {uploadMenuOpen && (
               <UploadMenuPopover
                 anchorRef={uploadBtnRef}
@@ -300,11 +308,11 @@ export function HccWorklistTable() {
           </div>
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="solar:download-square-linear"
+            icon="solar:clock-circle-linear"
             size="L"
-            tooltip="Export"
+            tooltip="History"
             tooltipBelow
-            onClick={() => showToast('Export — coming soon')}
+            onClick={openHccHistoryDrawer}
           />
         </div>
       </div>

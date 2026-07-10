@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo, useLayoutEffect } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { CheckboxListPopover } from '../../components/Popover/CheckboxListPopover';
 import { RadioListPopover } from '../../components/Popover/RadioListPopover';
@@ -21,16 +21,69 @@ import styles from './FilterChipBar.module.css';
  * Props:
  *  - onSaveFilter (fn)  Open the parent's SaveFilterDialog.
  */
+const KEY_ORDER = Object.fromEntries(MORE_FILTER_ITEMS.map((x, i) => [x.k, i]));
+const orderKeys = (keys) => [...new Set(keys)].sort((a, b) => (KEY_ORDER[a] ?? 99) - (KEY_ORDER[b] ?? 99));
+
 export function FilterChipBar({ onSaveFilter }) {
   const hccFilters = useAppStore(s => s.hccFilters);
   const setHccFilter = useAppStore(s => s.setHccFilter);
   const clearHccFilters = useAppStore(s => s.clearHccFilters);
   const storedVisible = useAppStore(s => s.hccVisibleFilterKeys);
-  const toggleHccVisibleFilter = useAppStore(s => s.toggleHccVisibleFilter);
+  const setHccVisibleFilterKeys = useAppStore(s => s.setHccVisibleFilterKeys);
   const clearHccVisibleFilters = useAppStore(s => s.clearHccVisibleFilters);
   const showToast = useAppStore(s => s.showToast);
 
-  const visibleKeys = storedVisible ?? PRIMARY_FILTER_KEYS;
+  const chipsRef = useRef(null);
+  const measureRef = useRef(null);
+  // Auto-fit: which inactive PRIMARY chips fit one row (null until measured).
+  const [autoInactive, setAutoInactive] = useState(null);
+
+  const activeKeys = useMemo(
+    () => MORE_FILTER_ITEMS.map(x => x.k).filter(k => (hccFilters[k] || []).length > 0),
+    [hccFilters],
+  );
+  const customized = storedVisible != null;
+
+  // The chips actually shown in the bar. Customized → the user's set (+ any
+  // active filter). Default → active filters + the inactive PRIMARY chips
+  // that fit one row (measured); before measuring, show all (trimmed in the
+  // layout effect before paint, so no flash).
+  const inactivePrimary = useMemo(
+    () => PRIMARY_FILTER_KEYS.filter(k => !(hccFilters[k] || []).length),
+    [hccFilters],
+  );
+  const visibleKeys = useMemo(() => {
+    if (customized) return orderKeys([...storedVisible, ...activeKeys]);
+    const shownInactive = autoInactive ? inactivePrimary.filter(k => autoInactive.has(k)) : inactivePrimary;
+    return orderKeys([...activeKeys, ...shownInactive]);
+  }, [customized, storedVisible, activeKeys, inactivePrimary, autoInactive]);
+
+  // Measure (default mode only): fit inactive PRIMARY chips into one row after
+  // the always-shown active chips. Uses a hidden mirror so widths are stable
+  // regardless of what's currently trimmed. Re-runs on width change.
+  useLayoutEffect(() => {
+    if (customized) { setAutoInactive(null); return undefined; }
+    const container = chipsRef.current;
+    const mirror = measureRef.current;
+    if (!container || !mirror) return undefined;
+    const GAP = 6;
+    const widthOf = (k) => mirror.querySelector(`[data-mk="${k}"]`)?.offsetWidth ?? 0;
+    const compute = () => {
+      const avail = container.clientWidth;
+      let budget = avail;
+      activeKeys.forEach(k => { budget -= widthOf(k) + GAP; }); // active always shown
+      const fit = new Set();
+      for (const k of inactivePrimary) {
+        const w = widthOf(k) + GAP;
+        if (budget - w >= 0) { budget -= w; fit.add(k); } else break;
+      }
+      setAutoInactive(fit);
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [customized, activeKeys, inactivePrimary]);
 
   // Which chip popover is open: { key, rect } | null
   const [chipPop, setChipPop] = useState(null);
@@ -47,60 +100,67 @@ export function FilterChipBar({ onSaveFilter }) {
   };
   const closeMore = () => setMoreRect(null);
 
-  const hasActiveFilters = Object.values(hccFilters).some(v => Array.isArray(v) && v.length > 0);
+  // Toggle a filter's presence in the bar from More Filters. Operates on the
+  // current *effective* visible set so it's consistent in auto-fit mode too.
+  const toggleVisible = (k) => {
+    const next = new Set(visibleKeys);
+    if (next.has(k)) next.delete(k); else next.add(k);
+    setHccVisibleFilterKeys([...next]);
+  };
+
+  const openChipFor = (k, currentTarget) => {
+    const item = MORE_FILTER_ITEMS.find(x => x.k === k);
+    const def = FILTER_DEF_MAP[k];
+    if (!def) { showToast(`Filter "${item?.label}" — coming soon`); return; }
+    if (['multi', 'radio', 'range', 'date'].includes(def.type)) openChip(k, currentTarget);
+    else showToast(`Filter "${item?.label}" popover — not yet wired`);
+  };
+
+  const renderChip = (k, mirror) => {
+    const item = MORE_FILTER_ITEMS.find(x => x.k === k);
+    if (!item) return null;
+    const vals = hccFilters[k] || [];
+    const active = vals.length > 0;
+    return (
+      <button
+        key={k}
+        {...(mirror ? { 'data-mk': k, tabIndex: -1, 'aria-hidden': true } : {})}
+        type="button"
+        className={[styles.chip, active ? styles.chipActive : ''].join(' ')}
+        onClick={mirror ? undefined : (e) => openChipFor(k, e.currentTarget)}
+      >
+        <span className={styles.chipLabel}>{item.label}</span>
+        {active ? (
+          <>
+            <span className={styles.divider} aria-hidden="true">|</span>
+            <span className={styles.chipValue}>{summarize(k, vals)}</span>
+            <span
+              className={styles.clearIcon}
+              role="button"
+              aria-label={`Clear ${item.label} filter`}
+              onClick={mirror ? undefined : (e) => { e.stopPropagation(); setHccFilter(k, []); }}
+            >
+              <Icon name="solar:close-circle-linear" size={12} color="var(--primary-300)" />
+            </span>
+          </>
+        ) : (
+          <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--neutral-300)" />
+        )}
+      </button>
+    );
+  };
+
+  const hasActiveFilters = activeKeys.length > 0;
 
   return (
     <div className={styles.bar}>
-      <div className={styles.chips}>
-        {visibleKeys.map((k) => {
-          const item = MORE_FILTER_ITEMS.find(x => x.k === k);
-          if (!item) return null;
-          const def = FILTER_DEF_MAP[k];
-          const vals = hccFilters[k] || [];
-          const active = vals.length > 0;
-          return (
-            <button
-              key={k}
-              type="button"
-              className={[styles.chip, active ? styles.chipActive : ''].join(' ')}
-              onClick={(e) => {
-                if (!def) {
-                  showToast(`Filter "${item.label}" — coming soon`);
-                  return;
-                }
-                if (
-                  def.type === 'multi' ||
-                  def.type === 'radio' ||
-                  def.type === 'range' ||
-                  def.type === 'date'
-                ) {
-                  openChip(k, e.currentTarget);
-                } else {
-                  showToast(`Filter "${item.label}" popover — not yet wired`);
-                }
-              }}
-            >
-              <span className={styles.chipLabel}>{item.label}</span>
-              {active && (
-                <>
-                  <span className={styles.divider} aria-hidden="true">|</span>
-                  <span className={styles.chipValue}>{summarize(k, vals)}</span>
-                  <span
-                    className={styles.clearIcon}
-                    role="button"
-                    aria-label={`Clear ${item.label} filter`}
-                    onClick={(e) => { e.stopPropagation(); setHccFilter(k, []); }}
-                  >
-                    <Icon name="solar:close-circle-linear" size={12} color="var(--primary-300)" />
-                  </span>
-                </>
-              )}
-              {!active && (
-                <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--neutral-300)" />
-              )}
-            </button>
-          );
-        })}
+      <div className={styles.chips} ref={chipsRef}>
+        {visibleKeys.map((k) => renderChip(k, false))}
+      </div>
+
+      {/* Hidden mirror — all PRIMARY chips, for stable width measurement. */}
+      <div className={styles.measure} ref={measureRef} aria-hidden="true">
+        {PRIMARY_FILTER_KEYS.map((k) => renderChip(k, true))}
       </div>
 
       <div className={styles.right}>
@@ -156,6 +216,7 @@ export function FilterChipBar({ onSaveFilter }) {
               selected={current}
               onChange={setVals}
               onClose={closeChip}
+              searchable={def.searchable}
             />
           );
         }
@@ -212,7 +273,7 @@ export function FilterChipBar({ onSaveFilter }) {
         <MoreFiltersPopover
           anchorRect={moreRect}
           visibleKeys={visibleKeys}
-          onToggle={toggleHccVisibleFilter}
+          onToggle={toggleVisible}
           onClear={clearHccVisibleFilters}
           onClose={closeMore}
         />
@@ -225,7 +286,7 @@ export function FilterChipBar({ onSaveFilter }) {
 function summarize(k, vals) {
   if (k === 'dec' && vals.length >= 2) return `${vals[0]}–${vals[1]}`;
   // Date-range filters store ISO strings — show MM/DD format on the chip.
-  if (['cd', 'dob', 'lvd'].includes(k) && vals.length >= 2) {
+  if (['cd', 'dos', 'dob', 'lvd'].includes(k) && vals.length >= 2) {
     return `${formatShortDate(vals[0])} – ${formatShortDate(vals[1])}`;
   }
   if (vals.length > 2) return `${vals[0]} +${vals.length - 1}`;

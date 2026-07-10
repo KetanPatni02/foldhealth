@@ -63,9 +63,9 @@ export function HccSuspectGroup({ hcc, icds, dosList = [], member, defaultOpen =
 
       {open && (
         <div className={styles.body}>
-          {icds.map((icd) => (
+          {icds.map((icd, i) => (
             <SuspectRow
-              key={icd.code}
+              key={`${icd.code}-${i}`}
               icd={icd}
               dosList={dosList}
               member={member}

@@ -15,6 +15,13 @@ import { HEDIS_MEMBERS } from '../src/features/hedis-worklist/data/mock.js';
 import { APCM_PATIENTS } from '../src/features/apcm-billing/data/mock.js';
 import { FALLBACK_ICDS } from '../src/lib/icd/catalog.js';
 import { POS_CODES } from '../src/features/hcc/data/posCodes.js';
+import { ICDS, NOT_LINKED } from '../src/features/hcc/data/icds.js';
+import { HCC_MEMBER_BY_NAME } from '../src/features/hcc/data/mock.js';
+
+// Patients whose HCC diagnosis gaps have been modernized to V28 + 2025/26
+// dates (see docs/features/hcc-coding-workflow.md). Re-seeding rewrites just
+// these members' gaps from the mock so the DB matches the source of truth.
+const HCC_MODERNIZED = ['Annette Brave', 'William Jammy', 'Grace Hill', 'Kevin Brown', 'Jessica Clark'];
 
 // ── Config ─────────────────────────────────────────────────────────────────────
 
@@ -185,6 +192,28 @@ function icdToRow(i) {
   };
 }
 
+// Mock ICD → hcc_diagnosis_gaps row. Deterministic id (member::code) makes
+// the re-seed idempotent.
+function gapToRow(name, i, isLinked) {
+  return {
+    id:               `${name}::${i.code}`,
+    member_name:      name,
+    code:             i.code,
+    description:      i.desc,
+    hcc_category:     i.hcc,
+    status:           i.status || 'New',
+    type:             i.type ?? null,
+    docs_count:       i.docs ?? 0,
+    comments_count:   i.cmts ?? 0,
+    notes_count:      i.notes ?? 0,
+    raf_weight:       i.raf ?? 0,
+    last_activity:    i.last ?? null,
+    last_activity_by: i.by ?? null,
+    dismiss_reason:   i.dismissReason ?? null,
+    is_linked:        isLinked,
+  };
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -248,6 +277,32 @@ async function main() {
     .from('pos_codes')
     .upsert(POS_CODES.map(p => ({ code: p.code, name: p.name })), { onConflict: 'code' });
   if (pe) { console.error('  ✗', pe.message); } else { console.log(`  ✓ ${POS_CODES.length} POS codes`); }
+
+  // Re-seed HCC gaps + member DOS dates for the modernized patients. The
+  // gaps table has no (member_name, code) unique key, so we delete-then-
+  // insert per member (deterministic ids keep it idempotent).
+  console.log('Re-seeding HCC diagnosis gaps (V28) for modernized patients...');
+  for (const name of HCC_MODERNIZED) {
+    const byId = new Map();
+    for (const i of (ICDS[name] || [])) byId.set(`${name}::${i.code}`, gapToRow(name, i, true));
+    for (const i of (NOT_LINKED[name] || [])) {
+      const id = `${name}::${i.code}`;
+      if (!byId.has(id)) byId.set(id, gapToRow(name, i, false));
+    }
+    const rows = [...byId.values()];
+    await supabase.from('hcc_diagnosis_gaps').delete().eq('member_name', name);
+    const { error: ge } = await supabase.from('hcc_diagnosis_gaps').insert(rows);
+    if (ge) { console.error(`  ✗ ${name}:`, ge.message); continue; }
+    const mem = HCC_MEMBER_BY_NAME[name];
+    if (mem?.dos_list?.length) {
+      const { error: me } = await supabase
+        .from('hcc_members')
+        .update({ dos_list: mem.dos_list })
+        .eq('name', name);
+      if (me) console.error(`  ✗ ${name} dos_list:`, me.message);
+    }
+    console.log(`  ✓ ${name} — ${rows.length} gaps`);
+  }
 
   console.log('\n✅  Seed complete. Run `bun run dev` to verify.\n');
 }

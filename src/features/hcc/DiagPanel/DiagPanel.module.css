@@ -716,51 +716,60 @@
   font-weight: 500;
   color: var(--neutral-400);
 }
-.dosLinkWrap { position: relative; display: inline-flex; }
-.dosLink {
+/* "N/M DOSs" badge — expands the per-DOS panel (Paper 1ZV3). */
+.dosBadge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: none;
-  border: none;
-  padding: 2px 4px;
+  min-width: 18px;
+  padding: 2px 6px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
+  background: var(--primary-25);
+  border: 0.5px solid color-mix(in srgb, var(--primary-300) 20%, transparent);
+  font-size: 12px;
+  font-weight: 400;
   color: var(--primary-300);
 }
-.dosLink:hover { background: var(--primary-25); }
-.dosMenu {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  z-index: 60;
-  min-width: 160px;
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 8px;
-  box-shadow: var(--shadow-popover);
-  padding: 4px;
+.dosBadge:hover { background: var(--primary-50); }
+
+/* Inline expanded per-DOS panel — a row per DOS with a toggle. */
+.dosPanel {
   display: flex;
   flex-direction: column;
+  flex-shrink: 0; /* overflow:hidden makes it shrinkable in the flex column — keep full height */
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  overflow: hidden;
 }
-.dosMenuItem {
-  text-align: left;
-  background: none;
-  border: none;
-  border-radius: 6px;
-  padding: 7px 8px;
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--neutral-500);
+.dosPanelRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 0.5px solid var(--neutral-150);
 }
-.dosMenuItem:hover { background: var(--neutral-50); }
-.dosMenuItemActive {
-  background: var(--primary-25);
-  color: var(--primary-300);
-  font-weight: 500;
+.dosPanelRow:last-child { border-bottom: none; }
+.dosPanelInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
 }
+.dosPanelDate {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-400);
+}
+.dosPanelMeta {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.dosPanelSep { color: var(--neutral-200); margin: 0 2px; }
 
 /* ── Cards flow (ICD cards + HCC suspect groups) ── */
 .cardsFlow {
