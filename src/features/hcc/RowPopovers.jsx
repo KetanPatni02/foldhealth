@@ -174,7 +174,7 @@ const DOC_STATUS_STYLE = {
   Failed:  { color: 'var(--status-error)',   bg: 'var(--status-error-light)',   border: 'rgba(215,40,37,0.2)',   icon: 'solar:info-circle-linear' },
 };
 
-export function ChartPopover({ anchorRect, member, onClose, onUpload, onSelectChart }) {
+export function ChartPopover({ anchorRect, member, charts, onClose, onUpload, onSelectChart, onViewMore }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
     document.addEventListener('keydown', onKey);
@@ -182,7 +182,7 @@ export function ChartPopover({ anchorRect, member, onClose, onUpload, onSelectCh
   }, [onClose]);
 
   if (!anchorRect) return null;
-  const allDocs = getChartDocs(member);
+  const allDocs = charts || getChartDocs(member);
   const SHOW = 3;
   const visible = allDocs.slice(0, SHOW);
   const more = allDocs.length - SHOW;
@@ -223,7 +223,7 @@ export function ChartPopover({ anchorRect, member, onClose, onUpload, onSelectCh
           <button
             type="button"
             className={styles.chartUploadBtn}
-            onClick={() => { onClose?.(); onUpload?.(); }}
+            onClick={() => onUpload?.()}
           >
             <Icon name="solar:upload-minimalistic-linear" size={13} color="var(--primary-300)" />
             <span>Upload New Chart</span>
@@ -264,8 +264,8 @@ export function ChartPopover({ anchorRect, member, onClose, onUpload, onSelectCh
           })}
         </div>
         {more > 0 && (
-          <button type="button" className={styles.chartMoreBtn}>
-            <span>View More {more}</span>
+          <button type="button" className={styles.chartMoreBtn} onClick={() => { onClose?.(); onViewMore?.(); }}>
+            <span>{`View ${more} more`}</span>
             <Icon name="solar:alt-arrow-right-linear" size={11} color="var(--primary-300)" />
           </button>
         )}

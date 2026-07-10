@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
@@ -14,7 +14,9 @@ import {
   OpenIcdsHoverPopover,
 } from './RowPopovers';
 import { ChartDetailDrawer } from './ChartDetailDrawer';
-import { getIcdsForMember, getNotLinkedForMember } from './data/icds';
+import { getChartDocs } from './data/chartDocs';
+import { dosSourceLetter, DOS_SOURCE_META } from './dosSource';
+import { getIcdsForMember, getNotLinkedForMember, getOpenIcdsForMember } from './data/icds';
 import { getStatusSpec } from './statusSpec';
 import { StatusIcon } from './StatusIcon';
 import { staffById, staffForRole, ROLE_LABEL, ROLES } from './assignment/astranaStaff';
@@ -70,11 +72,11 @@ function CreateDateCell({ date, due, dueCol }) {
   );
 }
 
-function HccEvidenceCell({ count, docStatus, onClick, onUpload }) {
+function HccEvidenceCell({ charts, onClick, onUpload }) {
   // No chart on file yet → ghost "Upload" link button (Fold Button variant
   // ghost = transparent bg + neutral-300 text). Click opens the upload
   // drawer for this member.
-  if (count == null) {
+  if (!charts || charts.length === 0) {
     return (
       <Button
         variant="ghost"
@@ -89,7 +91,8 @@ function HccEvidenceCell({ count, docStatus, onClick, onUpload }) {
   // Status line (Figma 4680:138476): when every chart shares a status,
   // show a single dot + "All Passed / Pending / Failed"; when mixed, show
   // per-status dots with counts (●2 ●1).
-  const list = docStatus || [];
+  const count = charts.length;
+  const list = charts.map(d => (d.status || 'pending').toLowerCase());
   const pass = list.filter(s => s === 'passed').length;
   const fail = list.filter(s => s === 'failed').length;
   const pend = list.filter(s => s === 'pending').length;
@@ -635,11 +638,10 @@ const CELL_RENDERERS = {
       <CreateDateCell date={member.date} due={member.due} dueCol={member.dueCol} />
     </td>
   ),
-  evidence: ({ member, openChart, openUpload }) => (
+  evidence: ({ member, charts, openChart, openUpload }) => (
     <td key="evidence" data-col="evidence" className={styles.colEvidence} onClick={(e) => e.stopPropagation()}>
       <HccEvidenceCell
-        count={member.ch}
-        docStatus={member.docStatus || []}
+        charts={charts}
         onClick={openChart}
         onUpload={openUpload}
       />
@@ -792,6 +794,8 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
   const [chartRect, setChartRect] = useState(null);
   const [chartDetail, setChartDetail] = useState(null);
   const [actionsRect, setActionsRect] = useState(null);
+  const addedCharts = useAppStore(s => s.hccAddedCharts[member.id]);
+  const charts = useMemo(() => getChartDocs(member, addedCharts || []), [member, addedCharts]);
   const openChart = (e) => {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
@@ -905,7 +909,7 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
 
         const render = CELL_RENDERERS[col.k];
         if (!render) return null;
-        return render({ member, dosStateFor, openChart, openDiagPanel, openUpload: (m) => openHccUploadDrawer(m) });
+        return render({ member, charts, dosStateFor, openChart, openDiagPanel, openUpload: (m) => openHccUploadDrawer(m) });
       })}
 
       {/* Sticky right: actions */}
@@ -939,14 +943,17 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
       <ChartPopover
         anchorRect={chartRect}
         member={member}
+        charts={charts}
         onClose={() => setChartRect(null)}
-        onUpload={() => openHccUploadDrawer(member)}
-        onSelectChart={(chart) => setChartDetail(chart)}
+        onUpload={() => { setChartRect(null); openHccUploadDrawer(member); }}
+        onSelectChart={(chart) => setChartDetail({ id: chart.id })}
+        onViewMore={() => setChartDetail({ id: null })}
       />
     )}
     {chartDetail && (
       <ChartDetailDrawer
-        chart={chartDetail}
+        charts={charts}
+        initialId={chartDetail.id}
         member={member}
         onClose={() => setChartDetail(null)}
       />

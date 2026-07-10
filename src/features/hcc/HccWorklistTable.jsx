@@ -110,6 +110,7 @@ export function HccWorklistTable() {
   const hccMembers = useAppStore(s => s.hccMembers);
   const hccMembersLoading = useAppStore(s => s.hccMembersLoading);
   const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
+  const fetchHccAddedCharts = useAppStore(s => s.fetchHccAddedCharts);
   const selectedHccIds = useAppStore(s => s.selectedHccIds);
   const selectAllHcc = useAppStore(s => s.selectAllHcc);
   const clearHccSelected = useAppStore(s => s.clearHccSelected);
@@ -159,6 +160,7 @@ export function HccWorklistTable() {
   const colCfgBtnRef = useRef(null);
 
   useEffect(() => { fetchHccMembers(); }, [fetchHccMembers]);
+  useEffect(() => { fetchHccAddedCharts(); }, [fetchHccAddedCharts]);
 
   // Whenever the active filter/sort/search/due-date changes, jump back to
   // page 1 so the user doesn't end up on an empty page after the result set

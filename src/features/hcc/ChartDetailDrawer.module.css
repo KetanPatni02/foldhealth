@@ -171,6 +171,9 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  /* Fixed width (sized to the widest label, "Action Needed") so the pill
+     doesn't resize as the status changes. */
+  min-width: 148px;
   padding: 4px 6px;
   border-radius: 4px;
   background: var(--neutral-50);
@@ -180,6 +183,8 @@
   font-family: 'Inter', sans-serif;
   cursor: pointer;
 }
+/* Keep the chevron pinned right regardless of label length. */
+.actionNeeded > :last-child { margin-left: auto; }
 
 /* Right body */
 /* Pass banner — shown under the header bar once a document is passed */
@@ -225,6 +230,146 @@
   color: var(--primary-300);
 }
 
+/* ── Inline upload panel (opened from the Upload link) ── */
+.uploadPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+}
+.uploadField { display: flex; flex-direction: column; gap: 4px; }
+.uploadLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--neutral-300);
+}
+.uploadReq {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--status-error);
+  display: inline-block;
+}
+.uploadInput {
+  width: 100%;
+  height: 32px;
+  border: 0.5px solid var(--neutral-200);
+  border-radius: 4px;
+  padding: 0 8px;
+  font-size: 14px;
+  color: var(--neutral-500);
+  outline: none;
+  box-sizing: border-box;
+  background: var(--neutral-0);
+}
+.uploadInput:focus { border-color: var(--primary-300); }
+.uploadInput::placeholder { color: var(--neutral-200); }
+.uploadSelect { width: 100%; height: 32px; font-size: 14px; border: 0.5px solid var(--neutral-200); }
+.uploadSelect:focus { border-color: var(--primary-300); }
+.uploadActions { display: flex; align-items: center; gap: 8px; }
+
+/* ── Upload progress card (mirrors the Add DOS drawer) ── */
+.procCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 8px 6px 6px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+}
+.procRow { display: flex; align-items: flex-start; gap: 8px; }
+.procIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.procMeta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.procName {
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.2;
+  color: var(--neutral-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.procSub { display: flex; align-items: center; gap: 4px; font-weight: 400; font-size: 12px; line-height: 1.2; color: var(--neutral-300); }
+.procStatus { display: inline-flex; align-items: center; gap: 4px; }
+.procSpin { display: inline-flex; color: var(--status-warning); animation: chartDocSpin 0.8s linear infinite; }
+.procCancel {
+  background: none;
+  border: none;
+  padding: 2px;
+  margin-top: 2px;
+  cursor: pointer;
+  display: inline-flex;
+  color: var(--neutral-400);
+  flex-shrink: 0;
+}
+.progressTrack {
+  position: relative;
+  height: 6px;
+  border-radius: 4px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  overflow: hidden;
+}
+.progressFill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--status-success);
+  transition: width 0.08s linear;
+}
+@keyframes chartDocSpin { to { transform: rotate(360deg); } }
+
+/* ── Uploaded file card ── */
+.uplCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+}
+.uplIcon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--primary-50);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.uplMeta { flex: 1; min-width: 0; }
+.uplName { font-weight: 500; font-size: 13px; line-height: 1.3; color: var(--neutral-500); }
+.uplSub { display: flex; align-items: center; gap: 4px; font-weight: 400; font-size: 11px; line-height: 1.4; color: var(--neutral-300); margin-top: 2px; }
+.uplDone { display: inline-flex; align-items: center; gap: 3px; color: var(--status-success); }
+.uplAction {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.uplAction:hover { background: var(--neutral-50); }
+
 .docCard {
   display: flex;
   align-items: center;
@@ -232,8 +377,30 @@
   padding: 8px;
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
-  border-left: 4px solid var(--primary-300);
   border-radius: 8px;
+  cursor: pointer;
+}
+.docCard:hover { background: var(--neutral-25); }
+/* Selected document — primary-300 1px border all around. */
+.docCardSelected,
+.docCardSelected:hover {
+  border: 1px solid var(--primary-300);
+  background: var(--neutral-0);
+}
+.docThumb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  color: var(--status-error);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 .docCardText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .docName { font-size: 14px; color: var(--neutral-400); }

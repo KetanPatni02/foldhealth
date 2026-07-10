@@ -2,8 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { Avatar } from '../../components/Avatar/Avatar';
+import { Button } from '../../components/Button/Button';
+import { Dropzone } from '../../components/Dropzone/Dropzone';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
 import { useAppStore } from '../../store/useAppStore';
 import { DocEvidenceViewer } from './DiagPanel/DocEvidenceViewer';
+import { DOC_TYPES, makeUploadedChartDoc } from './data/chartDocs';
 import { staffForRole } from './assignment/astranaStaff';
 import styles from './ChartDetailDrawer.module.css';
 
@@ -17,6 +21,31 @@ const STATUS_OPTIONS = [
   { key: 'completed', label: 'Completed' },
   { key: 'rejected', label: 'Rejected', textColor: 'var(--status-error)' },
 ];
+
+// Badge colouring for the header status pill, keyed to the review outcome.
+const STATUS_BADGE = {
+  'action-needed': { color: 'var(--neutral-300)',     bg: 'var(--neutral-50)',            border: 'rgba(111, 122, 144, 0.1)' },
+  'in-progress':   { color: 'var(--status-warning)',  bg: 'var(--status-warning-light)',  border: 'rgba(240, 160, 0, 0.2)' },
+  'insufficient':  { color: 'var(--status-warning)',  bg: 'var(--status-warning-light)',  border: 'rgba(240, 160, 0, 0.2)' },
+  'completed':     { color: 'var(--status-success)',  bg: 'var(--status-success-light)',  border: 'rgba(0, 155, 83, 0.2)' },
+  'rejected':      { color: 'var(--status-error)',    bg: 'var(--status-error-light)',    border: 'rgba(215, 40, 37, 0.2)' },
+};
+
+/**
+ * Derive the document-set review status from each doc's pass/fail state:
+ *   • >1 failed            → insufficient
+ *   • all passed           → completed
+ *   • at least one decided → in progress
+ *   • nothing decided yet  → action needed
+ */
+function deriveStatus(docs, actions) {
+  const passCount = docs.filter(d => actions[d.id] === 'pass').length;
+  const failCount = docs.filter(d => actions[d.id] === 'fail').length;
+  if (failCount > 1) return 'insufficient';
+  if (docs.length > 0 && passCount === docs.length) return 'completed';
+  if (passCount + failCount > 0) return 'in-progress';
+  return 'action-needed';
+}
 
 function StatusIcon({ status, size = 16 }) {
   const common = { width: size, height: size, viewBox: '0 0 16 16', fill: 'none', style: { flexShrink: 0 } };
@@ -62,18 +91,42 @@ function StatusIcon({ status, size = 16 }) {
   }
 }
 
+// A document is "addressed" once it has been passed or failed; the incoming
+// chart status carries that over (Passed / Failed), otherwise it is pending.
+const isAddressed = (doc) => doc?.status === 'Passed' || doc?.status === 'Failed';
+const actionForStatus = (doc) =>
+  doc?.status === 'Passed' ? 'pass' : doc?.status === 'Failed' ? 'fail' : null;
+
 /**
  * ChartDetailDrawer — "Document Available Details" full-width overlay opened
- * when a chart row is clicked in the ChartPopover. Left pane shows the chart
- * PDF; right pane shows the document's metadata (created date, teams, the
- * associated-DOS document row). Figma: ICD-Import 4481:112907.
+ * from the ChartPopover. Left pane shows the selected chart PDF; right pane
+ * lists every document on the patient's chart, with the entry document (or,
+ * when opened via "View more", the first not-yet-reviewed document) selected
+ * by default. Figma: ICD-Import 4481:112907.
  *
  * @param {object}   props
- * @param {object}   props.chart   – { n, meta, status } from getChartDocs
- * @param {object}   props.member  – worklist member (patient banner + PDF)
+ * @param {object[]} props.charts    – full document list from getChartDocs
+ * @param {string}   [props.initialId] – id of the doc to select; when omitted
+ *                                       (opened from "View more") the first
+ *                                       pass/fail-not-addressed doc is selected
+ * @param {object}   props.member    – worklist member (patient banner + PDF)
  * @param {function} props.onClose
  */
-export function ChartDetailDrawer({ chart, member, onClose }) {
+export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
+  const docs = charts || [];
+
+  // Selected document: the one entered from, else the first unaddressed, else
+  // the first document.
+  const [selectedId, setSelectedId] = useState(
+    () => initialId || docs.find(d => !isAddressed(d))?.id || docs[0]?.id || null,
+  );
+  // Per-document pass/fail review state, seeded from each doc's status.
+  const [docActions, setDocActions] = useState(() => {
+    const m = {};
+    docs.forEach(d => { const a = actionForStatus(d); if (a) m[d.id] = a; });
+    return m;
+  });
+
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
     document.addEventListener('keydown', onKey);
@@ -93,12 +146,24 @@ export function ChartDetailDrawer({ chart, member, onClose }) {
     return () => document.removeEventListener('mousedown', onDoc);
   }, [assignPos]);
 
-  // "Action Needed" status dropdown anchored on the status button.
+  // Header status dropdown anchored on the status button. The status is
+  // derived from the documents' pass/fail state; the user can also manually
+  // override it (e.g. force Completed, or Rejected once a doc has passed).
   const actionRef = useRef(null);
-  const [actionStatus, setActionStatus] = useState('action-needed');
+  const [manualStatus, setManualStatus] = useState(null);
   const [actionPos, setActionPos] = useState(null);
-  const [docAction, setDocAction] = useState(null); // null | 'pass' | 'fail'
   const showToast = useAppStore(s => s.showToast);
+  const addChartDoc = useAppStore(s => s.addChartDoc);
+
+  // Inline "Upload" panel (opened from the Upload link in the assoc row).
+  // Mirrors the Add DOS drawer's upload states: Dropzone → uploading progress
+  // card → uploaded file card.
+  const [showUpload, setShowUpload] = useState(false);
+  const [upFile, setUpFile] = useState(null);
+  const [upCaption, setUpCaption] = useState('');
+  const [upType, setUpType] = useState('');
+  const [upProc, setUpProc] = useState(null); // null | { name, sizeLabel, progress }
+  const [uploaded, setUploaded] = useState(false);
   useEffect(() => {
     if (!actionPos) return;
     const onDoc = (e) => {
@@ -107,8 +172,20 @@ export function ChartDetailDrawer({ chart, member, onClose }) {
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
   }, [actionPos]);
+  // Drive the fake upload progress (0→100), then flip to the uploaded state.
+  useEffect(() => {
+    if (!upProc) return undefined;
+    if (upProc.progress < 100) {
+      const t = setTimeout(() => setUpProc(p => (p ? { ...p, progress: Math.min(100, p.progress + 12) } : p)), 100);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(() => { setUpProc(null); setUploaded(true); }, 250);
+    return () => clearTimeout(t);
+  }, [upProc]);
 
-  if (!chart) return null;
+  if (docs.length === 0) return null;
+
+  const selected = docs.find(d => d.id === selectedId) || docs[0];
 
   const supportStaff = staffForRole('support');
   const openAssign = () => {
@@ -118,18 +195,40 @@ export function ChartDetailDrawer({ chart, member, onClose }) {
   };
 
   const reviewerName = selectedSupport?.name || member?.sup || 'D Morris';
-  const passDoc = () => { setDocAction('pass'); showToast('Support Task is Completed'); };
+  const passDoc = (id) => { setDocActions(a => ({ ...a, [id]: 'pass' })); showToast('Support Task is Completed'); };
+  const failDoc = (id) => setDocActions(a => ({ ...a, [id]: 'fail' }));
+  const undoDoc = (id) => setDocActions(a => { const n = { ...a }; delete n[id]; return n; });
 
-  const currentStatus = STATUS_OPTIONS.find(s => s.key === actionStatus) || STATUS_OPTIONS[0];
+  const effectiveStatus = manualStatus || deriveStatus(docs, docActions);
+  const currentStatus = STATUS_OPTIONS.find(s => s.key === effectiveStatus) || STATUS_OPTIONS[0];
+  const currentBadge = STATUS_BADGE[effectiveStatus] || STATUS_BADGE['action-needed'];
   const openAction = () => {
     if (actionPos) { setActionPos(null); return; }
     const r = actionRef.current?.getBoundingClientRect();
     if (r) setActionPos({ top: r.bottom + 4, left: Math.min(r.left, window.innerWidth - 198) });
   };
 
-  const [metaDate, metaType] = String(chart.meta || '').split(' · ');
   const gender = member?.g === 'F' ? 'Female' : 'Male';
   const overdue = /overdue/i.test(member?.due || '');
+  const selectedPassed = docActions[selected.id] === 'pass';
+
+  const resetUpload = () => {
+    setShowUpload(false); setUpFile(null); setUpCaption(''); setUpType('');
+    setUpProc(null); setUploaded(false);
+  };
+  const clearUploadFile = () => { setUpFile(null); setUpProc(null); setUploaded(false); };
+  const onPickUpload = (file) => {
+    setUpFile(file);
+    setUploaded(false);
+    setUpProc({ name: file.name, sizeLabel: `${(file.size / 1e6).toFixed(1)}MB`, progress: 0 });
+  };
+  const canSaveUpload = !!(uploaded && upFile && upCaption.trim() && upType);
+  const saveUpload = () => {
+    if (!canSaveUpload) return;
+    addChartDoc(member.id, makeUploadedChartDoc(member, { file: upFile, caption: upCaption, docType: upType }), upFile);
+    showToast(`Uploaded ${upFile.name} to ${member?.name || 'patient'}'s documents.`);
+    resetUpload();
+  };
 
   return createPortal(
     <>
@@ -177,15 +276,19 @@ export function ChartDetailDrawer({ chart, member, onClose }) {
 
         {/* Two-pane body */}
         <div className={styles.body}>
-          {/* Left — PDF */}
+          {/* Left — PDF of the selected document */}
           <div className={styles.leftPane}>
-            <div className={styles.paneHeader}>{chart.n}</div>
+            <div className={styles.paneHeader}>{selected.n}</div>
             <div className={styles.pdfWrap}>
-              <DocEvidenceViewer member={member} />
+              {selected.pdf ? (
+                <iframe src={selected.pdf} title={selected.n} />
+              ) : (
+                <DocEvidenceViewer member={member} />
+              )}
             </div>
           </div>
 
-          {/* Right — metadata */}
+          {/* Right — metadata + document list */}
           <div className={styles.rightPane}>
             <div className={styles.rightHeader}>
               <div className={styles.createdGroup}>
@@ -209,15 +312,21 @@ export function ChartDetailDrawer({ chart, member, onClose }) {
                   <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--secondary-300)" />
                 </button>
                 <span className={styles.vDivider} />
-                <button type="button" ref={actionRef} className={styles.actionNeeded} onClick={openAction}>
+                <button
+                  type="button"
+                  ref={actionRef}
+                  className={styles.actionNeeded}
+                  style={{ color: currentBadge.color, background: currentBadge.bg, borderColor: currentBadge.border }}
+                  onClick={openAction}
+                >
                   <StatusIcon status={currentStatus.key} size={12} />
                   {currentStatus.label}
-                  <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" />
+                  <Icon name="solar:alt-arrow-down-linear" size={12} color={currentBadge.color} />
                 </button>
               </div>
             </div>
 
-            {docAction === 'pass' && (
+            {selectedPassed && (
               <div className={styles.passBanner}>
                 <Icon name="solar:info-circle-linear" size={16} color="var(--status-success)" />
                 <span>{reviewerName} Completed Document Review Task on {member?.date || '—'}.</span>
@@ -233,57 +342,156 @@ export function ChartDetailDrawer({ chart, member, onClose }) {
                     <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--primary-300)" />
                   </span>
                 </div>
-                <button type="button" className={styles.uploadLink}>
+                <button type="button" className={styles.uploadLink} onClick={() => setShowUpload(v => !v)}>
                   <Icon name="solar:upload-minimalistic-linear" size={16} color="var(--primary-300)" />
                   Upload
                 </button>
               </div>
 
-              <div className={styles.docCard}>
-                <div className={styles.docCardText}>
-                  <span className={styles.docName}>{chart.n}</span>
-                  <span className={styles.docMeta}>
-                    {metaType || 'Progress Note'} • {metaDate || '—'} • {member?.sup || 'Benjamin Cummings'} (Support Team)
-                  </span>
-                </div>
-                <div className={styles.docActions}>
-                  {docAction === 'pass' ? (
-                    <>
-                      <span className={styles.passedBadge}>
-                        <Icon name="solar:check-read-linear" size={12} color="var(--status-success)" />
-                        Passed
+              {showUpload && (
+                <div className={styles.uploadPanel}>
+                  {upProc ? (
+                    <div className={styles.procCard}>
+                      <div className={styles.procRow}>
+                        <span className={styles.procIcon}>
+                          <Icon name="solar:file-text-linear" size={16} color="var(--neutral-400)" />
+                        </span>
+                        <div className={styles.procMeta}>
+                          <div className={styles.procName}>{upProc.name}</div>
+                          <div className={styles.procSub}>
+                            <span>{upProc.sizeLabel}</span>
+                            <span>•</span>
+                            <span className={styles.procStatus}>
+                              <span className={styles.procSpin}><Icon name="solar:refresh-linear" size={13} /></span>
+                              Uploading...
+                            </span>
+                          </div>
+                        </div>
+                        <button type="button" className={styles.procCancel} onClick={clearUploadFile} aria-label="Cancel upload">
+                          <Icon name="solar:close-circle-linear" size={16} color="var(--neutral-400)" />
+                        </button>
+                      </div>
+                      <div className={styles.progressTrack}>
+                        <div className={styles.progressFill} style={{ width: `${upProc.progress}%` }} />
+                      </div>
+                    </div>
+                  ) : uploaded && upFile ? (
+                    <div className={styles.uplCard}>
+                      <span className={styles.uplIcon}>
+                        <Icon name="solar:document-text-linear" size={16} color="var(--primary-300)" />
                       </span>
-                      <button type="button" className={styles.undoBtn} aria-label="Undo" onClick={() => setDocAction(null)}>
-                        <Icon name="solar:undo-left-round-linear" size={16} color="var(--neutral-400)" />
+                      <div className={styles.uplMeta}>
+                        <div className={styles.uplName}>{upFile.name}</div>
+                        <div className={styles.uplSub}>
+                          <span>{`${(upFile.size / 1e6).toFixed(1)}MB`}</span>
+                          <span>•</span>
+                          <span className={styles.uplDone}>
+                            <Icon name="solar:check-circle-bold" size={12} color="var(--status-success)" /> Uploaded just now
+                          </span>
+                        </div>
+                      </div>
+                      <button type="button" className={styles.uplAction} onClick={clearUploadFile} aria-label="Remove file">
+                        <Icon name="solar:trash-bin-trash-linear" size={15} color="var(--neutral-400)" />
                       </button>
-                    </>
-                  ) : docAction === 'fail' ? (
-                    <>
-                      <span className={styles.failedBadge}>
-                        <Icon name="solar:close-circle-linear" size={12} color="var(--status-error)" />
-                        Failed
-                      </span>
-                      <button type="button" className={styles.undoBtn} aria-label="Undo" onClick={() => setDocAction(null)}>
-                        <Icon name="solar:undo-left-round-linear" size={16} color="var(--neutral-400)" />
-                      </button>
-                    </>
+                    </div>
                   ) : (
-                    <>
-                      <button type="button" className={styles.passFailPill} title="Pass" onClick={passDoc}>
-                        <Icon name="solar:check-circle-linear" size={12} color="var(--neutral-300)" />
-                        Pass
-                      </button>
-                      <button type="button" className={styles.passFailPill} title="Fail" onClick={() => setDocAction('fail')}>
-                        <Icon name="solar:close-circle-linear" size={12} color="var(--neutral-300)" />
-                        Fail
-                      </button>
-                    </>
+                    <Dropzone
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                      helperText="Supported formats: PDF, DOC, JPG, or PNG"
+                      secondaryText="Max size: 100 MB"
+                      icon="solar:upload-minimalistic-linear"
+                      onPick={onPickUpload}
+                    />
                   )}
-                  <button type="button" className={styles.moreBtn} aria-label="More actions">
-                    <Icon name="solar:menu-dots-linear" size={15} color="currentColor" />
-                  </button>
+                  <div className={styles.uploadField}>
+                    <span className={styles.uploadLabel}>Caption<span className={styles.uploadReq} aria-hidden="true" /></span>
+                    <input
+                      type="text"
+                      className={styles.uploadInput}
+                      placeholder="Add caption"
+                      value={upCaption}
+                      onChange={(e) => setUpCaption(e.target.value)}
+                    />
+                  </div>
+                  <div className={styles.uploadField}>
+                    <span className={styles.uploadLabel}>Document Type<span className={styles.uploadReq} aria-hidden="true" /></span>
+                    <Select value={upType} onValueChange={setUpType}>
+                      <SelectTrigger className={styles.uploadSelect}>
+                        <SelectValue placeholder="Select Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DOC_TYPES.map((t) => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className={styles.uploadActions}>
+                    <Button variant="primary" size="S" disabled={!canSaveUpload} onClick={saveUpload}>Save</Button>
+                    <Button variant="secondary" size="S" onClick={resetUpload}>Discard</Button>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {docs.map((d) => {
+                const action = docActions[d.id] || null;
+                const isSel = d.id === selected.id;
+                return (
+                  <div
+                    key={d.id}
+                    className={`${styles.docCard} ${isSel ? styles.docCardSelected : ''}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedId(d.id)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedId(d.id); } }}
+                  >
+                    <span className={styles.docThumb} aria-hidden="true">PDF</span>
+                    <div className={styles.docCardText}>
+                      <span className={styles.docName}>{d.caption || d.n}</span>
+                      <span className={styles.docMeta}>
+                        {d.t} • {d.dateAdded || '—'} • {d.addedBy || '—'}
+                      </span>
+                    </div>
+                    <div className={styles.docActions} onClick={(e) => e.stopPropagation()}>
+                      {action === 'pass' ? (
+                        <>
+                          <span className={styles.passedBadge}>
+                            <Icon name="solar:check-read-linear" size={12} color="var(--status-success)" />
+                            Passed
+                          </span>
+                          <button type="button" className={styles.undoBtn} aria-label="Undo" onClick={() => undoDoc(d.id)}>
+                            <Icon name="solar:undo-left-round-linear" size={16} color="var(--neutral-400)" />
+                          </button>
+                        </>
+                      ) : action === 'fail' ? (
+                        <>
+                          <span className={styles.failedBadge}>
+                            <Icon name="solar:close-circle-linear" size={12} color="var(--status-error)" />
+                            Failed
+                          </span>
+                          <button type="button" className={styles.undoBtn} aria-label="Undo" onClick={() => undoDoc(d.id)}>
+                            <Icon name="solar:undo-left-round-linear" size={16} color="var(--neutral-400)" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button type="button" className={styles.passFailPill} title="Pass" onClick={() => passDoc(d.id)}>
+                            <Icon name="solar:check-circle-linear" size={12} color="var(--neutral-300)" />
+                            Pass
+                          </button>
+                          <button type="button" className={styles.passFailPill} title="Fail" onClick={() => failDoc(d.id)}>
+                            <Icon name="solar:close-circle-linear" size={12} color="var(--neutral-300)" />
+                            Fail
+                          </button>
+                        </>
+                      )}
+                      <button type="button" className={styles.moreBtn} aria-label="More actions">
+                        <Icon name="solar:menu-dots-linear" size={15} color="currentColor" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -318,13 +526,13 @@ export function ChartDetailDrawer({ chart, member, onClose }) {
           onClick={(e) => e.stopPropagation()}
         >
           {STATUS_OPTIONS.map(opt => {
-            const sel = opt.key === actionStatus;
+            const sel = opt.key === effectiveStatus;
             return (
               <button
                 key={opt.key}
                 type="button"
                 className={`${styles.statusItem} ${sel ? styles.statusItemSelected : ''}`}
-                onClick={() => { setActionStatus(opt.key); setActionPos(null); }}
+                onClick={() => { setManualStatus(opt.key); setActionPos(null); }}
               >
                 <StatusIcon status={opt.key} size={16} />
                 <span
