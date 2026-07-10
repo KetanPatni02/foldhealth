@@ -870,9 +870,9 @@ export function DiagPanel() {
               <p>No diagnosis gaps {q ? 'match your search' : 'recorded yet for this member'}.</p>
             </div>
           )}
-          {cardIcds.map(icd => (
+          {cardIcds.map((icd, i) => (
             <IcdDosCard
-              key={icd.code}
+              key={`card-${icd.code}-${i}`}
               icd={icd}
               focusKey={focusKey}
               onFocusRow={focusRowByKey}
@@ -890,7 +890,7 @@ export function DiagPanel() {
           )}
           {suspectGroups.map((g, i) => (
             <HccSuspectGroup
-              key={g.hcc}
+              key={`${g.hcc}-${i}`}
               hcc={g.hcc}
               icds={g.icds}
               dosList={dosList}

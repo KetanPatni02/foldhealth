@@ -4,22 +4,21 @@
 
 export const ICDS = {
   "Annette Brave": [
-    { code:"E11.22", desc:"Type 2 diabetes with diabetic chronic kidney disease",                        hcc:"HCC 18 - Diabetes w/ Complications", status:"New",         type:"Suspect",  docs:3, cmts:2, notes:0, raf:0.302, last:"06/27/2025", by:"A. Beauchamp (Support Team)" },
-    { code:"E11.21", desc:"Type 2 diabetes with diabetic nephropathy",                                   hcc:"HCC 18 - Diabetes w/ Complications", status:"Accepted",    type:null,       docs:1, cmts:0, notes:1, raf:0.302, last:"06/27/2025", by:"Deborah Hintz (Coder)" },
-    { code:"E44.0",  desc:"Moderate protein-calorie malnutrition",                                       hcc:"HCC 18 - Diabetes w/ Complications", status:"New",         type:null,       docs:1, cmts:0, notes:0, raf:0.201, last:"06/27/2025", by:"Dr Aldo Richman (Physician)" },
-    { code:"E41.0",  desc:"Nutritional marasmus",                                                        hcc:"HCC Not Linked",                     status:"Dismissed",   type:null,       docs:1, cmts:3, notes:1, raf:0.081, last:"06/27/2025", by:"Deborah Hintz (Coder)", dismissReason:"Not clinically supported" },
-    { code:"E11.51", desc:"Type 2 diabetes mellitus with diabetic peripheral angiopathy without gangrene",hcc:"HCC 18 - Diabetes w/ Complications", status:"New",         type:"Manual",   docs:1, cmts:0, notes:1, raf:0.118, last:"06/27/2025", by:"Dr Aldo Richman (Physician)" },
+    { code:"E11.22", desc:"Type 2 diabetes mellitus with diabetic chronic kidney disease",               hcc:"HCC 37 - Diabetes with Chronic Complications", status:"New",       type:null,      docs:3, cmts:3, notes:0, raf:0.302, last:"06/27/2025", by:"Dr. Benjamin Cummings (Physician)" },
+    { code:"F32.1",  desc:"Major depressive disorder, single episode, moderate",                         hcc:"HCC 155 - Major Depressive Disorder, Moderate", status:"New",      type:null,      docs:3, cmts:3, notes:0, raf:0.309, last:"06/27/2025", by:"Dr. Benjamin Cummings (Physician)" },
+    { code:"I50.43", desc:"Acute on chronic combined systolic and diastolic heart failure",              hcc:"HCC 224 - Acute on Chronic Heart Failure", status:"New",           type:null,      docs:3, cmts:3, notes:0, raf:0.368, last:"06/27/2025", by:"Dr. Benjamin Cummings (Physician)" },
+    { code:"E41.0",  desc:"Nutritional marasmus",                                                        hcc:"HCC Not Linked",                     status:"New",         type:"Manual",   docs:3, cmts:3, notes:0, raf:0.000, last:"06/11/2025", by:"Deborah Hintz (Coder)" },
   ],
   "Frank Green": [
-    { code:"I50.9",  desc:"Heart failure, unspecified",                                                  hcc:"HCC 85 - Congestive Heart Failure",  status:"Accepted",    type:null,       docs:2, cmts:1, notes:0, raf:0.331, last:"09/28/2023", by:"L. Schmidt (Reviewer)" },
-    { code:"E11.9",  desc:"Type 2 DM w/o complications",                                                hcc:"HCC 18 - Diabetes w/ Complications", status:"New",         type:null,       docs:1, cmts:0, notes:0, raf:0.195, last:"09/28/2023", by:"J. Levesque (Coder)" },
-    { code:"J44.1",  desc:"COPD with acute exacerbation",                                                hcc:"HCC 111 - COPD",                     status:"In Progress", type:null,       docs:2, cmts:1, notes:0, raf:0.392, last:"09/28/2023", by:"J. Levesque (Coder)" },
+    { code:"I50.9",  desc:"Heart failure, unspecified",                                                  hcc:"HCC 85 - Congestive Heart Failure",  status:"Accepted",    type:null,       docs:2, cmts:1, notes:0, raf:0.331, last:"09/28/2025", by:"L. Schmidt (Reviewer)" },
+    { code:"E11.9",  desc:"Type 2 DM w/o complications",                                                hcc:"HCC 18 - Diabetes w/ Complications", status:"New",         type:null,       docs:1, cmts:0, notes:0, raf:0.195, last:"09/28/2025", by:"J. Levesque (Coder)" },
+    { code:"J44.1",  desc:"COPD with acute exacerbation",                                                hcc:"HCC 111 - COPD",                     status:"In Progress", type:null,       docs:2, cmts:1, notes:0, raf:0.392, last:"09/28/2025", by:"J. Levesque (Coder)" },
   ],
   "Brian Carter": [
-    { code:"F32.1",  desc:"Major depressive disorder, single episode",                                   hcc:"HCC 58 - Major Depression",          status:"Accepted",    type:null,       docs:2, cmts:0, notes:1, raf:0.309, last:"11/29/2023", by:"M. Almeda (Reviewer)" },
-    { code:"E11.65", desc:"Type 2 DM with hyperglycemia",                                                hcc:"HCC 18 - Diabetes w/ Complications", status:"Accepted",    type:null,       docs:1, cmts:1, notes:0, raf:0.302, last:"11/29/2023", by:"D. Hintz (Coder)" },
-    { code:"I48.91", desc:"Unspecified atrial fibrillation",                                             hcc:"HCC 96 - Atrial Fibrillation",       status:"New",         type:"Suspect",  docs:2, cmts:0, notes:0, raf:0.421, last:"11/29/2023", by:"D. Hintz (Coder)" },
-    { code:"M79.3",  desc:"Panniculitis, unspecified",                                                   hcc:"HCC 40 - Rheumatoid Arthritis",      status:"Dismissed",   type:null,       docs:1, cmts:0, notes:0, raf:0.081, last:"05/20/2024", by:"D. Hintz (Coder)", dismissReason:"Not supported by documentation" },
+    { code:"F32.1",  desc:"Major depressive disorder, single episode",                                   hcc:"HCC 58 - Major Depression",          status:"Accepted",    type:null,       docs:2, cmts:0, notes:1, raf:0.309, last:"11/29/2025", by:"M. Almeda (Reviewer)" },
+    { code:"E11.65", desc:"Type 2 DM with hyperglycemia",                                                hcc:"HCC 18 - Diabetes w/ Complications", status:"Accepted",    type:null,       docs:1, cmts:1, notes:0, raf:0.302, last:"11/29/2025", by:"D. Hintz (Coder)" },
+    { code:"I48.91", desc:"Unspecified atrial fibrillation",                                             hcc:"HCC 96 - Atrial Fibrillation",       status:"New",         type:"Suspect",  docs:2, cmts:0, notes:0, raf:0.421, last:"11/29/2025", by:"D. Hintz (Coder)" },
+    { code:"M79.3",  desc:"Panniculitis, unspecified",                                                   hcc:"HCC 40 - Rheumatoid Arthritis",      status:"Dismissed",   type:null,       docs:1, cmts:0, notes:0, raf:0.081, last:"05/20/2026", by:"D. Hintz (Coder)", dismissReason:"Not supported by documentation" },
   ],
   "Christopher Thompson": [
     { code:"E11.22", desc:"Type 2 diabetes with diabetic chronic kidney disease",                        hcc:"HCC 18 - Diabetes w/ Complications", status:"New",         type:"Suspect",  docs:2, cmts:1, notes:0, raf:0.302, last:"03/20/2026", by:"M. Thompson (Support Team)" },
@@ -56,27 +55,27 @@ export const ICDS = {
     { code:"G47.33", desc:"Obstructive sleep apnea",                                                     hcc:"HCC 86 - Sleep Apnea",               status:"New",         type:null,       docs:1, cmts:0, notes:0, raf:0.164, last:"04/10/2025", by:"K. Stroman (Support Team)" },
   ],
   "Grace Hill": [
-    { code:"E11.21", desc:"Type 2 diabetes with diabetic nephropathy",                                   hcc:"HCC 18 - Diabetes w/ Complications", status:"New",         type:null,       docs:2, cmts:1, notes:0, raf:0.302, last:"01/15/2024", by:"O. Twist (Support Team)" },
-    { code:"G47.33", desc:"Obstructive sleep apnea",                                                     hcc:"HCC 86 - Sleep Apnea",               status:"New",         type:"Suspect",  docs:1, cmts:0, notes:0, raf:0.164, last:"01/15/2024", by:"Deborah Hintz (Coder)" },
-    { code:"I48.0",  desc:"Paroxysmal atrial fibrillation",                                              hcc:"HCC 96 - Atrial Fibrillation",       status:"Accepted",    type:null,       docs:1, cmts:0, notes:1, raf:0.421, last:"01/15/2024", by:"B. Olafson (Reviewer)" },
-    { code:"N18.3",  desc:"Chronic kidney disease, stage 3",                                             hcc:"HCC 27 - End-Stage Renal Disease",   status:"New",         type:null,       docs:1, cmts:1, notes:0, raf:0.184, last:"01/15/2024", by:"Deborah Hintz (Coder)" },
+    { code:"E11.21", desc:"Type 2 diabetes mellitus with diabetic nephropathy",                          hcc:"HCC 37 - Diabetes with Chronic Complications", status:"New",       type:null,       docs:2, cmts:1, notes:0, raf:0.302, last:"04/18/2026", by:"O. Twist (Support Team)" },
+    { code:"G47.33", desc:"Obstructive sleep apnea",                                                     hcc:"HCC Not Linked",                     status:"New",         type:"Suspect",  docs:1, cmts:0, notes:0, raf:0.000, last:"04/18/2026", by:"Deborah Hintz (Coder)" },
+    { code:"I48.0",  desc:"Paroxysmal atrial fibrillation",                                              hcc:"HCC 238 - Cardiac Arrhythmias and Heart Block", status:"Accepted", type:null,       docs:1, cmts:0, notes:1, raf:0.268, last:"04/18/2026", by:"B. Olafson (Reviewer)" },
+    { code:"N18.3",  desc:"Chronic kidney disease, stage 3",                                             hcc:"HCC 329 - Chronic Kidney Disease, Stage 3", status:"New",          type:null,       docs:1, cmts:1, notes:0, raf:0.127, last:"04/18/2026", by:"Deborah Hintz (Coder)" },
   ],
   "Cynthia Davis": [
-    { code:"E11.9",  desc:"Type 2 DM without complications",                                             hcc:"HCC 19 - Diabetes w/o Complication", status:"New",         type:null,       docs:1, cmts:0, notes:0, raf:0.195, last:"05/22/2024", by:"A. Beauchamp (Support Team)" },
-    { code:"J44.1",  desc:"COPD with acute exacerbation",                                                hcc:"HCC 111 - COPD",                     status:"New",         type:"Suspect",  docs:2, cmts:1, notes:0, raf:0.392, last:"05/22/2024", by:"A. Beauchamp (Support Team)" },
-    { code:"G47.33", desc:"Obstructive sleep apnea",                                                     hcc:"HCC 86 - Sleep Apnea",               status:"Accepted",    type:null,       docs:1, cmts:0, notes:1, raf:0.164, last:"05/22/2024", by:"A. Beauchamp (Support Team)" },
-    { code:"I48.91", desc:"Unspecified atrial fibrillation",                                             hcc:"HCC 96 - Atrial Fibrillation",       status:"New",         type:null,       docs:1, cmts:0, notes:0, raf:0.421, last:"05/22/2024", by:"A. Beauchamp (Support Team)" },
+    { code:"E11.9",  desc:"Type 2 DM without complications",                                             hcc:"HCC 19 - Diabetes w/o Complication", status:"New",         type:null,       docs:1, cmts:0, notes:0, raf:0.195, last:"05/22/2026", by:"A. Beauchamp (Support Team)" },
+    { code:"J44.1",  desc:"COPD with acute exacerbation",                                                hcc:"HCC 111 - COPD",                     status:"New",         type:"Suspect",  docs:2, cmts:1, notes:0, raf:0.392, last:"05/22/2026", by:"A. Beauchamp (Support Team)" },
+    { code:"G47.33", desc:"Obstructive sleep apnea",                                                     hcc:"HCC 86 - Sleep Apnea",               status:"Accepted",    type:null,       docs:1, cmts:0, notes:1, raf:0.164, last:"05/22/2026", by:"A. Beauchamp (Support Team)" },
+    { code:"I48.91", desc:"Unspecified atrial fibrillation",                                             hcc:"HCC 96 - Atrial Fibrillation",       status:"New",         type:null,       docs:1, cmts:0, notes:0, raf:0.421, last:"05/22/2026", by:"A. Beauchamp (Support Team)" },
   ],
   "Emily Foster": [
-    { code:"E11.9",  desc:"Type 2 DM without complications",                                             hcc:"HCC 19 - Diabetes w/o Complication", status:"New",         type:null,       docs:1, cmts:0, notes:0, raf:0.195, last:"12/01/2023", by:"K. Stroman (Support Team)" },
-    { code:"G47.33", desc:"Obstructive sleep apnea",                                                     hcc:"HCC 86 - Sleep Apnea",               status:"Accepted",    type:null,       docs:1, cmts:0, notes:0, raf:0.164, last:"12/01/2023", by:"Deborah Hintz (Coder)" },
-    { code:"F33.1",  desc:"Major depressive disorder, recurrent, moderate",                              hcc:"HCC 58 - Major Depression",          status:"New",         type:"Suspect",  docs:1, cmts:1, notes:0, raf:0.309, last:"12/01/2023", by:"K. Stroman (Support Team)" },
+    { code:"E11.9",  desc:"Type 2 DM without complications",                                             hcc:"HCC 19 - Diabetes w/o Complication", status:"New",         type:null,       docs:1, cmts:0, notes:0, raf:0.195, last:"12/01/2025", by:"K. Stroman (Support Team)" },
+    { code:"G47.33", desc:"Obstructive sleep apnea",                                                     hcc:"HCC 86 - Sleep Apnea",               status:"Accepted",    type:null,       docs:1, cmts:0, notes:0, raf:0.164, last:"12/01/2025", by:"Deborah Hintz (Coder)" },
+    { code:"F33.1",  desc:"Major depressive disorder, recurrent, moderate",                              hcc:"HCC 58 - Major Depression",          status:"New",         type:"Suspect",  docs:1, cmts:1, notes:0, raf:0.309, last:"12/01/2025", by:"K. Stroman (Support Team)" },
   ],
   "William Jammy": [
-    { code:"E11.21", desc:"Type 2 diabetes with diabetic nephropathy",                                   hcc:"HCC 18 - Diabetes w/ Complications", status:"New",         type:null,       docs:2, cmts:0, notes:1, raf:0.302, last:"07/04/2024", by:"Oliver Twist (Support Team)" },
-    { code:"I50.9",  desc:"Heart failure, unspecified",                                                  hcc:"HCC 85 - Congestive Heart Failure",  status:"New",         type:"Suspect",  docs:1, cmts:1, notes:0, raf:0.331, last:"07/04/2024", by:"D. Hintz (Coder)" },
-    { code:"I48.91", desc:"Unspecified atrial fibrillation",                                             hcc:"HCC 96 - Atrial Fibrillation",       status:"Accepted",    type:null,       docs:1, cmts:0, notes:0, raf:0.421, last:"07/04/2024", by:"N. Richards (Reviewer 2)" },
-    { code:"J44.0",  desc:"COPD with acute lower respiratory infection",                                 hcc:"HCC 111 - COPD",                     status:"New",         type:null,       docs:1, cmts:0, notes:0, raf:0.321, last:"07/04/2024", by:"D. Hintz (Coder)" },
+    { code:"E11.21", desc:"Type 2 diabetes mellitus with diabetic nephropathy",                          hcc:"HCC 37 - Diabetes with Chronic Complications", status:"New",       type:null,       docs:2, cmts:0, notes:1, raf:0.302, last:"05/21/2026", by:"Oliver Twist (Support Team)" },
+    { code:"I50.9",  desc:"Heart failure, unspecified",                                                  hcc:"HCC 226 - Heart Failure, Except End-Stage", status:"New",          type:"Suspect",  docs:1, cmts:1, notes:0, raf:0.331, last:"05/21/2026", by:"D. Hintz (Coder)" },
+    { code:"I48.91", desc:"Unspecified atrial fibrillation",                                             hcc:"HCC 238 - Cardiac Arrhythmias and Heart Block", status:"Accepted", type:null,       docs:1, cmts:0, notes:0, raf:0.268, last:"05/21/2026", by:"N. Richards (Reviewer 2)" },
+    { code:"J44.0",  desc:"COPD with acute lower respiratory infection",                                 hcc:"HCC 280 - Chronic Obstructive Pulmonary Disease", status:"New",     type:null,       docs:1, cmts:0, notes:0, raf:0.331, last:"05/21/2026", by:"D. Hintz (Coder)" },
   ],
   "Helen Park": [
     { code:"E11.22", desc:"Type 2 diabetes with diabetic chronic kidney disease",                        hcc:"HCC 18 - Diabetes w/ Complications", status:"New",         type:null,       docs:2, cmts:0, notes:0, raf:0.302, last:"03/18/2025", by:"L. Torrance (Support Team)" },
@@ -131,9 +130,9 @@ export const ICDS = {
     { code:"I50.9",  desc:"Heart failure, unspecified",                                                  hcc:"HCC 85 - Congestive Heart Failure",  status:"Accepted",    type:null,       docs:2, cmts:0, notes:1, raf:0.331, last:"10/18/2025", by:"Deborah Hintz (Coder)" },
   ],
   "Kevin Brown": [
-    { code:"E11.65", desc:"Type 2 DM with hyperglycemia",                                                hcc:"HCC 18 - Diabetes w/ Complications", status:"New",         type:"Suspect",  docs:1, cmts:0, notes:0, raf:0.195, last:"11/20/2025", by:"E. Johnson (Support Team)" },
-    { code:"I48.91", desc:"Unspecified atrial fibrillation",                                             hcc:"HCC 96 - Atrial Fibrillation",       status:"In Progress", type:null,       docs:1, cmts:1, notes:0, raf:0.421, last:"11/20/2025", by:"E. Johnson (Support Team)" },
-    { code:"N18.3",  desc:"Chronic kidney disease, stage 3",                                             hcc:"HCC 27 - End-Stage Renal Disease",   status:"New",         type:null,       docs:1, cmts:0, notes:0, raf:0.184, last:"11/20/2025", by:"E. Johnson (Support Team)" },
+    { code:"E11.65", desc:"Type 2 diabetes mellitus with hyperglycemia",                                 hcc:"HCC 38 - Diabetes with Glycemic Complications", status:"New",      type:"Suspect",  docs:1, cmts:0, notes:0, raf:0.166, last:"05/15/2026", by:"E. Johnson (Support Team)" },
+    { code:"I48.91", desc:"Unspecified atrial fibrillation",                                             hcc:"HCC 238 - Cardiac Arrhythmias and Heart Block", status:"In Progress", type:null,    docs:1, cmts:1, notes:0, raf:0.268, last:"05/15/2026", by:"E. Johnson (Support Team)" },
+    { code:"N18.3",  desc:"Chronic kidney disease, stage 3",                                             hcc:"HCC 329 - Chronic Kidney Disease, Stage 3", status:"New",          type:null,       docs:1, cmts:0, notes:0, raf:0.127, last:"05/15/2026", by:"E. Johnson (Support Team)" },
   ],
   "Lisa White": [
     { code:"I50.9",  desc:"Heart failure, unspecified",                                                  hcc:"HCC 85 - Congestive Heart Failure",  status:"New",         type:"Recapture",docs:2, cmts:1, notes:0, raf:0.331, last:"12/08/2025", by:"O. Twist (Support Team)" },
@@ -166,8 +165,8 @@ export const ICDS = {
     { code:"E66.01", desc:"Morbid (severe) obesity due to excess calories",                              hcc:"HCC 22 - Morbid Obesity",            status:"New",         type:null,       docs:1, cmts:0, notes:0, raf:0.272, last:"05/05/2026", by:"L. Torrance (Support Team)" },
   ],
   "Jessica Clark": [
-    { code:"E11.65", desc:"Type 2 DM with hyperglycemia",                                                hcc:"HCC 18 - Diabetes w/ Complications", status:"New",         type:"Suspect",  docs:1, cmts:0, notes:0, raf:0.195, last:"06/18/2026", by:"K. Stroman (Support Team)" },
-    { code:"I48.0",  desc:"Paroxysmal atrial fibrillation",                                              hcc:"HCC 96 - Atrial Fibrillation",       status:"New",         type:null,       docs:1, cmts:1, notes:0, raf:0.421, last:"06/18/2026", by:"K. Stroman (Support Team)" },
+    { code:"E11.65", desc:"Type 2 diabetes mellitus with hyperglycemia",                                 hcc:"HCC 38 - Diabetes with Glycemic Complications", status:"New",      type:"Suspect",  docs:1, cmts:0, notes:0, raf:0.166, last:"06/18/2026", by:"K. Stroman (Support Team)" },
+    { code:"I48.0",  desc:"Paroxysmal atrial fibrillation",                                              hcc:"HCC 238 - Cardiac Arrhythmias and Heart Block", status:"New",      type:null,       docs:1, cmts:1, notes:0, raf:0.268, last:"06/18/2026", by:"K. Stroman (Support Team)" },
   ],
   "Andrew Lewis": [
     { code:"E11.22", desc:"Type 2 diabetes with diabetic chronic kidney disease",                        hcc:"HCC 18 - Diabetes w/ Complications", status:"New",         type:"Suspect",  docs:2, cmts:0, notes:0, raf:0.302, last:"07/22/2026", by:"O. Twist (Support Team)" },
@@ -188,9 +187,9 @@ export const getIcdsForMember = (name) => ICDS[name] || [];
 
 export const NOT_LINKED = {
   "Annette Brave": [
-    { code:"I50.23",  desc:"Acute on chronic systolic (congestive) heart failure",         hcc:"HCC 85 - Congestive Heart Failure",  status:"New", type:"Recapture", docs:1, cmts:2 },
-    { code:"E11.65",  desc:"Type 2 diabetes mellitus with hyperglycemia",                  hcc:"HCC 18 - Diabetes w/ Complications", status:"New", type:"Suspect",   docs:1, cmts:0 },
-    { code:"G47.33",  desc:"Obstructive sleep apnea",                                      hcc:"HCC 86 - Sleep Apnea",               status:"New", type:null,        docs:1, cmts:0 },
+    { code:"I50.23",  desc:"Acute on chronic systolic (congestive) heart failure",         hcc:"HCC 224 - Acute on Chronic Heart Failure",      status:"New", type:"Recapture", docs:1, cmts:2 },
+    { code:"E11.65",  desc:"Type 2 diabetes mellitus with hyperglycemia",                  hcc:"HCC 38 - Diabetes with Glycemic Complications", status:"New", type:"Suspect",   docs:1, cmts:0 },
+    { code:"N18.32",  desc:"Chronic kidney disease, stage 3b",                             hcc:"HCC 329 - Chronic Kidney Disease, Stage 3",     status:"New", type:"Suspect",   docs:1, cmts:0 },
   ],
   "Frank Green": [
     { code:"Z87.39",  desc:"Personal history of other musculoskeletal disorders",          hcc:"HCC Not Linked", status:"New", type:"Recapture", docs:1, cmts:0 },
@@ -210,7 +209,7 @@ export const NOT_LINKED = {
     { code:"F32.1",   desc:"Major depressive disorder, single episode",                    hcc:"HCC 58 - Major Depression",          status:"New", type:"Suspect",   docs:1, cmts:1 },
   ],
   "Grace Hill": [
-    { code:"I50.23",  desc:"Acute on chronic systolic (congestive) heart failure",         hcc:"HCC 85 - Congestive Heart Failure",  status:"New", type:"Recapture", docs:1, cmts:0 },
+    { code:"I50.23",  desc:"Acute on chronic systolic (congestive) heart failure",         hcc:"HCC 224 - Acute on Chronic Heart Failure",  status:"New", type:"Recapture", docs:1, cmts:0 },
   ],
   "Cynthia Davis": [
     { code:"F32.1",   desc:"Major depressive disorder, single episode",                    hcc:"HCC 58 - Major Depression",          status:"New", type:null,        docs:1, cmts:0 },
@@ -239,7 +238,7 @@ export const NOT_LINKED = {
     { code:"G47.33",  desc:"Obstructive sleep apnea",                                      hcc:"HCC 86 - Sleep Apnea",               status:"New", type:"Suspect",   docs:1, cmts:0 },
   ],
   "William Jammy": [
-    { code:"F32.1",   desc:"Major depressive disorder, single episode",                    hcc:"HCC 58 - Major Depression",          status:"New", type:"Suspect",   docs:1, cmts:0 },
+    { code:"F32.1",   desc:"Major depressive disorder, single episode, moderate",          hcc:"HCC 155 - Major Depressive Disorder, Moderate", status:"New", type:"Suspect",   docs:1, cmts:0 },
   ],
   "Amanda Wilson": [
     { code:"E66.01",  desc:"Morbid (severe) obesity due to excess calories",               hcc:"HCC 22 - Morbid Obesity",            status:"New", type:"Recapture", docs:1, cmts:0 },
