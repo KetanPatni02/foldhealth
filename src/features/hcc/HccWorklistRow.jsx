@@ -562,8 +562,51 @@ function dosSourceLetter(date) {
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0xffffffff;
   return DOS_SOURCES[Math.abs(h) % DOS_SOURCES.length];
 }
+// What each DOS-source letter means — drives the badge colour + the hover
+// tooltip (source of the encounter + its date).
+const DOS_SOURCE_META = {
+  D: { cls: 'srcDoc',    label: 'Clinical Document', hint: 'Extracted from an uploaded document' },
+  C: { cls: 'srcClaims', label: 'Claims',            hint: 'Claims document from Astrana' },
+  M: { cls: 'srcManual', label: 'Manual Entry',      hint: 'Added manually by a coder' },
+};
+
 function DosSourceBadge({ date }) {
-  return <span className={styles.dosSrcBadge} aria-hidden="true">{dosSourceLetter(date)}</span>;
+  const letter = dosSourceLetter(date);
+  const meta = DOS_SOURCE_META[letter] || DOS_SOURCE_META.D;
+  const [pos, setPos] = useState(null);
+  const ref = useRef(null);
+
+  const show = () => {
+    const r = ref.current?.getBoundingClientRect();
+    if (r) setPos({ top: r.bottom + 6, left: r.left + r.width / 2 });
+  };
+  const hide = () => setPos(null);
+
+  return (
+    <span
+      ref={ref}
+      className={[styles.dosSrcBadge, styles[meta.cls]].join(' ')}
+      aria-label={`${meta.label} · ${date}`}
+      onMouseEnter={show}
+      onFocus={show}
+      onMouseLeave={hide}
+      onBlur={hide}
+      tabIndex={0}
+    >
+      {letter}
+      {pos && createPortal(
+        <div className={styles.dosSrcTip} style={{ top: pos.top, left: pos.left }} role="tooltip">
+          <div className={styles.dosSrcTipHead}>
+            <Icon name="solar:document-text-linear" size={12} />
+            {meta.label}
+          </div>
+          <div className={styles.dosSrcTipMeta}>{meta.hint}</div>
+          <div className={styles.dosSrcTipDate}>DOS: {date}</div>
+        </div>,
+        document.body,
+      )}
+    </span>
+  );
 }
 
 // Inner content (NOT the <td>) for each DOS-level column, given one
