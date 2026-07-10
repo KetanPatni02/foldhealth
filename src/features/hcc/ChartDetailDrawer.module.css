@@ -1,0 +1,397 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.panel {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  bottom: 8px;
+  width: 1300px;
+  max-width: calc(100vw - 16px);
+  z-index: 9501;
+  display: flex;
+  flex-direction: column;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 16px;
+  box-shadow: var(--shadow-drawer);
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+  animation: chartDetailIn 0.25s ease;
+}
+@keyframes chartDetailIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+/* ── Title bar ── */
+.titleBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 8px 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+.title { flex: 1; font-size: 16px; font-weight: 500; color: var(--neutral-500); }
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: none;
+  background: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.iconBtn:hover { background: var(--neutral-50); }
+.vDivider { width: 0.5px; height: 16px; background: var(--neutral-150); flex-shrink: 0; }
+
+/* ── Patient banner ── */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  color: var(--primary-300);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.bannerText { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.bannerName { display: flex; align-items: center; gap: 4px; font-size: 16px; font-weight: 500; color: var(--neutral-400); }
+.bannerMeta { display: flex; align-items: center; gap: 4px; font-size: 14px; color: var(--neutral-300); flex-wrap: wrap; }
+.dot { color: var(--neutral-300); }
+.rafVal { color: var(--neutral-400); }
+.rafBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 22px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--status-success-light);
+  border: 0.5px solid rgba(0, 155, 83, 0.2);
+  color: var(--status-success);
+  font-size: 14px;
+}
+.bannerActions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+/* ── Body / panes ── */
+.body { display: flex; flex: 1; min-height: 0; }
+.leftPane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 0.5px solid var(--neutral-150);
+}
+.paneHeader {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-size: 14px;
+  color: var(--neutral-400);
+  flex-shrink: 0;
+}
+.pdfWrap { flex: 1; min-height: 0; background: var(--neutral-75); }
+.pdfWrap iframe { width: 100%; height: 100%; border: none; display: block; }
+
+.rightPane { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+/* Right header tab */
+.rightHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 6px 12px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+.createdGroup { display: inline-flex; align-items: center; gap: 4px; }
+.createdLabel { font-size: 14px; color: var(--neutral-300); }
+.createdDate { font-size: 14px; font-weight: 500; color: var(--neutral-400); }
+.overdue { font-size: 12px; color: var(--status-error); }
+.teamBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--neutral-50);
+  font-size: 14px;
+  color: var(--neutral-300);
+}
+.progressDot { display: inline-flex; }
+.rightHeaderEnd { flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.dmBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  height: 24px;
+  padding: 0 3px 0 0;
+  border: none;
+  border-radius: 4px;
+  background: var(--secondary-200);
+  cursor: pointer;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+}
+.dmAvatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: var(--secondary-50);
+  border: 0.5px solid var(--secondary-200);
+  color: var(--secondary-300);
+  font-size: 10px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.actionNeeded {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: var(--neutral-50);
+  border: 0.5px solid rgba(111, 122, 144, 0.1);
+  color: var(--neutral-300);
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+}
+
+/* Right body */
+/* Pass banner — shown under the header bar once a document is passed */
+.passBanner {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 8px 12px 0;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: var(--status-success-light);
+  border: 0.5px solid rgba(0, 155, 83, 0.2);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--neutral-400);
+  flex-shrink: 0;
+}
+
+.rightBody { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 12px; overflow-y: auto; }
+.assocRow { display: flex; align-items: center; gap: 4px; padding: 4px 0; }
+.assocLeft { flex: 1; display: flex; align-items: center; gap: 4px; }
+.assocLabel { font-size: 14px; font-weight: 500; color: var(--neutral-400); }
+.dosBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: var(--primary-50);
+  border: 0.5px solid rgba(140, 90, 226, 0.2);
+  color: var(--primary-300);
+  font-size: 12px;
+}
+.uploadLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  color: var(--primary-300);
+}
+
+.docCard {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-left: 4px solid var(--primary-300);
+  border-radius: 8px;
+}
+.docCardText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.docName { font-size: 14px; color: var(--neutral-400); }
+.docMeta { font-size: 12px; color: var(--neutral-300); }
+.docActions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+/* Undecided Pass / Fail pills */
+.passFailPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 22px;
+  min-width: 22px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-200);
+  color: var(--neutral-300);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.passFailPill:hover { background: var(--neutral-50); }
+/* Passed / Failed result badges */
+.passedBadge,
+.failedBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 22px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.passedBadge {
+  background: var(--status-success-light);
+  border: 0.5px solid var(--status-success);
+  color: var(--status-success);
+}
+.failedBadge {
+  background: var(--status-error-light);
+  border: 0.5px solid var(--status-error);
+  color: var(--status-error);
+}
+.undoBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: none;
+  background: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.undoBtn:hover { background: var(--neutral-50); }
+.moreBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--neutral-400);
+}
+.moreBtn:hover { background: var(--neutral-50); }
+
+/* ── Assign Support Team dropdown (mirrors the worklist role-assign menu) ── */
+.assignMenu {
+  position: fixed;
+  z-index: 9600;
+  min-width: 260px;
+  max-width: 340px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.02);
+  padding: 6px;
+  font-family: 'Inter', sans-serif;
+}
+.assignTitle {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  padding: 6px 8px 4px;
+  border-bottom: 0.5px solid var(--neutral-100);
+  margin-bottom: 2px;
+}
+.assignItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+.assignItem:hover { background: var(--neutral-50); }
+.assignName {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.assignRole {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+
+/* ── Action Needed status dropdown ── */
+.statusMenu {
+  position: fixed;
+  z-index: 9600;
+  min-width: 180px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-100);
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: 'Inter', sans-serif;
+}
+.statusItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 8px;
+  border: 0.5px solid transparent;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+.statusItem:hover { background: var(--neutral-50); }
+.statusItemSelected,
+.statusItemSelected:hover {
+  background: var(--primary-50);
+  border-color: var(--primary-200);
+}
+.statusLabel { font-size: 14px; }

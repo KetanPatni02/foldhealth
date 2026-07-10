@@ -173,7 +173,7 @@ const DOC_STATUS_STYLE = {
   Failed:  { color: 'var(--status-error)',   bg: 'var(--status-error-light)',   border: 'rgba(215,40,37,0.2)',   icon: 'solar:info-circle-linear' },
 };
 
-export function ChartPopover({ anchorRect, member, onClose, onUpload }) {
+export function ChartPopover({ anchorRect, member, onClose, onUpload, onSelectChart }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
     document.addEventListener('keydown', onKey);
@@ -235,7 +235,15 @@ export function ChartPopover({ anchorRect, member, onClose, onUpload }) {
           {visible.map((d, i) => {
             const st = DOC_STATUS_STYLE[d.status] || DOC_STATUS_STYLE.Pending;
             return (
-              <div key={i} className={styles.chartRow}>
+              <div
+                key={i}
+                className={styles.chartRow}
+                role="button"
+                tabIndex={0}
+                style={{ cursor: 'pointer' }}
+                onClick={() => { onClose?.(); onSelectChart?.(d); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClose?.(); onSelectChart?.(d); } }}
+              >
                 <div className={styles.chartRowText}>
                   <div className={styles.chartName}>
                     <span>{d.n}</span>

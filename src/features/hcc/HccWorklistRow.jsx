@@ -13,6 +13,7 @@ import {
   ActionsMenuPopover,
   OpenIcdsHoverPopover,
 } from './RowPopovers';
+import { ChartDetailDrawer } from './ChartDetailDrawer';
 import { getIcdsForMember, getNotLinkedForMember } from './data/icds';
 import { getStatusSpec } from './statusSpec';
 import { StatusIcon } from './StatusIcon';
@@ -760,6 +761,7 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
   const visibleEntries = expanded ? dosEntries : dosEntries.slice(0, 1);
 
   const [chartRect, setChartRect] = useState(null);
+  const [chartDetail, setChartDetail] = useState(null);
   const [actionsRect, setActionsRect] = useState(null);
   const openChart = (e) => {
     e.stopPropagation();
@@ -906,6 +908,14 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
         member={member}
         onClose={() => setChartRect(null)}
         onUpload={() => openHccUploadDrawer(member)}
+        onSelectChart={(chart) => setChartDetail(chart)}
+      />
+    )}
+    {chartDetail && (
+      <ChartDetailDrawer
+        chart={chartDetail}
+        member={member}
+        onClose={() => setChartDetail(null)}
       />
     )}
     {actionsRect && (

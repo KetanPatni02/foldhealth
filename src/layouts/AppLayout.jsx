@@ -140,6 +140,15 @@ function PopulationView() {
   const activeSubnavList = useAppStore(s => s.activeSubnavList);
 
   const selectedPatientId = useAppStore(s => s.selectedPatientId);
+  const setHccFilter = useAppStore(s => s.setHccFilter);
+
+  // WS3 — AWV route redirects into the unified worklist with the Visit Type
+  // filter pre-set to AWV-only. This effect must run before the early return
+  // below, or the hook order changes when a patient is selected (Rules of Hooks).
+  const isAwv = activeSubnavList === 'AWV';
+  useEffect(() => {
+    if (isAwv) setHccFilter('vt', ['AWV']);
+  }, [isAwv, setHccFilter]);
 
   // Patient detail view — full-page, no subnav
   if (selectedPatientId) {
@@ -158,14 +167,6 @@ function PopulationView() {
   const isHcc = activeSubnavList === 'HCC';
   const isHccArchived = activeSubnavList === 'HCC (Archived)';
   const isHedis = activeSubnavList === 'HEDIS';
-  const isAwv = activeSubnavList === 'AWV';
-  // WS3 — AWV route now redirects into the unified worklist with the
-  // Visit Type filter pre-set to AWV-only. Bookmarks / muscle memory
-  // for /awv still land somewhere useful.
-  const setHccFilter = useAppStore(s => s.setHccFilter);
-  useEffect(() => {
-    if (isAwv) setHccFilter('vt', ['AWV']);
-  }, [isAwv, setHccFilter]);
   const isAllPatients = activeSubnavList === 'All Patients';
   const isPopulationGroup = activeSubnavList.startsWith('pg:');
   const isSchedulingList = activeSubnavList === 'Scheduling List';

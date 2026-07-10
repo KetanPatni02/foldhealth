@@ -178,7 +178,7 @@ function ProfilePopover({ user, onClose, onPreferences }) {
         </button>
         <button onClick={() => setView('accounts')} style={menuItemStyle} onMouseOver={e => e.currentTarget.style.background = 'var(--neutral-50)'} onMouseOut={e => e.currentTarget.style.background = ''}>
           <Icon name="solar:users-group-rounded-linear" size={20} color="var(--neutral-400)" />
-          <span style={{ flex: 1 }}>Switch Account</span>
+          <span style={{ flex: 1 }}>Switch Role</span>
           <Icon name="solar:alt-arrow-right-linear" size={12} color="var(--neutral-200)" />
         </button>
 
