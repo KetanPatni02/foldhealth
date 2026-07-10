@@ -10,7 +10,8 @@ import { SearchIconButton } from '../../components/SearchIconButton/SearchIconBu
 import { useTableSort } from '../../components/Table/useTableSort';
 import { InlineEditable } from '../../components/InlineEditable/InlineEditable';
 import { SortPopover } from '../../components/Popover/SortPopover';
-import { DueDateChip, getDueCategory } from './DueDateChip';
+import { DueDateChip } from './DueDateChip';
+import { slaDueCategory } from './sla';
 import { SavedFiltersChip } from './SavedFiltersChip';
 import { FilterChipBar } from './FilterChipBar';
 import { FilterNameDialog } from './FilterNameDialog';
@@ -196,7 +197,8 @@ export function HccWorklistTable() {
 
   const filtered = useMemo(() => {
     let rows = enriched;
-    if (hccDueDateFilter) rows = rows.filter(m => getDueCategory(m.due) === hccDueDateFilter);
+    // SLA-based Due Date filter — matches the computed Created-Date colours.
+    if (hccDueDateFilter) rows = rows.filter(m => slaDueCategory(m) === hccDueDateFilter);
     if (Object.keys(hccFilters).length) rows = rows.filter(m => memberMatchesFilters(m, hccFilters));
     const q = searchQuery?.trim().toLowerCase();
     if (q) rows = rows.filter(m =>
@@ -207,7 +209,9 @@ export function HccWorklistTable() {
     return rows;
   }, [enriched, searchQuery, hccDueDateFilter, hccFilters]);
 
-  const { sorted, sortKey, sortDir, setSort, clearSort } = useTableSort(filtered, 'date', 'desc');
+  // SLA default (Astrana DOS worklist): Created Date ascending — oldest first,
+  // so records closest to breaching the 14-day window surface at the top.
+  const { sorted, sortKey, sortDir, setSort, clearSort } = useTableSort(filtered, 'date', 'asc');
 
   // Flat table — one row per record (Figma 4680:138476). A record whose
   // dos_list bundles multiple visits shows a "View More N" expander in

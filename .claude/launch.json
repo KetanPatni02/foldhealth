@@ -13,6 +13,13 @@
       "runtimeExecutable": "/bin/sh",
       "runtimeArgs": ["-c", "export PATH=/opt/homebrew/bin:$PATH && cd /Users/ketanp/Downloads/HCC && npx vite --port 5174"],
       "port": 5174
+    },
+    {
+      "name": "Fold Docs (Mintlify)",
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": ["-c", "export PATH=$HOME/.bun/bin:/opt/homebrew/bin:$PATH && cd docs && mint dev --port $PORT"],
+      "port": 3000,
+      "autoPort": true
     }
   ]
 }

@@ -1,96 +1,27 @@
-/* HccSuspectGroup — collapsible per-HCC suspect section (Paper 1WXT). */
+/* SuspectCard — one card per AI suspect / recapture ICD (Paper 1WXT; suspect
+   row states from Figma ICD-Import 4278-67296). Rendered flat under
+   "Suspects and Recaptures" (no per-HCC section header). */
 
-.group {
+.card {
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
-  overflow: hidden;
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 10px 12px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  text-align: left;
-}
-.title {
-  font: 500 14px/1.3 'Inter', sans-serif;
-  color: var(--neutral-500);
-  flex: 1;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.meta { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-
-.openChip,
-.closedChip {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font: 500 11px/1.3 'Inter', sans-serif;
-}
-.openChip {
-  background: color-mix(in srgb, var(--secondary-300) 8%, var(--neutral-0));
-  color: var(--secondary-300);
-  border: 0.5px solid color-mix(in srgb, var(--secondary-300) 25%, transparent);
-}
-.closedChip {
-  background: var(--neutral-50);
-  color: var(--neutral-300);
-  border: 0.5px solid var(--neutral-150);
-}
-.rafChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  border: 0.5px solid var(--neutral-150);
-  background: var(--neutral-25);
-  font: 500 11px/1.3 'Inter', sans-serif;
-  color: var(--neutral-400);
-}
-.overridesChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  border: 0.5px solid var(--neutral-150);
-  background: var(--neutral-50);
-  font: 400 11px/1.3 'Inter', sans-serif;
-  color: var(--neutral-400);
-}
-
-.body {
-  border-top: 0.5px solid var(--neutral-150);
-  display: flex;
-  flex-direction: column;
-}
-
-.suspectRow {
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px;
-  border-bottom: 0.5px solid var(--neutral-100);
 }
-.suspectRow:last-child { border-bottom: none; }
 
-.rowTop { display: flex; align-items: center; gap: 12px; }
+/* ── Head: switchable ICD combobox + counters ── */
+.head { display: flex; align-items: flex-start; gap: 12px; }
+.headMain { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.lastLine { font-size: 12px; font-weight: 400; line-height: 1.3; color: var(--neutral-300); }
+.icdComboWrap { min-width: 0; max-width: 440px; }
 .icdSelect {
   display: flex;
   align-items: center;
   gap: 8px;
-  max-width: 360px;
+  width: 100%;
   min-width: 0;
   padding: 5px 8px;
   border: 0.5px solid var(--neutral-150);
@@ -101,13 +32,15 @@
 }
 .icdSelect:hover { border-color: var(--neutral-200); }
 .icdSelectText {
+  flex: 1;
   font: 500 13px/1.3 'Inter', sans-serif;
   color: var(--neutral-500);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.rowCounters { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-shrink: 0; }
+
+.counters { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
 .counter {
   display: inline-flex;
   align-items: center;
@@ -121,8 +54,10 @@
   color: var(--neutral-400);
 }
 .counter:hover { background: var(--neutral-50); }
+.counterDivider { width: 1px; height: 14px; background: var(--neutral-150); }
 
-.rowChips { display: flex; align-items: center; gap: 6px; }
+/* ── Chips ── */
+.chips { display: flex; align-items: center; gap: 6px; }
 .hccChip {
   display: inline-flex;
   padding: 2px 6px;
@@ -142,9 +77,27 @@
   color: var(--status-info);
 }
 
-/* DOS single-select + auto-populated Provider/POS readouts */
-.dosPickRow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.dosPick { width: 180px; flex-shrink: 0; }
+/* ── DOS row: single-select + auto Provider/POS + DOS-level actions ── */
+.dosRow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.dosButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 170px;
+  height: 32px;
+  padding: 0 10px;
+  border: 0.5px solid var(--neutral-200);
+  border-radius: 6px;
+  background: var(--neutral-0);
+  cursor: pointer;
+  font: 400 13px/1.3 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.dosButton:hover:not(:disabled) { background: var(--neutral-50); }
+.dosButton:disabled { opacity: 0.7; cursor: default; }
+.dosButtonActive { border-color: var(--primary-300); color: var(--neutral-500); }
+
 .autoFields { display: inline-flex; align-items: center; gap: 16px; }
 .autoField {
   display: inline-flex;
@@ -160,21 +113,220 @@
   color: var(--neutral-300);
 }
 
-.rowConfirm { display: flex; align-items: center; gap: 12px; }
-.confirmPrompt {
-  font: 400 13px/1.3 'Inter', sans-serif;
-  color: var(--neutral-400);
-  flex: 1;
-  min-width: 0;
-}
-.confirmActions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.dosActions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
+.dismissBtnActive { background: var(--neutral-100); color: var(--neutral-400); }
 
-.resolvedAccepted,
-.resolvedDeclined {
+/* Resolved-state pills + undo + reason link */
+.acceptedPill,
+.dismissedPill,
+.warnPill {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   font: 500 12px/1.3 'Inter', sans-serif;
+  white-space: nowrap;
 }
-.resolvedAccepted { color: var(--status-success); }
-.resolvedDeclined { color: var(--neutral-300); }
+.acceptedPill { color: var(--status-success); }
+.dismissedPill { color: var(--status-error); }
+.warnPill { color: var(--status-warning); }
+.undoBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--neutral-400);
+}
+.undoBtn:hover { background: var(--neutral-50); }
+.dismissReasonLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: 400 12px/1.3 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.dismissReasonLink:hover { color: var(--neutral-500); text-decoration: underline; }
+.moreBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 24px;
+  border: none;
+  background: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--neutral-400);
+}
+.moreBtn:hover:not(:disabled) { background: var(--neutral-50); }
+.moreBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── ⋯ menu (portaled) ── */
+.moreMenu {
+  position: fixed;
+  z-index: 460;
+  min-width: 180px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+.moreItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  font: 400 13px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.moreItem:hover { background: var(--neutral-50); }
+
+/* ── ICD combobox dropdown (portaled) — in-dropdown search + list ── */
+.comboOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 8998;
+  background: transparent;
+}
+.comboMenu {
+  position: fixed;
+  z-index: 8999;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-100);
+  border-radius: 10px;
+  box-shadow: var(--shadow-popover);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.comboSearch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  border: 0.5px solid var(--neutral-200);
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.comboSearch input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: var(--neutral-500);
+  min-width: 0;
+}
+.comboSearch input::placeholder { color: var(--neutral-200); }
+.comboList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.comboOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+}
+.comboOption:hover { background: var(--neutral-50); }
+.comboOptionActive { background: var(--primary-50); }
+.comboCode { font: 600 13px/1.3 'Inter', sans-serif; color: var(--primary-300); flex-shrink: 0; }
+.comboTitle {
+  font: 400 13px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.comboCheck { margin-left: auto; flex-shrink: 0; display: inline-flex; }
+.comboStatus { padding: 12px 8px; text-align: center; font-size: 13px; color: var(--neutral-200); }
+
+/* ── DOS dropdown (portaled) — date + Provider/POS per encounter ── */
+.dosOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 8998;
+  background: transparent;
+}
+.dosMenu {
+  position: fixed;
+  z-index: 8999;
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-100);
+  border-radius: 10px;
+  box-shadow: var(--shadow-popover);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dosMenuHead {
+  font: 500 13px/1.3 'Inter', sans-serif;
+  color: var(--neutral-400);
+  padding: 2px 6px 6px;
+}
+.dosEmpty {
+  padding: 12px 6px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--neutral-200);
+}
+.dosOption {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 6px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+}
+.dosOption:hover { background: var(--neutral-50); }
+.dosRadio {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--neutral-200);
+  background: var(--neutral-0);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.dosRadioActive { border-color: var(--primary-300); }
+.dosRadioDot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary-300); }
+.dosOptionText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dosOptionDate { font: 500 13px/1.3 'Inter', sans-serif; color: var(--neutral-500); }
+.dosOptionMeta { font: 400 12px/1.3 'Inter', sans-serif; color: var(--neutral-300); }

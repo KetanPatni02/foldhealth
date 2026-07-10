@@ -573,6 +573,51 @@
   color: var(--neutral-300);
   text-align: center;
 }
+/* Reassign trigger — an assigned, in-flight role cell that opens the picker. */
+.roleReassignTrigger {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  width: calc(100% + 8px);
+  margin: -3px -4px;
+  padding: 3px 4px;
+  border: none;
+  background: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+}
+.roleReassignTrigger:hover { background: var(--neutral-50); }
+/* Search box atop the assignee picker. */
+.roleAssignSearch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 2px 6px;
+  padding: 5px 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+}
+.roleAssignInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-500);
+}
+.roleAssignInput::placeholder { color: var(--neutral-300); }
+.roleAssignList {
+  display: flex;
+  flex-direction: column;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.roleAssignItemActive { background: var(--primary-25); }
 
 /* ── RAF Impact badge — green with up arrow (or red with down) ── */
 .rafImpactBadge {

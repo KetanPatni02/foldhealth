@@ -15,7 +15,7 @@ import { HEDIS_MEMBERS } from '../src/features/hedis-worklist/data/mock.js';
 import { APCM_PATIENTS } from '../src/features/apcm-billing/data/mock.js';
 import { FALLBACK_ICDS } from '../src/lib/icd/catalog.js';
 import { POS_CODES } from '../src/features/hcc/data/posCodes.js';
-import { ICDS, NOT_LINKED } from '../src/features/hcc/data/icds.js';
+import { ICDS, NOT_LINKED, getIcdsForMember, getNotLinkedForMember } from '../src/features/hcc/data/icds.js';
 import { HCC_MEMBER_BY_NAME } from '../src/features/hcc/data/mock.js';
 
 // Patients whose HCC diagnosis gaps have been modernized to V28 + 2025/26
@@ -302,6 +302,53 @@ async function main() {
       if (me) console.error(`  ✗ ${name} dos_list:`, me.message);
     }
     console.log(`  ✓ ${name} — ${rows.length} gaps`);
+  }
+
+  // Ensure EVERY worklist member has diagnosis gaps — curated where available,
+  // deterministically generated (getIcdsForMember/getNotLinkedForMember) for the
+  // rest — so no patient opens an empty drawer or an empty Open-ICDs popover.
+  console.log('\nSeeding diagnosis gaps for all remaining members...');
+  const { data: allMembers, error: mErr } = await supabase
+    .from('hcc_members')
+    .select('id, name, visit_type');
+  if (mErr) {
+    console.error('  ✗ could not read hcc_members:', mErr.message);
+  } else {
+    // Give every record a visit type from the canonical set (Figma
+    // 4240-110502) so the Visit Type filter surfaces the real vocabulary
+    // instead of a single value. Deterministic per record id.
+    const VT_CANON = [
+      'AWV - Annual Wellness Visit', 'IPPE - Initial Preventive Physical Exam',
+      'APE - Annual Physical Exam', 'New Patient Office Visit',
+      'Established Patient Office Visit', 'Telehealth Visit', 'Specialist Visit / Consult',
+    ];
+    const seedHash = (s) => { let h = 2166136261; for (let i = 0; i < String(s).length; i++) { h ^= String(s).charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
+    let vtUpdated = 0;
+    for (const m of (allMembers || [])) {
+      const vt = VT_CANON[seedHash(m.id) % VT_CANON.length];
+      const { error: ve } = await supabase.from('hcc_members').update({ visit_type: vt }).eq('id', m.id);
+      if (!ve) vtUpdated++;
+    }
+    console.log(`  ✓ visit types set for ${vtUpdated} records`);
+
+    const names = [...new Set((allMembers || []).map(m => m.name).filter(Boolean))]
+      .filter(n => !HCC_MODERNIZED.includes(n)); // modernized already re-seeded above
+    let seeded = 0;
+    for (const name of names) {
+      const byId = new Map();
+      for (const i of getIcdsForMember(name)) byId.set(`${name}::${i.code}`, gapToRow(name, i, true));
+      for (const i of getNotLinkedForMember(name)) {
+        const id = `${name}::${i.code}`;
+        if (!byId.has(id)) byId.set(id, gapToRow(name, i, false));
+      }
+      const rows = [...byId.values()];
+      if (!rows.length) continue;
+      await supabase.from('hcc_diagnosis_gaps').delete().eq('member_name', name);
+      const { error: ge } = await supabase.from('hcc_diagnosis_gaps').insert(rows);
+      if (ge) { console.error(`  ✗ ${name}:`, ge.message); continue; }
+      seeded++;
+    }
+    console.log(`  ✓ seeded gaps for ${seeded} members`);
   }
 
   console.log('\n✅  Seed complete. Run `bun run dev` to verify.\n');

@@ -32,6 +32,18 @@ export function FilterChipBar({ onSaveFilter }) {
   const setHccVisibleFilterKeys = useAppStore(s => s.setHccVisibleFilterKeys);
   const clearHccVisibleFilters = useAppStore(s => s.clearHccVisibleFilters);
   const showToast = useAppStore(s => s.showToast);
+  const hccMembers = useAppStore(s => s.hccMembers);
+
+  // Options for `dynamic` filters are computed from the loaded records rather
+  // than a static list — e.g. Visit Type lists the distinct visit types
+  // actually present in the patient records.
+  const dynamicOpts = useMemo(() => ({
+    vt: [...new Set(hccMembers.map(m => m.visitType || m.vt).filter(Boolean))].sort(),
+  }), [hccMembers]);
+  const optsFor = (def) => {
+    if (def?.dynamic && dynamicOpts[def.k]?.length) return dynamicOpts[def.k];
+    return def?.opts || [];
+  };
 
   const chipsRef = useRef(null);
   const measureRef = useRef(null);
@@ -212,7 +224,7 @@ export function FilterChipBar({ onSaveFilter }) {
             <CheckboxListPopover
               anchorRect={chipPop.rect}
               label={def.label}
-              options={def.opts}
+              options={optsFor(def)}
               selected={current}
               onChange={setVals}
               onClose={closeChip}

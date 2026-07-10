@@ -15,11 +15,16 @@ import {
 } from './RowPopovers';
 import { ChartDetailDrawer } from './ChartDetailDrawer';
 import { getChartDocs } from './data/chartDocs';
+import { computeSla } from './sla';
+// From foldhealth/main: getOpenIcdsForMember is already imported below from
+// './data/icds', so this duplicate is commented out to avoid a redeclaration.
+// import { getOpenIcdsForMember } from './data/icds';
 import { dosSourceLetter, DOS_SOURCE_META } from './dosSource';
 import { getIcdsForMember, getNotLinkedForMember, getOpenIcdsForMember } from './data/icds';
 import { getStatusSpec } from './statusSpec';
 import { StatusIcon } from './StatusIcon';
-import { staffById, staffForRole, ROLE_LABEL, ROLES } from './assignment/astranaStaff';
+import { staffById, ROLE_LABEL, ROLES } from './assignment/astranaStaff';
+import { RoleAssigneePicker } from './RoleAssigneePicker';
 import { createPortal } from 'react-dom';
 import { dosKey } from './assignment/dosState';
 import styles from './HccWorklistRow.module.css';
@@ -58,14 +63,21 @@ function LastVisitCell({ dos, visits, fromClaim, onClickDate, onClickVisits }) {
   );
 }
 
-function CreateDateCell({ date, due, dueCol }) {
+function CreateDateCell({ date, due, dueCol, coderDone }) {
+  // SLA (Astrana DOS worklist): colour the Created Date against the 14-day
+  // window computed live from the date. The clock ends when the Coder
+  // (Reviewer 1) completes — resolved records drop the urgency chip. Falls
+  // back to any static due label when the date can't be parsed.
+  const sla = coderDone ? null : computeSla(date);
+  const label = coderDone ? null : (sla ? sla.label : due);
+  const color = sla ? sla.colorVar : dueCol;
   return (
     <div className={styles.stackCell}>
       <span className={styles.dateText}>{date}</span>
-      {due && (
-        <span className={styles.dueLine} style={{ color: dueCol }}>
-          <Icon name="solar:clock-circle-linear" size={12} color={dueCol} />
-          <span>{due}</span>
+      {label && (
+        <span className={styles.dueLine} style={{ color }}>
+          <Icon name="solar:clock-circle-linear" size={12} color={color} />
+          <span>{label}</span>
         </span>
       )}
     </div>
@@ -168,134 +180,55 @@ function ProgressStepper({ member }) {
  * worklist explains the icon meanings.
  */
 function RoleStatusCell({ name, status, date, role, memberId, dosDate }) {
-  if (!name || !status || status === 'Assign') {
-    return <RoleAssignTrigger role={role} memberId={memberId} dosDate={dosDate} />;
+  const unassigned = !name || !status || status === 'Assign';
+  if (unassigned) {
+    return <RolePicker role={role} memberId={memberId} dosDate={dosDate} current={null} />;
   }
   const spec = getStatusSpec(status);
-  return (
-    <div className={styles.stackCell}>
+  const display = (
+    <>
       <span className={styles.roleName}>{name}</span>
       <span className={styles.roleStatusLine}>
         <StatusIcon status={status} size={12} color={spec.color} />
         {date && <span className={styles.roleDate}>{date}</span>}
       </span>
-    </div>
+    </>
+  );
+  // Completed steps are locked; every step still in flight can be reassigned.
+  if (status === 'Completed') {
+    return <div className={styles.stackCell}>{display}</div>;
+  }
+  return (
+    <RolePicker role={role} memberId={memberId} dosDate={dosDate} current={{ name }}>
+      {display}
+    </RolePicker>
   );
 }
 
 /**
- * Clickable "Assign" cell. Opens a portal popover listing candidate users
- * for the role (configured Care Team members + Astrana staff for the
- * matching role). Selecting one dispatches hccReassignRole.
+ * Role-assignee cell trigger. Wraps the shared searchable RoleAssigneePicker
+ * with the worklist's native triggers: the current name/status cell (reassign)
+ * or the muted "Assign" pill (unassigned). Used for unassigned steps and any
+ * assigned step that isn't Completed yet.
  */
-function RoleAssignTrigger({ role, memberId, dosDate }) {
-  const btnRef = useRef(null);
-  const [pos, setPos] = useState(null);
-  const teams = useAppStore(s => s.hccCareTeams);
-  const reassign = useAppStore(s => s.hccReassignRole);
-  const showToast = useAppStore(s => s.showToast);
-
-  // role here is the engine key ('support' | 'coder' | 'reviewer' | 'reviewer2').
-  // Pool = members of HCC teams whose teamType matches this role + Astrana
-  // staff in the same role bucket. Deduped by id; configured teams win.
-  const candidates = (() => {
-    const teamType = ROLE_LABEL[role];
-    const fromTeams = (teams || [])
-      .filter(t => t.kind === 'hcc' && t.teamType === teamType)
-      .flatMap(t => (t.members || []).map(m => ({
-        id: m.userId,
-        name: m.name,
-        initials: m.initials,
-        roles: m.roles,
-        source: 'team',
-        teamName: t.name,
-      })));
-    const seen = new Set(fromTeams.map(c => c.id));
-    const fromAstrana = staffForRole(role)
-      .filter(s => !seen.has(s.id))
-      .map(s => ({
-        id: s.id,
-        name: s.name,
-        initials: s.initials,
-        roles: ROLE_LABEL[s.role],
-        source: 'astrana',
-      }));
-    return [...fromTeams, ...fromAstrana];
-  })();
-
-  const open = () => {
-    const r = btnRef.current?.getBoundingClientRect();
-    if (!r) return;
-    setPos({ top: r.bottom + 4, left: r.left });
-  };
-  const close = () => setPos(null);
-
-  // Close on outside click / escape.
-  useEffect(() => {
-    if (!pos) return;
-    const onDoc = (e) => {
-      if (!btnRef.current?.contains(e.target) && !e.target.closest?.(`.${styles.roleAssignMenu}`)) {
-        close();
-      }
-    };
-    const onKey = (e) => { if (e.key === 'Escape') close(); };
-    document.addEventListener('mousedown', onDoc);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDoc);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [pos]);
-
-  const onPick = (cand) => {
-    if (!memberId || !dosDate) {
-      showToast('Cannot assign — missing patient or DOS context.');
-      close();
-      return;
-    }
-    reassign(memberId, dosDate, role, cand.id, 'current-user', `Assigned via worklist`);
-    showToast(`${cand.name} assigned as ${ROLE_LABEL[role]}.`);
-    close();
-  };
-
+function RolePicker({ role, memberId, dosDate, current, children }) {
   return (
-    <>
-      <button
-        type="button"
-        ref={btnRef}
-        className={styles.roleUnassigned}
-        onClick={(e) => { e.stopPropagation(); pos ? close() : open(); }}
-      >
-        <Icon name="solar:user-plus-rounded-linear" size={14} color="var(--neutral-200)" />
-        <span>Assign</span>
-      </button>
-      {pos && createPortal(
-        <div
-          className={styles.roleAssignMenu}
-          style={{ top: pos.top, left: pos.left }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className={styles.roleAssignTitle}>Assign {ROLE_LABEL[role]}</div>
-          {candidates.length === 0 ? (
-            <div className={styles.roleAssignEmpty}>No candidates available.</div>
-          ) : candidates.map(c => (
-            <button
-              key={c.id}
-              type="button"
-              className={styles.roleAssignItem}
-              onClick={() => onPick(c)}
-            >
-              <Avatar variant="assignee" initials={c.initials} />
-              <span className={styles.roleAssignName}>{c.name}</span>
-              <span className={styles.roleAssignRole}>
-                {c.source === 'team' ? `Team: ${c.teamName}` : c.roles}
-              </span>
-            </button>
-          ))}
-        </div>,
-        document.body,
-      )}
-    </>
+    <RoleAssigneePicker
+      role={role}
+      memberId={memberId}
+      dosDate={dosDate}
+      currentName={current?.name || null}
+      trigger={({ ref, onClick }) => (current ? (
+        <button ref={ref} type="button" className={styles.roleReassignTrigger} title="Change assignee" onClick={onClick}>
+          {children}
+        </button>
+      ) : (
+        <button ref={ref} type="button" className={styles.roleUnassigned} onClick={onClick}>
+          <Icon name="solar:user-plus-rounded-linear" size={14} color="var(--neutral-200)" />
+          <span>Assign</span>
+        </button>
+      ))}
+    />
   );
 }
 
@@ -313,8 +246,11 @@ const ROLE_OFFSET = { sup: 0, cdr: 7, r1: 14, r2: 21 };
 
 function OpenIcdsCell({ member, onOpenWithCode }) {
   // Count is derived from the SAME open-ICD list the popover renders, so the
-  // badge number always equals the number of ICDs shown on hover.
-  const count = getOpenIcdsForMember(member?.name).all.length;
+  // badge number always equals the number of ICDs shown on hover. Mandatory
+  // field — never render an empty ICD count: fall back to the record's stored
+  // open-ICD count when there's no detailed gap list (e.g. AWV rows).
+  const gapCount = getOpenIcdsForMember(member?.name).all.length;
+  const count = gapCount || member?.open || 0;
   const cellRef = useRef(null);
   const openTimer = useRef(null);
   const closeTimer = useRef(null);
@@ -350,12 +286,12 @@ function OpenIcdsCell({ member, onOpenWithCode }) {
       <div
         ref={cellRef}
         className={styles.openIcdsTrigger}
-        onMouseEnter={onEnter}
-        onMouseLeave={onLeave}
+        onMouseEnter={gapCount ? onEnter : undefined}
+        onMouseLeave={gapCount ? onLeave : undefined}
       >
         <Badge variant="status-queued" label={String(count)} />
       </div>
-      {hovered && rect && (
+      {hovered && rect && gapCount > 0 && (
         <OpenIcdsHoverPopover
           anchorRect={rect}
           member={member}
@@ -635,7 +571,7 @@ const DOS_INNER = {
 const CELL_RENDERERS = {
   date: ({ member }) => (
     <td key="date" data-col="date" className={styles.colDate}>
-      <CreateDateCell date={member.date} due={member.due} dueCol={member.dueCol} />
+      <CreateDateCell date={member.date} due={member.due} dueCol={member.dueCol} coderDone={member.cdrS === 'Completed'} />
     </td>
   ),
   evidence: ({ member, charts, openChart, openUpload }) => (

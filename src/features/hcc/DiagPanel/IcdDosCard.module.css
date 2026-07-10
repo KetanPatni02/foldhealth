@@ -57,6 +57,22 @@
   font: 400 12px/1.3 'Inter', sans-serif;
   color: var(--neutral-300);
 }
+/* Suspected / Recaptured badge — marks a card that moved up from the
+   Suspects & Recaptures section after being acted on. */
+.suspectBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 0.5px solid color-mix(in srgb, var(--secondary-300) 25%, transparent);
+  background: color-mix(in srgb, var(--secondary-300) 8%, var(--neutral-0));
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--secondary-300);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
 
 .counters { display: flex; align-items: center; gap: 8px; flex-shrink: 0; padding-top: 1px; }
 .counter {
@@ -250,36 +266,3 @@
   color: var(--neutral-500);
 }
 .moreItem:hover { background: var(--neutral-50); }
-
-
-/* ── Inline dismiss-reason form (Figma 4696:135817) ── */
-.dismissForm {
-  margin: 4px 0 8px;
-  padding: 14px 16px;
-  background: var(--neutral-25);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.dismissTitle {
-  font: 600 13px/1.3 'Inter', sans-serif;
-  color: var(--neutral-500);
-}
-.reasonList {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.noteLabel {
-  font: 400 12px/1.3 'Inter', sans-serif;
-  color: var(--neutral-400);
-  margin-top: 2px;
-}
-.dismissActions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 2px;
-}
