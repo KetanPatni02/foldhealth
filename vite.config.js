@@ -14,6 +14,13 @@ const dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(file
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
 export default defineConfig({
   plugins: [tailwindcss(), react(), devApiPlugin()],
+  server: {
+    // Honor the harness-assigned PORT so the preview browser and the actual
+    // dev server always agree — without this, Vite's default 5173 collides
+    // with other sessions and silently auto-increments to a port the
+    // harness never learns about.
+    port: Number(process.env.PORT) || 5173,
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src')

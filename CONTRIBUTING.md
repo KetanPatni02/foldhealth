@@ -18,6 +18,7 @@ held against you, but new/modified code must comply.
 | **Font family** | Nothing — Inter is applied globally | Any `font-family` declaration |
 | **Icons** | Solar `solar:*-linear` at 1px stroke | `-outline` variants; non-Solar icon sets; custom SVG where a Solar match exists |
 | **Components** | Reuse primitives from `src/components/*` (Button, Input, Select, Drawer, Badge, Checkbox, …) | Raw `<button>/<input>/<select>/<textarea>` in feature code |
+| **Filter badges** | Use the shared `src/components/FilterChip` for every filter — same look + behaviour everywhere (`Label ⌄` → `Label : Value ✕`) | Re-implementing a `*FilterChip`, or using a plain `Select`/`<select>` as a filter |
 | **Drawers** | Actions in `headerRight`; add `headerDivider` + pass `noCloseDivider` | A close button that draws its own border |
 
 ### How enforcement works

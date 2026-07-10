@@ -25,12 +25,6 @@
   flex-shrink: 0;
 }
 
-/* DS Select wrappers in the filter bar. The DS Select .wrap is width:100%,
-   so give these a fixed width (higher specificity via .filterBar) to keep
-   both filters on one row instead of stacking. */
-.filterBar .icdFilterSelect { width: 280px; flex: 0 0 auto; }
-.filterBar .providerFilterSelect { width: 220px; flex: 0 0 auto; }
-
 /* Two-line ICD option — code (primary) over description (secondary). */
 .icdOption {
   display: flex;

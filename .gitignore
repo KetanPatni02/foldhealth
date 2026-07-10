@@ -26,5 +26,7 @@ dist-ssr
 # Environment
 .env
 .env.*
-.claude/
+.claude/*
+# Share project skills with all contributors (keep local/session noise ignored).
+!.claude/skills/
 .vercel

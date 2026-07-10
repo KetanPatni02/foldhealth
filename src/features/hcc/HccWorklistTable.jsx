@@ -18,6 +18,7 @@ import { memberMatchesFilters } from './filters';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { BulkBar } from '../../components/BulkBar/BulkBar';
 import { BulkChangeAssigneesDialog } from './BulkChangeAssigneesDialog';
+import { UploadMenuPopover } from './upload/UploadMenuPopover';
 import { HccUploadProgressRibbon } from './upload/HccUploadProgressRibbon';
 import { HccHistoryDrawer } from './HccHistoryDrawer';
 import { StatusLegend } from './StatusLegend';
@@ -80,6 +81,7 @@ function HccHeaderCell({ column, className, sortKey, sortDir, onOpenSort }) {
 const COL_CLASS = {
   dos:      rowStyles.colLastVisit,
   open:     rowStyles.colOpen,
+  vt:       rowStyles.colVt,
   date:     rowStyles.colDate,
   evidence: rowStyles.colEvidence,
   sup:      rowStyles.colRole,
@@ -106,8 +108,6 @@ export function HccWorklistTable() {
   const hccMembers = useAppStore(s => s.hccMembers);
   const hccMembersLoading = useAppStore(s => s.hccMembersLoading);
   const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
-  const fetchHccDocuments = useAppStore(s => s.fetchHccDocuments);
-  const openIcdCreation = useAppStore(s => s.openIcdCreation);
   const selectedHccIds = useAppStore(s => s.selectedHccIds);
   const selectAllHcc = useAppStore(s => s.selectAllHcc);
   const clearHccSelected = useAppStore(s => s.clearHccSelected);
@@ -123,7 +123,6 @@ export function HccWorklistTable() {
   const hccFilters = useAppStore(s => s.hccFilters);
   const saveHccFilter = useAppStore(s => s.saveHccFilter);
   const renameHccSavedFilter = useAppStore(s => s.renameHccSavedFilter);
-  const startHccUpload = useAppStore(s => s.startHccUpload);
   const openHccHistoryDrawer = useAppStore(s => s.openHccHistoryDrawer);
   const hccHiddenCols = useAppStore(s => s.hccHiddenCols);
   const toggleHccColumn = useAppStore(s => s.toggleHccColumn);
@@ -152,11 +151,12 @@ export function HccWorklistTable() {
   const [memberSortPop, setMemberSortPop] = useState(null); // rect
   const [colCfgRect, setColCfgRect] = useState(null);
   const [bulkAssigneeOpen, setBulkAssigneeOpen] = useState(false);
+  const [uploadMenuOpen, setUploadMenuOpen] = useState(false);
+  const uploadBtnRef = useRef(null);
   const memberThRef = useRef(null);
   const colCfgBtnRef = useRef(null);
 
   useEffect(() => { fetchHccMembers(); }, [fetchHccMembers]);
-  useEffect(() => { fetchHccDocuments?.(); }, [fetchHccDocuments]);
 
   // Whenever the active filter/sort/search/due-date changes, jump back to
   // page 1 so the user doesn't end up on an empty page after the result set
@@ -205,6 +205,10 @@ export function HccWorklistTable() {
 
   const { sorted, sortKey, sortDir, setSort, clearSort } = useTableSort(filtered, 'date', 'desc');
 
+  // Flat table — one row per record (Figma 4680:138476). A record whose
+  // dos_list bundles multiple visits shows a "View More N" expander in
+  // its own row (handled inside HccWorklistRow); the table itself just
+  // paginates the record list.
   const startIdx = (currentPage - 1) * perPage;
   const paginated = sorted.slice(startIdx, startIdx + perPage);
 
@@ -231,7 +235,7 @@ export function HccWorklistTable() {
             onCommit={setHccListTitle}
             size="L"
             maxLength={60}
-            placeholder="HCC List"
+            placeholder="Worklist"
             title="Rename this list"
           />
           <DueDateChip value={hccDueDateFilter} onChange={setHccDueDateFilter} />
@@ -272,23 +276,31 @@ export function HccWorklistTable() {
           />
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="solar:history-linear"
+            icon="solar:clock-circle-linear"
             size="L"
             tooltip="History"
             tooltipBelow
             onClick={openHccHistoryDrawer}
           />
           <span className={styles.iconDivider} />
-          <ActionButton
-            icon="solar:upload-minimalistic-linear"
-            size="L"
-            tooltip="Upload Document"
-            tooltipBelow
-            onClick={() => openIcdCreation?.()}
-          />
+          <div ref={uploadBtnRef} style={{ position: 'relative', display: 'inline-flex' }}>
+            <ActionButton
+              icon="solar:upload-square-linear"
+              size="L"
+              tooltip="Upload Document"
+              tooltipBelow
+              onClick={() => setUploadMenuOpen(v => !v)}
+            />
+            {uploadMenuOpen && (
+              <UploadMenuPopover
+                anchorRef={uploadBtnRef}
+                onClose={() => setUploadMenuOpen(false)}
+              />
+            )}
+          </div>
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="solar:file-download-linear"
+            icon="solar:download-square-linear"
             size="L"
             tooltip="Export"
             tooltipBelow
@@ -385,7 +397,14 @@ export function HccWorklistTable() {
             </tr>
           </thead>
           <tbody>
-            {paginated.map(m => <HccWorklistRow key={m.id} member={m} hiddenCols={hiddenSet} columns={orderedColumns} />)}
+            {paginated.map(m => (
+              <HccWorklistRow
+                key={m.id}
+                member={m}
+                hiddenCols={hiddenSet}
+                columns={orderedColumns}
+              />
+            ))}
           </tbody>
         </table>
 

@@ -1,0 +1,10 @@
+/* DocEvidenceViewer — browser-native PDF preview in an iframe (Paper 1UD1).
+   The browser's own PDF viewer supplies the toolbar (page/zoom/download/print). */
+
+.frame {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: none;
+  background: var(--neutral-100);
+}

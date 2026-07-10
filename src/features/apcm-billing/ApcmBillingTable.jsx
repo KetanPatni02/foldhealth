@@ -1,11 +1,10 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Button } from '../../components/Button/Button';
-import { Badge } from '../../components/Badge/Badge';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Pagination } from '../../components/Pagination/Pagination';
-import { Select } from '../../components/Select/Select';
+import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
 import { ApcmBillingRow } from './ApcmBillingRow';
 import { AttestationModal } from './AttestationModal';
@@ -158,8 +157,8 @@ export function ApcmBillingTable({ searchQuery = '', filtersOpen = false }) {
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([code, desc]) => ({
         value: code,
+        chipLabel: code,
         searchText: `${code} ${desc}`,
-        triggerLabel: <Badge variant="ai-neutral" label={code} />,
         label: (
           <span className={styles.icdOption}>
             <span className={styles.icdOptionCode}>{code}</span>
@@ -301,22 +300,22 @@ export function ApcmBillingTable({ searchQuery = '', filtersOpen = false }) {
             panel search bar. ── */}
         {filtersOpen && (
           <div className={styles.filterBar}>
-            <Select
-              className={styles.icdFilterSelect}
+            <FilterChip
+              label="ICD Code"
               searchable
               searchPlaceholder="Search ICD code or description…"
-              placeholder="Filter by ICD code…"
               value={icdFilter}
               options={icdOptions}
-              onChange={v => { setIcdFilter(v); setCurrentPage(1); }}
+              onSet={v => { setIcdFilter(v); setCurrentPage(1); }}
+              onClear={() => { setIcdFilter(''); setCurrentPage(1); }}
             />
 
-            <Select
-              className={styles.providerFilterSelect}
-              placeholder="All providers"
+            <FilterChip
+              label="Provider"
               value={providerFilter}
-              options={[{ value: '', label: 'All providers' }, ...PROVIDERS.map(p => ({ value: p, label: p }))]}
-              onChange={v => { setProviderFilter(v); setCurrentPage(1); }}
+              options={PROVIDERS.map(p => ({ value: p, label: p }))}
+              onSet={v => { setProviderFilter(v); setCurrentPage(1); }}
+              onClear={() => { setProviderFilter(''); setCurrentPage(1); }}
             />
 
             {anyFilterActive && (

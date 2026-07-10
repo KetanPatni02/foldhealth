@@ -1,0 +1,1812 @@
+/* Document Review — promoted from a right-side drawer to a full-
+   screen surface per the latest direction. Overrides Drawer's default
+   panel sizing (90vw, rounded corners, right-inset) so it spans the
+   entire viewport with squared corners. */
+.drawer {
+  width: 100vw;
+  min-width: 100vw;
+  max-width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+  inset: 0;
+  left: 0;
+  right: 0;
+  margin: 0;
+}
+.body {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* ── Inline review (rendered inside the ICD Creation surface) ──────── */
+.inlineRoot {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  background: #fff;
+}
+.inlineHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  flex-shrink: 0;
+}
+.inlineBack {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s;
+}
+.inlineBack:hover { background: var(--neutral-50); }
+.inlineBody {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.inlineFooterBar {
+  flex-shrink: 0;
+  padding: 12px 16px;
+  border-top: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+}
+
+/* ── Review nav (top header bar): Previous · label · Next ─────────── */
+.reviewNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+.reviewNavLabel {
+  flex: 1;
+  text-align: center;
+  font: 500 14px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.reviewNavLabel strong {
+  color: var(--neutral-500);
+  font-weight: 600;
+}
+
+/* ── Review footer bar: Delete Record · Add to the Worklist ───────── */
+.reviewFooterBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.titleSub {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  font: 400 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.titleSub strong {
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+.titleSubDot { color: var(--neutral-200); }
+.titlePending {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--status-info);
+  font-weight: 500;
+}
+.titlePendingPulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-info);
+  animation: sftp-pulse 1.2s ease-in-out infinite;
+}
+@keyframes sftp-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+.headerDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  margin: 0 6px;
+}
+
+/* ── Inline doc switcher (preview-header dropdown) ────────────────── */
+.switcher {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.switcherTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px 6px 6px;
+  border-radius: 8px;
+  background: transparent;
+  border: 0.5px solid transparent;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.switcherTrigger:hover:not(:disabled) {
+  background: var(--neutral-50);
+  border-color: var(--neutral-150);
+}
+.switcherTrigger:disabled {
+  cursor: default;
+}
+.switcherTriggerOpen {
+  background: var(--neutral-50);
+  border-color: var(--primary-300);
+}
+.switcherStatus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.switcherStatusPulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status-info);
+  animation: sftp-pulse 1.2s ease-in-out infinite;
+}
+.switcherName {
+  flex: 1;
+  min-width: 0;
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+.switcherCounter {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--neutral-100);
+  font: 600 10px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+  letter-spacing: 0.2px;
+  flex-shrink: 0;
+}
+
+.switcherMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 320px;
+  background: #fff;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  z-index: 50;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: switcher-pop 0.14s ease-out;
+}
+@keyframes switcher-pop {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.switcherMenuHead {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-bottom: 0.5px solid var(--neutral-100);
+  background: var(--neutral-50);
+  font: 600 10px/1 'Inter', sans-serif;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--neutral-300);
+}
+.switcherItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: none;
+  background: #fff;
+  border-bottom: 0.5px solid var(--neutral-50);
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  text-align: left;
+  width: 100%;
+}
+.switcherItem:last-child { border-bottom: none; }
+.switcherItem:hover:not(:disabled) { background: var(--primary-50); }
+.switcherItemActive { background: var(--primary-50); }
+.switcherItemPending { cursor: not-allowed; opacity: 0.6; }
+.switcherItemIcon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.switcherItemBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.switcherItemName {
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.switcherItemMeta {
+  font: 400 11px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.switcherItemCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--neutral-100);
+  font: 600 10px/1 'Inter', sans-serif;
+  color: var(--neutral-400);
+  letter-spacing: 0.2px;
+}
+.switcherItemCountFlag {
+  background: var(--status-warning-light);
+  color: var(--status-warning);
+}
+
+/* Legacy tab strip (no longer used — kept temporarily in case other
+   callers rely on these class names; safe to delete in a later sweep). */
+.tabStrip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: linear-gradient(180deg, #fff 0%, var(--neutral-50) 100%);
+  flex-shrink: 0;
+}
+.tabStripLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 600 10px/1 'Inter', sans-serif;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--neutral-300);
+  flex-shrink: 0;
+  padding-right: 8px;
+  border-right: 0.5px solid var(--neutral-150);
+}
+.tabStripScroller {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  flex: 1;
+  scrollbar-width: thin;
+}
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 8px;
+  background: transparent;
+  border: 0.5px solid transparent;
+  border-radius: 999px;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+.tab:hover:not(:disabled) {
+  background: #fff;
+  border-color: var(--neutral-150);
+  color: var(--neutral-500);
+}
+.tabActive {
+  background: var(--primary-50);
+  border-color: var(--primary-200);
+  color: var(--primary-300);
+}
+.tabActive:hover:not(:disabled) {
+  background: var(--primary-50);
+  border-color: var(--primary-300);
+  color: var(--primary-300);
+}
+.tabPending {
+  opacity: 0.7;
+  cursor: not-allowed;
+  background: #fff;
+  border-color: var(--neutral-150);
+}
+.tabStatus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+}
+.tabStatusPulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status-info);
+  animation: sftp-pulse 1.2s ease-in-out infinite;
+}
+.tabName {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tabCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--neutral-100);
+  font: 600 10px/1 'Inter', sans-serif;
+  color: var(--neutral-400);
+  letter-spacing: 0.2px;
+}
+.tabActive .tabCount {
+  background: var(--primary-200);
+  color: var(--primary-300);
+}
+.tabCountFlag {
+  background: var(--status-warning-light);
+  color: var(--status-warning);
+}
+.tabActive .tabCountFlag {
+  background: var(--status-warning);
+  color: #fff;
+}
+
+/* Slim toolbar above the table — file name + ready/to-review breakdown. */
+.docToolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  border-bottom: 0.5px solid var(--neutral-100);
+  background: #fff;
+  flex-shrink: 0;
+}
+.docToolbarIcon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-150, #e3d6f9);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.docToolbarName {
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 360px;
+}
+.docToolbarSep {
+  width: 1px;
+  height: 14px;
+  background: var(--neutral-150);
+}
+.docToolbarStat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 400 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.docToolbarStat strong {
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+.docToolbarDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.docToolbarDotReady { background: var(--status-success); }
+.docToolbarDotFlag  { background: var(--status-warning); }
+.docToolbarSpacer { flex: 1; }
+.docToolbarSelInfo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  font: 400 11px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+}
+.docToolbarSelInfo strong { font-weight: 600; color: var(--primary-300); }
+.docToolbarBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: #fff;
+  border: 0.5px solid var(--neutral-150);
+  color: var(--neutral-500);
+  font: 500 11px/1.2 'Inter', sans-serif;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+}
+.docToolbarBtn:hover:not(:disabled) {
+  background: var(--neutral-50);
+  border-color: var(--primary-300);
+  color: var(--primary-300);
+}
+.docToolbarBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Two-panel layout */
+.panels {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+/* Equal 50/50 split now that we're a full-screen surface. */
+.leftPanel {
+  flex: 1 1 50%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 0.5px solid var(--neutral-150);
+  overflow-y: auto;
+  background: linear-gradient(180deg, var(--neutral-50) 0%, var(--neutral-100) 100%);
+}
+.rightPanel {
+  flex: 1 1 50%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: #fff;
+}
+
+/* ── Page preview ─────────────────────────────────────────────────── */
+.previewWrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+.previewHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.previewHeadName {
+  flex: 1;
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.previewHeadPages {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fff;
+  border: 0.5px solid var(--neutral-150);
+  font: 600 10px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+  letter-spacing: 0.2px;
+}
+.previewBody {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.previewEmpty {
+  padding: 48px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--neutral-300);
+  font-size: 12px;
+}
+/* Paper-feel card: layered shadow so it reads as a scanned page on
+   the warm-grey panel background. */
+.previewPage {
+  position: relative;
+  background: #fff;
+  border: 0.5px solid var(--neutral-150);
+  box-shadow:
+    0 1px 2px rgba(15, 18, 27, 0.04),
+    0 6px 18px rgba(15, 18, 27, 0.06);
+  border-radius: 4px;
+  padding: 26px 32px 28px;
+  font: 400 12px/1.5 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.previewPageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 10px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-size: 10px;
+  color: var(--neutral-300);
+}
+.previewPageOrg {
+  font-weight: 600;
+  color: var(--neutral-500);
+  font-size: 13px;
+  letter-spacing: -0.1px;
+}
+.previewPagePagenum {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.previewPageH1 {
+  margin: 14px 0 4px;
+  font: 700 16px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  letter-spacing: -0.2px;
+}
+.previewPageEnc {
+  padding: 6px 0;
+}
+.previewPageMeta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 20px;
+  margin: 10px 0 14px;
+  padding: 10px 12px;
+  background: var(--neutral-50);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--neutral-400);
+}
+.previewPageMeta strong {
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+.previewPageSection {
+  margin-top: 10px;
+}
+.previewPageH2 {
+  margin: 0 0 6px;
+  font: 600 10px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.previewPageIcds {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.previewPageIcds li {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--primary-50);
+  color: var(--primary-300);
+  font: 600 11px/1.2 'Inter', sans-serif;
+}
+.previewPageSep {
+  margin: 14px -8px;
+  border-top: 0.5px dashed var(--neutral-150);
+}
+
+/* ── Right panel table ────────────────────────────────────────────── */
+.tableEmpty {
+  padding: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--neutral-300);
+  font-size: 13px;
+}
+.tableWrap {
+  overflow-x: auto;
+  min-height: 0;
+}
+.table {
+  width: 100%;
+  min-width: 880px;
+  border-collapse: collapse;
+  font-family: 'Inter', sans-serif;
+}
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--neutral-50);
+  border-bottom: 0.5px solid var(--neutral-150);
+  text-align: left;
+  font: 600 11px/1.2 'Inter', sans-serif;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--neutral-400);
+  padding: 10px 8px;
+  white-space: nowrap;
+}
+.thCheck   { width: 36px; padding-left: 16px; padding-right: 4px; }
+.thMember  { width: 200px; padding-left: 4px; }
+.thField   { width: 160px; }
+.thStatus  { width: 110px; }
+.thActions { width: 56px; text-align: center; padding-right: 16px; }
+.thCheck input,
+.tdCheck input { cursor: pointer; }
+.tdCheck { width: 36px; padding-left: 16px; padding-right: 4px; vertical-align: middle; }
+.rowSelected { background: var(--primary-50); }
+.rowSelected:hover { background: var(--primary-100); }
+
+.row {
+  border-bottom: 0.5px solid var(--neutral-100);
+  border-left: 3px solid transparent;
+}
+.row:hover { background: var(--neutral-50); }
+.row > td { padding: 8px 8px; vertical-align: top; }
+.row > td:first-child { padding-left: 16px; }
+.row > td:last-child { padding-right: 16px; }
+.rowError    { border-left-color: var(--status-error);   background: var(--status-error-light); }
+.rowMismatch { border-left-color: var(--status-warning); background: var(--status-warning-light); }
+
+.tdMember { padding-top: 12px; }
+.memberCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.memberMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.memberName {
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.memberMeta {
+  font: 400 11px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.memberUnmatched {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--status-error);
+}
+
+.tdField { padding: 8px 8px 6px; vertical-align: top; }
+.cellInput { width: 100%; }
+
+.icdRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.icdChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--primary-50);
+  color: var(--primary-300);
+  font: 500 11px/1.2 'Inter', sans-serif;
+}
+.icdChipInvalid {
+  background: var(--status-error-light);
+  color: var(--status-error);
+  text-decoration: line-through;
+}
+.icdOverflow {
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  font: 500 11px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.icdAddBtn {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.icdAddBtn:hover { background: var(--neutral-50); }
+
+.tdStatus { padding-top: 14px; }
+.statusInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 500 12px/1.2 'Inter', sans-serif;
+}
+.statusReady    { color: var(--status-success); }
+.statusError    { color: var(--status-error); }
+.statusMismatch { color: var(--status-warning); }
+
+.tdActions { padding: 12px 8px; text-align: center; }
+.removeBtn {
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.removeBtn:hover { background: var(--status-error-light); }
+
+/* ── Per-field confidence chip ─────────────────────────────────────── */
+.fieldConf {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 4px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font: 600 10px/1.4 'Inter', sans-serif;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.fieldConfHigh    { background: var(--status-success-light); color: var(--status-success); }
+.fieldConfMedium  { background: var(--status-warning-light); color: var(--status-warning); }
+.fieldConfLow     { background: var(--status-error-light);   color: var(--status-error); }
+.fieldConfMissing { background: var(--neutral-100);          color: var(--neutral-300); }
+
+/* ── File strip (left panel header) ────────────────────────────── */
+.fileStrip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: #fff;
+  flex-shrink: 0;
+}
+
+/* ── Inline document checks (OCR tier + checks badge on the title) ─── */
+.fileStripChecks {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 4px;
+}
+
+.docChecks {
+  position: relative;
+  display: inline-flex;
+}
+
+.docChecksTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.docChecksPop {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 360px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.docChecksHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px 16px 10px;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+
+.docChecksHeadText { flex: 1; min-width: 0; }
+
+.docChecksTitle {
+  font: 600 14px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+
+.docChecksSub {
+  font: 400 12px/1.3 'Inter', sans-serif;
+  color: var(--neutral-300);
+  margin-top: 2px;
+}
+
+.docChecksClose {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 2px;
+  display: inline-flex;
+}
+
+.docChecksList {
+  list-style: none;
+  margin: 0;
+  padding: 6px 8px 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.docChecksRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 6px;
+}
+
+.docChecksRow:hover { background: var(--neutral-50); }
+
+.docChecksRowFail { background: var(--status-error-light, #FFEDED); }
+.docChecksRowFail:hover { background: var(--status-error-light, #FFEDED); }
+
+.docChecksLabel {
+  flex: 1;
+  min-width: 0;
+  font: 400 13px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+
+.docChecksActions {
+  display: inline-flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.docChecksRow:hover .docChecksActions { opacity: 1; }
+
+.docChecksPass,
+.docChecksFail {
+  border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font: 500 11px/1 'Inter', sans-serif;
+  cursor: pointer;
+}
+
+.docChecksPass { color: var(--status-success); }
+.docChecksFail { color: var(--status-error); }
+
+.docChecksUnreadable {
+  padding: 10px 16px 14px;
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--status-error);
+}
+.fileStripBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 0.5px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+.fileStripBtn:hover {
+  background: var(--neutral-50);
+  border-color: var(--neutral-150);
+}
+.fileStripName {
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.fileStripExternal {
+  width: 26px;
+  height: 26px;
+  border: 0.5px solid var(--neutral-150);
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+}
+.fileStripExternal:hover { border-color: var(--primary-300); }
+.fileStripMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 16px;
+  min-width: 280px;
+  background: #fff;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  padding: 4px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fileStripMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  text-align: left;
+  cursor: pointer;
+}
+.fileStripMenuItem:hover:not(:disabled) { background: var(--primary-50); }
+.fileStripMenuItem:disabled { opacity: 0.5; cursor: not-allowed; }
+.fileStripMenuItemActive { background: var(--primary-50); color: var(--primary-300); }
+.fileStripMenuCount {
+  margin-left: auto;
+  font: 600 10px/1 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+
+/* ── Patient banner (Figma 1:3574) ──────────────────────────────── */
+.patientBanner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+}
+
+.patientBannerBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.patientBannerName {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 15px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+
+.patientBannerMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+
+.patientBannerMeta strong {
+  color: var(--neutral-500);
+  font-weight: 600;
+}
+
+.patientBannerDot {
+  color: var(--neutral-200);
+}
+
+.rafDelta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.rafDeltaUp {
+  background: var(--status-success-light, #E6F5EC);
+  color: var(--status-success);
+}
+
+.rafDeltaDown {
+  background: var(--status-error-light, #FFEDED);
+  color: var(--status-error);
+}
+
+.patientBannerCount {
+  color: var(--neutral-300);
+}
+
+.patientBannerActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Grouped DOS card header (hidePatient) ──────────────────────── */
+.encCardDosHead {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.encCardDosLine {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.encCardDosLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+
+.encCardDosValue {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+
+.encCardDosMeta {
+  font-size: 12px;
+  color: var(--neutral-400);
+}
+
+/* ── Read-only DOS card body (Figma 1:3574 top card) ────────────── */
+.encReadOnly {
+  padding: 12px 16px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Two-column form row: ICD Codes multi-select + Document Type Select.
+ * Each control keeps its FieldBlock label + confidence pill so the
+ * high/med/low tier reads at a glance even in read-only mode. */
+.encReadOnlyForm {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* Multi-select chip input for ICD codes — mirrors the styling of the
+ * DS Input so the read-only + edit modes read as the same control. */
+.icdMulti {
+  position: relative;
+}
+
+.encIcdsInput {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: var(--neutral-0);
+  align-items: center;
+  cursor: text;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.encIcdsInputFocus {
+  border-color: var(--primary-300);
+  box-shadow: 0 0 0 2px rgba(140, 90, 226, 0.12);
+}
+
+/* ICD chip = DS Badge wrapped in a click-to-remove affordance. */
+.icdBadgeWrap {
+  display: inline-flex;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.icdBadgeWrap:hover { opacity: 0.75; }
+
+.icdInlineInput {
+  flex: 1;
+  min-width: 90px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: 400 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  padding: 2px 0;
+}
+
+/* Expanded edit form (Figma 4001:179835) — DOS/Provider/POS input row,
+ * ICD Codes, and a per-ICD checkbox list. */
+.encEditForm {
+  padding: 12px 16px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.encEditRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+.encIcdCheckList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.encIcdCheckRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.encIcdCheckBody {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.encIcdCheckTitle {
+  font: 400 13px/1.35 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.encIcdCheckTitle strong { font-weight: 600; }
+.encIcdCheckHcc {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 11px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+
+.icdAddBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.icdAddBtn:hover { background: var(--primary-50); }
+
+.icdSearchPop {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.icdSearchHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.icdSearchInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  font: 400 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  background: transparent;
+}
+
+.icdSearchList {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.icdSearchItem {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.icdSearchItem:hover { background: var(--neutral-50); }
+
+.icdSearchCode {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--neutral-500);
+  flex-shrink: 0;
+  min-width: 52px;
+}
+
+.icdSearchDesc {
+  font-size: 12px;
+  color: var(--neutral-400);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icdSearchEmpty {
+  padding: 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--neutral-300);
+}
+
+@media (max-width: 720px) {
+  .encReadOnlyForm { grid-template-columns: 1fr; }
+  .encEditRow { grid-template-columns: 1fr; }
+}
+
+.encIcdList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.encIcdRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 0;
+  border-top: 0.5px solid var(--neutral-100);
+}
+
+.encIcdRow:first-child { border-top: none; }
+
+.encIcdCode {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--neutral-500);
+  flex-shrink: 0;
+}
+
+.encIcdDesc {
+  flex: 1;
+  min-width: 200px;
+  font-size: 13px;
+  color: var(--neutral-400);
+  line-height: 1.4;
+}
+
+.encIcdHcc {
+  font-size: 11px;
+  color: var(--neutral-300);
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--neutral-50);
+}
+
+.encIcdHccDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--primary-300);
+}
+
+.encReadOnlyIndex {
+  font-size: 11px;
+  color: var(--neutral-300);
+  padding-top: 4px;
+  border-top: 0.5px solid var(--neutral-100);
+}
+
+.encIndexDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+
+.encIndexDot[data-tone="v24"] { background: var(--status-error, #D72825); }
+.encIndexDot[data-tone="v28"] { background: var(--status-success, #2E8A4E); }
+
+.encEditFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 8px 16px 12px;
+  border-top: 0.5px solid var(--neutral-100);
+  margin-top: 4px;
+}
+
+/* ── Doc tabs (Pending / Added / Deleted) ─────────────────────── */
+.docTabBar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: #fff;
+  flex-shrink: 0;
+}
+.docTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 6px;
+  margin-right: 16px;
+  border: none;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+  cursor: pointer;
+  margin-bottom: -0.5px;
+}
+.docTab:hover { color: var(--neutral-500); }
+.docTabActive {
+  color: var(--primary-300);
+  border-bottom-color: var(--primary-300);
+}
+.docTabCount {
+  font-weight: 400;
+  color: var(--neutral-300);
+  margin-left: 2px;
+}
+.docTabActive .docTabCount { color: var(--primary-300); }
+.docTabBarSpacer { flex: 1; }
+/* Toolbar buttons (Search, Saved filters, Add New Record) now use
+   ActionButton + Button from the DS — no custom CSS needed. */
+
+/* Status filter row — wraps the shared <Toggle> segmented control
+   inside the Pending tab. Visual styling is owned by Toggle; we only
+   provide padding + bg here. */
+.statusChipsRow {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+/* ── Card stack ────────────────────────────────────────────────── */
+.cardStack {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--neutral-50);
+}
+.cardStackEmpty {
+  padding: 60px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: var(--neutral-300);
+  font: 400 13px/1.4 'Inter', sans-serif;
+}
+
+/* ── Document Review Completed hero (Figma 180:63466) ─────────────── */
+.docCompleted {
+  margin: 32px auto 0;
+  max-width: 540px;
+  padding: 48px 32px;
+  background: #fff;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+}
+.docCompletedBadgeWrap {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+.docCompletedRingOuter,
+.docCompletedRingInner {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px dashed var(--status-success);
+}
+.docCompletedRingOuter {
+  inset: 0;
+  opacity: 0.18;
+}
+.docCompletedRingInner {
+  inset: 10px;
+  opacity: 0.32;
+}
+.docCompletedBadge {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--status-success);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(0, 155, 83, 0.3);
+}
+.docCompletedTitle {
+  font: 600 18px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  margin-bottom: 6px;
+}
+.docCompletedBody {
+  font: 400 13px/1.5 'Inter', sans-serif;
+  color: var(--neutral-300);
+  margin-bottom: 22px;
+  max-width: 360px;
+}
+.docCompletedActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── Encounter card ───────────────────────────────────────────── */
+.encCard {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 10px;
+  background: #fff;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.encCardHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.encCardIdent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.encCardName {
+  font: 600 14px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.encCardMeta {
+  font: 400 11px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.encCardMetaDot { color: var(--neutral-200); margin: 0 2px; }
+
+/* Status pill is now rendered with the shared <Badge> component
+   (variants: status-completed / status-review / status-failed). No
+   custom class needed; the card just spaces it via .encCardHead's
+   flex gap. */
+
+/* Card actions cluster — `<Button variant="ghost">` and
+   `<ActionButton>` from the DS carry their own styling. We just
+   provide the cluster's flex gap. */
+.encCardActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.encGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 16px;
+}
+.encIcds {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: #fff;
+  min-height: 32px;
+}
+.encIcdChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--primary-50);
+  color: var(--primary-300);
+  font: 500 11px/1.2 'Inter', sans-serif;
+}
+.encIcdClose {
+  width: 14px;
+  height: 14px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.encIcdClose:hover { background: var(--primary-100); }
+
+/* Duplicate-warning chip — surfaces when OCR matched a row to an
+   existing dos_list entry on the member (same DOS + provider + POS).
+   Reviewer can still apply, but the row is held in Pending by
+   default so they can confirm intent. */
+.encDupWarn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--status-warning-light);
+  border: 0.5px solid rgba(217, 165, 11, 0.25);
+  border-radius: 6px;
+  font: 500 11px/1.3 'Inter', sans-serif;
+  color: var(--status-warning);
+}
+
+/* ── Field block (label + gauge + input) ──────────────────────── */
+.fieldBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fieldBlockHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.fieldBlockLabel {
+  font: 500 11px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.fieldBlockReq {
+  color: var(--status-error);
+  margin-left: 2px;
+}
+.fieldBlockBody { }
+
+/* ── Confidence gauge bar ──────────────────────────────────────── */
+.confGauge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.confGaugePct {
+  font: 500 10px/1 'Inter', sans-serif;
+}
+.confGauge_highText   { color: var(--status-success); }
+.confGauge_mediumText { color: var(--status-warning); }
+.confGauge_lowText    { color: var(--status-error); }
+.confGaugeBars {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.confGaugeBar {
+  width: 8px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--neutral-100);
+}
+.confGauge_highBar    { background: var(--status-success); }
+.confGauge_mediumBar  { background: var(--status-warning); }
+.confGauge_lowBar     { background: var(--status-error); }
+.confGauge_offBar     { background: var(--neutral-100); }
+.confGaugeEmpty {
+  font: 400 10px/1 'Inter', sans-serif;
+  color: var(--neutral-200);
+}
+
+/* ── ConfTier — sparkle + High/Medium/Low (read-only card) ──────── */
+.confTier {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font: 600 12px/1 'Inter', sans-serif;
+}
+
+.confTier_high   { color: var(--status-success, #2E8A4E); }
+.confTier_medium { color: var(--status-warning, #C28F2A); }
+.confTier_low    { color: var(--status-error, #D72825); }
+
+.confTierEmpty {
+  font: 400 10px/1 'Inter', sans-serif;
+  color: var(--neutral-200);
+}
+
+.emptyState {
+  padding: 80px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: var(--neutral-300);
+  text-align: center;
+}
+.emptyStateBubble {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.emptyStateTitle {
+  font: 600 14px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  margin-top: 4px;
+}
+.emptyStateSub {
+  font: 400 12px/1.5 'Inter', sans-serif;
+  color: var(--neutral-300);
+  max-width: 320px;
+}
+
+/* ── Compliance block (between file strip and page preview) ──────────── */
+.complianceBlock {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  margin: 8px 0;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: var(--neutral-0);
+  overflow: hidden;
+}
+
+.complianceHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.complianceHeader:hover {
+  background: var(--neutral-50);
+}
+
+.complianceHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.complianceSummary {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+
+.tone_success { color: var(--status-success, #2E8A4E); }
+.tone_warning { color: var(--status-warning, #B6770F); }
+.tone_error   { color: var(--status-error, #D72825); }
+
+.complianceDetail {
+  border-top: 0.5px solid var(--neutral-150);
+  padding: 12px;
+  background: var(--neutral-50);
+}
+
+@media (max-width: 720px) {
+  .complianceHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

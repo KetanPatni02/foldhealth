@@ -42,6 +42,7 @@
 .toc-oncall { background: var(--primary-100); color: var(--primary-300); border-color: rgba(140,90,226,0.2); }
 
 /* Agent Status */
+.status-ready { background: var(--status-success-light); color: var(--status-success-bright); border-color: color-mix(in srgb, var(--status-success-bright) 20%, transparent); }
 .status-completed { background: var(--status-success-light); color: var(--status-success); border-color: rgba(0,155,83,0.2); }
 .status-oncall { background: var(--status-success-light); color: var(--status-success); border-color: rgba(0,155,83,0.2); }
 .status-scheduled { background: var(--status-info-light); color: var(--status-info); border-color: rgba(20,94,204,0.2); }

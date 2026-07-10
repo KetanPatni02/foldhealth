@@ -136,6 +136,95 @@ export const CARE_PROGRAMS_MOCK = [
   },
 ];
 
+// ─── Per-patient scenarios for APE Manual Creation demo ─────────────────────
+// Keyed by patientId. Each scenario overrides the default programs list AND
+// pre-populates IPA/LOB defaults on the Create APE drawer so demos can walk
+// through each acceptance-criteria path by switching patient IDs.
+//
+// Missing patients fall back to a "clean" default: no AWV, no APE, LOB
+// pre-filled to Medicaid, IPA pre-filled to CFC.
+export const APCM_PATIENT_SCENARIOS = {
+  // p1 — Active AWV. Triggers AC-9 / AC-14 (AWV blocks APE).
+  p1: {
+    label: 'has active AWV',
+    defaults: { ipa: 'CFC', lob: 'medicaid' },
+    programs: [
+      { id: 'cp-p1-awv', name: 'Annual Wellness Visit (AWV)', acuity: 'High', status: 'Enrolled',
+        statusColor: 'var(--status-success)', startDate: '09/01/2024', endDate: '02/19/2024',
+        lastUpdated: '02/19/2024', assignee: 'Aldo Richman', pcp: 'Dr. Robert Frost', progress: 0.75 },
+      { id: 'cp-p1-snp', name: 'SNP Care Program (SNP)', acuity: null, status: 'Engaged',
+        statusColor: 'var(--primary-300)', startDate: '03/15/2024', endDate: '02/19/2024',
+        lastUpdated: '02/19/2024', assignee: 'Ivy Ralph', pcp: 'Dr. Robert Frost', progress: 0.6 },
+    ],
+  },
+
+  // p2 — Already has an active APE for MY 2026. Triggers AC-10 / AC-15
+  // (same-year duplicate block).
+  p2: {
+    label: 'has existing APE for 2026',
+    defaults: { ipa: 'CFC', lob: 'medicaid' },
+    programs: [
+      { id: 'cp-p2-ape', name: 'Annual Physical Exam (APE’26)', acuity: null, status: 'Enrolled',
+        statusColor: 'var(--status-success)', startDate: '01/15/2026', endDate: '',
+        lastUpdated: '01/15/2026', assignee: 'Aldo Richman', pcp: 'Dr. John Doe', progress: 0.3,
+        measurementYear: '2026', lob: 'Medicaid', ipa: 'CFC', apeType: 'Subsequent APE' },
+    ],
+  },
+
+  // p3 — Patient's LOB is Medicare on file. Triggers AC-6 (Medicare-guidance
+  // error). No AWV → the drawer opens cleanly, error surfaces on Create.
+  p3: {
+    label: 'LOB = Medicare',
+    defaults: { ipa: 'Astrana', lob: 'medicare' },
+    programs: [
+      { id: 'cp-p3-hiu', name: 'High Utilizers (HIU)', acuity: null, status: 'New',
+        statusColor: 'var(--primary-300)', startDate: '03/15/2024', endDate: '',
+        lastUpdated: '03/15/2024', assignee: 'Aldo Richman', pcp: 'Dr. John Doe', progress: 0 },
+    ],
+  },
+
+  // p4 — Clean positive path (TC-1): no AWV, no APE, Medicaid pre-filled.
+  p4: {
+    label: 'clean — Medicaid',
+    defaults: { ipa: 'CFC', lob: 'medicaid' },
+    programs: [
+      { id: 'cp-p4-tcm', name: 'Transitional Care Management (TCM)', acuity: null, status: 'Enrolled',
+        statusColor: 'var(--status-success)', startDate: '02/01/2026', endDate: '',
+        lastUpdated: '02/01/2026', assignee: 'Ivy Ralph', pcp: 'Dr. John Doe', progress: 0.5 },
+    ],
+  },
+
+  // p5 — Clean positive path (TC-2): no AWV, Commercial LOB, different IPA.
+  p5: {
+    label: 'clean — Commercial',
+    defaults: { ipa: 'Astrana', lob: 'commercial' },
+    programs: [],
+  },
+};
+
+// Default programs shown for any patient NOT in the scenario map above.
+// Intentionally excludes AWV so APE creation is unblocked out of the box —
+// AWV-block behavior is still demonstrable via p1. Provides realistic
+// context (SNP + HIU + TCM) without gating the positive path.
+const DEFAULT_PROGRAMS = CARE_PROGRAMS_MOCK.filter(
+  p => !/awv|annual wellness visit/i.test(p.name)
+);
+
+// Look up the initial programs list for a patient. Scenario patients get the
+// curated overlay above; every other patient falls through to DEFAULT_PROGRAMS
+// (no AWV → APE create works without a scenario override).
+export function programsForPatient(patientId) {
+  const scenario = APCM_PATIENT_SCENARIOS[patientId];
+  if (scenario) return scenario.programs;
+  return DEFAULT_PROGRAMS;
+}
+
+// Look up the APE drawer defaults (IPA/LOB) for a patient. Falls back to a
+// sensible baseline so untouched patients still get a demo-friendly pre-fill.
+export function apcmDefaultsForPatient(patientId) {
+  return APCM_PATIENT_SCENARIOS[patientId]?.defaults ?? { ipa: 'CFC', lob: 'medicaid' };
+}
+
 export const CP_SUB_TABS = ['All', 'New', 'Enrolled', 'Completed', 'Closed'];
 
 export const CP_FILTERS = [

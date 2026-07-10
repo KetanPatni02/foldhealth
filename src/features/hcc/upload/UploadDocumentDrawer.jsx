@@ -8,12 +8,12 @@ import { Input } from '../../../components/Input/Input';
 import { Toggle } from '../../../components/Toggle/Toggle';
 import { Select } from '../../../components/Select/Select';
 import { Dropzone } from '../../../components/Dropzone/Dropzone';
+import { IcdSearch } from '../../../components/IcdSearch/IcdSearch';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { ConfidenceBadge } from '../components/ConfidenceBadge';
 import { getScoreStyle, getFieldConfidence } from '../data/confidence';
 import { useAppStore } from '../../../store/useAppStore';
 import { runMockOcr, mandatoryFields, POS_LABEL } from './mockOcr';
-import { ICDS as ICDS_BY_MEMBER } from '../data/icds';
 import styles from './UploadDocumentDrawer.module.css';
 
 // Accepted file types for clinical document upload. PDFs are the canonical
@@ -1170,7 +1170,6 @@ function SftpPhase({ showToast }) {
 function SinglePhase({ hccMembers, batchId, showToast, createFromEncounter, onDone }) {
   const [patient, setPatient] = useState(null);   // selected hccMember or null
   const [patientQuery, setPatientQuery] = useState('');
-  const [icdQuery, setIcdQuery] = useState('');
   const [icds, setIcds] = useState([]);             // [{ code, desc, hcc? }]
   const [dosMode, setDosMode] = useState('existing'); // 'existing' | 'new'
   const [dos, setDos] = useState('');
@@ -1190,33 +1189,9 @@ function SinglePhase({ hccMembers, batchId, showToast, createFromEncounter, onDo
       .slice(0, 8);
   }, [hccMembers, patientQuery]);
 
-  // ICD search — flatten all known ICDs across members, then dedup by
-  // code so the user gets a single entry per diagnosis even if it's
-  // attached to multiple patients in the mock.
-  const allIcds = useMemo(() => {
-    const map = new Map();
-    Object.values(ICDS_BY_MEMBER).forEach(list => {
-      (list || []).forEach(item => {
-        if (!map.has(item.code)) map.set(item.code, item);
-      });
-    });
-    return [...map.values()];
-  }, []);
-  const icdMatches = useMemo(() => {
-    const q = icdQuery.trim().toLowerCase();
-    if (!q) return [];
-    return allIcds
-      .filter(i =>
-        (i.code || '').toLowerCase().includes(q) ||
-        (i.desc || '').toLowerCase().includes(q),
-      )
-      .slice(0, 6);
-  }, [allIcds, icdQuery]);
-
   const addIcd = (item) => {
     if (icds.some(i => i.code === item.code)) return;
     setIcds([...icds, item]);
-    setIcdQuery('');
   };
   const removeIcd = (code) => setIcds(icds.filter(i => i.code !== code));
 
@@ -1313,27 +1288,11 @@ function SinglePhase({ hccMembers, batchId, showToast, createFromEncounter, onDo
       {/* ICD typeahead + chip list. */}
       <div className={styles.singleSection}>
         <label className={styles.singleLabel}>ICD codes *</label>
-        <Input
+        <IcdSearch
           placeholder="Search by code or description (e.g. E11.9, COPD)…"
-          value={icdQuery}
-          onChange={(e) => setIcdQuery(e.target.value)}
+          excludeCodes={icds.map(i => i.code)}
+          onSelect={(icd) => addIcd({ code: icd.code, desc: icd.title, hcc: icd.hcc || '', valid: true })}
         />
-        {icdMatches.length > 0 && (
-          <div className={styles.icdMatchList}>
-            {icdMatches.map(m => (
-              <button
-                key={m.code}
-                type="button"
-                className={styles.icdMatchItem}
-                onClick={() => addIcd(m)}
-              >
-                <code className={styles.icdMatchCode}>{m.code}</code>
-                <span className={styles.icdMatchDesc}>{m.desc}</span>
-                {m.hcc && <span className={styles.icdMatchHcc}>{m.hcc.replace(/ - .*$/, '')}</span>}
-              </button>
-            ))}
-          </div>
-        )}
         {icds.length > 0 && (
           <div className={styles.icdChosen}>
             {icds.map(i => (
@@ -2216,7 +2175,6 @@ function PosSelect({ value, onChange, error }) {
  * Used for both Add (new ICD) and Edit (replace an existing chip).
  */
 function IcdPicker({ existingCodes, editingCode, onPick, onClose }) {
-  const [q, setQ] = useState('');
   const wrapRef = useRef(null);
 
   useEffect(() => {
@@ -2227,60 +2185,14 @@ function IcdPicker({ existingCodes, editingCode, onPick, onClose }) {
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [onClose]);
 
-  const all = useMemo(() => {
-    const map = new Map();
-    Object.values(ICDS_BY_MEMBER).forEach(list => {
-      (list || []).forEach(item => {
-        if (!map.has(item.code)) map.set(item.code, { code: item.code, desc: item.desc, hcc: item.hcc });
-      });
-    });
-    return [...map.values()];
-  }, []);
-
-  const matches = useMemo(() => {
-    const query = q.trim().toLowerCase();
-    if (!query) return all.slice(0, 8);
-    return all
-      .filter(i =>
-        (i.code || '').toLowerCase().includes(query) ||
-        (i.desc || '').toLowerCase().includes(query),
-      )
-      .slice(0, 8);
-  }, [all, q]);
-
   return (
-    <div ref={wrapRef} className={styles.icdPicker}>
-      <div className={styles.icdPickerHead}>
-        <Icon name="solar:magnifer-linear" size={12} color="var(--neutral-300)" />
-        <input
-          autoFocus
-          className={styles.icdPickerInput}
-          placeholder={editingCode ? `Replace ${editingCode}…` : 'Search ICD by code or description'}
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-      </div>
-      <div className={styles.icdPickerList}>
-        {matches.length === 0 ? (
-          <div className={styles.icdPickerEmpty}>No matches</div>
-        ) : matches.map(item => {
-          const alreadyAdded = existingCodes.includes(item.code) && item.code !== editingCode;
-          return (
-            <button
-              key={item.code}
-              type="button"
-              className={[styles.icdPickerItem, alreadyAdded ? styles.icdPickerItemDisabled : ''].filter(Boolean).join(' ')}
-              disabled={alreadyAdded}
-              onClick={() => onPick?.({ code: item.code, desc: item.desc, valid: true })}
-              title={alreadyAdded ? 'Already added to this encounter' : item.desc}
-            >
-              <span className={styles.icdPickerCode}>{item.code}</span>
-              <span className={styles.icdPickerDesc}>{item.desc}</span>
-              {alreadyAdded && <span className={styles.icdPickerHint}>Added</span>}
-            </button>
-          );
-        })}
-      </div>
+    <div ref={wrapRef} className={styles.icdPickerWrap}>
+      <IcdSearch
+        autoFocus
+        excludeCodes={existingCodes.filter((c) => c !== editingCode)}
+        placeholder={editingCode ? `Replace ${editingCode}…` : 'Search ICD by code or description'}
+        onSelect={(icd) => onPick?.({ code: icd.code, desc: icd.title, hcc: icd.hcc || '', valid: true })}
+      />
     </div>
   );
 }
@@ -2443,32 +2355,8 @@ function EncounterCard({ enc, hccMembers, onPatch }) {
     onPatch({ icds: enc.icds.filter(i => i.code !== code) });
   };
 
-  // ── ICD search — flatten the ICD catalog into a unique-by-code list
-  // so users can add a missed code without leaving the review pane.
-  const [icdQuery, setIcdQuery] = useState('');
-  const icdCatalog = useMemo(() => {
-    const map = new Map();
-    Object.values(ICDS_BY_MEMBER).forEach(list => {
-      (list || []).forEach(item => { if (!map.has(item.code)) map.set(item.code, item); });
-    });
-    return [...map.values()];
-  }, []);
-  const icdMatches = useMemo(() => {
-    const q = icdQuery.trim().toLowerCase();
-    if (!q) return [];
-    const existing = new Set((enc.icds || []).map(i => i.code));
-    return icdCatalog
-      .filter(i =>
-        !existing.has(i.code) && (
-          (i.code || '').toLowerCase().includes(q) ||
-          (i.desc || '').toLowerCase().includes(q)
-        ),
-      )
-      .slice(0, 6);
-  }, [icdCatalog, icdQuery, enc.icds]);
   const addIcd = (item) => {
     onPatch({ icds: [...(enc.icds || []), { code: item.code, desc: item.desc, valid: true }] });
-    setIcdQuery('');
   };
 
   return (
@@ -2621,27 +2509,11 @@ function EncounterCard({ enc, hccMembers, onPatch }) {
         {/* Add ICD — typeahead over the catalog. Excludes codes already
             on this encounter so the user doesn't see false duplicates. */}
         <div className={styles.icdAddRow}>
-          <Input
+          <IcdSearch
             placeholder="Add ICD — search by code or description (e.g. E11.9, COPD)…"
-            value={icdQuery}
-            onChange={(e) => setIcdQuery(e.target.value)}
+            excludeCodes={(enc.icds || []).map(i => i.code)}
+            onSelect={(icd) => addIcd({ code: icd.code, desc: icd.title, hcc: icd.hcc || '' })}
           />
-          {icdMatches.length > 0 && (
-            <div className={styles.icdMatchList}>
-              {icdMatches.map(m => (
-                <button
-                  key={m.code}
-                  type="button"
-                  className={styles.icdMatchItem}
-                  onClick={() => addIcd(m)}
-                >
-                  <code className={styles.icdMatchCode}>{m.code}</code>
-                  <span className={styles.icdMatchDesc}>{m.desc}</span>
-                  {m.hcc && <span className={styles.icdMatchHcc}>{m.hcc.replace(/ - .*$/, '')}</span>}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 

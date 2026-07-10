@@ -166,6 +166,17 @@ export function SubNav({ collapsed }) {
       ))}
       <div className={styles.sectionLabel} style={{ marginTop: 8 }}>Leads &amp; Contacts</div>
 
+      {/* Archived Worklist — frozen snapshots of worklists, isolated from
+          the live versions so upstream changes never alter them. */}
+      <div className={styles.sectionLabel} style={{ marginTop: 8 }}>Archived Worklist</div>
+      <div
+        className={[styles.item, activeSubnavList === 'HCC (Archived)' ? styles.active : ''].filter(Boolean).join(' ')}
+        onClick={() => { setActiveSubnavList('HCC (Archived)'); clearSelected(); clearHccSelected(); setActiveFilters({}); }}
+      >
+        HCC
+        <span className={styles.count}>{hccMembers.length || 0}</span>
+      </div>
+
       {filterMenu && createPortal(
         <>
           <div

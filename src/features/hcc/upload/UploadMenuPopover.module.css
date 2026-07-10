@@ -1,0 +1,37 @@
+.popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 240px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px color-mix(in srgb, black 12%, transparent);
+  padding: 6px;
+  z-index: 3000;
+  display: flex;
+  flex-direction: column;
+  animation: upload-menu-pop 0.14s ease-out;
+}
+
+@keyframes upload-menu-pop {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.item {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  text-align: left;
+  transition: background 0.1s;
+}
+.item:hover { background: var(--neutral-50); }
+.item:active { background: var(--neutral-100); }

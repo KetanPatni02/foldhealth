@@ -1,0 +1,180 @@
+/* HccSuspectGroup — collapsible per-HCC suspect section (Paper 1WXT). */
+
+.group {
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+.title {
+  font: 500 14px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.meta { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+.openChip,
+.closedChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font: 500 11px/1.3 'Inter', sans-serif;
+}
+.openChip {
+  background: color-mix(in srgb, var(--secondary-300) 8%, var(--neutral-0));
+  color: var(--secondary-300);
+  border: 0.5px solid color-mix(in srgb, var(--secondary-300) 25%, transparent);
+}
+.closedChip {
+  background: var(--neutral-50);
+  color: var(--neutral-300);
+  border: 0.5px solid var(--neutral-150);
+}
+.rafChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-25);
+  font: 500 11px/1.3 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.overridesChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-50);
+  font: 400 11px/1.3 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+
+.body {
+  border-top: 0.5px solid var(--neutral-150);
+  display: flex;
+  flex-direction: column;
+}
+
+.suspectRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.suspectRow:last-child { border-bottom: none; }
+
+.rowTop { display: flex; align-items: center; gap: 12px; }
+.icdSelect {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 360px;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: var(--neutral-0);
+  cursor: pointer;
+  text-align: left;
+}
+.icdSelect:hover { border-color: var(--neutral-200); }
+.icdSelectText {
+  font: 500 13px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rowCounters { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-shrink: 0; }
+.counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 2px;
+  border-radius: 4px;
+  cursor: pointer;
+  font: 400 12px/1 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.counter:hover { background: var(--neutral-50); }
+
+.rowChips { display: flex; align-items: center; gap: 6px; }
+.hccChip {
+  display: inline-flex;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-25);
+  font: 400 11px/1.3 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.suspectChip {
+  display: inline-flex;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 0.5px solid color-mix(in srgb, var(--status-info) 25%, transparent);
+  background: var(--status-info-light);
+  font: 500 11px/1.3 'Inter', sans-serif;
+  color: var(--status-info);
+}
+
+/* DOS single-select + auto-populated Provider/POS readouts */
+.dosPickRow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.dosPick { width: 180px; flex-shrink: 0; }
+.autoFields { display: inline-flex; align-items: center; gap: 16px; }
+.autoField {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.autoFieldLabel {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+
+.rowConfirm { display: flex; align-items: center; gap: 12px; }
+.confirmPrompt {
+  font: 400 13px/1.3 'Inter', sans-serif;
+  color: var(--neutral-400);
+  flex: 1;
+  min-width: 0;
+}
+.confirmActions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+.resolvedAccepted,
+.resolvedDeclined {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 500 12px/1.3 'Inter', sans-serif;
+}
+.resolvedAccepted { color: var(--status-success); }
+.resolvedDeclined { color: var(--neutral-300); }

@@ -140,6 +140,12 @@ The platform follows the **Fold Health design system** with strict adherence to:
 
 ## Recent Changes
 
+### HCC — Live ICD-11 lookup + Add DOS drawer overhaul (July 2026)
+- **Shared `IcdSearch` component** (`src/components/IcdSearch`) — debounced ICD autocomplete backed by the WHO ICD-11 API through a secure server proxy (`api/icd-search.js`; OAuth secret stays server-side). Falls back to the Supabase `icd_codes` cache, then a bundled offline catalog, so search always works. Dropdown is portaled (never clipped inside drawers/tables), keyboard-navigable, ARIA-complete.
+- **Wired everywhere ICDs are added:** Add DOS drawer, Upload-document manual entry, OCR encounter review (chip picker + inline add), and the SFTP review encounter cards.
+- **Add DOS drawer** now matches the Task Drawer designs end-to-end: upload → extract progress states; Ready/Not Ready badge driven by field completeness; calendar picker for DOS; searchable Rendering Provider fed by platform users (profiles table); searchable POS with the full CMS US Place of Service code set; orange **M** chip replaces the AI-confidence gauge on any manually set/overridden field or ICD; DOS-level delete; 16px card spacing; and the eye action opens the source document in a left-side viewer panel with zoom + cited-ICD highlighting.
+- **New migrations:** `supabase/icd_codes_migration.sql`, `supabase/pos_codes_migration.sql` (both read-only to anon; seeded via `bun run seed`).
+
 ### Analytics — Customize (drag/resize) on every view + auto-fit widgets (May 2026)
 - **Customize everywhere.** The Customize/Done/Reset controls now appear on all 15 analytics views (previously Executive-only). `EDITABLE_VIEWS` in `AnalyticsLayout.jsx` gates the buttons; every view (flat + tabbed) opts in.
 - **Single shared `EditableGrid` component.** New `src/features/analytics/views/EditableGrid.jsx` owns layout state, localStorage persistence, container width, per-item content measurement, manual-resize pinning, and reset. All 13 flat views and the 11 Care/Financial sub-tabs render through it; the interim `useEditableGrid` hook and per-view grid plumbing were removed.

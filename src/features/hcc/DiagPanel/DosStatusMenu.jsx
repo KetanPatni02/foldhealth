@@ -14,7 +14,10 @@ const STATUS_ITEMS = [
   { label: 'In Progress',      value: 'In Progress',      chevron: false, danger: false },
   { label: 'Record Received',  value: 'Record Received',  chevron: false, danger: false },
   { label: 'Insufficient',     value: 'Insufficient',     chevron: false, danger: false },
-  { label: 'Returned To',      value: 'Returned',         chevron: true,  danger: false },
+  // "Rebuttal" is the product term (renamed from "Returned" — RA coder
+  // workflow plan); the stored value stays 'Returned' because the
+  // assignment engine's RETURN_TARGET routing keys on it.
+  { label: 'Rebuttal',         value: 'Returned',         chevron: true,  danger: false },
   { label: 'Record Requested', value: 'Record Requested', chevron: false, danger: false },
   { label: 'Completed',        value: 'Completed',        chevron: false, danger: false },
   { label: 'Reject',           value: 'Reject',           chevron: false, danger: true  },

@@ -20,79 +20,27 @@
   min-height: 0;
 }
 
-/* ── Inline review (rendered inside the ICD Creation surface) ──────── */
-.inlineRoot {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  height: 100%;
-  background: #fff;
-}
-.inlineHeader {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  border-bottom: 0.5px solid var(--neutral-150);
-  background: var(--neutral-0);
-  flex-shrink: 0;
-}
-.inlineBack {
+/* Single-line title "Document Review" per Figma 121:87283. */
+.titleBlock {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 8px;
-  background: var(--neutral-0);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.12s;
 }
-.inlineBack:hover { background: var(--neutral-50); }
-.inlineBody {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-.inlineFooterBar {
-  flex-shrink: 0;
-  padding: 12px 16px;
-  border-top: 0.5px solid var(--neutral-150);
-  background: var(--neutral-0);
-}
-
-/* ── Review nav (top header bar): Previous · label · Next ─────────── */
-.reviewNav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: 100%;
-}
-.reviewNavLabel {
-  flex: 1;
-  text-align: center;
-  font: 500 14px/1.2 'Inter', sans-serif;
-  color: var(--neutral-400);
-}
-.reviewNavLabel strong {
+.titleTop {
+  font: 600 16px/1.2 'Inter', sans-serif;
   color: var(--neutral-500);
-  font-weight: 600;
+  letter-spacing: -0.1px;
 }
-
-/* ── Review footer bar: Delete Record · Add to the Worklist ───────── */
-.reviewFooterBar {
-  display: flex;
+.titleStats {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
+  gap: 6px;
+  font: 400 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
 }
-
+.titleStats strong {
+  font-weight: 600;
+  color: var(--neutral-500);
+}
 .titleSub {
   display: inline-flex;
   align-items: center;
@@ -146,7 +94,6 @@
   border-radius: 8px;
   background: transparent;
   border: 0.5px solid transparent;
-  font-family: 'Inter', sans-serif;
   cursor: pointer;
   transition: background 0.12s, border-color 0.12s;
 }
@@ -204,7 +151,7 @@
   left: 0;
   right: 0;
   max-height: 320px;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 10px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
@@ -236,10 +183,9 @@
   gap: 10px;
   padding: 8px 12px;
   border: none;
-  background: #fff;
+  background: var(--neutral-0);
   border-bottom: 0.5px solid var(--neutral-50);
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
   text-align: left;
   width: 100%;
 }
@@ -336,7 +282,7 @@
   flex-shrink: 0;
 }
 .tab:hover:not(:disabled) {
-  background: #fff;
+  background: var(--neutral-0);
   border-color: var(--neutral-150);
   color: var(--neutral-500);
 }
@@ -353,7 +299,7 @@
 .tabPending {
   opacity: 0.7;
   cursor: not-allowed;
-  background: #fff;
+  background: var(--neutral-0);
   border-color: var(--neutral-150);
 }
 .tabStatus {
@@ -409,7 +355,7 @@
   gap: 12px;
   padding: 10px 20px;
   border-bottom: 0.5px solid var(--neutral-100);
-  background: #fff;
+  background: var(--neutral-0);
   flex-shrink: 0;
 }
 .docToolbarIcon {
@@ -472,7 +418,7 @@
   gap: 5px;
   padding: 5px 10px;
   border-radius: 6px;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   color: var(--neutral-500);
   font: 500 11px/1.2 'Inter', sans-serif;
@@ -513,7 +459,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: #fff;
+  background: var(--neutral-0);
 }
 
 /* ── Page preview ─────────────────────────────────────────────────── */
@@ -547,7 +493,7 @@
   align-items: center;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   font: 600 10px/1.2 'Inter', sans-serif;
   color: var(--neutral-400);
@@ -572,7 +518,7 @@
    the warm-grey panel background. */
 .previewPage {
   position: relative;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   box-shadow:
     0 1px 2px rgba(15, 18, 27, 0.04),
@@ -675,7 +621,6 @@
   width: 100%;
   min-width: 880px;
   border-collapse: collapse;
-  font-family: 'Inter', sans-serif;
 }
 .table thead th {
   position: sticky;
@@ -785,6 +730,18 @@
 }
 .icdAddBtn:hover { background: var(--neutral-50); }
 
+.icdAddWrap {
+  position: relative;
+  display: inline-flex;
+}
+.icdPickPop {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 300px;
+  z-index: 60;
+}
+
 .tdStatus { padding-top: 14px; }
 .statusInline {
   display: inline-flex;
@@ -832,131 +789,11 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 16px;
+  height: 40px;
+  padding: 0 16px;
   border-bottom: 0.5px solid var(--neutral-150);
-  background: #fff;
+  background: var(--neutral-0);
   flex-shrink: 0;
-}
-
-/* ── Inline document checks (OCR tier + checks badge on the title) ─── */
-.fileStripChecks {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: 4px;
-}
-
-.docChecks {
-  position: relative;
-  display: inline-flex;
-}
-
-.docChecksTrigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  padding: 0;
-}
-
-.docChecksPop {
-  position: absolute;
-  z-index: 50;
-  top: calc(100% + 6px);
-  left: 0;
-  width: 360px;
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 12px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12);
-  overflow: hidden;
-}
-
-.docChecksHead {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 14px 16px 10px;
-  border-bottom: 0.5px solid var(--neutral-100);
-}
-
-.docChecksHeadText { flex: 1; min-width: 0; }
-
-.docChecksTitle {
-  font: 600 14px/1.2 'Inter', sans-serif;
-  color: var(--neutral-500);
-}
-
-.docChecksSub {
-  font: 400 12px/1.3 'Inter', sans-serif;
-  color: var(--neutral-300);
-  margin-top: 2px;
-}
-
-.docChecksClose {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  padding: 2px;
-  display: inline-flex;
-}
-
-.docChecksList {
-  list-style: none;
-  margin: 0;
-  padding: 6px 8px 10px;
-  display: flex;
-  flex-direction: column;
-}
-
-.docChecksRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 8px;
-  border-radius: 6px;
-}
-
-.docChecksRow:hover { background: var(--neutral-50); }
-
-.docChecksRowFail { background: var(--status-error-light, #FFEDED); }
-.docChecksRowFail:hover { background: var(--status-error-light, #FFEDED); }
-
-.docChecksLabel {
-  flex: 1;
-  min-width: 0;
-  font: 400 13px/1.3 'Inter', sans-serif;
-  color: var(--neutral-500);
-}
-
-.docChecksActions {
-  display: inline-flex;
-  gap: 4px;
-  opacity: 0;
-  transition: opacity 0.12s;
-}
-
-.docChecksRow:hover .docChecksActions { opacity: 1; }
-
-.docChecksPass,
-.docChecksFail {
-  border: 0.5px solid var(--neutral-150);
-  background: var(--neutral-0);
-  border-radius: 4px;
-  padding: 2px 8px;
-  font: 500 11px/1 'Inter', sans-serif;
-  cursor: pointer;
-}
-
-.docChecksPass { color: var(--status-success); }
-.docChecksFail { color: var(--status-error); }
-
-.docChecksUnreadable {
-  padding: 10px 16px 14px;
-  font: 400 12px/1.4 'Inter', sans-serif;
-  color: var(--status-error);
 }
 .fileStripBtn {
   display: inline-flex;
@@ -967,7 +804,6 @@
   border-radius: 6px;
   background: transparent;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
 }
 .fileStripBtn:hover {
   background: var(--neutral-50);
@@ -981,7 +817,7 @@
   width: 26px;
   height: 26px;
   border: 0.5px solid var(--neutral-150);
-  background: #fff;
+  background: var(--neutral-0);
   border-radius: 6px;
   cursor: pointer;
   display: inline-flex;
@@ -995,7 +831,7 @@
   top: calc(100% + 4px);
   left: 16px;
   min-width: 280px;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
@@ -1027,408 +863,23 @@
   color: var(--neutral-300);
 }
 
-/* ── Patient banner (Figma 1:3574) ──────────────────────────────── */
-.patientBanner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-bottom: 0.5px solid var(--neutral-150);
-  background: var(--neutral-0);
-}
-
-.patientBannerBody {
-  flex: 1;
-  min-width: 0;
-}
-
-.patientBannerName {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font: 600 15px/1.2 'Inter', sans-serif;
-  color: var(--neutral-500);
-}
-
-.patientBannerMeta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 2px;
-  font: 400 12px/1.4 'Inter', sans-serif;
-  color: var(--neutral-400);
-}
-
-.patientBannerMeta strong {
-  color: var(--neutral-500);
-  font-weight: 600;
-}
-
-.patientBannerDot {
-  color: var(--neutral-200);
-}
-
-.rafDelta {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.rafDeltaUp {
-  background: var(--status-success-light, #E6F5EC);
-  color: var(--status-success);
-}
-
-.rafDeltaDown {
-  background: var(--status-error-light, #FFEDED);
-  color: var(--status-error);
-}
-
-.patientBannerCount {
-  color: var(--neutral-300);
-}
-
-.patientBannerActions {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-/* ── Grouped DOS card header (hidePatient) ──────────────────────── */
-.encCardDosHead {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.encCardDosLine {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.encCardDosLabel {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--neutral-400);
-}
-
-.encCardDosValue {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--neutral-500);
-}
-
-.encCardDosMeta {
-  font-size: 12px;
-  color: var(--neutral-400);
-}
-
-/* ── Read-only DOS card body (Figma 1:3574 top card) ────────────── */
-.encReadOnly {
-  padding: 12px 16px 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* Two-column form row: ICD Codes multi-select + Document Type Select.
- * Each control keeps its FieldBlock label + confidence pill so the
- * high/med/low tier reads at a glance even in read-only mode. */
-.encReadOnlyForm {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-/* Multi-select chip input for ICD codes — mirrors the styling of the
- * DS Input so the read-only + edit modes read as the same control. */
-.icdMulti {
-  position: relative;
-}
-
-.encIcdsInput {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  min-height: 32px;
-  padding: 4px 8px;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 6px;
-  background: var(--neutral-0);
-  align-items: center;
-  cursor: text;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-
-.encIcdsInputFocus {
-  border-color: var(--primary-300);
-  box-shadow: 0 0 0 2px rgba(140, 90, 226, 0.12);
-}
-
-/* ICD chip = DS Badge wrapped in a click-to-remove affordance. */
-.icdBadgeWrap {
-  display: inline-flex;
-  cursor: pointer;
-  border-radius: 6px;
-}
-
-.icdBadgeWrap:hover { opacity: 0.75; }
-
-.icdInlineInput {
-  flex: 1;
-  min-width: 90px;
-  border: none;
-  outline: none;
-  background: transparent;
-  font: 400 13px/1.2 'Inter', sans-serif;
-  color: var(--neutral-500);
-  padding: 2px 0;
-}
-
-/* Expanded edit form (Figma 4001:179835) — DOS/Provider/POS input row,
- * ICD Codes, and a per-ICD checkbox list. */
-.encEditForm {
-  padding: 12px 16px 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.encEditRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 12px;
-}
-.encIcdCheckList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.encIcdCheckRow {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-.encIcdCheckBody {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
-.encIcdCheckTitle {
-  font: 400 13px/1.35 'Inter', sans-serif;
-  color: var(--neutral-500);
-}
-.encIcdCheckTitle strong { font-weight: 600; }
-.encIcdCheckHcc {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font: 500 11px/1.2 'Inter', sans-serif;
-  color: var(--neutral-400);
-}
-
-.icdAddBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border: none;
-  background: transparent;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.icdAddBtn:hover { background: var(--primary-50); }
-
-.icdSearchPop {
-  position: absolute;
-  z-index: 20;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 8px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-}
-
-.icdSearchHead {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
-  border-bottom: 0.5px solid var(--neutral-150);
-}
-
-.icdSearchInput {
-  flex: 1;
-  border: none;
-  outline: none;
-  font: 400 13px/1.2 'Inter', sans-serif;
-  color: var(--neutral-500);
-  background: transparent;
-}
-
-.icdSearchList {
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.icdSearchItem {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 10px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  text-align: left;
-  font-family: inherit;
-}
-
-.icdSearchItem:hover { background: var(--neutral-50); }
-
-.icdSearchCode {
-  font-weight: 600;
-  font-size: 12px;
-  color: var(--neutral-500);
-  flex-shrink: 0;
-  min-width: 52px;
-}
-
-.icdSearchDesc {
-  font-size: 12px;
-  color: var(--neutral-400);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.icdSearchEmpty {
-  padding: 12px;
-  text-align: center;
-  font-size: 12px;
-  color: var(--neutral-300);
-}
-
-@media (max-width: 720px) {
-  .encReadOnlyForm { grid-template-columns: 1fr; }
-  .encEditRow { grid-template-columns: 1fr; }
-}
-
-.encIcdList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.encIcdRow {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 6px 0;
-  border-top: 0.5px solid var(--neutral-100);
-}
-
-.encIcdRow:first-child { border-top: none; }
-
-.encIcdCode {
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--neutral-500);
-  flex-shrink: 0;
-}
-
-.encIcdDesc {
-  flex: 1;
-  min-width: 200px;
-  font-size: 13px;
-  color: var(--neutral-400);
-  line-height: 1.4;
-}
-
-.encIcdHcc {
-  font-size: 11px;
-  color: var(--neutral-300);
-  font-weight: 500;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: var(--neutral-50);
-}
-
-.encIcdHccDot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--primary-300);
-}
-
-.encReadOnlyIndex {
-  font-size: 11px;
-  color: var(--neutral-300);
-  padding-top: 4px;
-  border-top: 0.5px solid var(--neutral-100);
-}
-
-.encIndexDot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  margin-right: 4px;
-}
-
-.encIndexDot[data-tone="v24"] { background: var(--status-error, #D72825); }
-.encIndexDot[data-tone="v28"] { background: var(--status-success, #2E8A4E); }
-
-.encEditFooter {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  padding: 8px 16px 12px;
-  border-top: 0.5px solid var(--neutral-100);
-  margin-top: 4px;
-}
-
 /* ── Doc tabs (Pending / Added / Deleted) ─────────────────────── */
 .docTabBar {
   display: flex;
   align-items: center;
   gap: 4px;
+  height: 40px;
   padding: 0 16px;
   border-bottom: 0.5px solid var(--neutral-150);
-  background: #fff;
+  background: var(--neutral-0);
   flex-shrink: 0;
 }
 .docTab {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 12px 6px;
+  height: 100%;
+  padding: 0 6px;
   margin-right: 16px;
   border: none;
   background: transparent;
@@ -1460,7 +911,7 @@
   display: flex;
   align-items: center;
   padding: 10px 16px;
-  background: #fff;
+  background: var(--neutral-0);
   flex-shrink: 0;
 }
 
@@ -1489,14 +940,13 @@
   margin: 32px auto 0;
   max-width: 540px;
   padding: 48px 32px;
-  background: #fff;
+  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  font-family: 'Inter', sans-serif;
 }
 .docCompletedBadgeWrap {
   position: relative;
@@ -1552,7 +1002,7 @@
 .encCard {
   border: 0.5px solid var(--neutral-150);
   border-radius: 10px;
-  background: #fff;
+  background: var(--neutral-0);
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
@@ -1580,6 +1030,64 @@
 }
 .encCardMetaDot { color: var(--neutral-200); margin: 0 2px; }
 
+/* Group-count chip — shown only when a patient has >1 DOS in the
+   same document. Sits at the right end of the patient header. */
+.encGroupCount {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  color: var(--neutral-400);
+  font: 500 11px/1 'Inter', sans-serif;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+/* ── DOS block (one per encounter inside a patient card) ─────────── */
+.encBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.encBlockSep {
+  border-top: 0.5px dashed var(--neutral-150);
+  padding-top: 12px;
+}
+.encBlockHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.encBlockHead .encCardActions {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Status badge hover tooltip — portaled to document.body so it
+   escapes the card's overflow. Color-coded border per tone. */
+.statusTipWrap {
+  display: inline-flex;
+  cursor: help;
+}
+.statusTip {
+  position: fixed;
+  z-index: 9999;
+  max-width: 300px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--neutral-500) 12%, transparent);
+  font: 400 12px/1.45 'Inter', sans-serif;
+  color: var(--neutral-500);
+  pointer-events: none;
+}
+.statusTipMismatch { border-left: 3px solid var(--status-warning); }
+.statusTipError    { border-left: 3px solid var(--status-error); }
+
 /* Status pill is now rendered with the shared <Badge> component
    (variants: status-completed / status-review / status-failed). No
    custom class needed; the card just spaces it via .encCardHead's
@@ -1594,11 +1102,159 @@
   gap: 4px;
 }
 
+/* Flat-link variant of the Add to Worklist button — keeps the
+   tertiary variant's primary-purple icon/text but strips its filled
+   background + border so the action reads as a link. */
+.encAddBtn {
+  background: transparent;
+  border-color: transparent;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+.encAddBtn:hover:not(:disabled) {
+  background: var(--primary-50);
+  color: var(--primary-300);
+  border-color: transparent;
+}
+
 .encGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px 16px;
 }
+
+/* ── Document checks pill (sits next to the Ready badge) ──────────── */
+.docPillWrap {
+  display: inline-flex;
+  cursor: help;
+}
+.docPillTip {
+  position: fixed;
+  z-index: 9999;
+  width: 300px;
+  padding: 10px 12px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--neutral-500) 14%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: auto;
+}
+.docPillTipPass { border-left: 3px solid var(--status-success); }
+.docPillTipFail { border-left: 3px solid var(--status-error); }
+.docPillTipHead {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.docPillList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.docPillItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 400 11px/1.4 'Inter', sans-serif;
+}
+.docPillItemOk  { color: var(--neutral-500); }
+.docPillItemBad { color: var(--status-error); font-weight: 500; }
+.docPillActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 0.5px dashed var(--neutral-150);
+  flex-wrap: wrap;
+}
+.docPillAttachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--status-success-light);
+  border: 0.5px solid color-mix(in srgb, var(--status-success) 18%, transparent);
+  border-radius: 6px;
+  font: 400 11px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+
+/* ── Document checks (7-point checklist, rendered as a FieldBlock) ── */
+.docChecksTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 32px;
+  padding: 0 8px 0 10px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-200);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.docChecksTrigger:hover { border-color: var(--neutral-300); }
+.docChecksTriggerCaret { margin-left: auto; flex-shrink: 0; }
+.docChecksPanel {
+  margin-top: 6px;
+  padding: 8px 10px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.docChecksList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.docChecksItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 400 11px/1.4 'Inter', sans-serif;
+}
+.docChecksItemOk  { color: var(--neutral-500); }
+.docChecksItemBad { color: var(--status-error); font-weight: 500; }
+
+.docChecksFooter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 0.5px dashed var(--neutral-150);
+  flex-wrap: wrap;
+}
+.docChecksFooterCopy {
+  font: 400 11px/1.4 'Inter', sans-serif;
+  color: var(--neutral-400);
+  flex: 1;
+  min-width: 0;
+}
+.docChecksAttachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--status-success-light);
+  border: 0.5px solid color-mix(in srgb, var(--status-success) 18%, transparent);
+  border-radius: 6px;
+  font: 400 11px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.docChecksAttachment strong { color: var(--neutral-500); font-weight: 600; }
 .encIcds {
   display: flex;
   align-items: center;
@@ -1607,7 +1263,7 @@
   padding: 6px 8px;
   border: 0.5px solid var(--neutral-150);
   border-radius: 6px;
-  background: #fff;
+  background: var(--neutral-0);
   min-height: 32px;
 }
 .encIcdChip {
@@ -1703,21 +1359,92 @@
   color: var(--neutral-200);
 }
 
-/* ── ConfTier — sparkle + High/Medium/Low (read-only card) ──────── */
-.confTier {
+/* ── Confidence pill (High/Medium/Low) + citation affordance ─────
+   Replaces the percent gauge. Inert when no sourcePage is known;
+   becomes a button (with hover tooltip) when citation is available. */
+.confPill {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  font: 600 12px/1 'Inter', sans-serif;
+  gap: 5px;
+  height: 18px;
+  padding: 0 7px 0 6px;
+  border-radius: 999px;
+  font: 500 10px/1 'Inter', sans-serif;
+  letter-spacing: 0.2px;
+  border: 0.5px solid transparent;
+  background: transparent;
+  color: var(--neutral-400);
+  cursor: default;
 }
-
-.confTier_high   { color: var(--status-success, #2E8A4E); }
-.confTier_medium { color: var(--status-warning, #C28F2A); }
-.confTier_low    { color: var(--status-error, #D72825); }
-
-.confTierEmpty {
+.confPillDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.confPill_high {
+  color: var(--status-success);
+  background: var(--status-success-light);
+  border-color: color-mix(in srgb, var(--status-success) 18%, transparent);
+}
+.confPillDot_high { background: var(--status-success); }
+.confPill_medium {
+  color: var(--status-warning);
+  background: var(--status-warning-light);
+  border-color: color-mix(in srgb, var(--status-warning) 18%, transparent);
+}
+.confPillDot_medium { background: var(--status-warning); }
+.confPill_low {
+  color: var(--status-error);
+  background: var(--status-error-light);
+  border-color: color-mix(in srgb, var(--status-error) 18%, transparent);
+}
+.confPillDot_low { background: var(--status-error); }
+.confPillClickable {
+  cursor: pointer;
+  transition: filter .12s ease, transform .12s ease;
+}
+.confPillClickable:hover { filter: brightness(0.96); }
+.confPillClickable:active { transform: scale(0.97); }
+.confPillEmpty {
   font: 400 10px/1 'Inter', sans-serif;
   color: var(--neutral-200);
+}
+
+/* Citation hover tooltip — portaled to document.body. */
+.confPillTip {
+  position: fixed;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 220px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--neutral-500) 12%, transparent);
+  pointer-events: none;
+}
+.confPillTipHead {
+  font: 600 11px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.confPillTipSub {
+  font: 400 11px/1.3 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+
+/* Pulse highlight for the cited preview row when the user clicks
+   a confidence pill. Auto-removed after 1.6s by the handler. */
+@keyframes previewHighlightPulse {
+  0%   { background: transparent; box-shadow: 0 0 0 0 transparent; }
+  20%  { background: color-mix(in srgb, var(--status-warning) 45%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--status-warning) 18%, transparent); }
+  100% { background: transparent; box-shadow: 0 0 0 0 transparent; }
+}
+.previewHighlight {
+  animation: previewHighlightPulse 1.6s ease-out;
+  border-radius: 6px;
 }
 
 .emptyState {
@@ -1748,65 +1475,4 @@
   font: 400 12px/1.5 'Inter', sans-serif;
   color: var(--neutral-300);
   max-width: 320px;
-}
-
-/* ── Compliance block (between file strip and page preview) ──────────── */
-.complianceBlock {
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  margin: 8px 0;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 6px;
-  background: var(--neutral-0);
-  overflow: hidden;
-}
-
-.complianceHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-family: inherit;
-  text-align: left;
-  transition: background 0.12s;
-}
-
-.complianceHeader:hover {
-  background: var(--neutral-50);
-}
-
-.complianceHeaderLeft {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  min-width: 0;
-}
-
-.complianceSummary {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--neutral-400);
-}
-
-.tone_success { color: var(--status-success, #2E8A4E); }
-.tone_warning { color: var(--status-warning, #B6770F); }
-.tone_error   { color: var(--status-error, #D72825); }
-
-.complianceDetail {
-  border-top: 0.5px solid var(--neutral-150);
-  padding: 12px;
-  background: var(--neutral-50);
-}
-
-@media (max-width: 720px) {
-  .complianceHeader {
-    flex-direction: column;
-    align-items: flex-start;
-  }
 }

@@ -1,16 +1,17 @@
 // Astrana staff roster for the HCC assignment engine.
 //
 // This is the single source of truth used by `engine.js` to pick an assignee
-// at every role transition (Support → Coder → R1 → R2 → R3). Members of the
-// roster are real names used by the existing mock data + the story examples
-// so the engine's output looks consistent with what already appears in the
-// worklist and activity log.
+// at every role transition (Support → Coder → Reviewer → Reviewer 2). "Reviewer 3"
+// does not exist as a role — the review pipeline has exactly four stages.
+// Members of the roster are real names used by the existing mock data + the
+// story examples so the engine's output looks consistent with what already
+// appears in the worklist and activity log.
 //
 // Each entry exposes:
 //   id        — short stable handle (e.g. 'EJ', 'DH'). Used everywhere internally.
 //   name      — full display name surfaced in the UI.
 //   initials  — 2-letter avatar initials.
-//   role      — primary role this person works ('support' | 'coder' | 'r1' | 'r2' | 'r3').
+//   role      — primary role this person works ('support' | 'coder' | 'reviewer' | 'reviewer2').
 //   active    — false = on leave / inactive. Excluded from auto-assignment.
 //   tins      — TIN strings this person owns (Support + Coder use these).
 //   vendors   — vendor codes routed to this person (Coder + R2/R3 use these).
@@ -35,18 +36,17 @@ export const ASTRANA_STAFF = [
   { id: 'PP', name: 'P. Plourde',    initials: 'PP', role: 'coder',   active: true,  tins: ['TIN-1003','TIN-1005'], vendors: ['MRO'],    capacity: 60 },
   { id: 'CK', name: 'C. Kessler',    initials: 'CK', role: 'coder',   active: true,  tins: ['TIN-1004'],            vendors: [],         capacity: 60 },
 
-  // ─── Reviewer 1 ───────────────────────────────────────────────────
-  { id: 'MA', name: 'M. Almeda',     initials: 'MA', role: 'r1',      active: true,  tins: [], vendors: [],          capacity: 50 },
-  { id: 'BO', name: 'B. Olafson',    initials: 'BO', role: 'r1',      active: true,  tins: [], vendors: ['CIOX'],    capacity: 50 },
-  { id: 'EF', name: 'E. Fortier',    initials: 'EF', role: 'r1',      active: true,  tins: [], vendors: [],          capacity: 50 },
+  // ─── Reviewer ─────────────────────────────────────────────────────
+  { id: 'MA', name: 'M. Almeda',     initials: 'MA', role: 'reviewer',  active: true,  tins: [], vendors: [],          capacity: 50 },
+  { id: 'BO', name: 'B. Olafson',    initials: 'BO', role: 'reviewer',  active: true,  tins: [], vendors: ['CIOX'],    capacity: 50 },
+  { id: 'EF', name: 'E. Fortier',    initials: 'EF', role: 'reviewer',  active: true,  tins: [], vendors: [],          capacity: 50 },
 
   // ─── Reviewer 2 ───────────────────────────────────────────────────
-  { id: 'KP', name: 'K. Patel',      initials: 'KP', role: 'r2',      active: true,  tins: [], vendors: [],          capacity: 30 },
-  { id: 'NR', name: 'N. Richards',   initials: 'NR', role: 'r2',      active: true,  tins: [], vendors: ['CIOX'],    capacity: 30 },
-
-  // ─── Reviewer 3 ───────────────────────────────────────────────────
-  { id: 'BO3', name: 'B. Olafson',   initials: 'BO', role: 'r3',      active: true,  tins: [], vendors: [],          capacity: 20 },
-  { id: 'JM',  name: 'J. Martinez',  initials: 'JM', role: 'r3',      active: true,  tins: [], vendors: [],          capacity: 20 },
+  // J. Martinez previously held a Reviewer-3-only slot; reassigned here
+  // rather than dropped from the roster now that Reviewer 3 doesn't exist.
+  { id: 'KP', name: 'K. Patel',      initials: 'KP', role: 'reviewer2', active: true,  tins: [], vendors: [],          capacity: 30 },
+  { id: 'NR', name: 'N. Richards',   initials: 'NR', role: 'reviewer2', active: true,  tins: [], vendors: ['CIOX'],    capacity: 30 },
+  { id: 'JM', name: 'J. Martinez',   initials: 'JM', role: 'reviewer2', active: true,  tins: [], vendors: [],          capacity: 30 },
 ];
 
 // Map role → array of staff in that pool. Inactive members are kept here for
@@ -59,14 +59,13 @@ const _byRole = ASTRANA_STAFF.reduce((acc, s) => {
 
 const _byId = Object.fromEntries(ASTRANA_STAFF.map(s => [s.id, s]));
 
-export const ROLES = ['support', 'coder', 'r1', 'r2', 'r3'];
+export const ROLES = ['support', 'coder', 'reviewer', 'reviewer2'];
 
 export const ROLE_LABEL = {
-  support: 'Support',
-  coder:   'Coder',
-  r1:      'Reviewer 1',
-  r2:      'Reviewer 2',
-  r3:      'Reviewer 3',
+  support:   'Support',
+  coder:     'Coder',
+  reviewer:  'Reviewer',
+  reviewer2: 'Reviewer 2',
 };
 
 export function staffById(id) { return _byId[id] || null; }

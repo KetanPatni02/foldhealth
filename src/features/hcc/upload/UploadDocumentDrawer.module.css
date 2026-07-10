@@ -2748,6 +2748,16 @@
   background: var(--primary-100);
 }
 
+/* Positioned wrapper hosting the shared <IcdSearch> popover (its own
+   input + dropdown provide the chrome, so this is position-only). */
+.icdPickerWrap {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 320px;
+  z-index: 50;
+}
+
 /* ── Inline ICD picker popover ───────────────────────────────────── */
 .icdPicker {
   position: absolute;
