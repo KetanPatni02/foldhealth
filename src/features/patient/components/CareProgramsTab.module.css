@@ -1,5 +1,8 @@
 .view { display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 12px; row-gap: 12px; }
 
+/* Sub-tab bar + filter bar sit flush together (0px gap between them). */
+.topArea { display: flex; flex-direction: column; flex-shrink: 0; }
+
 /* ── Sub-tab bar ── */
 .subTabBar {
   display: flex;
@@ -50,31 +53,67 @@
 }
 .newProgramBtn:hover { background: var(--primary-50); }
 
-/* ── Filter badges ── */
+/* ── Empty state ── */
+.emptyWrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.emptyCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 12px;
+}
+.emptyIcon {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.emptyIcon::before,
+.emptyIcon::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  border: 1px dashed var(--neutral-150);
+}
+.emptyIcon::before { width: 120px; height: 120px; }
+.emptyIcon::after { width: 102px; height: 102px; }
+.iconInner {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(142deg, var(--neutral-50) 13%, var(--neutral-100) 91%);
+}
+.emptyText {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--neutral-200);
+  line-height: 1.2;
+}
+/* ── New Program picker — tertiary Button + SearchListPopover ── */
+.npWrap { display: inline-flex; flex-shrink: 0; }
+/* Tertiary Button fills purple on hover; keep its icons legible (white). */
+.npWrap button:hover svg { color: var(--neutral-0) !important; }
+
+/* ── Filter bar ── */
 .filterBar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 8px 6px;
+  padding: 8px 6px 0;
   flex-shrink: 0;
 }
-.filterChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 32px;
-  padding: 4px 8px;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 4px;
-  background: var(--neutral-0);
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  color: var(--neutral-300);
-  cursor: pointer;
-  white-space: nowrap;
-}
-.filterChip:hover { border-color: var(--neutral-200); }
 .clearAll {
   display: inline-flex;
   align-items: center;
@@ -100,7 +139,8 @@
   min-width: 900px;
 }
 .table thead th {
-  padding: 8px;
+  height: 32px;
+  padding: 0 8px;
   font-size: 14px;
   font-weight: 500;
   color: var(--neutral-300);
@@ -113,25 +153,16 @@
   z-index: 2;
 }
 .table tbody tr { border-bottom: 0.5px solid var(--neutral-100); }
-.table tbody tr:hover { background: rgba(22,24,29,0.02); }
+.table tbody tr:hover { background: var(--primary-25); }
 .table tbody td {
-  padding: 8px;
+  height: 48px;
+  padding: 0 8px;
   font-size: 14px;
   color: var(--neutral-300);
   vertical-align: middle;
   white-space: nowrap;
 }
 .checkCell { width: 28px; padding-left: 6px !important; padding-right: 6px !important; }
-.checkbox {
-  width: 16px;
-  height: 16px;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 4px;
-  background: var(--neutral-0);
-  cursor: pointer;
-  appearance: none;
-  flex-shrink: 0;
-}
 .programCell { min-width: 280px; }
 .clickableRow { cursor: pointer; }
 .programName { display: flex; align-items: center; gap: 8px; }

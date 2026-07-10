@@ -2,10 +2,16 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { PROFILE_TABS } from '../data/programActivityMock';
 import styles from './ProfileTabBar.module.css';
 
-export function ProfileTabBar({ activeTab, onTabChange }) {
+export function ProfileTabBar({ activeTab, onTabChange, leftCollapsed = false, onToggleLeft }) {
   return (
     <div className={styles.tabBar}>
-      <ActionButton icon="solar:hamburger-menu-linear" size="S" tooltip="Collapse" />
+      <ActionButton
+        icon="solar:sidebar-minimalistic-linear"
+        size="S"
+        tooltip={leftCollapsed ? 'Expand panel' : 'Collapse panel'}
+        className={leftCollapsed ? styles.sidebarFlipped : ''}
+        onClick={onToggleLeft}
+      />
       <span className={styles.divider} />
       <div className={styles.tabs}>
         {PROFILE_TABS.map(tab => (

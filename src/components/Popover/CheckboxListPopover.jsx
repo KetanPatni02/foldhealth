@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Icon } from '../Icon/Icon';
+import { Checkbox } from '../ui/checkbox';
 import styles from './CheckboxListPopover.module.css';
 
 /**
@@ -63,17 +63,19 @@ export function CheckboxListPopover({
           {options.map((opt) => {
             const checked = sel.has(opt);
             return (
-              <button
+              <div
                 key={opt}
-                type="button"
+                role="button"
+                tabIndex={0}
                 className={styles.row}
                 onClick={() => toggle(opt)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(opt); } }}
               >
-                <span className={[styles.box, checked ? styles.boxChecked : ''].join(' ')}>
-                  {checked && <Icon name="solar:check-read-linear" size={10} color="var(--neutral-0)" />}
+                <span style={{ pointerEvents: 'none', display: 'inline-flex' }}>
+                  <Checkbox checked={checked} tabIndex={-1} />
                 </span>
                 <span className={styles.label}>{opt}</span>
-              </button>
+              </div>
             );
           })}
         </div>

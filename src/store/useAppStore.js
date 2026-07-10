@@ -607,6 +607,38 @@ export const useAppStore = create((set, get) => ({
     set({ patientProfileTab: tab });
   },
 
+  // Care Programs — enrolled programs are per-patient. A patient starts with
+  // none; only programs a user explicitly adds are visible on their profile.
+  careProgramsByPatient: {},
+  addCareProgram: (patientId, entry) => {
+    if (!patientId || !entry) return;
+    set((state) => {
+      const existing = state.careProgramsByPatient[patientId] || [];
+      if (existing.some((p) => p.code === entry.code)) return {};
+      const program = {
+        id: `cp-${patientId}-${entry.code}`,
+        code: entry.code,
+        name: `${entry.name} (${entry.code})`,
+        acuity: null,
+        status: 'New',
+        statusColor: 'var(--primary-300)',
+        startDate: '—',
+        endDate: '—',
+        lastUpdated: '—',
+        assignee: 'Unassigned',
+        pcp: '—',
+        progress: 0,
+      };
+      track('care_program.added', { patientId, code: entry.code });
+      return {
+        careProgramsByPatient: {
+          ...state.careProgramsByPatient,
+          [patientId]: [...existing, program],
+        },
+      };
+    });
+  },
+
   // Table
   patients: [],
   patientsLoading: true,

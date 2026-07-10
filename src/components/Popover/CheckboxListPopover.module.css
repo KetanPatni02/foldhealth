@@ -60,24 +60,6 @@
   text-overflow: ellipsis;
 }
 
-.box {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  border: 1px solid var(--neutral-200);
-  background: var(--neutral-0);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: background 0.12s, border-color 0.12s;
-}
-
-.boxChecked {
-  background: var(--primary-300);
-  border-color: var(--primary-300);
-}
-
 .clear {
   width: 100%;
   padding: 7px 0;
