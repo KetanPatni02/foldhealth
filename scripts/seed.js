@@ -13,6 +13,8 @@ import pg from 'pg';
 import { createClient } from '@supabase/supabase-js';
 import { HEDIS_MEMBERS } from '../src/features/hedis-worklist/data/mock.js';
 import { APCM_PATIENTS } from '../src/features/apcm-billing/data/mock.js';
+import { FALLBACK_ICDS } from '../src/lib/icd/catalog.js';
+import { POS_CODES } from '../src/features/hcc/data/posCodes.js';
 
 // ── Config ─────────────────────────────────────────────────────────────────────
 
@@ -88,6 +90,35 @@ CREATE TABLE IF NOT EXISTS apcm_patients (
 ALTER TABLE apcm_patients DISABLE ROW LEVEL SECURITY;
 `;
 
+const ICD_DDL = `
+CREATE TABLE IF NOT EXISTS icd_codes (
+  code        text PRIMARY KEY,
+  title       text NOT NULL,
+  chapter     text,
+  hcc         text,
+  entity_id   text,
+  source      text DEFAULT 'seed',
+  updated_at  timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_icd_codes_title ON icd_codes USING gin (to_tsvector('english', title));
+ALTER TABLE icd_codes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on icd_codes" ON icd_codes;
+DROP POLICY IF EXISTS "Read icd_codes" ON icd_codes;
+CREATE POLICY "Read icd_codes" ON icd_codes FOR SELECT USING (true);
+`;
+
+const POS_DDL = `
+CREATE TABLE IF NOT EXISTS pos_codes (
+  code        text PRIMARY KEY,
+  name        text NOT NULL,
+  updated_at  timestamptz DEFAULT now()
+);
+ALTER TABLE pos_codes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on pos_codes" ON pos_codes;
+DROP POLICY IF EXISTS "Read pos_codes" ON pos_codes;
+CREATE POLICY "Read pos_codes" ON pos_codes FOR SELECT USING (true);
+`;
+
 // ── Row mappers (JS shape → DB columns) ───────────────────────────────────────
 
 function hedisToRow(m) {
@@ -144,6 +175,16 @@ function apcmToRow(p) {
   };
 }
 
+function icdToRow(i) {
+  return {
+    code:    i.code,
+    title:   i.title,
+    hcc:     i.hcc || null,
+    chapter: i.chapter || null,
+    source:  'seed',
+  };
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -166,6 +207,10 @@ async function main() {
     console.log('  ✓ hedis_members — created / already exists');
     await db.query(APCM_DDL);
     console.log('  ✓ apcm_patients — created / already exists');
+    await db.query(ICD_DDL);
+    console.log('  ✓ icd_codes — created / already exists');
+    await db.query(POS_DDL);
+    console.log('  ✓ pos_codes — created / already exists');
     await db.end();
   } catch (e) {
     console.warn(`  ⚠  Could not connect via pg (${e.message})`);
@@ -190,6 +235,19 @@ async function main() {
     .from('apcm_patients')
     .upsert(apcmRows, { onConflict: 'id' });
   if (ae) { console.error('  ✗', ae.message); } else { console.log(`  ✓ ${apcmRows.length} patients`); }
+
+  console.log('Seeding icd_codes...');
+  const icdRows = FALLBACK_ICDS.map(icdToRow);
+  const { error: ie } = await supabase
+    .from('icd_codes')
+    .upsert(icdRows, { onConflict: 'code' });
+  if (ie) { console.error('  ✗', ie.message); } else { console.log(`  ✓ ${icdRows.length} ICD codes`); }
+
+  console.log('Seeding pos_codes...');
+  const { error: pe } = await supabase
+    .from('pos_codes')
+    .upsert(POS_CODES.map(p => ({ code: p.code, name: p.name })), { onConflict: 'code' });
+  if (pe) { console.error('  ✗', pe.message); } else { console.log(`  ✓ ${POS_CODES.length} POS codes`); }
 
   console.log('\n✅  Seed complete. Run `bun run dev` to verify.\n');
 }

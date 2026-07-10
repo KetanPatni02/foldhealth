@@ -2299,7 +2299,10 @@ export const useAppStore = create((set, get) => ({
   hccDiagnosisGaps: [],
   hccDiagnosisGapsLoading: false,
   fetchHccDiagnosisGaps: async (memberName) => {
-    set({ hccDiagnosisGapsLoading: true });
+    // Clear the previous member's rows immediately — otherwise the panel
+    // flashes (and can act on) stale cross-member data while the new
+    // member's fetch is in flight.
+    set({ hccDiagnosisGaps: [], hccDiagnosisGapsLoading: true });
     const { data, error } = await supabase
       .from('hcc_diagnosis_gaps')
       .select('*')
@@ -2371,6 +2374,53 @@ export const useAppStore = create((set, get) => ({
       icds: [code],
       headline: `Reopened ICD ${code}`,
       from: 'Dismissed', to: 'Open',
+    });
+  },
+
+  // Per-(ICD × DOS) coder decisions for the redesigned DiagPanel cards
+  // (see docs/features/hcc-coding-workflow.md §3). Keyed `${code}|${dos}`
+  // per open member; accept/reject/missed/deferred layer on top of the
+  // code-level gap status above. Passing the same action twice toggles it
+  // off (undo).
+  hccGapDosActions: {},
+  setHccGapDosAction: (code, dos, action) => {
+    const key = `${code}|${dos}`;
+    const prev = get().hccGapDosActions[key];
+    const next = prev === action ? null : action;
+    set(s => ({ hccGapDosActions: { ...s.hccGapDosActions, [key]: next } }));
+    if (!next) return;
+    const labels = {
+      accepted: 'Accepted', rejected: 'Rejected',
+      missed: 'Marked missed opportunity for', deferred: 'Deferred',
+    };
+    get().addActivityEntry({
+      t: action === 'accepted' ? 'accept' : action === 'rejected' ? 'dismiss' : 'status_hcc',
+      by: 'You', role: 'Coder',
+      icds: [code],
+      headline: `${labels[action]} ICD ${code} on DOS ${dos}`,
+      from: 'Open', to: labels[action].split(' ')[0],
+    });
+  },
+
+  // Coder manually adds a code the pipeline missed (chip: "Manually Added").
+  // Fed by the shared IcdSearch (WHO ICD-11 lookup).
+  addHccGap: ({ code, desc, hcc }) => {
+    if (get().hccDiagnosisGaps.some(g => g.code === code)) return;
+    set(s => ({
+      hccDiagnosisGaps: [
+        ...s.hccDiagnosisGaps,
+        {
+          id: `manual-${code}`, code, desc, hcc: hcc || '', status: 'New',
+          type: 'Manual', docs: 0, cmts: 0, notes: 0, raf: 0,
+          last: null, by: null, dismissReason: null, isLinked: true,
+        },
+      ],
+    }));
+    get().addActivityEntry({
+      t: 'status_hcc', by: 'You', role: 'Coder',
+      icds: [code],
+      headline: `Manually added ICD ${code}`,
+      from: '—', to: 'Open',
     });
   },
 

@@ -9,6 +9,7 @@ import { Badge } from '../../../components/Badge/Badge';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Toggle } from '../../../components/Toggle/Toggle';
 import { Select } from '../../../components/Select/Select';
+import { IcdSearch } from '../../../components/IcdSearch/IcdSearch';
 // BulkBar import removed — per-card actions replace the floating bar
 // in the new Document Review layout (Figma 121:87283).
 import { useAppStore } from '../../../store/useAppStore';
@@ -746,6 +747,15 @@ function SftpReviewTable({ batch, hccMembers, onPatch, onRemove, showToast, sele
 }
 
 function SftpRow({ enc, hccMembers, onPatch, onRemove, showToast, checked, onToggle }) {
+  const [icdOpen, setIcdOpen] = useState(false);
+  const icdWrapRef = useRef(null);
+  useEffect(() => {
+    if (!icdOpen) return undefined;
+    const onDocClick = (e) => { if (!icdWrapRef.current?.contains(e.target)) setIcdOpen(false); };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [icdOpen]);
+
   const errors = new Set(enc.errors || []);
   const isMatched = !!enc.patient?.matchedMemberId;
   const member = isMatched ? hccMembers.find(m => m.id === enc.patient.matchedMemberId) : null;
@@ -827,14 +837,29 @@ function SftpRow({ enc, hccMembers, onPatch, onRemove, showToast, checked, onTog
           {(enc.icds || []).length > 1 && (
             <span className={styles.icdOverflow}>+{enc.icds.length - 1}</span>
           )}
-          <button
-            type="button"
-            className={styles.icdAddBtn}
-            onClick={() => showToast?.('ICD search not wired in this view yet')}
-            aria-label="Add ICD"
-          >
-            <Icon name="solar:add-circle-linear" size={13} color="var(--neutral-300)" />
-          </button>
+          <span className={styles.icdAddWrap} ref={icdWrapRef}>
+            <button
+              type="button"
+              className={styles.icdAddBtn}
+              onClick={() => setIcdOpen((v) => !v)}
+              aria-label="Add ICD"
+            >
+              <Icon name="solar:add-circle-linear" size={13} color="var(--neutral-300)" />
+            </button>
+            {icdOpen && (
+              <span className={styles.icdPickPop}>
+                <IcdSearch
+                  autoFocus
+                  excludeCodes={(enc.icds || []).map(i => i.code)}
+                  placeholder="Search ICD by code or description"
+                  onSelect={(icd) => {
+                    onPatch({ icds: [...(enc.icds || []), { code: icd.code, desc: icd.title, hcc: icd.hcc || '', valid: true }] });
+                    setIcdOpen(false);
+                  }}
+                />
+              </span>
+            )}
+          </span>
         </div>
         <FieldConf score={getFieldConfidence(enc, 'icds')} />
       </td>
@@ -1046,6 +1071,15 @@ function runDocChecks(enc) {
 }
 
 function EncounterBlock({ enc, status, docTab, isFirst, onPatch, onAddToWorklist, onDelete, onRestore, onCite }) {
+  const [icdOpen, setIcdOpen] = useState(false);
+  const icdWrapRef = useRef(null);
+  useEffect(() => {
+    if (!icdOpen) return undefined;
+    const onDocClick = (e) => { if (!icdWrapRef.current?.contains(e.target)) setIcdOpen(false); };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [icdOpen]);
+
   const errors = new Set(enc.errors || []);
   const docChecks = runDocChecks(enc);
   // Doc-checks pass either organically, with a supporting doc attached,
@@ -1157,6 +1191,29 @@ function EncounterBlock({ enc, status, docTab, isFirst, onPatch, onAddToWorklist
                 </button>
               </span>
             ))}
+            <span className={styles.icdAddWrap} ref={icdWrapRef}>
+              <button
+                type="button"
+                className={styles.icdAddBtn}
+                onClick={() => setIcdOpen((v) => !v)}
+                aria-label="Add ICD"
+              >
+                <Icon name="solar:add-circle-linear" size={13} color="var(--neutral-300)" />
+              </button>
+              {icdOpen && (
+                <span className={styles.icdPickPop}>
+                  <IcdSearch
+                    autoFocus
+                    excludeCodes={(enc.icds || []).map(i => i.code)}
+                    placeholder="Search ICD by code or description"
+                    onSelect={(icd) => {
+                      onPatch({ icds: [...(enc.icds || []), { code: icd.code, desc: icd.title, hcc: icd.hcc || '', valid: true }] });
+                      setIcdOpen(false);
+                    }}
+                  />
+                </span>
+              )}
+            </span>
           </div>
         </FieldBlock>
         <FieldBlock label="Rendering Provider" required confidence={fieldConf('provider')} sourcePage={enc.sourcePage} onCite={onCite ? () => onCite(enc.sourcePage || 1, enc.tempId, 'provider') : null}>

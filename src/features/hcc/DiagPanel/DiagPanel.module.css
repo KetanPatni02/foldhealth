@@ -629,3 +629,218 @@
   color: var(--primary-300);
   margin-left: 2px;
 }
+
+/* ═══ RA Coder Workflow redesign (Paper 1WXT) ═══════════════════════ */
+
+/* ── Meta row: Created date + overdue tag ── */
+.createdLabel {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  flex-shrink: 0;
+}
+.createdDate {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neutral-500);
+  flex-shrink: 0;
+}
+.dueTag {
+  font-size: 12px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+/* ── Toolbar inline search ── */
+.toolbarSearch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  max-width: 308px;
+  height: 28px;
+  padding: 0 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: var(--neutral-0);
+}
+.toolbarSearch:focus-within {
+  border-color: var(--primary-300);
+}
+.toolbarSearch input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: none;
+  font-size: 13px;
+  color: var(--neutral-500);
+}
+.toolbarSearch input::placeholder { color: var(--neutral-200); }
+.searchClear {
+  display: inline-flex;
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.searchClear:hover { background: var(--neutral-50); }
+
+/* Push the icon cluster to the right edge now that search sits inline. */
+.toolbarIcons { margin-left: auto; }
+
+/* ── + ICD popover (live WHO lookup) ── */
+.addIcdWrap {
+  position: relative;
+  display: inline-flex;
+}
+.addIcdPop {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 340px;
+  z-index: 60;
+}
+
+/* ── "ICDs Associated with N/M DOSs" section header ── */
+.assocHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+}
+.assocTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.dosLinkWrap { position: relative; display: inline-flex; }
+.dosLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-300);
+}
+.dosLink:hover { background: var(--primary-25); }
+.dosMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 60;
+  min-width: 160px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+.dosMenuItem {
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--neutral-500);
+}
+.dosMenuItem:hover { background: var(--neutral-50); }
+.dosMenuItemActive {
+  background: var(--primary-25);
+  color: var(--primary-300);
+  font-weight: 500;
+}
+
+/* ── Cards flow (ICD cards + HCC suspect groups) ── */
+.cardsFlow {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Keyboard shortcut bar (drawer footer, full-bleed dark) ── */
+.shortcutBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: calc(100% + 48px);
+  margin: -16px -24px;
+  padding: 6px 16px;
+  background: var(--neutral-500);
+  border-radius: 0 0 16px 16px;
+}
+.shortcutItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.shortcutKey {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--neutral-0) 10%, transparent);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-0);
+}
+.shortcutLabel {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-0);
+}
+
+/* ── Bulk action bar (row-checkbox selection) ── */
+.bulkBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 0.5px solid var(--primary-200);
+  border-radius: 8px;
+  background: var(--primary-25);
+}
+.bulkCount {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-300);
+  margin-right: 4px;
+}
+.bulkAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 0.5px solid var(--primary-300);
+  border-radius: 4px;
+  background: var(--neutral-0);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-300);
+}
+.bulkAction:hover { background: var(--primary-50); }
+.bulkClear {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--neutral-300);
+}
+.bulkClear:hover { color: var(--neutral-500); }

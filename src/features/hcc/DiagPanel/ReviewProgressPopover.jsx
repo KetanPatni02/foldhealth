@@ -118,7 +118,8 @@ export function ReviewProgressPopover({
             onClick={onClose}
           >
             <Icon name="solar:plain-2-linear" size={12} color="currentColor" />
-            <span>Send to Bill</span>
+            {/* Product term per the RA coder workflow plan (was "Send to Bill"). */}
+            <span>Ready for ASM generation</span>
           </button>
         </div>
       </div>

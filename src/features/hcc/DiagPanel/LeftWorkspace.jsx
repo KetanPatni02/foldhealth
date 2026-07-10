@@ -9,6 +9,7 @@ import { COMMENTS, DOCUMENTS, NOTES, CLAIMS, HISTORY } from '../data/ancillary';
 import { ACTIVITY } from '../data/activity';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { OutreachTab as PatientOutreachTab } from '../../patient/components/OutreachTab';
+import { DocEvidenceViewer } from './DocEvidenceViewer';
 import styles from './LeftWorkspace.module.css';
 
 // Two tab sets depending on scope:
@@ -148,7 +149,7 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
 
         {active === 'activity'  && <ActivityTab  member={member} rawEntries={rawActivity} filters={filters} />}
         {active === 'comments'  && <CommentsTab  member={member} />}
-        {active === 'documents' && <DocumentsTab member={member} />}
+        {active === 'documents' && <DocumentsTab member={member} icdScope={icdScope} />}
         {active === 'notes'     && <NotesTab     member={member} />}
         {active === 'claims'    && <ClaimsTab    member={member} />}
         {active === 'outreach'  && <OutreachTab  member={member} />}
@@ -888,11 +889,17 @@ const DOC_STATUS_BADGE = {
   failed:  { variant: 'status-failed',    label: 'Failed'  },
 };
 
-function DocumentsTab() {
+function DocumentsTab({ member, icdScope }) {
   const showToast = useAppStore(s => s.showToast);
   const uploaderOpen = useAppStore(s => s.hccDocsUploaderOpen);
   const uploaded = useAppStore(s => s.hccUploadedDocs);
   const list = useMemo(() => [...uploaded, ...DOCUMENTS], [uploaded]);
+
+  // ICD-scoped → source-document evidence viewer with the selected code's
+  // line highlighted (Paper 1UD1). Unscoped → the plain documents table.
+  if (icdScope) {
+    return <DocEvidenceViewer member={member} icdScope={icdScope} />;
+  }
 
   return (
     <div className={styles.scroll}>

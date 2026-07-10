@@ -730,6 +730,18 @@
 }
 .icdAddBtn:hover { background: var(--neutral-50); }
 
+.icdAddWrap {
+  position: relative;
+  display: inline-flex;
+}
+.icdPickPop {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 300px;
+  z-index: 60;
+}
+
 .tdStatus { padding-top: 14px; }
 .statusInline {
   display: inline-flex;
