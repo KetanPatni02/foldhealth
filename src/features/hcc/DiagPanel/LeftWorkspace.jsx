@@ -1319,7 +1319,13 @@ const CLAIM_STATUS_BADGE = {
 };
 
 function ClaimsTab({ member }) {
-  const openClaimPreview = useAppStore(s => s.openHccClaimPreview);
+  // Clicking a claim opens its detail IN THIS SAME panel (Figma 10891:325889)
+  // with a back arrow — no separate overlapping drawer.
+  const [selected, setSelected] = useState(null);
+
+  if (selected) {
+    return <ClaimDetail member={member} claim={selected} onBack={() => setSelected(null)} />;
+  }
 
   return (
     <div className={styles.scroll}>
@@ -1335,7 +1341,7 @@ function ClaimsTab({ member }) {
             <button
               type="button"
               className={styles.claimIdLink}
-              onClick={() => openClaimPreview(member, c.dos)}
+              onClick={() => setSelected(c)}
             >
               {c.number || c.id}
             </button>
@@ -1345,6 +1351,112 @@ function ClaimsTab({ member }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// Build the inline claim-detail view model from the member + clicked claim.
+// Diagnoses reuse the patient's ICD fixture; procedures are a representative
+// mock (real claims service will replace this).
+function buildClaimDetail(member, claim) {
+  const allIcds = getIcdsForMember(member?.name) || [];
+  const icds = allIcds.slice(0, 5).map((i) => ({ code: i.code, description: i.desc }));
+  const cpts = [
+    { cpt: '99285', description: 'Emergency department visit, high severity' },
+    { cpt: '93005', description: 'Electrocardiogram, tracing only' },
+    { cpt: '80048', description: 'Basic metabolic panel' },
+  ];
+  return {
+    submissionDate: claim.date || '—',
+    provider: { name: member?.rp || 'Dr. Katherine Moss', npi: '555555555', speciality: 'Emergency Medicine' },
+    cpts,
+    icds,
+  };
+}
+
+// ── Inline claim detail (Figma 10891:325889) ─────────────────────────────
+// Header (back + title) · Claim Information · Rendering Provider ·
+// CPT Procedure Codes · ICD Codes on Claim.
+function ClaimField({ label, value }) {
+  return (
+    <div className={styles.claimField}>
+      <span className={styles.claimFieldLabel}>{label}</span>
+      <span className={styles.claimFieldValue}>{value}</span>
+    </div>
+  );
+}
+
+function ClaimDetail({ member, claim, onBack }) {
+  const detail = buildClaimDetail(member, claim);
+  return (
+    <div className={styles.scroll}>
+      <div className={styles.claimDetailHead}>
+        <button type="button" className={styles.claimBackBtn} onClick={onBack} aria-label="Back to claims">
+          <Icon name="solar:arrow-left-linear" size={18} color="var(--neutral-400)" />
+        </button>
+        <span className={styles.claimDetailTitle}>Claim Details for DOS: {claim.dos}</span>
+      </div>
+
+      <section className={styles.claimSection}>
+        <div className={styles.claimSectionHead}>
+          <span className={styles.claimSectionTitle}>Claim Information</span>
+          <Badge variant={CLAIM_STATUS_BADGE[claim.status] || 'toc-new'} label={claim.status} />
+        </div>
+        <div className={styles.claimInfoGrid}>
+          <ClaimField label="Claims Number" value={claim.number} />
+          <ClaimField label="Submission Date" value={detail.submissionDate} />
+          <ClaimField label="Date of Service" value={claim.dos} />
+        </div>
+      </section>
+
+      <section className={styles.claimSection}>
+        <div className={styles.claimSectionHead}>
+          <span className={styles.claimSectionTitle}>Rendering Provider</span>
+        </div>
+        <div className={styles.claimInfoGrid}>
+          <ClaimField label="Name" value={detail.provider.name} />
+          <ClaimField label="NPI" value={detail.provider.npi} />
+          <ClaimField label="Speciality" value={detail.provider.speciality} />
+        </div>
+      </section>
+
+      <section className={styles.claimSection}>
+        <div className={styles.claimSectionHead}>
+          <span className={styles.claimSectionTitle}>CPT Procedure Codes</span>
+        </div>
+        <table className={styles.claimCodeTable}>
+          <thead>
+            <tr><th>CPT Codes</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            {detail.cpts.map((p) => (
+              <tr key={p.cpt}>
+                <td className={styles.claimCode}>{p.cpt}</td>
+                <td className={styles.claimCodeDesc}>{p.description}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <section className={styles.claimSection}>
+        <div className={styles.claimSectionHead}>
+          <span className={styles.claimSectionTitle}>ICD Codes on Claim</span>
+        </div>
+        <table className={styles.claimCodeTable}>
+          <thead>
+            <tr><th>ICD Codes</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            {detail.icds.map((d) => (
+              <tr key={d.code}>
+                <td className={styles.claimCode}>{d.code}</td>
+                <td className={styles.claimCodeDesc}>{d.description}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
     </div>
   );
 }

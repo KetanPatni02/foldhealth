@@ -1,6 +1,6 @@
 .bar {
   display: flex;
-  align-items: center;
+  align-items: flex-start; /* right controls align to the first chip row */
   gap: 6px;
   padding: 8px 16px;
   border-bottom: 0.5px solid var(--neutral-150);
@@ -11,16 +11,28 @@
   font-family: 'Inter', sans-serif;
 }
 
+/* Chips wrap onto additional rows — never scroll horizontally. In the
+   default state, chips past one row are moved into "More Filters". */
 .chips {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   flex: 1 1 auto;
   min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
-.chips::-webkit-scrollbar { display: none; }
+
+/* Hidden mirror — measures chip widths for the auto-fit calculation. */
+.measure {
+  position: absolute;
+  top: -9999px;
+  left: -9999px;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  visibility: hidden;
+  pointer-events: none;
+}
 
 .chip {
   display: inline-flex;

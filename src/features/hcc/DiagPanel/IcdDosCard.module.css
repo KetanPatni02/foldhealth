@@ -8,12 +8,22 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  transition: background 0.12s ease, border-color 0.12s ease, opacity 0.2s ease;
 }
-/* Selected — purple ring, doc preview open on the left (Paper 1UD1). */
+/* Card hover — subtle lift; skipped while selected so the purple ring wins. */
+.card:hover:not(.cardSelected) {
+  border-color: var(--neutral-200);
+  background: var(--neutral-25);
+}
+/* Selected — bold 3px left accent so the active ICD is clearly
+   distinguishable; doc preview open on the left (Paper 1UD1). */
 .cardSelected {
   border-color: var(--primary-300);
-  box-shadow: 0 0 0 0.5px var(--primary-300);
+  box-shadow: inset 3px 0 0 var(--primary-300);
 }
+/* Completed — every DOS on this ICD has been acted upon; tone it down to
+   keep only the actionable ICDs in focus (worklist progression). */
+.cardCompleted { opacity: 0.6; }
 
 /* ── Head ── */
 .head {
@@ -33,6 +43,10 @@
   flex-shrink: 0;
 }
 .code:hover { text-decoration: underline; }
+/* No UA focus ring on the title triggers — the ICD code button and the
+   description toggle the same selection (keyboard uses A/X/M/D + arrows). */
+.code:focus,
+.desc:focus { outline: none; }
 .desc {
   font: 500 14px/1.3 'Inter', sans-serif;
   color: var(--neutral-500);
@@ -71,11 +85,10 @@
   border-radius: 4px;
 }
 .row:last-child { border-bottom: none; }
+/* Focused/selected DOS — no left bar, just a subtle background so the
+   currently-active row reads as selected within the ICD. */
 .rowFocused {
-  box-shadow: inset 2px 0 0 var(--primary-300);
-  background: var(--primary-25);
-  padding-left: 8px;
-  margin-left: -8px;
+  background: var(--primary-100);
 }
 .rowRejected .dosDate,
 .rowRejected .hccChip { opacity: 0.5; }
@@ -118,10 +131,6 @@
   color: var(--secondary-300);
   flex-shrink: 0;
 }
-.stateTag {
-  font: 500 11px/1.3 'Inter', sans-serif;
-  color: var(--status-warning);
-}
 
 /* ── Row actions ── */
 .rowActions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
@@ -158,9 +167,10 @@
   color: var(--primary-300);
 }
 
-/* Resolved-state pills (Figma ICD-Import: Accepted / Dismissed) */
+/* Resolved-state pills (Figma ICD-Import: Accepted / Dismissed / Missed / Deferred) */
 .acceptedPill,
-.dismissedPill {
+.dismissedPill,
+.warnPill {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -169,6 +179,8 @@
 }
 .acceptedPill { color: var(--status-success-bright); }
 .dismissedPill { color: var(--status-error); }
+/* Missed opportunity / Deferred — warning color, icon + text + undo. */
+.warnPill { color: var(--status-warning); }
 
 .undoBtn {
   display: inline-flex;
@@ -239,14 +251,6 @@
 }
 .moreItem:hover { background: var(--neutral-50); }
 
-/* Row selection checkbox (bulk actions) */
-.rowCheck {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-  accent-color: var(--primary-300);
-  cursor: pointer;
-}
 
 /* ── Inline dismiss-reason form (Figma 4696:135817) ── */
 .dismissForm {

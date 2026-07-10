@@ -6,39 +6,10 @@ import { Button } from '../../components/Button/Button';
 import { Input } from '../../components/Input/Input';
 import { Select } from '../../components/Select/Select';
 import { useAppStore } from '../../store/useAppStore';
-import { ASTRANA_STAFF, ROLE_LABEL, ROLES } from './assignment/astranaStaff';
+import { ROLE_LABEL, ROLES } from './assignment/astranaStaff';
 import { dosKey } from './assignment/dosState';
-import { FALLBACK_USERS } from '../settings/AccountPanel';
+import { SYSTEM_USERS } from './systemUsers';
 import styles from './BulkChangeAssigneesDialog.module.css';
-
-// Merged system-user pool — Account → Users + Astrana HCC staff, deduped
-// by id. Astrana wins on conflict because it carries `role` engine keys
-// (`support` / `coder` / `reviewer` / `reviewer2`) the assignment engine uses.
-// Same pool the ConfigureTeamDrawer's user picker draws from, so bulk
-// reassignment can reach every user the admin can already configure
-// onto a Care Team.
-const SYSTEM_USERS = (() => {
-  const astrana = ASTRANA_STAFF.map(s => ({
-    id: s.id,
-    name: s.name,
-    initials: s.initials,
-    rolesLabel: ROLE_LABEL[s.role] || s.role,
-    engineRole: s.role, // 'support' | 'coder' | 'reviewer' | 'reviewer2'
-    source: 'astrana',
-  }));
-  const astranaIds = new Set(astrana.map(u => u.id));
-  const account = FALLBACK_USERS
-    .filter(u => !astranaIds.has(u.id))
-    .map(u => ({
-      id: u.id,
-      name: u.name,
-      initials: u.initials,
-      rolesLabel: u.role || '',
-      engineRole: null, // Account users aren't pinned to an engine role
-      source: 'account',
-    }));
-  return [...astrana, ...account];
-})();
 
 /**
  * BulkChangeAssigneesDialog — centered modal matching Figma 1399:5871.

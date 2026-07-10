@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '../../../store/useAppStore';
 import { Drawer } from '../../../components/Drawer/Drawer';
@@ -297,7 +297,9 @@ export function DiagPanel() {
   const [addIcdOpen, setAddIcdOpen] = useState(false);
   const [openDismissKey, setOpenDismissKey] = useState(null);
   const addIcdRef = useRef(null);
-  const [focusIdx, setFocusIdx] = useState(0);
+  // -1 = no DOS highlighted; a row lights up only once an ICD is selected,
+  // acted on, or reached via the keyboard.
+  const [focusIdx, setFocusIdx] = useState(-1);
 
   // Fetch diagnosis gaps from Supabase when member changes
   useEffect(() => {
@@ -555,12 +557,29 @@ export function DiagPanel() {
     [cardIcds],
   );
   const focusKey = rowKeys[Math.min(focusIdx, rowKeys.length - 1)] || null;
+  // The ICD being worked on (owns the focused DOS). The document evidence view
+  // follows this so the highlighted note line tracks the active ICD.
+  const activeIcdCode = focusKey ? focusKey.split('|')[0] : null;
 
   useEffect(() => {
     if (focusIdx > 0 && focusIdx >= rowKeys.length) {
       setFocusIdx(Math.max(0, rowKeys.length - 1));
     }
   }, [rowKeys.length, focusIdx]);
+
+  // After acting on a DOS, advance focus to the next un-acted row (searching
+  // forward, wrapping once) — this rolls onto the next ICD when the current
+  // one is fully worked. If nothing is left un-acted, focus stays put.
+  const advanceFocusAfterAction = useCallback((actedKey) => {
+    const actions = useAppStore.getState().hccGapDosActions;
+    const start = rowKeys.indexOf(actedKey);
+    if (start < 0) return;
+    for (let j = 1; j <= rowKeys.length; j++) {
+      const idx = (start + j) % rowKeys.length;
+      const k = rowKeys[idx];
+      if (k !== actedKey && !actions[k]) { setFocusIdx(idx); return; }
+    }
+  }, [rowKeys]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -586,22 +605,26 @@ export function DiagPanel() {
         const k = key.toLowerCase();
         if (k === 'x') {
           // Reject opens the dismiss-reason form for the focused row
-          // (Figma: X → reason picker, not a silent dismiss).
+          // (Figma: X → reason picker, not a silent dismiss). Advance happens
+          // on confirm, via the row's onConfirmDismiss.
           setOpenDismissKey(focused);
         } else {
           setHccGapDosAction(code, dos, { a: 'accepted', m: 'missed', d: 'deferred' }[k]);
+          // a/m/d toggle — only advance when the row ended up acted, not undone.
+          if (useAppStore.getState().hccGapDosActions[focused]) advanceFocusAfterAction(focused);
         }
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [rowKeys, focusIdx, setHccGapDosAction, setDiagLeftPanel]);
+  }, [rowKeys, focusIdx, setHccGapDosAction, setDiagLeftPanel, advanceFocusAfterAction]);
 
-  // Focused row follows the mouse too, so keyboard and pointer agree.
-  const focusRowByKey = (key) => {
-    const idx = rowKeys.indexOf(key);
+  // Selecting an ICD card highlights its first DOS automatically.
+  useEffect(() => {
+    if (!diagActivityIcd) return;
+    const idx = rowKeys.findIndex(k => k.startsWith(`${diagActivityIcd}|`));
     if (idx >= 0) setFocusIdx(idx);
-  };
+  }, [diagActivityIcd]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Bulk selection (row checkboxes → bulk Accept / Reject bar) ──
   const toggleSelected = (key) => setSelectedKeys(prev => {
@@ -657,7 +680,7 @@ export function DiagPanel() {
       {diagLeftPanel && (
         <LeftWorkspace
           active={diagLeftPanel}
-          icdScope={diagActivityIcd}
+          icdScope={diagActivityIcd ? (activeIcdCode ?? diagActivityIcd) : null}
           onChange={setDiagTab}
           onClose={() => setDiagLeftPanel(null)}
           member={member}
@@ -894,11 +917,11 @@ export function DiagPanel() {
               key={`card-${icd.code}-${i}`}
               icd={icd}
               focusKey={focusKey}
-              onFocusRow={focusRowByKey}
               selectedKeys={selectedKeys}
               onToggleSelect={toggleSelected}
               openDismissKey={openDismissKey}
               onOpenDismiss={setOpenDismissKey}
+              onActed={advanceFocusAfterAction}
             />
           ))}
 

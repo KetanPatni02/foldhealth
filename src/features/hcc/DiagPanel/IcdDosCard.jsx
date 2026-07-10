@@ -7,6 +7,7 @@ import { CloseIcon } from '../../../components/Icon/CloseIcon';
 import { RadioButton } from '../../../components/RadioButton/RadioButton';
 import { Textarea } from '../../../components/Textarea/Textarea';
 import { Button } from '../../../components/Button/Button';
+import { Checkbox } from '../../../components/ui/checkbox';
 import styles from './IcdDosCard.module.css';
 
 // Dismiss reasons — Figma ICD-Import states (node 4696:135817).
@@ -38,7 +39,7 @@ const DISMISS_REASONS = [
  * @param {string} [props.openDismissKey] `${code}|${dos}` whose form is open
  * @param {(key:string|null)=>void} [props.onOpenDismiss]
  */
-export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSelect, openDismissKey, onOpenDismiss }) {
+export function IcdDosCard({ icd, focusKey, selectedKeys, onToggleSelect, openDismissKey, onOpenDismiss, onActed }) {
   const openIcdPanel = useAppStore(s => s.openIcdPanel);
   const openIcdActivityLog = useAppStore(s => s.openIcdActivityLog);
   const diagActivityIcd = useAppStore(s => s.diagActivityIcd);
@@ -51,7 +52,15 @@ export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSe
   const showToast = useAppStore(s => s.showToast);
 
   const hccShort = (icd.hcc || '').split(' - ')[0].trim();
+  // Doc-panel selection — drives the source-document toggle below.
   const isSelected = diagActivityIcd === icd.code;
+  // The ICD currently being worked on = the one that owns the focused DOS.
+  // Its card is highlighted; as focus advances to the next ICD this one stops
+  // being active and (once fully acted) tones down.
+  const isActive = !!focusKey && focusKey.split('|')[0] === icd.code;
+  const allActed = icd.entries.length > 0
+    && icd.entries.every(e => !!dosActions[`${icd.code}|${e.dos}`]);
+  const isCompleted = allActed && !isActive;
 
   // Selecting an ICD expands the drawer and opens the source-document
   // preview on the left, scoped to this code. Clicking again deselects.
@@ -65,7 +74,7 @@ export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSe
   };
 
   return (
-    <div className={[styles.card, isSelected ? styles.cardSelected : ''].filter(Boolean).join(' ')}>
+    <div className={[styles.card, isActive ? styles.cardSelected : '', isCompleted ? styles.cardCompleted : ''].filter(Boolean).join(' ')}>
       <div className={styles.head}>
         <div className={styles.headMain}>
           <div className={styles.titleLine}>
@@ -109,6 +118,12 @@ export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSe
       <div className={styles.rows}>
         {icd.entries.map((entry) => {
           const key = `${icd.code}|${entry.dos}`;
+          // Advance focus to the next un-acted DOS — but only when the action
+          // actually resolved the row. Missed/Defer toggle off (undo), so read
+          // fresh store state rather than assuming the row is now acted.
+          const advanceIfActed = () => {
+            if (useAppStore.getState().hccGapDosActions[key]) onActed?.(key);
+          };
           return (
             <DosActionRow
               key={key}
@@ -122,14 +137,13 @@ export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSe
               selected={selectedKeys?.has(key) || false}
               dismissOpen={openDismissKey === key}
               onToggleSelect={onToggleSelect ? () => onToggleSelect(key) : null}
-              onFocus={() => onFocusRow?.(key)}
-              onAccept={() => setDosAction(icd.code, entry.dos, 'accepted')}
+              onAccept={() => { setDosAction(icd.code, entry.dos, 'accepted'); advanceIfActed(); }}
               onOpenDismiss={() => onOpenDismiss?.(key)}
               onCloseDismiss={() => onOpenDismiss?.(null)}
-              onConfirmDismiss={(reason, note) => { dismissDos(icd.code, entry.dos, reason, note); onOpenDismiss?.(null); }}
+              onConfirmDismiss={(reason, note) => { dismissDos(icd.code, entry.dos, reason, note); onOpenDismiss?.(null); advanceIfActed(); }}
               onUndo={() => setDosAction(icd.code, entry.dos, dosActions[key])}
-              onMissed={() => setDosAction(icd.code, entry.dos, 'missed')}
-              onDefer={() => setDosAction(icd.code, entry.dos, 'deferred')}
+              onMissed={() => { setDosAction(icd.code, entry.dos, 'missed'); advanceIfActed(); }}
+              onDefer={() => { setDosAction(icd.code, entry.dos, 'deferred'); advanceIfActed(); }}
               showToast={showToast}
             />
           );
@@ -141,7 +155,7 @@ export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSe
 
 function DosActionRow({
   rowKey, entry, icd, hccShort, action, meta, focused, selected, dismissOpen,
-  onToggleSelect, onFocus, onAccept, onOpenDismiss, onCloseDismiss, onConfirmDismiss,
+  onToggleSelect, onAccept, onOpenDismiss, onCloseDismiss, onConfirmDismiss,
   onUndo, onMissed, onDefer, showToast,
 }) {
   const [menuPos, setMenuPos] = useState(null);
@@ -149,6 +163,8 @@ function DosActionRow({
   const isManual = entry.manual || icd.type === 'Manual';
   const isAccepted = action === 'accepted';
   const isRejected = action === 'rejected';
+  const isMissed = action === 'missed';
+  const isDeferred = action === 'deferred';
 
   useEffect(() => {
     if (!menuPos) return undefined;
@@ -170,15 +186,12 @@ function DosActionRow({
     <>
       <div
         className={[styles.row, focused ? styles.rowFocused : '', isRejected ? styles.rowRejected : ''].filter(Boolean).join(' ')}
-        onMouseEnter={onFocus}
         data-rowkey={rowKey}
       >
         {onToggleSelect && (
-          <input
-            type="checkbox"
-            className={styles.rowCheck}
+          <Checkbox
             checked={selected}
-            onChange={onToggleSelect}
+            onCheckedChange={onToggleSelect}
             aria-label={`Select ${icd.code} on ${entry.dos}`}
           />
         )}
@@ -196,10 +209,6 @@ function DosActionRow({
             <Icon name="solar:info-circle-linear" size={12} />
           </button>
         )}
-        {(action === 'missed' || action === 'deferred') && (
-          <span className={styles.stateTag}>{action === 'missed' ? 'Missed opportunity' : 'Deferred'}</span>
-        )}
-
         <div className={styles.rowActions}>
           {isAccepted ? (
             <>
@@ -212,6 +221,20 @@ function DosActionRow({
             <>
               <span className={styles.dismissedPill}><CloseIcon size={12} color="currentColor" /> Dismissed</span>
               <button type="button" className={styles.undoBtn} title="Undo" aria-label="Undo dismiss" onClick={onUndo}>
+                <Icon name="solar:undo-left-round-linear" size={15} />
+              </button>
+            </>
+          ) : isMissed ? (
+            <>
+              <span className={styles.warnPill}><Icon name="solar:flag-linear" size={13} color="currentColor" /> Missed opportunity</span>
+              <button type="button" className={styles.undoBtn} title="Undo" aria-label="Undo missed opportunity" onClick={onUndo}>
+                <Icon name="solar:undo-left-round-linear" size={15} />
+              </button>
+            </>
+          ) : isDeferred ? (
+            <>
+              <span className={styles.warnPill}><Icon name="solar:alarm-linear" size={13} color="currentColor" /> Deferred</span>
+              <button type="button" className={styles.undoBtn} title="Undo" aria-label="Undo defer" onClick={onUndo}>
                 <Icon name="solar:undo-left-round-linear" size={15} />
               </button>
             </>

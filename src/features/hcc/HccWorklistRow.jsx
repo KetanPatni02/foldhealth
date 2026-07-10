@@ -14,6 +14,7 @@ import {
   OpenIcdsHoverPopover,
 } from './RowPopovers';
 import { getOpenIcdsForMember } from './data/icds';
+import { dosSourceLetter, DOS_SOURCE_META } from './dosSource';
 import { getStatusSpec } from './statusSpec';
 import { StatusIcon } from './StatusIcon';
 import { staffById, staffForRole, ROLE_LABEL, ROLES } from './assignment/astranaStaff';
@@ -553,23 +554,9 @@ function AssigneeCell({ member, dosState }) {
 // record-level fact rendered once (top-aligned).
 const DOS_LEVEL_COLS = new Set(['dos', 'open', 'vt', 'rp', 'pos']);
 
-// Small circular source badge next to the DOS date (D=Document,
-// C=Claim, M=Manual). Deterministic per date so the demo is stable.
-const DOS_SOURCES = ['D', 'C', 'M'];
-function dosSourceLetter(date) {
-  let h = 0;
-  const s = String(date || '');
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0xffffffff;
-  return DOS_SOURCES[Math.abs(h) % DOS_SOURCES.length];
-}
-// What each DOS-source letter means — drives the badge colour + the hover
-// tooltip (source of the encounter + its date).
-const DOS_SOURCE_META = {
-  D: { cls: 'srcDoc',    label: 'Clinical Document', hint: 'Extracted from an uploaded document' },
-  C: { cls: 'srcClaims', label: 'Claims',            hint: 'Claims document from Astrana' },
-  M: { cls: 'srcManual', label: 'Manual Entry',      hint: 'Added manually by a coder' },
-};
-
+// Small circular source badge next to the DOS date (D=Document, C=Claim,
+// M=Manual). Classifier + meta come from the shared `dosSource` module so the
+// badge and the "DOS Source" filter agree on the source per date.
 function DosSourceBadge({ date }) {
   const letter = dosSourceLetter(date);
   const meta = DOS_SOURCE_META[letter] || DOS_SOURCE_META.D;

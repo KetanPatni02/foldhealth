@@ -267,6 +267,64 @@ const LIST_FILTER_KEY = {
   HEDIS: 'hedisFilters',
 };
 
+// Remove a list's active saved-filter selection and persist the change.
+// Used when the user edits/clears filters (which detaches the saved view).
+function detachSaved(activeSavedIdByList, list) {
+  if (!activeSavedIdByList || !(list in activeSavedIdByList)) return activeSavedIdByList;
+  const next = { ...activeSavedIdByList };
+  delete next[list];
+  try { localStorage.setItem('activeSavedIdByList', JSON.stringify(next)); } catch {/* */}
+  return next;
+}
+
+// Read the persisted saved-filter definitions (falls back to the legacy key,
+// then to sensible defaults).
+function readSavedFiltersByList() {
+  try {
+    const raw = localStorage.getItem('savedFiltersByList');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') return parsed;
+    }
+  } catch {/* fall through */}
+  try {
+    const legacy = localStorage.getItem('hccSavedFilters');
+    if (legacy) {
+      const parsed = JSON.parse(legacy);
+      if (Array.isArray(parsed)) return { HCC: parsed };
+    }
+  } catch {/* */}
+  return {
+    HCC: [
+      { id: 'sf1', name: 'High Risk Members',  filters: { rl: ['High'] } },
+      { id: 'sf2', name: 'Overdue Incomplete', filters: { supS: ['Assign'], cdrS: ['Assign'] } },
+    ],
+  };
+}
+
+// Read the persisted active saved-filter id per list (falls back to legacy key).
+function readActiveSavedIdByList() {
+  try {
+    const raw = localStorage.getItem('activeSavedIdByList');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') return parsed;
+    }
+  } catch {/* */}
+  const legacy = localStorage.getItem('hccActiveSavedId');
+  return legacy ? { HCC: legacy } : {};
+}
+
+// Hydrate a list's filter slice from its active saved filter at boot. Only
+// `activeSavedIdByList` is persisted (not the filter slice), so without this a
+// reload would show the SavedFiltersChip as active with no filters applied.
+function hydrateListFilters(list) {
+  const active = readActiveSavedIdByList()[list];
+  if (!active) return {};
+  const f = (readSavedFiltersByList()[list] || []).find(x => x.id === active);
+  return f ? { ...f.filters } : {};
+}
+
 // Safe JSON read from sessionStorage — returns fallback on missing/parse error.
 function _readJson(key, fallback) {
   try {
@@ -2505,7 +2563,8 @@ export const useAppStore = create((set, get) => ({
 
   // ─── HCC worklist filter state ───
   // hccFilters: { [filterKey]: string[] } — empty object = no filters applied.
-  hccFilters: {},
+  // Hydrated from the active saved filter so a reload keeps the applied view.
+  hccFilters: hydrateListFilters('HCC'),
   setHccFilter: (k, vals) => {
     track('hcc.filter_applied', { filterKey: k, filterValue: Array.isArray(vals) ? vals.join(',') : vals });
     set(s => {
@@ -2513,25 +2572,28 @@ export const useAppStore = create((set, get) => ({
       if (!vals || !vals.length) delete next[k];
       else next[k] = vals;
       // Changing a filter detaches us from any "applied saved filter" highlight
-      return { hccFilters: next, hccActiveSavedId: null };
+      return { hccFilters: next, hccActiveSavedId: null, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'HCC') };
     });
   },
   clearHccFilters: () => {
     track('hcc.filters_cleared_all');
-    set({ hccFilters: {}, hccActiveSavedId: null });
+    set(s => ({ hccFilters: {}, hccActiveSavedId: null, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'HCC') }));
   },
 
   // Which filter chip keys appear in the chip row. The MoreFiltersPopover
   // toggles entries in this set. Initialized to the primary keys on first read.
-  hccVisibleFilterKeys: null, // null → fall back to PRIMARY_FILTER_KEYS in components
+  hccVisibleFilterKeys: null, // null → auto-fit one row from PRIMARY (FilterChipBar)
   toggleHccVisibleFilter: (k) => set(s => {
-    // Lazy-initialize from primary keys
     const current = s.hccVisibleFilterKeys
       ? new Set(s.hccVisibleFilterKeys)
       : new Set(['my','rl','coh','g','open','chart','supS','cdrS','r1s','dec']);
     if (current.has(k)) current.delete(k); else current.add(k);
     return { hccVisibleFilterKeys: [...current] };
   }),
+  // Explicit setter — FilterChipBar computes the next visible set from the
+  // current *effective* (auto-fit) set so toggling from More Filters is
+  // consistent whether or not the user has customized before.
+  setHccVisibleFilterKeys: (list) => set({ hccVisibleFilterKeys: [...list] }),
   clearHccVisibleFilters: () => set({ hccVisibleFilterKeys: [] }),
 
   // Saved filter sets, keyed by shared-list label (HCC, TOC, SNP, AWV,
@@ -2541,40 +2603,8 @@ export const useAppStore = create((set, get) => ({
   // The per-list filter STATE lives elsewhere (hccFilters for HCC,
   // activeFilters for TOC and other generic lists). LIST_FILTER_KEY below
   // tells the store which slice to read/write for each list.
-  savedFiltersByList: (() => {
-    try {
-      const raw = localStorage.getItem('savedFiltersByList');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === 'object') return parsed;
-      }
-    } catch {/* fall through */}
-    // Migrate legacy hccSavedFilters if present so existing data isn't lost.
-    try {
-      const legacy = localStorage.getItem('hccSavedFilters');
-      if (legacy) {
-        const parsed = JSON.parse(legacy);
-        if (Array.isArray(parsed)) return { HCC: parsed };
-      }
-    } catch {/* */}
-    return {
-      HCC: [
-        { id: 'sf1', name: 'High Risk Members',  filters: { rl: ['High'] } },
-        { id: 'sf2', name: 'Overdue Incomplete', filters: { supS: ['Assign'], cdrS: ['Assign'] } },
-      ],
-    };
-  })(),
-  activeSavedIdByList: (() => {
-    try {
-      const raw = localStorage.getItem('activeSavedIdByList');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === 'object') return parsed;
-      }
-    } catch {/* */}
-    const legacy = localStorage.getItem('hccActiveSavedId');
-    return legacy ? { HCC: legacy } : {};
-  })(),
+  savedFiltersByList: readSavedFiltersByList(),
+  activeSavedIdByList: readActiveSavedIdByList(),
   // saveSavedFilter(list, name): read the current filter slice for `list`
   // and store it under savedFiltersByList[list] as a named view.
   saveSavedFilter: (list, name) => {
