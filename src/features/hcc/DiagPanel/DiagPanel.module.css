@@ -853,3 +853,22 @@
   color: var(--neutral-300);
 }
 .bulkClear:hover { color: var(--neutral-500); }
+
+/* Toolbar Bulk-Action button — active state while bulk-select mode is on. */
+.toolbarBtnActive {
+  background: var(--primary-50);
+  color: var(--primary-300);
+}
+
+
+/* Override the shared BulkBar's viewport-centered positioning when it's
+   rendered inside the DiagPanel drawer. The drawer is 700px wide with an
+   8px right inset (see Drawer.module.css), so its horizontal centre sits
+   at 100vw − (700/2 + 8) = 100vw − 358px. The transform shifts the bar
+   left by half its own width to place its centre at the drawer's centre. */
+.bulkBarInDrawer {
+  left: calc(100vw - 358px) !important;
+  right: auto !important;
+  bottom: 32px !important;
+  transform: translateX(-50%) !important;
+}
