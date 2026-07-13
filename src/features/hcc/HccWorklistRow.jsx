@@ -532,14 +532,24 @@ function DosSourceBadge({ date }) {
 // Inner content (NOT the <td>) for each DOS-level column, given one
 // dos_list entry. The main row wraps these in a stacked `<td>`.
 const DOS_INNER = {
-  dos: (entry, { openClaimPreview, member }) => (
-    <span className={styles.dosItem}>
-      <button type="button" className={styles.lastVisitDateBtn} onClick={() => openClaimPreview?.(member, entry.date)}>
-        <span className={styles.lastVisitDate}>{entry.date}</span>
-      </button>
-      <DosSourceBadge date={entry.date} />
-    </span>
-  ),
+  dos: (entry, { openClaimPreview, member }) => {
+    // Only claim-sourced DOS (the "C" badge) open the Claims drawer;
+    // document/manual dates render as plain grey text. Date colour is
+    // neutral-300 in all cases (no purple link styling).
+    const isClaim = dosSourceLetter(entry.date) === 'C';
+    return (
+      <span className={styles.dosItem}>
+        {isClaim ? (
+          <button type="button" className={styles.lastVisitDateBtn} onClick={() => openClaimPreview?.(member, entry.date)}>
+            <span className={styles.lastVisitDate}>{entry.date}</span>
+          </button>
+        ) : (
+          <span className={styles.lastVisitDate}>{entry.date}</span>
+        )}
+        <DosSourceBadge date={entry.date} />
+      </span>
+    );
+  },
   open: (entry, { openDiagPanel, member }) => (
     <OpenIcdsCell
       member={member}

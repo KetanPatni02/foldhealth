@@ -16,8 +16,8 @@ export function StatusLegend() {
     <div className={styles.legend}>
       <span className={styles.label}>Legend:</span>
       {LEGEND_STATUSES.map((it) => (
-        <span key={it.label} className={styles.item}>
-          <StatusIcon status={it.label} size={13} color={it.color} />
+        <span key={it.status} className={styles.item}>
+          <StatusIcon status={it.status} size={13} color={it.color} />
           <span style={{ color: it.color }}>{it.label}</span>
         </span>
       ))}

@@ -675,6 +675,7 @@ export function DiagPanel() {
           <DosStatusMenu
             value={currentStatus}
             onChange={handleStatusChange}
+            role={currentBucket?.kind === 'active' ? currentBucket.role : null}
           />
         </div>
       </div>
