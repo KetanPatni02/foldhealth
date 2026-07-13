@@ -63,13 +63,13 @@ function LastVisitCell({ dos, visits, fromClaim, onClickDate, onClickVisits }) {
   );
 }
 
-function CreateDateCell({ date, due, dueCol, coderDone }) {
+function CreateDateCell({ date, due, dueCol }) {
   // SLA (Astrana DOS worklist): colour the Created Date against the 14-day
-  // window computed live from the date. The clock ends when the Coder
-  // (Reviewer 1) completes — resolved records drop the urgency chip. Falls
-  // back to any static due label when the date can't be parsed.
-  const sla = coderDone ? null : computeSla(date);
-  const label = coderDone ? null : (sla ? sla.label : due);
+  // window computed live from the date. Every row shows a due-date detail —
+  // even resolved ones — so the column is never blank. Falls back to any
+  // static due label when the date can't be parsed.
+  const sla = computeSla(date);
+  const label = sla ? sla.label : due;
   const color = sla ? sla.colorVar : dueCol;
   return (
     <div className={styles.stackCell}>
@@ -581,7 +581,7 @@ const DOS_INNER = {
 const CELL_RENDERERS = {
   date: ({ member }) => (
     <td key="date" data-col="date" className={styles.colDate}>
-      <CreateDateCell date={member.date} due={member.due} dueCol={member.dueCol} coderDone={member.cdrS === 'Completed'} />
+      <CreateDateCell date={member.date} due={member.due} dueCol={member.dueCol} />
     </td>
   ),
   evidence: ({ member, charts, openChart, openUpload }) => (

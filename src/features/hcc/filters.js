@@ -67,17 +67,26 @@ export const MORE_FILTER_ITEMS = [
 export const PRIMARY_FILTER_KEYS = MORE_FILTER_ITEMS.filter(x => x.primary).map(x => x.k);
 
 export const FILTER_DEFS = [
-  // Visit Type — options are the distinct visit types present in the loaded
-  // patient records (computed in FilterChipBar). `opts` is the Figma canonical
-  // set (node 4240-110502), used as a fallback before members load.
+  // Visit Type — canonical option set used across the worklist. Records get a
+  // deterministic visit type from this same list in the store (see
+  // normalizeWorklistRow → VT_POOL), so the filter and the data agree.
   { k: 'vt',     label: 'Visit Type',          type: 'multi', dynamic: 'vt', opts: [
     'AWV - Annual Wellness Visit',
     'IPPE - Initial Preventive Physical Exam',
-    'APE - Annual Physical Exam',
+    'Annual Physical Exam',
     'New Patient Office Visit',
     'Established Patient Office Visit',
     'Telehealth Visit',
     'Specialist Visit / Consult',
+    'ER Visit',
+    'Inpatient Visit / Admission',
+    'Observation Visit',
+    'Skilled Nursing Facility Visit',
+    'Home Visit',
+    'Hospice Visit',
+    'Lab/Imaging Order',
+    'Transitional Care Management (TCM) Visit',
+    'Chronic Care Management (CCM)',
   ] },
   // Measurement Year — most recent first (descending).
   { k: 'my',     label: 'Measurement Year',    type: 'multi', opts: ['2026', '2025', '2024', '2023', '2022', '2021'] },

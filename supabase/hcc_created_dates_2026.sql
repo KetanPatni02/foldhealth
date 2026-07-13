@@ -1,9 +1,10 @@
 -- HCC worklist — realistic 2026 Created Dates for the SLA / Overdue view.
 --
 -- Spreads every record's Created Date deterministically across the ~5 weeks
--- ending 07/09/2026 (all before "today"), so the 14-day SLA window yields a
--- realistic mix of Overdue, Due-soon, and On-track records. Ordering by id
--- keeps the result stable across re-runs. create_date is text "MM/DD/YYYY".
+-- ending on today (2026-07-13). With the 14-day SLA window, this yields a
+-- realistic mix: max overdue ≈ 3 weeks (35 elapsed − 14-day window), and the
+-- newest records still within the SLA window. Ordering by id keeps the
+-- result stable across re-runs. create_date is text "MM/DD/YYYY".
 --
 -- The clock starts at Support-Team receipt, which the worklist represents as
 -- the Created Date. dos_list service dates are intentionally left untouched —
@@ -17,7 +18,8 @@ WITH ordered AS (
 )
 UPDATE hcc_members m
 SET create_date = to_char(
-      DATE '2026-07-09' - ((o.rn * 35) / GREATEST(o.total - 1, 1)),
+      -- Postgres: subtract an INTERVAL from a DATE, not a raw integer.
+      (DATE '2026-07-13' - ((o.rn * 35) / GREATEST(o.total - 1, 1)) * INTERVAL '1 day')::date,
       'MM/DD/YYYY'
     )
 FROM ordered o
