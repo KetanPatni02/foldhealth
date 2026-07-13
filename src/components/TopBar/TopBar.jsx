@@ -42,7 +42,9 @@ function ProfilePopover({ user, onClose, onPreferences }) {
   const [firstName, setFirstName] = useState(user?.user_metadata?.first_name || '');
   const [lastName, setLastName] = useState(user?.user_metadata?.last_name || '');
   const [saving, setSaving] = useState(false);
-  const [account, setAccount] = useState('Coder');
+  // HCC role — the store owns it so the worklist + DiagPanel can react.
+  const account = useAppStore(s => s.hccUserRole);
+  const setAccount = useAppStore(s => s.setHccUserRole);
   const [showRoles, setShowRoles] = useState(false);
 
   useEffect(() => {

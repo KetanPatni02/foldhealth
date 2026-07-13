@@ -6,6 +6,7 @@ import { Button } from '../../../components/Button/Button';
 import { Avatar } from '../../../components/Avatar/Avatar';
 import { Badge } from '../../../components/Badge/Badge';
 import { COMMENTS, DOCUMENTS, NOTES, CLAIMS, HISTORY } from '../data/ancillary';
+import { getChartDocs } from '../data/chartDocs';
 import { ACTIVITY } from '../data/activity';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { OutreachTab as PatientOutreachTab } from '../../patient/components/OutreachTab';
@@ -17,21 +18,25 @@ import styles from './LeftWorkspace.module.css';
 //       Activity Log, Notes, Comments, Documents, Claims, History
 //   • DOS-level (opened from the toolbar Activity Log icon) — Figma 1:48023:
 //       Activity Log, Notes, Comments, Documents, Claims, Outreach, Worklog
+// Tab order: Documents → Claims → Timeline → Comments → Notes → History → Worklog.
+// ("Activity Log" is renamed to "Timeline" per product; the tab key stays
+// 'activity' to keep the store's active-tab persistence stable.)
 const ICD_TABS = [
-  { key: 'activity',  label: 'Activity Log',  countFor: () => null },
-  { key: 'notes',     label: 'Notes',         countFor: () => NOTES.length },
-  { key: 'comments',  label: 'Comments',      countFor: () => COMMENTS.length },
   { key: 'documents', label: 'Documents',     countFor: () => DOCUMENTS.length },
   { key: 'claims',    label: 'Claims',        countFor: () => CLAIMS.length },
+  { key: 'activity',  label: 'Timeline',      countFor: () => null },
+  { key: 'comments',  label: 'Comments',      countFor: () => COMMENTS.length },
+  { key: 'notes',     label: 'Notes',         countFor: () => NOTES.length },
   { key: 'history',   label: 'History',       countFor: () => null },
+  { key: 'worklog',   label: 'Worklog',       countFor: () => null },
 ];
 const DOS_TABS = [
-  { key: 'activity',  label: 'Activity Log',  countFor: () => null },
-  { key: 'notes',     label: 'Notes',         countFor: () => NOTES.length },
-  { key: 'comments',  label: 'Comments',      countFor: () => COMMENTS.length },
   { key: 'documents', label: 'Documents',     countFor: () => DOCUMENTS.length },
   { key: 'claims',    label: 'Claims',        countFor: () => CLAIMS.length },
-  { key: 'outreach',  label: 'Outreach',      countFor: () => null },
+  { key: 'activity',  label: 'Timeline',      countFor: () => null },
+  { key: 'comments',  label: 'Comments',      countFor: () => COMMENTS.length },
+  { key: 'notes',     label: 'Notes',         countFor: () => NOTES.length },
+  { key: 'history',   label: 'History',       countFor: () => null },
   { key: 'worklog',   label: 'Worklog',       countFor: () => null },
 ];
 
@@ -56,8 +61,28 @@ const FILTERED_TABS = new Set(['activity', 'notes', 'comments', 'documents']);
 export function LeftWorkspace({ active, icdScope = null, onChange, onClose, member, currentDos = null }) {
   const isDosLevel = !icdScope;
   const tabs = isDosLevel ? DOS_TABS : ICD_TABS;
+  // Lifted from DocumentsTab so the surrounding filter row can be hidden while
+  // a document is being previewed — filters only make sense on the listing.
+  const [openDocId, setOpenDocId] = useState(null);
+  const isPreviewingDoc = active === 'documents' && !!openDocId;
   // Worklog uses a DOS-only filter; the other filtered tabs use the full set.
-  const showFilterRow = FILTERED_TABS.has(active) || (isDosLevel && active === 'worklog');
+  // Docs tab shows the filter row only in listing mode (not during preview).
+  const showFilterRow = (FILTERED_TABS.has(active) || (isDosLevel && active === 'worklog'))
+    && !isPreviewingDoc;
+
+  // Real chart list for THIS record — same source the worklist Documents
+  // column uses, so the tab count matches the column count exactly.
+  const addedCharts = useAppStore(s => s.hccAddedCharts?.[member?.id]);
+  const charts = useMemo(
+    () => (member ? getChartDocs(member, addedCharts || []) : []),
+    [member, addedCharts],
+  );
+  // Per-tab count override — 'documents' takes its count from the record's
+  // charts (not the static DOCUMENTS mock).
+  const countForTab = (t) => {
+    if (t.key === 'documents') return charts.length;
+    return t.countFor?.();
+  };
 
   // Pull the activity entries once at this level so the filter row can compute
   // its dropdown options (DOS / HCC / ICD / Recorded By) from the same source
@@ -102,7 +127,7 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
     <div className={styles.wrap}>
       <div className={styles.tabBar}>
         <ActionButton
-          icon="solar:alt-arrow-left-linear"
+          icon="custom:collapse-sidebar"
           size="S"
           tooltip="Collapse"
           onClick={onClose}
@@ -112,7 +137,7 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
         <div className={styles.tabRow}>
           {tabs.map((t) => {
             const isActive = active === t.key;
-            const count = t.countFor?.();
+            const count = countForTab(t);
             return (
               <button
                 key={t.key}
@@ -149,7 +174,15 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
 
         {active === 'activity'  && <ActivityTab  member={member} rawEntries={rawActivity} filters={filters} />}
         {active === 'comments'  && <CommentsTab  member={member} />}
-        {active === 'documents' && <DocumentsTab member={member} icdScope={icdScope} />}
+        {active === 'documents' && (
+          <DocumentsTab
+            member={member}
+            icdScope={icdScope}
+            charts={charts}
+            openDocId={openDocId}
+            setOpenDocId={setOpenDocId}
+          />
+        )}
         {active === 'notes'     && <NotesTab     member={member} />}
         {active === 'claims'    && <ClaimsTab    member={member} />}
         {active === 'outreach'  && <OutreachTab  member={member} />}
@@ -889,16 +922,135 @@ const DOC_STATUS_BADGE = {
   failed:  { variant: 'status-failed',    label: 'Failed'  },
 };
 
-function DocumentsTab({ member, icdScope }) {
+function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId }) {
   const showToast = useAppStore(s => s.showToast);
   const uploaderOpen = useAppStore(s => s.hccDocsUploaderOpen);
   const uploaded = useAppStore(s => s.hccUploadedDocs);
-  const list = useMemo(() => [...uploaded, ...DOCUMENTS], [uploaded]);
+  // Two shapes converge here: (a) charts = the RECORD's real docs (source of
+  // truth, matches the worklist Documents-column count) — uses fields
+  // { id, n, t, dateAdded, addedBy, status }; (b) uploaded = docs the user
+  // just uploaded via the inline uploader — uses the DOCUMENTS mock shape.
+  // Normalize charts into the mock shape so one row template renders both.
+  const list = useMemo(() => {
+    const extFromName = (name = '') => (/\.([a-z0-9]+)$/i.exec(name)?.[1] || '').toLowerCase();
+    const normalizedCharts = charts.map((c) => ({
+      id: c.id,
+      name: c.n || c.caption || 'Document',
+      type: c.t || 'Document',
+      date: c.dateAdded || '',
+      time: '',
+      uploadedBy: (c.addedBy || '').split(' (')[0] || 'System',
+      role: /(Support Team|Coder|Reviewer|QA)/.exec(c.addedBy || '')?.[1] || '',
+      status: (c.status || 'pending').toLowerCase(),
+      ext: extFromName(c.n || c.caption),
+      pdf: c.pdf,
+    }));
+    return [...uploaded, ...normalizedCharts];
+  }, [uploaded, charts]);
+  // If a doc gets removed while open, drop back to the listing.
+  useEffect(() => {
+    if (openDocId && !list.some(d => d.id === openDocId)) setOpenDocId(null);
+  }, [openDocId, list, setOpenDocId]);
+  // Overflow scroll — arrow buttons appear when the tab strip can scroll.
+  const tabsScrollRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  useEffect(() => {
+    const el = tabsScrollRef.current;
+    if (!el) return undefined;
+    const update = () => {
+      setCanScrollLeft(el.scrollLeft > 2);
+      setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+    };
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => { el.removeEventListener('scroll', update); ro.disconnect(); };
+  }, [openDocId, list.length]);
+  const scrollTabs = (dir) => {
+    const el = tabsScrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * Math.max(160, el.clientWidth * 0.6), behavior: 'smooth' });
+  };
 
   // ICD-scoped → source-document evidence viewer with the selected code's
   // line highlighted (Paper 1UD1). Unscoped → the plain documents table.
   if (icdScope) {
     return <DocEvidenceViewer member={member} icdScope={icdScope} />;
+  }
+
+  // Browser-tab viewer when a doc is open (Paper 1UHT):
+  //   [ ← back ]  [ ‹ ]  [ ✓ Doc A ] [ Doc B ] [ Doc C ] …  [ › ]
+  // Every doc renders as a tab; a leading green check on the tab indicates
+  // the document has passed review (derived from its worklist status).
+  // Arrow buttons flank the strip and become active only when the tabs are
+  // overflowing in that direction.
+  if (openDocId) {
+    const openDoc = list.find(d => d.id === openDocId) || list[0];
+    return (
+      <div className={styles.docsViewer}>
+        <div className={styles.docsViewerTabBar}>
+          <button
+            type="button"
+            className={styles.docsBackBtn}
+            aria-label="Back to document list"
+            title="Back to document list"
+            onClick={() => setOpenDocId(null)}
+          >
+            <Icon name="solar:arrow-left-linear" size={18} color="currentColor" />
+          </button>
+          {(canScrollLeft || canScrollRight) && (
+            <button
+              type="button"
+              className={[styles.docsScrollBtn, canScrollLeft ? '' : styles.docsScrollBtnDisabled].filter(Boolean).join(' ')}
+              aria-label="Scroll tabs left"
+              title="Previous documents"
+              disabled={!canScrollLeft}
+              onClick={() => scrollTabs(-1)}
+            >
+              <Icon name="solar:alt-arrow-left-linear" size={14} color="currentColor" />
+            </button>
+          )}
+          <div className={styles.docsBrowserTabs} ref={tabsScrollRef}>
+            {list.map((d) => {
+              const isOpen = openDoc?.id === d.id;
+              const passed = d.status === 'passed';
+              return (
+                <button
+                  key={d.id}
+                  type="button"
+                  className={[styles.docsBrowserTab, isOpen ? styles.docsBrowserTabActive : ''].filter(Boolean).join(' ')}
+                  onClick={() => setOpenDocId(d.id)}
+                  title={d.name}
+                >
+                  {passed
+                    ? <Icon name="solar:check-circle-bold" size={13} color="var(--status-success)" />
+                    : <Icon name="solar:file-text-linear" size={13} color="currentColor" />
+                  }
+                  <span className={styles.docsBrowserTabName}>{d.name}</span>
+                </button>
+              );
+            })}
+          </div>
+          {(canScrollLeft || canScrollRight) && (
+            <button
+              type="button"
+              className={[styles.docsScrollBtn, canScrollRight ? '' : styles.docsScrollBtnDisabled].filter(Boolean).join(' ')}
+              aria-label="Scroll tabs right"
+              title="More documents"
+              disabled={!canScrollRight}
+              onClick={() => scrollTabs(1)}
+            >
+              <Icon name="solar:alt-arrow-right-linear" size={14} color="currentColor" />
+            </button>
+          )}
+        </div>
+        <div className={styles.docsViewerBody}>
+          <DocEvidenceViewer member={member} icdScope={null} />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -914,7 +1066,14 @@ function DocumentsTab({ member, icdScope }) {
           const status = DOC_STATUS_BADGE[d.status] || DOC_STATUS_BADGE.pending;
           const extLabel = DOC_EXT_LABEL[d.ext] || d.ext?.toUpperCase() || 'DOC';
           return (
-            <div key={d.id} className={[styles.dataTableRow, styles.docsGrid].join(' ')}>
+            <div
+              key={d.id}
+              className={[styles.dataTableRow, styles.docsGrid, styles.dataTableRowClickable].join(' ')}
+              role="button"
+              tabIndex={0}
+              onClick={() => setOpenDocId(d.id)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenDocId(d.id); } }}
+            >
               <div className={styles.docCell}>
                 <span className={styles.docExtIcon} data-ext={d.ext}>
                   <Icon name="solar:file-text-linear" size={14} color="var(--neutral-300)" />
@@ -928,7 +1087,7 @@ function DocumentsTab({ member, icdScope }) {
                 </div>
               </div>
               <Badge variant={status.variant} label={status.label} />
-              <div className={styles.dataTableActions}>
+              <div className={styles.dataTableActions} onClick={(e) => e.stopPropagation()}>
                 <ActionButton
                   icon="solar:menu-dots-linear"
                   size="S"
@@ -1553,12 +1712,9 @@ function WorklogTab({ member }) {
                   {isActor && (
                     <>
                       <Avatar
-                        variant="generic"
-                        size={18}
+                        variant="provider"
+                        size={24}
                         initials={initialsOf(nameFromBy(icd.by))}
-                        backgroundColor="var(--primary-50)"
-                        borderColor="var(--primary-200)"
-                        color="var(--primary-300)"
                       />
                       <span className={styles.wlDoneText}>
                         <span className={styles.wlWho}>{nameFromBy(icd.by)}</span>

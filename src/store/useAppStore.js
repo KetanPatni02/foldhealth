@@ -769,6 +769,17 @@ export const useAppStore = create((set, get) => ({
   activeFilters: {},  // { gender: 'F', language: 'es', lace: 'High', ... }
   activeSubnavList: 'TOC',  // which SubNav list is selected
 
+  // HCC role — the logged-in user's role for the HCC coding workflow (Support
+  // / Coder / QA / Compliance). Drives which status vocab and per-role actions
+  // the worklist and DiagPanel expose. Persisted so it survives reload.
+  hccUserRole: (() => {
+    try { return localStorage.getItem('hccUserRole') || 'Coder'; } catch { return 'Coder'; }
+  })(),
+  setHccUserRole: (role) => {
+    try { localStorage.setItem('hccUserRole', role); } catch {/* */}
+    set({ hccUserRole: role });
+  },
+
   // ── Population Groups: persistent create-group CSV processing session ──
   pgSession: null,            // { fileName, fileSize, segName, status:'loading'|'complete', procStep, startedAt, result }
   pgMinimized: false,

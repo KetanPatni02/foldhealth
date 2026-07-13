@@ -30,3 +30,6 @@ dist-ssr
 # Share project skills with all contributors (keep local/session noise ignored).
 !.claude/skills/
 .vercel
+
+# Supabase CLI working directory (auto-populated by `supabase link`)
+supabase/.temp/

@@ -31,6 +31,30 @@ import styles from './HccWorklistRow.module.css';
 
 const RISK_VARIANT = { High: 'lace-high', Medium: 'lace-medium', Low: 'lace-low' };
 
+// Short display label for the Visit Type column — keeps the underlying value
+// unchanged (filters + data still match the canonical name) while the cell
+// renders a compact form so more columns fit on screen. Falls back to the
+// canonical name for anything not in the map.
+const VT_SHORT = {
+  'AWV - Annual Wellness Visit':               'AWV',
+  'IPPE - Initial Preventive Physical Exam':   'IPPE',
+  'Annual Physical Exam':                       'APE',
+  'New Patient Office Visit':                   'New Patient',
+  'Established Patient Office Visit':           'Est. Patient',
+  'Telehealth Visit':                           'Telehealth',
+  'Specialist Visit / Consult':                 'Specialist',
+  'ER Visit':                                   'ER',
+  'Inpatient Visit / Admission':                'Inpatient',
+  'Observation Visit':                          'Observation',
+  'Skilled Nursing Facility Visit':             'SNF',
+  'Home Visit':                                 'Home',
+  'Hospice Visit':                              'Hospice',
+  'Lab/Imaging Order':                          'Lab/Imaging',
+  'Transitional Care Management (TCM) Visit':   'TCM',
+  'Chronic Care Management (CCM)':              'CCM',
+};
+const vtShortLabel = (v) => VT_SHORT[v] || v || 'HCC';
+
 function LastVisitCell({ dos, visits, fromClaim, onClickDate, onClickVisits }) {
   if (!dos) return <span className={styles.muted}>—</span>;
   // Two click targets in one cell:
@@ -562,9 +586,10 @@ const DOS_INNER = {
       onOpenWithCode={(code) => openDiagPanel(member.id, { highlightCode: code, initialDos: entry.date })}
     />
   ),
-  vt: (entry, { member }) => (
-    <span className={styles.vtText}>{entry.vt || member.visitType || member.vt || 'HCC'}</span>
-  ),
+  vt: (entry, { member }) => {
+    const full = entry.vt || member.visitType || member.vt || 'HCC';
+    return <span className={styles.vtText} title={full}>{vtShortLabel(full)}</span>;
+  },
   rp: (entry, { member }) => (
     <span className={styles.providerText}>{entry.provider || member.rp}</span>
   ),

@@ -97,11 +97,14 @@ export const FILTER_DEFS = [
   { k: 'g',      label: 'Gender',              type: 'multi', opts: ['Male', 'Female'] },
   { k: 'open',   label: 'Open ICDs',           type: 'radio', opts: ['< 5 Gaps', '5 - 10 Gaps', '10 - 15 Gaps', '> 15 Gaps'] },
   { k: 'chart',  label: 'Documents Available', type: 'multi', opts: ['Available', 'Not Available'] },
-  // Support Team Status — canonical buckets from Figma 4240-110454.
-  { k: 'supS',   label: 'Support Team Status', type: 'multi', opts: ['Action Needed', 'In Progress', 'Insufficient', 'Rebuttal', 'Completed', 'Rejected'] },
-  { k: 'cdrS',   label: 'Coder Status',        type: 'multi', opts: ['Assign', 'In Progress', 'Completed', 'Record Requested', 'Returned'] },
-  { k: 'r1s',    label: 'QA Status',           type: 'multi', opts: ['Assign', 'New', 'In Progress', 'Completed'] },
-  { k: 'r2s',    label: 'Compliance Status',   type: 'multi', opts: ['Assign', 'New', 'In Progress', 'Completed'] },
+  // Support / Coder / QA / Compliance statuses — role-specific vocabularies
+  // (aligned with ROLE_STATUS_OPTIONS in statusSpec.js). Support has no "New"
+  // (work arrives already actionable); Coder has record-request states; QA
+  // and Compliance share the reviewer flow.
+  { k: 'supS',   label: 'Support Team Status', type: 'multi', opts: ['Action Needed', 'In Progress', 'Insufficient', 'Returned', 'Completed', 'Rejected'] },
+  { k: 'cdrS',   label: 'Coder Status',        type: 'multi', opts: ['New', 'In Progress', 'Record Received', 'Record Requested', 'Skipped', 'Completed', 'Rejected'] },
+  { k: 'r1s',    label: 'QA Status',           type: 'multi', opts: ['New', 'In Progress', 'Returned', 'Skipped', 'Completed', 'Rejected'] },
+  { k: 'r2s',    label: 'Compliance Status',   type: 'multi', opts: ['New', 'In Progress', 'Returned', 'Skipped', 'Completed', 'Rejected'] },
   { k: 'dec',    label: 'Decile',              type: 'range', opts: ['1','2','3','4','5','6','7','8','9','10'] },
   // Phase 3d — date-range filters use the shared DateRangePopover.
   // Values are stored as [startISO, endISO]; the predicate parses them

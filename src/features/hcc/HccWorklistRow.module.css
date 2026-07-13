@@ -668,7 +668,7 @@
 .colMember      { min-width: 240px; }
 .colLastVisit   { min-width: 100px; }
 .colOpen        { min-width: 90px; }
-.colVt          { min-width: 100px; }
+.colVt          { min-width: 72px; }
 .colDate        { min-width: 110px; }
 
 /* Visit Type — plain text (AWV / IPPE / TCM / HCC), per Figma 4680:138476. */
