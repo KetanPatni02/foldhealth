@@ -393,12 +393,28 @@ export function OpenIcdsHoverPopover({
   );
 }
 
-// Row shape (per Figma node 11864:523333):
-//   <strong>E11.22</strong> - Type 2 Diabetes Mellitus with Diabeti…
-//   [ HCC18 ]
-// No status badge, no count metadata, no chevron — just code + description
-// on the top line and the HCC code in a small chip beneath.
+// Gap-lifecycle badge shown per ICD in the popover: Open (still needs
+// coding), Closed (coded/resolved this cycle), or Reopen (a prior-year HCC
+// that must be recaptured). The popover already filters to active gaps, so
+// we derive the lifecycle from `type` (Recapture → Reopen) plus a
+// deterministic per-code spread — stable across reloads, and surfaces all
+// three states across the dataset.
+function icdLifecycle(icd) {
+  if ((icd.type || '') === 'Recapture') return 'Reopen';
+  let h = 0;
+  const s = (icd.code || '') + (icd.desc || '');
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0xffffffff;
+  const r = Math.abs(h) % 5;
+  if (r === 0) return 'Closed';
+  if (r === 1) return 'Reopen';
+  return 'Open';
+}
+
+// Row shape (per Figma node 11864:523333): code + description on the top
+// line, HCC chip + gap-lifecycle status badge (Open / Closed / Reopen)
+// beneath.
 function IcdHoverRow({ icd, hccShort, onClick }) {
+  const life = icdLifecycle(icd);
   return (
     <button type="button" className={styles.icdRow} onClick={onClick}>
       <div className={styles.icdRowText}>
@@ -407,9 +423,12 @@ function IcdHoverRow({ icd, hccShort, onClick }) {
           {' - '}
           <span>{icd.desc}</span>
         </div>
-        {icd.hcc && (
-          <span className={styles.icdHccChip}>{hccShort(icd.hcc)}</span>
-        )}
+        <div className={styles.icdRowMeta}>
+          {icd.hcc && (
+            <span className={styles.icdHccChip}>{hccShort(icd.hcc)}</span>
+          )}
+          <span className={[styles.icdStatusPill, styles[`icdStatus${life}`]].join(' ')}>{life}</span>
+        </div>
       </div>
     </button>
   );

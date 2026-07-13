@@ -301,7 +301,7 @@
 .lastVisitDate {
   font-size: 14px;
   font-weight: 400;
-  color: var(--primary-300);
+  color: var(--neutral-300);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -358,7 +358,7 @@
 /* Date hover (claim variant only): visited link feel */
 .lastVisitDateBtn:hover .lastVisitDate {
   text-decoration: underline;
-  text-decoration-color: var(--primary-300);
+  text-decoration-color: var(--neutral-400);
   text-underline-offset: 2px;
 }
 

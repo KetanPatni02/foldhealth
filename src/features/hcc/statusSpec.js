@@ -132,6 +132,14 @@ export const STATUS_SPEC = {
     border: 'var(--neutral-150)',
     legendOrder: null,
   },
+  // Coder / QA / Compliance can Skip a DOS out of their queue. Neutral tone.
+  Skipped: {
+    icon: 'solar:skip-next-bold',
+    color: 'var(--neutral-300)',
+    bg: 'var(--neutral-50)',
+    border: 'var(--neutral-150)',
+    legendOrder: null,
+  },
 };
 
 // Some Supabase rows + the prototype use plural names — map them to the
@@ -149,8 +157,44 @@ export const canonicalStatus = (label) => ALIAS[label] || label;
 export const getStatusSpec = (status) =>
   STATUS_SPEC[canonicalStatus(status)] || STATUS_SPEC.Unassigned;
 
-// Status options ordered for the StatusLegend strip.
+// Display-label overrides — the value stored on the row (what the engine
+// keys on) vs. what the coder sees in the UI. Support's default 'Awaiting'
+// reads as "Action Needed"; 'Reject' reads as "Rejected".
+const STATUS_DISPLAY = {
+  Awaiting: 'Action Needed',
+  Reject: 'Rejected',
+};
+export const statusDisplayLabel = (value) => {
+  const c = canonicalStatus(value);
+  return STATUS_DISPLAY[c] || c;
+};
+
+// Per-role status vocabularies (stored values). The status menu shows only
+// the options valid for whichever role currently owns the DOS:
+//   • Support gets Action Needed / Insufficient (not New / Skipped).
+//   • Coder gets Record Received / Record Requested (the retrieval loop).
+//   • QA + Compliance get Returned but NOT the record-request statuses.
+// Cross-role transitions (Coder "Record Requested" → Support "Returned" →
+// Support "Completed" → Coder "Record Received") are driven by the
+// assignment engine (assignment/lifecycle.js), not this list.
+export const ROLE_STATUS_OPTIONS = {
+  support:   ['Awaiting', 'In Progress', 'Insufficient', 'Returned', 'Completed', 'Reject'],
+  coder:     ['New', 'In Progress', 'Record Received', 'Record Requested', 'Skipped', 'Completed', 'Reject'],
+  reviewer:  ['New', 'In Progress', 'Returned', 'Skipped', 'Completed', 'Reject'],
+  reviewer2: ['New', 'In Progress', 'Returned', 'Skipped', 'Completed', 'Reject'],
+};
+
+// Fallback when no active role owns the DOS (e.g. billing / unassigned):
+// the full set, deduped, so the menu is never empty.
+export const ALL_STATUS_OPTIONS = [
+  'New', 'Awaiting', 'In Progress', 'Record Received', 'Record Requested',
+  'Insufficient', 'Returned', 'Skipped', 'Completed', 'Reject',
+];
+
+// Status options ordered for the StatusLegend strip. `status` is the
+// canonical key (drives the icon lookup); `label` is the display name
+// (e.g. "Awaiting" → "Action Needed").
 export const LEGEND_STATUSES = Object.entries(STATUS_SPEC)
   .filter(([, s]) => s.legendOrder != null)
   .sort(([, a], [, b]) => a.legendOrder - b.legendOrder)
-  .map(([label, spec]) => ({ label, ...spec }));
+  .map(([status, spec]) => ({ status, label: statusDisplayLabel(status), ...spec }));
