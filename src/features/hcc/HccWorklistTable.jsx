@@ -5,7 +5,6 @@ import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
-import { Button } from '../../components/Button/Button';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
 import { useTableSort } from '../../components/Table/useTableSort';
 import { InlineEditable } from '../../components/InlineEditable/InlineEditable';
@@ -21,7 +20,6 @@ import { memberMatchesFilters, countActiveFilters } from './filters';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { BulkBar } from '../../components/BulkBar/BulkBar';
 import { BulkChangeAssigneesDialog } from './BulkChangeAssigneesDialog';
-import { UploadMenuPopover } from './upload/UploadMenuPopover';
 import { HccUploadProgressRibbon } from './upload/HccUploadProgressRibbon';
 import { HccHistoryDrawer } from './HccHistoryDrawer';
 import { StatusLegend } from './StatusLegend';
@@ -155,8 +153,8 @@ export function HccWorklistTable() {
   const [memberSortPop, setMemberSortPop] = useState(null); // rect
   const [colCfgRect, setColCfgRect] = useState(null);
   const [bulkAssigneeOpen, setBulkAssigneeOpen] = useState(false);
-  const [uploadMenuOpen, setUploadMenuOpen] = useState(false);
-  const uploadBtnRef = useRef(null);
+  const startHccUpload = useAppStore(s => s.startHccUpload);
+  const setHccUploadPhase = useAppStore(s => s.setHccUploadPhase);
   const memberThRef = useRef(null);
   const colCfgBtnRef = useRef(null);
 
@@ -296,22 +294,18 @@ export function HccWorklistTable() {
             onClick={() => showToast('Export — coming soon')}
           />
           <span className={styles.iconDivider} />
-          <div ref={uploadBtnRef} style={{ position: 'relative', display: 'inline-flex' }}>
-            <Button
-              variant="alt"
-              size="L"
-              leadingIcon="solar:add-circle-linear"
-              onClick={() => setUploadMenuOpen(v => !v)}
-            >
-              Add Records
-            </Button>
-            {uploadMenuOpen && (
-              <UploadMenuPopover
-                anchorRef={uploadBtnRef}
-                onClose={() => setUploadMenuOpen(false)}
-              />
-            )}
-          </div>
+          <ActionButton
+            icon="custom:upload"
+            size="L"
+            tooltip="Upload"
+            tooltipBelow
+            onClick={() => {
+              // Skip the 3-card chooser and open the Upload a Document
+              // drawer straight into the file-picker phase.
+              startHccUpload(null);
+              setHccUploadPhase('picker');
+            }}
+          />
           <span className={styles.iconDivider} />
           <ActionButton
             icon="custom:history"
