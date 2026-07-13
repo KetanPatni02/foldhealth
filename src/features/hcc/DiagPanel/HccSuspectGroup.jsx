@@ -35,10 +35,18 @@ export function SuspectCard({ icd, dosList = [], member }) {
   const code = override?.code || icd.code;
   const desc = override?.desc || icd.desc;
 
-  // Single DOS selection (from the document's existing encounters).
-  const [dos, setDos] = useState('');
+  // Single DOS selection (from the document's existing encounters). When the
+  // document has exactly one encounter, pre-select it so the coder can act
+  // immediately (Accept / Reject / Defer / Missed) without opening the picker.
+  // Multiple DOS → the user must pick one via the dropdown.
+  const [dos, setDos] = useState(() => (dosList.length === 1 ? dosList[0]?.date || '' : ''));
   const [dosOpen, setDosOpen] = useState(false);
   const dosBtnRef = useRef(null);
+  const singleDos = dosList.length === 1;
+  useEffect(() => {
+    // Keep pre-selection in sync if dosList later resolves to a single entry.
+    if (!dos && dosList.length === 1) setDos(dosList[0]?.date || '');
+  }, [dosList, dos]);
 
   // Per-(code × DOS) action state — same store the confirmed ICD card uses.
   const key = dos ? `${icd.code}|${dos}` : null;
@@ -112,11 +120,14 @@ export function SuspectCard({ icd, dosList = [], member }) {
           ref={dosBtnRef}
           type="button"
           className={[styles.dosButton, dos ? styles.dosButtonActive : ''].filter(Boolean).join(' ')}
-          disabled={!!action}
-          onClick={() => setDosOpen(o => !o)}
+          disabled={!!action || singleDos}
+          onClick={() => (singleDos ? null : setDosOpen(o => !o))}
+          title={singleDos ? 'Only encounter available' : 'Select a DOS'}
         >
           <span>{dos || 'Select DOS'}</span>
-          <Icon name="solar:alt-arrow-down-linear" size={13} color={dos ? 'var(--primary-300)' : 'var(--neutral-300)'} />
+          {!singleDos && (
+            <Icon name="solar:alt-arrow-down-linear" size={13} color={dos ? 'var(--primary-300)' : 'var(--neutral-300)'} />
+          )}
         </button>
         <div className={styles.dosActions}>
           {action ? (

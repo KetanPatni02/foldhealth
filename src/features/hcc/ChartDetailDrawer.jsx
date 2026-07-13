@@ -265,11 +265,11 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
           </div>
           <div className={styles.bannerActions}>
             <button type="button" className={styles.iconBtn} aria-label="Call PCP">
-              <Icon name="custom:call-pcp" size={20} color="var(--neutral-300)" />
+              <Icon name="solar:phone-calling-linear" size={20} color="var(--neutral-300)" />
             </button>
             <span className={styles.vDivider} />
             <button type="button" className={styles.iconBtn} aria-label="Expand">
-              <Icon name="custom:expand-drawer" size={20} />
+              <Icon name="solar:maximize-square-linear" size={20} color="var(--neutral-300)" />
             </button>
           </div>
         </div>

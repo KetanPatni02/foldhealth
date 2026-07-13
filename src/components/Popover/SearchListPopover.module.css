@@ -12,8 +12,7 @@
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-100);
   border-radius: 8px;
-  box-shadow: 0 12px 60px -15px rgba(0, 0, 0, 0.12);
-  font-family: 'Inter', sans-serif;
+  box-shadow: var(--shadow-popover);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -35,7 +34,6 @@
   flex: 1;
   border: none;
   outline: none;
-  font-family: inherit;
   font-size: 14px;
   color: var(--neutral-400);
   background: transparent;
@@ -61,7 +59,6 @@
   border-radius: 4px;
   cursor: pointer;
   text-align: left;
-  font-family: inherit;
   transition: background 0.12s;
 }
 .row:hover { background: var(--neutral-50); }

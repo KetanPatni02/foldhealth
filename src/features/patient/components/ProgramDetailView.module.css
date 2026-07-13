@@ -22,7 +22,6 @@
   padding: 8px 12px;
 }
 .programTitle {
-  font-family: 'Inter', sans-serif;
   font-size: 14px;
   font-weight: 600;
   color: var(--neutral-500);
@@ -41,7 +40,6 @@
 .statusIcon { display: flex; align-items: center; flex-shrink: 0; }
 .badgeDivider { width: 0.5px; height: 12px; background: var(--neutral-150); flex-shrink: 0; }
 .statusBadgeText {
-  font-family: 'Inter', sans-serif;
   font-size: 14px;
   color: var(--neutral-300);
   white-space: nowrap;
@@ -58,7 +56,6 @@
   gap: 4px;
 }
 .assigneeName {
-  font-family: 'Inter', sans-serif;
   font-size: 14px;
   color: var(--status-success);
   white-space: nowrap;
@@ -77,7 +74,6 @@
   cursor: pointer;
 }
 .breadcrumbLabel {
-  font-family: 'Inter', sans-serif;
   font-size: 14px;
   color: var(--neutral-300);
   padding: 0 4px;
@@ -110,7 +106,6 @@
   padding: 20px;
 }
 .expandColTitle {
-  font-family: 'Inter', sans-serif;
   font-size: 14px;
   font-weight: 500;
   color: var(--neutral-500);
@@ -120,13 +115,11 @@
 .detailRow { display: flex; align-items: center; gap: 8px; }
 .detailLabelGroup { display: inline-flex; align-items: center; gap: 4px; }
 .detailLabel {
-  font-family: 'Inter', sans-serif;
   font-size: 14px;
   color: var(--neutral-500);
   white-space: nowrap;
 }
 .detailValue {
-  font-family: 'Inter', sans-serif;
   font-size: 14px;
   color: var(--neutral-300);
   white-space: nowrap;
@@ -141,7 +134,6 @@
   border-radius: 4px;
   background: var(--neutral-50);
   border: 0.5px solid var(--neutral-100);
-  font-family: 'Inter', sans-serif;
   font-size: 10px;
   font-weight: 500;
   color: var(--neutral-200);
@@ -170,7 +162,6 @@
   text-align: left;
   cursor: pointer;
   position: relative;
-  font-family: 'Inter', sans-serif;
 }
 .stepItem:hover { background: rgba(22,24,29,0.02); }
 .stepItemActive {
@@ -236,7 +227,6 @@
   width: 100%;
   text-align: left;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
 }
 .sectionHeader:hover { background: #f0f0f2; }
 .sectionName {
@@ -257,7 +247,6 @@
   flex-shrink: 0;
 }
 .contentTitle {
-  font-family: 'Inter', sans-serif;
   font-size: 14px;
   font-weight: 600;
   color: var(--neutral-500);
@@ -276,7 +265,6 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: 4px;
   background: white;
-  font-family: 'Inter', sans-serif;
   font-size: 14px;
   color: var(--neutral-300);
   cursor: pointer;
@@ -292,7 +280,6 @@
   border: 1px solid var(--status-success);
   border-radius: 4px;
   background: white;
-  font-family: 'Inter', sans-serif;
   font-size: 14px;
   color: var(--status-success);
   cursor: pointer;
@@ -332,7 +319,6 @@
   border: none;
   border-radius: 4px;
   background: transparent;
-  font-family: 'Inter', sans-serif;
   font-size: 14px;
   color: var(--neutral-300);
   cursor: pointer;
@@ -350,7 +336,6 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-family: 'Inter', sans-serif;
 }
 .table thead th {
   padding: 8px 12px;

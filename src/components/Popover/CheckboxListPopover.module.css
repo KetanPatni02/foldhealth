@@ -13,7 +13,6 @@
   border: 0.5px solid var(--neutral-100);
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  font-family: 'Inter', sans-serif;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -95,7 +94,6 @@
   border-radius: 6px;
   cursor: pointer;
   text-align: left;
-  font-family: inherit;
   transition: background 0.12s;
 }
 .row:hover { background: var(--neutral-50); }
@@ -116,7 +114,6 @@
   border: 0.5px solid var(--neutral-150);
   background: var(--neutral-0);
   border-radius: 8px;
-  font-family: inherit;
   font-size: 13px;
   color: var(--neutral-400);
   cursor: pointer;
