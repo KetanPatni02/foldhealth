@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '../../../store/useAppStore';
 import { Drawer } from '../../../components/Drawer/Drawer';
+import { BulkBar } from '../../../components/BulkBar/BulkBar';
 import { Icon } from '../../../components/Icon/Icon';
 import { CloseIcon } from '../../../components/Icon/CloseIcon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
@@ -175,6 +176,7 @@ function ShortcutBar() {
   );
 }
 
+
 export function DiagPanel() {
   const memberId = useAppStore(s => s.diagPanelMemberId);
   const closeDiagPanel = useAppStore(s => s.closeDiagPanel);
@@ -207,6 +209,19 @@ export function DiagPanel() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedKeys, setSelectedKeys] = useState(() => new Set());
+  // Bulk-select mode — mirrors the Content Settings pattern. DOS-row
+  // checkboxes only render when this is on; the shortcut footer swaps to
+  // the bulk-action bar the moment something is selected.
+  const [bulkMode, setBulkMode] = useState(false);
+  const toggleBulkMode = () => {
+    setBulkMode(v => {
+      const next = !v;
+      // Clear any prior selection when leaving bulk mode so re-entering
+      // starts fresh (matches Content Settings).
+      if (!next) setSelectedKeys(new Set());
+      return next;
+    });
+  };
   const [overriddenOpen, setOverriddenOpen] = useState(false);
   const [closedOpen, setClosedOpen] = useState(false);
   // Expandable "ICDs Associated with N/M DOSs" section (Paper 1ZV3): a row
@@ -574,7 +589,8 @@ export function DiagPanel() {
       // Skip toggling rows already in the target state.
       if (hccGapDosActions[k] !== action) setHccGapDosAction(code, dos, action);
     });
-    showToast(`${selectedKeys.size} row${selectedKeys.size === 1 ? '' : 's'} ${action === 'accepted' ? 'accepted' : 'rejected'}`);
+    const verb = { accepted: 'accepted', rejected: 'rejected', missed: 'marked missed', deferred: 'deferred' }[action] || action;
+    showToast(`${selectedKeys.size} row${selectedKeys.size === 1 ? '' : 's'} ${verb}`);
     setSelectedKeys(new Set());
   };
 
@@ -686,10 +702,11 @@ export function DiagPanel() {
           history, more (Paper 1WXT). ── */}
       <div className={styles.toolbar}>
         <ActionButton
-          icon="solar:check-square-linear"
+          icon={bulkMode ? 'custom:bulk-select-close' : 'custom:bulk-select'}
           size="S"
-          tooltip="Bulk Action"
-          onClick={noop('Bulk Action')}
+          tooltip={bulkMode ? 'Exit bulk select' : 'Bulk select'}
+          className={bulkMode ? styles.toolbarBtnActive : ''}
+          onClick={toggleBulkMode}
         />
         <span className={styles.divider} />
         <div className={styles.toolbarSearch}>
@@ -825,22 +842,9 @@ export function DiagPanel() {
           </div>
         )}
 
-        {selectedKeys.size > 0 && (
-          <div className={styles.bulkBar}>
-            <span className={styles.bulkCount}>{selectedKeys.size} selected</span>
-            <button type="button" className={styles.bulkAction} onClick={() => bulkApply('accepted')}>
-              <Icon name="solar:check-read-linear" size={14} />
-              Accept
-            </button>
-            <button type="button" className={styles.bulkAction} onClick={() => bulkApply('rejected')}>
-              <Icon name="solar:close-linear" size={14} />
-              Reject
-            </button>
-            <button type="button" className={styles.bulkClear} onClick={() => setSelectedKeys(new Set())}>
-              Clear
-            </button>
-          </div>
-        )}
+        {/* Bulk-action bar has moved to the drawer footer (see BulkActionFooter
+            in the header slot swap above) so it stays pinned at the bottom
+            regardless of scroll position. */}
 
         <div className={styles.cardsFlow}>
           {cardIcds.length === 0 && actedSuspects.length === 0 && pendingSuspects.length === 0 && (
@@ -855,7 +859,7 @@ export function DiagPanel() {
               icd={icd}
               focusKey={focusKey}
               selectedKeys={selectedKeys}
-              onToggleSelect={toggleSelected}
+              onToggleSelect={bulkMode ? toggleSelected : null}
               openDismissKey={openDismissKey}
               onOpenDismiss={setOpenDismissKey}
               onActed={advanceFocusAfterAction}
@@ -868,7 +872,7 @@ export function DiagPanel() {
               icd={icd}
               focusKey={focusKey}
               selectedKeys={selectedKeys}
-              onToggleSelect={toggleSelected}
+              onToggleSelect={bulkMode ? toggleSelected : null}
               openDismissKey={openDismissKey}
               onOpenDismiss={setOpenDismissKey}
               onActed={advanceFocusAfterAction}
@@ -918,6 +922,25 @@ export function DiagPanel() {
       </div>
       </div>{/* ── /rightPane ── */}
       </div>{/* ── /contentRow ── */}
+      {/* Shared floating BulkBar — same component the worklist table uses, so
+          the animation, styling and interaction match app-wide. Rendered
+          inside the Drawer so it disappears with the panel; the bar itself
+          is position: fixed and slides up from the viewport bottom. */}
+      {bulkMode && (
+        <BulkBar
+          className={styles.bulkBarInDrawer}
+          selectedIds={[...selectedKeys]}
+          onClear={() => setSelectedKeys(new Set())}
+          actions={[
+            { label: 'Accept', icon: 'solar:check-read-linear', variant: 'primary',   onClick: () => bulkApply('accepted') },
+            { label: 'Reject', icon: 'solar:close-circle-linear', variant: 'secondary', onClick: () => bulkApply('rejected') },
+          ]}
+          moreActions={[
+            { label: 'Missed Opportunity', icon: 'solar:flag-linear',  onClick: () => bulkApply('missed') },
+            { label: 'Defer',              icon: 'solar:alarm-linear', onClick: () => bulkApply('deferred') },
+          ]}
+        />
+      )}
     </Drawer>
   );
 }

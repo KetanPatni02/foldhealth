@@ -18,6 +18,8 @@ import { HistoryIcon } from './HistoryIcon';
 import { ExportIcon } from './ExportIcon';
 import { AddDosIcon } from './AddDosIcon';
 import { CollapseSidebarIcon } from './CollapseSidebarIcon';
+import { BulkSelectIcon } from './BulkSelectIcon';
+import { BulkSelectCloseIcon } from './BulkSelectCloseIcon';
 
 export function Icon({ name, size = 18, color, style, className }) {
   if (name === 'custom:filter') return <FilterIcon size={size} color={color} />;
@@ -26,6 +28,8 @@ export function Icon({ name, size = 18, color, style, className }) {
   if (name === 'custom:export') return <ExportIcon size={size} color={color} />;
   if (name === 'custom:add-dos') return <AddDosIcon size={size} color={color} />;
   if (name === 'custom:collapse-sidebar') return <CollapseSidebarIcon size={size} color={color} />;
+  if (name === 'custom:bulk-select') return <BulkSelectIcon size={size} color={color} />;
+  if (name === 'custom:bulk-select-close') return <BulkSelectCloseIcon size={size} color={color} />;
   if (name === 'custom:sms') return <SmsIcon size={size} color={color} />;
   if (name === 'custom:expand-drawer') return <ExpandDrawerIcon size={size} />;
   if (name === 'custom:call-pcp') return <CallPcpIcon size={size} color={color} />;
