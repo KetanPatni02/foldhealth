@@ -207,8 +207,10 @@ export function DiagPanel() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedKeys, setSelectedKeys] = useState(() => new Set());
-  const [overriddenOpen, setOverriddenOpen] = useState(false);
-  const [closedOpen, setClosedOpen] = useState(false);
+  // Open/closed state for the removed Overridden/Closed ICD sections — kept
+  // commented out rather than deleted.
+  // const [overriddenOpen, setOverriddenOpen] = useState(false);
+  // const [closedOpen, setClosedOpen] = useState(false);
   // Expandable "ICDs Associated with N/M DOSs" section (Paper 1ZV3): a row
   // per DOS with a toggle. Toggling a DOS off hides its ICD rows.
   const [dosExpanded, setDosExpanded] = useState(false);
@@ -252,14 +254,16 @@ export function DiagPanel() {
     ...icdsRaw.filter(i => isAISuggested(i) && i.status !== 'Accepted'),
     ...notLinkedRaw,
   ], [icdsRaw, notLinkedRaw]);
-  const overriddenICDs = useMemo(
-    () => [...icdsRaw, ...notLinkedRaw].filter(i => i.dismissReason),
-    [icdsRaw, notLinkedRaw],
-  );
-  const closedICDs = useMemo(
-    () => [...icdsRaw, ...notLinkedRaw].filter(i => ['Accepted', 'Dismissed'].includes(i.status)),
-    [icdsRaw, notLinkedRaw],
-  );
+  // Overridden / Closed ICD lists — feed the removed history sections; kept
+  // commented out rather than deleted.
+  // const overriddenICDs = useMemo(
+  //   () => [...icdsRaw, ...notLinkedRaw].filter(i => i.dismissReason),
+  //   [icdsRaw, notLinkedRaw],
+  // );
+  // const closedICDs = useMemo(
+  //   () => [...icdsRaw, ...notLinkedRaw].filter(i => ['Accepted', 'Dismissed'].includes(i.status)),
+  //   [icdsRaw, notLinkedRaw],
+  // );
 
   // ── DOS list — from the member's dos_list, with a single-row stub fallback.
   const dosList = useMemo(() => {
@@ -890,7 +894,8 @@ export function DiagPanel() {
           ))}
         </div>
 
-        {/* Collapsed history sections (pre-redesign behavior preserved). */}
+        {/* Overridden ICDs + Closed ICDs sections removed per request — code
+            kept commented out rather than deleted.
         <div className={styles.icdSections}>
           <IcdSection
             title="Overridden ICDs"
@@ -915,6 +920,7 @@ export function DiagPanel() {
             }
           </IcdSection>
         </div>
+        */}
       </div>
       </div>{/* ── /rightPane ── */}
       </div>{/* ── /contentRow ── */}
