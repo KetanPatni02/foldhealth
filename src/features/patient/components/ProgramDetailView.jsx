@@ -1,9 +1,22 @@
 import { useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
+import { BannerExpandIcon } from '../../../components/Icon/BannerExpandIcon';
 import { ProgressRing } from '../../hcc/DiagPanel/ReviewProgressPopover';
 import { PROGRAM_STEPS_MOCK, PROGRAM_LETTERS_MOCK } from '../data/programActivityMock';
 import styles from './ProgramDetailView.module.css';
+
+function DetailRow({ icon, label, value }) {
+  return (
+    <div className={styles.detailRow}>
+      <span className={styles.detailLabelGroup}>
+        <Icon name={icon} size={16} color="var(--neutral-400)" />
+        <span className={styles.detailLabel}>{label}</span>
+      </span>
+      <span className={styles.detailValue}>{value}</span>
+    </div>
+  );
+}
 
 function CheckMark() {
   return (
@@ -52,10 +65,14 @@ function SectionHeader({ name, expanded, onToggle }) {
 
 const LETTER_SUB_TABS = ['All', 'Sent', 'Not Sent'];
 
-export function ProgramDetailView({ program, onClose }) {
-  const [activeStep, setActiveStep] = useState('step-2');
+export function ProgramDetailView({ program, onClose, startAtFirstStep = false }) {
+  const [activeStep, setActiveStep] = useState(startAtFirstStep ? PROGRAM_STEPS_MOCK[0]?.id : 'step-2');
   const [expandedSections, setExpandedSections] = useState({ 'step-3': true, 'step-4': false });
   const [activeLetterTab, setActiveLetterTab] = useState('All');
+
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
+
+  const isUnassigned = !program.assignee || program.assignee === 'Unassigned';
 
   const toggleSection = (id) => {
     setExpandedSections(prev => ({ ...prev, [id]: !prev[id] }));
@@ -76,14 +93,39 @@ export function ProgramDetailView({ program, onClose }) {
                 <rect x="7.25" y="7" width="1.5" height="4" rx="0.75" fill="#D9A50B" />
               </svg>
             </span>
+            <span className={styles.badgeDivider} />
             <span className={styles.statusBadgeText}>Assigned to Nurse</span>
             <Icon name="solar:alt-arrow-down-linear" size={16} color="var(--neutral-300)" />
           </div>
-          <span className={styles.headerDivider} />
           <div className={styles.assigneeLink}>
-            <Icon name="solar:user-check-rounded-linear" size={16} color="var(--status-success)" />
-            <span className={styles.assigneeName}>{program.assignee}</span>
+            <Icon
+              name={isUnassigned ? 'solar:user-rounded-linear' : 'solar:user-check-rounded-linear'}
+              size={16}
+              color={isUnassigned ? 'var(--neutral-300)' : 'var(--status-success)'}
+            />
+            <span className={`${styles.assigneeName} ${isUnassigned ? styles.assigneeUnassigned : ''}`}>
+              {program.assignee || 'Unassigned'}
+            </span>
           </div>
+          <span className={styles.headerDivider} />
+          <div className={styles.breadcrumb}>
+            <button type="button" className={styles.breadcrumbArrow} aria-label="Previous trigger">
+              <Icon name="solar:alt-arrow-left-linear" size={16} color="var(--neutral-300)" />
+            </button>
+            <span className={styles.breadcrumbLabel}>Trigger 2</span>
+            <button type="button" className={styles.breadcrumbArrow} aria-label="Next trigger">
+              <Icon name="solar:alt-arrow-right-linear" size={16} color="var(--neutral-300)" />
+            </button>
+          </div>
+          <button
+            type="button"
+            className={styles.expandBtn}
+            aria-label={detailsExpanded ? 'Collapse details' : 'Expand details'}
+            aria-expanded={detailsExpanded}
+            onClick={() => setDetailsExpanded(e => !e)}
+          >
+            <BannerExpandIcon size={16} className={detailsExpanded ? styles.expandIconRotated : ''} />
+          </button>
         </div>
         <div className={styles.headerRight}>
           <ActionButton icon="solar:alt-arrow-left-linear" size="S" tooltip="Previous" />
@@ -94,6 +136,61 @@ export function ProgramDetailView({ program, onClose }) {
           <ActionButton icon="solar:close-square-linear" size="S" tooltip="Close" onClick={onClose} />
         </div>
       </div>
+
+      {/* Expanded program details */}
+      {detailsExpanded && (
+        <div className={styles.expandPanel}>
+          <div className={styles.expandCol}>
+            <div className={styles.expandColTitle}>Assessment &amp; Documentation</div>
+            <div className={styles.expandRows}>
+              <DetailRow icon="solar:document-add-linear" label="Assessment Done:" value="06/19/2025" />
+              <DetailRow icon="solar:document-add-linear" label="Last HRA:" value="09/11/2024" />
+              <DetailRow icon="solar:hand-heart-linear" label="Care Plan Due:" value="06/19/2025" />
+              <DetailRow icon="solar:clock-circle-linear" label="Last Updated:" value="09/11/2024" />
+            </div>
+          </div>
+          <div className={styles.expandCol}>
+            <div className={styles.expandColTitle}>Care Coordination</div>
+            <div className={styles.expandRows}>
+              <DetailRow icon="solar:calendar-minimalistic-linear" label="ICT meeting:" value="06/19/2025" />
+              <DetailRow icon="solar:double-alt-arrow-right-linear" label="Next Cadence:" value="09/11/2024" />
+            </div>
+          </div>
+          <div className={styles.expandCol}>
+            <div className={styles.expandColTitle}>Compliance &amp; Consent</div>
+            <div className={styles.expandRows}>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabelGroup}>
+                  <Icon name="solar:like-linear" size={16} color="var(--neutral-400)" />
+                  <span className={styles.detailLabel}>{program.code} Consent:</span>
+                </span>
+                <Icon name="solar:check-circle-linear" size={16} color="var(--status-success)" />
+              </div>
+            </div>
+          </div>
+          <div className={styles.expandCol}>
+            <div className={styles.expandColTitle}>Plan &amp; Conditions</div>
+            <div className={styles.expandRows}>
+              <div className={styles.detailRow}>
+                <span className={styles.detailLabel}>Health Plan:</span>
+                <Icon name="solar:check-circle-linear" size={16} color="var(--status-success)" />
+              </div>
+              <div className={styles.condRow}>
+                <span className={styles.detailLabel}>Diabetes Mellitus (DM)</span>
+                <span className={styles.condBadge}>14 M</span>
+              </div>
+              <div className={styles.condRow}>
+                <span className={styles.detailLabel}>Hypertension (HTN)</span>
+                <span className={styles.condBadge}>13 M</span>
+              </div>
+              <div className={styles.condRow}>
+                <span className={styles.detailLabel}>Cystic Fibrosis (CF)</span>
+                <span className={styles.condBadge}>4 M</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Body */}
       <div className={styles.body}>

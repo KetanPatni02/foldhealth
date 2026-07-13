@@ -39,6 +39,7 @@
   cursor: pointer;
 }
 .statusIcon { display: flex; align-items: center; flex-shrink: 0; }
+.badgeDivider { width: 0.5px; height: 12px; background: var(--neutral-150); flex-shrink: 0; }
 .statusBadgeText {
   font-family: 'Inter', sans-serif;
   font-size: 14px;
@@ -61,6 +62,89 @@
   font-size: 14px;
   color: var(--status-success);
   white-space: nowrap;
+}
+.assigneeUnassigned { color: var(--neutral-300); }
+
+/* Trigger breadcrumb + expand chevron */
+.breadcrumb { display: inline-flex; align-items: center; gap: 2px; }
+.breadcrumbArrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+.breadcrumbLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--neutral-300);
+  padding: 0 4px;
+  white-space: nowrap;
+}
+.expandBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+.expandIconRotated { transform: rotate(180deg); }
+
+/* ── Expanded program details panel ── */
+.expandPanel {
+  display: flex;
+  gap: 36px;
+  flex-wrap: wrap;
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+.expandCol {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+}
+.expandColTitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  white-space: nowrap;
+}
+.expandRows { display: flex; flex-direction: column; gap: 12px; }
+.detailRow { display: flex; align-items: center; gap: 8px; }
+.detailLabelGroup { display: inline-flex; align-items: center; gap: 4px; }
+.detailLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--neutral-500);
+  white-space: nowrap;
+}
+.detailValue {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+.condRow { display: flex; align-items: center; gap: 6px; }
+.condBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-100);
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--neutral-200);
 }
 
 /* ── Body ── */

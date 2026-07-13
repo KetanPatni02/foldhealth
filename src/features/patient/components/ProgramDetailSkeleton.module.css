@@ -1,0 +1,46 @@
+@keyframes programSkeletonFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  animation: programSkeletonFadeIn 0.2s ease;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: linear-gradient(to right, #fff8fd, white 71%);
+  flex-shrink: 0;
+}
+
+.body { display: flex; flex: 1; overflow: hidden; }
+
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  border-right: 0.5px solid var(--neutral-100);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.stepRow { display: flex; align-items: center; gap: 8px; }
+
+.content {
+  flex: 1;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+}
+.contentHeader { display: flex; align-items: center; justify-content: space-between; }
+.contentActions { display: flex; gap: 8px; }

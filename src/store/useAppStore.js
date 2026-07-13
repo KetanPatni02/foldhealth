@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
+import { addedChartToRow, rowToAddedChart } from '../lib/hccAddedChartsMapper';
 import { dbToJs, updatesToDb } from '../lib/patientMapper';
 import { callDetailDbToJs, callDetailJsToDb } from '../lib/callDetailsMapper';
 import { enrichCallRecord } from '../data/callDetailsEnrich';
@@ -63,6 +64,36 @@ function persistHccActivityRow(row) {
     .then(({ error }) => {
       if (error) console.warn(`persistHccActivityRow(${row.event_name}) failed:`, error.message);
     });
+}
+
+// Persist a manually-uploaded chart document: push the file bytes to the
+// `chart-uploads` Storage bucket, then insert the metadata row. Fire-and-forget
+// (the store updated optimistically); a missing table/bucket just warns so the
+// doc still works for the session.
+async function persistHccAddedChart(memberId, doc, file) {
+  if (!memberId || !doc) return;
+  let pdfUrl = doc.pdf && /^https?:/i.test(doc.pdf) ? doc.pdf : null;
+  let storagePath = null;
+  try {
+    if (file) {
+      const path = `${memberId}/${doc.id}-${file.name}`;
+      const { error: upErr } = await supabase.storage
+        .from('chart-uploads')
+        .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: true });
+      if (upErr) {
+        console.warn('persistHccAddedChart upload failed:', upErr.message);
+      } else {
+        storagePath = path;
+        pdfUrl = supabase.storage.from('chart-uploads').getPublicUrl(path).data.publicUrl;
+      }
+    }
+    const { error } = await supabase
+      .from('hcc_added_charts')
+      .insert(addedChartToRow(memberId, { ...doc, pdf: pdfUrl, storagePath }));
+    if (error) console.warn('persistHccAddedChart insert failed:', error.message);
+  } catch (e) {
+    console.warn('persistHccAddedChart failed:', e?.message || e);
+  }
 }
 
 function parseTaskDateStr(str) {
@@ -661,6 +692,68 @@ export const useAppStore = create((set, get) => ({
     const from = get().patientProfileTab;
     track('nav.patient_tab_changed', { patientId: get().selectedPatientId, from, to: tab });
     set({ patientProfileTab: tab });
+  },
+
+  // HCC chart documents manually added via "Upload New Chart" (per member id).
+  // System (default) docs come from chartDocs.generateDefaultCharts; these are
+  // the extra ones the user uploads, kept so the count/list stay in sync.
+  hccAddedCharts: {},
+  addChartDoc: (memberId, doc, file) => {
+    if (!memberId || !doc) return;
+    set((state) => ({
+      hccAddedCharts: {
+        ...state.hccAddedCharts,
+        [memberId]: [...(state.hccAddedCharts[memberId] || []), doc],
+      },
+    }));
+    // Durability: upload the file + persist the record to Supabase.
+    persistHccAddedChart(memberId, doc, file);
+  },
+  // Load persisted uploads so manually-added docs survive a reload. Grouped by
+  // member id into the same map addChartDoc maintains.
+  fetchHccAddedCharts: async () => {
+    const { data, error } = await supabase
+      .from('hcc_added_charts')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (error) { console.warn('fetchHccAddedCharts failed:', error.message); return; }
+    const map = {};
+    (data || []).forEach((row) => {
+      (map[row.hcc_member_id] = map[row.hcc_member_id] || []).push(rowToAddedChart(row));
+    });
+    set({ hccAddedCharts: map });
+  },
+
+  // Care Programs — enrolled programs are per-patient. A patient starts with
+  // none; only programs a user explicitly adds are visible on their profile.
+  careProgramsByPatient: {},
+  addCareProgram: (patientId, entry) => {
+    if (!patientId || !entry) return;
+    set((state) => {
+      const existing = state.careProgramsByPatient[patientId] || [];
+      if (existing.some((p) => p.code === entry.code)) return {};
+      const program = {
+        id: `cp-${patientId}-${entry.code}`,
+        code: entry.code,
+        name: `${entry.name} (${entry.code})`,
+        acuity: null,
+        status: 'New',
+        statusColor: 'var(--primary-300)',
+        startDate: '—',
+        endDate: '—',
+        lastUpdated: '—',
+        assignee: 'Unassigned',
+        pcp: '—',
+        progress: 0,
+      };
+      track('care_program.added', { patientId, code: entry.code });
+      return {
+        careProgramsByPatient: {
+          ...state.careProgramsByPatient,
+          [patientId]: [...existing, program],
+        },
+      };
+    });
   },
 
   // Table

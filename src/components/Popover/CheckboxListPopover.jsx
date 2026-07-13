@@ -125,14 +125,15 @@ export function CheckboxListPopover({
             return (
               <div
                 key={opt}
-                role="checkbox"
-                aria-checked={checked}
+                role="button"
                 tabIndex={0}
                 className={styles.row}
                 onClick={() => toggle(opt)}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(opt); } }}
               >
-                <Checkbox checked={checked} tabIndex={-1} aria-hidden className="pointer-events-none" />
+                <span style={{ pointerEvents: 'none', display: 'inline-flex' }}>
+                  <Checkbox checked={checked} tabIndex={-1} />
+                </span>
                 <span className={styles.label}>{opt}</span>
               </div>
             );

@@ -24,6 +24,7 @@ export function PatientDetailView() {
   const patients = useAppStore(s => s.patients);
   const [activeTab, setActiveTab] = useState('Overview');
   const [leftWidth, setLeftWidth] = useState(496);
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
   const dragging = useRef(false);
   const bodyRef = useRef(null);
 
@@ -69,15 +70,24 @@ export function PatientDetailView() {
     <div className={styles.wrapper}>
       <PatientP360Banner patient={patient} />
       <div className={styles.body} ref={bodyRef}>
-        <div style={{ width: leftWidth, minWidth: 300, maxWidth: 700, flexShrink: 0 }}>
-          <PatientProfileTabs patientId={selectedPatientId} />
-        </div>
-        {/* Drag handle */}
-        <div className={styles.dragHandle} onMouseDown={handleMouseDown}>
-          <div className={styles.dragHandleLine} />
-        </div>
+        {!leftCollapsed && (
+          <>
+            <div style={{ width: leftWidth, minWidth: 300, maxWidth: 700, flexShrink: 0 }}>
+              <PatientProfileTabs patientId={selectedPatientId} />
+            </div>
+            {/* Drag handle */}
+            <div className={styles.dragHandle} onMouseDown={handleMouseDown}>
+              <div className={styles.dragHandleLine} />
+            </div>
+          </>
+        )}
         <div className={styles.rightPanel}>
-          <ProfileTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+          <ProfileTabBar
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            leftCollapsed={leftCollapsed}
+            onToggleLeft={() => setLeftCollapsed(c => !c)}
+          />
           <div className={styles.tabContent}>
             {activeTab === 'Overview' ? (
               <OverviewTab />

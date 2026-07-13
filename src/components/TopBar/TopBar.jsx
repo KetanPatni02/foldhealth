@@ -34,12 +34,16 @@ function getUserDisplayName(user) {
 }
 
 /* ── Profile Popover (Figma node 1904:6423) ── */
+const SWITCH_ACCOUNTS = ['Support', 'QA', 'Coder', 'Compliance'];
+
 function ProfilePopover({ user, onClose, onPreferences }) {
   const popoverRef = useRef(null);
   const [editing, setEditing] = useState(false);
   const [firstName, setFirstName] = useState(user?.user_metadata?.first_name || '');
   const [lastName, setLastName] = useState(user?.user_metadata?.last_name || '');
   const [saving, setSaving] = useState(false);
+  const [account, setAccount] = useState('Coder');
+  const [showRoles, setShowRoles] = useState(false);
 
   useEffect(() => {
     const close = (e) => {
@@ -78,6 +82,7 @@ function ProfilePopover({ user, onClose, onPreferences }) {
       boxShadow: 'var(--shadow-popover)',
       fontFamily: "'Inter', sans-serif",
     }}>
+      <>
       {/* User info */}
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
         <div style={{
@@ -127,11 +132,23 @@ function ProfilePopover({ user, onClose, onPreferences }) {
           <Icon name="solar:settings-linear" size={20} color="var(--neutral-400)" />
           <span>Preferences</span>
         </button>
-        <button onClick={onClose} style={menuItemStyle} onMouseOver={e => e.currentTarget.style.background = 'var(--neutral-50)'} onMouseOut={e => e.currentTarget.style.background = ''}>
+        <div style={{ ...menuItemStyle, cursor: 'default' }}>
           <Icon name="solar:users-group-rounded-linear" size={20} color="var(--neutral-400)" />
-          <span style={{ flex: 1 }}>Switch Account</span>
-          <Icon name="solar:alt-arrow-right-linear" size={12} color="var(--neutral-200)" />
-        </button>
+          <span style={{ flex: 1 }}>Logged in as: {account}</span>
+          <button
+            type="button"
+            onClick={() => setShowRoles(v => !v)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 2, padding: 0,
+              border: 'none', background: 'none', cursor: 'pointer',
+              fontFamily: "'Inter', sans-serif", fontSize: 14, fontWeight: 500,
+              color: 'var(--primary-300)',
+            }}
+          >
+            Switch
+            <Icon name="solar:alt-arrow-right-linear" size={12} color="var(--primary-300)" />
+          </button>
+        </div>
 
         {/* Theme picker — separated by thin divider above and below */}
         <div style={{ marginTop: 4, paddingTop: 8, borderTop: '0.5px solid var(--neutral-100)' }}>
@@ -145,6 +162,49 @@ function ProfilePopover({ user, onClose, onPreferences }) {
           </button>
         </div>
       </div>
+      </>
+
+      {showRoles && (
+        <div style={{
+          position: 'absolute', top: 0, right: 'calc(100% + 8px)', width: 280,
+          background: 'var(--neutral-0)', border: '0.5px solid var(--neutral-150)',
+          borderRadius: 12, padding: 12, boxShadow: 'var(--shadow-popover)',
+          fontFamily: "'Inter', sans-serif", display: 'flex', flexDirection: 'column', gap: 8,
+        }}>
+          <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', padding: '0 4px' }}>Choose Role</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {SWITCH_ACCOUNTS.map(a => {
+              const sel = account === a;
+              return (
+                <button
+                  key={a}
+                  onClick={() => { setAccount(a); setShowRoles(false); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8, padding: 8,
+                    borderRadius: 8, border: 'none', cursor: 'pointer', width: '100%',
+                    textAlign: 'left', fontFamily: "'Inter', sans-serif", fontSize: 14, fontWeight: 500,
+                    background: sel ? 'var(--primary-50)' : 'none',
+                    color: sel ? 'var(--primary-300)' : 'var(--neutral-400)',
+                    transition: 'background .1s',
+                  }}
+                  onMouseOver={e => { if (!sel) e.currentTarget.style.background = 'var(--neutral-50)'; }}
+                  onMouseOut={e => { if (!sel) e.currentTarget.style.background = ''; }}
+                >
+                  <span style={{
+                    width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: sel ? 'var(--primary-300)' : 'var(--neutral-0)',
+                    border: sel ? '1px solid var(--primary-300)' : '1px solid var(--neutral-200)',
+                  }}>
+                    {sel && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--neutral-0)' }} />}
+                  </span>
+                  <span style={{ flex: 1 }}>{a}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

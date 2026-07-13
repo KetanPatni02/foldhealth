@@ -70,52 +70,6 @@
   font-family: 'Inter', sans-serif;
 }
 
-.dropZone {
-  border: 0.5px dashed var(--neutral-150);
-  border-radius: 8px;
-  padding: 28px 24px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  background: var(--neutral-0);
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
-}
-.dropZone:hover { border-color: var(--neutral-200); }
-
-.dropZoneActive {
-  border-color: var(--primary-300);
-  background: var(--primary-50);
-}
-
-.dropZoneCopy {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.dropZoneMuted {
-  font-size: 14px;
-  color: var(--neutral-200);
-  font-weight: 500;
-}
-
-.dropZoneLink {
-  font-size: 14px;
-  color: var(--primary-300);
-}
-
-.dropZoneFile {
-  font-size: 14px;
-  color: var(--primary-300);
-  font-weight: 500;
-}
-
-.fileInput {
-  display: none;
-}
-
 /* ── Fields ───────────────────────────────────────────────────────────── */
 
 .field {
@@ -167,4 +121,6 @@
   width: 100%;
   height: 32px;
   font-size: 14px;
+  border: 0.5px solid var(--neutral-200);
 }
+.select:focus { border-color: var(--primary-300); }
