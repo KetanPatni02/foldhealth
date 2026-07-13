@@ -951,6 +951,17 @@ function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId }
   useEffect(() => {
     if (openDocId && !list.some(d => d.id === openDocId)) setOpenDocId(null);
   }, [openDocId, list, setOpenDocId]);
+  // Clicking an ICD card opens the Documents pane with an icdScope — jump
+  // straight into the tabbed viewer on that ICD's first doc. Uses a ref so
+  // the effect only fires when the scope TRANSITIONS to a new ICD (a "back"
+  // click clears openDocId but leaves icdScope, and shouldn't reopen).
+  const lastIcdScopeRef = useRef(null);
+  useEffect(() => {
+    if (icdScope !== lastIcdScopeRef.current) {
+      lastIcdScopeRef.current = icdScope;
+      if (icdScope && list.length > 0) setOpenDocId(list[0].id);
+    }
+  }, [icdScope, list, setOpenDocId]);
   // Overflow scroll — arrow buttons appear when the tab strip can scroll.
   const tabsScrollRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -973,12 +984,6 @@ function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId }
     if (!el) return;
     el.scrollBy({ left: dir * Math.max(160, el.clientWidth * 0.6), behavior: 'smooth' });
   };
-
-  // ICD-scoped → source-document evidence viewer with the selected code's
-  // line highlighted (Paper 1UD1). Unscoped → the plain documents table.
-  if (icdScope) {
-    return <DocEvidenceViewer member={member} icdScope={icdScope} />;
-  }
 
   // Browser-tab viewer when a doc is open (Paper 1UHT):
   //   [ ← back ]  [ ‹ ]  [ ✓ Doc A ] [ Doc B ] [ Doc C ] …  [ › ]
@@ -1047,7 +1052,10 @@ function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId }
           )}
         </div>
         <div className={styles.docsViewerBody}>
-          <DocEvidenceViewer member={member} icdScope={null} />
+          {/* Pass icdScope through so a card-driven open still highlights
+              that ICD's line in the PDF; row-driven opens (no scope) show
+              the plain document. */}
+          <DocEvidenceViewer member={member} icdScope={icdScope} />
         </div>
       </div>
     );
