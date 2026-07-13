@@ -32,6 +32,30 @@ import styles from './HccWorklistRow.module.css';
 
 const RISK_VARIANT = { High: 'lace-high', Medium: 'lace-medium', Low: 'lace-low' };
 
+// Short display label for the Visit Type column — keeps the underlying value
+// unchanged (filters + data still match the canonical name) while the cell
+// renders a compact form so more columns fit on screen. Falls back to the
+// canonical name for anything not in the map.
+const VT_SHORT = {
+  'AWV - Annual Wellness Visit':               'AWV',
+  'IPPE - Initial Preventive Physical Exam':   'IPPE',
+  'Annual Physical Exam':                       'APE',
+  'New Patient Office Visit':                   'New Patient',
+  'Established Patient Office Visit':           'Est. Patient',
+  'Telehealth Visit':                           'Telehealth',
+  'Specialist Visit / Consult':                 'Specialist',
+  'ER Visit':                                   'ER',
+  'Inpatient Visit / Admission':                'Inpatient',
+  'Observation Visit':                          'Observation',
+  'Skilled Nursing Facility Visit':             'SNF',
+  'Home Visit':                                 'Home',
+  'Hospice Visit':                              'Hospice',
+  'Lab/Imaging Order':                          'Lab/Imaging',
+  'Transitional Care Management (TCM) Visit':   'TCM',
+  'Chronic Care Management (CCM)':              'CCM',
+};
+const vtShortLabel = (v) => VT_SHORT[v] || v || 'HCC';
+
 function LastVisitCell({ dos, visits, fromClaim, onClickDate, onClickVisits }) {
   if (!dos) return <span className={styles.muted}>—</span>;
   // Two click targets in one cell:
@@ -64,13 +88,13 @@ function LastVisitCell({ dos, visits, fromClaim, onClickDate, onClickVisits }) {
   );
 }
 
-function CreateDateCell({ date, due, dueCol, coderDone }) {
+function CreateDateCell({ date, due, dueCol }) {
   // SLA (Astrana DOS worklist): colour the Created Date against the 14-day
-  // window computed live from the date. The clock ends when the Coder
-  // (Reviewer 1) completes — resolved records drop the urgency chip. Falls
-  // back to any static due label when the date can't be parsed.
-  const sla = coderDone ? null : computeSla(date);
-  const label = coderDone ? null : (sla ? sla.label : due);
+  // window computed live from the date. Every row shows a due-date detail —
+  // even resolved ones — so the column is never blank. Falls back to any
+  // static due label when the date can't be parsed.
+  const sla = computeSla(date);
+  const label = sla ? sla.label : due;
   const color = sla ? sla.colorVar : dueCol;
   return (
     <div className={styles.stackCell}>
@@ -539,23 +563,34 @@ function DosSourceBadge({ date }) {
 // Inner content (NOT the <td>) for each DOS-level column, given one
 // dos_list entry. The main row wraps these in a stacked `<td>`.
 const DOS_INNER = {
-  dos: (entry, { openClaimPreview, member }) => (
-    <span className={styles.dosItem}>
-      <button type="button" className={styles.lastVisitDateBtn} onClick={() => openClaimPreview?.(member, entry.date)}>
-        <span className={styles.lastVisitDate}>{entry.date}</span>
-      </button>
-      <DosSourceBadge date={entry.date} />
-    </span>
-  ),
+  dos: (entry, { openClaimPreview, member }) => {
+    // Only claim-sourced DOS (the "C" badge) open the Claims drawer;
+    // document/manual dates render as plain grey text. Date colour is
+    // neutral-300 in all cases (no purple link styling).
+    const isClaim = dosSourceLetter(entry.date) === 'C';
+    return (
+      <span className={styles.dosItem}>
+        {isClaim ? (
+          <button type="button" className={styles.lastVisitDateBtn} onClick={() => openClaimPreview?.(member, entry.date)}>
+            <span className={styles.lastVisitDate}>{entry.date}</span>
+          </button>
+        ) : (
+          <span className={styles.lastVisitDate}>{entry.date}</span>
+        )}
+        <DosSourceBadge date={entry.date} />
+      </span>
+    );
+  },
   open: (entry, { openDiagPanel, member }) => (
     <OpenIcdsCell
       member={member}
       onOpenWithCode={(code) => openDiagPanel(member.id, { highlightCode: code, initialDos: entry.date })}
     />
   ),
-  vt: (entry, { member }) => (
-    <span className={styles.vtText}>{entry.vt || member.visitType || member.vt || 'HCC'}</span>
-  ),
+  vt: (entry, { member }) => {
+    const full = entry.vt || member.visitType || member.vt || 'HCC';
+    return <span className={styles.vtText} title={full}>{vtShortLabel(full)}</span>;
+  },
   rp: (entry, { member }) => (
     <span className={styles.providerText}>{entry.provider || member.rp}</span>
   ),
@@ -572,7 +607,7 @@ const DOS_INNER = {
 const CELL_RENDERERS = {
   date: ({ member }) => (
     <td key="date" data-col="date" className={styles.colDate}>
-      <CreateDateCell date={member.date} due={member.due} dueCol={member.dueCol} coderDone={member.cdrS === 'Completed'} />
+      <CreateDateCell date={member.date} due={member.due} dueCol={member.dueCol} />
     </td>
   ),
   evidence: ({ member, charts, openChart, openUpload }) => (
@@ -731,7 +766,7 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
   const [chartRect, setChartRect] = useState(null);
   const [chartDetail, setChartDetail] = useState(null);
   const [actionsRect, setActionsRect] = useState(null);
-  const hccRole = useAppStore(s => s.hccRole);
+  const hccRole = useAppStore(s => s.hccUserRole);
   const addedCharts = useAppStore(s => s.hccAddedCharts[member.id]);
   const chartStatus = useAppStore(s => s.hccChartStatus[member.id]);
   const charts = useMemo(() => getChartDocs(member, addedCharts || [], chartStatus || {}), [member, addedCharts, chartStatus]);
@@ -862,7 +897,7 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
           />
           <span className={styles.actionsDivider} />
           <ActionButton
-            icon="solar:document-add-linear"
+            icon="custom:add-dos"
             size="L"
             tooltip="Add DOS"
             onClick={(e) => { e.stopPropagation(); openAddDos(member); }}

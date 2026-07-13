@@ -42,8 +42,13 @@ function ProfilePopover({ user, onClose, onPreferences }) {
   const [firstName, setFirstName] = useState(user?.user_metadata?.first_name || '');
   const [lastName, setLastName] = useState(user?.user_metadata?.last_name || '');
   const [saving, setSaving] = useState(false);
-  const account = useAppStore(s => s.hccRole);
-  const setAccount = useAppStore(s => s.setHccRole);
+  // (from my branch — superseded by foldhealth/main's hccUserRole; kept
+  // commented per merge-resolution instruction rather than deleted)
+  // const account = useAppStore(s => s.hccRole);
+  // const setAccount = useAppStore(s => s.setHccRole);
+  // HCC role — the store owns it so the worklist + DiagPanel can react.
+  const account = useAppStore(s => s.hccUserRole);
+  const setAccount = useAppStore(s => s.setHccUserRole);
   const [showRoles, setShowRoles] = useState(false);
 
   useEffect(() => {

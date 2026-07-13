@@ -67,17 +67,26 @@ export const MORE_FILTER_ITEMS = [
 export const PRIMARY_FILTER_KEYS = MORE_FILTER_ITEMS.filter(x => x.primary).map(x => x.k);
 
 export const FILTER_DEFS = [
-  // Visit Type — options are the distinct visit types present in the loaded
-  // patient records (computed in FilterChipBar). `opts` is the Figma canonical
-  // set (node 4240-110502), used as a fallback before members load.
+  // Visit Type — canonical option set used across the worklist. Records get a
+  // deterministic visit type from this same list in the store (see
+  // normalizeWorklistRow → VT_POOL), so the filter and the data agree.
   { k: 'vt',     label: 'Visit Type',          type: 'multi', dynamic: 'vt', opts: [
     'AWV - Annual Wellness Visit',
     'IPPE - Initial Preventive Physical Exam',
-    'APE - Annual Physical Exam',
+    'Annual Physical Exam',
     'New Patient Office Visit',
     'Established Patient Office Visit',
     'Telehealth Visit',
     'Specialist Visit / Consult',
+    'ER Visit',
+    'Inpatient Visit / Admission',
+    'Observation Visit',
+    'Skilled Nursing Facility Visit',
+    'Home Visit',
+    'Hospice Visit',
+    'Lab/Imaging Order',
+    'Transitional Care Management (TCM) Visit',
+    'Chronic Care Management (CCM)',
   ] },
   // Measurement Year — most recent first (descending).
   { k: 'my',     label: 'Measurement Year',    type: 'multi', opts: ['2026', '2025', '2024', '2023', '2022', '2021'] },
@@ -88,11 +97,14 @@ export const FILTER_DEFS = [
   { k: 'g',      label: 'Gender',              type: 'multi', opts: ['Male', 'Female'] },
   { k: 'open',   label: 'Open ICDs',           type: 'radio', opts: ['< 5 Gaps', '5 - 10 Gaps', '10 - 15 Gaps', '> 15 Gaps'] },
   { k: 'chart',  label: 'Documents Available', type: 'multi', opts: ['Available', 'Not Available'] },
-  // Support Team Status — canonical buckets from Figma 4240-110454.
-  { k: 'supS',   label: 'Support Team Status', type: 'multi', opts: ['Action Needed', 'In Progress', 'Insufficient', 'Rebuttal', 'Completed', 'Rejected'] },
-  { k: 'cdrS',   label: 'Coder Status',        type: 'multi', opts: ['Assign', 'In Progress', 'Completed', 'Record Requested', 'Returned'] },
-  { k: 'r1s',    label: 'QA Status',           type: 'multi', opts: ['Assign', 'New', 'In Progress', 'Completed'] },
-  { k: 'r2s',    label: 'Compliance Status',   type: 'multi', opts: ['Assign', 'New', 'In Progress', 'Completed'] },
+  // Support / Coder / QA / Compliance statuses — role-specific vocabularies
+  // (aligned with ROLE_STATUS_OPTIONS in statusSpec.js). Support has no "New"
+  // (work arrives already actionable); Coder has record-request states; QA
+  // and Compliance share the reviewer flow.
+  { k: 'supS',   label: 'Support Team Status', type: 'multi', opts: ['Action Needed', 'In Progress', 'Insufficient', 'Returned', 'Completed', 'Rejected'] },
+  { k: 'cdrS',   label: 'Coder Status',        type: 'multi', opts: ['New', 'In Progress', 'Record Received', 'Record Requested', 'Skipped', 'Completed', 'Rejected'] },
+  { k: 'r1s',    label: 'QA Status',           type: 'multi', opts: ['New', 'In Progress', 'Returned', 'Skipped', 'Completed', 'Rejected'] },
+  { k: 'r2s',    label: 'Compliance Status',   type: 'multi', opts: ['New', 'In Progress', 'Returned', 'Skipped', 'Completed', 'Rejected'] },
   { k: 'dec',    label: 'Decile',              type: 'range', opts: ['1','2','3','4','5','6','7','8','9','10'] },
   // Phase 3d — date-range filters use the shared DateRangePopover.
   // Values are stored as [startISO, endISO]; the predicate parses them

@@ -536,7 +536,7 @@ export function DiagPanel() {
         if (!focused) return;
         const k = key.toLowerCase();
         // Support can't accept/reject ICDs — ignore the A / X shortcuts.
-        if ((k === 'a' || k === 'x') && useAppStore.getState().hccRole === 'Support') return;
+        if ((k === 'a' || k === 'x') && useAppStore.getState().hccUserRole === 'Support') return;
         e.preventDefault();
         const [code, dos] = focused.split('|');
         if (k === 'x') {
@@ -677,6 +677,7 @@ export function DiagPanel() {
           <DosStatusMenu
             value={currentStatus}
             onChange={handleStatusChange}
+            role={currentBucket?.kind === 'active' ? currentBucket.role : null}
           />
         </div>
       </div>

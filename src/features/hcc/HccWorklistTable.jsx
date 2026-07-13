@@ -278,7 +278,7 @@ export function HccWorklistTable() {
           </div>
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="solar:filter-linear"
+            icon="custom:filter"
             size="L"
             tooltip={filterOpen ? 'Hide filters' : 'Show filters'}
             tooltipBelow
@@ -289,7 +289,7 @@ export function HccWorklistTable() {
           />
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="solar:download-square-linear"
+            icon="custom:export"
             size="L"
             tooltip="Export"
             tooltipBelow
@@ -314,7 +314,7 @@ export function HccWorklistTable() {
           </div>
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="solar:clock-circle-linear"
+            icon="custom:history"
             size="L"
             tooltip="History"
             tooltipBelow

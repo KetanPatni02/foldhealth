@@ -253,10 +253,12 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
           </div>
           <div className={styles.bannerActions}>
             <button type="button" className={styles.iconBtn} aria-label="Call PCP">
+              {/* eslint-disable-next-line no-restricted-syntax -- Solar has no exact match; custom PCP-call glyph (banner uses same icon). */}
               <Icon name="custom:call-pcp" size={20} color="var(--neutral-300)" />
             </button>
             <span className={styles.vDivider} />
             <button type="button" className={styles.iconBtn} aria-label="Expand">
+              {/* eslint-disable-next-line no-restricted-syntax -- Solar has no matching drawer-expand chevron pair; custom icon reused across drawers. */}
               <Icon name="custom:expand-drawer" size={20} />
             </button>
           </div>

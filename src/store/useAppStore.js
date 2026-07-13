@@ -728,12 +728,14 @@ export const useAppStore = create((set, get) => ({
   // when a reviewer marks a chart Pass/Fail in the Document Available drawer.
   // getChartDocs applies these so the worklist "Documents" evidence cell stays
   // in sync with the drawer (All Passed / mixed / All Pending).
-  // Active HCC reviewer role (chosen via the profile "Switch Role" popover).
-  // Gates role-specific behaviour: only Support gets the actionable 2-panel
-  // document drawer + document Pass/Fail; Coder/QA/Compliance get a read-only
-  // Document Preview and can accept/reject ICDs (which Support cannot).
-  hccRole: 'Coder',
-  setHccRole: (role) => set({ hccRole: role }),
+  // Active HCC reviewer role gates role-specific behaviour (only Support gets
+  // the actionable document drawer + document Pass/Fail; Coder/QA/Compliance
+  // get a read-only Document Preview and can accept/reject ICDs). This lived on
+  // my branch as `hccRole`; foldhealth/main already has the canonical,
+  // localStorage-backed `hccUserRole` (below), so mine is commented out per the
+  // merge-resolution instruction and all consumers use hccUserRole.
+  // hccRole: 'Coder',
+  // setHccRole: (role) => set({ hccRole: role }),
 
   hccChartStatus: {},
   setChartDocStatus: (memberId, docId, status) => {
@@ -790,6 +792,17 @@ export const useAppStore = create((set, get) => ({
   // Filters
   activeFilters: {},  // { gender: 'F', language: 'es', lace: 'High', ... }
   activeSubnavList: 'TOC',  // which SubNav list is selected
+
+  // HCC role — the logged-in user's role for the HCC coding workflow (Support
+  // / Coder / QA / Compliance). Drives which status vocab and per-role actions
+  // the worklist and DiagPanel expose. Persisted so it survives reload.
+  hccUserRole: (() => {
+    try { return localStorage.getItem('hccUserRole') || 'Coder'; } catch { return 'Coder'; }
+  })(),
+  setHccUserRole: (role) => {
+    try { localStorage.setItem('hccUserRole', role); } catch {/* */}
+    set({ hccUserRole: role });
+  },
 
   // ── Population Groups: persistent create-group CSV processing session ──
   pgSession: null,            // { fileName, fileSize, segName, status:'loading'|'complete', procStep, startedAt, result }
@@ -2304,17 +2317,67 @@ export const useAppStore = create((set, get) => ({
       while (new Date(yyyy, mm - 1, dd) > new Date()) yyyy -= 1;
       return `${_pad2(mm)}/${_pad2(dd)}/${yyyy}`;
     };
+    // Canonical Visit Type list — same set as the Visit Type filter options
+    // in filters.js. Assigned deterministically from the member's name so it
+    // stays stable across reloads (and matches whichever the filter picks).
+    const CANONICAL_VT_LIST = [
+      'AWV - Annual Wellness Visit',
+      'IPPE - Initial Preventive Physical Exam',
+      'Annual Physical Exam',
+      'New Patient Office Visit',
+      'Established Patient Office Visit',
+      'Telehealth Visit',
+      'Specialist Visit / Consult',
+      'ER Visit',
+      'Inpatient Visit / Admission',
+      'Observation Visit',
+      'Skilled Nursing Facility Visit',
+      'Home Visit',
+      'Hospice Visit',
+      'Lab/Imaging Order',
+      'Transitional Care Management (TCM) Visit',
+      'Chronic Care Management (CCM)',
+    ];
+    // Clamp Created Date to the range [today-35d, today] so every row shows a
+    // due-date detail and no record is overdue by more than ~3 weeks past the
+    // 14-day SLA window. Deterministic per row id so the mix is stable across
+    // reloads. All resulting dates land in 2026.
+    const _clampCreatedDate = (row) => {
+      const today = new Date();
+      const seed = _hash(String(row.id || row.name || '') + '|created');
+      const span = 35;                              // days back from today
+      const offset = seed % (span + 1);             // 0..span
+      const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - offset);
+      return _fmtMDY(d);
+    };
+    // Synthesize a plausible past DOS "MM/DD/YYYY" some months before the
+    // record's Created Date (typical follow-up interval).
+    const _synthPastDos = (createdMDY, seed) => {
+      const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(createdMDY || '');
+      const base = m ? new Date(+m[3], +m[1]-1, +m[2]) : new Date();
+      const daysBack = 60 + (seed % 120);            // 60..179 days earlier
+      const d = new Date(base); d.setDate(d.getDate() - daysBack);
+      return _fmtMDY(d);
+    };
     const normalizeWorklistRow = (row0) => {
       const row = {
         ...row0,
-        date: _toPastDate(row0.date),
+        // Every record's Created Date is normalized to the SLA-relevant range
+        // (max ~3 weeks overdue); the year is always the current one (2026).
+        date: _clampCreatedDate(row0),
         dos: _toPastDate(row0.dos),
         dos_list: Array.isArray(row0.dos_list)
           ? row0.dos_list.map(d => (d && d.date) ? { ...d, date: _toPastDate(d.date) } : d)
           : row0.dos_list,
       };
       const nameSeed = _hash(row.name || '');
-      const visitType = (row.visitType) || ((nameSeed % 10) < 3 ? 'AWV' : 'HCC');
+      // Every record picks a canonical Visit Type from the full list. Deter-
+      // ministic per record so the assignment is stable across reloads. This
+      // overrides any legacy shorthand (e.g. plain "AWV" or "HCC") the source
+      // data may carry.
+      const visitType = CANONICAL_VT_LIST[
+        _hash(String(row.id || row.name || '') + '|vt') % CANONICAL_VT_LIST.length
+      ];
       // arrivalOrder is per-patient so every row for the same patient
       // shares a source-document bucket in mini-sweep mode.
       const arrivalOrder = row.arrivalOrder || ((nameSeed % 10) < 6 ? 'doc-first' : 'claim-first');
@@ -2332,39 +2395,56 @@ export const useAppStore = create((set, get) => ({
       // mini-sweep shows realistic distinct visits. Entry 0 mirrors the
       // record's own fields (collapsed row stays consistent with the
       // record-level columns); entries 1+ vary through fixed pools.
-      const VT_POOL = ['AWV', 'IPPE', 'TCM', 'Telehealth Visit', 'Annual Physical'];
+      // Sub-visits inside an expanded record pull from the same canonical VT
+      // list so filter options and per-DOS Visit Type labels agree.
+      const VT_POOL = CANONICAL_VT_LIST;
       const PROV_POOL = [
         { name: 'Dr. Marcus Osei',  pos: '21', posDesc: 'Inpatient Hospital' },
         { name: 'Dr. Aisha Mehta',  pos: '20', posDesc: 'Urgent Care Facility' },
         { name: 'Dr. Indigo Bolen', pos: '12', posDesc: 'Home' },
         { name: 'Dr. Karen Mills',  pos: '34', posDesc: 'Hospice' },
       ];
-      const dos_list = Array.isArray(row.dos_list)
-        ? row.dos_list.map((d, idx) => {
-            if (d && d.vt && d.provider) return d; // already enriched
-            if (idx === 0) {
-              return {
-                ...d,
-                vt: d?.vt || visitType,
-                provider: d?.provider || row.rp || '—',
-                pos: d?.pos || row.pos || '',
-                posDesc: d?.posDesc || row.posDesc || '',
-                open: d?.open ?? row.open ?? 0,
-              };
-            }
-            const eh = _hash((row.name || '') + (d?.date || '') + idx);
-            const variant = PROV_POOL[eh % PROV_POOL.length];
-            return {
-              ...d,
-              vt: d?.vt || VT_POOL[eh % VT_POOL.length],
-              provider: d?.provider || variant.name,
-              pos: d?.pos || variant.pos,
-              posDesc: d?.posDesc || variant.posDesc,
-              open: d?.open ?? (1 + (eh % 12)),
-            };
-          })
-        : row.dos_list;
-      return { ...row, visitType, arrivalOrder, sourceDocumentIds, createdAt, slaTargetAt, dos_list };
+      // Every record must have ≥2 DOS entries — if we only have one, synthesize
+      // a second earlier past encounter. Deterministic per record so the mix
+      // stays stable across reloads.
+      const inputDosList = Array.isArray(row.dos_list) ? row.dos_list : [];
+      const paddedDosList = (inputDosList.length >= 2)
+        ? inputDosList
+        : [
+            ...inputDosList,
+            {
+              date: _synthPastDos(inputDosList[0]?.date || row.dos || row.date, nameSeed + 1),
+              label: 'Due Today',
+              labelColor: 'var(--status-warning)',
+            },
+          ];
+      const dos_list = paddedDosList.map((d, idx) => {
+        // Always overwrite vt with a canonical value — legacy shorthand like
+        // "TCM" or "HCC" in the source data must not leak into the UI.
+        if (idx === 0) {
+          return {
+            ...d,
+            vt: visitType,
+            provider: d?.provider || row.rp || '—',
+            pos: d?.pos || row.pos || '',
+            posDesc: d?.posDesc || row.posDesc || '',
+            open: d?.open ?? row.open ?? 0,
+          };
+        }
+        const eh = _hash((row.name || '') + (d?.date || '') + idx);
+        const variant = PROV_POOL[eh % PROV_POOL.length];
+        return {
+          ...d,
+          vt: VT_POOL[eh % VT_POOL.length],
+          provider: d?.provider || variant.name,
+          pos: d?.pos || variant.pos,
+          posDesc: d?.posDesc || variant.posDesc,
+          open: d?.open ?? (1 + (eh % 12)),
+        };
+      });
+      // Keep row.vt in sync with the canonical visitType so filter predicates
+      // (which check either field) always match one of the filter opts.
+      return { ...row, vt: visitType, visitType, arrivalOrder, sourceDocumentIds, createdAt, slaTargetAt, dos_list };
     };
     // WS3 — port AWV mock rows into the unified worklist shape so the
     // Visit Type filter has real rows to surface. AWV rows don't carry a

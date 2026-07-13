@@ -1,27 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../components/Icon/Icon';
-import { getStatusSpec } from '../statusSpec';
+import { getStatusSpec, statusDisplayLabel, ROLE_STATUS_OPTIONS, ALL_STATUS_OPTIONS } from '../statusSpec';
 import { StatusIcon } from '../StatusIcon';
 import styles from './DosStatusMenu.module.css';
 
-// Items shown in the change-status menu. `value` is the canonical status
-// label that's stored on the row; `label` may differ for UX ("Reject" vs
-// stored "Rejected", "Returned To" vs "Returned").
-const STATUS_ITEMS = [
-  { label: 'New',              value: 'New',              chevron: false, danger: false },
-  { label: 'Awaiting',         value: 'Awaiting',         chevron: false, danger: false },
-  { label: 'In Progress',      value: 'In Progress',      chevron: false, danger: false },
-  { label: 'Record Received',  value: 'Record Received',  chevron: false, danger: false },
-  { label: 'Insufficient',     value: 'Insufficient',     chevron: false, danger: false },
-  // "Rebuttal" is the product term (renamed from "Returned" — RA coder
-  // workflow plan); the stored value stays 'Returned' because the
-  // assignment engine's RETURN_TARGET routing keys on it.
-  { label: 'Rebuttal',         value: 'Returned',         chevron: true,  danger: false },
-  { label: 'Record Requested', value: 'Record Requested', chevron: false, danger: false },
-  { label: 'Completed',        value: 'Completed',        chevron: false, danger: false },
-  { label: 'Reject',           value: 'Reject',           chevron: false, danger: true  },
-];
+// Build the change-status menu items for whichever role currently owns the
+// DOS. `value` is the canonical status stored on the row (what the engine
+// keys on); `label` is the coder-facing display name. Record Requested /
+// Record Received only appear for the Coder; Support gets Action Needed /
+// Insufficient; QA + Compliance get Returned but not the record-request
+// statuses — per the HCC role/status spec.
+function itemsForRole(role) {
+  const values = ROLE_STATUS_OPTIONS[role] || ALL_STATUS_OPTIONS;
+  return values.map((value) => ({
+    value,
+    label: statusDisplayLabel(value),
+    danger: value === 'Reject',
+  }));
+}
 
 /**
  * Pill that shows the current DOS's status with a small dropdown to change it.
@@ -37,11 +34,12 @@ const STATUS_ITEMS = [
  *                              a reason is how the compliance gate surfaces
  *                              (UI shows a tooltip explaining what's blocking).
  */
-export function DosStatusMenu({ value, onChange, disabled = false, gates }) {
+export function DosStatusMenu({ value, onChange, disabled = false, gates, role = null }) {
   const triggerRef = useRef(null);
   const [pos, setPos] = useState(null);
 
   const spec = getStatusSpec(value);
+  const items = itemsForRole(role);
 
   const open = () => {
     if (disabled) return;
@@ -62,7 +60,7 @@ export function DosStatusMenu({ value, onChange, disabled = false, gates }) {
         <span className={styles.iconLeading}>
           <StatusIcon status={value} size={11} color={spec.color} />
         </span>
-        <span className={styles.label}>{value}</span>
+        <span className={styles.label}>{statusDisplayLabel(value)}</span>
         {!disabled && (
           <>
             <span className={styles.divider} style={{ background: `${spec.color}60` }} />
@@ -74,6 +72,7 @@ export function DosStatusMenu({ value, onChange, disabled = false, gates }) {
         <Menu
           pos={pos}
           value={value}
+          items={items}
           gates={gates}
           onSelect={(v) => { onChange?.(v); close(); }}
           onClose={close}
@@ -83,7 +82,7 @@ export function DosStatusMenu({ value, onChange, disabled = false, gates }) {
   );
 }
 
-function Menu({ pos, value, gates, onSelect, onClose }) {
+function Menu({ pos, value, items, gates, onSelect, onClose }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
     document.addEventListener('keydown', onKey);
@@ -101,7 +100,7 @@ function Menu({ pos, value, gates, onSelect, onClose }) {
       >
         <div className={styles.menuHeader}>Change Status</div>
         <div className={styles.menuItems}>
-          {STATUS_ITEMS.map((item) => {
+          {items.map((item) => {
             const isSel = value === item.value;
             const gate = gates?.[item.value];
             const blocked = gate && gate.enabled === false;

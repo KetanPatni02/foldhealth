@@ -57,17 +57,18 @@
 .tab {
   /* Prototype style: text-only tab with a 2px primary-300 underline when
      active. No icon, no count pill — count is baked into the label
-     as "Comments(3)". */
+     as "Comments(3)". Padding kept tight so all 7 tabs fit within the
+     drawer without horizontal scroll. */
   display: inline-flex;
   align-items: center;
-  padding: 11px 10px;
+  padding: 10px 6px;
   border: none;
   background: transparent;
   border-bottom: 2px solid transparent;
   border-radius: 0;
   cursor: pointer;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 400;
   color: var(--neutral-300);
   white-space: nowrap;
@@ -1781,3 +1782,120 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ── Documents-tab browser-style sub-tabs — one tab per doc when a doc is
+   open in the viewer, plus a back-to-listing chevron. ─────────────────── */
+.docsViewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+/* Browser-style tab bar: white chrome, tabs sit ON the bottom edge (their
+   bottom border merges with the container border below). */
+.docsViewerTabBar {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 8px 12px 0;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  flex-shrink: 0;
+}
+.docsBackBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--neutral-400);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-bottom: 4px;
+}
+.docsBackBtn:hover { background: var(--neutral-100); color: var(--neutral-500); }
+.docsBrowserTabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.docsBrowserTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 180px;
+  /* Even top/bottom padding so the label sits vertically centered inside
+     the tab pill (the 2px active-tab underline is inset, not extra height). */
+  padding: 8px 10px;
+  border: 0.5px solid var(--neutral-150);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background: var(--neutral-0);
+  cursor: pointer;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+  flex-shrink: 0;
+  /* Sit on top of the tab bar's bottom border so inactive tabs read as
+     "closed" above the line and the active tab merges into the container. */
+  margin-bottom: -0.5px;
+}
+.docsBrowserTab:hover { background: var(--neutral-50); color: var(--neutral-500); }
+.docsBrowserTabActive {
+  background: var(--neutral-0);
+  color: var(--primary-300);
+  border-color: var(--primary-200);
+  /* Purple underline is the active affordance; keep the tab flush so the
+     "browser-tab merge" reads correctly. */
+  box-shadow: inset 0 -2px 0 0 var(--primary-300);
+}
+.docsBrowserTabName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Flex container so the iframe (which has flex:1) fills the full height of
+   the viewer, not just its intrinsic size. */
+.docsViewerBody {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+/* Document-listing rows become clickable to open the viewer. */
+.dataTableRowClickable { cursor: pointer; }
+.dataTableRowClickable:hover { background: var(--neutral-25); }
+
+/* Left/right arrow buttons flanking the doc-tabs strip — active only when
+   the strip is scrollable in that direction. */
+.docsScrollBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--neutral-400);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.docsScrollBtn:hover { background: var(--neutral-100); color: var(--neutral-500); }
+.docsScrollBtnDisabled {
+  color: var(--neutral-200);
+  cursor: default;
+  pointer-events: none;
+}
+/* Hide the tab strip's scrollbar — arrows are the primary affordance. */
+.docsBrowserTabs::-webkit-scrollbar { display: none; }
+.docsBrowserTabs { scrollbar-width: none; }

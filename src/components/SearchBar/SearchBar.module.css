@@ -13,7 +13,6 @@
 .searchInput input {
   border: none;
   outline: none;
-  font-family: 'Inter', sans-serif;
   font-size: 13px;
   font-weight: 400;
   color: var(--neutral-400);

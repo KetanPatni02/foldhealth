@@ -63,25 +63,28 @@ export function IcdDosCard({ icd, focusKey, selectedKeys, onToggleSelect, openDi
   };
 
   return (
-    <div className={[styles.card, isActive ? styles.cardSelected : '', isCompleted ? styles.cardCompleted : ''].filter(Boolean).join(' ')}>
+    <div
+      role="button"
+      tabIndex={0}
+      className={[styles.card, isActive ? styles.cardSelected : '', isCompleted ? styles.cardCompleted : ''].filter(Boolean).join(' ')}
+      // Whole-card click opens the source document for this ICD. Inner
+      // interactive elements (DOS action buttons, checkboxes, counters, ⋯
+      // menus, dismiss form) stop propagation so they don't also fire this.
+      onClick={toggleSelect}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSelect(); } }}
+      title={isSelected ? 'Deselect' : `Open source document for ${icd.code}`}
+    >
       <div className={styles.head}>
         <div className={styles.headMain}>
           <div className={styles.titleLine}>
             <button
               type="button"
               className={styles.code}
-              title={isSelected ? 'Deselect' : `Open source document for ${icd.code}`}
-              onClick={toggleSelect}
+              onClick={(e) => { e.stopPropagation(); toggleSelect(); }}
             >
               {icd.code}
             </button>
-            <span
-              className={styles.desc}
-              role="button"
-              tabIndex={0}
-              onClick={toggleSelect}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSelect(); } }}
-            >
+            <span className={styles.desc}>
               {icd.desc}
             </span>
             {(icd.type === 'Suspect' || icd.type === 'Recapture') && (
@@ -96,14 +99,14 @@ export function IcdDosCard({ icd, focusKey, selectedKeys, onToggleSelect, openDi
             </div>
           )}
         </div>
-        <div className={styles.counters}>
-          <button type="button" className={styles.counter} title="Comments" onClick={() => openIcdPanel('comments', icd.code)}>
+        <div className={styles.counters} onClick={(e) => e.stopPropagation()}>
+          <button type="button" className={styles.counter} title="Comments" onClick={(e) => { e.stopPropagation(); openIcdPanel('comments', icd.code); }}>
             <Icon name="solar:chat-round-line-linear" size={14} />
             {icd.cmts ?? 0}
           </button>
           <span className={styles.counterDivider} />
-          <button type="button" className={styles.counter} title="Activity" onClick={() => openIcdActivityLog(icd.code)}>
-            <Icon name="solar:history-linear" size={14} />
+          <button type="button" className={styles.counter} title="Activity" onClick={(e) => { e.stopPropagation(); openIcdActivityLog(icd.code); }}>
+            <Icon name="custom:history" size={14} />
             {(icd.docs ?? 0) + (icd.notes ?? 0)}
           </button>
         </div>
@@ -155,7 +158,7 @@ function DosActionRow({
   const [menuPos, setMenuPos] = useState(null);
   const moreRef = useRef(null);
   // ICD accept/reject is a coding action — the Support role can't perform it.
-  const canReview = useAppStore(s => s.hccRole) !== 'Support';
+  const canReview = useAppStore(s => s.hccUserRole) !== 'Support';
   const isManual = entry.manual || icd.type === 'Manual';
   const isAccepted = action === 'accepted';
   const isRejected = action === 'rejected';
@@ -183,6 +186,10 @@ function DosActionRow({
       <div
         className={[styles.row, focused ? styles.rowFocused : '', isRejected ? styles.rowRejected : ''].filter(Boolean).join(' ')}
         data-rowkey={rowKey}
+        // Row-level actions (Accept/Reject/Missed/Defer + checkbox) live inside
+        // a clickable ICD card — stop propagation so acting on a DOS doesn't
+        // toggle the whole card's document-preview selection.
+        onClick={(e) => e.stopPropagation()}
       >
         {onToggleSelect && (
           <Checkbox

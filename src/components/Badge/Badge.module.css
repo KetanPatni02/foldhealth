@@ -8,6 +8,13 @@
   font-weight: 500;
   white-space: nowrap;
   border: 0.5px solid transparent;
+  /* Hug content even when placed as a grid/flex item (grid items default to
+     `stretch`; without this, badges in a grid cell stretch to fill the track
+     and look wider than their content). Also self-align to start so a wider
+     grid track doesn't visually pad the badge on the right. */
+  width: fit-content;
+  justify-self: start;
+  align-self: center;
 }
 
 .dot {

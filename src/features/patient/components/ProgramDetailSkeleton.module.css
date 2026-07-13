@@ -17,7 +17,7 @@
   gap: 12px;
   padding: 10px 12px;
   border-bottom: 0.5px solid var(--neutral-150);
-  background: linear-gradient(to right, #fff8fd, white 71%);
+  background: linear-gradient(to right, var(--primary-25), var(--neutral-0) 71%);
   flex-shrink: 0;
 }
 
