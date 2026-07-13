@@ -2779,6 +2779,13 @@ export const useAppStore = create((set, get) => ({
     });
   },
 
+  // Set by addHccGap and consumed by IcdRow — when the code matches, the row
+  // pulses a primary-300 border briefly and scrolls into view so the user
+  // sees where their manual add landed in the current list of ICDs. Auto-
+  // clears via a timer so the animation only fires once per add.
+  hccJustAddedCode: null,
+  clearHccJustAdded: () => set({ hccJustAddedCode: null }),
+
   // Coder manually adds a code the pipeline missed (chip: "Manually Added").
   // Fed by the shared IcdSearch (WHO ICD-11 lookup).
   addHccGap: ({ code, desc, hcc }) => {
@@ -2792,7 +2799,14 @@ export const useAppStore = create((set, get) => ({
           last: null, by: null, dismissReason: null, isLinked: true,
         },
       ],
+      hccJustAddedCode: code,
     }));
+    // Auto-clear the flash flag after the animation finishes. Kept inside the
+    // action (not in the component) so any place that re-renders the ICD row
+    // during the window sees the same flash state.
+    setTimeout(() => {
+      if (get().hccJustAddedCode === code) set({ hccJustAddedCode: null });
+    }, 2200);
     get().addActivityEntry({
       t: 'status_hcc', by: 'You', role: 'Coder',
       icds: [code],
@@ -3392,7 +3406,7 @@ export const useAppStore = create((set, get) => ({
   setDiagSnapOpen: (open) => set({ diagSnapOpen: open }),
   // Left-workspace tab: null = drawer at 40vw with only the right pane;
   // any string = drawer expands to 70vw with the matching tab content.
-  diagLeftPanel: null,   // 'activity' | 'comments' | 'documents' | 'notes' | 'claims' | null
+  diagLeftPanel: null,   // 'activity' | 'comments' | 'documents' | 'notes' | 'claims' | 'newDiagGap' | null
   // When the Activity Log panel is opened from a specific ICD card (by
   // clicking the ICD code), this holds that code so the timeline filters to
   // entries touching it. null = DOS-level (all entries). Opening via the

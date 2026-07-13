@@ -39,6 +39,16 @@ export function IcdDosCard({ icd, focusKey, selectedKeys, onToggleSelect, openDi
   const setDosAction = useAppStore(s => s.setHccGapDosAction);
   const dismissDos = useAppStore(s => s.dismissHccGapDos);
   const showToast = useAppStore(s => s.showToast);
+  // Flash + scroll when this ICD was just added via the New Diagnosis Gap
+  // panel — draws the user's attention to where the new code landed in the
+  // current list (the border pulses; auto-clears via the store timer).
+  const isJustAdded = useAppStore(s => s.hccJustAddedCode) === icd.code;
+  const cardRef = useRef(null);
+  useEffect(() => {
+    if (isJustAdded) {
+      cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [isJustAdded]);
 
   const hccShort = (icd.hcc || '').split(' - ')[0].trim();
   // Doc-panel selection — drives the source-document toggle below.
@@ -64,9 +74,15 @@ export function IcdDosCard({ icd, focusKey, selectedKeys, onToggleSelect, openDi
 
   return (
     <div
+      ref={cardRef}
       role="button"
       tabIndex={0}
-      className={[styles.card, isActive ? styles.cardSelected : '', isCompleted ? styles.cardCompleted : ''].filter(Boolean).join(' ')}
+      className={[
+        styles.card,
+        isActive ? styles.cardSelected : '',
+        isCompleted ? styles.cardCompleted : '',
+        isJustAdded ? styles.cardJustAdded : '',
+      ].filter(Boolean).join(' ')}
       // Whole-card click opens the source document for this ICD. Inner
       // interactive elements (DOS action buttons, checkboxes, counters, ⋯
       // menus, dismiss form) stop propagation so they don't also fire this.

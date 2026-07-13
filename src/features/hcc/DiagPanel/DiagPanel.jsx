@@ -8,13 +8,13 @@ import { CloseIcon } from '../../../components/Icon/CloseIcon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Avatar } from '../../../components/Avatar/Avatar';
 import { PatientBanner } from '../../../components/PatientBanner/PatientBanner';
-import { IcdSearch } from '../../../components/IcdSearch/IcdSearch';
 import { Switch } from '../../../components/Switch/Switch';
 import { IcdRow } from './IcdRow';
 import { IcdDosCard } from './IcdDosCard';
 import { SuspectCard } from './HccSuspectGroup';
 import { DosStatusMenu } from './DosStatusMenu';
 import { LeftWorkspace } from './LeftWorkspace';
+import { NewDiagGapPanel } from './NewDiagGapPanel';
 import {
   ReviewProgressPopover,
   ProgressRing,
@@ -205,7 +205,6 @@ export function DiagPanel() {
   const setDiagTab = useAppStore(s => s.setDiagTab);
   const setHccGapDosAction = useAppStore(s => s.setHccGapDosAction);
   const hccGapDosActions = useAppStore(s => s.hccGapDosActions);
-  const addHccGap = useAppStore(s => s.addHccGap);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedKeys, setSelectedKeys] = useState(() => new Set());
@@ -228,9 +227,7 @@ export function DiagPanel() {
   // per DOS with a toggle. Toggling a DOS off hides its ICD rows.
   const [dosExpanded, setDosExpanded] = useState(false);
   const [disabledDos, setDisabledDos] = useState(() => new Set());
-  const [addIcdOpen, setAddIcdOpen] = useState(false);
   const [openDismissKey, setOpenDismissKey] = useState(null);
-  const addIcdRef = useRef(null);
   // -1 = no DOS highlighted; a row lights up only once an ICD is selected,
   // acted on, or reached via the keyboard.
   const [focusIdx, setFocusIdx] = useState(-1);
@@ -594,16 +591,6 @@ export function DiagPanel() {
     setSelectedKeys(new Set());
   };
 
-  // Outside-click close for the +ICD popover.
-  useEffect(() => {
-    if (!addIcdOpen) return undefined;
-    const onDoc = (e) => {
-      if (!addIcdRef.current?.contains(e.target)) setAddIcdOpen(false);
-    };
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, [addIcdOpen]);
-
   if (!member) return null;
 
   const rafImpact = (Number(member.ri) || 0).toFixed(3);
@@ -629,7 +616,13 @@ export function DiagPanel() {
       <div className={styles.contentRow}>
       {/* Workspace (document preview etc.) sits on the LEFT of the ICD
           listing (Paper 1UD1 / 5IX) — rendered first so it's the left pane. */}
-      {diagLeftPanel && (
+      {diagLeftPanel === 'newDiagGap' ? (
+        <NewDiagGapPanel
+          onClose={() => setDiagLeftPanel(null)}
+          member={member}
+          excludeCodes={[...icdsRaw, ...notLinkedRaw].map(i => i.code)}
+        />
+      ) : diagLeftPanel && (
         <LeftWorkspace
           active={diagLeftPanel}
           icdScope={diagActivityIcd ? (activeIcdCode ?? diagActivityIcd) : null}
@@ -730,25 +723,18 @@ export function DiagPanel() {
         </div>
 
         <div className={styles.toolbarIcons}>
-          <span className={styles.addIcdWrap} ref={addIcdRef}>
-            <button type="button" className={styles.addIcdBtn} onClick={() => setAddIcdOpen(o => !o)}>
+          <span className={styles.addIcdWrap}>
+            <button
+              type="button"
+              className={[
+                styles.addIcdBtn,
+                diagLeftPanel === 'newDiagGap' ? styles.addIcdBtnActive : '',
+              ].filter(Boolean).join(' ')}
+              onClick={() => setDiagLeftPanel(diagLeftPanel === 'newDiagGap' ? null : 'newDiagGap')}
+            >
               <Icon name="solar:add-circle-linear" size={16} color="var(--primary-300)" />
               <span>ICD</span>
             </button>
-            {addIcdOpen && (
-              <span className={styles.addIcdPop}>
-                <IcdSearch
-                  autoFocus
-                  placeholder="Search ICD to add"
-                  excludeCodes={[...icdsRaw, ...notLinkedRaw].map(i => i.code)}
-                  onSelect={(icd) => {
-                    addHccGap({ code: icd.code, desc: icd.title, hcc: icd.hcc || '' });
-                    setAddIcdOpen(false);
-                    showToast(`Added ${icd.code} — Manually Added`);
-                  }}
-                />
-              </span>
-            )}
           </span>
           <span className={styles.divider} />
           <ActionButton

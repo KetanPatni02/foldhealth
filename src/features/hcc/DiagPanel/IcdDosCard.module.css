@@ -27,6 +27,23 @@
    keep only the actionable ICDs in focus (worklist progression). */
 .cardCompleted { opacity: 0.6; }
 
+/* One-shot border pulse fired after addHccGap sets hccJustAddedCode. Two
+   flashes of a primary-300 ring so the user can spot the just-added ICD in
+   a long list; auto-clears when the store timer wipes hccJustAddedCode
+   (~2.2s later). */
+@keyframes icdDosCardFlash {
+  0%   { border-color: var(--primary-300); box-shadow: 0 0 0 3px var(--primary-100); }
+  40%  { border-color: var(--neutral-150); box-shadow: 0 0 0 0 transparent; }
+  70%  { border-color: var(--primary-300); box-shadow: 0 0 0 3px var(--primary-100); }
+  100% { border-color: var(--neutral-150); box-shadow: 0 0 0 0 transparent; }
+}
+.cardJustAdded {
+  animation: icdDosCardFlash 2s ease-in-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cardJustAdded { animation: none; border-color: var(--primary-300); }
+}
+
 /* ── Head ── */
 .head {
   display: flex;

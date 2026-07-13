@@ -239,6 +239,8 @@
   line-height: 1.2;
   color: var(--primary-300);
 }
+.addIcdBtnActive { background: var(--primary-100); }
+.addIcdBtnActive:hover { background: var(--primary-100); }
 
 /* ── Search bar ── */
 .searchBar {
@@ -691,17 +693,12 @@
 /* Push the icon cluster to the right edge now that search sits inline. */
 .toolbarIcons { margin-left: auto; }
 
-/* ── + ICD popover (live WHO lookup) ── */
+/* + ICD trigger — clicking opens the "New Diagnosis Gap" left workspace
+   (NewDiagGapPanel). Wrap keeps the layout slot stable even though there
+   is no longer an inline popover. */
 .addIcdWrap {
   position: relative;
   display: inline-flex;
-}
-.addIcdPop {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  width: 340px;
-  z-index: 60;
 }
 
 /* ── "ICDs Associated with N/M DOSs" section header ── */

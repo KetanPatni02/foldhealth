@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
 import { Button } from '../../../components/Button/Button';
@@ -44,6 +44,16 @@ export function IcdRow({ icd }) {
   const diagActivityIcd = useAppStore(s => s.diagActivityIcd);
   const clearDiagActivityIcd = useAppStore(s => s.clearDiagActivityIcd);
   const isSelected = diagActivityIcd === icd.code;
+  // When this ICD was just added via the NewDiagGapPanel, pulse the border
+  // and scroll into view so the user sees where their manual add landed in
+  // the current list (per Figma UX note — draw attention).
+  const isJustAdded = useAppStore(s => s.hccJustAddedCode) === icd.code;
+  const rowRef = useRef(null);
+  useEffect(() => {
+    if (isJustAdded) {
+      rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [isJustAdded]);
 
   // Unified expansion panel — opens either via the confidence-score badge
   // (panel='confidence', confidence section open) or via Accept on an AI
@@ -132,7 +142,13 @@ export function IcdRow({ icd }) {
 
   return (
     <div
-      className={[styles.row, isDismissed ? styles.rowClosed : '', isSelected ? styles.rowSelected : ''].join(' ')}
+      ref={rowRef}
+      className={[
+        styles.row,
+        isDismissed ? styles.rowClosed : '',
+        isSelected ? styles.rowSelected : '',
+        isJustAdded ? styles.rowJustAdded : '',
+      ].filter(Boolean).join(' ')}
       data-status={icd.status}
     >
       {/* Title sub-stack — code + description, then Last Reviewed, then the

@@ -40,19 +40,24 @@ export function useIcdSearch({ minChars = 2, debounceMs = 250, limit = 15 } = {}
       const ac = new AbortController();
       abortRef.current = ac;
       try {
-        const { results: apiResults, source: apiSource } = await fetchIcdCodes(q, {
-          signal: ac.signal,
-          limit,
-        });
+        // ICD-10 first: the Supabase `icd_codes` cache is the app's source of
+        // truth (all seed data, HCC mappings, and mock records use ICD-10). WHO
+        // ICD-11 codes ("5A14") don't map back to the ICD-10 model the rest of
+        // the product speaks, so we only reach for the live API when the cache
+        // has nothing to offer for this query.
+        const [cached, cacheSource] = await searchCache(q, limit, ac.signal);
         if (ac.signal.aborted) return;
-        if (apiSource === 'who') {
-          setResults(apiResults);
-          setSource('who');
-        } else {
-          const [cached, cacheSource] = await searchCache(q, limit, ac.signal);
-          if (ac.signal.aborted) return;
+        if (cached.length) {
           setResults(cached);
           setSource(cacheSource);
+        } else {
+          const { results: apiResults, source: apiSource } = await fetchIcdCodes(q, {
+            signal: ac.signal,
+            limit,
+          });
+          if (ac.signal.aborted) return;
+          setResults(apiResults);
+          setSource(apiSource);
         }
       } catch {
         if (ac.signal.aborted) return;

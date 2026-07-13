@@ -1,0 +1,298 @@
+.wrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--neutral-0);
+  animation: newDiagGapSwipeIn 280ms cubic-bezier(0.32, 0.72, 0.36, 1);
+  will-change: transform, opacity;
+}
+@keyframes newDiagGapSwipeIn {
+  from { transform: translateX(-40px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wrap { animation: none; }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 8px 8px 16px;
+  border-bottom: 0.5px solid var(--neutral-100);
+  flex-shrink: 0;
+  background: var(--neutral-0);
+}
+.title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.headerDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.fieldLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  margin-bottom: 4px;
+}
+
+/* ── Selected-ICD editor card (Figma 5011:176574) ─────────────────────── */
+.card {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.cardHeaderMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 4px;
+}
+.icdTitle {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--neutral-400);
+}
+.icdCode {
+  color: var(--primary-300);
+  font-weight: 500;
+}
+.icdDesc { color: var(--neutral-400); }
+
+.icdMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.hccLabel {
+  font-size: 12px;
+  color: var(--neutral-300);
+}
+.metaDivider {
+  width: 0.5px;
+  height: 12px;
+  background: var(--neutral-150);
+}
+.occursBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 4px;
+  background: var(--neutral-50);
+  font-size: 12px;
+  color: var(--neutral-400);
+}
+
+/* ── Form grid (2 × 2) ─────────────────────────────────────────────── */
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 16px;
+  padding: 12px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.fieldTitle {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-400);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.required { color: var(--status-error); }
+
+/* ── Card chevron (expand / collapse) ────────────────────────────── */
+.chevronBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.chevronBtn:hover { background: var(--neutral-50); }
+
+/* Hidden native date input driven by the "+ Custom Date" affordance in the
+   DOS dropdown. Kept in the DOM (never display:none) so showPicker() works. */
+.hiddenDate {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── Evidence Documentation (existing-DOS link mode) ─────────────── */
+.evidenceWrap {
+  padding: 0 12px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.evidenceCard {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.evidenceHeader {
+  font-size: 12px;
+  color: var(--neutral-300);
+  padding: 2px 4px 4px 4px;
+}
+.evidenceEmpty {
+  font-size: 12px;
+  color: var(--neutral-300);
+  padding: 8px 4px;
+  font-style: italic;
+}
+.evidenceRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+}
+.evidenceName {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--neutral-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.evidenceType { color: var(--neutral-300); }
+.uploadNewLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--primary-300);
+  align-self: flex-start;
+  border-radius: 4px;
+}
+.uploadNewLink:hover { background: var(--neutral-50); }
+
+.backToLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--neutral-400);
+  align-self: flex-start;
+  border-radius: 4px;
+}
+.backToLink:hover { background: var(--neutral-50); }
+
+/* ── Upload dropzone ─────────────────────────────────────────────── */
+.uploadWrap {
+  padding: 0 12px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dropzone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  border: 0.5px dashed var(--neutral-200);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.dropzone:hover { background: var(--neutral-50); }
+.dropzoneActive {
+  border-color: var(--primary-300);
+  background: var(--primary-25);
+}
+.dropzoneText {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  text-align: center;
+}
+.chooseFile { color: var(--primary-300); }
+.fileName { color: var(--neutral-500); }
+.fileInput {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.dropzoneMeta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--neutral-300);
+}
