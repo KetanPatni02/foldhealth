@@ -109,6 +109,24 @@
 .counter:hover { background: var(--neutral-50); }
 .counterDivider { width: 1px; height: 14px; background: var(--neutral-150); }
 
+/* Card-level delete — only rendered for manually-added ICDs so real
+   pipeline gaps can't be silently removed. Icon-only trash button that
+   sits at the end of the counters cluster. */
+.deleteBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 4px;
+  color: var(--neutral-400);
+}
+.deleteBtn:hover { background: var(--status-error-25, var(--neutral-50)); color: var(--status-error); }
+
 /* ── DOS rows ── */
 .rows { display: flex; flex-direction: column; }
 .row {
@@ -293,3 +311,10 @@
   color: var(--neutral-500);
 }
 .moreItem:hover { background: var(--neutral-50); }
+.moreMenuDivider {
+  height: 0.5px;
+  background: var(--neutral-150);
+  margin: 4px 4px;
+}
+.moreItemDanger { color: var(--status-error); }
+.moreItemDanger:hover { background: var(--status-error-25, var(--neutral-50)); }

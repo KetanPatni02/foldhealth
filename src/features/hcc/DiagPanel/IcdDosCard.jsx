@@ -39,6 +39,9 @@ export function IcdDosCard({ icd, focusKey, selectedKeys, onToggleSelect, openDi
   const setDosAction = useAppStore(s => s.setHccGapDosAction);
   const dismissDos = useAppStore(s => s.dismissHccGapDos);
   const showToast = useAppStore(s => s.showToast);
+  const deleteHccGap = useAppStore(s => s.deleteHccGap);
+  const removeIcdDos = useAppStore(s => s.removeIcdDos);
+  const isManualIcd = icd.type === 'Manual';
   // Flash + scroll when this ICD was just added via the New Diagnosis Gap
   // panel — draws the user's attention to where the new code landed in the
   // current list (the border pulses; auto-clears via the store timer).
@@ -125,6 +128,24 @@ export function IcdDosCard({ icd, focusKey, selectedKeys, onToggleSelect, openDi
             <Icon name="custom:history" size={14} />
             {(icd.docs ?? 0) + (icd.notes ?? 0)}
           </button>
+          {isManualIcd && (
+            <>
+              <span className={styles.counterDivider} />
+              <button
+                type="button"
+                className={styles.deleteBtn}
+                title={`Delete ${icd.code}`}
+                aria-label={`Delete ${icd.code}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteHccGap(icd.code);
+                  showToast(`Removed ${icd.code}`);
+                }}
+              >
+                <Icon name="solar:trash-bin-2-linear" size={14} />
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -157,6 +178,10 @@ export function IcdDosCard({ icd, focusKey, selectedKeys, onToggleSelect, openDi
               onUndo={() => setDosAction(icd.code, entry.dos, dosActions[key])}
               onMissed={() => { setDosAction(icd.code, entry.dos, 'missed'); advanceIfActed(); }}
               onDefer={() => { setDosAction(icd.code, entry.dos, 'deferred'); advanceIfActed(); }}
+              onRemoveDos={() => {
+                removeIcdDos(icd.code, entry.dos);
+                showToast(`Removed ${icd.code} on ${entry.dos}`);
+              }}
               showToast={showToast}
             />
           );
@@ -169,7 +194,7 @@ export function IcdDosCard({ icd, focusKey, selectedKeys, onToggleSelect, openDi
 function DosActionRow({
   rowKey, entry, icd, hccShort, action, meta, focused, selected, dismissOpen,
   onToggleSelect, onAccept, onOpenDismiss, onCloseDismiss, onConfirmDismiss,
-  onUndo, onMissed, onDefer, showToast,
+  onUndo, onMissed, onDefer, onRemoveDos, showToast,
 }) {
   const [menuPos, setMenuPos] = useState(null);
   const moreRef = useRef(null);
@@ -304,6 +329,19 @@ function DosActionRow({
             <Icon name="solar:alarm-linear" size={14} color="var(--neutral-400)" />
             {action === 'deferred' ? 'Undo defer' : 'Defer'}
           </button>
+          {isManual && onRemoveDos && (
+            <>
+              <div className={styles.moreMenuDivider} />
+              <button
+                type="button"
+                className={[styles.moreItem, styles.moreItemDanger].join(' ')}
+                onClick={() => { onRemoveDos(); setMenuPos(null); }}
+              >
+                <Icon name="solar:trash-bin-2-linear" size={14} color="var(--status-error)" />
+                Remove DOS
+              </button>
+            </>
+          )}
         </div>,
         document.body,
       )}

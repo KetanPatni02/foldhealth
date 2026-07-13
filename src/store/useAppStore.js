@@ -2786,6 +2786,66 @@ export const useAppStore = create((set, get) => ({
   hccJustAddedCode: null,
   clearHccJustAdded: () => set({ hccJustAddedCode: null }),
 
+  // Manual DOSs the coder removed from an ICD card. Keyed as `${code}|${dos}`
+  // so both the card's entry filter and the DOS action bookkeeping know to
+  // ignore the row. Only manual DOS entries are removable — real seeded DOSs
+  // are the record's source of truth and shouldn't be silently dropped.
+  hccGapDosDeleted: [],
+  removeIcdDos: (code, dos) => {
+    const k = `${code}|${dos}`;
+    set(s => ({
+      hccGapDosDeleted: s.hccGapDosDeleted.includes(k)
+        ? s.hccGapDosDeleted
+        : [...s.hccGapDosDeleted, k],
+    }));
+    // Also drop any per-row action / dismiss metadata so the row can't leak
+    // back in via other lists.
+    set(s => {
+      const nextActions = { ...s.hccGapDosActions };
+      const nextMeta = { ...s.hccGapDosMeta };
+      delete nextActions[k];
+      delete nextMeta[k];
+      return { hccGapDosActions: nextActions, hccGapDosMeta: nextMeta };
+    });
+    get().addActivityEntry({
+      t: 'status_hcc', by: 'You', role: 'Coder',
+      icds: [code],
+      headline: `Removed DOS ${dos} from ${code}`,
+      from: 'Manual', to: 'Removed',
+    });
+  },
+
+  // Delete an entire manually-added ICD (type === 'Manual'). Removes the gap
+  // from hccDiagnosisGaps + wipes any per-DOS actions/meta scoped to it.
+  deleteHccGap: (code) => {
+    const gap = get().hccDiagnosisGaps.find(g => g.code === code);
+    if (!gap || gap.type !== 'Manual') return;
+    set(s => ({
+      hccDiagnosisGaps: s.hccDiagnosisGaps.filter(g => g.code !== code),
+    }));
+    set(s => {
+      const nextActions = { ...s.hccGapDosActions };
+      const nextMeta = { ...s.hccGapDosMeta };
+      for (const k of Object.keys(nextActions)) {
+        if (k.startsWith(`${code}|`)) delete nextActions[k];
+      }
+      for (const k of Object.keys(nextMeta)) {
+        if (k.startsWith(`${code}|`)) delete nextMeta[k];
+      }
+      return {
+        hccGapDosActions: nextActions,
+        hccGapDosMeta: nextMeta,
+        hccGapDosDeleted: s.hccGapDosDeleted.filter(k => !k.startsWith(`${code}|`)),
+      };
+    });
+    get().addActivityEntry({
+      t: 'status_hcc', by: 'You', role: 'Coder',
+      icds: [code],
+      headline: `Deleted manually-added ICD ${code}`,
+      from: gap.status || 'New', to: 'Deleted',
+    });
+  },
+
   // Coder manually adds a code the pipeline missed (chip: "Manually Added").
   // Fed by the shared IcdSearch (WHO ICD-11 lookup).
   addHccGap: ({ code, desc, hcc }) => {

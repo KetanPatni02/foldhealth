@@ -228,6 +228,7 @@ export function DiagPanel() {
   const [dosExpanded, setDosExpanded] = useState(false);
   const [disabledDos, setDisabledDos] = useState(() => new Set());
   const [openDismissKey, setOpenDismissKey] = useState(null);
+  const dosDeleted = useAppStore(s => s.hccGapDosDeleted);
   // -1 = no DOS highlighted; a row lights up only once an ICD is selected,
   // acted on, or reached via the keyboard.
   const [focusIdx, setFocusIdx] = useState(-1);
@@ -464,11 +465,13 @@ export function DiagPanel() {
         } else {
           base = [{ dos: member?.dos || '—', claimed: false, manual: icd.type === 'Manual' }];
         }
-        const entries = base.filter(e => !disabledDos.has(e.dos));
+        const entries = base
+          .filter(e => !disabledDos.has(e.dos))
+          .filter(e => !dosDeleted.includes(`${icd.code}|${e.dos}`));
         return { ...icd, entries };
       })
       .filter(c => c.entries.length > 0);
-  }, [assocICDs, sweepByCode, dosList, disabledDos, q]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [assocICDs, sweepByCode, dosList, disabledDos, dosDeleted, q]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const suspectGroups = useMemo(() => {
     const m = new Map();
