@@ -1,0 +1,29 @@
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 0.5px solid var(--neutral-100);
+  background: var(--neutral-0);
+  flex-shrink: 0;
+}
+
+.clearBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--primary-300);
+}
+.clearBtn:hover { background: var(--neutral-50); }
+
+.clearIcon {
+  font-size: 13px;
+  line-height: 1;
+}

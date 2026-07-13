@@ -16,6 +16,12 @@ import { DosStatusMenu } from './DosStatusMenu';
 import { LeftWorkspace } from './LeftWorkspace';
 import { NewDiagGapPanel } from './NewDiagGapPanel';
 import {
+  DiagPanelFilterBar,
+  icdMatchesFilters,
+  activeFilterCount,
+  EMPTY_FILTERS,
+} from './DiagPanelFilterBar';
+import {
   ReviewProgressPopover,
   ProgressRing,
   buildReviewStages,
@@ -229,6 +235,12 @@ export function DiagPanel() {
   const [disabledDos, setDisabledDos] = useState(() => new Set());
   const [openDismissKey, setOpenDismissKey] = useState(null);
   const dosDeleted = useAppStore(s => s.hccGapDosDeleted);
+  // Filter row (Figma 9810:158181) — toggled by the toolbar Filter button.
+  // `filters` is a keyed object; the shared `icdMatchesFilters` predicate
+  // applies the same rules across every ICD bucket below.
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const filterCount = activeFilterCount(filters);
   // -1 = no DOS highlighted; a row lights up only once an ICD is selected,
   // acted on, or reached via the keyboard.
   const [focusIdx, setFocusIdx] = useState(-1);
@@ -257,21 +269,29 @@ export function DiagPanel() {
   //  - assocICDs → the ICD-first cards ("ICDs Associated with N/M DOSs").
   //  - allNotAssoc → AI suspects grouped per HCC (HccSuspectGroup).
   //  - overridden / closed → collapsed sections at the bottom.
+  // Filter chips apply the same predicate to every bucket so a chip picked
+  // in the toolbar affects the whole panel view (Figma 9810:158181).
+  const matchesFilters = useCallback(
+    (icd) => icdMatchesFilters(icd, filters, member?.date),
+    [filters, member?.date],
+  );
   const assocICDs = useMemo(
-    () => icdsRaw.filter(i => !isAISuggested(i) || i.status === 'Accepted'),
-    [icdsRaw],
+    () => icdsRaw.filter(i => (!isAISuggested(i) || i.status === 'Accepted') && matchesFilters(i)),
+    [icdsRaw, matchesFilters],
   );
   const allNotAssoc = useMemo(() => [
     ...icdsRaw.filter(i => isAISuggested(i) && i.status !== 'Accepted'),
     ...notLinkedRaw,
-  ], [icdsRaw, notLinkedRaw]);
+  ].filter(matchesFilters), [icdsRaw, notLinkedRaw, matchesFilters]);
   const overriddenICDs = useMemo(
-    () => [...icdsRaw, ...notLinkedRaw].filter(i => i.dismissReason),
-    [icdsRaw, notLinkedRaw],
+    () => [...icdsRaw, ...notLinkedRaw].filter(i => i.dismissReason).filter(matchesFilters),
+    [icdsRaw, notLinkedRaw, matchesFilters],
   );
   const closedICDs = useMemo(
-    () => [...icdsRaw, ...notLinkedRaw].filter(i => ['Accepted', 'Dismissed'].includes(i.status)),
-    [icdsRaw, notLinkedRaw],
+    () => [...icdsRaw, ...notLinkedRaw]
+      .filter(i => ['Accepted', 'Dismissed'].includes(i.status))
+      .filter(matchesFilters),
+    [icdsRaw, notLinkedRaw, matchesFilters],
   );
 
   // ── DOS list — from the member's dos_list, with a single-row stub fallback.
@@ -744,9 +764,10 @@ export function DiagPanel() {
             icon="custom:filter"
             size="S"
             tooltip="Filter"
-            notification
-            count="1"
-            onClick={noop('Filter')}
+            notification={filterCount > 0}
+            count={filterCount > 0 ? String(filterCount) : undefined}
+            className={filterOpen ? styles.activeIcon : ''}
+            onClick={() => setFilterOpen(v => !v)}
           />
           <span className={styles.divider} />
           <ActionButton
@@ -783,6 +804,16 @@ export function DiagPanel() {
           />
         </div>
       </div>
+
+      {filterOpen && (
+        <DiagPanelFilterBar
+          filters={filters}
+          icds={[...icdsRaw, ...notLinkedRaw]}
+          member={member}
+          onChange={setFilters}
+          onClearAll={() => setFilters(EMPTY_FILTERS)}
+        />
+      )}
 
       {/* ── Body: ICD-first cards + HCC suspect groups + collapsed history ── */}
       <div className={styles.cardsList}>

@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '../../store/useAppStore';
 import { Drawer } from '../../components/Drawer/Drawer';
-import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
+import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { Button } from '../../components/Button/Button';
 import { Select } from '../../components/Select/Select';
 import { DatePicker } from '../../components/DatePicker/DatePicker';
@@ -492,19 +492,17 @@ export function HccAddDosDrawer() {
       noCloseDivider
       bodyClassName={styles.body}
     >
-      <div className={styles.patientHead}>
-        <Avatar variant="patient" initials={member.in} />
-        <div className={styles.patientText}>
-          <div className={styles.patientName}>
-            {member.name}
-            <Icon name="solar:arrow-right-linear" size={15} color="var(--neutral-400)" />
-          </div>
-          <div className={styles.patientMeta}>
-            {member.g} • {member.dob || '—'} ({member.age}) • Central Profile
-            <Icon name="solar:alt-arrow-down-linear" size={13} color="var(--neutral-400)" />
-          </div>
-        </div>
-      </div>
+      <PatientBanner
+        initials={member.in}
+        name={member.name}
+        gender={member.g === 'M' ? 'Male' : member.g === 'F' ? 'Female' : member.g}
+        age={member.age || ''}
+        memberId={member.memberId || `#${member.id}`}
+        raf={member.raf}
+        rafChange={member.rafImpact}
+        rafUp={member.ru !== false}
+        onCall={() => showToast?.('Call — coming soon')}
+      />
 
       {blocks.map((b, i) => (
         <DosBlock
