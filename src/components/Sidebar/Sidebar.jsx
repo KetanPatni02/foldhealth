@@ -33,6 +33,7 @@ export function Sidebar() {
   const messagesUnreadCount = useAppStore(s => s.messagesUnreadCount);
   const implementedPages = ['home', 'population', 'settings', 'analytics', 'calendar', 'messages', 'calls', 'tasks', 'campaign'];
 
+  const navigateBackToWorklist = useAppStore(s => s.navigateBackToWorklist);
   const handleClick = (e, page) => {
     e.preventDefault();
     if (!page) return;
@@ -43,6 +44,11 @@ export function Sidebar() {
         setSettingsNavItem('member/leads');
         setMemberLeadsTab('care-team');
       }
+      // Population: if the user is inside a patient profile, close it so the
+      // sidebar always returns to the worklist view (activePage alone is
+      // already 'population' when a profile is open, so requestNavigate is a
+      // no-op without this).
+      if (page === 'population') navigateBackToWorklist();
       // requestNavigate handles the open-builder dialog flow for us. For pages
       // that go through cleanly, it routes to setActivePage internally.
       requestNavigate(page);

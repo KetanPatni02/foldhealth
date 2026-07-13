@@ -869,7 +869,7 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
           />
           <span className={styles.actionsDivider} />
           <ActionButton
-            icon="solar:document-add-linear"
+            icon="custom:add-dos"
             size="L"
             tooltip="Add DOS"
             onClick={(e) => { e.stopPropagation(); openAddDos(member); }}
