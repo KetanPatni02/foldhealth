@@ -728,6 +728,13 @@ export const useAppStore = create((set, get) => ({
   // when a reviewer marks a chart Pass/Fail in the Document Available drawer.
   // getChartDocs applies these so the worklist "Documents" evidence cell stays
   // in sync with the drawer (All Passed / mixed / All Pending).
+  // Active HCC reviewer role (chosen via the profile "Switch Role" popover).
+  // Gates role-specific behaviour: only Support gets the actionable 2-panel
+  // document drawer + document Pass/Fail; Coder/QA/Compliance get a read-only
+  // Document Preview and can accept/reject ICDs (which Support cannot).
+  hccRole: 'Coder',
+  setHccRole: (role) => set({ hccRole: role }),
+
   hccChartStatus: {},
   setChartDocStatus: (memberId, docId, status) => {
     if (!memberId || !docId) return;

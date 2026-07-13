@@ -202,7 +202,9 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
 
   const gender = member?.g === 'F' ? 'Female' : 'Male';
   const overdue = /overdue/i.test(member?.due || '');
-  const selectedPassed = docActions[selected.id] === 'pass';
+  // Only surface the "Completed Document Review Task" banner when the overall
+  // status is Completed — not when it's manually set to anything else.
+  const showReviewBanner = effectiveStatus === 'completed';
 
   const resetUpload = () => {
     setShowUpload(false); setUpFile(null); setUpCaption(''); setUpType('');
@@ -312,7 +314,7 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
               </div>
             </div>
 
-            {selectedPassed && (
+            {showReviewBanner && (
               <div className={styles.passBanner}>
                 <Icon name="solar:info-circle-linear" size={16} color="var(--status-success)" />
                 <span>{reviewerName} Completed Document Review Task on {member?.date || '—'}.</span>

@@ -14,6 +14,7 @@ import {
   OpenIcdsHoverPopover,
 } from './RowPopovers';
 import { ChartDetailDrawer } from './ChartDetailDrawer';
+import { DocPreviewDrawer } from './DocPreviewDrawer';
 import { getChartDocs } from './data/chartDocs';
 import { computeSla } from './sla';
 // From foldhealth/main: getOpenIcdsForMember is already imported below from
@@ -730,6 +731,7 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
   const [chartRect, setChartRect] = useState(null);
   const [chartDetail, setChartDetail] = useState(null);
   const [actionsRect, setActionsRect] = useState(null);
+  const hccRole = useAppStore(s => s.hccRole);
   const addedCharts = useAppStore(s => s.hccAddedCharts[member.id]);
   const chartStatus = useAppStore(s => s.hccChartStatus[member.id]);
   const charts = useMemo(() => getChartDocs(member, addedCharts || [], chartStatus || {}), [member, addedCharts, chartStatus]);
@@ -888,12 +890,21 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
       />
     )}
     {chartDetail && (
-      <ChartDetailDrawer
-        charts={charts}
-        initialId={chartDetail.id}
-        member={member}
-        onClose={() => setChartDetail(null)}
-      />
+      hccRole === 'Support' ? (
+        <ChartDetailDrawer
+          charts={charts}
+          initialId={chartDetail.id}
+          member={member}
+          onClose={() => setChartDetail(null)}
+        />
+      ) : (
+        <DocPreviewDrawer
+          charts={charts}
+          initialId={chartDetail.id}
+          member={member}
+          onClose={() => setChartDetail(null)}
+        />
+      )
     )}
     {actionsRect && (
       <ActionsMenuPopover
