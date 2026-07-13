@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Button } from '../../components/Button/Button';
-import { Dropzone } from '../../components/Dropzone/Dropzone';
+import { UploadDropField } from '../../components/UploadDropField/UploadDropField';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
 import { DOC_TYPES, makeUploadedChartDoc } from './data/chartDocs';
 import styles from './UploadChartDrawer.module.css';
@@ -32,6 +32,7 @@ export function UploadChartDrawer() {
   const [file, setFile] = useState(null);
   const [caption, setCaption] = useState('');
   const [docType, setDocType] = useState('');
+  const [uploadKey, setUploadKey] = useState(0); // remount UploadDropField to reset it
 
   if (!member) return null;
 
@@ -52,6 +53,7 @@ export function UploadChartDrawer() {
     setFile(null);
     setCaption('');
     setDocType('');
+    setUploadKey(k => k + 1);
     close();
   };
 
@@ -59,6 +61,7 @@ export function UploadChartDrawer() {
     setFile(null);
     setCaption('');
     setDocType('');
+    setUploadKey(k => k + 1);
     close();
   };
 
@@ -89,14 +92,9 @@ export function UploadChartDrawer() {
 
       {/* Form */}
       <div className={styles.form}>
-        {/* Drop zone — shared Dropzone primitive */}
-        <Dropzone
-          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-          helperText={file ? file.name : 'Supported formats: PDF, DOC, JPG, or PNG'}
-          secondaryText="Max size: 100 MB"
-          icon="solar:upload-minimalistic-linear"
-          onPick={setFile}
-        />
+        {/* Drop zone → uploading → uploaded states (shared with the Document
+            Available details drawer). */}
+        <UploadDropField key={uploadKey} onChange={setFile} />
 
         {/* Caption */}
         <div className={styles.field}>

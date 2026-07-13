@@ -64,10 +64,14 @@ export function generateDefaultCharts(member) {
  * as the source of truth (so nothing is doubled); before the seed exists we
  * fall back to generating the defaults on the client.
  */
-export function getChartDocs(member, added = []) {
+export function getChartDocs(member, added = [], statusOverrides = {}) {
   const hasSeededDefaults = (added || []).some(d => /::sys\d+$/.test(d.id || ''));
   const base = hasSeededDefaults ? [] : generateDefaultCharts(member);
-  return [...base, ...(added || [])];
+  const all = [...base, ...(added || [])];
+  if (statusOverrides && Object.keys(statusOverrides).length) {
+    return all.map(d => (statusOverrides[d.id] ? { ...d, status: statusOverrides[d.id] } : d));
+  }
+  return all;
 }
 
 // Document types offered when uploading a new chart (shared by the upload

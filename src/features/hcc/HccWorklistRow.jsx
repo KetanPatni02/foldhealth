@@ -579,7 +579,7 @@ const CELL_RENDERERS = {
       <HccEvidenceCell
         charts={charts}
         onClick={openChart}
-        onUpload={openUpload}
+        onUpload={() => openUpload(member)}
       />
     </td>
   ),
@@ -731,7 +731,8 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
   const [chartDetail, setChartDetail] = useState(null);
   const [actionsRect, setActionsRect] = useState(null);
   const addedCharts = useAppStore(s => s.hccAddedCharts[member.id]);
-  const charts = useMemo(() => getChartDocs(member, addedCharts || []), [member, addedCharts]);
+  const chartStatus = useAppStore(s => s.hccChartStatus[member.id]);
+  const charts = useMemo(() => getChartDocs(member, addedCharts || [], chartStatus || {}), [member, addedCharts, chartStatus]);
   const openChart = (e) => {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();

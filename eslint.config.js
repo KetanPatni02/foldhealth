@@ -43,8 +43,8 @@ export default defineConfig([globalIgnores(['dist']), {
         message: 'Use the -linear Solar icon variant, never -outline (outline uses heavier fill-based strokes). See CLAUDE.md.',
       },
       {
-        selector: "JSXOpeningElement[name.name='Icon'] JSXAttribute[name.name='name'] Literal[value=/^(?!solar:)[a-z]+:/]",
-        message: 'Use Solar (solar:*-linear) icons. Non-Solar icon sets are not part of the design system.',
+        selector: "JSXOpeningElement[name.name='Icon'] JSXAttribute[name.name='name'] Literal[value=/^(?!solar:|custom:)[a-z]+:/]",
+        message: 'Use Solar (solar:*-linear) icons, or a registered custom:* icon. Other icon sets are not part of the design system.',
       },
       // Filter badges must be consistent app-wide — use the shared
       // src/components/FilterChip. The `.+` prefix matches re-implementations

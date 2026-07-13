@@ -724,6 +724,21 @@ export const useAppStore = create((set, get) => ({
     set({ hccAddedCharts: map });
   },
 
+  // Per-document review status overrides (keyed by member id → doc id), set
+  // when a reviewer marks a chart Pass/Fail in the Document Available drawer.
+  // getChartDocs applies these so the worklist "Documents" evidence cell stays
+  // in sync with the drawer (All Passed / mixed / All Pending).
+  hccChartStatus: {},
+  setChartDocStatus: (memberId, docId, status) => {
+    if (!memberId || !docId) return;
+    set((state) => ({
+      hccChartStatus: {
+        ...state.hccChartStatus,
+        [memberId]: { ...(state.hccChartStatus[memberId] || {}), [docId]: status },
+      },
+    }));
+  },
+
   // Care Programs — enrolled programs are per-patient. A patient starts with
   // none; only programs a user explicitly adds are visible on their profile.
   careProgramsByPatient: {},
