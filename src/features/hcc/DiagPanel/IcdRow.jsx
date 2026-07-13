@@ -4,6 +4,7 @@ import { Icon } from '../../../components/Icon/Icon';
 import { Button } from '../../../components/Button/Button';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { getConfidence, getScoreStyle, getMeatNote, MEAT_NOTE_DATA } from '../data/confidence';
+import { reviewedByLabel } from '../reviewedBy';
 import styles from './IcdRow.module.css';
 
 // Type-badge color spec — Suspect blue, Recapture purple, Manual blue,
@@ -172,10 +173,10 @@ export function IcdRow({ icd }) {
           </span>
           <span className={styles.desc}>{icd.desc}</span>
         </div>
-        {(icd.by || icd.last) && (
+        {(reviewedByLabel(icd.by) || icd.last) && (
           <div className={styles.lastLine}>
-            {icd.by
-              ? `Last Reviewed by ${icd.by}${icd.last ? ' · ' + icd.last : ''}`
+            {reviewedByLabel(icd.by)
+              ? `Last Reviewed by ${reviewedByLabel(icd.by)}${icd.last ? ' · ' + icd.last : ''}`
               : `Last Recorded: ${icd.last}`}
           </div>
         )}

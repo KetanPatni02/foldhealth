@@ -8,7 +8,7 @@
 // oriented — HCC eligibility questions, DOS queries, coding decisions.
 export const COMMENTS = [
   { id: 'c1', author: 'Deborah Hintz',   role: 'Coder',        date: '06/01/2026', time: '12:30 PM', body: 'E11.21 supported by 04/18/2026 progress note — creatinine 1.8, ACR 320 mg/g documented. Accepting under HCC 37 (Diabetes with Chronic Complications).' },
-  { id: 'c2', author: 'M. Almeda',       role: 'Reviewer',     date: '06/02/2026', time: '09:15 AM', edited: true, body: 'Requesting supporting evidence for I50.9 → suggest confirming with recent BNP or echo. Note from 03/08/2026 mentions "history of CHF" only — MEAT criteria not clearly documented for this DOS.' },
+  { id: 'c2', author: 'M. Almeda',       role: 'QA',           date: '06/02/2026', time: '09:15 AM', edited: true, body: 'Requesting supporting evidence for I50.9 → suggest confirming with recent BNP or echo. Note from 03/08/2026 mentions "history of CHF" only — MEAT criteria not clearly documented for this DOS.' },
   { id: 'c3', author: 'A. Beauchamp',    role: 'Support Team', date: '06/03/2026', time: '02:45 PM', body: 'Records requested from PCP for I48.91 (a-fib). ECG report expected within 5 business days. Placing DOS on hold pending documentation.' },
 ];
 

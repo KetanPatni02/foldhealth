@@ -6,6 +6,7 @@ import { CheckIcon } from '../../../components/Icon/CheckIcon';
 import { CloseIcon } from '../../../components/Icon/CloseIcon';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { DismissReasonForm } from './DismissReasonForm';
+import { reviewedByLabel } from '../reviewedBy';
 import styles from './IcdDosCard.module.css';
 
 /**
@@ -112,9 +113,9 @@ export function IcdDosCard({ icd, focusKey, selectedKeys, onToggleSelect, openDi
               </span>
             )}
           </div>
-          {icd.by && (
+          {reviewedByLabel(icd.by) && (
             <div className={styles.lastLine}>
-              Last Reviewed by {icd.by} • {icd.last}
+              Last Reviewed by {reviewedByLabel(icd.by)} • {icd.last}
             </div>
           )}
         </div>
@@ -182,7 +183,6 @@ export function IcdDosCard({ icd, focusKey, selectedKeys, onToggleSelect, openDi
                 removeIcdDos(icd.code, entry.dos);
                 showToast(`Removed ${icd.code} on ${entry.dos}`);
               }}
-              showToast={showToast}
             />
           );
         })}
@@ -194,12 +194,13 @@ export function IcdDosCard({ icd, focusKey, selectedKeys, onToggleSelect, openDi
 function DosActionRow({
   rowKey, entry, icd, hccShort, action, meta, focused, selected, dismissOpen,
   onToggleSelect, onAccept, onOpenDismiss, onCloseDismiss, onConfirmDismiss,
-  onUndo, onMissed, onDefer, onRemoveDos, showToast,
+  onUndo, onMissed, onDefer, onRemoveDos,
 }) {
   const [menuPos, setMenuPos] = useState(null);
   const moreRef = useRef(null);
   // ICD accept/reject is a coding action — the Support role can't perform it.
   const canReview = useAppStore(s => s.hccUserRole) !== 'Support';
+  const openHccClaimForDos = useAppStore(s => s.openHccClaimForDos);
   const isManual = entry.manual || icd.type === 'Manual';
   const isAccepted = action === 'accepted';
   const isRejected = action === 'rejected';
@@ -242,7 +243,12 @@ function DosActionRow({
         <span className={styles.dosDate}>{entry.dos}</span>
         <span className={styles.hccChip}>{hccShort ? `${hccShort} (V28)` : 'No HCC'}</span>
         {entry.claimed && (
-          <button type="button" className={styles.claimLink} onClick={() => showToast?.('Opening claim preview — coming soon')}>
+          <button
+            type="button"
+            className={styles.claimLink}
+            onClick={(e) => { e.stopPropagation(); openHccClaimForDos(entry.dos); }}
+            title={`Open claim for DOS ${entry.dos}`}
+          >
             Claim
           </button>
         )}

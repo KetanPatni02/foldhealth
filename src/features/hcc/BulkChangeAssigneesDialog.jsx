@@ -194,7 +194,7 @@ export function BulkChangeAssigneesDialog({ open, selectedIds, onClose, onApplie
         </div>
 
         <div className={styles.field}>
-          <span className={styles.fieldLabel}>Select Reviewer</span>
+          <span className={styles.fieldLabel}>Select Role</span>
           <Select
             options={roleOptions}
             value={role}

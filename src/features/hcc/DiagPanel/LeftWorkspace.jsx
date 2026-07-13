@@ -3,7 +3,6 @@ import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Button } from '../../../components/Button/Button';
-import { Avatar } from '../../../components/Avatar/Avatar';
 import { Badge } from '../../../components/Badge/Badge';
 import { COMMENTS, DOCUMENTS, NOTES, CLAIMS, HISTORY } from '../data/ancillary';
 import { getChartDocs } from '../data/chartDocs';
@@ -186,7 +185,7 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
         {active === 'notes'     && <NotesTab     member={member} />}
         {active === 'claims'    && <ClaimsTab    member={member} />}
         {active === 'outreach'  && <OutreachTab  member={member} />}
-        {active === 'worklog'   && <WorklogTab   member={member} />}
+        {active === 'worklog'   && <WorklogTab   member={member} filters={filters} />}
         {active === 'history'   && <HistoryTab    member={member} />}
       </div>
     </div>
@@ -196,11 +195,11 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
 // Filter row chip-key sets per variant (Figma 1:45950 / 1:48023):
 //   • 'icd'     → Recorded By, Date
 //   • 'dos'     → DOS, HCC Code, ICD Code, Recorded By, Date  (+ Clear All)
-//   • 'worklog' → DOS only
+//   • 'worklog' → DOS, ICD Code, Recorded By, Date  (Figma 4728:151809)
 const FILTER_KEYS = {
   icd:     ['by', 'date'],
   dos:     ['dos', 'hcc', 'icd', 'by', 'date'],
-  worklog: ['dos'],
+  worklog: ['dos', 'icd', 'by', 'date'],
 };
 const FILTER_LABEL = {
   dos:  'DOS',
@@ -288,7 +287,6 @@ function FilterRow({ variant = 'icd', filters, options, onChange, onClearAll, tr
   const hasAny = keys.some(k => filters?.[k] != null && filters[k] !== '');
   return (
     <div className={styles.filterRow}>
-      <Icon name="solar:filter-linear" size={20} color="var(--neutral-300)" />
       <div className={styles.filterChips}>
         {keys.map((k) => (
           <FilterChip
@@ -672,11 +670,6 @@ function AvatarPill({ initials, name }) {
   );
 }
 
-// Two-letter initials from a "First Last" or "F. Last" name. Used by the
-// generic Avatar in the Comments / Notes / Documents / History list rows.
-const initialsOf = (name = '') =>
-  name.split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join('').toUpperCase();
-
 // ── Comments tab — Figma 1:53466 ─────────────────────────────────────────
 // Timeline view (NOT a card list) matching the Activity Log pattern: each
 // comment is a row with a chat-icon left rail + connector line, a meta line
@@ -940,7 +933,7 @@ function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId }
       date: c.dateAdded || '',
       time: '',
       uploadedBy: (c.addedBy || '').split(' (')[0] || 'System',
-      role: /(Support Team|Coder|Reviewer|QA)/.exec(c.addedBy || '')?.[1] || '',
+      role: /(Support Team|Coder|QA|Compliance)/.exec(c.addedBy || '')?.[1] || '',
       status: (c.status || 'pending').toLowerCase(),
       ext: extFromName(c.n || c.caption),
       pdf: c.pdf,
@@ -1485,10 +1478,37 @@ const CLAIM_STATUS_BADGE = {
   Rejected: 'status-failed',
 };
 
+// Find the claim for a given DOS, or synthesize one when the DOS has no row in
+// the mock CLAIMS list (claim-sourced DOSs on the worklist don't all live in
+// the small fixture). The synthesized claim carries a deterministic number so
+// re-opening the same DOS is stable.
+function claimForDos(dos) {
+  const match = CLAIMS.find((c) => c.dos === dos);
+  if (match) return match;
+  return {
+    id: `syn-${dos}`,
+    number: `CLM-${(dos || '').replace(/\D/g, '')}`,
+    dos,
+    amount: '—',
+    status: 'Billed',
+    date: dos,
+  };
+}
+
 function ClaimsTab({ member }) {
   // Clicking a claim opens its detail IN THIS SAME panel (Figma 10891:325889)
   // with a back arrow — no separate overlapping drawer.
   const [selected, setSelected] = useState(null);
+  // A DOS row's "Claim" link sets diagClaimDos; consume it once (clearing the
+  // flag) so the detail auto-opens and re-clicking the same DOS re-triggers.
+  const claimDos = useAppStore((s) => s.diagClaimDos);
+  const clearDiagClaimDos = useAppStore((s) => s.clearDiagClaimDos);
+  useEffect(() => {
+    if (claimDos) {
+      setSelected(claimForDos(claimDos));
+      clearDiagClaimDos();
+    }
+  }, [claimDos, clearDiagClaimDos]);
 
   if (selected) {
     return <ClaimDetail member={member} claim={selected} onBack={() => setSelected(null)} />;
@@ -1667,17 +1687,25 @@ function OutreachTab({ member }) {
 }
 
 // ── Worklog tab (DOS-level) ──────────────────────────────────────────────
-// Table of every ICD on the selected DOS × work done by each Coder / Reviewer /
-// Reviewer 2 (Support intentionally excluded — Figma 42:368051). "Reviewer 3"
-// does not exist. Cells show a ✓ + the person + date once a role has acted,
-// or "—" while still pending.
-const WORKLOG_ROLES = ['Coder', 'Reviewer', 'Reviewer 2'];
+// Table of every ICD on the selected DOS × work done by each role. Support
+// handles the document-review step (recorded as "(Support Team)" in the data);
+// Coder / QA / Compliance perform the ICD review. Cells show a ✓ + the person +
+// date once a role has acted, or "—" while still pending (Figma 4728:151809).
+const WORKLOG_ROLES = ['Support', 'Coder', 'QA', 'Compliance'];
+
+// Map the "(Role)" token embedded in a `by` string to a worklog column index.
+// Support activity is recorded as "(Support Team)"; every other role matches
+// its column label directly.
+function roleTokenToIndex(token = '') {
+  const t = token.trim();
+  if (t === 'Support' || t === 'Support Team') return 0;
+  return WORKLOG_ROLES.indexOf(t);
+}
 
 // Parse the trailing "(Role)" off an ICD's `by` field → role index, or -1.
 function roleIndexFromBy(by = '') {
   const m = by.match(/\(([^)]+)\)/);
-  const role = (m?.[1] || '').trim();
-  return WORKLOG_ROLES.indexOf(role);
+  return roleTokenToIndex(m?.[1] || '');
 }
 
 function nameFromBy(by = '') {
@@ -1691,13 +1719,27 @@ function reachedRole(icd) {
   return roleIndexFromBy(icd.by);
 }
 
-function WorklogTab({ member }) {
-  const icds = getIcdsForMember(member?.name);
+function WorklogTab({ member, filters = {} }) {
+  const all = getIcdsForMember(member?.name);
+  // Filter chips (ICD Code / Recorded By / Date) narrow the row set. DOS is a
+  // context chip — the fixture isn't partitioned by DOS.
+  const icds = all.filter((i) => {
+    if (filters.icd && i.code !== filters.icd) return false;
+    if (filters.by && nameFromBy(i.by) !== filters.by) return false;
+    if (filters.date) {
+      const d = parseEntryDate(i.last);
+      if (!d || !matchesDatePreset(d, filters.date)) return false;
+    }
+    return true;
+  });
   const open = icds.filter((i) => i.status !== 'Accepted' && i.status !== 'Dismissed');
   const closed = icds.filter((i) => i.status === 'Accepted' || i.status === 'Dismissed');
 
-  if (!icds.length) {
+  if (!all.length) {
     return <Empty label="No ICDs recorded for this DOS." />;
+  }
+  if (!icds.length) {
+    return <Empty label="No ICDs match the current filters." />;
   }
 
   const renderRows = (rows) => rows.map((icd) => {
@@ -1707,6 +1749,8 @@ function WorklogTab({ member }) {
       <tr key={icd.code} className={styles.wlRow}>
         <td className={styles.wlIcd}>
           <span className={styles.wlCode}>{icd.code}</span>
+        </td>
+        <td className={styles.wlDescCol}>
           <span className={styles.wlDesc}>{icd.desc}</span>
         </td>
         {WORKLOG_ROLES.map((role, ri) => {
@@ -1716,19 +1760,14 @@ function WorklogTab({ member }) {
             <td key={role} className={styles.wlCell}>
               {done ? (
                 <div className={styles.wlDone}>
-                  <Icon name="solar:check-read-linear" size={12} color="var(--status-success)" />
+                  <span className={styles.wlCheckBadge}>
+                    <Icon name="solar:check-read-linear" size={12} color="var(--status-success)" />
+                  </span>
                   {isActor && (
-                    <>
-                      <Avatar
-                        variant="provider"
-                        size={24}
-                        initials={initialsOf(nameFromBy(icd.by))}
-                      />
-                      <span className={styles.wlDoneText}>
-                        <span className={styles.wlWho}>{nameFromBy(icd.by)}</span>
-                        <span className={styles.wlWhen}>{icd.last}</span>
-                      </span>
-                    </>
+                    <span className={styles.wlDoneText}>
+                      <span className={styles.wlWho}>{nameFromBy(icd.by)}</span>
+                      <span className={styles.wlWhen}>{icd.last}</span>
+                    </span>
                   )}
                 </div>
               ) : (
@@ -1748,19 +1787,20 @@ function WorklogTab({ member }) {
           <thead>
             <tr>
               <th className={styles.wlIcdHead}>ICD Code</th>
+              <th className={styles.wlDescHead}>Description</th>
               {WORKLOG_ROLES.map((r) => <th key={r}>{r}</th>)}
             </tr>
           </thead>
           <tbody>
             {open.length > 0 && (
               <>
-                <tr className={styles.wlGroupRow}><td colSpan={WORKLOG_ROLES.length + 1}>Open ICDs</td></tr>
+                <tr className={styles.wlGroupRow}><td colSpan={WORKLOG_ROLES.length + 2}>Open ICD's</td></tr>
                 {renderRows(open)}
               </>
             )}
             {closed.length > 0 && (
               <>
-                <tr className={styles.wlGroupRow}><td colSpan={WORKLOG_ROLES.length + 1}>Closed ICDs</td></tr>
+                <tr className={styles.wlGroupRow}><td colSpan={WORKLOG_ROLES.length + 2}>Closed ICD's</td></tr>
                 {renderRows(closed)}
               </>
             )}

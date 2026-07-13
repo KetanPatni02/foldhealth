@@ -64,8 +64,8 @@ export const ROLES = ['support', 'coder', 'reviewer', 'reviewer2'];
 export const ROLE_LABEL = {
   support:   'Support',
   coder:     'Coder',
-  reviewer:  'Reviewer',
-  reviewer2: 'Reviewer 2',
+  reviewer:  'QA',
+  reviewer2: 'Compliance',
 };
 
 export function staffById(id) { return _byId[id] || null; }

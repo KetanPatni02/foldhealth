@@ -286,7 +286,7 @@ export function ConfigureTeamDrawer({ kind = 'hcc', editTeam = null, onClose }) 
               value={name}
               maxLength={NAME_MAX}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Reviewer 2 Team"
+              placeholder="e.g. Compliance Team"
             />
             <span className={drawerStyles.charCounter}>
               {name.length}/{NAME_MAX}

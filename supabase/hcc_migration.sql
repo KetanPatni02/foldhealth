@@ -459,7 +459,7 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Frank Green', 'I50.9', 'Heart failure, unspecified', 'HCC 85 - Congestive Heart Failure', 'Accepted', NULL,
   2, 1, 0, 0.331,
-  '09/28/2026', 'L. Schmidt (Reviewer 1)', NULL, true
+  '09/28/2026', 'L. Schmidt (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Frank Green', 'E11.9', 'Type 2 DM w/o complications', 'HCC 18 - Diabetes w/ Complications', 'New', NULL,
@@ -474,7 +474,7 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Brian Carter', 'F32.1', 'Major depressive disorder, single episode', 'HCC 58 - Major Depression', 'Accepted', NULL,
   2, 0, 1, 0.309,
-  '11/29/2026', 'M. Almeda (Reviewer 1)', NULL, true
+  '11/29/2026', 'M. Almeda (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Brian Carter', 'E11.65', 'Type 2 DM with hyperglycemia', 'HCC 18 - Diabetes w/ Complications', 'Accepted', NULL,
@@ -504,7 +504,7 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'David Evans', 'G35', 'Multiple sclerosis', 'HCC 77 - Multiple Sclerosis', 'New', NULL,
   1, 0, 0, 0.455,
-  '03/08/2026', 'E. Fortier (Reviewer 1)', NULL, true
+  '03/08/2026', 'E. Fortier (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'David Evans', 'I48.0', 'Paroxysmal atrial fibrillation', 'HCC 96 - Atrial Fibrillation', 'New', NULL,
@@ -514,7 +514,7 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'David Evans', 'N18.5', 'Chronic kidney disease, stage 5', 'HCC 27 - End-Stage Renal Disease', 'Accepted', NULL,
   2, 0, 1, 0.65,
-  '03/08/2026', 'E. Fortier (Reviewer 1)', NULL, true
+  '03/08/2026', 'E. Fortier (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Grace Hill', 'E11.21', 'Type 2 diabetes with diabetic nephropathy', 'HCC 18 - Diabetes w/ Complications', 'New', NULL,
@@ -529,7 +529,7 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Grace Hill', 'I48.0', 'Paroxysmal atrial fibrillation', 'HCC 96 - Atrial Fibrillation', 'Accepted', NULL,
   1, 0, 1, 0.421,
-  '01/15/2026', 'B. Olafson (Reviewer 1)', NULL, true
+  '01/15/2026', 'B. Olafson (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Grace Hill', 'N18.3', 'Chronic kidney disease, stage 3', 'HCC 27 - End-Stage Renal Disease', 'New', NULL,
@@ -584,7 +584,7 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'William Jammy', 'I48.91', 'Unspecified atrial fibrillation', 'HCC 96 - Atrial Fibrillation', 'Accepted', NULL,
   1, 0, 0, 0.421,
-  '07/04/2026', 'N. Richards (Reviewer 2)', NULL, true
+  '07/04/2026', 'N. Richards (Compliance)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'William Jammy', 'J44.0', 'COPD with acute lower respiratory infection', 'HCC 111 - COPD', 'New', NULL,
@@ -644,12 +644,12 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'James Walker', 'F32.1', 'Major depressive disorder, single episode', 'HCC 58 - Major Depression', 'New', 'Suspect',
   1, 0, 0, 0.309,
-  '01/22/2026', 'M. Almeda (Reviewer 1)', NULL, true
+  '01/22/2026', 'M. Almeda (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'James Walker', 'N18.3', 'Chronic kidney disease, stage 3', 'HCC 27 - End-Stage Renal Disease', 'Accepted', NULL,
   1, 1, 0, 0.184,
-  '01/22/2026', 'M. Almeda (Reviewer 1)', NULL, true
+  '01/22/2026', 'M. Almeda (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Helen Park', 'E11.22', 'Type 2 diabetes with diabetic chronic kidney disease', 'HCC 18 - Diabetes w/ Complications', 'New', NULL,
@@ -684,7 +684,7 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Thomas Reed', 'F33.1', 'Major depressive disorder, recurrent, moderate', 'HCC 58 - Major Depression', 'New', NULL,
   1, 0, 0, 0.309,
-  '02/28/2026', 'B. Olafson (Reviewer 1)', NULL, true
+  '02/28/2026', 'B. Olafson (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Thomas Reed', 'E66.01', 'Morbid (severe) obesity due to excess calories', 'HCC 22 - Morbid Obesity', 'Dismissed', NULL,
@@ -729,7 +729,7 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Michael Ortiz', 'G47.33', 'Obstructive sleep apnea', 'HCC 86 - Sleep Apnea', 'New', NULL,
   1, 0, 0, 0.164,
-  '04/25/2026', 'E. Fortier (Reviewer 1)', NULL, true
+  '04/25/2026', 'E. Fortier (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Michael Ortiz', 'M79.3', 'Panniculitis, unspecified', 'HCC 40 - Rheumatoid Arthritis', 'Dismissed', NULL,
@@ -784,7 +784,7 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Dorothy Nguyen', 'M06.00', 'Rheumatoid arthritis, unspecified, unspecified site', 'HCC 40 - Rheumatoid Arthritis', 'New', 'Suspect',
   1, 1, 0, 0.421,
-  '08/12/2026', 'N. Richards (Reviewer 2)', NULL, true
+  '08/12/2026', 'N. Richards (Compliance)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Richard Scott', 'G47.33', 'Obstructive sleep apnea', 'HCC 86 - Sleep Apnea', 'New', 'Suspect',
@@ -809,7 +809,7 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Sandra Lee', 'I48.91', 'Unspecified atrial fibrillation', 'HCC 96 - Atrial Fibrillation', 'New', NULL,
   1, 1, 0, 0.421,
-  '10/18/2026', 'M. Almeda (Reviewer 1)', NULL, true
+  '10/18/2026', 'M. Almeda (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Sandra Lee', 'M06.00', 'Rheumatoid arthritis, unspecified, unspecified site', 'HCC 40 - Rheumatoid Arthritis', 'New', NULL,
@@ -874,7 +874,7 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Daniel Martinez', 'F33.1', 'Major depressive disorder, recurrent, moderate', 'HCC 58 - Major Depression', 'New', NULL,
   1, 0, 0, 0.309,
-  '01/30/2026', 'B. Olafson (Reviewer 1)', NULL, true
+  '01/30/2026', 'B. Olafson (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Daniel Martinez', 'I70.201', 'Atherosclerosis of native arteries of extremities, right leg', 'HCC 108 - Vascular Disease', 'Accepted', NULL,
@@ -914,7 +914,7 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Christopher Thompson', 'I48.0', 'Paroxysmal atrial fibrillation', 'HCC 96 - Atrial Fibrillation', 'Accepted', NULL,
   1, 0, 1, 0.421,
-  '03/20/2026', 'E. Fortier (Reviewer 1)', NULL, true
+  '03/20/2026', 'E. Fortier (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Christopher Thompson', 'G47.33', 'Obstructive sleep apnea', 'HCC 86 - Sleep Apnea', 'New', 'Suspect',
@@ -964,7 +964,7 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Matthew Harris', 'I48.91', 'Unspecified atrial fibrillation', 'HCC 96 - Atrial Fibrillation', 'Accepted', NULL,
   1, 0, 0, 0.421,
-  '05/05/2026', 'M. Almeda (Reviewer 1)', NULL, true
+  '05/05/2026', 'M. Almeda (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Matthew Harris', 'E66.01', 'Morbid (severe) obesity due to excess calories', 'HCC 22 - Morbid Obesity', 'New', NULL,
@@ -999,12 +999,12 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Andrew Lewis', 'I48.0', 'Paroxysmal atrial fibrillation', 'HCC 96 - Atrial Fibrillation', 'New', NULL,
   1, 1, 0, 0.421,
-  '07/22/2026', 'K. Patel (Reviewer 2)', NULL, true
+  '07/22/2026', 'K. Patel (Compliance)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Andrew Lewis', 'F33.1', 'Major depressive disorder, recurrent, moderate', 'HCC 58 - Major Depression', 'Accepted', NULL,
   1, 0, 0, 0.309,
-  '07/22/2026', 'K. Patel (Reviewer 2)', NULL, true
+  '07/22/2026', 'K. Patel (Compliance)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Andrew Lewis', 'E66.01', 'Morbid (severe) obesity due to excess calories', 'HCC 22 - Morbid Obesity', 'New', 'Suspect',

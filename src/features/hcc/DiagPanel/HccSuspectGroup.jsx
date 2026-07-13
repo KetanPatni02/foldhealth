@@ -6,6 +6,7 @@ import { CheckIcon } from '../../../components/Icon/CheckIcon';
 import { Button } from '../../../components/Button/Button';
 import { useIcdSearch } from '../../../lib/icd/useIcdSearch';
 import { DismissReasonForm } from './DismissReasonForm';
+import { reviewedByLabel } from '../reviewedBy';
 import styles from './HccSuspectGroup.module.css';
 
 /**
@@ -93,8 +94,8 @@ export function SuspectCard({ icd, dosList = [], member }) {
             desc={desc}
             onSelect={(picked) => setOverride({ code: picked.code, desc: picked.title || picked.desc || '' })}
           />
-          {icd.by && (
-            <div className={styles.lastLine}>Last Reviewed by {icd.by} • {icd.last}</div>
+          {reviewedByLabel(icd.by) && (
+            <div className={styles.lastLine}>Last Reviewed by {reviewedByLabel(icd.by)} • {icd.last}</div>
           )}
         </div>
         <span className={styles.counters}>

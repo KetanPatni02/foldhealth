@@ -23,6 +23,7 @@ import * as hccLifecycle from '../features/hcc/assignment/lifecycle';
 import { hydrateFromMember, dosKey as hccDosKey } from '../features/hcc/assignment/dosState';
 import { DEFAULT_SAMPLING_RATES } from '../features/hcc/assignment/sampling';
 import { staffById as hccStaffById } from '../features/hcc/assignment/astranaStaff';
+import { normalizeReviewerLabel as hccNormalizeReviewerLabel } from '../features/hcc/reviewedBy';
 import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activityLog';
 
 // Persist a single HCC role's status (and optionally name) to Supabase.
@@ -283,8 +284,8 @@ const HCC_TRANSITION_LABEL = {
   completeCoder:         'Coding Completed',
   requestRecords:        'Records Requested',
   recordsReceived:       'Records Received',
-  completeReviewer:      'Reviewer Completed',
-  completeReviewer2:     'Reviewer 2 Completed',
+  completeReviewer:      'QA Completed',
+  completeReviewer2:     'Compliance Completed',
   returnDos:             'DOS Returned',
   reassignRole:          'Role Reassigned',
 };
@@ -2680,7 +2681,7 @@ export const useAppStore = create((set, get) => ({
       notes: row.notes_count,
       raf: row.raf_weight,
       last: row.last_activity,
-      by: row.last_activity_by,
+      by: hccNormalizeReviewerLabel(row.last_activity_by),
       dismissReason: row.dismiss_reason,
       isLinked: row.is_linked,
     }));
@@ -3473,7 +3474,7 @@ export const useAppStore = create((set, get) => ({
   // toolbar Activity Log icon always resets this to null.
   diagActivityIcd: null,
   // Toolbar entry points reset the ICD scope (they're DOS-level actions).
-  setDiagLeftPanel: (panel) => set({ diagLeftPanel: panel, diagActivityIcd: null }),
+  setDiagLeftPanel: (panel) => set({ diagLeftPanel: panel, diagActivityIcd: null, diagClaimDos: null }),
   // Switching tabs WITHIN the left panel preserves the current scope
   // (DOS-level stays DOS-level; ICD-level stays scoped to its code).
   setDiagTab: (panel) => set({ diagLeftPanel: panel }),
@@ -3483,6 +3484,13 @@ export const useAppStore = create((set, get) => ({
   // Documents / Comments / Notes count buttons in IcdRow).
   openIcdPanel: (panel, code) => set({ diagLeftPanel: panel, diagActivityIcd: code || null }),
   clearDiagActivityIcd: () => set({ diagActivityIcd: null }),
+
+  // When a DOS row's "Claim" link is clicked, open the Claims tab in the left
+  // workspace and auto-expand that DOS's claim detail. Consumed once by the
+  // ClaimsTab effect (which clears it), so re-clicking the same DOS re-opens.
+  diagClaimDos: null,
+  openHccClaimForDos: (dos) => set({ diagLeftPanel: 'claims', diagActivityIcd: null, diagClaimDos: dos || null }),
+  clearDiagClaimDos: () => set({ diagClaimDos: null }),
 
   // Documents tab — inline uploader widget toggle. Replaces the old drawer
   // open for the in-drawer Upload button (Figma 278:162482).
@@ -3521,11 +3529,11 @@ export const useAppStore = create((set, get) => ({
   // fallback path needed in the panel).
   hccCareTeams: [
     {
-      id: 'seed-rt1', name: 'Reviewer Team', kind: 'hcc',          teamType: 'Reviewer',
+      id: 'seed-rt1', name: 'QA Team', kind: 'hcc',          teamType: 'QA',
       allocatedTins: ['12-3456789'], createdAt: '02/21/2026', createdBy: 'Dina Morries',
       lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson',
       members: [
-        { userId: 'MA', name: 'M. Almeda',   initials: 'MA', roles: 'Reviewer', capacityPct: 50, assignTo: [{ dim: 'Coder', value: 'DH', pct: 50 }] },
+        { userId: 'MA', name: 'M. Almeda',   initials: 'MA', roles: 'QA', capacityPct: 50, assignTo: [{ dim: 'Coder', value: 'DH', pct: 50 }] },
       ],
     },
     {
@@ -4806,7 +4814,7 @@ export const useAppStore = create((set, get) => ({
     diagActivityIcd: null,
     diagViewMode: 'ICD',
   }),
-  closeDiagPanel: () => set({ diagPanelOpen: false, diagPanelMemberId: null, diagLeftPanel: null, diagActivityIcd: null }),
+  closeDiagPanel: () => set({ diagPanelOpen: false, diagPanelMemberId: null, diagLeftPanel: null, diagActivityIcd: null, diagClaimDos: null }),
   setDiagActiveTab: (tab) => set({ diagActiveTab: tab }),
   setDiagDosFilter: (dos) => set({ diagDosFilter: dos }),
   setDiagViewMode: (mode) => set({ diagViewMode: mode }),
