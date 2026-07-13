@@ -157,6 +157,8 @@ function DosActionRow({
 }) {
   const [menuPos, setMenuPos] = useState(null);
   const moreRef = useRef(null);
+  // ICD accept/reject is a coding action — the Support role can't perform it.
+  const canReview = useAppStore(s => s.hccUserRole) !== 'Support';
   const isManual = entry.manual || icd.type === 'Manual';
   const isAccepted = action === 'accepted';
   const isRejected = action === 'rejected';
@@ -241,14 +243,21 @@ function DosActionRow({
             </>
           ) : (
             <>
-              <button type="button" className={styles.acceptBtn} aria-label="Accept" title="Accept (A)" onClick={onAccept}>
+              <button
+                type="button"
+                className={[styles.acceptBtn, canReview ? '' : styles.disabledAction].filter(Boolean).join(' ')}
+                aria-label="Accept" title={canReview ? 'Accept (A)' : 'Accept'}
+                disabled={!canReview}
+                onClick={canReview ? onAccept : undefined}
+              >
                 <CheckIcon size={15} color="currentColor" />
               </button>
               <button
                 type="button"
-                className={[styles.rejectBtn, dismissOpen ? styles.rejectBtnActive : ''].filter(Boolean).join(' ')}
-                aria-label="Reject" title="Reject (X)"
-                onClick={dismissOpen ? onCloseDismiss : onOpenDismiss}
+                className={[styles.rejectBtn, dismissOpen ? styles.rejectBtnActive : '', canReview ? '' : styles.disabledAction].filter(Boolean).join(' ')}
+                aria-label="Reject" title={canReview ? 'Reject (X)' : 'Reject'}
+                disabled={!canReview}
+                onClick={!canReview ? undefined : (dismissOpen ? onCloseDismiss : onOpenDismiss)}
               >
                 <CloseIcon size={13} color="currentColor" />
               </button>

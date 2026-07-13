@@ -724,6 +724,30 @@ export const useAppStore = create((set, get) => ({
     set({ hccAddedCharts: map });
   },
 
+  // Per-document review status overrides (keyed by member id → doc id), set
+  // when a reviewer marks a chart Pass/Fail in the Document Available drawer.
+  // getChartDocs applies these so the worklist "Documents" evidence cell stays
+  // in sync with the drawer (All Passed / mixed / All Pending).
+  // Active HCC reviewer role gates role-specific behaviour (only Support gets
+  // the actionable document drawer + document Pass/Fail; Coder/QA/Compliance
+  // get a read-only Document Preview and can accept/reject ICDs). This lived on
+  // my branch as `hccRole`; foldhealth/main already has the canonical,
+  // localStorage-backed `hccUserRole` (below), so mine is commented out per the
+  // merge-resolution instruction and all consumers use hccUserRole.
+  // hccRole: 'Coder',
+  // setHccRole: (role) => set({ hccRole: role }),
+
+  hccChartStatus: {},
+  setChartDocStatus: (memberId, docId, status) => {
+    if (!memberId || !docId) return;
+    set((state) => ({
+      hccChartStatus: {
+        ...state.hccChartStatus,
+        [memberId]: { ...(state.hccChartStatus[memberId] || {}), [docId]: status },
+      },
+    }));
+  },
+
   // Care Programs — enrolled programs are per-patient. A patient starts with
   // none; only programs a user explicitly adds are visible on their profile.
   careProgramsByPatient: {},

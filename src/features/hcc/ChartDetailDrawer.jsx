@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Button } from '../../components/Button/Button';
-import { Dropzone } from '../../components/Dropzone/Dropzone';
+import { UploadDropField } from '../../components/UploadDropField/UploadDropField';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
 import { useAppStore } from '../../store/useAppStore';
 import { DocEvidenceViewer } from './DiagPanel/DocEvidenceViewer';
@@ -154,6 +154,7 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   const [actionPos, setActionPos] = useState(null);
   const showToast = useAppStore(s => s.showToast);
   const addChartDoc = useAppStore(s => s.addChartDoc);
+  const setChartDocStatus = useAppStore(s => s.setChartDocStatus);
 
   // Inline "Upload" panel (opened from the Upload link in the assoc row).
   // Mirrors the Add DOS drawer's upload states: Dropzone → uploading progress
@@ -162,8 +163,7 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   const [upFile, setUpFile] = useState(null);
   const [upCaption, setUpCaption] = useState('');
   const [upType, setUpType] = useState('');
-  const [upProc, setUpProc] = useState(null); // null | { name, sizeLabel, progress }
-  const [uploaded, setUploaded] = useState(false);
+  const [uploadKey, setUploadKey] = useState(0); // remount UploadDropField to reset it
   useEffect(() => {
     if (!actionPos) return;
     const onDoc = (e) => {
@@ -172,16 +172,6 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
   }, [actionPos]);
-  // Drive the fake upload progress (0→100), then flip to the uploaded state.
-  useEffect(() => {
-    if (!upProc) return undefined;
-    if (upProc.progress < 100) {
-      const t = setTimeout(() => setUpProc(p => (p ? { ...p, progress: Math.min(100, p.progress + 12) } : p)), 100);
-      return () => clearTimeout(t);
-    }
-    const t = setTimeout(() => { setUpProc(null); setUploaded(true); }, 250);
-    return () => clearTimeout(t);
-  }, [upProc]);
 
   if (docs.length === 0) return null;
 
@@ -195,9 +185,11 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   };
 
   const reviewerName = selectedSupport?.name || member?.sup || 'D Morris';
-  const passDoc = (id) => { setDocActions(a => ({ ...a, [id]: 'pass' })); showToast('Support Task is Completed'); };
-  const failDoc = (id) => setDocActions(a => ({ ...a, [id]: 'fail' }));
-  const undoDoc = (id) => setDocActions(a => { const n = { ...a }; delete n[id]; return n; });
+  // Pass/Fail also writes the doc's status through to the store so the
+  // worklist "Documents" evidence cell stays in sync (All Passed / mixed).
+  const passDoc = (id) => { setDocActions(a => ({ ...a, [id]: 'pass' })); setChartDocStatus(member.id, id, 'Passed'); showToast('Support Task is Completed'); };
+  const failDoc = (id) => { setDocActions(a => ({ ...a, [id]: 'fail' })); setChartDocStatus(member.id, id, 'Failed'); };
+  const undoDoc = (id) => { setDocActions(a => { const n = { ...a }; delete n[id]; return n; }); setChartDocStatus(member.id, id, 'Pending'); };
 
   const effectiveStatus = manualStatus || deriveStatus(docs, docActions);
   const currentStatus = STATUS_OPTIONS.find(s => s.key === effectiveStatus) || STATUS_OPTIONS[0];
@@ -210,19 +202,15 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
 
   const gender = member?.g === 'F' ? 'Female' : 'Male';
   const overdue = /overdue/i.test(member?.due || '');
-  const selectedPassed = docActions[selected.id] === 'pass';
+  // Only surface the "Completed Document Review Task" banner when the overall
+  // status is Completed — not when it's manually set to anything else.
+  const showReviewBanner = effectiveStatus === 'completed';
 
   const resetUpload = () => {
     setShowUpload(false); setUpFile(null); setUpCaption(''); setUpType('');
-    setUpProc(null); setUploaded(false);
+    setUploadKey(k => k + 1);
   };
-  const clearUploadFile = () => { setUpFile(null); setUpProc(null); setUploaded(false); };
-  const onPickUpload = (file) => {
-    setUpFile(file);
-    setUploaded(false);
-    setUpProc({ name: file.name, sizeLabel: `${(file.size / 1e6).toFixed(1)}MB`, progress: 0 });
-  };
-  const canSaveUpload = !!(uploaded && upFile && upCaption.trim() && upType);
+  const canSaveUpload = !!(upFile && upCaption.trim() && upType);
   const saveUpload = () => {
     if (!canSaveUpload) return;
     addChartDoc(member.id, makeUploadedChartDoc(member, { file: upFile, caption: upCaption, docType: upType }), upFile);
@@ -328,7 +316,7 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
               </div>
             </div>
 
-            {selectedPassed && (
+            {showReviewBanner && (
               <div className={styles.passBanner}>
                 <Icon name="solar:info-circle-linear" size={16} color="var(--status-success)" />
                 <span>{reviewerName} Completed Document Review Task on {member?.date || '—'}.</span>
@@ -352,59 +340,7 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
 
               {showUpload && (
                 <div className={styles.uploadPanel}>
-                  {upProc ? (
-                    <div className={styles.procCard}>
-                      <div className={styles.procRow}>
-                        <span className={styles.procIcon}>
-                          <Icon name="solar:file-text-linear" size={16} color="var(--neutral-400)" />
-                        </span>
-                        <div className={styles.procMeta}>
-                          <div className={styles.procName}>{upProc.name}</div>
-                          <div className={styles.procSub}>
-                            <span>{upProc.sizeLabel}</span>
-                            <span>•</span>
-                            <span className={styles.procStatus}>
-                              <span className={styles.procSpin}><Icon name="solar:refresh-linear" size={13} /></span>
-                              Uploading...
-                            </span>
-                          </div>
-                        </div>
-                        <button type="button" className={styles.procCancel} onClick={clearUploadFile} aria-label="Cancel upload">
-                          <Icon name="solar:close-circle-linear" size={16} color="var(--neutral-400)" />
-                        </button>
-                      </div>
-                      <div className={styles.progressTrack}>
-                        <div className={styles.progressFill} style={{ width: `${upProc.progress}%` }} />
-                      </div>
-                    </div>
-                  ) : uploaded && upFile ? (
-                    <div className={styles.uplCard}>
-                      <span className={styles.uplIcon}>
-                        <Icon name="solar:document-text-linear" size={16} color="var(--primary-300)" />
-                      </span>
-                      <div className={styles.uplMeta}>
-                        <div className={styles.uplName}>{upFile.name}</div>
-                        <div className={styles.uplSub}>
-                          <span>{`${(upFile.size / 1e6).toFixed(1)}MB`}</span>
-                          <span>•</span>
-                          <span className={styles.uplDone}>
-                            <Icon name="solar:check-circle-bold" size={12} color="var(--status-success)" /> Uploaded just now
-                          </span>
-                        </div>
-                      </div>
-                      <button type="button" className={styles.uplAction} onClick={clearUploadFile} aria-label="Remove file">
-                        <Icon name="solar:trash-bin-trash-linear" size={15} color="var(--neutral-400)" />
-                      </button>
-                    </div>
-                  ) : (
-                    <Dropzone
-                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                      helperText="Supported formats: PDF, DOC, JPG, or PNG"
-                      secondaryText="Max size: 100 MB"
-                      icon="solar:upload-minimalistic-linear"
-                      onPick={onPickUpload}
-                    />
-                  )}
+                  <UploadDropField key={uploadKey} onChange={setUpFile} />
                   <div className={styles.uploadField}>
                     <span className={styles.uploadLabel}>Caption<span className={styles.uploadReq} aria-hidden="true" /></span>
                     <input
@@ -447,7 +383,9 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
                     onClick={() => setSelectedId(d.id)}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedId(d.id); } }}
                   >
-                    <span className={styles.docThumb} aria-hidden="true">PDF</span>
+                    <span className={styles.docThumb} aria-hidden="true">
+                      <Icon name="custom:pdf-file" size={20} color="var(--neutral-400)" />
+                    </span>
                     <div className={styles.docCardText}>
                       <span className={styles.docName}>{d.caption || d.n}</span>
                       <span className={styles.docMeta}>

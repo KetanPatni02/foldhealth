@@ -534,9 +534,11 @@ export function DiagPanel() {
       } else if (/^[axmd]$/i.test(key)) {
         const focused = rowKeys[Math.min(focusIdx, rowKeys.length - 1)];
         if (!focused) return;
+        const k = key.toLowerCase();
+        // Support can't accept/reject ICDs — ignore the A / X shortcuts.
+        if ((k === 'a' || k === 'x') && useAppStore.getState().hccUserRole === 'Support') return;
         e.preventDefault();
         const [code, dos] = focused.split('|');
-        const k = key.toLowerCase();
         if (k === 'x') {
           // Reject opens the dismiss-reason form for the focused row
           // (Figma: X → reason picker, not a silent dismiss). Advance happens

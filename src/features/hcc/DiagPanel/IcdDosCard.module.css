@@ -184,6 +184,14 @@
   border-color: var(--primary-300);
   color: var(--primary-300);
 }
+/* Support role can't accept/reject ICDs — inert neutral tick/cross. */
+.disabledAction,
+.disabledAction:hover {
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-200);
+  color: var(--neutral-200);
+  cursor: not-allowed;
+}
 
 /* Resolved-state pills (Figma ICD-Import: Accepted / Dismissed / Missed / Deferred) */
 .acceptedPill,
