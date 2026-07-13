@@ -2338,6 +2338,50 @@ export const useAppStore = create((set, get) => ({
       'Transitional Care Management (TCM) Visit',
       'Chronic Care Management (CCM)',
     ];
+    // Clinical Place-of-Service code + description per Visit Type. Real CMS
+    // POS codes — a healthcare pro would immediately flag a Telehealth visit
+    // billed as POS 11 (Office). This map is the single source of truth so
+    // the DOS-level cells, filter buckets and per-DOS drill-downs all agree.
+    const POS_BY_VT = {
+      'AWV - Annual Wellness Visit':               { code: '11', desc: 'Office' },
+      'IPPE - Initial Preventive Physical Exam':   { code: '11', desc: 'Office' },
+      'Annual Physical Exam':                       { code: '11', desc: 'Office' },
+      'New Patient Office Visit':                   { code: '11', desc: 'Office' },
+      'Established Patient Office Visit':           { code: '11', desc: 'Office' },
+      'Telehealth Visit':                           { code: '02', desc: 'Telehealth (Patient Home)' },
+      'Specialist Visit / Consult':                 { code: '22', desc: 'On Campus-Outpatient Hospital' },
+      'ER Visit':                                   { code: '23', desc: 'Emergency Room - Hospital' },
+      'Inpatient Visit / Admission':                { code: '21', desc: 'Inpatient Hospital' },
+      'Observation Visit':                          { code: '22', desc: 'On Campus-Outpatient Hospital' },
+      'Skilled Nursing Facility Visit':             { code: '31', desc: 'Skilled Nursing Facility' },
+      'Home Visit':                                 { code: '12', desc: 'Home' },
+      'Hospice Visit':                              { code: '34', desc: 'Hospice' },
+      'Lab/Imaging Order':                          { code: '81', desc: 'Independent Laboratory' },
+      'Transitional Care Management (TCM) Visit':   { code: '11', desc: 'Office' },
+      'Chronic Care Management (CCM)':              { code: '11', desc: 'Office' },
+    };
+    // Specialty-appropriate provider pools per Visit Type — an ER encounter
+    // should be attributed to an emergency physician, hospice care to a
+    // palliative-care lead, etc. Pool size ≥2 so multiple records don't all
+    // share one name.
+    const PROVIDER_POOL_BY_VT = {
+      'AWV - Annual Wellness Visit':               ['Dr. Sarah Chen (Family Medicine)',   'Dr. Priya Ramesh (Internal Medicine)',   'Dr. James Okafor (Family Medicine)'],
+      'IPPE - Initial Preventive Physical Exam':   ['Dr. Priya Ramesh (Internal Medicine)','Dr. Sarah Chen (Family Medicine)',       'Dr. Nadia Rahman (Family Medicine)'],
+      'Annual Physical Exam':                       ['Dr. James Okafor (Family Medicine)', 'Dr. Nadia Rahman (Family Medicine)',     'Dr. Priya Ramesh (Internal Medicine)'],
+      'New Patient Office Visit':                   ['Dr. Sarah Chen (Family Medicine)',   'Dr. Nadia Rahman (Family Medicine)'],
+      'Established Patient Office Visit':           ['Dr. Priya Ramesh (Internal Medicine)','Dr. James Okafor (Family Medicine)'],
+      'Telehealth Visit':                           ['Dr. Elena Vasquez (Internal Medicine)','Dr. Sarah Chen (Family Medicine)'],
+      'Specialist Visit / Consult':                 ['Dr. Rohit Cheng (Cardiology)',       'Dr. Anita Fielding (Endocrinology)',     'Dr. Miguel Alarcón (Nephrology)'],
+      'ER Visit':                                   ['Dr. Marcus Kim (Emergency Medicine)','Dr. Elena Morris (Emergency Medicine)',   'Dr. Tomás Herrera (Emergency Medicine)'],
+      'Inpatient Visit / Admission':                ['Dr. Rachel Osei (Hospitalist)',      'Dr. David Park (Hospitalist)'],
+      'Observation Visit':                          ['Dr. Rachel Osei (Hospitalist)',      'Dr. David Park (Hospitalist)'],
+      'Skilled Nursing Facility Visit':             ['Dr. Karen Mills (Geriatrics)',       'Dr. Robert Ng (Geriatrics)'],
+      'Home Visit':                                 ['Dr. Indigo Bolen (Home Health)',     'Dr. Aisha Mehta (Home Health)'],
+      'Hospice Visit':                              ['Dr. Amit Gupta (Palliative Care)',   'Dr. Yasmin Sadiq (Hospice/Palliative)'],
+      'Lab/Imaging Order':                          ['Dr. Priya Ramesh (Internal Medicine)','Dr. James Okafor (Family Medicine)'],
+      'Transitional Care Management (TCM) Visit':   ['Dr. Sarah Chen (Family Medicine)',   'Dr. Priya Ramesh (Internal Medicine)'],
+      'Chronic Care Management (CCM)':              ['Dr. Sarah Chen (Family Medicine)',   'Dr. Nadia Rahman (Family Medicine)'],
+    };
     // Clamp Created Date to the range [today-35d, today] so every row shows a
     // due-date detail and no record is overdue by more than ~3 weeks past the
     // 14-day SLA window. Deterministic per row id so the mix is stable across
@@ -2418,33 +2462,56 @@ export const useAppStore = create((set, get) => ({
               labelColor: 'var(--status-warning)',
             },
           ];
+      // Row-level POS + provider must match the Visit Type — no more "Telehealth
+      // visit at POS 11 (Office)" or "ER visit attributed to a family-medicine
+      // doctor". Deterministic per record so the mix stays stable across reloads.
+      const rowPos = POS_BY_VT[visitType] || { code: '11', desc: 'Office' };
+      const providerPool = PROVIDER_POOL_BY_VT[visitType] || ['Dr. Priya Ramesh (Internal Medicine)'];
+      const rowProvider = providerPool[_hash(String(row.id || row.name || '') + '|prov') % providerPool.length];
+
       const dos_list = paddedDosList.map((d, idx) => {
-        // Always overwrite vt with a canonical value — legacy shorthand like
-        // "TCM" or "HCC" in the source data must not leak into the UI.
         if (idx === 0) {
+          // Entry 0 mirrors the record-level fields so the collapsed row is
+          // internally consistent (VT, POS, provider all agree).
           return {
             ...d,
             vt: visitType,
-            provider: d?.provider || row.rp || '—',
-            pos: d?.pos || row.pos || '',
-            posDesc: d?.posDesc || row.posDesc || '',
+            provider: rowProvider,
+            pos: rowPos.code,
+            posDesc: rowPos.desc,
             open: d?.open ?? row.open ?? 0,
           };
         }
+        // Sub-visits: pick a different VT deterministically, then honor its
+        // own POS + specialty pool. Ensures per-DOS drill-downs stay clinical.
         const eh = _hash((row.name || '') + (d?.date || '') + idx);
-        const variant = PROV_POOL[eh % PROV_POOL.length];
+        const subVt = VT_POOL[eh % VT_POOL.length];
+        const subPos = POS_BY_VT[subVt] || { code: '11', desc: 'Office' };
+        const subPool = PROVIDER_POOL_BY_VT[subVt] || ['Dr. Priya Ramesh (Internal Medicine)'];
         return {
           ...d,
-          vt: VT_POOL[eh % VT_POOL.length],
-          provider: d?.provider || variant.name,
-          pos: d?.pos || variant.pos,
-          posDesc: d?.posDesc || variant.posDesc,
+          vt: subVt,
+          provider: subPool[eh % subPool.length],
+          pos: subPos.code,
+          posDesc: subPos.desc,
           open: d?.open ?? (1 + (eh % 12)),
         };
       });
-      // Keep row.vt in sync with the canonical visitType so filter predicates
-      // (which check either field) always match one of the filter opts.
-      return { ...row, vt: visitType, visitType, arrivalOrder, sourceDocumentIds, createdAt, slaTargetAt, dos_list };
+      // Sync row-level fields with the canonical VT-driven values so the
+      // Provider/POS columns in the collapsed row match too.
+      return {
+        ...row,
+        vt: visitType,
+        visitType,
+        rp: rowProvider,
+        pos: rowPos.code,
+        posDesc: rowPos.desc,
+        arrivalOrder,
+        sourceDocumentIds,
+        createdAt,
+        slaTargetAt,
+        dos_list,
+      };
     };
     // WS3 — port AWV mock rows into the unified worklist shape so the
     // Visit Type filter has real rows to surface. AWV rows don't carry a
