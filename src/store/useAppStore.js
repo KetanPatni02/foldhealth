@@ -2998,6 +2998,7 @@ export const useAppStore = create((set, get) => ({
       dueLabel: m.due_label,
       dueCol: m.due_color,
       assignee: m.support_name,
+      assigneeIn: m.support_name ? m.support_name.replace(/[^a-zA-Z ]/g, '').split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : null,
       progSubStatus: m.support_status,
       progName: m.cohort,
       ri: m.risk_level,
