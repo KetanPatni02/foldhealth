@@ -65,6 +65,7 @@ export const STATUS = {
   RETURNED:         'Returned',
   INSUFFICIENT:     'Insufficient',
   REJECT:           'Reject',
+  SKIPPED:          'Skipped',          // role bypassed — a later role acted first
   BILLING_READY:    'Billing Ready',
 };
 
@@ -146,7 +147,7 @@ export function pushActivity(state, entry) {
 // Compute the workload map across all DOS-state records in the store. A
 // staff member's workload is the count of DOSs where they are the current
 // Active assignee at any role (open status — not Completed / Reject).
-const TERMINAL_STATUSES = new Set([STATUS.COMPLETED, STATUS.REJECT, STATUS.BILLING_READY]);
+const TERMINAL_STATUSES = new Set([STATUS.COMPLETED, STATUS.REJECT, STATUS.SKIPPED, STATUS.BILLING_READY]);
 export function computeWorkload(dosStateMap) {
   const workload = {};
   for (const state of Object.values(dosStateMap || {})) {

@@ -3158,9 +3158,6 @@ export const useAppStore = create((set, get) => ({
         case 'reassignRole':
           result = fn(s.hccDosAssignments, patient, dos, payload.role, payload.staffId, actor, payload.reason);
           break;
-        case 'completeReviewer':
-          result = fn(s.hccDosAssignments, patient, dos, actor, s.hccConfig.samplingRates);
-          break;
         case 'completeReviewer2':
           // Takes the full config (not just samplingRates) — completeReviewer2
           // also runs the Phase 0 (WR7) validateAsmReadinessConfig guard, which

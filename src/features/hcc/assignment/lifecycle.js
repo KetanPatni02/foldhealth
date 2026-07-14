@@ -31,7 +31,7 @@
 
 import { pickAssignee } from './engine';
 import { ROLES, ROLE_LABEL } from './astranaStaff';
-import { sampledForReviewer2, DEFAULT_SAMPLING_RATES, validateAsmReadinessConfig } from './sampling';
+import { validateAsmReadinessConfig } from './sampling';
 import {
   STATUS,
   blankDosState,
@@ -106,6 +106,32 @@ function autoAssignRole(map, state, patient, dos, role, initialStatus, transitio
     }),
   );
   return { state: withEvt, picked: pick };
+}
+
+// Linear-workflow skip: when a role completes, any EARLIER role that never
+// finished its own work (i.e. isn't already in a completed-like terminal
+// state) is marked Skipped. This is what makes the pipeline honest when a
+// later role (e.g. QA) acts on a record Support / Coder never touched — their
+// stages show "Skipped" rather than dangling as Awaiting / In Progress.
+// `completedStatuses` are the states we DON'T overwrite (they represent real
+// resolution, not a bypass).
+const SKIP_PRESERVE = new Set([STATUS.COMPLETED, STATUS.SKIPPED, STATUS.REJECT, STATUS.BILLING_READY]);
+function autoSkipEarlierRoles(state, uptoRole, actor) {
+  const idx = ROLES.indexOf(uptoRole);
+  let next = state;
+  for (let i = 0; i < idx; i++) {
+    const role = ROLES[i];
+    const status = next[role]?.status;
+    if (SKIP_PRESERVE.has(status)) continue; // already resolved — leave it
+    next = setRoleState(next, role,
+      { status: STATUS.SKIPPED },
+      { by: 'system', reason: `skipped:${uptoRole}-completed-first` },
+    );
+    next = pushActivity(next, evt(next, 'status', {
+      role, to: STATUS.SKIPPED, by: actor, reason: `${ROLE_LABEL[uptoRole]} completed before ${ROLE_LABEL[role]}`,
+    }));
+  }
+  return next;
 }
 
 // ── AC-1: Initialize a DOS for Support ───────────────────────────────────
@@ -238,6 +264,8 @@ export function completeCoder(map, patient, dos, actor) {
     { by: actor, reason: 'coder-complete' },
   );
   state = pushActivity(state, evt(state, 'status', { role: 'coder', to: STATUS.COMPLETED, by: actor }));
+  // Support never worked it → mark Skipped (linear-workflow honesty).
+  state = autoSkipEarlierRoles(state, 'coder', actor);
 
   const { state: withReviewer, picked } = autoAssignRole(
     putState(map, state), state, patient, dos, 'reviewer', STATUS.IN_PROGRESS,
@@ -338,32 +366,28 @@ export function markReviewerInProgress(map, patient, dos, actor) {
 }
 
 /**
- * AC-4 — Reviewer completes → maybe promote to Reviewer 2 via configurable
- * 10% sample. Not sampled → DOS goes directly to Billing Ready (AC-8 path 1).
+ * QA (Reviewer) completes → ALWAYS advance to Compliance (Reviewer 2).
+ *
+ * The workflow is a strict linear pipeline Support → Coder → QA → Compliance,
+ * so QA completion always hands off to Compliance (no sampling short-circuit
+ * to Billing Ready). Any earlier role that never worked the record is skipped.
  */
-export function completeReviewer(map, patient, dos, actor, rates = DEFAULT_SAMPLING_RATES) {
+export function completeReviewer(map, patient, dos, actor) {
   let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
   state = setRoleState(state, 'reviewer', { status: STATUS.COMPLETED },
     { by: actor, reason: 'reviewer-complete' });
+  state = pushActivity(state, evt(state, 'status', { role: 'reviewer', to: STATUS.COMPLETED, by: actor }));
+  // Support / Coder never worked it → mark Skipped.
+  state = autoSkipEarlierRoles(state, 'reviewer', actor);
 
-  const promote = sampledForReviewer2(patient.id, dos.date, dos.provider, dos.pos, rates);
-  state = { ...state, sampling: { ...state.sampling, reviewer2: promote } };
-
-  if (promote) {
-    const { state: withReviewer2, picked } = autoAssignRole(
-      putState(map, state), state, patient, dos, 'reviewer2', STATUS.IN_PROGRESS,
-      'reviewer-completed→reviewer2:sampled',
-    );
-    state = withReviewer2;
-    return { nextMap: putState(map, state), events: picked
-      ? [evt(state, 'assign', { role: 'reviewer2', to: picked.staff.id, reason: picked.reason })]
-      : [] };
-  }
-
-  // Not sampled — Billing Ready straight from Reviewer.
-  state = { ...state, billingReady: true, asmGenerated: true };
-  state = pushActivity(state, evt(state, 'billing-ready', { role: 'reviewer', reason: 'reviewer-completed:not-sampled' }));
-  return { nextMap: putState(map, state), events: [] };
+  const { state: withReviewer2, picked } = autoAssignRole(
+    putState(map, state), state, patient, dos, 'reviewer2', STATUS.IN_PROGRESS,
+    'reviewer-completed→reviewer2',
+  );
+  state = withReviewer2;
+  return { nextMap: putState(map, state), events: picked
+    ? [evt(state, 'assign', { role: 'reviewer2', to: picked.staff.id, reason: picked.reason })]
+    : [] };
 }
 
 // ── AC-4 / AC-5: Reviewer 2 lifecycle (terminal — always resolves to Billing Ready) ──
@@ -388,6 +412,9 @@ export function completeReviewer2(map, patient, dos, actor, config = {}) {
   let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
   state = setRoleState(state, 'reviewer2', { status: STATUS.COMPLETED },
     { by: actor, reason: 'reviewer2-complete' });
+  state = pushActivity(state, evt(state, 'status', { role: 'reviewer2', to: STATUS.COMPLETED, by: actor }));
+  // Any earlier role that never worked it → mark Skipped.
+  state = autoSkipEarlierRoles(state, 'reviewer2', actor);
 
   validateAsmReadinessConfig(config);
 
