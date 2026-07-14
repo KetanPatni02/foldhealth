@@ -21,6 +21,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 .tabPill {
   display: flex;

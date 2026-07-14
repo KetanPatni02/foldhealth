@@ -191,12 +191,12 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
 // per-attempt dot status (real backend would store the array).
 function AwvOutreachCell({ member }) {
   const n = member.outreach || 0;
-  const isCompleted = member.progSubStatus === 'Completed';
-  const isDeclined  = member.progSubStatus === 'Declined';
+  const isEngaged = member.progSubStatus === 'Engaged' || member.progSubStatus === 'Engaged - Requires Follow Up';
+  const isUnableToReach = member.progSubStatus === 'Unable to Reach';
   const dots = (() => {
     if (n === 0) return ['pending', 'pending', 'pending'];
-    if (isCompleted) return ['success', 'success', n >= 3 ? 'success' : 'pending'];
-    if (isDeclined)  return ['failed',  'failed',  n >= 3 ? 'failed'  : 'pending'];
+    if (isEngaged) return ['success', 'success', n >= 3 ? 'success' : 'pending'];
+    if (isUnableToReach)  return ['failed',  'failed',  n >= 3 ? 'failed'  : 'pending'];
     // In-progress outreach — first attempts failed, latest still pending
     return [
       n >= 1 ? 'failed' : 'pending',
