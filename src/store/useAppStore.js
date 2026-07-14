@@ -2557,9 +2557,18 @@ export const useAppStore = create((set, get) => ({
       visitType: 'AWV',
     });
     const finalize = async (baseRows) => {
-      const { AWV_MEMBERS } = await import('../features/awv-worklist/data/mock');
-      const awvRows = (AWV_MEMBERS || []).map((a, i) => portAwvRow(a, i, (AWV_MEMBERS || []).length));
-      const all = [...baseRows, ...awvRows];
+      // AWV rows are now seeded into hcc_members (visit_type = 'AWV') so the
+      // DB path returns the full 57-row set. The mock merge is only relevant
+      // when we've fallen back to the local HCC mock; in that case we still
+      // want AWV rows to appear so the total lines up with what the app has
+      // always shown.
+      const dbHasAwv = baseRows.some(r => r.visit_type === 'AWV' || r.vt === 'AWV');
+      let all = baseRows;
+      if (!dbHasAwv) {
+        const { AWV_MEMBERS } = await import('../features/awv-worklist/data/mock');
+        const awvRows = (AWV_MEMBERS || []).map((a, i) => portAwvRow(a, i, (AWV_MEMBERS || []).length));
+        all = [...baseRows, ...awvRows];
+      }
       // Count rows per patient name so patients with 2+ rows get force-
       // routed to doc-first (they need to cluster into a mini-sweep).
       const nameCounts = all.reduce((acc, r) => { acc[r.name] = (acc[r.name] || 0) + 1; return acc; }, {});
