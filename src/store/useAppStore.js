@@ -2556,18 +2556,7 @@ export const useAppStore = create((set, get) => ({
       visitType: 'AWV',
     });
     const finalize = async (baseRows) => {
-      // AWV rows are now seeded into hcc_members (visit_type = 'AWV') so the
-      // DB path returns the full 57-row set. The mock merge is only relevant
-      // when we've fallen back to the local HCC mock; in that case we still
-      // want AWV rows to appear so the total lines up with what the app has
-      // always shown.
-      const dbHasAwv = baseRows.some(r => r.visit_type === 'AWV' || r.vt === 'AWV');
-      let all = baseRows;
-      if (!dbHasAwv) {
-        const { AWV_MEMBERS } = await import('../features/awv-worklist/data/mock');
-        const awvRows = (AWV_MEMBERS || []).map((a, i) => portAwvRow(a, i, (AWV_MEMBERS || []).length));
-        all = [...baseRows, ...awvRows];
-      }
+      const all = baseRows;
       // Count rows per patient name so patients with 2+ rows get force-
       // routed to doc-first (they need to cluster into a mini-sweep).
       const nameCounts = all.reduce((acc, r) => { acc[r.name] = (acc[r.name] || 0) + 1; return acc; }, {});
@@ -2983,8 +2972,41 @@ export const useAppStore = create((set, get) => ({
   fetchAwvMembers: async () => {
     if (useAppStore.getState().awvMembers.length > 0) return;
     set({ awvMembersLoading: true });
-    const { AWV_MEMBERS } = await import('../features/awv-worklist/data/mock');
-    set({ awvMembers: AWV_MEMBERS, awvMembersLoading: false });
+
+    const { data, error } = await supabase
+      .from('awv_members')
+      .select('*')
+      .order('create_date', { ascending: true });
+
+    if (error || !data || data.length === 0) {
+      console.warn('fetchAwvMembers error or empty — falling back to local mock:', error?.message);
+      const { AWV_MEMBERS } = await import('../features/awv-worklist/data/mock');
+      set({ awvMembers: AWV_MEMBERS, awvMembersLoading: false });
+      return;
+    }
+
+    const mappedMembers = data.map(m => ({
+      id: m.id,
+      memberId: m.member_id,
+      name: m.name,
+      in: m.initials,
+      g: m.gender,
+      age: m.age,
+      outreach: m.outreach,
+      task: m.tasks,
+      due: m.create_date,
+      dueLabel: m.due_label,
+      dueCol: m.due_color,
+      assignee: m.support_name,
+      progSubStatus: m.support_status,
+      progName: m.cohort,
+      ri: m.risk_level,
+      dec: m.decile,
+      ad: String(m.advillness || 0),
+      fr: String(m.frailty || 0),
+    }));
+
+    set({ awvMembers: mappedMembers, awvMembersLoading: false });
   },
   // Multi-value filters keyed by column. Empty array on a key = no filter.
   awvFilters: {},

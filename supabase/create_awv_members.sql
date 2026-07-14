@@ -1,0 +1,28 @@
+CREATE TABLE IF NOT EXISTS awv_members (
+  id text PRIMARY KEY,
+  member_id text,
+  name text,
+  initials text,
+  gender text,
+  age text,
+  outreach int DEFAULT 0,
+  tasks int DEFAULT 0,
+  dos_list jsonb DEFAULT '[]',
+  create_date text,
+  due_label text,
+  due_color text,
+  support_name text,
+  support_status text,
+  provider text,
+  visit_type text DEFAULT 'AWV',
+  ipa text,
+  place_of_service text,
+  primary_care_doctor text,
+  decile text,
+  cohort text,
+  risk_level text,
+  advillness int DEFAULT 0,
+  frailty int DEFAULT 0,
+  language text DEFAULT 'en'
+);
+ALTER TABLE awv_members DISABLE ROW LEVEL SECURITY;
