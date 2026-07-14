@@ -34,7 +34,7 @@ function itemsForRole(role) {
  *                              a reason is how the compliance gate surfaces
  *                              (UI shows a tooltip explaining what's blocking).
  */
-export function DosStatusMenu({ value, onChange, disabled = false, gates, role = null }) {
+export function DosStatusMenu({ value, onChange, disabled = false, disabledReason, gates, role = null }) {
   const triggerRef = useRef(null);
   const [pos, setPos] = useState(null);
 
@@ -56,12 +56,15 @@ export function DosStatusMenu({ value, onChange, disabled = false, gates, role =
         className={[styles.pill, disabled ? styles.pillDisabled : ''].join(' ')}
         style={{ color: spec.color, background: spec.bg, borderColor: spec.border }}
         onClick={pos ? close : open}
+        title={disabled ? disabledReason : undefined}
       >
         <span className={styles.iconLeading}>
           <StatusIcon status={value} size={11} color={spec.color} />
         </span>
         <span className={styles.label}>{statusDisplayLabel(value)}</span>
-        {!disabled && (
+        {disabled ? (
+          <Icon name="solar:lock-keyhole-minimalistic-linear" size={12} color={spec.color} />
+        ) : (
           <>
             <span className={styles.divider} style={{ background: `${spec.color}60` }} />
             <Icon name="solar:alt-arrow-down-linear" size={12} color={spec.color} />

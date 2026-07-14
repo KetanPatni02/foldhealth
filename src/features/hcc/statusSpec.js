@@ -132,15 +132,28 @@ export const STATUS_SPEC = {
     border: 'var(--neutral-150)',
     legendOrder: null,
   },
-  // Coder / QA / Compliance can Skip a DOS out of their queue. Neutral tone.
+  // QA / Compliance can be skipped on the way to billing. Neutral tone.
   Skipped: {
     icon: 'solar:skip-next-bold',
     color: 'var(--neutral-300)',
     bg: 'var(--neutral-50)',
     border: 'var(--neutral-150)',
+    legendOrder: 9,
+  },
+  // Terminal: every review stage cleared → ready for ASM generation.
+  'Billing Ready': {
+    icon: 'solar:check-read-linear',
+    color: 'var(--status-success)',
+    bg: 'var(--status-success-light)',
+    border: 'rgba(0, 155, 83, 0.2)',
     legendOrder: null,
   },
 };
+
+// True when `status` has a real spec (vs. falling back to the "Unassigned"
+// placeholder). Lets role cells avoid rendering the user-plus icon for
+// statuses that aren't part of the coding workflow (e.g. AWV outreach states).
+export const hasStatusSpec = (status) => !!STATUS_SPEC[canonicalStatus(status)];
 
 // Some Supabase rows + the prototype use plural names — map them to the
 // canonical singular keys above so the spec lookup keeps working without
@@ -177,11 +190,15 @@ export const statusDisplayLabel = (value) => {
 // Cross-role transitions (Coder "Record Requested" → Support "Returned" →
 // Support "Completed" → Coder "Record Received") are driven by the
 // assignment engine (assignment/lifecycle.js), not this list.
+// NOTE: "Skipped" is NOT user-selectable — the assignment engine applies it
+// automatically when a later role completes ahead of an earlier one
+// (autoSkipEarlierRoles in lifecycle.js). It only appears as a rendered status,
+// never as a menu option.
 export const ROLE_STATUS_OPTIONS = {
   support:   ['Awaiting', 'In Progress', 'Insufficient', 'Returned', 'Completed', 'Reject'],
-  coder:     ['New', 'In Progress', 'Record Received', 'Record Requested', 'Skipped', 'Completed', 'Reject'],
-  reviewer:  ['New', 'In Progress', 'Returned', 'Skipped', 'Completed', 'Reject'],
-  reviewer2: ['New', 'In Progress', 'Returned', 'Skipped', 'Completed', 'Reject'],
+  coder:     ['New', 'In Progress', 'Record Received', 'Record Requested', 'Completed', 'Reject'],
+  reviewer:  ['New', 'In Progress', 'Returned', 'Completed', 'Reject'],
+  reviewer2: ['New', 'In Progress', 'Returned', 'Completed', 'Reject'],
 };
 
 // Fallback when no active role owns the DOS (e.g. billing / unassigned):

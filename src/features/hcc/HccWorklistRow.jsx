@@ -16,13 +16,13 @@ import {
 import { ChartDetailDrawer } from './ChartDetailDrawer';
 import { DocPreviewDrawer } from './DocPreviewDrawer';
 import { getChartDocs } from './data/chartDocs';
-import { computeSla } from './sla';
+import { computeSla, slaOutcome } from './sla';
 // From foldhealth/main: getOpenIcdsForMember is already imported below from
 // './data/icds', so this duplicate is commented out to avoid a redeclaration.
 // import { getOpenIcdsForMember } from './data/icds';
 import { dosSourceLetter, DOS_SOURCE_META } from './dosSource';
 import { getIcdsForMember, getNotLinkedForMember, getOpenIcdsForMember } from './data/icds';
-import { getStatusSpec } from './statusSpec';
+import { getStatusSpec, hasStatusSpec } from './statusSpec';
 import { StatusIcon } from './StatusIcon';
 import { staffById, ROLE_LABEL, ROLES } from './assignment/astranaStaff';
 import { RoleAssigneePicker } from './RoleAssigneePicker';
@@ -88,14 +88,31 @@ function LastVisitCell({ dos, visits, fromClaim, onClickDate, onClickVisits }) {
   );
 }
 
-function CreateDateCell({ date, due, dueCol }) {
-  // SLA (Astrana DOS worklist): colour the Created Date against the 14-day
-  // window computed live from the date. Every row shows a due-date detail —
-  // even resolved ones — so the column is never blank. Falls back to any
-  // static due label when the date can't be parsed.
+function CreateDateCell({ member, dosState }) {
+  const date = member.date;
+  // Once Support AND Coder are both Completed, the SLA window has closed —
+  // show the verdict (✓ SLA Met within the window, ✗ SLA Breached after).
+  const supDone = (dosState?.support?.status || member.supS) === 'Completed';
+  const cdrDone = (dosState?.coder?.status || member.cdrS) === 'Completed';
+  if (supDone && cdrDone) {
+    const coderDoneAt = dosState?.coder?.history?.[dosState.coder.history.length - 1]?.at || null;
+    const outcome = slaOutcome(date, coderDoneAt);
+    if (outcome) {
+      return (
+        <div className={styles.stackCell}>
+          <span className={styles.dateText}>{date}</span>
+          <span className={styles.dueLine} style={{ color: outcome.colorVar }}>
+            <Icon name={outcome.icon} size={12} color={outcome.colorVar} />
+            <span>{outcome.label}</span>
+          </span>
+        </div>
+      );
+    }
+  }
+  // Otherwise colour the Created Date against the live 14-day SLA window.
   const sla = computeSla(date);
-  const label = sla ? sla.label : due;
-  const color = sla ? sla.colorVar : dueCol;
+  const label = sla ? sla.label : member.due;
+  const color = sla ? sla.colorVar : member.dueCol;
   return (
     <div className={styles.stackCell}>
       <span className={styles.dateText}>{date}</span>
@@ -190,6 +207,11 @@ function ProgressStepper({ member }) {
   );
 }
 
+// Each role's default "not started" status — used when a cell carries a
+// status outside the coding workflow (e.g. AWV rows). Support's pending state
+// is "Action Needed" (Awaiting); the coding roles start at "New".
+const ROLE_DEFAULT_STATUS = { support: 'Awaiting', coder: 'New', reviewer: 'New', reviewer2: 'New' };
+
 /**
  * Render role-status cell (Support / Coder / Rev 1-3).
  *
@@ -209,12 +231,17 @@ function RoleStatusCell({ name, status, date, role, memberId, dosDate }) {
   if (unassigned) {
     return <RolePicker role={role} memberId={memberId} dosDate={dosDate} current={null} />;
   }
-  const spec = getStatusSpec(status);
+  // A status outside the coding workflow (e.g. AWV outreach states ported into
+  // the unified worklist) maps to the role's default pending status so the
+  // glyph always matches the legend — Support reads as "Action Needed"
+  // (its work, document review, is pending); Coder/QA/Compliance read "New".
+  const effectiveStatus = hasStatusSpec(status) ? status : (ROLE_DEFAULT_STATUS[role] || 'New');
+  const spec = getStatusSpec(effectiveStatus);
   const display = (
     <>
       <span className={styles.roleName}>{name}</span>
       <span className={styles.roleStatusLine}>
-        <StatusIcon status={status} size={12} color={spec.color} />
+        <StatusIcon status={effectiveStatus} size={12} color={spec.color} />
         {date && <span className={styles.roleDate}>{date}</span>}
       </span>
     </>
@@ -591,9 +618,12 @@ const DOS_INNER = {
     const full = entry.vt || member.visitType || member.vt || 'HCC';
     return <span className={styles.vtText} title={full}>{vtShortLabel(full)}</span>;
   },
-  rp: (entry, { member }) => (
-    <span className={styles.providerText}>{entry.provider || member.rp}</span>
-  ),
+  rp: (entry, { member }) => {
+    // Show just the provider name — drop any trailing "(Specialty)" suffix.
+    const full = entry.provider || member.rp || '';
+    const name = full.replace(/\s*\([^)]*\)\s*$/, '');
+    return <span className={styles.providerText} title={full}>{name}</span>;
+  },
   pos: (entry) => (
     entry.pos
       ? <span className={styles.posText}>{entry.pos}{entry.posDesc ? ` - ${entry.posDesc}` : ''}</span>
@@ -605,9 +635,9 @@ const DOS_INNER = {
 // in DOS_LEVEL_COLS). Each receives the record `member` and returns a
 // populated `<td>`, rendered once per row (top-aligned).
 const CELL_RENDERERS = {
-  date: ({ member }) => (
+  date: ({ member, dosStateFor }) => (
     <td key="date" data-col="date" className={styles.colDate}>
-      <CreateDateCell date={member.date} due={member.due} dueCol={member.dueCol} />
+      <CreateDateCell member={member} dosState={dosStateFor(member)} />
     </td>
   ),
   evidence: ({ member, charts, openChart, openUpload }) => (

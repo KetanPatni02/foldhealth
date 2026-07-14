@@ -660,6 +660,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   display: block;
+  /* Names only (specialty stripped) — cap so the Rendering Provider column
+     stays narrow and long names ellipsize. */
+  max-width: 150px;
 }
 .numText { font-variant-numeric: tabular-nums; }
 .muted { color: var(--neutral-200); }
