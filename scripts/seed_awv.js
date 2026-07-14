@@ -50,7 +50,7 @@ async function main() {
       place_of_service: 'Office',
       primary_care_doctor: 'Unknown Primary Care',
       decile: m.dec,
-      cohort: 'AWV',
+      cohort: m.progName,
       risk_level: m.ri,
       advillness: parseInt(m.ad || 0, 10),
       frailty: parseInt(m.fr || 0, 10),

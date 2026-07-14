@@ -57,7 +57,7 @@ export function AwvWorklistTable() {
   const [filterBarOpen, setFilterBarOpen] = useState(true);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  const [listTitle, setListTitle] = useState('AWV Worklist');
+  const [listTitle, setListTitle] = useState('Annual Visit');
 
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
 

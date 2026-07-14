@@ -10,7 +10,7 @@ import styles from './SubNav.module.css';
 // Define which lists map to which filter criteria
 const SHARED_LISTS = [
   { label: 'SNP', filter: null },
-  { label: 'AWV', filter: null },
+  { label: 'Annual Visit', filter: null },
   { label: 'TOC', filter: null },  // default — shows all TOC patients
   { label: 'HCC', filter: null, view: 'hcc' },
   { label: 'HEDIS', filter: null, view: 'hedis' },
@@ -80,7 +80,7 @@ export function SubNav({ collapsed }) {
     for (const list of SHARED_LISTS) {
       if (list.view === 'hcc') counts[list.label] = hccMembers.length;
       else if (list.view === 'hedis') counts[list.label] = HEDIS_MEMBERS.length;
-      else if (list.label === 'AWV') counts[list.label] = awvMembers.length;
+      else if (list.label === 'Annual Visit') counts[list.label] = awvMembers.length;
       else if (list.label === 'TOC') counts[list.label] = patients.length;
       else counts[list.label] = 0;
     }

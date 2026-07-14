@@ -103,7 +103,7 @@ function PopulationView() {
   const selectedPatientId = useAppStore(s => s.selectedPatientId);
   const setHccFilter = useAppStore(s => s.setHccFilter);
 
-  const isAwv = activeSubnavList === 'AWV';
+  const isAwv = activeSubnavList === 'Annual Visit';
 
   // Patient detail view — full-page, no subnav
   if (selectedPatientId) {

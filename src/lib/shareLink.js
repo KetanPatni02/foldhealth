@@ -15,7 +15,7 @@ export function shareUrl(slug) {
 const LIST_TO_SLUG = {
   HCC: 'hcc',
   HEDIS: 'hedis',
-  AWV: 'awv',
+  'Annual Visit': 'awv',
   'All Patients': 'all-patients',
 };
 
