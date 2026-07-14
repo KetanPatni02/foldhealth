@@ -358,7 +358,7 @@ function Cell({ colKey, hidden, children, ...rest }) {
 // work off downstream. The DOS must complete the current stage before it
 // can be picked up by the next role; we never skip backward to a prior
 // completed assignee even if the next stage hasn't been assigned yet.
-const TERMINAL_STATUSES = new Set(['Completed', 'Reject', 'Rejected', 'Billing Ready']);
+const TERMINAL_STATUSES = new Set(['Completed', 'Reject', 'Rejected', 'Skipped', 'Billing Ready']);
 
 // Sequential workflow order. The first role whose status is NOT terminal
 // is where the DOS currently sits (HCC reality: Support → Coder → Reviewer →

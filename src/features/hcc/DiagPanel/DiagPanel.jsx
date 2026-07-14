@@ -159,6 +159,11 @@ function AssigneeAvatar({ member, dosState, currentDos }) {
 
 const isAISuggested = (icd) => ['Suspect', 'Recapture'].includes(icd.type || '');
 
+// The status pill acts on the LOGGED-IN role's stage (Support/Coder/QA/
+// Compliance), so each role completes their own step — completing while an
+// earlier role never worked the record auto-skips that earlier stage.
+const ROLE_KEY_BY_USER = { Support: 'support', Coder: 'coder', QA: 'reviewer', Compliance: 'reviewer2' };
+
 // Keyboard shortcut legend — mirrors the handlers in DiagPanel's keydown
 // effect. Rendered as the drawer's dark footer bar (Paper 1WXT).
 const SHORTCUTS = [
@@ -327,17 +332,14 @@ export function DiagPanel() {
     : null;
   const dosState = dosStateKey ? hccDosAssignments[dosStateKey] : null;
 
-  const currentBucket = useMemo(
-    () => resolveCurrentAssignee(member, dosState),
-    [member, dosState],
-  );
-
-  const currentStatus = useMemo(() => {
-    if (!currentBucket) return diagDosStatus || 'New';
-    if (currentBucket.kind === 'billing')    return 'Completed';
-    if (currentBucket.kind === 'unassigned') return 'Awaiting';
-    return currentBucket.status || 'In Progress';
-  }, [currentBucket, diagDosStatus]);
+  // The role the logged-in user acts as — drives the DOS status pill so a
+  // Coder completes the Coder stage, QA completes the QA stage, etc.
+  const hccUserRole = useAppStore(s => s.hccUserRole);
+  const actingRole = ROLE_KEY_BY_USER[hccUserRole] || 'coder';
+  const actingStatus = useMemo(() => {
+    const rs = dosState?.[actingRole];
+    return rs?.status || diagDosStatus || 'New';
+  }, [dosState, actingRole, diagDosStatus]);
 
   // ── Review-progress stages + ring (drives the stage pill) ──
   const reviewStages = useMemo(
@@ -352,7 +354,8 @@ export function DiagPanel() {
   const pillLabel = useMemo(() => {
     const active = reviewStages.find(s => s.state === 'active');
     if (active) return active.label;
-    if (reviewStages.every(s => s.state === 'done')) return 'Billing Ready';
+    // Skipped stages are resolved too — all done/skipped ⇒ Billing Ready.
+    if (reviewStages.every(s => s.state === 'done' || s.state === 'skipped')) return 'Billing Ready';
     const firstPending = reviewStages.find(s => s.state === 'pending');
     return firstPending ? `Awaiting ${firstPending.label}` : 'Coder';
   }, [reviewStages]);
@@ -401,8 +404,9 @@ export function DiagPanel() {
       }
     }
     if (!member || !currentDos) { setDiagDosStatus(next); return; }
-    const role = currentBucket?.kind === 'active' ? currentBucket.role : null;
-    if (!role) { setDiagDosStatus(next); return; }
+    // Act on the logged-in role's stage (not just whoever currently owns the
+    // record) so a later role completing correctly triggers the skip logic.
+    const role = actingRole;
 
     switch (next) {
       case 'Completed':
@@ -709,9 +713,9 @@ export function DiagPanel() {
           <AssigneeAvatar member={member} dosState={dosState} currentDos={currentDos} />
           <span className={styles.dosRowDivider} />
           <DosStatusMenu
-            value={currentStatus}
+            value={actingStatus}
             onChange={handleStatusChange}
-            role={currentBucket?.kind === 'active' ? currentBucket.role : null}
+            role={actingRole}
           />
         </div>
       </div>

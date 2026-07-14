@@ -42,7 +42,8 @@ export function buildReviewStages(member, dosState) {
     const status = rs?.status || legacyMap[role].status || null;
 
     let state = 'pending';
-    if (status && TERMINAL_STATUSES.has(status)) state = 'done';
+    if (status === 'Skipped') state = 'skipped';
+    else if (status && TERMINAL_STATUSES.has(status)) state = 'done';
     else if (status && status !== 'Assign') state = 'active';
 
     const at = rs?.history?.[rs.history.length - 1]?.at;
@@ -56,7 +57,8 @@ export function buildReviewStages(member, dosState) {
 export function computeReviewProgress(stages) {
   if (!stages?.length) return 0;
   const N = stages.length;
-  const done = stages.filter(s => s.state === 'done').length;
+  // Skipped stages are resolved (bypassed) — count them like done.
+  const done = stages.filter(s => s.state === 'done' || s.state === 'skipped').length;
   const active = stages.filter(s => s.state === 'active').length;
   return Math.min(1, (done + active * 0.5) / N);
 }
@@ -136,7 +138,7 @@ function StageRow({ stage, isFirst, isLast }) {
     ? styles.subtitleDone
     : state === 'active'
       ? styles.subtitleActive
-      : styles.subtitlePending;
+      : styles.subtitlePending;  // pending + skipped both read grey
 
   return (
     <li className={styles.stage}>
@@ -185,6 +187,13 @@ function StatusBadge({ state }) {
     return (
       <span className={[styles.badge, styles.badgeActive].join(' ')}>
         <Icon name="solar:sun-bold" size={11} color="var(--status-warning)" />
+      </span>
+    );
+  }
+  if (state === 'skipped') {
+    return (
+      <span className={[styles.badge, styles.badgePending].join(' ')}>
+        <Icon name="solar:minus-circle-linear" size={10} color="var(--neutral-300)" />
       </span>
     );
   }

@@ -3010,3 +3010,129 @@
   font-style: italic;
 }
 
+/* ── Extracted Records (Figma 4967:199663) ─────────────────────────────── */
+.extracted {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 0.5px solid var(--neutral-150);
+}
+.extractedTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.bucketRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.bucketPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: var(--neutral-0);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.bucketPill:hover { background: var(--neutral-50); }
+/* Active states — tinted per bucket; `currentColor` drives the leading icon. */
+.bucketPill_review {
+  color: var(--status-warning);
+  background: var(--status-warning-light);
+  border-color: color-mix(in srgb, var(--status-warning) 30%, transparent);
+}
+.bucketPill_review:hover { background: var(--status-warning-light); }
+.bucketPill_added {
+  color: var(--status-success);
+  background: var(--status-success-light);
+  border-color: color-mix(in srgb, var(--status-success) 30%, transparent);
+}
+.bucketPill_added:hover { background: var(--status-success-light); }
+.bucketPill_unreadable {
+  color: var(--neutral-500);
+  background: var(--neutral-50);
+  border-color: var(--neutral-300);
+}
+.bucketPill_unreadable:hover { background: var(--neutral-50); }
+
+.extractedEmpty {
+  padding: 20px 8px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--neutral-300);
+}
+.extractedGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.extractedGroupLabel {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.extractedList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.exRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+}
+.exIcon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.exMain {
+  flex: 1;
+  min-width: 0;
+}
+.exName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.exMeta {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--neutral-300);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.exStatusReview { color: var(--status-warning); font-weight: 500; }
+.exStatusAdded { color: var(--status-success); font-weight: 500; }
+.exStatusUnreadable { color: var(--status-error); font-weight: 500; }
+.exDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
