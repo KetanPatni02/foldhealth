@@ -18,7 +18,7 @@ export const HCC_COLUMNS = [
   { k: 'dos',      lb: 'DOS',           sortable: true,  sortField: 'dos' },
   { k: 'open',     lb: 'Open ICDs',     sortable: true,  sortField: 'open' },
   { k: 'vt',       lb: 'Visit Type',    sortable: true,  sortField: 'visitType' },
-  { k: 'rp',       lb: 'Provider',      sortable: true,  sortField: 'rp' },
+  { k: 'rp',       lb: 'Rendering Provider', sortable: true,  sortField: 'rp' },
   { k: 'pos',      lb: 'POS',           sortable: false },
   { k: 'date',     lb: 'Created Date',  sortable: true,  sortField: 'date' },
   { k: 'evidence', lb: 'Documents',     sortable: true,  sortField: 'ch' },

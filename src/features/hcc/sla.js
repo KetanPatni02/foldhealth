@@ -75,6 +75,31 @@ export function computeSla(createdDate, cfg = SLA_CONFIG) {
 }
 
 /**
+ * slaOutcome — the resolved SLA verdict once Support AND Coder are done.
+ * "SLA Met" when the Coder completed within the 14-day window from the Created
+ * Date, otherwise "SLA Breached". Uses the real Coder completion timestamp
+ * when available; falls back to today as the completion proxy.
+ *
+ * @param {string} createdDate      "MM/DD/YYYY"
+ * @param {string|null} coderDoneAt ISO datetime of the Coder completion (or null)
+ * @returns {{met:boolean,label:string,colorVar:string,icon:string}|null}
+ */
+export function slaOutcome(createdDate, coderDoneAt, cfg = SLA_CONFIG) {
+  const created = parseMDY(createdDate);
+  if (!created) return null;
+  const due = startOfDay(new Date(created.getTime() + cfg.windowDays * MS_PER_DAY));
+  let completed = null;
+  if (coderDoneAt) {
+    const d = new Date(coderDoneAt);
+    completed = Number.isNaN(d.getTime()) ? null : d;
+  }
+  const met = startOfDay(completed || new Date()) <= due;
+  return met
+    ? { met: true,  label: 'SLA Met',      colorVar: 'var(--status-success)', icon: 'solar:check-circle-linear' }
+    : { met: false, label: 'SLA Breached', colorVar: 'var(--status-error)',   icon: 'solar:close-circle-linear' };
+}
+
+/**
  * Map a record's live SLA state to the DueDateChip filter buckets, so the
  * "Due Date" filter agrees with the colour-coded Created Date column (rather
  * than the legacy static `due` string). The SLA clock stops at Coder

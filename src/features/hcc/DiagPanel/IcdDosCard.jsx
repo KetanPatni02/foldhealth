@@ -29,7 +29,7 @@ import styles from './IcdDosCard.module.css';
  * @param {string} [props.openDismissKey] `${code}|${dos}` whose form is open
  * @param {(key:string|null)=>void} [props.onOpenDismiss]
  */
-export function IcdDosCard({ icd, focusKey, selectedKeys, onToggleSelect, openDismissKey, onOpenDismiss, onActed }) {
+export function IcdDosCard({ icd, focusKey, selectedKeys, onToggleSelect, openDismissKey, onOpenDismiss, onActed, reviewLocked = false }) {
   const openIcdPanel = useAppStore(s => s.openIcdPanel);
   const openIcdActivityLog = useAppStore(s => s.openIcdActivityLog);
   const diagActivityIcd = useAppStore(s => s.diagActivityIcd);
@@ -183,6 +183,7 @@ export function IcdDosCard({ icd, focusKey, selectedKeys, onToggleSelect, openDi
                 removeIcdDos(icd.code, entry.dos);
                 showToast(`Removed ${icd.code} on ${entry.dos}`);
               }}
+              reviewLocked={reviewLocked}
             />
           );
         })}
@@ -194,12 +195,13 @@ export function IcdDosCard({ icd, focusKey, selectedKeys, onToggleSelect, openDi
 function DosActionRow({
   rowKey, entry, icd, hccShort, action, meta, focused, selected, dismissOpen,
   onToggleSelect, onAccept, onOpenDismiss, onCloseDismiss, onConfirmDismiss,
-  onUndo, onMissed, onDefer, onRemoveDos,
+  onUndo, onMissed, onDefer, onRemoveDos, reviewLocked = false,
 }) {
   const [menuPos, setMenuPos] = useState(null);
   const moreRef = useRef(null);
-  // ICD accept/reject is a coding action — the Support role can't perform it.
-  const canReview = useAppStore(s => s.hccUserRole) !== 'Support';
+  // ICD accept/reject is a coding action — Support can't perform it, and QA /
+  // Compliance are locked out until Support + Coder have completed (reviewLocked).
+  const canReview = useAppStore(s => s.hccUserRole) !== 'Support' && !reviewLocked;
   const openHccClaimForDos = useAppStore(s => s.openHccClaimForDos);
   const isManual = entry.manual || icd.type === 'Manual';
   const isAccepted = action === 'accepted';

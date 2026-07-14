@@ -31,6 +31,7 @@ import { SWEEP_ICD_DATA } from '../data/sweepIcds';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { RoleTooltip } from '../RoleTooltip';
 import { resolveCurrentAssignee } from '../HccWorklistRow';
+import { slaOutcome } from '../sla';
 import { RoleAssigneePicker } from '../RoleAssigneePicker';
 import { ROLE_LABEL } from '../assignment/astranaStaff';
 import { dosKey } from '../assignment/dosState';
@@ -112,13 +113,8 @@ function AssigneeAvatar({ member, dosState, currentDos }) {
     );
   }
 
-  // Active assignee — colour the chip per role (Coder/Reviewers = orange
-  // provider palette, Support stays purple to match the worklist's coder
-  // vs support distinction).
-  const isSupport = a.role === 'support';
-  const bg = isSupport ? 'var(--primary-50)'  : 'var(--secondary-100)';
-  const border = isSupport ? 'var(--primary-200)' : 'var(--secondary-200)';
-  const color = isSupport ? 'var(--primary-300)' : 'var(--secondary-300)';
+  // Active assignee — always the orange provider palette (the DOS owner is a
+  // provider/staff member regardless of stage).
   // Active assignee is reassignable — matches the worklist: an in-flight step
   // can change owner. Clicking opens the shared searchable picker.
   return (
@@ -134,7 +130,7 @@ function AssigneeAvatar({ member, dosState, currentDos }) {
           name={a.name}
           role={ROLE_LABEL[a.role] || a.role}
           initials={a.initials}
-          variant={isSupport ? 'patient' : 'provider'}
+          variant="provider"
         >
           <button
             type="button"
@@ -143,9 +139,9 @@ function AssigneeAvatar({ member, dosState, currentDos }) {
             title="Change assignee"
             style={{
               width: 24, height: 24, borderRadius: 6,
-              background: bg, border: `0.5px solid ${border}`,
+              background: 'var(--secondary-100)', border: '0.5px solid var(--secondary-200)',
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, fontSize: 10, fontWeight: 500, color,
+              flexShrink: 0, fontSize: 10, fontWeight: 500, color: 'var(--secondary-300)',
               cursor: 'pointer', padding: 0,
             }}
           >
@@ -341,6 +337,15 @@ export function DiagPanel() {
     return rs?.status || diagDosStatus || 'New';
   }, [dosState, actingRole, diagDosStatus]);
 
+  // QA / Compliance can't work a record until Support AND Coder are done —
+  // their status pill and ICD-review actions stay locked until then.
+  const stageLocked = useMemo(() => {
+    if (actingRole !== 'reviewer' && actingRole !== 'reviewer2') return false;
+    const supDone = (dosState?.support?.status || member?.supS) === 'Completed';
+    const cdrDone = (dosState?.coder?.status || member?.cdrS) === 'Completed';
+    return !(supDone && cdrDone);
+  }, [actingRole, dosState, member]);
+
   // ── Review-progress stages + ring (drives the stage pill) ──
   const reviewStages = useMemo(
     () => buildReviewStages(member, dosState),
@@ -350,15 +355,27 @@ export function DiagPanel() {
     () => computeReviewProgress(reviewStages),
     [reviewStages],
   );
-  // Pill shows the active stage name (design: "◑ Coder").
+  // Pill shows the record's actual current stage — the one right after the
+  // last resolved (done/skipped) stage — so it stays consistent with the
+  // review-progress card even if statuses landed out of order.
   const pillLabel = useMemo(() => {
-    const active = reviewStages.find(s => s.state === 'active');
-    if (active) return active.label;
-    // Skipped stages are resolved too — all done/skipped ⇒ Billing Ready.
-    if (reviewStages.every(s => s.state === 'done' || s.state === 'skipped')) return 'Billing Ready';
-    const firstPending = reviewStages.find(s => s.state === 'pending');
-    return firstPending ? `Awaiting ${firstPending.label}` : 'Coder';
+    if (!reviewStages.length) return 'Coder';
+    const lastResolved = reviewStages.reduce(
+      (acc, s, i) => (s.state === 'done' || s.state === 'skipped') ? i : acc, -1);
+    if (lastResolved === reviewStages.length - 1) return 'Billing Ready';
+    // Just the stage name — no "Awaiting" prefix.
+    return reviewStages[lastResolved + 1].label;
   }, [reviewStages]);
+
+  // Once Support + Coder are done the SLA window closes → show the verdict
+  // (✓ SLA Met / ✗ SLA Breached) in place of the live "(Due …)" tag.
+  const slaVerdict = useMemo(() => {
+    const supDone = (dosState?.support?.status || member?.supS) === 'Completed';
+    const cdrDone = (dosState?.coder?.status || member?.cdrS) === 'Completed';
+    if (!supDone || !cdrDone) return null;
+    const coderDoneAt = dosState?.coder?.history?.[dosState.coder.history.length - 1]?.at || null;
+    return slaOutcome(member?.date, coderDoneAt);
+  }, [dosState, member]);
 
   // Hover state for the Review Progress popover.
   const pillRef = useRef(null);
@@ -680,7 +697,11 @@ export function DiagPanel() {
         <div className={styles.dosRowLeft}>
           <span className={styles.createdLabel}>Created :</span>
           <span className={styles.createdDate}>{member.date || '—'}</span>
-          {member.due && (
+          {slaVerdict ? (
+            <span className={styles.dueTag} style={{ color: slaVerdict.colorVar }}>
+              <Icon name={slaVerdict.icon} size={12} color={slaVerdict.colorVar} /> {slaVerdict.label}
+            </span>
+          ) : member.due && (
             <span className={styles.dueTag} style={{ color: member.dueCol || 'var(--status-error)' }}>
               ({member.due})
             </span>
@@ -716,6 +737,8 @@ export function DiagPanel() {
             value={actingStatus}
             onChange={handleStatusChange}
             role={actingRole}
+            disabled={stageLocked}
+            disabledReason="Support and Coder must complete their work first"
           />
         </div>
       </div>
@@ -889,6 +912,7 @@ export function DiagPanel() {
               openDismissKey={openDismissKey}
               onOpenDismiss={setOpenDismissKey}
               onActed={advanceFocusAfterAction}
+              reviewLocked={stageLocked}
             />
           ))}
           {/* Acted suspects graduate into the associated list as normal cards. */}
@@ -902,6 +926,7 @@ export function DiagPanel() {
               openDismissKey={openDismissKey}
               onOpenDismiss={setOpenDismissKey}
               onActed={advanceFocusAfterAction}
+              reviewLocked={stageLocked}
             />
           ))}
 

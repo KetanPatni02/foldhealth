@@ -108,21 +108,21 @@ function autoAssignRole(map, state, patient, dos, role, initialStatus, transitio
   return { state: withEvt, picked: pick };
 }
 
-// Linear-workflow skip: when a role completes, any EARLIER role that never
-// finished its own work (i.e. isn't already in a completed-like terminal
-// state) is marked Skipped. This is what makes the pipeline honest when a
-// later role (e.g. QA) acts on a record Support / Coder never touched — their
-// stages show "Skipped" rather than dangling as Awaiting / In Progress.
-// `completedStatuses` are the states we DON'T overwrite (they represent real
+// Linear-workflow skip: when a role completes, any EARLIER *review* role that
+// never finished its own work is marked Skipped. Only QA (reviewer) and
+// Compliance (reviewer2) are skippable — Support and Coder are mandatory and
+// can NEVER be skipped. `SKIP_PRESERVE` are states we don't overwrite (real
 // resolution, not a bypass).
+const SKIPPABLE_ROLES = new Set(['reviewer', 'reviewer2']);
 const SKIP_PRESERVE = new Set([STATUS.COMPLETED, STATUS.SKIPPED, STATUS.REJECT, STATUS.BILLING_READY]);
 function autoSkipEarlierRoles(state, uptoRole, actor) {
   const idx = ROLES.indexOf(uptoRole);
   let next = state;
   for (let i = 0; i < idx; i++) {
     const role = ROLES[i];
+    if (!SKIPPABLE_ROLES.has(role)) continue; // Support + Coder are never skipped
     const status = next[role]?.status;
-    if (SKIP_PRESERVE.has(status)) continue; // already resolved — leave it
+    if (SKIP_PRESERVE.has(status)) continue;  // already resolved — leave it
     next = setRoleState(next, role,
       { status: STATUS.SKIPPED },
       { by: 'system', reason: `skipped:${uptoRole}-completed-first` },

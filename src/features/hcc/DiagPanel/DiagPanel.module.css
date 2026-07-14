@@ -648,6 +648,9 @@
   flex-shrink: 0;
 }
 .dueTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font-size: 12px;
   font-weight: 500;
   flex-shrink: 0;
