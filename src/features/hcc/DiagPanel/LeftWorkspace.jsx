@@ -1065,7 +1065,6 @@ function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId }
         </div>
         {list.map((d) => {
           const status = DOC_STATUS_BADGE[d.status] || DOC_STATUS_BADGE.pending;
-          const extLabel = DOC_EXT_LABEL[d.ext] || d.ext?.toUpperCase() || 'DOC';
           return (
             <div
               key={d.id}
@@ -1076,14 +1075,13 @@ function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId }
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenDocId(d.id); } }}
             >
               <div className={styles.docCell}>
-                <span className={styles.docExtIcon} data-ext={d.ext}>
-                  <Icon name="solar:file-text-linear" size={14} color="var(--neutral-300)" />
-                  <span className={styles.docExtTag}>{extLabel}</span>
+                <span className={styles.docThumb}>
+                  <Icon name="custom:pdf-file" size={20} color="var(--neutral-400)" />
                 </span>
                 <div className={styles.docCellText}>
                   <div className={styles.docCellName}>{d.name}</div>
                   <div className={styles.docCellMeta}>
-                    {d.type} · {d.date}, {d.time} · {d.uploadedBy}({d.role})
+                    {[d.type, d.date, d.role ? `${d.uploadedBy} (${d.role})` : d.uploadedBy].filter(Boolean).join(' • ')}
                   </div>
                 </div>
               </div>

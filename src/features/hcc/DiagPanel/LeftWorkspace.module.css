@@ -1061,6 +1061,18 @@
   gap: 10px;
   min-width: 0;
 }
+/* Document avatar — matches the Support "Document Available" drawer's .docThumb. */
+.docThumb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+}
 .docExtIcon {
   position: relative;
   width: 32px;

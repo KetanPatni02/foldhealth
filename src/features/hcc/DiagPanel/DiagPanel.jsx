@@ -227,8 +227,10 @@ export function DiagPanel() {
       return next;
     });
   };
-  const [overriddenOpen, setOverriddenOpen] = useState(false);
-  const [closedOpen, setClosedOpen] = useState(false);
+  // Open/closed state for the removed Overridden/Closed ICD sections — kept
+  // commented out rather than deleted.
+  // const [overriddenOpen, setOverriddenOpen] = useState(false);
+  // const [closedOpen, setClosedOpen] = useState(false);
   // Expandable "ICDs Associated with N/M DOSs" section (Paper 1ZV3): a row
   // per DOS with a toggle. Toggling a DOS off hides its ICD rows.
   const [dosExpanded, setDosExpanded] = useState(false);
@@ -914,7 +916,8 @@ export function DiagPanel() {
           ))}
         </div>
 
-        {/* Collapsed history sections (pre-redesign behavior preserved). */}
+        {/* Overridden ICDs + Closed ICDs sections removed per request — code
+            kept commented out rather than deleted.
         <div className={styles.icdSections}>
           <IcdSection
             title="Overridden ICDs"
@@ -939,6 +942,7 @@ export function DiagPanel() {
             }
           </IcdSection>
         </div>
+        */}
       </div>
       </div>{/* ── /rightPane ── */}
       </div>{/* ── /contentRow ── */}
