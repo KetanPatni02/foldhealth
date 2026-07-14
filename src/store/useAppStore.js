@@ -2557,9 +2557,18 @@ export const useAppStore = create((set, get) => ({
       visitType: 'AWV',
     });
     const finalize = async (baseRows) => {
-      const { AWV_MEMBERS } = await import('../features/awv-worklist/data/mock');
-      const awvRows = (AWV_MEMBERS || []).map((a, i) => portAwvRow(a, i, (AWV_MEMBERS || []).length));
-      const all = [...baseRows, ...awvRows];
+      // AWV rows are now seeded into hcc_members (visit_type = 'AWV') so the
+      // DB path returns the full 57-row set. The mock merge is only relevant
+      // when we've fallen back to the local HCC mock; in that case we still
+      // want AWV rows to appear so the total lines up with what the app has
+      // always shown.
+      const dbHasAwv = baseRows.some(r => r.visit_type === 'AWV' || r.vt === 'AWV');
+      let all = baseRows;
+      if (!dbHasAwv) {
+        const { AWV_MEMBERS } = await import('../features/awv-worklist/data/mock');
+        const awvRows = (AWV_MEMBERS || []).map((a, i) => portAwvRow(a, i, (AWV_MEMBERS || []).length));
+        all = [...baseRows, ...awvRows];
+      }
       // Count rows per patient name so patients with 2+ rows get force-
       // routed to doc-first (they need to cluster into a mini-sweep).
       const nameCounts = all.reduce((acc, r) => { acc[r.name] = (acc[r.name] || 0) + 1; return acc; }, {});
@@ -2686,6 +2695,88 @@ export const useAppStore = create((set, get) => ({
       isLinked: row.is_linked,
     }));
     set({ hccDiagnosisGaps: gaps, hccDiagnosisGapsLoading: false });
+  },
+
+  // Per-ICD confidence / evidence-factor / MEAT-note lookup
+  //
+  // hcc_gap_confidence is org-scoped (identical for every patient in Phase 2)
+  // so a single fetch at panel mount hydrates every drill-down on the record.
+  // Consumers (IcdRow) hit `getIcdConfidence(code)` which falls back to the
+  // JS defaults in data/confidence.js when the code isn't seeded.
+  hccGapConfidence: {},        // { code: { score, status, evidence, factors, meatNote } }
+  hccGapConfidenceDidFetch: false,
+  fetchHccGapConfidence: async () => {
+    if (get().hccGapConfidenceDidFetch) return;
+    try {
+      const { data, error } = await supabase.from('hcc_gap_confidence').select('*');
+      if (error) throw error;
+      const map = {};
+      for (const r of (data || [])) {
+        map[r.code] = {
+          score: r.score,
+          status: r.status,
+          evidence: r.evidence || [],
+          factors: r.factors,
+          meatNote: r.meat_note,
+        };
+      }
+      set({ hccGapConfidence: map, hccGapConfidenceDidFetch: true });
+    } catch (err) {
+      console.warn('fetchHccGapConfidence error — components will fall back to mock:', err?.message || err);
+      set({ hccGapConfidenceDidFetch: true });
+    }
+  },
+
+  // Diagnosis-panel ancillary tabs (Comments / Documents / Notes / History)
+  //
+  // The four hcc_diag_* tables are org-scoped in Phase 2 — every drawer
+  // shows the same content — so a single fire-and-forget fetch on first
+  // panel open is enough. Store keeps a `didFetch` flag so we don't
+  // re-round-trip on every open. Empty results fall back to the local
+  // src/features/hcc/data/ancillary.js constants (kept as a safety net
+  // while the seed rolls out to every environment).
+  hccDiagComments: [],
+  hccDiagDocumentsList: [],
+  hccDiagNotes: [],
+  hccDiagHistoryEntries: [],
+  hccDiagAncillaryLoading: false,
+  hccDiagAncillaryDidFetch: false,
+  fetchHccDiagAncillary: async () => {
+    if (get().hccDiagAncillaryDidFetch || get().hccDiagAncillaryLoading) return;
+    set({ hccDiagAncillaryLoading: true });
+    try {
+      const [comments, documents, notes, history] = await Promise.all([
+        supabase.from('hcc_diag_comments').select('*').order('created_at', { ascending: true }),
+        supabase.from('hcc_diag_documents').select('*').order('created_at', { ascending: true }),
+        supabase.from('hcc_diag_notes').select('*').order('created_at', { ascending: true }),
+        supabase.from('hcc_diag_history').select('*').order('created_at', { ascending: true }),
+      ]);
+      set({
+        hccDiagComments: (comments?.data || []).map(r => ({
+          id: r.id, author: r.author, role: r.role, date: r.date, time: r.time,
+          edited: r.edited, body: r.body,
+        })),
+        hccDiagDocumentsList: (documents?.data || []).map(r => ({
+          id: r.id, name: r.name, ext: r.ext, type: r.doc_type,
+          uploadedBy: r.uploaded_by, role: r.role, date: r.date, time: r.time,
+          status: r.status,
+        })),
+        hccDiagNotes: (notes?.data || []).map(r => ({
+          id: r.id, title: r.title, author: r.author, role: r.role,
+          date: r.date, time: r.time, signed: r.signed, body: r.body,
+        })),
+        hccDiagHistoryEntries: (history?.data || []).map(r => ({
+          id: r.id, dos: r.dos, hccCode: r.hcc_code, hccName: r.hcc_name,
+          reviewedAt: r.reviewed_at, by: r.reviewed_by, role: r.role,
+          claims: r.claims, icdStatus: r.icd_status,
+        })),
+        hccDiagAncillaryLoading: false,
+        hccDiagAncillaryDidFetch: true,
+      });
+    } catch (err) {
+      console.warn('fetchHccDiagAncillary error — components will fall back to local mock:', err?.message || err);
+      set({ hccDiagAncillaryLoading: false, hccDiagAncillaryDidFetch: true });
+    }
   },
 
   // Optimistic accept/dismiss of an ICD inside the DiagPanel. Updates the

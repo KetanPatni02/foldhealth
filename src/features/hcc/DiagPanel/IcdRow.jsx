@@ -3,7 +3,12 @@ import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
 import { Button } from '../../../components/Button/Button';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
-import { getConfidence, getScoreStyle, getMeatNote, MEAT_NOTE_DATA } from '../data/confidence';
+import {
+  getConfidenceFromDb,
+  getScoreStyle,
+  getMeatNoteFromDb,
+  MEAT_NOTE_DATA,
+} from '../data/confidence';
 import { reviewedByLabel } from '../reviewedBy';
 import styles from './IcdRow.module.css';
 
@@ -68,7 +73,13 @@ export function IcdRow({ icd }) {
   const isDismissed = icd.status === 'Dismissed';
   const isClosed = isAccepted || isDismissed;
 
-  const conf = getConfidence(icd.code);
+  // Confidence + MEAT payload now sourced from Supabase (hcc_gap_confidence)
+  // with the JS defaults kept as a safety net. The fetch is guarded by
+  // didFetch inside the store so calling it here is safe on every render.
+  const fetchHccGapConfidence = useAppStore(s => s.fetchHccGapConfidence);
+  useEffect(() => { fetchHccGapConfidence(); }, [fetchHccGapConfidence]);
+  const gapConfMap = useAppStore(s => s.hccGapConfidence);
+  const conf = getConfidenceFromDb(gapConfMap, icd.code);
   const scoreStyle = getScoreStyle(conf.score);
   const typeBadge = icd.type ? TYPE_BADGE[icd.type] : null;
 
@@ -82,7 +93,7 @@ export function IcdRow({ icd }) {
     // they can be committed. Open the unified panel with MEAT expanded and
     // Confidence collapsed; user signs to confirm.
     if (isAISuggested(icd)) {
-      setMeatText(getMeatNote(icd.code, icd.desc));
+      setMeatText(getMeatNoteFromDb(gapConfMap, icd.code, icd.desc));
       setPanel('meat');
       setConfOpen(false);
       setMeatOpen(true);
@@ -135,7 +146,7 @@ export function IcdRow({ icd }) {
       setMeatOpen(false);
       return;
     }
-    if (!meatText) setMeatText(getMeatNote(icd.code, icd.desc));
+    if (!meatText) setMeatText(getMeatNoteFromDb(gapConfMap, icd.code, icd.desc));
     setPanel('meat');
     setConfOpen(false);
     setMeatOpen(true);
@@ -374,7 +385,7 @@ export function IcdRow({ icd }) {
               className={styles.expandHeaderLeft}
               onClick={() => {
                 setMeatOpen(o => {
-                  if (!o && !meatText) setMeatText(getMeatNote(icd.code, icd.desc));
+                  if (!o && !meatText) setMeatText(getMeatNoteFromDb(gapConfMap, icd.code, icd.desc));
                   return !o;
                 });
               }}

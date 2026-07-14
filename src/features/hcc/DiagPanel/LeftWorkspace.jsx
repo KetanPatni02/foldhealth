@@ -4,7 +4,12 @@ import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Button } from '../../../components/Button/Button';
 import { Badge } from '../../../components/Badge/Badge';
-import { COMMENTS, DOCUMENTS, NOTES, CLAIMS, HISTORY } from '../data/ancillary';
+import {
+  COMMENTS as COMMENTS_MOCK,
+  NOTES as NOTES_MOCK,
+  CLAIMS,
+  HISTORY as HISTORY_MOCK,
+} from '../data/ancillary';
 import { getChartDocs } from '../data/chartDocs';
 import { ACTIVITY } from '../data/activity';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
@@ -12,7 +17,9 @@ import { OutreachTab as PatientOutreachTab } from '../../patient/components/Outr
 import { DocEvidenceViewer } from './DocEvidenceViewer';
 import styles from './LeftWorkspace.module.css';
 
-// Two tab sets depending on scope:
+// Two tab sets depending on scope. Counts flow in per-render since
+// Comments / Documents / Notes now come from Supabase (falling back to
+// the local mock when the DB is empty).
 //   • ICD-level (opened from an ICD code) — Figma 1:45936:
 //       Activity Log, Notes, Comments, Documents, Claims, History
 //   • DOS-level (opened from the toolbar Activity Log icon) — Figma 1:48023:
@@ -20,24 +27,15 @@ import styles from './LeftWorkspace.module.css';
 // Tab order: Documents → Claims → Timeline → Comments → Notes → History → Worklog.
 // ("Activity Log" is renamed to "Timeline" per product; the tab key stays
 // 'activity' to keep the store's active-tab persistence stable.)
-const ICD_TABS = [
-  { key: 'documents', label: 'Documents',     countFor: () => DOCUMENTS.length },
+const buildTabs = ({ commentsCount, notesCount }) => ([
+  { key: 'documents', label: 'Documents',     countFor: () => null }, // computed from charts
   { key: 'claims',    label: 'Claims',        countFor: () => CLAIMS.length },
   { key: 'activity',  label: 'Timeline',      countFor: () => null },
-  { key: 'comments',  label: 'Comments',      countFor: () => COMMENTS.length },
-  { key: 'notes',     label: 'Notes',         countFor: () => NOTES.length },
+  { key: 'comments',  label: 'Comments',      countFor: () => commentsCount },
+  { key: 'notes',     label: 'Notes',         countFor: () => notesCount },
   { key: 'history',   label: 'History',       countFor: () => null },
   { key: 'worklog',   label: 'Worklog',       countFor: () => null },
-];
-const DOS_TABS = [
-  { key: 'documents', label: 'Documents',     countFor: () => DOCUMENTS.length },
-  { key: 'claims',    label: 'Claims',        countFor: () => CLAIMS.length },
-  { key: 'activity',  label: 'Timeline',      countFor: () => null },
-  { key: 'comments',  label: 'Comments',      countFor: () => COMMENTS.length },
-  { key: 'notes',     label: 'Notes',         countFor: () => NOTES.length },
-  { key: 'history',   label: 'History',       countFor: () => null },
-  { key: 'worklog',   label: 'Worklog',       countFor: () => null },
-];
+]);
 
 // Tabs that carry the filter row (Activity / Notes / Comments / Documents).
 const FILTERED_TABS = new Set(['activity', 'notes', 'comments', 'documents']);
@@ -59,7 +57,17 @@ const FILTERED_TABS = new Set(['activity', 'notes', 'comments', 'documents']);
  */
 export function LeftWorkspace({ active, icdScope = null, onChange, onClose, member, currentDos = null }) {
   const isDosLevel = !icdScope;
-  const tabs = isDosLevel ? DOS_TABS : ICD_TABS;
+  // Kick off the org-scoped ancillary fetch once — safe to call repeatedly,
+  // the store guards on didFetch. Doing it here means every drawer open
+  // primes Comments / Documents / Notes / History without threading a hook
+  // through the top-level DiagPanel.
+  const fetchHccDiagAncillary = useAppStore(s => s.fetchHccDiagAncillary);
+  useEffect(() => { fetchHccDiagAncillary(); }, [fetchHccDiagAncillary]);
+  const dbComments = useAppStore(s => s.hccDiagComments);
+  const dbNotes    = useAppStore(s => s.hccDiagNotes);
+  const commentsForCount = dbComments.length ? dbComments : COMMENTS_MOCK;
+  const notesForCount    = dbNotes.length    ? dbNotes    : NOTES_MOCK;
+  const tabs = buildTabs({ commentsCount: commentsForCount.length, notesCount: notesForCount.length });
   // Lifted from DocumentsTab so the surrounding filter row can be hidden while
   // a document is being previewed — filters only make sense on the listing.
   const [openDocId, setOpenDocId] = useState(null);
@@ -676,7 +684,13 @@ function AvatarPill({ initials, name }) {
 // (`date · time · author(role)` + optional Edited badge), and the full body
 // text below. Composer is a single-line input — Enter posts.
 function CommentsTab() {
-  const [items, setItems] = useState(COMMENTS);
+  // Seed from Supabase (hcc_diag_comments); fall back to the local mock
+  // while the DB is empty or unreachable. Local state supports optimistic
+  // insert when the composer posts — persistence is a follow-up.
+  const dbComments = useAppStore(s => s.hccDiagComments);
+  const seed = dbComments.length ? dbComments : COMMENTS_MOCK;
+  const [items, setItems] = useState(seed);
+  useEffect(() => { setItems(seed); }, [seed]);
   const [draft, setDraft] = useState('');
   const [collapsed, setCollapsed] = useState(() => new Set());
   const activityIcd = useAppStore(s => s.diagActivityIcd);
@@ -1355,7 +1369,10 @@ function DocUploaderFileRow({ file, phase, progress, onRefresh, onRemove }) {
 // ── Notes tab — Figma 41:358849 ──────────────────────────────────────────
 // Timeline with note icon. Single-line "Add a note" composer.
 function NotesTab() {
-  const [items, setItems] = useState(NOTES);
+  const dbNotes = useAppStore(s => s.hccDiagNotes);
+  const seed = dbNotes.length ? dbNotes : NOTES_MOCK;
+  const [items, setItems] = useState(seed);
+  useEffect(() => { setItems(seed); }, [seed]);
   const [draft, setDraft] = useState('');
   const activityIcd = useAppStore(s => s.diagActivityIcd);
   const addActivityEntry = useAppStore(s => s.addActivityEntry);
@@ -1814,6 +1831,8 @@ function WorklogTab({ member, filters = {} }) {
 // review for a given DOS. icdStatus drives the trailing status pill button:
 //   accepted → green check  •  dismissed → red close  •  open → grey dash.
 function HistoryTab() {
+  const dbHistory = useAppStore(s => s.hccDiagHistoryEntries);
+  const items = dbHistory.length ? dbHistory : HISTORY_MOCK;
   return (
     <div className={styles.scroll}>
       <div className={styles.dataTable}>
@@ -1823,7 +1842,7 @@ function HistoryTab() {
           <span>Claims</span>
           <span>ICD Status</span>
         </div>
-        {HISTORY.map((h) => (
+        {items.map((h) => (
           <div key={h.id} className={[styles.dataTableRow, styles.historyGrid].join(' ')}>
             <span className={styles.historyDos}>{h.dos}</span>
             <div className={styles.historyHcc}>
