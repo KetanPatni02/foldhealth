@@ -22,6 +22,7 @@ import { PgProcessingHost } from '../features/population-groups/PgProcessingHost
 import { SchedulingListTable } from '../features/scheduling-list/SchedulingListTable';
 import { Icon } from '../components/Icon/Icon';
 import { useAppStore } from '../store/useAppStore';
+import { Toaster } from '../components/Toast/Toast';
 import { supabase } from '../lib/supabase';
 import styles from './AppLayout.module.css';
 
@@ -92,45 +93,7 @@ function ComingSoonState({ listName }) {
   );
 }
 
-function Toast() {
-  const toast = useAppStore(s => s.toast);
-  const closeToast = useAppStore(s => s.closeToast);
-  if (!toast) return null;
-  return (
-    <div style={{
-      position: 'fixed', bottom: 88, left: '50%', transform: 'translateX(-50%)',
-      background: 'var(--neutral-500)', color: 'var(--neutral-0)', padding: '12px 20px', borderRadius: 8,
-      fontSize: 14, fontWeight: 500, boxShadow: '0 4px 12px rgba(0,0,0,.2)', zIndex: 10001,
-      whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 12
-    }}>
-      {toast}
-      <button onClick={closeToast} style={{
-        background: 'none', border: 'none', color: 'var(--neutral-0)', cursor: 'pointer',
-        fontSize: 16, padding: 0, display: 'flex', opacity: 0.8, lineHeight: 1,
-      }}>✕</button>
-    </div>
-  );
-}
 
-function ToastSuccess() {
-  const toastSuccess = useAppStore(s => s.toastSuccess);
-  const closeToastSuccess = useAppStore(s => s.closeToastSuccess);
-  if (!toastSuccess) return null;
-  return (
-    <div style={{
-      position: 'fixed', top: 24, left: '50%', transform: 'translateX(-50%)',
-      background: 'var(--status-success)', color: '#fff', padding: '12px 20px', borderRadius: 8,
-      fontSize: 14, fontWeight: 500, boxShadow: '0 4px 12px rgba(0,0,0,.2)', zIndex: 600,
-      display: 'flex', alignItems: 'center', gap: 12, whiteSpace: 'nowrap'
-    }}>
-      TOC Agent Invoked Successfully
-      <button onClick={closeToastSuccess} style={{
-        background: 'none', border: 'none', color: '#fff', cursor: 'pointer',
-        fontSize: 16, padding: 0, display: 'flex', opacity: 0.8, lineHeight: 1,
-      }}>✕</button>
-    </div>
-  );
-}
 
 function PopulationView() {
   const subnavCollapsed = useAppStore(s => s.subnavCollapsed);
@@ -410,7 +373,7 @@ export function AppLayout() {
         <Suspense fallback={<LazyFallback />}>
           <EmailBuilder />
         </Suspense>
-        <Toast />
+        <Toaster />
       </div>
     );
   }
@@ -424,7 +387,7 @@ export function AppLayout() {
         <Suspense fallback={<LazyFallback />}>
           <CampaignBuilder />
         </Suspense>
-        <Toast />
+        <Toaster />
       </div>
     );
   }
@@ -436,7 +399,7 @@ export function AppLayout() {
         <Suspense fallback={<LazyFallback />}>
           <FormView />
         </Suspense>
-        <Toast />
+        <Toaster />
       </div>
     );
   }
@@ -449,7 +412,7 @@ export function AppLayout() {
         <Suspense fallback={<LazyFallback />}>
           <FormBuilder />
         </Suspense>
-        <Toast />
+        <Toaster />
       </div>
     );
   }
@@ -462,7 +425,7 @@ export function AppLayout() {
         <Suspense fallback={<LazyFallback />}>
           <AgentCanvas />
         </Suspense>
-        <Toast />
+        <Toaster />
       </div>
     );
   }
@@ -512,8 +475,8 @@ export function AppLayout() {
         {quickViewPatient && <QuickViewDrawer />}
         <PgProcessingHost />
       </Suspense>
-      <Toast />
-      <ToastSuccess />
+      <Toaster />
+      
     </div>
   );
 }

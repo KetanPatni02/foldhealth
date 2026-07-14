@@ -7,6 +7,7 @@ import { Input } from '../../../components/Input/Input';
 import { Textarea } from '../../../components/Textarea/Textarea';
 import { Switch } from '../../../components/Switch/Switch';
 import { FoldhealthLogo } from '../../../components/FoldhealthLogo/FoldhealthLogo';
+import { ColorInput } from '../../email-builder/ColorInput';
 import styles from './OrgPanel.module.css';
 
 const SOCIAL_FIELDS = [
@@ -23,6 +24,7 @@ export function OrgPanel() {
   const [logo, setLogo] = useState(null);
   const [name, setName] = useState('');
   const [showName, setShowName] = useState(false);
+  const [primaryColor, setPrimaryColor] = useState('#8C5AE2');
   const [about, setAbout] = useState('');
   const [socials, setSocials] = useState({ twitter: '', instagram: '', facebook: '', linkedin: '', website: '' });
   const [loading, setLoading] = useState(true);
@@ -47,6 +49,7 @@ export function OrgPanel() {
         if (data) {
           setName(data.name || '');
           setShowName(!!data.show_name);
+          setPrimaryColor(data.primary_color || '#8C5AE2');
           setAbout(data.about || '');
           setLogo(data.logo_url || null);
           setSocials({
@@ -109,6 +112,7 @@ export function OrgPanel() {
           user_id: session.user.id,
           name,
           show_name: showName,
+          primary_color: primaryColor,
           about,
           logo_url: logo,
           twitter: socials.twitter,
@@ -193,6 +197,16 @@ export function OrgPanel() {
         )}
       </div>
 
+      {/* Primary Color */}
+      <div className={styles.formGroup}>
+        <ColorInput
+          label="Primary Color"
+          value={primaryColor}
+          onChange={setPrimaryColor}
+          allowGradient={false}
+        />
+      </div>
+
       {/* Preview — only once a logo exists */}
       {logo && (
         <div className={styles.formGroup}>
@@ -206,7 +220,7 @@ export function OrgPanel() {
             <div className={styles.poweredBy}>
               <span className={styles.poweredByLabel}>Powered By</span>
               <div className={styles.poweredByBrand}>
-                <FoldhealthLogo size={14} color="#8C5AE2" />
+                <FoldhealthLogo size={14} color={primaryColor} />
                 <span className={styles.poweredByName}>Foldhealth</span>
               </div>
             </div>

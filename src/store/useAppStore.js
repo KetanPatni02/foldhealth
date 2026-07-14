@@ -9,6 +9,7 @@ import { kpiRowToJs, tsRowToJs, tableRowToJs, barRowToJs, configRowToJs, groupTi
 import { domainDbToJs, domainJsToDb, componentDbToJs, componentJsToDb, auditLogDbToJs } from '../lib/embedMapper';
 import { popGroupRowToJs, popGroupJsToDb } from '../lib/popGroupMapper';
 import { hccDocumentRowToJs, hccDocumentJsToDb } from '../lib/hccDocumentMapper';
+import { toast } from '../components/Toast/Toast';
 // Fallback datasets (~220KB raw across all of these) are imported lazily
 // inside the fetch actions that consume them, so they don't bloat the entry
 // chunk. They're only needed when Supabase returns empty or errors.
@@ -895,8 +896,6 @@ export const useAppStore = create((set, get) => ({
   showInvokeModal: false,
   showCreateNew: false,
   showFilterBar: false,
-  toast: null,
-  toastSuccess: false,
   queueTabDot: false,
 
   // ─── Notifications (bell-icon dropdown) ───────────────────────────
@@ -4986,7 +4985,8 @@ export const useAppStore = create((set, get) => ({
       }
       return newP;
     });
-    set({ patients: updated, selectedIds: [], showInvokeModal: false, toastSuccess: true, queueTabDot: true });
+    toast.success('TOC Agent Invoked Successfully');
+    set({ patients: updated, selectedIds: [], showInvokeModal: false, queueTabDot: true });
 
     // Auto-navigate to the queue tab so users see their invoked patients
     const { setActiveTab } = get();
@@ -5029,7 +5029,6 @@ export const useAppStore = create((set, get) => ({
     }
 
     get().startCallTimers();
-    setTimeout(() => set({ toastSuccess: false }), 3500);
   },
 
   abortAllAgents: () => {
@@ -5124,12 +5123,8 @@ export const useAppStore = create((set, get) => ({
   },
 
   showToast: (msg) => {
-    set({ toast: msg });
-    setTimeout(() => set(s => s.toast === msg ? { toast: null } : {}), 2800);
+    toast(msg);
   },
-
-  closeToast: () => set({ toast: null }),
-  closeToastSuccess: () => set({ toastSuccess: false }),
 
   openDetail: (patientId, callRow = null) => {
     const p = get().patients.find(x => x.id === patientId);
