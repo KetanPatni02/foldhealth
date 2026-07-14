@@ -2697,6 +2697,36 @@ export const useAppStore = create((set, get) => ({
     set({ hccDiagnosisGaps: gaps, hccDiagnosisGapsLoading: false });
   },
 
+  // Per-ICD confidence / evidence-factor / MEAT-note lookup
+  //
+  // hcc_gap_confidence is org-scoped (identical for every patient in Phase 2)
+  // so a single fetch at panel mount hydrates every drill-down on the record.
+  // Consumers (IcdRow) hit `getIcdConfidence(code)` which falls back to the
+  // JS defaults in data/confidence.js when the code isn't seeded.
+  hccGapConfidence: {},        // { code: { score, status, evidence, factors, meatNote } }
+  hccGapConfidenceDidFetch: false,
+  fetchHccGapConfidence: async () => {
+    if (get().hccGapConfidenceDidFetch) return;
+    try {
+      const { data, error } = await supabase.from('hcc_gap_confidence').select('*');
+      if (error) throw error;
+      const map = {};
+      for (const r of (data || [])) {
+        map[r.code] = {
+          score: r.score,
+          status: r.status,
+          evidence: r.evidence || [],
+          factors: r.factors,
+          meatNote: r.meat_note,
+        };
+      }
+      set({ hccGapConfidence: map, hccGapConfidenceDidFetch: true });
+    } catch (err) {
+      console.warn('fetchHccGapConfidence error — components will fall back to mock:', err?.message || err);
+      set({ hccGapConfidenceDidFetch: true });
+    }
+  },
+
   // Diagnosis-panel ancillary tabs (Comments / Documents / Notes / History)
   //
   // The four hcc_diag_* tables are org-scoped in Phase 2 — every drawer
