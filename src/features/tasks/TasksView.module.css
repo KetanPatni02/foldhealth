@@ -706,6 +706,9 @@
   border-radius: 8px;
   display: flex;
   align-items: stretch;
+  flex-shrink: 0;
+  min-height: min-content; /* Prevent squishing */
+  height: max-content; /* Ensure it takes full content height */
   cursor: grab;
   transition: box-shadow .15s, border-color .15s, opacity .15s;
   touch-action: none;
@@ -770,6 +773,7 @@
 .cardBody {
   flex: 1;
   min-width: 0;
+  min-height: min-content; /* Ensure content determines height */
   display: flex;
   flex-direction: column;
   gap: 8px;

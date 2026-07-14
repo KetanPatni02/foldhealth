@@ -1,0 +1,83 @@
+.toaster {
+  /* We can let Sonner handle the positioning and stacking */
+}
+
+/* Target the main container to allow dynamic centering */
+:global([data-sonner-toaster]) {
+  pointer-events: none; /* allow clicks to pass through wrapper */
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: max-content !important;
+  max-width: min(600px, calc(100vw - 32px)) !important;
+  padding: 12px 48px 12px 16px !important;
+  margin: 0 auto !important;
+  pointer-events: auto; /* restore clicks on the toast itself */
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  border: none !important;
+  color: var(--neutral-0) !important;
+}
+
+.toast [data-icon] {
+  display: none !important; /* Hide left icon to match design */
+}
+
+/* Default / Info */
+.default {
+  background: var(--status-info) !important;
+}
+
+/* Success */
+.success {
+  background: var(--status-success) !important;
+}
+
+/* Error */
+.error {
+  background: var(--status-error) !important;
+}
+
+/* Warning */
+.warning {
+  background: var(--status-warning) !important;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.title {
+  font-weight: 500;
+}
+
+.description {
+  font-size: 14px;
+  opacity: 0.9;
+  font-weight: 400;
+}
+
+.closeButton {
+  background: transparent !important;
+  border: none !important;
+  color: var(--neutral-0) !important;
+  opacity: 0.8;
+  right: 16px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  left: auto !important;
+}
+
+.closeButton:hover {
+  opacity: 1;
+}
+

@@ -25,6 +25,7 @@ import { PdfPreviewOverlay } from '../../components/PdfPreviewOverlay/PdfPreview
 import { ClinicalNotePanel } from '../hedis-worklist/ClinicalNotePanel';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
 import { useAppStore } from '../../store/useAppStore';
+import { toast } from '../../components/Toast/Toast';
 import styles from './TasksView.module.css';
 
 const TABS = [
@@ -723,7 +724,7 @@ function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo }) {
             <span className={`${styles.taskName} ${isCompleted ? styles.taskNameDone : ''}`}>{task.name}</span>
           )}
           <span className={styles.taskMeta}>
-            {task.parent_task ? (task.created_by ? `By : ${task.created_by}` : '') : task.meta}
+            {`By : ${task.created_by?.trim() || 'System Automation'}${task.meta ? ` • ${task.meta}` : ''}`}
           </span>
         </div>
         <div className={styles.taskAttachments}>
@@ -948,7 +949,7 @@ function KanbanCardContent({ task }) {
         {/* Row 6: Meta + linked counts */}
         <div className={styles.cardFooterRow}>
           <span className={styles.cardFooterMeta}>
-            {task.is_subtask && task.parent_task ? (task.created_by ? `By : ${task.created_by}` : '') : task.meta}
+            {`By : ${task.created_by?.trim() || 'System Automation'}${task.meta ? ` • ${task.meta}` : ''}`}
           </span>
           <div className={styles.cardLinked}>
             {task.is_subtask && (
@@ -982,7 +983,7 @@ function KanbanCardContent({ task }) {
 }
 
 /* ── Kanban View: Draggable Card ── */
-function DraggableKanbanCard({ task, onToggle, onTaskClick }) {
+function DraggableKanbanCard({ task, groupKey, onToggle, onTaskClick }) {
   const wasDragging = useRef(false);
   const {
     attributes,
@@ -993,7 +994,7 @@ function DraggableKanbanCard({ task, onToggle, onTaskClick }) {
     isDragging,
   } = useSortable({
     id: String(task.id),
-    data: { type: 'task', task, status: task.status },
+    data: { type: 'task', task, groupKey },
   });
 
   useEffect(() => {
@@ -1015,7 +1016,7 @@ function DraggableKanbanCard({ task, onToggle, onTaskClick }) {
   }, [task, onTaskClick]);
 
   return (
-    <div
+<div
       ref={setNodeRef}
       style={style}
       className={`${styles.kanbanCard} ${isDragging ? styles.kanbanCardDragging : ''}`}
@@ -1029,22 +1030,19 @@ function DraggableKanbanCard({ task, onToggle, onTaskClick }) {
 }
 
 /* ── Kanban View: Droppable Column ── */
-function DroppableKanbanColumn({ status, tasks, onToggle, onTaskClick }) {
+function DroppableKanbanColumn({ groupKey, label, tasks, onToggle, onTaskClick }) {
   const { setNodeRef, isOver } = useDroppable({
-    id: `column-${status}`,
-    data: { type: 'column', status },
+    id: `column-${groupKey}`,
+    data: { type: 'column', groupKey },
   });
 
   return (
     <div className={`${styles.kanbanColumn} ${isOver ? styles.kanbanColumnOver : ''}`}>
       <div className={styles.kanbanColumnHeader}>
         <div className={styles.kanbanColumnTitle}>
-          <span
-            className={styles.kanbanStatusDot}
-            style={{ background: STATUS_COLORS[status] }}
-          />
-          <span className={styles.kanbanStatusLabel}>{STATUS_LABELS[status]}</span>
-          <Badge variant="overflow" label={`${tasks.length} ${tasks.length === 1 ? 'task' : 'tasks'}`} />
+          <div className={styles.kanbanStatusDot} style={{ background: `var(--status-${groupKey}, var(--neutral-200))` }} />
+          <span className={styles.kanbanStatusLabel}>{label}</span>
+          <Badge variant="ai-neutral" label={tasks.length.toString()} />
         </div>
         <div className={styles.kanbanColumnActions}>
           <span className={styles.kanbanSort}>Due Date</span>
@@ -1055,10 +1053,10 @@ function DroppableKanbanColumn({ status, tasks, onToggle, onTaskClick }) {
       <div
         ref={setNodeRef}
         className={`${styles.kanbanCards} ${isOver ? styles.kanbanCardsOver : ''}`}
-        data-status={status}
+        data-group={groupKey}
       >
         {tasks.map(t => (
-          <DraggableKanbanCard key={t.id} task={t} onToggle={onToggle} onTaskClick={onTaskClick} />
+          <DraggableKanbanCard key={t.id} task={t} groupKey={groupKey} onToggle={onToggle} onTaskClick={onTaskClick} />
         ))}
         {tasks.length === 0 && (
           <div className={styles.kanbanDropHint}>
@@ -1071,7 +1069,7 @@ function DroppableKanbanColumn({ status, tasks, onToggle, onTaskClick }) {
 }
 
 /* ── Kanban Board with DnD ── */
-function KanbanBoard({ kanbanGroups, onToggle, onStatusChange, onTaskClick }) {
+function KanbanBoard({ kanbanGroups, onToggle, onTaskMove, onTaskClick }) {
   const [activeTask, setActiveTask] = useState(null);
   const [overColumn, setOverColumn] = useState(null);
 
@@ -1092,33 +1090,44 @@ function KanbanBoard({ kanbanGroups, onToggle, onStatusChange, onTaskClick }) {
     if (task) setActiveTask(task);
   }, [allTasks]);
 
-  const resolveStatus = useCallback((over) => {
+  const resolveGroupKey = useCallback((over) => {
     if (!over) return null;
     const overData = over.data?.current;
-    if (overData?.type === 'column') return overData.status;
-    if (overData?.type === 'task') return overData.status;
+    if (overData?.type === 'column') return overData.groupKey;
+    if (overData?.type === 'task') return overData.groupKey;
     return null;
   }, []);
 
   const handleDragOver = useCallback((event) => {
-    setOverColumn(resolveStatus(event.over));
-  }, [resolveStatus]);
+    setOverColumn(resolveGroupKey(event.over));
+  }, [resolveGroupKey]);
 
   const handleDragEnd = useCallback((event) => {
     const { active, over } = event;
     setActiveTask(null);
     setOverColumn(null);
 
-    if (!over || !active) return;
+    if (!over || !active) {
+      toast.error('Drag failed: missing over or active');
+      return;
+    }
 
     const draggedTask = allTasks[active.id];
-    if (!draggedTask) return;
-
-    const targetStatus = resolveStatus(over);
-    if (targetStatus && targetStatus !== draggedTask.status) {
-      onStatusChange(draggedTask.id, targetStatus);
+    if (!draggedTask) {
+      toast.error(`Drag failed: no dragged task found for id ${active.id}`);
+      return;
     }
-  }, [allTasks, resolveStatus, onStatusChange]);
+
+    const targetGroupKey = resolveGroupKey(over);
+    const sourceGroupKey = active.data?.current?.groupKey;
+    
+    if (targetGroupKey && targetGroupKey !== sourceGroupKey) {
+      toast.info(`Moving from ${sourceGroupKey} to ${targetGroupKey}`);
+      onTaskMove(draggedTask.id, targetGroupKey, sourceGroupKey);
+    } else {
+      toast.error(`Drag ignored: target=${targetGroupKey}, source=${sourceGroupKey}`);
+    }
+  }, [allTasks, resolveGroupKey, onTaskMove]);
 
   const customCollisionDetection = useCallback((args) => {
     const pointerCollisions = pointerWithin(args);
@@ -1138,7 +1147,8 @@ function KanbanBoard({ kanbanGroups, onToggle, onStatusChange, onTaskClick }) {
         {kanbanGroups.map(g => (
           <DroppableKanbanColumn
             key={g.status}
-            status={g.status}
+            groupKey={g.status}
+            label={g.label || (g.status.charAt(0).toUpperCase() + g.status.slice(1))}
             tasks={g.tasks}
             onToggle={onToggle}
             onTaskClick={onTaskClick}
@@ -1655,11 +1665,14 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
 
   const handleStatusChange = (newStatus) => {
     if (newStatus === 'completed' && subtasks.length > 0 && completedSubs < subtasks.length) {
-      showToast(`Cannot complete: ${subtasks.length - completedSubs} subtask(s) still open`);
+      toast.error(`Cannot complete: ${subtasks.length - completedSubs} subtask(s) still open`);
       return;
     }
     updateTask(task.id, { status: newStatus });
-    showToast(`Status changed to ${STATUS_LABELS[newStatus]}`);
+    const msg = `Status changed to ${STATUS_LABELS[newStatus]}`;
+    if (newStatus === 'completed') toast.success(msg);
+    else if (newStatus === 'missed') toast.error(msg);
+    else toast.info(msg);
   };
 
   const handleTitleSave = () => {
@@ -2354,9 +2367,28 @@ export function TasksView() {
   }, [updateTask]);
 
   const handleStatusChange = useCallback((taskId, newStatus) => {
-    updateTask(taskId, { status: newStatus });
-    showToast(`Task moved to ${STATUS_LABELS[newStatus]}`);
-  }, [updateTask, showToast]);
+    const taskToUpdate = tasks.find(t => t.id === taskId);
+    let patch = { status: newStatus };
+    let msg = `Task moved to ${STATUS_LABELS[newStatus]}`;
+    let variant = 'info';
+    
+    if (taskToUpdate?.status === 'missed' && newStatus === 'pending') {
+      const d = new Date();
+      d.setDate(d.getDate() + 7);
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      patch.due_date = `${mm}-${dd}-${d.getFullYear()}`;
+      msg = 'Task moved to Pending. Due date extended by 7 days.';
+      variant = 'warning';
+    } else if (newStatus === 'completed') {
+      variant = 'success';
+    } else if (newStatus === 'missed') {
+      variant = 'error';
+    }
+    
+    updateTask(taskId, patch);
+    toast[variant](msg);
+  }, [updateTask, tasks]);
 
   const sortedTasks = useMemo(() => {
     const sortBy = tasksFilters.sort_by;
@@ -2435,7 +2467,6 @@ export function TasksView() {
       if (buckets.overdue.length) result.push({ status: 'overdue', label: 'Overdue', tasks: buckets.overdue });
       if (buckets.today.length) result.push({ status: 'today', label: 'Today', tasks: buckets.today });
       if (buckets.upcoming.length) result.push({ status: 'upcoming', label: 'Upcoming', tasks: buckets.upcoming });
-      if (buckets.no_date.length) result.push({ status: 'no_date', label: 'No Due Date', tasks: buckets.no_date });
       return result;
     }
     return STATUS_ORDER.reduce((acc, status) => {
@@ -2445,13 +2476,76 @@ export function TasksView() {
     }, []);
   }, [sortedTasks, tasksFilters.view_by]);
 
-  const kanbanGroups = STATUS_ORDER.map(status => ({
-    status,
-    tasks: sortedTasks.filter(t => t.status === status),
-  }));
+  const kanbanGroups = useMemo(() => {
+    const viewBy = tasksFilters.view_by || 'status';
+    if (viewBy === 'priority') {
+      return PRIORITY_ORDER.map(p => ({
+        status: p,
+        label: PRIORITY_LABELS[p],
+        tasks: sortedTasks.filter(t => (t.priority || 'none') === p),
+      }));
+    }
+    if (viewBy === 'due_date') {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const buckets = { overdue: [], today: [], upcoming: [], no_date: [] };
+      sortedTasks.forEach(t => {
+        if (!t.due_date) { buckets.no_date.push(t); return; }
+        const p = t.due_date.split('-');
+        const d = new Date(+p[2], +p[0] - 1, +p[1]); d.setHours(0, 0, 0, 0);
+        if (d < today) buckets.overdue.push(t);
+        else if (d.getTime() === today.getTime()) buckets.today.push(t);
+        else buckets.upcoming.push(t);
+      });
+      return [
+        { status: 'overdue', label: 'Overdue', tasks: buckets.overdue },
+        { status: 'today', label: 'Today', tasks: buckets.today },
+        { status: 'upcoming', label: 'Upcoming', tasks: buckets.upcoming }
+      ];
+    }
+    return STATUS_ORDER.map(status => ({
+      status,
+      label: STATUS_LABELS[status] || (status.charAt(0).toUpperCase() + status.slice(1)),
+      tasks: sortedTasks.filter(t => t.status === status),
+    }));
+  }, [sortedTasks, tasksFilters.view_by]);
 
   const activeFilterCount = Object.keys(tasksFilters).length;
   const hideAssignedTo = !!tasksFilters.assigned_to;
+
+  const handleTaskMove = async (taskId, targetGroupKey, sourceGroupKey) => {
+    const viewBy = tasksFilters.view_by || 'status';
+    const task = tasks.find(t => String(t.id) === String(taskId));
+    if (!task) return;
+
+    try {
+      if (viewBy === 'status') {
+        setTasks(prev => prev.map(t => String(t.id) === String(taskId) ? { ...t, status: targetGroupKey } : t));
+        await updateTask(taskId, { status: targetGroupKey });
+      } else if (viewBy === 'priority') {
+        const priorityVal = targetGroupKey === 'none' ? null : targetGroupKey;
+        setTasks(prev => prev.map(t => String(t.id) === String(taskId) ? { ...t, priority: priorityVal } : t));
+        await updateTask(taskId, { priority: priorityVal });
+      } else if (viewBy === 'due_date') {
+        let newDate = null;
+        if (targetGroupKey === 'today') {
+          const d = new Date();
+          newDate = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}-${d.getFullYear()}`;
+        } else if (targetGroupKey === 'upcoming') {
+          const d = new Date(); d.setDate(d.getDate() + 7);
+          newDate = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}-${d.getFullYear()}`;
+        } else if (targetGroupKey === 'overdue') {
+          const d = new Date(); d.setDate(d.getDate() - 1);
+          newDate = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}-${d.getFullYear()}`;
+        }
+        setTasks(prev => prev.map(t => String(t.id) === String(taskId) ? { ...t, due_date: newDate } : t));
+        await updateTask(taskId, { due_date: newDate });
+      }
+      toast.success(`Task moved to ${targetGroupKey}`);
+    } catch (err) {
+      console.error('handleTaskMove error:', err);
+      toast.error(`Move Error: ${err.message || 'Unknown error'}`);
+    }
+  };
 
   const renderContent = () => {
     if (tasksLoading && tasks.length === 0) {
@@ -2490,7 +2584,7 @@ export function TasksView() {
         <KanbanBoard
           kanbanGroups={kanbanGroups}
           onToggle={handleToggle}
-          onStatusChange={handleStatusChange}
+          onTaskMove={handleTaskMove}
           onTaskClick={setSelectedTask}
         />
       );
