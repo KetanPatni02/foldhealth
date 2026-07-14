@@ -169,51 +169,54 @@ export function AwvWorklistTable() {
       {/* Filter chip bar */}
       {filterBarOpen && (
         <div className={styles.filterBar}>
-          <FilterChip label="Program Sub Status"
-            options={filterOptions.progSubStatus}
-            selected={filters.progSubStatus}
-            onChange={(v) => setFilter('progSubStatus', v)}
-          />
-          <FilterChip label="Program Name"
-            options={filterOptions.progName}
-            selected={filters.progName}
-            onChange={(v) => setFilter('progName', v)}
-          />
-          <FilterChip label="Risk IQ"
-            options={filterOptions.ri}
-            selected={filters.ri}
-            onChange={(v) => setFilter('ri', v)}
-          />
-          <FilterChip label="Decile"
-            options={filterOptions.dec}
-            selected={filters.dec}
-            onChange={(v) => setFilter('dec', v)}
-          />
-          <FilterChip label="Advillness"
-            options={filterOptions.ad}
-            selected={filters.ad}
-            onChange={(v) => setFilter('ad', v)}
-          />
-          <FilterChip label="Frailty"
-            options={filterOptions.fr}
-            selected={filters.fr}
-            onChange={(v) => setFilter('fr', v)}
-          />
-          <FilterChip label="Assignee"
-            options={filterOptions.assignee}
-            selected={filters.assignee}
-            onChange={(v) => setFilter('assignee', v)}
-          />
-          {Object.keys(filters).length > 0 && (
-            <button
-              type="button"
-              className={styles.clearAll}
-              onClick={clearFilters}
-            >
-              <Icon name="solar:close-circle-linear" size={12} color="var(--primary-300)" />
-              Clear All
-            </button>
-          )}
+          <div className={styles.chips}>
+            <FilterChip label="Program Sub Status"
+              options={filterOptions.progSubStatus}
+              selected={filters.progSubStatus}
+              onChange={(v) => setFilter('progSubStatus', v)}
+            />
+            <FilterChip label="Program Name"
+              options={filterOptions.progName}
+              selected={filters.progName}
+              onChange={(v) => setFilter('progName', v)}
+            />
+            <FilterChip label="Risk IQ"
+              options={filterOptions.ri}
+              selected={filters.ri}
+              onChange={(v) => setFilter('ri', v)}
+            />
+            <FilterChip label="Decile"
+              options={filterOptions.dec}
+              selected={filters.dec}
+              onChange={(v) => setFilter('dec', v)}
+            />
+            <FilterChip label="Advillness"
+              options={filterOptions.ad}
+              selected={filters.ad}
+              onChange={(v) => setFilter('ad', v)}
+            />
+            <FilterChip label="Frailty"
+              options={filterOptions.fr}
+              selected={filters.fr}
+              onChange={(v) => setFilter('fr', v)}
+            />
+            <FilterChip label="Assignee"
+              options={filterOptions.assignee}
+              selected={filters.assignee}
+              onChange={(v) => setFilter('assignee', v)}
+            />
+          </div>
+          <div className={styles.filterRight}>
+            {Object.keys(filters).length > 0 && (
+              <button
+                type="button"
+                className={styles.linkBtn}
+                onClick={clearFilters}
+              >
+                Clear All
+              </button>
+            )}
+          </div>
         </div>
       )}
 
