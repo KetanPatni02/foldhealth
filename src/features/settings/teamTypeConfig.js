@@ -7,7 +7,7 @@ import { ASTRANA_STAFF, staffForRole, ROLE_LABEL } from '../hcc/assignment/astra
 
 // Team Type options per Care Team kind. Keep entries in display order.
 export const TEAM_TYPE_OPTIONS = {
-  hcc: ['Coder', 'Reviewer', 'Reviewer 2'],
+  hcc: ['Coder', 'QA', 'Compliance'],
   'care-program': ['SNP', 'AWV', 'CCM', 'TCM', 'ECM', 'CBP', 'MRP'],
   hedis: ['Assignee'],
 };
@@ -18,8 +18,8 @@ export const TEAM_TYPE_OPTIONS = {
 // TIN or Vendor.
 export const ASSIGN_TO_DIMENSIONS = {
   Coder:        ['TIN', 'Vendor'],
-  'Reviewer':   ['Coder', 'TIN'],
-  'Reviewer 2': ['Reviewer', 'Vendor'],
+  'QA':         ['Coder', 'TIN'],
+  'Compliance': ['QA', 'Vendor'],
   SNP:          ['TIN'],
   AWV:          ['TIN'],
   CCM:          ['TIN'],
@@ -88,8 +88,8 @@ export function valueOptionsForDimension(dim) {
   }
   const roleKey =
     dim === 'Coder'      ? 'coder'     :
-    dim === 'Reviewer'   ? 'reviewer'  :
-    dim === 'Reviewer 2' ? 'reviewer2' : null;
+    dim === 'QA'         ? 'reviewer'  :
+    dim === 'Compliance' ? 'reviewer2' : null;
   if (!roleKey) return [];
   return staffForRole(roleKey).map(s => ({
     value:    s.id,

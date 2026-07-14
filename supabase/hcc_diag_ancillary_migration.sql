@@ -87,7 +87,7 @@ TRUNCATE hcc_diag_comments, hcc_diag_documents, hcc_diag_notes, hcc_diag_history
 
 INSERT INTO hcc_diag_comments (id, author, role, date, time, edited, body) VALUES
   ('c1', 'Deborah Hintz', 'Coder',        '06/01/2026', '12:30 PM', false, 'E11.21 supported by 04/18/2026 progress note — creatinine 1.8, ACR 320 mg/g documented. Accepting under HCC 37 (Diabetes with Chronic Complications).'),
-  ('c2', 'M. Almeda',     'Reviewer',     '06/02/2026', '09:15 AM', true,  'Requesting supporting evidence for I50.9 → suggest confirming with recent BNP or echo. Note from 03/08/2026 mentions "history of CHF" only — MEAT criteria not clearly documented for this DOS.'),
+  ('c2', 'M. Almeda',     'QA',           '06/02/2026', '09:15 AM', true,  'Requesting supporting evidence for I50.9 → suggest confirming with recent BNP or echo. Note from 03/08/2026 mentions "history of CHF" only — MEAT criteria not clearly documented for this DOS.'),
   ('c3', 'A. Beauchamp',  'Support Team', '06/03/2026', '02:45 PM', false, 'Records requested from PCP for I48.91 (a-fib). ECG report expected within 5 business days. Placing DOS on hold pending documentation.');
 
 INSERT INTO hcc_diag_documents (id, name, ext, doc_type, uploaded_by, role, date, time, status) VALUES
