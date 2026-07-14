@@ -41,6 +41,17 @@
   font-weight: 600;
   color: var(--neutral-500);
 }
+/* Previous / Reviewing X of N / Next document pager (Figma 4999:156381). */
+.reviewNav {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.reviewNavLabel {
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+  white-space: nowrap;
+}
 .titleSub {
   display: inline-flex;
   align-items: center;

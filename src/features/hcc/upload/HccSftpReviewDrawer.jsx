@@ -38,9 +38,20 @@ import styles from './HccSftpReviewDrawer.module.css';
 export function HccSftpReviewDrawer() {
   const open = useAppStore(s => s.hccSftpReviewOpen);
   const close = useAppStore(s => s.closeHccSftpReview);
-  const batches = useAppStore(s => s.hccSftpBatches) || [];
+  const allBatches = useAppStore(s => s.hccSftpBatches) || [];
+  const sourceBatchIds = useAppStore(s => s.hccReviewSourceBatchIds);
   const activeId = useAppStore(s => s.hccSftpActiveBatchId);
   const setActiveId = useAppStore(s => s.setHccSftpActiveBatchId);
+  // When review is opened over a specific set of documents (e.g. from the
+  // upload picker's "Review"), scope the drawer — and its Previous/Next
+  // navigation — to just those, in the order they were passed (focus first).
+  const batches = useMemo(() => {
+    if (!sourceBatchIds || !sourceBatchIds.length) return allBatches;
+    const order = new Map(sourceBatchIds.map((id, i) => [id, i]));
+    return allBatches
+      .filter(b => order.has(b.id))
+      .sort((a, b) => order.get(a.id) - order.get(b.id));
+  }, [allBatches, sourceBatchIds]);
   const patchEnc = useAppStore(s => s.patchHccSftpEncounter);
   const removeEnc = useAppStore(s => s.removeHccSftpEncounter);
   const removeBatch = useAppStore(s => s.removeHccSftpBatch);
@@ -215,7 +226,37 @@ export function HccSftpReviewDrawer() {
     </span>
   );
 
-  const headerRight = (
+  // Step through the reviewed documents with Previous / Next (Figma
+  // 4999:156381). Falls back to the recorded/members stats for a single doc.
+  const activeIndex = batches.findIndex(b => b.id === activeBatch?.id);
+  const totalDocs = batches.length;
+  const goToDoc = (idx) => { const b = batches[idx]; if (b) setActiveId(b.id); };
+
+  const headerRight = totalDocs > 1 ? (
+    <span className={styles.reviewNav}>
+      <Button
+        variant="alt"
+        size="S"
+        leadingIcon="solar:alt-arrow-left-linear"
+        disabled={activeIndex <= 0}
+        onClick={() => goToDoc(activeIndex - 1)}
+      >
+        Previous
+      </Button>
+      <span className={styles.reviewNavLabel}>
+        Reviewing: {activeIndex + 1} of {totalDocs} Documents
+      </span>
+      <Button
+        variant="alt"
+        size="S"
+        trailingIcon="solar:alt-arrow-right-linear"
+        disabled={activeIndex >= totalDocs - 1}
+        onClick={() => goToDoc(activeIndex + 1)}
+      >
+        Next
+      </Button>
+    </span>
+  ) : (
     <span className={styles.titleStats}>
       <strong>{stats.totalEncs}</strong>&nbsp;Recorded
       <span className={styles.titleSubDot}>•</span>
