@@ -2697,6 +2697,58 @@ export const useAppStore = create((set, get) => ({
     set({ hccDiagnosisGaps: gaps, hccDiagnosisGapsLoading: false });
   },
 
+  // Diagnosis-panel ancillary tabs (Comments / Documents / Notes / History)
+  //
+  // The four hcc_diag_* tables are org-scoped in Phase 2 — every drawer
+  // shows the same content — so a single fire-and-forget fetch on first
+  // panel open is enough. Store keeps a `didFetch` flag so we don't
+  // re-round-trip on every open. Empty results fall back to the local
+  // src/features/hcc/data/ancillary.js constants (kept as a safety net
+  // while the seed rolls out to every environment).
+  hccDiagComments: [],
+  hccDiagDocumentsList: [],
+  hccDiagNotes: [],
+  hccDiagHistoryEntries: [],
+  hccDiagAncillaryLoading: false,
+  hccDiagAncillaryDidFetch: false,
+  fetchHccDiagAncillary: async () => {
+    if (get().hccDiagAncillaryDidFetch || get().hccDiagAncillaryLoading) return;
+    set({ hccDiagAncillaryLoading: true });
+    try {
+      const [comments, documents, notes, history] = await Promise.all([
+        supabase.from('hcc_diag_comments').select('*').order('created_at', { ascending: true }),
+        supabase.from('hcc_diag_documents').select('*').order('created_at', { ascending: true }),
+        supabase.from('hcc_diag_notes').select('*').order('created_at', { ascending: true }),
+        supabase.from('hcc_diag_history').select('*').order('created_at', { ascending: true }),
+      ]);
+      set({
+        hccDiagComments: (comments?.data || []).map(r => ({
+          id: r.id, author: r.author, role: r.role, date: r.date, time: r.time,
+          edited: r.edited, body: r.body,
+        })),
+        hccDiagDocumentsList: (documents?.data || []).map(r => ({
+          id: r.id, name: r.name, ext: r.ext, type: r.doc_type,
+          uploadedBy: r.uploaded_by, role: r.role, date: r.date, time: r.time,
+          status: r.status,
+        })),
+        hccDiagNotes: (notes?.data || []).map(r => ({
+          id: r.id, title: r.title, author: r.author, role: r.role,
+          date: r.date, time: r.time, signed: r.signed, body: r.body,
+        })),
+        hccDiagHistoryEntries: (history?.data || []).map(r => ({
+          id: r.id, dos: r.dos, hccCode: r.hcc_code, hccName: r.hcc_name,
+          reviewedAt: r.reviewed_at, by: r.reviewed_by, role: r.role,
+          claims: r.claims, icdStatus: r.icd_status,
+        })),
+        hccDiagAncillaryLoading: false,
+        hccDiagAncillaryDidFetch: true,
+      });
+    } catch (err) {
+      console.warn('fetchHccDiagAncillary error — components will fall back to local mock:', err?.message || err);
+      set({ hccDiagAncillaryLoading: false, hccDiagAncillaryDidFetch: true });
+    }
+  },
+
   // Optimistic accept/dismiss of an ICD inside the DiagPanel. Updates the
   // local gap list immediately so the UI reflects the new state; the server
   // round-trip is a TODO (Phase 3).
