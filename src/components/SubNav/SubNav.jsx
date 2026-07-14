@@ -24,7 +24,9 @@ export function SubNav({ collapsed }) {
   const setActiveFilters = useAppStore(s => s.setActiveFilters);
   const patients = useAppStore(s => s.patients);
   const hccMembers = useAppStore(s => s.hccMembers);
+  const awvMembers = useAppStore(s => s.awvMembers || []);
   const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
+  const fetchAwvMembers = useAppStore(s => s.fetchAwvMembers);
   const clearSelected = useAppStore(s => s.clearSelected);
   const clearHccSelected = useAppStore(s => s.clearHccSelected);
   // Saved filters per shared list — appears whenever the user is on a
@@ -66,20 +68,24 @@ export function SubNav({ collapsed }) {
     return 0;
   };
 
-  // Prefetch HCC members on mount so the count is available immediately
-  useEffect(() => { fetchHccMembers(); }, []);
+  // Prefetch HCC and AWV members on mount so the count is available immediately
+  useEffect(() => {
+    fetchHccMembers();
+    fetchAwvMembers();
+  }, []);
 
-  // Only TOC and HCC show real counts; all others show 0
+  // Only TOC, HCC, and AWV show real counts; all others show 0
   const getCounts = useMemo(() => {
     const counts = {};
     for (const list of SHARED_LISTS) {
       if (list.view === 'hcc') counts[list.label] = hccMembers.length;
       else if (list.view === 'hedis') counts[list.label] = HEDIS_MEMBERS.length;
+      else if (list.label === 'AWV') counts[list.label] = awvMembers.length;
       else if (list.label === 'TOC') counts[list.label] = patients.length;
       else counts[list.label] = 0;
     }
     return counts;
-  }, [patients, hccMembers]);
+  }, [patients, hccMembers, awvMembers]);
 
   const allPatientsCount = patients.length + hccMembers.length;
 

@@ -12,6 +12,8 @@ import { Pagination } from '../../components/Pagination/Pagination';
 // across all three worklists.
 import { useTableSort } from '../../components/Table/useTableSort';
 import { SortableHeader } from '../../components/Table/SortableHeader';
+import { FilterChip } from '../../components/FilterChip/FilterChip';
+import { InlineEditable } from '../../components/InlineEditable/InlineEditable';
 import { AwvWorklistRow } from './AwvWorklistRow';
 import { AWV_COLUMNS, AWV_STATUS, RISK_COLOR } from './data/mock';
 import styles from './AwvWorklistTable.module.css';
@@ -20,67 +22,21 @@ import styles from './AwvWorklistTable.module.css';
 // should read. Some columns (Outreach Log, Task) read numeric values that
 // share their column key; others (Risk Level, Decile) map straight across.
 const SORT_KEY_BY_COL = {
-  status:   'status',
-  due:      'due',
-  outreach: 'outreach',
-  assignee: 'assignee',
-  np:       'npAppt',
-  lastAwv:  'lastAwv',
-  dec:      'dec',
-  ad:       'ad',
-  fr:       'fr',
-  rl:       'rl',
-  task:     'task',
+  progSubStatus: 'progSubStatus',
+  progName:      'progName',
+  due:           'due',
+  outreach:      'outreach',
+  assignee:      'assignee',
+  np:            'npAppt',
+  lastAwv:       'lastAwv',
+  ad:            'ad',
+  fr:            'fr',
+  ri:            'ri',
+  dec:           'dec',
+  task:          'task',
 };
 
-// Filter chip — multi-select dropdown over a known set of values from
-// the data set. Mirrors the chip pattern used by HCC/TOC but kept local
-// here to avoid cross-feature coupling.
-function FilterChip({ label, options, value, onChange }) {
-  const [open, setOpen] = useState(false);
-  const selectedCount = value?.length || 0;
-  const toggleVal = (v) => {
-    const cur = new Set(value || []);
-    if (cur.has(v)) cur.delete(v); else cur.add(v);
-    onChange([...cur]);
-  };
-  return (
-    <div className={styles.filterChipWrap}>
-      <button
-        type="button"
-        className={[styles.filterChip, selectedCount > 0 ? styles.filterChipActive : ''].join(' ')}
-        onClick={() => setOpen(o => !o)}
-      >
-        {label}
-        {selectedCount > 0 && <span className={styles.filterChipCount}>{selectedCount}</span>}
-        <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" />
-      </button>
-      {open && (
-        <>
-          <div className={styles.filterChipBackdrop} onClick={() => setOpen(false)} />
-          <div className={styles.filterChipMenu}>
-            {options.map(opt => {
-              const active = (value || []).includes(opt);
-              return (
-                <button
-                  key={opt}
-                  type="button"
-                  className={[styles.filterChipItem, active ? styles.filterChipItemActive : ''].join(' ')}
-                  onClick={() => toggleVal(opt)}
-                >
-                  <span className={[styles.filterChipBox, active ? styles.filterChipBoxOn : ''].join(' ')}>
-                    {active && <Icon name="solar:check-read-linear" size={10} color="var(--neutral-0)" />}
-                  </span>
-                  {opt}
-                </button>
-              );
-            })}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
+
 
 export function AwvWorklistTable() {
   const members = useAppStore(s => s.awvMembers);
@@ -101,18 +57,20 @@ export function AwvWorklistTable() {
   const [filterBarOpen, setFilterBarOpen] = useState(true);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
+  const [listTitle, setListTitle] = useState('AWV Worklist');
 
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
 
   // Derive filter chip options from the loaded data so chips only show
   // values that actually exist.
   const filterOptions = useMemo(() => ({
-    status:   [...new Set(members.map(m => m.status).filter(Boolean))],
-    rl:       [...new Set(members.map(m => m.rl).filter(Boolean))].sort(),
-    dec:      [...new Set(members.map(m => m.dec).filter(Boolean))].sort((a,b) => Number(a) - Number(b)),
-    ad:       [...new Set(members.map(m => m.ad).filter(Boolean))].sort(),
-    fr:       [...new Set(members.map(m => m.fr).filter(Boolean))].sort(),
-    assignee: [...new Set(members.map(m => m.assignee).filter(Boolean))].sort(),
+    progSubStatus: [...new Set(members.map(m => m.progSubStatus).filter(Boolean))],
+    progName:      [...new Set(members.map(m => m.progName).filter(Boolean))],
+    ri:            [...new Set(members.map(m => m.ri).filter(Boolean))].sort(),
+    dec:           [...new Set(members.map(m => m.dec).filter(Boolean))].sort((a,b) => Number(a) - Number(b)),
+    ad:            [...new Set(members.map(m => m.ad).filter(Boolean))].sort(),
+    fr:            [...new Set(members.map(m => m.fr).filter(Boolean))].sort(),
+    assignee:      [...new Set(members.map(m => m.assignee).filter(Boolean))].sort(),
   }), [members]);
 
   const filtered = useMemo(() => {
@@ -145,14 +103,18 @@ export function AwvWorklistTable() {
 
   return (
     <div className={styles.wrap}>
-      {/* Toolbar — mirrors TOC's TabBar treatment: tab pill on the left,
+      {/* Toolbar — mirrors HCC's TabBar treatment: inline editable title on the left,
           action icons + divider on the right, single bottom border. */}
       <div className={styles.toolbar}>
         <div className={styles.toolbarLeft}>
-          <div className={styles.tabPill}>
-            AWV Worklist
-            <span className={styles.titleCount}>{filtered.length}</span>
-          </div>
+          <InlineEditable
+            value={listTitle}
+            onCommit={setListTitle}
+            size="L"
+            maxLength={60}
+            placeholder="Worklist"
+            title="Rename this list"
+          />
         </div>
         <div className={styles.toolbarRight}>
           {searchOpen ? (
@@ -207,34 +169,39 @@ export function AwvWorklistTable() {
       {/* Filter chip bar */}
       {filterBarOpen && (
         <div className={styles.filterBar}>
-          <FilterChip label="Program Status"
-            options={filterOptions.status}
-            value={filters.status}
-            onChange={(v) => setFilter('status', v)}
+          <FilterChip label="Program Sub Status"
+            options={filterOptions.progSubStatus}
+            selected={filters.progSubStatus}
+            onChange={(v) => setFilter('progSubStatus', v)}
           />
-          <FilterChip label="Risk Level"
-            options={filterOptions.rl}
-            value={filters.rl}
-            onChange={(v) => setFilter('rl', v)}
+          <FilterChip label="Program Name"
+            options={filterOptions.progName}
+            selected={filters.progName}
+            onChange={(v) => setFilter('progName', v)}
+          />
+          <FilterChip label="Risk IQ"
+            options={filterOptions.ri}
+            selected={filters.ri}
+            onChange={(v) => setFilter('ri', v)}
           />
           <FilterChip label="Decile"
             options={filterOptions.dec}
-            value={filters.dec}
+            selected={filters.dec}
             onChange={(v) => setFilter('dec', v)}
           />
           <FilterChip label="Advillness"
             options={filterOptions.ad}
-            value={filters.ad}
+            selected={filters.ad}
             onChange={(v) => setFilter('ad', v)}
           />
           <FilterChip label="Frailty"
             options={filterOptions.fr}
-            value={filters.fr}
+            selected={filters.fr}
             onChange={(v) => setFilter('fr', v)}
           />
           <FilterChip label="Assignee"
             options={filterOptions.assignee}
-            value={filters.assignee}
+            selected={filters.assignee}
             onChange={(v) => setFilter('assignee', v)}
           />
           {Object.keys(filters).length > 0 && (

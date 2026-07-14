@@ -13,10 +13,8 @@ import { QueueTable } from '../features/toc-queue/QueueTable';
 import { QueueSummaryBar } from '../features/toc-queue/QueueSummaryBar';
 import { HccWorklistTable } from '../features/hcc/HccWorklistTable';
 import { HedisWorklistTable } from '../features/hedis-worklist/HedisWorklistTable';
+import { AwvWorklistTable } from '../features/awv-worklist/AwvWorklistTable';
 import { AllPatientsTable } from '../features/all-patients/AllPatientsTable';
-// AWV route now redirects into the unified HCC worklist with the Visit
-// Type filter pre-set to AWV. `AwvWorklistTable` is retained on disk
-// but no longer mounted (see effect below).
 import { PopulationGroupsView } from '../features/population-groups/PopulationGroupsView';
 import { PgProcessingHost } from '../features/population-groups/PgProcessingHost';
 import { SchedulingListTable } from '../features/scheduling-list/SchedulingListTable';
@@ -105,13 +103,7 @@ function PopulationView() {
   const selectedPatientId = useAppStore(s => s.selectedPatientId);
   const setHccFilter = useAppStore(s => s.setHccFilter);
 
-  // WS3 — AWV route redirects into the unified worklist with the Visit Type
-  // filter pre-set to AWV-only. This effect must run before the early return
-  // below, or the hook order changes when a patient is selected (Rules of Hooks).
   const isAwv = activeSubnavList === 'AWV';
-  useEffect(() => {
-    if (isAwv) setHccFilter('vt', ['AWV']);
-  }, [isAwv, setHccFilter]);
 
   // Patient detail view — full-page, no subnav
   if (selectedPatientId) {
@@ -159,7 +151,7 @@ function PopulationView() {
               : isHedis
                 ? <HedisWorklistTable />
                 : isAwv
-                  ? <HccWorklistTable />
+                  ? <AwvWorklistTable />
                   : isAllPatients
                     ? <AllPatientsTable />
                     : isPopulationGroup

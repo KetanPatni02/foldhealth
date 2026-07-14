@@ -12,8 +12,8 @@ import styles from './AwvWorklistRow.module.css';
  * vitals, risk-level pill, task count, and the Actions trio.
  */
 export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, showToast }) {
-  const statusCfg = AWV_STATUS[member.status] || AWV_STATUS.New;
-  const riskCfg = RISK_COLOR[member.rl] || RISK_COLOR.Low;
+  const statusCfg = AWV_STATUS[member.progSubStatus] || AWV_STATUS.New;
+  const riskCfg = RISK_COLOR[member.ri] || RISK_COLOR.Low;
 
   return (
     <tr className={[styles.row, selected ? styles.rowSelected : ''].filter(Boolean).join(' ')}>
@@ -43,15 +43,18 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
         </div>
       </td>
 
-      {/* Program Status */}
+      {/* Program Sub Status */}
       <td>
         <span
           className={styles.pill}
           style={{ color: statusCfg.color, background: statusCfg.bg, borderColor: statusCfg.color }}
         >
-          {member.status}
+          {member.progSubStatus}
         </span>
       </td>
+
+      {/* Program Name */}
+      <td>{member.progName}</td>
 
       {/* Due Date */}
       <td>
@@ -64,13 +67,7 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
         </div>
       </td>
 
-      {/* Outreach — mirrors TOC's OutreachCell pattern: phone icon +
-          status label + date stacked, plus a 3-dot call-history strip
-          underneath. Dots/status are derived from existing fields:
-            - status==='Completed' → last call attended (success)
-            - status==='Declined'  → last call failed
-            - outreach > 0         → some attempts, otherwise pending
-            - outreach === 0       → no calls yet, all pending */}
+      {/* Outreach */}
       <td>
         <AwvOutreachCell member={member} />
       </td>
@@ -99,24 +96,24 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
       {/* Last AWV */}
       <td className={styles.tdDate}>{member.lastAwv || '—'}</td>
 
-      {/* Decile */}
-      <td className={styles.tdMetric}>{member.dec}</td>
-
       {/* Advillness */}
       <td className={styles.tdMetric}>{member.ad}</td>
 
       {/* Frailty */}
       <td className={styles.tdMetric}>{member.fr}</td>
 
-      {/* Risk Level */}
+      {/* Risk IQ */}
       <td>
         <span
           className={styles.pill}
           style={{ color: riskCfg.color, background: riskCfg.bg, borderColor: riskCfg.color }}
         >
-          {member.rl}
+          {member.ri}
         </span>
       </td>
+
+      {/* Decile */}
+      <td className={styles.tdMetric}>{member.dec}</td>
 
       {/* Task */}
       <td className={styles.tdMetric}>
@@ -160,8 +157,8 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
 // per-attempt dot status (real backend would store the array).
 function AwvOutreachCell({ member }) {
   const n = member.outreach || 0;
-  const isCompleted = member.status === 'Completed';
-  const isDeclined  = member.status === 'Declined';
+  const isCompleted = member.progSubStatus === 'Completed';
+  const isDeclined  = member.progSubStatus === 'Declined';
   const dots = (() => {
     if (n === 0) return ['pending', 'pending', 'pending'];
     if (isCompleted) return ['success', 'success', n >= 3 ? 'success' : 'pending'];
