@@ -3026,6 +3026,27 @@ export const useAppStore = create((set, get) => ({
   })),
   selectAllAwv: (ids) => set({ selectedAwvIds: ids }),
   clearAwvSelected: () => set({ selectedAwvIds: [] }),
+  updateAwvMemberStatus: async (id, newStatus) => {
+    // Optimistic update locally
+    set(s => {
+      const next = [...s.awvMembers];
+      const i = next.findIndex(m => m.id === id);
+      if (i > -1) {
+        next[i] = { ...next[i], progSubStatus: newStatus };
+      }
+      return { awvMembers: next };
+    });
+
+    // Fire-and-forget DB update
+    const { error } = await supabase
+      .from('awv_members')
+      .update({ support_status: newStatus })
+      .eq('id', id);
+
+    if (error) {
+      console.warn('Failed to update AWV status:', error.message);
+    }
+  },
 
   selectedHccIds: [],
   selectHccMember: (id) => {

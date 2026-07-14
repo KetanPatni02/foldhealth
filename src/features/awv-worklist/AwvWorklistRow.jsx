@@ -1,7 +1,10 @@
+import { useState, useRef } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Checkbox } from '../../components/ui/checkbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { MenuPopover } from '../../components/Popover/MenuPopover';
+import { useAppStore } from '../../store/useAppStore';
 import { AWV_STATUS, RISK_COLOR } from './data/mock';
 import styles from './AwvWorklistRow.module.css';
 
@@ -12,6 +15,9 @@ import styles from './AwvWorklistRow.module.css';
  * vitals, risk-level pill, task count, and the Actions trio.
  */
 export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, showToast }) {
+  const updateAwvMemberStatus = useAppStore(s => s.updateAwvMemberStatus);
+  const [statusAnchor, setStatusAnchor] = useState(null);
+
   const statusCfg = AWV_STATUS[member.progSubStatus] || AWV_STATUS.New;
   const riskCfg = RISK_COLOR[member.ri] || RISK_COLOR.Low;
 
@@ -45,12 +51,40 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
 
       {/* Program Sub Status */}
       <td>
-        <span
+        <button
+          type="button"
           className={styles.pill}
-          style={{ color: statusCfg.color, background: statusCfg.bg, borderColor: statusCfg.color }}
+          style={{
+            color: statusCfg.color,
+            background: statusCfg.bg,
+            borderColor: statusCfg.color,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setStatusAnchor(e.currentTarget);
+          }}
         >
           {member.progSubStatus}
-        </span>
+          <Icon name="solar:alt-arrow-down-linear" size={12} color={statusCfg.color} />
+        </button>
+
+        {statusAnchor && (
+          <MenuPopover
+            anchorRef={{ current: statusAnchor }}
+            width={240}
+            items={[
+              { label: 'Engaged', key: 'Engaged' },
+              { label: 'Attempted', key: 'Attempted' },
+              { label: 'Engaged - Requires Follow Up', key: 'Engaged - Requires Follow Up' },
+            ]}
+            onSelect={(key) => updateAwvMemberStatus(member.id, key)}
+            onClose={() => setStatusAnchor(null)}
+          />
+        )}
       </td>
 
       {/* Program Name */}
