@@ -283,5 +283,5 @@ html { scroll-behavior: smooth; }
    Set the global browser focus ring color to match the theme.
    ═══════════════════════════════════════════════════════════ */
 *:focus-visible {
-  outline-color: var(--primary-500);
+  outline-color: var(--primary-300);
 }
