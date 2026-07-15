@@ -15,6 +15,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '.
 import { RadioGroup, RadioGroupItem } from '../../components/ui/radio-group';
 import { useTableSort } from '../../components/Table/useTableSort';
 import { SortableHeader } from '../../components/Table/SortableHeader';
+import { Pagination } from '../../components/Pagination/Pagination';
+import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { AuditLogContent } from './panels/AuditLogDrawer';
 import { IdIcon } from '../../components/Icon/IdIcon';
 import { AddIconMinimalist } from '../../components/Icon/AddIconMinimalist';
@@ -230,7 +232,16 @@ export function AccountPanel() {
   const [deletingPlanId, setDeletingPlanId] = useState(null);
   const [planSearchOpen, setPlanSearchOpen] = useState(false);
   const [planSearchVal, setPlanSearchVal] = useState('');
+  // Legacy single-status filter kept only to satisfy the old badge until the
+  // multi-chip row below replaces it fully. Reset on unmount so switching
+  // tabs doesn't leave a stale value.
   const [statusFilter, setStatusFilter] = useState('all');
+  // Multi-chip filter row (Figma parity with HCC worklist). Each key holds
+  // an array of selected values; empty = no filter on that dimension.
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [userFilters, setUserFilters] = useState({ status: [], roles: [], location: [] });
+  const userFiltersActive =
+    userFilters.status.length + userFilters.roles.length + userFilters.location.length;
   const [currentUserId, setCurrentUserId] = useState(null);
   const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
   const showToast = useAppStore(s => s.showToast);
@@ -428,13 +439,46 @@ export function AccountPanel() {
 
   const filteredUsers = useMemo(() => {
     let list = users;
+    // Legacy single-status filter (icon-cycle fallback) — kept while the
+    // multi-chip row is being rolled out.
     if (statusFilter !== 'all') list = list.filter(u => u.status.toLowerCase() === statusFilter);
+    if (userFilters.status.length) list = list.filter(u => userFilters.status.includes(u.status));
+    if (userFilters.roles.length)  list = list.filter(u => userFilters.roles.includes(u.role));
+    if (userFilters.location.length) list = list.filter(u => userFilters.location.includes(u.location));
     if (!searchVal.trim()) return list;
     const q = searchVal.toLowerCase();
     return list.filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || u.role.toLowerCase().includes(q) || u.location.toLowerCase().includes(q));
-  }, [users, searchVal, statusFilter]);
+  }, [users, searchVal, statusFilter, userFilters]);
+
+  // Options for the filter chips — derived from the loaded users so a chip
+  // never lists a value that matches zero rows.
+  const filterOptions = useMemo(() => {
+    const roles = new Set();
+    const locations = new Set();
+    for (const u of users) {
+      if (u.role) roles.add(u.role);
+      if (u.location) locations.add(u.location);
+    }
+    return {
+      status: ['Active', 'Invited', 'Inactive', 'Suspended'],
+      roles: [...roles].sort(),
+      location: [...locations].sort(),
+    };
+  }, [users]);
 
   const { sorted: sortedUsers, sortKey: userSortKey, sortDir: userSortDir, requestSort: requestUserSort } = useTableSort(filteredUsers, 'name');
+
+  // Local pagination — matches the HCC/AWV worklist pattern (10/page default,
+  // Pagination component in controlled mode). Reset to page 1 whenever the
+  // filter, sort, or search changes so the user doesn't land on an empty page
+  // after the result set shrinks.
+  const [userPage, setUserPage] = useState(1);
+  const [userPerPage, setUserPerPage] = useState(10);
+  useEffect(() => { setUserPage(1); }, [searchVal, statusFilter, userFilters, userSortKey, userSortDir]);
+  const paginatedUsers = useMemo(
+    () => sortedUsers.slice((userPage - 1) * userPerPage, userPage * userPerPage),
+    [sortedUsers, userPage, userPerPage],
+  );
 
   return (
     <div className={styles.wrapper}>
@@ -471,15 +515,52 @@ export function AccountPanel() {
                 <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
               )}
             </div>
-            <ActionButton icon="custom:filter" size="L" tooltip="Filter" onClick={() => setStatusFilter(f => f === 'all' ? 'active' : f === 'active' ? 'inactive' : f === 'inactive' ? 'invited' : 'all')} />
-            {statusFilter !== 'all' && (
-              <Badge variant={statusFilter === 'active' ? 'status-completed' : statusFilter === 'invited' ? 'status-queued' : 'status-failed'} label={statusFilter} style={{ textTransform: 'capitalize', cursor: 'pointer' }} onClick={() => setStatusFilter('all')} />
-            )}
+            <ActionButton
+              icon="custom:filter"
+              size="L"
+              tooltip={filterOpen ? 'Hide filters' : 'Show filters'}
+              notification={userFiltersActive > 0}
+              count={userFiltersActive > 0 ? String(userFiltersActive) : undefined}
+              className={filterOpen ? styles.iconActive : ''}
+              onClick={() => setFilterOpen(v => !v)}
+            />
             <span className={styles.tabDivider} />
             <Button variant="secondary" size="L" leadingIcon="solar:add-circle-linear" onClick={() => setShowInvite(true)}>Invite User</Button>
           </div>
         )}
       </div>
+
+      {activeTab === 'Users' && filterOpen && (
+        <div className={styles.filterBar}>
+          <FilterChip
+            label="Status"
+            options={filterOptions.status}
+            selected={userFilters.status}
+            onChange={(vals) => setUserFilters(f => ({ ...f, status: vals }))}
+          />
+          <FilterChip
+            label="Roles"
+            options={filterOptions.roles}
+            selected={userFilters.roles}
+            onChange={(vals) => setUserFilters(f => ({ ...f, roles: vals }))}
+          />
+          <FilterChip
+            label="Practice Location"
+            options={filterOptions.location}
+            selected={userFilters.location}
+            onChange={(vals) => setUserFilters(f => ({ ...f, location: vals }))}
+          />
+          {userFiltersActive > 0 && (
+            <button
+              type="button"
+              className={styles.clearFilters}
+              onClick={() => setUserFilters({ status: [], roles: [], location: [] })}
+            >
+              ⊗ Clear All
+            </button>
+          )}
+        </div>
+      )}
 
       <div className={styles.tableWrap}>
         {activeTab === 'Org' ? (
@@ -487,6 +568,7 @@ export function AccountPanel() {
         ) : activeTab === 'Users' ? (
           loading ? <TableSkeleton rows={10} /> : (
             <>
+              <div className={styles.scrollWrap}>
               <table className={styles.table}>
                 <thead>
                   <tr>
@@ -498,7 +580,7 @@ export function AccountPanel() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedUsers.map(user => (
+                  {paginatedUsers.map(user => (
                     <tr key={user.id}>
                       <td>
                         <div className={styles.userCell} onClick={() => setViewingUser(user)} style={{ cursor: 'pointer' }}>
@@ -564,6 +646,16 @@ export function AccountPanel() {
                   <Icon name="solar:magnifer-linear" size={40} color="var(--neutral-150)" />
                   <p className={styles.emptyTitle}>No users found</p>
                 </div>
+              )}
+              </div>
+              {filteredUsers.length > 0 && (
+                <Pagination
+                  totalItems={filteredUsers.length}
+                  currentPage={userPage}
+                  perPage={userPerPage}
+                  onPageChange={setUserPage}
+                  onPerPageChange={(pp) => { setUserPerPage(pp); setUserPage(1); }}
+                />
               )}
             </>
           )
