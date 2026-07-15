@@ -68,3 +68,16 @@ export const SWEEP_ICD_DATA = {
 
 export const getSweepIcdsForMember = (name) =>
   SWEEP_ICD_DATA[name] || SWEEP_ICD_DATA._default;
+
+/**
+ * DB-preferring variant — pass the `hccGapSweep` store slice
+ * ({ memberName: [row, ...] }) as `dbMap`. Returns the member's rows,
+ * else the seeded '_default' rows, else the JS mock. Keeps the
+ * DiagPanel sweep grouping working while the seed rolls out to every
+ * environment.
+ */
+export const getSweepIcdsFromDb = (dbMap, name) => {
+  if (dbMap?.[name]?.length) return dbMap[name];
+  if (dbMap?._default?.length) return dbMap._default;
+  return SWEEP_ICD_DATA[name] || SWEEP_ICD_DATA._default;
+};

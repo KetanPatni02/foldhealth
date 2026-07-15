@@ -470,15 +470,22 @@ export function DiagPanel() {
   const matchQ = (icd) =>
     !q || icd.code.toLowerCase().includes(q) || (icd.desc || '').toLowerCase().includes(q);
 
+  // Prefer the Supabase sweep table (hcc_gap_sweep); fall back to the JS
+  // mock when a member has no row seeded. Kick off the one-shot fetch
+  // here — didFetch inside the store keeps it a single round-trip.
+  const fetchHccGapSweep = useAppStore(s => s.fetchHccGapSweep);
+  useEffect(() => { fetchHccGapSweep(); }, [fetchHccGapSweep]);
+  const sweepFromDb = useAppStore(s => s.hccGapSweep);
   const sweepByCode = useMemo(() => {
     const m = new Map();
     // Only a member's OWN sweep mapping (design reference patients). No
     // `_default` fallback — otherwise generic dates would shadow the
     // dos_list-derived rows and break worklist grouping coherence.
-    const own = member?.name ? SWEEP_ICD_DATA[member.name] : null;
+    const dbOwn = member?.name ? sweepFromDb[member.name] : null;
+    const own = dbOwn?.length ? dbOwn : (member?.name ? SWEEP_ICD_DATA[member.name] : null);
     if (own) own.forEach(s => m.set(s.code, s));
     return m;
-  }, [member?.name]);
+  }, [member?.name, sweepFromDb]);
 
   // Each ICD card lists a row per DOS the code appears on. Grouping mirrors
   // the worklist: a DOS = one document/encounter (member.dos_list), each

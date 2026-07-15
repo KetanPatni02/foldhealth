@@ -2747,6 +2747,46 @@ export const useAppStore = create((set, get) => ({
     set({ hccDiagnosisGaps: gaps, hccDiagnosisGapsLoading: false });
   },
 
+  // Per-member sweep-ICD spread (DiagPanel cardIcds DOS grouping)
+  //
+  // hcc_gap_sweep holds ICDs with a JSONB `dos_entries` payload showing
+  // per-DOS status/RAF/claim. Consumers (DiagPanel.jsx cardIcds memo)
+  // read via getSweepIcdsFromDb which returns the member's rows, or
+  // the seeded '_default' fallback, or the JS mock.
+  hccGapSweep: {},                 // { memberName: [{ code, desc, hcc, type, dos_entries, docs, cmts, notes, last, by }] }
+  hccGapSweepDidFetch: false,
+  fetchHccGapSweep: async () => {
+    if (get().hccGapSweepDidFetch) return;
+    try {
+      const { data, error } = await supabase
+        .from('hcc_gap_sweep')
+        .select('*')
+        .order('member_name', { ascending: true })
+        .order('sort_order', { ascending: true });
+      if (error) throw error;
+      const map = {};
+      for (const r of (data || [])) {
+        if (!map[r.member_name]) map[r.member_name] = [];
+        map[r.member_name].push({
+          code: r.code,
+          desc: r.description,
+          hcc: r.hcc,
+          type: r.type,
+          dos_entries: r.dos_entries || [],
+          docs: r.docs,
+          cmts: r.cmts,
+          notes: r.notes,
+          last: r.last_activity,
+          by: r.last_activity_by,
+        });
+      }
+      set({ hccGapSweep: map, hccGapSweepDidFetch: true });
+    } catch (err) {
+      console.warn('fetchHccGapSweep error — components will fall back to mock:', err?.message || err);
+      set({ hccGapSweepDidFetch: true });
+    }
+  },
+
   // Per-member RAF-Impact breakdown (worklist RAF tooltip)
   //
   // hcc_member_raf holds one row per (member, HCC) contribution to the
