@@ -510,11 +510,24 @@ export function AccountPanel() {
                         </div>
                       </td>
                       <td>
-                        <Badge
-                          variant={user.status === 'Active' ? 'status-completed' : 'status-failed'}
-                          icon={user.status === 'Active' ? 'solar:check-circle-bold' : 'solar:close-circle-bold'}
-                          label={user.status}
-                        />
+                        {(() => {
+                          // Three-state pill: Active (green) · Invited (amber,
+                          // hourglass) · anything else (red X). Keeps the badge
+                          // aligned with the profiles.status vocabulary so an
+                          // Invited row never reads as an active teammate.
+                          const s = user.status;
+                          const isActive  = s === 'Active';
+                          const isInvited = s === 'Invited';
+                          return (
+                            <Badge
+                              variant={isActive ? 'status-completed' : (isInvited ? 'status-queued' : 'status-failed')}
+                              icon={isActive
+                                ? 'solar:check-circle-bold'
+                                : (isInvited ? 'solar:hourglass-line-bold' : 'solar:close-circle-bold')}
+                              label={s}
+                            />
+                          );
+                        })()}
                       </td>
                       <td>
                         <div className={styles.rolesCell}>
@@ -1068,12 +1081,20 @@ function InviteUserDrawer({ onClose, onInvited }) {
     }
     setSending(true);
     try {
-      // 1. Invite user via Supabase Auth (sends signup email)
+      // 1. Invite user via Supabase Auth (sends signup email).
+      //    The `invited: 'true'` meta flag is picked up by the
+      //    handle_new_user() Postgres trigger to seed the profile
+      //    with status='Invited' instead of the default 'Active'.
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: form.email,
         password: crypto.randomUUID(), // temp password — user resets via email
         options: {
-          data: { first_name: form.first_name, last_name: form.last_name, full_name: `${form.first_name} ${form.last_name}`.trim() },
+          data: {
+            first_name: form.first_name,
+            last_name: form.last_name,
+            full_name: `${form.first_name} ${form.last_name}`.trim(),
+            invited: 'true',
+          },
           emailRedirectTo: `${window.location.origin}/#/reset-password`,
         },
       });
