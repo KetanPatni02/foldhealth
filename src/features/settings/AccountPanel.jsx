@@ -45,6 +45,15 @@ const ROLE_COLORS = {
   'Radiologist': 'toc-engaged', 'Patient': 'ai-neutral',
 };
 
+// A properly-cased name starts with an uppercase letter A-Z. Hyphens,
+// apostrophes, and Unicode letters are allowed anywhere; the rule only
+// polices the FIRST character so "O'Brien", "van Meel", and "Mary Ann"
+// all pass (the second word's casing is a downstream concern).
+const NAME_CAPITALIZED = /^[A-Z]/;
+function isCapitalizedName(str) {
+  return NAME_CAPITALIZED.test((str || '').trim());
+}
+
 function getInitials(name) {
   if (!name) return '??';
   const parts = name.trim().split(/\s+/);
@@ -1171,6 +1180,10 @@ function InviteUserDrawer({ onClose, onInvited }) {
       showToast('First name, last name, and email are required');
       return;
     }
+    if (!isCapitalizedName(form.first_name) || !isCapitalizedName(form.last_name)) {
+      showToast('First and last name must start with a capital letter');
+      return;
+    }
     setSending(true);
     try {
       // 1. Invite user via Supabase Auth (sends signup email).
@@ -1395,6 +1408,17 @@ function InviteUserDrawer({ onClose, onInvited }) {
     };
 
     const handleBulkImport = async () => {
+      // Reject the whole batch when any candidate row has a lowercase-start
+      // first/last name — surfaces the offending row so the coder can fix it
+      // in the same session instead of chasing back-fills later.
+      const badRow = bulkRows.find(r =>
+        (r.first_name && !isCapitalizedName(r.first_name)) ||
+        (r.last_name && !isCapitalizedName(r.last_name)),
+      );
+      if (badRow) {
+        showToast(`Row for ${badRow.email || badRow.first_name || '—'}: first/last name must start with a capital letter`);
+        return;
+      }
       setSending(true);
       let successCount = 0;
       for (const row of bulkRows) {
@@ -1534,7 +1558,15 @@ function InviteUserDrawer({ onClose, onInvited }) {
         <div className={styles.formGrid}>
           <div className={styles.formField}>
             <label className={styles.formLabel}>First Name <span className={styles.required}>*</span></label>
-            <Input value={form.first_name} onChange={e => set('first_name', e.target.value)} placeholder="First Name" />
+            <Input
+              value={form.first_name}
+              onChange={e => set('first_name', e.target.value)}
+              placeholder="First Name"
+              variant={form.first_name && !isCapitalizedName(form.first_name) ? 'error' : 'default'}
+            />
+            {form.first_name && !isCapitalizedName(form.first_name) && (
+              <span className={styles.fieldError}>Must start with a capital letter</span>
+            )}
           </div>
           <div className={styles.formField}>
             <label className={styles.formLabel}>Middle Name</label>
@@ -1542,7 +1574,15 @@ function InviteUserDrawer({ onClose, onInvited }) {
           </div>
           <div className={styles.formField}>
             <label className={styles.formLabel}>Last Name <span className={styles.required}>*</span></label>
-            <Input value={form.last_name} onChange={e => set('last_name', e.target.value)} placeholder="Last Name" />
+            <Input
+              value={form.last_name}
+              onChange={e => set('last_name', e.target.value)}
+              placeholder="Last Name"
+              variant={form.last_name && !isCapitalizedName(form.last_name) ? 'error' : 'default'}
+            />
+            {form.last_name && !isCapitalizedName(form.last_name) && (
+              <span className={styles.fieldError}>Must start with a capital letter</span>
+            )}
           </div>
           <div className={styles.formField}>
             <label className={styles.formLabel}>Email <span className={styles.required}>*</span></label>
@@ -1772,6 +1812,10 @@ function EditUserDrawer({ user, onClose, onSave }) {
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
   const handleSave = () => {
+    if (!isCapitalizedName(form.first_name) || !isCapitalizedName(form.last_name)) {
+      showToast('First and last name must start with a capital letter');
+      return;
+    }
     const updates = {
       full_name: `${form.first_name} ${form.last_name}`.trim(),
       first_name: form.first_name, middle_name: form.middle_name, last_name: form.last_name,
@@ -1900,7 +1944,15 @@ function EditUserDrawer({ user, onClose, onSave }) {
             <div className={styles.formGrid}>
               <div className={styles.formField}>
                 <label className={styles.formLabel}>First Name <span className={styles.required}>*</span></label>
-                <Input value={form.first_name} onChange={e => set('first_name', e.target.value)} placeholder="First name" />
+                <Input
+                  value={form.first_name}
+                  onChange={e => set('first_name', e.target.value)}
+                  placeholder="First name"
+                  variant={form.first_name && !isCapitalizedName(form.first_name) ? 'error' : 'default'}
+                />
+                {form.first_name && !isCapitalizedName(form.first_name) && (
+                  <span className={styles.fieldError}>Must start with a capital letter</span>
+                )}
               </div>
               <div className={styles.formField}>
                 <label className={styles.formLabel}>Middle Name</label>
@@ -1908,7 +1960,15 @@ function EditUserDrawer({ user, onClose, onSave }) {
               </div>
               <div className={styles.formField}>
                 <label className={styles.formLabel}>Last Name <span className={styles.required}>*</span></label>
-                <Input value={form.last_name} onChange={e => set('last_name', e.target.value)} placeholder="Last name" />
+                <Input
+                  value={form.last_name}
+                  onChange={e => set('last_name', e.target.value)}
+                  placeholder="Last name"
+                  variant={form.last_name && !isCapitalizedName(form.last_name) ? 'error' : 'default'}
+                />
+                {form.last_name && !isCapitalizedName(form.last_name) && (
+                  <span className={styles.fieldError}>Must start with a capital letter</span>
+                )}
               </div>
               <div className={styles.formField}>
                 <label className={styles.formLabel}>Date of Birth</label>

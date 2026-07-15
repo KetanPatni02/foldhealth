@@ -137,6 +137,13 @@
   color: var(--primary-300) !important;
 }
 
+/* Inline validation message shown under an Input in error state. */
+.fieldError {
+  font-size: 11px;
+  color: var(--status-error);
+  margin-top: 4px;
+}
+
 /* Table — wrapper flexes to fill the viewport; scrollWrap holds the
    scrollable table body so the Pagination footer stays anchored at the
    bottom of the panel (mirrors the HCC worklist layout). */
