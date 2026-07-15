@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo, useLayoutEffect } from 'react';
+import { useRef, useState, useMemo, useEffect, useLayoutEffect } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { CheckboxListPopover } from '../../components/Popover/CheckboxListPopover';
 import { RadioListPopover } from '../../components/Popover/RadioListPopover';
@@ -33,13 +33,20 @@ export function FilterChipBar({ onSaveFilter }) {
   const clearHccVisibleFilters = useAppStore(s => s.clearHccVisibleFilters);
   const showToast = useAppStore(s => s.showToast);
   const hccMembers = useAppStore(s => s.hccMembers);
+  // Platform users drive the Assignee filter's options (Settings → Users).
+  // One-shot fetch guarded in the store so multiple mounts don't re-round-trip.
+  const platformUsers = useAppStore(s => s.platformUsers);
+  const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
+  useEffect(() => { fetchPlatformUsers(); }, [fetchPlatformUsers]);
 
   // Options for `dynamic` filters are computed from the loaded records rather
   // than a static list — e.g. Visit Type lists the distinct visit types
-  // actually present in the patient records.
+  // actually present in the patient records; Assignee lists platform users
+  // straight from the profiles table so it always mirrors Settings → Users.
   const dynamicOpts = useMemo(() => ({
     vt: [...new Set(hccMembers.map(m => m.visitType || m.vt).filter(Boolean))].sort(),
-  }), [hccMembers]);
+    asgn: platformUsers.map(u => u.name),
+  }), [hccMembers, platformUsers]);
   const optsFor = (def) => {
     if (def?.dynamic && dynamicOpts[def.k]?.length) return dynamicOpts[def.k];
     return def?.opts || [];

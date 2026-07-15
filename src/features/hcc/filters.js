@@ -90,7 +90,10 @@ export const FILTER_DEFS = [
   ] },
   // Measurement Year — most recent first (descending).
   { k: 'my',     label: 'Measurement Year',    type: 'multi', opts: ['2026', '2025', '2024', '2023', '2022', '2021'] },
-  { k: 'asgn',   label: 'Assignee',            type: 'multi', opts: SYSTEM_USER_NAMES, searchable: true },
+  // Assignee options come from the platformUsers store slice (profiles
+  // table, populated by Settings → Users). SYSTEM_USER_NAMES is the
+  // fallback when the fetch hasn't returned yet or the DB is empty.
+  { k: 'asgn',   label: 'Assignee',            type: 'multi', dynamic: 'asgn', opts: SYSTEM_USER_NAMES, searchable: true },
   { k: 'dosSrc', label: 'DOS Source',          type: 'multi', opts: DOS_SOURCE_LABELS },
   { k: 'rl',     label: 'Risk Level',          type: 'multi', opts: ['Low', 'Medium', 'High'] },
   { k: 'coh',    label: 'Cohort',              type: 'multi', opts: ['PCP', 'HCC'] },

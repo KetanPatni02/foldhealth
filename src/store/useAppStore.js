@@ -2817,6 +2817,48 @@ export const useAppStore = create((set, get) => ({
     }
   },
 
+  // Platform users — the "everyone with a profile" roster used by
+  // people-pickers across the app (HCC Assignee filter, bulk Change
+  // Assignees dialog, etc.). Reads full_name from the profiles table;
+  // the JS mock in features/hcc/systemUsers.js remains as fallback so
+  // filter option lists never render empty on cold load.
+  platformUsers: [],           // [{ id, name, initials }]
+  platformUsersDidFetch: false,
+  fetchPlatformUsers: async () => {
+    if (get().platformUsersDidFetch) return;
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, first_name, last_name, email, clinical_roles')
+        .order('full_name', { ascending: true });
+      if (error) throw error;
+      // Dedupe by name — profiles occasionally carries the same full_name
+      // across multiple auth accounts (mail2… vs. .health, etc.), and
+      // downstream people-pickers key their rows by name.
+      const seen = new Set();
+      const rows = [];
+      for (const r of (data || [])) {
+        const name = (r.full_name?.trim()
+          || [r.first_name, r.last_name].filter(Boolean).join(' ').trim()
+          || r.email?.split('@')[0]
+          || '').trim();
+        if (!name || seen.has(name)) continue;
+        seen.add(name);
+        const initials = name.split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase();
+        rows.push({
+          id: r.id,
+          name,
+          initials,
+          clinicalRoles: r.clinical_roles || [],
+        });
+      }
+      set({ platformUsers: rows, platformUsersDidFetch: true });
+    } catch (err) {
+      console.warn('fetchPlatformUsers error — pickers will fall back to systemUsers mock:', err?.message || err);
+      set({ platformUsersDidFetch: true });
+    }
+  },
+
   // Per-member RAF-Impact breakdown (worklist RAF tooltip)
   //
   // hcc_member_raf holds one row per (member, HCC) contribution to the

@@ -7,6 +7,16 @@ import { ROLE_LABEL } from './assignment/astranaStaff';
 import { SYSTEM_USERS } from './systemUsers';
 import styles from './RoleAssigneePicker.module.css';
 
+// Map from engine role (worklist internal) → clinical_roles vocabulary
+// admins pick from in Settings → Users. A profile whose clinical_roles
+// includes the mapped label is eligible for that column's assignee slot.
+const ENGINE_TO_CLINICAL = {
+  support:   'Support',
+  coder:     'Coder',
+  reviewer:  'QA',
+  reviewer2: 'Compliance',
+};
+
 /**
  * Shared searchable role-assignee picker — used by both the HCC worklist role
  * cells and the DiagPanel assignee chip so the two surfaces behave identically.
@@ -35,12 +45,33 @@ export function RoleAssigneePicker({
   const [query, setQuery] = useState('');
   const reassign = useAppStore(s => s.hccReassignRole);
   const showToast = useAppStore(s => s.showToast);
+  // Platform users from profiles — one-shot fetch, guarded in the store.
+  const platformUsers = useAppStore(s => s.platformUsers);
+  const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
+  useEffect(() => { fetchPlatformUsers(); }, [fetchPlatformUsers]);
+
+  const requiredRole = ENGINE_TO_CLINICAL[role];
+  // Prefer DB profiles filtered by clinical_roles for this column.
+  // Fall back to the hardcoded SYSTEM_USERS roster only when the fetch
+  // hasn't returned yet OR nobody in profiles has that role assigned
+  // (otherwise the picker would show an empty list).
+  const eligible = platformUsers.filter(u =>
+    !requiredRole || u.clinicalRoles?.includes(requiredRole),
+  );
+  const baseUsers = eligible.length
+    ? eligible.map(u => ({
+        id: u.id,
+        name: u.name,
+        initials: u.initials,
+        rolesLabel: requiredRole || (u.clinicalRoles?.[0] || ''),
+      }))
+    : SYSTEM_USERS;
 
   const q = query.trim().toLowerCase();
   const users = q
-    ? SYSTEM_USERS.filter(u =>
+    ? baseUsers.filter(u =>
         u.name.toLowerCase().includes(q) || (u.rolesLabel || '').toLowerCase().includes(q))
-    : SYSTEM_USERS;
+    : baseUsers;
 
   const open = () => {
     const r = btnRef.current?.getBoundingClientRect();
