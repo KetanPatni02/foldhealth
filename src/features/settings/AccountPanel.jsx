@@ -1084,20 +1084,43 @@ function TagInput({ value = [], onChange, placeholder }) {
 /* ── Multi-select helper (checkbox list inside a select-like container) ── */
 function MultiSelectField({ label, required, options, value = [], onChange }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+  // Anchor rect drives the portalled dropdown's position. Recomputed on
+  // open + on scroll/resize so it tracks the trigger correctly when the
+  // form scrolls underneath.
+  const [rect, setRect] = useState(null);
+  const triggerRef = useRef(null);
+  const popRef = useRef(null);
+
+  const measure = () => {
+    const r = triggerRef.current?.getBoundingClientRect();
+    if (r) setRect(r);
+  };
   useEffect(() => {
-    if (!open) return;
-    const close = (e) => { if (!ref.current?.contains(e.target)) setOpen(false); };
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
+    if (!open) return undefined;
+    measure();
+    const onScroll = () => measure();
+    const close = (e) => {
+      if (triggerRef.current?.contains(e.target)) return;
+      if (popRef.current?.contains(e.target)) return;
+      setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onScroll);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onScroll);
+    };
   }, [open]);
+
   const toggle = (opt) => {
     onChange(value.includes(opt) ? value.filter(v => v !== opt) : [...value, opt]);
   };
   return (
     <div className={styles.formField}>
       <label className={styles.formLabel}>{label} {required && <span className={styles.required}>*</span>}</label>
-      <div ref={ref} style={{ position: 'relative' }}>
+      <div ref={triggerRef} style={{ position: 'relative' }}>
         <div className={styles.tagInput} onClick={() => setOpen(v => !v)} style={{ cursor: 'pointer' }}>
           {value.length > 0 ? value.map(v => (
             <span key={v} className={styles.tag}>
@@ -1109,17 +1132,30 @@ function MultiSelectField({ label, required, options, value = [], onChange }) {
           )) : <span style={{ color: 'var(--neutral-200)', fontSize: 14 }}>Select...</span>}
           <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
         </div>
-        {open && (
-          <div className={styles.multiSelectDropdown}>
-            {options.map(opt => (
-              <label key={opt} className={styles.multiSelectOption}>
-                <input type="checkbox" checked={value.includes(opt)} onChange={() => toggle(opt)} />
-                <span>{opt}</span>
-              </label>
-            ))}
-          </div>
-        )}
       </div>
+      {/* Portal the dropdown out to document.body with fixed positioning
+          so the surrounding .inviteFormScroll's overflow:auto never
+          clips it. */}
+      {open && rect && createPortal(
+        <div
+          ref={popRef}
+          className={styles.multiSelectDropdown}
+          style={{
+            position: 'fixed',
+            top: rect.bottom + 4,
+            left: rect.left,
+            width: rect.width,
+          }}
+        >
+          {options.map(opt => (
+            <label key={opt} className={styles.multiSelectOption}>
+              <input type="checkbox" checked={value.includes(opt)} onChange={() => toggle(opt)} />
+              <span>{opt}</span>
+            </label>
+          ))}
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }

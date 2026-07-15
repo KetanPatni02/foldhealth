@@ -785,18 +785,19 @@
   width: 100% !important;
 }
 
-/* Multi-select dropdown */
+/* Multi-select dropdown — portalled to document.body so overflow:auto
+   on ancestor scroll containers doesn't clip it. Position (top/left/
+   width) is set inline from the trigger's rect; the class provides
+   only the visual chrome. */
 .multiSelectDropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 6px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-  z-index: 50;
-  max-height: 200px;
+  /* Sits above the Drawer (z-index 401) — otherwise the portalled
+     popover renders behind the invite drawer's panel. */
+  z-index: 500;
+  max-height: 240px;
   overflow-y: auto;
   padding: 4px 0;
 }
