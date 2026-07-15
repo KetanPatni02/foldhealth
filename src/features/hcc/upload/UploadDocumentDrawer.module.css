@@ -3070,6 +3070,28 @@
   font-size: 13px;
   color: var(--neutral-300);
 }
+.extractedEmptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 32px 16px;
+  text-align: center;
+  border: 1px dashed var(--neutral-150);
+  border-radius: 10px;
+  background: var(--neutral-25);
+}
+.extractedEmptyTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.extractedEmptyBody {
+  max-width: 360px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--neutral-300);
+}
 .extractedGroup {
   display: flex;
   flex-direction: column;

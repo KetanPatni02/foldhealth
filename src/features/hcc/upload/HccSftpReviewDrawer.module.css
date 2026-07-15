@@ -1057,6 +1057,15 @@
   white-space: nowrap;
 }
 
+/* Patient-level actions (upload document · add record · add to worklist) —
+   right-aligned in the patient card header. */
+.encPatientActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
 /* ── DOS block (one per encounter inside a patient card) ─────────── */
 .encBlock {
   display: flex;

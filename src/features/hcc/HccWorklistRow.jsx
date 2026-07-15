@@ -611,7 +611,13 @@ const DOS_INNER = {
   open: (entry, { openDiagPanel, member }) => (
     <OpenIcdsCell
       member={member}
-      onOpenWithCode={(code) => openDiagPanel(member.id, { highlightCode: code, initialDos: entry.date })}
+      onOpenWithCode={(code) => openDiagPanel(member.id, {
+        highlightCode: code, initialDos: entry.date,
+        // Land with the Documents (Document Review) panel expanded on the
+        // left, and the clicked ICD marked as the selected activity ICD so
+        // its card renders in the "selected" state.
+        leftPanel: 'documents', activityIcd: code,
+      })}
     />
   ),
   vt: (entry, { member }) => {
@@ -654,31 +660,57 @@ const CELL_RENDERERS = {
       <AssigneeCell member={member} dosState={dosStateFor(member)} />
     </td>
   ),
-  // Role columns — bottom-line date = member.date + per-role offset.
-  sup: ({ member }) => (
-    <td key="sup" data-col="sup" className={styles.colRole}>
-      <RoleStatusCell name={member.sup} status={member.supS} date={addDaysToDate(member.date, ROLE_OFFSET.sup)}
-        role="support" memberId={member.id} dosDate={member.date} />
-    </td>
-  ),
-  cdr: ({ member }) => (
-    <td key="cdr" data-col="cdr" className={styles.colRole}>
-      <RoleStatusCell name={member.cdr} status={member.cdrS} date={addDaysToDate(member.date, ROLE_OFFSET.cdr)}
-        role="coder" memberId={member.id} dosDate={member.date} />
-    </td>
-  ),
-  r1: ({ member }) => (
-    <td key="r1" data-col="r1" className={styles.colRole}>
-      <RoleStatusCell name={member.r1} status={member.r1s} date={addDaysToDate(member.date, ROLE_OFFSET.r1)}
-        role="reviewer" memberId={member.id} dosDate={member.date} />
-    </td>
-  ),
-  r2: ({ member }) => (
-    <td key="r2" data-col="r2" className={styles.colRole}>
-      <RoleStatusCell name={member.r2} status={member.r2s} date={addDaysToDate(member.date, ROLE_OFFSET.r2)}
-        role="reviewer2" memberId={member.id} dosDate={member.date} />
-    </td>
-  ),
+  // Role columns — status prefers per-DOS engine state (single source of
+  // truth) with the legacy member field as a fallback, so the row and the
+  // DiagPanel drawer never diverge for the same DOS.
+  sup: ({ member, dosStateFor }) => {
+    const s = dosStateFor(member);
+    return (
+      <td key="sup" data-col="sup" className={styles.colRole}>
+        <RoleStatusCell
+          name={s?.support?.assignee ? (staffById(s.support.assignee)?.name || member.sup) : member.sup}
+          status={s?.support?.status || member.supS}
+          date={addDaysToDate(member.date, ROLE_OFFSET.sup)}
+          role="support" memberId={member.id} dosDate={member.date} />
+      </td>
+    );
+  },
+  cdr: ({ member, dosStateFor }) => {
+    const s = dosStateFor(member);
+    return (
+      <td key="cdr" data-col="cdr" className={styles.colRole}>
+        <RoleStatusCell
+          name={s?.coder?.assignee ? (staffById(s.coder.assignee)?.name || member.cdr) : member.cdr}
+          status={s?.coder?.status || member.cdrS}
+          date={addDaysToDate(member.date, ROLE_OFFSET.cdr)}
+          role="coder" memberId={member.id} dosDate={member.date} />
+      </td>
+    );
+  },
+  r1: ({ member, dosStateFor }) => {
+    const s = dosStateFor(member);
+    return (
+      <td key="r1" data-col="r1" className={styles.colRole}>
+        <RoleStatusCell
+          name={s?.reviewer?.assignee ? (staffById(s.reviewer.assignee)?.name || member.r1) : member.r1}
+          status={s?.reviewer?.status || member.r1s}
+          date={addDaysToDate(member.date, ROLE_OFFSET.r1)}
+          role="reviewer" memberId={member.id} dosDate={member.date} />
+      </td>
+    );
+  },
+  r2: ({ member, dosStateFor }) => {
+    const s = dosStateFor(member);
+    return (
+      <td key="r2" data-col="r2" className={styles.colRole}>
+        <RoleStatusCell
+          name={s?.reviewer2?.assignee ? (staffById(s.reviewer2.assignee)?.name || member.r2) : member.r2}
+          status={s?.reviewer2?.status || member.r2s}
+          date={addDaysToDate(member.date, ROLE_OFFSET.r2)}
+          role="reviewer2" memberId={member.id} dosDate={member.date} />
+      </td>
+    );
+  },
   r3: ({ member }) => (
     <td key="r3" data-col="r3" className={styles.colRole}>
       <RoleStatusCell name={member.r3} status={member.r3s} date={addDaysToDate(member.date, ROLE_OFFSET.r3)}

@@ -204,7 +204,7 @@ export function completeSupport(map, patient, dos, actor) {
 
   // Auto-assign Coder (AC-2)
   const { state: withCoder, picked } = autoAssignRole(
-    putState(map, state), state, patient, dos, 'coder', STATUS.IN_PROGRESS,
+    putState(map, state), state, patient, dos, 'coder', STATUS.NEW,
     'support-completed→coder',
   );
   state = withCoder;
@@ -268,7 +268,7 @@ export function completeCoder(map, patient, dos, actor) {
   state = autoSkipEarlierRoles(state, 'coder', actor);
 
   const { state: withReviewer, picked } = autoAssignRole(
-    putState(map, state), state, patient, dos, 'reviewer', STATUS.IN_PROGRESS,
+    putState(map, state), state, patient, dos, 'reviewer', STATUS.NEW,
     'coder-completed→reviewer',
   );
   state = withReviewer;
@@ -381,7 +381,7 @@ export function completeReviewer(map, patient, dos, actor) {
   state = autoSkipEarlierRoles(state, 'reviewer', actor);
 
   const { state: withReviewer2, picked } = autoAssignRole(
-    putState(map, state), state, patient, dos, 'reviewer2', STATUS.IN_PROGRESS,
+    putState(map, state), state, patient, dos, 'reviewer2', STATUS.NEW,
     'reviewer-completed→reviewer2',
   );
   state = withReviewer2;

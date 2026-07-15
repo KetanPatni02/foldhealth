@@ -185,6 +185,99 @@ export function extractEncountersSync(file, hccMembers) {
   return assignSourcePages(buildEncountersForFile(file, hccMembers));
 }
 
+// Bundle cohort — one entry per document for the "N Documents" demo chips.
+// New rule: a document belongs to exactly ONE patient, who may have several
+// DOS. Each entry therefore carries 2–3 DOS so every bundled doc demonstrates
+// the single-patient / multi-DOS shape. Names/DOBs match real seed members so
+// OCR resolution lands on an actual record.
+export const BUNDLE_COHORT = [
+  ['William Jammy',   '01/15/1965', [
+    { dos: '02/14/2026', provider: 'Dr. Sarah Connor', pos: '11', icds: ['E11.22', 'I48.91'], docType: 'Progress Note' },
+    { dos: '03/15/2026', provider: 'Dr. Sarah Connor', pos: '11', icds: ['I50.32'],           docType: 'SOAP Note' },
+    { dos: '04/22/2026', provider: 'Dr. Helen Yu',     pos: '02', icds: ['N18.4', 'J44.9'],   docType: 'Progress Note' },
+  ]],
+  ['Grace Hill',      '04/22/1954', [
+    { dos: '02/18/2026', provider: 'Dr. Eamon',        pos: '11', icds: ['F33.1', 'N18.4'],   docType: 'Progress Note' },
+    { dos: '04/03/2026', provider: 'Dr. Eamon',        pos: '11', icds: ['I50.22'],           docType: 'SOAP Note' },
+  ]],
+  ['Annette Brave',   '08/12/1958', [
+    { dos: '02/20/2026', provider: 'Dr. Mallory Hayes', pos: '11', icds: ['E11.42'],          docType: 'Progress Note' },
+    { dos: '03/28/2026', provider: 'Dr. Mallory Hayes', pos: '11', icds: ['E11.9', 'I10'],    docType: 'Progress Note' },
+  ]],
+  ['Frank Green',     '06/30/1956', [
+    { dos: '02/22/2026', provider: 'Dr. Indigo Bolen', pos: '02', icds: ['I50.21', 'E11.9'],  docType: 'Progress Note' },
+    { dos: '03/30/2026', provider: 'Dr. Indigo Bolen', pos: '02', icds: ['I50.21'],           docType: 'Progress Note' },
+  ]],
+  ['Brian Carter',    '11/04/1952', [
+    { dos: '02/25/2026', provider: 'Dr. Ulysses Horne', pos: '11', icds: ['J44.0', 'C18.9'],  docType: 'SOAP Note' },
+    { dos: '04/12/2026', provider: 'Dr. Ulysses Horne', pos: '11', icds: ['J44.1'],           docType: 'Progress Note' },
+  ]],
+  ['David Evans',     '03/18/1949', [
+    { dos: '02/27/2026', provider: 'Dr. Tatum',        pos: '11', icds: ['I50.33', 'N18.5'],  docType: 'Progress Note' },
+    { dos: '03/24/2026', provider: 'Dr. Tatum',        pos: '11', icds: ['F32.2'],            docType: 'Progress Note' },
+  ]],
+  ['Cynthia Davis',   '09/08/1959', [
+    { dos: '03/02/2026', provider: 'Dr. Reed MacLeod', pos: '02', icds: ['I48.0'],            docType: 'Telehealth Note' },
+    { dos: '04/06/2026', provider: 'Dr. Reed MacLeod', pos: '02', icds: ['I48.91', 'E78.5'],  docType: 'Progress Note' },
+  ]],
+  ['Emily Foster',    '12/12/1965', [
+    { dos: '03/04/2026', provider: 'Dr. Tatum',        pos: '11', icds: ['C50.911'],          docType: 'Progress Note' },
+    { dos: '04/09/2026', provider: 'Dr. Tatum',        pos: '11', icds: ['C50.911', 'Z51.11'], docType: 'Progress Note' },
+  ]],
+  ['Robert Kim',      '07/19/1953', [
+    { dos: '03/05/2026', provider: 'Dr. Susan Park',   pos: '11', icds: ['I70.221', 'E11.40'], docType: 'Progress Note' },
+    { dos: '04/14/2026', provider: 'Dr. Susan Park',   pos: '11', icds: ['E11.51'],           docType: 'Progress Note' },
+  ]],
+  ['Maria Santos',    '02/01/1961', [
+    { dos: '03/07/2026', provider: 'Dr. Alan Morse',   pos: '02', icds: ['F33.2'],            docType: 'Telehealth Note' },
+    { dos: '04/10/2026', provider: 'Dr. Alan Morse',   pos: '02', icds: ['F33.1'],            docType: 'Progress Note' },
+  ]],
+  ['James Walker',    '05/03/1947', [
+    { dos: '03/08/2026', provider: 'Dr. Calvin Reed',  pos: '11', icds: ['I50.9', 'J44.1'],   docType: 'Progress Note' },
+    { dos: '04/18/2026', provider: 'Dr. Calvin Reed',  pos: '11', icds: ['I70.231'],          docType: 'Progress Note' },
+  ]],
+  ['Jessica Clark',   '10/15/1965', [
+    { dos: '03/10/2026', provider: 'Dr. Karen Mills',  pos: '11', icds: ['E10.9'],            docType: 'Progress Note' },
+    { dos: '04/20/2026', provider: 'Dr. Karen Mills',  pos: '11', icds: ['E10.65'],           docType: 'SOAP Note' },
+  ]],
+  ['Richard Scott',   '07/03/1960', [
+    { dos: '03/11/2026', provider: 'Dr. Karen Mills',  pos: '11', icds: ['E11.42', 'I50.22'], docType: 'Progress Note' },
+    { dos: '04/21/2026', provider: 'Dr. Karen Mills',  pos: '11', icds: ['E11.22'],           docType: 'Progress Note' },
+  ]],
+  ['Dorothy Nguyen',  '01/22/1948', [
+    { dos: '03/12/2026', provider: 'Dr. Eamon',        pos: '11', icds: ['I48.21', 'N18.6'],  docType: 'SOAP Note' },
+    { dos: '04/23/2026', provider: 'Dr. Eamon',        pos: '11', icds: ['N18.5'],            docType: 'Progress Note' },
+  ]],
+  ['Patricia Moore',  '11/30/1962', [
+    { dos: '03/13/2026', provider: 'Dr. Karen Mills',  pos: '11', icds: ['F32.1'],            docType: 'Progress Note' },
+    { dos: '04/24/2026', provider: 'Dr. Karen Mills',  pos: '11', icds: ['F32.2', 'G47.33'],  docType: 'Progress Note' },
+  ]],
+  ['Charles Rivera',  '08/25/1951', [
+    { dos: '03/14/2026', provider: 'Dr. Helen Yu',     pos: '02', icds: ['I50.32', 'I70.211'], docType: 'Telehealth Note' },
+    { dos: '04/25/2026', provider: 'Dr. Helen Yu',     pos: '02', icds: ['I50.33'],           docType: 'Progress Note' },
+  ]],
+  ['Linda Chen',      '06/06/1959', [
+    { dos: '03/17/2026', provider: 'Dr. Calvin Reed',  pos: '11', icds: ['I48.91'],           docType: 'Progress Note' },
+    { dos: '04/26/2026', provider: 'Dr. Calvin Reed',  pos: '11', icds: ['I48.0', 'I10'],     docType: 'Progress Note' },
+  ]],
+  ['Kevin Brown',     '02/28/1967', [
+    { dos: '03/18/2026', provider: 'Dr. Indigo Bolen', pos: '11', icds: ['C61'],              docType: 'Progress Note' },
+    { dos: '04/27/2026', provider: 'Dr. Indigo Bolen', pos: '11', icds: ['C61', 'Z51.11'],    docType: 'Progress Note' },
+  ]],
+  ['Helen Park',      '09/02/1956', [
+    { dos: '03/19/2026', provider: 'Dr. Susan Park',   pos: '11', icds: ['E11.21'],           docType: 'Progress Note' },
+    { dos: '04/28/2026', provider: 'Dr. Susan Park',   pos: '11', icds: ['E11.22', 'N18.3'],  docType: 'Progress Note' },
+  ]],
+  ['Thomas Reed',     '04/17/1950', [
+    { dos: '03/20/2026', provider: 'Dr. Jesse Flynn',  pos: '11', icds: ['I25.10', 'E78.5'],  docType: 'Progress Note' },
+    { dos: '04/29/2026', provider: 'Dr. Jesse Flynn',  pos: '11', icds: ['I25.10'],           docType: 'SOAP Note' },
+  ]],
+  ['Nancy Lewis',     '12/05/1963', [
+    { dos: '03/21/2026', provider: 'Dr. Nancy Wu',     pos: '02', icds: ['J44.9', 'J45.909'], docType: 'Telehealth Note' },
+    { dos: '04/30/2026', provider: 'Dr. Nancy Wu',     pos: '02', icds: ['J44.1'],            docType: 'Progress Note' },
+  ]],
+];
+
 function buildEncountersForFile(file, hccMembers) {
   const name = (file?.name || '').toLowerCase();
 
@@ -226,6 +319,21 @@ function buildEncountersForFile(file, hccMembers) {
     enc.errors = annotateErrors(enc);
     return enc;
   };
+
+  // ── Demo: one bundled document = one patient with multiple DOS ────
+  // The "N Documents" chips upload files named demo-patient-{i}.pdf; each
+  // resolves to a distinct BUNDLE_COHORT patient and their 2–3 DOS.
+  const bundleMatch = name.match(/demo-patient-(\d+)/);
+  if (bundleMatch) {
+    const idx = parseInt(bundleMatch[1], 10) % BUNDLE_COHORT.length;
+    const [patientName, dob, encs] = BUNDLE_COHORT[idx];
+    const member = hccMembers.find(m => (m.name || '').trim().toLowerCase() === patientName.toLowerCase());
+    return encs.map((e) => buildEnc({
+      patientName, dob,
+      dos: e.dos, provider: e.provider, pos: e.pos, icds: e.icds, docType: e.docType,
+      matchOverride: member || null,
+    }));
+  }
 
   // ── Demo: single patient · single DOS · clean ─────────────────────
   if (name.includes('demo-single')) {

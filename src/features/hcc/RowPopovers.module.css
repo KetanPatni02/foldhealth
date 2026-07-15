@@ -425,30 +425,9 @@
   white-space: nowrap;
 }
 
-/* HCC chip + gap-lifecycle status badge sit on one line beneath the ICD. */
+/* HCC chip sits on its own line beneath the ICD code + description. */
 .icdRowMeta {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-}
-.icdStatusPill {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  font: 600 11px/1.2 'Inter', sans-serif;
-  border-radius: 4px;
-  white-space: nowrap;
-  border: 1px solid transparent;
-}
-/* Open + Reopen → amber (active gap needing work); Closed → grey (resolved). */
-.icdStatusOpen,
-.icdStatusReopen {
-  color: var(--status-warning);
-  background: var(--status-warning-light);
-  border-color: color-mix(in srgb, var(--status-warning) 20%, transparent);
-}
-.icdStatusClosed {
-  color: var(--neutral-400);
-  background: var(--neutral-50);
-  border-color: var(--neutral-150);
 }
