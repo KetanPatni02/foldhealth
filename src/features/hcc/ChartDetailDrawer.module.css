@@ -165,6 +165,24 @@
   justify-content: center;
   flex-shrink: 0;
 }
+/* Unassigned Support pill — dashed muted affordance that opens the same
+   "Assign Support Team" popover. */
+.dmUnassigned {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px dashed var(--neutral-200);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--neutral-300);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.dmUnassigned:hover { border-color: var(--primary-300); color: var(--primary-300); }
 .actionNeeded {
   display: inline-flex;
   align-items: center;
@@ -207,13 +225,69 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 4px;
+  padding: 2px 6px;
   border-radius: 4px;
   background: var(--primary-50);
-  border: 0.5px solid color-mix(in srgb, var(--primary-300) 20%, transparent);
+  border: 0.5px solid var(--primary-200);
   color: var(--primary-300);
   font-size: 12px;
+  cursor: pointer;
 }
+.dosBadge:hover { background: var(--primary-100); }
+
+/* Expandable DOS list with per-DOS toggle (mirrors the Diagnosis Gap drawer). */
+.dosPanel {
+  display: flex;
+  flex-direction: column;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.dosPanelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.dosPanelRow:last-child { border-bottom: none; }
+.dosPanelInfo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dosPanelDate { font-size: 14px; font-weight: 500; color: var(--neutral-400); }
+.dosPanelMeta { font-size: 12px; color: var(--neutral-300); }
+.dosPanelSep { margin: 0 5px; color: var(--neutral-200); }
+
+/* Per-document "More actions" → Unlink menu. */
+.docMoreMenu {
+  position: fixed;
+  z-index: 1100;
+  min-width: 140px;
+  padding: 4px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+}
+.docMoreItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--status-error);
+  cursor: pointer;
+  text-align: left;
+}
+.docMoreItem:hover { background: var(--status-error-light); }
+
+/* Body when the last doc has been unlinked — right pane only, no preview. */
+.bodyEmpty .rightPane { flex: 1; }
 .uploadLink {
   display: inline-flex;
   align-items: center;

@@ -5,6 +5,7 @@ import { Avatar } from '../../components/Avatar/Avatar';
 import { Button } from '../../components/Button/Button';
 import { UploadDropField } from '../../components/UploadDropField/UploadDropField';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
+import { Switch } from '../../components/Switch/Switch';
 import { useAppStore } from '../../store/useAppStore';
 import { DocEvidenceViewer } from './DiagPanel/DocEvidenceViewer';
 import { DOC_TYPES, makeUploadedChartDoc } from './data/chartDocs';
@@ -33,7 +34,8 @@ const STATUS_BADGE = {
 
 /**
  * Derive the document-set review status from each doc's pass/fail state:
- *   • >1 failed            → insufficient
+ *   • every doc failed     → insufficient (nothing usable on the chart)
+ *   • >1 failed (mixed)    → insufficient
  *   • all passed           → completed
  *   • at least one decided → in progress
  *   • nothing decided yet  → action needed
@@ -41,6 +43,7 @@ const STATUS_BADGE = {
 function deriveStatus(docs, actions) {
   const passCount = docs.filter(d => actions[d.id] === 'pass').length;
   const failCount = docs.filter(d => actions[d.id] === 'fail').length;
+  if (docs.length > 0 && failCount === docs.length) return 'insufficient';
   if (failCount > 1) return 'insufficient';
   if (docs.length > 0 && passCount === docs.length) return 'completed';
   if (passCount + failCount > 0) return 'in-progress';
@@ -91,6 +94,14 @@ function StatusIcon({ status, size = 16 }) {
   }
 }
 
+// Derive avatar initials from a display name ("E. Johnson" → "EJ").
+function nameToInitials(name) {
+  if (!name) return '';
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 // A document is "addressed" once it has been passed or failed; the incoming
 // chart status carries that over (Passed / Failed), otherwise it is pending.
 const isAddressed = (doc) => doc?.status === 'Passed' || doc?.status === 'Failed';
@@ -133,10 +144,9 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  // "Assign Support Team" dropdown anchored on the team (DM) badge.
+  // "Assign Support Team" dropdown anchored on the team badge.
   const dmRef = useRef(null);
   const [assignPos, setAssignPos] = useState(null);
-  const [selectedSupport, setSelectedSupport] = useState(null);
   useEffect(() => {
     if (!assignPos) return;
     const onDoc = (e) => {
@@ -145,6 +155,26 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
   }, [assignPos]);
+
+  // Per-document "More actions" menu (currently: Unlink). Anchored on the
+  // clicked doc's ⋯ button; holds { docId, top, left }.
+  const [moreMenu, setMoreMenu] = useState(null);
+  useEffect(() => {
+    if (!moreMenu) return;
+    const onDoc = (e) => {
+      if (!e.target.closest?.(`.${styles.docMoreMenu}`) && !e.target.closest?.(`.${styles.moreBtn}`)) setMoreMenu(null);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [moreMenu]);
+
+  // When the last document is unlinked we keep the drawer open and switch the
+  // right pane to the Upload section (left preview hidden) instead of closing.
+  const [emptiedViaUnlink, setEmptiedViaUnlink] = useState(false);
+
+  // "N/M DOSs" expandable toggle list (mirrors the Diagnosis Gap drawer).
+  const [dosExpanded, setDosExpanded] = useState(false);
+  const [disabledDos, setDisabledDos] = useState(() => new Set());
 
   // Header status dropdown anchored on the status button. The status is
   // derived from the documents' pass/fail state; the user can also manually
@@ -155,6 +185,17 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   const showToast = useAppStore(s => s.showToast);
   const addChartDoc = useAppStore(s => s.addChartDoc);
   const setChartDocStatus = useAppStore(s => s.setChartDocStatus);
+  const removeChartDoc = useAppStore(s => s.removeChartDoc);
+  // Workflow-engine writers — these keep the Support assignee + status in sync
+  // with the worklist Support column and the Diagnosis Gaps Details view.
+  const hccReassignRole = useAppStore(s => s.hccReassignRole);
+  const hccSetRoleStatus = useAppStore(s => s.hccSetRoleStatus);
+  const hccCompleteSupport = useAppStore(s => s.hccCompleteSupport);
+  const currentUserProfile = useAppStore(s => s.currentUserProfile);
+  // Live member from the store so the assignee badge reflects reassignments
+  // made here (or elsewhere) without waiting on the parent's prop to refresh.
+  const liveMember = useAppStore(s => s.hccMembers.find(x => x.id === member?.id));
+  const m = liveMember || member;
 
   // Inline "Upload" panel (opened from the Upload link in the assoc row).
   // Mirrors the Add DOS drawer's upload states: Dropzone → uploading progress
@@ -173,9 +214,25 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     return () => document.removeEventListener('mousedown', onDoc);
   }, [actionPos]);
 
-  if (docs.length === 0) return null;
+  // Nothing to show only when the drawer opened empty. If the user unlinked
+  // down to zero, stay open and render the Upload section (handled below).
+  if (docs.length === 0 && !emptiedViaUnlink) return null;
 
-  const selected = docs.find(d => d.id === selectedId) || docs[0];
+  const isEmpty = docs.length === 0;
+  const selected = docs.find(d => d.id === selectedId) || docs[0] || null;
+
+  // DOS list for the "N/M DOSs" toggle. Prefer member.dos_list; fall back to a
+  // single synthetic entry from member.dos. Provider/POS/visit-type read from
+  // the entry with member-level fallbacks (same as the Diagnosis Gap drawer).
+  const dosList = m?.dos_list?.length
+    ? m.dos_list
+    : (m?.dos ? [{ date: m.dos }] : []);
+  const enabledDosCount = dosList.filter(d => !disabledDos.has(d.date)).length;
+  const toggleDos = (date) => setDisabledDos(prev => {
+    const next = new Set(prev);
+    if (next.has(date)) next.delete(date); else next.add(date);
+    return next;
+  });
 
   const supportStaff = staffForRole('support');
   const openAssign = () => {
@@ -184,12 +241,106 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     if (r) setAssignPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
   };
 
-  const reviewerName = selectedSupport?.name || member?.sup || 'D Morris';
-  // Pass/Fail also writes the doc's status through to the store so the
-  // worklist "Documents" evidence cell stays in sync (All Passed / mixed).
-  const passDoc = (id) => { setDocActions(a => ({ ...a, [id]: 'pass' })); setChartDocStatus(member.id, id, 'Passed'); showToast('Support Task is Completed'); };
-  const failDoc = (id) => { setDocActions(a => ({ ...a, [id]: 'fail' })); setChartDocStatus(member.id, id, 'Failed'); };
-  const undoDoc = (id) => { setDocActions(a => { const n = { ...a }; delete n[id]; return n; }); setChartDocStatus(member.id, id, 'Pending'); };
+  // Current Support assignee, read live from the store — must match the
+  // worklist RoleStatusCell rule: a lingering name with no real status (or
+  // status 'Assign') still counts as UNASSIGNED. Only a name + concrete
+  // status shows an owner.
+  const supportName = m?.sup || null;
+  const supportStatus = m?.supS || null;
+  const isSupportAssigned = !!(supportName && supportStatus && supportStatus !== 'Assign');
+  const supportInitials = isSupportAssigned ? nameToInitials(supportName) : null;
+  const reviewerName = (isSupportAssigned && supportName) || 'the support team';
+
+  // DOS anchor for engine writes — the drawer is chart-level, so use the
+  // member's primary DOS (falls back to first listed DOS, then created date).
+  const dosDate = member?.dos || member?.dos_list?.[0]?.date || member?.date;
+
+  // The logged-in user acting in the Support role. Real Supabase identity when
+  // present; otherwise the first active Support staffer stands in (dev/bypass),
+  // so avatars + the worklist show consistent, real initials.
+  const currentUser = currentUserProfile?.name
+    ? { id: currentUserProfile.id, name: currentUserProfile.name, initials: nameToInitials(currentUserProfile.name) }
+    : (supportStaff.find(s => s.active) || supportStaff[0]);
+
+  // Assign the logged-in user to Support if the DOS has no support owner yet.
+  // Reads fresh store state so it's idempotent across rapid actions.
+  const ensureSupportAssignee = () => {
+    if (!dosDate || !currentUser) return;
+    const fresh = useAppStore.getState().hccMembers.find(x => x.id === member.id);
+    const assigned = fresh?.sup && fresh?.supS && fresh.supS !== 'Assign';
+    if (!assigned) {
+      hccReassignRole(member.id, dosDate, 'support', currentUser.id, 'You',
+        'Auto-assigned on document review', currentUser.name);
+    }
+  };
+
+  // Push a derived/selected review status to the workflow engine. Completed
+  // routes through completeSupport so the Coder is auto-assigned (AC); every
+  // other status is a plain support-status patch that leaves the Coder alone.
+  const syncSupportStatus = (statusKey) => {
+    if (!dosDate) return;
+    switch (statusKey) {
+      case 'completed':    hccCompleteSupport(member.id, dosDate, currentUser?.name); break;
+      case 'insufficient': hccSetRoleStatus(member.id, dosDate, 'support', 'Insufficient'); break;
+      case 'rejected':     hccSetRoleStatus(member.id, dosDate, 'support', 'Reject'); break;
+      case 'in-progress':  hccSetRoleStatus(member.id, dosDate, 'support', 'In Progress'); break;
+      default:             hccSetRoleStatus(member.id, dosDate, 'support', 'Awaiting'); break;
+    }
+  };
+
+  // Pass/Fail writes the doc status through to the store (worklist evidence
+  // cell) AND — because changing a document's status is a Support action —
+  // assigns the acting user and syncs the derived Support status everywhere.
+  const applyDocAction = (id, action) => {
+    const next = action
+      ? { ...docActions, [id]: action }
+      : (() => { const n = { ...docActions }; delete n[id]; return n; })();
+    setDocActions(next);
+    setChartDocStatus(member.id, id, action === 'pass' ? 'Passed' : action === 'fail' ? 'Failed' : 'Pending');
+    if (action) ensureSupportAssignee();
+    // The header can be manually overridden; when it isn't, the document set
+    // drives the Support status.
+    if (!manualStatus) syncSupportStatus(deriveStatus(docs, next));
+  };
+  const passDoc = (id) => { applyDocAction(id, 'pass'); showToast('Support Task is Completed'); };
+  const failDoc = (id) => applyDocAction(id, 'fail');
+  const undoDoc = (id) => applyDocAction(id, null);
+
+  // Unlink a document from this Created-date record. Removes it from the
+  // member's chart list (store) + clears its local review state. When it was
+  // the last document, keep the drawer open on the Upload section with the
+  // left preview hidden; closing the drawer then shows the Upload button in
+  // the Chart Available column (existing empty-chart behaviour).
+  const unlinkDoc = (id) => {
+    setMoreMenu(null);
+    const remaining = docs.filter(d => d.id !== id);
+    removeChartDoc(member.id, id);
+    setDocActions(a => { const n = { ...a }; delete n[id]; return n; });
+    if (remaining.length === 0) {
+      setEmptiedViaUnlink(true);
+      setShowUpload(true);
+    } else if (id === selectedId) {
+      setSelectedId(remaining[0].id);
+    }
+    showToast('Document unlinked from this record');
+  };
+
+  // Manually assign a Support staffer from the badge popover.
+  const assignSupport = (staff) => {
+    setAssignPos(null);
+    if (dosDate) {
+      hccReassignRole(member.id, dosDate, 'support', staff.id, 'You',
+        'Assigned via document review', staff.name);
+    }
+  };
+
+  // Header status dropdown: assign the acting user, then sync the status.
+  const chooseStatus = (statusKey) => {
+    setManualStatus(statusKey);
+    setActionPos(null);
+    ensureSupportAssignee();
+    syncSupportStatus(statusKey);
+  };
 
   const effectiveStatus = manualStatus || deriveStatus(docs, docActions);
   const currentStatus = STATUS_OPTIONS.find(s => s.key === effectiveStatus) || STATUS_OPTIONS[0];
@@ -264,19 +415,22 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
           </div>
         </div>
 
-        {/* Two-pane body */}
-        <div className={styles.body}>
+        {/* Body — two panes normally; right-pane only once the last doc is
+            unlinked (left preview closed, Upload section shown). */}
+        <div className={`${styles.body} ${isEmpty ? styles.bodyEmpty : ''}`}>
           {/* Left — PDF of the selected document */}
-          <div className={styles.leftPane}>
-            <div className={styles.paneHeader}>{selected.n}</div>
-            <div className={styles.pdfWrap}>
-              {selected.pdf ? (
-                <iframe src={selected.pdf} title={selected.n} />
-              ) : (
-                <DocEvidenceViewer member={member} />
-              )}
+          {!isEmpty && selected && (
+            <div className={styles.leftPane}>
+              <div className={styles.paneHeader}>{selected.n}</div>
+              <div className={styles.pdfWrap}>
+                {selected.pdf ? (
+                  <iframe src={selected.pdf} title={selected.n} />
+                ) : (
+                  <DocEvidenceViewer member={member} />
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Right — metadata + document list */}
           <div className={styles.rightPane}>
@@ -297,10 +451,17 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
                 Support Team
               </span>
               <div className={styles.rightHeaderEnd}>
-                <button type="button" ref={dmRef} className={styles.dmBadge} onClick={openAssign}>
-                  <span className={styles.dmAvatar}>{selectedSupport ? selectedSupport.initials : 'DM'}</span>
-                  <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--secondary-300)" />
-                </button>
+                {isSupportAssigned ? (
+                  <button type="button" ref={dmRef} className={styles.dmBadge} onClick={openAssign} title={supportName}>
+                    <span className={styles.dmAvatar}>{supportInitials}</span>
+                    <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--secondary-300)" />
+                  </button>
+                ) : (
+                  <button type="button" ref={dmRef} className={styles.dmUnassigned} onClick={openAssign} title="Assign Support Team" aria-label="Assign Support Team">
+                    <Icon name="solar:user-plus-linear" size={14} color="var(--neutral-300)" />
+                    <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--neutral-300)" />
+                  </button>
+                )}
                 <span className={styles.vDivider} />
                 <button
                   type="button"
@@ -327,16 +488,53 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
               <div className={styles.assocRow}>
                 <div className={styles.assocLeft}>
                   <span className={styles.assocLabel}>Document Associated with</span>
-                  <span className={styles.dosBadge}>
-                    {(member?.cv || member?.tv || 3)}/{(member?.tv || 3)} DOSs
-                    <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--primary-300)" />
-                  </span>
+                  <button
+                    type="button"
+                    className={styles.dosBadge}
+                    onClick={() => setDosExpanded(o => !o)}
+                    aria-expanded={dosExpanded}
+                  >
+                    {enabledDosCount}/{dosList.length} DOSs
+                    <Icon name={dosExpanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} size={11} color="var(--primary-300)" />
+                  </button>
                 </div>
                 <button type="button" className={styles.uploadLink} onClick={() => setShowUpload(v => !v)}>
                   <Icon name="solar:upload-minimalistic-linear" size={16} color="var(--primary-300)" />
                   Upload
                 </button>
               </div>
+
+              {/* Expandable DOS list with a per-DOS toggle (mirrors the
+                  Diagnosis Gap drawer). */}
+              {dosExpanded && dosList.length > 0 && (
+                <div className={styles.dosPanel}>
+                  {dosList.map(d => {
+                    const enabled = !disabledDos.has(d.date);
+                    const provider = d.provider || m?.rp || '—';
+                    const pos = d.pos || d.posDesc || m?.pos || m?.posDesc || '—';
+                    const vt = d.vt || m?.vt || 'HCC';
+                    return (
+                      <div key={d.date} className={styles.dosPanelRow}>
+                        <div className={styles.dosPanelInfo}>
+                          <div className={styles.dosPanelDate}>{d.date}</div>
+                          <div className={styles.dosPanelMeta}>
+                            Rendering Provider: {provider}
+                            <span className={styles.dosPanelSep}>•</span>
+                            POS: {pos}
+                            <span className={styles.dosPanelSep}>•</span>
+                            Visit Type: {vt}
+                          </div>
+                        </div>
+                        <Switch
+                          checked={enabled}
+                          ariaLabel={`Toggle DOS ${d.date}`}
+                          onChange={() => toggleDos(d.date)}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {showUpload && (
                 <div className={styles.uploadPanel}>
@@ -425,7 +623,17 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
                           </button>
                         </>
                       )}
-                      <button type="button" className={styles.moreBtn} aria-label="More actions">
+                      <button
+                        type="button"
+                        className={styles.moreBtn}
+                        aria-label="More actions"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (moreMenu?.docId === d.id) { setMoreMenu(null); return; }
+                          const r = e.currentTarget.getBoundingClientRect();
+                          setMoreMenu({ docId: d.id, top: r.bottom + 4, right: window.innerWidth - r.right });
+                        }}
+                      >
                         <Icon name="solar:menu-dots-linear" size={15} color="currentColor" />
                       </button>
                     </div>
@@ -436,6 +644,19 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
           </div>
         </div>
       </div>
+
+      {moreMenu && (
+        <div
+          className={styles.docMoreMenu}
+          style={{ top: moreMenu.top, right: moreMenu.right }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button type="button" className={styles.docMoreItem} onClick={() => unlinkDoc(moreMenu.docId)}>
+            <Icon name="solar:link-broken-minimalistic-linear" size={16} color="var(--status-error)" />
+            Unlink
+          </button>
+        </div>
+      )}
 
       {assignPos && (
         <div
@@ -449,7 +670,7 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
               key={s.id}
               type="button"
               className={styles.assignItem}
-              onClick={() => { setSelectedSupport(s); setAssignPos(null); }}
+              onClick={() => assignSupport(s)}
             >
               <Avatar variant="assignee" initials={s.initials} />
               <span className={styles.assignName}>{s.name}</span>
@@ -472,7 +693,7 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
                 key={opt.key}
                 type="button"
                 className={`${styles.statusItem} ${sel ? styles.statusItemSelected : ''}`}
-                onClick={() => { setManualStatus(opt.key); setActionPos(null); }}
+                onClick={() => chooseStatus(opt.key)}
               >
                 <StatusIcon status={opt.key} size={16} />
                 <span

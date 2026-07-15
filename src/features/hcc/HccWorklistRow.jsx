@@ -799,7 +799,8 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
   const hccRole = useAppStore(s => s.hccUserRole);
   const addedCharts = useAppStore(s => s.hccAddedCharts[member.id]);
   const chartStatus = useAppStore(s => s.hccChartStatus[member.id]);
-  const charts = useMemo(() => getChartDocs(member, addedCharts || [], chartStatus || {}), [member, addedCharts, chartStatus]);
+  const removedCharts = useAppStore(s => s.hccRemovedCharts[member.id]);
+  const charts = useMemo(() => getChartDocs(member, addedCharts || [], chartStatus || {}, removedCharts || []), [member, addedCharts, chartStatus, removedCharts]);
   const openChart = (e) => {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();

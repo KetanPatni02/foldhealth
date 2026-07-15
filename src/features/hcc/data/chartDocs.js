@@ -64,10 +64,16 @@ export function generateDefaultCharts(member) {
  * as the source of truth (so nothing is doubled); before the seed exists we
  * fall back to generating the defaults on the client.
  */
-export function getChartDocs(member, added = [], statusOverrides = {}) {
+export function getChartDocs(member, added = [], statusOverrides = {}, removedIds = []) {
   const hasSeededDefaults = (added || []).some(d => /::sys\d+$/.test(d.id || ''));
   const base = hasSeededDefaults ? [] : generateDefaultCharts(member);
-  const all = [...base, ...(added || [])];
+  let all = [...base, ...(added || [])];
+  // Drop unlinked docs. One filter covers both client-seeded `::sys` defaults
+  // (which live in no store array) and uploaded/DB docs.
+  if (removedIds && removedIds.length) {
+    const removed = new Set(removedIds);
+    all = all.filter(d => !removed.has(d.id));
+  }
   if (statusOverrides && Object.keys(statusOverrides).length) {
     return all.map(d => (statusOverrides[d.id] ? { ...d, status: statusOverrides[d.id] } : d));
   }

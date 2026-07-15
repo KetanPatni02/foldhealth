@@ -750,6 +750,35 @@ export const useAppStore = create((set, get) => ({
     }));
   },
 
+  // Docs unlinked from a member's chart (keyed by member id → array of doc ids).
+  // getChartDocs filters the merged list by these ids so it covers BOTH the
+  // client-generated seeded defaults (`::sys{i}`, which live in no array) and
+  // uploaded docs uniformly. Uploaded docs are additionally spliced out of
+  // hccAddedCharts (and their Supabase row deleted) so the count truly drops.
+  hccRemovedCharts: {},
+  removeChartDoc: (memberId, docId) => {
+    if (!memberId || !docId) return;
+    set((state) => ({
+      hccRemovedCharts: {
+        ...state.hccRemovedCharts,
+        [memberId]: [...new Set([...(state.hccRemovedCharts[memberId] || []), docId])],
+      },
+      hccAddedCharts: {
+        ...state.hccAddedCharts,
+        [memberId]: (state.hccAddedCharts[memberId] || []).filter((d) => d.id !== docId),
+      },
+    }));
+    // Best-effort Supabase cleanup for uploaded/DB-backed docs (no-op for
+    // client-only `::sys` defaults, which were never persisted).
+    supabase
+      .from('hcc_added_charts')
+      .delete()
+      .eq('id', docId)
+      .then(({ error }) => {
+        if (error) console.warn(`removeChartDoc(${memberId}, ${docId}) delete failed:`, error.message);
+      });
+  },
+
   // Care Programs — enrolled programs are per-patient. A patient starts with
   // none; only programs a user explicitly adds are visible on their profile.
   careProgramsByPatient: {},
@@ -3270,6 +3299,7 @@ export const useAppStore = create((set, get) => ({
   // about it.
   transitionHccDos: (patientId, dosDate, kind, payload = {}) => {
     let statusChanges = [];
+    let assigneeChanges = [];
     set(s => {
       const fn = hccLifecycle[kind];
       if (typeof fn !== 'function') {
@@ -3309,13 +3339,24 @@ export const useAppStore = create((set, get) => ({
       ['support', 'coder', 'reviewer', 'reviewer2'].forEach(role => {
         const ns = next[role]?.status;
         if (ns && ns !== prev[role]?.status) statusChanges.push({ role, status: ns });
+        // Also diff the assignee. Engine cascades (e.g. completeSupport
+        // auto-assigning a Coder) set an assignee on a role that previously
+        // had none — the legacy name field must follow so the worklist
+        // Support/Coder columns (which read member.sup/.cdr/.r1/.r2 directly)
+        // reflect the new owner, not just the status.
+        const na = next[role]?.assignee;
+        if (na && na !== prev[role]?.assignee) {
+          assigneeChanges.push({ role, name: hccStaffById(na)?.name || na, staffId: na });
+        }
       });
       const statusFieldByRole = { support: 'supS', coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
-      const nextMembers = statusChanges.length
+      const nameFieldByRole   = { support: 'sup',  coder: 'cdr',  reviewer: 'r1',  reviewer2: 'r2'  };
+      const nextMembers = (statusChanges.length || assigneeChanges.length)
         ? s.hccMembers.map(m => {
             if (m.id !== patientId) return m;
             const patched = { ...m };
             statusChanges.forEach(({ role, status }) => { patched[statusFieldByRole[role]] = status; });
+            assigneeChanges.forEach(({ role, name }) => { patched[nameFieldByRole[role]] = name; });
             return patched;
           })
         : s.hccMembers;
@@ -3342,7 +3383,8 @@ export const useAppStore = create((set, get) => ({
     const ROLE_LABEL_T = { support: 'Support', coder: 'Coder', reviewer: 'Reviewer', reviewer2: 'Reviewer 2' };
     const patient = useAppStore.getState().hccMembers.find(m => m.id === patientId);
     statusChanges.forEach(({ role, status }) => {
-      persistHccMemberRoleStatus(patientId, role, status);
+      const assignedName = assigneeChanges.find(a => a.role === role)?.name;
+      persistHccMemberRoleStatus(patientId, role, status, assignedName);
       useAppStore.getState().logHccActivity({
         eventName: 'role.status_changed',
         scope:     { patientId, dos: dosDate, source: 'manual' },
@@ -3355,6 +3397,10 @@ export const useAppStore = create((set, get) => ({
         },
       });
     });
+    // Persist any assignee change that didn't ride along with a status change.
+    assigneeChanges
+      .filter(a => !statusChanges.some(sc => sc.role === a.role))
+      .forEach(({ role, name }) => persistHccMemberRoleStatus(patientId, role, undefined, name));
     return { nextMap: useAppStore.getState().hccDosAssignments };
   },
 
@@ -3427,15 +3473,20 @@ export const useAppStore = create((set, get) => ({
     const statusFieldByRole = { support: 'supS', coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
     const f = fieldByRole[role];
     const sf = statusFieldByRole[role];
+    // Default status on assignment is role-dependent: Support starts at
+    // "Awaiting" (displays as "Action Needed"), while Coder / QA / Compliance
+    // start at "New". Either value takes the cell out of its "Assign" empty
+    // state and marks the role as owned.
+    const assignStatus = role === 'support' ? 'Awaiting' : 'New';
     if (f && name) {
       set(s => ({
         hccMembers: s.hccMembers.map(m =>
-          m.id === pid ? { ...m, [f]: name, [sf]: 'New' } : m,
+          m.id === pid ? { ...m, [f]: name, [sf]: assignStatus } : m,
         ),
       }));
     }
     // Persist to Supabase so the reassignment survives reload.
-    if (name) persistHccMemberRoleStatus(pid, role, 'New', name);
+    if (name) persistHccMemberRoleStatus(pid, role, assignStatus, name);
     // Log to the canonical activity feed for the History drawer.
     const ROLE_LABEL = { support: 'Support', coder: 'Coder', reviewer: 'Reviewer', reviewer2: 'Reviewer 2' };
     useAppStore.getState().logHccActivity({
@@ -3453,8 +3504,9 @@ export const useAppStore = create((set, get) => ({
     // The engine's reassignRole stamps the assignee but leaves status null,
     // which makes resolveCurrentAssignee() still report this bucket as
     // unassigned (it only treats the bucket as active when status is both
-    // set and non-'Assign'). Force-stamp a 'New' status so AssigneeAvatar /
-    // AssigneeCell flip immediately to the active state with the new owner.
+    // set and non-'Assign'). Force-stamp the role's default assign status so
+    // AssigneeAvatar / AssigneeCell flip immediately to the active state with
+    // the new owner (Support → Awaiting/"Action Needed", others → New).
     const compositeKey = hccDosKey(pid, dos, dosEntry?.provider, dosEntry?.pos);
     set(s => {
       const cur = s.hccDosAssignments?.[compositeKey];
@@ -3464,7 +3516,7 @@ export const useAppStore = create((set, get) => ({
           ...s.hccDosAssignments,
           [compositeKey]: {
             ...cur,
-            [role]: { ...cur[role], status: 'New' },
+            [role]: { ...cur[role], status: assignStatus },
           },
         },
       };
