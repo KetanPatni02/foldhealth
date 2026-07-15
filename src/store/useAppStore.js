@@ -2747,6 +2747,36 @@ export const useAppStore = create((set, get) => ({
     set({ hccDiagnosisGaps: gaps, hccDiagnosisGapsLoading: false });
   },
 
+  // Per-member RAF-Impact breakdown (worklist RAF tooltip)
+  //
+  // hcc_member_raf holds one row per (member, HCC) contribution to the
+  // member's total RAF score. Fetched once and cached in a keyed map;
+  // getRafBreakdownFromDb falls back to the JS mock when a member has
+  // no rows.
+  hccMemberRaf: {},                // { memberName: [{ hcc, name, impact }] }
+  hccMemberRafDidFetch: false,
+  fetchHccMemberRaf: async () => {
+    if (get().hccMemberRafDidFetch) return;
+    try {
+      const { data, error } = await supabase
+        .from('hcc_member_raf')
+        .select('*')
+        .order('member_name', { ascending: true })
+        .order('sort_order', { ascending: true });
+      if (error) throw error;
+      const map = {};
+      for (const r of (data || [])) {
+        const key = r.member_name;
+        if (!map[key]) map[key] = [];
+        map[key].push({ hcc: r.hcc, name: r.hcc_name, impact: Number(r.impact) });
+      }
+      set({ hccMemberRaf: map, hccMemberRafDidFetch: true });
+    } catch (err) {
+      console.warn('fetchHccMemberRaf error — components will fall back to mock:', err?.message || err);
+      set({ hccMemberRafDidFetch: true });
+    }
+  },
+
   // Per-ICD confidence / evidence-factor / MEAT-note lookup
   //
   // hcc_gap_confidence is org-scoped (identical for every patient in Phase 2)

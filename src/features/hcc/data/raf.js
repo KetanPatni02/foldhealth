@@ -41,3 +41,15 @@ export const RAF_BREAKDOWN = {
 };
 
 export const getRafBreakdown = (name) => RAF_BREAKDOWN[name] || RAF_BREAKDOWN._default;
+
+/**
+ * DB-preferring variant of getRafBreakdown — pass the `hccMemberRaf` store
+ * slice ({ memberName: [{ hcc, name, impact }] }) as `dbMap`. Returns the
+ * DB rows when the member is seeded, then the DB _default row, then the
+ * JS mock. Keeps the RafTooltip working while the seed rolls out.
+ */
+export const getRafBreakdownFromDb = (dbMap, name) => {
+  if (dbMap?.[name]?.length) return dbMap[name];
+  if (dbMap?._default?.length) return dbMap._default;
+  return RAF_BREAKDOWN[name] || RAF_BREAKDOWN._default;
+};

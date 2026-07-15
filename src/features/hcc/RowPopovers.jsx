@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
-import { getRafBreakdown } from './data/raf';
+import { useAppStore } from '../../store/useAppStore';
+import { getRafBreakdownFromDb } from './data/raf';
 import { getChartDocs } from './data/chartDocs';
 import { getOpenIcdsForMember } from './data/icds';
 import styles from './RowPopovers.module.css';
@@ -70,7 +71,13 @@ export function RafTooltip({ memberName, children }) {
 }
 
 function RafTooltipPopup({ memberName, rect, onEnter, onLeave }) {
-  const items = getRafBreakdown(memberName);
+  // Kick off the RAF-breakdown fetch on first render — didFetch guard in
+  // the store keeps it a single round-trip regardless of how many popups
+  // this component instantiates over a session.
+  const fetchHccMemberRaf = useAppStore(s => s.fetchHccMemberRaf);
+  useEffect(() => { fetchHccMemberRaf(); }, [fetchHccMemberRaf]);
+  const rafMap = useAppStore(s => s.hccMemberRaf);
+  const items = getRafBreakdownFromDb(rafMap, memberName);
   const total = items.reduce((s, x) => s + x.impact, 0);
   const W = 272;
   const left = Math.min(rect.left, window.innerWidth - W - 8);
