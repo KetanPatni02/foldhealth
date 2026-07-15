@@ -4,7 +4,6 @@ import { useAppStore } from '../../store/useAppStore';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Icon } from '../../components/Icon/Icon';
 import { ROLE_LABEL } from './assignment/astranaStaff';
-import { SYSTEM_USERS } from './systemUsers';
 import styles from './RoleAssigneePicker.module.css';
 
 // Map from engine role (worklist internal) → clinical_roles vocabulary
@@ -20,8 +19,9 @@ const ENGINE_TO_CLINICAL = {
 /**
  * Shared searchable role-assignee picker — used by both the HCC worklist role
  * cells and the DiagPanel assignee chip so the two surfaces behave identically.
- * Lists every platform user (SYSTEM_USERS — Astrana staff + Account users),
- * filtered by a search box; picking one dispatches hccReassignRole.
+ * Lists platform users from Supabase profiles who carry the column's
+ * HCC role in profiles.clinical_roles (Support / Coder / QA / Compliance).
+ * Filters by a search box; picking one dispatches hccReassignRole.
  *
  * The caller renders its own trigger via the `trigger` render-prop, so each
  * surface keeps its native look (name cell / "Assign" pill / dashed avatar).
@@ -51,21 +51,21 @@ export function RoleAssigneePicker({
   useEffect(() => { fetchPlatformUsers(); }, [fetchPlatformUsers]);
 
   const requiredRole = ENGINE_TO_CLINICAL[role];
-  // Prefer DB profiles filtered by clinical_roles for this column.
-  // Fall back to the hardcoded SYSTEM_USERS roster only when the fetch
-  // hasn't returned yet OR nobody in profiles has that role assigned
-  // (otherwise the picker would show an empty list).
+  // Strict role scoping: only users whose profiles.clinical_roles includes
+  // the column's HCC role are eligible. No fallback to the legacy mock —
+  // if nobody has the role, the list stays empty and the picker shows an
+  // explanatory hint so the admin knows they need to assign the role first
+  // (Settings → Users). Engine roles that don't map to an HCC role (there
+  // aren't any today) accept every user by design.
   const eligible = platformUsers.filter(u =>
     !requiredRole || u.clinicalRoles?.includes(requiredRole),
   );
-  const baseUsers = eligible.length
-    ? eligible.map(u => ({
-        id: u.id,
-        name: u.name,
-        initials: u.initials,
-        rolesLabel: requiredRole || (u.clinicalRoles?.[0] || ''),
-      }))
-    : SYSTEM_USERS;
+  const baseUsers = eligible.map(u => ({
+    id: u.id,
+    name: u.name,
+    initials: u.initials,
+    rolesLabel: requiredRole || (u.clinicalRoles?.[0] || ''),
+  }));
 
   const q = query.trim().toLowerCase();
   const users = q
@@ -129,7 +129,13 @@ export function RoleAssigneePicker({
           </div>
           <div className={styles.list}>
             {users.length === 0 ? (
-              <div className={styles.empty}>No users found.</div>
+              <div className={styles.empty}>
+                {q
+                  ? 'No users match your search.'
+                  : requiredRole
+                    ? `No users assigned the "${requiredRole}" role. Assign the role in Settings → Users to make them selectable here.`
+                    : 'No users found.'}
+              </div>
             ) : users.map(u => (
               <button
                 key={u.id}
