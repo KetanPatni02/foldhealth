@@ -2747,6 +2747,36 @@ export const useAppStore = create((set, get) => ({
     set({ hccDiagnosisGaps: gaps, hccDiagnosisGapsLoading: false });
   },
 
+  // Per-member Activity Log entries (DiagPanel Timeline tab)
+  //
+  // Ported from data/activity.js — mixed event types, each carrying its
+  // full JSON payload so new event types can land without a schema
+  // change. Consumers (LeftWorkspace rawActivity memo) call
+  // getActivityFromDb which returns the member's rows, else the seeded
+  // '_default' rows, else the JS mock.
+  hccGapActivity: {},              // { memberName: [entry, ...] }
+  hccGapActivityDidFetch: false,
+  fetchHccGapActivity: async () => {
+    if (get().hccGapActivityDidFetch) return;
+    try {
+      const { data, error } = await supabase
+        .from('hcc_gap_activity')
+        .select('*')
+        .order('member_name', { ascending: true })
+        .order('sort_order', { ascending: true });
+      if (error) throw error;
+      const map = {};
+      for (const r of (data || [])) {
+        if (!map[r.member_name]) map[r.member_name] = [];
+        map[r.member_name].push(r.entry);
+      }
+      set({ hccGapActivity: map, hccGapActivityDidFetch: true });
+    } catch (err) {
+      console.warn('fetchHccGapActivity error — components will fall back to mock:', err?.message || err);
+      set({ hccGapActivityDidFetch: true });
+    }
+  },
+
   // Per-member sweep-ICD spread (DiagPanel cardIcds DOS grouping)
   //
   // hcc_gap_sweep holds ICDs with a JSONB `dos_entries` payload showing

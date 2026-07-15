@@ -81,3 +81,15 @@ export const ACTIVITY = {
 };
 export const getActivityForMember = (name) => ACTIVITY[name] || ACTIVITY._default || [];
 
+/**
+ * DB-preferring variant — pass the `hccGapActivity` store slice
+ * ({ memberName: [entry, ...] }) as `dbMap`. Returns the member's rows,
+ * else the seeded '_default' rows, else the JS mock. Keeps the
+ * Timeline tab working while the seed rolls out.
+ */
+export const getActivityFromDb = (dbMap, name) => {
+  if (dbMap?.[name]?.length) return dbMap[name];
+  if (dbMap?._default?.length) return dbMap._default;
+  return ACTIVITY[name] || ACTIVITY._default || [];
+};
+

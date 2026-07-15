@@ -11,7 +11,7 @@ import {
   HISTORY as HISTORY_MOCK,
 } from '../data/ancillary';
 import { getChartDocs } from '../data/chartDocs';
-import { ACTIVITY } from '../data/activity';
+import { ACTIVITY, getActivityFromDb } from '../data/activity';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { OutreachTab as PatientOutreachTab } from '../../patient/components/OutreachTab';
 import { DocEvidenceViewer } from './DocEvidenceViewer';
@@ -98,8 +98,13 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
   // Live entries land at the top; we re-insert today's group header if the
   // first mock entry isn't already a group divider for today.
   const liveLog = useAppStore(s => s.hccActivityLog[member?.name]);
+  // Kick off the Activity-Log fetch on first render — didFetch inside
+  // the store makes it a one-shot round-trip.
+  const fetchHccGapActivity = useAppStore(s => s.fetchHccGapActivity);
+  useEffect(() => { fetchHccGapActivity(); }, [fetchHccGapActivity]);
+  const activityFromDb = useAppStore(s => s.hccGapActivity);
   const rawActivity = useMemo(() => {
-    const mock = ACTIVITY[member?.name] || ACTIVITY._default || [];
+    const mock = getActivityFromDb(activityFromDb, member?.name);
     if (!liveLog?.length) return mock;
     const todayLabel = (() => {
       const d = new Date();
@@ -109,7 +114,7 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
       ? []
       : [{ t: 'group', label: todayLabel }];
     return [...header, ...liveLog, ...mock];
-  }, [liveLog, member?.name]);
+  }, [liveLog, member?.name, activityFromDb]);
 
   // Filter state — DOS is initialized to the currently-viewed DOS from the
   // patient banner so the chip reads "DOS · 07/04/2024" as an indication of
