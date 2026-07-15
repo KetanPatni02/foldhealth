@@ -2526,6 +2526,38 @@ export const useAppStore = create((set, get) => ({
           open: d?.open ?? (1 + (eh % 12)),
         };
       });
+      // Enforce the sequential workflow invariant on the ROW itself. Support →
+      // Coder → QA → Compliance. If seeded data (mock or DB) has a later role
+      // resolved while an earlier role is still in-flight, coerce it to a
+      // legal state:
+      //   - a later role terminal (Completed) past an untouched Support/Coder
+      //     is impossible, so demote the later role to 'Assign';
+      //   - Skipped is only valid for QA/Compliance when a still-later role has
+      //     resolved (mirrors autoSkipEarlierRoles); apply that backfill too.
+      const NON_TERMINAL = new Set(['Assign', 'New', 'Awaiting', 'In Progress',
+        'Insufficient', 'Returned', 'Record Requested', 'Record Received']);
+      const TERMINAL = new Set(['Completed', 'Skipped', 'Reject', 'Rejected', 'Billing Ready']);
+      const enforce = (chain) => {
+        const s = [...chain];
+        // Pass 1: a later terminal can't sit past a non-terminal earlier role.
+        for (let i = 1; i < s.length; i++) {
+          if (TERMINAL.has(s[i]) && s[i] !== 'Skipped') {
+            for (let j = 0; j < i; j++) {
+              if (NON_TERMINAL.has(s[j]) || !s[j]) { s[i] = 'Assign'; break; }
+            }
+          }
+        }
+        // Pass 2: if a still-later role has resolved past an untouched QA
+        // (idx 2) or Compliance (idx 3), the skipped role gets 'Skipped'.
+        for (let i = 2; i < s.length; i++) {
+          if (NON_TERMINAL.has(s[i]) || !s[i] || s[i] === 'Assign') {
+            const laterResolved = s.slice(i + 1).some(x => TERMINAL.has(x));
+            if (laterResolved) s[i] = 'Skipped';
+          }
+        }
+        return s;
+      };
+      const [supS2, cdrS2, r1s2, r2s2] = enforce([row.supS, row.cdrS, row.r1s, row.r2s]);
       // Sync row-level fields with the canonical VT-driven values so the
       // Provider/POS columns in the collapsed row match too.
       return {
@@ -2540,6 +2572,7 @@ export const useAppStore = create((set, get) => ({
         createdAt,
         slaTargetAt,
         dos_list,
+        supS: supS2, cdrS: cdrS2, r1s: r1s2, r2s: r2s2,
       };
     };
     // WS3 — port AWV mock rows into the unified worklist shape so the
@@ -4994,7 +5027,7 @@ export const useAppStore = create((set, get) => ({
     diagSnapFilter: null,
     diagSnapOpen: true,
     diagLeftPanel: opts.leftPanel ?? null,
-    diagActivityIcd: null,
+    diagActivityIcd: opts.activityIcd ?? null,
     diagViewMode: 'ICD',
   }),
   closeDiagPanel: () => set({ diagPanelOpen: false, diagPanelMemberId: null, diagLeftPanel: null, diagActivityIcd: null, diagClaimDos: null }),

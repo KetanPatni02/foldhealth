@@ -132,6 +132,15 @@ export function evaluateOcrTier(fileName) {
   if (name.includes('demo-degraded') || name.includes('demo-scan')) {
     return 'degraded';
   }
+  // Bundle demo docs (the "N Documents" chips) get the realistic hashed
+  // distribution so a batch shows a natural mix of Added / Needs Review /
+  // Unreadable — deterministic per index, so reloads are stable.
+  if (name.includes('demo-patient-')) {
+    const b = hash(name) % 100;
+    if (b < 8) return 'unreadable';
+    if (b < 30) return 'degraded';
+    return 'clean';
+  }
   // Any other demo file is deterministically Clean so the sample picker
   // produces predictable categorization for walkthroughs.
   if (name.includes('demo-')) {

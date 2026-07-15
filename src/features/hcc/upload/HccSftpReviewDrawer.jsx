@@ -7,7 +7,6 @@ import { Avatar } from '../../../components/Avatar/Avatar';
 import { Input } from '../../../components/Input/Input';
 import { Badge } from '../../../components/Badge/Badge';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
-import { Toggle } from '../../../components/Toggle/Toggle';
 import { Select } from '../../../components/Select/Select';
 import { IcdSearch } from '../../../components/IcdSearch/IcdSearch';
 // BulkBar import removed — per-card actions replace the floating bar
@@ -67,12 +66,6 @@ export function HccSftpReviewDrawer() {
   // Per-batch selection state — when the user switches tabs we reset
   // the set so bulk actions only ever apply to the visible batch.
   const [selectedIdxs, setSelectedIdxs] = useState(() => new Set());
-  // Document Review now has three top-level tabs: Pending Review,
-  // Added to Worklist, Deleted. We drive them from each encounter's
-  // _docStatus annotation (set by setHccSftpEncounterStatus).
-  const [docTab, setDocTab] = useState('pending');
-  // Status filter inside the Pending tab — All / Ready / Mismatch / Error.
-  const [statusFilter, setStatusFilter] = useState('all');
   // Doc-switcher popover open state (filename click).
   const [switcherOpen, setSwitcherOpen] = useState(false);
   // Ref to the left-pane preview scroll container. Used by the per-field
@@ -182,26 +175,15 @@ export function HccSftpReviewDrawer() {
   const activeEncs = activeBatch?.encounters || [];
   const bucket = (status) => activeEncs.filter(e => (e._docStatus || 'pending') === status);
   const pendingEncs = bucket('pending');
-  const addedEncs   = bucket('added');
-  const deletedEncs = bucket('deleted');
 
   const encStatus = (enc) => {
     if (!enc?.patient?.matchedMemberId) return 'mismatch';
     if (Array.isArray(enc?.errors) && enc.errors.length > 0) return 'error';
     return 'ready';
   };
-  const readyCount    = pendingEncs.filter(e => encStatus(e) === 'ready').length;
-  const mismatchCount = pendingEncs.filter(e => encStatus(e) === 'mismatch').length;
-  const errorCount    = pendingEncs.filter(e => encStatus(e) === 'error').length;
-
-  // Filtered list for the right-pane card stack. 'all' shows every
-  // pending encounter regardless of status.
-  const visibleEncs = (
-    docTab === 'pending'
-      ? (statusFilter === 'all' ? pendingEncs : pendingEncs.filter(e => encStatus(e) === statusFilter))
-    : docTab === 'added'   ? addedEncs
-    :                        deletedEncs
-  );
+  // No tabs / status filter — the card stack shows every pending record for
+  // this document, grouped by patient.
+  const visibleEncs = pendingEncs;
 
   // Group encounters by patient so one card == one patient, with N DOS
   // blocks inside. Insertion-ordered Map preserves the document's
@@ -334,124 +316,49 @@ export function HccSftpReviewDrawer() {
             />
           </div>
 
-          {/* RIGHT — Pending / Added / Deleted tabs + filter chips +
-              encounter card stack. */}
+          {/* RIGHT — per-patient encounter card stack (one patient per
+              document, N DOS inside). No tabs / status filters — the
+              reviewer just works the document's records. */}
           <div className={styles.rightPanel}>
-            <div className={styles.docTabBar}>
-              <button
-                type="button"
-                className={[styles.docTab, docTab === 'pending' ? styles.docTabActive : ''].join(' ')}
-                onClick={() => setDocTab('pending')}
-              >
-                Pending Review<span className={styles.docTabCount}>({pendingEncs.length})</span>
-              </button>
-              <button
-                type="button"
-                className={[styles.docTab, docTab === 'added' ? styles.docTabActive : ''].join(' ')}
-                onClick={() => setDocTab('added')}
-              >
-                Added to Worklist<span className={styles.docTabCount}>({addedEncs.length})</span>
-              </button>
-              <button
-                type="button"
-                className={[styles.docTab, docTab === 'deleted' ? styles.docTabActive : ''].join(' ')}
-                onClick={() => setDocTab('deleted')}
-              >
-                Deleted<span className={styles.docTabCount}>({deletedEncs.length})</span>
-              </button>
-              <span className={styles.docTabBarSpacer} />
-              <ActionButton size="S" icon="solar:magnifer-linear" tooltip="Search" />
-              <Button
-                variant="alt"
-                size="S"
-                leadingIcon="solar:add-circle-linear"
-                onClick={() => showToast?.('Add New Record — coming soon')}
-              >
-                Add New Record
-              </Button>
-            </div>
-
-            {/* Filter chips inside the Pending tab — uses the shared
-                <Toggle> primitive so the segmented-control behavior +
-                visuals match every other filter cluster in the app. */}
-            {docTab === 'pending' && (
-              <div className={styles.statusChipsRow}>
-                <Toggle
-                  size="S"
-                  items={[
-                    { key: 'all',      label: `All (${pendingEncs.length})` },
-                    { key: 'ready',    label: `Ready (${readyCount})` },
-                    { key: 'mismatch', label: `Mismatch (${mismatchCount})` },
-                    { key: 'error',    label: `Error (${errorCount})` },
-                  ]}
-                  active={statusFilter}
-                  onChange={setStatusFilter}
-                />
-              </div>
-            )}
-
             {/* Encounter card stack — replaces the table. */}
             <div className={styles.cardStack}>
               {visibleEncs.length === 0 ? (
-                /* Empty-state branching:
-                   1. "Document Review Completed" hero — every pending
-                      encounter has been triaged on this doc (Figma
-                      180:63466). Offers a primary Review Next Document
-                      (jumps to the next batch with pending work) and
-                      a secondary Back to Worklist (closes the drawer).
-                   2. Sub-filter empty — Pending tab is non-empty but
-                      the current Ready/Mismatch/Error bucket is. Quiet
-                      one-liner.
-                   3. Other tabs (Added / Deleted) empty — quiet
-                      one-liner explaining the bucket. */
-                docTab === 'pending' && pendingEncs.length === 0 && activeEncs.length > 0
-                  ? (
-                    <DocReviewCompleted
-                      total={activeEncs.length}
-                      nextBatch={batches.find(b => b.id !== activeBatch.id && (b.encounters || []).some(e => (e._docStatus || 'pending') === 'pending'))}
-                      onPickNext={(id) => setActiveId(id)}
-                      onBackToWorklist={close}
-                    />
-                  )
-                  : (
-                    <div className={styles.cardStackEmpty}>
-                      <Icon name="solar:checklist-minimalistic-linear" size={28} color="var(--neutral-200)" />
-                      <span>
-                        {docTab === 'pending'
-                          ? (statusFilter === 'all'
-                              ? 'No encounters left to review on this document'
-                              : `No ${statusFilter} encounters in this document`)
-                          : docTab === 'added'
-                            ? 'Nothing has been added to the worklist yet'
-                            : 'Nothing has been deleted yet'}
-                      </span>
-                    </div>
-                  )
+                // Every record on this document has been triaged → completion
+                // hero with a jump to the next document that still has work.
+                activeEncs.length > 0 ? (
+                  <DocReviewCompleted
+                    total={activeEncs.length}
+                    nextBatch={batches.find(b => b.id !== activeBatch.id && (b.encounters || []).some(e => (e._docStatus || 'pending') === 'pending'))}
+                    onPickNext={(id) => setActiveId(id)}
+                    onBackToWorklist={close}
+                  />
+                ) : (
+                  <div className={styles.cardStackEmpty}>
+                    <Icon name="solar:checklist-minimalistic-linear" size={28} color="var(--neutral-200)" />
+                    <span>No records to review on this document</span>
+                  </div>
+                )
               ) : visibleGroups.map((group) => (
                 <PatientCard
                   key={group.key}
                   group={group}
                   hccMembers={hccMembers}
-                  docTab={docTab}
                   encStatus={encStatus}
                   onCite={citeField}
+                  showToast={showToast}
                   patchEnc={(enc, patch) => patchEnc?.(activeBatch.id, activeEncs.indexOf(enc), patch)}
                   onAddToWorklist={(enc) => {
                     const r = createFromEncounter?.({ ...enc, _docName: activeBatch.fileName, _batchId: activeBatch.id });
                     if (r?.kind === 'skipped') {
                       showToast?.(`Cannot add — ${r.reason || 'encounter is incomplete'}`);
-                      return;
+                      return false;
                     }
                     setEncounterStatus?.(activeBatch.id, activeEncs.indexOf(enc), 'added');
-                    showToast?.(`Added ${enc.patient?.name || 'encounter'} to worklist`);
+                    return true;
                   }}
                   onDelete={(enc) => {
                     setEncounterStatus?.(activeBatch.id, activeEncs.indexOf(enc), 'deleted');
                     showToast?.(`Deleted ${enc.patient?.name || 'encounter'}`);
-                  }}
-                  onRestore={(enc) => {
-                    setEncounterStatus?.(activeBatch.id, activeEncs.indexOf(enc), null);
-                    showToast?.(`Restored ${enc.patient?.name || 'encounter'} to pending`);
                   }}
                 />
               ))}
@@ -980,12 +887,23 @@ function DocReviewCompleted({ total, nextBatch, onPickNext, onBackToWorklist }) 
  * grid (DOS · ICD · Provider · POS · Category). Single-DOS patients
  * render with no DOS-count chip and no separators.
  */
-function PatientCard({ group, hccMembers, docTab, encStatus, patchEnc, onAddToWorklist, onDelete, onRestore, onCite }) {
+function PatientCard({ group, hccMembers, encStatus, patchEnc, onAddToWorklist, onDelete, onCite, showToast }) {
   const first = group.encs[0];
   const isMatched = !!first?.patient?.matchedMemberId;
   const member = isMatched ? hccMembers.find(m => m.id === first.patient.matchedMemberId) : null;
   const displayName = member?.name || first?.patient?.name || '(unmatched)';
   const initials = member?.in || displayName.split(' ').map(p => p[0]).slice(0, 2).join('');
+  const uploadRef = useRef(null);
+
+  // Patient-level "Add to Worklist" — commits every ready DOS for this
+  // patient in one action (only ready rows are eligible).
+  const readyEncs = group.encs.filter(e => encStatus(e) === 'ready');
+  const handleAddAll = () => {
+    let added = 0;
+    readyEncs.forEach((enc) => { if (onAddToWorklist(enc)) added += 1; });
+    if (added) showToast?.(`Added ${added} DOS for ${displayName} to worklist`);
+  };
+
   return (
     <div className={styles.encCard}>
       <div className={styles.encCardHead}>
@@ -998,23 +916,38 @@ function PatientCard({ group, hccMembers, docTab, encStatus, patchEnc, onAddToWo
             #{first?.patient?.patientId || first?.patient?.matchedMemberDisplayId || '—'}
           </div>
         </div>
-        {group.encs.length > 1 && (
-          <span className={styles.encGroupCount}>
-            {group.encs.length} DOS
-          </span>
-        )}
+        <span className={styles.encGroupCount}>{group.encs.length} DOS</span>
+        {/* Patient-level actions — upload a document, add another DOS record,
+            and add every ready DOS to the worklist in one go. */}
+        <div className={styles.encPatientActions}>
+          <input
+            ref={uploadRef}
+            type="file"
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.tif,.tiff"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) showToast?.(`Uploaded ${f.name} for ${displayName}`);
+              e.target.value = '';
+            }}
+          />
+          <ActionButton size="S" icon="solar:upload-minimalistic-linear" tooltip="Upload document" onClick={() => uploadRef.current?.click()} />
+          <Button variant="alt" size="S" leadingIcon="solar:add-circle-linear" onClick={() => showToast?.(`Add new record for ${displayName} — coming soon`)}>
+            Add New Record
+          </Button>
+          <Button variant="primary" size="S" leadingIcon="solar:check-read-linear" disabled={readyEncs.length === 0} onClick={handleAddAll}>
+            Add to Worklist
+          </Button>
+        </div>
       </div>
       {group.encs.map((enc, i) => (
         <EncounterBlock
           key={enc.tempId || `${group.key}:${i}`}
           enc={enc}
           status={encStatus(enc)}
-          docTab={docTab}
           isFirst={i === 0}
           onPatch={(patch) => patchEnc(enc, patch)}
-          onAddToWorklist={() => onAddToWorklist(enc)}
           onDelete={() => onDelete(enc)}
-          onRestore={() => onRestore(enc)}
           onCite={onCite}
         />
       ))}
@@ -1071,47 +1004,7 @@ function StatusBadgeWithTip({ variant, icon, label, reason, tone }) {
   );
 }
 
-/**
- * Run the 10-point document-level checklist against an encounter.
- * Most checks derive from the data the OCR pipeline already
- * surfaces (errors[], matched member, dos, icds, etc.). The three
- * the pipeline doesn't report directly today — signature,
- * legibility, doctype sanity — are mock-stubbed via a deterministic
- * hash so demos show a sprinkling of failures rather than 100%
- * passes everywhere.
- *
- * Returns { checks, status, failureCount, hasSupportingDoc }. The
- * verdict flips to 'passed' once any failure is acknowledged with a
- * supporting document upload (`enc._supportingDocName`).
- */
-function runDocChecks(enc) {
-  const errs = new Set(enc?.errors || []);
-  const seed = (enc?.tempId || '') + (enc?.dos || '');
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) & 0xffffffff;
-  const mod = Math.abs(h);
-  const inDateRange = (() => {
-    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(enc?.dos || '');
-    if (!m) return false;
-    const yr = Number(m[3]);
-    return yr >= 2022 && yr <= 2027;
-  })();
-  const checks = [
-    { id: 'signature',     label: 'Signature present',                    passed: (mod % 23) !== 0 },
-    { id: 'legible',       label: 'Document is legible',                  passed: (mod % 41) !== 0 },
-    { id: 'right_patient', label: 'Document belongs to this patient',     passed: !!enc?.patient?.matchedMemberId && !enc?.patient?.idMismatch },
-    { id: 'date_range',    label: 'Date of service within valid range',   passed: inDateRange },
-    { id: 'dos',           label: 'Date of service is charted',           passed: !!enc?.dos && !errs.has('dos') },
-    { id: 'provider',      label: 'Rendering provider name is printed',   passed: !!enc?.provider && !errs.has('provider') },
-    { id: 'pos',           label: 'Place of service is available',        passed: !!enc?.pos && !errs.has('pos') },
-  ];
-  const failureCount = checks.filter(c => !c.passed).length;
-  const hasSupportingDoc = !!enc?._supportingDocName;
-  const verdict = (failureCount === 0 || hasSupportingDoc) ? 'passed' : 'failed';
-  return { checks, status: verdict, failureCount, hasSupportingDoc };
-}
-
-function EncounterBlock({ enc, status, docTab, isFirst, onPatch, onAddToWorklist, onDelete, onRestore, onCite }) {
+function EncounterBlock({ enc, status, isFirst, onPatch, onDelete, onCite }) {
   const [icdOpen, setIcdOpen] = useState(false);
   const icdWrapRef = useRef(null);
   useEffect(() => {
@@ -1122,12 +1015,6 @@ function EncounterBlock({ enc, status, docTab, isFirst, onPatch, onAddToWorklist
   }, [icdOpen]);
 
   const errors = new Set(enc.errors || []);
-  const docChecks = runDocChecks(enc);
-  // Doc-checks pass either organically, with a supporting doc attached,
-  // or when the reviewer manually marked the row as passed (OCR
-  // override). The Add-to-Worklist gate widens accordingly.
-  const docChecksEffectivePass = docChecks.status === 'passed' || !!enc?._manuallyPassed;
-  const canAddToWorklist = docChecksEffectivePass && status === 'ready';
   const badgeVariant = (
     status === 'ready'    ? 'status-completed' :
     status === 'mismatch' ? 'status-review' :
@@ -1173,38 +1060,8 @@ function EncounterBlock({ enc, status, docTab, isFirst, onPatch, onAddToWorklist
           reason={reason}
           tone={status}
         />
-        <DocChecksPill
-          result={docChecks}
-          manuallyPassed={!!enc?._manuallyPassed}
-          supportingDocName={enc?._supportingDocName}
-          onMarkPassed={() => onPatch({ _manuallyPassed: true })}
-          onUploadSupportingDoc={(file) => onPatch({ _supportingDocName: file.name })}
-        />
         <div className={styles.encCardActions}>
-          {docTab === 'pending' ? (
-            <>
-              <Button
-                variant="tertiary"
-                size="S"
-                leadingIcon="solar:add-circle-linear"
-                disabled={!canAddToWorklist}
-                onClick={onAddToWorklist}
-                className={styles.encAddBtn}
-              >
-                Add to Worklist
-              </Button>
-              <ActionButton size="S" icon="solar:trash-bin-trash-linear" tooltip="Delete" onClick={onDelete} />
-            </>
-          ) : (
-            <Button
-              variant="ghost"
-              size="S"
-              leadingIcon="solar:undo-left-round-linear"
-              onClick={onRestore}
-            >
-              Restore
-            </Button>
-          )}
+          <ActionButton size="S" icon="solar:trash-bin-trash-linear" tooltip="Remove this DOS" onClick={onDelete} />
         </div>
       </div>
 
@@ -1308,226 +1165,6 @@ function EncounterBlock({ enc, status, docTab, isFirst, onPatch, onAddToWorklist
  * hover reveals "Source · Page N", click scrolls the left-pane PDF
  * preview to that page and pulses a highlight on the cited row.
  */
-/**
- * Document-level checks inset — collapsible 10-point checklist that
- * sits at the bottom of every encounter block. Auto-expanded when
- * any check fails so the reviewer sees the failure inline; collapsed
- * (one-line "All checks passed") when everything's green. When
- * failed, exposes an "Upload supporting document" affordance that
- * acknowledges the failure and unblocks Add to Worklist.
- */
-/**
- * Compact pill that sits next to the Ready/Mismatch/Error badge and
- * shows the X/N doc-checks tally at a glance. On hover, expands into
- * a portaled popover with the full 7-row checklist. When any check
- * failed and the reviewer disagrees with the verdict, the popover
- * exposes two recovery actions: a manual "Mark as Passed" override
- * (for when OCR misread legible content) or a supporting-doc upload.
- * Either action unblocks Add to Worklist.
- */
-function DocChecksPill({ result, manuallyPassed, supportingDocName, onMarkPassed, onUploadSupportingDoc }) {
-  const { checks, status: rawStatus, hasSupportingDoc } = result;
-  // Treat manual override as a pass for the verdict label too.
-  const effectivelyPassed = rawStatus === 'passed' || manuallyPassed;
-  const passedCount = checks.filter(c => c.passed).length;
-  const total = checks.length;
-  const wrapRef = useRef(null);
-  const fileRef = useRef(null);
-  const [hover, setHover] = useState(false);
-  const [tipHover, setTipHover] = useState(false);
-  const [pos, setPos] = useState({ left: 0, top: 0 });
-  const open = hover || tipHover;
-  useEffect(() => {
-    if (!open || !wrapRef.current) return;
-    const r = wrapRef.current.getBoundingClientRect();
-    setPos({ left: r.left, top: r.bottom + 6 });
-  }, [open]);
-  const variant = effectivelyPassed ? 'status-completed' : 'status-failed';
-  const icon = effectivelyPassed ? 'solar:check-circle-bold' : 'solar:danger-triangle-bold';
-  const label = `${passedCount}/${total} Checks`;
-  return (
-    <span
-      ref={wrapRef}
-      className={styles.docPillWrap}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-    >
-      <Badge variant={variant} icon={icon} label={label} />
-      {open && createPortal(
-        <div
-          role="tooltip"
-          className={[styles.docPillTip, effectivelyPassed ? styles.docPillTipPass : styles.docPillTipFail].join(' ')}
-          style={{
-            left: Math.min(window.innerWidth - 320, Math.max(8, pos.left)),
-            top: pos.top,
-          }}
-          onMouseEnter={() => setTipHover(true)}
-          onMouseLeave={() => setTipHover(false)}
-        >
-          <div className={styles.docPillTipHead}>
-            <Icon
-              name={effectivelyPassed ? 'solar:check-circle-bold' : 'solar:danger-triangle-bold'}
-              size={14}
-              color={effectivelyPassed ? 'var(--status-success)' : 'var(--status-error)'}
-            />
-            <span>
-              {effectivelyPassed
-                ? (manuallyPassed ? 'Marked as passed manually' : hasSupportingDoc ? 'Passed with supporting document' : `${passedCount}/${total} checks passed`)
-                : `${total - passedCount} of ${total} checks failed`}
-            </span>
-          </div>
-          <ul className={styles.docPillList}>
-            {checks.map(c => (
-              <li
-                key={c.id}
-                className={[styles.docPillItem, c.passed ? styles.docPillItemOk : styles.docPillItemBad].join(' ')}
-              >
-                <Icon
-                  name={c.passed ? 'solar:check-circle-bold' : 'solar:close-circle-bold'}
-                  size={13}
-                  color={c.passed ? 'var(--status-success)' : 'var(--status-error)'}
-                />
-                <span>{c.label}</span>
-              </li>
-            ))}
-          </ul>
-          {!effectivelyPassed && (
-            <div className={styles.docPillActions}>
-              <Button
-                variant="alt"
-                size="S"
-                leadingIcon="solar:check-square-linear"
-                onClick={onMarkPassed}
-              >
-                Mark as Passed
-              </Button>
-              <Button
-                variant="ghost"
-                size="S"
-                leadingIcon="solar:upload-linear"
-                onClick={() => fileRef.current?.click()}
-              >
-                Upload supporting doc
-              </Button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.tif,.tiff"
-                style={{ display: 'none' }}
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (!f) return;
-                  onUploadSupportingDoc?.(f);
-                  if (fileRef.current) fileRef.current.value = '';
-                }}
-              />
-            </div>
-          )}
-          {hasSupportingDoc && (
-            <div className={styles.docPillAttachment}>
-              <Icon name="solar:paperclip-linear" size={12} color="var(--neutral-400)" />
-              <span>{supportingDocName}</span>
-            </div>
-          )}
-        </div>,
-        document.body
-      )}
-    </span>
-  );
-}
-
-function DocChecks({ result, supportingDocName, onUploadSupportingDoc }) {
-  const { checks, status, failureCount, hasSupportingDoc } = result;
-  const [expanded, setExpanded] = useState(status === 'failed');
-  const fileRef = useRef(null);
-  const failedList = checks.filter(c => !c.passed);
-  const verdictLabel = status === 'passed'
-    ? (hasSupportingDoc ? 'Passed (with supporting doc)' : 'Passed')
-    : `Failed — ${failureCount} check${failureCount === 1 ? '' : 's'}`;
-  return (
-    <div className={styles.fieldBlock}>
-      <div className={styles.fieldBlockHead}>
-        <span className={styles.fieldBlockLabel}>
-          Document Checks<span className={styles.fieldBlockReq}>•</span>
-        </span>
-      </div>
-      <div className={styles.fieldBlockBody}>
-        <button
-          type="button"
-          className={styles.docChecksTrigger}
-          onClick={() => setExpanded(v => !v)}
-          aria-expanded={expanded}
-        >
-          <Badge
-            variant={status === 'passed' ? 'status-completed' : 'status-failed'}
-            icon={status === 'passed' ? 'solar:check-circle-bold' : 'solar:danger-triangle-bold'}
-            label={verdictLabel}
-          />
-          <Icon
-            name={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
-            size={14}
-            color="var(--neutral-300)"
-            className={styles.docChecksTriggerCaret}
-          />
-        </button>
-
-        {expanded && (
-          <div className={styles.docChecksPanel}>
-            <ul className={styles.docChecksList}>
-              {checks.map(c => (
-                <li
-                  key={c.id}
-                  className={[styles.docChecksItem, c.passed ? styles.docChecksItemOk : styles.docChecksItemBad].join(' ')}
-                >
-                  <Icon
-                    name={c.passed ? 'solar:check-circle-bold' : 'solar:close-circle-bold'}
-                    size={13}
-                    color={c.passed ? 'var(--status-success)' : 'var(--status-error)'}
-                  />
-                  <span>{c.label}</span>
-                </li>
-              ))}
-            </ul>
-            {status === 'failed' && failedList.length > 0 && (
-              <div className={styles.docChecksFooter}>
-                <span className={styles.docChecksFooterCopy}>
-                  One or more checks failed. Upload a supporting document to add this record anyway.
-                </span>
-                <Button
-                  variant="alt"
-                  size="S"
-                  leadingIcon="solar:upload-linear"
-                  onClick={() => fileRef.current?.click()}
-                >
-                  Upload supporting document
-                </Button>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.tif,.tiff"
-                  style={{ display: 'none' }}
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (!f) return;
-                    onUploadSupportingDoc?.(f);
-                    if (fileRef.current) fileRef.current.value = '';
-                  }}
-                />
-              </div>
-            )}
-            {hasSupportingDoc && (
-              <div className={styles.docChecksAttachment}>
-                <Icon name="solar:paperclip-linear" size={12} color="var(--neutral-400)" />
-                <span>Supporting document: <strong>{supportingDocName}</strong></span>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function FieldBlock({ label, required, confidence, sourcePage, onCite, children }) {
   return (
     <div className={styles.fieldBlock}>

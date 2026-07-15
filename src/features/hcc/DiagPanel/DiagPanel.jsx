@@ -201,6 +201,7 @@ export function DiagPanel() {
   const hccCompleteReviewer = useAppStore(s => s.hccCompleteReviewer);
   const hccCompleteReviewer2 = useAppStore(s => s.hccCompleteReviewer2);
   const hccRequestRecords = useAppStore(s => s.hccRequestRecords);
+  const hccRecordsReceived = useAppStore(s => s.hccRecordsReceived);
   const hccMarkInsufficient = useAppStore(s => s.hccMarkInsufficient);
   const hccRejectDos = useAppStore(s => s.hccRejectDos);
   const hccReturnDos = useAppStore(s => s.hccReturnDos);
@@ -406,20 +407,11 @@ export function DiagPanel() {
   }, []);
 
   // Bridge from the DosStatusMenu's onChange to the right lifecycle
-  // transition for whichever role currently owns the DOS.
+  // transition for whichever role currently owns the DOS. Only the workflow
+  // status for the current role changes here — ICD statuses are NEVER
+  // touched. Unaddressed ICDs stay in their existing state (New / Pending /
+  // etc.); acceptance only happens when the user explicitly accepts an ICD.
   const handleStatusChange = (next) => {
-    // Completing a record with unactioned rows applies the default
-    // auto-accept to each remaining row first (RA coder workflow plan §B4).
-    if (next === 'Completed') {
-      const unactioned = rowKeys.filter(k => !hccGapDosActions[k]);
-      if (unactioned.length) {
-        unactioned.forEach(k => {
-          const [code, dos] = k.split('|');
-          setHccGapDosAction(code, dos, 'accepted');
-        });
-        showToast(`${unactioned.length} unactioned ICD row${unactioned.length === 1 ? '' : 's'} auto-accepted`);
-      }
-    }
     if (!member || !currentDos) { setDiagDosStatus(next); return; }
     // Act on the logged-in role's stage (not just whoever currently owns the
     // record) so a later role completing correctly triggers the skip logic.
@@ -427,7 +419,14 @@ export function DiagPanel() {
 
     switch (next) {
       case 'Completed':
-        if (role === 'support')       hccCompleteSupport(member.id, currentDos);
+        if (role === 'support') {
+          // Support completing after a Coder Record Requested — the record is
+          // in the Returned state — routes through recordsReceived so the
+          // Coder auto-flips to Record Received (AC-6 loop).
+          const supStatus = dosState?.support?.status;
+          if (supStatus === 'Returned') hccRecordsReceived(member.id, currentDos);
+          else                          hccCompleteSupport(member.id, currentDos);
+        }
         else if (role === 'coder')    hccCompleteCoder(member.id, currentDos);
         else if (role === 'reviewer') hccCompleteReviewer(member.id, currentDos);
         else if (role === 'reviewer2')hccCompleteReviewer2(member.id, currentDos);

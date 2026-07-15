@@ -213,18 +213,35 @@ function PickerPhase({ showToast, cancel }) {
   const queueHccDocumentForOcr = useAppStore(s => s.queueHccDocumentForOcr);
   const createFromEncounter = useAppStore(s => s.hccCreateOrMergeFromEncounter);
   const openReviewForBatches = useAppStore(s => s.openHccReviewForBatches);
+  const removeHccSftpBatch = useAppStore(s => s.removeHccSftpBatch);
+  const fetchHccDocuments = useAppStore(s => s.fetchHccDocuments);
+  // Persistent list of every extracted document (this session + past ones
+  // loaded from Supabase). This — not local state — backs the Extracted
+  // Records view, so past documents pending review / added / unreadable are
+  // always visible when the picker reopens.
+  const sftpBatches = useAppStore(s => s.hccSftpBatches) || [];
   // Each entry: { id, file, name, size, progress: 0-100,
   //   status: 'uploading' | 'extracting' } — a row lives here only while it
-  //   uploads then extracts; once done it moves into `records` below.
+  //   uploads then extracts; once done its batch surfaces in `records`.
   const [staged, setStaged] = useState([]);
-  // Extracted results, one per record (encounter) — or one per document when
-  // the file is unreadable. Drives the "Extracted Records" view (Figma
-  // 4967:199663). { id, fileName, source, dateISO, bucket, reason?, batchId?,
-  // encIdx?, patientName? }
-  const [records, setRecords] = useState([]);
   const [activeBucket, setActiveBucket] = useState('review');
   // Guards so each staged row is only sent through extraction once.
   const startedRef = useRef(new Set());
+  // Load past documents once on open (only when none are in memory, so we
+  // never clobber an in-flight extraction from this session).
+  const didFetchRef = useRef(false);
+  useEffect(() => {
+    if (didFetchRef.current) return;
+    didFetchRef.current = true;
+    if ((useAppStore.getState().hccSftpBatches || []).length === 0) fetchHccDocuments?.();
+  }, [fetchHccDocuments]);
+
+  // Derive one Extracted Record per finished document (a document = one
+  // patient with one-or-more DOS). Bucketed Added / Needs Review / Unreadable.
+  const records = useMemo(
+    () => sftpBatches.filter(b => b.status === 'done').map(documentToRecord),
+    [sftpBatches],
+  );
 
   // Drive the per-file upload progress animations.
   useEffect(() => {
@@ -257,34 +274,14 @@ function PickerPhase({ showToast, cancel }) {
     try {
       const batchId = await queueHccDocumentForOcr?.(row.file, { autoApply: false });
       const batch = useAppStore.getState().hccSftpBatches.find(b => b.id === batchId);
-      const dateISO = batch?.ingestedAt || new Date().toISOString();
-      const encs = batch?.encounters || [];
-      let recs;
-      // Unreadable document — corrupted / wrong format / blank page.
-      if (batch?.ocrTier === 'unreadable' || encs.length === 0) {
-        recs = [{
-          id: `${row.id}-doc`, fileName: name, source: 'Manual Upload', dateISO,
-          bucket: 'unreadable',
-          reason: batch?.ocrTier === 'unreadable'
-            ? 'File is corrupted or in an unreadable format'
-            : 'No readable content — blank or unrecognized page',
-        }];
-      } else {
-        recs = encs.map((enc, i) => {
-          const bucket = classifyEncounter(enc, batch?.ocrTier);
-          // Only fully-confident records are added straight to the worklist.
-          // Guard the create so a single failure can't drop the whole batch.
-          if (bucket === 'added') {
-            try { createFromEncounter?.({ ...enc, _docName: name, _batchId: batchId }); }
-            catch (err) { console.error('Auto-add failed for extracted record', err); }
-          }
-          return {
-            id: `${row.id}-${i}`, fileName: name, source: 'Manual Upload', dateISO,
-            bucket, batchId, encIdx: i, patientName: enc.patient?.name || '',
-          };
+      // A fully-confident document ("Added") is committed to the worklist
+      // straight away; the batch itself surfaces in `records` via the derive.
+      if (documentToRecord(batch).bucket === 'added') {
+        (batch?.encounters || []).forEach((enc) => {
+          try { createFromEncounter?.({ ...enc, _docName: name, _batchId: batchId }); }
+          catch (err) { console.error('Auto-add failed for extracted record', err); }
         });
       }
-      setRecords(prev => [...prev, ...recs]);
     } finally {
       setStaged(prev => prev.filter(s => s.id !== row.id));
     }
@@ -305,13 +302,17 @@ function PickerPhase({ showToast, cancel }) {
   // server-side, not in the picker).
   const MAX_FILES = 15;
   const MAX_BATCH_BYTES = 100 * 1024 * 1024;
-  const handlePick = (filesOrFile) => {
+  // `bypassLimit` lets the demo "N Documents" chips stage more than the UI cap
+  // (e.g. 20) without tripping the per-batch limit shown to real uploads.
+  const handlePick = (filesOrFile, opts = {}) => {
     const arr = Array.isArray(filesOrFile) ? filesOrFile : [filesOrFile];
     const accepted = arr.filter(Boolean).filter(isAcceptedFile);
     if (accepted.length === 0) {
       showToast?.('Please upload a PDF, DOC, JPG, PNG, or TIFF file');
       return;
     }
+    const capFiles = opts.bypassLimit ? Infinity : MAX_FILES;
+    const capBytes = opts.bypassLimit ? Infinity : MAX_BATCH_BYTES;
     setStaged(prev => {
       const currentBytes = prev.reduce((s, x) => s + (x.size || 0), 0);
       const candidateRows = accepted.map((file) => ({
@@ -331,8 +332,8 @@ function PickerPhase({ showToast, cancel }) {
       let droppedForCount = 0;
       let droppedForBytes = 0;
       for (const row of candidateRows) {
-        if (runningCount >= MAX_FILES) { droppedForCount += 1; continue; }
-        if (runningBytes + row.size > MAX_BATCH_BYTES) { droppedForBytes += 1; continue; }
+        if (runningCount >= capFiles) { droppedForCount += 1; continue; }
+        if (runningBytes + row.size > capBytes) { droppedForBytes += 1; continue; }
         accepted2.push(row);
         runningCount += 1;
         runningBytes += row.size;
@@ -345,7 +346,7 @@ function PickerPhase({ showToast, cancel }) {
   };
 
   const removeStaged = (id) => setStaged(prev => prev.filter(s => s.id !== id));
-  const removeRecord = (rec) => setRecords(prev => prev.filter(r => r.id !== rec.id));
+  const removeRecord = (rec) => removeHccSftpBatch?.(rec.batchId || rec.id);
   // Review a flagged record — open the full-screen Document Review over every
   // extracted document, landing on the one the user clicked (Figma
   // 4999:156381). Previous/Next there steps through the rest.
@@ -394,40 +395,45 @@ function PickerPhase({ showToast, cancel }) {
 
       {records.length === 0 && <WhatHappensNext />}
 
-      {/* Extracted Records — the post-extraction results, bucketed into
-          Needs Review / Unreadable / Added to Worklist (Figma 4967:199663). */}
-      {records.length > 0 && (
-        <ExtractedRecords
-          records={records}
-          activeBucket={activeBucket}
-          setActiveBucket={setActiveBucket}
-          onReview={reviewRecord}
-          onDelete={removeRecord}
-        />
-      )}
+      {/* Extracted Records — always shown so past documents pending review /
+          added / unreadable stay visible; renders an empty state when there
+          are none (Figma 4967:199663). */}
+      <ExtractedRecords
+        records={records}
+        activeBucket={activeBucket}
+        setActiveBucket={setActiveBucket}
+        onReview={reviewRecord}
+        onDelete={removeRecord}
+      />
 
-      {/* Demo helper — quick chips so the prototype is exercisable
-          without an actual file picker. Always visible so the user can
-          drop more demos at any point. */}
+      {/* Demo helper — a document is always ONE patient (with one-or-more DOS).
+          The single chip loads a multi-DOS doc; the "N Documents" chips load a
+          bundle of N documents, each a distinct patient with their own DOS. */}
       <div className={styles.demoStrip}>
         <Icon name="solar:test-tube-linear" size={12} color="var(--neutral-300)" />
-        <span className={styles.demoStripLabel}>Try a demo PDF:</span>
-        {[
-          'demo-single.pdf',
-          'demo-multi-patient.pdf',
-          'demo-degraded-scan.pdf',
-          'demo-unreadable-fax.pdf',
-        ].map(name => (
+        <span className={styles.demoStripLabel}>Try demo files:</span>
+        <button
+          type="button"
+          className={styles.demoChip}
+          onClick={() => {
+            const file = new File([new Blob(['%PDF-1.4 demo'])], 'demo-same-patient-multi-dos.pdf', { type: 'application/pdf' });
+            handlePick(file);
+          }}
+        >
+          1 Doc · Multi DOS
+        </button>
+        {[5, 10, 20].map(n => (
           <button
-            key={name}
+            key={n}
             type="button"
             className={styles.demoChip}
             onClick={() => {
-              const file = new File([new Blob(['%PDF-1.4 demo'])], name, { type: 'application/pdf' });
-              handlePick(file);
+              const files = Array.from({ length: n }, (_, i) =>
+                new File([new Blob(['%PDF-1.4 demo'])], `demo-patient-${i}.pdf`, { type: 'application/pdf' }));
+              handlePick(files, { bypassLimit: true });
             }}
           >
-            {name}
+            {n} Documents
           </button>
         ))}
       </div>
@@ -457,9 +463,32 @@ function classifyEncounter(enc, tier) {
   return (tier === 'clean' && matched && noErrors) ? 'added' : 'review';
 }
 
-// "MM/DD/YYYY" for the record meta line.
+// Map one extracted document (a batch = one patient with one-or-more DOS) to
+// an Extracted Record. Unreadable → its own bucket; otherwise Added only when
+// every DOS is fully confident, else Needs Review.
+function documentToRecord(batch) {
+  const encs = batch?.encounters || [];
+  const dateISO = batch?.ingestedAt || null;
+  const source = batch?.source === 'sftp' ? 'SFTP Server' : 'Manual Upload';
+  const base = { id: batch?.id, batchId: batch?.id, fileName: batch?.fileName || 'Document', source, dateISO };
+  if (batch?.ocrTier === 'unreadable' || encs.length === 0) {
+    return {
+      ...base,
+      bucket: 'unreadable',
+      reason: batch?.ocrTier === 'unreadable'
+        ? 'File is corrupted or in an unreadable format'
+        : 'No readable content — blank or unrecognized page',
+    };
+  }
+  const bucket = encs.every(e => classifyEncounter(e, batch.ocrTier) === 'added') ? 'added' : 'review';
+  return { ...base, bucket, patientName: encs[0]?.patient?.name || '', dosCount: encs.length };
+}
+
+// "MM/DD/YYYY" for the record meta line ('' when the date is missing/invalid).
 function shortDate(iso) {
+  if (!iso) return '';
   const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
   const pad = (n) => String(n).padStart(2, '0');
   return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()}`;
 }
@@ -494,6 +523,23 @@ function ExtractedRecords({ records, activeBucket, setActiveBucket, onReview, on
     }
     return Array.from(map.entries());
   }, [visible]);
+
+  // Nothing extracted yet (this session or in history) → friendly empty state.
+  if (records.length === 0) {
+    return (
+      <div className={styles.extracted}>
+        <div className={styles.extractedTitle}>Extracted Records</div>
+        <div className={styles.extractedEmptyState}>
+          <Icon name="solar:documents-linear" size={28} color="var(--neutral-200)" />
+          <div className={styles.extractedEmptyTitle}>No extracted documents yet</div>
+          <div className={styles.extractedEmptyBody}>
+            Upload a document above — extracted records pending review, added to the
+            worklist, or unreadable will appear here.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.extracted}>
@@ -557,7 +603,10 @@ function ExtractedRow({ rec, onReview, onDelete }) {
       <div className={styles.exMain}>
         <div className={styles.exName}>{rec.fileName}</div>
         <div className={styles.exMeta}>
-          {shortDate(rec.dateISO)} • {rec.source} • <span className={statusCls}>{statusText}</span>
+          {shortDate(rec.dateISO)}
+          {rec.patientName ? <> • {rec.patientName}</> : null}
+          {rec.dosCount ? <> • {rec.dosCount} DOS</> : null}
+          {' • '}<span className={statusCls}>{statusText}</span>
         </div>
       </div>
       {rec.bucket === 'review' && (

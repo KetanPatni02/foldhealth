@@ -76,12 +76,11 @@ export function BulkChangeAssigneesDialog({ open, selectedIds, onClose, onApplie
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
-  // Candidate pool — every system user (Account → Users + Astrana staff)
-  // is selectable, mirroring what the ConfigureTeamDrawer surfaces. Users
-  // who are members of a configured Care Team for this role float to the
-  // top with a "Team: <name>" annotation so admins can spot their roster.
-  // Users with an explicit Astrana engine role matching the selected role
-  // come next, then everyone else from the Account pool.
+  // Candidate pool — ONLY users whose engine role matches the selected role
+  // (Support, Coder, QA, or Compliance). Reassignment isn't cross-role: a
+  // Support DOS bucket can only go to another Support user, and so on.
+  // Care Team members for that role float to the top with a "Team: <name>"
+  // annotation so admins can spot their roster.
   const candidates = useMemo(() => {
     const teamType = ROLE_LABEL[role];
     // 1. Care Team members for this role — collect their userIds + team names.
@@ -92,15 +91,13 @@ export function BulkChangeAssigneesDialog({ open, selectedIds, onClose, onApplie
         if (!teamMemberMap.has(m.userId)) teamMemberMap.set(m.userId, t.name);
       }));
 
-    // 2. Order all system users: Care-Team members → role-matched Astrana →
-    //    everyone else. Stable sort preserves seed order within groups.
-    const ranked = SYSTEM_USERS.map(u => {
-      const teamName = teamMemberMap.get(u.id);
-      let rank = 3; // Account-only fallback
-      if (teamName) rank = 1;
-      else if (u.engineRole === role) rank = 2;
-      return { ...u, teamName, rank };
-    });
+    // 2. Filter to role-matched users, then order Care-Team members first.
+    const ranked = SYSTEM_USERS
+      .filter(u => u.engineRole === role)
+      .map(u => {
+        const teamName = teamMemberMap.get(u.id);
+        return { ...u, teamName, rank: teamName ? 1 : 2 };
+      });
     ranked.sort((a, b) => a.rank - b.rank);
     return ranked;
   }, [hccCareTeams, role]);
