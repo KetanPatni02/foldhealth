@@ -27,6 +27,34 @@ import { staffById as hccStaffById } from '../features/hcc/assignment/astranaSta
 import { normalizeReviewerLabel as hccNormalizeReviewerLabel } from '../features/hcc/reviewedBy';
 import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activityLog';
 
+// Persist an ICD-level state change to hcc_diagnosis_gaps by code. The
+// store mutates optimistically; this fire-and-forget round-trip keeps the
+// DB in sync so the change survives reload. Scoping by (code) alone is
+// safe because the store's hccDiagnosisGaps slice is already filtered to
+// the currently-open member.
+function persistHccGapUpdate(code, memberName, patch) {
+  if (!code) return;
+  let q = supabase.from('hcc_diagnosis_gaps').update(patch).eq('code', code);
+  if (memberName) q = q.eq('member_name', memberName);
+  q.then(({ error }) => {
+    if (error) console.warn(`persistHccGapUpdate(${code}) failed:`, error.message);
+  });
+}
+function persistHccGapInsert(row) {
+  if (!row?.code) return;
+  supabase.from('hcc_diagnosis_gaps').insert(row).then(({ error }) => {
+    if (error) console.warn(`persistHccGapInsert(${row.code}) failed:`, error.message);
+  });
+}
+function persistHccGapDelete(code, memberName) {
+  if (!code) return;
+  let q = supabase.from('hcc_diagnosis_gaps').delete().eq('code', code);
+  if (memberName) q = q.eq('member_name', memberName);
+  q.then(({ error }) => {
+    if (error) console.warn(`persistHccGapDelete(${code}) failed:`, error.message);
+  });
+}
+
 // Persist a single HCC role's status (and optionally name) to Supabase.
 // Fire-and-forget — failures log a warning without rolling back the
 // optimistic in-memory update. Used by every HCC status mutation in this
@@ -2975,11 +3003,14 @@ export const useAppStore = create((set, get) => ({
   // local gap list immediately so the UI reflects the new state; the server
   // round-trip is a TODO (Phase 3).
   acceptHccGap: (code) => {
+    const s0 = get();
+    const memberName = s0.hccMembers.find(m => m.id === s0.diagPanelMemberId)?.name;
     set(s => ({
       hccDiagnosisGaps: s.hccDiagnosisGaps.map(g =>
         g.code === code ? { ...g, status: 'Accepted' } : g
       ),
     }));
+    persistHccGapUpdate(code, memberName, { status: 'Accepted' });
     // ICD-level log entry → carries icds:[code] so it shows in both the
     // ICD-scoped log AND the DOS-level (global) log.
     get().addActivityEntry({
@@ -2990,11 +3021,14 @@ export const useAppStore = create((set, get) => ({
     });
   },
   dismissHccGap: (code, reason) => {
+    const s0 = get();
+    const memberName = s0.hccMembers.find(m => m.id === s0.diagPanelMemberId)?.name;
     set(s => ({
       hccDiagnosisGaps: s.hccDiagnosisGaps.map(g =>
         g.code === code ? { ...g, status: 'Dismissed', dismissReason: reason ?? g.dismissReason } : g
       ),
     }));
+    persistHccGapUpdate(code, memberName, { status: 'Dismissed', dismiss_reason: reason || null });
     get().addActivityEntry({
       t: 'dismiss', by: 'You', role: 'Coder',
       icds: [code],
@@ -3003,11 +3037,14 @@ export const useAppStore = create((set, get) => ({
     });
   },
   reopenHccGap: (code) => {
+    const s0 = get();
+    const memberName = s0.hccMembers.find(m => m.id === s0.diagPanelMemberId)?.name;
     set(s => ({
       hccDiagnosisGaps: s.hccDiagnosisGaps.map(g =>
         g.code === code ? { ...g, status: 'New', dismissReason: null } : g
       ),
     }));
+    persistHccGapUpdate(code, memberName, { status: 'New', dismiss_reason: null });
     get().addActivityEntry({
       t: 'status_hcc', by: 'You', role: 'Coder',
       icds: [code],
@@ -3102,11 +3139,14 @@ export const useAppStore = create((set, get) => ({
   // Delete an entire manually-added ICD (type === 'Manual'). Removes the gap
   // from hccDiagnosisGaps + wipes any per-DOS actions/meta scoped to it.
   deleteHccGap: (code) => {
-    const gap = get().hccDiagnosisGaps.find(g => g.code === code);
+    const s0 = get();
+    const gap = s0.hccDiagnosisGaps.find(g => g.code === code);
     if (!gap || gap.type !== 'Manual') return;
+    const memberName = s0.hccMembers.find(m => m.id === s0.diagPanelMemberId)?.name;
     set(s => ({
       hccDiagnosisGaps: s.hccDiagnosisGaps.filter(g => g.code !== code),
     }));
+    persistHccGapDelete(code, memberName);
     set(s => {
       const nextActions = { ...s.hccGapDosActions };
       const nextMeta = { ...s.hccGapDosMeta };
@@ -3133,18 +3173,34 @@ export const useAppStore = create((set, get) => ({
   // Coder manually adds a code the pipeline missed (chip: "Manually Added").
   // Fed by the shared IcdSearch (WHO ICD-11 lookup).
   addHccGap: ({ code, desc, hcc }) => {
-    if (get().hccDiagnosisGaps.some(g => g.code === code)) return;
+    const s0 = get();
+    if (s0.hccDiagnosisGaps.some(g => g.code === code)) return;
+    const memberName = s0.hccMembers.find(m => m.id === s0.diagPanelMemberId)?.name;
+    const id = `manual-${code}`;
     set(s => ({
       hccDiagnosisGaps: [
         ...s.hccDiagnosisGaps,
         {
-          id: `manual-${code}`, code, desc, hcc: hcc || '', status: 'New',
+          id, code, desc, hcc: hcc || '', status: 'New',
           type: 'Manual', docs: 0, cmts: 0, notes: 0, raf: 0,
           last: null, by: null, dismissReason: null, isLinked: true,
         },
       ],
       hccJustAddedCode: code,
     }));
+    // Persist the new gap into Supabase so it survives reload. member_name
+    // is the store's scoping key; skip the insert entirely when we don't
+    // have a member context (defensive — the drawer that fires this action
+    // is always opened against a specific member).
+    if (memberName) {
+      persistHccGapInsert({
+        id, member_name: memberName, code,
+        description: desc, hcc_category: hcc || '',
+        status: 'New', type: 'Manual',
+        docs_count: 0, comments_count: 0, notes_count: 0, raf_weight: 0,
+        is_linked: true,
+      });
+    }
     // Auto-clear the flash flag after the animation finishes. Kept inside the
     // action (not in the component) so any place that re-renders the ICD row
     // during the window sees the same flash state.
