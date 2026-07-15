@@ -26,6 +26,7 @@ import { getStatusSpec, hasStatusSpec } from './statusSpec';
 import { StatusIcon } from './StatusIcon';
 import { staffById, ROLE_LABEL, ROLES } from './assignment/astranaStaff';
 import { RoleAssigneePicker } from './RoleAssigneePicker';
+import { ReviewProgressPopover, buildReviewStages } from './DiagPanel/ReviewProgressPopover';
 import { createPortal } from 'react-dom';
 import { dosKey } from './assignment/dosState';
 import styles from './HccWorklistRow.module.css';
@@ -191,19 +192,64 @@ function progressTone(status) {
   return 'pending';
 }
 function ProgressStepper({ member }) {
-  const stages = [member.supS, member.cdrS, member.r1s, member.r2s];
+  const anchorRef = useRef(null);
+  const [rect, setRect] = useState(null);
+  const openTimer = useRef(null);
+  const closeTimer = useRef(null);
+  // Full stage timeline for the hover popover — uses the same
+  // buildReviewStages the DiagPanel does, falling back to member.sup/cdr/…
+  // when no per-DOS engine state is loaded (which is the norm on the
+  // worklist row level).
+  const stages = useMemo(() => buildReviewStages(member, null), [member]);
+  const statuses = [member.supS, member.cdrS, member.r1s, member.r2s];
+
+  const openPopover = () => {
+    clearTimeout(closeTimer.current);
+    if (rect) return;
+    openTimer.current = setTimeout(() => {
+      const r = anchorRef.current?.getBoundingClientRect();
+      if (r) setRect(r);
+    }, 150);
+  };
+  const closePopover = () => {
+    clearTimeout(openTimer.current);
+    closeTimer.current = setTimeout(() => setRect(null), 180);
+  };
+  useEffect(() => () => {
+    clearTimeout(openTimer.current);
+    clearTimeout(closeTimer.current);
+  }, []);
+
   return (
-    <span className={styles.progress}>
-      {stages.map((st, i) => {
-        const tone = progressTone(st);
-        return (
-          <span key={i} className={styles.progressSeg}>
-            {i > 0 && <span className={styles.progressLine} />}
-            <span className={[styles.progressDot, styles[`progressDot_${tone}`]].join(' ')} />
-          </span>
-        );
-      })}
-    </span>
+    <>
+      <span
+        ref={anchorRef}
+        className={styles.progress}
+        onMouseEnter={openPopover}
+        onMouseLeave={closePopover}
+        tabIndex={0}
+        aria-label="Review progress"
+      >
+        {statuses.map((st, i) => {
+          const tone = progressTone(st);
+          return (
+            <span key={i} className={styles.progressSeg}>
+              {i > 0 && <span className={styles.progressLine} />}
+              <span className={[styles.progressDot, styles[`progressDot_${tone}`]].join(' ')} />
+            </span>
+          );
+        })}
+      </span>
+      {rect && (
+        <ReviewProgressPopover
+          anchorRect={rect}
+          stages={stages}
+          onEnter={() => clearTimeout(closeTimer.current)}
+          onLeave={closePopover}
+          onClose={() => setRect(null)}
+        />
+      )}
+    </>
   );
 }
 

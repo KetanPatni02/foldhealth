@@ -27,6 +27,56 @@ import { staffById as hccStaffById } from '../features/hcc/assignment/astranaSta
 import { normalizeReviewerLabel as hccNormalizeReviewerLabel } from '../features/hcc/reviewedBy';
 import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activityLog';
 
+// Persist a per-(ICD × DOS) coder action to hcc_gap_dos_actions. The
+// row key is deterministic (`${member}|${code}|${dos}`) so the same
+// helper handles both first-write inserts and subsequent updates via
+// upsert. Fire-and-forget — the store already updated optimistically.
+function dosActionRowKey(memberName, code, dos) {
+  return `${memberName}|${code}|${dos}`;
+}
+function persistHccGapDosAction(memberName, code, dos, patch) {
+  if (!memberName || !code || !dos) return;
+  const id = dosActionRowKey(memberName, code, dos);
+  const row = {
+    id, member_name: memberName, code, dos,
+    action: null, dismiss_reason: null, dismiss_note: null, removed: false,
+    ...patch,
+    updated_at: new Date().toISOString(),
+  };
+  supabase
+    .from('hcc_gap_dos_actions')
+    .upsert(row, { onConflict: 'id' })
+    .then(({ error }) => {
+      if (error) console.warn(`persistHccGapDosAction(${code}|${dos}) failed:`, error.message);
+    });
+}
+// Clear a DOS-action row entirely — used when the user toggles the same
+// action off (undo) or after a manual ICD is deleted (its DOS rows go
+// with it).
+function persistHccGapDosActionDelete(memberName, code, dos) {
+  if (!memberName || !code || !dos) return;
+  supabase
+    .from('hcc_gap_dos_actions')
+    .delete()
+    .eq('id', dosActionRowKey(memberName, code, dos))
+    .then(({ error }) => {
+      if (error) console.warn(`persistHccGapDosActionDelete(${code}|${dos}) failed:`, error.message);
+    });
+}
+// Wipe every DOS-action row scoped to a deleted manual ICD — mirrors the
+// in-memory cleanup in deleteHccGap.
+function persistHccGapDosActionDeleteAll(memberName, code) {
+  if (!memberName || !code) return;
+  supabase
+    .from('hcc_gap_dos_actions')
+    .delete()
+    .eq('member_name', memberName)
+    .eq('code', code)
+    .then(({ error }) => {
+      if (error) console.warn(`persistHccGapDosActionDeleteAll(${code}) failed:`, error.message);
+    });
+}
+
 // Persist an ICD-level state change to hcc_diagnosis_gaps by code. The
 // store mutates optimistically; this fire-and-forget round-trip keeps the
 // DB in sync so the change survives reload. Scoping by (code) alone is
@@ -2773,6 +2823,34 @@ export const useAppStore = create((set, get) => ({
       isLinked: row.is_linked,
     }));
     set({ hccDiagnosisGaps: gaps, hccDiagnosisGapsLoading: false });
+    // Hydrate per-DOS action state for the same member. Kept in the
+    // same fetch chain so the DiagPanel's ICD cards render with any
+    // saved accepts/rejects/missed/deferred/dismissals + removed DOSs
+    // from previous sessions.
+    try {
+      const { data: dosData } = await supabase
+        .from('hcc_gap_dos_actions')
+        .select('*')
+        .eq('member_name', memberName);
+      const nextActions = {};
+      const nextMeta = {};
+      const nextDeleted = [];
+      for (const r of (dosData || [])) {
+        const key = `${r.code}|${r.dos}`;
+        if (r.removed) nextDeleted.push(key);
+        if (r.action) nextActions[key] = r.action;
+        if (r.dismiss_reason || r.dismiss_note) {
+          nextMeta[key] = { reason: r.dismiss_reason || '', note: r.dismiss_note || '' };
+        }
+      }
+      set({
+        hccGapDosActions: nextActions,
+        hccGapDosMeta: nextMeta,
+        hccGapDosDeleted: nextDeleted,
+      });
+    } catch (err) {
+      console.warn('fetch hcc_gap_dos_actions failed:', err?.message || err);
+    }
   },
 
   // Per-member Activity Log entries (DiagPanel Timeline tab)
@@ -3063,14 +3141,26 @@ export const useAppStore = create((set, get) => ({
   // surfaced by the "Dismiss Reason" link on a dismissed row.
   hccGapDosMeta: {},
   setHccGapDosAction: (code, dos, action) => {
+    const s0 = get();
     const key = `${code}|${dos}`;
-    const prev = get().hccGapDosActions[key];
+    const prev = s0.hccGapDosActions[key];
     const next = prev === action ? null : action;
+    const memberName = s0.hccMembers.find(m => m.id === s0.diagPanelMemberId)?.name;
     set(s => {
       const meta = { ...s.hccGapDosMeta };
       if (!next) delete meta[key]; // undo also clears any dismiss reason
       return { hccGapDosActions: { ...s.hccGapDosActions, [key]: next }, hccGapDosMeta: meta };
     });
+    // Persist: toggle-off deletes the row; a fresh action upserts it.
+    if (!next) {
+      persistHccGapDosActionDelete(memberName, code, dos);
+    } else {
+      persistHccGapDosAction(memberName, code, dos, {
+        action: next,
+        dismiss_reason: null,
+        dismiss_note: null,
+      });
+    }
     if (!next) return;
     const labels = {
       accepted: 'Accepted', rejected: 'Rejected',
@@ -3087,11 +3177,18 @@ export const useAppStore = create((set, get) => ({
   // Dismiss a (code × DOS) with a reason + optional note (Figma dismiss
   // form). Sets the action to 'rejected' and records the reason.
   dismissHccGapDos: (code, dos, reason, note) => {
+    const s0 = get();
     const key = `${code}|${dos}`;
+    const memberName = s0.hccMembers.find(m => m.id === s0.diagPanelMemberId)?.name;
     set(s => ({
       hccGapDosActions: { ...s.hccGapDosActions, [key]: 'rejected' },
       hccGapDosMeta: { ...s.hccGapDosMeta, [key]: { reason, note: note || '' } },
     }));
+    persistHccGapDosAction(memberName, code, dos, {
+      action: 'rejected',
+      dismiss_reason: reason || null,
+      dismiss_note: note || null,
+    });
     get().addActivityEntry({
       t: 'dismiss', by: 'You', role: 'Coder',
       icds: [code],
@@ -3113,7 +3210,9 @@ export const useAppStore = create((set, get) => ({
   // are the record's source of truth and shouldn't be silently dropped.
   hccGapDosDeleted: [],
   removeIcdDos: (code, dos) => {
+    const s0 = get();
     const k = `${code}|${dos}`;
+    const memberName = s0.hccMembers.find(m => m.id === s0.diagPanelMemberId)?.name;
     set(s => ({
       hccGapDosDeleted: s.hccGapDosDeleted.includes(k)
         ? s.hccGapDosDeleted
@@ -3127,6 +3226,15 @@ export const useAppStore = create((set, get) => ({
       delete nextActions[k];
       delete nextMeta[k];
       return { hccGapDosActions: nextActions, hccGapDosMeta: nextMeta };
+    });
+    // Persist the tombstone so the removed DOS stays hidden after reload.
+    // action/reason/note are wiped in the same upsert to keep the row
+    // shape consistent with the local state above.
+    persistHccGapDosAction(memberName, code, dos, {
+      action: null,
+      dismiss_reason: null,
+      dismiss_note: null,
+      removed: true,
     });
     get().addActivityEntry({
       t: 'status_hcc', by: 'You', role: 'Coder',
@@ -3147,6 +3255,7 @@ export const useAppStore = create((set, get) => ({
       hccDiagnosisGaps: s.hccDiagnosisGaps.filter(g => g.code !== code),
     }));
     persistHccGapDelete(code, memberName);
+    persistHccGapDosActionDeleteAll(memberName, code);
     set(s => {
       const nextActions = { ...s.hccGapDosActions };
       const nextMeta = { ...s.hccGapDosMeta };
