@@ -34,10 +34,31 @@ const FEATURES = [
       },
       {
         icon: 'solar:document-medicine-linear',
-        crumbs: ['HCC Coding'],
-        description: 'Hierarchical Condition Categories for risk adjustment.',
+        crumbs: ['HCC Coding', 'Worklist'],
+        description: 'Risk-adjustment coding queue with the per-DOS review pipeline: Support → Coder → QA → Compliance → ASM.',
         page: 'population',
-        tab: 'hcc',
+        subnavList: 'HCC',
+      },
+      {
+        icon: 'solar:clipboard-list-linear',
+        crumbs: ['HCC Coding', 'Diagnosis Gaps'],
+        description: 'ICD-first review panel — accept/reject each code per DOS with MEAT evidence, plus suspects & recaptures.',
+        page: 'population',
+        subnavList: 'HCC',
+      },
+      {
+        icon: 'solar:cloud-upload-linear',
+        crumbs: ['HCC Coding', 'Add DOS & Intake'],
+        description: 'Upload or SFTP charts → automatic OCR extraction → confidence review → new dated encounter.',
+        page: 'population',
+        subnavList: 'HCC',
+      },
+      {
+        icon: 'solar:magnifer-linear',
+        crumbs: ['HCC Coding', 'ICD-11 Search'],
+        description: 'Live WHO ICD-11 code lookup wired into every add-code surface.',
+        page: 'population',
+        subnavList: 'HCC',
       },
     ],
   },
@@ -240,6 +261,7 @@ export function HelpPopover({ onClose }) {
   const setCurrentPage = useAppStore(s => s.setCurrentPage);
   const setSettingsNavItem = useAppStore(s => s.setSettingsNavItem);
   const setAnalyticsView = useAppStore(s => s.setAnalyticsView);
+  const setActiveSubnavList = useAppStore(s => s.setActiveSubnavList);
   const ref = useRef(null);
 
   useEffect(() => {
@@ -260,6 +282,7 @@ export function HelpPopover({ onClose }) {
     setActivePage(item.page);
     setCurrentPage(1);
     if (item.tab) setActiveTab(item.tab);
+    if (item.subnavList) setActiveSubnavList(item.subnavList);
     if (item.settingsNavItem) setSettingsNavItem(item.settingsNavItem);
     if (item.analyticsView) setAnalyticsView(item.analyticsView);
     onClose();

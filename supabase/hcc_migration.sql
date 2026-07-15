@@ -79,7 +79,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-1', 'M-1000-2500', 'Annette Brave', 'AB', 'M', '67y 3m',
   1, 4, '[{"date":"03/04/2025","label":"Overdue by 1 week","labelColor":"var(--status-error)"},{"date":"06/11/2025","label":"Due in 3 Days","labelColor":"var(--status-warning)"},{"date":"11/10/2024","label":"Due in 5 Days","labelColor":"var(--status-warning)"},{"date":"03/10/2024","label":"Due in 2 weeks","labelColor":"var(--neutral-200)"}]'::jsonb,
   5, '["pending","pending","pending","pending","pending"]'::jsonb, 8,
-  '08/01/2025', 'Overdue: 1w', 'var(--status-error)',
+  '08/01/2026', 'Overdue: 1w', 'var(--status-error)',
   'A. Beauchamp', 'In Progress', NULL, 'Assign',
   NULL, 'Assign', NULL, 'Assign', NULL, 'Assign',
   'Dr. Mallory Hayes', 'Walk-in', '3.579', '0.213', true,
@@ -90,7 +90,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-2', 'M-1017-2531', 'Frank Green', 'FG', 'M', '68y 8m',
   1, 2, '[{"date":"09/28/2023","label":"Overdue by 5 Days","labelColor":"var(--status-error)"},{"date":"04/15/2024","label":"Due in 2 weeks","labelColor":"var(--neutral-200)"}]'::jsonb,
   3, '["passed","passed","pending"]'::jsonb, 8,
-  '08/15/2025', 'Overdue: 5D', 'var(--status-error)',
+  '08/15/2026', 'Overdue: 5D', 'var(--status-error)',
   'M. Thompson', 'Completed', 'Deborah Hintz', 'Records Requested',
   NULL, 'Assign', NULL, 'Assign', NULL, 'Assign',
   'Dr. Indigo I', 'Telehealth', '2.841', '0.142', true,
@@ -101,7 +101,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-3', 'M-1034-2562', 'Brian Carter', 'BC', 'M', '72y 5m',
   1, 2, '[{"date":"11/29/2023","label":"Overdue by 2 Days","labelColor":"var(--status-error)"},{"date":"05/20/2024","label":"Due in 5 Days","labelColor":"var(--status-warning)"}]'::jsonb,
   4, '["passed","passed","passed","passed"]'::jsonb, 12,
-  '08/27/2025', 'Overdue: 2D', 'var(--status-error)',
+  '08/27/2026', 'Overdue: 2D', 'var(--status-error)',
   'L. Torrance', 'Completed', 'Deborah Hintz', 'Completed',
   'M. Almeda', 'Completed', 'N Richards', 'Completed', NULL, 'Assign',
   'Dr. Ulysses Horne', 'Walk-in', '4.102', '0.318', false,
@@ -123,7 +123,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-6', 'M-1085-2655', 'Grace Hill', 'GH', 'F', '70y 10m',
   1, 3, '[{"date":"01/15/2024","label":"Due Today","labelColor":"var(--status-warning)"},{"date":"06/22/2024","label":"Due in 5 Days","labelColor":"var(--status-warning)"},{"date":"11/30/2024","label":"Due in 2 weeks","labelColor":"var(--neutral-200)"}]'::jsonb,
   5, '["passed","passed","pending","failed","pending"]'::jsonb, 11,
-  '09/19/2025', 'Due Today', 'var(--status-warning)',
+  '09/19/2026', 'Due Today', 'var(--status-warning)',
   'O. Twist', 'Completed', 'Deborah Hintz', 'Records Requested',
   'B. Olafson', 'New', NULL, 'Assign', NULL, 'Assign',
   'Dr. Eamon', 'Walk-in', '2.990', '0.187', false,
@@ -134,7 +134,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-7', 'M-1102-2686', 'Cynthia Davis', 'CD', 'F', '65y 2m',
   NULL, NULL, '[{"date":"05/22/2024","label":"Due in 3 Days","labelColor":"var(--status-info)"}]'::jsonb,
   NULL, '[]'::jsonb, 10,
-  '10/05/2025', 'Due in 3D', 'var(--status-info)',
+  '10/05/2026', 'Due in 3D', 'var(--status-info)',
   'A. Beauchamp', 'Awaiting', NULL, 'Assign',
   NULL, 'Assign', NULL, 'Assign', NULL, 'Assign',
   'Dr. Reed MacLeod', 'Telehealth', '1.820', '0.091', true,
@@ -145,7 +145,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-8', 'M-1119-2717', 'Emily Foster', 'EF', 'F', '60y 0m',
   NULL, NULL, '[{"date":"12/01/2023","label":"Due in 4 Days","labelColor":"var(--status-info)"}]'::jsonb,
   NULL, '[]'::jsonb, 5,
-  '10/08/2025', 'Due in 4D', 'var(--status-info)',
+  '10/08/2026', 'Due in 4D', 'var(--status-info)',
   'K. Stroman', 'Completed', 'Deborah Hintz', 'Returned',
   NULL, 'Assign', NULL, 'Assign', NULL, 'Assign',
   'Dr. Tatum', 'Walk-in', '2.115', '0.123', false,
@@ -156,7 +156,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-10', 'M-1153-2779', 'William Jammy', 'WJ', 'M', '60y 10m',
   2, 2, '[{"date":"07/04/2024","label":"Due in 5 Days","labelColor":"var(--status-info)"},{"date":"01/20/2024","label":"Due in 2 weeks","labelColor":"var(--neutral-200)"}]'::jsonb,
   3, '["passed","passed","passed"]'::jsonb, 11,
-  '11/22/2025', 'Due in 5D', 'var(--status-info)',
+  '11/22/2026', 'Due in 5D', 'var(--status-info)',
   'Oliver Twist', 'Completed', 'D Hintz', 'Completed',
   'N Richards', 'Completed', 'N Richards', 'Completed', NULL, 'Assign',
   'Dr. Sarah Connor', 'Walk-in', '3.220', '0.265', true,
@@ -167,7 +167,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-12', 'M-1187-2841', 'Robert Kim', 'RK', 'M', '71y 4m',
   1, 3, '[{"date":"02/14/2025","label":"Overdue by 3 Days","labelColor":"var(--status-error)"},{"date":"07/20/2025","label":"Due in 5 Days","labelColor":"var(--status-warning)"},{"date":"12/10/2024","label":"Due in 2 weeks","labelColor":"var(--neutral-200)"}]'::jsonb,
   4, '["pending","pending","pending","pending"]'::jsonb, 9,
-  '08/05/2025', 'Overdue: 3D', 'var(--status-error)',
+  '08/05/2026', 'Overdue: 3D', 'var(--status-error)',
   'A. Beauchamp', 'Awaiting', NULL, 'Assign',
   NULL, 'Assign', NULL, 'Assign', NULL, 'Assign',
   'Dr. Susan Park', 'Walk-in', '3.110', '0.198', true,
@@ -178,7 +178,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-13', 'M-1204-2872', 'Maria Santos', 'MS', 'F', '63y 7m',
   1, 2, '[{"date":"04/10/2025","label":"Overdue by 1 week","labelColor":"var(--status-error)"},{"date":"10/15/2025","label":"Due in 14D","labelColor":"var(--neutral-200)"}]'::jsonb,
   NULL, '[]'::jsonb, 7,
-  '08/10/2025', 'Overdue: 1w', 'var(--status-error)',
+  '08/10/2026', 'Overdue: 1w', 'var(--status-error)',
   'K. Stroman', 'Awaiting', NULL, 'Assign',
   NULL, 'Assign', NULL, 'Assign', NULL, 'Assign',
   'Dr. Alan Morse', 'Telehealth', '2.340', '0.118', false,
@@ -189,7 +189,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-14', 'M-1221-2903', 'James Walker', 'JW', 'M', '78y 2m',
   1, 4, '[{"date":"01/22/2025","label":"Overdue by 2 weeks","labelColor":"var(--status-error)"},{"date":"05/08/2025","label":"Due in 3 Days","labelColor":"var(--status-warning)"},{"date":"09/14/2025","label":"Due in 5 Days","labelColor":"var(--status-warning)"},{"date":"01/05/2026","label":"Due in 21D","labelColor":"var(--neutral-200)"}]'::jsonb,
   6, '["passed","passed","passed","passed","passed","passed"]'::jsonb, 18,
-  '07/20/2025', 'Overdue: 2w', 'var(--status-error)',
+  '07/20/2026', 'Overdue: 2w', 'var(--status-error)',
   'M. Thompson', 'Completed', 'Deborah Hintz', 'Completed',
   'M. Almeda', 'In Progress', NULL, 'Assign', NULL, 'Assign',
   'Dr. Calvin Reed', 'Walk-in', '5.880', '0.512', true,
@@ -200,7 +200,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-15', 'M-1238-2934', 'Helen Park', 'HP', 'F', '69y 11m',
   1, 2, '[{"date":"03/18/2025","label":"Due Today","labelColor":"var(--status-warning)"},{"date":"08/22/2025","label":"Due in 14D","labelColor":"var(--neutral-200)"}]'::jsonb,
   3, '["failed","failed","failed"]'::jsonb, 6,
-  '09/01/2025', 'Due Today', 'var(--status-warning)',
+  '09/01/2026', 'Due Today', 'var(--status-warning)',
   'L. Torrance', 'Insufficient', NULL, 'Assign',
   NULL, 'Assign', NULL, 'Assign', NULL, 'Assign',
   'Dr. Nancy Wu', 'Walk-in', '2.670', '0.145', false,
@@ -211,7 +211,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-16', 'M-1255-2965', 'Thomas Reed', 'TR', 'M', '74y 6m',
   1, 3, '[{"date":"02/28/2026","label":"Due Today","labelColor":"var(--status-warning)"},{"date":"08/05/2025","label":"Due in 5 Days","labelColor":"var(--status-warning)"},{"date":"02/01/2025","label":"Due in 2 weeks","labelColor":"var(--neutral-200)"}]'::jsonb,
   5, '["passed","passed","passed","passed","passed"]'::jsonb, 14,
-  '09/10/2025', 'Due Today', 'var(--status-warning)',
+  '09/10/2026', 'Due Today', 'var(--status-warning)',
   'O. Twist', 'Completed', 'P. Plourde', 'Completed',
   'B. Olafson', 'Completed', 'K. Patel', 'Completed', NULL, 'Assign',
   'Dr. Jesse Flynn', 'Walk-in', '4.450', '0.367', true,
@@ -222,7 +222,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-17', 'M-1272-2996', 'Linda Chen', 'LC', 'F', '66y 1m',
   1, 2, '[{"date":"05/01/2025","label":"Due in 3 Days","labelColor":"var(--status-info)"},{"date":"11/10/2025","label":"Due in 21D","labelColor":"var(--neutral-200)"}]'::jsonb,
   2, '["pending","pending"]'::jsonb, 5,
-  '10/12/2025', 'Due in 3D', 'var(--status-info)',
+  '10/12/2026', 'Due in 3D', 'var(--status-info)',
   'E. Johnson', 'Completed', 'Deborah Hintz', 'Records Received',
   NULL, 'Assign', NULL, 'Assign', NULL, 'Assign',
   'Dr. Mallory Hayes', 'Telehealth', '1.980', '0.099', true,
@@ -233,7 +233,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-18', 'M-1289-3027', 'Michael Ortiz', 'MO', 'M', '80y 3m',
   1, 3, '[{"date":"04/25/2025","label":"Due in 4 Days","labelColor":"var(--status-info)"},{"date":"10/30/2025","label":"Due in 14D","labelColor":"var(--neutral-200)"},{"date":"03/15/2025","label":"Due in 21D","labelColor":"var(--neutral-200)"}]'::jsonb,
   7, '["passed","passed","passed","failed","failed","pending","pending"]'::jsonb, 22,
-  '09/15/2025', 'Due in 4D', 'var(--status-info)',
+  '09/15/2026', 'Due in 4D', 'var(--status-info)',
   'K. Stroman', 'Records Requested', 'Deborah Hintz', 'In Progress',
   'E. Fortier', 'New', NULL, 'Assign', NULL, 'Assign',
   'Dr. Ulysses Horne', 'Walk-in', '6.100', '0.580', true,
@@ -244,7 +244,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-19', 'M-1306-3058', 'Patricia Moore', 'PM', 'F', '62y 8m',
   1, 2, '[{"date":"06/15/2025","label":"Due in 5 Days","labelColor":"var(--status-info)"},{"date":"12/20/2025","label":"Due in 14D","labelColor":"var(--neutral-200)"}]'::jsonb,
   NULL, '[]'::jsonb, 4,
-  '11/01/2025', 'Due in 5D', 'var(--status-info)',
+  '11/01/2026', 'Due in 5D', 'var(--status-info)',
   NULL, 'Assign', NULL, 'Assign',
   NULL, 'Assign', NULL, 'Assign', NULL, 'Assign',
   'Dr. Reed MacLeod', 'Telehealth', '1.560', '0.078', false,
@@ -255,7 +255,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-20', 'M-1323-3089', 'Charles Rivera', 'CR', 'M', '73y 9m',
   1, 3, '[{"date":"07/01/2025","label":"Due in 5 Days","labelColor":"var(--status-info)"},{"date":"01/14/2026","label":"Due in 14D","labelColor":"var(--neutral-200)"},{"date":"04/05/2025","label":"Due in 21D","labelColor":"var(--neutral-200)"}]'::jsonb,
   4, '["passed","passed","pending","pending"]'::jsonb, 11,
-  '10/25/2025', 'Due in 5D', 'var(--status-info)',
+  '10/25/2026', 'Due in 5D', 'var(--status-info)',
   'A. Beauchamp', 'Completed', 'P. Plourde', 'Records Requested',
   NULL, 'Assign', NULL, 'Assign', NULL, 'Assign',
   'Dr. Calvin Reed', 'Walk-in', '3.720', '0.245', true,
@@ -266,7 +266,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-21', 'M-1340-3120', 'Dorothy Nguyen', 'DN', 'F', '77y 0m',
   1, 2, '[{"date":"08/12/2025","label":"Due in 14D","labelColor":"var(--neutral-200)"},{"date":"02/20/2026","label":"Due in 21D","labelColor":"var(--neutral-200)"}]'::jsonb,
   3, '["passed","passed","passed"]'::jsonb, 9,
-  '11/05/2025', 'Due in 14D', 'var(--neutral-200)',
+  '11/05/2026', 'Due in 14D', 'var(--neutral-200)',
   'M. Thompson', 'Completed', 'Deborah Hintz', 'Completed',
   'N Richards', 'Completed', NULL, 'Assign', NULL, 'Assign',
   'Dr. Eamon', 'Walk-in', '3.880', '0.302', true,
@@ -277,7 +277,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-22', 'M-1357-3151', 'Richard Scott', 'RS', 'M', '64y 5m',
   1, 2, '[{"date":"09/05/2025","label":"Due in 14D","labelColor":"var(--neutral-200)"},{"date":"03/10/2026","label":"Due in 21D","labelColor":"var(--neutral-200)"}]'::jsonb,
   NULL, '[]'::jsonb, 3,
-  '11/15/2025', 'Due in 14D', 'var(--neutral-200)',
+  '11/15/2026', 'Due in 14D', 'var(--neutral-200)',
   NULL, 'Assign', NULL, 'Assign',
   NULL, 'Assign', NULL, 'Assign', NULL, 'Assign',
   'Dr. Susan Park', 'Telehealth', '1.230', '0.062', false,
@@ -288,7 +288,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-23', 'M-1374-3182', 'Sandra Lee', 'SL', 'F', '68y 3m',
   1, 3, '[{"date":"10/18/2025","label":"Due in 21D","labelColor":"var(--neutral-200)"},{"date":"04/22/2026","label":"Due in 21D","labelColor":"var(--neutral-200)"},{"date":"07/30/2025","label":"Due in 5 Days","labelColor":"var(--status-warning)"}]'::jsonb,
   5, '["passed","passed","passed","pending","pending"]'::jsonb, 13,
-  '09/28/2025', 'Due in 21D', 'var(--neutral-200)',
+  '09/28/2026', 'Due in 21D', 'var(--neutral-200)',
   'L. Torrance', 'Completed', 'Deborah Hintz', 'In Progress',
   'M. Almeda', 'New', NULL, 'Assign', NULL, 'Assign',
   'Dr. Jesse Flynn', 'Walk-in', '4.010', '0.312', true,
@@ -299,7 +299,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-24', 'M-1391-3213', 'Kevin Brown', 'KB', 'M', '58y 11m',
   1, 2, '[{"date":"11/20/2025","label":"Due in 21D","labelColor":"var(--neutral-200)"},{"date":"05/15/2026","label":"Due in 21D","labelColor":"var(--neutral-200)"}]'::jsonb,
   2, '["pending","pending"]'::jsonb, 6,
-  '10/10/2025', 'Due in 21D', 'var(--neutral-200)',
+  '10/10/2026', 'Due in 21D', 'var(--neutral-200)',
   'E. Johnson', 'In Progress', NULL, 'Assign',
   NULL, 'Assign', NULL, 'Assign', NULL, 'Assign',
   'Dr. Nancy Wu', 'Telehealth', '2.050', '0.103', false,
@@ -310,7 +310,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-25', 'M-1408-3244', 'Lisa White', 'LW', 'F', '72y 7m',
   1, 3, '[{"date":"12/08/2025","label":"Overdue by 4 Days","labelColor":"var(--status-error)"},{"date":"06/01/2026","label":"Due in 5 Days","labelColor":"var(--status-warning)"},{"date":"09/25/2025","label":"Due in 21D","labelColor":"var(--neutral-200)"}]'::jsonb,
   4, '["failed","failed","failed","failed"]'::jsonb, 10,
-  '08/18/2025', 'Overdue: 4D', 'var(--status-error)',
+  '08/18/2026', 'Overdue: 4D', 'var(--status-error)',
   'O. Twist', 'Assign', NULL, 'Assign',
   NULL, 'Assign', NULL, 'Assign', NULL, 'Assign',
   'Dr. Alan Morse', 'Walk-in', '3.450', '0.228', false,
@@ -321,7 +321,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-26', 'M-1425-3275', 'Daniel Martinez', 'DM', 'M', '76y 2m',
   1, 2, '[{"date":"01/30/2026","label":"Overdue by 1 week","labelColor":"var(--status-error)"},{"date":"07/15/2026","label":"Due in 14D","labelColor":"var(--neutral-200)"}]'::jsonb,
   5, '["passed","passed","passed","failed","pending"]'::jsonb, 16,
-  '07/28/2025', 'Overdue: 1w', 'var(--status-error)',
+  '07/28/2026', 'Overdue: 1w', 'var(--status-error)',
   'K. Stroman', 'In Progress', 'P. Plourde', 'In Progress',
   'B. Olafson', 'New', NULL, 'Assign', NULL, 'Assign',
   'Dr. Calvin Reed', 'Walk-in', '4.780', '0.401', true,
@@ -332,7 +332,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-27', 'M-1442-3306', 'Michelle Jackson', 'MJ', 'F', '61y 5m',
   1, 2, '[{"date":"02/25/2026","label":"Due Today","labelColor":"var(--status-warning)"},{"date":"08/30/2026","label":"Due in 21D","labelColor":"var(--neutral-200)"}]'::jsonb,
   NULL, '[]'::jsonb, 4,
-  '10/20/2025', 'Due Today', 'var(--status-warning)',
+  '10/20/2026', 'Due Today', 'var(--status-warning)',
   NULL, 'Assign', NULL, 'Assign',
   NULL, 'Assign', NULL, 'Assign', NULL, 'Assign',
   'Dr. Mallory Hayes', 'Telehealth', '1.640', '0.082', false,
@@ -343,7 +343,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-28', 'M-1459-3337', 'Christopher Thompson', 'CT', 'M', '79y 8m',
   1, 3, '[{"date":"03/20/2026","label":"Due in 3 Days","labelColor":"var(--status-info)"},{"date":"09/25/2026","label":"Due in 14D","labelColor":"var(--neutral-200)"},{"date":"12/12/2025","label":"Due in 5 Days","labelColor":"var(--status-warning)"}]'::jsonb,
   6, '["passed","passed","passed","passed","passed","passed"]'::jsonb, 20,
-  '07/15/2025', 'Due in 3D', 'var(--status-info)',
+  '07/15/2026', 'Due in 3D', 'var(--status-info)',
   'M. Thompson', 'Completed', 'Deborah Hintz', 'Completed',
   'E. Fortier', 'Completed', 'N Richards', 'In Progress', NULL, 'Assign',
   'Dr. Jesse Flynn', 'Walk-in', '5.620', '0.490', true,
@@ -354,7 +354,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-29', 'M-1476-3368', 'Amanda Wilson', 'AW', 'F', '67y 0m',
   1, 2, '[{"date":"04/12/2026","label":"Due in 4 Days","labelColor":"var(--status-info)"},{"date":"10/18/2026","label":"Due in 21D","labelColor":"var(--neutral-200)"}]'::jsonb,
   3, '["pending","pending","pending"]'::jsonb, 8,
-  '09/05/2025', 'Due in 4D', 'var(--status-info)',
+  '09/05/2026', 'Due in 4D', 'var(--status-info)',
   'A. Beauchamp', 'In Progress', NULL, 'Assign',
   NULL, 'Assign', NULL, 'Assign', NULL, 'Assign',
   'Dr. Susan Park', 'Telehealth', '2.780', '0.162', true,
@@ -365,7 +365,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-30', 'M-1493-3399', 'Matthew Harris', 'MH', 'M', '70y 1m',
   1, 3, '[{"date":"05/05/2026","label":"Due in 5 Days","labelColor":"var(--status-info)"},{"date":"11/10/2026","label":"Due in 14D","labelColor":"var(--neutral-200)"},{"date":"02/20/2026","label":"Due in 2 weeks","labelColor":"var(--neutral-200)"}]'::jsonb,
   4, '["passed","passed","pending","failed"]'::jsonb, 12,
-  '08/22/2025', 'Due in 5D', 'var(--status-info)',
+  '08/22/2026', 'Due in 5D', 'var(--status-info)',
   'L. Torrance', 'Completed', 'P. Plourde', 'Records Requested',
   'M. Almeda', 'In Progress', NULL, 'Assign', NULL, 'Assign',
   'Dr. Eamon', 'Walk-in', '3.890', '0.287', true,
@@ -376,7 +376,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-31', 'M-1510-3430', 'Jessica Clark', 'JC', 'F', '59y 4m',
   1, 2, '[{"date":"06/18/2026","label":"Due in 14D","labelColor":"var(--neutral-200)"},{"date":"12/22/2026","label":"Due in 21D","labelColor":"var(--neutral-200)"}]'::jsonb,
   NULL, '[]'::jsonb, 3,
-  '11/18/2025', 'Due in 14D', 'var(--neutral-200)',
+  '11/18/2026', 'Due in 14D', 'var(--neutral-200)',
   NULL, 'Assign', NULL, 'Assign',
   NULL, 'Assign', NULL, 'Assign', NULL, 'Assign',
   'Dr. Alan Morse', 'Telehealth', '1.120', '0.056', false,
@@ -387,7 +387,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-32', 'M-1527-3461', 'Andrew Lewis', 'AL', 'M', '73y 6m',
   1, 3, '[{"date":"07/22/2026","label":"Due in 21D","labelColor":"var(--neutral-200)"},{"date":"01/28/2027","label":"Due in 21D","labelColor":"var(--neutral-200)"},{"date":"04/15/2026","label":"Due in 5 Days","labelColor":"var(--status-warning)"}]'::jsonb,
   5, '["passed","passed","passed","passed","pending"]'::jsonb, 15,
-  '09/08/2025', 'Due in 21D', 'var(--neutral-200)',
+  '09/08/2026', 'Due in 21D', 'var(--neutral-200)',
   'O. Twist', 'Completed', 'Deborah Hintz', 'Completed',
   'K. Patel', 'Completed', 'B. Olafson', 'New', NULL, 'Assign',
   'Dr. Calvin Reed', 'Walk-in', '4.320', '0.356', true,
@@ -398,7 +398,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-33', 'M-1544-3492', 'Jennifer Robinson', 'JR', 'F', '65y 9m',
   1, 2, '[{"date":"08/28/2026","label":"Overdue by 3 Days","labelColor":"var(--status-error)"},{"date":"02/15/2027","label":"Due in 21D","labelColor":"var(--neutral-200)"}]'::jsonb,
   3, '["pending","pending","pending"]'::jsonb, 7,
-  '08/12/2025', 'Overdue: 3D', 'var(--status-error)',
+  '08/12/2026', 'Overdue: 3D', 'var(--status-error)',
   'E. Johnson', 'Assign', NULL, 'Assign',
   NULL, 'Assign', NULL, 'Assign', NULL, 'Assign',
   'Dr. Nancy Wu', 'Telehealth', '2.210', '0.111', false,
@@ -409,7 +409,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-5', 'M-1068-2624', 'Annette Brave', 'AB', 'M', '67y 3m',
   2, 4, '[{"date":"06/11/2025","label":"Due Today","labelColor":"var(--status-warning)"},{"date":"03/04/2025","label":"Due in 5 Days","labelColor":"var(--status-warning)"},{"date":"11/10/2024","label":"Due in 2 weeks","labelColor":"var(--neutral-200)"}]'::jsonb,
   3, '["passed","passed","pending"]'::jsonb, 6,
-  '09/25/2025', 'Due Today', 'var(--status-warning)',
+  '09/25/2026', 'Due Today', 'var(--status-warning)',
   'D. Hintz', 'Completed', NULL, 'Assign',
   NULL, 'Assign', NULL, 'Assign', NULL, 'Assign',
   'Dr. Indigo I', 'Walk-in', '3.579', '0.213', true,
@@ -420,7 +420,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   'hcc-9', 'M-1136-2748', 'Grace Hill', 'GH', 'F', '70y 10m',
   2, 3, '[{"date":"10/08/2025","label":"Due in 5 Days","labelColor":"var(--status-info)"},{"date":"06/22/2024","label":"Due in 5 Days","labelColor":"var(--status-warning)"},{"date":"01/15/2024","label":"Due in 2 weeks","labelColor":"var(--neutral-200)"}]'::jsonb,
   2, '["passed","pending"]'::jsonb, 11,
-  '11/01/2025', 'Due in 5D', 'var(--status-info)',
+  '11/01/2026', 'Due in 5D', 'var(--status-info)',
   'O. Twist', 'Completed', 'P. Plourde', 'Completed',
   'K. Patel', 'New', NULL, 'Assign', NULL, 'Assign',
   'Dr. Ulysses Horne', 'Telehealth', '2.990', '0.187', true,
@@ -434,62 +434,62 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Annette Brave', 'E11.22', 'Type 2 diabetes with diabetic chronic kidney disease', 'HCC 18 - Diabetes w/ Complications', 'New', 'Suspect',
   3, 2, 0, 0.302,
-  '06/27/2025', 'A. Beauchamp (Support Team)', NULL, true
+  '06/27/2026', 'A. Beauchamp (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Annette Brave', 'E11.21', 'Type 2 diabetes with diabetic nephropathy', 'HCC 18 - Diabetes w/ Complications', 'Accepted', NULL,
   1, 0, 1, 0.302,
-  '06/27/2025', 'Deborah Hintz (Coder)', NULL, true
+  '06/27/2026', 'Deborah Hintz (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Annette Brave', 'E44.0', 'Moderate protein-calorie malnutrition', 'HCC 18 - Diabetes w/ Complications', 'New', NULL,
   1, 0, 0, 0.201,
-  '06/27/2025', 'Dr Aldo Richman (Physician)', NULL, true
+  '06/27/2026', 'Dr Aldo Richman (Physician)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Annette Brave', 'E41.0', 'Nutritional marasmus', 'HCC Not Linked', 'Dismissed', NULL,
   1, 3, 1, 0.081,
-  '06/27/2025', 'Deborah Hintz (Coder)', 'Not clinically supported', true
+  '06/27/2026', 'Deborah Hintz (Coder)', 'Not clinically supported', true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Annette Brave', 'E11.51', 'Type 2 diabetes mellitus with diabetic peripheral angiopathy without gangrene', 'HCC 18 - Diabetes w/ Complications', 'New', 'Manual',
   1, 0, 1, 0.118,
-  '06/27/2025', 'Dr Aldo Richman (Physician)', NULL, true
+  '06/27/2026', 'Dr Aldo Richman (Physician)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Frank Green', 'I50.9', 'Heart failure, unspecified', 'HCC 85 - Congestive Heart Failure', 'Accepted', NULL,
   2, 1, 0, 0.331,
-  '09/28/2023', 'L. Schmidt (Reviewer 1)', NULL, true
+  '09/28/2026', 'L. Schmidt (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Frank Green', 'E11.9', 'Type 2 DM w/o complications', 'HCC 18 - Diabetes w/ Complications', 'New', NULL,
   1, 0, 0, 0.195,
-  '09/28/2023', 'J. Levesque (Coder)', NULL, true
+  '09/28/2026', 'J. Levesque (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Frank Green', 'J44.1', 'COPD with acute exacerbation', 'HCC 111 - COPD', 'In Progress', NULL,
   2, 1, 0, 0.392,
-  '09/28/2023', 'J. Levesque (Coder)', NULL, true
+  '09/28/2026', 'J. Levesque (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Brian Carter', 'F32.1', 'Major depressive disorder, single episode', 'HCC 58 - Major Depression', 'Accepted', NULL,
   2, 0, 1, 0.309,
-  '11/29/2023', 'M. Almeda (Reviewer 1)', NULL, true
+  '11/29/2026', 'M. Almeda (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Brian Carter', 'E11.65', 'Type 2 DM with hyperglycemia', 'HCC 18 - Diabetes w/ Complications', 'Accepted', NULL,
   1, 1, 0, 0.302,
-  '11/29/2023', 'D. Hintz (Coder)', NULL, true
+  '11/29/2026', 'D. Hintz (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Brian Carter', 'I48.91', 'Unspecified atrial fibrillation', 'HCC 96 - Atrial Fibrillation', 'New', 'Suspect',
   2, 0, 0, 0.421,
-  '11/29/2023', 'D. Hintz (Coder)', NULL, true
+  '11/29/2026', 'D. Hintz (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Brian Carter', 'M79.3', 'Panniculitis, unspecified', 'HCC 40 - Rheumatoid Arthritis', 'Dismissed', NULL,
   1, 0, 0, 0.081,
-  '05/20/2024', 'D. Hintz (Coder)', 'Not supported by documentation', true
+  '05/20/2026', 'D. Hintz (Coder)', 'Not supported by documentation', true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'David Evans', 'E11.65', 'Type 2 DM with hyperglycemia', 'HCC 18 - Diabetes w/ Complications', 'New', 'Suspect',
@@ -504,7 +504,7 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'David Evans', 'G35', 'Multiple sclerosis', 'HCC 77 - Multiple Sclerosis', 'New', NULL,
   1, 0, 0, 0.455,
-  '03/08/2026', 'E. Fortier (Reviewer 1)', NULL, true
+  '03/08/2026', 'E. Fortier (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'David Evans', 'I48.0', 'Paroxysmal atrial fibrillation', 'HCC 96 - Atrial Fibrillation', 'New', NULL,
@@ -514,157 +514,157 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'David Evans', 'N18.5', 'Chronic kidney disease, stage 5', 'HCC 27 - End-Stage Renal Disease', 'Accepted', NULL,
   2, 0, 1, 0.65,
-  '03/08/2026', 'E. Fortier (Reviewer 1)', NULL, true
+  '03/08/2026', 'E. Fortier (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Grace Hill', 'E11.21', 'Type 2 diabetes with diabetic nephropathy', 'HCC 18 - Diabetes w/ Complications', 'New', NULL,
   2, 1, 0, 0.302,
-  '01/15/2024', 'O. Twist (Support Team)', NULL, true
+  '01/15/2026', 'O. Twist (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Grace Hill', 'G47.33', 'Obstructive sleep apnea', 'HCC 86 - Sleep Apnea', 'New', 'Suspect',
   1, 0, 0, 0.164,
-  '01/15/2024', 'Deborah Hintz (Coder)', NULL, true
+  '01/15/2026', 'Deborah Hintz (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Grace Hill', 'I48.0', 'Paroxysmal atrial fibrillation', 'HCC 96 - Atrial Fibrillation', 'Accepted', NULL,
   1, 0, 1, 0.421,
-  '01/15/2024', 'B. Olafson (Reviewer 1)', NULL, true
+  '01/15/2026', 'B. Olafson (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Grace Hill', 'N18.3', 'Chronic kidney disease, stage 3', 'HCC 27 - End-Stage Renal Disease', 'New', NULL,
   1, 1, 0, 0.184,
-  '01/15/2024', 'Deborah Hintz (Coder)', NULL, true
+  '01/15/2026', 'Deborah Hintz (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Cynthia Davis', 'E11.9', 'Type 2 DM without complications', 'HCC 19 - Diabetes w/o Complication', 'New', NULL,
   1, 0, 0, 0.195,
-  '05/22/2024', 'A. Beauchamp (Support Team)', NULL, true
+  '05/22/2026', 'A. Beauchamp (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Cynthia Davis', 'J44.1', 'COPD with acute exacerbation', 'HCC 111 - COPD', 'New', 'Suspect',
   2, 1, 0, 0.392,
-  '05/22/2024', 'A. Beauchamp (Support Team)', NULL, true
+  '05/22/2026', 'A. Beauchamp (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Cynthia Davis', 'G47.33', 'Obstructive sleep apnea', 'HCC 86 - Sleep Apnea', 'Accepted', NULL,
   1, 0, 1, 0.164,
-  '05/22/2024', 'A. Beauchamp (Support Team)', NULL, true
+  '05/22/2026', 'A. Beauchamp (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Cynthia Davis', 'I48.91', 'Unspecified atrial fibrillation', 'HCC 96 - Atrial Fibrillation', 'New', NULL,
   1, 0, 0, 0.421,
-  '05/22/2024', 'A. Beauchamp (Support Team)', NULL, true
+  '05/22/2026', 'A. Beauchamp (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Emily Foster', 'E11.9', 'Type 2 DM without complications', 'HCC 19 - Diabetes w/o Complication', 'New', NULL,
   1, 0, 0, 0.195,
-  '12/01/2023', 'K. Stroman (Support Team)', NULL, true
+  '12/01/2026', 'K. Stroman (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Emily Foster', 'G47.33', 'Obstructive sleep apnea', 'HCC 86 - Sleep Apnea', 'Accepted', NULL,
   1, 0, 0, 0.164,
-  '12/01/2023', 'Deborah Hintz (Coder)', NULL, true
+  '12/01/2026', 'Deborah Hintz (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Emily Foster', 'F33.1', 'Major depressive disorder, recurrent, moderate', 'HCC 58 - Major Depression', 'New', 'Suspect',
   1, 1, 0, 0.309,
-  '12/01/2023', 'K. Stroman (Support Team)', NULL, true
+  '12/01/2026', 'K. Stroman (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'William Jammy', 'E11.21', 'Type 2 diabetes with diabetic nephropathy', 'HCC 18 - Diabetes w/ Complications', 'New', NULL,
   2, 0, 1, 0.302,
-  '07/04/2024', 'Oliver Twist (Support Team)', NULL, true
+  '07/04/2026', 'Oliver Twist (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'William Jammy', 'I50.9', 'Heart failure, unspecified', 'HCC 85 - Congestive Heart Failure', 'New', 'Suspect',
   1, 1, 0, 0.331,
-  '07/04/2024', 'D. Hintz (Coder)', NULL, true
+  '07/04/2026', 'D. Hintz (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'William Jammy', 'I48.91', 'Unspecified atrial fibrillation', 'HCC 96 - Atrial Fibrillation', 'Accepted', NULL,
   1, 0, 0, 0.421,
-  '07/04/2024', 'N. Richards (Reviewer 2)', NULL, true
+  '07/04/2026', 'N. Richards (Compliance)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'William Jammy', 'J44.0', 'COPD with acute lower respiratory infection', 'HCC 111 - COPD', 'New', NULL,
   1, 0, 0, 0.321,
-  '07/04/2024', 'D. Hintz (Coder)', NULL, true
+  '07/04/2026', 'D. Hintz (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Robert Kim', 'E11.9', 'Type 2 DM without complications', 'HCC 19 - Diabetes w/o Complication', 'New', NULL,
   1, 0, 0, 0.195,
-  '02/14/2025', 'A. Beauchamp (Support Team)', NULL, true
+  '02/14/2026', 'A. Beauchamp (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Robert Kim', 'I50.9', 'Heart failure, unspecified', 'HCC 85 - Congestive Heart Failure', 'New', 'Recapture',
   2, 1, 0, 0.331,
-  '02/14/2025', 'A. Beauchamp (Support Team)', NULL, true
+  '02/14/2026', 'A. Beauchamp (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Robert Kim', 'J44.1', 'COPD with acute exacerbation', 'HCC 111 - COPD', 'Accepted', NULL,
   1, 0, 1, 0.392,
-  '02/14/2025', 'P. Plourde (Coder)', NULL, true
+  '02/14/2026', 'P. Plourde (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Robert Kim', 'G47.33', 'Obstructive sleep apnea', 'HCC 86 - Sleep Apnea', 'New', 'Suspect',
   1, 0, 0, 0.164,
-  '02/14/2025', 'A. Beauchamp (Support Team)', NULL, true
+  '02/14/2026', 'A. Beauchamp (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Maria Santos', 'E11.65', 'Type 2 DM with hyperglycemia', 'HCC 18 - Diabetes w/ Complications', 'New', 'Suspect',
   1, 0, 0, 0.195,
-  '04/10/2025', 'K. Stroman (Support Team)', NULL, true
+  '04/10/2026', 'K. Stroman (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Maria Santos', 'I48.91', 'Unspecified atrial fibrillation', 'HCC 96 - Atrial Fibrillation', 'In Progress', NULL,
   2, 1, 0, 0.421,
-  '04/10/2025', 'K. Stroman (Support Team)', NULL, true
+  '04/10/2026', 'K. Stroman (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Maria Santos', 'G47.33', 'Obstructive sleep apnea', 'HCC 86 - Sleep Apnea', 'New', NULL,
   1, 0, 0, 0.164,
-  '04/10/2025', 'K. Stroman (Support Team)', NULL, true
+  '04/10/2026', 'K. Stroman (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'James Walker', 'E11.65', 'Type 2 DM with hyperglycemia', 'HCC 18 - Diabetes w/ Complications', 'New', NULL,
   2, 1, 0, 0.195,
-  '01/22/2025', 'M. Thompson (Support Team)', NULL, true
+  '01/22/2026', 'M. Thompson (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'James Walker', 'I50.23', 'Acute on chronic systolic (congestive) heart failure', 'HCC 85 - Congestive Heart Failure', 'New', 'Recapture',
   1, 0, 0, 0.389,
-  '01/22/2025', 'Deborah Hintz (Coder)', NULL, true
+  '01/22/2026', 'Deborah Hintz (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'James Walker', 'J44.0', 'COPD with acute lower respiratory infection', 'HCC 111 - COPD', 'In Progress', NULL,
   2, 2, 1, 0.321,
-  '01/22/2025', 'Deborah Hintz (Coder)', NULL, true
+  '01/22/2026', 'Deborah Hintz (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'James Walker', 'F32.1', 'Major depressive disorder, single episode', 'HCC 58 - Major Depression', 'New', 'Suspect',
   1, 0, 0, 0.309,
-  '01/22/2025', 'M. Almeda (Reviewer 1)', NULL, true
+  '01/22/2026', 'M. Almeda (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'James Walker', 'N18.3', 'Chronic kidney disease, stage 3', 'HCC 27 - End-Stage Renal Disease', 'Accepted', NULL,
   1, 1, 0, 0.184,
-  '01/22/2025', 'M. Almeda (Reviewer 1)', NULL, true
+  '01/22/2026', 'M. Almeda (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Helen Park', 'E11.22', 'Type 2 diabetes with diabetic chronic kidney disease', 'HCC 18 - Diabetes w/ Complications', 'New', NULL,
   2, 0, 0, 0.302,
-  '03/18/2025', 'L. Torrance (Support Team)', NULL, true
+  '03/18/2026', 'L. Torrance (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Helen Park', 'I50.9', 'Heart failure, unspecified', 'HCC 85 - Congestive Heart Failure', 'In Progress', NULL,
   1, 1, 0, 0.331,
-  '03/18/2025', 'L. Torrance (Support Team)', NULL, true
+  '03/18/2026', 'L. Torrance (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Helen Park', 'F32.1', 'Major depressive disorder, single episode', 'HCC 58 - Major Depression', 'Dismissed', 'Suspect',
   1, 0, 0, 0.309,
-  '03/18/2025', 'L. Torrance (Support Team)', 'Insufficient clinical evidence', true
+  '03/18/2026', 'L. Torrance (Support Team)', 'Insufficient clinical evidence', true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Thomas Reed', 'E11.22', 'Type 2 diabetes with diabetic chronic kidney disease', 'HCC 18 - Diabetes w/ Complications', 'New', NULL,
@@ -684,7 +684,7 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Thomas Reed', 'F33.1', 'Major depressive disorder, recurrent, moderate', 'HCC 58 - Major Depression', 'New', NULL,
   1, 0, 0, 0.309,
-  '02/28/2026', 'B. Olafson (Reviewer 1)', NULL, true
+  '02/28/2026', 'B. Olafson (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Thomas Reed', 'E66.01', 'Morbid (severe) obesity due to excess calories', 'HCC 22 - Morbid Obesity', 'Dismissed', NULL,
@@ -694,167 +694,167 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Linda Chen', 'E11.22', 'Type 2 diabetes with diabetic chronic kidney disease', 'HCC 18 - Diabetes w/ Complications', 'New', 'Suspect',
   1, 0, 0, 0.302,
-  '05/01/2025', 'E. Johnson (Support Team)', NULL, true
+  '05/01/2026', 'E. Johnson (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Linda Chen', 'I50.23', 'Acute on chronic systolic (congestive) heart failure', 'HCC 85 - Congestive Heart Failure', 'New', 'Recapture',
   1, 1, 0, 0.389,
-  '05/01/2025', 'Deborah Hintz (Coder)', NULL, true
+  '05/01/2026', 'Deborah Hintz (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Michael Ortiz', 'E11.22', 'Type 2 diabetes with diabetic chronic kidney disease', 'HCC 18 - Diabetes w/ Complications', 'New', 'Suspect',
   2, 1, 0, 0.302,
-  '04/25/2025', 'K. Stroman (Support Team)', NULL, true
+  '04/25/2026', 'K. Stroman (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Michael Ortiz', 'E11.65', 'Type 2 DM with hyperglycemia', 'HCC 18 - Diabetes w/ Complications', 'In Progress', NULL,
   1, 0, 1, 0.195,
-  '04/25/2025', 'Deborah Hintz (Coder)', NULL, true
+  '04/25/2026', 'Deborah Hintz (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Michael Ortiz', 'I50.9', 'Heart failure, unspecified', 'HCC 85 - Congestive Heart Failure', 'New', NULL,
   3, 2, 0, 0.331,
-  '04/25/2025', 'Deborah Hintz (Coder)', NULL, true
+  '04/25/2026', 'Deborah Hintz (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Michael Ortiz', 'I48.91', 'Unspecified atrial fibrillation', 'HCC 96 - Atrial Fibrillation', 'New', 'Suspect',
   1, 0, 0, 0.421,
-  '04/25/2025', 'K. Stroman (Support Team)', NULL, true
+  '04/25/2026', 'K. Stroman (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Michael Ortiz', 'J44.1', 'COPD with acute exacerbation', 'HCC 111 - COPD', 'New', NULL,
   2, 1, 0, 0.392,
-  '04/25/2025', 'Deborah Hintz (Coder)', NULL, true
+  '04/25/2026', 'Deborah Hintz (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Michael Ortiz', 'G47.33', 'Obstructive sleep apnea', 'HCC 86 - Sleep Apnea', 'New', NULL,
   1, 0, 0, 0.164,
-  '04/25/2025', 'E. Fortier (Reviewer 1)', NULL, true
+  '04/25/2026', 'E. Fortier (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Michael Ortiz', 'M79.3', 'Panniculitis, unspecified', 'HCC 40 - Rheumatoid Arthritis', 'Dismissed', NULL,
   1, 0, 0, 0.081,
-  '04/25/2025', 'Deborah Hintz (Coder)', 'Not supported by documentation', true
+  '04/25/2026', 'Deborah Hintz (Coder)', 'Not supported by documentation', true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Patricia Moore', 'E11.9', 'Type 2 DM without complications', 'HCC 19 - Diabetes w/o Complication', 'New', NULL,
   1, 0, 0, 0.195,
-  '06/15/2025', 'K. Stroman (Support Team)', NULL, true
+  '06/15/2026', 'K. Stroman (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Patricia Moore', 'G47.33', 'Obstructive sleep apnea', 'HCC 86 - Sleep Apnea', 'New', 'Suspect',
   1, 1, 0, 0.164,
-  '06/15/2025', 'K. Stroman (Support Team)', NULL, true
+  '06/15/2026', 'K. Stroman (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Charles Rivera', 'E11.9', 'Type 2 DM without complications', 'HCC 19 - Diabetes w/o Complication', 'New', NULL,
   1, 0, 0, 0.195,
-  '07/01/2025', 'A. Beauchamp (Support Team)', NULL, true
+  '07/01/2026', 'A. Beauchamp (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Charles Rivera', 'I25.10', 'Atherosclerotic heart disease of native coronary artery without angina', 'HCC 108 - Vascular Disease', 'New', 'Recapture',
   2, 1, 0, 0.288,
-  '07/01/2025', 'P. Plourde (Coder)', NULL, true
+  '07/01/2026', 'P. Plourde (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Charles Rivera', 'G47.33', 'Obstructive sleep apnea', 'HCC 86 - Sleep Apnea', 'Accepted', NULL,
   1, 0, 1, 0.164,
-  '07/01/2025', 'P. Plourde (Coder)', NULL, true
+  '07/01/2026', 'P. Plourde (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Charles Rivera', 'F32.1', 'Major depressive disorder, single episode', 'HCC 58 - Major Depression', 'New', 'Suspect',
   1, 0, 0, 0.309,
-  '07/01/2025', 'A. Beauchamp (Support Team)', NULL, true
+  '07/01/2026', 'A. Beauchamp (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Dorothy Nguyen', 'E11.22', 'Type 2 diabetes with diabetic chronic kidney disease', 'HCC 18 - Diabetes w/ Complications', 'Accepted', NULL,
   2, 0, 1, 0.302,
-  '08/12/2025', 'M. Thompson (Support Team)', NULL, true
+  '08/12/2026', 'M. Thompson (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Dorothy Nguyen', 'I48.91', 'Unspecified atrial fibrillation', 'HCC 96 - Atrial Fibrillation', 'New', NULL,
   1, 1, 0, 0.421,
-  '08/12/2025', 'Deborah Hintz (Coder)', NULL, true
+  '08/12/2026', 'Deborah Hintz (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Dorothy Nguyen', 'N18.5', 'Chronic kidney disease, stage 5', 'HCC 27 - End-Stage Renal Disease', 'In Progress', NULL,
   2, 0, 0, 0.65,
-  '08/12/2025', 'Deborah Hintz (Coder)', NULL, true
+  '08/12/2026', 'Deborah Hintz (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Dorothy Nguyen', 'M06.00', 'Rheumatoid arthritis, unspecified, unspecified site', 'HCC 40 - Rheumatoid Arthritis', 'New', 'Suspect',
   1, 1, 0, 0.421,
-  '08/12/2025', 'N. Richards (Reviewer 2)', NULL, true
+  '08/12/2026', 'N. Richards (Compliance)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Richard Scott', 'G47.33', 'Obstructive sleep apnea', 'HCC 86 - Sleep Apnea', 'New', 'Suspect',
   1, 0, 0, 0.164,
-  '09/05/2025', 'K. Stroman (Support Team)', NULL, true
+  '09/05/2026', 'K. Stroman (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Richard Scott', 'F33.1', 'Major depressive disorder, recurrent, moderate', 'HCC 58 - Major Depression', 'In Progress', NULL,
   1, 1, 0, 0.309,
-  '09/05/2025', 'K. Stroman (Support Team)', NULL, true
+  '09/05/2026', 'K. Stroman (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Sandra Lee', 'E11.22', 'Type 2 diabetes with diabetic chronic kidney disease', 'HCC 18 - Diabetes w/ Complications', 'New', 'Suspect',
   2, 1, 0, 0.302,
-  '10/18/2025', 'L. Torrance (Support Team)', NULL, true
+  '10/18/2026', 'L. Torrance (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Sandra Lee', 'F32.1', 'Major depressive disorder, single episode', 'HCC 58 - Major Depression', 'In Progress', NULL,
   1, 0, 1, 0.309,
-  '10/18/2025', 'Deborah Hintz (Coder)', NULL, true
+  '10/18/2026', 'Deborah Hintz (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Sandra Lee', 'I48.91', 'Unspecified atrial fibrillation', 'HCC 96 - Atrial Fibrillation', 'New', NULL,
   1, 1, 0, 0.421,
-  '10/18/2025', 'M. Almeda (Reviewer 1)', NULL, true
+  '10/18/2026', 'M. Almeda (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Sandra Lee', 'M06.00', 'Rheumatoid arthritis, unspecified, unspecified site', 'HCC 40 - Rheumatoid Arthritis', 'New', NULL,
   1, 0, 0, 0.421,
-  '10/18/2025', 'L. Torrance (Support Team)', NULL, true
+  '10/18/2026', 'L. Torrance (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Sandra Lee', 'I50.9', 'Heart failure, unspecified', 'HCC 85 - Congestive Heart Failure', 'Accepted', NULL,
   2, 0, 1, 0.331,
-  '10/18/2025', 'Deborah Hintz (Coder)', NULL, true
+  '10/18/2026', 'Deborah Hintz (Coder)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Kevin Brown', 'E11.65', 'Type 2 DM with hyperglycemia', 'HCC 18 - Diabetes w/ Complications', 'New', 'Suspect',
   1, 0, 0, 0.195,
-  '11/20/2025', 'E. Johnson (Support Team)', NULL, true
+  '11/20/2026', 'E. Johnson (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Kevin Brown', 'I48.91', 'Unspecified atrial fibrillation', 'HCC 96 - Atrial Fibrillation', 'In Progress', NULL,
   1, 1, 0, 0.421,
-  '11/20/2025', 'E. Johnson (Support Team)', NULL, true
+  '11/20/2026', 'E. Johnson (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Kevin Brown', 'N18.3', 'Chronic kidney disease, stage 3', 'HCC 27 - End-Stage Renal Disease', 'New', NULL,
   1, 0, 0, 0.184,
-  '11/20/2025', 'E. Johnson (Support Team)', NULL, true
+  '11/20/2026', 'E. Johnson (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Lisa White', 'I50.9', 'Heart failure, unspecified', 'HCC 85 - Congestive Heart Failure', 'New', 'Recapture',
   2, 1, 0, 0.331,
-  '12/08/2025', 'O. Twist (Support Team)', NULL, true
+  '12/08/2026', 'O. Twist (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Lisa White', 'E11.65', 'Type 2 DM with hyperglycemia', 'HCC 18 - Diabetes w/ Complications', 'New', NULL,
   1, 0, 0, 0.195,
-  '12/08/2025', 'O. Twist (Support Team)', NULL, true
+  '12/08/2026', 'O. Twist (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Lisa White', 'F33.1', 'Major depressive disorder, recurrent, moderate', 'HCC 58 - Major Depression', 'New', 'Suspect',
   1, 1, 0, 0.309,
-  '12/08/2025', 'O. Twist (Support Team)', NULL, true
+  '12/08/2026', 'O. Twist (Support Team)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Lisa White', 'J44.1', 'COPD with acute exacerbation', 'HCC 111 - COPD', 'Dismissed', NULL,
   1, 0, 0, 0.392,
-  '12/08/2025', 'O. Twist (Support Team)', 'Not clinically supported', true
+  '12/08/2026', 'O. Twist (Support Team)', 'Not clinically supported', true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Daniel Martinez', 'E11.21', 'Type 2 diabetes with diabetic nephropathy', 'HCC 18 - Diabetes w/ Complications', 'New', NULL,
@@ -874,7 +874,7 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Daniel Martinez', 'F33.1', 'Major depressive disorder, recurrent, moderate', 'HCC 58 - Major Depression', 'New', NULL,
   1, 0, 0, 0.309,
-  '01/30/2026', 'B. Olafson (Reviewer 1)', NULL, true
+  '01/30/2026', 'B. Olafson (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Daniel Martinez', 'I70.201', 'Atherosclerosis of native arteries of extremities, right leg', 'HCC 108 - Vascular Disease', 'Accepted', NULL,
@@ -914,7 +914,7 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Christopher Thompson', 'I48.0', 'Paroxysmal atrial fibrillation', 'HCC 96 - Atrial Fibrillation', 'Accepted', NULL,
   1, 0, 1, 0.421,
-  '03/20/2026', 'E. Fortier (Reviewer 1)', NULL, true
+  '03/20/2026', 'E. Fortier (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Christopher Thompson', 'G47.33', 'Obstructive sleep apnea', 'HCC 86 - Sleep Apnea', 'New', 'Suspect',
@@ -964,7 +964,7 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Matthew Harris', 'I48.91', 'Unspecified atrial fibrillation', 'HCC 96 - Atrial Fibrillation', 'Accepted', NULL,
   1, 0, 0, 0.421,
-  '05/05/2026', 'M. Almeda (Reviewer 1)', NULL, true
+  '05/05/2026', 'M. Almeda (QA)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Matthew Harris', 'E66.01', 'Morbid (severe) obesity due to excess calories', 'HCC 22 - Morbid Obesity', 'New', NULL,
@@ -999,12 +999,12 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Andrew Lewis', 'I48.0', 'Paroxysmal atrial fibrillation', 'HCC 96 - Atrial Fibrillation', 'New', NULL,
   1, 1, 0, 0.421,
-  '07/22/2026', 'K. Patel (Reviewer 2)', NULL, true
+  '07/22/2026', 'K. Patel (Compliance)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Andrew Lewis', 'F33.1', 'Major depressive disorder, recurrent, moderate', 'HCC 58 - Major Depression', 'Accepted', NULL,
   1, 0, 0, 0.309,
-  '07/22/2026', 'K. Patel (Reviewer 2)', NULL, true
+  '07/22/2026', 'K. Patel (Compliance)', NULL, true
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, dismiss_reason, is_linked) VALUES (
   'Andrew Lewis', 'E66.01', 'Morbid (severe) obesity due to excess calories', 'HCC 22 - Morbid Obesity', 'New', 'Suspect',

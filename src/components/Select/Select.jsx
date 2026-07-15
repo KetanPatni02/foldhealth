@@ -17,6 +17,7 @@ import styles from './Select.module.css';
  *  - className  (string)
  *  - id         (string)        — passes through to the trigger button
  *  - menuAlign  'left' | 'right' — popover horizontal anchor (defaults left)
+ *  - leadingIcon (string)       — optional Solar icon shown before the label
  */
 export function Select({
   options = [],
@@ -30,6 +31,7 @@ export function Select({
   menuAlign = 'left',
   searchable = false,
   searchPlaceholder = 'Search…',
+  leadingIcon,
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -82,6 +84,9 @@ export function Select({
         aria-expanded={open}
         onClick={() => !disabled && setOpen(o => !o)}
       >
+        {leadingIcon && (
+          <Icon name={leadingIcon} size={16} color="currentColor" />
+        )}
         <span className={styles.triggerLabel} style={selected?.style}>
           {selected ? (selected.triggerLabel ?? selected.label) : placeholder}
         </span>

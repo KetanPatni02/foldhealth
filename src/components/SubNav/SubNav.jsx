@@ -4,12 +4,13 @@ import { Icon } from '../Icon/Icon';
 import { useAppStore } from '../../store/useAppStore';
 import { HEDIS_MEMBERS } from '../../features/hedis-worklist/data/mock';
 import { FilterNameDialog } from '../../features/hcc/FilterNameDialog';
+import { memberMatchesFilters } from '../../features/hcc/filters';
 import styles from './SubNav.module.css';
 
 // Define which lists map to which filter criteria
 const SHARED_LISTS = [
   { label: 'SNP', filter: null },
-  { label: 'AWV', filter: null },
+  { label: 'Annual Visit', filter: null },
   { label: 'TOC', filter: null },  // default — shows all TOC patients
   { label: 'HCC', filter: null, view: 'hcc' },
   { label: 'HEDIS', filter: null, view: 'hedis' },
@@ -23,7 +24,9 @@ export function SubNav({ collapsed }) {
   const setActiveFilters = useAppStore(s => s.setActiveFilters);
   const patients = useAppStore(s => s.patients);
   const hccMembers = useAppStore(s => s.hccMembers);
+  const awvMembers = useAppStore(s => s.awvMembers || []);
   const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
+  const fetchAwvMembers = useAppStore(s => s.fetchAwvMembers);
   const clearSelected = useAppStore(s => s.clearSelected);
   const clearHccSelected = useAppStore(s => s.clearHccSelected);
   // Saved filters per shared list — appears whenever the user is on a
@@ -34,27 +37,55 @@ export function SubNav({ collapsed }) {
   const applySavedFilter = useAppStore(s => s.applySavedFilter);
   const renameSavedFilter = useAppStore(s => s.renameSavedFilter);
   const deleteSavedFilter = useAppStore(s => s.deleteSavedFilter);
-  const savedForActive = savedFiltersByList[activeSubnavList] || [];
   const activeSavedId = activeSavedIdByList[activeSubnavList] || null;
-  const isSharedList = SHARED_LISTS.some(l => l.label === activeSubnavList);
-  // Per-row dots menu + rename dialog
-  const [filterMenu, setFilterMenu] = useState(null); // { id, rect } | null
-  const [renameTarget, setRenameTarget] = useState(null);
+  // Per-row dots menu + rename dialog. filterMenu tracks the row's parent list
+  // because saved filters live per worklist — mutations always target that
+  // parent, not the currently-selected list.
+  const [filterMenu, setFilterMenu] = useState(null); // { id, listLabel, rect } | null
+  const [renameTarget, setRenameTarget] = useState(null); // { id, listLabel, name }
+  // Collapsable "Saved Filters" section — behaves like a worklist group. Open
+  // by default; user can collapse/expand by clicking the section header.
+  const [savedOpen, setSavedOpen] = useState(true);
 
-  // Prefetch HCC members on mount so the count is available immediately
-  useEffect(() => { fetchHccMembers(); }, []);
+  // Flatten every list's saved filters into one list — each row carries its
+  // own parent-list label so the count and management stay scoped to where the
+  // filter was originally saved (not the currently-selected worklist).
+  const allSavedFilters = useMemo(() => {
+    const out = [];
+    for (const list of SHARED_LISTS) {
+      const items = savedFiltersByList[list.label] || [];
+      for (const sf of items) out.push({ listLabel: list.label, sf });
+    }
+    return out;
+  }, [savedFiltersByList]);
 
-  // Only TOC and HCC show real counts; all others show 0
+  // Count of records each saved filter would surface within its OWN worklist.
+  // Only computed for HCC today (the primary surface with real counts).
+  const savedFilterCount = (listLabel, sf) => {
+    if (listLabel === 'HCC') {
+      return (hccMembers || []).filter(m => memberMatchesFilters(m, sf.filters || {})).length;
+    }
+    return 0;
+  };
+
+  // Prefetch HCC and AWV members on mount so the count is available immediately
+  useEffect(() => {
+    fetchHccMembers();
+    fetchAwvMembers();
+  }, []);
+
+  // Only TOC, HCC, and AWV show real counts; all others show 0
   const getCounts = useMemo(() => {
     const counts = {};
     for (const list of SHARED_LISTS) {
       if (list.view === 'hcc') counts[list.label] = hccMembers.length;
       else if (list.view === 'hedis') counts[list.label] = HEDIS_MEMBERS.length;
+      else if (list.label === 'Annual Visit') counts[list.label] = awvMembers.length;
       else if (list.label === 'TOC') counts[list.label] = patients.length;
       else counts[list.label] = 0;
     }
     return counts;
-  }, [patients, hccMembers]);
+  }, [patients, hccMembers, awvMembers]);
 
   const allPatientsCount = patients.length + hccMembers.length;
 
@@ -88,44 +119,74 @@ export function SubNav({ collapsed }) {
           <span className={styles.count}>{getCounts[item.label] || 0}</span>
         </div>
       ))}
-      {/* Saved Filters — appears on any shared list. Each list has its own
-          saved views in the store (keyed by the list label). When the user
-          saves a filter from a list's toolbar, it shows up here for that
-          list and is persisted across reloads. */}
-      {isSharedList && (
+      {/* Saved Filters — behaves like a worklist group: always visible,
+          collapsable, and each row shows the count of records the filter
+          would surface in ITS OWN parent worklist (not the currently
+          selected one). The ⋯ menu appears only when the user is on the
+          parent worklist, since mutations happen there. */}
+      {allSavedFilters.length > 0 && (
         <>
-          <div className={styles.subLabel} style={{ marginTop: 8 }}>Saved Filters</div>
-          {savedForActive.length === 0 ? (
-            <div className={styles.item} style={{ color: 'var(--neutral-300)', cursor: 'default' }}>
-              No saved filters yet
-            </div>
-          ) : savedForActive.map(sf => (
-            <div
-              key={sf.id}
-              className={[styles.item, activeSavedId === sf.id ? styles.active : ''].filter(Boolean).join(' ')}
-              onClick={() => applySavedFilter(activeSubnavList, sf.id)}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-            >
-              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {sf.name}
-              </span>
-              <button
-                type="button"
-                aria-label={`Manage ${sf.name}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  setFilterMenu({ id: sf.id, rect });
-                }}
-                style={{
-                  border: 'none', background: 'transparent', cursor: 'pointer',
-                  padding: 2, display: 'inline-flex', borderRadius: 4,
+          <div
+            className={styles.subLabel}
+            style={{
+              marginTop: 8, display: 'flex', alignItems: 'center',
+              justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none',
+            }}
+            onClick={() => setSavedOpen(v => !v)}
+            title={savedOpen ? 'Collapse Saved Filters' : 'Expand Saved Filters'}
+          >
+            <span>Saved Filters</span>
+            <Icon
+              name={savedOpen ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'}
+              size={14}
+              color="var(--neutral-300)"
+            />
+          </div>
+          {savedOpen && allSavedFilters.map(({ listLabel, sf }) => {
+            const isActiveSaved = listLabel === activeSubnavList && activeSavedId === sf.id;
+            const canManage = listLabel === activeSubnavList;
+            return (
+              <div
+                key={`${listLabel}::${sf.id}`}
+                className={[styles.item, isActiveSaved ? styles.active : ''].filter(Boolean).join(' ')}
+                onClick={() => {
+                  // Switch to the parent worklist (so the filter's data source
+                  // is loaded) THEN apply. No-op if we're already there.
+                  const parent = SHARED_LISTS.find(l => l.label === listLabel);
+                  if (parent && activeSubnavList !== listLabel) handleListClick(parent);
+                  applySavedFilter(listLabel, sf.id);
                 }}
               >
-                <Icon name="solar:menu-dots-bold" size={14} color="var(--neutral-300)" />
-              </button>
-            </div>
-          ))}
+                <span
+                  style={{
+                    flex: 1, minWidth: 0, overflow: 'hidden',
+                    textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}
+                >
+                  {sf.name}
+                </span>
+                {canManage ? (
+                  <button
+                    type="button"
+                    aria-label={`Manage ${sf.name}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setFilterMenu({ id: sf.id, listLabel, rect });
+                    }}
+                    style={{
+                      border: 'none', background: 'transparent', cursor: 'pointer',
+                      padding: 2, display: 'inline-flex', borderRadius: 4,
+                    }}
+                  >
+                    <Icon name="solar:menu-dots-bold" size={14} color="var(--neutral-300)" />
+                  </button>
+                ) : (
+                  <span className={styles.count}>{savedFilterCount(listLabel, sf)}</span>
+                )}
+              </div>
+            );
+          })}
         </>
       )}
       <div className={styles.sectionLabel} style={{ marginTop: 8 }}>Patients</div>
@@ -166,6 +227,17 @@ export function SubNav({ collapsed }) {
       ))}
       <div className={styles.sectionLabel} style={{ marginTop: 8 }}>Leads &amp; Contacts</div>
 
+      {/* Archived Worklist — frozen snapshots of worklists, isolated from
+          the live versions so upstream changes never alter them. */}
+      <div className={styles.sectionLabel} style={{ marginTop: 8 }}>Archived Worklist</div>
+      <div
+        className={[styles.item, activeSubnavList === 'HCC (Archived)' ? styles.active : ''].filter(Boolean).join(' ')}
+        onClick={() => { setActiveSubnavList('HCC (Archived)'); clearSelected(); clearHccSelected(); setActiveFilters({}); }}
+      >
+        HCC
+        <span className={styles.count}>{hccMembers.length || 0}</span>
+      </div>
+
       {filterMenu && createPortal(
         <>
           <div
@@ -200,9 +272,10 @@ export function SubNav({ collapsed }) {
                 fontSize: 13, fontWeight: 500, color: 'var(--neutral-500)',
               }}
               onClick={() => {
-                const sf = savedForActive.find(x => x.id === filterMenu.id);
+                const list = filterMenu.listLabel;
+                const sf = (savedFiltersByList[list] || []).find(x => x.id === filterMenu.id);
                 setFilterMenu(null);
-                if (sf) setRenameTarget(sf);
+                if (sf) setRenameTarget({ ...sf, listLabel: list });
               }}
             >
               <Icon name="solar:pen-linear" size={14} color="var(--neutral-400)" />
@@ -216,7 +289,10 @@ export function SubNav({ collapsed }) {
                 borderRadius: 4, cursor: 'pointer', textAlign: 'left',
                 fontSize: 13, fontWeight: 500, color: 'var(--status-error)',
               }}
-              onClick={() => { deleteSavedFilter(activeSubnavList, filterMenu.id); setFilterMenu(null); }}
+              onClick={() => {
+                deleteSavedFilter(filterMenu.listLabel, filterMenu.id);
+                setFilterMenu(null);
+              }}
             >
               <Icon name="solar:trash-bin-trash-linear" size={14} color="var(--status-error)" />
               Delete
@@ -231,7 +307,10 @@ export function SubNav({ collapsed }) {
         title="Rename Filter"
         submitLabel="Save"
         initialName={renameTarget?.name || ''}
-        onSubmit={(name) => { renameSavedFilter(activeSubnavList, renameTarget.id, name); setRenameTarget(null); }}
+        onSubmit={(name) => {
+          renameSavedFilter(renameTarget.listLabel, renameTarget.id, name);
+          setRenameTarget(null);
+        }}
         onCancel={() => setRenameTarget(null)}
       />
     </aside>

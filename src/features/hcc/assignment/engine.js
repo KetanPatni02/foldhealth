@@ -87,7 +87,7 @@ function pickSupport(ctx) {
   }
 
   // Fallback — deterministic random
-  const fb = pickByStableRandom(pool, `support::${patient?.id}::${dos?.date}`);
+  const fb = pickByStableRandom(pool, `support::${patient?.id}::${dos?.date}::${dos?.renderingProvider}::${dos?.pos}`);
   return fb ? { staff: fb, reason: 'fallback' } : null;
 }
 
@@ -115,13 +115,13 @@ function pickCoder(ctx) {
   // 2 + 4. Workload balance over the whole pool, then random fallback.
   const w = pickByWorkload(pool, workload);
   if (w) return { staff: w, reason: 'workload' };
-  const fb = pickByStableRandom(pool, `coder::${patient?.id}::${dos?.date}`);
+  const fb = pickByStableRandom(pool, `coder::${patient?.id}::${dos?.date}::${dos?.renderingProvider}::${dos?.pos}`);
   return fb ? { staff: fb, reason: 'fallback' } : null;
 }
 
-// Shared priority chain for AC-3 / AC-4 / AC-5 (R1 / R2 / R3).
-// `priorRole` is the role just below this one ('coder' → 'r1', 'r1' → 'r2', etc.)
-// — used for the "role-to-role mapping" rule.
+// Shared priority chain for AC-3 / AC-4 (Reviewer / Reviewer 2).
+// `priorRole` is the role just below this one ('coder' → 'reviewer',
+// 'reviewer' → 'reviewer2') — used for the "role-to-role mapping" rule.
 function pickReviewer(role, priorRole, ctx) {
   const { patient, dos, workload, slaCloseDays, patientHistory } = ctx;
   const pool = activeStaffForRole(role);
@@ -138,7 +138,7 @@ function pickReviewer(role, priorRole, ctx) {
     return { staff: mappedStaff, reason: `mapped:${priorAssignee}→${mappedStaff.id}` };
   }
 
-  // 2. Vendor mapping (R2/R3 step in the story)
+  // 2. Vendor mapping (Reviewer 2 step in the story)
   const vendor = dos?.vendor || patient?.vendor || null;
   const vendorMatches = staffForVendor(role, vendor);
   if (vendorMatches.length) {
@@ -167,7 +167,7 @@ function pickReviewer(role, priorRole, ctx) {
   // 5. Workload balance, then 6. random fallback.
   const w = pickByWorkload(pool, workload);
   if (w) return { staff: w, reason: 'workload' };
-  const fb = pickByStableRandom(pool, `${role}::${patient?.id}::${dos?.date}`);
+  const fb = pickByStableRandom(pool, `${role}::${patient?.id}::${dos?.date}::${dos?.renderingProvider}::${dos?.pos}`);
   return fb ? { staff: fb, reason: 'fallback' } : null;
 }
 
@@ -187,8 +187,8 @@ function pickReviewer(role, priorRole, ctx) {
  *     patientHistory: {                     // per-patient history across roles
  *       [patientId]: { [role]: { assignee, since } }
  *     }
- *     priorRoleMapping?: { [staffId]: { r1?: id, r2?: id, r3?: id } }
- *     slaCloseDays?: number  // default 7 (R1→R2 / R2→R3 SLA priority window)
+ *     priorRoleMapping?: { [staffId]: { reviewer?: id, reviewer2?: id } }
+ *     slaCloseDays?: number  // default 7 (Reviewer→Reviewer 2 SLA priority window)
  *     opts?:        { astrana: boolean }    // toggles Global Assignment Rule
  *   }
  */
@@ -213,12 +213,11 @@ export function pickAssignee(role, ctx) {
   }
 
   switch (role) {
-    case 'support': return pickSupport(ctx);
-    case 'coder':   return pickCoder(ctx);
-    case 'r1':      return pickReviewer('r1', 'coder', ctx);
-    case 'r2':      return pickReviewer('r2', 'r1',    ctx);
-    case 'r3':      return pickReviewer('r3', 'r2',    ctx);
-    default:        return null;
+    case 'support':   return pickSupport(ctx);
+    case 'coder':     return pickCoder(ctx);
+    case 'reviewer':  return pickReviewer('reviewer',  'coder',    ctx);
+    case 'reviewer2': return pickReviewer('reviewer2', 'reviewer', ctx);
+    default:          return null;
   }
 }
 

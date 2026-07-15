@@ -9,12 +9,14 @@ import { SearchIconButton } from '../../components/SearchIconButton/SearchIconBu
 import { useTableSort } from '../../components/Table/useTableSort';
 import { InlineEditable } from '../../components/InlineEditable/InlineEditable';
 import { SortPopover } from '../../components/Popover/SortPopover';
-import { DueDateChip, getDueCategory } from './DueDateChip';
+import { DueDateChip } from './DueDateChip';
+import { slaDueCategory } from './sla';
+import { SavedFiltersChip } from './SavedFiltersChip';
 import { FilterChipBar } from './FilterChipBar';
 import { FilterNameDialog } from './FilterNameDialog';
 import { ColumnConfigPopover } from './ColumnConfigPopover';
 import { HCC_COLUMNS, HCC_COL_MAP, MEMBER_SORT_ITEMS, orderColumns } from './columns';
-import { memberMatchesFilters } from './filters';
+import { memberMatchesFilters, countActiveFilters } from './filters';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { BulkBar } from '../../components/BulkBar/BulkBar';
 import { BulkChangeAssigneesDialog } from './BulkChangeAssigneesDialog';
@@ -80,6 +82,7 @@ function HccHeaderCell({ column, className, sortKey, sortDir, onOpenSort }) {
 const COL_CLASS = {
   dos:      rowStyles.colLastVisit,
   open:     rowStyles.colOpen,
+  vt:       rowStyles.colVt,
   date:     rowStyles.colDate,
   evidence: rowStyles.colEvidence,
   sup:      rowStyles.colRole,
@@ -106,8 +109,7 @@ export function HccWorklistTable() {
   const hccMembers = useAppStore(s => s.hccMembers);
   const hccMembersLoading = useAppStore(s => s.hccMembersLoading);
   const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
-  const fetchHccDocuments = useAppStore(s => s.fetchHccDocuments);
-  const openIcdCreation = useAppStore(s => s.openIcdCreation);
+  const fetchHccAddedCharts = useAppStore(s => s.fetchHccAddedCharts);
   const selectedHccIds = useAppStore(s => s.selectedHccIds);
   const selectAllHcc = useAppStore(s => s.selectAllHcc);
   const clearHccSelected = useAppStore(s => s.clearHccSelected);
@@ -123,7 +125,6 @@ export function HccWorklistTable() {
   const hccFilters = useAppStore(s => s.hccFilters);
   const saveHccFilter = useAppStore(s => s.saveHccFilter);
   const renameHccSavedFilter = useAppStore(s => s.renameHccSavedFilter);
-  const startHccUpload = useAppStore(s => s.startHccUpload);
   const openHccHistoryDrawer = useAppStore(s => s.openHccHistoryDrawer);
   const hccHiddenCols = useAppStore(s => s.hccHiddenCols);
   const toggleHccColumn = useAppStore(s => s.toggleHccColumn);
@@ -152,11 +153,13 @@ export function HccWorklistTable() {
   const [memberSortPop, setMemberSortPop] = useState(null); // rect
   const [colCfgRect, setColCfgRect] = useState(null);
   const [bulkAssigneeOpen, setBulkAssigneeOpen] = useState(false);
+  const startHccUpload = useAppStore(s => s.startHccUpload);
+  const setHccUploadPhase = useAppStore(s => s.setHccUploadPhase);
   const memberThRef = useRef(null);
   const colCfgBtnRef = useRef(null);
 
   useEffect(() => { fetchHccMembers(); }, [fetchHccMembers]);
-  useEffect(() => { fetchHccDocuments?.(); }, [fetchHccDocuments]);
+  useEffect(() => { fetchHccAddedCharts(); }, [fetchHccAddedCharts]);
 
   // Whenever the active filter/sort/search/due-date changes, jump back to
   // page 1 so the user doesn't end up on an empty page after the result set
@@ -192,7 +195,8 @@ export function HccWorklistTable() {
 
   const filtered = useMemo(() => {
     let rows = enriched;
-    if (hccDueDateFilter) rows = rows.filter(m => getDueCategory(m.due) === hccDueDateFilter);
+    // SLA-based Due Date filter — matches the computed Created-Date colours.
+    if (hccDueDateFilter) rows = rows.filter(m => slaDueCategory(m) === hccDueDateFilter);
     if (Object.keys(hccFilters).length) rows = rows.filter(m => memberMatchesFilters(m, hccFilters));
     const q = searchQuery?.trim().toLowerCase();
     if (q) rows = rows.filter(m =>
@@ -203,8 +207,14 @@ export function HccWorklistTable() {
     return rows;
   }, [enriched, searchQuery, hccDueDateFilter, hccFilters]);
 
-  const { sorted, sortKey, sortDir, setSort, clearSort } = useTableSort(filtered, 'date', 'desc');
+  // SLA default (Astrana DOS worklist): Created Date ascending — oldest first,
+  // so records closest to breaching the 14-day window surface at the top.
+  const { sorted, sortKey, sortDir, setSort, clearSort } = useTableSort(filtered, 'date', 'asc');
 
+  // Flat table — one row per record (Figma 4680:138476). A record whose
+  // dos_list bundles multiple visits shows a "View More N" expander in
+  // its own row (handled inside HccWorklistRow); the table itself just
+  // paginates the record list.
   const startIdx = (currentPage - 1) * perPage;
   const paginated = sorted.slice(startIdx, startIdx + perPage);
 
@@ -218,6 +228,7 @@ export function HccWorklistTable() {
   };
 
   const hiddenSet = useMemo(() => new Set(hccHiddenCols), [hccHiddenCols]);
+  const activeFilterCount = countActiveFilters(hccFilters);
 
   if (hccMembersLoading) return <TableSkeleton rows={perPage} />;
 
@@ -231,13 +242,15 @@ export function HccWorklistTable() {
             onCommit={setHccListTitle}
             size="L"
             maxLength={60}
-            placeholder="HCC List"
+            placeholder="Worklist"
             title="Rename this list"
           />
           <DueDateChip value={hccDueDateFilter} onChange={setHccDueDateFilter} />
         </div>
 
         <div className={styles.tabRight}>
+          <SavedFiltersChip />
+          <span className={styles.iconDivider} />
           <div className={styles.searchWrap}>
             {searchOpen ? (
               <div className={styles.searchInput}>
@@ -263,36 +276,43 @@ export function HccWorklistTable() {
           </div>
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="solar:filter-linear"
+            icon="custom:filter"
             size="L"
             tooltip={filterOpen ? 'Hide filters' : 'Show filters'}
             tooltipBelow
+            notification={activeFilterCount > 0}
+            count={activeFilterCount > 0 ? String(activeFilterCount) : undefined}
             className={filterOpen ? styles.iconActive : ''}
             onClick={() => setFilterOpen(v => !v)}
           />
           <span className={styles.iconDivider} />
           <ActionButton
-            icon="solar:history-linear"
-            size="L"
-            tooltip="History"
-            tooltipBelow
-            onClick={openHccHistoryDrawer}
-          />
-          <span className={styles.iconDivider} />
-          <ActionButton
-            icon="solar:upload-minimalistic-linear"
-            size="L"
-            tooltip="Upload Document"
-            tooltipBelow
-            onClick={() => openIcdCreation?.()}
-          />
-          <span className={styles.iconDivider} />
-          <ActionButton
-            icon="solar:file-download-linear"
+            icon="custom:export"
             size="L"
             tooltip="Export"
             tooltipBelow
             onClick={() => showToast('Export — coming soon')}
+          />
+          <span className={styles.iconDivider} />
+          <ActionButton
+            icon="custom:upload"
+            size="L"
+            tooltip="Upload"
+            tooltipBelow
+            onClick={() => {
+              // Skip the 3-card chooser and open the Upload a Document
+              // drawer straight into the file-picker phase.
+              startHccUpload(null);
+              setHccUploadPhase('picker');
+            }}
+          />
+          <span className={styles.iconDivider} />
+          <ActionButton
+            icon="custom:history"
+            size="L"
+            tooltip="History"
+            tooltipBelow
+            onClick={openHccHistoryDrawer}
           />
         </div>
       </div>
@@ -385,7 +405,14 @@ export function HccWorklistTable() {
             </tr>
           </thead>
           <tbody>
-            {paginated.map(m => <HccWorklistRow key={m.id} member={m} hiddenCols={hiddenSet} columns={orderedColumns} />)}
+            {paginated.map(m => (
+              <HccWorklistRow
+                key={m.id}
+                member={m}
+                hiddenCols={hiddenSet}
+                columns={orderedColumns}
+              />
+            ))}
           </tbody>
         </table>
 

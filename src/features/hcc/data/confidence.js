@@ -47,6 +47,19 @@ const DEFAULT_CONFIDENCE = {
 export const getConfidence = (code) => CONFIDENCE_DATA[code] || DEFAULT_CONFIDENCE;
 
 /**
+ * DB-preferring variant of getConfidence — pass the `hccGapConfidence`
+ * store slice (a { code: { score, status, evidence, factors, meatNote } }
+ * map) as `dbMap`. Returns the DB row when the code is seeded, otherwise
+ * falls back to the JS mock. This lets IcdRow read a single source that
+ * works while the seed rolls out to every environment.
+ */
+export const getConfidenceFromDb = (dbMap, code) => {
+  const hit = dbMap?.[code];
+  if (hit && (Array.isArray(hit.evidence) && hit.evidence.length)) return hit;
+  return CONFIDENCE_DATA[code] || DEFAULT_CONFIDENCE;
+};
+
+/**
  * Deterministic per-field confidence score for an encounter.
  *
  * Real OCR returns a confidence per extracted field. The mock produces
@@ -109,6 +122,12 @@ export const EVIDENCE_FACTORS = {
 
 export const getEvidenceFactors = (code) => EVIDENCE_FACTORS[code] || DEFAULT_FACTORS;
 
+export const getEvidenceFactorsFromDb = (dbMap, code) => {
+  const hit = dbMap?.[code];
+  if (hit && Array.isArray(hit.factors) && hit.factors.length) return hit.factors;
+  return EVIDENCE_FACTORS[code] || DEFAULT_FACTORS;
+};
+
 // ── MEAT (Monitor / Evaluate / Assess / Treat) summary per ICD ────────────
 export const MEAT_NOTE_DATA = {
   'N18.32': 'CKD Stage 3b (N18.32) is actively managed with quarterly labs and nephrology follow-up. Most recent eGFR 37 mL/min, creatinine 2.0 mg/dL, UACR 115 mg/g (01/15/2026), reflecting slow progressive decline with macroalbuminuria. Assessed as high risk for progression given diabetes and declining eGFR trajectory, continued on lisinopril 20mg daily for renoprotection. CMP repeated every 3 months.',
@@ -121,3 +140,9 @@ export const MEAT_NOTE_DATA = {
 export const getMeatNote = (code, desc) =>
   MEAT_NOTE_DATA[code] ||
   `${desc} is being actively monitored and managed. Diagnosis supported by clinical documentation and current treatment plan. Patient is adherent to prescribed therapy with scheduled follow-up. Condition assessed as stable with ongoing management per care team recommendation.`;
+
+export const getMeatNoteFromDb = (dbMap, code, desc) => {
+  const hit = dbMap?.[code];
+  if (hit?.meatNote) return hit.meatNote;
+  return getMeatNote(code, desc);
+};

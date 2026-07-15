@@ -2,6 +2,8 @@
    without a visible scrollbar to its right. */
 .tabBar { display: flex; align-items: center; border-bottom: 0.5px solid var(--neutral-100); padding: 0 4px 0 8px; flex-shrink: 0; gap: 0; height: 40px; }
 .divider { width: 0.5px; height: 16px; background: var(--neutral-150); flex-shrink: 0; margin: 0 4px; }
+/* Mirror the sidebar icon when the left panel is collapsed (points to expand). */
+.sidebarFlipped svg { transform: scaleX(-1); }
 .tabs {
   display: flex;
   flex: 1;

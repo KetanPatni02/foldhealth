@@ -1,0 +1,32 @@
+/* Inline dismiss-reason form (Figma 4696:135817) — shared by IcdDosCard and
+   HccSuspectGroup. */
+.dismissForm {
+  margin: 4px 0 8px;
+  padding: 14px 16px;
+  background: var(--neutral-25);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dismissTitle {
+  font: 600 13px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.reasonList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.noteLabel {
+  font: 400 12px/1.3 'Inter', sans-serif;
+  color: var(--neutral-400);
+  margin-top: 2px;
+}
+.dismissActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}

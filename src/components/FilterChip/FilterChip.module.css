@@ -1,132 +1,36 @@
-/* Canonical filter badge. Inter is applied globally, so no font-family here. */
-.chipWrap {
-  position: relative;
-}
-
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 6px 12px;
-  border: 0.5px solid var(--neutral-150);
+  gap: 4px;
+  height: 32px;
+  padding: 0 10px;
   border-radius: 6px;
+  border: 0.5px solid var(--neutral-150);
   background: var(--neutral-0);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--neutral-400);
+  font-size: 14px;
+  color: var(--neutral-300);
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s;
-}
-.chip:hover { border-color: var(--primary-200); background: var(--primary-50); }
-.chip.active { border-color: var(--primary-300); background: var(--primary-100); color: var(--primary-300); }
-
-.chipColon { color: var(--primary-200); }
-
-.chipValue {
-  font-weight: 500;
-  color: var(--primary-300);
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.chipClear {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--primary-200);
-  color: var(--neutral-0);
-  font-size: 10px;
-  line-height: 1;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  margin-left: 2px;
-}
-.chipClear:hover { background: var(--primary-300); }
-
-.dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  min-width: 220px;
-  max-height: 280px;
-  overflow-y: auto;
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 8px;
-  box-shadow: var(--shadow-popover);
-  z-index: 100;
-  padding: 4px;
-  animation: dropIn 0.12s ease;
-}
-.dropdownRight { left: auto; right: 0; }
-
-@keyframes dropIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* Sticky search row inside the dropdown. */
-.dropdownSearch {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  margin: -4px -4px 4px;
-  position: sticky;
-  top: -4px;
-  background: var(--neutral-0);
-  border-bottom: 0.5px solid var(--neutral-150);
-  z-index: 1;
-}
-.dropdownSearchInput {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: 13px;
-  color: var(--neutral-400);
-}
-.dropdownSearchInput::placeholder { color: var(--neutral-200); }
-
-.dropdownItem {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 12px;
-  border: none;
-  background: none;
-  font-size: 13px;
-  color: var(--neutral-400);
-  cursor: pointer;
-  border-radius: 6px;
-  text-align: left;
-}
-.dropdownItem:hover { background: var(--primary-50); color: var(--primary-300); }
-.dropdownItem.selected { background: var(--primary-100); color: var(--primary-300); font-weight: 500; }
-
-.dropdownCheck {
-  width: 14px;
   flex-shrink: 0;
-  display: flex;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.chip:hover { border-color: var(--neutral-200); }
+.chipActive {
+  background: var(--primary-50);
+  border-color: var(--primary-300);
+  color: var(--primary-300);
+}
+.chipActive:hover { background: var(--primary-100); }
+.chipLabel { font-size: 14px; }
+.chipValue { font-weight: 500; }
+.divider { color: var(--primary-300); margin: 0 1px; }
+.clearIcon {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--primary-300);
-  font-size: 12px;
+  border-radius: 50%;
+  margin-left: 2px;
+  padding: 1px;
+  cursor: pointer;
 }
-
-.avatarXs { flex-shrink: 0; }
-
-.dropdownEmpty {
-  padding: 10px 12px;
-  font-size: 13px;
-  color: var(--neutral-300);
-  text-align: center;
-}
+.clearIcon:hover { background: var(--primary-100); }

@@ -1,33 +1,40 @@
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '../../../store/useAppStore';
 import { Drawer } from '../../../components/Drawer/Drawer';
+import { BulkBar } from '../../../components/BulkBar/BulkBar';
 import { Icon } from '../../../components/Icon/Icon';
 import { CloseIcon } from '../../../components/Icon/CloseIcon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Avatar } from '../../../components/Avatar/Avatar';
-import { Toggle } from '../../../components/Toggle/Toggle';
-import { SearchIconButton } from '../../../components/SearchIconButton/SearchIconButton';
 import { PatientBanner } from '../../../components/PatientBanner/PatientBanner';
-import { HccCard } from './HccGroupRow';
+import { Switch } from '../../../components/Switch/Switch';
 import { IcdRow } from './IcdRow';
-import { DosSelector } from './DosSelector';
+import { IcdDosCard } from './IcdDosCard';
+import { SuspectCard } from './HccSuspectGroup';
 import { DosStatusMenu } from './DosStatusMenu';
-import { SnapshotTiles } from './SnapshotTiles';
-import { SweepIcdRow } from './SweepIcdRow';
 import { LeftWorkspace } from './LeftWorkspace';
+import { NewDiagGapPanel } from './NewDiagGapPanel';
+import {
+  DiagPanelFilterBar,
+  icdMatchesFilters,
+  activeFilterCount,
+  EMPTY_FILTERS,
+} from './DiagPanelFilterBar';
 import {
   ReviewProgressPopover,
   ProgressRing,
   buildReviewStages,
   computeReviewProgress,
 } from './ReviewProgressPopover';
-import { getSweepIcdsForMember } from '../data/sweepIcds';
+import { SWEEP_ICD_DATA } from '../data/sweepIcds';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { RoleTooltip } from '../RoleTooltip';
 import { resolveCurrentAssignee } from '../HccWorklistRow';
-import { ROLE_LABEL, staffForRole } from '../assignment/astranaStaff';
-import { canCompleteDos } from '../compliance';
+import { slaOutcome } from '../sla';
+import { RoleAssigneePicker } from '../RoleAssigneePicker';
+import { ROLE_LABEL } from '../assignment/astranaStaff';
+import { dosKey } from '../assignment/dosState';
 import styles from './DiagPanel.module.css';
 
 // Initials-square avatar to the left of the DOS status pill. Reflects the
@@ -37,140 +44,42 @@ import styles from './DiagPanel.module.css';
 // dashed-outline placeholder. For Billing Ready records, shows a green
 // check chip. Hovering opens a RoleTooltip with the role label.
 /**
- * UnassignedAssignTrigger — interactive dashed avatar slot.
- * Clicking opens a portal popover with candidates pulled from configured
- * Care Teams (members whose teamType matches the role) + Astrana staff in
- * the same role bucket. Selecting a candidate dispatches `hccReassignRole`
- * so the DOS gains an owner without leaving the DiagPanel.
+ * UnassignedAssignTrigger — interactive dashed avatar slot. Clicking opens the
+ * shared searchable RoleAssigneePicker (every platform user), so assigning a
+ * DOS owner from the DiagPanel behaves exactly like the worklist role cells.
  */
 function UnassignedAssignTrigger({ role, memberId, dosDate }) {
-  const btnRef = useRef(null);
-  const [pos, setPos] = useState(null);
-  const teams = useAppStore(s => s.hccCareTeams);
-  const reassign = useAppStore(s => s.hccReassignRole);
-  const showToast = useAppStore(s => s.showToast);
-
-  const candidates = (() => {
-    const teamType = ROLE_LABEL[role];
-    const fromTeams = (teams || [])
-      .filter(t => t.kind === 'hcc' && t.teamType === teamType)
-      .flatMap(t => (t.members || []).map(m => ({
-        id: m.userId, name: m.name, initials: m.initials,
-        roles: m.roles, source: 'team', teamName: t.name,
-      })));
-    const seen = new Set(fromTeams.map(c => c.id));
-    const fromAstrana = staffForRole(role)
-      .filter(s => !seen.has(s.id))
-      .map(s => ({
-        id: s.id, name: s.name, initials: s.initials,
-        roles: ROLE_LABEL[s.role], source: 'astrana',
-      }));
-    return [...fromTeams, ...fromAstrana];
-  })();
-
-  useEffect(() => {
-    if (!pos) return;
-    const onDoc = (e) => {
-      if (!btnRef.current?.contains(e.target)
-          && !e.target.closest?.('[data-assign-menu]')) setPos(null);
-    };
-    const onKey = (e) => { if (e.key === 'Escape') setPos(null); };
-    document.addEventListener('mousedown', onDoc);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDoc);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [pos]);
-
-  const open = () => {
-    const r = btnRef.current?.getBoundingClientRect();
-    if (!r) return;
-    setPos({ top: r.bottom + 4, left: Math.max(8, r.right - 280) });
-  };
-  const onPick = (cand) => {
-    if (!memberId || !dosDate) {
-      showToast('Cannot assign — missing DOS context.');
-      setPos(null);
-      return;
-    }
-    reassign(memberId, dosDate, role, cand.id, 'current-user', 'Assigned from DiagPanel');
-    showToast(`${cand.name} assigned as ${ROLE_LABEL[role]}.`);
-    setPos(null);
-  };
-
   return (
-    <RoleTooltip
-      name="Unassigned"
-      role={`Awaiting ${ROLE_LABEL[role] || role} — click to assign`}
-      initials="—"
-      variant="provider"
-    >
-      <button
-        type="button"
-        ref={btnRef}
-        onClick={(e) => { e.stopPropagation(); pos ? setPos(null) : open(); }}
-        style={{
-          width: 24, height: 24, borderRadius: 6,
-          background: 'var(--neutral-50)',
-          border: '0.5px dashed var(--neutral-200)',
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0, cursor: 'pointer', padding: 0,
-        }}
-      >
-        <Icon name="solar:user-plus-rounded-linear" size={14} color="var(--neutral-300)" />
-      </button>
-      {pos && createPortal(
-        <div
-          data-assign-menu
-          style={{
-            position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999,
-            minWidth: 280, maxHeight: 280, overflowY: 'auto',
-            background: 'var(--neutral-0)',
-            border: '0.5px solid var(--neutral-150)',
-            borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-            padding: 4, fontFamily: 'Inter, sans-serif',
-          }}
-          onClick={(e) => e.stopPropagation()}
+    <RoleAssigneePicker
+      role={role}
+      memberId={memberId}
+      dosDate={dosDate}
+      align="right"
+      reason="Assigned from DiagPanel"
+      trigger={({ ref, onClick }) => (
+        <RoleTooltip
+          name="Unassigned"
+          role={`Awaiting ${ROLE_LABEL[role] || role} — click to assign`}
+          initials="—"
+          variant="provider"
         >
-          <div style={{
-            fontSize: 12, fontWeight: 500, color: 'var(--neutral-400)',
-            padding: '6px 8px', borderBottom: '0.5px solid var(--neutral-100)',
-            marginBottom: 4,
-          }}>
-            Assign {ROLE_LABEL[role]}
-          </div>
-          {candidates.length === 0 ? (
-            <div style={{ padding: 12, fontSize: 12, color: 'var(--neutral-300)', textAlign: 'center' }}>
-              No candidates available.
-            </div>
-          ) : candidates.map(c => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => onPick(c)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '6px 8px', border: 'none', background: 'transparent',
-                borderRadius: 4, cursor: 'pointer', textAlign: 'left',
-                width: '100%', fontFamily: 'Inter, sans-serif',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--neutral-50)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-            >
-              <Avatar variant="assignee" initials={c.initials} />
-              <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: 'var(--neutral-500)' }}>
-                {c.name}
-              </span>
-              <span style={{ fontSize: 11, color: 'var(--neutral-300)' }}>
-                {c.source === 'team' ? `Team: ${c.teamName}` : c.roles}
-              </span>
-            </button>
-          ))}
-        </div>,
-        document.body,
+          <button
+            type="button"
+            ref={ref}
+            onClick={onClick}
+            style={{
+              width: 24, height: 24, borderRadius: 6,
+              background: 'var(--neutral-50)',
+              border: '0.5px dashed var(--neutral-200)',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, cursor: 'pointer', padding: 0,
+            }}
+          >
+            <Icon name="solar:user-plus-rounded-linear" size={14} color="var(--neutral-300)" />
+          </button>
+        </RoleTooltip>
       )}
-    </RoleTooltip>
+    />
   );
 }
 
@@ -204,107 +113,140 @@ function AssigneeAvatar({ member, dosState, currentDos }) {
     );
   }
 
-  // Active assignee — colour the chip per role (Coder/Reviewers = orange
-  // provider palette, Support stays purple to match the worklist's coder
-  // vs support distinction).
-  const isSupport = a.role === 'support';
-  const bg = isSupport ? 'var(--primary-50)'  : 'var(--secondary-100)';
-  const border = isSupport ? 'var(--primary-200)' : 'var(--secondary-200)';
-  const color = isSupport ? 'var(--primary-300)' : 'var(--secondary-300)';
+  // Active assignee — always the orange provider palette (the DOS owner is a
+  // provider/staff member regardless of stage).
+  // Active assignee is reassignable — matches the worklist: an in-flight step
+  // can change owner. Clicking opens the shared searchable picker.
   return (
-    <RoleTooltip
-      name={a.name}
-      role={ROLE_LABEL[a.role] || a.role}
-      initials={a.initials}
-      variant={isSupport ? 'patient' : 'provider'}
-    >
-      <span
-        style={{
-          width: 24, height: 24, borderRadius: 6,
-          background: bg, border: `0.5px solid ${border}`,
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0, fontSize: 10, fontWeight: 500, color,
-          fontFamily: 'Inter, sans-serif',
-        }}
-      >
-        {a.initials}
-      </span>
-    </RoleTooltip>
+    <RoleAssigneePicker
+      role={a.role}
+      memberId={member?.id}
+      dosDate={currentDos}
+      currentName={a.name}
+      align="right"
+      reason="Reassigned from DiagPanel"
+      trigger={({ ref, onClick }) => (
+        <RoleTooltip
+          name={a.name}
+          role={ROLE_LABEL[a.role] || a.role}
+          initials={a.initials}
+          variant="provider"
+        >
+          <button
+            type="button"
+            ref={ref}
+            onClick={onClick}
+            title="Change assignee"
+            style={{
+              width: 24, height: 24, borderRadius: 6,
+              background: 'var(--secondary-100)', border: '0.5px solid var(--secondary-200)',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, fontSize: 10, fontWeight: 500, color: 'var(--secondary-300)',
+              cursor: 'pointer', padding: 0,
+            }}
+          >
+            {a.initials}
+          </button>
+        </RoleTooltip>
+      )}
+    />
   );
 }
 
 const isAISuggested = (icd) => ['Suspect', 'Recapture'].includes(icd.type || '');
 
-/**
- * Group ICDs by HCC into rich `{ hcc, assoc, unlinked }` records.
- *
- * - `assoc` holds regular ICDs **plus** AI-suggested ones that have been
- *   Accepted (they're now "real" associations).
- * - `unlinked` holds AI-suggested ICDs still pending acceptance, **plus**
- *   genuinely unlinked rows from the `notLinked` list.
- */
-function groupIcdsByHcc(linked, notLinked) {
-  const map = new Map();
-  const ensure = (key) => {
-    if (!map.has(key)) map.set(key, { hcc: key, assoc: [], unlinked: [] });
-    return map.get(key);
-  };
-  for (const icd of linked) {
-    const key = icd.hcc || 'HCC Not Linked';
-    const bucket = ensure(key);
-    if (isAISuggested(icd) && icd.status !== 'Accepted') bucket.unlinked.push(icd);
-    else bucket.assoc.push(icd);
-  }
-  for (const icd of notLinked) {
-    const key = icd.hcc || 'HCC Not Linked';
-    ensure(key).unlinked.push(icd);
-  }
-  return [...map.values()];
+// The status pill acts on the LOGGED-IN role's stage (Support/Coder/QA/
+// Compliance), so each role completes their own step — completing while an
+// earlier role never worked the record auto-skips that earlier stage.
+const ROLE_KEY_BY_USER = { Support: 'support', Coder: 'coder', QA: 'reviewer', Compliance: 'reviewer2' };
+
+// Keyboard shortcut legend — mirrors the handlers in DiagPanel's keydown
+// effect. Rendered as the drawer's dark footer bar (Paper 1WXT).
+const SHORTCUTS = [
+  ['A', 'Accept'],
+  ['X', 'Reject'],
+  ['M', 'Missed opportunity'],
+  ['D', 'Defer'],
+  ['↑↓', 'Move'],
+  ['Enter', 'Open Document'],
+];
+function ShortcutBar() {
+  return (
+    <div className={styles.shortcutBar}>
+      {SHORTCUTS.map(([k, label]) => (
+        <span key={k} className={styles.shortcutItem}>
+          <kbd className={styles.shortcutKey}>{k}</kbd>
+          <span className={styles.shortcutLabel}>{label}</span>
+        </span>
+      ))}
+    </div>
+  );
 }
 
-const VIEW_MODES = ['HCC', 'ICD'];
 
 export function DiagPanel() {
   const memberId = useAppStore(s => s.diagPanelMemberId);
   const closeDiagPanel = useAppStore(s => s.closeDiagPanel);
-  const diagViewMode = useAppStore(s => s.diagViewMode);
-  const setDiagViewMode = useAppStore(s => s.setDiagViewMode);
   const member = useAppStore(s => s.hccMembers.find(m => m.id === memberId));
   const showToast = useAppStore(s => s.showToast);
   const fetchHccDiagnosisGaps = useAppStore(s => s.fetchHccDiagnosisGaps);
   const diagnosisGaps = useAppStore(s => s.hccDiagnosisGaps);
-  const diagnosisGapsLoading = useAppStore(s => s.hccDiagnosisGapsLoading);
-  const diagDosFilter = useAppStore(s => s.diagDosFilter);
-  const setDiagDosFilter = useAppStore(s => s.setDiagDosFilter);
   const diagDosStatus = useAppStore(s => s.diagDosStatus);
   const setDiagDosStatus = useAppStore(s => s.setDiagDosStatus);
-  // Assignment-engine read/write — drives the Coder status pill below.
+  // Assignment-engine read/write — drives the Coder stage pill below.
   const hccDosAssignments = useAppStore(s => s.hccDosAssignments);
   const initializeHccPatient = useAppStore(s => s.initializeHccPatient);
   const hccCompleteSupport = useAppStore(s => s.hccCompleteSupport);
   const hccCompleteCoder = useAppStore(s => s.hccCompleteCoder);
-  const hccCompleteR1 = useAppStore(s => s.hccCompleteR1);
-  const hccCompleteR2 = useAppStore(s => s.hccCompleteR2);
-  const hccCompleteR3 = useAppStore(s => s.hccCompleteR3);
+  const hccCompleteReviewer = useAppStore(s => s.hccCompleteReviewer);
+  const hccCompleteReviewer2 = useAppStore(s => s.hccCompleteReviewer2);
   const hccRequestRecords = useAppStore(s => s.hccRequestRecords);
   const hccMarkInsufficient = useAppStore(s => s.hccMarkInsufficient);
   const hccRejectDos = useAppStore(s => s.hccRejectDos);
   const hccReturnDos = useAppStore(s => s.hccReturnDos);
   const hccMarkSupportInProgress = useAppStore(s => s.hccMarkSupportInProgress);
   const hccSetRoleStatus = useAppStore(s => s.hccSetRoleStatus);
-  const diagSnapFilter = useAppStore(s => s.diagSnapFilter);
-  const setDiagSnapFilter = useAppStore(s => s.setDiagSnapFilter);
-  const diagSnapOpen = useAppStore(s => s.diagSnapOpen);
-  const setDiagSnapOpen = useAppStore(s => s.setDiagSnapOpen);
   const diagLeftPanel = useAppStore(s => s.diagLeftPanel);
   const diagActivityIcd = useAppStore(s => s.diagActivityIcd);
   const setDiagLeftPanel = useAppStore(s => s.setDiagLeftPanel);
   const setDiagTab = useAppStore(s => s.setDiagTab);
+  const setHccGapDosAction = useAppStore(s => s.setHccGapDosAction);
+  const hccGapDosActions = useAppStore(s => s.hccGapDosActions);
 
-  const [overriddenOpen, setOverriddenOpen] = useState(false);
-  const [closedOpen, setClosedOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedKeys, setSelectedKeys] = useState(() => new Set());
+  // Bulk-select mode — mirrors the Content Settings pattern. DOS-row
+  // checkboxes only render when this is on; the shortcut footer swaps to
+  // the bulk-action bar the moment something is selected.
+  const [bulkMode, setBulkMode] = useState(false);
+  const toggleBulkMode = () => {
+    setBulkMode(v => {
+      const next = !v;
+      // Clear any prior selection when leaving bulk mode so re-entering
+      // starts fresh (matches Content Settings).
+      if (!next) setSelectedKeys(new Set());
+      return next;
+    });
+  };
+  // Open/closed state for the removed Overridden/Closed ICD sections — kept
+  // commented out rather than deleted.
+  // const [overriddenOpen, setOverriddenOpen] = useState(false);
+  // const [closedOpen, setClosedOpen] = useState(false);
+  // Expandable "ICDs Associated with N/M DOSs" section (Paper 1ZV3): a row
+  // per DOS with a toggle. Toggling a DOS off hides its ICD rows.
+  const [dosExpanded, setDosExpanded] = useState(false);
+  const [disabledDos, setDisabledDos] = useState(() => new Set());
+  const [openDismissKey, setOpenDismissKey] = useState(null);
+  const dosDeleted = useAppStore(s => s.hccGapDosDeleted);
+  // Filter row (Figma 9810:158181) — toggled by the toolbar Filter button.
+  // `filters` is a keyed object; the shared `icdMatchesFilters` predicate
+  // applies the same rules across every ICD bucket below.
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const filterCount = activeFilterCount(filters);
+  // -1 = no DOS highlighted; a row lights up only once an ICD is selected,
+  // acted on, or reached via the keyboard.
+  const [focusIdx, setFocusIdx] = useState(-1);
 
   // Fetch diagnosis gaps from Supabase when member changes
   useEffect(() => {
@@ -326,116 +268,85 @@ export function DiagPanel() {
     return member?.name ? getNotLinkedForMember(member.name) : [];
   }, [diagnosisGaps, member?.name]);
 
-  // Snapshot-tile filter: 'Open' = anything not Accepted/Dismissed,
-  // 'Suspect' / 'Recapture' / 'Other' narrows by AI suggestion type.
-  const passSnapFilter = (icd) => {
-    if (!diagSnapFilter || diagSnapFilter === 'Open') return true;
-    if (diagSnapFilter === 'Suspect')   return icd.type === 'Suspect';
-    if (diagSnapFilter === 'Recapture') return icd.type === 'Recapture';
-    // 'Other' = not Suspect/Recapture
-    return !['Suspect', 'Recapture'].includes(icd.type || '');
-  };
-
-  const icds = useMemo(
-    () => icdsRaw.filter(passSnapFilter),
-    [icdsRaw, diagSnapFilter],
+  // Buckets (see docs/features/hcc-coding-workflow.md §4):
+  //  - assocICDs → the ICD-first cards ("ICDs Associated with N/M DOSs").
+  //  - allNotAssoc → AI suspects grouped per HCC (HccSuspectGroup).
+  //  - overridden / closed → collapsed sections at the bottom.
+  // Filter chips apply the same predicate to every bucket so a chip picked
+  // in the toolbar affects the whole panel view (Figma 9810:158181).
+  const matchesFilters = useCallback(
+    (icd) => icdMatchesFilters(icd, filters, member?.date),
+    [filters, member?.date],
   );
-  const notLinked = useMemo(
-    () => notLinkedRaw.filter(passSnapFilter),
-    [notLinkedRaw, diagSnapFilter],
-  );
-
-  const hccGroups = useMemo(() => groupIcdsByHcc(icds, notLinked), [icds, notLinked]);
-
-  // Buckets used by the ICD (default) view, matching the prototype's
-  // four-section layout (lines 3106–3217):
-  //  - assocICDs: regular ICDs + AI-suggested ICDs that have been accepted.
-  //  - allNotAssoc: AI-suggested ICDs not yet accepted, plus genuinely
-  //    unlinked rows.
-  //  - overriddenICDs: any ICD with the `overrides` flag (dismissed-with-reason).
-  //  - closedICDs: Accepted or Dismissed status.
-  const isAI = (i) => ['Suspect', 'Recapture'].includes(i.type || '');
   const assocICDs = useMemo(
-    () => icds.filter(i => !isAI(i) || i.status === 'Accepted'),
-    [icds],
+    () => icdsRaw.filter(i => (!isAISuggested(i) || i.status === 'Accepted') && matchesFilters(i)),
+    [icdsRaw, matchesFilters],
   );
   const allNotAssoc = useMemo(() => [
-    ...icds.filter(i => isAI(i) && i.status !== 'Accepted'),
-    ...notLinked,
-  ], [icds, notLinked]);
+    ...icdsRaw.filter(i => isAISuggested(i) && i.status !== 'Accepted'),
+    ...notLinkedRaw,
+  ].filter(matchesFilters), [icdsRaw, notLinkedRaw, matchesFilters]);
   const overriddenICDs = useMemo(
-    () => [...icdsRaw, ...notLinkedRaw].filter(i => i.dismissReason),
-    [icdsRaw, notLinkedRaw],
+    () => [...icdsRaw, ...notLinkedRaw].filter(i => i.dismissReason).filter(matchesFilters),
+    [icdsRaw, notLinkedRaw, matchesFilters],
   );
   const closedICDs = useMemo(
-    () => [...icdsRaw, ...notLinkedRaw].filter(i => ['Accepted', 'Dismissed'].includes(i.status)),
-    [icdsRaw, notLinkedRaw],
+    () => [...icdsRaw, ...notLinkedRaw]
+      .filter(i => ['Accepted', 'Dismissed'].includes(i.status))
+      .filter(matchesFilters),
+    [icdsRaw, notLinkedRaw, matchesFilters],
   );
 
-  // ── DOS list — for the DosSelector dropdown. Mostly comes from the member's
-  // dos_list field (loaded from Supabase / hcc store). If empty, we fall back
-  // to a single-row stub built from member.dos so the selector still works.
+  // ── DOS list — from the member's dos_list, with a single-row stub fallback.
   const dosList = useMemo(() => {
     if (member?.dos_list?.length) return member.dos_list;
     if (member?.dos) return [{ date: member.dos, status: diagDosStatus }];
     return [];
   }, [member, diagDosStatus]);
 
-  const isSweep = diagDosFilter === 'All DOSs';
-  const currentDos = isSweep ? null : (diagDosFilter || dosList[0]?.date || null);
+  // Enabled DOS dates = all except the ones toggled off. Cards show only
+  // entries whose DOS is enabled.
+  const enabledDates = useMemo(
+    () => dosList.map(d => d.date).filter(date => !disabledDos.has(date)),
+    [dosList, disabledDos],
+  );
+  const currentDos = dosList[0]?.date || null;
 
-  // Lazily seed the assignment engine for this patient — the first time the
-  // DiagPanel opens, every DOS gets a Support assignee + Awaiting status.
-  // Idempotent, so subsequent opens are no-ops.
+  // Reset the per-DOS toggles when the member changes.
+  useEffect(() => { setDisabledDos(new Set()); setDosExpanded(false); }, [memberId]);
+
+  // Lazily seed the assignment engine for this patient — idempotent.
   useEffect(() => {
     if (member?.id) initializeHccPatient(member.id);
   }, [member?.id, initializeHccPatient]);
 
-  // Live engine state for the currently-selected DOS. Used to drive the
-  // status pill below and the assignee badge.
-  const dosStateKey = member && currentDos ? `${member.id}::${currentDos}` : null;
+  // Live engine state for the currently-selected DOS (drives stage pill +
+  // assignee avatar + status menu).
+  const currentDosEntry = currentDos ? dosList.find(d => d.date === currentDos) : null;
+  const dosStateKey = member && currentDos
+    ? dosKey(member.id, currentDos, currentDosEntry?.provider, currentDosEntry?.pos)
+    : null;
   const dosState = dosStateKey ? hccDosAssignments[dosStateKey] : null;
 
-  // Current bucket the DOS sits in — drives both the status pill (right
-  // side of DOS row) and the AssigneeAvatar (left side) so they always
-  // agree on which role is active.
-  const currentBucket = useMemo(
-    () => resolveCurrentAssignee(member, dosState),
-    [member, dosState],
-  );
+  // The role the logged-in user acts as — drives the DOS status pill so a
+  // Coder completes the Coder stage, QA completes the QA stage, etc.
+  const hccUserRole = useAppStore(s => s.hccUserRole);
+  const actingRole = ROLE_KEY_BY_USER[hccUserRole] || 'coder';
+  const actingStatus = useMemo(() => {
+    const rs = dosState?.[actingRole];
+    return rs?.status || diagDosStatus || 'New';
+  }, [dosState, actingRole, diagDosStatus]);
 
-  // Status text shown in the pill. Reads from whichever role currently
-  // owns the DOS so we never display the Coder's old "Completed" state
-  // when the workflow has already advanced to a downstream reviewer.
-  const currentStatus = useMemo(() => {
-    if (!currentBucket) return diagDosStatus || 'New';
-    if (currentBucket.kind === 'billing')    return 'Completed';
-    if (currentBucket.kind === 'unassigned') return 'Awaiting';
-    // kind === 'active' — use the role's live status (or a sensible
-    // default when the engine seeded an assignee without a status yet).
-    return currentBucket.status || 'In Progress';
-  }, [currentBucket, diagDosStatus]);
+  // QA / Compliance can't work a record until Support AND Coder are done —
+  // their status pill and ICD-review actions stay locked until then.
+  const stageLocked = useMemo(() => {
+    if (actingRole !== 'reviewer' && actingRole !== 'reviewer2') return false;
+    const supDone = (dosState?.support?.status || member?.supS) === 'Completed';
+    const cdrDone = (dosState?.coder?.status || member?.cdrS) === 'Completed';
+    return !(supDone && cdrDone);
+  }, [actingRole, dosState, member]);
 
-  // ── Compliance gate (Astrana spec) ─────────────────────────────────
-  // Mark Complete may only fire on Support → Coder when every document
-  // touching this (member, dos) has all 5 compliance checks passed.
-  // We filter the in-flight SFTP batches to just those whose encounters
-  // include this patient + DOS, then ask the engine. When no batches
-  // are tracked for this DOS the gate is a no-op (legacy path preserved).
-  const hccSftpBatches = useAppStore(s => s.hccSftpBatches) || [];
-  const complianceGates = useMemo(() => {
-    if (!member?.id || !currentDos) return undefined;
-    const docsForDos = hccSftpBatches
-      .filter(b => b.compliance && (b.encounters || []).some(e =>
-        e.patient?.matchedMemberId === member.id && e.dos === currentDos
-      ))
-      .map(b => ({ fileName: b.fileName, ocrTier: b.ocrTier, compliance: b.compliance }));
-    if (docsForDos.length === 0) return undefined;
-    const { ok, reason } = canCompleteDos(docsForDos);
-    return ok ? undefined : { Completed: { enabled: false, reason } };
-  }, [member?.id, currentDos, hccSftpBatches]);
-
-  // ── Review-progress stages + ring (drives the With-Coder pill) ──
+  // ── Review-progress stages + ring (drives the stage pill) ──
   const reviewStages = useMemo(
     () => buildReviewStages(member, dosState),
     [member, dosState],
@@ -444,15 +355,27 @@ export function DiagPanel() {
     () => computeReviewProgress(reviewStages),
     [reviewStages],
   );
-  // Pill label adapts to the current active stage so it doesn't read "With
-  // Coder" when the DOS is actually with Support / a Reviewer / Billing.
+  // Pill shows the record's actual current stage — the one right after the
+  // last resolved (done/skipped) stage — so it stays consistent with the
+  // review-progress card even if statuses landed out of order.
   const pillLabel = useMemo(() => {
-    const active = reviewStages.find(s => s.state === 'active');
-    if (active) return `With ${active.label}`;
-    if (reviewStages.every(s => s.state === 'done')) return 'Billing Ready';
-    const firstPending = reviewStages.find(s => s.state === 'pending');
-    return firstPending ? `Awaiting ${firstPending.label}` : 'With Coder';
+    if (!reviewStages.length) return 'Coder';
+    const lastResolved = reviewStages.reduce(
+      (acc, s, i) => (s.state === 'done' || s.state === 'skipped') ? i : acc, -1);
+    if (lastResolved === reviewStages.length - 1) return 'Billing Ready';
+    // Just the stage name — no "Awaiting" prefix.
+    return reviewStages[lastResolved + 1].label;
   }, [reviewStages]);
+
+  // Once Support + Coder are done the SLA window closes → show the verdict
+  // (✓ SLA Met / ✗ SLA Breached) in place of the live "(Due …)" tag.
+  const slaVerdict = useMemo(() => {
+    const supDone = (dosState?.support?.status || member?.supS) === 'Completed';
+    const cdrDone = (dosState?.coder?.status || member?.cdrS) === 'Completed';
+    if (!supDone || !cdrDone) return null;
+    const coderDoneAt = dosState?.coder?.history?.[dosState.coder.history.length - 1]?.at || null;
+    return slaOutcome(member?.date, coderDoneAt);
+  }, [dosState, member]);
 
   // Hover state for the Review Progress popover.
   const pillRef = useRef(null);
@@ -483,29 +406,32 @@ export function DiagPanel() {
   }, []);
 
   // Bridge from the DosStatusMenu's onChange to the right lifecycle
-  // transition for whichever role currently owns the DOS. Some choices
-  // (Record Requested → only Coder; Insufficient / Reject → only Support;
-  // Returned → only reviewers) are role-specific and silently no-op when
-  // the chosen value doesn't apply to the active role.
+  // transition for whichever role currently owns the DOS.
   const handleStatusChange = (next) => {
+    // Completing a record with unactioned rows applies the default
+    // auto-accept to each remaining row first (RA coder workflow plan §B4).
+    if (next === 'Completed') {
+      const unactioned = rowKeys.filter(k => !hccGapDosActions[k]);
+      if (unactioned.length) {
+        unactioned.forEach(k => {
+          const [code, dos] = k.split('|');
+          setHccGapDosAction(code, dos, 'accepted');
+        });
+        showToast(`${unactioned.length} unactioned ICD row${unactioned.length === 1 ? '' : 's'} auto-accepted`);
+      }
+    }
     if (!member || !currentDos) { setDiagDosStatus(next); return; }
-    const role = currentBucket?.kind === 'active' ? currentBucket.role : null;
-    if (!role) { setDiagDosStatus(next); return; }
+    // Act on the logged-in role's stage (not just whoever currently owns the
+    // record) so a later role completing correctly triggers the skip logic.
+    const role = actingRole;
 
-    // Strategy:
-    //  - If the engine has a dedicated AC for this (role, status) combo,
-    //    fire it so the lifecycle event lands in the activity log AND any
-    //    downstream effects (handoff to next role, sampling, etc.) happen.
-    //  - Otherwise fall back to the generic role-status patcher so the
-    //    user's pick is always reflected on the pill (no silent no-op).
     switch (next) {
       case 'Completed':
-        if (role === 'support')      hccCompleteSupport(member.id, currentDos);
-        else if (role === 'coder')   hccCompleteCoder(member.id, currentDos);
-        else if (role === 'r1')      hccCompleteR1(member.id, currentDos);
-        else if (role === 'r2')      hccCompleteR2(member.id, currentDos);
-        else if (role === 'r3')      hccCompleteR3(member.id, currentDos);
-        else                         hccSetRoleStatus(member.id, currentDos, role, 'Completed');
+        if (role === 'support')       hccCompleteSupport(member.id, currentDos);
+        else if (role === 'coder')    hccCompleteCoder(member.id, currentDos);
+        else if (role === 'reviewer') hccCompleteReviewer(member.id, currentDos);
+        else if (role === 'reviewer2')hccCompleteReviewer2(member.id, currentDos);
+        else                          hccSetRoleStatus(member.id, currentDos, role, 'Completed');
         break;
       case 'Record Requested':
         if (role === 'coder')        hccRequestRecords(member.id, currentDos);
@@ -520,9 +446,7 @@ export function DiagPanel() {
         else                         hccSetRoleStatus(member.id, currentDos, role, 'Reject');
         break;
       case 'Returned':
-        // Engine's RETURN_TARGET map only knows r1→coder / r2→r1 / r3→r2;
-        // for support/coder we just record the status string.
-        if (role === 'r1' || role === 'r2' || role === 'r3') {
+        if (role === 'reviewer' || role === 'reviewer2') {
           hccReturnDos(member.id, currentDos, role, 'current-user', `Returned from ${role}`);
         } else {
           hccSetRoleStatus(member.id, currentDos, role, 'Returned');
@@ -532,7 +456,6 @@ export function DiagPanel() {
         if (role === 'support')      hccMarkSupportInProgress(member.id, currentDos, 'current-user');
         else                         hccSetRoleStatus(member.id, currentDos, role, 'In Progress');
         break;
-      // No dedicated AC — generic patch keeps the pill in sync.
       case 'New':
       case 'Awaiting':
       case 'Record Received':
@@ -543,33 +466,178 @@ export function DiagPanel() {
     setDiagDosStatus(next);
   };
 
-  // Snapshot-tile counts — derived from the *raw* (un-snapFiltered) data
-  // so the counts remain stable while the user toggles the snapshot tiles.
-  // 'Open' = anything not Accepted or Dismissed.
-  // Suspect/Recapture buckets the AI-suggested ICDs; everything else falls
-  // into "Other".
-  const snapCounts = useMemo(() => {
-    const all = [...icdsRaw, ...notLinkedRaw].filter(g => !['Accepted', 'Dismissed'].includes(g.status));
-    const suspect = all.filter(g => g.type === 'Suspect').length;
-    const recapture = all.filter(g => g.type === 'Recapture').length;
-    const other = all.length - suspect - recapture;
-    return { open: all.length, suspect, recapture, other };
-  }, [icdsRaw, notLinkedRaw]);
+  // ── Card + suspect data assembly (search + DOS filters applied) ──
+  const q = searchQuery.trim().toLowerCase();
+  const matchQ = (icd) =>
+    !q || icd.code.toLowerCase().includes(q) || (icd.desc || '').toLowerCase().includes(q);
+
+  const sweepByCode = useMemo(() => {
+    const m = new Map();
+    // Only a member's OWN sweep mapping (design reference patients). No
+    // `_default` fallback — otherwise generic dates would shadow the
+    // dos_list-derived rows and break worklist grouping coherence.
+    const own = member?.name ? SWEEP_ICD_DATA[member.name] : null;
+    if (own) own.forEach(s => m.set(s.code, s));
+    return m;
+  }, [member?.name]);
+
+  // Each ICD card lists a row per DOS the code appears on. Grouping mirrors
+  // the worklist: a DOS = one document/encounter (member.dos_list), each
+  // yielding several ICDs. When a member has an explicit sweep mapping
+  // (Annette, design reference) we use it; otherwise we deterministically
+  // spread each ICD across a subset of the record's own DOS dates so the
+  // drawer's grouping always stays coherent with the worklist.
+  const cardIcds = useMemo(() => {
+    const dates = dosList.map(d => d.date).filter(Boolean);
+    return assocICDs
+      .filter(matchQ)
+      .map((icd, idx) => {
+        const sweep = sweepByCode.get(icd.code);
+        let base;
+        if (sweep?.dos_entries?.length) {
+          base = sweep.dos_entries.map(e => ({ dos: e.dos, claimed: !!e.claimed }));
+        } else if (dates.length) {
+          // Chronic conditions (earlier codes) recur across more encounters;
+          // later codes appear on fewer. Deterministic — stable per render.
+          const count = Math.max(1, dates.length - (idx % dates.length));
+          base = dates.slice(0, count).map((d, i) => ({
+            dos: d,
+            claimed: idx === 0 && i === 0,
+            manual: icd.type === 'Manual',
+          }));
+        } else {
+          base = [{ dos: member?.dos || '—', claimed: false, manual: icd.type === 'Manual' }];
+        }
+        const entries = base
+          .filter(e => !disabledDos.has(e.dos))
+          .filter(e => !dosDeleted.includes(`${icd.code}|${e.dos}`));
+        return { ...icd, entries };
+      })
+      .filter(c => c.entries.length > 0);
+  }, [assocICDs, sweepByCode, dosList, disabledDos, dosDeleted, q]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const suspectGroups = useMemo(() => {
+    const m = new Map();
+    for (const icd of allNotAssoc.filter(matchQ)) {
+      const key = icd.hcc || 'HCC Not Linked';
+      if (!m.has(key)) m.set(key, []);
+      m.get(key).push(icd);
+    }
+    return [...m.entries()].map(([hcc, icds]) => ({ hcc, icds }));
+  }, [allNotAssoc, q]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Once a suspect / recapture is acted on (any DOS accepted/rejected/deferred/
+  // missed), it graduates up into "ICDs Associated with" — rendered as a normal
+  // ICD card (with a Suspected/Recaptured badge) whose entries are the acted
+  // DOS. Un-acted suspects stay below in the Suspects & Recaptures section.
+  const suspectIcds = useMemo(() => suspectGroups.flatMap(g => g.icds), [suspectGroups]);
+  const actedSuspects = useMemo(() =>
+    suspectIcds
+      .map(icd => ({ icd, keys: Object.keys(hccGapDosActions).filter(k => k.startsWith(`${icd.code}|`)) }))
+      .filter(x => x.keys.length > 0)
+      .map(({ icd, keys }) => ({ ...icd, entries: keys.map(k => ({ dos: k.split('|')[1] })) })),
+    [suspectIcds, hccGapDosActions]);
+  const pendingSuspects = useMemo(() =>
+    suspectIcds.filter(icd => !Object.keys(hccGapDosActions).some(k => k.startsWith(`${icd.code}|`))),
+    [suspectIcds, hccGapDosActions]);
+
+  // ── Keyboard model — a focus ring walks the flat list of DOS rows;
+  // A/X/M/D act on the focused row, Enter opens the Documents workspace.
+  // Suppressed while typing in any input.
+  const rowKeys = useMemo(
+    () => cardIcds.flatMap(c => c.entries.map(e => `${c.code}|${e.dos}`)),
+    [cardIcds],
+  );
+  const focusKey = rowKeys[Math.min(focusIdx, rowKeys.length - 1)] || null;
+  // The ICD being worked on (owns the focused DOS). The document evidence view
+  // follows this so the highlighted note line tracks the active ICD.
+  const activeIcdCode = focusKey ? focusKey.split('|')[0] : null;
+
+  useEffect(() => {
+    if (focusIdx > 0 && focusIdx >= rowKeys.length) {
+      setFocusIdx(Math.max(0, rowKeys.length - 1));
+    }
+  }, [rowKeys.length, focusIdx]);
+
+  // After acting on a DOS, advance focus to the next un-acted row (searching
+  // forward, wrapping once) — this rolls onto the next ICD when the current
+  // one is fully worked. If nothing is left un-acted, focus stays put.
+  const advanceFocusAfterAction = useCallback((actedKey) => {
+    const actions = useAppStore.getState().hccGapDosActions;
+    const start = rowKeys.indexOf(actedKey);
+    if (start < 0) return;
+    for (let j = 1; j <= rowKeys.length; j++) {
+      const idx = (start + j) % rowKeys.length;
+      const k = rowKeys[idx];
+      if (k !== actedKey && !actions[k]) { setFocusIdx(idx); return; }
+    }
+  }, [rowKeys]);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (!rowKeys.length) return;
+      const key = e.key;
+      if (key === 'ArrowDown') {
+        e.preventDefault();
+        setFocusIdx(i => Math.min(i + 1, rowKeys.length - 1));
+      } else if (key === 'ArrowUp') {
+        e.preventDefault();
+        setFocusIdx(i => Math.max(i - 1, 0));
+      } else if (key === 'Enter') {
+        e.preventDefault();
+        setDiagLeftPanel('documents');
+      } else if (/^[axmd]$/i.test(key)) {
+        const focused = rowKeys[Math.min(focusIdx, rowKeys.length - 1)];
+        if (!focused) return;
+        const k = key.toLowerCase();
+        // Support can't accept/reject ICDs — ignore the A / X shortcuts.
+        if ((k === 'a' || k === 'x') && useAppStore.getState().hccUserRole === 'Support') return;
+        e.preventDefault();
+        const [code, dos] = focused.split('|');
+        if (k === 'x') {
+          // Reject opens the dismiss-reason form for the focused row
+          // (Figma: X → reason picker, not a silent dismiss). Advance happens
+          // on confirm, via the row's onConfirmDismiss.
+          setOpenDismissKey(focused);
+        } else {
+          setHccGapDosAction(code, dos, { a: 'accepted', m: 'missed', d: 'deferred' }[k]);
+          // a/m/d toggle — only advance when the row ended up acted, not undone.
+          if (useAppStore.getState().hccGapDosActions[focused]) advanceFocusAfterAction(focused);
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [rowKeys, focusIdx, setHccGapDosAction, setDiagLeftPanel, advanceFocusAfterAction]);
+
+  // Selecting an ICD card highlights its first DOS automatically.
+  useEffect(() => {
+    if (!diagActivityIcd) return;
+    const idx = rowKeys.findIndex(k => k.startsWith(`${diagActivityIcd}|`));
+    if (idx >= 0) setFocusIdx(idx);
+  }, [diagActivityIcd]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Bulk selection (row checkboxes → bulk Accept / Reject bar) ──
+  const toggleSelected = (key) => setSelectedKeys(prev => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+  const bulkApply = (action) => {
+    selectedKeys.forEach(k => {
+      const [code, dos] = k.split('|');
+      // Skip toggling rows already in the target state.
+      if (hccGapDosActions[k] !== action) setHccGapDosAction(code, dos, action);
+    });
+    const verb = { accepted: 'accepted', rejected: 'rejected', missed: 'marked missed', deferred: 'deferred' }[action] || action;
+    showToast(`${selectedKeys.size} row${selectedKeys.size === 1 ? '' : 's'} ${verb}`);
+    setSelectedKeys(new Set());
+  };
 
   if (!member) return null;
-
-  // Bucket groups by their overall resolution state. A group is "active" if
-  // any ICD in either bucket is still open. "Overridden" surfaces groups that
-  // have at least one dismissed-with-reason row but are no longer active.
-  // "Closed" — everything fully resolved.
-  const all = (g) => [...g.assoc, ...g.unlinked];
-  const isOpen = (i) => !['Dismissed', 'Accepted'].includes(i.status);
-
-  const activeGroups = hccGroups.filter(g => all(g).some(isOpen));
-  const overriddenGroups = hccGroups.filter(g =>
-    all(g).some(i => i.dismissReason) && !activeGroups.some(ag => ag.hcc === g.hcc),
-  );
-  const closedGroups = hccGroups.filter(g => all(g).every(i => !isOpen(i)));
 
   const rafImpact = (Number(member.ri) || 0).toFixed(3);
   const noop = (label) => () => showToast(`${label} — coming soon`);
@@ -581,10 +649,9 @@ export function DiagPanel() {
       className={[styles.panel, diagLeftPanel ? styles.panelExpanded : ''].join(' ')}
       bodyClassName={[styles.body, diagLeftPanel ? styles.bodyExpanded : ''].join(' ')}
       headerStyle={{ display: 'none' }}
+      footer={<ShortcutBar />}
     >
-      {/* ── Row 1: Title + Close — spans the FULL drawer width, above both
-          panes, so the close button stays accessible regardless of which
-          pane is expanded. ── */}
+      {/* ── Row 1: Title + Close — spans the FULL drawer width. ── */}
       <div className={styles.titleRow}>
         <span className={styles.titleText}>Diagnosis Gaps Details</span>
         <ActionButton size="L" tooltip="Close" onClick={closeDiagPanel}>
@@ -592,16 +659,27 @@ export function DiagPanel() {
         </ActionButton>
       </div>
 
-      {/* When expanded, the workspace sits to the RIGHT of the Diagnosis Gaps
-          section (ICD cards on the left, workspace on the right). The content
-          row contains both panes so the title row above can span the full
-          width. */}
       <div className={styles.contentRow}>
+      {/* Workspace (document preview etc.) sits on the LEFT of the ICD
+          listing (Paper 1UD1 / 5IX) — rendered first so it's the left pane. */}
+      {diagLeftPanel === 'newDiagGap' ? (
+        <NewDiagGapPanel
+          onClose={() => setDiagLeftPanel(null)}
+          member={member}
+          excludeCodes={[...icdsRaw, ...notLinkedRaw].map(i => i.code)}
+        />
+      ) : diagLeftPanel && (
+        <LeftWorkspace
+          active={diagLeftPanel}
+          icdScope={diagActivityIcd ? (activeIcdCode ?? diagActivityIcd) : null}
+          onChange={setDiagTab}
+          onClose={() => setDiagLeftPanel(null)}
+          member={member}
+          currentDos={currentDos}
+        />
+      )}
       <div className={diagLeftPanel ? styles.rightPane : styles.rightPaneFull}>
-      {/* ── Row 2: Patient Banner — shared <PatientBanner> from
-          components/. Maps member.* fields onto the component's props so
-          this drawer renders identical chrome to every other patient-scoped
-          drawer (Care Gap, Quick View, etc.). ── */}
+      {/* ── Row 2: Patient Banner (shared component) ── */}
       <PatientBanner
         initials={member.in}
         name={member.name}
@@ -614,87 +692,111 @@ export function DiagPanel() {
         onCall={noop('Call')}
       />
 
-      {/* ── DOS selector + status pill ── */}
+      {/* ── Meta row: Created date + overdue + stage pill | assignee + status ── */}
       <div className={styles.dosRow}>
         <div className={styles.dosRowLeft}>
-          <DosSelector
-            value={diagDosFilter ?? dosList[0]?.date}
-            dosList={dosList}
-            includeAllDOSs={true}
-            onChange={(v) => setDiagDosFilter(v)}
-          />
-          {!isSweep && (
-            <>
-              <span className={styles.dosRowDivider} />
-              {/* "With <Stage>" pill — hover opens the Review Progress
-                   popover; the green ring on the left is a real progress
-                   bar driven by the engine state. */}
-              <span
-                ref={pillRef}
-                className={styles.withCoderPill}
-                onMouseEnter={onPillEnter}
-                onMouseLeave={onPillLeave}
-                tabIndex={0}
-                aria-label={`${pillLabel} — review ${Math.round(reviewProgress * 100)}% complete. Hover for details.`}
-              >
-                <ProgressRing progress={reviewProgress} size={16} stroke={2} />
-                <span>{pillLabel}</span>
-              </span>
-              {pillRect && (
-                <ReviewProgressPopover
-                  anchorRect={pillRect}
-                  stages={reviewStages}
-                  onEnter={cancelClose}
-                  onLeave={requestClose}
-                  onClose={() => setPillRect(null)}
-                />
-              )}
-            </>
+          <span className={styles.createdLabel}>Created :</span>
+          <span className={styles.createdDate}>{member.date || '—'}</span>
+          {slaVerdict ? (
+            <span className={styles.dueTag} style={{ color: slaVerdict.colorVar }}>
+              <Icon name={slaVerdict.icon} size={12} color={slaVerdict.colorVar} /> {slaVerdict.label}
+            </span>
+          ) : member.due && (
+            <span className={styles.dueTag} style={{ color: member.dueCol || 'var(--status-error)' }}>
+              ({member.due})
+            </span>
+          )}
+          <span className={styles.dosRowDivider} />
+          {/* Stage pill — hover opens the Review Progress popover; the ring
+              is a real progress indicator driven by the engine state. */}
+          <span
+            ref={pillRef}
+            className={styles.withCoderPill}
+            onMouseEnter={onPillEnter}
+            onMouseLeave={onPillLeave}
+            tabIndex={0}
+            aria-label={`${pillLabel} — review ${Math.round(reviewProgress * 100)}% complete. Hover for details.`}
+          >
+            <ProgressRing progress={reviewProgress} size={16} stroke={2} />
+            <span>{pillLabel}</span>
+          </span>
+          {pillRect && (
+            <ReviewProgressPopover
+              anchorRect={pillRect}
+              stages={reviewStages}
+              onEnter={cancelClose}
+              onLeave={requestClose}
+              onClose={() => setPillRect(null)}
+            />
           )}
         </div>
         <div className={styles.dosRowRight}>
           <AssigneeAvatar member={member} dosState={dosState} currentDos={currentDos} />
           <span className={styles.dosRowDivider} />
-          {isSweep ? (
-            <span className={styles.sweepBadge}>Sweep Mode</span>
-          ) : (
-            <DosStatusMenu
-              value={currentStatus}
-              onChange={handleStatusChange}
-              gates={complianceGates}
-            />
-          )}
+          <DosStatusMenu
+            value={actingStatus}
+            onChange={handleStatusChange}
+            role={actingRole}
+            disabled={stageLocked}
+            disabledReason="Support and Coder must complete their work first"
+          />
         </div>
       </div>
 
-      {/* ── DOS toolbar — mirrors Figma node 1:41104. Left cluster:
-          Bulk select + HCC/ICD toggle. Right cluster: + ICD, Filter,
-          Documents, Comments, Activity Log, Search, More. ── */}
+      {/* ── Toolbar: bulk | inline search | + ICD, filter, docs, comments,
+          history, more (Paper 1WXT). ── */}
       <div className={styles.toolbar}>
-        <div className={styles.toolbarLeft}>
-          <ActionButton
-            icon="solar:check-square-linear"
-            size="S"
-            tooltip="Bulk Action"
-            onClick={noop('Bulk Action')}
+        <ActionButton
+          icon={bulkMode ? 'custom:bulk-select-close' : 'custom:bulk-select'}
+          size="S"
+          tooltip={bulkMode ? 'Exit bulk select' : 'Bulk select'}
+          className={bulkMode ? styles.toolbarBtnActive : ''}
+          onClick={toggleBulkMode}
+        />
+        <span className={styles.divider} />
+        <div className={styles.toolbarSearch}>
+          <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-300)" />
+          <input
+            type="text"
+            placeholder="Search by code or description"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <span className={styles.divider} />
-          <Toggle items={VIEW_MODES} active={diagViewMode} onChange={setDiagViewMode} size="S" />
+          {searchQuery && (
+            <button
+              type="button"
+              className={styles.searchClear}
+              onClick={() => setSearchQuery('')}
+              aria-label="Clear search"
+            >
+              <Icon name="solar:close-linear" size={13} color="var(--neutral-300)" />
+            </button>
+          )}
         </div>
 
         <div className={styles.toolbarIcons}>
-          <button type="button" className={styles.addIcdBtn} onClick={noop('Add ICD')}>
-            <Icon name="solar:add-circle-linear" size={16} color="var(--primary-300)" />
-            <span>ICD</span>
-          </button>
+          <span className={styles.addIcdWrap}>
+            <button
+              type="button"
+              className={[
+                styles.addIcdBtn,
+                diagLeftPanel === 'newDiagGap' ? styles.addIcdBtnActive : '',
+              ].filter(Boolean).join(' ')}
+              onClick={() => setDiagLeftPanel(diagLeftPanel === 'newDiagGap' ? null : 'newDiagGap')}
+            >
+              <Icon name="solar:add-circle-linear" size={16} color="var(--primary-300)" />
+              <span>ICD</span>
+            </button>
+          </span>
           <span className={styles.divider} />
           <ActionButton
             icon="custom:filter"
             size="S"
             tooltip="Filter"
-            notification
-            count="1"
-            onClick={noop('Filter')}
+            notification={filterCount > 0}
+            count={filterCount > 0 ? String(filterCount) : undefined}
+            className={filterOpen ? styles.activeIcon : ''}
+            onClick={() => setFilterOpen(v => !v)}
           />
           <span className={styles.divider} />
           <ActionButton
@@ -702,9 +804,6 @@ export function DiagPanel() {
             size="S"
             tooltip="Documents"
             count={String(member?.docStatus?.length || member?.ch || 0)}
-            /* Highlight only for the DOS-level Documents panel — an
-               ICD-scoped open (from an ICD card's docs count) must NOT light
-               up this global icon. Same rule as the Activity Log icon. */
             className={diagLeftPanel === 'documents' && !diagActivityIcd ? styles.activeIcon : ''}
             onClick={() => setDiagLeftPanel(diagLeftPanel === 'documents' && !diagActivityIcd ? null : 'documents')}
           />
@@ -722,18 +821,8 @@ export function DiagPanel() {
             icon="solar:history-linear"
             size="S"
             tooltip="Activity Log"
-            /* Only highlight for the DOS-level log — an ICD-scoped activity
-               log (opened from an ICD code) must NOT light up this global
-               icon. */
             className={diagLeftPanel === 'activity' && !diagActivityIcd ? styles.activeIcon : ''}
             onClick={() => setDiagLeftPanel(diagLeftPanel === 'activity' && !diagActivityIcd ? null : 'activity')}
-          />
-          <span className={styles.divider} />
-          <ActionButton
-            icon="solar:magnifer-linear"
-            size="S"
-            tooltip="Search"
-            onClick={() => setSearchOpen(o => !o)}
           />
           <span className={styles.divider} />
           <ActionButton
@@ -745,192 +834,167 @@ export function DiagPanel() {
         </div>
       </div>
 
-      {/* ── Patient Summary tiles ── */}
-      {!isSweep && (
-        <SnapshotTiles
-          counts={snapCounts}
-          filter={diagSnapFilter}
-          onFilter={setDiagSnapFilter}
-          open={diagSnapOpen}
-          onToggle={setDiagSnapOpen}
+      {filterOpen && (
+        <DiagPanelFilterBar
+          filters={filters}
+          icds={[...icdsRaw, ...notLinkedRaw]}
+          member={member}
+          onChange={setFilters}
+          onClearAll={() => setFilters(EMPTY_FILTERS)}
         />
       )}
 
-      {/* ── Search bar (shown when search icon toggled) ── */}
-      {searchOpen && (
-        <div className={styles.searchBar}>
-          <div className={styles.searchInput}>
-            <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
-            <input
-              autoFocus
-              type="text"
-              placeholder="Search by code or description"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <button
-              type="button"
-              className={styles.searchClose}
-              onClick={() => { setSearchOpen(false); setSearchQuery(''); }}
-              aria-label="Close search"
-            >
-              <Icon name="solar:close-linear" size={14} color="var(--neutral-300)" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Body: Sweep / ICD mode / HCC mode ────────────────────────────
-          ICD mode is the default and matches the prototype's 4-section
-          layout (Associated / Not Associated / Overridden / Closed). HCC
-          mode shows the grouped cards. Sweep mode renders SweepList. */}
+      {/* ── Body: ICD-first cards + HCC suspect groups + collapsed history ── */}
       <div className={styles.cardsList}>
-        {isSweep ? (
-          <SweepList memberName={member.name} dosList={dosList} />
-        ) : diagViewMode === 'ICD' ? (
-          <IcdSections
-            assocICDs={assocICDs}
-            allNotAssoc={allNotAssoc}
-            overriddenICDs={overriddenICDs}
-            closedICDs={closedICDs}
-          />
-        ) : (
-          <>
-            {activeGroups.length === 0 && notLinked.length === 0 && (
-              <div className={styles.empty}>
-                <Icon name="solar:file-text-linear" size={32} color="var(--neutral-200)" />
-                <p>No HCC codes recorded yet for this member.</p>
-              </div>
-            )}
-            {activeGroups.map(g => (
-              <HccCard
-                key={g.hcc}
-                hccTitle={g.hcc}
-                assoc={g.assoc}
-                unlinked={g.unlinked}
-              />
-            ))}
-          </>
+        {/* Section header — the DOS badge expands an inline per-DOS panel
+            with toggles (Paper 1ZV3). Toggling a DOS off hides its rows. */}
+        <div className={styles.assocHeader}>
+          <span className={styles.assocTitle}>ICDs Associated with</span>
+          <button
+            type="button"
+            className={styles.dosBadge}
+            onClick={() => setDosExpanded(o => !o)}
+            aria-expanded={dosExpanded}
+          >
+            {enabledDates.length}/{dosList.length} DOSs
+            <Icon name={dosExpanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--primary-300)" />
+          </button>
+        </div>
+
+        {dosExpanded && dosList.length > 0 && (
+          <div className={styles.dosPanel}>
+            {dosList.map(d => {
+              const enabled = !disabledDos.has(d.date);
+              const provider = d.provider || member.rp || '—';
+              const pos = d.pos || d.posDesc || member.pos || member.posDesc || '—';
+              const vt = d.vt || member.vt || 'HCC';
+              return (
+                <div key={d.date} className={styles.dosPanelRow}>
+                  <div className={styles.dosPanelInfo}>
+                    <div className={styles.dosPanelDate}>{d.date}</div>
+                    <div className={styles.dosPanelMeta}>
+                      Rendering Provider: {provider} <span className={styles.dosPanelSep}>•</span> POS: {pos} <span className={styles.dosPanelSep}>•</span> Visit Type: {vt}
+                    </div>
+                  </div>
+                  <Switch
+                    checked={enabled}
+                    ariaLabel={`Toggle DOS ${d.date}`}
+                    onChange={() => setDisabledDos(prev => {
+                      const next = new Set(prev);
+                      if (next.has(d.date)) next.delete(d.date); else next.add(d.date);
+                      return next;
+                    })}
+                  />
+                </div>
+              );
+            })}
+          </div>
         )}
+
+        {/* Bulk-action bar has moved to the drawer footer (see BulkActionFooter
+            in the header slot swap above) so it stays pinned at the bottom
+            regardless of scroll position. */}
+
+        <div className={styles.cardsFlow}>
+          {cardIcds.length === 0 && actedSuspects.length === 0 && pendingSuspects.length === 0 && (
+            <div className={styles.empty}>
+              <Icon name="solar:file-text-linear" size={32} color="var(--neutral-200)" />
+              <p>No diagnosis gaps {q ? 'match your search' : 'recorded yet for this member'}.</p>
+            </div>
+          )}
+          {cardIcds.map((icd, i) => (
+            <IcdDosCard
+              key={`card-${icd.code}-${i}`}
+              icd={icd}
+              focusKey={focusKey}
+              selectedKeys={selectedKeys}
+              onToggleSelect={bulkMode ? toggleSelected : null}
+              openDismissKey={openDismissKey}
+              onOpenDismiss={setOpenDismissKey}
+              onActed={advanceFocusAfterAction}
+              reviewLocked={stageLocked}
+            />
+          ))}
+          {/* Acted suspects graduate into the associated list as normal cards. */}
+          {actedSuspects.map((icd, i) => (
+            <IcdDosCard
+              key={`acted-suspect-${icd.code}-${i}`}
+              icd={icd}
+              focusKey={focusKey}
+              selectedKeys={selectedKeys}
+              onToggleSelect={bulkMode ? toggleSelected : null}
+              openDismissKey={openDismissKey}
+              onOpenDismiss={setOpenDismissKey}
+              onActed={advanceFocusAfterAction}
+              reviewLocked={stageLocked}
+            />
+          ))}
+
+          {pendingSuspects.length > 0 && (
+            <div className={styles.assocHeader}>
+              <span className={styles.assocTitle}>Suspects and Recaptures</span>
+            </div>
+          )}
+          {pendingSuspects.map((icd, i) => (
+            <SuspectCard
+              key={`suspect-${icd.code}-${i}`}
+              icd={icd}
+              dosList={dosList}
+              member={member}
+            />
+          ))}
+        </div>
+
+        {/* Overridden ICDs + Closed ICDs sections removed per request — code
+            kept commented out rather than deleted.
+        <div className={styles.icdSections}>
+          <IcdSection
+            title="Overridden ICDs"
+            count={overriddenICDs.length}
+            open={overriddenOpen}
+            onToggle={() => setOverriddenOpen(o => !o)}
+          >
+            {overriddenICDs.length === 0
+              ? <SectionEmpty label="No overridden ICDs" />
+              : overriddenICDs.map((icd, i) => <IcdRow key={`o-${icd.code}-${i}`} icd={icd} />)
+            }
+          </IcdSection>
+          <IcdSection
+            title="Closed ICDs"
+            count={closedICDs.length}
+            open={closedOpen}
+            onToggle={() => setClosedOpen(o => !o)}
+          >
+            {closedICDs.length === 0
+              ? <SectionEmpty label="No closed ICDs" />
+              : closedICDs.map((icd, i) => <IcdRow key={`c-${icd.code}-${i}`} icd={icd} />)
+            }
+          </IcdSection>
+        </div>
+        */}
       </div>
       </div>{/* ── /rightPane ── */}
-
-      {diagLeftPanel && (
-        <LeftWorkspace
-          active={diagLeftPanel}
-          icdScope={diagActivityIcd}
-          onChange={setDiagTab}
-          onClose={() => setDiagLeftPanel(null)}
-          member={member}
-          currentDos={currentDos}
+      </div>{/* ── /contentRow ── */}
+      {/* Shared floating BulkBar — same component the worklist table uses, so
+          the animation, styling and interaction match app-wide. Rendered
+          inside the Drawer so it disappears with the panel; the bar itself
+          is position: fixed and slides up from the viewport bottom. */}
+      {bulkMode && (
+        <BulkBar
+          className={styles.bulkBarInDrawer}
+          selectedIds={[...selectedKeys]}
+          onClear={() => setSelectedKeys(new Set())}
+          actions={[
+            { label: 'Accept', icon: 'solar:check-read-linear', variant: 'primary',   onClick: () => bulkApply('accepted') },
+            { label: 'Reject', icon: 'solar:close-circle-linear', variant: 'secondary', onClick: () => bulkApply('rejected') },
+          ]}
+          moreActions={[
+            { label: 'Missed Opportunity', icon: 'solar:flag-linear',  onClick: () => bulkApply('missed') },
+            { label: 'Defer',              icon: 'solar:alarm-linear', onClick: () => bulkApply('deferred') },
+          ]}
         />
       )}
-      </div>{/* ── /contentRow ── */}
     </Drawer>
-  );
-}
-
-// ── SweepList — deduplicated ICD list across all DOSes. Phase 2d. ────────
-function SweepList({ memberName, dosList }) {
-  const acceptHccGap = useAppStore(s => s.acceptHccGap);
-  const dismissHccGap = useAppStore(s => s.dismissHccGap);
-  const sweepIcds = useMemo(() => getSweepIcdsForMember(memberName), [memberName]);
-
-  return (
-    <div className={styles.sweepWrap}>
-      <div className={styles.sweepBanner}>
-        <Icon name="solar:info-circle-linear" size={12} color="var(--status-warning)" />
-        <span>Deduplicated across all DOSs — showing most recent DOS per ICD.</span>
-      </div>
-      <div className={styles.sweepHeaderRow}>
-        <div className={styles.sweepHeaderCode}>Code</div>
-        <div className={styles.sweepHeaderDesc}>Description + DOS(s)</div>
-        <div className={styles.sweepHeaderActions}>Actions</div>
-      </div>
-      <div className={styles.sweepList}>
-        {sweepIcds.map((icd) => (
-          <SweepIcdRow
-            key={icd.code}
-            icd={icd}
-            dosList={dosList}
-            onAccept={acceptHccGap}
-            onDismiss={dismissHccGap}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── IcdSections — "View by: ICD" mode (default). Mirrors the prototype's
-// 4-section structure (lines 3106–3217):
-//   1. Associated with DOS (N)
-//   2. Not Associated with DOS (N) — with "✦ Unity Suggested" badge
-//   3. Overridden ICDs (N)
-//   4. Closed ICDs (N)
-// Each section is collapsible; the first two open by default.
-function IcdSections({ assocICDs, allNotAssoc, overriddenICDs, closedICDs }) {
-  const [assocOpen, setAssocOpen] = useState(true);
-  const [notAssocOpen, setNotAssocOpen] = useState(true);
-  const [overriddenOpen, setOverriddenOpen] = useState(false);
-  const [closedOpen, setClosedOpen] = useState(false);
-
-  return (
-    <div className={styles.icdSections}>
-      <IcdSection
-        title="Associated with DOS"
-        count={assocICDs.length}
-        open={assocOpen}
-        onToggle={() => setAssocOpen(o => !o)}
-      >
-        {assocICDs.length === 0
-          ? <SectionEmpty label="No associated ICDs" />
-          : assocICDs.map((icd, i) => <IcdRow key={`a-${icd.code}-${i}`} icd={icd} />)
-        }
-      </IcdSection>
-
-      <IcdSection
-        title="Not Associated with DOS"
-        count={allNotAssoc.length}
-        open={notAssocOpen}
-        onToggle={() => setNotAssocOpen(o => !o)}
-        badge={(
-          <span className={styles.unitySuggestedBadge}>
-            <Icon name="solar:star-bold" size={9} color="var(--primary-300)" />
-            <span>Unity Suggested</span>
-          </span>
-        )}
-      >
-        {allNotAssoc.length === 0
-          ? <SectionEmpty label="No unlinked ICDs" />
-          : allNotAssoc.map((icd, i) => <IcdRow key={`u-${icd.code}-${i}`} icd={icd} />)
-        }
-      </IcdSection>
-
-      <IcdSection
-        title="Overridden ICDs"
-        count={overriddenICDs.length}
-        open={overriddenOpen}
-        onToggle={() => setOverriddenOpen(o => !o)}
-      >
-        {overriddenICDs.length === 0
-          ? <SectionEmpty label="No overridden ICDs" />
-          : overriddenICDs.map((icd, i) => <IcdRow key={`o-${icd.code}-${i}`} icd={icd} />)
-        }
-      </IcdSection>
-
-      <IcdSection
-        title="Closed ICDs"
-        count={closedICDs.length}
-        open={closedOpen}
-        onToggle={() => setClosedOpen(o => !o)}
-      >
-        {closedICDs.length === 0
-          ? <SectionEmpty label="No closed ICDs" />
-          : closedICDs.map((icd, i) => <IcdRow key={`c-${icd.code}-${i}`} icd={icd} />)
-        }
-      </IcdSection>
-    </div>
   );
 }
 

@@ -22,7 +22,7 @@ import styles from './BulkBar.module.css';
  * omitted, BulkBar renders the default worklist actions, preserving
  * backward compatibility for every existing caller.
  */
-export function BulkBar({ selectedIds: selectedIdsProp, onClear, onChangeAssignee, actions } = {}) {
+export function BulkBar({ selectedIds: selectedIdsProp, onClear, onChangeAssignee, actions, moreActions, className } = {}) {
   const storeSelectedIds = useAppStore(s => s.selectedIds);
   const storeClearSelected = useAppStore(s => s.clearSelected);
   const setShowInvokeModal = useAppStore(s => s.setShowInvokeModal);
@@ -57,7 +57,7 @@ export function BulkBar({ selectedIds: selectedIdsProp, onClear, onChangeAssigne
   if (!visible) return null;
 
   return (
-    <div className={styles.bulkBar}>
+    <div className={[styles.bulkBar, className || ''].filter(Boolean).join(' ')}>
       <div className={styles.count}>
         <Checkbox
           checked={selectedIds.length > 0}
@@ -68,18 +68,49 @@ export function BulkBar({ selectedIds: selectedIdsProp, onClear, onChangeAssigne
       </div>
       <div className={styles.divider} />
       {actions && actions.length > 0 ? (
-        actions.map((a, i) => (
-          <Button
-            key={a.label || i}
-            variant={a.variant || 'secondary'}
-            size="S"
-            leadingIcon={a.icon}
-            disabled={a.disabled}
-            onClick={() => a.onClick?.(selectedIds)}
-          >
-            {a.label}
-          </Button>
-        ))
+        <>
+          {actions.map((a, i) => (
+            <Button
+              key={a.label || i}
+              variant={a.variant || 'secondary'}
+              size="S"
+              leadingIcon={a.icon}
+              disabled={a.disabled}
+              onClick={() => a.onClick?.(selectedIds)}
+            >
+              {a.label}
+            </Button>
+          ))}
+          {/* Optional overflow menu for less-common actions (e.g. Missed
+              Opportunity, Defer). Only renders when the caller passed a
+              non-empty moreActions[]. Reuses the same dropdown chrome the
+              default cluster below uses. */}
+          {moreActions && moreActions.length > 0 && (
+            <div className={styles.moreWrap} ref={moreRef}>
+              <ActionButton
+                icon="solar:menu-dots-linear"
+                size="L"
+                tooltip="More actions"
+                onClick={(e) => { e.stopPropagation(); setShowMore(v => !v); }}
+              />
+              {showMore && (
+                <div className={styles.moreDropdown}>
+                  <div className={styles.moreTitle}>More Actions</div>
+                  {moreActions.map((item, i) => (
+                    <button
+                      key={item.label || i}
+                      className={[styles.moreItem, item.variant === 'destructive' ? styles.danger : ''].filter(Boolean).join(' ')}
+                      onClick={() => { setShowMore(false); item.onClick?.(selectedIds); }}
+                    >
+                      {item.icon && <Icon name={item.icon} size={16} color="var(--neutral-400)" />}
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </>
       ) : (
         <>
           <Button

@@ -6,75 +6,62 @@
 // member not in the map.
 
 export const SWEEP_ICD_DATA = {
+  // Annette Brave — the design reference patient (Paper 1WXT / 17R). Every
+  // dos_entries date is one of her worklist DOS dates (03/04/2026,
+  // 03/31/2026, 06/11/2025) so the drawer's ICD→DOS grouping mirrors the
+  // worklist record. HCCs are V28.
   'Annette Brave': [
     {
       code: 'E11.22',
-      desc: 'Type 2 diabetes with diabetic chronic kidney disease',
-      hcc: 'HCC 18 - Diabetes w/ Complications',
-      type: 'Suspect',
-      dos_entries: [
-        { dos: '03/04/2025', status: 'New',      raf: 0.302, claimed: false },
-        { dos: '11/10/2024', status: 'Accepted', raf: 0.302, claimed: true  },
-        { dos: '03/10/2024', status: 'Accepted', raf: 0.302, claimed: true  },
-      ],
-      docs: 3, cmts: 2, notes: 0, last: '03/04/2025', by: 'A. Beauchamp (Support Team)',
-    },
-    {
-      code: 'E11.21',
-      desc: 'Type 2 diabetes with diabetic nephropathy',
-      hcc: 'HCC 18 - Diabetes w/ Complications',
-      type: null,
-      dos_entries: [{ dos: '03/04/2025', status: 'Accepted', raf: 0.302, claimed: false }],
-      docs: 1, cmts: 0, notes: 1, last: '03/04/2025', by: 'Deborah Hintz (Coder)',
-    },
-    {
-      code: 'E44.0',
-      desc: 'Moderate protein-calorie malnutrition',
-      hcc: 'HCC 18 - Diabetes w/ Complications',
+      desc: 'Type 2 diabetes mellitus with diabetic chronic kidney disease',
+      hcc: 'HCC 37 - Diabetes with Chronic Complications',
       type: null,
       dos_entries: [
-        { dos: '03/04/2025', status: 'New', raf: 0.201, claimed: false },
-        { dos: '11/10/2024', status: 'New', raf: 0.201, claimed: false },
+        { dos: '03/04/2026', status: 'Accepted', raf: 0.302, claimed: true  },
+        { dos: '03/31/2026', status: 'New',      raf: 0.302, claimed: false },
       ],
-      docs: 1, cmts: 0, notes: 0, last: '03/04/2025', by: 'Dr Aldo Richman (Physician)',
+      docs: 3, cmts: 3, notes: 0, last: '06/27/2025', by: 'Dr. Benjamin Cummings (Physician)',
+    },
+    {
+      code: 'F32.1',
+      desc: 'Major depressive disorder, single episode, moderate',
+      hcc: 'HCC 155 - Major Depressive Disorder, Moderate',
+      type: null,
+      dos_entries: [
+        { dos: '03/04/2026', status: 'New', raf: 0.309, claimed: false },
+        { dos: '03/31/2026', status: 'New', raf: 0.309, claimed: false },
+        { dos: '06/11/2025', status: 'New', raf: 0.309, claimed: false },
+      ],
+      docs: 3, cmts: 3, notes: 0, last: '06/27/2025', by: 'Dr. Benjamin Cummings (Physician)',
+    },
+    {
+      code: 'I50.43',
+      desc: 'Acute on chronic combined systolic and diastolic heart failure',
+      hcc: 'HCC 224 - Acute on Chronic Heart Failure',
+      type: null,
+      dos_entries: [
+        { dos: '03/31/2026', status: 'New', raf: 0.368, claimed: false },
+        { dos: '06/11/2025', status: 'New', raf: 0.368, claimed: false },
+      ],
+      docs: 3, cmts: 3, notes: 0, last: '06/27/2025', by: 'Dr. Benjamin Cummings (Physician)',
     },
     {
       code: 'E41.0',
       desc: 'Nutritional marasmus',
       hcc: 'HCC Not Linked',
-      type: null,
-      dismissReason: 'Not clinically supported',
-      dos_entries: [{ dos: '03/04/2025', status: 'Dismissed', raf: 0.081, claimed: false }],
-      docs: 1, cmts: 3, notes: 1, last: '03/04/2025', by: 'Deborah Hintz (Coder)',
-    },
-    {
-      code: 'E11.51',
-      desc: 'Type 2 diabetes mellitus with diabetic peripheral angiopathy without gangrene',
-      hcc: 'HCC 18 - Diabetes w/ Complications',
       type: 'Manual',
-      dos_entries: [{ dos: '03/04/2025', status: 'New', raf: 0.118, claimed: false }],
-      docs: 1, cmts: 0, notes: 1, last: '03/04/2025', by: 'Dr Aldo Richman (Physician)',
-    },
-    {
-      code: 'E11.65',
-      desc: 'Type 2 diabetes mellitus with hyperglycemia',
-      hcc: 'HCC 18 - Diabetes w/ Complications',
-      type: 'Suspect',
-      // `trumpedBy` means: another ICD already captures this HCC, so this row
-      // is shown read-only with an "Overridden by …" banner.
-      trumpedBy: 'E11.22',
-      dos_entries: [{ dos: '03/04/2025', status: 'Accepted', raf: 0.000, claimed: true }],
-      docs: 0, cmts: 0, notes: 0, last: '03/04/2025', by: 'System',
+      dos_entries: [{ dos: '06/11/2025', status: 'New', raf: 0.000, claimed: false }],
+      docs: 3, cmts: 3, notes: 0, last: '06/11/2025', by: 'Deborah Hintz (Coder)',
     },
   ],
   _default: [
     {
       code: 'E11.22',
-      desc: 'Type 2 diabetes with diabetic chronic kidney disease',
-      hcc: 'HCC 18 - Diabetes w/ Complications',
+      desc: 'Type 2 diabetes mellitus with diabetic chronic kidney disease',
+      hcc: 'HCC 37 - Diabetes with Chronic Complications',
       type: 'Suspect',
-      dos_entries: [{ dos: '03/04/2025', status: 'New', raf: 0.302, claimed: false }],
-      docs: 2, cmts: 1, notes: 0, last: '03/04/2025', by: 'System',
+      dos_entries: [{ dos: '03/04/2026', status: 'New', raf: 0.302, claimed: false }],
+      docs: 2, cmts: 1, notes: 0, last: '06/27/2025', by: 'System',
     },
   ],
 };

@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS care_teams (
   id TEXT PRIMARY KEY,                       -- client-generated ('seed-rt1', 'team-…')
   name TEXT NOT NULL,
   kind TEXT NOT NULL DEFAULT 'hcc',          -- 'hcc' | 'care-program' | 'hedis'
-  team_type TEXT,                            -- 'Reviewer 1' | 'Coder' | 'SNP' | 'Assignee' | …
+  team_type TEXT,                            -- 'QA' | 'Coder' | 'SNP' | 'Assignee' | …
   allocated_tins JSONB NOT NULL DEFAULT '[]',
   created_label TEXT,                        -- display date 'MM/DD/YYYY'
   created_by TEXT,
@@ -30,8 +30,8 @@ CREATE INDEX IF NOT EXISTS idx_care_teams_created ON care_teams (created_at DESC
 -- ON CONFLICT DO NOTHING so re-running never clobbers later edits.
 INSERT INTO care_teams (id, name, kind, team_type, allocated_tins, created_label, created_by, modified_label, modified_by, members)
 VALUES
-  ('seed-rt1', 'Reviewer 1 Team', 'hcc', 'Reviewer 1', '["12-3456789"]', '02/21/2026', 'Dina Morries', '08/30/2024', 'Richard Willson',
-   '[{"userId":"MA","name":"M. Almeda","initials":"MA","roles":"Reviewer 1","capacityPct":50,"assignTo":[{"dim":"Coder","value":"DH","pct":50}]}]'),
+  ('seed-rt1', 'QA Team', 'hcc', 'QA', '["12-3456789"]', '02/21/2026', 'Dina Morries', '08/30/2024', 'Richard Willson',
+   '[{"userId":"MA","name":"M. Almeda","initials":"MA","roles":"QA","capacityPct":50,"assignTo":[{"dim":"Coder","value":"DH","pct":50}]}]'),
   ('seed-rt2', 'Coder Team', 'hcc', 'Coder', '["12-3456789","98-7654321"]', '02/21/2026', 'Dina Morries', '08/30/2024', 'Richard Willson',
    '[{"userId":"DH","name":"Deborah Hintz","initials":"DH","roles":"Coder","capacityPct":60,"assignTo":[{"dim":"TIN","value":"12-3456789","pct":60}]},{"userId":"PP","name":"P. Plourde","initials":"PP","roles":"Coder","capacityPct":40,"assignTo":[{"dim":"TIN","value":"98-7654321","pct":30}]}]'),
   ('seed-rt3', 'SNP Team', 'care-program', 'SNP', '[]', '02/21/2026', 'Dina Morries', '08/30/2024', 'Richard Willson',

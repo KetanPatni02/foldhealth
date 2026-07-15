@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
+import { Checkbox } from '../../components/ui/checkbox';
 import { MORE_FILTER_ITEMS } from './filters';
 import styles from './MoreFiltersPopover.module.css';
 
@@ -89,15 +90,16 @@ export function MoreFiltersPopover({ anchorRect, visibleKeys, onToggle, onClear,
 
 function Row({ item, checked, onToggle }) {
   return (
-    <button
-      type="button"
+    <div
+      role="checkbox"
+      aria-checked={checked}
+      tabIndex={0}
       className={styles.row}
       onClick={() => onToggle?.(item.k)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle?.(item.k); } }}
     >
-      <span className={[styles.box, checked ? styles.boxChecked : ''].join(' ')}>
-        {checked && <Icon name="solar:check-read-linear" size={10} color="var(--neutral-0)" />}
-      </span>
+      <Checkbox checked={checked} tabIndex={-1} aria-hidden className="pointer-events-none" />
       <span className={styles.label}>{item.label}</span>
-    </button>
+    </div>
   );
 }

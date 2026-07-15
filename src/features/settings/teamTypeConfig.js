@@ -1,24 +1,25 @@
 // Single source of truth for the ConfigureTeamDrawer's team-type and
 // Assign-To dropdowns. The mapping mirrors the Phase 2 Auto-Assignment
-// spec (Risk Adjustment / Coder Workflow) — Coder → R1 (TIN fallback),
-// R1 → R2 (vendor fallback), Coder pool routed by TIN + vendor.
+// spec (Risk Adjustment / Coder Workflow) — Coder → Reviewer (TIN fallback),
+// Reviewer → Reviewer 2 (vendor fallback), Coder pool routed by TIN + vendor.
+// "Reviewer 3" does not exist — Reviewer 2 is the terminal review stage.
 import { ASTRANA_STAFF, staffForRole, ROLE_LABEL } from '../hcc/assignment/astranaStaff';
 
 // Team Type options per Care Team kind. Keep entries in display order.
 export const TEAM_TYPE_OPTIONS = {
-  hcc: ['Coder', 'Reviewer 1', 'Reviewer 2', 'Reviewer 3'],
+  hcc: ['Coder', 'QA', 'Compliance'],
   'care-program': ['SNP', 'AWV', 'CCM', 'TCM', 'ECM', 'CBP', 'MRP'],
   hedis: ['Assignee'],
 };
 
 // Which dimensions an admin can route patients/gaps from for a given team
-// type. For HCC: Coder is fed by TIN/Vendor; R1 by Coder/TIN; R2/R3 walk
-// the chain upward. Care Program / HEDIS teams route by TIN or Vendor.
+// type. For HCC: Coder is fed by TIN/Vendor; Reviewer by Coder/TIN;
+// Reviewer 2 walks the chain upward. Care Program / HEDIS teams route by
+// TIN or Vendor.
 export const ASSIGN_TO_DIMENSIONS = {
   Coder:        ['TIN', 'Vendor'],
-  'Reviewer 1': ['Coder', 'TIN'],
-  'Reviewer 2': ['Reviewer 1', 'Vendor'],
-  'Reviewer 3': ['Reviewer 2'],
+  'QA':         ['Coder', 'TIN'],
+  'Compliance': ['QA', 'Vendor'],
   SNP:          ['TIN'],
   AWV:          ['TIN'],
   CCM:          ['TIN'],
@@ -86,10 +87,9 @@ export function valueOptionsForDimension(dim) {
     return VENDORS.map(v => ({ value: v, label: v, kind: 'vendor' }));
   }
   const roleKey =
-    dim === 'Coder'      ? 'coder' :
-    dim === 'Reviewer 1' ? 'r1'    :
-    dim === 'Reviewer 2' ? 'r2'    :
-    dim === 'Reviewer 3' ? 'r3'    : null;
+    dim === 'Coder'      ? 'coder'     :
+    dim === 'QA'         ? 'reviewer'  :
+    dim === 'Compliance' ? 'reviewer2' : null;
   if (!roleKey) return [];
   return staffForRole(roleKey).map(s => ({
     value:    s.id,

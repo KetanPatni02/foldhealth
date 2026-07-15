@@ -31,7 +31,100 @@ The default view showing all Transitional Care patients. Patients are displayed 
 
 ### HCC Worklist
 
-A 23-column table for Hierarchical Condition Category coding review. Includes RAF scores, risk levels, diagnosis gaps, and a DiagPanel side-car drawer for detailed ICD code review.
+The member-level queue for **risk-adjustment (HCC) coding** — how Medicare
+Advantage plans get paid for the acuity of their patients. Each ICD-10 diagnosis
+maps to a Hierarchical Condition Category (current model **V28**) carrying a
+**RAF weight** (Risk Adjustment Factor); the worklist is where coders confirm
+which diagnoses are supported by the chart and move each record toward the
+**ASM** output file handed to Astrana.
+
+Two rules drive the work: every chronic condition must be **re-documented each
+calendar year** against a claimable DOS (Date of Service) or the plan loses that
+HCC's revenue (a **recapture gap**), and a diagnosis only counts if the note
+shows **MEAT** evidence — the provider **M**onitored, **E**valuated,
+**A**ssessed, or **T**reated it.
+
+#### Columns
+
+Each row is a member; the table surfaces both risk signals and pipeline state:
+
+| Column | Description |
+| --- | --- |
+| Members | Name, gender, age, member ID |
+| RAF | Current RAF score with a green uplift chip showing the potential gain if open gaps close |
+| Risk | Risk level derived from the RAF score |
+| Open ICDs | Count of diagnosis gaps still awaiting a decision |
+| DOS | The dated encounters attached to the member (expand to see each) |
+| Created Date | When the record entered the queue |
+| Due Date | Coding deadline, with an overdue chip when past |
+| `sup` / `cdr` / `r1` / `r2` | Per-role pipeline columns (Support, Coder, Reviewer 1, Reviewer 2/QA) with a status twin showing each stage's state |
+| Assignee | The current stage owner, with a reassign dropdown |
+| Actions | Open the Diagnosis Gaps panel, upload a document, Add DOS, preview a claim |
+
+#### The review workflow
+
+Every DOS flows through a staged human pipeline before its diagnoses reach the
+ASM file. The `sup / cdr / r1 / r2` columns mirror each stage's progress on the
+row.
+
+<Steps>
+  <Step title="Support Team — chart chasing">
+    Collects documents (upload, SFTP, EHR), runs OCR, fixes patient matching,
+    and Pass/Fail-reviews each attached document. **Hard sequencing gate:** a
+    Coder cannot begin a record until Support has cleared its document — the row
+    is visibly blocked. Lab/imaging documents don't create rows or count toward
+    a coder's denominator.
+  </Step>
+  <Step title="Coder — the primary reviewer">
+    Opens the **Diagnosis Gaps** side-car drawer from the row and reviews each
+    ICD × DOS: **Accept** (MEAT-supported → goes on the claim), **Reject**
+    (unsupported), **Missed opportunity** (condition exists but this DOS can't
+    support it → flagged for provider education), or **Defer**. Suspects &
+    recaptures use **Missed / Dismiss** instead. Coders can Add ICD codes the
+    pipeline missed via live ICD-11 lookup, and use **Sweep Mode** to clear a
+    code across all of a member's DOSs at once.
+  </Step>
+  <Step title="QA (Reviewer 2) — sampling review">
+    Reviews a configured **sampling percentage** of completed records. Returning
+    a record with a reason sets its status to **Rebuttal** and routes it back to
+    the Coder without losing prior work.
+  </Step>
+  <Step title="Compliance (Reviewer 3) — random pull">
+    A random pull that explicitly includes records QA's sampling skipped.
+    View-only while a downstream stage is still in progress.
+  </Step>
+  <Step title="ASM generation">
+    Once the pipeline completes, the progress popover's final action reads
+    **Ready for ASM generation** — the file produced for Astrana.
+  </Step>
+</Steps>
+
+A **Manager** persona handles assignment: per-role Assign links on rows, bulk
+Change-Assignee (skips rows already Completed for that role), and manual
+role-skip overrides.
+
+#### Statuses
+
+DOS-level status moves through **New → In Progress → Completed**, plus
+**Return, Reject, Records Requested,** and **Insufficient**.
+
+<Note>
+The user-facing status **Rebuttal** replaces the internal "Returned" everywhere.
+The worklist's default sort is **Created Date, descending** — the **Due Date**
+chip in the header is a *filter*, not the sort, which is a common point of
+confusion.
+</Note>
+
+#### Intake — Add DOS, Upload & OCR
+
+New encounters enter through document intake. **Add DOS** uploads a chart →
+OCR extraction runs automatically → confidence gauges per field → a Ready /
+Not Ready badge driven by completeness → the encounter is created (a calendar
+picker sets the DOS; searchable Rendering Provider and Place of Service fields
+auto-fill; an orange **M** chip marks any manually set or overridden field).
+Batch intake comes through the **SFTP review** drawer, and a nightly job
+auto-adds records when all required fields extract cleanly. Extraction failures
+surface immediately — never silently dropped.
 
 ### All Patients
 

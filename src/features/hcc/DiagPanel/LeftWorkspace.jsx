@@ -3,36 +3,39 @@ import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Button } from '../../../components/Button/Button';
-import { Avatar } from '../../../components/Avatar/Avatar';
 import { Badge } from '../../../components/Badge/Badge';
-import { COMMENTS, DOCUMENTS, NOTES, CLAIMS, HISTORY } from '../data/ancillary';
+import {
+  COMMENTS as COMMENTS_MOCK,
+  NOTES as NOTES_MOCK,
+  CLAIMS,
+  HISTORY as HISTORY_MOCK,
+} from '../data/ancillary';
+import { getChartDocs } from '../data/chartDocs';
 import { ACTIVITY } from '../data/activity';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { OutreachTab as PatientOutreachTab } from '../../patient/components/OutreachTab';
+import { DocEvidenceViewer } from './DocEvidenceViewer';
 import styles from './LeftWorkspace.module.css';
 
-// Two tab sets depending on scope:
+// Two tab sets depending on scope. Counts flow in per-render since
+// Comments / Documents / Notes now come from Supabase (falling back to
+// the local mock when the DB is empty).
 //   • ICD-level (opened from an ICD code) — Figma 1:45936:
 //       Activity Log, Notes, Comments, Documents, Claims, History
 //   • DOS-level (opened from the toolbar Activity Log icon) — Figma 1:48023:
 //       Activity Log, Notes, Comments, Documents, Claims, Outreach, Worklog
-const ICD_TABS = [
-  { key: 'activity',  label: 'Activity Log',  countFor: () => null },
-  { key: 'notes',     label: 'Notes',         countFor: () => NOTES.length },
-  { key: 'comments',  label: 'Comments',      countFor: () => COMMENTS.length },
-  { key: 'documents', label: 'Documents',     countFor: () => DOCUMENTS.length },
+// Tab order: Documents → Claims → Timeline → Comments → Notes → History → Worklog.
+// ("Activity Log" is renamed to "Timeline" per product; the tab key stays
+// 'activity' to keep the store's active-tab persistence stable.)
+const buildTabs = ({ commentsCount, notesCount }) => ([
+  { key: 'documents', label: 'Documents',     countFor: () => null }, // computed from charts
   { key: 'claims',    label: 'Claims',        countFor: () => CLAIMS.length },
+  { key: 'activity',  label: 'Timeline',      countFor: () => null },
+  { key: 'comments',  label: 'Comments',      countFor: () => commentsCount },
+  { key: 'notes',     label: 'Notes',         countFor: () => notesCount },
   { key: 'history',   label: 'History',       countFor: () => null },
-];
-const DOS_TABS = [
-  { key: 'activity',  label: 'Activity Log',  countFor: () => null },
-  { key: 'notes',     label: 'Notes',         countFor: () => NOTES.length },
-  { key: 'comments',  label: 'Comments',      countFor: () => COMMENTS.length },
-  { key: 'documents', label: 'Documents',     countFor: () => DOCUMENTS.length },
-  { key: 'claims',    label: 'Claims',        countFor: () => CLAIMS.length },
-  { key: 'outreach',  label: 'Outreach',      countFor: () => null },
   { key: 'worklog',   label: 'Worklog',       countFor: () => null },
-];
+]);
 
 // Tabs that carry the filter row (Activity / Notes / Comments / Documents).
 const FILTERED_TABS = new Set(['activity', 'notes', 'comments', 'documents']);
@@ -54,9 +57,39 @@ const FILTERED_TABS = new Set(['activity', 'notes', 'comments', 'documents']);
  */
 export function LeftWorkspace({ active, icdScope = null, onChange, onClose, member, currentDos = null }) {
   const isDosLevel = !icdScope;
-  const tabs = isDosLevel ? DOS_TABS : ICD_TABS;
+  // Kick off the org-scoped ancillary fetch once — safe to call repeatedly,
+  // the store guards on didFetch. Doing it here means every drawer open
+  // primes Comments / Documents / Notes / History without threading a hook
+  // through the top-level DiagPanel.
+  const fetchHccDiagAncillary = useAppStore(s => s.fetchHccDiagAncillary);
+  useEffect(() => { fetchHccDiagAncillary(); }, [fetchHccDiagAncillary]);
+  const dbComments = useAppStore(s => s.hccDiagComments);
+  const dbNotes    = useAppStore(s => s.hccDiagNotes);
+  const commentsForCount = dbComments.length ? dbComments : COMMENTS_MOCK;
+  const notesForCount    = dbNotes.length    ? dbNotes    : NOTES_MOCK;
+  const tabs = buildTabs({ commentsCount: commentsForCount.length, notesCount: notesForCount.length });
+  // Lifted from DocumentsTab so the surrounding filter row can be hidden while
+  // a document is being previewed — filters only make sense on the listing.
+  const [openDocId, setOpenDocId] = useState(null);
+  const isPreviewingDoc = active === 'documents' && !!openDocId;
   // Worklog uses a DOS-only filter; the other filtered tabs use the full set.
-  const showFilterRow = FILTERED_TABS.has(active) || (isDosLevel && active === 'worklog');
+  // Docs tab shows the filter row only in listing mode (not during preview).
+  const showFilterRow = (FILTERED_TABS.has(active) || (isDosLevel && active === 'worklog'))
+    && !isPreviewingDoc;
+
+  // Real chart list for THIS record — same source the worklist Documents
+  // column uses, so the tab count matches the column count exactly.
+  const addedCharts = useAppStore(s => s.hccAddedCharts?.[member?.id]);
+  const charts = useMemo(
+    () => (member ? getChartDocs(member, addedCharts || []) : []),
+    [member, addedCharts],
+  );
+  // Per-tab count override — 'documents' takes its count from the record's
+  // charts (not the static DOCUMENTS mock).
+  const countForTab = (t) => {
+    if (t.key === 'documents') return charts.length;
+    return t.countFor?.();
+  };
 
   // Pull the activity entries once at this level so the filter row can compute
   // its dropdown options (DOS / HCC / ICD / Recorded By) from the same source
@@ -101,7 +134,7 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
     <div className={styles.wrap}>
       <div className={styles.tabBar}>
         <ActionButton
-          icon="solar:alt-arrow-left-linear"
+          icon="custom:collapse-sidebar"
           size="S"
           tooltip="Collapse"
           onClick={onClose}
@@ -111,7 +144,7 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
         <div className={styles.tabRow}>
           {tabs.map((t) => {
             const isActive = active === t.key;
-            const count = t.countFor?.();
+            const count = countForTab(t);
             return (
               <button
                 key={t.key}
@@ -148,11 +181,19 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
 
         {active === 'activity'  && <ActivityTab  member={member} rawEntries={rawActivity} filters={filters} />}
         {active === 'comments'  && <CommentsTab  member={member} />}
-        {active === 'documents' && <DocumentsTab member={member} />}
+        {active === 'documents' && (
+          <DocumentsTab
+            member={member}
+            icdScope={icdScope}
+            charts={charts}
+            openDocId={openDocId}
+            setOpenDocId={setOpenDocId}
+          />
+        )}
         {active === 'notes'     && <NotesTab     member={member} />}
         {active === 'claims'    && <ClaimsTab    member={member} />}
         {active === 'outreach'  && <OutreachTab  member={member} />}
-        {active === 'worklog'   && <WorklogTab   member={member} />}
+        {active === 'worklog'   && <WorklogTab   member={member} filters={filters} />}
         {active === 'history'   && <HistoryTab    member={member} />}
       </div>
     </div>
@@ -162,11 +203,11 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
 // Filter row chip-key sets per variant (Figma 1:45950 / 1:48023):
 //   • 'icd'     → Recorded By, Date
 //   • 'dos'     → DOS, HCC Code, ICD Code, Recorded By, Date  (+ Clear All)
-//   • 'worklog' → DOS only
+//   • 'worklog' → DOS, ICD Code, Recorded By, Date  (Figma 4728:151809)
 const FILTER_KEYS = {
   icd:     ['by', 'date'],
   dos:     ['dos', 'hcc', 'icd', 'by', 'date'],
-  worklog: ['dos'],
+  worklog: ['dos', 'icd', 'by', 'date'],
 };
 const FILTER_LABEL = {
   dos:  'DOS',
@@ -254,7 +295,6 @@ function FilterRow({ variant = 'icd', filters, options, onChange, onClearAll, tr
   const hasAny = keys.some(k => filters?.[k] != null && filters[k] !== '');
   return (
     <div className={styles.filterRow}>
-      <Icon name="solar:filter-linear" size={20} color="var(--neutral-300)" />
       <div className={styles.filterChips}>
         {keys.map((k) => (
           <FilterChip
@@ -638,18 +678,19 @@ function AvatarPill({ initials, name }) {
   );
 }
 
-// Two-letter initials from a "First Last" or "F. Last" name. Used by the
-// generic Avatar in the Comments / Notes / Documents / History list rows.
-const initialsOf = (name = '') =>
-  name.split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join('').toUpperCase();
-
 // ── Comments tab — Figma 1:53466 ─────────────────────────────────────────
 // Timeline view (NOT a card list) matching the Activity Log pattern: each
 // comment is a row with a chat-icon left rail + connector line, a meta line
 // (`date · time · author(role)` + optional Edited badge), and the full body
 // text below. Composer is a single-line input — Enter posts.
 function CommentsTab() {
-  const [items, setItems] = useState(COMMENTS);
+  // Seed from Supabase (hcc_diag_comments); fall back to the local mock
+  // while the DB is empty or unreachable. Local state supports optimistic
+  // insert when the composer posts — persistence is a follow-up.
+  const dbComments = useAppStore(s => s.hccDiagComments);
+  const seed = dbComments.length ? dbComments : COMMENTS_MOCK;
+  const [items, setItems] = useState(seed);
+  useEffect(() => { setItems(seed); }, [seed]);
   const [draft, setDraft] = useState('');
   const [collapsed, setCollapsed] = useState(() => new Set());
   const activityIcd = useAppStore(s => s.diagActivityIcd);
@@ -888,11 +929,144 @@ const DOC_STATUS_BADGE = {
   failed:  { variant: 'status-failed',    label: 'Failed'  },
 };
 
-function DocumentsTab() {
+function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId }) {
   const showToast = useAppStore(s => s.showToast);
   const uploaderOpen = useAppStore(s => s.hccDocsUploaderOpen);
   const uploaded = useAppStore(s => s.hccUploadedDocs);
-  const list = useMemo(() => [...uploaded, ...DOCUMENTS], [uploaded]);
+  // Two shapes converge here: (a) charts = the RECORD's real docs (source of
+  // truth, matches the worklist Documents-column count) — uses fields
+  // { id, n, t, dateAdded, addedBy, status }; (b) uploaded = docs the user
+  // just uploaded via the inline uploader — uses the DOCUMENTS mock shape.
+  // Normalize charts into the mock shape so one row template renders both.
+  const list = useMemo(() => {
+    const extFromName = (name = '') => (/\.([a-z0-9]+)$/i.exec(name)?.[1] || '').toLowerCase();
+    const normalizedCharts = charts.map((c) => ({
+      id: c.id,
+      name: c.n || c.caption || 'Document',
+      type: c.t || 'Document',
+      date: c.dateAdded || '',
+      time: '',
+      uploadedBy: (c.addedBy || '').split(' (')[0] || 'System',
+      role: /(Support Team|Coder|QA|Compliance)/.exec(c.addedBy || '')?.[1] || '',
+      status: (c.status || 'pending').toLowerCase(),
+      ext: extFromName(c.n || c.caption),
+      pdf: c.pdf,
+    }));
+    return [...uploaded, ...normalizedCharts];
+  }, [uploaded, charts]);
+  // If a doc gets removed while open, drop back to the listing.
+  useEffect(() => {
+    if (openDocId && !list.some(d => d.id === openDocId)) setOpenDocId(null);
+  }, [openDocId, list, setOpenDocId]);
+  // Clicking an ICD card opens the Documents pane with an icdScope — jump
+  // straight into the tabbed viewer on that ICD's first doc. Uses a ref so
+  // the effect only fires when the scope TRANSITIONS to a new ICD (a "back"
+  // click clears openDocId but leaves icdScope, and shouldn't reopen).
+  const lastIcdScopeRef = useRef(null);
+  useEffect(() => {
+    if (icdScope !== lastIcdScopeRef.current) {
+      lastIcdScopeRef.current = icdScope;
+      if (icdScope && list.length > 0) setOpenDocId(list[0].id);
+    }
+  }, [icdScope, list, setOpenDocId]);
+  // Overflow scroll — arrow buttons appear when the tab strip can scroll.
+  const tabsScrollRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  useEffect(() => {
+    const el = tabsScrollRef.current;
+    if (!el) return undefined;
+    const update = () => {
+      setCanScrollLeft(el.scrollLeft > 2);
+      setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+    };
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => { el.removeEventListener('scroll', update); ro.disconnect(); };
+  }, [openDocId, list.length]);
+  const scrollTabs = (dir) => {
+    const el = tabsScrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * Math.max(160, el.clientWidth * 0.6), behavior: 'smooth' });
+  };
+
+  // Browser-tab viewer when a doc is open (Paper 1UHT):
+  //   [ ← back ]  [ ‹ ]  [ ✓ Doc A ] [ Doc B ] [ Doc C ] …  [ › ]
+  // Every doc renders as a tab; a leading green check on the tab indicates
+  // the document has passed review (derived from its worklist status).
+  // Arrow buttons flank the strip and become active only when the tabs are
+  // overflowing in that direction.
+  if (openDocId) {
+    const openDoc = list.find(d => d.id === openDocId) || list[0];
+    return (
+      <div className={styles.docsViewer}>
+        <div className={styles.docsViewerTabBar}>
+          <button
+            type="button"
+            className={styles.docsBackBtn}
+            aria-label="Back to document list"
+            title="Back to document list"
+            onClick={() => setOpenDocId(null)}
+          >
+            <Icon name="solar:arrow-left-linear" size={18} color="currentColor" />
+          </button>
+          {(canScrollLeft || canScrollRight) && (
+            <button
+              type="button"
+              className={[styles.docsScrollBtn, canScrollLeft ? '' : styles.docsScrollBtnDisabled].filter(Boolean).join(' ')}
+              aria-label="Scroll tabs left"
+              title="Previous documents"
+              disabled={!canScrollLeft}
+              onClick={() => scrollTabs(-1)}
+            >
+              <Icon name="solar:alt-arrow-left-linear" size={14} color="currentColor" />
+            </button>
+          )}
+          <div className={styles.docsBrowserTabs} ref={tabsScrollRef}>
+            {list.map((d) => {
+              const isOpen = openDoc?.id === d.id;
+              const passed = d.status === 'passed';
+              return (
+                <button
+                  key={d.id}
+                  type="button"
+                  className={[styles.docsBrowserTab, isOpen ? styles.docsBrowserTabActive : ''].filter(Boolean).join(' ')}
+                  onClick={() => setOpenDocId(d.id)}
+                  title={d.name}
+                >
+                  {passed
+                    ? <Icon name="solar:check-circle-bold" size={13} color="var(--status-success)" />
+                    : <Icon name="solar:file-text-linear" size={13} color="currentColor" />
+                  }
+                  <span className={styles.docsBrowserTabName}>{d.name}</span>
+                </button>
+              );
+            })}
+          </div>
+          {(canScrollLeft || canScrollRight) && (
+            <button
+              type="button"
+              className={[styles.docsScrollBtn, canScrollRight ? '' : styles.docsScrollBtnDisabled].filter(Boolean).join(' ')}
+              aria-label="Scroll tabs right"
+              title="More documents"
+              disabled={!canScrollRight}
+              onClick={() => scrollTabs(1)}
+            >
+              <Icon name="solar:alt-arrow-right-linear" size={14} color="currentColor" />
+            </button>
+          )}
+        </div>
+        <div className={styles.docsViewerBody}>
+          {/* Pass icdScope through so a card-driven open still highlights
+              that ICD's line in the PDF; row-driven opens (no scope) show
+              the plain document. */}
+          <DocEvidenceViewer member={member} icdScope={icdScope} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.scroll}>
@@ -905,23 +1079,28 @@ function DocumentsTab() {
         </div>
         {list.map((d) => {
           const status = DOC_STATUS_BADGE[d.status] || DOC_STATUS_BADGE.pending;
-          const extLabel = DOC_EXT_LABEL[d.ext] || d.ext?.toUpperCase() || 'DOC';
           return (
-            <div key={d.id} className={[styles.dataTableRow, styles.docsGrid].join(' ')}>
+            <div
+              key={d.id}
+              className={[styles.dataTableRow, styles.docsGrid, styles.dataTableRowClickable].join(' ')}
+              role="button"
+              tabIndex={0}
+              onClick={() => setOpenDocId(d.id)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenDocId(d.id); } }}
+            >
               <div className={styles.docCell}>
-                <span className={styles.docExtIcon} data-ext={d.ext}>
-                  <Icon name="solar:file-text-linear" size={14} color="var(--neutral-300)" />
-                  <span className={styles.docExtTag}>{extLabel}</span>
+                <span className={styles.docThumb}>
+                  <Icon name="custom:pdf-file" size={20} color="var(--neutral-400)" />
                 </span>
                 <div className={styles.docCellText}>
                   <div className={styles.docCellName}>{d.name}</div>
                   <div className={styles.docCellMeta}>
-                    {d.type} · {d.date}, {d.time} · {d.uploadedBy}({d.role})
+                    {[d.type, d.date, d.role ? `${d.uploadedBy} (${d.role})` : d.uploadedBy].filter(Boolean).join(' • ')}
                   </div>
                 </div>
               </div>
               <Badge variant={status.variant} label={status.label} />
-              <div className={styles.dataTableActions}>
+              <div className={styles.dataTableActions} onClick={(e) => e.stopPropagation()}>
                 <ActionButton
                   icon="solar:menu-dots-linear"
                   size="S"
@@ -1190,7 +1369,10 @@ function DocUploaderFileRow({ file, phase, progress, onRefresh, onRemove }) {
 // ── Notes tab — Figma 41:358849 ──────────────────────────────────────────
 // Timeline with note icon. Single-line "Add a note" composer.
 function NotesTab() {
-  const [items, setItems] = useState(NOTES);
+  const dbNotes = useAppStore(s => s.hccDiagNotes);
+  const seed = dbNotes.length ? dbNotes : NOTES_MOCK;
+  const [items, setItems] = useState(seed);
+  useEffect(() => { setItems(seed); }, [seed]);
   const [draft, setDraft] = useState('');
   const activityIcd = useAppStore(s => s.diagActivityIcd);
   const addActivityEntry = useAppStore(s => s.addActivityEntry);
@@ -1311,8 +1493,41 @@ const CLAIM_STATUS_BADGE = {
   Rejected: 'status-failed',
 };
 
+// Find the claim for a given DOS, or synthesize one when the DOS has no row in
+// the mock CLAIMS list (claim-sourced DOSs on the worklist don't all live in
+// the small fixture). The synthesized claim carries a deterministic number so
+// re-opening the same DOS is stable.
+function claimForDos(dos) {
+  const match = CLAIMS.find((c) => c.dos === dos);
+  if (match) return match;
+  return {
+    id: `syn-${dos}`,
+    number: `CLM-${(dos || '').replace(/\D/g, '')}`,
+    dos,
+    amount: '—',
+    status: 'Billed',
+    date: dos,
+  };
+}
+
 function ClaimsTab({ member }) {
-  const openClaimPreview = useAppStore(s => s.openHccClaimPreview);
+  // Clicking a claim opens its detail IN THIS SAME panel (Figma 10891:325889)
+  // with a back arrow — no separate overlapping drawer.
+  const [selected, setSelected] = useState(null);
+  // A DOS row's "Claim" link sets diagClaimDos; consume it once (clearing the
+  // flag) so the detail auto-opens and re-clicking the same DOS re-triggers.
+  const claimDos = useAppStore((s) => s.diagClaimDos);
+  const clearDiagClaimDos = useAppStore((s) => s.clearDiagClaimDos);
+  useEffect(() => {
+    if (claimDos) {
+      setSelected(claimForDos(claimDos));
+      clearDiagClaimDos();
+    }
+  }, [claimDos, clearDiagClaimDos]);
+
+  if (selected) {
+    return <ClaimDetail member={member} claim={selected} onBack={() => setSelected(null)} />;
+  }
 
   return (
     <div className={styles.scroll}>
@@ -1328,7 +1543,7 @@ function ClaimsTab({ member }) {
             <button
               type="button"
               className={styles.claimIdLink}
-              onClick={() => openClaimPreview(member, c.dos)}
+              onClick={() => setSelected(c)}
             >
               {c.number || c.id}
             </button>
@@ -1338,6 +1553,112 @@ function ClaimsTab({ member }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// Build the inline claim-detail view model from the member + clicked claim.
+// Diagnoses reuse the patient's ICD fixture; procedures are a representative
+// mock (real claims service will replace this).
+function buildClaimDetail(member, claim) {
+  const allIcds = getIcdsForMember(member?.name) || [];
+  const icds = allIcds.slice(0, 5).map((i) => ({ code: i.code, description: i.desc }));
+  const cpts = [
+    { cpt: '99285', description: 'Emergency department visit, high severity' },
+    { cpt: '93005', description: 'Electrocardiogram, tracing only' },
+    { cpt: '80048', description: 'Basic metabolic panel' },
+  ];
+  return {
+    submissionDate: claim.date || '—',
+    provider: { name: member?.rp || 'Dr. Katherine Moss', npi: '555555555', speciality: 'Emergency Medicine' },
+    cpts,
+    icds,
+  };
+}
+
+// ── Inline claim detail (Figma 10891:325889) ─────────────────────────────
+// Header (back + title) · Claim Information · Rendering Provider ·
+// CPT Procedure Codes · ICD Codes on Claim.
+function ClaimField({ label, value }) {
+  return (
+    <div className={styles.claimField}>
+      <span className={styles.claimFieldLabel}>{label}</span>
+      <span className={styles.claimFieldValue}>{value}</span>
+    </div>
+  );
+}
+
+function ClaimDetail({ member, claim, onBack }) {
+  const detail = buildClaimDetail(member, claim);
+  return (
+    <div className={styles.scroll}>
+      <div className={styles.claimDetailHead}>
+        <button type="button" className={styles.claimBackBtn} onClick={onBack} aria-label="Back to claims">
+          <Icon name="solar:arrow-left-linear" size={18} color="var(--neutral-400)" />
+        </button>
+        <span className={styles.claimDetailTitle}>Claim Details for DOS: {claim.dos}</span>
+      </div>
+
+      <section className={styles.claimSection}>
+        <div className={styles.claimSectionHead}>
+          <span className={styles.claimSectionTitle}>Claim Information</span>
+          <Badge variant={CLAIM_STATUS_BADGE[claim.status] || 'toc-new'} label={claim.status} />
+        </div>
+        <div className={styles.claimInfoGrid}>
+          <ClaimField label="Claims Number" value={claim.number} />
+          <ClaimField label="Submission Date" value={detail.submissionDate} />
+          <ClaimField label="Date of Service" value={claim.dos} />
+        </div>
+      </section>
+
+      <section className={styles.claimSection}>
+        <div className={styles.claimSectionHead}>
+          <span className={styles.claimSectionTitle}>Rendering Provider</span>
+        </div>
+        <div className={styles.claimInfoGrid}>
+          <ClaimField label="Name" value={detail.provider.name} />
+          <ClaimField label="NPI" value={detail.provider.npi} />
+          <ClaimField label="Speciality" value={detail.provider.speciality} />
+        </div>
+      </section>
+
+      <section className={styles.claimSection}>
+        <div className={styles.claimSectionHead}>
+          <span className={styles.claimSectionTitle}>CPT Procedure Codes</span>
+        </div>
+        <table className={styles.claimCodeTable}>
+          <thead>
+            <tr><th>CPT Codes</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            {detail.cpts.map((p) => (
+              <tr key={p.cpt}>
+                <td className={styles.claimCode}>{p.cpt}</td>
+                <td className={styles.claimCodeDesc}>{p.description}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <section className={styles.claimSection}>
+        <div className={styles.claimSectionHead}>
+          <span className={styles.claimSectionTitle}>ICD Codes on Claim</span>
+        </div>
+        <table className={styles.claimCodeTable}>
+          <thead>
+            <tr><th>ICD Codes</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            {detail.icds.map((d) => (
+              <tr key={d.code}>
+                <td className={styles.claimCode}>{d.code}</td>
+                <td className={styles.claimCodeDesc}>{d.description}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
     </div>
   );
 }
@@ -1381,16 +1702,25 @@ function OutreachTab({ member }) {
 }
 
 // ── Worklog tab (DOS-level) ──────────────────────────────────────────────
-// Table of every ICD on the selected DOS × work done by each Coder / Reviewer
-// 1–3 (Support intentionally excluded — Figma 42:368051). Cells show a ✓ + the
-// person + date once a role has acted, or "—" while still pending.
-const WORKLOG_ROLES = ['Coder', 'Reviewer 1', 'Reviewer 2', 'Reviewer 3'];
+// Table of every ICD on the selected DOS × work done by each role. Support
+// handles the document-review step (recorded as "(Support Team)" in the data);
+// Coder / QA / Compliance perform the ICD review. Cells show a ✓ + the person +
+// date once a role has acted, or "—" while still pending (Figma 4728:151809).
+const WORKLOG_ROLES = ['Support', 'Coder', 'QA', 'Compliance'];
+
+// Map the "(Role)" token embedded in a `by` string to a worklog column index.
+// Support activity is recorded as "(Support Team)"; every other role matches
+// its column label directly.
+function roleTokenToIndex(token = '') {
+  const t = token.trim();
+  if (t === 'Support' || t === 'Support Team') return 0;
+  return WORKLOG_ROLES.indexOf(t);
+}
 
 // Parse the trailing "(Role)" off an ICD's `by` field → role index, or -1.
 function roleIndexFromBy(by = '') {
   const m = by.match(/\(([^)]+)\)/);
-  const role = (m?.[1] || '').trim();
-  return WORKLOG_ROLES.indexOf(role);
+  return roleTokenToIndex(m?.[1] || '');
 }
 
 function nameFromBy(by = '') {
@@ -1404,13 +1734,27 @@ function reachedRole(icd) {
   return roleIndexFromBy(icd.by);
 }
 
-function WorklogTab({ member }) {
-  const icds = getIcdsForMember(member?.name);
+function WorklogTab({ member, filters = {} }) {
+  const all = getIcdsForMember(member?.name);
+  // Filter chips (ICD Code / Recorded By / Date) narrow the row set. DOS is a
+  // context chip — the fixture isn't partitioned by DOS.
+  const icds = all.filter((i) => {
+    if (filters.icd && i.code !== filters.icd) return false;
+    if (filters.by && nameFromBy(i.by) !== filters.by) return false;
+    if (filters.date) {
+      const d = parseEntryDate(i.last);
+      if (!d || !matchesDatePreset(d, filters.date)) return false;
+    }
+    return true;
+  });
   const open = icds.filter((i) => i.status !== 'Accepted' && i.status !== 'Dismissed');
   const closed = icds.filter((i) => i.status === 'Accepted' || i.status === 'Dismissed');
 
-  if (!icds.length) {
+  if (!all.length) {
     return <Empty label="No ICDs recorded for this DOS." />;
+  }
+  if (!icds.length) {
+    return <Empty label="No ICDs match the current filters." />;
   }
 
   const renderRows = (rows) => rows.map((icd) => {
@@ -1420,6 +1764,8 @@ function WorklogTab({ member }) {
       <tr key={icd.code} className={styles.wlRow}>
         <td className={styles.wlIcd}>
           <span className={styles.wlCode}>{icd.code}</span>
+        </td>
+        <td className={styles.wlDescCol}>
           <span className={styles.wlDesc}>{icd.desc}</span>
         </td>
         {WORKLOG_ROLES.map((role, ri) => {
@@ -1429,22 +1775,14 @@ function WorklogTab({ member }) {
             <td key={role} className={styles.wlCell}>
               {done ? (
                 <div className={styles.wlDone}>
-                  <Icon name="solar:check-read-linear" size={12} color="var(--status-success)" />
+                  <span className={styles.wlCheckBadge}>
+                    <Icon name="solar:check-read-linear" size={12} color="var(--status-success)" />
+                  </span>
                   {isActor && (
-                    <>
-                      <Avatar
-                        variant="generic"
-                        size={18}
-                        initials={initialsOf(nameFromBy(icd.by))}
-                        backgroundColor="var(--primary-50)"
-                        borderColor="var(--primary-200)"
-                        color="var(--primary-300)"
-                      />
-                      <span className={styles.wlDoneText}>
-                        <span className={styles.wlWho}>{nameFromBy(icd.by)}</span>
-                        <span className={styles.wlWhen}>{icd.last}</span>
-                      </span>
-                    </>
+                    <span className={styles.wlDoneText}>
+                      <span className={styles.wlWho}>{nameFromBy(icd.by)}</span>
+                      <span className={styles.wlWhen}>{icd.last}</span>
+                    </span>
                   )}
                 </div>
               ) : (
@@ -1464,19 +1802,20 @@ function WorklogTab({ member }) {
           <thead>
             <tr>
               <th className={styles.wlIcdHead}>ICD Code</th>
+              <th className={styles.wlDescHead}>Description</th>
               {WORKLOG_ROLES.map((r) => <th key={r}>{r}</th>)}
             </tr>
           </thead>
           <tbody>
             {open.length > 0 && (
               <>
-                <tr className={styles.wlGroupRow}><td colSpan={WORKLOG_ROLES.length + 1}>Open ICDs</td></tr>
+                <tr className={styles.wlGroupRow}><td colSpan={WORKLOG_ROLES.length + 2}>Open ICD's</td></tr>
                 {renderRows(open)}
               </>
             )}
             {closed.length > 0 && (
               <>
-                <tr className={styles.wlGroupRow}><td colSpan={WORKLOG_ROLES.length + 1}>Closed ICDs</td></tr>
+                <tr className={styles.wlGroupRow}><td colSpan={WORKLOG_ROLES.length + 2}>Closed ICD's</td></tr>
                 {renderRows(closed)}
               </>
             )}
@@ -1492,6 +1831,8 @@ function WorklogTab({ member }) {
 // review for a given DOS. icdStatus drives the trailing status pill button:
 //   accepted → green check  •  dismissed → red close  •  open → grey dash.
 function HistoryTab() {
+  const dbHistory = useAppStore(s => s.hccDiagHistoryEntries);
+  const items = dbHistory.length ? dbHistory : HISTORY_MOCK;
   return (
     <div className={styles.scroll}>
       <div className={styles.dataTable}>
@@ -1501,7 +1842,7 @@ function HistoryTab() {
           <span>Claims</span>
           <span>ICD Status</span>
         </div>
-        {HISTORY.map((h) => (
+        {items.map((h) => (
           <div key={h.id} className={[styles.dataTableRow, styles.historyGrid].join(' ')}>
             <span className={styles.historyDos}>{h.dos}</span>
             <div className={styles.historyHcc}>

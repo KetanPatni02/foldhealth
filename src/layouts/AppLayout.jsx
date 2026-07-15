@@ -13,13 +13,14 @@ import { QueueTable } from '../features/toc-queue/QueueTable';
 import { QueueSummaryBar } from '../features/toc-queue/QueueSummaryBar';
 import { HccWorklistTable } from '../features/hcc/HccWorklistTable';
 import { HedisWorklistTable } from '../features/hedis-worklist/HedisWorklistTable';
-import { AllPatientsTable } from '../features/all-patients/AllPatientsTable';
 import { AwvWorklistTable } from '../features/awv-worklist/AwvWorklistTable';
+import { AllPatientsTable } from '../features/all-patients/AllPatientsTable';
 import { PopulationGroupsView } from '../features/population-groups/PopulationGroupsView';
 import { PgProcessingHost } from '../features/population-groups/PgProcessingHost';
 import { SchedulingListTable } from '../features/scheduling-list/SchedulingListTable';
 import { Icon } from '../components/Icon/Icon';
 import { useAppStore } from '../store/useAppStore';
+import { Toaster } from '../components/Toast/Toast';
 import { supabase } from '../lib/supabase';
 import styles from './AppLayout.module.css';
 
@@ -62,8 +63,13 @@ const UploadChartDrawer    = lz(() => import('../features/hcc/UploadChartDrawer'
 const UploadDocumentDrawer = lz(() => import('../features/hcc/upload/UploadDocumentDrawer'),               'UploadDocumentDrawer');
 const HccUploadProcessingHost = lz(() => import('../features/hcc/upload/HccUploadProcessingHost'),         'HccUploadProcessingHost');
 const HccSftpReviewDrawer  = lz(() => import('../features/hcc/upload/HccSftpReviewDrawer'),                'HccSftpReviewDrawer');
+const HccAddDosDrawer      = lz(() => import('../features/hcc/HccAddDosDrawer'),                           'HccAddDosDrawer');
 const IcdCreationScreen    = lz(() => import('../features/hcc/upload/IcdCreationScreen'),                  'IcdCreationScreen');
 const ClaimPreviewDrawer   = lz(() => import('../features/hcc/ClaimPreviewDrawer'),                        'ClaimPreviewDrawer');
+// Archived HCC worklist — a frozen fork of the HCC feature (src/features/
+// hcc-archived) so upstream HCC changes never alter it. Lazy so it stays out
+// of the entry chunk.
+const HccArchivedWorklistTable = lz(() => import('../features/hcc-archived/HccWorklistTable'),             'HccWorklistTable');
 
 // Placeholder while a lazy chunk is in flight. Empty div keeps layout stable.
 const LazyFallback = () => <div style={{ flex: 1 }} />;
@@ -85,45 +91,7 @@ function ComingSoonState({ listName }) {
   );
 }
 
-function Toast() {
-  const toast = useAppStore(s => s.toast);
-  const closeToast = useAppStore(s => s.closeToast);
-  if (!toast) return null;
-  return (
-    <div style={{
-      position: 'fixed', bottom: 88, left: '50%', transform: 'translateX(-50%)',
-      background: 'var(--neutral-500)', color: 'var(--neutral-0)', padding: '12px 20px', borderRadius: 8,
-      fontSize: 14, fontWeight: 500, boxShadow: '0 4px 12px rgba(0,0,0,.2)', zIndex: 10001,
-      whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 12
-    }}>
-      {toast}
-      <button onClick={closeToast} style={{
-        background: 'none', border: 'none', color: 'var(--neutral-0)', cursor: 'pointer',
-        fontSize: 16, padding: 0, display: 'flex', opacity: 0.8, lineHeight: 1,
-      }}>✕</button>
-    </div>
-  );
-}
 
-function ToastSuccess() {
-  const toastSuccess = useAppStore(s => s.toastSuccess);
-  const closeToastSuccess = useAppStore(s => s.closeToastSuccess);
-  if (!toastSuccess) return null;
-  return (
-    <div style={{
-      position: 'fixed', top: 24, left: '50%', transform: 'translateX(-50%)',
-      background: 'var(--status-success)', color: '#fff', padding: '12px 20px', borderRadius: 8,
-      fontSize: 14, fontWeight: 500, boxShadow: '0 4px 12px rgba(0,0,0,.2)', zIndex: 600,
-      display: 'flex', alignItems: 'center', gap: 12, whiteSpace: 'nowrap'
-    }}>
-      TOC Agent Invoked Successfully
-      <button onClick={closeToastSuccess} style={{
-        background: 'none', border: 'none', color: '#fff', cursor: 'pointer',
-        fontSize: 16, padding: 0, display: 'flex', opacity: 0.8, lineHeight: 1,
-      }}>✕</button>
-    </div>
-  );
-}
 
 function PopulationView() {
   const subnavCollapsed = useAppStore(s => s.subnavCollapsed);
@@ -133,6 +101,9 @@ function PopulationView() {
   const activeSubnavList = useAppStore(s => s.activeSubnavList);
 
   const selectedPatientId = useAppStore(s => s.selectedPatientId);
+  const setHccFilter = useAppStore(s => s.setHccFilter);
+
+  const isAwv = activeSubnavList === 'Annual Visit';
 
   // Patient detail view — full-page, no subnav
   if (selectedPatientId) {
@@ -149,17 +120,17 @@ function PopulationView() {
   }
 
   const isHcc = activeSubnavList === 'HCC';
+  const isHccArchived = activeSubnavList === 'HCC (Archived)';
   const isHedis = activeSubnavList === 'HEDIS';
-  const isAwv = activeSubnavList === 'AWV';
   const isAllPatients = activeSubnavList === 'All Patients';
   const isPopulationGroup = activeSubnavList.startsWith('pg:');
   const isSchedulingList = activeSubnavList === 'Scheduling List';
   const TOC_LISTS = ['TOC'];
-  const isToc = TOC_LISTS.includes(activeSubnavList) || (!isHcc && !isHedis && !isAwv && !isAllPatients && !isSchedulingList && !isPopulationGroup && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
+  const isToc = TOC_LISTS.includes(activeSubnavList) || (!isHcc && !isHccArchived && !isHedis && !isAwv && !isAllPatients && !isSchedulingList && !isPopulationGroup && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
   const isComingSoon = ['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList);
   const pgFilter = activeSubnavList === 'pg:Static' ? 'Static' : activeSubnavList === 'pg:Dynamic' ? 'Dynamic' : 'All';
 
-  const chromeless = isHcc || isHedis || isAwv || isComingSoon || isPopulationGroup || isSchedulingList;
+  const chromeless = isHcc || isHccArchived || isHedis || isAwv || isComingSoon || isPopulationGroup || isSchedulingList;
 
   return (
     <div className={styles.main}>
@@ -170,10 +141,12 @@ function PopulationView() {
         <div className={styles.content}>
           {!chromeless && <TabBar />}
           {!chromeless && showFilterBar && <FilterBar />}
-          {!isHcc && !isHedis && !isAwv && !isAllPatients && !isComingSoon && !isSchedulingList && !isPopulationGroup && activeTab === 'toc-queue' && <QueueSummaryBar />}
+          {!isHcc && !isHccArchived && !isHedis && !isAwv && !isAllPatients && !isComingSoon && !isSchedulingList && !isPopulationGroup && activeTab === 'toc-queue' && <QueueSummaryBar />}
           {isSchedulingList
             ? <SchedulingListTable />
-            : isHcc
+            : isHccArchived
+              ? <HccArchivedWorklistTable />
+              : isHcc
               ? <HccWorklistTable />
               : isHedis
                 ? <HedisWorklistTable />
@@ -392,7 +365,7 @@ export function AppLayout() {
         <Suspense fallback={<LazyFallback />}>
           <EmailBuilder />
         </Suspense>
-        <Toast />
+        <Toaster />
       </div>
     );
   }
@@ -406,7 +379,7 @@ export function AppLayout() {
         <Suspense fallback={<LazyFallback />}>
           <CampaignBuilder />
         </Suspense>
-        <Toast />
+        <Toaster />
       </div>
     );
   }
@@ -418,7 +391,7 @@ export function AppLayout() {
         <Suspense fallback={<LazyFallback />}>
           <FormView />
         </Suspense>
-        <Toast />
+        <Toaster />
       </div>
     );
   }
@@ -431,7 +404,7 @@ export function AppLayout() {
         <Suspense fallback={<LazyFallback />}>
           <FormBuilder />
         </Suspense>
-        <Toast />
+        <Toaster />
       </div>
     );
   }
@@ -444,7 +417,7 @@ export function AppLayout() {
         <Suspense fallback={<LazyFallback />}>
           <AgentCanvas />
         </Suspense>
-        <Toast />
+        <Toaster />
       </div>
     );
   }
@@ -488,13 +461,14 @@ export function AppLayout() {
         <UploadDocumentDrawer />{/* mounts itself only when hccUploadSession is set */}
         <HccUploadProcessingHost />{/* floats bottom-right while the upload is minimized */}
         <HccSftpReviewDrawer />{/* mounts itself only when hccSftpReviewOpen is true */}
+        <HccAddDosDrawer />{/* mounts itself only when hccAddDosMember is set */}
         <IcdCreationScreen />{/* mounts itself only when icdCreationOpen is true */}
         <ClaimPreviewDrawer />{/* mounts itself only when hccClaimPreview.open is true */}
         {quickViewPatient && <QuickViewDrawer />}
         <PgProcessingHost />
       </Suspense>
-      <Toast />
-      <ToastSuccess />
+      <Toaster />
+      
     </div>
   );
 }

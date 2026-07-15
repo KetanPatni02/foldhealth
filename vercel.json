@@ -2,6 +2,10 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/s/:section",
+      "destination": "/api/share?s=:section"
+    },
+    {
       "source": "/docs",
       "destination": "https://fold-ab931789.subdirectory-docs.mintlify.me/docs"
     },

@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
@@ -13,15 +13,48 @@ import {
   ActionsMenuPopover,
   OpenIcdsHoverPopover,
 } from './RowPopovers';
-import { getIcdsForMember, getNotLinkedForMember } from './data/icds';
-import { getStatusSpec } from './statusSpec';
+import { ChartDetailDrawer } from './ChartDetailDrawer';
+import { DocPreviewDrawer } from './DocPreviewDrawer';
+import { getChartDocs } from './data/chartDocs';
+import { computeSla, slaOutcome } from './sla';
+// From foldhealth/main: getOpenIcdsForMember is already imported below from
+// './data/icds', so this duplicate is commented out to avoid a redeclaration.
+// import { getOpenIcdsForMember } from './data/icds';
+import { dosSourceLetter, DOS_SOURCE_META } from './dosSource';
+import { getIcdsForMember, getNotLinkedForMember, getOpenIcdsForMember } from './data/icds';
+import { getStatusSpec, hasStatusSpec } from './statusSpec';
 import { StatusIcon } from './StatusIcon';
-import { staffById, staffForRole, ROLE_LABEL, ROLES } from './assignment/astranaStaff';
+import { staffById, ROLE_LABEL, ROLES } from './assignment/astranaStaff';
+import { RoleAssigneePicker } from './RoleAssigneePicker';
 import { createPortal } from 'react-dom';
 import { dosKey } from './assignment/dosState';
 import styles from './HccWorklistRow.module.css';
 
 const RISK_VARIANT = { High: 'lace-high', Medium: 'lace-medium', Low: 'lace-low' };
+
+// Short display label for the Visit Type column — keeps the underlying value
+// unchanged (filters + data still match the canonical name) while the cell
+// renders a compact form so more columns fit on screen. Falls back to the
+// canonical name for anything not in the map.
+const VT_SHORT = {
+  'AWV - Annual Wellness Visit':               'AWV',
+  'IPPE - Initial Preventive Physical Exam':   'IPPE',
+  'Annual Physical Exam':                       'APE',
+  'New Patient Office Visit':                   'New Patient',
+  'Established Patient Office Visit':           'Est. Patient',
+  'Telehealth Visit':                           'Telehealth',
+  'Specialist Visit / Consult':                 'Specialist',
+  'ER Visit':                                   'ER',
+  'Inpatient Visit / Admission':                'Inpatient',
+  'Observation Visit':                          'Observation',
+  'Skilled Nursing Facility Visit':             'SNF',
+  'Home Visit':                                 'Home',
+  'Hospice Visit':                              'Hospice',
+  'Lab/Imaging Order':                          'Lab/Imaging',
+  'Transitional Care Management (TCM) Visit':   'TCM',
+  'Chronic Care Management (CCM)':              'CCM',
+};
+const vtShortLabel = (v) => VT_SHORT[v] || v || 'HCC';
 
 function LastVisitCell({ dos, visits, fromClaim, onClickDate, onClickVisits }) {
   if (!dos) return <span className={styles.muted}>—</span>;
@@ -55,63 +88,129 @@ function LastVisitCell({ dos, visits, fromClaim, onClickDate, onClickVisits }) {
   );
 }
 
-function CreateDateCell({ date, due, dueCol }) {
+function CreateDateCell({ member, dosState }) {
+  const date = member.date;
+  // Once Support AND Coder are both Completed, the SLA window has closed —
+  // show the verdict (✓ SLA Met within the window, ✗ SLA Breached after).
+  const supDone = (dosState?.support?.status || member.supS) === 'Completed';
+  const cdrDone = (dosState?.coder?.status || member.cdrS) === 'Completed';
+  if (supDone && cdrDone) {
+    const coderDoneAt = dosState?.coder?.history?.[dosState.coder.history.length - 1]?.at || null;
+    const outcome = slaOutcome(date, coderDoneAt);
+    if (outcome) {
+      return (
+        <div className={styles.stackCell}>
+          <span className={styles.dateText}>{date}</span>
+          <span className={styles.dueLine} style={{ color: outcome.colorVar }}>
+            <Icon name={outcome.icon} size={12} color={outcome.colorVar} />
+            <span>{outcome.label}</span>
+          </span>
+        </div>
+      );
+    }
+  }
+  // Otherwise colour the Created Date against the live 14-day SLA window.
+  const sla = computeSla(date);
+  const label = sla ? sla.label : member.due;
+  const color = sla ? sla.colorVar : member.dueCol;
   return (
     <div className={styles.stackCell}>
       <span className={styles.dateText}>{date}</span>
-      {due && (
-        <span className={styles.dueLine} style={{ color: dueCol }}>
-          <Icon name="solar:clock-circle-linear" size={12} color={dueCol} />
-          <span>{due}</span>
+      {label && (
+        <span className={styles.dueLine} style={{ color }}>
+          <Icon name="solar:clock-circle-linear" size={12} color={color} />
+          <span>{label}</span>
         </span>
       )}
     </div>
   );
 }
 
-function summarizeDocs(docStatus = []) {
-  if (docStatus.length === 0) return { label: 'No Charts', color: 'var(--neutral-200)' };
-  const pass = docStatus.filter(s => s === 'passed').length;
-  const fail = docStatus.filter(s => s === 'failed').length;
-  const pend = docStatus.filter(s => s === 'pending').length;
-  if (pass === docStatus.length) return { label: 'All Verified', color: 'var(--status-success)' };
-  if (fail === docStatus.length) return { label: 'All Failed',   color: 'var(--status-error)' };
-  if (pend === docStatus.length) return { label: 'All Pending',  color: 'var(--neutral-200)' };
-  if (fail > 0)                  return { label: `${fail} Failed`, color: 'var(--status-error)' };
-  return { label: `${pend} Pending`, color: 'var(--status-warning)' };
-}
-
-function HccEvidenceCell({ count, docStatus, onClick, onUpload }) {
+function HccEvidenceCell({ charts, onClick, onUpload }) {
   // No chart on file yet → ghost "Upload" link button (Fold Button variant
   // ghost = transparent bg + neutral-300 text). Click opens the upload
   // drawer for this member.
-  if (count == null) {
+  if (!charts || charts.length === 0) {
     return (
       <Button
         variant="ghost"
         size="S"
-        leadingIcon="solar:upload-minimalistic-linear"
+        leadingIcon="solar:upload-linear"
         onClick={(e) => { e.stopPropagation(); onUpload?.(); }}
       >
         Upload
       </Button>
     );
   }
-  const summary = summarizeDocs(docStatus);
+  // Status line (Figma 4680:138476): when every chart shares a status,
+  // show a single dot + "All Passed / Pending / Failed"; when mixed, show
+  // per-status dots with counts (●2 ●1).
+  const count = charts.length;
+  const list = charts.map(d => (d.status || 'pending').toLowerCase());
+  const pass = list.filter(s => s === 'passed').length;
+  const fail = list.filter(s => s === 'failed').length;
+  const pend = list.filter(s => s === 'pending').length;
+  const uniform = [pass, fail, pend].filter(n => n > 0).length <= 1;
+  const uniformLabel = pass ? 'All Passed' : fail ? 'All Failed' : pend ? 'All Pending' : 'No Charts';
+  const uniformColor = pass ? 'var(--status-success)' : fail ? 'var(--status-error)' : 'var(--neutral-300)';
   return (
     <button type="button" className={styles.evidenceTrigger} onClick={onClick}>
       <div className={styles.evidenceBadge}>
-        <Icon name="solar:file-text-linear" size={12} color="var(--primary-300)" />
+        <Icon name="solar:document-text-linear" size={12} color="var(--primary-300)" />
         <span>{count}</span>
         <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--primary-300)" />
       </div>
       <div className={styles.evidenceStatus}>
-        <span className={styles.evidenceDot} style={{ background: summary.color }} />
-        <span>{summary.label}</span>
+        {uniform ? (
+          <>
+            <span className={styles.evidenceDot} style={{ background: uniformColor }} />
+            <span>{uniformLabel}</span>
+          </>
+        ) : (
+          <span className={styles.evidenceDots}>
+            {pass > 0 && <span className={styles.evidenceDotCount}><span className={styles.evidenceDot} style={{ background: 'var(--status-success)' }} />{pass}</span>}
+            {fail > 0 && <span className={styles.evidenceDotCount}><span className={styles.evidenceDot} style={{ background: 'var(--status-error)' }} />{fail}</span>}
+            {pend > 0 && <span className={styles.evidenceDotCount}><span className={styles.evidenceDot} style={{ background: 'var(--neutral-300)' }} />{pend}</span>}
+          </span>
+        )}
       </div>
     </button>
   );
 }
+
+// Progress stepper (Figma 4680:138476) — one dot per workflow stage
+// (Support → Coder → QA → Compliance), coloured by that stage's status:
+// completed = green, active/in-progress = amber, pending = grey. Dots are
+// joined by short connector lines.
+const PROGRESS_TERMINAL = new Set(['Completed', 'Billing Ready']);
+const PROGRESS_ACTIVE = new Set(['In Progress', 'New', 'Records Requested', 'Record Received', 'Rebuttal', 'Insufficient', 'Returned']);
+function progressTone(status) {
+  if (!status || status === 'Assign') return 'pending';
+  if (PROGRESS_TERMINAL.has(status)) return 'done';
+  if (PROGRESS_ACTIVE.has(status)) return 'active';
+  return 'pending';
+}
+function ProgressStepper({ member }) {
+  const stages = [member.supS, member.cdrS, member.r1s, member.r2s];
+  return (
+    <span className={styles.progress}>
+      {stages.map((st, i) => {
+        const tone = progressTone(st);
+        return (
+          <span key={i} className={styles.progressSeg}>
+            {i > 0 && <span className={styles.progressLine} />}
+            <span className={[styles.progressDot, styles[`progressDot_${tone}`]].join(' ')} />
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+// Each role's default "not started" status — used when a cell carries a
+// status outside the coding workflow (e.g. AWV rows). Support's pending state
+// is "Action Needed" (Awaiting); the coding roles start at "New".
+const ROLE_DEFAULT_STATUS = { support: 'Awaiting', coder: 'New', reviewer: 'New', reviewer2: 'New' };
 
 /**
  * Render role-status cell (Support / Coder / Rev 1-3).
@@ -123,139 +222,65 @@ function HccEvidenceCell({ count, docStatus, onClick, onUpload }) {
  * The icon's COLOR encodes the status (success / warning / secondary / error
  * etc. per STATUS_SPEC). The visible bottom-line text is the *date* the role
  * is expected to complete, computed by offsetting member.date by a fixed
- * number of days per role (Support=+0, Coder=+7, Rev1=+14, Rev2=+21, Rev3=+28).
+ * number of days per role (Support=+0, Coder=+7, Reviewer=+14, Reviewer 2=+21).
  * The status itself isn't spelled out — the row legend at the bottom of the
  * worklist explains the icon meanings.
  */
 function RoleStatusCell({ name, status, date, role, memberId, dosDate }) {
-  if (!name || !status || status === 'Assign') {
-    return <RoleAssignTrigger role={role} memberId={memberId} dosDate={dosDate} />;
+  const unassigned = !name || !status || status === 'Assign';
+  if (unassigned) {
+    return <RolePicker role={role} memberId={memberId} dosDate={dosDate} current={null} />;
   }
-  const spec = getStatusSpec(status);
-  return (
-    <div className={styles.stackCell}>
+  // A status outside the coding workflow (e.g. AWV outreach states ported into
+  // the unified worklist) maps to the role's default pending status so the
+  // glyph always matches the legend — Support reads as "Action Needed"
+  // (its work, document review, is pending); Coder/QA/Compliance read "New".
+  const effectiveStatus = hasStatusSpec(status) ? status : (ROLE_DEFAULT_STATUS[role] || 'New');
+  const spec = getStatusSpec(effectiveStatus);
+  const display = (
+    <>
       <span className={styles.roleName}>{name}</span>
       <span className={styles.roleStatusLine}>
-        <StatusIcon status={status} size={12} color={spec.color} />
+        <StatusIcon status={effectiveStatus} size={12} color={spec.color} />
         {date && <span className={styles.roleDate}>{date}</span>}
       </span>
-    </div>
+    </>
+  );
+  // Completed steps are locked; every step still in flight can be reassigned.
+  if (status === 'Completed') {
+    return <div className={styles.stackCell}>{display}</div>;
+  }
+  return (
+    <RolePicker role={role} memberId={memberId} dosDate={dosDate} current={{ name }}>
+      {display}
+    </RolePicker>
   );
 }
 
 /**
- * Clickable "Assign" cell. Opens a portal popover listing candidate users
- * for the role (configured Care Team members + Astrana staff for the
- * matching role). Selecting one dispatches hccReassignRole.
+ * Role-assignee cell trigger. Wraps the shared searchable RoleAssigneePicker
+ * with the worklist's native triggers: the current name/status cell (reassign)
+ * or the muted "Assign" pill (unassigned). Used for unassigned steps and any
+ * assigned step that isn't Completed yet.
  */
-function RoleAssignTrigger({ role, memberId, dosDate }) {
-  const btnRef = useRef(null);
-  const [pos, setPos] = useState(null);
-  const teams = useAppStore(s => s.hccCareTeams);
-  const reassign = useAppStore(s => s.hccReassignRole);
-  const showToast = useAppStore(s => s.showToast);
-
-  // role here is the engine key ('support' | 'coder' | 'r1' | 'r2' | 'r3').
-  // Pool = members of HCC teams whose teamType matches this role + Astrana
-  // staff in the same role bucket. Deduped by id; configured teams win.
-  const candidates = (() => {
-    const teamType = ROLE_LABEL[role];
-    const fromTeams = (teams || [])
-      .filter(t => t.kind === 'hcc' && t.teamType === teamType)
-      .flatMap(t => (t.members || []).map(m => ({
-        id: m.userId,
-        name: m.name,
-        initials: m.initials,
-        roles: m.roles,
-        source: 'team',
-        teamName: t.name,
-      })));
-    const seen = new Set(fromTeams.map(c => c.id));
-    const fromAstrana = staffForRole(role)
-      .filter(s => !seen.has(s.id))
-      .map(s => ({
-        id: s.id,
-        name: s.name,
-        initials: s.initials,
-        roles: ROLE_LABEL[s.role],
-        source: 'astrana',
-      }));
-    return [...fromTeams, ...fromAstrana];
-  })();
-
-  const open = () => {
-    const r = btnRef.current?.getBoundingClientRect();
-    if (!r) return;
-    setPos({ top: r.bottom + 4, left: r.left });
-  };
-  const close = () => setPos(null);
-
-  // Close on outside click / escape.
-  useEffect(() => {
-    if (!pos) return;
-    const onDoc = (e) => {
-      if (!btnRef.current?.contains(e.target) && !e.target.closest?.(`.${styles.roleAssignMenu}`)) {
-        close();
-      }
-    };
-    const onKey = (e) => { if (e.key === 'Escape') close(); };
-    document.addEventListener('mousedown', onDoc);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDoc);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [pos]);
-
-  const onPick = (cand) => {
-    if (!memberId || !dosDate) {
-      showToast('Cannot assign — missing patient or DOS context.');
-      close();
-      return;
-    }
-    reassign(memberId, dosDate, role, cand.id, 'current-user', `Assigned via worklist`);
-    showToast(`${cand.name} assigned as ${ROLE_LABEL[role]}.`);
-    close();
-  };
-
+function RolePicker({ role, memberId, dosDate, current, children }) {
   return (
-    <>
-      <button
-        type="button"
-        ref={btnRef}
-        className={styles.roleUnassigned}
-        onClick={(e) => { e.stopPropagation(); pos ? close() : open(); }}
-      >
-        <Icon name="solar:user-plus-rounded-linear" size={14} color="var(--neutral-200)" />
-        <span>Assign</span>
-      </button>
-      {pos && createPortal(
-        <div
-          className={styles.roleAssignMenu}
-          style={{ top: pos.top, left: pos.left }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className={styles.roleAssignTitle}>Assign {ROLE_LABEL[role]}</div>
-          {candidates.length === 0 ? (
-            <div className={styles.roleAssignEmpty}>No candidates available.</div>
-          ) : candidates.map(c => (
-            <button
-              key={c.id}
-              type="button"
-              className={styles.roleAssignItem}
-              onClick={() => onPick(c)}
-            >
-              <Avatar variant="assignee" initials={c.initials} />
-              <span className={styles.roleAssignName}>{c.name}</span>
-              <span className={styles.roleAssignRole}>
-                {c.source === 'team' ? `Team: ${c.teamName}` : c.roles}
-              </span>
-            </button>
-          ))}
-        </div>,
-        document.body,
-      )}
-    </>
+    <RoleAssigneePicker
+      role={role}
+      memberId={memberId}
+      dosDate={dosDate}
+      currentName={current?.name || null}
+      trigger={({ ref, onClick }) => (current ? (
+        <button ref={ref} type="button" className={styles.roleReassignTrigger} title="Change assignee" onClick={onClick}>
+          {children}
+        </button>
+      ) : (
+        <button ref={ref} type="button" className={styles.roleUnassigned} onClick={onClick}>
+          <Icon name="solar:user-plus-rounded-linear" size={14} color="var(--neutral-200)" />
+          <span>Assign</span>
+        </button>
+      ))}
+    />
   );
 }
 
@@ -269,9 +294,15 @@ function addDaysToDate(dateStr, days) {
   d.setDate(d.getDate() + (days || 0));
   return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
 }
-const ROLE_OFFSET = { sup: 0, cdr: 7, r1: 14, r2: 21, r3: 28 };
+const ROLE_OFFSET = { sup: 0, cdr: 7, r1: 14, r2: 21 };
 
-function OpenIcdsCell({ count, member, onOpenWithCode }) {
+function OpenIcdsCell({ member, onOpenWithCode }) {
+  // Count is derived from the SAME open-ICD list the popover renders, so the
+  // badge number always equals the number of ICDs shown on hover. Mandatory
+  // field — never render an empty ICD count: fall back to the record's stored
+  // open-ICD count when there's no detailed gap list (e.g. AWV rows).
+  const gapCount = getOpenIcdsForMember(member?.name).all.length;
+  const count = gapCount || member?.open || 0;
   const cellRef = useRef(null);
   const openTimer = useRef(null);
   const closeTimer = useRef(null);
@@ -300,24 +331,22 @@ function OpenIcdsCell({ count, member, onOpenWithCode }) {
     clearTimeout(closeTimer.current);
   }, []);
 
-  if (count == null) return <span className={styles.muted}>—</span>;
+  if (!count) return <span className={styles.muted}>—</span>;
 
   return (
     <>
       <div
         ref={cellRef}
         className={styles.openIcdsTrigger}
-        onMouseEnter={onEnter}
-        onMouseLeave={onLeave}
+        onMouseEnter={gapCount ? onEnter : undefined}
+        onMouseLeave={gapCount ? onLeave : undefined}
       >
         <Badge variant="status-queued" label={String(count)} />
       </div>
-      {hovered && rect && (
+      {hovered && rect && gapCount > 0 && (
         <OpenIcdsHoverPopover
           anchorRect={rect}
           member={member}
-          icds={getIcdsForMember(member?.name)}
-          notLinked={getNotLinkedForMember(member?.name)}
           onIcdClick={onOpenWithCode}
           onEnter={cancelClose}
           onLeave={requestClose}
@@ -356,14 +385,14 @@ function Cell({ colKey, hidden, children, ...rest }) {
 // work off downstream. The DOS must complete the current stage before it
 // can be picked up by the next role; we never skip backward to a prior
 // completed assignee even if the next stage hasn't been assigned yet.
-const TERMINAL_STATUSES = new Set(['Completed', 'Reject', 'Rejected', 'Billing Ready']);
+const TERMINAL_STATUSES = new Set(['Completed', 'Reject', 'Rejected', 'Skipped', 'Billing Ready']);
 
 // Sequential workflow order. The first role whose status is NOT terminal
-// is where the DOS currently sits (HCC reality: Support → Coder → R1 →
-// R2 → R3 → Billing). If a stage has no status / 'Assign' placeholder
+// is where the DOS currently sits (HCC reality: Support → Coder → Reviewer →
+// Reviewer 2 → Billing). If a stage has no status / 'Assign' placeholder
 // that means it's waiting for someone to pick it up — that's the
 // current bucket but with no assignee yet.
-const STAGES_LOW_TO_HIGH = ['support', 'coder', 'r1', 'r2', 'r3'];
+const STAGES_LOW_TO_HIGH = ['support', 'coder', 'reviewer', 'reviewer2'];
 
 /**
  * Resolves who currently holds a DOS based on real HCC workflow rules.
@@ -401,17 +430,19 @@ export function resolveCurrentAssignee(member, dosState) {
       }
       // Otherwise terminal → continue down the chain.
     }
-    // All five stages terminal → Billing Ready.
+    // All four stages terminal → Billing Ready.
     return { kind: 'billing' };
   }
 
   // ── Legacy fallback (no engine state yet) ──────────────────────────
+  // Reads from the unrenamed legacy member fields (member.r1/.r1s etc.)
+  // but reports the engine's role vocabulary so ROLE_LABEL lookups agree
+  // with the engine path above.
   const legacy = [
-    { role: 'support', name: member.sup, status: member.supS },
-    { role: 'coder',   name: member.cdr, status: member.cdrS },
-    { role: 'r1',      name: member.r1,  status: member.r1s },
-    { role: 'r2',      name: member.r2,  status: member.r2s },
-    { role: 'r3',      name: member.r3,  status: member.r3s },
+    { role: 'support',   name: member.sup, status: member.supS },
+    { role: 'coder',     name: member.cdr, status: member.cdrS },
+    { role: 'reviewer',  name: member.r1,  status: member.r1s },
+    { role: 'reviewer2', name: member.r2,  status: member.r2s },
   ];
   for (const r of legacy) {
     if (!r.name && (!r.status || r.status === 'Assign')) {
@@ -507,61 +538,120 @@ function AssigneeCell({ member, dosState }) {
   );
 }
 
-// Per-column cell renderers. Keyed by `k` from HCC_COLUMNS. Each receives the
-// member row + a couple of click handlers and returns the populated `<td>`.
-// The row iterates over the (possibly user-reordered) columns array and calls
-// the matching renderer — keeping body layout in sync with header order.
-const CELL_RENDERERS = {
-  dos: ({ member, openClaimPreview, openVisits }) => {
-    // `dosFromClaim` toggles the cell between a clickable purple link
-    // (claim-sourced) and static grey text (manually entered). When the
-    // field isn't set explicitly we infer it from chart presence — every
-    // claim ships with documentation, so a row with at least one chart
-    // (`ch > 0`) almost certainly originated from a claim feed.
-    const fromClaim = member.dosFromClaim != null
-      ? !!member.dosFromClaim
-      : (member.ch != null && member.ch > 0);
+// DOS-level columns (Figma 4680:138476) — their value varies per visit
+// within a record's dos_list. In the collapsed row only the primary
+// (entry 0) shows; expanding reveals every entry stacked inside a
+// bordered box spanning these columns. Every other column is a flat,
+// record-level fact rendered once (top-aligned).
+const DOS_LEVEL_COLS = new Set(['dos', 'open', 'vt', 'rp', 'pos']);
+
+// Small circular source badge next to the DOS date (D=Document, C=Claim,
+// M=Manual). Classifier + meta come from the shared `dosSource` module so the
+// badge and the "DOS Source" filter agree on the source per date.
+function DosSourceBadge({ date }) {
+  const letter = dosSourceLetter(date);
+  const meta = DOS_SOURCE_META[letter] || DOS_SOURCE_META.D;
+  const [pos, setPos] = useState(null);
+  const ref = useRef(null);
+
+  const show = () => {
+    const r = ref.current?.getBoundingClientRect();
+    if (r) setPos({ top: r.bottom + 6, left: r.left + r.width / 2 });
+  };
+  const hide = () => setPos(null);
+
+  return (
+    <span
+      ref={ref}
+      className={[styles.dosSrcBadge, styles[meta.cls]].join(' ')}
+      aria-label={`${meta.label} · ${date}`}
+      onMouseEnter={show}
+      onFocus={show}
+      onMouseLeave={hide}
+      onBlur={hide}
+      tabIndex={0}
+    >
+      {letter}
+      {pos && createPortal(
+        <div className={styles.dosSrcTip} style={{ top: pos.top, left: pos.left }} role="tooltip">
+          <div className={styles.dosSrcTipHead}>
+            <Icon name="solar:document-text-linear" size={12} />
+            {meta.label}
+          </div>
+          <div className={styles.dosSrcTipMeta}>{meta.hint}</div>
+          <div className={styles.dosSrcTipDate}>DOS: {date}</div>
+        </div>,
+        document.body,
+      )}
+    </span>
+  );
+}
+
+// Inner content (NOT the <td>) for each DOS-level column, given one
+// dos_list entry. The main row wraps these in a stacked `<td>`.
+const DOS_INNER = {
+  dos: (entry, { openClaimPreview, member }) => {
+    // Only claim-sourced DOS (the "C" badge) open the Claims drawer;
+    // document/manual dates render as plain grey text. Date colour is
+    // neutral-300 in all cases (no purple link styling).
+    const isClaim = dosSourceLetter(entry.date) === 'C';
     return (
-      <td key="dos" data-col="dos" className={styles.colLastVisit} onClick={(e) => e.stopPropagation()}>
-        <LastVisitCell
-          dos={member.dos}
-          visits={member.visits}
-          fromClaim={fromClaim}
-          onClickDate={() => openClaimPreview?.(member, member.dos)}
-          onClickVisits={openVisits}
-        />
-      </td>
+      <span className={styles.dosItem}>
+        {isClaim ? (
+          <button type="button" className={styles.lastVisitDateBtn} onClick={() => openClaimPreview?.(member, entry.date)}>
+            <span className={styles.lastVisitDate}>{entry.date}</span>
+          </button>
+        ) : (
+          <span className={styles.lastVisitDate}>{entry.date}</span>
+        )}
+        <DosSourceBadge date={entry.date} />
+      </span>
     );
   },
-  open: ({ member, openDiagPanel }) => (
-    <td key="open" data-col="open" className={styles.colOpen} onClick={(e) => e.stopPropagation()}>
-      <OpenIcdsCell
-        count={member.open}
-        member={member}
-        onOpenWithCode={(code) => openDiagPanel(member.id, { highlightCode: code })}
-      />
-    </td>
+  open: (entry, { openDiagPanel, member }) => (
+    <OpenIcdsCell
+      member={member}
+      onOpenWithCode={(code) => openDiagPanel(member.id, { highlightCode: code, initialDos: entry.date })}
+    />
   ),
-  date: ({ member }) => (
+  vt: (entry, { member }) => {
+    const full = entry.vt || member.visitType || member.vt || 'HCC';
+    return <span className={styles.vtText} title={full}>{vtShortLabel(full)}</span>;
+  },
+  rp: (entry, { member }) => {
+    // Show just the provider name — drop any trailing "(Specialty)" suffix.
+    const full = entry.provider || member.rp || '';
+    const name = full.replace(/\s*\([^)]*\)\s*$/, '');
+    return <span className={styles.providerText} title={full}>{name}</span>;
+  },
+  pos: (entry) => (
+    entry.pos
+      ? <span className={styles.posText}>{entry.pos}{entry.posDesc ? ` - ${entry.posDesc}` : ''}</span>
+      : <span className={styles.muted}>—</span>
+  ),
+};
+
+// Per-column cell renderers for the RECORD-LEVEL columns (everything not
+// in DOS_LEVEL_COLS). Each receives the record `member` and returns a
+// populated `<td>`, rendered once per row (top-aligned).
+const CELL_RENDERERS = {
+  date: ({ member, dosStateFor }) => (
     <td key="date" data-col="date" className={styles.colDate}>
-      <CreateDateCell date={member.date} due={member.due} dueCol={member.dueCol} />
+      <CreateDateCell member={member} dosState={dosStateFor(member)} />
     </td>
   ),
-  evidence: ({ member, openChart, openUpload }) => (
+  evidence: ({ member, charts, openChart, openUpload }) => (
     <td key="evidence" data-col="evidence" className={styles.colEvidence} onClick={(e) => e.stopPropagation()}>
       <HccEvidenceCell
-        count={member.ch}
-        docStatus={member.docStatus || []}
+        charts={charts}
         onClick={openChart}
-        onUpload={openUpload}
+        onUpload={() => openUpload(member)}
       />
     </td>
   ),
-  // Current assignee — whoever owns the DOS right now per the engine.
-  // dosState arrives via the render context (see HccWorklistRow below).
-  assignee: ({ member, dosState }) => (
+  assignee: ({ member, dosStateFor }) => (
     <td key="assignee" data-col="assignee" className={styles.colAssignee}>
-      <AssigneeCell member={member} dosState={dosState} />
+      <AssigneeCell member={member} dosState={dosStateFor(member)} />
     </td>
   ),
   // Role columns — bottom-line date = member.date + per-role offset.
@@ -580,31 +670,19 @@ const CELL_RENDERERS = {
   r1: ({ member }) => (
     <td key="r1" data-col="r1" className={styles.colRole}>
       <RoleStatusCell name={member.r1} status={member.r1s} date={addDaysToDate(member.date, ROLE_OFFSET.r1)}
-        role="r1" memberId={member.id} dosDate={member.date} />
+        role="reviewer" memberId={member.id} dosDate={member.date} />
     </td>
   ),
   r2: ({ member }) => (
     <td key="r2" data-col="r2" className={styles.colRole}>
       <RoleStatusCell name={member.r2} status={member.r2s} date={addDaysToDate(member.date, ROLE_OFFSET.r2)}
-        role="r2" memberId={member.id} dosDate={member.date} />
+        role="reviewer2" memberId={member.id} dosDate={member.date} />
     </td>
   ),
   r3: ({ member }) => (
     <td key="r3" data-col="r3" className={styles.colRole}>
       <RoleStatusCell name={member.r3} status={member.r3s} date={addDaysToDate(member.date, ROLE_OFFSET.r3)}
         role="r3" memberId={member.id} dosDate={member.date} />
-    </td>
-  ),
-  rp: ({ member }) => (
-    <td key="rp" data-col="rp" className={styles.colProvider}>
-      <span className={styles.providerText}>{member.rp}</span>
-    </td>
-  ),
-  pos: ({ member }) => (
-    <td key="pos" data-col="pos" className={styles.colPos}>
-      {member.pos
-        ? <span className={styles.posBadge}>{member.pos}</span>
-        : <span className={styles.muted}>—</span>}
     </td>
   ),
   posDesc: ({ member }) => (
@@ -636,9 +714,17 @@ const CELL_RENDERERS = {
       <span className={styles.codeText}>{member.hp}</span>
     </td>
   ),
+  progress: ({ member }) => (
+    <td key="progress" data-col="progress" className={styles.colProgress}>
+      <ProgressStepper member={member} />
+    </td>
+  ),
   pcp: ({ member }) => (
     <td key="pcp" data-col="pcp" className={styles.colPcp}>
-      <span className={styles.providerText}>{member.pcp}</span>
+      <div className={styles.pcpCell}>
+        <span className={styles.providerText}>{member.pcp}</span>
+        <span className={styles.pcpMore}>+2 More</span>
+      </div>
     </td>
   ),
   dec: ({ member }) => (
@@ -654,7 +740,7 @@ const CELL_RENDERERS = {
   rl: ({ member }) => (
     <td key="rl" data-col="rl" className={styles.colRl}>
       {member.rl
-        ? <Badge variant={RISK_VARIANT[member.rl] || 'toc-new'} label={member.rl} />
+        ? <span className={styles.codeText}>{member.rl}</span>
         : <span className={styles.muted}>—</span>}
     </td>
   ),
@@ -670,6 +756,19 @@ const CELL_RENDERERS = {
   ),
 };
 
+/**
+ * One worklist row per record (Figma 4680:138476). Renders as a single
+ * `<tr>`:
+ *   - Member identity + all record-level columns (Created Date,
+ *     Documents, Support Team, Coder, RAF, …) render once, top-aligned.
+ *   - The DOS-level columns (DOS · Open ICDs · Visit Type · Provider ·
+ *     POS) render a vertical STACK: collapsed shows only the primary
+ *     visit + a "View More N ⌄" link under the DOS; expanding reveals
+ *     every visit in the record's dos_list, enclosed in a bordered box
+ *     with a "View Less ⌃" link at the bottom.
+ * The same patient can appear in multiple records — the member identity
+ * simply repeats, matching the design.
+ */
 export function HccWorklistRow({ member, hiddenCols, columns }) {
   const selectedHccIds = useAppStore(s => s.selectedHccIds);
   const selectHccMember = useAppStore(s => s.selectHccMember);
@@ -678,28 +777,30 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
   const openQuickView = useAppStore(s => s.openQuickView);
   const showToast = useAppStore(s => s.showToast);
   const openHccUploadDrawer = useAppStore(s => s.openHccUploadDrawer);
+  const openAddDos = useAppStore(s => s.openHccAddDos);
   const openClaimPreview = useAppStore(s => s.openHccClaimPreview);
-  // Per-DOS engine state — drives the Assignee column. `member.dos` is the
-  // member's currently-selected DOS in the worklist (i.e. the row's "active"
-  // visit), so we look that up in hccDosAssignments. May be undefined if the
-  // engine hasn't been seeded yet — AssigneeCell falls back to legacy fields.
-  const dosState = useAppStore(s =>
-    member?.id && member?.dos ? s.hccDosAssignments[dosKey(member.id, member.dos)] : null
-  );
+  const hccDosAssignments = useAppStore(s => s.hccDosAssignments);
+  const dosStateFor = (m) => (m?.id && m?.dos ? hccDosAssignments[dosKey(m.id, m.dos, m.rp, m.pos)] : null);
+
   const checked = selectedHccIds.includes(member.id);
   const isOpenInDrawer = diagPanelMemberId === member.id;
   const isHidden = (k) => hiddenCols?.has(k);
 
-  // Anchored popover state — all click-driven, only one open at a time.
-  const [visitsRect, setVisitsRect] = useState(null);
-  const [chartRect, setChartRect] = useState(null);
-  const [actionsRect, setActionsRect] = useState(null);
+  const dosEntries = Array.isArray(member.dos_list) && member.dos_list.length > 0
+    ? member.dos_list
+    : [{ date: member.dos, label: member.due, labelColor: member.dueCol, vt: member.vt, provider: member.rp, pos: member.pos, posDesc: member.posDesc, open: member.open }];
+  const extraCount = dosEntries.length - 1;
+  const [expanded, setExpanded] = useState(false);
+  const visibleEntries = expanded ? dosEntries : dosEntries.slice(0, 1);
 
-  const openVisits = (e) => {
-    e.stopPropagation();
-    const rect = e.currentTarget.getBoundingClientRect();
-    setVisitsRect(prev => prev ? null : rect);
-  };
+  const [chartRect, setChartRect] = useState(null);
+  const [chartDetail, setChartDetail] = useState(null);
+  const [actionsRect, setActionsRect] = useState(null);
+  const hccRole = useAppStore(s => s.hccUserRole);
+  const addedCharts = useAppStore(s => s.hccAddedCharts[member.id]);
+  const chartStatus = useAppStore(s => s.hccChartStatus[member.id]);
+  const removedCharts = useAppStore(s => s.hccRemovedCharts[member.id]);
+  const charts = useMemo(() => getChartDocs(member, addedCharts || [], chartStatus || {}, removedCharts || []), [member, addedCharts, chartStatus, removedCharts]);
   const openChart = (e) => {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
@@ -711,6 +812,8 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
     setActionsRect(prev => prev ? null : rect);
   };
 
+  const innerCtx = { member, openClaimPreview, openDiagPanel };
+
   return (
     <>
     <tr
@@ -718,21 +821,23 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
         styles.row,
         checked ? styles.rowChecked : '',
         isOpenInDrawer ? styles.rowActive : '',
+        expanded ? styles.rowExpanded : '',
       ].filter(Boolean).join(' ')}
     >
-      {/* ── Sticky left: checkbox ── */}
-      <td
-        className={`${styles.checkTd} ${styles.stickyLeft} ${styles.stickyCheck}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <Checkbox
-          checked={checked}
-          onCheckedChange={() => selectHccMember(member.id)}
-          aria-label={`Select ${member.name}`}
-        />
+      {/* Sticky left: checkbox */}
+      <td className={`${styles.checkTd} ${styles.stickyLeft} ${styles.stickyCheck}`} onClick={(e) => e.stopPropagation()}>
+        {/* Centered against the 32px avatar so the checkbox lines up with
+            the member's avatar, not the top of a (possibly expanded) row. */}
+        <div className={styles.checkAlign}>
+          <Checkbox
+            checked={checked}
+            onCheckedChange={() => selectHccMember(member.id)}
+            aria-label={`Select ${member.name}`}
+          />
+        </div>
       </td>
 
-      {/* ── Sticky left: member identity (matches TOC .patientCell exactly) ── */}
+      {/* Sticky left: member identity — renders once, top-aligned. */}
       <td className={`${styles.memberTd} ${styles.stickyLeft} ${styles.stickyMember} ${styles.colMember}`}>
         <div className={styles.patientCell}>
           <Avatar variant="patient" initials={member.in} />
@@ -746,11 +851,7 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
             </div>
             <div className={styles.patientMeta}>
               {member.memberId} &bull;{' '}
-              <button
-                type="button"
-                className={styles.langBadge}
-                onClick={(e) => e.stopPropagation()}
-              >
+              <button type="button" className={styles.langBadge} onClick={(e) => e.stopPropagation()}>
                 {(member.language || 'en').toUpperCase()}
                 <span className={styles.langTooltip}>Preferred Language: English</span>
               </button>
@@ -759,19 +860,64 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
         </div>
       </td>
 
-      {/* Body cells render in the order driven by `columns` (which the parent
-          builds from HCC_COLUMNS + the user's hccColumnOrder). Each column's
-          content lives in CELL_RENDERERS keyed by column key. */}
+      {/* Body cells — order driven by `columns`. DOS-level columns stack;
+          the rest render once (top-aligned). */}
       {(columns || []).map((col) => {
+        if (isHidden(col.k)) return null;
+
+        if (DOS_LEVEL_COLS.has(col.k)) {
+          const inner = DOS_INNER[col.k];
+          const isDos = col.k === 'dos';
+          // The DOS group (DOS · Open ICDs · Visit Type · Provider · POS)
+          // is bracketed by full-height vertical divider lines — the left
+          // one is the Member column's right border; the right one is the
+          // POS column's right border (styles.dosTdLast). Within a mini-
+          // sweep the visits stack with horizontal dividers. No rounded
+          // box — matches Figma 4672:131830.
+          return (
+            <td
+              key={col.k}
+              data-col={col.k}
+              className={[
+                styles.dosTd,
+                col.k === 'pos' ? styles.dosTdLast : '',
+              ].filter(Boolean).join(' ')}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className={styles.dosStack}>
+                {visibleEntries.map((entry, i) => (
+                  <div key={`${col.k}-${i}`} className={styles.dosStackItem}>
+                    {inner(entry, innerCtx)}
+                  </div>
+                ))}
+                {/* Footer row rendered in EVERY DOS-level column (empty in
+                    all but DOS) so the box stays the same height across
+                    columns and its bottom border/divider stays aligned. */}
+                {extraCount > 0 && (
+                  <div className={styles.dosFooter}>
+                    {isDos && (
+                      <button
+                        type="button"
+                        className={styles.viewMoreBtn}
+                        onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
+                      >
+                        {expanded ? 'View Less' : `View More ${extraCount}`}
+                        <Icon name={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-300)" />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </td>
+          );
+        }
+
         const render = CELL_RENDERERS[col.k];
-        if (!render || isHidden(col.k)) return null;
-        return render({
-          member, dosState, openVisits, openChart, openDiagPanel, openClaimPreview,
-          openUpload: () => openHccUploadDrawer(member),
-        });
+        if (!render) return null;
+        return render({ member, charts, dosStateFor, openChart, openDiagPanel, openUpload: (m) => openHccUploadDrawer(m) });
       })}
 
-      {/* ── Sticky right: actions ── */}
+      {/* Sticky right: actions */}
       <td className={`${styles.actionsCell} ${styles.stickyRight} ${styles.colActions}`}>
         <div className={styles.actionsRow}>
           <ActionButton
@@ -779,6 +925,13 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
             size="L"
             tooltip="View Diagnosis Gaps"
             onClick={(e) => { e.stopPropagation(); openDiagPanel(member.id); }}
+          />
+          <span className={styles.actionsDivider} />
+          <ActionButton
+            icon="custom:add-dos"
+            size="L"
+            tooltip="Add DOS"
+            onClick={(e) => { e.stopPropagation(); openAddDos(member); }}
           />
           <span className={styles.actionsDivider} />
           <ActionButton
@@ -791,24 +944,33 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
       </td>
     </tr>
 
-    {/* Anchored popovers: rendered as Fragment siblings to the row. Each
-        popover uses createPortal internally so it lands on document.body. */}
-    {visitsRect && (
-      <VisitsPopover
-        anchorRect={visitsRect}
-        name={member.name}
-        visits={member.dos_list}
-        onClose={() => setVisitsRect(null)}
-        onSelect={(v) => { setVisitsRect(null); openDiagPanel(member.id, { initialDos: v.date }); }}
-      />
-    )}
     {chartRect && (
       <ChartPopover
         anchorRect={chartRect}
         member={member}
+        charts={charts}
         onClose={() => setChartRect(null)}
-        onUpload={() => openHccUploadDrawer(member)}
+        onUpload={() => { setChartRect(null); openHccUploadDrawer(member); }}
+        onSelectChart={(chart) => setChartDetail({ id: chart.id })}
+        onViewMore={() => setChartDetail({ id: null })}
       />
+    )}
+    {chartDetail && (
+      hccRole === 'Support' ? (
+        <ChartDetailDrawer
+          charts={charts}
+          initialId={chartDetail.id}
+          member={member}
+          onClose={() => setChartDetail(null)}
+        />
+      ) : (
+        <DocPreviewDrawer
+          charts={charts}
+          initialId={chartDetail.id}
+          member={member}
+          onClose={() => setChartDetail(null)}
+        />
+      )
     )}
     {actionsRect && (
       <ActionsMenuPopover

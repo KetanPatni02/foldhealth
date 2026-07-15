@@ -3,6 +3,7 @@ import { Icon } from '../Icon/Icon';
 import { Button } from '../Button/Button';
 import { ActionButton } from '../ActionButton/ActionButton';
 import { SearchIconButton } from '../SearchIconButton/SearchIconButton';
+import { SearchBar } from '../SearchBar/SearchBar';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './TabBar.module.css';
 
@@ -152,17 +153,12 @@ export function TabBar() {
 
           <div className={styles.searchWrap}>
             {searchOpen ? (
-              <div className={styles.searchInput}>
-                <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
-                <input
-                  autoFocus
-                  type="text"
-                  placeholder="Search by member name…"
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                />
-                <button className={styles.searchClose} onClick={() => { setSearchOpen(false); setSearchQuery(''); }}>✕</button>
-              </div>
+              <SearchBar
+                placeholder="Search by member name…"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onClose={() => { setSearchOpen(false); setSearchQuery(''); }}
+              />
             ) : (
               <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
             )}

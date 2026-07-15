@@ -1,20 +1,11 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Drawer } from '../../components/Drawer/Drawer';
-import { Icon } from '../../components/Icon/Icon';
 import { Button } from '../../components/Button/Button';
+import { UploadDropField } from '../../components/UploadDropField/UploadDropField';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
+import { DOC_TYPES, makeUploadedChartDoc } from './data/chartDocs';
 import styles from './UploadChartDrawer.module.css';
-
-const DOC_TYPES = [
-  'Visit Note',
-  'Lab Report',
-  'Radiology Report',
-  'Discharge Summary',
-  'Referral Letter',
-  'Consultation Report',
-  'Other',
-];
 
 /**
  * UploadChartDrawer — right-side drawer used by the HCC worklist to upload a
@@ -34,18 +25,21 @@ export function UploadChartDrawer() {
   // diagActivityIcd so the entry shows in both the ICD and DOS-level logs.
   const addActivityEntry = useAppStore(s => s.addActivityEntry);
   const activityIcd = useAppStore(s => s.diagActivityIcd);
+  // Sync the uploaded document into the member's chart documents (the worklist
+  // "Documents" column + the ChartPopover / Document Available drawer).
+  const addChartDoc = useAppStore(s => s.addChartDoc);
 
-  const fileInputRef = useRef(null);
   const [file, setFile] = useState(null);
   const [caption, setCaption] = useState('');
   const [docType, setDocType] = useState('');
-  const [drag, setDrag] = useState(false);
+  const [uploadKey, setUploadKey] = useState(0); // remount UploadDropField to reset it
 
   if (!member) return null;
 
   const ok = !!(file && caption.trim() && docType);
 
   const handleUpload = () => {
+    addChartDoc(member.id, makeUploadedChartDoc(member, { file, caption, docType }), file);
     addActivityEntry({
       t: 'upload', by: 'You', role: 'Coder',
       icds: activityIcd ? [activityIcd] : undefined,
@@ -55,10 +49,11 @@ export function UploadChartDrawer() {
       file: file.name,
       fileType: docType,
     });
-    showToast(`Uploaded ${file.name} (${docType}) — wiring Supabase storage in a follow-up.`);
+    showToast(`Uploaded ${file.name} to ${member.name}'s documents.`);
     setFile(null);
     setCaption('');
     setDocType('');
+    setUploadKey(k => k + 1);
     close();
   };
 
@@ -66,6 +61,7 @@ export function UploadChartDrawer() {
     setFile(null);
     setCaption('');
     setDocType('');
+    setUploadKey(k => k + 1);
     close();
   };
 
@@ -96,33 +92,9 @@ export function UploadChartDrawer() {
 
       {/* Form */}
       <div className={styles.form}>
-        {/* Drop zone */}
-        <label
-          className={[styles.dropZone, drag ? styles.dropZoneActive : ''].join(' ')}
-          onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-          onDragLeave={() => setDrag(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDrag(false);
-            if (e.dataTransfer.files?.[0]) setFile(e.dataTransfer.files[0]);
-          }}
-        >
-          <Icon name="solar:upload-minimalistic-linear" size={26} color="var(--neutral-200)" />
-          {file ? (
-            <span className={styles.dropZoneFile}>{file.name}</span>
-          ) : (
-            <span className={styles.dropZoneCopy}>
-              <span className={styles.dropZoneMuted}>Drag and drop file here or</span>
-              <span className={styles.dropZoneLink}>Choose file</span>
-            </span>
-          )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            className={styles.fileInput}
-            onChange={(e) => e.target.files?.[0] && setFile(e.target.files[0])}
-          />
-        </label>
+        {/* Drop zone → uploading → uploaded states (shared with the Document
+            Available details drawer). */}
+        <UploadDropField key={uploadKey} onChange={setFile} />
 
         {/* Caption */}
         <div className={styles.field}>

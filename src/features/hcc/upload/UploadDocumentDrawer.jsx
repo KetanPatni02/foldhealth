@@ -4,16 +4,17 @@ import { Drawer } from '../../../components/Drawer/Drawer';
 import { Button } from '../../../components/Button/Button';
 import { Icon } from '../../../components/Icon/Icon';
 import { Avatar } from '../../../components/Avatar/Avatar';
+import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Input } from '../../../components/Input/Input';
 import { Toggle } from '../../../components/Toggle/Toggle';
 import { Select } from '../../../components/Select/Select';
 import { Dropzone } from '../../../components/Dropzone/Dropzone';
+import { IcdSearch } from '../../../components/IcdSearch/IcdSearch';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { ConfidenceBadge } from '../components/ConfidenceBadge';
 import { getScoreStyle, getFieldConfidence } from '../data/confidence';
 import { useAppStore } from '../../../store/useAppStore';
 import { runMockOcr, mandatoryFields, POS_LABEL } from './mockOcr';
-import { ICDS as ICDS_BY_MEMBER } from '../data/icds';
 import styles from './UploadDocumentDrawer.module.css';
 
 // Accepted file types for clinical document upload. PDFs are the canonical
@@ -210,16 +211,20 @@ export function UploadDocumentDrawer() {
  */
 function PickerPhase({ showToast, cancel }) {
   const queueHccDocumentForOcr = useAppStore(s => s.queueHccDocumentForOcr);
-  const sftpBatches = useAppStore(s => s.hccSftpBatches) || [];
-  const openSftpReview = useAppStore(s => s.openHccSftpReview);
-  // Each entry: { id, file, name, size, progress: 0-100, status: 'uploading'|'complete' }
+  const createFromEncounter = useAppStore(s => s.hccCreateOrMergeFromEncounter);
+  const openReviewForBatches = useAppStore(s => s.openHccReviewForBatches);
+  // Each entry: { id, file, name, size, progress: 0-100,
+  //   status: 'uploading' | 'extracting' } — a row lives here only while it
+  //   uploads then extracts; once done it moves into `records` below.
   const [staged, setStaged] = useState([]);
-  // Once Start Extraction fires we remember the queued batch IDs so we
-  // can render the "Queued Documents" list (matches Figma 211:66363) in
-  // place of the staged list. We also track which staged-row IDs maps
-  // to which batch, so progress on the SFTP side feeds back into the
-  // drawer's row.
-  const [queuedBatchIds, setQueuedBatchIds] = useState([]);
+  // Extracted results, one per record (encounter) — or one per document when
+  // the file is unreadable. Drives the "Extracted Records" view (Figma
+  // 4967:199663). { id, fileName, source, dateISO, bucket, reason?, batchId?,
+  // encIdx?, patientName? }
+  const [records, setRecords] = useState([]);
+  const [activeBucket, setActiveBucket] = useState('review');
+  // Guards so each staged row is only sent through extraction once.
+  const startedRef = useRef(new Set());
 
   // Drive the per-file upload progress animations.
   useEffect(() => {
@@ -229,11 +234,71 @@ function PickerPhase({ showToast, cancel }) {
       setStaged(prev => prev.map(s => {
         if (s.status !== 'uploading') return s;
         const next = Math.min(100, s.progress + (10 + Math.random() * 15));
-        return { ...s, progress: next, status: next >= 100 ? 'complete' : 'uploading' };
+        return { ...s, progress: next, status: next >= 100 ? 'extracting' : 'uploading' };
       }));
     }, 120);
     return () => clearTimeout(t);
   }, [staged]);
+
+  // Auto-extract: the moment a file finishes uploading it flips to
+  // 'extracting' and OCR runs immediately — no "Start Extraction" button.
+  // autoApply:false so we classify + apply here per the upload rules.
+  useEffect(() => {
+    const ready = staged.filter(s => s.status === 'extracting' && !startedRef.current.has(s.id));
+    ready.forEach((row) => {
+      startedRef.current.add(row.id);
+      void extractOne(row);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [staged]);
+
+  const extractOne = async (row) => {
+    const name = row.name;
+    try {
+      const batchId = await queueHccDocumentForOcr?.(row.file, { autoApply: false });
+      const batch = useAppStore.getState().hccSftpBatches.find(b => b.id === batchId);
+      const dateISO = batch?.ingestedAt || new Date().toISOString();
+      const encs = batch?.encounters || [];
+      let recs;
+      // Unreadable document — corrupted / wrong format / blank page.
+      if (batch?.ocrTier === 'unreadable' || encs.length === 0) {
+        recs = [{
+          id: `${row.id}-doc`, fileName: name, source: 'Manual Upload', dateISO,
+          bucket: 'unreadable',
+          reason: batch?.ocrTier === 'unreadable'
+            ? 'File is corrupted or in an unreadable format'
+            : 'No readable content — blank or unrecognized page',
+        }];
+      } else {
+        recs = encs.map((enc, i) => {
+          const bucket = classifyEncounter(enc, batch?.ocrTier);
+          // Only fully-confident records are added straight to the worklist.
+          // Guard the create so a single failure can't drop the whole batch.
+          if (bucket === 'added') {
+            try { createFromEncounter?.({ ...enc, _docName: name, _batchId: batchId }); }
+            catch (err) { console.error('Auto-add failed for extracted record', err); }
+          }
+          return {
+            id: `${row.id}-${i}`, fileName: name, source: 'Manual Upload', dateISO,
+            bucket, batchId, encIdx: i, patientName: enc.patient?.name || '',
+          };
+        });
+      }
+      setRecords(prev => [...prev, ...recs]);
+    } finally {
+      setStaged(prev => prev.filter(s => s.id !== row.id));
+    }
+  };
+
+  // Keep the active bucket on a non-empty category as records land.
+  useEffect(() => {
+    const count = (k) => records.filter(r => r.bucket === k).length;
+    if (records.length && count(activeBucket) === 0) {
+      const next = EXTRACT_BUCKETS.find(b => count(b.key) > 0);
+      if (next) setActiveBucket(next.key);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [records]);
 
   // Spec H — manual UI uploads cap at 15 files OR 100 MB cumulative,
   // whichever is hit first. SFTP path is unrestricted (handled
@@ -280,44 +345,15 @@ function PickerPhase({ showToast, cancel }) {
   };
 
   const removeStaged = (id) => setStaged(prev => prev.filter(s => s.id !== id));
-  const discardAll = () => { setStaged([]); cancel?.(); };
-
-  const completeCount = staged.filter(s => s.status === 'complete').length;
-  const uploadingCount = staged.filter(s => s.status === 'uploading').length;
-
-  const handleStartExtraction = () => {
-    const ready = staged.filter(s => s.status === 'complete');
-    if (ready.length === 0) return;
-    // Queue each completed file. queueHccDocumentForOcr returns the
-    // batch id (Promise<string>) so we can wire row-level state below.
-    const idPromises = ready.map(s => queueHccDocumentForOcr?.(s.file));
-    // Optimistically remember which staged rows became queued.
-    // We use a best-effort match by filename since the action resolves
-    // asynchronously and the new batch entries are appended in order.
-    setQueuedBatchIds(prev => [
-      ...prev,
-      ...ready.map(r => ({ stagedId: r.id, fileName: r.name })),
-    ]);
-    // Drop the staged rows — they're now represented by SFTP batches.
-    setStaged(prev => prev.filter(s => s.status !== 'complete'));
-    showToast?.(`Extracting ${ready.length} document${ready.length === 1 ? '' : 's'} in the background`);
-    // Drawer STAYS open per Figma 211:66363 so the user can watch
-    // progress and add more files. The drawer's onClose handler is
-    // wired to minimize when there are pending batches.
-    void idPromises;
+  const removeRecord = (rec) => setRecords(prev => prev.filter(r => r.id !== rec.id));
+  // Review a flagged record — open the full-screen Document Review over every
+  // extracted document, landing on the one the user clicked (Figma
+  // 4999:156381). Previous/Next there steps through the rest.
+  const reviewRecord = (rec) => {
+    const batchIds = [...new Set(records.map(r => r.batchId).filter(Boolean))];
+    cancel?.();
+    openReviewForBatches?.(batchIds, rec?.batchId);
   };
-
-  // Match our queued staged rows to the live SFTP batches by fileName.
-  // Newest matching batch wins (in case the user queued duplicates).
-  const queuedBatches = useMemo(() => {
-    return queuedBatchIds.map(q => {
-      const matches = sftpBatches.filter(b => b.fileName === q.fileName);
-      return matches[matches.length - 1] || null;
-    }).filter(Boolean);
-  }, [queuedBatchIds, sftpBatches]);
-
-  const hasQueue = queuedBatches.length > 0;
-  const allQueueDone = hasQueue && queuedBatches.every(b => b.status === 'done');
 
   return (
     <div className={styles.pickerPhase2}>
@@ -339,91 +375,35 @@ function PickerPhase({ showToast, cancel }) {
           onReject={() => showToast?.('Please upload a PDF, DOC, JPG, PNG, or TIFF file')}
         />
 
-        {/* Staged file list + footer (Start Extraction / Discard).
-            Both sit inside the upload container so the dropzone,
-            helper line, file rows, and primary actions read as one
-            component (Figma 121:84012). */}
+        {/* Staged file list — each row shows its upload bar, then flips to
+            "Extracting…" and disappears into Extracted Records once done.
+            No Start Extraction button: extraction is automatic. */}
         {staged.length > 0 && (
-          <>
-            <div className={styles.stagedList}>
-              {staged.map(s => (
-                <StagedFileRow
-                  key={s.id}
-                  file={s}
-                  onRemove={() => removeStaged(s.id)}
-                  onPreview={() => showToast?.(`Preview ${s.name} — coming soon`)}
-                />
-              ))}
-            </div>
-            <div className={styles.pickerFooter}>
-              <Button
-                variant="primary"
-                size="S"
-                disabled={completeCount === 0}
-                onClick={handleStartExtraction}
-              >
-                {uploadingCount > 0
-                  ? `Start Extraction · ${completeCount} ready`
-                  : `Start Extraction (${completeCount})`}
-              </Button>
-              <Button variant="alt" size="S" onClick={discardAll}>Discard</Button>
-            </div>
-          </>
-        )}
-      </div>
-
-      <WhatHappensNext />
-
-      {/* Queued Documents — appears below "What happens next?" once
-          Start Extraction fires, per Figma 211:66363. Live-tracks the
-          OCR progress for each queued document; eye opens preview. */}
-      {hasQueue && (
-        <div className={styles.queuedSection}>
-          <div className={styles.queuedHead}>
-            <span className={styles.queuedTitle}>Queued Documents</span>
-            <div className={styles.queuedHeadRight}>
-              <button
-                type="button"
-                className={styles.queuedViewAll}
-                onClick={() => openSftpReview?.()}
-                disabled={!queuedBatches.some(b => b.status === 'done')}
-              >
-                View All Documents
-                <Icon name="solar:arrow-right-up-linear" size={12} color="var(--primary-300)" />
-              </button>
-              <span className={styles.queuedDivider} />
-              <button
-                type="button"
-                className={styles.queuedFilterBtn}
-                title="Filter"
-              >
-                <Icon name="solar:filter-linear" size={14} color="var(--neutral-300)" />
-              </button>
-            </div>
-          </div>
-          <div className={styles.queuedList}>
-            {queuedBatches.map(b => (
-              <QueuedDocRow
-                key={b.id}
-                batch={b}
-                onPreview={() => showToast?.(`Preview ${b.fileName} — coming soon`)}
-                onRemove={() => {
-                  setQueuedBatchIds(prev => prev.filter(q => q.fileName !== b.fileName));
-                }}
+          <div className={styles.stagedList}>
+            {staged.map(s => (
+              <StagedFileRow
+                key={s.id}
+                file={s}
+                onRemove={() => removeStaged(s.id)}
+                onPreview={() => showToast?.(`Preview ${s.name} — coming soon`)}
               />
             ))}
           </div>
-          {allQueueDone && (
-            <Button
-              variant="primary"
-              size="S"
-              leadingIcon="solar:eye-linear"
-              onClick={() => { cancel?.(); openSftpReview?.(); }}
-            >
-              Review {queuedBatches.length} Document{queuedBatches.length === 1 ? '' : 's'}
-            </Button>
-          )}
-        </div>
+        )}
+      </div>
+
+      {records.length === 0 && <WhatHappensNext />}
+
+      {/* Extracted Records — the post-extraction results, bucketed into
+          Needs Review / Unreadable / Added to Worklist (Figma 4967:199663). */}
+      {records.length > 0 && (
+        <ExtractedRecords
+          records={records}
+          activeBucket={activeBucket}
+          setActiveBucket={setActiveBucket}
+          onReview={reviewRecord}
+          onDelete={removeRecord}
+        />
       )}
 
       {/* Demo helper — quick chips so the prototype is exercisable
@@ -435,8 +415,8 @@ function PickerPhase({ showToast, cancel }) {
         {[
           'demo-single.pdf',
           'demo-multi-patient.pdf',
-          'demo-same-patient-multi-dos.pdf',
-          'demo-bulk-multi-patient.pdf',
+          'demo-degraded-scan.pdf',
+          'demo-unreadable-fax.pdf',
         ].map(name => (
           <button
             key={name}
@@ -455,47 +435,144 @@ function PickerPhase({ showToast, cancel }) {
   );
 }
 
+// ── Extracted-records classification ──────────────────────────────────
+// The three buckets the "Extracted Records" view sorts into (Figma
+// 4967:199663). Order matches the badge row.
+const EXTRACT_BUCKETS = [
+  { key: 'review',     label: 'Needs Review',      icon: 'solar:danger-circle-linear',   tone: 'review' },
+  { key: 'unreadable', label: 'Unreadable',        icon: 'solar:danger-triangle-linear', tone: 'unreadable' },
+  { key: 'added',      label: 'Added to Worklist', icon: 'solar:check-circle-linear',    tone: 'added' },
+];
+
+// Classify one extracted encounter. The document's OCR tier is the
+// confidence signal: 'clean' means every field extracted at high (≥85%)
+// confidence, 'degraded' means at least one field fell below the bar.
+//  • 'added'  — clean extraction, patient matched, no mandatory field missing
+//               → 100% confident, added straight to the worklist.
+//  • 'review' — degraded extraction, a missing mandatory field, or the patient
+//               couldn't be matched → needs a human pass.
+function classifyEncounter(enc, tier) {
+  const matched = !!enc.patient?.matchedMemberId;
+  const noErrors = !enc.errors || enc.errors.length === 0;
+  return (tier === 'clean' && matched && noErrors) ? 'added' : 'review';
+}
+
+// "MM/DD/YYYY" for the record meta line.
+function shortDate(iso) {
+  const d = new Date(iso);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()}`;
+}
+
+// Relative day heading — "Today • Jul 29, 2026" / "Yesterday • …" / weekday.
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+function dayHeading(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const startOfDay = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate());
+  const diff = Math.round((startOfDay(now) - startOfDay(d)) / 86400000);
+  const dateStr = `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  const prefix = diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : diff < 7 ? WEEKDAYS[d.getDay()] : null;
+  return prefix ? `${prefix} • ${dateStr}` : dateStr;
+}
+
 /**
- * QueuedDocRow — one row in the Queued Documents list (Figma
- * 211:66363). Shows filename + date + "You" actor, with a
- * "Processing…" underlined label that fades to a green check + count
- * when the batch lands.
+ * ExtractedRecords — post-extraction results on the same Upload screen
+ * (Figma 4967:199663). Three filter badges bucket the records; the active
+ * bucket's rows render grouped by day.
  */
-function QueuedDocRow({ batch, onPreview, onRemove }) {
-  const isPending = batch.status === 'pending';
-  const dateLabel = useMemo(() => {
-    if (!batch.ingestedAt) return '';
-    const d = new Date(batch.ingestedAt);
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()}`;
-  }, [batch.ingestedAt]);
+function ExtractedRecords({ records, activeBucket, setActiveBucket, onReview, onDelete }) {
+  const count = (k) => records.filter(r => r.bucket === k).length;
+  const visible = records.filter(r => r.bucket === activeBucket);
+  const groups = useMemo(() => {
+    const map = new Map();
+    for (const r of visible) {
+      const h = dayHeading(r.dateISO);
+      if (!map.has(h)) map.set(h, []);
+      map.get(h).push(r);
+    }
+    return Array.from(map.entries());
+  }, [visible]);
+
   return (
-    <div className={styles.queuedRow}>
-      <span className={styles.queuedRowIcon}>
-        <Icon name="solar:file-text-linear" size={14} color="var(--primary-300)" />
+    <div className={styles.extracted}>
+      <div className={styles.extractedTitle}>Extracted Records</div>
+      <div className={styles.bucketRow}>
+        {EXTRACT_BUCKETS.map(b => {
+          const active = activeBucket === b.key;
+          return (
+            <button
+              key={b.key}
+              type="button"
+              className={[styles.bucketPill, active ? styles[`bucketPill_${b.tone}`] : ''].filter(Boolean).join(' ')}
+              onClick={() => setActiveBucket(b.key)}
+            >
+              <Icon
+                name={b.icon}
+                size={14}
+                color={active ? 'currentColor' : 'var(--neutral-300)'}
+              />
+              {b.label}({count(b.key)})
+            </button>
+          );
+        })}
+      </div>
+
+      {visible.length === 0 ? (
+        <div className={styles.extractedEmpty}>No records in this category.</div>
+      ) : (
+        groups.map(([heading, rows]) => (
+          <div key={heading} className={styles.extractedGroup}>
+            <div className={styles.extractedGroupLabel}>{heading}</div>
+            <div className={styles.extractedList}>
+              {rows.map(r => (
+                <ExtractedRow key={r.id} rec={r} onReview={onReview} onDelete={onDelete} />
+              ))}
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+/**
+ * ExtractedRow — one extracted record. Icon + filename + meta line
+ * (date • source • status), a Review action for flagged records, and a
+ * delete affordance.
+ */
+function ExtractedRow({ rec, onReview, onDelete }) {
+  const statusText = rec.bucket === 'review' ? 'Needs Review'
+    : rec.bucket === 'added' ? 'Added to Worklist'
+    : (rec.reason || 'Unreadable');
+  const statusCls = rec.bucket === 'review' ? styles.exStatusReview
+    : rec.bucket === 'added' ? styles.exStatusAdded
+    : styles.exStatusUnreadable;
+  return (
+    <div className={styles.exRow}>
+      <span className={styles.exIcon}>
+        <Icon name="solar:file-text-linear" size={16} color="var(--primary-300)" />
       </span>
-      <div className={styles.queuedRowMain}>
-        <div className={styles.queuedRowName}>{batch.fileName}</div>
-        <div className={styles.queuedRowMeta}>{dateLabel} · You</div>
+      <div className={styles.exMain}>
+        <div className={styles.exName}>{rec.fileName}</div>
+        <div className={styles.exMeta}>
+          {shortDate(rec.dateISO)} • {rec.source} • <span className={statusCls}>{statusText}</span>
+        </div>
       </div>
-      <div className={styles.queuedRowStatus}>
-        {isPending ? (
-          <span className={styles.queuedProcessing}>Processing…</span>
-        ) : (
-          <span className={styles.queuedDone}>
-            <Icon name="solar:check-circle-bold" size={12} color="var(--status-success)" />
-            {batch.encounters?.length || 0} extracted
-          </span>
-        )}
-      </div>
-      <div className={styles.queuedRowActions}>
-        <button type="button" className={styles.queuedRowAction} onClick={onPreview} title="Preview">
-          <Icon name="solar:eye-linear" size={14} color="var(--neutral-300)" />
-        </button>
-        <button type="button" className={styles.queuedRowAction} onClick={onRemove} title="Remove from queue">
-          <Icon name="solar:close-circle-linear" size={14} color="var(--neutral-300)" />
-        </button>
-      </div>
+      {rec.bucket === 'review' && (
+        <Button variant="primary" size="S" leadingIcon="solar:magic-stick-3-linear" onClick={() => onReview(rec)}>
+          Review
+        </Button>
+      )}
+      {/* No delete for records already added to the worklist — they're
+          committed; only flagged / unreadable rows can be dismissed. */}
+      {rec.bucket !== 'added' && (
+        <>
+          <span className={styles.exDivider} />
+          <ActionButton icon="solar:trash-bin-trash-linear" size="S" tooltip="Remove" onClick={() => onDelete(rec)} />
+        </>
+      )}
     </div>
   );
 }
@@ -508,8 +585,10 @@ function QueuedDocRow({ batch, onPreview, onRemove }) {
 function StagedFileRow({ file, onRemove, onPreview }) {
   const sizeLabel = formatBytes(file.size);
   const isUploading = file.status === 'uploading';
+  const isExtracting = file.status === 'extracting';
+  const isBusy = isUploading || isExtracting;
   return (
-    <div className={[styles.stagedRow, isUploading ? styles.stagedRowUploading : styles.stagedRowComplete].join(' ')}>
+    <div className={[styles.stagedRow, isBusy ? styles.stagedRowUploading : styles.stagedRowComplete].join(' ')}>
       <span className={styles.stagedIcon}>
         <Icon name="solar:file-text-linear" size={14} color="var(--neutral-300)" />
       </span>
@@ -518,17 +597,8 @@ function StagedFileRow({ file, onRemove, onPreview }) {
         <div className={styles.stagedMeta}>
           <span>{sizeLabel} <span className={styles.stagedMetaSep}>/</span> 30 MB</span>
           <span className={styles.stagedStatus}>
-            {isUploading ? (
-              <>
-                <span className={styles.stagedSpinner} />
-                Uploading…
-              </>
-            ) : (
-              <>
-                <Icon name="solar:check-circle-bold" size={12} color="var(--status-success)" />
-                Complete
-              </>
-            )}
+            <span className={styles.stagedSpinner} />
+            {isUploading ? 'Uploading…' : 'Extracting…'}
           </span>
         </div>
         {isUploading && (
@@ -541,18 +611,11 @@ function StagedFileRow({ file, onRemove, onPreview }) {
         )}
       </div>
       <div className={styles.stagedActions}>
-        {!isUploading && (
-          <button type="button" className={styles.stagedActionBtn} onClick={onPreview} title="Preview">
-            <Icon name="solar:eye-linear" size={14} color="var(--neutral-300)" />
+        {isUploading && (
+          <button type="button" className={styles.stagedActionBtn} onClick={onRemove} title="Remove">
+            <Icon name="solar:close-circle-linear" size={14} color="var(--neutral-300)" />
           </button>
         )}
-        <button type="button" className={styles.stagedActionBtn} onClick={onRemove} title="Remove">
-          <Icon
-            name={isUploading ? 'solar:close-circle-linear' : 'solar:trash-bin-trash-linear'}
-            size={14}
-            color={isUploading ? 'var(--neutral-300)' : 'var(--status-error)'}
-          />
-        </button>
       </div>
     </div>
   );
@@ -1170,7 +1233,6 @@ function SftpPhase({ showToast }) {
 function SinglePhase({ hccMembers, batchId, showToast, createFromEncounter, onDone }) {
   const [patient, setPatient] = useState(null);   // selected hccMember or null
   const [patientQuery, setPatientQuery] = useState('');
-  const [icdQuery, setIcdQuery] = useState('');
   const [icds, setIcds] = useState([]);             // [{ code, desc, hcc? }]
   const [dosMode, setDosMode] = useState('existing'); // 'existing' | 'new'
   const [dos, setDos] = useState('');
@@ -1190,33 +1252,9 @@ function SinglePhase({ hccMembers, batchId, showToast, createFromEncounter, onDo
       .slice(0, 8);
   }, [hccMembers, patientQuery]);
 
-  // ICD search — flatten all known ICDs across members, then dedup by
-  // code so the user gets a single entry per diagnosis even if it's
-  // attached to multiple patients in the mock.
-  const allIcds = useMemo(() => {
-    const map = new Map();
-    Object.values(ICDS_BY_MEMBER).forEach(list => {
-      (list || []).forEach(item => {
-        if (!map.has(item.code)) map.set(item.code, item);
-      });
-    });
-    return [...map.values()];
-  }, []);
-  const icdMatches = useMemo(() => {
-    const q = icdQuery.trim().toLowerCase();
-    if (!q) return [];
-    return allIcds
-      .filter(i =>
-        (i.code || '').toLowerCase().includes(q) ||
-        (i.desc || '').toLowerCase().includes(q),
-      )
-      .slice(0, 6);
-  }, [allIcds, icdQuery]);
-
   const addIcd = (item) => {
     if (icds.some(i => i.code === item.code)) return;
     setIcds([...icds, item]);
-    setIcdQuery('');
   };
   const removeIcd = (code) => setIcds(icds.filter(i => i.code !== code));
 
@@ -1313,27 +1351,11 @@ function SinglePhase({ hccMembers, batchId, showToast, createFromEncounter, onDo
       {/* ICD typeahead + chip list. */}
       <div className={styles.singleSection}>
         <label className={styles.singleLabel}>ICD codes *</label>
-        <Input
+        <IcdSearch
           placeholder="Search by code or description (e.g. E11.9, COPD)…"
-          value={icdQuery}
-          onChange={(e) => setIcdQuery(e.target.value)}
+          excludeCodes={icds.map(i => i.code)}
+          onSelect={(icd) => addIcd({ code: icd.code, desc: icd.title, hcc: icd.hcc || '', valid: true })}
         />
-        {icdMatches.length > 0 && (
-          <div className={styles.icdMatchList}>
-            {icdMatches.map(m => (
-              <button
-                key={m.code}
-                type="button"
-                className={styles.icdMatchItem}
-                onClick={() => addIcd(m)}
-              >
-                <code className={styles.icdMatchCode}>{m.code}</code>
-                <span className={styles.icdMatchDesc}>{m.desc}</span>
-                {m.hcc && <span className={styles.icdMatchHcc}>{m.hcc.replace(/ - .*$/, '')}</span>}
-              </button>
-            ))}
-          </div>
-        )}
         {icds.length > 0 && (
           <div className={styles.icdChosen}>
             {icds.map(i => (
@@ -2216,7 +2238,6 @@ function PosSelect({ value, onChange, error }) {
  * Used for both Add (new ICD) and Edit (replace an existing chip).
  */
 function IcdPicker({ existingCodes, editingCode, onPick, onClose }) {
-  const [q, setQ] = useState('');
   const wrapRef = useRef(null);
 
   useEffect(() => {
@@ -2227,60 +2248,14 @@ function IcdPicker({ existingCodes, editingCode, onPick, onClose }) {
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [onClose]);
 
-  const all = useMemo(() => {
-    const map = new Map();
-    Object.values(ICDS_BY_MEMBER).forEach(list => {
-      (list || []).forEach(item => {
-        if (!map.has(item.code)) map.set(item.code, { code: item.code, desc: item.desc, hcc: item.hcc });
-      });
-    });
-    return [...map.values()];
-  }, []);
-
-  const matches = useMemo(() => {
-    const query = q.trim().toLowerCase();
-    if (!query) return all.slice(0, 8);
-    return all
-      .filter(i =>
-        (i.code || '').toLowerCase().includes(query) ||
-        (i.desc || '').toLowerCase().includes(query),
-      )
-      .slice(0, 8);
-  }, [all, q]);
-
   return (
-    <div ref={wrapRef} className={styles.icdPicker}>
-      <div className={styles.icdPickerHead}>
-        <Icon name="solar:magnifer-linear" size={12} color="var(--neutral-300)" />
-        <input
-          autoFocus
-          className={styles.icdPickerInput}
-          placeholder={editingCode ? `Replace ${editingCode}…` : 'Search ICD by code or description'}
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-      </div>
-      <div className={styles.icdPickerList}>
-        {matches.length === 0 ? (
-          <div className={styles.icdPickerEmpty}>No matches</div>
-        ) : matches.map(item => {
-          const alreadyAdded = existingCodes.includes(item.code) && item.code !== editingCode;
-          return (
-            <button
-              key={item.code}
-              type="button"
-              className={[styles.icdPickerItem, alreadyAdded ? styles.icdPickerItemDisabled : ''].filter(Boolean).join(' ')}
-              disabled={alreadyAdded}
-              onClick={() => onPick?.({ code: item.code, desc: item.desc, valid: true })}
-              title={alreadyAdded ? 'Already added to this encounter' : item.desc}
-            >
-              <span className={styles.icdPickerCode}>{item.code}</span>
-              <span className={styles.icdPickerDesc}>{item.desc}</span>
-              {alreadyAdded && <span className={styles.icdPickerHint}>Added</span>}
-            </button>
-          );
-        })}
-      </div>
+    <div ref={wrapRef} className={styles.icdPickerWrap}>
+      <IcdSearch
+        autoFocus
+        excludeCodes={existingCodes.filter((c) => c !== editingCode)}
+        placeholder={editingCode ? `Replace ${editingCode}…` : 'Search ICD by code or description'}
+        onSelect={(icd) => onPick?.({ code: icd.code, desc: icd.title, hcc: icd.hcc || '', valid: true })}
+      />
     </div>
   );
 }
@@ -2443,32 +2418,8 @@ function EncounterCard({ enc, hccMembers, onPatch }) {
     onPatch({ icds: enc.icds.filter(i => i.code !== code) });
   };
 
-  // ── ICD search — flatten the ICD catalog into a unique-by-code list
-  // so users can add a missed code without leaving the review pane.
-  const [icdQuery, setIcdQuery] = useState('');
-  const icdCatalog = useMemo(() => {
-    const map = new Map();
-    Object.values(ICDS_BY_MEMBER).forEach(list => {
-      (list || []).forEach(item => { if (!map.has(item.code)) map.set(item.code, item); });
-    });
-    return [...map.values()];
-  }, []);
-  const icdMatches = useMemo(() => {
-    const q = icdQuery.trim().toLowerCase();
-    if (!q) return [];
-    const existing = new Set((enc.icds || []).map(i => i.code));
-    return icdCatalog
-      .filter(i =>
-        !existing.has(i.code) && (
-          (i.code || '').toLowerCase().includes(q) ||
-          (i.desc || '').toLowerCase().includes(q)
-        ),
-      )
-      .slice(0, 6);
-  }, [icdCatalog, icdQuery, enc.icds]);
   const addIcd = (item) => {
     onPatch({ icds: [...(enc.icds || []), { code: item.code, desc: item.desc, valid: true }] });
-    setIcdQuery('');
   };
 
   return (
@@ -2621,27 +2572,11 @@ function EncounterCard({ enc, hccMembers, onPatch }) {
         {/* Add ICD — typeahead over the catalog. Excludes codes already
             on this encounter so the user doesn't see false duplicates. */}
         <div className={styles.icdAddRow}>
-          <Input
+          <IcdSearch
             placeholder="Add ICD — search by code or description (e.g. E11.9, COPD)…"
-            value={icdQuery}
-            onChange={(e) => setIcdQuery(e.target.value)}
+            excludeCodes={(enc.icds || []).map(i => i.code)}
+            onSelect={(icd) => addIcd({ code: icd.code, desc: icd.title, hcc: icd.hcc || '' })}
           />
-          {icdMatches.length > 0 && (
-            <div className={styles.icdMatchList}>
-              {icdMatches.map(m => (
-                <button
-                  key={m.code}
-                  type="button"
-                  className={styles.icdMatchItem}
-                  onClick={() => addIcd(m)}
-                >
-                  <code className={styles.icdMatchCode}>{m.code}</code>
-                  <span className={styles.icdMatchDesc}>{m.desc}</span>
-                  {m.hcc && <span className={styles.icdMatchHcc}>{m.hcc.replace(/ - .*$/, '')}</span>}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 

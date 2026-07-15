@@ -32,7 +32,18 @@ export function Avatar({ variant = 'patient', initials, agentName, size, icon, b
     return <div className={[styles.invokeAgent, styles[agentKey], className || ''].filter(Boolean).join(' ')} />;
   }
   if (variant === 'provider') {
-    return <div className={[styles.provider, className || ''].filter(Boolean).join(' ')}>{initials}</div>;
+    // Honor a numeric `size` override so callers can render a compact
+    // provider chip (e.g. 24×24) without duplicating the variant. Font
+    // scales at ~44% of size (matches the default 14px / 32px ratio) with
+    // a 10px floor so short initials don't disappear.
+    const style = typeof size === 'number'
+      ? { width: size, height: size, fontSize: Math.max(10, Math.round(size * 0.44)) }
+      : undefined;
+    return (
+      <div className={[styles.provider, className || ''].filter(Boolean).join(' ')} style={style}>
+        {initials}
+      </div>
+    );
   }
   if (variant === 'assignee') {
     return <div className={[styles.assignee, className || ''].filter(Boolean).join(' ')}>{initials}</div>;

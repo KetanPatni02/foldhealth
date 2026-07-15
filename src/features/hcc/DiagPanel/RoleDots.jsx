@@ -31,9 +31,8 @@ function statusToColor(status) {
 const ROLES = [
   { key: 'sup', label: 'Support' },
   { key: 'cdr', label: 'Coder' },
-  { key: 'r1',  label: 'Reviewer 1' },
-  { key: 'r2',  label: 'Reviewer 2' },
-  { key: 'r3',  label: 'Reviewer 3' },
+  { key: 'r1',  label: 'QA' },
+  { key: 'r2',  label: 'Compliance' },
 ];
 
 export function RoleDots({ member }) {

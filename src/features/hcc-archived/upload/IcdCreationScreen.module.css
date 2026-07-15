@@ -1,0 +1,857 @@
+/* ICD Creation — unified upload + manual + SFTP entry surface
+ * Portal-rendered, full-viewport modal styled after Figma 1:12719.
+ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 8998;
+}
+
+.panel {
+  position: fixed;
+  inset: 8px;
+  z-index: 8999;
+  background: var(--neutral-0);
+  border-radius: 16px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: 'Inter', sans-serif;
+  animation: icdCreationIn 0.22s ease;
+}
+
+@keyframes icdCreationIn {
+  from { transform: translateY(8px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ── Title bar ─────────────────────────────────────────────────────── */
+.titleBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+
+.closeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--neutral-400);
+  transition: background 0.12s;
+}
+
+.closeBtn:hover {
+  background: var(--neutral-50);
+}
+
+/* ── Two-column body ───────────────────────────────────────────────── */
+.body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 0;
+}
+
+/* Inline Document Review host — fills the surface below the title bar. */
+.reviewInlineHost {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--neutral-50);
+}
+
+.leftCol,
+.rightCol {
+  padding: 20px 24px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.leftCol {
+  border-right: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+}
+
+.rightCol {
+  background: var(--neutral-50);
+}
+
+/* ── Left column ──────────────────────────────────────────────────── */
+.colHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.colTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+
+/* ── Queued-files list (between dropzone and footer) ────────────────── */
+.queueList {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.queueRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+}
+
+.queueMeta {
+  flex: 1;
+  min-width: 0;
+}
+
+.queueName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queueSub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--neutral-300);
+  margin-top: 2px;
+}
+
+.queueStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--status-success);
+  font-weight: 500;
+}
+
+.dotProcessing {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary-300);
+  animation: queuePulse 1.2s ease-in-out infinite;
+}
+
+@keyframes queuePulse {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 1; }
+}
+
+.queueActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.queueIconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.queueIconBtn:hover:not(:disabled) {
+  background: var(--neutral-50);
+}
+
+.queueIconBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.queueFooter {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.whatNext {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 0.5px solid var(--primary-100);
+  border-radius: 6px;
+  background: var(--primary-50);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-300);
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.whatNext:hover {
+  background: var(--primary-100);
+}
+
+.whatNext span {
+  flex: 1;
+}
+
+.whatNextList {
+  margin: 8px 0 0;
+  padding: 12px 16px 12px 28px;
+  border: 0.5px solid var(--primary-100);
+  border-radius: 6px;
+  background: var(--neutral-0);
+  font-size: 13px;
+  color: var(--neutral-400);
+  line-height: 1.6;
+}
+
+.whatNextList li {
+  margin-bottom: 4px;
+}
+
+/* ── Right column ─────────────────────────────────────────────────── */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  min-height: 320px;
+  padding: 32px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+}
+
+.emptyIcon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--neutral-50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.emptyTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--neutral-500);
+  margin-bottom: 6px;
+}
+
+.emptyMsg {
+  font-size: 13px;
+  color: var(--neutral-300);
+  margin-bottom: 16px;
+  max-width: 320px;
+  line-height: 1.5;
+}
+
+/* Records list */
+.recordsWrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.recordsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.recordsTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+
+.recordsSubtitle {
+  font-size: 12px;
+  color: var(--neutral-300);
+  margin-top: 2px;
+}
+
+.recordsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recordCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+}
+
+.recordMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.recordTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.recordName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+
+.recordMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--neutral-400);
+  margin-bottom: 8px;
+}
+
+.recordMeta strong {
+  color: var(--neutral-300);
+  font-weight: 500;
+  margin-right: 4px;
+}
+
+.recordIcds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.icdChip {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary-300);
+  background: var(--primary-50);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.icdChipInvalid {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--status-error);
+  background: var(--status-error-light, #FFEDED);
+  border-radius: 4px;
+  padding: 2px 6px;
+  text-decoration: line-through;
+}
+
+.recordActions {
+  flex-shrink: 0;
+}
+
+/* ── Manual form ─────────────────────────────────────────────────── */
+.manualForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+}
+
+.manualHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.linkBtn {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-300);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+
+.required {
+  color: var(--status-error);
+  margin-left: 2px;
+}
+
+.helper {
+  font-size: 11px;
+  color: var(--neutral-300);
+}
+
+.manualFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 0.5px solid var(--neutral-150);
+}
+
+/* ── Sample documents picker (upload mode, below dropzone) ───────── */
+.samples {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 0.5px dashed var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-50);
+}
+
+.samplesHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  margin-bottom: 6px;
+}
+
+.samplesList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sampleChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.sampleChip:hover {
+  border-color: var(--primary-300);
+  background: var(--primary-50);
+}
+
+.sampleTier {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 8px;
+  text-transform: capitalize;
+}
+
+.tier_clean      { background: var(--status-success-light, #E6F5EC); color: var(--status-success); }
+.tier_degraded   { background: rgba(194, 143, 42, 0.12);             color: var(--status-warning, #C28F2A); }
+.tier_unreadable { background: var(--status-error-light, #FFEDED);   color: var(--status-error); }
+
+/* ── Inline pass pill (next to filename, design reference) ───────── */
+.tierDocNameRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.passPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  border: 0.5px solid transparent;
+}
+
+.passPill_success {
+  background: var(--status-success-light, #E6F5EC);
+  color: var(--status-success);
+  border-color: rgba(46, 138, 78, 0.2);
+}
+
+.passPill_partial {
+  background: rgba(194, 143, 42, 0.12);
+  color: var(--status-warning, #C28F2A);
+  border-color: rgba(194, 143, 42, 0.25);
+}
+
+.passPill_fail {
+  background: var(--status-error-light, #FFEDED);
+  color: var(--status-error);
+  border-color: rgba(215, 40, 37, 0.25);
+}
+
+.passPillDivider {
+  width: 1px;
+  height: 9px;
+  background: currentColor;
+  opacity: 0.3;
+}
+
+/* Clickable pass pill — opens the document review. */
+.passPillClickable {
+  cursor: pointer;
+  transition: filter 0.12s, box-shadow 0.12s;
+}
+.passPillClickable:hover {
+  filter: brightness(0.97);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.04);
+}
+
+/* ── Categorized tier list (results mode, LEFT) ──────────────────── */
+.tierList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tierSection {
+  display: flex;
+  flex-direction: column;
+}
+
+.tierHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neutral-500);
+  cursor: pointer;
+  text-align: left;
+}
+
+.tierLabel {
+  flex: 0 0 auto;
+}
+
+.tierCount {
+  color: var(--neutral-300);
+  font-weight: 500;
+}
+
+.tierDocList {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tierDocRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+}
+
+.tierDocMeta {
+  flex: 1;
+  min-width: 0;
+}
+
+.tierDocName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tierDocSub {
+  font-size: 11px;
+  color: var(--neutral-300);
+  margin-top: 2px;
+}
+
+.tierStatusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--status-success-light, #E6F5EC);
+  color: var(--status-success);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ── Tabbed records (results mode, RIGHT) ────────────────────────── */
+.tabbedWrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.tabBar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.tab {
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  position: relative;
+}
+
+.tab:hover {
+  background: var(--neutral-50);
+}
+
+.tabActive {
+  color: var(--primary-300);
+}
+
+.tabActive::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: -9px;
+  height: 2px;
+  background: var(--primary-300);
+}
+
+.tabCount {
+  font-size: 12px;
+  color: var(--neutral-300);
+}
+
+.tabSpacer {
+  flex: 1;
+}
+
+.tabBody {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tabEmpty {
+  text-align: center;
+  padding: 32px;
+  font-size: 13px;
+  color: var(--neutral-300);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.sectionTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+
+.sectionList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reviewRow {
+  padding: 12px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+}
+
+.reviewRowNeeds {
+  border-color: var(--status-warning, #C28F2A);
+  background: rgba(194, 143, 42, 0.04);
+}
+
+.reviewRowMain {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.reviewRowName {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+
+.reviewRowSub {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  margin-top: 2px;
+}
+
+.reviewIssueBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: rgba(194, 143, 42, 0.12);
+  color: var(--status-warning, #C28F2A);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.reviewReadyBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--status-success-light, #E6F5EC);
+  color: var(--status-success);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.reviewConfidence {
+  color: var(--neutral-400);
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.reviewAddBtn {
+  padding: 4px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  color: var(--primary-300);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.reviewAddBtn:hover:not(:disabled) {
+  background: var(--primary-50);
+}
+
+.reviewAddBtn:disabled {
+  color: var(--neutral-300);
+  cursor: not-allowed;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .body {
+    grid-template-columns: 1fr;
+  }
+  .leftCol {
+    border-right: none;
+    border-bottom: 0.5px solid var(--neutral-150);
+  }
+}

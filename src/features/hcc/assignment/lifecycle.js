@@ -18,18 +18,20 @@
 //   completeSupport     — AC-1/AC-2 (Support completes → assign Coder)
 //   markInsufficient    — AC-1 (Support: incomplete docs, stays with Support)
 //   rejectDos           — AC-1 (Support: terminal reject)
-//   completeCoder       — AC-2/AC-3 (Coder completes → assign R1)
+//   completeCoder       — AC-2/AC-3 (Coder completes → assign Reviewer)
 //   requestRecords      — AC-6 (Coder asks Support for more docs)
 //   recordsReceived     — AC-6 (Support finishes, DOS returns to original Coder)
-//   completeR1          — AC-3/AC-4 (R1 completes; maybe → R2 via 10% sample)
-//   completeR2          — AC-4/AC-5 (R2 completes; maybe → R3 via 5% sample)
-//   completeR3          — AC-5/AC-8 (R3 completes → Billing Ready)
+//   completeReviewer    — AC-3/AC-4 (Reviewer completes; maybe → Reviewer 2 via 10% sample)
+//   completeReviewer2   — AC-4/AC-5 (Reviewer 2 completes → Billing Ready; no further tier)
 //   returnDos           — AC-7 (reviewer returns to immediate prior role)
 //   reassignRole        — AC-9 (manual reassignment; previous → Inactive)
+//
+// "Reviewer 3" does not exist in this workflow — Reviewer 2 is the terminal
+// review stage and always resolves to Billing Ready on completion.
 
 import { pickAssignee } from './engine';
 import { ROLES, ROLE_LABEL } from './astranaStaff';
-import { sampledForR2, sampledForR3, DEFAULT_SAMPLING_RATES } from './sampling';
+import { validateAsmReadinessConfig } from './sampling';
 import {
   STATUS,
   blankDosState,
@@ -43,15 +45,16 @@ import {
 
 // ── Shared helpers ───────────────────────────────────────────────────────
 
-// Pull (or lazily seed) the DOS-state record for (patientId, dosDate).
-function getOrInit(map, patientId, dosDate) {
-  const k = dosKey(patientId, dosDate);
-  return map[k] || blankDosState(patientId, dosDate);
+// Pull (or lazily seed) the DOS-state record for the composite key
+// (patientId, dosDate, provider, pos).
+function getOrInit(map, patientId, dosDate, provider, pos) {
+  const k = dosKey(patientId, dosDate, provider, pos);
+  return map[k] || blankDosState(patientId, dosDate, provider, pos);
 }
 
 // Update a single DOS-state record in the map (immutable).
 function putState(map, state) {
-  return { ...map, [dosKey(state.patientId, state.dosDate)]: state };
+  return { ...map, [dosKey(state.patientId, state.dosDate, state.renderingProvider, state.pos)]: state };
 }
 
 // Build a context object the engine needs to make its decision.
@@ -105,6 +108,32 @@ function autoAssignRole(map, state, patient, dos, role, initialStatus, transitio
   return { state: withEvt, picked: pick };
 }
 
+// Linear-workflow skip: when a role completes, any EARLIER *review* role that
+// never finished its own work is marked Skipped. Only QA (reviewer) and
+// Compliance (reviewer2) are skippable — Support and Coder are mandatory and
+// can NEVER be skipped. `SKIP_PRESERVE` are states we don't overwrite (real
+// resolution, not a bypass).
+const SKIPPABLE_ROLES = new Set(['reviewer', 'reviewer2']);
+const SKIP_PRESERVE = new Set([STATUS.COMPLETED, STATUS.SKIPPED, STATUS.REJECT, STATUS.BILLING_READY]);
+function autoSkipEarlierRoles(state, uptoRole, actor) {
+  const idx = ROLES.indexOf(uptoRole);
+  let next = state;
+  for (let i = 0; i < idx; i++) {
+    const role = ROLES[i];
+    if (!SKIPPABLE_ROLES.has(role)) continue; // Support + Coder are never skipped
+    const status = next[role]?.status;
+    if (SKIP_PRESERVE.has(status)) continue;  // already resolved — leave it
+    next = setRoleState(next, role,
+      { status: STATUS.SKIPPED },
+      { by: 'system', reason: `skipped:${uptoRole}-completed-first` },
+    );
+    next = pushActivity(next, evt(next, 'status', {
+      role, to: STATUS.SKIPPED, by: actor, reason: `${ROLE_LABEL[uptoRole]} completed before ${ROLE_LABEL[role]}`,
+    }));
+  }
+  return next;
+}
+
 // ── AC-1: Initialize a DOS for Support ───────────────────────────────────
 
 /**
@@ -117,13 +146,13 @@ function autoAssignRole(map, state, patient, dos, role, initialStatus, transitio
  * only runs `autoAssignRole` when there's genuinely nobody on Support yet.
  */
 export function initializeDos(map, patient, dos, opts = {}) {
-  const k = dosKey(patient.id, dos.date);
+  const k = dosKey(patient.id, dos.date, dos.provider, dos.pos);
   let state = map[k];
   if (!state) {
     // First touch — hydrate from any legacy member fields so existing data
     // isn't overwritten by a fresh engine pick.
     const idx = (patient.dos_list || []).findIndex(d => d.date === dos.date);
-    state = hydrateFromMember(patient, dos.date, idx < 0 ? 0 : idx);
+    state = hydrateFromMember(patient, dos.date, idx < 0 ? 0 : idx, dos.provider, dos.pos);
   }
   if (state.support.assignee) {
     // Already initialized (either by engine or by hydrate) — idempotent.
@@ -144,7 +173,7 @@ export function initializeDos(map, patient, dos, opts = {}) {
 // ── AC-1: Support starts work / completes / blocks ──────────────────────
 
 export function markSupportInProgress(map, patient, dos, actor) {
-  let state = getOrInit(map, patient.id, dos.date);
+  let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
   state = setRoleState(state, 'support',
     { status: STATUS.IN_PROGRESS },
     { by: actor || state.support.assignee || 'system', reason: 'support-start' },
@@ -164,7 +193,7 @@ export function markSupportInProgress(map, patient, dos, actor) {
  *  - coder.status starts as `New`, immediately moved to `In Progress` when assigned
  */
 export function completeSupport(map, patient, dos, actor) {
-  let state = getOrInit(map, patient.id, dos.date);
+  let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
   state = setRoleState(state, 'support',
     { status: STATUS.COMPLETED },
     { by: actor, reason: 'support-complete' },
@@ -188,7 +217,7 @@ export function completeSupport(map, patient, dos, actor) {
 
 export function markInsufficient(map, patient, dos, actor, reason) {
   if (!reason) throw new Error('markInsufficient: reason is mandatory');
-  let state = getOrInit(map, patient.id, dos.date);
+  let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
   state = setRoleState(state, 'support',
     { status: STATUS.INSUFFICIENT },
     { by: actor, reason: `insufficient:${reason}` },
@@ -201,7 +230,7 @@ export function markInsufficient(map, patient, dos, actor, reason) {
 
 export function rejectDos(map, patient, dos, actor, reason) {
   if (!reason) throw new Error('rejectDos: reason is mandatory');
-  let state = getOrInit(map, patient.id, dos.date);
+  let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
   // Reject is terminal per AC-1 — no further auto-assignment.
   state = setRoleState(state, 'support',
     { status: STATUS.REJECT },
@@ -216,7 +245,7 @@ export function rejectDos(map, patient, dos, actor, reason) {
 // ── AC-2 / AC-3: Coder lifecycle ─────────────────────────────────────────
 
 export function markCoderInProgress(map, patient, dos, actor) {
-  let state = getOrInit(map, patient.id, dos.date);
+  let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
   state = setRoleState(state, 'coder',
     { status: STATUS.IN_PROGRESS },
     { by: actor || state.coder.assignee || 'system', reason: 'coder-start' },
@@ -226,24 +255,26 @@ export function markCoderInProgress(map, patient, dos, actor) {
 }
 
 /**
- * AC-3 — Coder marks DOS Completed → assign Reviewer 1 (100% sample, no skip).
+ * AC-3 — Coder marks DOS Completed → assign Reviewer (100% sample, no skip).
  */
 export function completeCoder(map, patient, dos, actor) {
-  let state = getOrInit(map, patient.id, dos.date);
+  let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
   state = setRoleState(state, 'coder',
     { status: STATUS.COMPLETED },
     { by: actor, reason: 'coder-complete' },
   );
   state = pushActivity(state, evt(state, 'status', { role: 'coder', to: STATUS.COMPLETED, by: actor }));
+  // Support never worked it → mark Skipped (linear-workflow honesty).
+  state = autoSkipEarlierRoles(state, 'coder', actor);
 
-  const { state: withR1, picked } = autoAssignRole(
-    putState(map, state), state, patient, dos, 'r1', STATUS.IN_PROGRESS,
-    'coder-completed→r1',
+  const { state: withReviewer, picked } = autoAssignRole(
+    putState(map, state), state, patient, dos, 'reviewer', STATUS.IN_PROGRESS,
+    'coder-completed→reviewer',
   );
-  state = withR1;
+  state = withReviewer;
 
   return { nextMap: putState(map, state), events: picked
-    ? [evt(state, 'assign', { role: 'r1', to: picked.staff.id, reason: picked.reason })]
+    ? [evt(state, 'assign', { role: 'reviewer', to: picked.staff.id, reason: picked.reason })]
     : [] };
 }
 
@@ -254,7 +285,7 @@ export function completeCoder(map, patient, dos, actor) {
  * (not a fresh auto-assignment). All Coder work is preserved.
  */
 export function requestRecords(map, patient, dos, actor) {
-  let state = getOrInit(map, patient.id, dos.date);
+  let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
 
   // Coder side: status = Record Requested
   state = setRoleState(state, 'coder',
@@ -293,7 +324,7 @@ export function requestRecords(map, patient, dos, actor) {
  * All prior coding work is preserved (we never touch ICDs in the engine).
  */
 export function recordsReceived(map, patient, dos, actor) {
-  let state = getOrInit(map, patient.id, dos.date);
+  let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
 
   state = setRoleState(state, 'support',
     { status: STATUS.COMPLETED },
@@ -325,116 +356,90 @@ export function recordsReceived(map, patient, dos, actor) {
   return { nextMap: putState(map, state), events: [] };
 }
 
-// ── AC-3 / AC-4: R1 lifecycle ────────────────────────────────────────────
+// ── AC-3 / AC-4: Reviewer lifecycle ──────────────────────────────────────
 
-export function markR1InProgress(map, patient, dos, actor) {
-  let state = getOrInit(map, patient.id, dos.date);
-  state = setRoleState(state, 'r1', { status: STATUS.IN_PROGRESS },
-    { by: actor, reason: 'r1-start' });
+export function markReviewerInProgress(map, patient, dos, actor) {
+  let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
+  state = setRoleState(state, 'reviewer', { status: STATUS.IN_PROGRESS },
+    { by: actor, reason: 'reviewer-start' });
   return { nextMap: putState(map, state), events: [] };
 }
 
 /**
- * AC-4 — R1 completes → maybe promote to R2 via configurable 10% sample.
- * Not sampled → DOS goes directly to Billing Ready (AC-8 path 1).
+ * QA (Reviewer) completes → ALWAYS advance to Compliance (Reviewer 2).
+ *
+ * The workflow is a strict linear pipeline Support → Coder → QA → Compliance,
+ * so QA completion always hands off to Compliance (no sampling short-circuit
+ * to Billing Ready). Any earlier role that never worked the record is skipped.
  */
-export function completeR1(map, patient, dos, actor, rates = DEFAULT_SAMPLING_RATES) {
-  let state = getOrInit(map, patient.id, dos.date);
-  state = setRoleState(state, 'r1', { status: STATUS.COMPLETED },
-    { by: actor, reason: 'r1-complete' });
+export function completeReviewer(map, patient, dos, actor) {
+  let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
+  state = setRoleState(state, 'reviewer', { status: STATUS.COMPLETED },
+    { by: actor, reason: 'reviewer-complete' });
+  state = pushActivity(state, evt(state, 'status', { role: 'reviewer', to: STATUS.COMPLETED, by: actor }));
+  // Support / Coder never worked it → mark Skipped.
+  state = autoSkipEarlierRoles(state, 'reviewer', actor);
 
-  const promote = sampledForR2(patient.id, dos.date, rates);
-  state = { ...state, sampling: { ...state.sampling, r2: promote } };
-
-  if (promote) {
-    const { state: withR2, picked } = autoAssignRole(
-      putState(map, state), state, patient, dos, 'r2', STATUS.IN_PROGRESS,
-      'r1-completed→r2:sampled',
-    );
-    state = withR2;
-    return { nextMap: putState(map, state), events: picked
-      ? [evt(state, 'assign', { role: 'r2', to: picked.staff.id, reason: picked.reason })]
-      : [] };
-  }
-
-  // Not sampled — Billing Ready straight from R1.
-  state = { ...state, billingReady: true, asmGenerated: true };
-  state = pushActivity(state, evt(state, 'billing-ready', { role: 'r1', reason: 'r1-completed:not-sampled' }));
-  return { nextMap: putState(map, state), events: [] };
+  const { state: withReviewer2, picked } = autoAssignRole(
+    putState(map, state), state, patient, dos, 'reviewer2', STATUS.IN_PROGRESS,
+    'reviewer-completed→reviewer2',
+  );
+  state = withReviewer2;
+  return { nextMap: putState(map, state), events: picked
+    ? [evt(state, 'assign', { role: 'reviewer2', to: picked.staff.id, reason: picked.reason })]
+    : [] };
 }
 
-// ── AC-4 / AC-5: R2 lifecycle ────────────────────────────────────────────
+// ── AC-4 / AC-5: Reviewer 2 lifecycle (terminal — always resolves to Billing Ready) ──
 
-export function markR2InProgress(map, patient, dos, actor) {
-  let state = getOrInit(map, patient.id, dos.date);
-  state = setRoleState(state, 'r2', { status: STATUS.IN_PROGRESS },
-    { by: actor, reason: 'r2-start' });
+export function markReviewer2InProgress(map, patient, dos, actor) {
+  let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
+  state = setRoleState(state, 'reviewer2', { status: STATUS.IN_PROGRESS },
+    { by: actor, reason: 'reviewer2-start' });
   return { nextMap: putState(map, state), events: [] };
 }
 
 /**
- * AC-5 — R2 completes → maybe promote to R3 via configurable 5% sample.
+ * AC-5 — Reviewer 2 completes → Billing Ready. There is no further review
+ * tier ("Reviewer 3" does not exist), so this always terminates the chain.
+ *
+ * WR7 (Phase 0): validate the sampling config isn't silently violating a
+ * future "minimum two reviews before ASM" rule before flipping billingReady.
+ * See sampling.js's `validateAsmReadinessConfig` doc comment for why this is
+ * a dormant guard, not new business logic.
  */
-export function completeR2(map, patient, dos, actor, rates = DEFAULT_SAMPLING_RATES) {
-  let state = getOrInit(map, patient.id, dos.date);
-  state = setRoleState(state, 'r2', { status: STATUS.COMPLETED },
-    { by: actor, reason: 'r2-complete' });
+export function completeReviewer2(map, patient, dos, actor, config = {}) {
+  let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
+  state = setRoleState(state, 'reviewer2', { status: STATUS.COMPLETED },
+    { by: actor, reason: 'reviewer2-complete' });
+  state = pushActivity(state, evt(state, 'status', { role: 'reviewer2', to: STATUS.COMPLETED, by: actor }));
+  // Any earlier role that never worked it → mark Skipped.
+  state = autoSkipEarlierRoles(state, 'reviewer2', actor);
 
-  const promote = sampledForR3(patient.id, dos.date, rates);
-  state = { ...state, sampling: { ...state.sampling, r3: promote } };
-
-  if (promote) {
-    const { state: withR3, picked } = autoAssignRole(
-      putState(map, state), state, patient, dos, 'r3', STATUS.IN_PROGRESS,
-      'r2-completed→r3:sampled',
-    );
-    state = withR3;
-    return { nextMap: putState(map, state), events: picked
-      ? [evt(state, 'assign', { role: 'r3', to: picked.staff.id, reason: picked.reason })]
-      : [] };
-  }
+  validateAsmReadinessConfig(config);
 
   state = { ...state, billingReady: true, asmGenerated: true };
-  state = pushActivity(state, evt(state, 'billing-ready', { role: 'r2', reason: 'r2-completed:not-sampled' }));
-  return { nextMap: putState(map, state), events: [] };
-}
-
-// ── AC-5 / AC-8: R3 lifecycle ────────────────────────────────────────────
-
-export function markR3InProgress(map, patient, dos, actor) {
-  let state = getOrInit(map, patient.id, dos.date);
-  state = setRoleState(state, 'r3', { status: STATUS.IN_PROGRESS },
-    { by: actor, reason: 'r3-start' });
-  return { nextMap: putState(map, state), events: [] };
-}
-
-export function completeR3(map, patient, dos, actor) {
-  let state = getOrInit(map, patient.id, dos.date);
-  state = setRoleState(state, 'r3', { status: STATUS.COMPLETED },
-    { by: actor, reason: 'r3-complete' });
-  // R3 always goes to Billing Ready (AC-8 path 3).
-  state = { ...state, billingReady: true, asmGenerated: true };
-  state = pushActivity(state, evt(state, 'billing-ready', { role: 'r3', reason: 'r3-completed' }));
+  state = pushActivity(state, evt(state, 'billing-ready', { role: 'reviewer2', reason: 'reviewer2-completed' }));
   return { nextMap: putState(map, state), events: [] };
 }
 
 // ── AC-7: Reviewer returns ───────────────────────────────────────────────
 
-const RETURN_TARGET = { r1: 'coder', r2: 'r1', r3: 'r2' };
+const RETURN_TARGET = { reviewer: 'coder', reviewer2: 'reviewer' };
 
 /**
  * Manual Return — `fromRole` clicked Returned. DOS goes back to the
  * ORIGINAL person who handled the immediate prior role (not a fresh
  * assignment). All work is preserved.
  *
- * Only valid for r1 → coder, r2 → r1, r3 → r2 (AC-7 "no level skipping").
+ * Only valid for reviewer → coder, reviewer2 → reviewer (AC-7 "no level skipping").
  */
 export function returnDos(map, patient, dos, fromRole, actor, reason) {
   const targetRole = RETURN_TARGET[fromRole];
   if (!targetRole) {
     throw new Error(`returnDos: invalid fromRole "${fromRole}"`);
   }
-  let state = getOrInit(map, patient.id, dos.date);
+  let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
 
   // Mark the reviewer's own status as Returned
   state = setRoleState(state, fromRole, { status: STATUS.RETURNED },
@@ -468,7 +473,7 @@ export function returnDos(map, patient, dos, fromRole, actor, reason) {
  */
 export function reassignRole(map, patient, dos, role, newStaffId, actor, reason) {
   if (!ROLES.includes(role)) throw new Error(`reassignRole: bad role "${role}"`);
-  let state = getOrInit(map, patient.id, dos.date);
+  let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
   const prevId = state[role].assignee;
   if (prevId === newStaffId) return { nextMap: map, events: [] };
 

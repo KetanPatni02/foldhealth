@@ -1,0 +1,26 @@
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 5px 16px;
+  border-top: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  font-family: 'Inter', sans-serif;
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--neutral-200);
+  flex-shrink: 0;
+}
+
+.item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+}

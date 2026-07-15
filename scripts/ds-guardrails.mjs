@@ -39,6 +39,13 @@ const CSS_EXT = new Set(['.css']);
 //   index.css holds global resets / @font-face.
 const CSS_IGNORE = new Set(['src/tokens/tokens.css', 'src/index.css']);
 
+// Path prefixes exempt from the design-system guardrail entirely. Archived
+// worklists are frozen verbatim snapshots of pre-guardrail code — they exist
+// to preserve a prior state exactly, so we don't hold them to current-code
+// rules (and don't want to rewrite a snapshot).
+const IGNORE_PREFIXES = ['src/features/hcc-archived/'];
+const isIgnoredPath = (f) => IGNORE_PREFIXES.some(p => f.startsWith(p));
+
 function sh(cmd, args) {
   const r = spawnSync(cmd, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   return { code: r.status ?? 1, stdout: r.stdout || '', stderr: r.stderr || '' };
@@ -131,7 +138,7 @@ function main() {
   }
 
   const changed = changedLines();
-  const files = [...changed.keys()];
+  const files = [...changed.keys()].filter(f => !isIgnoredPath(f));
   const jsFiles = files.filter(f => JS_EXT.has(path.extname(f)));
   const cssFiles = files.filter(f => CSS_EXT.has(path.extname(f)) && !CSS_IGNORE.has(f));
 

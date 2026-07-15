@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
+import { addedChartToRow, rowToAddedChart } from '../lib/hccAddedChartsMapper';
 import { dbToJs, updatesToDb } from '../lib/patientMapper';
 import { callDetailDbToJs, callDetailJsToDb } from '../lib/callDetailsMapper';
 import { enrichCallRecord } from '../data/callDetailsEnrich';
@@ -8,6 +9,7 @@ import { kpiRowToJs, tsRowToJs, tableRowToJs, barRowToJs, configRowToJs, groupTi
 import { domainDbToJs, domainJsToDb, componentDbToJs, componentJsToDb, auditLogDbToJs } from '../lib/embedMapper';
 import { popGroupRowToJs, popGroupJsToDb } from '../lib/popGroupMapper';
 import { hccDocumentRowToJs, hccDocumentJsToDb } from '../lib/hccDocumentMapper';
+import { toast } from '../components/Toast/Toast';
 // Fallback datasets (~220KB raw across all of these) are imported lazily
 // inside the fetch actions that consume them, so they don't bloat the entry
 // chunk. They're only needed when Supabase returns empty or errors.
@@ -22,6 +24,7 @@ import * as hccLifecycle from '../features/hcc/assignment/lifecycle';
 import { hydrateFromMember, dosKey as hccDosKey } from '../features/hcc/assignment/dosState';
 import { DEFAULT_SAMPLING_RATES } from '../features/hcc/assignment/sampling';
 import { staffById as hccStaffById } from '../features/hcc/assignment/astranaStaff';
+import { normalizeReviewerLabel as hccNormalizeReviewerLabel } from '../features/hcc/reviewedBy';
 import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activityLog';
 
 // Persist a single HCC role's status (and optionally name) to Supabase.
@@ -31,11 +34,10 @@ import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activity
 // worklist row survives reload.
 function persistHccMemberRoleStatus(memberId, role, status, name) {
   const colsByRole = {
-    support: { name: 'support_name',   status: 'support_status'   },
-    coder:   { name: 'coder_name',     status: 'coder_status'     },
-    r1:      { name: 'reviewer1_name', status: 'reviewer1_status' },
-    r2:      { name: 'reviewer2_name', status: 'reviewer2_status' },
-    r3:      { name: 'reviewer3_name', status: 'reviewer3_status' },
+    support:   { name: 'support_name',   status: 'support_status'   },
+    coder:     { name: 'coder_name',     status: 'coder_status'     },
+    reviewer:  { name: 'reviewer1_name', status: 'reviewer1_status' },
+    reviewer2: { name: 'reviewer2_name', status: 'reviewer2_status' },
   };
   const cols = colsByRole[role];
   if (!cols || !memberId) return;
@@ -64,6 +66,36 @@ function persistHccActivityRow(row) {
     .then(({ error }) => {
       if (error) console.warn(`persistHccActivityRow(${row.event_name}) failed:`, error.message);
     });
+}
+
+// Persist a manually-uploaded chart document: push the file bytes to the
+// `chart-uploads` Storage bucket, then insert the metadata row. Fire-and-forget
+// (the store updated optimistically); a missing table/bucket just warns so the
+// doc still works for the session.
+async function persistHccAddedChart(memberId, doc, file) {
+  if (!memberId || !doc) return;
+  let pdfUrl = doc.pdf && /^https?:/i.test(doc.pdf) ? doc.pdf : null;
+  let storagePath = null;
+  try {
+    if (file) {
+      const path = `${memberId}/${doc.id}-${file.name}`;
+      const { error: upErr } = await supabase.storage
+        .from('chart-uploads')
+        .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: true });
+      if (upErr) {
+        console.warn('persistHccAddedChart upload failed:', upErr.message);
+      } else {
+        storagePath = path;
+        pdfUrl = supabase.storage.from('chart-uploads').getPublicUrl(path).data.publicUrl;
+      }
+    }
+    const { error } = await supabase
+      .from('hcc_added_charts')
+      .insert(addedChartToRow(memberId, { ...doc, pdf: pdfUrl, storagePath }));
+    if (error) console.warn('persistHccAddedChart insert failed:', error.message);
+  } catch (e) {
+    console.warn('persistHccAddedChart failed:', e?.message || e);
+  }
 }
 
 function parseTaskDateStr(str) {
@@ -253,9 +285,8 @@ const HCC_TRANSITION_LABEL = {
   completeCoder:         'Coding Completed',
   requestRecords:        'Records Requested',
   recordsReceived:       'Records Received',
-  completeR1:            'Reviewer 1 Completed',
-  completeR2:            'Reviewer 2 Completed',
-  completeR3:            'Reviewer 3 Completed',
+  completeReviewer:      'QA Completed',
+  completeReviewer2:     'Compliance Completed',
   returnDos:             'DOS Returned',
   reassignRole:          'Role Reassigned',
 };
@@ -268,6 +299,64 @@ const LIST_FILTER_KEY = {
   HCC:   'hccFilters',
   HEDIS: 'hedisFilters',
 };
+
+// Remove a list's active saved-filter selection and persist the change.
+// Used when the user edits/clears filters (which detaches the saved view).
+function detachSaved(activeSavedIdByList, list) {
+  if (!activeSavedIdByList || !(list in activeSavedIdByList)) return activeSavedIdByList;
+  const next = { ...activeSavedIdByList };
+  delete next[list];
+  try { localStorage.setItem('activeSavedIdByList', JSON.stringify(next)); } catch {/* */}
+  return next;
+}
+
+// Read the persisted saved-filter definitions (falls back to the legacy key,
+// then to sensible defaults).
+function readSavedFiltersByList() {
+  try {
+    const raw = localStorage.getItem('savedFiltersByList');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') return parsed;
+    }
+  } catch {/* fall through */}
+  try {
+    const legacy = localStorage.getItem('hccSavedFilters');
+    if (legacy) {
+      const parsed = JSON.parse(legacy);
+      if (Array.isArray(parsed)) return { HCC: parsed };
+    }
+  } catch {/* */}
+  return {
+    HCC: [
+      { id: 'sf1', name: 'High Risk Members',  filters: { rl: ['High'] } },
+      { id: 'sf2', name: 'Overdue Incomplete', filters: { supS: ['Assign'], cdrS: ['Assign'] } },
+    ],
+  };
+}
+
+// Read the persisted active saved-filter id per list (falls back to legacy key).
+function readActiveSavedIdByList() {
+  try {
+    const raw = localStorage.getItem('activeSavedIdByList');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') return parsed;
+    }
+  } catch {/* */}
+  const legacy = localStorage.getItem('hccActiveSavedId');
+  return legacy ? { HCC: legacy } : {};
+}
+
+// Hydrate a list's filter slice from its active saved filter at boot. Only
+// `activeSavedIdByList` is persisted (not the filter slice), so without this a
+// reload would show the SavedFiltersChip as active with no filters applied.
+function hydrateListFilters(list) {
+  const active = readActiveSavedIdByList()[list];
+  if (!active) return {};
+  const f = (readSavedFiltersByList()[list] || []).find(x => x.id === active);
+  return f ? { ...f.filters } : {};
+}
 
 // Safe JSON read from sessionStorage — returns fallback on missing/parse error.
 function _readJson(key, fallback) {
@@ -607,6 +696,121 @@ export const useAppStore = create((set, get) => ({
     set({ patientProfileTab: tab });
   },
 
+  // HCC chart documents manually added via "Upload New Chart" (per member id).
+  // System (default) docs come from chartDocs.generateDefaultCharts; these are
+  // the extra ones the user uploads, kept so the count/list stay in sync.
+  hccAddedCharts: {},
+  addChartDoc: (memberId, doc, file) => {
+    if (!memberId || !doc) return;
+    set((state) => ({
+      hccAddedCharts: {
+        ...state.hccAddedCharts,
+        [memberId]: [...(state.hccAddedCharts[memberId] || []), doc],
+      },
+    }));
+    // Durability: upload the file + persist the record to Supabase.
+    persistHccAddedChart(memberId, doc, file);
+  },
+  // Load persisted uploads so manually-added docs survive a reload. Grouped by
+  // member id into the same map addChartDoc maintains.
+  fetchHccAddedCharts: async () => {
+    const { data, error } = await supabase
+      .from('hcc_added_charts')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (error) { console.warn('fetchHccAddedCharts failed:', error.message); return; }
+    const map = {};
+    (data || []).forEach((row) => {
+      (map[row.hcc_member_id] = map[row.hcc_member_id] || []).push(rowToAddedChart(row));
+    });
+    set({ hccAddedCharts: map });
+  },
+
+  // Per-document review status overrides (keyed by member id → doc id), set
+  // when a reviewer marks a chart Pass/Fail in the Document Available drawer.
+  // getChartDocs applies these so the worklist "Documents" evidence cell stays
+  // in sync with the drawer (All Passed / mixed / All Pending).
+  // Active HCC reviewer role gates role-specific behaviour (only Support gets
+  // the actionable document drawer + document Pass/Fail; Coder/QA/Compliance
+  // get a read-only Document Preview and can accept/reject ICDs). This lived on
+  // my branch as `hccRole`; foldhealth/main already has the canonical,
+  // localStorage-backed `hccUserRole` (below), so mine is commented out per the
+  // merge-resolution instruction and all consumers use hccUserRole.
+  // hccRole: 'Coder',
+  // setHccRole: (role) => set({ hccRole: role }),
+
+  hccChartStatus: {},
+  setChartDocStatus: (memberId, docId, status) => {
+    if (!memberId || !docId) return;
+    set((state) => ({
+      hccChartStatus: {
+        ...state.hccChartStatus,
+        [memberId]: { ...(state.hccChartStatus[memberId] || {}), [docId]: status },
+      },
+    }));
+  },
+
+  // Docs unlinked from a member's chart (keyed by member id → array of doc ids).
+  // getChartDocs filters the merged list by these ids so it covers BOTH the
+  // client-generated seeded defaults (`::sys{i}`, which live in no array) and
+  // uploaded docs uniformly. Uploaded docs are additionally spliced out of
+  // hccAddedCharts (and their Supabase row deleted) so the count truly drops.
+  hccRemovedCharts: {},
+  removeChartDoc: (memberId, docId) => {
+    if (!memberId || !docId) return;
+    set((state) => ({
+      hccRemovedCharts: {
+        ...state.hccRemovedCharts,
+        [memberId]: [...new Set([...(state.hccRemovedCharts[memberId] || []), docId])],
+      },
+      hccAddedCharts: {
+        ...state.hccAddedCharts,
+        [memberId]: (state.hccAddedCharts[memberId] || []).filter((d) => d.id !== docId),
+      },
+    }));
+    // Best-effort Supabase cleanup for uploaded/DB-backed docs (no-op for
+    // client-only `::sys` defaults, which were never persisted).
+    supabase
+      .from('hcc_added_charts')
+      .delete()
+      .eq('id', docId)
+      .then(({ error }) => {
+        if (error) console.warn(`removeChartDoc(${memberId}, ${docId}) delete failed:`, error.message);
+      });
+  },
+
+  // Care Programs — enrolled programs are per-patient. A patient starts with
+  // none; only programs a user explicitly adds are visible on their profile.
+  careProgramsByPatient: {},
+  addCareProgram: (patientId, entry) => {
+    if (!patientId || !entry) return;
+    set((state) => {
+      const existing = state.careProgramsByPatient[patientId] || [];
+      if (existing.some((p) => p.code === entry.code)) return {};
+      const program = {
+        id: `cp-${patientId}-${entry.code}`,
+        code: entry.code,
+        name: `${entry.name} (${entry.code})`,
+        acuity: null,
+        status: 'New',
+        statusColor: 'var(--primary-300)',
+        startDate: '—',
+        endDate: '—',
+        lastUpdated: '—',
+        assignee: 'Unassigned',
+        pcp: '—',
+        progress: 0,
+      };
+      track('care_program.added', { patientId, code: entry.code });
+      return {
+        careProgramsByPatient: {
+          ...state.careProgramsByPatient,
+          [patientId]: [...existing, program],
+        },
+      };
+    });
+  },
+
   // Table
   patients: [],
   patientsLoading: true,
@@ -619,6 +823,17 @@ export const useAppStore = create((set, get) => ({
   // Filters
   activeFilters: {},  // { gender: 'F', language: 'es', lace: 'High', ... }
   activeSubnavList: 'TOC',  // which SubNav list is selected
+
+  // HCC role — the logged-in user's role for the HCC coding workflow (Support
+  // / Coder / QA / Compliance). Drives which status vocab and per-role actions
+  // the worklist and DiagPanel expose. Persisted so it survives reload.
+  hccUserRole: (() => {
+    try { return localStorage.getItem('hccUserRole') || 'Coder'; } catch { return 'Coder'; }
+  })(),
+  setHccUserRole: (role) => {
+    try { localStorage.setItem('hccUserRole', role); } catch {/* */}
+    set({ hccUserRole: role });
+  },
 
   // ── Population Groups: persistent create-group CSV processing session ──
   pgSession: null,            // { fileName, fileSize, segName, status:'loading'|'complete', procStep, startedAt, result }
@@ -710,8 +925,6 @@ export const useAppStore = create((set, get) => ({
   showInvokeModal: false,
   showCreateNew: false,
   showFilterBar: false,
-  toast: null,
-  toastSuccess: false,
   queueTabDot: false,
 
   // ─── Notifications (bell-icon dropdown) ───────────────────────────
@@ -2093,24 +2306,314 @@ export const useAppStore = create((set, get) => ({
   hccMembers: [],
   hccMembersLoading: false,
   fetchHccMembers: async () => {
+    // Local helpers scoped to this action — stamp the WS1/WS8 grouping
+    // fields onto each worklist row deterministically so the demo is
+    // stable across reloads. Real backends would materialize these at
+    // ingest time instead.
+    const _hash = (s) => { let h = 0; const str = String(s || ''); for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) & 0xffffffff; return Math.abs(h); };
+    const _mdyToDate = (s) => { const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s || '')); return m ? new Date(+m[3], +m[1] - 1, +m[2]) : null; };
+    const _parseDueOffsetDays = (due) => {
+      const s = String(due || '');
+      const num = parseInt(s.match(/(\d+)/)?.[1] || '0', 10);
+      if (/week/i.test(s)) return num * 7;
+      if (/(\d+)D\b/i.test(s) || /Days?/i.test(s)) return num;
+      if (/Today/i.test(s)) return 0;
+      return 30;
+    };
+    const _slaTargetIso = (createDate, dueStr) => {
+      const created = _mdyToDate(createDate);
+      if (!created) return null;
+      const days = _parseDueOffsetDays(dueStr);
+      const overdue = /Overdue/i.test(String(dueStr || ''));
+      const offDays = overdue ? -days : days;
+      return new Date(created.getTime() + offDays * 86400000).toISOString();
+    };
+    const _createdIso = (createDate) => (_mdyToDate(createDate) || new Date()).toISOString();
+    // Assign visitType, arrivalOrder, sourceDocumentIds deterministically.
+    // ~30% AWV, ~60% doc-first, and doc-first rows sharing a patient name
+    // cluster into the same source-document bucket so mini-sweep groups
+    // materialize naturally on load.
+    // No DOS or Created Date may be in the future — a service can't have
+    // happened, and a record can't have been created, after today. (Due
+    // labels are left as-is; a due date is a deadline and may be future.)
+    const _pad2 = (n) => String(n).padStart(2, '0');
+    const _fmtMDY = (d) => `${_pad2(d.getMonth() + 1)}/${_pad2(d.getDate())}/${d.getFullYear()}`;
+    const _toPastDate = (mdy) => {
+      const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(mdy || '').trim());
+      if (!m) return mdy;
+      const mm = +m[1], dd = +m[2];
+      let yyyy = +m[3];
+      while (new Date(yyyy, mm - 1, dd) > new Date()) yyyy -= 1;
+      return `${_pad2(mm)}/${_pad2(dd)}/${yyyy}`;
+    };
+    // Canonical Visit Type list — same set as the Visit Type filter options
+    // in filters.js. Assigned deterministically from the member's name so it
+    // stays stable across reloads (and matches whichever the filter picks).
+    const CANONICAL_VT_LIST = [
+      'AWV - Annual Wellness Visit',
+      'IPPE - Initial Preventive Physical Exam',
+      'Annual Physical Exam',
+      'New Patient Office Visit',
+      'Established Patient Office Visit',
+      'Telehealth Visit',
+      'Specialist Visit / Consult',
+      'ER Visit',
+      'Inpatient Visit / Admission',
+      'Observation Visit',
+      'Skilled Nursing Facility Visit',
+      'Home Visit',
+      'Hospice Visit',
+      'Lab/Imaging Order',
+      'Transitional Care Management (TCM) Visit',
+      'Chronic Care Management (CCM)',
+    ];
+    // Clinical Place-of-Service code + description per Visit Type. Real CMS
+    // POS codes — a healthcare pro would immediately flag a Telehealth visit
+    // billed as POS 11 (Office). This map is the single source of truth so
+    // the DOS-level cells, filter buckets and per-DOS drill-downs all agree.
+    const POS_BY_VT = {
+      'AWV - Annual Wellness Visit':               { code: '11', desc: 'Office' },
+      'IPPE - Initial Preventive Physical Exam':   { code: '11', desc: 'Office' },
+      'Annual Physical Exam':                       { code: '11', desc: 'Office' },
+      'New Patient Office Visit':                   { code: '11', desc: 'Office' },
+      'Established Patient Office Visit':           { code: '11', desc: 'Office' },
+      'Telehealth Visit':                           { code: '02', desc: 'Telehealth (Patient Home)' },
+      'Specialist Visit / Consult':                 { code: '22', desc: 'On Campus-Outpatient Hospital' },
+      'ER Visit':                                   { code: '23', desc: 'Emergency Room - Hospital' },
+      'Inpatient Visit / Admission':                { code: '21', desc: 'Inpatient Hospital' },
+      'Observation Visit':                          { code: '22', desc: 'On Campus-Outpatient Hospital' },
+      'Skilled Nursing Facility Visit':             { code: '31', desc: 'Skilled Nursing Facility' },
+      'Home Visit':                                 { code: '12', desc: 'Home' },
+      'Hospice Visit':                              { code: '34', desc: 'Hospice' },
+      'Lab/Imaging Order':                          { code: '81', desc: 'Independent Laboratory' },
+      'Transitional Care Management (TCM) Visit':   { code: '11', desc: 'Office' },
+      'Chronic Care Management (CCM)':              { code: '11', desc: 'Office' },
+    };
+    // Specialty-appropriate provider pools per Visit Type — an ER encounter
+    // should be attributed to an emergency physician, hospice care to a
+    // palliative-care lead, etc. Pool size ≥2 so multiple records don't all
+    // share one name.
+    const PROVIDER_POOL_BY_VT = {
+      'AWV - Annual Wellness Visit':               ['Dr. Sarah Chen (Family Medicine)',   'Dr. Priya Ramesh (Internal Medicine)',   'Dr. James Okafor (Family Medicine)'],
+      'IPPE - Initial Preventive Physical Exam':   ['Dr. Priya Ramesh (Internal Medicine)','Dr. Sarah Chen (Family Medicine)',       'Dr. Nadia Rahman (Family Medicine)'],
+      'Annual Physical Exam':                       ['Dr. James Okafor (Family Medicine)', 'Dr. Nadia Rahman (Family Medicine)',     'Dr. Priya Ramesh (Internal Medicine)'],
+      'New Patient Office Visit':                   ['Dr. Sarah Chen (Family Medicine)',   'Dr. Nadia Rahman (Family Medicine)'],
+      'Established Patient Office Visit':           ['Dr. Priya Ramesh (Internal Medicine)','Dr. James Okafor (Family Medicine)'],
+      'Telehealth Visit':                           ['Dr. Elena Vasquez (Internal Medicine)','Dr. Sarah Chen (Family Medicine)'],
+      'Specialist Visit / Consult':                 ['Dr. Rohit Cheng (Cardiology)',       'Dr. Anita Fielding (Endocrinology)',     'Dr. Miguel Alarcón (Nephrology)'],
+      'ER Visit':                                   ['Dr. Marcus Kim (Emergency Medicine)','Dr. Elena Morris (Emergency Medicine)',   'Dr. Tomás Herrera (Emergency Medicine)'],
+      'Inpatient Visit / Admission':                ['Dr. Rachel Osei (Hospitalist)',      'Dr. David Park (Hospitalist)'],
+      'Observation Visit':                          ['Dr. Rachel Osei (Hospitalist)',      'Dr. David Park (Hospitalist)'],
+      'Skilled Nursing Facility Visit':             ['Dr. Karen Mills (Geriatrics)',       'Dr. Robert Ng (Geriatrics)'],
+      'Home Visit':                                 ['Dr. Indigo Bolen (Home Health)',     'Dr. Aisha Mehta (Home Health)'],
+      'Hospice Visit':                              ['Dr. Amit Gupta (Palliative Care)',   'Dr. Yasmin Sadiq (Hospice/Palliative)'],
+      'Lab/Imaging Order':                          ['Dr. Priya Ramesh (Internal Medicine)','Dr. James Okafor (Family Medicine)'],
+      'Transitional Care Management (TCM) Visit':   ['Dr. Sarah Chen (Family Medicine)',   'Dr. Priya Ramesh (Internal Medicine)'],
+      'Chronic Care Management (CCM)':              ['Dr. Sarah Chen (Family Medicine)',   'Dr. Nadia Rahman (Family Medicine)'],
+    };
+    // Clamp Created Date to the range [today-35d, today] so every row shows a
+    // due-date detail and no record is overdue by more than ~3 weeks past the
+    // 14-day SLA window. Deterministic per row id so the mix is stable across
+    // reloads. All resulting dates land in 2026.
+    const _clampCreatedDate = (row) => {
+      const today = new Date();
+      const seed = _hash(String(row.id || row.name || '') + '|created');
+      const span = 35;                              // days back from today
+      const offset = seed % (span + 1);             // 0..span
+      const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - offset);
+      return _fmtMDY(d);
+    };
+    // Synthesize a plausible past DOS "MM/DD/YYYY" some months before the
+    // record's Created Date (typical follow-up interval).
+    const _synthPastDos = (createdMDY, seed) => {
+      const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(createdMDY || '');
+      const base = m ? new Date(+m[3], +m[1]-1, +m[2]) : new Date();
+      const daysBack = 60 + (seed % 120);            // 60..179 days earlier
+      const d = new Date(base); d.setDate(d.getDate() - daysBack);
+      return _fmtMDY(d);
+    };
+    const normalizeWorklistRow = (row0) => {
+      const row = {
+        ...row0,
+        // Every record's Created Date is normalized to the SLA-relevant range
+        // (max ~3 weeks overdue); the year is always the current one (2026).
+        date: _clampCreatedDate(row0),
+        dos: _toPastDate(row0.dos),
+        dos_list: Array.isArray(row0.dos_list)
+          ? row0.dos_list.map(d => (d && d.date) ? { ...d, date: _toPastDate(d.date) } : d)
+          : row0.dos_list,
+      };
+      const nameSeed = _hash(row.name || '');
+      // Every record picks a canonical Visit Type from the full list. Deter-
+      // ministic per record so the assignment is stable across reloads. This
+      // overrides any legacy shorthand (e.g. plain "AWV" or "HCC") the source
+      // data may carry.
+      const visitType = CANONICAL_VT_LIST[
+        _hash(String(row.id || row.name || '') + '|vt') % CANONICAL_VT_LIST.length
+      ];
+      // arrivalOrder is per-patient so every row for the same patient
+      // shares a source-document bucket in mini-sweep mode.
+      const arrivalOrder = row.arrivalOrder || ((nameSeed % 10) < 6 ? 'doc-first' : 'claim-first');
+      // Doc bucket keys off the patient's name + create-date YEAR so
+      // multiple rows for the same patient in the same intake year
+      // cluster into one mini-sweep. Later years spawn a new doc.
+      const year = /(\d{4})/.exec(row.date || '')?.[1] || '';
+      const sourceDocumentIds = row.sourceDocumentIds || (
+        arrivalOrder === 'doc-first' ? [`seed-doc-${_hash((row.name || '') + '|' + year)}`] : []
+      );
+      const createdAt = row.createdAt || _createdIso(row.date);
+      const slaTargetAt = row.slaTargetAt || _slaTargetIso(row.date, row.due);
+      // Per-DOS enrichment (Figma 4680:138476): each dos_list entry carries
+      // its own visit type / provider / POS / open-ICD count so an expanded
+      // mini-sweep shows realistic distinct visits. Entry 0 mirrors the
+      // record's own fields (collapsed row stays consistent with the
+      // record-level columns); entries 1+ vary through fixed pools.
+      // Sub-visits inside an expanded record pull from the same canonical VT
+      // list so filter options and per-DOS Visit Type labels agree.
+      const VT_POOL = CANONICAL_VT_LIST;
+      const PROV_POOL = [
+        { name: 'Dr. Marcus Osei',  pos: '21', posDesc: 'Inpatient Hospital' },
+        { name: 'Dr. Aisha Mehta',  pos: '20', posDesc: 'Urgent Care Facility' },
+        { name: 'Dr. Indigo Bolen', pos: '12', posDesc: 'Home' },
+        { name: 'Dr. Karen Mills',  pos: '34', posDesc: 'Hospice' },
+      ];
+      // Every record must have ≥2 DOS entries — if we only have one, synthesize
+      // a second earlier past encounter. Deterministic per record so the mix
+      // stays stable across reloads.
+      const inputDosList = Array.isArray(row.dos_list) ? row.dos_list : [];
+      const paddedDosList = (inputDosList.length >= 2)
+        ? inputDosList
+        : [
+            ...inputDosList,
+            {
+              date: _synthPastDos(inputDosList[0]?.date || row.dos || row.date, nameSeed + 1),
+              label: 'Due Today',
+              labelColor: 'var(--status-warning)',
+            },
+          ];
+      // Row-level POS + provider must match the Visit Type — no more "Telehealth
+      // visit at POS 11 (Office)" or "ER visit attributed to a family-medicine
+      // doctor". Deterministic per record so the mix stays stable across reloads.
+      const rowPos = POS_BY_VT[visitType] || { code: '11', desc: 'Office' };
+      const providerPool = PROVIDER_POOL_BY_VT[visitType] || ['Dr. Priya Ramesh (Internal Medicine)'];
+      const rowProvider = providerPool[_hash(String(row.id || row.name || '') + '|prov') % providerPool.length];
+
+      const dos_list = paddedDosList.map((d, idx) => {
+        if (idx === 0) {
+          // Entry 0 mirrors the record-level fields so the collapsed row is
+          // internally consistent (VT, POS, provider all agree).
+          return {
+            ...d,
+            vt: visitType,
+            provider: rowProvider,
+            pos: rowPos.code,
+            posDesc: rowPos.desc,
+            open: d?.open ?? row.open ?? 0,
+          };
+        }
+        // Sub-visits: pick a different VT deterministically, then honor its
+        // own POS + specialty pool. Ensures per-DOS drill-downs stay clinical.
+        const eh = _hash((row.name || '') + (d?.date || '') + idx);
+        const subVt = VT_POOL[eh % VT_POOL.length];
+        const subPos = POS_BY_VT[subVt] || { code: '11', desc: 'Office' };
+        const subPool = PROVIDER_POOL_BY_VT[subVt] || ['Dr. Priya Ramesh (Internal Medicine)'];
+        return {
+          ...d,
+          vt: subVt,
+          provider: subPool[eh % subPool.length],
+          pos: subPos.code,
+          posDesc: subPos.desc,
+          open: d?.open ?? (1 + (eh % 12)),
+        };
+      });
+      // Sync row-level fields with the canonical VT-driven values so the
+      // Provider/POS columns in the collapsed row match too.
+      return {
+        ...row,
+        vt: visitType,
+        visitType,
+        rp: rowProvider,
+        pos: rowPos.code,
+        posDesc: rowPos.desc,
+        arrivalOrder,
+        sourceDocumentIds,
+        createdAt,
+        slaTargetAt,
+        dos_list,
+      };
+    };
+    // WS3 — port AWV mock rows into the unified worklist shape so the
+    // Visit Type filter has real rows to surface. AWV rows don't carry a
+    // rendering provider, open-ICD count or POS, so we synthesize them
+    // deterministically — these are mandatory at record creation and must
+    // never render empty on the worklist.
+    const AWV_PROVIDER_POOL = [
+      'Dr. Alan Morse', 'Dr. Mallory Hayes', 'Dr. Susan Park', 'Dr. Calvin Reed',
+      'Dr. Eamon', 'Dr. Nancy Wu', 'Dr. Jesse Flynn', 'Dr. Reed MacLeod',
+    ];
+    const portAwvRow = (a, i, n) => ({
+      id: a.id || `awv-${i}`,
+      memberId: a.memberId,
+      in: a.in,
+      name: a.name,
+      g: a.g,
+      age: a.age,
+      cv: null, tv: null,
+      dos_list: [{ date: a.due, label: a.dueLabel, labelColor: a.dueCol }],
+      dos: a.due,
+      visits: null,
+      ch: null,
+      docStatus: [],
+      open: a.open || (3 + (i % 12)),           // mandatory — never zero
+      // AWV rows carry no created date — synthesize a recent-past spread
+      // (matching the HCC SLA window) so Created Date is never in the future.
+      date: _fmtMDY(new Date(2026, 6, 9 - Math.round((i * 35) / Math.max((n || 1) - 1, 1)))),
+      due: a.dueLabel,
+      dueCol: a.dueCol,
+      sup: a.assignee, supS: a.status,
+      cdr: null, cdrS: 'Assign',
+      r1: null, r1s: 'Assign',
+      r2: null, r2s: 'Assign',
+      rp: a.rp || AWV_PROVIDER_POOL[i % AWV_PROVIDER_POOL.length], // mandatory
+      vt: a.vt || 'AWV',                         // mandatory
+      raf: null, ri: null, ru: null,
+      ipa: null, hp: null, pcp: null,
+      dec: a.dec, coh: null,
+      rl: a.rl, ad: a.ad, fr: a.fr,
+      language: 'en',
+      pos: '11', posDesc: 'Office',              // AWV → Office; mandatory
+      visitType: 'AWV',
+    });
+    const finalize = async (baseRows) => {
+      const all = baseRows;
+      // Count rows per patient name so patients with 2+ rows get force-
+      // routed to doc-first (they need to cluster into a mini-sweep).
+      const nameCounts = all.reduce((acc, r) => { acc[r.name] = (acc[r.name] || 0) + 1; return acc; }, {});
+      return all.map(row => normalizeWorklistRow({
+        ...row,
+        arrivalOrder: row.arrivalOrder || (nameCounts[row.name] > 1 ? 'doc-first' : undefined),
+      }));
+    };
+
     set({ hccMembersLoading: true });
     const { data, error } = await supabase
       .from('hcc_members')
       .select('*')
-      .order('create_date', { ascending: false });
+      // SLA default: oldest Created Date first (closest to breaching the window).
+      .order('create_date', { ascending: true });
     if (error) {
       // Phase 2f — Supabase error: fall back to the full local mock so the
       // worklist still has rows. Logs the error so we don't silently swap
       // backends without noticing.
       console.warn('fetchHccMembers error — falling back to local mock:', error.message);
       const { HCC_MEMBERS } = await import('../features/hcc/data/mock');
-      set({ hccMembers: HCC_MEMBERS, hccMembersLoading: false });
+      set({ hccMembers: await finalize(HCC_MEMBERS), hccMembersLoading: false });
       return;
     }
     // Empty result set: same fallback.
     if (!data || data.length === 0) {
       const { HCC_MEMBERS } = await import('../features/hcc/data/mock');
-      set({ hccMembers: HCC_MEMBERS, hccMembersLoading: false });
+      set({ hccMembers: await finalize(HCC_MEMBERS), hccMembersLoading: false });
       return;
     }
     const POS_MAP = { 'Walk-in': { code: '11', desc: 'Office' }, Telehealth: { code: '02', desc: 'Telehealth' } };
@@ -2122,7 +2625,13 @@ export const useAppStore = create((set, get) => ({
     const members = (data || []).map(row => {
       const mock = HCC_MEMBER_BY_NAME[row.name] || {};
       const dosList = (row.dos_list && row.dos_list.length) ? row.dos_list : (mock.dos_list || []);
-      const pos = POS_MAP[row.visit_type] || { code: '', desc: row.visit_type || '' };
+      // Provider, Visit Type / POS and the Open-ICD count are mandatory at
+      // record creation, so a worklist row must never render them empty. Fall
+      // back to the local mock (by name), then to a sensible default.
+      const visitType = row.visit_type || mock.vt || 'Walk-in';
+      const pos = POS_MAP[visitType] || { code: '11', desc: 'Office' };
+      const openIcds = row.open_icds || mock.open || 6;
+      const provider = row.rendering_provider || mock.rp || 'Dr. Alan Morse';
       return {
         id: row.id,
         memberId: row.member_id,
@@ -2139,7 +2648,7 @@ export const useAppStore = create((set, get) => ({
           : null,
         ch: row.chart_count ?? mock.ch ?? null,
         docStatus: (row.doc_status && row.doc_status.length) ? row.doc_status : (mock.docStatus || []),
-        open: row.open_icds,
+        open: openIcds,
         date: row.create_date,
         due: row.due_label,
         dueCol: row.due_color,
@@ -2147,9 +2656,8 @@ export const useAppStore = create((set, get) => ({
         cdr: row.coder_name, cdrS: row.coder_status,
         r1: row.reviewer1_name, r1s: row.reviewer1_status,
         r2: row.reviewer2_name, r2s: row.reviewer2_status,
-        r3: row.reviewer3_name, r3s: row.reviewer3_status,
-        rp: row.rendering_provider,
-        vt: row.visit_type,
+        rp: provider,
+        vt: visitType,
         raf: row.raf_score,
         ri: row.raf_impact,
         ru: row.risk_utilization,
@@ -2166,14 +2674,17 @@ export const useAppStore = create((set, get) => ({
         posDesc: pos.desc,
       };
     });
-    set({ hccMembers: members, hccMembersLoading: false });
+    set({ hccMembers: await finalize(members), hccMembersLoading: false });
   },
 
   // HCC Diagnosis Gaps (fetched per member from Supabase)
   hccDiagnosisGaps: [],
   hccDiagnosisGapsLoading: false,
   fetchHccDiagnosisGaps: async (memberName) => {
-    set({ hccDiagnosisGapsLoading: true });
+    // Clear the previous member's rows immediately — otherwise the panel
+    // flashes (and can act on) stale cross-member data while the new
+    // member's fetch is in flight.
+    set({ hccDiagnosisGaps: [], hccDiagnosisGapsLoading: true });
     const { data, error } = await supabase
       .from('hcc_diagnosis_gaps')
       .select('*')
@@ -2196,11 +2707,93 @@ export const useAppStore = create((set, get) => ({
       notes: row.notes_count,
       raf: row.raf_weight,
       last: row.last_activity,
-      by: row.last_activity_by,
+      by: hccNormalizeReviewerLabel(row.last_activity_by),
       dismissReason: row.dismiss_reason,
       isLinked: row.is_linked,
     }));
     set({ hccDiagnosisGaps: gaps, hccDiagnosisGapsLoading: false });
+  },
+
+  // Per-ICD confidence / evidence-factor / MEAT-note lookup
+  //
+  // hcc_gap_confidence is org-scoped (identical for every patient in Phase 2)
+  // so a single fetch at panel mount hydrates every drill-down on the record.
+  // Consumers (IcdRow) hit `getIcdConfidence(code)` which falls back to the
+  // JS defaults in data/confidence.js when the code isn't seeded.
+  hccGapConfidence: {},        // { code: { score, status, evidence, factors, meatNote } }
+  hccGapConfidenceDidFetch: false,
+  fetchHccGapConfidence: async () => {
+    if (get().hccGapConfidenceDidFetch) return;
+    try {
+      const { data, error } = await supabase.from('hcc_gap_confidence').select('*');
+      if (error) throw error;
+      const map = {};
+      for (const r of (data || [])) {
+        map[r.code] = {
+          score: r.score,
+          status: r.status,
+          evidence: r.evidence || [],
+          factors: r.factors,
+          meatNote: r.meat_note,
+        };
+      }
+      set({ hccGapConfidence: map, hccGapConfidenceDidFetch: true });
+    } catch (err) {
+      console.warn('fetchHccGapConfidence error — components will fall back to mock:', err?.message || err);
+      set({ hccGapConfidenceDidFetch: true });
+    }
+  },
+
+  // Diagnosis-panel ancillary tabs (Comments / Documents / Notes / History)
+  //
+  // The four hcc_diag_* tables are org-scoped in Phase 2 — every drawer
+  // shows the same content — so a single fire-and-forget fetch on first
+  // panel open is enough. Store keeps a `didFetch` flag so we don't
+  // re-round-trip on every open. Empty results fall back to the local
+  // src/features/hcc/data/ancillary.js constants (kept as a safety net
+  // while the seed rolls out to every environment).
+  hccDiagComments: [],
+  hccDiagDocumentsList: [],
+  hccDiagNotes: [],
+  hccDiagHistoryEntries: [],
+  hccDiagAncillaryLoading: false,
+  hccDiagAncillaryDidFetch: false,
+  fetchHccDiagAncillary: async () => {
+    if (get().hccDiagAncillaryDidFetch || get().hccDiagAncillaryLoading) return;
+    set({ hccDiagAncillaryLoading: true });
+    try {
+      const [comments, documents, notes, history] = await Promise.all([
+        supabase.from('hcc_diag_comments').select('*').order('created_at', { ascending: true }),
+        supabase.from('hcc_diag_documents').select('*').order('created_at', { ascending: true }),
+        supabase.from('hcc_diag_notes').select('*').order('created_at', { ascending: true }),
+        supabase.from('hcc_diag_history').select('*').order('created_at', { ascending: true }),
+      ]);
+      set({
+        hccDiagComments: (comments?.data || []).map(r => ({
+          id: r.id, author: r.author, role: r.role, date: r.date, time: r.time,
+          edited: r.edited, body: r.body,
+        })),
+        hccDiagDocumentsList: (documents?.data || []).map(r => ({
+          id: r.id, name: r.name, ext: r.ext, type: r.doc_type,
+          uploadedBy: r.uploaded_by, role: r.role, date: r.date, time: r.time,
+          status: r.status,
+        })),
+        hccDiagNotes: (notes?.data || []).map(r => ({
+          id: r.id, title: r.title, author: r.author, role: r.role,
+          date: r.date, time: r.time, signed: r.signed, body: r.body,
+        })),
+        hccDiagHistoryEntries: (history?.data || []).map(r => ({
+          id: r.id, dos: r.dos, hccCode: r.hcc_code, hccName: r.hcc_name,
+          reviewedAt: r.reviewed_at, by: r.reviewed_by, role: r.role,
+          claims: r.claims, icdStatus: r.icd_status,
+        })),
+        hccDiagAncillaryLoading: false,
+        hccDiagAncillaryDidFetch: true,
+      });
+    } catch (err) {
+      console.warn('fetchHccDiagAncillary error — components will fall back to local mock:', err?.message || err);
+      set({ hccDiagAncillaryLoading: false, hccDiagAncillaryDidFetch: true });
+    }
   },
 
   // Optimistic accept/dismiss of an ICD inside the DiagPanel. Updates the
@@ -2248,6 +2841,149 @@ export const useAppStore = create((set, get) => ({
     });
   },
 
+  // Per-(ICD × DOS) coder decisions for the redesigned DiagPanel cards
+  // (see docs/features/hcc-coding-workflow.md §3). Keyed `${code}|${dos}`
+  // per open member; accept/reject/missed/deferred layer on top of the
+  // code-level gap status above. Passing the same action twice toggles it
+  // off (undo).
+  hccGapDosActions: {},
+  // Dismiss reason + note per (code × DOS) — populated by dismissHccGapDos,
+  // surfaced by the "Dismiss Reason" link on a dismissed row.
+  hccGapDosMeta: {},
+  setHccGapDosAction: (code, dos, action) => {
+    const key = `${code}|${dos}`;
+    const prev = get().hccGapDosActions[key];
+    const next = prev === action ? null : action;
+    set(s => {
+      const meta = { ...s.hccGapDosMeta };
+      if (!next) delete meta[key]; // undo also clears any dismiss reason
+      return { hccGapDosActions: { ...s.hccGapDosActions, [key]: next }, hccGapDosMeta: meta };
+    });
+    if (!next) return;
+    const labels = {
+      accepted: 'Accepted', rejected: 'Rejected',
+      missed: 'Marked missed opportunity for', deferred: 'Deferred',
+    };
+    get().addActivityEntry({
+      t: action === 'accepted' ? 'accept' : action === 'rejected' ? 'dismiss' : 'status_hcc',
+      by: 'You', role: 'Coder',
+      icds: [code],
+      headline: `${labels[action]} ICD ${code} on DOS ${dos}`,
+      from: 'Open', to: labels[action].split(' ')[0],
+    });
+  },
+  // Dismiss a (code × DOS) with a reason + optional note (Figma dismiss
+  // form). Sets the action to 'rejected' and records the reason.
+  dismissHccGapDos: (code, dos, reason, note) => {
+    const key = `${code}|${dos}`;
+    set(s => ({
+      hccGapDosActions: { ...s.hccGapDosActions, [key]: 'rejected' },
+      hccGapDosMeta: { ...s.hccGapDosMeta, [key]: { reason, note: note || '' } },
+    }));
+    get().addActivityEntry({
+      t: 'dismiss', by: 'You', role: 'Coder',
+      icds: [code],
+      headline: `Dismissed ICD ${code} on DOS ${dos} — ${reason}`,
+      from: 'Open', to: 'Dismissed',
+    });
+  },
+
+  // Set by addHccGap and consumed by IcdRow — when the code matches, the row
+  // pulses a primary-300 border briefly and scrolls into view so the user
+  // sees where their manual add landed in the current list of ICDs. Auto-
+  // clears via a timer so the animation only fires once per add.
+  hccJustAddedCode: null,
+  clearHccJustAdded: () => set({ hccJustAddedCode: null }),
+
+  // Manual DOSs the coder removed from an ICD card. Keyed as `${code}|${dos}`
+  // so both the card's entry filter and the DOS action bookkeeping know to
+  // ignore the row. Only manual DOS entries are removable — real seeded DOSs
+  // are the record's source of truth and shouldn't be silently dropped.
+  hccGapDosDeleted: [],
+  removeIcdDos: (code, dos) => {
+    const k = `${code}|${dos}`;
+    set(s => ({
+      hccGapDosDeleted: s.hccGapDosDeleted.includes(k)
+        ? s.hccGapDosDeleted
+        : [...s.hccGapDosDeleted, k],
+    }));
+    // Also drop any per-row action / dismiss metadata so the row can't leak
+    // back in via other lists.
+    set(s => {
+      const nextActions = { ...s.hccGapDosActions };
+      const nextMeta = { ...s.hccGapDosMeta };
+      delete nextActions[k];
+      delete nextMeta[k];
+      return { hccGapDosActions: nextActions, hccGapDosMeta: nextMeta };
+    });
+    get().addActivityEntry({
+      t: 'status_hcc', by: 'You', role: 'Coder',
+      icds: [code],
+      headline: `Removed DOS ${dos} from ${code}`,
+      from: 'Manual', to: 'Removed',
+    });
+  },
+
+  // Delete an entire manually-added ICD (type === 'Manual'). Removes the gap
+  // from hccDiagnosisGaps + wipes any per-DOS actions/meta scoped to it.
+  deleteHccGap: (code) => {
+    const gap = get().hccDiagnosisGaps.find(g => g.code === code);
+    if (!gap || gap.type !== 'Manual') return;
+    set(s => ({
+      hccDiagnosisGaps: s.hccDiagnosisGaps.filter(g => g.code !== code),
+    }));
+    set(s => {
+      const nextActions = { ...s.hccGapDosActions };
+      const nextMeta = { ...s.hccGapDosMeta };
+      for (const k of Object.keys(nextActions)) {
+        if (k.startsWith(`${code}|`)) delete nextActions[k];
+      }
+      for (const k of Object.keys(nextMeta)) {
+        if (k.startsWith(`${code}|`)) delete nextMeta[k];
+      }
+      return {
+        hccGapDosActions: nextActions,
+        hccGapDosMeta: nextMeta,
+        hccGapDosDeleted: s.hccGapDosDeleted.filter(k => !k.startsWith(`${code}|`)),
+      };
+    });
+    get().addActivityEntry({
+      t: 'status_hcc', by: 'You', role: 'Coder',
+      icds: [code],
+      headline: `Deleted manually-added ICD ${code}`,
+      from: gap.status || 'New', to: 'Deleted',
+    });
+  },
+
+  // Coder manually adds a code the pipeline missed (chip: "Manually Added").
+  // Fed by the shared IcdSearch (WHO ICD-11 lookup).
+  addHccGap: ({ code, desc, hcc }) => {
+    if (get().hccDiagnosisGaps.some(g => g.code === code)) return;
+    set(s => ({
+      hccDiagnosisGaps: [
+        ...s.hccDiagnosisGaps,
+        {
+          id: `manual-${code}`, code, desc, hcc: hcc || '', status: 'New',
+          type: 'Manual', docs: 0, cmts: 0, notes: 0, raf: 0,
+          last: null, by: null, dismissReason: null, isLinked: true,
+        },
+      ],
+      hccJustAddedCode: code,
+    }));
+    // Auto-clear the flash flag after the animation finishes. Kept inside the
+    // action (not in the component) so any place that re-renders the ICD row
+    // during the window sees the same flash state.
+    setTimeout(() => {
+      if (get().hccJustAddedCode === code) set({ hccJustAddedCode: null });
+    }, 2200);
+    get().addActivityEntry({
+      t: 'status_hcc', by: 'You', role: 'Coder',
+      icds: [code],
+      headline: `Manually added ICD ${code}`,
+      from: '—', to: 'Open',
+    });
+  },
+
   // ─── AWV (Annual Wellness Visit) worklist ─────────────────────────────
   // Mock-driven worklist mirroring the HCC pattern: members + filter chip
   // state + selection set. Toolbar (Search/Filter/Export/History) and the
@@ -2265,8 +3001,42 @@ export const useAppStore = create((set, get) => ({
   fetchAwvMembers: async () => {
     if (useAppStore.getState().awvMembers.length > 0) return;
     set({ awvMembersLoading: true });
-    const { AWV_MEMBERS } = await import('../features/awv-worklist/data/mock');
-    set({ awvMembers: AWV_MEMBERS, awvMembersLoading: false });
+
+    const { data, error } = await supabase
+      .from('awv_members')
+      .select('*')
+      .order('create_date', { ascending: true });
+
+    if (error || !data || data.length === 0) {
+      console.warn('fetchAwvMembers error or empty — falling back to local mock:', error?.message);
+      const { AWV_MEMBERS } = await import('../features/awv-worklist/data/mock');
+      set({ awvMembers: AWV_MEMBERS, awvMembersLoading: false });
+      return;
+    }
+
+    const mappedMembers = data.map(m => ({
+      id: m.id,
+      memberId: m.member_id,
+      name: m.name,
+      in: m.initials,
+      g: m.gender,
+      age: m.age,
+      outreach: m.outreach,
+      task: m.tasks,
+      due: m.create_date,
+      dueLabel: m.due_label,
+      dueCol: m.due_color,
+      assignee: m.support_name,
+      assigneeIn: m.support_name ? m.support_name.replace(/[^a-zA-Z ]/g, '').split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : null,
+      progSubStatus: m.support_status,
+      progName: m.cohort,
+      ri: m.risk_level,
+      dec: m.decile,
+      ad: String(m.advillness || 0),
+      fr: String(m.frailty || 0),
+    }));
+
+    set({ awvMembers: mappedMembers, awvMembersLoading: false });
   },
   // Multi-value filters keyed by column. Empty array on a key = no filter.
   awvFilters: {},
@@ -2286,6 +3056,27 @@ export const useAppStore = create((set, get) => ({
   })),
   selectAllAwv: (ids) => set({ selectedAwvIds: ids }),
   clearAwvSelected: () => set({ selectedAwvIds: [] }),
+  updateAwvMemberStatus: async (id, newStatus) => {
+    // Optimistic update locally
+    set(s => {
+      const next = [...s.awvMembers];
+      const i = next.findIndex(m => m.id === id);
+      if (i > -1) {
+        next[i] = { ...next[i], progSubStatus: newStatus };
+      }
+      return { awvMembers: next };
+    });
+
+    // Fire-and-forget DB update
+    const { error } = await supabase
+      .from('awv_members')
+      .update({ support_status: newStatus })
+      .eq('id', id);
+
+    if (error) {
+      console.warn('Failed to update AWV status:', error.message);
+    }
+  },
 
   selectedHccIds: [],
   selectHccMember: (id) => {
@@ -2300,40 +3091,44 @@ export const useAppStore = create((set, get) => ({
   clearHccSelected: () => set({ selectedHccIds: [] }),
 
   // ─── HCC worklist sub-header state ───
-  hccListTitle: 'HCC List',
+  hccListTitle: 'Worklist',
   setHccListTitle: (title) => set({ hccListTitle: title }),
   hccDueDateFilter: null, // null | 'Overdue' | 'Due Today' | 'Due This Week' | 'Due Next Week' | 'Due More Than 2 Weeks'
   setHccDueDateFilter: (cat) => set({ hccDueDateFilter: cat }),
 
   // ─── HCC worklist filter state ───
   // hccFilters: { [filterKey]: string[] } — empty object = no filters applied.
-  hccFilters: {},
+  // Hydrated from the active saved filter so a reload keeps the applied view.
+  hccFilters: hydrateListFilters('HCC'),
   setHccFilter: (k, vals) => {
-    track('hcc.filter_applied', { filterKey: k, filterValue: vals });
+    track('hcc.filter_applied', { filterKey: k, filterValue: Array.isArray(vals) ? vals.join(',') : vals });
     set(s => {
       const next = { ...s.hccFilters };
       if (!vals || !vals.length) delete next[k];
       else next[k] = vals;
       // Changing a filter detaches us from any "applied saved filter" highlight
-      return { hccFilters: next, hccActiveSavedId: null };
+      return { hccFilters: next, hccActiveSavedId: null, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'HCC') };
     });
   },
   clearHccFilters: () => {
     track('hcc.filters_cleared_all');
-    set({ hccFilters: {}, hccActiveSavedId: null });
+    set(s => ({ hccFilters: {}, hccActiveSavedId: null, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'HCC') }));
   },
 
   // Which filter chip keys appear in the chip row. The MoreFiltersPopover
   // toggles entries in this set. Initialized to the primary keys on first read.
-  hccVisibleFilterKeys: null, // null → fall back to PRIMARY_FILTER_KEYS in components
+  hccVisibleFilterKeys: null, // null → auto-fit one row from PRIMARY (FilterChipBar)
   toggleHccVisibleFilter: (k) => set(s => {
-    // Lazy-initialize from primary keys
     const current = s.hccVisibleFilterKeys
       ? new Set(s.hccVisibleFilterKeys)
       : new Set(['my','rl','coh','g','open','chart','supS','cdrS','r1s','dec']);
     if (current.has(k)) current.delete(k); else current.add(k);
     return { hccVisibleFilterKeys: [...current] };
   }),
+  // Explicit setter — FilterChipBar computes the next visible set from the
+  // current *effective* (auto-fit) set so toggling from More Filters is
+  // consistent whether or not the user has customized before.
+  setHccVisibleFilterKeys: (list) => set({ hccVisibleFilterKeys: [...list] }),
   clearHccVisibleFilters: () => set({ hccVisibleFilterKeys: [] }),
 
   // Saved filter sets, keyed by shared-list label (HCC, TOC, SNP, AWV,
@@ -2343,40 +3138,8 @@ export const useAppStore = create((set, get) => ({
   // The per-list filter STATE lives elsewhere (hccFilters for HCC,
   // activeFilters for TOC and other generic lists). LIST_FILTER_KEY below
   // tells the store which slice to read/write for each list.
-  savedFiltersByList: (() => {
-    try {
-      const raw = localStorage.getItem('savedFiltersByList');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === 'object') return parsed;
-      }
-    } catch {/* fall through */}
-    // Migrate legacy hccSavedFilters if present so existing data isn't lost.
-    try {
-      const legacy = localStorage.getItem('hccSavedFilters');
-      if (legacy) {
-        const parsed = JSON.parse(legacy);
-        if (Array.isArray(parsed)) return { HCC: parsed };
-      }
-    } catch {/* */}
-    return {
-      HCC: [
-        { id: 'sf1', name: 'High Risk Members',  filters: { rl: ['High'] } },
-        { id: 'sf2', name: 'Overdue Incomplete', filters: { supS: ['Assign'], cdrS: ['Assign'] } },
-      ],
-    };
-  })(),
-  activeSavedIdByList: (() => {
-    try {
-      const raw = localStorage.getItem('activeSavedIdByList');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === 'object') return parsed;
-      }
-    } catch {/* */}
-    const legacy = localStorage.getItem('hccActiveSavedId');
-    return legacy ? { HCC: legacy } : {};
-  })(),
+  savedFiltersByList: readSavedFiltersByList(),
+  activeSavedIdByList: readActiveSavedIdByList(),
   // saveSavedFilter(list, name): read the current filter slice for `list`
   // and store it under savedFiltersByList[list] as a named view.
   saveSavedFilter: (list, name) => {
@@ -2501,14 +3264,14 @@ export const useAppStore = create((set, get) => ({
   // Look up the DOS-state record. Lazy-hydrates from the legacy member fields
   // the first time a (patient, DOS) is read so the worklist's existing display
   // values don't disappear.
-  getHccDosState: (patientId, dosDate) => {
-    const key = hccDosKey(patientId, dosDate);
+  getHccDosState: (patientId, dosDate, renderingProvider, pos) => {
+    const key = hccDosKey(patientId, dosDate, renderingProvider, pos);
     const map = useAppStore.getState().hccDosAssignments;
     if (map[key]) return map[key];
     const patient = useAppStore.getState().hccMembers.find(m => m.id === patientId);
     if (!patient) return null;
     const idx = (patient.dos_list || []).findIndex(d => d.date === dosDate);
-    const hydrated = hydrateFromMember(patient, dosDate, idx < 0 ? 0 : idx);
+    const hydrated = hydrateFromMember(patient, dosDate, idx < 0 ? 0 : idx, renderingProvider, pos);
     set(s => ({ hccDosAssignments: { ...s.hccDosAssignments, [key]: hydrated } }));
     return hydrated;
   },
@@ -2530,12 +3293,13 @@ export const useAppStore = create((set, get) => ({
   //
   // Diffs the engine's new dosState against the previous one to detect role
   // status changes, then patches the matching legacy member field
-  // (supS/cdrS/r1s/r2s/r3s) AND persists the change to Supabase so the
+  // (supS/cdrS/r1s/r2s) AND persists the change to Supabase so the
   // worklist row survives reload. This is the single source of persistence
   // for every AC transition — convenience wrappers below don't need to know
   // about it.
   transitionHccDos: (patientId, dosDate, kind, payload = {}) => {
     let statusChanges = [];
+    let assigneeChanges = [];
     set(s => {
       const fn = hccLifecycle[kind];
       if (typeof fn !== 'function') {
@@ -2558,28 +3322,41 @@ export const useAppStore = create((set, get) => ({
         case 'reassignRole':
           result = fn(s.hccDosAssignments, patient, dos, payload.role, payload.staffId, actor, payload.reason);
           break;
-        case 'completeR1':
-        case 'completeR2':
-          result = fn(s.hccDosAssignments, patient, dos, actor, s.hccConfig.samplingRates);
+        case 'completeReviewer2':
+          // Takes the full config (not just samplingRates) — completeReviewer2
+          // also runs the Phase 0 (WR7) validateAsmReadinessConfig guard, which
+          // reads config.minReviewsBeforeAsm alongside samplingRates.
+          result = fn(s.hccDosAssignments, patient, dos, actor, s.hccConfig);
           break;
         default:
           result = fn(s.hccDosAssignments, patient, dos, actor);
       }
       // Diff role statuses between previous and new dosState. Each changed
       // role gets queued for legacy-field patch + Supabase write below.
-      const dosKey = `${patientId}::${dosDate}`;
-      const prev = s.hccDosAssignments?.[dosKey] || {};
-      const next = result.nextMap?.[dosKey] || {};
-      ['support', 'coder', 'r1', 'r2', 'r3'].forEach(role => {
+      const compositeKey = hccDosKey(patientId, dosDate, dos.provider, dos.pos);
+      const prev = s.hccDosAssignments?.[compositeKey] || {};
+      const next = result.nextMap?.[compositeKey] || {};
+      ['support', 'coder', 'reviewer', 'reviewer2'].forEach(role => {
         const ns = next[role]?.status;
         if (ns && ns !== prev[role]?.status) statusChanges.push({ role, status: ns });
+        // Also diff the assignee. Engine cascades (e.g. completeSupport
+        // auto-assigning a Coder) set an assignee on a role that previously
+        // had none — the legacy name field must follow so the worklist
+        // Support/Coder columns (which read member.sup/.cdr/.r1/.r2 directly)
+        // reflect the new owner, not just the status.
+        const na = next[role]?.assignee;
+        if (na && na !== prev[role]?.assignee) {
+          assigneeChanges.push({ role, name: hccStaffById(na)?.name || na, staffId: na });
+        }
       });
-      const statusFieldByRole = { support: 'supS', coder: 'cdrS', r1: 'r1s', r2: 'r2s', r3: 'r3s' };
-      const nextMembers = statusChanges.length
+      const statusFieldByRole = { support: 'supS', coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
+      const nameFieldByRole   = { support: 'sup',  coder: 'cdr',  reviewer: 'r1',  reviewer2: 'r2'  };
+      const nextMembers = (statusChanges.length || assigneeChanges.length)
         ? s.hccMembers.map(m => {
             if (m.id !== patientId) return m;
             const patched = { ...m };
             statusChanges.forEach(({ role, status }) => { patched[statusFieldByRole[role]] = status; });
+            assigneeChanges.forEach(({ role, name }) => { patched[nameFieldByRole[role]] = name; });
             return patched;
           })
         : s.hccMembers;
@@ -2603,10 +3380,11 @@ export const useAppStore = create((set, get) => ({
     // History drawer shows each transition (engine-driven cascades like
     // support→Completed triggering coder→In Progress produce one entry per
     // changed role).
-    const ROLE_LABEL_T = { support: 'Support', coder: 'Coder', r1: 'Reviewer 1', r2: 'Reviewer 2', r3: 'Reviewer 3' };
+    const ROLE_LABEL_T = { support: 'Support', coder: 'Coder', reviewer: 'Reviewer', reviewer2: 'Reviewer 2' };
     const patient = useAppStore.getState().hccMembers.find(m => m.id === patientId);
     statusChanges.forEach(({ role, status }) => {
-      persistHccMemberRoleStatus(patientId, role, status);
+      const assignedName = assigneeChanges.find(a => a.role === role)?.name;
+      persistHccMemberRoleStatus(patientId, role, status, assignedName);
       useAppStore.getState().logHccActivity({
         eventName: 'role.status_changed',
         scope:     { patientId, dos: dosDate, source: 'manual' },
@@ -2619,6 +3397,10 @@ export const useAppStore = create((set, get) => ({
         },
       });
     });
+    // Persist any assignee change that didn't ride along with a status change.
+    assigneeChanges
+      .filter(a => !statusChanges.some(sc => sc.role === a.role))
+      .forEach(({ role, name }) => persistHccMemberRoleStatus(patientId, role, undefined, name));
     return { nextMap: useAppStore.getState().hccDosAssignments };
   },
 
@@ -2652,17 +3434,13 @@ export const useAppStore = create((set, get) => ({
     track('hcc.records_received', { memberId: pid });
     return useAppStore.getState().transitionHccDos(pid, dos, 'recordsReceived', { actor });
   },
-  hccCompleteR1: (pid, dos, actor) => {
-    track('hcc.review_completed', { memberId: pid, level: 'r1' });
-    return useAppStore.getState().transitionHccDos(pid, dos, 'completeR1', { actor });
+  hccCompleteReviewer: (pid, dos, actor) => {
+    track('hcc.review_completed', { memberId: pid, level: 'reviewer' });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'completeReviewer', { actor });
   },
-  hccCompleteR2: (pid, dos, actor) => {
-    track('hcc.review_completed', { memberId: pid, level: 'r2' });
-    return useAppStore.getState().transitionHccDos(pid, dos, 'completeR2', { actor });
-  },
-  hccCompleteR3: (pid, dos, actor) => {
-    track('hcc.review_completed', { memberId: pid, level: 'r3' });
-    return useAppStore.getState().transitionHccDos(pid, dos, 'completeR3', { actor });
+  hccCompleteReviewer2: (pid, dos, actor) => {
+    track('hcc.review_completed', { memberId: pid, level: 'reviewer2' });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'completeReviewer2', { actor });
   },
   hccReturnDos: (pid, dos, fromRole, actor, reason) => {
     track('hcc.dos_returned', { dosId: dos, toRole: fromRole });
@@ -2673,10 +3451,11 @@ export const useAppStore = create((set, get) => ({
     // Snapshot the pre-reassign display name so the activity log can
     // show "from → to". Reading after transitionHccDos would already
     // see the patched value.
-    const fieldByRoleLocal = { support: 'sup', coder: 'cdr', r1: 'r1', r2: 'r2', r3: 'r3' };
+    const fieldByRoleLocal = { support: 'sup', coder: 'cdr', reviewer: 'r1', reviewer2: 'r2' };
     const preMember = useAppStore.getState().hccMembers.find(m => m.id === pid);
     const fromName = preMember?.[fieldByRoleLocal[role]] || '—';
     const patientName = preMember?.name;
+    const dosEntry = (preMember?.dos_list || []).find(d => d.date === dos);
     const result = useAppStore.getState().transitionHccDos(pid, dos, 'reassignRole', { role, staffId, actor, reason });
     // Also patch the member's legacy role field so the worklist row's
     // RoleStatusCell (which reads member.sup / .cdr / .r1 / .r2 / .r3
@@ -2690,21 +3469,26 @@ export const useAppStore = create((set, get) => ({
     // patched — the displayName override solves that.
     const staff = hccStaffById(staffId);
     const name = staff?.name || displayName;
-    const fieldByRole = { support: 'sup', coder: 'cdr', r1: 'r1', r2: 'r2', r3: 'r3' };
-    const statusFieldByRole = { support: 'supS', coder: 'cdrS', r1: 'r1s', r2: 'r2s', r3: 'r3s' };
+    const fieldByRole = { support: 'sup', coder: 'cdr', reviewer: 'r1', reviewer2: 'r2' };
+    const statusFieldByRole = { support: 'supS', coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
     const f = fieldByRole[role];
     const sf = statusFieldByRole[role];
+    // Default status on assignment is role-dependent: Support starts at
+    // "Awaiting" (displays as "Action Needed"), while Coder / QA / Compliance
+    // start at "New". Either value takes the cell out of its "Assign" empty
+    // state and marks the role as owned.
+    const assignStatus = role === 'support' ? 'Awaiting' : 'New';
     if (f && name) {
       set(s => ({
         hccMembers: s.hccMembers.map(m =>
-          m.id === pid ? { ...m, [f]: name, [sf]: 'New' } : m,
+          m.id === pid ? { ...m, [f]: name, [sf]: assignStatus } : m,
         ),
       }));
     }
     // Persist to Supabase so the reassignment survives reload.
-    if (name) persistHccMemberRoleStatus(pid, role, 'New', name);
+    if (name) persistHccMemberRoleStatus(pid, role, assignStatus, name);
     // Log to the canonical activity feed for the History drawer.
-    const ROLE_LABEL = { support: 'Support', coder: 'Coder', r1: 'Reviewer 1', r2: 'Reviewer 2', r3: 'Reviewer 3' };
+    const ROLE_LABEL = { support: 'Support', coder: 'Coder', reviewer: 'Reviewer', reviewer2: 'Reviewer 2' };
     useAppStore.getState().logHccActivity({
       eventName: 'assignee.changed',
       scope:     { patientId: pid, dos, source: 'manual' },
@@ -2720,18 +3504,19 @@ export const useAppStore = create((set, get) => ({
     // The engine's reassignRole stamps the assignee but leaves status null,
     // which makes resolveCurrentAssignee() still report this bucket as
     // unassigned (it only treats the bucket as active when status is both
-    // set and non-'Assign'). Force-stamp a 'New' status so AssigneeAvatar /
-    // AssigneeCell flip immediately to the active state with the new owner.
-    const dosKey = `${pid}::${dos}`;
+    // set and non-'Assign'). Force-stamp the role's default assign status so
+    // AssigneeAvatar / AssigneeCell flip immediately to the active state with
+    // the new owner (Support → Awaiting/"Action Needed", others → New).
+    const compositeKey = hccDosKey(pid, dos, dosEntry?.provider, dosEntry?.pos);
     set(s => {
-      const cur = s.hccDosAssignments?.[dosKey];
+      const cur = s.hccDosAssignments?.[compositeKey];
       if (!cur || !cur[role]) return {};
       return {
         hccDosAssignments: {
           ...s.hccDosAssignments,
-          [dosKey]: {
+          [compositeKey]: {
             ...cur,
-            [role]: { ...cur[role], status: 'New' },
+            [role]: { ...cur[role], status: assignStatus },
           },
         },
       };
@@ -2746,27 +3531,29 @@ export const useAppStore = create((set, get) => ({
   // bucket and the legacy member.{role}S field so worklist + DiagPanel
   // agree on the new status.
   hccSetRoleStatus: (pid, dos, role, status) => {
-    const fieldByRole       = { support: 'sup',  coder: 'cdr',  r1: 'r1',  r2: 'r2',  r3: 'r3'  };
-    const statusFieldByRole = { support: 'supS', coder: 'cdrS', r1: 'r1s', r2: 'r2s', r3: 'r3s' };
+    const fieldByRole       = { support: 'sup',  coder: 'cdr',  reviewer: 'r1',  reviewer2: 'r2'  };
+    const statusFieldByRole = { support: 'supS', coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
     const f  = fieldByRole[role];
     const sf = statusFieldByRole[role];
     if (!f || !sf) return;
-    const dosKey = `${pid}::${dos}`;
+    const member = useAppStore.getState().hccMembers.find(m => m.id === pid);
+    const dosEntry = (member?.dos_list || []).find(d => d.date === dos);
+    const compositeKey = hccDosKey(pid, dos, dosEntry?.provider, dosEntry?.pos);
     set(s => {
       const next = { hccMembers: s.hccMembers.map(m =>
         m.id === pid ? { ...m, [sf]: status } : m,
       ) };
-      const cur = s.hccDosAssignments?.[dosKey];
+      const cur = s.hccDosAssignments?.[compositeKey];
       if (cur && cur[role]) {
         next.hccDosAssignments = {
           ...s.hccDosAssignments,
-          [dosKey]: { ...cur, [role]: { ...cur[role], status } },
+          [compositeKey]: { ...cur, [role]: { ...cur[role], status } },
         };
       }
       return next;
     });
     persistHccMemberRoleStatus(pid, role, status);
-    const ROLE_LABEL_S = { support: 'Support', coder: 'Coder', r1: 'Reviewer 1', r2: 'Reviewer 2', r3: 'Reviewer 3' };
+    const ROLE_LABEL_S = { support: 'Support', coder: 'Coder', reviewer: 'Reviewer', reviewer2: 'Reviewer 2' };
     const patient = useAppStore.getState().hccMembers.find(m => m.id === pid);
     useAppStore.getState().logHccActivity({
       eventName: 'role.status_changed',
@@ -2863,14 +3650,14 @@ export const useAppStore = create((set, get) => ({
   setDiagSnapOpen: (open) => set({ diagSnapOpen: open }),
   // Left-workspace tab: null = drawer at 40vw with only the right pane;
   // any string = drawer expands to 70vw with the matching tab content.
-  diagLeftPanel: null,   // 'activity' | 'comments' | 'documents' | 'notes' | 'claims' | null
+  diagLeftPanel: null,   // 'activity' | 'comments' | 'documents' | 'notes' | 'claims' | 'newDiagGap' | null
   // When the Activity Log panel is opened from a specific ICD card (by
   // clicking the ICD code), this holds that code so the timeline filters to
   // entries touching it. null = DOS-level (all entries). Opening via the
   // toolbar Activity Log icon always resets this to null.
   diagActivityIcd: null,
   // Toolbar entry points reset the ICD scope (they're DOS-level actions).
-  setDiagLeftPanel: (panel) => set({ diagLeftPanel: panel, diagActivityIcd: null }),
+  setDiagLeftPanel: (panel) => set({ diagLeftPanel: panel, diagActivityIcd: null, diagClaimDos: null }),
   // Switching tabs WITHIN the left panel preserves the current scope
   // (DOS-level stays DOS-level; ICD-level stays scoped to its code).
   setDiagTab: (panel) => set({ diagLeftPanel: panel }),
@@ -2880,6 +3667,13 @@ export const useAppStore = create((set, get) => ({
   // Documents / Comments / Notes count buttons in IcdRow).
   openIcdPanel: (panel, code) => set({ diagLeftPanel: panel, diagActivityIcd: code || null }),
   clearDiagActivityIcd: () => set({ diagActivityIcd: null }),
+
+  // When a DOS row's "Claim" link is clicked, open the Claims tab in the left
+  // workspace and auto-expand that DOS's claim detail. Consumed once by the
+  // ClaimsTab effect (which clears it), so re-clicking the same DOS re-opens.
+  diagClaimDos: null,
+  openHccClaimForDos: (dos) => set({ diagLeftPanel: 'claims', diagActivityIcd: null, diagClaimDos: dos || null }),
+  clearDiagClaimDos: () => set({ diagClaimDos: null }),
 
   // Documents tab — inline uploader widget toggle. Replaces the old drawer
   // open for the in-drawer Upload button (Figma 278:162482).
@@ -2901,14 +3695,14 @@ export const useAppStore = create((set, get) => ({
   // Team shape:
   //   {
   //     id, name, kind: 'hcc' | 'care-program' | 'hedis',
-  //     teamType,            // 'Reviewer 1' / 'Coder' / 'SNP' / 'Assignee'…
+  //     teamType,            // 'Reviewer' / 'Coder' / 'SNP' / 'Assignee'…
   //     allocatedTins: [],   // team-level routing key (Phase 2 spec)
   //     createdAt, createdBy, lastModifiedAt, lastModifiedBy,
   //     members: [
   //       {
   //         userId, name, initials, roles,  // denormalized for table render
   //         capacityPct,                    // share of THIS team allocated to them
-  //         assignTo: [{ dim: 'TIN'|'Vendor'|'Coder'|'Reviewer 1'|…, value, pct }],
+  //         assignTo: [{ dim: 'TIN'|'Vendor'|'Coder'|'Reviewer'|…, value, pct }],
   //       },
   //     ],
   //   }
@@ -2918,11 +3712,11 @@ export const useAppStore = create((set, get) => ({
   // fallback path needed in the panel).
   hccCareTeams: [
     {
-      id: 'seed-rt1', name: 'Reviewer 1 Team', kind: 'hcc',          teamType: 'Reviewer 1',
+      id: 'seed-rt1', name: 'QA Team', kind: 'hcc',          teamType: 'QA',
       allocatedTins: ['12-3456789'], createdAt: '02/21/2026', createdBy: 'Dina Morries',
       lastModifiedAt: '08/30/2024', lastModifiedBy: 'Richard Willson',
       members: [
-        { userId: 'MA', name: 'M. Almeda',   initials: 'MA', roles: 'Reviewer 1', capacityPct: 50, assignTo: [{ dim: 'Coder', value: 'DH', pct: 50 }] },
+        { userId: 'MA', name: 'M. Almeda',   initials: 'MA', roles: 'QA', capacityPct: 50, assignTo: [{ dim: 'Coder', value: 'DH', pct: 50 }] },
       ],
     },
     {
@@ -3311,7 +4105,7 @@ export const useAppStore = create((set, get) => ({
         pendingForReview += 1;
         return { ...enc, _duplicateOfMemberId: enc.patient.matchedMemberId };
       }
-      const r = useAppStore.getState().hccCreateOrMergeFromEncounter?.({ ...enc, _docName: fileName });
+      const r = useAppStore.getState().hccCreateOrMergeFromEncounter?.({ ...enc, _docName: fileName, _batchId: id });
       if (r?.kind === 'created' || r?.kind === 'updated') {
         autoApplied += 1;
         return { ...enc, _docStatus: 'added' };
@@ -3631,6 +4425,13 @@ export const useAppStore = create((set, get) => ({
   openHccUploadDrawer: (member) => set({ hccUploadMember: member }),
   closeHccUploadDrawer: () => set({ hccUploadMember: null }),
 
+  // ─── Per-patient "Add DOS" drawer (Figma 4684:127213 / 4687:127406) ──
+  // Opened from the worklist row Actions column. Holds the member whose
+  // DOS we're adding; null when closed.
+  hccAddDosMember: null,
+  openHccAddDos: (member) => set({ hccAddDosMember: member }),
+  closeHccAddDos: () => set({ hccAddDosMember: null }),
+
   // ─── HCC Document Upload + OCR Review (Individual Upload path) ──────
   // Session state for the multi-encounter PDF upload flow described in the
   // Jira ticket. Lives at app level — drawer is mounted once in AppLayout.
@@ -3693,19 +4494,66 @@ export const useAppStore = create((set, get) => ({
     });
   },
   setHccUploadEncounters: (encounters) => {
-    set(s => s.hccUploadSession
-      ? { hccUploadSession: { ...s.hccUploadSession, encounters, phase: 'review' } }
-      : {});
     const session = useAppStore.getState().hccUploadSession;
     if (!session) return;
-    // OCR completed — emit an OCR success event plus a low-confidence
-    // warning per encounter whose `errors` array is non-empty.
+    // Unified Document Review surface — the legacy in-drawer review
+    // table is gone. Adopt the OCR output as a new SFTP batch, run the
+    // same auto-routing pipeline as the multi-doc queue, then open the
+    // full-screen Document Review drawer. The legacy upload session is
+    // cancelled below since it's no longer needed.
+    const fileName = session.file?.name || 'Uploaded document';
+    const batchId = `doc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const state = useAppStore.getState();
+    const members = state.hccMembers || [];
+    let autoApplied = 0;
+    let pendingForReview = 0;
+    const routed = encounters.map((enc) => {
+      const ready = !!enc.patient?.matchedMemberId
+        && (!enc.errors || enc.errors.length === 0);
+      if (!ready) { pendingForReview += 1; return enc; }
+      const member = members.find(m => m.id === enc.patient.matchedMemberId);
+      const isDup = !!member?.dos_list?.some(d =>
+        d.date === enc.dos
+        && (d.provider || '').toLowerCase() === (enc.provider || '').toLowerCase()
+        && (d.pos || '') === (enc.pos || '')
+      );
+      if (isDup) { pendingForReview += 1; return { ...enc, _duplicateOfMemberId: enc.patient.matchedMemberId }; }
+      const r = useAppStore.getState().hccCreateOrMergeFromEncounter?.({ ...enc, _docName: fileName, _batchId: batchId });
+      if (r?.kind === 'created' || r?.kind === 'updated') {
+        autoApplied += 1;
+        return { ...enc, _docStatus: 'added' };
+      }
+      pendingForReview += 1;
+      return enc;
+    });
+    const newBatch = {
+      id: batchId,
+      fileName,
+      encounters: routed,
+      ingestedAt: new Date().toISOString(),
+      status: 'done',
+      source: 'manual',
+      _autoApplied: autoApplied,
+      _pendingForReview: pendingForReview,
+      actorName: 'You',
+    };
+    set(s => ({
+      hccSftpBatches: [...(s.hccSftpBatches || []), newBatch],
+      hccSftpActiveBatchId: batchId,
+      hccSftpReviewOpen: true,
+      // Cancel the legacy session — Document Review now owns this flow.
+      hccUploadSession: null,
+    }));
+    // Activity log — point at the new SFTP batch id since the legacy
+    // session is gone now.
     useAppStore.getState().logHccActivity({
       eventName: 'ocr.completed',
-      scope:     { batchId: session.id, fileId: session.file?.name, source: 'system' },
+      scope:     { batchId, fileId: fileName, source: 'system' },
       payload:   {
-        fileName: session.file?.name || 'Uploaded file',
+        fileName,
         encounterCount: encounters.length,
+        autoApplied,
+        pendingForReview,
         pageCount: '—',
       },
     });
@@ -3713,7 +4561,7 @@ export const useAppStore = create((set, get) => ({
       if (Array.isArray(enc.errors) && enc.errors.length > 0) {
         useAppStore.getState().logHccActivity({
           eventName: 'ocr.low_confidence',
-          scope:     { batchId: session.id, fileId: session.file?.name, source: 'system' },
+          scope:     { batchId, fileId: fileName, source: 'system' },
           payload:   {
             patientName: enc.patient?.name || '(unmatched)',
             dos: enc.dos,
@@ -3725,17 +4573,23 @@ export const useAppStore = create((set, get) => ({
         });
       }
     });
-    // Extraction landed — toast + bell notification so the user knows
-    // even if they minimized the drawer and navigated away.
-    const fileName = session.file?.name || 'Uploaded file';
-    const n = encounters.length;
+    // Extraction-complete notification mirrors the multi-doc queue
+    // behavior — auto/pending breakdown, deep-link into the Document
+    // Review drawer.
+    const body = pendingForReview === 0
+      ? `${autoApplied} record${autoApplied === 1 ? '' : 's'} loaded automatically — no manual review needed.`
+      : `${autoApplied} loaded automatically · ${pendingForReview} waiting for manual intervention.`;
     useAppStore.getState().addNotification?.({
       type: 'hcc.extraction_complete',
       title: 'Document extracted',
-      body: `${fileName} • ${n} encounter${n === 1 ? '' : 's'} ready for review`,
-      action: 'openHccReview',
+      body,
+      action: 'openSftpReview',
     });
-    useAppStore.getState().showToast?.(`Document extracted — ${n} encounter${n === 1 ? '' : 's'} ready for review`);
+    useAppStore.getState().showToast?.(
+      pendingForReview === 0
+        ? `${autoApplied} record${autoApplied === 1 ? '' : 's'} loaded automatically`
+        : `${autoApplied} auto · ${pendingForReview} waiting for review`
+    );
   },
   // Append more encounters from a second OCR pass (user clicks "Upload"
   // again during review). Preserves existing rows + their edits.
@@ -3836,6 +4690,17 @@ export const useAppStore = create((set, get) => ({
     const docType = enc._docType || 'Progress Note';
     const icdCodes = (enc.icds || []).filter(i => i.valid !== false).map(i => i.code);
     const now = new Date();
+    // WS1/WS8 — every upload-sourced row belongs to a mini-sweep. Stamp
+    // the batch id onto `sourceDocumentIds` and force `arrivalOrder` to
+    // 'doc-first' so the grouping engine buckets this row alongside its
+    // siblings under the same document.
+    const batchId = enc._batchId || `doc-${docName}`;
+    const stampSourceDoc = (m) => ({
+      ...m,
+      arrivalOrder: 'doc-first',
+      sourceDocumentIds: Array.from(new Set([...(m.sourceDocumentIds || []), batchId])),
+      createdAt: m.createdAt || now.toISOString(),
+    });
     const pad = (n) => String(n).padStart(2, '0');
     const dateStr = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
 
@@ -3862,22 +4727,17 @@ export const useAppStore = create((set, get) => ({
       });
     };
 
-    // Compute existing row's role-statuses for the uniqueness key
-    // (memberId, dos, provider, pos). The engine maps DOS to a dosState
-    // by `${memberId}::${dos}` (no provider/pos in the key) — for the
-    // prototype we treat (memberId, dos) as the row key and compare
-    // provider/pos at the member field level. Real backend would key
-    // strictly on all four.
-    const dosKey = `${memberId}::${enc.dos}`;
+    // Composite key: Patient ID + DOS + Rendering Provider + POS. The key
+    // itself now disambiguates two DOS rows sharing a date but differing
+    // provider/POS, so there's no need for a separate member-field compare.
+    const dosKey = hccDosKey(memberId, enc.dos, enc.provider, enc.pos);
     const existingDosState = s.hccDosAssignments[dosKey];
-    const sameProvider = (member.rp || '').trim() === (enc.provider || '').trim();
-    const samePos = (member.pos || '').trim() === (enc.pos || '').trim();
-    const existsByUniqueKey = !!existingDosState && sameProvider && samePos;
+    const existsByUniqueKey = !!existingDosState;
 
     const TERMINAL = new Set(['Completed', 'Reject', 'Insufficient']);
     const isAllTerminal = (state) => {
       if (!state) return false;
-      return ['support', 'coder', 'r1', 'r2', 'r3'].every(r => TERMINAL.has(state[r]?.status));
+      return ['support', 'coder', 'reviewer', 'reviewer2'].every(r => TERMINAL.has(state[r]?.status));
     };
 
     // Branch 1: DOS row exists & all roles terminal → create new row with
@@ -3889,25 +4749,25 @@ export const useAppStore = create((set, get) => ({
       // Bootstrap a fresh entry in dosState under a synthetic suffixed key
       // so the original Completed row stays untouched.
       const suffix = `__upload-${now.getTime()}`;
-      const newKey = `${memberId}::${newDosDate}${suffix}`;
+      const newKey = `${hccDosKey(memberId, newDosDate, enc.provider, enc.pos)}${suffix}`;
       set(st => ({
-        hccMembers: st.hccMembers.map(m => m.id === memberId ? {
+        hccMembers: st.hccMembers.map(m => m.id === memberId ? stampSourceDoc({
           ...m,
-          dos_list: [...(m.dos_list || []), { date: newDosDate, label: 'From Upload (post-completion)', labelColor: 'var(--secondary-300)' }],
+          dos_list: [...(m.dos_list || []), { date: newDosDate, label: 'From Upload (post-completion)', labelColor: 'var(--secondary-300)', provider: enc.provider, pos: enc.pos, posDesc: enc.posDesc }],
           docStatus: [...(m.docStatus || []), 'pending'],
           ch: (m.ch || 0) + 1,
           awaitingClaim: true,
-        } : m),
+        }) : m),
         hccDosAssignments: {
           ...st.hccDosAssignments,
           [newKey]: {
             patientId: memberId, dosDate: newDosDate,
-            support: { assignee: null, status: 'New', history: [] },
-            coder:   { assignee: null, status: null, history: [] },
-            r1:      { assignee: null, status: null, history: [] },
-            r2:      { assignee: null, status: null, history: [] },
-            r3:      { assignee: null, status: null, history: [] },
-            sampling: { r2: null, r3: null },
+            renderingProvider: enc.provider, pos: enc.pos,
+            support:   { assignee: null, status: 'New', history: [] },
+            coder:     { assignee: null, status: null, history: [] },
+            reviewer:  { assignee: null, status: null, history: [] },
+            reviewer2: { assignee: null, status: null, history: [] },
+            sampling: { reviewer2: null },
             billingReady: false, asmGenerated: false,
             relatedDosId: relatedKey,
             awaitingClaim: true,
@@ -3948,11 +4808,11 @@ export const useAppStore = create((set, get) => ({
       const existingIcds = new Set((existingDosState.uploadedDocs || []).flatMap(d => d.icds || []));
       const netNew = icdCodes.filter(c => !existingIcds.has(c));
       set(st => ({
-        hccMembers: st.hccMembers.map(m => m.id === memberId ? {
+        hccMembers: st.hccMembers.map(m => m.id === memberId ? stampSourceDoc({
           ...m,
           docStatus: [...(m.docStatus || []), 'pending'],
           ch: (m.ch || 0) + 1,
-        } : m),
+        }) : m),
         hccDosAssignments: {
           ...st.hccDosAssignments,
           [dosKey]: {
@@ -4003,29 +4863,29 @@ export const useAppStore = create((set, get) => ({
       hccMembers: st.hccMembers.map(m => {
         if (m.id !== memberId) return m;
         const hadDos = m.dos_list?.some(d => d.date === enc.dos);
-        return {
+        return stampSourceDoc({
           ...m,
           dos_list: hadDos
             ? m.dos_list
-            : [...(m.dos_list || []), { date: enc.dos, label: 'From Upload', labelColor: 'var(--secondary-300)' }],
+            : [...(m.dos_list || []), { date: enc.dos, label: 'From Upload', labelColor: 'var(--secondary-300)', provider: enc.provider, pos: enc.pos, posDesc: enc.posDesc }],
           docStatus: [...(m.docStatus || []), 'pending'],
           ch: (m.ch || 0) + 1,
           tv: hadDos ? m.tv : (m.tv || 0) + 1,
           rp: m.rp || enc.provider,
           pos: m.pos || enc.pos,
           awaitingClaim: true,
-        };
+        });
       }),
       hccDosAssignments: {
         ...st.hccDosAssignments,
         [dosKey]: {
           patientId: memberId, dosDate: enc.dos,
-          support: { assignee: null, status: 'New', history: [] },
-          coder:   { assignee: null, status: null, history: [] },
-          r1:      { assignee: null, status: null, history: [] },
-          r2:      { assignee: null, status: null, history: [] },
-          r3:      { assignee: null, status: null, history: [] },
-          sampling: { r2: null, r3: null },
+          renderingProvider: enc.provider, pos: enc.pos,
+          support:   { assignee: null, status: 'New', history: [] },
+          coder:     { assignee: null, status: null, history: [] },
+          reviewer:  { assignee: null, status: null, history: [] },
+          reviewer2: { assignee: null, status: null, history: [] },
+          sampling: { reviewer2: null },
           billingReady: false, asmGenerated: false,
           awaitingClaim: true,
           uploadedDocs: [{ name: docName, type: docType, icds: icdCodes, uploadedAt: now.toISOString() }],
@@ -4137,7 +4997,7 @@ export const useAppStore = create((set, get) => ({
     diagActivityIcd: null,
     diagViewMode: 'ICD',
   }),
-  closeDiagPanel: () => set({ diagPanelOpen: false, diagPanelMemberId: null, diagLeftPanel: null, diagActivityIcd: null }),
+  closeDiagPanel: () => set({ diagPanelOpen: false, diagPanelMemberId: null, diagLeftPanel: null, diagActivityIcd: null, diagClaimDos: null }),
   setDiagActiveTab: (tab) => set({ diagActiveTab: tab }),
   setDiagDosFilter: (dos) => set({ diagDosFilter: dos }),
   setDiagViewMode: (mode) => set({ diagViewMode: mode }),
@@ -4221,7 +5081,8 @@ export const useAppStore = create((set, get) => ({
       }
       return newP;
     });
-    set({ patients: updated, selectedIds: [], showInvokeModal: false, toastSuccess: true, queueTabDot: true });
+    toast.success('TOC Agent Invoked Successfully');
+    set({ patients: updated, selectedIds: [], showInvokeModal: false, queueTabDot: true });
 
     // Auto-navigate to the queue tab so users see their invoked patients
     const { setActiveTab } = get();
@@ -4264,7 +5125,6 @@ export const useAppStore = create((set, get) => ({
     }
 
     get().startCallTimers();
-    setTimeout(() => set({ toastSuccess: false }), 3500);
   },
 
   abortAllAgents: () => {
@@ -4359,12 +5219,8 @@ export const useAppStore = create((set, get) => ({
   },
 
   showToast: (msg) => {
-    set({ toast: msg });
-    setTimeout(() => set(s => s.toast === msg ? { toast: null } : {}), 2800);
+    toast(msg);
   },
-
-  closeToast: () => set({ toast: null }),
-  closeToastSuccess: () => set({ toastSuccess: false }),
 
   openDetail: (patientId, callRow = null) => {
     const p = get().patients.find(x => x.id === patientId);

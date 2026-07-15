@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Icon } from '../Icon/Icon';
+import { Checkbox } from '../ui/checkbox';
 import styles from './CheckboxListPopover.module.css';
 
 /**
@@ -18,7 +18,9 @@ import styles from './CheckboxListPopover.module.css';
  *  - onChange   (fn(string[]))   New value array (already in option order).
  *  - onClose    (fn)             Called on overlay click or Escape.
  *  - width      (number)         Defaults to 240px.
- *  - showClear  (boolean)        Show a "Clear Selection" footer (default true).
+ *  - showClear  (boolean)        Show the "Select All / Clear All" controls row
+ *                                 (default true). Matches Figma 4240-110454.
+ *  - searchable (boolean)        Show a search box above the list (default false).
  */
 export function CheckboxListPopover({
   anchorRect,
@@ -29,6 +31,7 @@ export function CheckboxListPopover({
   onClose,
   width = 240,
   showClear = true,
+  searchable = false,
 }) {
   // Close on Escape
   useEffect(() => {
@@ -39,12 +42,29 @@ export function CheckboxListPopover({
 
   const pos = useMemo(() => positionPopover(anchorRect, width), [anchorRect, width]);
   const sel = useMemo(() => new Set(selected), [selected]);
+  const [query, setQuery] = useState('');
 
   const toggle = (v) => {
     const next = sel.has(v) ? selected.filter(x => x !== v) : [...selected, v];
     // Keep the option-order stable
     onChange?.(options.filter(o => next.includes(o)));
   };
+
+  // With an active search query, the Select All / Clear All controls and the
+  // header checkbox state operate on the *visible* (filtered) rows — not the
+  // whole list — so they never touch options the user can't see.
+  const visible = searchable && query.trim()
+    ? options.filter(o => o.toLowerCase().includes(query.trim().toLowerCase()))
+    : options;
+
+  const allSelected = visible.length > 0 && visible.every(o => sel.has(o));
+  const someSelected = visible.some(o => sel.has(o)) && !allSelected;
+  const selectVisible = () => {
+    const next = new Set([...selected, ...visible]);
+    onChange?.(options.filter(o => next.has(o)));
+  };
+  const clearVisible = () => onChange?.(selected.filter(x => !visible.includes(x)));
+  const toggleAll = () => (allSelected ? clearVisible() : selectVisible());
 
   if (!anchorRect) return null;
 
@@ -59,33 +79,66 @@ export function CheckboxListPopover({
         aria-label={label}
       >
         {label && <div className={styles.header}>{label}</div>}
+
+        {showClear && (
+          <div className={styles.controls}>
+            <div
+              role="checkbox"
+              aria-checked={allSelected ? true : someSelected ? 'mixed' : false}
+              tabIndex={0}
+              className={styles.selectAll}
+              onClick={toggleAll}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleAll(); } }}
+            >
+              <Checkbox
+                checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+                tabIndex={-1}
+                aria-hidden
+                className="pointer-events-none"
+              />
+              <span className={styles.label}>Select All</span>
+            </div>
+            <button
+              type="button"
+              className={styles.clearLink}
+              onClick={clearVisible}
+            >
+              Clear All
+            </button>
+          </div>
+        )}
+
+        {searchable && (
+          <input
+            className={styles.search}
+            type="text"
+            placeholder="Search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            autoFocus
+          />
+        )}
+
         <div className={styles.list}>
-          {options.map((opt) => {
+          {visible.map((opt) => {
             const checked = sel.has(opt);
             return (
-              <button
+              <div
                 key={opt}
-                type="button"
+                role="checkbox"
+                aria-checked={checked}
+                tabIndex={0}
                 className={styles.row}
                 onClick={() => toggle(opt)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(opt); } }}
               >
-                <span className={[styles.box, checked ? styles.boxChecked : ''].join(' ')}>
-                  {checked && <Icon name="solar:check-read-linear" size={10} color="var(--neutral-0)" />}
-                </span>
+                <Checkbox checked={checked} tabIndex={-1} aria-hidden className="pointer-events-none" />
                 <span className={styles.label}>{opt}</span>
-              </button>
+              </div>
             );
           })}
+          {visible.length === 0 && <div className={styles.empty}>No matches</div>}
         </div>
-        {showClear && (
-          <button
-            type="button"
-            className={styles.clear}
-            onClick={() => onChange?.([])}
-          >
-            Clear Selection
-          </button>
-        )}
       </div>
     </>,
     document.body,

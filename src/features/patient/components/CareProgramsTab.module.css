@@ -1,5 +1,8 @@
 .view { display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 12px; row-gap: 12px; }
 
+/* Sub-tab bar + filter bar sit flush together (0px gap between them). */
+.topArea { display: flex; flex-direction: column; flex-shrink: 0; }
+
 /* ── Sub-tab bar ── */
 .subTabBar {
   display: flex;
@@ -18,7 +21,8 @@
   padding: 4px 6px;
   border: none;
   border-radius: 4px;
-  background: transparent;  font-size: 14px;
+  background: transparent;
+  font-size: 14px;
   color: var(--neutral-300);
   cursor: pointer;
   white-space: nowrap;
@@ -38,7 +42,8 @@
   padding: 8px;
   border: 0.5px solid var(--primary-300);
   border-radius: 4px;
-  background: transparent;  font-size: 14px;
+  background: transparent;
+  font-size: 14px;
   font-weight: 500;
   color: var(--primary-300);
   cursor: pointer;
@@ -46,135 +51,66 @@
 }
 .newProgramBtn:hover { background: var(--primary-50); }
 
-/* ── New Program picker popover ── */
-.newProgramWrap { position: relative; display: inline-flex; }
-
-.programPicker {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 50;
-  min-width: 280px;
-  max-height: 380px;
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 10px;
-  box-shadow: 0 12px 32px color-mix(in srgb, black 12%, transparent);
+/* ── Empty state ── */
+.emptyWrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.emptyCard {
   display: flex;
   flex-direction: column;
-  overflow: hidden;}
-
-.programPickerSearch {
-  display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px;
-  border-bottom: 0.5px solid var(--neutral-150);
+  padding: 16px 12px;
 }
-.programPickerSearch input {
-  flex: 1;
-  border: none;
-  outline: none;
-  background: transparent;  font-size: 14px;
-  color: var(--neutral-400);
-}
-.programPickerSearch input::placeholder { color: var(--neutral-200); }
-
-.programPickerList {
-  overflow-y: auto;
-  padding: 4px 0;
-}
-.programPickerItem {
-  width: 100%;
-  display: block;
-  padding: 10px 16px;
-  border: none;
-  background: transparent;  font-size: 14px;
-  color: var(--neutral-400);
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.1s;
-}
-.programPickerItem:hover { background: var(--primary-50); color: var(--primary-300); }
-.programPickerEmpty {
-  padding: 12px 16px;
-  font-size: 13px;
-  color: var(--neutral-300);
-  text-align: center;
-}
-
-/* ── Create APE Program drawer form ── */
-.headerDivider {
-  width: 1px;
-  height: 16px;
-  background: var(--neutral-150);
-  align-self: center;
-}
-
-.apeForm {
+.emptyIcon {
+  position: relative;
+  width: 120px;
+  height: 120px;
   display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding-top: 8px;
-}
-.apeField { display: flex; flex-direction: column; gap: 6px; }
-.apeLabel {  font-size: 13px;
-  font-weight: 500;
-  color: var(--neutral-400);
-  display: inline-flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
 }
-.apeRequired { color: var(--status-error); }
+.emptyIcon::before,
+.emptyIcon::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  border: 1px dashed var(--neutral-150);
+}
+.emptyIcon::before { width: 120px; height: 120px; }
+.emptyIcon::after { width: 102px; height: 102px; }
+.iconInner {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(142deg, var(--neutral-50) 13%, var(--neutral-100) 91%);
+}
+.emptyText {
+  font-size: 12px;
+  color: var(--neutral-200);
+  line-height: 1.2;
+}
+/* ── New Program picker — tertiary Button + SearchListPopover ── */
+.npWrap { display: inline-flex; flex-shrink: 0; }
+/* Tertiary Button fills purple on hover; keep its icons legible (white). */
+.npWrap button:hover svg { color: var(--neutral-0) !important; }
 
-.apeError {  font-size: 12px;
-  color: var(--status-error);
-  line-height: 1.4;
-}
-
-.apeDateInput {
-  height: 32px;
-  padding: 0 10px;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 6px;
-  background: var(--neutral-0);  font-size: 13px;
-  color: var(--neutral-400);
-  outline: none;
-  width: 100%;
-  box-sizing: border-box;
-}
-.apeDateInput:focus {
-  border-color: var(--primary-300);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-300) 10%, transparent);
-}
-.apeDateInput::-webkit-calendar-picker-indicator {
-  cursor: pointer;
-  opacity: 0.5;
-}
-
-/* ── Filter badges ── */
+/* ── Filter bar ── */
 .filterBar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 8px 6px;
+  padding: 8px 6px 0;
   flex-shrink: 0;
 }
-.filterChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 32px;
-  padding: 4px 8px;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 4px;
-  background: var(--neutral-0);  font-size: 14px;
-  color: var(--neutral-300);
-  cursor: pointer;
-  white-space: nowrap;
-}
-.filterChip:hover { border-color: var(--neutral-200); }
 .clearAll {
   display: inline-flex;
   align-items: center;
@@ -182,7 +118,8 @@
   height: 32px;
   padding: 8px;
   border: none;
-  background: transparent;  font-size: 14px;
+  background: transparent;
+  font-size: 14px;
   color: var(--primary-300);
   cursor: pointer;
   white-space: nowrap;
@@ -193,10 +130,12 @@
 .tableWrap { flex: 1; overflow: auto; }
 .table {
   width: 100%;
-  border-collapse: collapse;  min-width: 900px;
+  border-collapse: collapse;
+  min-width: 900px;
 }
 .table thead th {
-  padding: 8px;
+  height: 32px;
+  padding: 0 8px;
   font-size: 14px;
   font-weight: 500;
   color: var(--neutral-300);
@@ -209,25 +148,16 @@
   z-index: 2;
 }
 .table tbody tr { border-bottom: 0.5px solid var(--neutral-100); }
-.table tbody tr:hover { background: rgba(22,24,29,0.02); }
+.table tbody tr:hover { background: var(--primary-25); }
 .table tbody td {
-  padding: 8px;
+  height: 48px;
+  padding: 0 8px;
   font-size: 14px;
   color: var(--neutral-300);
   vertical-align: middle;
   white-space: nowrap;
 }
 .checkCell { width: 28px; padding-left: 6px !important; padding-right: 6px !important; }
-.checkbox {
-  width: 16px;
-  height: 16px;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 4px;
-  background: var(--neutral-0);
-  cursor: pointer;
-  appearance: none;
-  flex-shrink: 0;
-}
 .programCell { min-width: 280px; }
 .clickableRow { cursor: pointer; }
 .programName { display: flex; align-items: center; gap: 8px; }
@@ -239,7 +169,8 @@
   align-items: center;
   gap: 4px;
   border: none;
-  background: transparent;  font-size: 14px;
+  background: transparent;
+  font-size: 14px;
   cursor: pointer;
   padding: 0;
 }

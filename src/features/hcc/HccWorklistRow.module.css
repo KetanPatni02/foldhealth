@@ -7,9 +7,9 @@
 }
 .row > td {
   background: var(--neutral-0);
-  vertical-align: middle;
-  padding: 8px 14px;
-  height: 59px;            /* matches TOC WorklistRow natural row height */
+  vertical-align: top;      /* member + record-level columns top-align to the first DOS row */
+  padding: 12px 14px;
+  height: 64px;
   font-family: 'Inter', sans-serif;
   font-size: 14px;
   font-weight: 400;
@@ -36,6 +36,121 @@
 .stickyCheck  { left: 0; padding: 8px 10px !important; }
 .stickyMember { left: 36px; padding: 8px 12px !important; border-right: 1px solid var(--neutral-150); }
 
+/* ── DOS-level group (Figma 4680:138476 / 4672:131830). The DOS · Open
+   ICDs · Visit Type · Provider · POS columns read as ONE bordered group
+   in every state: a single visit is one row inside the box; a mini-
+   sweep record stacks each visit inside the box with hairline dividers
+   and a "View More N ⌄" / "View Less ⌃" footer. The box border spans the
+   five columns (left edge on DOS, right edge on POS) with rounded outer
+   corners. Member + record-level columns render once, top-aligned. */
+.row > td.dosTd {
+  vertical-align: top;
+  padding: 0 !important;
+}
+/* Right bracket of the DOS group — full-height vertical divider after
+   POS (the left bracket is the Member column's own border-right). */
+.dosTdLast { border-right: 1px solid var(--neutral-150); }
+.dosStack {
+  display: flex;
+  flex-direction: column;
+}
+.dosStackItem {
+  min-height: 44px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+}
+/* Horizontal divider between stacked visits — spans the group because
+   every DOS-level column carries the same divider on adjacent tds. */
+.dosStackItem + .dosStackItem {
+  border-top: 1px solid var(--neutral-150);
+}
+
+/* DOS date + source badge on one line. */
+.dosItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+/* DOS source badge — subtle colour-coded circle (Paper 21UX): the letter
+   colours by source (M=manual/orange, C=Cozeva/purple, D=document/grey). */
+.dosSrcBadge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-50);
+  color: var(--neutral-300);
+  font: 600 9px/1 'Inter', sans-serif;
+  flex-shrink: 0;
+  cursor: default;
+  outline: none;
+}
+.srcDoc    { border-color: var(--neutral-150);   background: var(--neutral-50);   color: var(--neutral-300); }
+.srcClaims { border-color: var(--primary-200);   background: var(--primary-50);   color: var(--primary-300); }
+.srcManual { border-color: var(--secondary-200); background: var(--secondary-50); color: var(--secondary-300); }
+.dosSrcBadge:focus-visible { box-shadow: 0 0 0 2px var(--primary-100); }
+
+/* Hover tooltip — source of the encounter + its date. */
+.dosSrcTip {
+  position: fixed;
+  z-index: 500;
+  transform: translateX(-50%);
+  min-width: 160px;
+  padding: 8px 10px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dosSrcTipHead {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 600 12px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.dosSrcTipMeta { font: 400 11px/1.3 'Inter', sans-serif; color: var(--neutral-300); }
+.dosSrcTipDate { font: 500 11px/1.3 'Inter', sans-serif; color: var(--neutral-400); margin-top: 2px; }
+.posText {
+  font: 400 14px/1.3 'Inter', sans-serif;
+  color: var(--neutral-400);
+  white-space: nowrap;
+}
+
+/* Equal-height footer row inside the box across all 5 columns, divided
+   from the visits above by a hairline — keeps the box bottom aligned. */
+.dosFooter {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--neutral-150);
+}
+/* "View More N ⌄" / "View Less ⌃" — lives in the DOS column's footer.
+   Neutral slate grey, matching the design (NOT purple). */
+.viewMoreBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  padding: 6px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+  text-align: left;
+}
+.viewMoreBtn:hover { color: var(--primary-300); }
+
 /* Selected row */
 .rowChecked,
 .rowChecked > td,
@@ -57,11 +172,22 @@
 .checkTd { vertical-align: middle; }
 .memberTd { vertical-align: middle; }
 
+/* Checkbox wrapper — matches the member identity block height (avatar +
+   name + meta) and centers the checkbox, so it aligns to the avatar's
+   vertical center even when the cell top-aligns to the first DOS row of
+   an expanded record. */
+.checkAlign {
+  display: flex;
+  align-items: center;
+  height: 35px;
+}
+
 .patientCell {
   display: flex;
   align-items: center;
   gap: 12px;
 }
+
 .patientName {
   font-size: 14px;
   font-weight: 500;
@@ -175,7 +301,7 @@
 .lastVisitDate {
   font-size: 14px;
   font-weight: 400;
-  color: var(--primary-300);
+  color: var(--neutral-300);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -232,7 +358,7 @@
 /* Date hover (claim variant only): visited link feel */
 .lastVisitDateBtn:hover .lastVisitDate {
   text-decoration: underline;
-  text-decoration-color: var(--primary-300);
+  text-decoration-color: var(--neutral-400);
   text-underline-offset: 2px;
 }
 
@@ -288,6 +414,62 @@
   height: 5px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+/* Mixed-status: per-status dot + count (Figma Documents cell). */
+.evidenceDots {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.evidenceDotCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--neutral-400);
+}
+
+/* ── Progress stepper (Figma) — 4 dots joined by connector lines. ── */
+.progress {
+  display: inline-flex;
+  align-items: center;
+}
+.progressSeg {
+  display: inline-flex;
+  align-items: center;
+}
+.progressLine {
+  width: 14px;
+  height: 1px;
+  background: var(--neutral-150);
+}
+.progressDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.progressDot_done    { background: var(--status-success); }
+.progressDot_active  { background: var(--status-warning); }
+.progressDot_pending { background: var(--neutral-200); }
+
+/* ── PCP cell — name + "+N More" pill. ── */
+.pcpCell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.pcpMore {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  font: 500 11px/1 'Inter', sans-serif;
+  color: var(--neutral-400);
 }
 
 /* ── Role status cells ── */
@@ -391,6 +573,51 @@
   color: var(--neutral-300);
   text-align: center;
 }
+/* Reassign trigger — an assigned, in-flight role cell that opens the picker. */
+.roleReassignTrigger {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  width: calc(100% + 8px);
+  margin: -3px -4px;
+  padding: 3px 4px;
+  border: none;
+  background: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+}
+.roleReassignTrigger:hover { background: var(--neutral-50); }
+/* Search box atop the assignee picker. */
+.roleAssignSearch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 2px 6px;
+  padding: 5px 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+}
+.roleAssignInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-500);
+}
+.roleAssignInput::placeholder { color: var(--neutral-300); }
+.roleAssignList {
+  display: flex;
+  flex-direction: column;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.roleAssignItemActive { background: var(--primary-25); }
 
 /* ── RAF Impact badge — green with up arrow (or red with down) ── */
 .rafImpactBadge {
@@ -433,6 +660,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   display: block;
+  /* Names only (specialty stripped) — cap so the Rendering Provider column
+     stays narrow and long names ellipsize. */
+  max-width: 150px;
 }
 .numText { font-variant-numeric: tabular-nums; }
 .muted { color: var(--neutral-200); }
@@ -441,10 +671,19 @@
 .colMember      { min-width: 240px; }
 .colLastVisit   { min-width: 100px; }
 .colOpen        { min-width: 90px; }
+.colVt          { min-width: 72px; }
 .colDate        { min-width: 110px; }
+
+/* Visit Type — plain text (AWV / IPPE / TCM / HCC), per Figma 4680:138476. */
+.vtText {
+  font: 400 14px/1.2 'Inter', sans-serif;
+  color: var(--neutral-400);
+  white-space: nowrap;
+}
 .colEvidence    { min-width: 110px; }
 .colAssignee    { min-width: 170px; }
 .colRole        { min-width: 150px; }
+.colProgress    { min-width: 110px; }
 
 /* Assignee cell — Avatar + 2-line stack (name on top, current role below).
    Mirrors the Member cell's typography so the column reads as a person. */

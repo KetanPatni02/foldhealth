@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { getRafBreakdown } from './data/raf';
 import { getChartDocs } from './data/chartDocs';
+import { getOpenIcdsForMember } from './data/icds';
 import styles from './RowPopovers.module.css';
 
 // ── Generic hover-popup helpers ───────────────────────────────────────────
@@ -173,7 +174,7 @@ const DOC_STATUS_STYLE = {
   Failed:  { color: 'var(--status-error)',   bg: 'var(--status-error-light)',   border: 'rgba(215,40,37,0.2)',   icon: 'solar:info-circle-linear' },
 };
 
-export function ChartPopover({ anchorRect, member, onClose, onUpload }) {
+export function ChartPopover({ anchorRect, member, charts, onClose, onUpload, onSelectChart, onViewMore }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
     document.addEventListener('keydown', onKey);
@@ -181,7 +182,7 @@ export function ChartPopover({ anchorRect, member, onClose, onUpload }) {
   }, [onClose]);
 
   if (!anchorRect) return null;
-  const allDocs = getChartDocs(member);
+  const allDocs = charts || getChartDocs(member);
   const SHOW = 3;
   const visible = allDocs.slice(0, SHOW);
   const more = allDocs.length - SHOW;
@@ -222,7 +223,7 @@ export function ChartPopover({ anchorRect, member, onClose, onUpload }) {
           <button
             type="button"
             className={styles.chartUploadBtn}
-            onClick={() => { onClose?.(); onUpload?.(); }}
+            onClick={() => onUpload?.()}
           >
             <Icon name="solar:upload-minimalistic-linear" size={13} color="var(--primary-300)" />
             <span>Upload New Chart</span>
@@ -235,7 +236,15 @@ export function ChartPopover({ anchorRect, member, onClose, onUpload }) {
           {visible.map((d, i) => {
             const st = DOC_STATUS_STYLE[d.status] || DOC_STATUS_STYLE.Pending;
             return (
-              <div key={i} className={styles.chartRow}>
+              <div
+                key={i}
+                className={styles.chartRow}
+                role="button"
+                tabIndex={0}
+                style={{ cursor: 'pointer' }}
+                onClick={() => { onClose?.(); onSelectChart?.(d); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClose?.(); onSelectChart?.(d); } }}
+              >
                 <div className={styles.chartRowText}>
                   <div className={styles.chartName}>
                     <span>{d.n}</span>
@@ -255,8 +264,8 @@ export function ChartPopover({ anchorRect, member, onClose, onUpload }) {
           })}
         </div>
         {more > 0 && (
-          <button type="button" className={styles.chartMoreBtn}>
-            <span>View More {more}</span>
+          <button type="button" className={styles.chartMoreBtn} onClick={() => { onClose?.(); onViewMore?.(); }}>
+            <span>{`View ${more} more`}</span>
             <Icon name="solar:alt-arrow-right-linear" size={11} color="var(--primary-300)" />
           </button>
         )}
@@ -327,21 +336,14 @@ export function ActionsMenuPopover({ anchorRect, onClose, onAction }) {
 export function OpenIcdsHoverPopover({
   anchorRect,
   member,
-  icds,        // ICDs from getICDs(member.name)
-  notLinked,   // ICDs from getNotLinked(member.name)
   onIcdClick,  // (code: string) => void
   onEnter,
   onLeave,
 }) {
   if (!anchorRect) return null;
-  const isAISuggested = (i) => ['Suspect', 'Recapture'].includes(i.type || '');
-  const open = (icds || []).filter(i => i.status !== 'Dismissed' && i.status !== 'Accepted');
-  const linked = open.filter(i => !isAISuggested(i));
-  const notLinkedClean = [
-    ...open.filter(i => isAISuggested(i)),
-    ...(notLinked || []).filter(i => i.status !== 'Dismissed' && i.status !== 'Accepted'),
-  ];
-  const all = [...linked, ...notLinkedClean];
+  // Shared open-ICD computation — identical to the worklist count badge, so
+  // the list here always matches the number shown upfront.
+  const { linked, notLinkedClean, all } = getOpenIcdsForMember(member?.name);
   const dos = member?.dos_list?.[0]?.date || member?.dos || null;
 
   const W = 296;
@@ -391,12 +393,28 @@ export function OpenIcdsHoverPopover({
   );
 }
 
-// Row shape (per Figma node 11864:523333):
-//   <strong>E11.22</strong> - Type 2 Diabetes Mellitus with Diabeti…
-//   [ HCC18 ]
-// No status badge, no count metadata, no chevron — just code + description
-// on the top line and the HCC code in a small chip beneath.
+// Gap-lifecycle badge shown per ICD in the popover: Open (still needs
+// coding), Closed (coded/resolved this cycle), or Reopen (a prior-year HCC
+// that must be recaptured). The popover already filters to active gaps, so
+// we derive the lifecycle from `type` (Recapture → Reopen) plus a
+// deterministic per-code spread — stable across reloads, and surfaces all
+// three states across the dataset.
+function icdLifecycle(icd) {
+  if ((icd.type || '') === 'Recapture') return 'Reopen';
+  let h = 0;
+  const s = (icd.code || '') + (icd.desc || '');
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0xffffffff;
+  const r = Math.abs(h) % 5;
+  if (r === 0) return 'Closed';
+  if (r === 1) return 'Reopen';
+  return 'Open';
+}
+
+// Row shape (per Figma node 11864:523333): code + description on the top
+// line, HCC chip + gap-lifecycle status badge (Open / Closed / Reopen)
+// beneath.
 function IcdHoverRow({ icd, hccShort, onClick }) {
+  const life = icdLifecycle(icd);
   return (
     <button type="button" className={styles.icdRow} onClick={onClick}>
       <div className={styles.icdRowText}>
@@ -405,9 +423,12 @@ function IcdHoverRow({ icd, hccShort, onClick }) {
           {' - '}
           <span>{icd.desc}</span>
         </div>
-        {icd.hcc && (
-          <span className={styles.icdHccChip}>{hccShort(icd.hcc)}</span>
-        )}
+        <div className={styles.icdRowMeta}>
+          {icd.hcc && (
+            <span className={styles.icdHccChip}>{hccShort(icd.hcc)}</span>
+          )}
+          <span className={[styles.icdStatusPill, styles[`icdStatus${life}`]].join(' ')}>{life}</span>
+        </div>
       </div>
     </button>
   );

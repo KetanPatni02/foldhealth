@@ -19,11 +19,33 @@ function TabPlaceholder({ tabName }) {
   );
 }
 
+// HCC / AWV members live in a different store slice than the patients list.
+// When the user opens a profile from the HCC worklist, we still want the
+// banner to render — so we map the HCC row's fields to the shape the banner
+// expects instead of falling back to "Patient not found".
+function hccMemberToPatient(m) {
+  if (!m) return null;
+  return {
+    id: m.id,
+    memberId: m.memberId,
+    name: m.name,
+    initials: m.in || (m.name || '').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase(),
+    gender: m.g === 'M' ? 'Male' : m.g === 'F' ? 'Female' : (m.g || ''),
+    age: m.age,
+    dob: m.dob,
+    pcp: m.pcp,
+    rp: m.rp,
+    language: m.language || 'en',
+  };
+}
+
 export function PatientDetailView() {
   const selectedPatientId = useAppStore(s => s.selectedPatientId);
   const patients = useAppStore(s => s.patients);
+  const hccMembers = useAppStore(s => s.hccMembers);
   const [activeTab, setActiveTab] = useState('Overview');
   const [leftWidth, setLeftWidth] = useState(496);
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
   const dragging = useRef(false);
   const bodyRef = useRef(null);
 
@@ -52,7 +74,10 @@ export function PatientDetailView() {
     document.addEventListener('mouseup', handleMouseUp);
   }, []);
 
-  const patient = patients.find(p => p.id === selectedPatientId);
+  // Fall back to the HCC/AWV worklist when the id isn't in the main patients
+  // list — those rows live in a separate slice and shouldn't 404.
+  const patient = patients.find(p => p.id === selectedPatientId)
+    || hccMemberToPatient(hccMembers.find(m => m.id === selectedPatientId));
 
   if (!patient) {
     return (
@@ -69,15 +94,24 @@ export function PatientDetailView() {
     <div className={styles.wrapper}>
       <PatientP360Banner patient={patient} />
       <div className={styles.body} ref={bodyRef}>
-        <div style={{ width: leftWidth, minWidth: 300, maxWidth: 700, flexShrink: 0 }}>
-          <PatientProfileTabs patientId={selectedPatientId} />
-        </div>
-        {/* Drag handle */}
-        <div className={styles.dragHandle} onMouseDown={handleMouseDown}>
-          <div className={styles.dragHandleLine} />
-        </div>
+        {!leftCollapsed && (
+          <>
+            <div style={{ width: leftWidth, minWidth: 300, maxWidth: 700, flexShrink: 0 }}>
+              <PatientProfileTabs patientId={selectedPatientId} />
+            </div>
+            {/* Drag handle */}
+            <div className={styles.dragHandle} onMouseDown={handleMouseDown}>
+              <div className={styles.dragHandleLine} />
+            </div>
+          </>
+        )}
         <div className={styles.rightPanel}>
-          <ProfileTabBar activeTab={activeTab} onTabChange={setActiveTab} />
+          <ProfileTabBar
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            leftCollapsed={leftCollapsed}
+            onToggleLeft={() => setLeftCollapsed(c => !c)}
+          />
           <div className={styles.tabContent}>
             {activeTab === 'Overview' ? (
               <OverviewTab />

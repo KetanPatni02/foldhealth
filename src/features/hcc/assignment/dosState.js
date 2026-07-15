@@ -10,10 +10,10 @@
 // compatibility (the worklist table still reads them), but mirror everything
 // into a `hccDosAssignments` map in the store, keyed by `${patientId}::${dos}`.
 //
-//   hccDosAssignments[`${patientId}::${dosDate}`] = {
-//     patientId, dosDate,
-//     support: RoleState, coder: RoleState, r1: RoleState, r2: RoleState, r3: RoleState,
-//     sampling: { r2: null|true|false, r3: null|true|false },
+//   hccDosAssignments[`${patientId}::${dosDate}::${provider}::${pos}`] = {
+//     patientId, dosDate, renderingProvider, pos,
+//     support: RoleState, coder: RoleState, reviewer: RoleState, reviewer2: RoleState,
+//     sampling: { reviewer2: null|true|false },
 //     billingReady: boolean,
 //     asmGenerated: boolean,
 //     activity: ActivityEntry[],
@@ -28,10 +28,29 @@
 //
 // Active vs Inactive (AC-9):
 //   `assignee` is always the Active one. The full audit trail is in `history`.
+//
+// Composite key: the locked identity for a DOS record is
+// Patient ID + DOS + Rendering Provider + POS — two DOS rows sharing a date
+// but differing provider/POS have independent created dates and independent
+// SLA clocks, so they must never collapse into the same dosState record.
 
 import { ROLES } from './astranaStaff';
 
-export const dosKey = (patientId, dosDate) => `${patientId}::${dosDate}`;
+export const dosKey = (patientId, dosDate, renderingProvider, pos) =>
+  `${patientId}::${dosDate}::${renderingProvider || '—'}::${pos || '—'}`;
+
+// Splits a composite key back into its parts. None of today's call sites
+// need this yet, but it's the natural inverse of dosKey() and cheap to keep
+// around for whoever next needs to go the other way (e.g. debugging tools).
+export function parseDosKey(key) {
+  const [patientId, dosDate, renderingProvider, pos] = String(key).split('::');
+  return {
+    patientId,
+    dosDate,
+    renderingProvider: renderingProvider === '—' ? null : renderingProvider,
+    pos: pos === '—' ? null : pos,
+  };
+}
 
 // Status keys used by the lifecycle. Mirror what's in statusSpec.js plus a
 // few engine-only sentinels (`Assign`, `Billing Ready`).
@@ -46,6 +65,7 @@ export const STATUS = {
   RETURNED:         'Returned',
   INSUFFICIENT:     'Insufficient',
   REJECT:           'Reject',
+  SKIPPED:          'Skipped',          // role bypassed — a later role acted first
   BILLING_READY:    'Billing Ready',
 };
 
@@ -57,16 +77,19 @@ const EMPTY_ROLE_STATE = () => ({
 });
 
 // Build a fresh blank DOS-state record. Used the first time we touch a DOS.
-export function blankDosState(patientId, dosDate) {
+export function blankDosState(patientId, dosDate, renderingProvider = null, pos = null) {
   return {
     patientId,
     dosDate,
-    support: EMPTY_ROLE_STATE(),
-    coder:   EMPTY_ROLE_STATE(),
-    r1:      EMPTY_ROLE_STATE(),
-    r2:      EMPTY_ROLE_STATE(),
-    r3:      EMPTY_ROLE_STATE(),
-    sampling: { r2: null, r3: null },
+    renderingProvider,
+    pos,
+    support:   EMPTY_ROLE_STATE(),
+    coder:     EMPTY_ROLE_STATE(),
+    reviewer:  EMPTY_ROLE_STATE(),
+    reviewer2: EMPTY_ROLE_STATE(),
+    // Only Reviewer→Reviewer2 is a sampled transition (Coder→Reviewer is
+    // unconditional) — no equivalent "sampling.reviewer" field exists.
+    sampling: { reviewer2: null },
     billingReady: false,
     asmGenerated: false,
     activity: [],
@@ -124,7 +147,7 @@ export function pushActivity(state, entry) {
 // Compute the workload map across all DOS-state records in the store. A
 // staff member's workload is the count of DOSs where they are the current
 // Active assignee at any role (open status — not Completed / Reject).
-const TERMINAL_STATUSES = new Set([STATUS.COMPLETED, STATUS.REJECT, STATUS.BILLING_READY]);
+const TERMINAL_STATUSES = new Set([STATUS.COMPLETED, STATUS.REJECT, STATUS.SKIPPED, STATUS.BILLING_READY]);
 export function computeWorkload(dosStateMap) {
   const workload = {};
   for (const state of Object.values(dosStateMap || {})) {
@@ -187,15 +210,18 @@ export function inferStaffIdFromName(name) {
 // Astrana invariant still holds — every DOS of a patient is pinned to
 // the same staff member at every role — and the engine can override
 // per-DOS state via real lifecycle transitions later.
-export function hydrateFromMember(member, dosDate, _idx = 0) {
-  const initial = blankDosState(member.id, dosDate);
+export function hydrateFromMember(member, dosDate, _idx = 0, renderingProvider = null, pos = null) {
+  const initial = blankDosState(member.id, dosDate, renderingProvider, pos);
 
+  // Legacy member fields keep their historical r1/r1s/r2/r2s names (and the
+  // Supabase columns behind them) — only the engine's internal role keys
+  // are renamed to reviewer/reviewer2. There is no r3 seed: the role no
+  // longer exists.
   const seed = [
-    { role: 'support', name: member.sup, status: member.supS },
-    { role: 'coder',   name: member.cdr, status: member.cdrS },
-    { role: 'r1',      name: member.r1,  status: member.r1s },
-    { role: 'r2',      name: member.r2,  status: member.r2s },
-    { role: 'r3',      name: member.r3,  status: member.r3s },
+    { role: 'support',   name: member.sup, status: member.supS },
+    { role: 'coder',     name: member.cdr, status: member.cdrS },
+    { role: 'reviewer',  name: member.r1,  status: member.r1s },
+    { role: 'reviewer2', name: member.r2,  status: member.r2s },
   ];
 
   let state = initial;

@@ -239,6 +239,8 @@
   line-height: 1.2;
   color: var(--primary-300);
 }
+.addIcdBtnActive { background: var(--primary-100); }
+.addIcdBtnActive:hover { background: var(--primary-100); }
 
 /* ── Search bar ── */
 .searchBar {
@@ -628,4 +630,245 @@
   font-size: 11px;
   color: var(--primary-300);
   margin-left: 2px;
+}
+
+/* ═══ RA Coder Workflow redesign (Paper 1WXT) ═══════════════════════ */
+
+/* ── Meta row: Created date + overdue tag ── */
+.createdLabel {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  flex-shrink: 0;
+}
+.createdDate {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neutral-500);
+  flex-shrink: 0;
+}
+.dueTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+/* ── Toolbar inline search ── */
+.toolbarSearch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  max-width: 308px;
+  height: 28px;
+  padding: 0 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: var(--neutral-0);
+}
+.toolbarSearch:focus-within {
+  border-color: var(--primary-300);
+}
+.toolbarSearch input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: none;
+  font-size: 13px;
+  color: var(--neutral-500);
+}
+.toolbarSearch input::placeholder { color: var(--neutral-200); }
+.searchClear {
+  display: inline-flex;
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.searchClear:hover { background: var(--neutral-50); }
+
+/* Push the icon cluster to the right edge now that search sits inline. */
+.toolbarIcons { margin-left: auto; }
+
+/* + ICD trigger — clicking opens the "New Diagnosis Gap" left workspace
+   (NewDiagGapPanel). Wrap keeps the layout slot stable even though there
+   is no longer an inline popover. */
+.addIcdWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+/* ── "ICDs Associated with N/M DOSs" section header ── */
+.assocHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+}
+.assocTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+/* "N/M DOSs" badge — expands the per-DOS panel (Paper 1ZV3). */
+.dosBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 18px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  background: var(--primary-25);
+  border: 0.5px solid color-mix(in srgb, var(--primary-300) 20%, transparent);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--primary-300);
+}
+.dosBadge:hover { background: var(--primary-50); }
+
+/* Inline expanded per-DOS panel — a row per DOS with a toggle. */
+.dosPanel {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0; /* overflow:hidden makes it shrinkable in the flex column — keep full height */
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  overflow: hidden;
+}
+.dosPanelRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.dosPanelRow:last-child { border-bottom: none; }
+.dosPanelInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+.dosPanelDate {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-400);
+}
+.dosPanelMeta {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.dosPanelSep { color: var(--neutral-200); margin: 0 2px; }
+
+/* ── Cards flow (ICD cards + HCC suspect groups) ── */
+.cardsFlow {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Keyboard shortcut bar (drawer footer, full-bleed dark) ── */
+.shortcutBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: calc(100% + 48px);
+  margin: -16px -24px;
+  padding: 6px 16px;
+  background: var(--neutral-500);
+  border-radius: 0 0 16px 16px;
+}
+.shortcutItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.shortcutKey {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--neutral-0) 10%, transparent);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-0);
+}
+.shortcutLabel {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-0);
+}
+
+/* ── Bulk action bar (row-checkbox selection) ── */
+.bulkBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 0.5px solid var(--primary-200);
+  border-radius: 8px;
+  background: var(--primary-25);
+}
+.bulkCount {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-300);
+  margin-right: 4px;
+}
+.bulkAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 0.5px solid var(--primary-300);
+  border-radius: 4px;
+  background: var(--neutral-0);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-300);
+}
+.bulkAction:hover { background: var(--primary-50); }
+.bulkClear {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--neutral-300);
+}
+.bulkClear:hover { color: var(--neutral-500); }
+
+/* Toolbar Bulk-Action button — active state while bulk-select mode is on. */
+.toolbarBtnActive {
+  background: var(--primary-50);
+  color: var(--primary-300);
+}
+
+
+/* Override the shared BulkBar's viewport-centered positioning when it's
+   rendered inside the DiagPanel drawer. The drawer is 700px wide with an
+   8px right inset (see Drawer.module.css), so its horizontal centre sits
+   at 100vw − (700/2 + 8) = 100vw − 358px. The transform shifts the bar
+   left by half its own width to place its centre at the drawer's centre. */
+.bulkBarInDrawer {
+  left: calc(100vw - 358px) !important;
+  right: auto !important;
+  bottom: 32px !important;
+  transform: translateX(-50%) !important;
 }
