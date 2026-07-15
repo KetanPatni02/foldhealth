@@ -34,7 +34,9 @@ function getUserDisplayName(user) {
 }
 
 /* ── Profile Popover (Figma node 1904:6423) ── */
-const SWITCH_ACCOUNTS = ['Support', 'QA', 'Coder', 'Compliance'];
+// The full HCC role vocabulary — filtered per-user against the roles their
+// profile actually carries in profiles.clinical_roles.
+const ALL_HCC_ROLES = ['Support', 'Coder', 'QA', 'Compliance'];
 
 function ProfilePopover({ user, onClose, onPreferences }) {
   const popoverRef = useRef(null);
@@ -50,6 +52,32 @@ function ProfilePopover({ user, onClose, onPreferences }) {
   const account = useAppStore(s => s.hccUserRole);
   const setAccount = useAppStore(s => s.setHccUserRole);
   const [showRoles, setShowRoles] = useState(false);
+  // Roles this user actually has — fetched from profiles.clinical_roles.
+  // The role switcher only lists HCC roles that overlap this set, so a
+  // user without any HCC role assigned can't accidentally act as one.
+  const [assignedRoles, setAssignedRoles] = useState(null);
+  useEffect(() => {
+    if (!user?.id) { setAssignedRoles([]); return; }
+    let alive = true;
+    (async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('clinical_roles')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (alive) setAssignedRoles(data?.clinical_roles || []);
+    })();
+    return () => { alive = false; };
+  }, [user?.id]);
+  const hccRolesForUser = (assignedRoles || []).filter(r => ALL_HCC_ROLES.includes(r));
+  // Snap hccUserRole to a role the user actually has; if they don't have
+  // the currently-selected one, fall through to their first assigned HCC
+  // role. Runs when the profile fetch resolves.
+  useEffect(() => {
+    if (!hccRolesForUser.length) return;
+    if (!hccRolesForUser.includes(account)) setAccount(hccRolesForUser[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignedRoles]);
 
   useEffect(() => {
     const close = (e) => {
@@ -138,23 +166,27 @@ function ProfilePopover({ user, onClose, onPreferences }) {
           <Icon name="solar:settings-linear" size={20} color="var(--neutral-400)" />
           <span>Preferences</span>
         </button>
-        <div style={{ ...menuItemStyle, cursor: 'default' }}>
-          <Icon name="solar:users-group-rounded-linear" size={20} color="var(--neutral-400)" />
-          <span style={{ flex: 1 }}>Logged in as: {account}</span>
-          <button
-            type="button"
-            onClick={() => setShowRoles(v => !v)}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 2, padding: 0,
-              border: 'none', background: 'none', cursor: 'pointer',
-              fontFamily: "'Inter', sans-serif", fontSize: 14, fontWeight: 500,
-              color: 'var(--primary-300)',
-            }}
-          >
-            Switch
-            <Icon name="solar:alt-arrow-right-linear" size={12} color="var(--primary-300)" />
-          </button>
-        </div>
+        {hccRolesForUser.length > 0 && (
+          <div style={{ ...menuItemStyle, cursor: 'default' }}>
+            <Icon name="solar:users-group-rounded-linear" size={20} color="var(--neutral-400)" />
+            <span style={{ flex: 1 }}>Logged in as: {account}</span>
+            {hccRolesForUser.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setShowRoles(v => !v)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 2, padding: 0,
+                  border: 'none', background: 'none', cursor: 'pointer',
+                  fontFamily: "'Inter', sans-serif", fontSize: 14, fontWeight: 500,
+                  color: 'var(--primary-300)',
+                }}
+              >
+                Switch
+                <Icon name="solar:alt-arrow-right-linear" size={12} color="var(--primary-300)" />
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Theme picker — separated by thin divider above and below */}
         <div style={{ marginTop: 4, paddingTop: 8, borderTop: '0.5px solid var(--neutral-100)' }}>
@@ -179,7 +211,7 @@ function ProfilePopover({ user, onClose, onPreferences }) {
         }}>
           <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', padding: '0 4px' }}>Choose Role</span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {SWITCH_ACCOUNTS.map(a => {
+            {hccRolesForUser.map(a => {
               const sel = account === a;
               return (
                 <button

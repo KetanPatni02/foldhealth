@@ -37,12 +37,21 @@ import styles from './AccountPanel.module.css';
 
 const ALL_TABS = ['Org', 'Users', 'Teams', 'Access Control', 'Locations', 'Insurance Plans', 'Holiday Configuration', 'Merged Or Delayed', 'Allowed Phone', 'Allowed Emails'];
 
+// HCC coding-workflow roles are listed first — an admin assigning any of
+// these to a teammate flips the TopBar role switcher on for them and drives
+// the HCC review workflow's stage gating (Support → Coder → QA → Compliance).
+export const HCC_ROLES = ['Support', 'Coder', 'QA', 'Compliance'];
+
 const ROLE_COLORS = {
-  'Physician/Doctor': 'ai-care', 'Nurse': 'toc-engaged', 'Medical Assistant': 'status-scheduled',
-  'Admin/Practice Manager': 'outreach-post-visit', 'Billing Specialist': 'compliance-warn',
+  'Support':                       'toc-attempted',
+  'Coder':                         'ai-care',
+  'QA':                            'ai-med',
+  'Compliance':                    'compliance-warn',
+  'Physician/Doctor':              'ai-care', 'Nurse': 'toc-engaged', 'Medical Assistant': 'status-scheduled',
+  'Admin/Practice Manager':        'outreach-post-visit', 'Billing Specialist': 'compliance-warn',
   'Front Desk Staff/Receptionist': 'ai-neutral', 'Lab Technician': 'status-queued',
-  'Pharmacist': 'ai-med', 'Health Information Manager (HIM)': 'ai-care',
-  'Radiologist': 'toc-engaged', 'Patient': 'ai-neutral',
+  'Pharmacist':                    'ai-med', 'Health Information Manager (HIM)': 'ai-care',
+  'Radiologist':                   'toc-engaged', 'Patient': 'ai-neutral',
 };
 
 // A properly-cased name starts with an uppercase letter A-Z. Hyphens,
