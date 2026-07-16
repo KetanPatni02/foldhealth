@@ -100,6 +100,7 @@ export function SuspectCard({ icd, dosList = [], member }) {
           <IcdCombobox
             code={code}
             desc={desc}
+            disabled={!roleAllowsIcdActions}
             onSelect={(picked) => setOverride({ code: picked.code, desc: picked.title || picked.desc || '' })}
           />
           {reviewedByLabel(icd.by) && (
@@ -132,10 +133,16 @@ export function SuspectCard({ icd, dosList = [], member }) {
         <button
           ref={dosBtnRef}
           type="button"
-          className={[styles.dosButton, dos ? styles.dosButtonActive : ''].filter(Boolean).join(' ')}
-          disabled={!!action || singleDos}
-          onClick={() => (singleDos ? null : setDosOpen(o => !o))}
-          title={singleDos ? 'Only encounter available' : 'Select a DOS'}
+          className={[
+            styles.dosButton,
+            dos ? styles.dosButtonActive : '',
+            !roleAllowsIcdActions ? styles.disabledAction : '',
+          ].filter(Boolean).join(' ')}
+          disabled={!!action || singleDos || !roleAllowsIcdActions}
+          onClick={() => (singleDos || !roleAllowsIcdActions ? null : setDosOpen(o => !o))}
+          title={!roleAllowsIcdActions ? 'Support role cannot code ICDs'
+            : singleDos ? 'Only encounter available'
+            : 'Select a DOS'}
         >
           <span>{dos || 'Select DOS'}</span>
           {!singleDos && (
@@ -252,7 +259,7 @@ function ResolvedPill({ action }) {
 
 // ── ICD combobox — button opens a dropdown with an in-dropdown search field.
 // The current code is pre-selected; typing searches the live WHO ICD-11 API.
-function IcdCombobox({ code, desc, onSelect }) {
+function IcdCombobox({ code, desc, onSelect, disabled = false }) {
   const btnRef = useRef(null);
   const [open, setOpen] = useState(false);
   return (
@@ -260,9 +267,10 @@ function IcdCombobox({ code, desc, onSelect }) {
       <button
         ref={btnRef}
         type="button"
-        className={styles.icdSelect}
-        title="Switch to a corrected ICD code"
-        onClick={() => setOpen(o => !o)}
+        className={[styles.icdSelect, disabled ? styles.disabledAction : ''].filter(Boolean).join(' ')}
+        title={disabled ? 'Support role cannot code ICDs' : 'Switch to a corrected ICD code'}
+        disabled={disabled}
+        onClick={() => (disabled ? null : setOpen(o => !o))}
       >
         <span className={styles.icdSelectText}>{code} {desc}</span>
         <Icon name="solar:alt-arrow-down-linear" size={13} color="var(--neutral-300)" />
