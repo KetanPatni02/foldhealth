@@ -29,6 +29,7 @@ import {
 } from './ReviewProgressPopover';
 import { SWEEP_ICD_DATA } from '../data/sweepIcds';
 import { getChartDocs } from '../data/chartDocs';
+import { COMMENTS as COMMENTS_MOCK } from '../data/ancillary';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { RoleTooltip } from '../RoleTooltip';
 import { resolveCurrentAssignee } from '../HccWorklistRow';
@@ -356,6 +357,10 @@ export function DiagPanel() {
     return getChartDocs(member, hccAddedCharts || [], hccChartStatus || {}, hccRemovedCharts || []);
   }, [member, hccAddedCharts, hccChartStatus, hccRemovedCharts]);
   const docsCount = chartsList.length;
+  // Comments count for the toolbar chip — mirrors what the Comments tab
+  // renders (Supabase-hydrated rows when present, mock fallback otherwise).
+  const dbComments = useAppStore(s => s.hccDiagComments);
+  const commentsCount = dbComments.length || COMMENTS_MOCK.length;
   const setDiagOpenDocId = useAppStore(s => s.setDiagOpenDocId);
   const diagOpenDocId = useAppStore(s => s.diagOpenDocId);
   // Toolbar Documents click: open the preview (first doc) rather than the list.
@@ -447,7 +452,7 @@ export function DiagPanel() {
     openTimer.current = setTimeout(() => {
       const r = pillRef.current?.getBoundingClientRect();
       if (r) setPillRect(r);
-    }, 200);
+    }, 80);
   };
   const onPillLeave = () => {
     if (pillPinned) return;
@@ -932,7 +937,7 @@ export function DiagPanel() {
             icon="solar:chat-round-line-linear"
             size="S"
             tooltip="Comments"
-            count="6"
+            count={String(commentsCount)}
             className={diagLeftPanel === 'comments' && !diagActivityIcd ? styles.activeIcon : ''}
             onClick={() => setDiagLeftPanel(diagLeftPanel === 'comments' && !diagActivityIcd ? null : 'comments')}
           />

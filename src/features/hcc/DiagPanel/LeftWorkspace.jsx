@@ -15,6 +15,7 @@ import { getChartDocs, makeUploadedChartDoc } from '../data/chartDocs';
 import { ACTIVITY, getActivityFromDb } from '../data/activity';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { normalizeRole } from '../reviewedBy';
+import { SYSTEM_USERS } from '../systemUsers';
 import { OutreachTab as PatientOutreachTab } from '../../patient/components/OutreachTab';
 import { DocEvidenceViewer } from './DocEvidenceViewer';
 import { DestructiveDialog } from '../../../components/Modal/DestructiveDialog';
@@ -865,12 +866,40 @@ function groupByMonth(items) {
     .sort((a, b) => b._ts - a._ts);
 }
 
+// Render a comment body with @mention tokens wrapped in a badge span. Names
+// are matched greedily against the known platformUsers + SYSTEM_USERS fallback
+// so full-name mentions (e.g. "@Abhay Pratap Chaudhary") remain intact.
+function renderCommentBody(body, users) {
+  if (!body) return null;
+  const names = (users?.length ? users : []).map(u => u.name).filter(Boolean);
+  // Longest-first so a full-name match wins over a first-name-only prefix.
+  const sortedNames = names.slice().sort((a, b) => b.length - a.length);
+  if (!sortedNames.length) return body;
+  const escaped = sortedNames.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const re = new RegExp(`@(${escaped.join('|')})`, 'g');
+  const nodes = [];
+  let lastIdx = 0;
+  let key = 0;
+  let match;
+  while ((match = re.exec(body)) !== null) {
+    if (match.index > lastIdx) nodes.push(body.slice(lastIdx, match.index));
+    nodes.push(
+      <span key={`m-${key++}`} className={styles.mentionBadge}>@{match[1]}</span>,
+    );
+    lastIdx = match.index + match[0].length;
+  }
+  if (lastIdx < body.length) nodes.push(body.slice(lastIdx));
+  return nodes.length ? nodes : body;
+}
+
 function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
   const isMine = item.author === 'You';
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(item.body || '');
   useEffect(() => { setDraft(item.body || ''); }, [item.body]);
   const role = normalizeRole(item.role);
+  const platformUsers = useAppStore(s => s.platformUsers);
+  const usersForMentions = platformUsers?.length ? platformUsers : SYSTEM_USERS;
   const commit = () => {
     const next = draft.trim();
     if (!next || next === item.body) { setEditing(false); return; }
@@ -934,12 +963,12 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
               }}
             />
             <div className={styles.commentEditorActions}>
-              <button type="button" className={styles.commentGhostBtn} onClick={() => { setDraft(item.body || ''); setEditing(false); }}>Cancel</button>
               <button type="button" className={styles.commentSaveBtn} onClick={commit} disabled={!draft.trim() || draft.trim() === item.body}>Save</button>
+              <button type="button" className={styles.commentGhostBtn} onClick={() => { setDraft(item.body || ''); setEditing(false); }}>Cancel</button>
             </div>
           </div>
         ) : (
-          <div className={styles.commentBody}>{item.body}</div>
+          <div className={styles.commentBody}>{renderCommentBody(item.body, usersForMentions)}</div>
         )}
       </div>
     </div>

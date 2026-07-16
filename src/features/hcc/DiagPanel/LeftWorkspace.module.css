@@ -932,8 +932,8 @@
 }
 .commentActionBtn:hover { background: var(--neutral-50); color: var(--neutral-500); }
 /* Inline edit form — sits in place of .commentBody while editing. */
-.commentEditor { margin-top: 4px; display: flex; flex-direction: column; gap: 6px; }
-.commentEditorActions { display: flex; justify-content: flex-end; gap: 8px; }
+.commentEditor { margin-top: 4px; display: flex; flex-direction: column; gap: 2px; }
+.commentEditorActions { display: flex; justify-content: flex-start; gap: 8px; }
 .commentGhostBtn,
 .commentSaveBtn {
   height: 26px;
@@ -955,6 +955,23 @@
 }
 .commentSaveBtn:hover:not(:disabled) { background: var(--primary-400, var(--primary-300)); }
 .commentSaveBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Inline @mention badge — used when a comment body references a platform
+   user by name. Renders as a subtle primary pill so the reader can spot
+   who's being pinged without breaking the surrounding sentence flow. */
+.mentionBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 6px;
+  margin: 0 1px;
+  border-radius: 4px;
+  background: var(--primary-50);
+  color: var(--primary-300);
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+}
 
 /* Comment body text — full-width, multi-line, sits below the meta line. */
 .commentBody {

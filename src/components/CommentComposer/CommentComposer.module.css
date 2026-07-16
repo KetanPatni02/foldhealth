@@ -27,3 +27,36 @@
   justify-content: flex-start;
   gap: 8px;
 }
+
+/* Portaled @mention picker — anchored below (or above) the textarea. */
+.mentionMenu {
+  position: fixed;
+  z-index: 9200;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mentionItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+  color: var(--neutral-500);
+}
+.mentionItem:hover,
+.mentionItemActive { background: var(--neutral-50); }
+.mentionName { flex: 1; }
+
