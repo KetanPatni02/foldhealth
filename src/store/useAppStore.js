@@ -186,6 +186,11 @@ function persistHccDiagComment(row) {
       time: row.time,
       edited: !!row.edited,
       body: row.body,
+      // Scope columns added in supabase/hcc_diag_comment_scope_migration.sql.
+      // If the migration hasn't run yet, Supabase will reject the insert with
+      // "column ... does not exist" — the warning below surfaces that.
+      icd: row.icd ?? null,
+      dos: row.dos ?? null,
     })
     .then(({ error }) => {
       if (error) console.warn(`persistHccDiagComment(${row.id}) failed:`, error.message);
@@ -3270,6 +3275,9 @@ export const useAppStore = create((set, get) => ({
         hccDiagComments: (comments?.data || []).map(r => ({
           id: r.id, author: r.author, role: r.role, date: r.date, time: r.time,
           edited: r.edited, body: r.body,
+          // Optional ICD/DOS scope — added later; DB rows seeded before the
+          // column existed simply won't have these keys.
+          icd: r.icd ?? null, dos: r.dos ?? null,
         })),
         hccDiagDocumentsList: (documents?.data || []).map(r => ({
           id: r.id, name: r.name, ext: r.ext, type: r.doc_type,

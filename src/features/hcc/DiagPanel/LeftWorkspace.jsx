@@ -4,6 +4,7 @@ import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Button } from '../../../components/Button/Button';
 import { Badge } from '../../../components/Badge/Badge';
+import { FilterChip as SharedFilterChip } from '../../../components/FilterChip/FilterChip';
 import {
   COMMENTS as COMMENTS_MOCK,
   NOTES as NOTES_MOCK,
@@ -13,6 +14,7 @@ import {
 import { getChartDocs, makeUploadedChartDoc } from '../data/chartDocs';
 import { ACTIVITY, getActivityFromDb } from '../data/activity';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
+import { normalizeRole } from '../reviewedBy';
 import { OutreachTab as PatientOutreachTab } from '../../patient/components/OutreachTab';
 import { DocEvidenceViewer } from './DocEvidenceViewer';
 import { DestructiveDialog } from '../../../components/Modal/DestructiveDialog';
@@ -38,8 +40,10 @@ const buildTabs = ({ commentsCount, notesCount }) => ([
   { key: 'worklog',   label: 'Worklog',       countFor: () => null },
 ]);
 
-// Tabs that carry the filter row (Activity / Notes / Comments / Documents).
-const FILTERED_TABS = new Set(['activity', 'notes', 'comments', 'documents']);
+// Every content tab shares the same filter row so a filter set the user
+// dials in stays applied as they hop between tabs. Outreach is excluded —
+// it embeds the patient-facing OutreachTab which has its own toolbar.
+const FILTERED_TABS = new Set(['activity', 'notes', 'comments', 'documents', 'claims', 'history', 'worklog']);
 
 /**
  * LeftWorkspace — appears when the DiagPanel expands. Hosts a tab nav across
@@ -56,8 +60,7 @@ const FILTERED_TABS = new Set(['activity', 'notes', 'comments', 'documents']);
  *  - onClose   (fn)            Collapse the left workspace.
  *  - member    (member shape)  Data lookup for the tab-content components.
  */
-export function LeftWorkspace({ active, icdScope = null, onChange, onClose, member, currentDos = null }) {
-  const isDosLevel = !icdScope;
+export function LeftWorkspace({ active, icdScope = null, onChange, onClose, member }) {
   // Kick off the org-scoped ancillary fetch once — safe to call repeatedly,
   // the store guards on didFetch. Doing it here means every drawer open
   // primes Comments / Documents / Notes / History without threading a hook
@@ -75,10 +78,10 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
   const openDocId = useAppStore(s => s.diagOpenDocId);
   const setOpenDocId = useAppStore(s => s.setDiagOpenDocId);
   const isPreviewingDoc = active === 'documents' && !!openDocId;
-  // Worklog uses a DOS-only filter; the other filtered tabs use the full set.
-  // Docs tab shows the filter row only in listing mode (not during preview).
-  const showFilterRow = (FILTERED_TABS.has(active) || (isDosLevel && active === 'worklog'))
-    && !isPreviewingDoc;
+  // Every filtered tab uses the same 5-chip filter set (DOS / HCC / ICD /
+  // Recorded By / Date). Docs tab hides the row while a document is being
+  // previewed — filters only make sense on the listing.
+  const showFilterRow = FILTERED_TABS.has(active) && !isPreviewingDoc;
 
   // Real chart list for THIS record — same source the worklist Documents
   // column uses, so the tab count matches the column count exactly.
@@ -119,24 +122,86 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
     return [...header, ...liveLog, ...mock];
   }, [liveLog, member?.name, activityFromDb]);
 
-  // Filter state — DOS is initialized to the currently-viewed DOS from the
-  // patient banner so the chip reads "DOS · 07/04/2024" as an indication of
-  // which DOS's activity is being shown. Re-sync if the parent flips DOS.
-  const [filters, setFilters] = useState({
-    dos: currentDos || null, hcc: null, icd: null, by: null, date: null,
-  });
+  // Filter state — each chip carries an ARRAY (multi-select). DOS is seeded
+  // with every DOS the member has, so "all are selected by default" and the
+  // user narrows the view by unchecking. Empty array = filter inactive (all
+  // records match). The ICD chip is kept in sync with the ICD card the user
+  // picked on the right panel (diagActivityIcd) — selecting a card populates
+  // filters.icd; unchecking it in the chip clears the card selection too.
+  const activityIcd = useAppStore(s => s.diagActivityIcd);
+  const clearDiagActivityIcd = useAppStore(s => s.clearDiagActivityIcd);
+  const memberDosList = useMemo(
+    () => (member?.dos_list || []).map(d => d.date).filter(Boolean),
+    [member?.dos_list],
+  );
+  const [filters, setFilters] = useState(() => ({
+    dos:  memberDosList,
+    hcc:  [],
+    icd:  activityIcd ? [activityIcd] : [],
+    by:   [],
+    date: [],
+  }));
+  // Track whether the user has manually edited the DOS chip. While untouched,
+  // mirror the full DOS option list into filters.dos so late-loading activity
+  // entries (which can widen the option list) stay auto-selected. Once the
+  // user unchecks anything, we stop auto-mirroring so their edit sticks.
+  const dosCustomizedRef = useRef(false);
+  const seedRef = useRef(member?.id);
   useEffect(() => {
-    setFilters(f => f.dos === currentDos ? f : { ...f, dos: currentDos || null });
-  }, [currentDos]);
+    if (seedRef.current !== member?.id) {
+      seedRef.current = member?.id;
+      dosCustomizedRef.current = false;
+      setFilters({
+        dos:  memberDosList,
+        hcc:  [],
+        icd:  activityIcd ? [activityIcd] : [],
+        by:   [],
+        date: [],
+      });
+    }
+  }, [member?.id, memberDosList, activityIcd]);
+  // Mirror the card-selected ICD into the ICD chip. When the card gets
+  // cleared, drop that ICD from the chip too.
+  useEffect(() => {
+    setFilters(f => {
+      const target = activityIcd ? [activityIcd] : [];
+      const same = f.icd.length === target.length
+        && (target.length === 0 || f.icd[0] === target[0]);
+      return same ? f : { ...f, icd: target };
+    });
+  }, [activityIcd]);
 
-  const setFilter = (key, value) => setFilters(f => ({ ...f, [key]: value }));
-  const clearAllFilters = () => setFilters({ dos: null, hcc: null, icd: null, by: null, date: null });
+  const setFilter = (key, value) => {
+    setFilters(f => ({ ...f, [key]: value }));
+    if (key === 'dos') dosCustomizedRef.current = true;
+    // Un-picking the card-selected ICD via the chip should also clear the
+    // card selection so the right-panel highlight stays in sync.
+    if (key === 'icd' && activityIcd && Array.isArray(value) && !value.includes(activityIcd)) {
+      clearDiagActivityIcd?.();
+    }
+  };
+  const clearAllFilters = () => {
+    dosCustomizedRef.current = true;
+    setFilters({ dos: [], hcc: [], icd: [], by: [], date: [] });
+    if (activityIcd) clearDiagActivityIcd?.();
+  };
 
   // Options derived from the activity entries (plus DOS list from member).
   const filterOptions = useMemo(
     () => computeFilterOptions(rawActivity, member),
     [rawActivity, member],
   );
+  // Mirror the full DOS option list into filters.dos until the user edits
+  // it. Keeps "default = all selected" true even when activity data loads
+  // asynchronously and adds new DOS options after the initial render.
+  useEffect(() => {
+    if (dosCustomizedRef.current) return;
+    setFilters(f => {
+      const opts = filterOptions.dos || [];
+      const same = f.dos.length === opts.length && opts.every(d => f.dos.includes(d));
+      return same ? f : { ...f, dos: opts };
+    });
+  }, [filterOptions.dos]);
 
   return (
     <div className={styles.wrap}>
@@ -174,7 +239,6 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
             chips, separated by a vertical divider. */}
         {showFilterRow && (
           <FilterRow
-            variant={active === 'worklog' ? 'worklog' : (isDosLevel ? 'dos' : 'icd')}
             filters={filters}
             options={filterOptions}
             onChange={setFilter}
@@ -188,7 +252,7 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
         )}
 
         {active === 'activity'  && <ActivityTab  member={member} rawEntries={rawActivity} filters={filters} />}
-        {active === 'comments'  && <CommentsTab  member={member} />}
+        {active === 'comments'  && <CommentsTab  member={member} filters={filters} />}
         {active === 'documents' && (
           <DocumentsTab
             member={member}
@@ -196,27 +260,22 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
             charts={charts}
             openDocId={openDocId}
             setOpenDocId={setOpenDocId}
+            filters={filters}
           />
         )}
-        {active === 'notes'     && <NotesTab     member={member} />}
-        {active === 'claims'    && <ClaimsTab    member={member} />}
+        {active === 'notes'     && <NotesTab     member={member} filters={filters} />}
+        {active === 'claims'    && <ClaimsTab    member={member} filters={filters} />}
         {active === 'outreach'  && <OutreachTab  member={member} />}
         {active === 'worklog'   && <WorklogTab   member={member} filters={filters} />}
-        {active === 'history'   && <HistoryTab    member={member} />}
+        {active === 'history'   && <HistoryTab    member={member} filters={filters} />}
       </div>
     </div>
   );
 }
 
-// Filter row chip-key sets per variant (Figma 1:45950 / 1:48023):
-//   • 'icd'     → Recorded By, Date
-//   • 'dos'     → DOS, HCC Code, ICD Code, Recorded By, Date  (+ Clear All)
-//   • 'worklog' → DOS, ICD Code, Recorded By, Date  (Figma 4728:151809)
-const FILTER_KEYS = {
-  icd:     ['by', 'date'],
-  dos:     ['dos', 'hcc', 'icd', 'by', 'date'],
-  worklog: ['dos', 'icd', 'by', 'date'],
-};
+// Filter row chip set — the same 5 chips on every tab so a filter the user
+// dials in on Timeline stays applied on Documents/Claims/etc.
+const FILTER_KEYS = ['dos', 'hcc', 'icd', 'by', 'date'];
 const FILTER_LABEL = {
   dos:  'DOS',
   hcc:  'HCC Code',
@@ -259,23 +318,75 @@ function computeFilterOptions(entries, member) {
 }
 
 /**
- * Returns true when an entry should be visible given the current filter set.
- * Each key is independent; a null filter value disables that constraint.
+ * Returns true when an activity entry passes the current filter set. Each
+ * chip carries an array of selected values; an empty array disables that
+ * constraint (i.e. "no filter"). ICD uses OR semantics: any overlap between
+ * the entry's icds[] and the selected icds counts as a match. HCC codes are
+ * matched inside the headline text so "HCC18" / "HCC 18" both hit.
  */
 function entryMatchesFilters(e, filters) {
   if (e.t === 'group') return true;
-  if (filters.dos && e.dos !== filters.dos) return false;
-  if (filters.by  && e.by  !== filters.by)  return false;
-  if (filters.icd && !(Array.isArray(e.icds) && e.icds.includes(filters.icd))) return false;
-  if (filters.hcc) {
-    // Match either "HCC 18" or "HCC18" in the headline.
-    const num = filters.hcc.replace(/^HCC\s*/, '');
-    const re = new RegExp(`HCC\\s*${num}\\b`);
-    if (!(typeof e.headline === 'string' && re.test(e.headline))) return false;
+  if (filters.dos?.length && !filters.dos.includes(e.dos)) return false;
+  if (filters.by?.length  && !filters.by.includes(e.by))   return false;
+  if (filters.icd?.length && !(Array.isArray(e.icds) && filters.icd.some(c => e.icds.includes(c)))) return false;
+  if (filters.hcc?.length) {
+    const ok = filters.hcc.some(h => {
+      const num = String(h).replace(/^HCC\s*/, '');
+      const re = new RegExp(`HCC\\s*${num}\\b`);
+      return typeof e.headline === 'string' && re.test(e.headline);
+    });
+    if (!ok) return false;
   }
-  if (filters.date) {
+  if (filters.date?.length) {
     const d = parseEntryDate(e.date);
-    if (!d || !matchesDatePreset(d, filters.date)) return false;
+    if (!d) return false;
+    if (!filters.date.some(p => matchesDatePreset(d, p))) return false;
+  }
+  return true;
+}
+
+/**
+ * Loose matcher for the ancillary tabs (Comments / Notes / Documents /
+ * Claims / History / Worklog rows). Each record is a plain object; each
+ * filter chip only constrains records that CARRY the relevant dimension —
+ * if the field is missing, that filter is ignored for the row. Same
+ * empty-array = no-filter semantics as entryMatchesFilters.
+ *
+ * Field aliases:
+ *   dos  → rec.dos
+ *   hcc  → rec.hccCode | rec.hcc  (compared HCC-number-agnostic)
+ *   icd  → rec.icd | rec.code  (worklog row's ICD lives in `code`)
+ *   by   → rec.by | rec.author | rec.uploadedBy | rec.submittedBy
+ *   date → rec.date | rec.reviewedAt | rec.last | rec.time (MM/DD/YYYY only)
+ */
+function recordMatchesFilters(rec, filters) {
+  if (!rec) return true;
+  if (filters?.dos?.length && rec.dos != null && !filters.dos.includes(rec.dos)) return false;
+  if (filters?.hcc?.length) {
+    const raw = rec.hccCode ?? rec.hcc;
+    if (raw != null) {
+      const norm = String(raw).match(/HCC\s*\d+/)?.[0]?.replace(/^HCC\s*/, 'HCC ') || String(raw);
+      const wanted = filters.hcc.map(h => String(h).match(/HCC\s*\d+/)?.[0]?.replace(/^HCC\s*/, 'HCC ') || String(h));
+      if (!wanted.includes(norm)) return false;
+    }
+  }
+  if (filters?.icd?.length) {
+    const code = rec.icd ?? rec.code;
+    if (code != null && !filters.icd.includes(code)) return false;
+  }
+  if (filters?.by?.length) {
+    const author = rec.by ?? rec.author ?? rec.uploadedBy ?? rec.submittedBy;
+    if (author != null) {
+      const name = String(author).replace(/\s*\([^)]*\)\s*$/, '').trim();
+      if (!filters.by.includes(name) && !filters.by.includes(author)) return false;
+    }
+  }
+  if (filters?.date?.length) {
+    const dateStr = rec.date ?? rec.reviewedAt ?? rec.last;
+    if (dateStr != null) {
+      const d = parseEntryDate(dateStr);
+      if (d && !filters.date.some(p => matchesDatePreset(d, p))) return false;
+    }
   }
   return true;
 }
@@ -298,20 +409,20 @@ function matchesDatePreset(d, preset) {
   return true;
 }
 
-function FilterRow({ variant = 'icd', filters, options, onChange, onClearAll, trailing }) {
-  const keys = FILTER_KEYS[variant] || FILTER_KEYS.icd;
-  const hasAny = keys.some(k => filters?.[k] != null && filters[k] !== '');
+function FilterRow({ filters, options, onChange, onClearAll, trailing }) {
+  const hasAny = FILTER_KEYS.some(k => Array.isArray(filters?.[k]) && filters[k].length > 0);
   return (
     <div className={styles.filterRow}>
       <div className={styles.filterChips}>
-        {keys.map((k) => (
-          <FilterChip
-            key={k}
-            label={FILTER_LABEL[k]}
-            value={filters?.[k] ?? null}
-            options={options?.[k] || []}
-            onChange={(v) => onChange?.(k, v)}
-          />
+        {FILTER_KEYS.map((k) => (
+          <div key={k} className={styles.filterChipWrap}>
+            <SharedFilterChip
+              label={FILTER_LABEL[k]}
+              options={options?.[k] || []}
+              selected={filters?.[k] || []}
+              onChange={(next) => onChange?.(k, next)}
+            />
+          </div>
         ))}
         {/* Clear All sits inline next to the last filter chip. Always
             rendered (per Figma) — disabled when no filter is active. */}
@@ -334,69 +445,6 @@ function FilterRow({ variant = 'icd', filters, options, onChange, onClearAll, tr
           <span className={styles.filterTrailingDivider} />
           {trailing}
         </>
-      )}
-    </div>
-  );
-}
-
-/**
- * Filter chip with a click-to-open popover. Shows the label alone when
- * nothing is selected, or "Label · value" with a primary tint when selected.
- */
-function FilterChip({ label, value, options, onChange }) {
-  const [open, setOpen] = useState(false);
-  const wrapRef = useRef(null);
-  const isSelected = value != null && value !== '';
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, [open]);
-
-  return (
-    <div className={styles.filterChipWrap} ref={wrapRef}>
-      <button
-        type="button"
-        className={[styles.filterChip, isSelected ? styles.filterChipSelected : ''].join(' ')}
-        onClick={() => setOpen(o => !o)}
-      >
-        <span>{isSelected ? `${label} · ${value}` : label}</span>
-        <Icon
-          name="solar:alt-arrow-down-linear"
-          size={16}
-          color={isSelected ? 'var(--primary-300)' : 'var(--neutral-300)'}
-        />
-      </button>
-      {open && (
-        <div className={styles.filterMenu} role="listbox">
-          {options.length === 0 ? (
-            <div className={styles.filterMenuEmpty}>No options</div>
-          ) : (
-            options.map((opt) => (
-              <button
-                key={opt}
-                type="button"
-                role="option"
-                aria-selected={opt === value}
-                className={[styles.filterMenuItem, opt === value ? styles.filterMenuItemActive : ''].join(' ')}
-                onClick={() => { onChange?.(opt); setOpen(false); }}
-              >
-                {opt}
-              </button>
-            ))
-          )}
-          {isSelected && (
-            <button
-              type="button"
-              className={styles.filterMenuClear}
-              onClick={() => { onChange?.(null); setOpen(false); }}
-            >
-              Clear
-            </button>
-          )}
-        </div>
       )}
     </div>
   );
@@ -438,10 +486,6 @@ const TRANS_BADGE = {
 
 function ActivityTab({ member, rawEntries: rawEntriesProp, filters }) {
   const rawEntries = rawEntriesProp || ACTIVITY[member?.name] || ACTIVITY._default || [];
-  // ICD-level scope — when the Activity Log was opened by clicking an ICD
-  // code, only show entries that touch that code. null = DOS-level (all).
-  const activityIcd = useAppStore(s => s.diagActivityIcd);
-  const clearIcd = useAppStore(s => s.clearDiagActivityIcd);
 
   // Track which month groups are collapsed. Empty set = everything expanded.
   // Keyed by the group's label (e.g. "JAN 2026") which is unique per month.
@@ -452,13 +496,12 @@ function ActivityTab({ member, rawEntries: rawEntriesProp, filters }) {
     return next;
   });
 
-  // Filter by (a) the ICD scope (if opened from a card), and (b) the filter
-  // row's chip selections. Keep group headers, then strip any group headers
-  // that no longer have any items beneath them.
+  // Filter by the shared filter row's chip selections (ICD selection from
+  // the right panel is mirrored into filters.icd upstream). Keep group
+  // headers, then strip any header that no longer has items beneath it.
   const entries = (() => {
     const kept = rawEntries.filter(e => {
       if (e.t === 'group') return true;
-      if (activityIcd && !(Array.isArray(e.icds) && e.icds.includes(activityIcd))) return false;
       if (filters && !entryMatchesFilters(e, filters)) return false;
       return true;
     });
@@ -468,6 +511,7 @@ function ActivityTab({ member, rawEntries: rawEntriesProp, filters }) {
       return next && next.t !== 'group';
     });
   })();
+  const anyFilterActive = FILTER_KEYS.some(k => Array.isArray(filters?.[k]) && filters[k].length > 0);
 
   const hasItems = entries.some(e => e.t !== 'group');
 
@@ -496,22 +540,8 @@ function ActivityTab({ member, rawEntries: rawEntriesProp, filters }) {
 
   return (
     <div className={styles.scroll}>
-      {/* ICD scope header — shows which ICD is filtered + a clear-to-DOS link. */}
-      {activityIcd && (
-        <div className={styles.activityScopeBar}>
-          <span className={styles.activityScopeChip}>
-            <Icon name="solar:document-text-linear" size={12} color="var(--primary-300)" />
-            Activity · {activityIcd}
-          </span>
-          <button type="button" className={styles.activityScopeClear} onClick={clearIcd}>
-            <Icon name="solar:close-circle-linear" size={13} color="var(--neutral-300)" />
-            <span>Show all DOS activity</span>
-          </button>
-        </div>
-      )}
-
       {!hasItems ? (
-        <Empty label={activityIcd ? `No activity recorded for ${activityIcd}.` : 'No activity recorded yet.'} />
+        <Empty label={anyFilterActive ? 'No activity matches the current filters.' : 'No activity recorded yet.'} />
       ) : (
         <div className={styles.timeline}>
           {items.map((it) => it.kind === 'group' ? (
@@ -691,7 +721,7 @@ function AvatarPill({ initials, name }) {
 // comment is a row with a chat-icon left rail + connector line, a meta line
 // (`date · time · author(role)` + optional Edited badge), and the full body
 // text below. Composer is a single-line input — Enter posts.
-function CommentsTab() {
+function CommentsTab({ filters }) {
   // Seed from Supabase (hcc_diag_comments); fall back to the local mock
   // while the DB is empty or unreachable. Local state supports optimistic
   // insert when the composer posts — persistence is a follow-up.
@@ -699,6 +729,10 @@ function CommentsTab() {
   const seed = dbComments.length ? dbComments : COMMENTS_MOCK;
   const [items, setItems] = useState(seed);
   useEffect(() => { setItems(seed); }, [seed]);
+  const visibleItems = useMemo(
+    () => items.filter(c => recordMatchesFilters(c, filters)),
+    [items, filters],
+  );
   const [draft, setDraft] = useState('');
   const [collapsed, setCollapsed] = useState(() => new Set());
   const [confirmDeleteComment, setConfirmDeleteComment] = useState(null);
@@ -729,7 +763,14 @@ function CommentsTab() {
     const time = `${((hours + 11) % 12) + 1}:${pad(now.getMinutes())} ${hours >= 12 ? 'PM' : 'AM'}`;
     // Stamp the entry with the LOGGED-IN role, not a hardcoded 'Coder'.
     const userRole = useAppStore.getState().hccUserRole || 'Coder';
-    const row = { id: `c${Date.now()}`, author: 'You', role: userRole, date, time, body };
+    // Capture the ICD/DOS this comment was dropped against, so the entry can
+    // read "You(Coder) • DOS 03/08/2026 • ICD I50.23" in the timeline. ICD
+    // comes from the right-panel card selection; DOS defaults to the first
+    // DOS on the record (mirrors DiagPanel's currentDos derivation).
+    const patient = hccMembers.find(m => m.id === diagPanelMemberId);
+    const dos = patient?.dos_list?.[0]?.date || null;
+    const icd = activityIcd || null;
+    const row = { id: `c${Date.now()}`, author: 'You', role: userRole, date, time, body, icd, dos };
     setItems(prev => [row, ...prev]);
     addHccDiagComment(row);
     addActivityEntry({
@@ -738,7 +779,6 @@ function CommentsTab() {
       headline: activityIcd ? `Added a Comment for ${activityIcd}` : 'Added a Comment',
       details: [{ note: body }],
     });
-    const patient = hccMembers.find(m => m.id === diagPanelMemberId);
     logHccActivity?.({
       eventName: 'icd.comment_added',
       scope:     { patientId: diagPanelMemberId, icd: activityIcd || null, source: 'manual' },
@@ -749,7 +789,7 @@ function CommentsTab() {
 
   // Bucket comments by "Mon YYYY" header so the timeline can render a
   // collapsible group divider above each month chunk.
-  const groups = useMemo(() => groupByMonth(items), [items]);
+  const groups = useMemo(() => groupByMonth(visibleItems), [visibleItems]);
 
   const toggleGroup = (label) => setCollapsed(prev => {
     const next = new Set(prev);
@@ -837,6 +877,7 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(item.body || '');
   useEffect(() => { setDraft(item.body || ''); }, [item.body]);
+  const role = normalizeRole(item.role);
   const commit = () => {
     const next = draft.trim();
     if (!next || next === item.body) { setEditing(false); return; }
@@ -858,7 +899,9 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
       <div className={[styles.tlBody, isFirst ? styles.tlBodyFirst : '', isLast ? styles.tlBodyLast : ''].join(' ')}>
         <div className={styles.commentMetaRow}>
           <div className={styles.tlMeta}>
-            {item.date} • {item.time} • {item.author}({item.role})
+            {item.date} • {item.time} • {item.author}({role})
+            {item.dos && <> • DOS {item.dos}</>}
+            {item.icd && <> • ICD {item.icd}</>}
             {item.edited && <span className={styles.commentEditedBadge}>Edited</span>}
           </div>
           {isMine && !editing && (
@@ -1027,7 +1070,7 @@ const DOC_STATUS_BADGE = {
   failed:  { variant: 'status-failed',    label: 'Failed'  },
 };
 
-function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId }) {
+function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId, filters }) {
   const showToast = useAppStore(s => s.showToast);
   const uploaderOpen = useAppStore(s => s.hccDocsUploaderOpen);
   const removeChartDoc = useAppStore(s => s.removeChartDoc);
@@ -1166,6 +1209,11 @@ function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId }
     );
   }
 
+  // Applied only to the LISTING view — the doc-viewer tab strip and the
+  // icd-scope auto-open logic still operate on the full list so opening a
+  // doc from an ICD card doesn't depend on the filter state.
+  const visibleList = list.filter(d => recordMatchesFilters(d, filters));
+
   return (
     <div className={styles.scroll}>
       {uploaderOpen && <DocumentsUploader />}
@@ -1175,7 +1223,7 @@ function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId }
           <span>Status</span>
           <span />
         </div>
-        {list.map((d) => {
+        {visibleList.map((d) => {
           const status = DOC_STATUS_BADGE[d.status] || DOC_STATUS_BADGE.pending;
           return (
             <div
@@ -1492,11 +1540,15 @@ function DocUploaderFileRow({ file, phase, progress, onRefresh, onRemove }) {
 
 // ── Notes tab — Figma 41:358849 ──────────────────────────────────────────
 // Timeline with note icon. Single-line "Add a note" composer.
-function NotesTab() {
+function NotesTab({ filters }) {
   const dbNotes = useAppStore(s => s.hccDiagNotes);
   const seed = dbNotes.length ? dbNotes : NOTES_MOCK;
   const [items, setItems] = useState(seed);
   useEffect(() => { setItems(seed); }, [seed]);
+  const visibleItems = useMemo(
+    () => items.filter(n => recordMatchesFilters(n, filters)),
+    [items, filters],
+  );
   const [draft, setDraft] = useState('');
   const activityIcd = useAppStore(s => s.diagActivityIcd);
   const addActivityEntry = useAppStore(s => s.addActivityEntry);
@@ -1552,7 +1604,7 @@ function NotesTab() {
           <span>Status</span>
           <span>Actions</span>
         </div>
-        {items.map((n) => (
+        {visibleItems.map((n) => (
           <div key={n.id} className={[styles.dataTableRow, styles.notesGrid].join(' ')}>
             <div className={styles.noteCell}>
               <div className={styles.noteCellTime}>{n.date}, {n.time}</div>
@@ -1645,7 +1697,7 @@ function claimForDos(dos) {
   };
 }
 
-function ClaimsTab({ member }) {
+function ClaimsTab({ member, filters }) {
   // Clicking a claim opens its detail IN THIS SAME panel (Figma 10891:325889)
   // with a back arrow — no separate overlapping drawer.
   const [selected, setSelected] = useState(null);
@@ -1659,6 +1711,10 @@ function ClaimsTab({ member }) {
       clearDiagClaimDos();
     }
   }, [claimDos, clearDiagClaimDos]);
+  const visibleClaims = useMemo(
+    () => CLAIMS.filter(c => recordMatchesFilters(c, filters)),
+    [filters],
+  );
 
   if (selected) {
     return <ClaimDetail member={member} claim={selected} onBack={() => setSelected(null)} />;
@@ -1673,7 +1729,7 @@ function ClaimsTab({ member }) {
           <span>Status</span>
           <span>Amount</span>
         </div>
-        {CLAIMS.map((c) => (
+        {visibleClaims.map((c) => (
           <div key={c.id} className={[styles.dataTableRow, styles.claimsGrid].join(' ')}>
             <button
               type="button"
@@ -1871,17 +1927,9 @@ function reachedRole(icd) {
 
 function WorklogTab({ member, filters = {} }) {
   const all = getIcdsForMember(member?.name);
-  // Filter chips (ICD Code / Recorded By / Date) narrow the row set. DOS is a
-  // context chip — the fixture isn't partitioned by DOS.
-  const icds = all.filter((i) => {
-    if (filters.icd && i.code !== filters.icd) return false;
-    if (filters.by && nameFromBy(i.by) !== filters.by) return false;
-    if (filters.date) {
-      const d = parseEntryDate(i.last);
-      if (!d || !matchesDatePreset(d, filters.date)) return false;
-    }
-    return true;
-  });
+  // Filter chips (ICD / HCC / Recorded By / Date) narrow the row set. DOS is
+  // a context chip — the fixture isn't partitioned by DOS, so we ignore it.
+  const icds = all.filter((i) => recordMatchesFilters(i, filters));
   const open = icds.filter((i) => i.status !== 'Accepted' && i.status !== 'Dismissed');
   const closed = icds.filter((i) => i.status === 'Accepted' || i.status === 'Dismissed');
 
@@ -1965,9 +2013,46 @@ function WorklogTab({ member, filters = {} }) {
 // 4-col table: "DOS | HCC Code | Claims | ICD Status". Each row is one HCC
 // review for a given DOS. icdStatus drives the trailing status pill button:
 //   accepted → green check  •  dismissed → red close  •  open → grey dash.
-function HistoryTab() {
+function HistoryTab({ member, filters }) {
   const dbHistory = useAppStore(s => s.hccDiagHistoryEntries);
-  const items = dbHistory.length ? dbHistory : HISTORY_MOCK;
+  const activityIcd = useAppStore(s => s.diagActivityIcd);
+  const dosActions = useAppStore(s => s.hccGapDosActions);
+  // ICD-scoped mode — the user opened History from an ICD card's clock
+  // counter. Show one row per DOS the ICD appears on for this member,
+  // pulling HCC label from the ICD data and per-DOS status from the drawer's
+  // action state (Accept / Dismiss / Open).
+  const scopedItems = useMemo(() => {
+    if (!activityIcd || !member) return null;
+    const icd = getIcdsForMember(member.name).find(i => i.code === activityIcd);
+    if (!icd) return [];
+    const hccStr  = icd.hcc || '';
+    const hccCode = hccStr.match(/HCC\s*\d+/)?.[0] || '';
+    const hccName = hccStr.split(' - ')[1] || hccStr.replace(/^HCC\s*\d+\s*-?\s*/, '') || '';
+    return (member.dos_list || []).map((d) => {
+      const key = `${activityIcd}|${d.date}`;
+      const action = dosActions[key];
+      const icdStatus =
+        action?.action === 'accept'  ? 'accepted'  :
+        action?.action === 'dismiss' ? 'dismissed' :
+        'open';
+      return {
+        id: key,
+        dos: d.date,
+        hccCode,
+        hccName,
+        reviewedAt: icd.last || d.date,
+        by: (icd.by || '').replace(/\s*\([^)]*\)\s*$/, '').trim() || '—',
+        role: /\(([^)]+)\)/.exec(icd.by || '')?.[1] || '',
+        claims: 1,
+        icdStatus,
+      };
+    });
+  }, [activityIcd, member, dosActions]);
+  const items = scopedItems ?? (dbHistory.length ? dbHistory : HISTORY_MOCK);
+  const visibleItems = useMemo(
+    () => items.filter(h => recordMatchesFilters(h, filters)),
+    [items, filters],
+  );
   return (
     <div className={styles.scroll}>
       <div className={styles.dataTable}>
@@ -1977,7 +2062,7 @@ function HistoryTab() {
           <span>Claims</span>
           <span>ICD Status</span>
         </div>
-        {items.map((h) => (
+        {visibleItems.map((h) => (
           <div key={h.id} className={[styles.dataTableRow, styles.historyGrid].join(' ')}>
             <span className={styles.historyDos}>{h.dos}</span>
             <div className={styles.historyHcc}>

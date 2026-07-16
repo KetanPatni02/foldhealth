@@ -18,6 +18,16 @@ export function normalizeReviewerLabel(by) {
     .replace(/\(Reviewer\)/g, '(QA)');
 }
 
+// Same rename for a bare role string (no parentheses / name prefix). Used by
+// rows that store the role as its own field (comments, notes, docs). Support /
+// Support Team / Coder / Physician stay as-is.
+export function normalizeRole(role) {
+  if (!role) return role;
+  if (role === 'Reviewer 2' || role === 'Reviewer2') return 'Compliance';
+  if (role === 'Reviewer 1' || role === 'Reviewer')  return 'QA';
+  return role;
+}
+
 // The name to show after "Last Reviewed by", or null when the ICD has not been
 // reviewed by a coding role yet (e.g. only Support has touched it so far — its
 // document workflow precedes the coder's ICD review).
