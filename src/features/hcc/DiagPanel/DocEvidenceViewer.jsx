@@ -7,33 +7,63 @@ import styles from './DocEvidenceViewer.module.css';
  * DocEvidenceViewer — the source-document preview shown in the LeftWorkspace
  * Documents tab when an ICD is selected (Paper 1UD1 / 5IX).
  *
- * Renders a real PDF (built client-side with jsPDF) inside an <iframe> so the
- * BROWSER'S native PDF viewer provides the chrome — page nav, zoom, download,
- * print — rather than a hand-built toolbar. The selected ICD's
- * Past-Medical-History line is highlighted (yellow fill drawn behind the
- * text) as the coding evidence.
- *
- * Demo-stage: the note is synthesized from the member's diagnosis-gap data;
- * a real integration would stream the actual source document.
+ * Rendering priority:
+ *   1. If the selected doc carries a real file URL (uploaded via
+ *      UploadChartDrawer / DocumentsUploader), embed that directly —
+ *      <iframe> for PDF/Office types, <img> for image types.
+ *   2. Otherwise, synthesize a one-page outpatient note as a PDF
+ *      (client-side via jsPDF) tagged with the doc's name / type, and
+ *      highlight the icdScope's Past-Medical-History line as the
+ *      coding evidence. This keeps demo/system-seeded docs viewable
+ *      until a real backend streams the source file.
  */
-export function DocEvidenceViewer({ member, icdScope }) {
-  const [url, setUrl] = useState(null);
+const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg']);
 
-  // Build the blob URL in an effect (not useMemo) so each mount — including
-  // React StrictMode's double-mount — gets a FRESH url and revokes its own
-  // on cleanup. A memoised url would be revoked by the first cleanup and
-  // then reused stale on remount, giving a blank viewer.
+export function DocEvidenceViewer({ member, icdScope, openDoc = null }) {
+  const [url, setUrl] = useState(null);
+  const docPdf = openDoc?.pdf || null;
+  const docExt = (openDoc?.ext || '').toLowerCase();
+  const isImage = IMAGE_EXTS.has(docExt);
+  const useDirect = !!docPdf; // real uploaded file — render as-is
+
+  // Build a synthesized note (blob URL) only when we DON'T have a real doc
+  // file. Each mount — including StrictMode's double-mount — gets a fresh
+  // URL and revokes its own on cleanup; using useMemo would revoke the URL
+  // on first cleanup and reuse it stale on remount (blank viewer).
   useEffect(() => {
-    const next = buildNotePdfUrl(member, icdScope);
+    if (useDirect) { setUrl(null); return undefined; }
+    const next = buildNotePdfUrl(member, icdScope, openDoc);
     setUrl(next);
     return () => { if (next) URL.revokeObjectURL(next); };
-  }, [member?.name, member?.dos, icdScope]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [useDirect, member?.name, member?.dos, icdScope, openDoc?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (useDirect) {
+    if (isImage) {
+      return (
+        <img
+          key={docPdf}
+          src={docPdf}
+          alt={openDoc.name || 'Uploaded document'}
+          className={styles.frame}
+          style={{ objectFit: 'contain', background: 'var(--neutral-50)' }}
+        />
+      );
+    }
+    return (
+      <iframe
+        key={docPdf}
+        title={openDoc.name || 'Source document'}
+        src={docPdf}
+        className={styles.frame}
+      />
+    );
+  }
 
   if (!url) return null;
   return (
     <iframe
       key={url}
-      title="Source document"
+      title={openDoc?.name || 'Source document'}
       src={url}
       className={styles.frame}
     />
@@ -41,13 +71,33 @@ export function DocEvidenceViewer({ member, icdScope }) {
 }
 
 // Build a one-page outpatient note as a PDF blob URL, highlighting the line
-// for `icdScope`. Returns a `blob:` URL (revoke it when done).
-function buildNotePdfUrl(member, icdScope) {
+// for `icdScope`. Returns a `blob:` URL (revoke it when done). The `openDoc`
+// (when present) tags the header with the specific document's name/type so
+// each tab in the Documents viewer renders its own titled note instead of
+// looking identical.
+function buildNotePdfUrl(member, icdScope, openDoc = null) {
   if (!member?.name) return null;
   const icds = getIcdsForMember(member.name);
   const dos = member?.dos_list?.[0]?.date || member?.dos || '—';
   const provider = member?.rp || 'Dr. Aldo Richman';
   const first = member.name.split(' ')[0];
+  // Map doc type → header title so each doc's rendered note reads as
+  // distinct from the others in the tab strip. Fallbacks retain the
+  // original "OUTPATIENT CLINIC VISIT NOTE" for docs with no type.
+  const docTitleFor = (type) => {
+    const t = (type || '').toLowerCase();
+    if (t.includes('lab'))            return 'LABORATORY REPORT';
+    if (t.includes('radiology'))      return 'RADIOLOGY REPORT';
+    if (t.includes('imaging'))        return 'IMAGING REPORT';
+    if (t.includes('discharge'))      return 'HOSPITAL DISCHARGE SUMMARY';
+    if (t.includes('referral'))       return 'REFERRAL LETTER';
+    if (t.includes('consult'))        return 'CONSULTATION REPORT';
+    if (t.includes('progress'))       return 'PROGRESS NOTE';
+    if (t.includes('visit'))          return 'OUTPATIENT VISIT NOTE';
+    if (t.includes('note'))           return 'CLINICAL NOTE';
+    return 'CLINICAL DOCUMENT';
+  };
+  const headerTitle = openDoc?.type ? docTitleFor(openDoc.type) : 'OUTPATIENT CLINIC VISIT NOTE';
 
   const doc = new jsPDF({ unit: 'pt', format: 'letter' }); // 612 × 792 pt
   const L = 56;               // left margin
@@ -68,8 +118,13 @@ function buildNotePdfUrl(member, icdScope) {
   };
 
   doc.setFont('helvetica', 'bold').setFontSize(13).setTextColor(15, 23, 42);
-  doc.text('OUTPATIENT CLINIC VISIT NOTE', L, y);
+  doc.text(headerTitle, L, y);
   y += 20;
+  if (openDoc?.name) {
+    doc.setFont('helvetica', 'italic').setFontSize(9).setTextColor(100, 116, 139);
+    doc.text(openDoc.name, L, y);
+    y += 14;
+  }
   doc.setFont('helvetica', 'normal').setFontSize(10).setTextColor(51, 65, 85);
   doc.text(
     doc.splitTextToSize(

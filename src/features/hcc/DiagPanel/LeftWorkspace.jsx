@@ -1080,10 +1080,11 @@ function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId }
           )}
         </div>
         <div className={styles.docsViewerBody}>
-          {/* Pass icdScope through so a card-driven open still highlights
-              that ICD's line in the PDF; row-driven opens (no scope) show
-              the plain document. */}
-          <DocEvidenceViewer member={member} icdScope={icdScope} />
+          {/* Pass icdScope AND the currently-open doc so each tab renders
+              its own file — uploaded docs open their real PDF/image URL;
+              system-seeded defaults get a per-doc synthesized note tagged
+              with the doc's name and type. */}
+          <DocEvidenceViewer member={member} icdScope={icdScope} openDoc={openDoc} />
         </div>
       </div>
     );
