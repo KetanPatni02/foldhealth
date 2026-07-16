@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../components/Icon/Icon';
 import { ROLES, ROLE_LABEL, staffById } from '../assignment/astranaStaff';
+import { getStatusSpec, statusDisplayLabel } from '../statusSpec';
 import styles from './ReviewProgressPopover.module.css';
 
 /**
@@ -139,16 +140,13 @@ export function ReviewProgressPopover({
 
 function StageRow({ stage, isFirst, isLast }) {
   const { state, label, name, status, date } = stage;
-
-  // Subtitle colour follows the status: green (done) / amber (active) /
-  // red (rejected/insufficient) / grey (pending + skipped).
-  const subtitleClass = state === 'done'
-    ? styles.subtitleDone
-    : state === 'active'
-      ? styles.subtitleActive
-      : state === 'rejected'
-        ? styles.subtitleRejected
-        : styles.subtitlePending;
+  // Badge + subtitle color come from the shared HCC statusSpec so this
+  // popover matches the StatusLegend / RoleStatusCell / DosStatusMenu
+  // treatment (New → purple sparkle, Insufficient → orange danger, etc.).
+  const spec = status && state !== 'pending' && state !== 'skipped'
+    ? getStatusSpec(status)
+    : null;
+  const displayStatus = status ? statusDisplayLabel(status) : null;
 
   return (
     <li className={styles.stage}>
@@ -157,7 +155,7 @@ function StageRow({ stage, isFirst, isLast }) {
           className={[styles.connector, isFirst ? styles.connectorHidden : ''].join(' ')}
           aria-hidden="true"
         />
-        <StatusBadge state={state} />
+        <StatusBadge state={state} spec={spec} />
         <span
           className={[styles.connector, isLast ? styles.connectorHidden : ''].join(' ')}
           aria-hidden="true"
@@ -169,10 +167,13 @@ function StageRow({ stage, isFirst, isLast }) {
             ? <>{name} <span className={styles.stageRole}>({label})</span></>
             : label}
         </div>
-        <div className={[styles.stageSubtitle, subtitleClass].join(' ')}>
+        <div
+          className={styles.stageSubtitle}
+          style={spec ? { color: spec.color } : { color: 'var(--neutral-200)' }}
+        >
           {state === 'pending'
             ? 'Not Assigned'
-            : <>{status}{date ? ` (${date})` : ''}</>}
+            : <>{displayStatus}{date ? ` (${date})` : ''}</>}
         </div>
       </div>
     </li>
@@ -180,26 +181,11 @@ function StageRow({ stage, isFirst, isLast }) {
 }
 
 /**
- * 16×16 round status badge per Figma. Three variants:
- *   - done:    success-light bg, success border, white check icon inside
- *   - active:  warning-light bg, warning border, sun/pending icon inside
- *   - pending: white bg, neutral-200 border, empty (no inner icon)
+ * 16×16 round status badge. When a statusSpec is available it drives the
+ * icon and colors (matches the app-wide legend); pending + skipped fall back
+ * to the neutral empty / minus-circle treatment.
  */
-function StatusBadge({ state }) {
-  if (state === 'done') {
-    return (
-      <span className={[styles.badge, styles.badgeDone].join(' ')}>
-        <Icon name="solar:check-read-linear" size={10} color="var(--status-success)" />
-      </span>
-    );
-  }
-  if (state === 'active') {
-    return (
-      <span className={[styles.badge, styles.badgeActive].join(' ')}>
-        <Icon name="solar:sun-bold" size={11} color="var(--status-warning)" />
-      </span>
-    );
-  }
+function StatusBadge({ state, spec }) {
   if (state === 'skipped') {
     return (
       <span className={[styles.badge, styles.badgePending].join(' ')}>
@@ -207,14 +193,17 @@ function StatusBadge({ state }) {
       </span>
     );
   }
-  if (state === 'rejected') {
-    return (
-      <span className={[styles.badge, styles.badgeRejected].join(' ')}>
-        <Icon name="solar:close-circle-linear" size={10} color="var(--status-error)" />
-      </span>
-    );
+  if (state === 'pending' || !spec) {
+    return <span className={[styles.badge, styles.badgePending].join(' ')} />;
   }
-  return <span className={[styles.badge, styles.badgePending].join(' ')} />;
+  return (
+    <span
+      className={styles.badge}
+      style={{ background: spec.bg, borderColor: spec.color }}
+    >
+      <Icon name={spec.icon} size={11} color={spec.color} />
+    </span>
+  );
 }
 
 // ── Progress ring — used by the trigger pill ─────────────────────────

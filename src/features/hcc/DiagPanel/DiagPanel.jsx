@@ -776,7 +776,6 @@ export function DiagPanel() {
           onChange={setDiagTab}
           onClose={() => setDiagLeftPanel(null)}
           member={member}
-          currentDos={currentDos}
         />
       )}
       <div className={diagLeftPanel ? styles.rightPane : styles.rightPaneFull}>
@@ -930,7 +929,7 @@ export function DiagPanel() {
           />
           <span className={styles.divider} />
           <ActionButton
-            icon="solar:chat-square-linear"
+            icon="solar:chat-round-line-linear"
             size="S"
             tooltip="Comments"
             count="6"

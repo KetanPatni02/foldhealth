@@ -33,7 +33,6 @@ import styles from './IcdDosCard.module.css';
  */
 export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSelect, openDismissKey, onOpenDismiss, onActed, reviewLocked = false }) {
   const openIcdPanel = useAppStore(s => s.openIcdPanel);
-  const openIcdActivityLog = useAppStore(s => s.openIcdActivityLog);
   const diagActivityIcd = useAppStore(s => s.diagActivityIcd);
   const clearDiagActivityIcd = useAppStore(s => s.clearDiagActivityIcd);
   const setDiagLeftPanel = useAppStore(s => s.setDiagLeftPanel);
@@ -133,10 +132,10 @@ export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSe
             </button>
           </Tooltip>
           <span className={styles.counterDivider} />
-          <Tooltip label="Activity">
-            <button type="button" className={styles.counter} onClick={(e) => { e.stopPropagation(); openIcdActivityLog(icd.code); }}>
+          <Tooltip label="History">
+            <button type="button" className={styles.counter} onClick={(e) => { e.stopPropagation(); openIcdPanel('history', icd.code); }}>
               <Icon name="custom:history" size={14} />
-              {(icd.docs ?? 0) + (icd.notes ?? 0)}
+              {icd.entries?.length ?? 0}
             </button>
           </Tooltip>
           {isManualIcd && (
