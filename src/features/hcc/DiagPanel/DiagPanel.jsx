@@ -801,14 +801,21 @@ export function DiagPanel() {
       {/* ── Toolbar: bulk | inline search | + ICD, filter, docs, comments,
           history, more (Paper 1WXT). ── */}
       <div className={styles.toolbar}>
-        <ActionButton
-          icon={bulkMode ? 'custom:bulk-select-close' : 'custom:bulk-select'}
-          size="S"
-          tooltip={bulkMode ? 'Exit bulk select' : 'Bulk select'}
-          className={bulkMode ? styles.toolbarBtnActive : ''}
-          onClick={toggleBulkMode}
-        />
-        <span className={styles.divider} />
+        {/* Bulk select is an ICD coding action — Support can't code, so
+            hide the entry entirely (matches the row-level and Suspect-
+            card gating). */}
+        {hccUserRole !== 'Support' && (
+          <>
+            <ActionButton
+              icon={bulkMode ? 'custom:bulk-select-close' : 'custom:bulk-select'}
+              size="S"
+              tooltip={bulkMode ? 'Exit bulk select' : 'Bulk select'}
+              className={bulkMode ? styles.toolbarBtnActive : ''}
+              onClick={toggleBulkMode}
+            />
+            <span className={styles.divider} />
+          </>
+        )}
         <div className={styles.toolbarSearch}>
           <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-300)" />
           <input
@@ -830,20 +837,25 @@ export function DiagPanel() {
         </div>
 
         <div className={styles.toolbarIcons}>
-          <span className={styles.addIcdWrap}>
-            <button
-              type="button"
-              className={[
-                styles.addIcdBtn,
-                diagLeftPanel === 'newDiagGap' ? styles.addIcdBtnActive : '',
-              ].filter(Boolean).join(' ')}
-              onClick={() => setDiagLeftPanel(diagLeftPanel === 'newDiagGap' ? null : 'newDiagGap')}
-            >
-              <Icon name="solar:add-circle-linear" size={16} color="var(--primary-300)" />
-              <span>ICD</span>
-            </button>
-          </span>
-          <span className={styles.divider} />
+          {/* Adding a new manual ICD is a coding action — hide for Support. */}
+          {hccUserRole !== 'Support' && (
+            <>
+              <span className={styles.addIcdWrap}>
+                <button
+                  type="button"
+                  className={[
+                    styles.addIcdBtn,
+                    diagLeftPanel === 'newDiagGap' ? styles.addIcdBtnActive : '',
+                  ].filter(Boolean).join(' ')}
+                  onClick={() => setDiagLeftPanel(diagLeftPanel === 'newDiagGap' ? null : 'newDiagGap')}
+                >
+                  <Icon name="solar:add-circle-linear" size={16} color="var(--primary-300)" />
+                  <span>ICD</span>
+                </button>
+              </span>
+              <span className={styles.divider} />
+            </>
+          )}
           <ActionButton
             icon="custom:filter"
             size="S"
