@@ -28,6 +28,7 @@ import {
   computeReviewProgress,
 } from './ReviewProgressPopover';
 import { SWEEP_ICD_DATA } from '../data/sweepIcds';
+import { getChartDocs } from '../data/chartDocs';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { RoleTooltip } from '../RoleTooltip';
 import { resolveCurrentAssignee } from '../HccWorklistRow';
@@ -333,6 +334,16 @@ export function DiagPanel() {
   // Coder completes the Coder stage, QA completes the QA stage, etc.
   const hccUserRole = useAppStore(s => s.hccUserRole);
   const actingRole = ROLE_KEY_BY_USER[hccUserRole] || 'coder';
+  // Chart-doc count for the Documents toolbar button — mirrors what the
+  // Documents tab actually renders (getChartDocs applies added / removed
+  // filters), so the badge tracks reality instead of a stale mock field.
+  const hccAddedCharts = useAppStore(s => s.hccAddedCharts[member?.id]);
+  const hccChartStatus = useAppStore(s => s.hccChartStatus[member?.id]);
+  const hccRemovedCharts = useAppStore(s => s.hccRemovedCharts[member?.id]);
+  const docsCount = useMemo(() => {
+    if (!member) return 0;
+    return getChartDocs(member, hccAddedCharts || [], hccChartStatus || {}, hccRemovedCharts || []).length;
+  }, [member, hccAddedCharts, hccChartStatus, hccRemovedCharts]);
   const actingStatus = useMemo(() => {
     const rs = dosState?.[actingRole];
     return rs?.status || diagDosStatus || 'New';
@@ -596,6 +607,12 @@ export function DiagPanel() {
     [cardIcds],
   );
   const focusKey = rowKeys[Math.min(focusIdx, rowKeys.length - 1)] || null;
+  // Click-to-focus for DOS rows — clicking a row makes it the keyboard
+  // target for A/X/M/D shortcuts, matching what arrow keys already do.
+  const handleFocusRow = useCallback((rowKey) => {
+    const idx = rowKeys.indexOf(rowKey);
+    if (idx >= 0) setFocusIdx(idx);
+  }, [rowKeys]);
   // The ICD being worked on (owns the focused DOS). The document evidence view
   // follows this so the highlighted note line tracks the active ICD.
   const activeIcdCode = focusKey ? focusKey.split('|')[0] : null;
@@ -870,7 +887,7 @@ export function DiagPanel() {
             icon="solar:file-text-linear"
             size="S"
             tooltip="Documents"
-            count={String(member?.docStatus?.length || member?.ch || 0)}
+            count={String(docsCount)}
             className={diagLeftPanel === 'documents' && !diagActivityIcd ? styles.activeIcon : ''}
             onClick={() => setDiagLeftPanel(diagLeftPanel === 'documents' && !diagActivityIcd ? null : 'documents')}
           />
@@ -974,6 +991,7 @@ export function DiagPanel() {
               key={`card-${icd.code}-${i}`}
               icd={icd}
               focusKey={focusKey}
+              onFocusRow={handleFocusRow}
               selectedKeys={selectedKeys}
               onToggleSelect={bulkMode ? toggleSelected : null}
               openDismissKey={openDismissKey}
@@ -988,6 +1006,7 @@ export function DiagPanel() {
               key={`acted-suspect-${icd.code}-${i}`}
               icd={icd}
               focusKey={focusKey}
+              onFocusRow={handleFocusRow}
               selectedKeys={selectedKeys}
               onToggleSelect={bulkMode ? toggleSelected : null}
               openDismissKey={openDismissKey}

@@ -138,6 +138,14 @@
   border-radius: 4px;
 }
 .row:last-child { border-bottom: none; }
+/* Clickable DOS row — cursor + tint on hover so the affordance is
+   discoverable. Focus-visible ring matches keyboard-nav semantics. */
+.rowClickable { cursor: pointer; }
+.rowClickable:hover:not(.rowFocused) { background: var(--neutral-50); }
+.rowClickable:focus-visible {
+  outline: 2px solid var(--primary-200);
+  outline-offset: -2px;
+}
 /* Focused/selected DOS — no left bar, just a subtle background so the
    currently-active row reads as selected within the ICD. */
 .rowFocused {

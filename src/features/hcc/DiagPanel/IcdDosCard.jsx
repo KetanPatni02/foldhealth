@@ -30,7 +30,7 @@ import styles from './IcdDosCard.module.css';
  * @param {string} [props.openDismissKey] `${code}|${dos}` whose form is open
  * @param {(key:string|null)=>void} [props.onOpenDismiss]
  */
-export function IcdDosCard({ icd, focusKey, selectedKeys, onToggleSelect, openDismissKey, onOpenDismiss, onActed, reviewLocked = false }) {
+export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSelect, openDismissKey, onOpenDismiss, onActed, reviewLocked = false }) {
   const openIcdPanel = useAppStore(s => s.openIcdPanel);
   const openIcdActivityLog = useAppStore(s => s.openIcdActivityLog);
   const diagActivityIcd = useAppStore(s => s.diagActivityIcd);
@@ -174,6 +174,7 @@ export function IcdDosCard({ icd, focusKey, selectedKeys, onToggleSelect, openDi
               action={dosActions[key] || null}
               meta={dosMeta[key] || null}
               focused={focusKey === key}
+              onFocusRow={onFocusRow ? () => onFocusRow(key) : null}
               selected={selectedKeys?.has(key) || false}
               dismissOpen={openDismissKey === key}
               onToggleSelect={onToggleSelect ? () => onToggleSelect(key) : null}
@@ -198,7 +199,7 @@ export function IcdDosCard({ icd, focusKey, selectedKeys, onToggleSelect, openDi
 }
 
 function DosActionRow({
-  rowKey, entry, icd, hccShort, action, meta, focused, selected, dismissOpen,
+  rowKey, entry, icd, hccShort, action, meta, focused, onFocusRow, selected, dismissOpen,
   onToggleSelect, onAccept, onOpenDismiss, onCloseDismiss, onConfirmDismiss,
   onUndo, onMissed, onDefer, onRemoveDos, reviewLocked = false,
 }) {
@@ -233,12 +234,22 @@ function DosActionRow({
   return (
     <>
       <div
-        className={[styles.row, focused ? styles.rowFocused : '', isRejected ? styles.rowRejected : ''].filter(Boolean).join(' ')}
+        className={[
+          styles.row,
+          focused ? styles.rowFocused : '',
+          isRejected ? styles.rowRejected : '',
+          onFocusRow ? styles.rowClickable : '',
+        ].filter(Boolean).join(' ')}
         data-rowkey={rowKey}
-        // Row-level actions (Accept/Reject/Missed/Defer + checkbox) live inside
-        // a clickable ICD card — stop propagation so acting on a DOS doesn't
-        // toggle the whole card's document-preview selection.
-        onClick={(e) => e.stopPropagation()}
+        role={onFocusRow ? 'button' : undefined}
+        tabIndex={onFocusRow ? 0 : undefined}
+        // Clicking the row focuses this DOS (keyboard shortcuts A/X/M/D
+        // then target it). Row-level action buttons stop propagation so
+        // they still fire their own onClick without also refocusing.
+        onClick={(e) => { e.stopPropagation(); onFocusRow?.(); }}
+        onKeyDown={onFocusRow ? (e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onFocusRow(); }
+        } : undefined}
       >
         {onToggleSelect && (
           <Checkbox
@@ -321,9 +332,18 @@ function DosActionRow({
               </Tooltip>
             </>
           )}
-          <button ref={moreRef} type="button" className={styles.moreBtn} aria-label="More actions" onClick={() => (menuPos ? setMenuPos(null) : openMenu())}>
-            <Icon name="solar:menu-dots-linear" size={15} />
-          </button>
+          <Tooltip label={canReview ? 'More actions' : 'Support role cannot code ICDs'}>
+            <button
+              ref={moreRef}
+              type="button"
+              className={[styles.moreBtn, canReview ? '' : styles.disabledAction].filter(Boolean).join(' ')}
+              aria-label="More actions"
+              disabled={!canReview}
+              onClick={!canReview ? undefined : () => (menuPos ? setMenuPos(null) : openMenu())}
+            >
+              <Icon name="solar:menu-dots-linear" size={15} />
+            </button>
+          </Tooltip>
         </div>
       </div>
 
