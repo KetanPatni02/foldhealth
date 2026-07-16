@@ -20,6 +20,34 @@
 .row:hover [class*="stickyLeft"],
 .row:hover [class*="stickyRight"] { background: var(--primary-25) !important; }
 
+/* Rejected record — a reviewer / QA / Compliance marked the DOS Rejected.
+   The row is disabled: every interactive cell is muted and pointer-events
+   are dropped so buttons don't fire. The only surviving action is the eye
+   ("View Diagnosis Gaps") in the sticky-right column — we opt it back in
+   below. All text/icons drop to neutral-150 so the row reads "read-only." */
+.rowRejected > td,
+.rowRejected > td *,
+.rowRejected .patientName,
+.rowRejected .patientNameLink { color: var(--neutral-150) !important; }
+.rowRejected svg { color: var(--neutral-150) !important; }
+/* Eye button (View Diagnosis Gaps) is the one action that stays live on a
+   rejected row — restore its icon color so it still reads as interactive
+   (matches the ActionButton's default neutral-300 tint on every other row). */
+.rowRejected .actionsRow button[aria-label="View Diagnosis Gaps"] svg { color: var(--neutral-300) !important; }
+.rowRejected button:not([aria-label="View Diagnosis Gaps"]),
+.rowRejected [role="button"]:not([aria-label="View Diagnosis Gaps"]) {
+  pointer-events: none;
+  opacity: 0.5;
+}
+.rowRejected .actionsRow button[aria-label="View Diagnosis Gaps"] {
+  pointer-events: auto;
+  opacity: 1;
+}
+.rowRejected:hover { background: var(--neutral-0); }
+.rowRejected:hover > td,
+.rowRejected:hover [class*="stickyLeft"],
+.rowRejected:hover [class*="stickyRight"] { background: var(--neutral-0) !important; }
+
 /* ── Sticky columns ── */
 .stickyLeft {
   position: sticky;

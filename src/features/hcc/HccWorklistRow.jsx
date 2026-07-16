@@ -937,6 +937,25 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
 
   const innerCtx = { member, openClaimPreview, openDiagPanel };
 
+  // Any role marking the record Rejected disables row-level actions and
+  // locks the avatars. Reads the engine-state first (canonical source),
+  // then falls back to the legacy member.*S fields. Insufficient / Reject
+  // are separate blocking statuses that live upstream in the workflow —
+  // we specifically match user-facing "Rejected" here.
+  const rejectedStatuses = new Set(['Rejected', 'Reject']);
+  const dosState = dosStateFor(member);
+  const isRecordRejected = (() => {
+    if (dosState) {
+      for (const role of ['support', 'coder', 'reviewer', 'reviewer2']) {
+        if (rejectedStatuses.has(dosState[role]?.status)) return true;
+      }
+    }
+    return rejectedStatuses.has(member.supS)
+      || rejectedStatuses.has(member.cdrS)
+      || rejectedStatuses.has(member.r1s)
+      || rejectedStatuses.has(member.r2s);
+  })();
+
   return (
     <>
     <tr
@@ -945,7 +964,9 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
         checked ? styles.rowChecked : '',
         isOpenInDrawer ? styles.rowActive : '',
         expanded ? styles.rowExpanded : '',
+        isRecordRejected ? styles.rowRejected : '',
       ].filter(Boolean).join(' ')}
+      aria-disabled={isRecordRejected || undefined}
     >
       {/* Sticky left: checkbox */}
       <td className={`${styles.checkTd} ${styles.stickyLeft} ${styles.stickyCheck}`} onClick={(e) => e.stopPropagation()}>
@@ -956,6 +977,7 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
             checked={checked}
             onCheckedChange={() => selectHccMember(member.id)}
             aria-label={`Select ${member.name}`}
+            disabled={isRecordRejected}
           />
         </div>
       </td>
@@ -963,7 +985,7 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
       {/* Sticky left: member identity — renders once, top-aligned. */}
       <td className={`${styles.memberTd} ${styles.stickyLeft} ${styles.stickyMember} ${styles.colMember}`}>
         <div className={styles.patientCell}>
-          <Avatar variant="patient" initials={member.in} />
+          <Avatar variant="patient" initials={member.in} locked={isRecordRejected} />
           <div>
             <div className={styles.patientName}>
               <button

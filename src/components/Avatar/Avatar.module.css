@@ -102,3 +102,33 @@
   border: 0.5px solid transparent;
   flex-shrink: 0;
 }
+
+/* Locked avatar — used when a record has been Rejected. The inner avatar
+   turns neutral-grey, and a red lock badge sits on the bottom-right corner.
+   The wrapper is inline so it drops into any row layout that already
+   expected a bare avatar. */
+.lockedWrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.lockBadge {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--neutral-0);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  box-shadow: 0 0 0 0.5px var(--neutral-150);
+}
+.lockBadge svg { display: block; }
+.locked {
+  background: var(--neutral-50);
+  border-color: var(--neutral-150);
+  color: var(--neutral-300);
+}
