@@ -280,11 +280,61 @@
   background: none;
   font-size: 13px;
   font-weight: 500;
-  color: var(--status-error);
+  color: var(--neutral-500);
   cursor: pointer;
   text-align: left;
 }
-.docMoreItem:hover { background: var(--status-error-light); }
+.docMoreItem:hover { background: var(--neutral-50); }
+/* Destructive menu items — Unlink / Delete render in error tone. Nested icon
+   colors are set inline where we render each item. */
+.docMoreItem:has(svg[color="var(--status-error)"]) { color: var(--status-error); }
+.docMoreItem:has(svg[color="var(--status-error)"]):hover { background: var(--status-error-light); }
+
+/* ── Fail-reason modal (overlays the Document Available drawer) ── */
+.failOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: var(--surface-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.failModal {
+  background: var(--neutral-0);
+  border-radius: 12px;
+  box-shadow: var(--shadow-popover);
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.failHeader {
+  padding: 16px 20px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.failTitle {
+  font: 500 15px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.failSubtitle {
+  margin-top: 4px;
+  font: 400 13px/1.3 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.failBody { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+.failIntro { font: 400 13px/1.4 'Inter', sans-serif; color: var(--neutral-400); }
+.failReasons { display: flex; flex-direction: column; gap: 6px; }
+.failNoteLabel { font: 500 12px/1.3 'Inter', sans-serif; color: var(--neutral-400); margin-top: 4px; }
+.failActions {
+  padding: 12px 20px;
+  border-top: 0.5px solid var(--neutral-150);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
 
 /* Body when the last doc has been unlinked — right pane only, no preview. */
 .bodyEmpty .rightPane { flex: 1; }

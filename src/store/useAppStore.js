@@ -5087,8 +5087,43 @@ export const useAppStore = create((set, get) => ({
   // Upload chart drawer — member object or null. Opened from ChartPopover's
   // "Upload New Chart" CTA and from the DiagPanel chart-upload action.
   hccUploadMember: null,
-  openHccUploadDrawer: (member) => set({ hccUploadMember: member }),
-  closeHccUploadDrawer: () => set({ hccUploadMember: null }),
+  // When set, UploadChartDrawer opens in edit mode: caption + docType are
+  // prefilled from this doc, the file field is optional (unchanged if empty),
+  // and submitting patches the existing chart row instead of appending a new
+  // one. Cleared on drawer close.
+  hccUploadEditDoc: null,
+  openHccUploadDrawer: (member) => set({ hccUploadMember: member, hccUploadEditDoc: null }),
+  openHccUploadDrawerForEdit: (member, doc) => set({ hccUploadMember: member, hccUploadEditDoc: doc }),
+  closeHccUploadDrawer: () => set({ hccUploadMember: null, hccUploadEditDoc: null }),
+
+  // Patch the caption + docType of an existing chart doc. Keeps the id, file,
+  // pdf preview, and status intact so DOS/link references and the preview URL
+  // still resolve.
+  updateChartDocMeta: (memberId, docId, patch) => {
+    if (!memberId || !docId || !patch) return;
+    set(state => {
+      const list = state.hccAddedCharts?.[memberId] || [];
+      return {
+        hccAddedCharts: {
+          ...state.hccAddedCharts,
+          [memberId]: list.map(d => d.id === docId ? { ...d, ...patch } : d),
+        },
+      };
+    });
+    // Persist the metadata change so the row survives reload.
+    supabase
+      .from('hcc_added_charts')
+      .update({
+        // Table columns mirror the makeUploadedChartDoc shape.
+        name: patch.n || patch.caption,
+        caption: patch.caption,
+        doc_type: patch.t,
+      })
+      .eq('id', docId)
+      .then(({ error }) => {
+        if (error) console.warn(`updateChartDocMeta(${memberId}|${docId}) failed:`, error.message);
+      });
+  },
 
   // ─── Per-patient "Add DOS" drawer (Figma 4684:127213 / 4687:127406) ──
   // Opened from the worklist row Actions column. Holds the member whose

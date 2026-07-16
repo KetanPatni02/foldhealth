@@ -8,6 +8,9 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '.
 import { Switch } from '../../components/Switch/Switch';
 import { useAppStore } from '../../store/useAppStore';
 import { DocEvidenceViewer } from './DiagPanel/DocEvidenceViewer';
+import { DestructiveDialog } from '../../components/Modal/DestructiveDialog';
+import { RadioButton } from '../../components/RadioButton/RadioButton';
+import { Textarea } from '../../components/Textarea/Textarea';
 import { DOC_TYPES, makeUploadedChartDoc } from './data/chartDocs';
 import { staffForRole } from './assignment/astranaStaff';
 import styles from './ChartDetailDrawer.module.css';
@@ -159,6 +162,11 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   // Per-document "More actions" menu (currently: Unlink). Anchored on the
   // clicked doc's ⋯ button; holds { docId, top, left }.
   const [moreMenu, setMoreMenu] = useState(null);
+  // Fail-reason prompt — { id, name } | null. Set by failDoc; confirming
+  // logs the reason and applies the Fail status.
+  const [failPrompt, setFailPrompt] = useState(null);
+  // Confirmation dialog for the delete action on the per-doc menu.
+  const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(null);
   useEffect(() => {
     if (!moreMenu) return;
     const onDoc = (e) => {
@@ -186,6 +194,8 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   const addChartDoc = useAppStore(s => s.addChartDoc);
   const setChartDocStatus = useAppStore(s => s.setChartDocStatus);
   const removeChartDoc = useAppStore(s => s.removeChartDoc);
+  const addActivityEntry = useAppStore(s => s.addActivityEntry);
+  const openHccUploadDrawerForEdit = useAppStore(s => s.openHccUploadDrawerForEdit);
   // Workflow-engine writers — these keep the Support assignee + status in sync
   // with the worklist Support column and the Diagnosis Gaps Details view.
   const hccReassignRole = useAppStore(s => s.hccReassignRole);
@@ -303,8 +313,23 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     if (!manualStatus) syncSupportStatus(deriveStatus(docs, next));
   };
   const passDoc = (id) => { applyDocAction(id, 'pass'); showToast('Support Task is Completed'); };
-  const failDoc = (id) => applyDocAction(id, 'fail');
+  const failDoc = (id) => {
+    const doc = docs.find(d => d.id === id);
+    setFailPrompt({ id, name: doc?.n || 'Document' });
+  };
   const undoDoc = (id) => applyDocAction(id, null);
+  const confirmFailDoc = ({ reason, note }) => {
+    if (!failPrompt) return;
+    applyDocAction(failPrompt.id, 'fail');
+    const doc = docs.find(d => d.id === failPrompt.id);
+    addActivityEntry?.({
+      t: 'doc-status', by: 'You', role: 'Support Team',
+      headline: `Marked "${doc?.n || failPrompt.name}" as Failed`,
+      details: [{ note: note ? `${reason} — ${note}` : reason }],
+    });
+    showToast(`Marked ${failPrompt.name} failed`);
+    setFailPrompt(null);
+  };
 
   // Unlink a document from this Created-date record. Removes it from the
   // member's chart list (store) + clears its local review state. When it was
@@ -651,11 +676,61 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
           style={{ top: moreMenu.top, right: moreMenu.right }}
           onClick={(e) => e.stopPropagation()}
         >
-          <button type="button" className={styles.docMoreItem} onClick={() => unlinkDoc(moreMenu.docId)}>
+          <button
+            type="button"
+            className={styles.docMoreItem}
+            onClick={() => {
+              const doc = docs.find(d => d.id === moreMenu.docId);
+              setMoreMenu(null);
+              if (!doc) return;
+              // Reuse the Upload Document drawer as the edit surface. It reads
+              // hccUploadEditDoc and prefills caption + docType from the row.
+              openHccUploadDrawerForEdit(m, doc);
+            }}
+          >
+            <Icon name="solar:pen-linear" size={16} color="var(--neutral-400)" />
+            Edit
+          </button>
+          <button
+            type="button"
+            className={styles.docMoreItem}
+            onClick={() => unlinkDoc(moreMenu.docId)}
+          >
             <Icon name="solar:link-broken-minimalistic-linear" size={16} color="var(--status-error)" />
             Unlink
           </button>
+          <button
+            type="button"
+            className={styles.docMoreItem}
+            onClick={() => {
+              const doc = docs.find(d => d.id === moreMenu.docId);
+              setMoreMenu(null);
+              if (doc) setConfirmDeleteDoc({ id: doc.id, name: doc.n });
+            }}
+          >
+            <Icon name="solar:trash-bin-2-linear" size={16} color="var(--status-error)" />
+            Delete
+          </button>
         </div>
+      )}
+      {failPrompt && (
+        <FailReasonModal
+          docName={failPrompt.name}
+          onCancel={() => setFailPrompt(null)}
+          onConfirm={confirmFailDoc}
+        />
+      )}
+      {confirmDeleteDoc && (
+        <DestructiveDialog
+          title="Delete document?"
+          description={`"${confirmDeleteDoc.name}" will be removed from this record. This can't be undone.`}
+          confirmLabel="Delete"
+          onCancel={() => setConfirmDeleteDoc(null)}
+          onConfirm={() => {
+            unlinkDoc(confirmDeleteDoc.id);
+            setConfirmDeleteDoc(null);
+          }}
+        />
       )}
 
       {assignPos && (
@@ -708,6 +783,54 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
         </div>
       )}
     </>,
+    document.body,
+  );
+}
+
+// Reasons offered when marking a document Failed. Kept in sync with the
+// Figma spec for the Document Available details drawer.
+const FAIL_REASONS = [
+  'Illegible / Poor Quality',
+  'Missing Signature',
+  'Wrong Patient',
+  'Incomplete / Missing Pages',
+  'Wrong Date of Service',
+  'Other',
+];
+
+function FailReasonModal({ docName, onCancel, onConfirm }) {
+  const [reason, setReason] = useState('');
+  const [note, setNote] = useState('');
+  return createPortal(
+    <div className={styles.failOverlay} onMouseDown={onCancel}>
+      <div className={styles.failModal} onMouseDown={(e) => e.stopPropagation()}>
+        <div className={styles.failHeader}>
+          <div className={styles.failTitle}>Mark document Failed</div>
+          <div className={styles.failSubtitle}>{docName}</div>
+        </div>
+        <div className={styles.failBody}>
+          <div className={styles.failIntro}>Select a reason for failing this document:</div>
+          <div className={styles.failReasons}>
+            {FAIL_REASONS.map((r) => (
+              <RadioButton
+                key={r}
+                name="fail-reason"
+                value={r}
+                label={r}
+                checked={reason === r}
+                onChange={() => setReason(r)}
+              />
+            ))}
+          </div>
+          <div className={styles.failNoteLabel}>Note (optional)</div>
+          <Textarea rows={3} placeholder="Add a note" value={note} onChange={(e) => setNote(e.target.value)} />
+        </div>
+        <div className={styles.failActions}>
+          <Button variant="secondary" size="M" onClick={onCancel}>Cancel</Button>
+          <Button variant="danger" size="M" disabled={!reason} onClick={() => onConfirm({ reason, note })}>Mark Failed</Button>
+        </div>
+      </div>
+    </div>,
     document.body,
   );
 }

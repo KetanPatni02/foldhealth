@@ -16,6 +16,7 @@ import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { OutreachTab as PatientOutreachTab } from '../../patient/components/OutreachTab';
 import { DocEvidenceViewer } from './DocEvidenceViewer';
 import { DestructiveDialog } from '../../../components/Modal/DestructiveDialog';
+import { CommentComposer } from '../../../components/CommentComposer/CommentComposer';
 import styles from './LeftWorkspace.module.css';
 
 // Two tab sets depending on scope. Counts flow in per-render since
@@ -699,7 +700,6 @@ function CommentsTab() {
   const seed = dbComments.length ? dbComments : COMMENTS_MOCK;
   const [items, setItems] = useState(seed);
   useEffect(() => { setItems(seed); }, [seed]);
-  const [draft, setDraft] = useState('');
   const [collapsed, setCollapsed] = useState(() => new Set());
   const [confirmDeleteComment, setConfirmDeleteComment] = useState(null);
   const activityIcd = useAppStore(s => s.diagActivityIcd);
@@ -719,8 +719,7 @@ function CommentsTab() {
     deleteHccDiagComment(id);
   };
 
-  const addComment = () => {
-    const body = draft.trim();
+  const addComment = (body) => {
     if (!body) return;
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
@@ -744,7 +743,6 @@ function CommentsTab() {
       scope:     { patientId: diagPanelMemberId, icd: activityIcd || null, source: 'manual' },
       payload:   { actor: 'You', role: userRole, body, patientName: patient?.name },
     });
-    setDraft('');
   };
 
   // Bucket comments by "Mon YYYY" header so the timeline can render a
@@ -759,14 +757,9 @@ function CommentsTab() {
 
   return (
     <div className={styles.scroll}>
-      <input
-        type="text"
-        className={styles.commentComposer}
-        placeholder="Add a comment"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter' && draft.trim()) addComment(); }}
-      />
+      <div className={styles.commentComposerWrap}>
+        <CommentComposer onSubmit={addComment} />
+      </div>
       <div className={styles.timeline}>
         {groups.map((g) => {
           const isCollapsed = collapsed.has(g.label);
@@ -1599,12 +1592,18 @@ function NotesTab() {
 }
 
 // Trailing toolbar action for Notes — focuses the inline note composer.
+// Authoring a clinical note is a coder/QA/compliance action; Support role
+// can't add notes, so we render the button disabled with an explanatory
+// tooltip via the native title attribute.
 function NotesTrailingAction() {
+  const canAddNote = useAppStore(s => s.hccUserRole) !== 'Support';
   return (
     <button
       type="button"
       className={styles.filterTrailingBtn}
-      onClick={() => {
+      disabled={!canAddNote}
+      title={canAddNote ? undefined : 'Support role cannot add clinical notes'}
+      onClick={!canAddNote ? undefined : () => {
         const el = document.querySelector(`.${'notesComposerInline'.replace(/./g, c => c)}`)
           || document.querySelector('input[placeholder^="Add a clinical note"]');
         el?.focus();

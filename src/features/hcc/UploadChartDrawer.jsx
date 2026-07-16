@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Button } from '../../components/Button/Button';
+import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { UploadDropField } from '../../components/UploadDropField/UploadDropField';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
 import { DOC_TYPES, makeUploadedChartDoc } from './data/chartDocs';
@@ -17,6 +18,7 @@ import styles from './UploadChartDrawer.module.css';
  */
 export function UploadChartDrawer() {
   const member = useAppStore(s => s.hccUploadMember);
+  const editDoc = useAppStore(s => s.hccUploadEditDoc);
   const close = useAppStore(s => s.closeHccUploadDrawer);
   const showToast = useAppStore(s => s.showToast);
   // Log the upload to the Diagnosis Gaps Activity Log when the drawer was
@@ -28,12 +30,30 @@ export function UploadChartDrawer() {
   // Sync the uploaded document into the member's chart documents (the worklist
   // "Documents" column + the ChartPopover / Document Available drawer).
   const addChartDoc = useAppStore(s => s.addChartDoc);
+  const updateChartDocMeta = useAppStore(s => s.updateChartDocMeta);
+  const isEdit = !!editDoc;
 
   const [file, setFile] = useState(null);
   const [caption, setCaption] = useState('');
   const [captionTouched, setCaptionTouched] = useState(false);
   const [docType, setDocType] = useState('');
   const [uploadKey, setUploadKey] = useState(0); // remount UploadDropField to reset it
+
+  // Prefill when opening in edit mode: caption + docType come from the row,
+  // file stays empty (uploading a new file is optional during edit).
+  useEffect(() => {
+    if (isEdit) {
+      setCaption(editDoc?.caption || editDoc?.n || '');
+      setCaptionTouched(true);
+      setDocType(editDoc?.t || '');
+    } else {
+      setCaption('');
+      setCaptionTouched(false);
+      setDocType('');
+    }
+    setFile(null);
+    setUploadKey(k => k + 1);
+  }, [editDoc, isEdit]);
 
   // Pre-populate the Caption field with the file name (extension stripped)
   // when a file is picked and the user hasn't already typed their own caption.
@@ -46,9 +66,22 @@ export function UploadChartDrawer() {
 
   if (!member) return null;
 
-  const ok = !!(file && caption.trim() && docType);
+  // In edit mode a file isn't required — the user is only changing metadata.
+  const ok = isEdit
+    ? !!(caption.trim() && docType)
+    : !!(file && caption.trim() && docType);
 
   const handleUpload = () => {
+    if (isEdit) {
+      updateChartDocMeta(member.id, editDoc.id, {
+        n: caption,
+        caption,
+        t: docType,
+      });
+      showToast(`Updated ${caption}`);
+      handleClose();
+      return;
+    }
     const doc = makeUploadedChartDoc(member, { file, caption, docType });
     addChartDoc(member.id, doc, file);
     addActivityEntry({
@@ -80,28 +113,27 @@ export function UploadChartDrawer() {
 
   return (
     <Drawer
-      title={<span className={styles.title}>Upload Document</span>}
+      title={<span className={styles.title}>{isEdit ? 'Edit Document' : 'Upload Document'}</span>}
       onClose={handleClose}
       className={styles.drawer}
       bodyClassName={styles.body}
       headerRight={
         <Button variant="primary" size="M" disabled={!ok} onClick={handleUpload}>
-          Upload
+          {isEdit ? 'Save' : 'Upload'}
         </Button>
       }
     >
-      {/* Patient strip */}
-      <div className={styles.patient}>
-        <div className={styles.avatar}>{member.in || member.name?.split(' ').map(p => p[0]).slice(0, 2).join('')}</div>
-        <div className={styles.patientText}>
-          <div className={styles.patientName}>{member.name}</div>
-          <div className={styles.patientMeta}>
-            Patient · {member.g === 'M' ? 'Male' : member.g === 'F' ? 'Female' : member.g} ·{' '}
-            {member.age || '—'}
-            {member.memberId ? ` · ${member.memberId}` : ''}
-          </div>
-        </div>
-      </div>
+      {/* Shared patient banner — matches Diagnosis Gaps Details. */}
+      <PatientBanner
+        initials={member.in || member.name?.split(' ').map(p => p[0]).slice(0, 2).join('')}
+        name={member.name}
+        gender={member.g === 'M' ? 'Male' : member.g === 'F' ? 'Female' : member.g}
+        age={member.age || ''}
+        memberId={member.memberId || `#${member.id}`}
+        raf={member.raf}
+        rafChange={member.ri}
+        rafUp={member.ru !== false}
+      />
 
       {/* Form */}
       <div className={styles.form}>

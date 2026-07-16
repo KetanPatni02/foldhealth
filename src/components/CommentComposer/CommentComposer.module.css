@@ -1,0 +1,29 @@
+/* Shared comment composer — task drawer + DiagPanel Comments tab. */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.textarea {
+  border: 0.5px solid var(--neutral-200);
+  border-radius: 4px;
+  outline: none;
+  padding: 8px;
+  font-size: 14px;
+  color: var(--neutral-400);
+  resize: none;
+  min-height: 32px;
+  max-height: 120px;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease;
+}
+.textarea:focus { border-color: var(--primary-200); }
+.textarea::placeholder { color: var(--neutral-200); }
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+}

@@ -877,6 +877,10 @@
 }
 .commentComposer::placeholder { color: var(--neutral-300); }
 
+/* Wrapper around the shared CommentComposer primitive in the Comments tab —
+   just adds the bottom gap the old single-line input had. */
+.commentComposerWrap { margin-bottom: 12px; }
+
 /* Inline "Edited" badge that follows the author/role in a comment's meta
    line — outlined chip, no fill. */
 .commentEditedBadge {
@@ -1427,7 +1431,8 @@
   color: var(--primary-300);
   white-space: nowrap;
 }
-.filterTrailingBtn:hover { text-decoration: underline; }
+.filterTrailingBtn:hover:not(:disabled) { text-decoration: underline; }
+.filterTrailingBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 .filterTrailingBtnActive {
   background: var(--primary-50);
   border-radius: 4px;

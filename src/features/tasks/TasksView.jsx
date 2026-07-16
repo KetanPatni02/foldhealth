@@ -21,6 +21,7 @@ import { Avatar } from '../../components/Avatar/Avatar';
 import { TopBar } from '../../components/TopBar/TopBar';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { ConfirmDialog } from '../../components/Modal/ConfirmDialog';
+import { CommentComposer } from '../../components/CommentComposer/CommentComposer';
 import { PdfPreviewOverlay } from '../../components/PdfPreviewOverlay/PdfPreviewOverlay';
 import { ClinicalNotePanel } from '../hedis-worklist/ClinicalNotePanel';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
@@ -1616,8 +1617,6 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
   const [descDraft, setDescDraft] = useState('');
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
-  const [commentText, setCommentText] = useState('');
-  const [commentExpanded, setCommentExpanded] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showAddSubtask, setShowAddSubtask] = useState(false);
   const [subtaskName, setSubtaskName] = useState('');
@@ -1731,8 +1730,7 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
     showToast('Task claimed');
   };
 
-  const handleAddComment = () => {
-    const text = commentText.trim();
+  const handleAddComment = (text) => {
     if (!text) return;
     const mentions = (text.match(/@(\w+(?:\s+\w+)?)/g) || []).map(m => m.slice(1).trim());
     logTaskAudit(task.id, 'comment_added', { to: text });
@@ -1742,8 +1740,6 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
       updateTask(task.id, { mentions: newMentions });
     }
     showToast('Comment added');
-    setCommentText('');
-    setCommentExpanded(false);
   };
 
   const handleTitleKeyDown = (e) => {
@@ -2117,22 +2113,7 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
           </div>
 
           {/* Comment input — supports @mentions */}
-          <div className={styles.commentInput}>
-            <textarea
-              placeholder="Add a comment, use @ to mention someone"
-              rows={commentExpanded ? 3 : 1}
-              className={styles.commentTextarea}
-              value={commentText}
-              onChange={e => setCommentText(e.target.value)}
-              onFocus={() => setCommentExpanded(true)}
-            />
-            {commentExpanded && (
-              <div className={styles.commentActions}>
-                <Button variant="primary" size="S" disabled={!commentText.trim()} onClick={handleAddComment}>Comment</Button>
-                <Button variant="secondary" size="S" onClick={() => { setCommentExpanded(false); setCommentText(''); }}>Cancel</Button>
-              </div>
-            )}
-          </div>
+          <CommentComposer onSubmit={handleAddComment} />
 
           {/* Activity log — real audit entries */}
           <div className={styles.activityLog}>
