@@ -176,6 +176,7 @@ export const getStatusSpec = (status) =>
 const STATUS_DISPLAY = {
   Awaiting: 'Action Needed',
   Reject: 'Rejected',
+  Returned: 'Rebuttal',
 };
 export const statusDisplayLabel = (value) => {
   const c = canonicalStatus(value);
