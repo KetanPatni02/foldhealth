@@ -15,6 +15,7 @@ import { ACTIVITY, getActivityFromDb } from '../data/activity';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { OutreachTab as PatientOutreachTab } from '../../patient/components/OutreachTab';
 import { DocEvidenceViewer } from './DocEvidenceViewer';
+import { DestructiveDialog } from '../../../components/Modal/DestructiveDialog';
 import styles from './LeftWorkspace.module.css';
 
 // Two tab sets depending on scope. Counts flow in per-render since
@@ -68,9 +69,11 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
   const commentsForCount = dbComments.length ? dbComments : COMMENTS_MOCK;
   const notesForCount    = dbNotes.length    ? dbNotes    : NOTES_MOCK;
   const tabs = buildTabs({ commentsCount: commentsForCount.length, notesCount: notesForCount.length });
-  // Lifted from DocumentsTab so the surrounding filter row can be hidden while
-  // a document is being previewed — filters only make sense on the listing.
-  const [openDocId, setOpenDocId] = useState(null);
+  // openDocId lives in the store so other surfaces — the DiagPanel Documents
+  // toolbar button and DOS-row clicks in IcdDosCard — can jump straight into
+  // the preview for a specific doc.
+  const openDocId = useAppStore(s => s.diagOpenDocId);
+  const setOpenDocId = useAppStore(s => s.setDiagOpenDocId);
   const isPreviewingDoc = active === 'documents' && !!openDocId;
   // Worklog uses a DOS-only filter; the other filtered tabs use the full set.
   // Docs tab shows the filter row only in listing mode (not during preview).
@@ -949,6 +952,7 @@ function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId }
   const showToast = useAppStore(s => s.showToast);
   const uploaderOpen = useAppStore(s => s.hccDocsUploaderOpen);
   const removeChartDoc = useAppStore(s => s.removeChartDoc);
+  const [confirmDelete, setConfirmDelete] = useState(null); // { id, name } | null
   // Single source of truth: `charts` is the RECORD's real docs from
   // hcc_added_charts (member-scoped). Both entry points — UploadChartDrawer
   // and the inline DocumentsUploader — write via addChartDoc, so this list
@@ -1120,17 +1124,27 @@ function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId }
                   icon="solar:trash-bin-trash-linear"
                   size="S"
                   tooltip="Delete document"
-                  onClick={() => {
-                    removeChartDoc(member.id, d.id);
-                    if (openDocId === d.id) setOpenDocId(null);
-                    showToast(`Removed ${d.name}`);
-                  }}
+                  onClick={() => setConfirmDelete({ id: d.id, name: d.name })}
                 />
               </div>
             </div>
           );
         })}
       </div>
+      {confirmDelete && (
+        <DestructiveDialog
+          title="Delete document?"
+          description={`"${confirmDelete.name}" will be removed from this record. This can't be undone.`}
+          confirmLabel="Delete"
+          onCancel={() => setConfirmDelete(null)}
+          onConfirm={() => {
+            removeChartDoc(member.id, confirmDelete.id);
+            if (openDocId === confirmDelete.id) setOpenDocId(null);
+            showToast(`Removed ${confirmDelete.name}`);
+            setConfirmDelete(null);
+          }}
+        />
+      )}
     </div>
   );
 }

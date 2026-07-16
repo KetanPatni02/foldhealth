@@ -7,6 +7,7 @@ import { CheckIcon } from '../../../components/Icon/CheckIcon';
 import { CloseIcon } from '../../../components/Icon/CloseIcon';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { DismissReasonForm } from './DismissReasonForm';
+import { DestructiveDialog } from '../../../components/Modal/DestructiveDialog';
 import { reviewedByLabel } from '../reviewedBy';
 import styles from './IcdDosCard.module.css';
 
@@ -43,7 +44,11 @@ export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSe
   const showToast = useAppStore(s => s.showToast);
   const deleteHccGap = useAppStore(s => s.deleteHccGap);
   const removeIcdDos = useAppStore(s => s.removeIcdDos);
+  const hccUserRole = useAppStore(s => s.hccUserRole);
+  const canDelete = hccUserRole !== 'Support';
   const isManualIcd = icd.type === 'Manual';
+  const [confirmDeleteIcd, setConfirmDeleteIcd] = useState(false);
+  const [confirmRemoveDos, setConfirmRemoveDos] = useState(null); // {code, dos} | null
   // Flash + scroll when this ICD was just added via the New Diagnosis Gap
   // panel — draws the user's attention to where the new code landed in the
   // current list (the border pulses; auto-clears via the store timer).
@@ -137,19 +142,20 @@ export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSe
           {isManualIcd && (
             <>
               <span className={styles.counterDivider} />
-              <button
-                type="button"
-                className={styles.deleteBtn}
-                title={`Delete ${icd.code}`}
-                aria-label={`Delete ${icd.code}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteHccGap(icd.code);
-                  showToast(`Removed ${icd.code}`);
-                }}
-              >
-                <Icon name="solar:trash-bin-2-linear" size={14} />
-              </button>
+              <Tooltip label={canDelete ? `Delete ${icd.code}` : 'Support role cannot delete ICDs'}>
+                <button
+                  type="button"
+                  className={styles.deleteBtn}
+                  aria-label={`Delete ${icd.code}`}
+                  disabled={!canDelete}
+                  onClick={!canDelete ? undefined : (e) => {
+                    e.stopPropagation();
+                    setConfirmDeleteIcd(true);
+                  }}
+                >
+                  <Icon name="solar:trash-bin-2-linear" size={14} />
+                </button>
+              </Tooltip>
             </>
           )}
         </div>
@@ -185,15 +191,38 @@ export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSe
               onUndo={() => setDosAction(icd.code, entry.dos, dosActions[key])}
               onMissed={() => { setDosAction(icd.code, entry.dos, 'missed'); advanceIfActed(); }}
               onDefer={() => { setDosAction(icd.code, entry.dos, 'deferred'); advanceIfActed(); }}
-              onRemoveDos={() => {
-                removeIcdDos(icd.code, entry.dos);
-                showToast(`Removed ${icd.code} on ${entry.dos}`);
-              }}
+              onRemoveDos={canDelete ? () => setConfirmRemoveDos({ code: icd.code, dos: entry.dos }) : null}
               reviewLocked={reviewLocked}
             />
           );
         })}
       </div>
+      {confirmDeleteIcd && (
+        <DestructiveDialog
+          title={`Delete ${icd.code}?`}
+          description={`This manually-added ICD and all its DOS rows will be removed. This can't be undone.`}
+          confirmLabel="Delete"
+          onCancel={() => setConfirmDeleteIcd(false)}
+          onConfirm={() => {
+            deleteHccGap(icd.code);
+            showToast(`Removed ${icd.code}`);
+            setConfirmDeleteIcd(false);
+          }}
+        />
+      )}
+      {confirmRemoveDos && (
+        <DestructiveDialog
+          title="Remove DOS?"
+          description={`${confirmRemoveDos.code} on ${confirmRemoveDos.dos} will be removed. This can't be undone.`}
+          confirmLabel="Remove"
+          onCancel={() => setConfirmRemoveDos(null)}
+          onConfirm={() => {
+            removeIcdDos(confirmRemoveDos.code, confirmRemoveDos.dos);
+            showToast(`Removed ${confirmRemoveDos.code} on ${confirmRemoveDos.dos}`);
+            setConfirmRemoveDos(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -228,7 +257,18 @@ function DosActionRow({
 
   const openMenu = () => {
     const r = moreRef.current?.getBoundingClientRect();
-    if (r) setMenuPos({ top: r.bottom + 4, left: Math.max(8, r.right - 180) });
+    if (!r) return;
+    const margin = 8;
+    const menuW = 180;
+    // ~3-4 items: 2 base (Missed / Defer) + optional divider + Remove DOS.
+    const estHeight = isManual && onRemoveDos ? 168 : 96;
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+    const spaceBelow = vh - r.bottom - margin;
+    const flipUp = spaceBelow < estHeight && r.top > estHeight + margin;
+    const top = flipUp ? Math.max(margin, r.top - estHeight - 4) : r.bottom + 4;
+    const left = Math.min(Math.max(margin, r.right - menuW), vw - menuW - margin);
+    setMenuPos({ top, left });
   };
 
   return (

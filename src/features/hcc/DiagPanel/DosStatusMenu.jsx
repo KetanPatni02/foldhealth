@@ -44,7 +44,15 @@ export function DosStatusMenu({ value, onChange, disabled = false, disabledReaso
   const open = () => {
     if (disabled) return;
     const r = triggerRef.current?.getBoundingClientRect();
-    if (r) setPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
+    if (!r) return;
+    const margin = 8;
+    // Menu height scales with the number of status options; cap at 320.
+    const estHeight = Math.min(320, 48 + items.length * 40);
+    const vh = window.innerHeight;
+    const spaceBelow = vh - r.bottom - margin;
+    const flipUp = spaceBelow < estHeight && r.top > estHeight + margin;
+    const top = flipUp ? Math.max(margin, r.top - estHeight - 4) : r.bottom + 4;
+    setPos({ top, right: window.innerWidth - r.right, maxHeight: flipUp ? r.top - margin - 4 : spaceBelow });
   };
   const close = () => setPos(null);
 
@@ -97,7 +105,7 @@ function Menu({ pos, value, items, gates, onSelect, onClose }) {
       <div className={styles.overlay} onClick={onClose} />
       <div
         className={styles.menu}
-        style={{ top: pos.top, right: pos.right }}
+        style={{ top: pos.top, right: pos.right, maxHeight: pos.maxHeight, overflowY: 'auto' }}
         onClick={(e) => e.stopPropagation()}
         role="menu"
       >

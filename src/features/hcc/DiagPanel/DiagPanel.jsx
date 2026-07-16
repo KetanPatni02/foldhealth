@@ -340,10 +340,33 @@ export function DiagPanel() {
   const hccAddedCharts = useAppStore(s => s.hccAddedCharts[member?.id]);
   const hccChartStatus = useAppStore(s => s.hccChartStatus[member?.id]);
   const hccRemovedCharts = useAppStore(s => s.hccRemovedCharts[member?.id]);
-  const docsCount = useMemo(() => {
-    if (!member) return 0;
-    return getChartDocs(member, hccAddedCharts || [], hccChartStatus || {}, hccRemovedCharts || []).length;
+  const chartsList = useMemo(() => {
+    if (!member) return [];
+    return getChartDocs(member, hccAddedCharts || [], hccChartStatus || {}, hccRemovedCharts || []);
   }, [member, hccAddedCharts, hccChartStatus, hccRemovedCharts]);
+  const docsCount = chartsList.length;
+  const setDiagOpenDocId = useAppStore(s => s.setDiagOpenDocId);
+  const diagOpenDocId = useAppStore(s => s.diagOpenDocId);
+  // Toolbar Documents click: open the preview (first doc) rather than the list.
+  // Clicking again while it's open closes the panel.
+  const openDocsFromToolbar = useCallback(() => {
+    const alreadyOpen = diagLeftPanel === 'documents' && !diagActivityIcd;
+    if (alreadyOpen) {
+      setDiagLeftPanel(null);
+      return;
+    }
+    setDiagLeftPanel('documents');
+    if (chartsList.length) setDiagOpenDocId(chartsList[0].id);
+  }, [diagLeftPanel, diagActivityIcd, chartsList, setDiagLeftPanel, setDiagOpenDocId]);
+  // DOS-row click: open the doc that matches this DOS date (system docs seed
+  // `dateAdded` from the member's DOS). Falls back to the first doc if no
+  // match — never leaves the user on an empty list.
+  const openDocsForDos = useCallback((dos) => {
+    if (!chartsList.length) return;
+    const match = chartsList.find(c => c.dateAdded === dos) || chartsList[0];
+    setDiagLeftPanel('documents');
+    setDiagOpenDocId(match.id);
+  }, [chartsList, setDiagLeftPanel, setDiagOpenDocId]);
   const actingStatus = useMemo(() => {
     const rs = dosState?.[actingRole];
     return rs?.status || diagDosStatus || 'New';
@@ -612,7 +635,10 @@ export function DiagPanel() {
   const handleFocusRow = useCallback((rowKey) => {
     const idx = rowKeys.indexOf(rowKey);
     if (idx >= 0) setFocusIdx(idx);
-  }, [rowKeys]);
+    // Also open the source document that maps to this DOS in the left preview.
+    const dos = rowKey.split('|')[1];
+    if (dos) openDocsForDos(dos);
+  }, [rowKeys, openDocsForDos]);
   // The ICD being worked on (owns the focused DOS). The document evidence view
   // follows this so the highlighted note line tracks the active ICD.
   const activeIcdCode = focusKey ? focusKey.split('|')[0] : null;
@@ -889,7 +915,7 @@ export function DiagPanel() {
             tooltip="Documents"
             count={String(docsCount)}
             className={diagLeftPanel === 'documents' && !diagActivityIcd ? styles.activeIcon : ''}
-            onClick={() => setDiagLeftPanel(diagLeftPanel === 'documents' && !diagActivityIcd ? null : 'documents')}
+            onClick={openDocsFromToolbar}
           />
           <span className={styles.divider} />
           <ActionButton

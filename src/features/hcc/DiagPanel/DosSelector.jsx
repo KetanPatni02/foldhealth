@@ -73,8 +73,17 @@ function DosPopup({ rect, value, dosList, includeAllDOSs, onSelect, onClose }) {
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const top = rect.bottom + 4;
-  const left = rect.left;
+  const margin = 8;
+  const vh = window.innerHeight;
+  const vw = window.innerWidth;
+  const estWidth = 280;
+  // Header + up to ~4 rows visible; caps sooner via maxHeight.
+  const estHeight = Math.min(360, 48 + (dosList.length + (includeAllDOSs ? 1 : 0)) * 56);
+  const spaceBelow = vh - rect.bottom - margin;
+  const flipUp = spaceBelow < estHeight && rect.top > estHeight + margin;
+  const top = flipUp ? Math.max(margin, rect.top - estHeight - 4) : rect.bottom + 4;
+  const left = Math.min(Math.max(margin, rect.left), vw - estWidth - margin);
+  const maxHeight = flipUp ? rect.top - margin - 4 : spaceBelow;
   const isSweep = value === 'All DOSs';
 
   return createPortal(
@@ -82,7 +91,7 @@ function DosPopup({ rect, value, dosList, includeAllDOSs, onSelect, onClose }) {
       <div className={styles.overlay} onClick={onClose} />
       <div
         className={styles.popover}
-        style={{ top, left }}
+        style={{ top, left, maxHeight, overflowY: 'auto' }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-label="Select DOS"

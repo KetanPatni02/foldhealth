@@ -125,7 +125,8 @@
   border-radius: 4px;
   color: var(--neutral-400);
 }
-.deleteBtn:hover { background: var(--status-error-25, var(--neutral-50)); color: var(--status-error); }
+.deleteBtn:hover:not(:disabled) { background: var(--status-error-25, var(--neutral-50)); color: var(--status-error); }
+.deleteBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── DOS rows ── */
 .rows { display: flex; flex-direction: column; }

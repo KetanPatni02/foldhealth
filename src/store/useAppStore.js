@@ -4235,7 +4235,7 @@ export const useAppStore = create((set, get) => ({
   // toolbar Activity Log icon always resets this to null.
   diagActivityIcd: null,
   // Toolbar entry points reset the ICD scope (they're DOS-level actions).
-  setDiagLeftPanel: (panel) => set({ diagLeftPanel: panel, diagActivityIcd: null, diagClaimDos: null }),
+  setDiagLeftPanel: (panel) => set({ diagLeftPanel: panel, diagActivityIcd: null, diagClaimDos: null, diagOpenDocId: null }),
   // Switching tabs WITHIN the left panel preserves the current scope
   // (DOS-level stays DOS-level; ICD-level stays scoped to its code).
   setDiagTab: (panel) => set({ diagLeftPanel: panel }),
@@ -4245,6 +4245,13 @@ export const useAppStore = create((set, get) => ({
   // Documents / Comments / Notes count buttons in IcdRow).
   openIcdPanel: (panel, code) => set({ diagLeftPanel: panel, diagActivityIcd: code || null }),
   clearDiagActivityIcd: () => set({ diagActivityIcd: null }),
+
+  // Documents tab — currently-open doc in the preview. null = show the list.
+  // Set by (a) DiagPanel Documents-toolbar click (first doc), (b) DOS-row
+  // click in IcdDosCard (doc matching that DOS date), (c) manual selection
+  // inside the Documents tab.
+  diagOpenDocId: null,
+  setDiagOpenDocId: (id) => set({ diagOpenDocId: id || null }),
 
   // When a DOS row's "Claim" link is clicked, open the Claims tab in the left
   // workspace and auto-expand that DOS's claim detail. Consumed once by the
@@ -5616,7 +5623,7 @@ export const useAppStore = create((set, get) => ({
     diagActivityIcd: opts.activityIcd ?? null,
     diagViewMode: 'ICD',
   }),
-  closeDiagPanel: () => set({ diagPanelOpen: false, diagPanelMemberId: null, diagLeftPanel: null, diagActivityIcd: null, diagClaimDos: null }),
+  closeDiagPanel: () => set({ diagPanelOpen: false, diagPanelMemberId: null, diagLeftPanel: null, diagActivityIcd: null, diagClaimDos: null, diagOpenDocId: null }),
   setDiagActiveTab: (tab) => set({ diagActiveTab: tab }),
   setDiagDosFilter: (dos) => set({ diagDosFilter: dos }),
   setDiagViewMode: (mode) => set({ diagViewMode: mode }),

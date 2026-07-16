@@ -82,7 +82,17 @@ export function SuspectCard({ icd, dosList = [], member }) {
 
   const openMenu = () => {
     const r = moreRef.current?.getBoundingClientRect();
-    if (r) setMenuPos({ top: r.bottom + 4, left: Math.max(8, r.right - 180) });
+    if (!r) return;
+    const margin = 8;
+    const menuW = 180;
+    const estHeight = 128;
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+    const spaceBelow = vh - r.bottom - margin;
+    const flipUp = spaceBelow < estHeight && r.top > estHeight + margin;
+    const top = flipUp ? Math.max(margin, r.top - estHeight - 4) : r.bottom + 4;
+    const left = Math.min(Math.max(margin, r.right - menuW), vw - menuW - margin);
+    setMenuPos({ top, left });
   };
 
   const missed = () => setDosAction(icd.code, dos, 'missed');
@@ -289,8 +299,28 @@ function IcdComboPopover({ anchorRef, currentCode, currentDesc, onSelect, onClos
   const [pos, setPos] = useState(null);
 
   useEffect(() => {
-    const r = anchorRef.current?.getBoundingClientRect();
-    if (r) setPos({ top: r.bottom + 6, left: r.left, width: Math.max(r.width, 340) });
+    const compute = () => {
+      const r = anchorRef.current?.getBoundingClientRect();
+      if (!r) return;
+      const width = Math.max(r.width, 340);
+      const margin = 8;
+      const vh = window.innerHeight;
+      const vw = window.innerWidth;
+      // Search input + up to ~5 rows visible.
+      const estHeight = 320;
+      const spaceBelow = vh - r.bottom - margin;
+      const flipUp = spaceBelow < estHeight && r.top > estHeight + margin;
+      const top = flipUp ? Math.max(margin, r.top - estHeight - 6) : r.bottom + 6;
+      const left = Math.min(Math.max(margin, r.left), vw - width - margin);
+      setPos({ top, left, width, maxHeight: flipUp ? r.top - margin - 6 : spaceBelow });
+    };
+    compute();
+    window.addEventListener('resize', compute);
+    window.addEventListener('scroll', compute, true);
+    return () => {
+      window.removeEventListener('resize', compute);
+      window.removeEventListener('scroll', compute, true);
+    };
   }, [anchorRef]);
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -307,7 +337,7 @@ function IcdComboPopover({ anchorRef, currentCode, currentDesc, onSelect, onClos
   return createPortal(
     <>
       <div className={styles.comboOverlay} onClick={onClose} />
-      <div className={styles.comboMenu} style={{ top: pos.top, left: pos.left, width: pos.width }}>
+      <div className={styles.comboMenu} style={{ top: pos.top, left: pos.left, width: pos.width, maxHeight: pos.maxHeight, overflowY: 'auto' }}>
         <div className={styles.comboSearch}>
           <Icon name="solar:magnifer-linear" size={13} color="var(--neutral-300)" />
           <input
