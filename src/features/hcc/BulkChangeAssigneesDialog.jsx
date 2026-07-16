@@ -8,8 +8,18 @@ import { Select } from '../../components/Select/Select';
 import { useAppStore } from '../../store/useAppStore';
 import { ROLE_LABEL, ROLES } from './assignment/astranaStaff';
 import { dosKey } from './assignment/dosState';
-import { SYSTEM_USERS } from './systemUsers';
 import styles from './BulkChangeAssigneesDialog.module.css';
+
+// Engine role key → clinical_roles vocabulary admins pick from in
+// Settings → Users. Mirrors ENGINE_TO_CLINICAL in RoleAssigneePicker so
+// both surfaces filter the same way — the bulk dialog is a many-at-once
+// version of the row picker.
+const ENGINE_TO_CLINICAL = {
+  support:   'Support',
+  coder:     'Coder',
+  reviewer:  'QA',
+  reviewer2: 'Compliance',
+};
 
 /**
  * BulkChangeAssigneesDialog — centered modal matching Figma 1399:5871.
@@ -54,6 +64,9 @@ export function BulkChangeAssigneesDialog({ open, selectedIds, onClose, onApplie
   const hccDosAssignments = useAppStore(s => s.hccDosAssignments);
   const hccReassignRole = useAppStore(s => s.hccReassignRole);
   const showToast = useAppStore(s => s.showToast);
+  const platformUsers = useAppStore(s => s.platformUsers);
+  const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
+  useEffect(() => { fetchPlatformUsers(); }, [fetchPlatformUsers]);
 
   const [role, setRole] = useState('support');
   const [search, setSearch] = useState('');
@@ -76,14 +89,17 @@ export function BulkChangeAssigneesDialog({ open, selectedIds, onClose, onApplie
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
-  // Candidate pool — ONLY users whose engine role matches the selected role
-  // (Support, Coder, QA, or Compliance). Reassignment isn't cross-role: a
-  // Support DOS bucket can only go to another Support user, and so on.
-  // Care Team members for that role float to the top with a "Team: <name>"
+  // Candidate pool — platform users (Settings → Users / profiles) whose
+  // clinical_roles include the selected role's HCC clinical role. Mirrors
+  // the row picker's strict scoping (see RoleAssigneePicker.jsx). Care
+  // Team members for that role float to the top with a "Team: <name>"
   // annotation so admins can spot their roster.
   const candidates = useMemo(() => {
     const teamType = ROLE_LABEL[role];
-    // 1. Care Team members for this role — collect their userIds + team names.
+    const requiredRole = ENGINE_TO_CLINICAL[role];
+    if (!requiredRole) return [];
+
+    // 1. Care Team members for this role — collect names → team name.
     const teamMemberMap = new Map(); // userId → teamName
     (hccCareTeams || [])
       .filter(t => t.kind === 'hcc' && t.teamType === teamType)
@@ -91,16 +107,23 @@ export function BulkChangeAssigneesDialog({ open, selectedIds, onClose, onApplie
         if (!teamMemberMap.has(m.userId)) teamMemberMap.set(m.userId, t.name);
       }));
 
-    // 2. Filter to role-matched users, then order Care-Team members first.
-    const ranked = SYSTEM_USERS
-      .filter(u => u.engineRole === role)
+    // 2. Filter platform users to role-matched, then order Care-Team members first.
+    const ranked = (platformUsers || [])
+      .filter(u => u.clinicalRoles?.includes(requiredRole))
       .map(u => {
-        const teamName = teamMemberMap.get(u.id);
-        return { ...u, teamName, rank: teamName ? 1 : 2 };
+        const teamName = teamMemberMap.get(u.id) || teamMemberMap.get(u.name);
+        return {
+          id: u.id,
+          name: u.name,
+          initials: u.initials,
+          rolesLabel: requiredRole,
+          teamName,
+          rank: teamName ? 1 : 2,
+        };
       });
     ranked.sort((a, b) => a.rank - b.rank);
     return ranked;
-  }, [hccCareTeams, role]);
+  }, [hccCareTeams, platformUsers, role]);
 
   // Filter by search query (name or role label match).
   const visible = useMemo(() => {
@@ -221,7 +244,11 @@ export function BulkChangeAssigneesDialog({ open, selectedIds, onClose, onApplie
             onSelect={() => setPickedId('__unassigned')}
           />
           {visible.length === 0 ? (
-            <div className={styles.empty}>No users match "{search}"</div>
+            <div className={styles.empty}>
+              {search.trim()
+                ? `No users match "${search}"`
+                : `No users assigned the "${ENGINE_TO_CLINICAL[role]}" role. Assign the role in Settings → Users to make them selectable here.`}
+            </div>
           ) : visible.map(c => (
             <CandidateRow
               key={c.id}
