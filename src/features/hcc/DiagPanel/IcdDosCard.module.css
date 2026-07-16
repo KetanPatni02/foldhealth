@@ -292,7 +292,8 @@
   cursor: pointer;
   color: var(--neutral-400);
 }
-.moreBtn:hover { background: var(--neutral-50); }
+.moreBtn:hover:not(:disabled) { background: var(--neutral-50); }
+.moreBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── ⋯ menu (portaled) ── */
 .moreMenu {

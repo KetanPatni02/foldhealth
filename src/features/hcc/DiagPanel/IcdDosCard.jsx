@@ -336,7 +336,7 @@ function DosActionRow({
             <button
               ref={moreRef}
               type="button"
-              className={[styles.moreBtn, canReview ? '' : styles.disabledAction].filter(Boolean).join(' ')}
+              className={styles.moreBtn}
               aria-label="More actions"
               disabled={!canReview}
               onClick={!canReview ? undefined : () => (menuPos ? setMenuPos(null) : openMenu())}
