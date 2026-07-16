@@ -343,7 +343,20 @@ export function HccWorklistTable() {
       />
 
       <div className={styles.scrollWrap}>
-        <table className={styles.table}>
+        {filtered.length === 0 && searchQuery?.trim() && (
+          <EmptyState
+            title="No results found"
+            message={`No members match "${searchQuery.trim()}". Try a different search term.`}
+          />
+        )}
+        {filtered.length === 0 && !searchQuery?.trim() && !hccMembersLoading && (
+          <EmptyState
+            title="No HCC members yet"
+            message="Members will appear here once assigned."
+            icon="solar:ghost-smile-linear"
+          />
+        )}
+        <table className={styles.table} hidden={filtered.length === 0 && !hccMembersLoading}>
           <thead>
             <tr>
               <th className={`${rowStyles.stickyLeft} ${rowStyles.stickyCheck} ${styles.checkTh}`}>
@@ -419,20 +432,6 @@ export function HccWorklistTable() {
             ))}
           </tbody>
         </table>
-
-        {filtered.length === 0 && searchQuery?.trim() && (
-          <EmptyState
-            title="No results found"
-            message={`No members match "${searchQuery.trim()}". Try a different search term.`}
-          />
-        )}
-        {filtered.length === 0 && !searchQuery?.trim() && !hccMembersLoading && (
-          <EmptyState
-            title="No HCC members yet"
-            message="Members will appear here once assigned."
-            icon="solar:ghost-smile-linear"
-          />
-        )}
       </div>
 
       <StatusLegend />

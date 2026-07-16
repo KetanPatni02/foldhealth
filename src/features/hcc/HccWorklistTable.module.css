@@ -181,14 +181,23 @@
   align-items: center;
 }
 
-/* ── Empty state ── */
+/* ── Empty state ──
+   Sticky-left pins the empty state to the viewport left even when the
+   table body forces the scrollWrap to overflow horizontally, so it stays
+   visually centered on the visible viewport rather than the wide
+   scrolled content. width:100vw + a viewport-clamped max-width does the
+   centering; the flex column stacks icon → title → message. */
 .empty {
+  position: sticky;
+  left: 0;
+  width: 100%;
+  max-width: 100vw;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 10px;
-  padding: 64px 24px;
+  padding: 120px 24px 24px;
   color: var(--neutral-300);
 }
 .emptyTitle {
