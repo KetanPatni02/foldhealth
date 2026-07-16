@@ -18,6 +18,7 @@ import { track } from '../lib/tracking';
 import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem, applyNavStyle, getStoredNavStyle } from '../lib/theme';
 import { createBlock, createBlockTree, collectBlockTree, buildParentMap, cloneBlockTree, extractSubtree, cloneStoredTree } from '../features/email-builder/blockHelpers';
 import { extractEncountersSync } from '../features/hcc/upload/mockOcr';
+import { getChartDocs } from '../features/hcc/data/chartDocs';
 import { applyManualDecision as applyHccManualComplianceDecision } from '../features/hcc/compliance';
 import { makeInitialDocument } from '../features/email-builder/initialDocument';
 import * as hccLifecycle from '../features/hcc/assignment/lifecycle';
@@ -963,6 +964,34 @@ export const useAppStore = create((set, get) => ({
       .then(({ error }) => {
         if (error) console.warn(`setChartDocStatus persist(${memberId}|${docId}) failed:`, error.message);
       });
+    // Cascade to Support status when Support has just marked docs failed —
+    // "all documents failed" is the coder's contract for Insufficient. If
+    // AT LEAST ONE doc lands as Passed later, revert Support to In Progress
+    // so the coder can pick it back up.
+    queueMicrotask(() => {
+      const st = useAppStore.getState();
+      const member = st.hccMembers.find(m => m.id === memberId);
+      if (!member) return;
+      const dos = member.dos_list?.[0]?.date || member.dos;
+      if (!dos) return;
+      const charts = getChartDocs(
+        member,
+        st.hccAddedCharts[memberId] || [],
+        st.hccChartStatus[memberId] || {},
+        st.hccRemovedCharts[memberId] || [],
+      );
+      if (charts.length === 0) return;
+      const statuses = charts.map(c => String(c.status || 'pending').toLowerCase());
+      const allFailed = statuses.every(s => s === 'failed');
+      const anyPassed = statuses.some(s => s === 'passed');
+      const supportStatusField = 'supS';
+      const currentSupport = member[supportStatusField];
+      if (allFailed && currentSupport !== 'Insufficient') {
+        st.hccSetRoleStatus?.(memberId, dos, 'support', 'Insufficient');
+      } else if (anyPassed && currentSupport === 'Insufficient') {
+        st.hccSetRoleStatus?.(memberId, dos, 'support', 'In Progress');
+      }
+    });
   },
 
   // Docs unlinked from a member's chart (keyed by member id → array of doc ids).

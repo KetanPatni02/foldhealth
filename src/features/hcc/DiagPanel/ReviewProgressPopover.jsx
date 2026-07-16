@@ -20,7 +20,13 @@ import styles from './ReviewProgressPopover.module.css';
  * the engine hasn't been seeded yet we fall back to the legacy
  * `member.sup/cdr/r1/r2` fields so the popover still renders.
  */
-const TERMINAL_STATUSES = new Set(['Completed', 'Billing Ready', 'Reject', 'Rejected']);
+// "Done" here means the stage's work is finished successfully and progression
+// continues downstream. Reject / Rejected / Insufficient are terminal for the
+// stage but they stop the pipeline — they get a distinct 'rejected' state so
+// the popover shows them in red instead of green (and the pillLabel logic
+// stops advancing past them).
+const TERMINAL_STATUSES = new Set(['Completed', 'Billing Ready']);
+const REJECTED_STATUSES = new Set(['Reject', 'Rejected', 'Insufficient']);
 
 export function buildReviewStages(member, dosState) {
   // Four sequential stages per the HCC workflow:
@@ -43,6 +49,7 @@ export function buildReviewStages(member, dosState) {
 
     let state = 'pending';
     if (status === 'Skipped') state = 'skipped';
+    else if (status && REJECTED_STATUSES.has(status)) state = 'rejected';
     else if (status && TERMINAL_STATUSES.has(status)) state = 'done';
     else if (status && status !== 'Assign') state = 'active';
 
@@ -133,12 +140,15 @@ export function ReviewProgressPopover({
 function StageRow({ stage, isFirst, isLast }) {
   const { state, label, name, status, date } = stage;
 
-  // Subtitle colour follows the status: green / amber / grey.
+  // Subtitle colour follows the status: green (done) / amber (active) /
+  // red (rejected/insufficient) / grey (pending + skipped).
   const subtitleClass = state === 'done'
     ? styles.subtitleDone
     : state === 'active'
       ? styles.subtitleActive
-      : styles.subtitlePending;  // pending + skipped both read grey
+      : state === 'rejected'
+        ? styles.subtitleRejected
+        : styles.subtitlePending;
 
   return (
     <li className={styles.stage}>
@@ -194,6 +204,13 @@ function StatusBadge({ state }) {
     return (
       <span className={[styles.badge, styles.badgePending].join(' ')}>
         <Icon name="solar:minus-circle-linear" size={10} color="var(--neutral-300)" />
+      </span>
+    );
+  }
+  if (state === 'rejected') {
+    return (
+      <span className={[styles.badge, styles.badgeRejected].join(' ')}>
+        <Icon name="solar:close-circle-linear" size={10} color="var(--status-error)" />
       </span>
     );
   }

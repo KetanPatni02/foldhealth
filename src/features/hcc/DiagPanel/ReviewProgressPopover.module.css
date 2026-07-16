@@ -102,6 +102,10 @@
   background: var(--neutral-0);
   border-color: var(--neutral-200);
 }
+.badgeRejected {
+  background: var(--status-error-light);
+  border-color: var(--status-error);
+}
 
 /* ── Text column ─────────────────────────────────────────────────────── */
 
@@ -131,9 +135,10 @@
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
 }
-.subtitleDone    { color: var(--status-success); }
-.subtitleActive  { color: var(--status-warning); }
-.subtitlePending { color: var(--neutral-200); }
+.subtitleDone     { color: var(--status-success); }
+.subtitleActive   { color: var(--status-warning); }
+.subtitlePending  { color: var(--neutral-200); }
+.subtitleRejected { color: var(--status-error); }
 
 /* ── Footer ──────────────────────────────────────────────────────────── */
 

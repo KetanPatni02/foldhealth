@@ -194,31 +194,62 @@ function progressTone(status) {
 function ProgressStepper({ member }) {
   const anchorRef = useRef(null);
   const [rect, setRect] = useState(null);
+  // When pinned (via click), hover-leave doesn't close the popover; only
+  // a click on the trigger or outside the popover dismisses it.
+  const [pinned, setPinned] = useState(false);
   const openTimer = useRef(null);
   const closeTimer = useRef(null);
-  // Full stage timeline for the hover popover — uses the same
-  // buildReviewStages the DiagPanel does, falling back to member.sup/cdr/…
-  // when no per-DOS engine state is loaded (which is the norm on the
-  // worklist row level).
   const stages = useMemo(() => buildReviewStages(member, null), [member]);
   const statuses = [member.supS, member.cdrS, member.r1s, member.r2s];
 
+  const measureRect = () => anchorRef.current?.getBoundingClientRect() || null;
   const openPopover = () => {
     clearTimeout(closeTimer.current);
     if (rect) return;
     openTimer.current = setTimeout(() => {
-      const r = anchorRef.current?.getBoundingClientRect();
+      const r = measureRect();
       if (r) setRect(r);
     }, 150);
   };
   const closePopover = () => {
+    if (pinned) return;
     clearTimeout(openTimer.current);
     closeTimer.current = setTimeout(() => setRect(null), 180);
+  };
+  const togglePinned = (e) => {
+    e.stopPropagation();
+    clearTimeout(openTimer.current);
+    clearTimeout(closeTimer.current);
+    if (pinned) {
+      setPinned(false);
+      setRect(null);
+    } else {
+      const r = measureRect();
+      if (r) { setRect(r); setPinned(true); }
+    }
   };
   useEffect(() => () => {
     clearTimeout(openTimer.current);
     clearTimeout(closeTimer.current);
   }, []);
+  // Dismiss on outside-click / Escape when pinned.
+  useEffect(() => {
+    if (!pinned) return undefined;
+    const onDoc = (e) => {
+      if (anchorRef.current?.contains(e.target)) return;
+      // The popover itself is portaled to document.body; keep it open when
+      // the click lands inside it.
+      if (e.target.closest?.('[role="tooltip"][aria-label="Review progress"]')) return;
+      setPinned(false); setRect(null);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') { setPinned(false); setRect(null); } };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [pinned]);
 
   return (
     <>
@@ -227,8 +258,11 @@ function ProgressStepper({ member }) {
         className={styles.progress}
         onMouseEnter={openPopover}
         onMouseLeave={closePopover}
+        onClick={togglePinned}
+        role="button"
         tabIndex={0}
         aria-label="Review progress"
+        aria-expanded={!!rect}
       >
         {statuses.map((st, i) => {
           const tone = progressTone(st);
@@ -246,7 +280,7 @@ function ProgressStepper({ member }) {
           stages={stages}
           onEnter={() => clearTimeout(closeTimer.current)}
           onLeave={closePopover}
-          onClose={() => setRect(null)}
+          onClose={() => { setPinned(false); setRect(null); }}
         />
       )}
     </>
@@ -427,11 +461,13 @@ function Cell({ colKey, hidden, children, ...rest }) {
   );
 }
 
-// Statuses that count as "this role is done with the DOS" — they hand the
-// work off downstream. The DOS must complete the current stage before it
-// can be picked up by the next role; we never skip backward to a prior
-// completed assignee even if the next stage hasn't been assigned yet.
-const TERMINAL_STATUSES = new Set(['Completed', 'Reject', 'Rejected', 'Skipped', 'Billing Ready']);
+// Statuses that count as "this role finished successfully and the work hands
+// off downstream." Reject / Rejected / Insufficient are terminal for the stage
+// too, but they STOP the pipeline — the DOS never reaches the next role, so
+// they must be treated distinctly here or the LOW→HIGH walk would incorrectly
+// advance past a rejected Support to Coder.
+const TERMINAL_STATUSES = new Set(['Completed', 'Skipped', 'Billing Ready']);
+const BLOCKING_STATUSES = new Set(['Reject', 'Rejected', 'Insufficient']);
 
 // Sequential workflow order. The first role whose status is NOT terminal
 // is where the DOS currently sits (HCC reality: Support → Coder → Reviewer →
@@ -470,13 +506,18 @@ export function resolveCurrentAssignee(member, dosState) {
         }
         return { kind: 'unassigned', role };
       }
+      // Blocking status (Reject / Rejected / Insufficient) — the pipeline
+      // stops here. Keep the DOS on this stage instead of advancing.
+      if (BLOCKING_STATUSES.has(status)) {
+        return makeActive(rs?.assignee, role, status);
+      }
       // Stage has a non-terminal status → DOS lives here right now.
       if (!TERMINAL_STATUSES.has(status)) {
         return makeActive(rs?.assignee, role, status);
       }
-      // Otherwise terminal → continue down the chain.
+      // Otherwise terminal-done → continue down the chain.
     }
-    // All four stages terminal → Billing Ready.
+    // All four stages terminal-done → Billing Ready.
     return { kind: 'billing' };
   }
 
@@ -495,6 +536,10 @@ export function resolveCurrentAssignee(member, dosState) {
       return { kind: 'unassigned', role: r.role };
     }
     if (!r.status || r.status === 'Assign') {
+      return makeActiveLegacy(r.name, r.role, r.status);
+    }
+    // Blocking status stays with this stage — don't advance.
+    if (BLOCKING_STATUSES.has(r.status)) {
       return makeActiveLegacy(r.name, r.role, r.status);
     }
     if (!TERMINAL_STATUSES.has(r.status)) {

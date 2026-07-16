@@ -338,13 +338,23 @@ export function DiagPanel() {
     return rs?.status || diagDosStatus || 'New';
   }, [dosState, actingRole, diagDosStatus]);
 
-  // QA / Compliance can't work a record until Support AND Coder are done —
-  // their status pill and ICD-review actions stay locked until then.
+  // Downstream roles wait for their prerequisites:
+  //   • Coder: locked when Support marked the record Insufficient / Reject —
+  //     the coder shouldn't work an ICD when the source docs failed review.
+  //   • QA / Compliance: locked until Support + Coder both Completed, or if
+  //     Support blocked the pipeline (Insufficient / Reject / Rejected).
   const stageLocked = useMemo(() => {
-    if (actingRole !== 'reviewer' && actingRole !== 'reviewer2') return false;
-    const supDone = (dosState?.support?.status || member?.supS) === 'Completed';
-    const cdrDone = (dosState?.coder?.status || member?.cdrS) === 'Completed';
-    return !(supDone && cdrDone);
+    const supStatus = dosState?.support?.status || member?.supS;
+    const cdrStatus = dosState?.coder?.status || member?.cdrS;
+    const supBlocked = supStatus === 'Insufficient' || supStatus === 'Reject' || supStatus === 'Rejected';
+    if (actingRole === 'coder') return supBlocked;
+    if (actingRole === 'reviewer' || actingRole === 'reviewer2') {
+      if (supBlocked) return true;
+      const supDone = supStatus === 'Completed';
+      const cdrDone = cdrStatus === 'Completed';
+      return !(supDone && cdrDone);
+    }
+    return false;
   }, [actingRole, dosState, member]);
 
   // ── Review-progress stages + ring (drives the stage pill) ──
@@ -378,11 +388,14 @@ export function DiagPanel() {
     return slaOutcome(member?.date, coderDoneAt);
   }, [dosState, member]);
 
-  // Hover state for the Review Progress popover.
+  // Hover + click-pin state for the Review Progress popover. Click toggles
+  // "pinned" — while pinned, hover-leave and popover blur are ignored; only
+  // a click on the pill or outside the popover dismisses.
   const pillRef = useRef(null);
   const openTimer = useRef(null);
   const closeTimer = useRef(null);
   const [pillRect, setPillRect] = useState(null);
+  const [pillPinned, setPillPinned] = useState(false);
   const onPillEnter = () => {
     if (closeTimer.current) { clearTimeout(closeTimer.current); closeTimer.current = null; }
     if (pillRect) return;
@@ -392,13 +405,41 @@ export function DiagPanel() {
     }, 200);
   };
   const onPillLeave = () => {
+    if (pillPinned) return;
     if (openTimer.current) { clearTimeout(openTimer.current); openTimer.current = null; }
     closeTimer.current = setTimeout(() => setPillRect(null), 200);
   };
+  const onPillClick = (e) => {
+    e.stopPropagation();
+    if (openTimer.current) { clearTimeout(openTimer.current); openTimer.current = null; }
+    if (closeTimer.current) { clearTimeout(closeTimer.current); closeTimer.current = null; }
+    if (pillPinned) {
+      setPillPinned(false); setPillRect(null);
+    } else {
+      const r = pillRef.current?.getBoundingClientRect();
+      if (r) { setPillRect(r); setPillPinned(true); }
+    }
+  };
+  useEffect(() => {
+    if (!pillPinned) return undefined;
+    const onDoc = (e) => {
+      if (pillRef.current?.contains(e.target)) return;
+      if (e.target.closest?.('[role="tooltip"][aria-label="Review progress"]')) return;
+      setPillPinned(false); setPillRect(null);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') { setPillPinned(false); setPillRect(null); } };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [pillPinned]);
   const cancelClose = () => {
     if (closeTimer.current) { clearTimeout(closeTimer.current); closeTimer.current = null; }
   };
   const requestClose = () => {
+    if (pillPinned) return;
     closeTimer.current = setTimeout(() => setPillRect(null), 200);
   };
   useEffect(() => () => {
@@ -720,8 +761,11 @@ export function DiagPanel() {
             className={styles.withCoderPill}
             onMouseEnter={onPillEnter}
             onMouseLeave={onPillLeave}
+            onClick={onPillClick}
+            role="button"
             tabIndex={0}
-            aria-label={`${pillLabel} — review ${Math.round(reviewProgress * 100)}% complete. Hover for details.`}
+            aria-label={`${pillLabel} — review ${Math.round(reviewProgress * 100)}% complete. Hover or click for details.`}
+            aria-expanded={!!pillRect}
           >
             <ProgressRing progress={reviewProgress} size={16} stroke={2} />
             <span>{pillLabel}</span>
@@ -732,7 +776,7 @@ export function DiagPanel() {
               stages={reviewStages}
               onEnter={cancelClose}
               onLeave={requestClose}
-              onClose={() => setPillRect(null)}
+              onClose={() => { setPillPinned(false); setPillRect(null); }}
             />
           )}
         </div>
@@ -744,7 +788,12 @@ export function DiagPanel() {
             onChange={handleStatusChange}
             role={actingRole}
             disabled={stageLocked}
-            disabledReason="Support and Coder must complete their work first"
+            disabledReason={(() => {
+              const supStatus = dosState?.support?.status || member?.supS;
+              if (supStatus === 'Insufficient') return 'Support marked the documents Insufficient — nothing to code yet';
+              if (supStatus === 'Reject' || supStatus === 'Rejected') return 'Support rejected this DOS — no downstream action';
+              return 'Support and Coder must complete their work first';
+            })()}
           />
         </div>
       </div>
