@@ -67,12 +67,6 @@ export function DiagPanelFilterBar({
         onChange={set('year')}
       />
       <FilterChip
-        label="HCC Status"
-        options={options.hcc}
-        selected={filters.hcc || []}
-        onChange={set('hcc')}
-      />
-      <FilterChip
         label="ICD Status"
         options={ICD_STATUS_OPTIONS}
         selected={filters.status || []}
@@ -83,12 +77,6 @@ export function DiagPanelFilterBar({
         options={options.by}
         selected={filters.by || []}
         onChange={set('by')}
-      />
-      <FilterChip
-        label="Created Date"
-        options={options.created}
-        selected={filters.created || []}
-        onChange={set('created')}
       />
       <FilterChip
         label="Last Recorded Date"

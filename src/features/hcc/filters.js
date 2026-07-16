@@ -88,8 +88,8 @@ export const FILTER_DEFS = [
     'Transitional Care Management (TCM) Visit',
     'Chronic Care Management (CCM)',
   ] },
-  // Measurement Year — most recent first (descending).
-  { k: 'my',     label: 'Measurement Year',    type: 'multi', opts: ['2026', '2025', '2024', '2023', '2022', '2021'] },
+  // Measurement Year — most recent 3 years, current year first.
+  { k: 'my',     label: 'Measurement Year',    type: 'multi', opts: measurementYearOpts() },
   // Assignee options come from the platformUsers store slice (profiles
   // table, populated by Settings → Users). SYSTEM_USER_NAMES is the
   // fallback when the fetch hasn't returned yet or the DB is empty.
@@ -104,10 +104,10 @@ export const FILTER_DEFS = [
   // (aligned with ROLE_STATUS_OPTIONS in statusSpec.js). Support has no "New"
   // (work arrives already actionable); Coder has record-request states; QA
   // and Compliance share the reviewer flow.
-  { k: 'supS',   label: 'Support Team Status', type: 'multi', opts: ['Action Needed', 'In Progress', 'Insufficient', 'Returned', 'Completed', 'Rejected'] },
-  { k: 'cdrS',   label: 'Coder Status',        type: 'multi', opts: ['New', 'In Progress', 'Record Received', 'Record Requested', 'Skipped', 'Completed', 'Rejected'] },
-  { k: 'r1s',    label: 'QA Status',           type: 'multi', opts: ['New', 'In Progress', 'Returned', 'Skipped', 'Completed', 'Rejected'] },
-  { k: 'r2s',    label: 'Compliance Status',   type: 'multi', opts: ['New', 'In Progress', 'Returned', 'Skipped', 'Completed', 'Rejected'] },
+  { k: 'supS',   label: 'Support Team Status', type: 'multi', opts: ['Action Needed', 'In Progress', 'Insufficient', 'Rebuttal', 'Completed', 'Rejected'] },
+  { k: 'cdrS',   label: 'Coder Status',        type: 'multi', opts: ['New', 'In Progress', 'Record Received', 'Record Requested', 'Rebuttal', 'Skipped', 'Completed', 'Rejected'] },
+  { k: 'r1s',    label: 'QA Status',           type: 'multi', opts: ['New', 'In Progress', 'Rebuttal', 'Skipped', 'Completed', 'Rejected'] },
+  { k: 'r2s',    label: 'Compliance Status',   type: 'multi', opts: ['New', 'In Progress', 'Rebuttal', 'Skipped', 'Completed', 'Rejected'] },
   { k: 'dec',    label: 'Decile',              type: 'range', opts: ['1','2','3','4','5','6','7','8','9','10'] },
   // Phase 3d — date-range filters use the shared DateRangePopover.
   // Values are stored as [startISO, endISO]; the predicate parses them
@@ -119,6 +119,21 @@ export const FILTER_DEFS = [
 ];
 
 export const FILTER_DEF_MAP = Object.fromEntries(FILTER_DEFS.map(d => [d.k, d]));
+
+// Measurement Year options — most-recent 3 years (current + prior two),
+// descending. Kept as strings so the multi-select value compares straight
+// against the DOS year in matchOne('my').
+function measurementYearOpts() {
+  const y = new Date().getFullYear();
+  return [String(y), String(y - 1), String(y - 2)];
+}
+
+// Role-status filter → engine value normalization. Coders see "Rebuttal" in the
+// filter option list, but the engine still stores the canonical "Returned"
+// value on the member (see STATUS_SPEC in statusSpec.js). Translate before
+// matching so the filter picks up rows in that state.
+const ROLE_STATUS_ALIAS = { Rebuttal: 'Returned' };
+const roleStatusVals = (vals) => new Set(vals.map(v => ROLE_STATUS_ALIAS[v] || v));
 
 // Support Team Status filter buckets → the underlying member `supS` values they
 // cover. The filter uses the canonical Figma vocabulary (Action Needed /
@@ -199,10 +214,14 @@ function matchOne(m, k, vals) {
       return vals.some(v => years.has(v));
     }
     // Coder Status — normalize both sides (data carries plural "Records …"
-    // forms; the canonical option labels are singular).
-    case 'cdrS':  return vals.some(v => canonicalStatus(v) === canonicalStatus(m.cdrS));
-    case 'r1s':   return vals.includes(m.r1s);
-    case 'r2s':   return vals.includes(m.r2s);
+    // forms; the canonical option labels are singular). "Rebuttal" is the
+    // user-facing label for the engine's "Returned" state.
+    case 'cdrS': {
+      const set = roleStatusVals(vals);
+      return [...set].some(v => canonicalStatus(v) === canonicalStatus(m.cdrS));
+    }
+    case 'r1s':   return roleStatusVals(vals).has(m.r1s);
+    case 'r2s':   return roleStatusVals(vals).has(m.r2s);
     case 'dec': {
       if (vals.length >= 2) {
         const mn = parseInt(vals[0], 10);
