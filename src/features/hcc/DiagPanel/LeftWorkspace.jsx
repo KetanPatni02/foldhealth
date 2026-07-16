@@ -10,7 +10,7 @@ import {
   CLAIMS,
   HISTORY as HISTORY_MOCK,
 } from '../data/ancillary';
-import { getChartDocs } from '../data/chartDocs';
+import { getChartDocs, makeUploadedChartDoc } from '../data/chartDocs';
 import { ACTIVITY, getActivityFromDb } from '../data/activity';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { OutreachTab as PatientOutreachTab } from '../../patient/components/OutreachTab';
@@ -955,15 +955,14 @@ const DOC_STATUS_BADGE = {
 function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId }) {
   const showToast = useAppStore(s => s.showToast);
   const uploaderOpen = useAppStore(s => s.hccDocsUploaderOpen);
-  const uploaded = useAppStore(s => s.hccUploadedDocs);
-  // Two shapes converge here: (a) charts = the RECORD's real docs (source of
-  // truth, matches the worklist Documents-column count) — uses fields
-  // { id, n, t, dateAdded, addedBy, status }; (b) uploaded = docs the user
-  // just uploaded via the inline uploader — uses the DOCUMENTS mock shape.
-  // Normalize charts into the mock shape so one row template renders both.
+  const removeChartDoc = useAppStore(s => s.removeChartDoc);
+  // Single source of truth: `charts` is the RECORD's real docs from
+  // hcc_added_charts (member-scoped). Both entry points — UploadChartDrawer
+  // and the inline DocumentsUploader — write via addChartDoc, so this list
+  // covers both. Normalize into the row template's shape.
   const list = useMemo(() => {
     const extFromName = (name = '') => (/\.([a-z0-9]+)$/i.exec(name)?.[1] || '').toLowerCase();
-    const normalizedCharts = charts.map((c) => ({
+    return charts.map((c) => ({
       id: c.id,
       name: c.n || c.caption || 'Document',
       type: c.t || 'Document',
@@ -975,8 +974,7 @@ function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId }
       ext: extFromName(c.n || c.caption),
       pdf: c.pdf,
     }));
-    return [...uploaded, ...normalizedCharts];
-  }, [uploaded, charts]);
+  }, [charts]);
   // If a doc gets removed while open, drop back to the listing.
   useEffect(() => {
     if (openDocId && !list.some(d => d.id === openDocId)) setOpenDocId(null);
@@ -1125,10 +1123,14 @@ function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId }
               <Badge variant={status.variant} label={status.label} />
               <div className={styles.dataTableActions} onClick={(e) => e.stopPropagation()}>
                 <ActionButton
-                  icon="solar:menu-dots-linear"
+                  icon="solar:trash-bin-trash-linear"
                   size="S"
-                  tooltip="More"
-                  onClick={() => showToast('Document actions — coming soon')}
+                  tooltip="Delete document"
+                  onClick={() => {
+                    removeChartDoc(member.id, d.id);
+                    if (openDocId === d.id) setOpenDocId(null);
+                    showToast(`Removed ${d.name}`);
+                  }}
                 />
               </div>
             </div>
@@ -1167,7 +1169,7 @@ function DocumentsUploader() {
   const close = useAppStore(s => s.closeHccDocsUploader);
   const showToast = useAppStore(s => s.showToast);
   const addActivityEntry = useAppStore(s => s.addActivityEntry);
-  const recordHccUpload = useAppStore(s => s.recordHccUpload);
+  const addChartDoc = useAppStore(s => s.addChartDoc);
   const logHccActivity = useAppStore(s => s.logHccActivity);
   const diagPanelMemberId = useAppStore(s => s.diagPanelMemberId);
   const hccMembers = useAppStore(s => s.hccMembers);
@@ -1216,47 +1218,42 @@ function DocumentsUploader() {
   const onDrop = (e) => { e.preventDefault(); setDrag(false); startUpload(e.dataTransfer.files?.[0]); };
 
   const canSubmit = phase === 'ready' && file && caption.trim();
+  const canSubmitAndMember = canSubmit && diagPanelMemberId;
   const onSubmit = () => {
-    if (!canSubmit) return;
-    const now = new Date();
-    const pad = (n) => String(n).padStart(2, '0');
-    const date = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
-    const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-    const ext = extFromName(file.name);
-    recordHccUpload({
-      id: `du-${Date.now()}`,
-      name: caption.trim(),
-      ext,
-      type: category,
-      uploadedBy: 'You',
-      role: 'Coder',
-      date,
-      time,
-      status: 'pending',
+    if (!canSubmitAndMember) return;
+    const patient = hccMembers.find(m => m.id === diagPanelMemberId);
+    if (!patient) return;
+    // Route through the same store action UploadChartDrawer uses so a doc
+    // uploaded here is member-scoped, persists to hcc_added_charts, and
+    // surfaces on BOTH the worklist row's Documents column and this tab
+    // (they read the same chart list).
+    const doc = makeUploadedChartDoc(patient, {
+      file,
+      caption: caption.trim(),
+      docType: category,
     });
+    addChartDoc(diagPanelMemberId, doc, file);
     addActivityEntry({
       t: 'upload', by: 'You', role: 'Coder',
       icds: activityIcd ? [activityIcd] : undefined,
       headline: activityIcd
         ? `Document Uploaded for ${activityIcd}`
         : 'Document Uploaded',
-      file: file.name,
+      file: doc.n,
       fileType: category,
     });
-    // Persistent audit trail → hcc_activity_log (History drawer).
-    const patient = hccMembers.find(m => m.id === diagPanelMemberId);
     logHccActivity?.({
       eventName: 'document.uploaded_for_icd',
       scope:     { patientId: diagPanelMemberId, icd: activityIcd || null, source: 'manual' },
       payload:   {
         actor: 'You',
         role: 'Coder',
-        fileName: file.name,
+        fileName: doc.n,
         fileType: category,
         patientName: patient?.name,
       },
     });
-    showToast(`Uploaded ${caption.trim()} — pending review.`);
+    showToast(`Uploaded ${doc.n} — pending review.`);
     reset(); close();
   };
   const onCancel = () => { reset(); close(); };

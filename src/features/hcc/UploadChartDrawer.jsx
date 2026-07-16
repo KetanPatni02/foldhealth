@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Button } from '../../components/Button/Button';
@@ -31,27 +31,39 @@ export function UploadChartDrawer() {
 
   const [file, setFile] = useState(null);
   const [caption, setCaption] = useState('');
+  const [captionTouched, setCaptionTouched] = useState(false);
   const [docType, setDocType] = useState('');
   const [uploadKey, setUploadKey] = useState(0); // remount UploadDropField to reset it
+
+  // Pre-populate the Caption field with the file name (extension stripped)
+  // when a file is picked and the user hasn't already typed their own caption.
+  // A subsequent file swap re-syncs unless the caption was manually edited.
+  useEffect(() => {
+    if (!file || captionTouched) return;
+    const stripped = file.name.replace(/\.[a-z0-9]+$/i, '');
+    setCaption(stripped);
+  }, [file, captionTouched]);
 
   if (!member) return null;
 
   const ok = !!(file && caption.trim() && docType);
 
   const handleUpload = () => {
-    addChartDoc(member.id, makeUploadedChartDoc(member, { file, caption, docType }), file);
+    const doc = makeUploadedChartDoc(member, { file, caption, docType });
+    addChartDoc(member.id, doc, file);
     addActivityEntry({
       t: 'upload', by: 'You', role: 'Coder',
       icds: activityIcd ? [activityIcd] : undefined,
       headline: activityIcd
         ? `Document Uploaded for ${activityIcd}`
         : 'Document Uploaded',
-      file: file.name,
+      file: doc.n,
       fileType: docType,
     });
-    showToast(`Uploaded ${file.name} to ${member.name}'s documents.`);
+    showToast(`Uploaded ${doc.n} to ${member.name}'s documents.`);
     setFile(null);
     setCaption('');
+    setCaptionTouched(false);
     setDocType('');
     setUploadKey(k => k + 1);
     close();
@@ -60,6 +72,7 @@ export function UploadChartDrawer() {
   const handleClose = () => {
     setFile(null);
     setCaption('');
+    setCaptionTouched(false);
     setDocType('');
     setUploadKey(k => k + 1);
     close();
@@ -106,7 +119,7 @@ export function UploadChartDrawer() {
             type="text"
             value={caption}
             placeholder="Add caption"
-            onChange={(e) => setCaption(e.target.value)}
+            onChange={(e) => { setCaption(e.target.value); setCaptionTouched(true); }}
             className={styles.input}
           />
         </div>

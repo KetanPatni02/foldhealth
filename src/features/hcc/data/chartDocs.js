@@ -101,10 +101,14 @@ export function makeUploadedChartDoc(member, { file, caption, docType }) {
   const uploadedOn = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
   const isPdf = file && (file.type === 'application/pdf' || /\.pdf$/i.test(file.name));
   const cap = (caption || '').trim();
+  // Caption is the user-facing document name (surfaces in the worklist
+  // Documents column AND the DiagPanel Documents tab). Fall back to the
+  // raw filename when the caption wasn't set.
+  const displayName = cap || file?.name || 'Document';
   return {
     id: `${memberKey(member)}::upload${Date.now()}`,
-    n: file?.name || cap || 'Document.pdf',
-    caption: cap || file?.name || 'Document',
+    n: displayName,
+    caption: displayName,
     t: docType,
     pdf: isPdf ? URL.createObjectURL(file) : undefined,
     dateAdded: uploadedOn,
