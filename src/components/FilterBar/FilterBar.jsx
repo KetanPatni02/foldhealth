@@ -82,6 +82,41 @@ function resolveOptions(filterDef, patients) {
   return filterDef.options || [];
 }
 
+// The shared FilterChip is multi-select and takes plain-string options +
+// `selected: string[]` + `onChange(string[])`. Our TOC filters are stored
+// as a single value per key (activeFilters[key] = value). This adapter
+// bridges the two: it renders labels in the popover, converts the current
+// value → single-element `selected`, and on change picks the last value
+// to write back to setFilter. Passing `null` clears the filter.
+function SingleSelectFilter({ label, def, options, current, onSet, onClear }) {
+  const valueByLabel = new Map(options.map(o => [o.label, o.value]));
+  const labelByValue = new Map(options.map(o => [o.value, o.label]));
+  const stringOptions = options.map(o => o.label);
+  const selected = current != null && labelByValue.has(current)
+    ? [labelByValue.get(current)]
+    : [];
+  const handleChange = (nextLabels) => {
+    if (!nextLabels || nextLabels.length === 0) {
+      onClear();
+      return;
+    }
+    // Single-select semantics — keep only the most-recently added label.
+    const pick = nextLabels.find(l => !selected.includes(l)) || nextLabels[nextLabels.length - 1];
+    const nextValue = valueByLabel.get(pick);
+    if (nextValue == null) return;
+    onSet(nextValue);
+  };
+  return (
+    <FilterChip
+      label={label}
+      options={stringOptions}
+      selected={selected}
+      onChange={handleChange}
+      searchable={!!def.optionsFromData}
+    />
+  );
+}
+
 export function FilterBar() {
   const viewBy = useAppStore(s => s.viewBy);
   const setViewBy = useAppStore(s => s.setViewBy);
@@ -123,12 +158,12 @@ export function FilterBar() {
         </div>
 
         {FILTER_DEFS.map(fd => (
-          <FilterChip
+          <SingleSelectFilter
             key={fd.key}
             label={fd.label}
-            value={activeFilters[fd.key] || null}
+            def={fd}
             options={resolveOptions(fd, patients)}
-            searchable={!!fd.optionsFromData}
+            current={activeFilters[fd.key] || null}
             onSet={(val) => setFilter(fd.key, val)}
             onClear={() => setFilter(fd.key, null)}
           />
