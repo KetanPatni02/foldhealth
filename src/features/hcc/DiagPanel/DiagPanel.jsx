@@ -250,6 +250,17 @@ export function DiagPanel() {
   // acted on, or reached via the keyboard.
   const [focusIdx, setFocusIdx] = useState(-1);
 
+  // Selection ↔ left-panel binding. Closing the panel drops the current
+  // ICD/DOS highlight so no card stays "selected" without context; picking
+  // a card while the panel is closed opens it to Documents so the preview
+  // and selection stay in sync.
+  useEffect(() => {
+    if (!diagLeftPanel && focusIdx !== -1) setFocusIdx(-1);
+  }, [diagLeftPanel, focusIdx]);
+  useEffect(() => {
+    if (focusIdx >= 0 && !diagLeftPanel) setDiagLeftPanel('documents');
+  }, [focusIdx, diagLeftPanel, setDiagLeftPanel]);
+
   // Fetch diagnosis gaps from Supabase when member changes
   useEffect(() => {
     if (member?.name) fetchHccDiagnosisGaps(member.name);

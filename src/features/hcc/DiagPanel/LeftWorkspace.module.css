@@ -893,6 +893,65 @@
   border-radius: 4px;
 }
 
+/* Meta + trailing action buttons row. Actions only render for the author's
+   own comments (edit / delete). Hidden by default, revealed on tlRow hover
+   or when keyboard focus lands inside the row. */
+.commentMetaRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+}
+.commentActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.tlRow:hover .commentActions,
+.tlRow:focus-within .commentActions {
+  opacity: 1;
+}
+.commentActionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 4px;
+  color: var(--neutral-400);
+}
+.commentActionBtn:hover { background: var(--neutral-50); color: var(--neutral-500); }
+/* Inline edit form — sits in place of .commentBody while editing. */
+.commentEditor { margin-top: 4px; display: flex; flex-direction: column; gap: 6px; }
+.commentEditorActions { display: flex; justify-content: flex-end; gap: 8px; }
+.commentGhostBtn,
+.commentSaveBtn {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font: 500 12px/1.3 'Inter', sans-serif;
+  cursor: pointer;
+}
+.commentGhostBtn {
+  background: transparent;
+  border: 0.5px solid var(--neutral-200);
+  color: var(--neutral-400);
+}
+.commentGhostBtn:hover { background: var(--neutral-50); }
+.commentSaveBtn {
+  background: var(--primary-300);
+  border: 0.5px solid var(--primary-300);
+  color: var(--neutral-0);
+}
+.commentSaveBtn:hover:not(:disabled) { background: var(--primary-400, var(--primary-300)); }
+.commentSaveBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* Comment body text — full-width, multi-line, sits below the meta line. */
 .commentBody {
   font-family: 'Inter', sans-serif;

@@ -236,7 +236,12 @@ function DosActionRow({
   const moreRef = useRef(null);
   // ICD accept/reject is a coding action — Support can't perform it, and QA /
   // Compliance are locked out until Support + Coder have completed (reviewLocked).
-  const canReview = useAppStore(s => s.hccUserRole) !== 'Support' && !reviewLocked;
+  const rowRole = useAppStore(s => s.hccUserRole);
+  const canReview = rowRole !== 'Support' && !reviewLocked;
+  // Two distinct disabled reasons drive different tooltip copy.
+  const disabledReason = rowRole === 'Support'
+    ? 'Support role cannot code ICDs'
+    : (reviewLocked ? "Support team hasn't reviewed the documents yet" : null);
   const openHccClaimForDos = useAppStore(s => s.openHccClaimForDos);
   const isManual = entry.manual || icd.type === 'Manual';
   const isAccepted = action === 'accepted';
@@ -348,7 +353,7 @@ function DosActionRow({
             </>
           ) : (
             <>
-              <Tooltip label={canReview ? 'Accept (A)' : 'Accept'}>
+              <Tooltip label={canReview ? 'Accept (A)' : (disabledReason || 'Accept')}>
                 <button
                   type="button"
                   className={[styles.acceptBtn, canReview ? '' : styles.disabledAction].filter(Boolean).join(' ')}
@@ -359,7 +364,7 @@ function DosActionRow({
                   <CheckIcon size={15} color="currentColor" />
                 </button>
               </Tooltip>
-              <Tooltip label={canReview ? 'Dismiss (X)' : 'Dismiss'}>
+              <Tooltip label={canReview ? 'Dismiss (X)' : (disabledReason || 'Dismiss')}>
                 <button
                   type="button"
                   className={[styles.rejectBtn, dismissOpen ? styles.rejectBtnActive : '', canReview ? '' : styles.disabledAction].filter(Boolean).join(' ')}
@@ -372,7 +377,7 @@ function DosActionRow({
               </Tooltip>
             </>
           )}
-          <Tooltip label={canReview ? 'More actions' : 'Support role cannot code ICDs'}>
+          <Tooltip label={canReview ? 'More actions' : (disabledReason || 'More actions')}>
             <button
               ref={moreRef}
               type="button"

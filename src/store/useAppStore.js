@@ -192,6 +192,28 @@ function persistHccDiagComment(row) {
     });
 }
 
+function persistHccDiagCommentUpdate(row) {
+  if (!row?.id) return;
+  supabase
+    .from('hcc_diag_comments')
+    .update({ body: row.body, edited: true })
+    .eq('id', row.id)
+    .then(({ error }) => {
+      if (error) console.warn(`persistHccDiagCommentUpdate(${row.id}) failed:`, error.message);
+    });
+}
+
+function persistHccDiagCommentDelete(id) {
+  if (!id) return;
+  supabase
+    .from('hcc_diag_comments')
+    .delete()
+    .eq('id', id)
+    .then(({ error }) => {
+      if (error) console.warn(`persistHccDiagCommentDelete(${id}) failed:`, error.message);
+    });
+}
+
 function persistHccDiagNote(row) {
   if (!row?.id) return;
   supabase
@@ -4285,6 +4307,26 @@ export const useAppStore = create((set, get) => ({
     if (!row?.id) return;
     set(s => ({ hccDiagComments: [row, ...(s.hccDiagComments || [])] }));
     persistHccDiagComment(row);
+  },
+
+  // Edit an existing comment's body. `edited: true` stamps the row so the
+  // UI can render the "Edited" badge. Only the author's UI exposes this.
+  updateHccDiagComment: (id, body) => {
+    if (!id) return;
+    set(s => ({
+      hccDiagComments: (s.hccDiagComments || []).map(c =>
+        c.id === id ? { ...c, body, edited: true } : c),
+    }));
+    persistHccDiagCommentUpdate({ id, body });
+  },
+
+  // Remove a comment. Author-only — the caller checks author identity.
+  deleteHccDiagComment: (id) => {
+    if (!id) return;
+    set(s => ({
+      hccDiagComments: (s.hccDiagComments || []).filter(c => c.id !== id),
+    }));
+    persistHccDiagCommentDelete(id);
   },
 
   // Post a new note to the DiagPanel Notes tab. Same pattern as

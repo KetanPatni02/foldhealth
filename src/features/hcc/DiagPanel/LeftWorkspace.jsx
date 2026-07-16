@@ -701,12 +701,23 @@ function CommentsTab() {
   useEffect(() => { setItems(seed); }, [seed]);
   const [draft, setDraft] = useState('');
   const [collapsed, setCollapsed] = useState(() => new Set());
+  const [confirmDeleteComment, setConfirmDeleteComment] = useState(null);
   const activityIcd = useAppStore(s => s.diagActivityIcd);
   const addActivityEntry = useAppStore(s => s.addActivityEntry);
   const addHccDiagComment = useAppStore(s => s.addHccDiagComment);
+  const updateHccDiagComment = useAppStore(s => s.updateHccDiagComment);
+  const deleteHccDiagComment = useAppStore(s => s.deleteHccDiagComment);
   const logHccActivity = useAppStore(s => s.logHccActivity);
   const diagPanelMemberId = useAppStore(s => s.diagPanelMemberId);
   const hccMembers = useAppStore(s => s.hccMembers);
+  const editComment = (id, body) => {
+    setItems(prev => prev.map(c => c.id === id ? { ...c, body, edited: true } : c));
+    updateHccDiagComment(id, body);
+  };
+  const removeComment = (id) => {
+    setItems(prev => prev.filter(c => c.id !== id));
+    deleteHccDiagComment(id);
+  };
 
   const addComment = () => {
     const body = draft.trim();
@@ -778,12 +789,26 @@ function CommentsTab() {
                   item={c}
                   isFirst={i === 0}
                   isLast={i === g.items.length - 1}
+                  onEdit={editComment}
+                  onDelete={(id, body) => setConfirmDeleteComment({ id, body })}
                 />
               ))}
             </div>
           );
         })}
       </div>
+      {confirmDeleteComment && (
+        <DestructiveDialog
+          title="Delete comment?"
+          description="This comment will be permanently removed. This can't be undone."
+          confirmLabel="Delete"
+          onCancel={() => setConfirmDeleteComment(null)}
+          onConfirm={() => {
+            removeComment(confirmDeleteComment.id);
+            setConfirmDeleteComment(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -807,7 +832,17 @@ function groupByMonth(items) {
     .sort((a, b) => b._ts - a._ts);
 }
 
-function CommentEntry({ item, isFirst, isLast }) {
+function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
+  const isMine = item.author === 'You';
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(item.body || '');
+  useEffect(() => { setDraft(item.body || ''); }, [item.body]);
+  const commit = () => {
+    const next = draft.trim();
+    if (!next || next === item.body) { setEditing(false); return; }
+    onEdit?.(item.id, next);
+    setEditing(false);
+  };
   return (
     <div className={styles.tlRow}>
       <div className={styles.tlRail}>
@@ -821,11 +856,55 @@ function CommentEntry({ item, isFirst, isLast }) {
         {!isLast && <span className={styles.tlConnectorBottom} />}
       </div>
       <div className={[styles.tlBody, isFirst ? styles.tlBodyFirst : '', isLast ? styles.tlBodyLast : ''].join(' ')}>
-        <div className={styles.tlMeta}>
-          {item.date} • {item.time} • {item.author}({item.role})
-          {item.edited && <span className={styles.commentEditedBadge}>Edited</span>}
+        <div className={styles.commentMetaRow}>
+          <div className={styles.tlMeta}>
+            {item.date} • {item.time} • {item.author}({item.role})
+            {item.edited && <span className={styles.commentEditedBadge}>Edited</span>}
+          </div>
+          {isMine && !editing && (
+            <div className={styles.commentActions}>
+              <button
+                type="button"
+                className={styles.commentActionBtn}
+                aria-label="Edit comment"
+                title="Edit"
+                onClick={() => setEditing(true)}
+              >
+                <Icon name="solar:pen-linear" size={13} color="currentColor" />
+              </button>
+              <button
+                type="button"
+                className={styles.commentActionBtn}
+                aria-label="Delete comment"
+                title="Delete"
+                onClick={() => onDelete?.(item.id, item.body)}
+              >
+                <Icon name="solar:trash-bin-2-linear" size={13} color="currentColor" />
+              </button>
+            </div>
+          )}
         </div>
-        <div className={styles.commentBody}>{item.body}</div>
+        {editing ? (
+          <div className={styles.commentEditor}>
+            <input
+              autoFocus
+              type="text"
+              className={styles.commentComposer}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commit();
+                else if (e.key === 'Escape') { setDraft(item.body || ''); setEditing(false); }
+              }}
+            />
+            <div className={styles.commentEditorActions}>
+              <button type="button" className={styles.commentGhostBtn} onClick={() => { setDraft(item.body || ''); setEditing(false); }}>Cancel</button>
+              <button type="button" className={styles.commentSaveBtn} onClick={commit} disabled={!draft.trim() || draft.trim() === item.body}>Save</button>
+            </div>
+          </div>
+        ) : (
+          <div className={styles.commentBody}>{item.body}</div>
+        )}
       </div>
     </div>
   );
