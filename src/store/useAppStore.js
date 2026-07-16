@@ -105,6 +105,29 @@ function persistHccGapDelete(code, memberName) {
   });
 }
 
+// Persist a member's dos_list / docStatus / chart_count / other non-role
+// mutations to Supabase. hccCreateOrMergeFromEncounter appends new DOS
+// rows and stamps other member-level metadata; without this write those
+// mutations reverted on reload. Fire-and-forget.
+function persistHccMemberDetails(memberId) {
+  if (!memberId) return;
+  const m = useAppStore.getState().hccMembers.find(x => x.id === memberId);
+  if (!m) return;
+  const patch = {
+    dos_list:    m.dos_list || [],
+    doc_status:  m.docStatus || [],
+    chart_count: m.ch ?? null,
+    open_icds:   m.open ?? null,
+  };
+  supabase
+    .from('hcc_members')
+    .update(patch)
+    .eq('id', memberId)
+    .then(({ error }) => {
+      if (error) console.warn(`persistHccMemberDetails(${memberId}) failed:`, error.message);
+    });
+}
+
 // Persist a single HCC role's status (and optionally name) to Supabase.
 // Fire-and-forget — failures log a warning without rolling back the
 // optimistic in-memory update. Used by every HCC status mutation in this
@@ -143,6 +166,67 @@ function persistHccActivityRow(row) {
     .insert(row)
     .then(({ error }) => {
       if (error) console.warn(`persistHccActivityRow(${row.event_name}) failed:`, error.message);
+    });
+}
+
+// ── DiagPanel ancillary tab writes ────────────────────────────────────
+// Comments / Notes / Documents composers post to Supabase org-wide tables
+// so a refresh (or another reviewer) sees the same content. Fire-and-forget
+// — the composer already updated local state optimistically.
+function persistHccDiagComment(row) {
+  if (!row?.id) return;
+  supabase
+    .from('hcc_diag_comments')
+    .insert({
+      id: row.id,
+      author: row.author,
+      role: row.role,
+      date: row.date,
+      time: row.time,
+      edited: !!row.edited,
+      body: row.body,
+    })
+    .then(({ error }) => {
+      if (error) console.warn(`persistHccDiagComment(${row.id}) failed:`, error.message);
+    });
+}
+
+function persistHccDiagNote(row) {
+  if (!row?.id) return;
+  supabase
+    .from('hcc_diag_notes')
+    .insert({
+      id: row.id,
+      title: row.title || row.body?.slice(0, 60) || 'Untitled note',
+      author: row.author,
+      role: row.role,
+      date: row.date,
+      time: row.time,
+      signed: row.signed ?? true,
+      body: row.body,
+    })
+    .then(({ error }) => {
+      if (error) console.warn(`persistHccDiagNote(${row.id}) failed:`, error.message);
+    });
+}
+
+function persistHccDiagDocument(row) {
+  if (!row?.id) return;
+  supabase
+    .from('hcc_diag_documents')
+    .insert({
+      id: row.id,
+      name: row.name,
+      ext: row.ext,
+      doc_type: row.type || row.docType || 'Other',
+      uploaded_by: row.uploadedBy || 'You',
+      role: row.role || 'Coder',
+      date: row.date,
+      time: row.time,
+      status: row.status || 'pending',
+    })
+    .then(({ error }) => {
+      if (error) console.warn(`persistHccDiagDocument(${row.id}) failed:`, error.message);
     });
 }
 
@@ -842,6 +926,22 @@ export const useAppStore = create((set, get) => ({
   // setHccRole: (role) => set({ hccRole: role }),
 
   hccChartStatus: {},
+  hccChartStatusDidFetch: false,
+  fetchHccChartStatus: async () => {
+    if (get().hccChartStatusDidFetch) return;
+    try {
+      const { data, error } = await supabase.from('hcc_chart_status').select('*');
+      if (error) throw error;
+      const map = {};
+      for (const row of (data || [])) {
+        (map[row.member_id] ||= {})[row.doc_id] = row.status;
+      }
+      set({ hccChartStatus: map, hccChartStatusDidFetch: true });
+    } catch (err) {
+      console.warn('fetchHccChartStatus:', err?.message || err);
+      set({ hccChartStatusDidFetch: true });
+    }
+  },
   setChartDocStatus: (memberId, docId, status) => {
     if (!memberId || !docId) return;
     set((state) => ({
@@ -850,6 +950,19 @@ export const useAppStore = create((set, get) => ({
         [memberId]: { ...(state.hccChartStatus[memberId] || {}), [docId]: status },
       },
     }));
+    // Persist so the Pass/Fail mark survives reload.
+    supabase
+      .from('hcc_chart_status')
+      .upsert({
+        id: `${memberId}|${docId}`,
+        member_id: memberId,
+        doc_id: docId,
+        status,
+        updated_at: new Date().toISOString(),
+      })
+      .then(({ error }) => {
+        if (error) console.warn(`setChartDocStatus persist(${memberId}|${docId}) failed:`, error.message);
+      });
   },
 
   // Docs unlinked from a member's chart (keyed by member id → array of doc ids).
@@ -858,6 +971,22 @@ export const useAppStore = create((set, get) => ({
   // uploaded docs uniformly. Uploaded docs are additionally spliced out of
   // hccAddedCharts (and their Supabase row deleted) so the count truly drops.
   hccRemovedCharts: {},
+  hccRemovedChartsDidFetch: false,
+  fetchHccRemovedCharts: async () => {
+    if (get().hccRemovedChartsDidFetch) return;
+    try {
+      const { data, error } = await supabase.from('hcc_removed_charts').select('*');
+      if (error) throw error;
+      const map = {};
+      for (const row of (data || [])) {
+        (map[row.member_id] ||= []).push(row.doc_id);
+      }
+      set({ hccRemovedCharts: map, hccRemovedChartsDidFetch: true });
+    } catch (err) {
+      console.warn('fetchHccRemovedCharts:', err?.message || err);
+      set({ hccRemovedChartsDidFetch: true });
+    }
+  },
   removeChartDoc: (memberId, docId) => {
     if (!memberId || !docId) return;
     set((state) => ({
@@ -870,6 +999,19 @@ export const useAppStore = create((set, get) => ({
         [memberId]: (state.hccAddedCharts[memberId] || []).filter((d) => d.id !== docId),
       },
     }));
+    // Persist the tombstone so removed system-seeded docs (`::sys{n}`) also
+    // stay removed after reload — hcc_added_charts DELETE only covers
+    // uploaded rows.
+    supabase
+      .from('hcc_removed_charts')
+      .upsert({
+        id: `${memberId}|${docId}`,
+        member_id: memberId,
+        doc_id: docId,
+      })
+      .then(({ error }) => {
+        if (error) console.warn(`removeChartDoc tombstone(${memberId}|${docId}) failed:`, error.message);
+      });
     // Best-effort Supabase cleanup for uploaded/DB-backed docs (no-op for
     // client-only `::sys` defaults, which were never persisted).
     supabase
@@ -3573,23 +3715,31 @@ export const useAppStore = create((set, get) => ({
   applyHccSavedFilter: (id) => useAppStore.getState().applySavedFilter('HCC', id),
 
   // Column visibility — array of column keys that are hidden. Sticky Member/Actions
-  // columns are not toggleable so they never appear here.
-  hccHiddenCols: [],
+  // columns are not toggleable so they never appear here. Persisted to
+  // localStorage so the user's column config survives reload (matches the
+  // savedFiltersByList / activeSavedIdByList pattern already used in this store).
+  hccHiddenCols: _readJson('hccHiddenCols', []),
   toggleHccColumn: (k) => {
     track('hcc.column_toggled', { column: k });
     set(s => {
       const next = new Set(s.hccHiddenCols);
       if (next.has(k)) next.delete(k); else next.add(k);
-      return { hccHiddenCols: [...next] };
+      const arr = [...next];
+      try { localStorage.setItem('hccHiddenCols', JSON.stringify(arr)); } catch {/* */}
+      return { hccHiddenCols: arr };
     });
   },
-  clearHccHiddenCols: () => set({ hccHiddenCols: [] }),
+  clearHccHiddenCols: () => {
+    try { localStorage.setItem('hccHiddenCols', JSON.stringify([])); } catch {/* */}
+    set({ hccHiddenCols: [] });
+  },
 
   // Column ordering — array of column keys in the user's preferred order.
   // Empty array means "use HCC_COLUMNS default order". Drag-to-reorder in the
   // Show Columns popover writes here; HccWorklistTable + ColumnConfigPopover
-  // apply this order via `orderColumns(HCC_COLUMNS, hccColumnOrder)`.
-  hccColumnOrder: [],
+  // apply this order via `orderColumns(HCC_COLUMNS, hccColumnOrder)`. Also
+  // persisted to localStorage.
+  hccColumnOrder: _readJson('hccColumnOrder', []),
   reorderHccColumns: (fromKey, toKey) => set(s => {
     if (!fromKey || !toKey || fromKey === toKey) return {};
     track('hcc.columns_reordered', { from: fromKey, to: toKey });
@@ -3602,6 +3752,7 @@ export const useAppStore = create((set, get) => ({
     const to = base.indexOf(toKey);
     if (from < 0 || to < 0) return {};
     base.splice(to, 0, base.splice(from, 1)[0]);
+    try { localStorage.setItem('hccColumnOrder', JSON.stringify(base)); } catch {/* */}
     return { hccColumnOrder: base };
   }),
   // Stash the default key order once at app boot so reorderHccColumns can seed
@@ -3610,7 +3761,10 @@ export const useAppStore = create((set, get) => ({
   setHccDefaultColumnKeys: (keys) => set(s => (
     s._hccDefaultColumnKeys.length ? {} : { _hccDefaultColumnKeys: keys }
   )),
-  clearHccColumnOrder: () => set({ hccColumnOrder: [] }),
+  clearHccColumnOrder: () => {
+    try { localStorage.setItem('hccColumnOrder', JSON.stringify([])); } catch {/* */}
+    set({ hccColumnOrder: [] });
+  },
 
   // ─── HCC DOS-level assignment engine ─────────────────────────────────
   // Per-(patient, DOS) assignment state keyed as `${patientId}::${dosDate}`.
@@ -4080,7 +4234,30 @@ export const useAppStore = create((set, get) => ({
   // Documents tab so a newly-uploaded file appears at the top with status
   // 'pending'. Newest-first.
   hccUploadedDocs: [],
-  recordHccUpload: (doc) => set(s => ({ hccUploadedDocs: [doc, ...s.hccUploadedDocs] })),
+  recordHccUpload: (doc) => {
+    set(s => ({ hccUploadedDocs: [doc, ...s.hccUploadedDocs] }));
+    // Also mirror into hcc_diag_documents so the Documents tab shows the
+    // upload across reloads / other reviewers.
+    persistHccDiagDocument(doc);
+    set(s => ({ hccDiagDocumentsList: [doc, ...(s.hccDiagDocumentsList || [])] }));
+  },
+
+  // Post a new comment to the DiagPanel Comments tab. Appends to the
+  // store's hccDiagComments slice (so consumers see it) and persists to
+  // Supabase for cross-session durability.
+  addHccDiagComment: (row) => {
+    if (!row?.id) return;
+    set(s => ({ hccDiagComments: [row, ...(s.hccDiagComments || [])] }));
+    persistHccDiagComment(row);
+  },
+
+  // Post a new note to the DiagPanel Notes tab. Same pattern as
+  // addHccDiagComment.
+  addHccDiagNote: (row) => {
+    if (!row?.id) return;
+    set(s => ({ hccDiagNotes: [row, ...(s.hccDiagNotes || [])] }));
+    persistHccDiagNote(row);
+  },
 
   // ── HCC Care Team configuration ─────────────────────────────────────
   // Admin-managed teams for the Phase 2 auto-assignment workflow. The
@@ -4628,35 +4805,49 @@ export const useAppStore = create((set, get) => ({
    * shape patchHccUploadEncounter uses (idx + partial). Used by the
    * SFTP table cells when the user edits a field.
    */
-  patchHccSftpEncounter: (batchId, idx, patch) => set(s => ({
-    hccSftpBatches: (s.hccSftpBatches || []).map(b => {
-      if (b.id !== batchId) return b;
-      const next = b.encounters.map((e, i) => i === idx ? {
-        ...e,
-        ...patch,
-        patient: { ...e.patient, ...(patch.patient || {}) },
-      } : e);
-      return { ...b, encounters: next };
-    }),
-  })),
-  removeHccSftpEncounter: (batchId, idx) => set(s => ({
-    hccSftpBatches: (s.hccSftpBatches || []).map(b => b.id === batchId
-      ? { ...b, encounters: b.encounters.filter((_, i) => i !== idx) }
-      : b),
-  })),
+  patchHccSftpEncounter: (batchId, idx, patch) => {
+    set(s => ({
+      hccSftpBatches: (s.hccSftpBatches || []).map(b => {
+        if (b.id !== batchId) return b;
+        const next = b.encounters.map((e, i) => i === idx ? {
+          ...e,
+          ...patch,
+          patient: { ...e.patient, ...(patch.patient || {}) },
+        } : e);
+        return { ...b, encounters: next };
+      }),
+    }));
+    // Persist so field edits (patient match, DOS, provider, POS, ICDs…)
+    // survive reload.
+    const updated = useAppStore.getState().hccSftpBatches.find(b => b.id === batchId);
+    useAppStore.getState().persistHccDocument?.(updated);
+  },
+  removeHccSftpEncounter: (batchId, idx) => {
+    set(s => ({
+      hccSftpBatches: (s.hccSftpBatches || []).map(b => b.id === batchId
+        ? { ...b, encounters: b.encounters.filter((_, i) => i !== idx) }
+        : b),
+    }));
+    const updated = useAppStore.getState().hccSftpBatches.find(b => b.id === batchId);
+    useAppStore.getState().persistHccDocument?.(updated);
+  },
   /**
    * Mark a per-batch encounter as 'added' (sent to worklist) or
    * 'deleted' (dropped). Used by the Document Review drawer to drive
    * the Pending / Added / Deleted tab counts without losing the row.
    * Set status to null to reset back to pending.
    */
-  setHccSftpEncounterStatus: (batchId, idx, status) => set(s => ({
-    hccSftpBatches: (s.hccSftpBatches || []).map(b => b.id === batchId
-      ? { ...b, encounters: b.encounters.map((e, i) => i === idx
-          ? { ...e, _docStatus: status }
-          : e) }
-      : b),
-  })),
+  setHccSftpEncounterStatus: (batchId, idx, status) => {
+    set(s => ({
+      hccSftpBatches: (s.hccSftpBatches || []).map(b => b.id === batchId
+        ? { ...b, encounters: b.encounters.map((e, i) => i === idx
+            ? { ...e, _docStatus: status }
+            : e) }
+        : b),
+    }));
+    const updated = useAppStore.getState().hccSftpBatches.find(b => b.id === batchId);
+    useAppStore.getState().persistHccDocument?.(updated);
+  },
   /**
    * Apply a Support manual decision to one compliance check on a
    * specific batch. Per spec, every manual pass AND every manual fail
@@ -5196,6 +5387,7 @@ export const useAppStore = create((set, get) => ({
           reason: 'prior DOS already completed',
         },
       });
+      persistHccMemberDetails(memberId);
       return { kind: 'relatedNew', memberId, dosDate: newDosDate };
     }
 
@@ -5250,6 +5442,7 @@ export const useAppStore = create((set, get) => ({
           payload:   { icd, dos: enc.dos, patientName: member.name },
         });
       });
+      persistHccMemberDetails(memberId);
       return { kind: 'updated', memberId, dosDate: enc.dos };
     }
 
@@ -5305,6 +5498,7 @@ export const useAppStore = create((set, get) => ({
       scope:     { patientId: memberId, dos: enc.dos, source: 'manual' },
       payload:   { patientName: member.name, dos: enc.dos },
     });
+    persistHccMemberDetails(memberId);
     return { kind: 'created', memberId, dosDate: enc.dos };
   },
 

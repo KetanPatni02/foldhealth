@@ -700,6 +700,10 @@ function CommentsTab() {
   const [collapsed, setCollapsed] = useState(() => new Set());
   const activityIcd = useAppStore(s => s.diagActivityIcd);
   const addActivityEntry = useAppStore(s => s.addActivityEntry);
+  const addHccDiagComment = useAppStore(s => s.addHccDiagComment);
+  const logHccActivity = useAppStore(s => s.logHccActivity);
+  const diagPanelMemberId = useAppStore(s => s.diagPanelMemberId);
+  const hccMembers = useAppStore(s => s.hccMembers);
 
   const addComment = () => {
     const body = draft.trim();
@@ -709,15 +713,29 @@ function CommentsTab() {
     const date = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
     const hours = now.getHours();
     const time = `${((hours + 11) % 12) + 1}:${pad(now.getMinutes())} ${hours >= 12 ? 'PM' : 'AM'}`;
-    setItems(prev => [
-      { id: `c${Date.now()}`, author: 'You', role: 'Coder', date, time, body },
-      ...prev,
-    ]);
+    const row = { id: `c${Date.now()}`, author: 'You', role: 'Coder', date, time, body };
+    setItems(prev => [row, ...prev]);
+    // Persist to Supabase (hcc_diag_comments) so the comment survives reload.
+    addHccDiagComment(row);
+    // Legacy in-drawer activity feed (still consumed by the DiagPanel
+    // Activity tab) — keep firing to preserve UX during this session.
     addActivityEntry({
       t: 'comment', by: 'You', role: 'Coder',
       icds: activityIcd ? [activityIcd] : undefined,
       headline: activityIcd ? `Added a Comment for ${activityIcd}` : 'Added a Comment',
       details: [{ note: body }],
+    });
+    // Modern activity-log pipe → hcc_activity_log (History drawer).
+    const patient = hccMembers.find(m => m.id === diagPanelMemberId);
+    logHccActivity?.({
+      eventName: 'icd.comment_added',
+      scope:     { patientId: diagPanelMemberId, icd: activityIcd || null, source: 'manual' },
+      payload:   {
+        actor: 'You',
+        role: 'Coder',
+        body,
+        patientName: patient?.name,
+      },
     });
     setDraft('');
   };
@@ -1150,6 +1168,9 @@ function DocumentsUploader() {
   const showToast = useAppStore(s => s.showToast);
   const addActivityEntry = useAppStore(s => s.addActivityEntry);
   const recordHccUpload = useAppStore(s => s.recordHccUpload);
+  const logHccActivity = useAppStore(s => s.logHccActivity);
+  const diagPanelMemberId = useAppStore(s => s.diagPanelMemberId);
+  const hccMembers = useAppStore(s => s.hccMembers);
   const activityIcd = useAppStore(s => s.diagActivityIcd);
   const inputRef = useRef(null);
 
@@ -1221,6 +1242,19 @@ function DocumentsUploader() {
         : 'Document Uploaded',
       file: file.name,
       fileType: category,
+    });
+    // Persistent audit trail → hcc_activity_log (History drawer).
+    const patient = hccMembers.find(m => m.id === diagPanelMemberId);
+    logHccActivity?.({
+      eventName: 'document.uploaded_for_icd',
+      scope:     { patientId: diagPanelMemberId, icd: activityIcd || null, source: 'manual' },
+      payload:   {
+        actor: 'You',
+        role: 'Coder',
+        fileName: file.name,
+        fileType: category,
+        patientName: patient?.name,
+      },
     });
     showToast(`Uploaded ${caption.trim()} — pending review.`);
     reset(); close();
@@ -1381,6 +1415,10 @@ function NotesTab() {
   const [draft, setDraft] = useState('');
   const activityIcd = useAppStore(s => s.diagActivityIcd);
   const addActivityEntry = useAppStore(s => s.addActivityEntry);
+  const addHccDiagNote = useAppStore(s => s.addHccDiagNote);
+  const logHccActivity = useAppStore(s => s.logHccActivity);
+  const diagPanelMemberId = useAppStore(s => s.diagPanelMemberId);
+  const hccMembers = useAppStore(s => s.hccMembers);
 
   const addNote = () => {
     const body = draft.trim();
@@ -1390,15 +1428,25 @@ function NotesTab() {
     const date = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
     const hours = now.getHours();
     const time = `${((hours + 11) % 12) + 1}:${pad(now.getMinutes())} ${hours >= 12 ? 'PM' : 'AM'}`;
-    setItems(prev => [
-      { id: `n${Date.now()}`, author: 'You', role: 'Coder', date, time, body },
-      ...prev,
-    ]);
+    const row = { id: `n${Date.now()}`, author: 'You', role: 'Coder', date, time, body, signed: true };
+    setItems(prev => [row, ...prev]);
+    addHccDiagNote(row);
     addActivityEntry({
       t: 'create', by: 'You', role: 'Coder',
       icds: activityIcd ? [activityIcd] : undefined,
       headline: activityIcd ? `Added a Note for ${activityIcd}` : 'Added a Note',
       details: [{ note: body }],
+    });
+    const patient = hccMembers.find(m => m.id === diagPanelMemberId);
+    logHccActivity?.({
+      eventName: 'note.added',
+      scope:     { patientId: diagPanelMemberId, icd: activityIcd || null, source: 'manual' },
+      payload:   {
+        actor: 'You',
+        role: 'Coder',
+        body,
+        patientName: patient?.name,
+      },
     });
     setDraft('');
   };
