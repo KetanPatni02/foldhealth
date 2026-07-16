@@ -95,7 +95,12 @@ export const EVENTS = {
   'icd.merged':                        E('icd',      'info',    p => tpl('{icd} added to existing DOS {dos} — other ICDs on this DOS unchanged.', p)),
   'icd.status_changed':                E('icd',      'info',    p => tpl('{icdsLabel} status changed: {fromStatus} → {toStatus}.', p)),
   'icd.comment_added':                 E('icd',      'info',    p => tpl('{actor} added a comment for {icdsLabel}.', p)),
+  'note.added':                        E('icd',      'info',    p => tpl('{actor} added a note for {patientName}.', p)),
   'document.uploaded_for_icd':         E('icd',      'info',    p => tpl('Document uploaded for {icdsLabel}.', p)),
+  // Compliance decisions from the SFTP / Chart review flow (Support role
+  // marks each check pass/fail; the audit trail records who and why).
+  'compliance.passed':                 E('review',   'success', p => tpl('{actor} passed compliance check {check}.', p)),
+  'compliance.failed':                 E('review',   'warning', p => tpl('{actor} failed compliance check {check} — {reasonText}.', p)),
 
   // Deduplication
   'dedup.dos_match_found':             E('dedup',    'info',    p => tpl('DOS {dos} already exists for {patientName} — encounter routed to merge path.', p)),

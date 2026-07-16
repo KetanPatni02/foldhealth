@@ -1416,6 +1416,7 @@ function NotesTab() {
   const logHccActivity = useAppStore(s => s.logHccActivity);
   const diagPanelMemberId = useAppStore(s => s.diagPanelMemberId);
   const hccMembers = useAppStore(s => s.hccMembers);
+  const showToast = useAppStore(s => s.showToast);
 
   const addNote = () => {
     const body = draft.trim();
