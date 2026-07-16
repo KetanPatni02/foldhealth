@@ -133,11 +133,7 @@ export function SuspectCard({ icd, dosList = [], member }) {
         <button
           ref={dosBtnRef}
           type="button"
-          className={[
-            styles.dosButton,
-            dos ? styles.dosButtonActive : '',
-            !roleAllowsIcdActions ? styles.disabledAction : '',
-          ].filter(Boolean).join(' ')}
+          className={[styles.dosButton, dos ? styles.dosButtonActive : ''].filter(Boolean).join(' ')}
           disabled={!!action || singleDos || !roleAllowsIcdActions}
           onClick={() => (singleDos || !roleAllowsIcdActions ? null : setDosOpen(o => !o))}
           title={!roleAllowsIcdActions ? 'Support role cannot code ICDs'
@@ -267,7 +263,7 @@ function IcdCombobox({ code, desc, onSelect, disabled = false }) {
       <button
         ref={btnRef}
         type="button"
-        className={[styles.icdSelect, disabled ? styles.disabledAction : ''].filter(Boolean).join(' ')}
+        className={styles.icdSelect}
         title={disabled ? 'Support role cannot code ICDs' : 'Switch to a corrected ICD code'}
         disabled={disabled}
         onClick={() => (disabled ? null : setOpen(o => !o))}

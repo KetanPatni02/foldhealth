@@ -219,12 +219,12 @@
   border-color: var(--primary-300);
   color: var(--primary-300);
 }
-/* Support role can't accept/reject ICDs — render as a hollow inert glyph:
-   no border, no background, muted icon only. That way the button reads as
-   "not available" rather than "clickable but greyed." */
+/* Support role can't accept/reject ICDs — drop the outline so the button
+   no longer reads as "clickable," but keep the tinted background so it
+   still occupies its slot in the row. */
 .disabledAction,
 .disabledAction:hover {
-  background: transparent;
+  background: var(--neutral-50);
   border: 0.5px solid transparent;
   color: var(--neutral-200);
   cursor: not-allowed;
