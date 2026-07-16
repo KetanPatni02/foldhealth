@@ -13,6 +13,7 @@ import { IcdSearch } from '../../../components/IcdSearch/IcdSearch';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { ConfidenceBadge } from '../components/ConfidenceBadge';
 import { getScoreStyle, getFieldConfidence } from '../data/confidence';
+import { TabStrip } from '../../../components/TabBar/TabStrip';
 import { useAppStore } from '../../../store/useAppStore';
 import { runMockOcr, mandatoryFields, POS_LABEL } from './mockOcr';
 import styles from './UploadDocumentDrawer.module.css';
@@ -356,87 +357,156 @@ function PickerPhase({ showToast, cancel }) {
     openReviewForBatches?.(batchIds, rec?.batchId);
   };
 
+  // Tab-driven view: Upload (dropzone), Review (needs-review + unreadable),
+  // Added (added-to-worklist), Deleted (empty state), Parked (mix).
+  const [activeTab, setActiveTab] = useState('upload');
+  const reviewCount = records.filter(r => r.bucket === 'review' || r.bucket === 'unreadable').length;
+  const addedCount = records.filter(r => r.bucket === 'added').length;
+  const deletedCount = 0;
+  const parkedCount = records.length;
+  const tabItems = [
+    { key: 'upload',   label: 'Upload' },
+    { key: 'review',   label: `Review (${reviewCount})` },
+    { key: 'added',    label: `Added (${addedCount})` },
+    { key: 'deleted',  label: `Deleted (${deletedCount})` },
+    { key: 'parked',   label: `Parked (${parkedCount})` },
+  ];
+
+  // Cron-sync info strip — dismissible, reappears on next drawer open (state
+  // resets when PickerPhase mounts fresh). Content wired to the last SFTP
+  // sync summary; falls back to sample copy while no sync has run this session.
+  const lastSync = useAppStore.getState().hccLastCronSync || null;
+  const [cronDismissed, setCronDismissed] = useState(false);
+  const cronMsg = lastSync
+    ? `Last sync ${lastSync.agoLabel} • ${lastSync.imported} Imported • ${lastSync.added} Added • ${lastSync.pending} Pending Review`
+    : `Last sync 9h ago • ${records.length} Imported • ${addedCount} Added • ${reviewCount} Pending Review`;
+
   return (
     <div className={styles.pickerPhase2}>
-      {/* Dropzone + file list grouped inside a single visual container
-          per Figma 121:84012. The dropzone stays present even after
-          files are added so the user can keep dropping more. */}
-      <div className={[
-        styles.uploadContainer,
-        staged.length > 0 ? styles.uploadContainerWithFiles : '',
-      ].filter(Boolean).join(' ')}>
-        <Dropzone
-          accept={ACCEPT_EXT}
-          acceptMime={ACCEPT_MIME}
-          multiple
-          icon="solar:upload-minimalistic-linear"
-          helperText="Supported formats: PDF, DOC, JPG, or PNG"
-          secondaryText="Max size: 100 MB"
-          onPick={handlePick}
-          onReject={() => showToast?.('Please upload a PDF, DOC, JPG, PNG, or TIFF file')}
-        />
-
-        {/* Staged file list — each row shows its upload bar, then flips to
-            "Extracting…" and disappears into Extracted Records once done.
-            No Start Extraction button: extraction is automatic. */}
-        {staged.length > 0 && (
-          <div className={styles.stagedList}>
-            {staged.map(s => (
-              <StagedFileRow
-                key={s.id}
-                file={s}
-                onRemove={() => removeStaged(s.id)}
-                onPreview={() => showToast?.(`Preview ${s.name} — coming soon`)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {records.length === 0 && <WhatHappensNext />}
-
-      {/* Extracted Records — always shown so past documents pending review /
-          added / unreadable stay visible; renders an empty state when there
-          are none (Figma 4967:199663). */}
-      <ExtractedRecords
-        records={records}
-        activeBucket={activeBucket}
-        setActiveBucket={setActiveBucket}
-        onReview={reviewRecord}
-        onDelete={removeRecord}
+      <TabStrip
+        items={tabItems}
+        activeKey={activeTab}
+        onChange={setActiveTab}
       />
 
-      {/* Demo helper — a document is always ONE patient (with one-or-more DOS).
-          The single chip loads a multi-DOS doc; the "N Documents" chips load a
-          bundle of N documents, each a distinct patient with their own DOS. */}
-      <div className={styles.demoStrip}>
-        <Icon name="solar:test-tube-linear" size={12} color="var(--neutral-300)" />
-        <span className={styles.demoStripLabel}>Try demo files:</span>
-        <button
-          type="button"
-          className={styles.demoChip}
-          onClick={() => {
-            const file = new File([new Blob(['%PDF-1.4 demo'])], 'demo-same-patient-multi-dos.pdf', { type: 'application/pdf' });
-            handlePick(file);
-          }}
-        >
-          1 Doc · Multi DOS
-        </button>
-        {[5, 10, 20].map(n => (
+      {!cronDismissed && (
+        <div className={styles.cronStrip} role="status">
+          <Icon name="solar:refresh-linear" size={14} color="var(--status-success)" />
+          <span className={styles.cronStripText}>{cronMsg}</span>
           <button
-            key={n}
             type="button"
-            className={styles.demoChip}
-            onClick={() => {
-              const files = Array.from({ length: n }, (_, i) =>
-                new File([new Blob(['%PDF-1.4 demo'])], `demo-patient-${i}.pdf`, { type: 'application/pdf' }));
-              handlePick(files, { bypassLimit: true });
-            }}
+            className={styles.cronStripAction}
+            onClick={() => setActiveTab('review')}
           >
-            {n} Documents
+            Review
           </button>
-        ))}
-      </div>
+          <span className={styles.cronStripDivider} />
+          <button
+            type="button"
+            className={styles.cronStripDismiss}
+            aria-label="Dismiss"
+            onClick={() => setCronDismissed(true)}
+          >
+            <Icon name="solar:close-circle-linear" size={14} color="var(--status-success)" />
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'upload' ? (
+        <>
+          {/* Plain dashed dropzone card (Paper 276X-0) — no outer grey
+              wrapper. Supported-formats footer sits directly beneath it. */}
+          <Dropzone
+            accept={ACCEPT_EXT}
+            acceptMime={ACCEPT_MIME}
+            multiple
+            icon="solar:upload-minimalistic-linear"
+            helperText="Supported formats: PDF, DOC, JPG, or PNG"
+            secondaryText="Max size: 100 MB"
+            onPick={handlePick}
+            onReject={() => showToast?.('Please upload a PDF, DOC, JPG, PNG, or TIFF file')}
+          />
+
+          {staged.length > 0 && (
+            <div className={styles.stagedList}>
+              {staged.map(s => (
+                <StagedFileRow
+                  key={s.id}
+                  file={s}
+                  onRemove={() => removeStaged(s.id)}
+                  onPreview={() => showToast?.(`Preview ${s.name} — coming soon`)}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Demo helper — Upload tab only. */}
+          <div className={styles.demoStrip}>
+            <Icon name="solar:test-tube-linear" size={12} color="var(--neutral-300)" />
+            <span className={styles.demoStripLabel}>Try demo files:</span>
+            <button
+              type="button"
+              className={styles.demoChip}
+              onClick={() => {
+                const file = new File([new Blob(['%PDF-1.4 demo'])], 'demo-same-patient-multi-dos.pdf', { type: 'application/pdf' });
+                handlePick(file);
+              }}
+            >
+              1 Doc · Multi DOS
+            </button>
+            {[5, 10, 20].map(n => (
+              <button
+                key={n}
+                type="button"
+                className={styles.demoChip}
+                onClick={() => {
+                  const files = Array.from({ length: n }, (_, i) =>
+                    new File([new Blob(['%PDF-1.4 demo'])], `demo-patient-${i}.pdf`, { type: 'application/pdf' }));
+                  handlePick(files, { bypassLimit: true });
+                }}
+              >
+                {n} Documents
+              </button>
+            ))}
+          </div>
+        </>
+      ) : activeTab === 'review' ? (
+        <ExtractedRecords
+          records={records.filter(r => r.bucket === 'review' || r.bucket === 'unreadable')}
+          activeBucket={activeBucket}
+          setActiveBucket={setActiveBucket}
+          onReview={reviewRecord}
+          onDelete={removeRecord}
+          tabScope="review"
+        />
+      ) : activeTab === 'added' ? (
+        <ExtractedRecords
+          records={records.filter(r => r.bucket === 'added')}
+          activeBucket="added"
+          setActiveBucket={setActiveBucket}
+          onReview={reviewRecord}
+          onDelete={removeRecord}
+          tabScope="added"
+        />
+      ) : activeTab === 'deleted' ? (
+        <div className={styles.tabEmpty}>
+          <div className={styles.tabEmptyIcon}>
+            <Icon name="solar:file-remove-linear" size={28} color="var(--neutral-300)" />
+          </div>
+          <div className={styles.tabEmptyTitle}>No Deleted Records</div>
+          <div className={styles.tabEmptyBody}>Records deleted during review will appear here.</div>
+        </div>
+      ) : (
+        <ExtractedRecords
+          records={records}
+          activeBucket={activeBucket}
+          setActiveBucket={setActiveBucket}
+          onReview={reviewRecord}
+          onDelete={removeRecord}
+          tabScope="parked"
+        />
+      )}
+
     </div>
   );
 }
@@ -507,28 +577,31 @@ function dayHeading(iso) {
 }
 
 /**
- * ExtractedRecords — post-extraction results on the same Upload screen
- * (Figma 4967:199663). Three filter badges bucket the records; the active
- * bucket's rows render grouped by day.
+ * ExtractedRecords — post-extraction results shown inside a tab
+ * (Add Records drawer). Layout matches Paper 27A3-0:
+ *   Section header ("Degraded Documents ⌄" + Review All)
+ *     Day heading ("Today • …")
+ *       Rounded card containing one row per record, dividers between rows
+ * Legacy bucket-pill path retained for callers that pass no tabScope.
  */
-function ExtractedRecords({ records, activeBucket, setActiveBucket, onReview, onDelete }) {
+function ExtractedRecords({ records, activeBucket, setActiveBucket, onReview, onDelete, tabScope = null }) {
   const count = (k) => records.filter(r => r.bucket === k).length;
-  const visible = records.filter(r => r.bucket === activeBucket);
-  const groups = useMemo(() => {
-    const map = new Map();
-    for (const r of visible) {
-      const h = dayHeading(r.dateISO);
-      if (!map.has(h)) map.set(h, []);
-      map.get(h).push(r);
-    }
-    return Array.from(map.entries());
-  }, [visible]);
+  // When wrapped by a tab, the tab is already the filter — show every record
+  // passed in; otherwise fall back to activeBucket.
+  const visible = tabScope ? records : records.filter(r => r.bucket === activeBucket);
+
+  // Split records into sections per Paper 27A3-0. Degraded = 'review' bucket
+  // (needs a coder pass); Unreadable = 'unreadable' bucket (retry-only).
+  // Added tab shows a single Added section.
+  const degraded = visible.filter(r => r.bucket === 'review');
+  const unreadable = visible.filter(r => r.bucket === 'unreadable');
+  const added = visible.filter(r => r.bucket === 'added');
 
   // Nothing extracted yet (this session or in history) → friendly empty state.
   if (records.length === 0) {
     return (
       <div className={styles.extracted}>
-        <div className={styles.extractedTitle}>Extracted Records</div>
+        {!tabScope && <div className={styles.extractedTitle}>Extracted Records</div>}
         <div className={styles.extractedEmptyState}>
           <Icon name="solar:documents-linear" size={28} color="var(--neutral-200)" />
           <div className={styles.extractedEmptyTitle}>No extracted documents yet</div>
@@ -541,60 +614,167 @@ function ExtractedRecords({ records, activeBucket, setActiveBucket, onReview, on
     );
   }
 
+  // Legacy path — no tabScope, use bucket-pill row and one flat list.
+  if (!tabScope) {
+    const legacyGroups = groupByDay(visible);
+    return (
+      <div className={styles.extracted}>
+        <div className={styles.extractedTitle}>Extracted Records</div>
+        <div className={styles.bucketRow}>
+          {EXTRACT_BUCKETS.map(b => {
+            const active = activeBucket === b.key;
+            return (
+              <button
+                key={b.key}
+                type="button"
+                className={[styles.bucketPill, active ? styles[`bucketPill_${b.tone}`] : ''].filter(Boolean).join(' ')}
+                onClick={() => setActiveBucket(b.key)}
+              >
+                <Icon
+                  name={b.icon}
+                  size={14}
+                  color={active ? 'currentColor' : 'var(--neutral-300)'}
+                />
+                {b.label}({count(b.key)})
+              </button>
+            );
+          })}
+        </div>
+        {visible.length === 0 ? (
+          <div className={styles.extractedEmpty}>No records in this category.</div>
+        ) : (
+          legacyGroups.map(([heading, rows]) => (
+            <div key={heading} className={styles.extractedGroup}>
+              <div className={styles.extractedGroupLabel}>{heading}</div>
+              <div className={styles.extractedList}>
+                {rows.map(r => (
+                  <ExtractedRow key={r.id} rec={r} onReview={onReview} onDelete={onDelete} />
+                ))}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    );
+  }
+
+  // Tab-scoped path — render Paper 27A3-0 sections.
   return (
     <div className={styles.extracted}>
-      <div className={styles.extractedTitle}>Extracted Records</div>
-      <div className={styles.bucketRow}>
-        {EXTRACT_BUCKETS.map(b => {
-          const active = activeBucket === b.key;
-          return (
-            <button
-              key={b.key}
-              type="button"
-              className={[styles.bucketPill, active ? styles[`bucketPill_${b.tone}`] : ''].filter(Boolean).join(' ')}
-              onClick={() => setActiveBucket(b.key)}
-            >
-              <Icon
-                name={b.icon}
-                size={14}
-                color={active ? 'currentColor' : 'var(--neutral-300)'}
-              />
-              {b.label}({count(b.key)})
-            </button>
-          );
-        })}
-      </div>
-
-      {visible.length === 0 ? (
+      {visible.length === 0 && (
         <div className={styles.extractedEmpty}>No records in this category.</div>
-      ) : (
-        groups.map(([heading, rows]) => (
-          <div key={heading} className={styles.extractedGroup}>
-            <div className={styles.extractedGroupLabel}>{heading}</div>
-            <div className={styles.extractedList}>
-              {rows.map(r => (
-                <ExtractedRow key={r.id} rec={r} onReview={onReview} onDelete={onDelete} />
-              ))}
-            </div>
-          </div>
-        ))
+      )}
+
+      {degraded.length > 0 && (
+        <RecordSection
+          title="Degraded Documents"
+          iconName="solar:info-circle-linear"
+          iconColor="var(--status-warning)"
+          rightAction={{ label: `Review All (${degraded.length})`, icon: 'solar:magic-stick-3-linear', onClick: () => onReview(degraded[0]) }}
+          rows={degraded}
+          onReview={onReview}
+          onDelete={onDelete}
+        />
+      )}
+
+      {unreadable.length > 0 && (
+        <RecordSection
+          title="Unreadable Documents"
+          iconName="solar:danger-triangle-linear"
+          iconColor="var(--status-error)"
+          rows={unreadable}
+          onReview={onReview}
+          onDelete={onDelete}
+        />
+      )}
+
+      {added.length > 0 && (
+        <RecordSection
+          title="Added Documents"
+          iconName="solar:check-circle-linear"
+          iconColor="var(--status-success)"
+          rows={added}
+          onReview={onReview}
+          onDelete={onDelete}
+        />
       )}
     </div>
   );
 }
 
+// Bundle rows by their dayHeading — used inside RecordSection to draw a
+// per-day heading above each group card.
+function groupByDay(rows) {
+  const map = new Map();
+  for (const r of rows) {
+    const h = dayHeading(r.dateISO);
+    if (!map.has(h)) map.set(h, []);
+    map.get(h).push(r);
+  }
+  return Array.from(map.entries());
+}
+
 /**
- * ExtractedRow — one extracted record. Icon + filename + meta line
- * (date • source • status), a Review action for flagged records, and a
- * delete affordance.
+ * RecordSection — one section (Degraded / Unreadable / Added). Header row
+ * with a tone-tinted icon + collapsible chevron + optional "Review All"
+ * link. Body groups records by day into rounded cards with dividers.
+ */
+function RecordSection({ title, iconName, iconColor, rightAction, rows, onReview, onDelete }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const groups = groupByDay(rows);
+  return (
+    <section className={styles.recSection}>
+      <header className={styles.recSectionHead}>
+        <button
+          type="button"
+          className={styles.recSectionTitle}
+          onClick={() => setCollapsed(v => !v)}
+        >
+          <Icon name={iconName} size={14} color={iconColor} />
+          <span>{title}</span>
+          <Icon
+            name={collapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'}
+            size={12}
+            color="var(--neutral-400)"
+          />
+        </button>
+        {rightAction && !collapsed && (
+          <button type="button" className={styles.recSectionAction} onClick={rightAction.onClick}>
+            <Icon name={rightAction.icon} size={14} color="var(--primary-300)" />
+            {rightAction.label}
+          </button>
+        )}
+      </header>
+      {!collapsed && groups.map(([heading, dayRows]) => (
+        <div key={heading} className={styles.recDay}>
+          <div className={styles.recDayLabel}>{heading}</div>
+          <div className={styles.recCard}>
+            {dayRows.map(r => (
+              <ExtractedRow key={r.id} rec={r} onReview={onReview} onDelete={onDelete} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+/**
+ * ExtractedRow — one row inside a section card (Paper 27A3-0). Layout:
+ * [PDF icon] filename                                  [action] | [kebab]
+ *            source-line (+ error tag for unreadable)
+ * Degraded → purple Review pill. Unreadable → outline Retry pill.
+ * Added → eye + download icons. Legacy/no-context rows fall back to a
+ * trash affordance.
  */
 function ExtractedRow({ rec, onReview, onDelete }) {
-  const statusText = rec.bucket === 'review' ? 'Needs Review'
-    : rec.bucket === 'added' ? 'Added to Worklist'
-    : (rec.reason || 'Unreadable');
-  const statusCls = rec.bucket === 'review' ? styles.exStatusReview
-    : rec.bucket === 'added' ? styles.exStatusAdded
-    : styles.exStatusUnreadable;
+  const source = rec.source === 'SFTP Server' ? 'Imported via SFTP'
+    : rec.source === 'Manual Upload' ? `Uploaded by ${rec.actorName || 'You'}`
+    : rec.actorName ? `Uploaded by ${rec.actorName}`
+    : 'Uploaded';
+  const isDegraded = rec.bucket === 'review';
+  const isUnreadable = rec.bucket === 'unreadable';
+  const isAdded = rec.bucket === 'added';
   return (
     <div className={styles.exRow}>
       <span className={styles.exIcon}>
@@ -602,26 +782,36 @@ function ExtractedRow({ rec, onReview, onDelete }) {
       </span>
       <div className={styles.exMain}>
         <div className={styles.exName}>{rec.fileName}</div>
-        <div className={styles.exMeta}>
-          {shortDate(rec.dateISO)}
-          {rec.patientName ? <> • {rec.patientName}</> : null}
-          {rec.dosCount ? <> • {rec.dosCount} DOS</> : null}
-          {' • '}<span className={statusCls}>{statusText}</span>
+        <div className={styles.exSubtitle}>
+          <span>{source}</span>
+          {isUnreadable && rec.reason && (
+            <>
+              <span className={styles.exSubDot}>•</span>
+              <span className={styles.exError}>{rec.reason}</span>
+            </>
+          )}
         </div>
       </div>
-      {rec.bucket === 'review' && (
-        <Button variant="primary" size="S" leadingIcon="solar:magic-stick-3-linear" onClick={() => onReview(rec)}>
+      {isDegraded && (
+        <button type="button" className={styles.exReviewBtn} onClick={() => onReview(rec)}>
+          <Icon name="solar:magic-stick-3-linear" size={14} color="var(--neutral-0)" />
           Review
-        </Button>
+        </button>
       )}
-      {/* No delete for records already added to the worklist — they're
-          committed; only flagged / unreadable rows can be dismissed. */}
-      {rec.bucket !== 'added' && (
-        <>
-          <span className={styles.exDivider} />
-          <ActionButton icon="solar:trash-bin-trash-linear" size="S" tooltip="Remove" onClick={() => onDelete(rec)} />
-        </>
+      {isUnreadable && (
+        <button type="button" className={styles.exRetryBtn} onClick={() => onReview(rec)}>
+          <Icon name="solar:refresh-linear" size={14} color="var(--neutral-500)" />
+          Retry
+        </button>
       )}
+      {isAdded && (
+        <div className={styles.exAddedActions}>
+          <ActionButton icon="solar:eye-linear" size="S" tooltip="View" onClick={() => onReview(rec)} />
+          <ActionButton icon="solar:download-minimalistic-linear" size="S" tooltip="Download" onClick={() => onReview(rec)} />
+        </div>
+      )}
+      <span className={styles.exDivider} />
+      <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" onClick={() => onDelete(rec)} />
     </div>
   );
 }
@@ -947,13 +1137,13 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
   // entry, so there's no chooser to step back to.
   const title = session.phase === 'picker' ? (
     <span className={styles.titleBlock}>
-      <span className={styles.titleMain}>Upload a Document</span>
+      <span className={styles.titleMain}>Add Records</span>
     </span>
   ) : (
     <span className={styles.title}>
       {session.phase === 'review'
         ? <ReviewTitle encounters={session.encounters} hccMembers={hccMembers} />
-        : 'Upload Document'}
+        : 'Add Records'}
     </span>
   );
 

@@ -344,6 +344,30 @@ function campaignPatchToDb(patch) {
 // Debounced auto-save for the Campaign builder. We coalesce rapid field edits
 // (typing, slider drags) into one PATCH per 600ms window per campaign id.
 const _campaignSaveTimers = new Map();
+
+// ── HCC upload: batched "extracting" toast ────────────────────────────
+// queueHccDocumentForOcr is called once per file, so a 20-file drop used to
+// fire 20 back-to-back toasts. Accumulate filenames pushed within a short
+// window and flush a single combined toast instead.
+const _hccExtractQueue = { names: [], timer: null };
+function _flushHccExtractToast() {
+  const { names } = _hccExtractQueue;
+  _hccExtractQueue.names = [];
+  _hccExtractQueue.timer = null;
+  if (names.length === 0) return;
+  const toast = useAppStore.getState().showToast;
+  if (!toast) return;
+  if (names.length === 1) {
+    toast(`${names[0]} — extracting in the background`);
+  } else {
+    toast(`${names.length} files — extracting in the background`);
+  }
+}
+function _queueHccExtractToast(fileName) {
+  _hccExtractQueue.names.push(fileName);
+  if (_hccExtractQueue.timer) return;
+  _hccExtractQueue.timer = setTimeout(_flushHccExtractToast, 150);
+}
 function scheduleCampaignSave(id, fn) {
   const existing = _campaignSaveTimers.get(id);
   if (existing) clearTimeout(existing);
@@ -3686,7 +3710,21 @@ export const useAppStore = create((set, get) => ({
         // reflect the new owner, not just the status.
         const na = next[role]?.assignee;
         if (na && na !== prev[role]?.assignee) {
-          assigneeChanges.push({ role, name: hccStaffById(na)?.name || na, staffId: na });
+          // Resolve display name: Astrana roster first (seed data uses
+          // Astrana staff ids), then platform-users roster (manual
+          // reassignments to Settings → Users profiles), then fall back
+          // to the raw id so worklist cells never render empty.
+          const platformName = (s.platformUsers || []).find(u => u.id === na)?.name;
+          assigneeChanges.push({
+            role,
+            name: hccStaffById(na)?.name || platformName || na,
+            staffId: na,
+            fromStaffId: prev[role]?.assignee || null,
+            fromName: hccStaffById(prev[role]?.assignee)?.name
+              || (s.platformUsers || []).find(u => u.id === prev[role]?.assignee)?.name
+              || prev[role]?.assignee
+              || '—',
+          });
         }
       });
       const statusFieldByRole = { support: 'supS', coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
@@ -3737,10 +3775,27 @@ export const useAppStore = create((set, get) => ({
         },
       });
     });
-    // Persist any assignee change that didn't ride along with a status change.
+    // Persist any assignee change that didn't ride along with a status change,
+    // AND log it to the activity feed. Direct manual reassigns from
+    // hccReassignRole log there themselves — skip the log here for kind ===
+    // 'reassignRole' so the History drawer doesn't show duplicate entries.
     assigneeChanges
       .filter(a => !statusChanges.some(sc => sc.role === a.role))
-      .forEach(({ role, name }) => persistHccMemberRoleStatus(patientId, role, undefined, name));
+      .forEach(({ role, name, fromName }) => {
+        persistHccMemberRoleStatus(patientId, role, undefined, name);
+        if (kind === 'reassignRole') return;
+        useAppStore.getState().logHccActivity({
+          eventName: 'assignee.changed',
+          scope:     { patientId, dos: dosDate, source: 'cascade' },
+          payload:   {
+            actor: payload.actor || 'You',
+            roleLabel: ROLE_LABEL_T[role] || role,
+            fromName, toName: name,
+            patientName: patient?.name,
+            transitionKind: kind,
+          },
+        });
+      });
     return { nextMap: useAppStore.getState().hccDosAssignments };
   },
 
@@ -4370,7 +4425,8 @@ export const useAppStore = create((set, get) => ({
       source: 'manual',
     };
     set(s => ({ hccSftpBatches: [...(s.hccSftpBatches || []), entry] }));
-    state.showToast?.(`${fileName} — extracting in the background`);
+    // Debounced: fires one combined toast per burst instead of one per file.
+    _queueHccExtractToast(fileName);
 
     // Activity log: stamp the intake + OCR-start events so the History
     // drawer's Documents tab can surface this batch even while OCR is

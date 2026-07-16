@@ -504,20 +504,22 @@ export function HccAddDosDrawer() {
         onCall={() => showToast?.('Call — coming soon')}
       />
 
-      {blocks.map((b, i) => (
-        <DosBlock
-          key={b.id}
-          block={b}
-          providerOptions={providerOptions}
-          onChange={(next) => setBlock(i, next)}
-          onRemove={() => removeBlock(i)}
-        />
-      ))}
+      <div className={styles.bodyContainer}>
+        {blocks.map((b, i) => (
+          <DosBlock
+            key={b.id}
+            block={b}
+            providerOptions={providerOptions}
+            onChange={(next) => setBlock(i, next)}
+            onRemove={() => removeBlock(i)}
+          />
+        ))}
 
-      <button type="button" className={styles.addMore} onClick={addBlock}>
-        <Icon name="solar:add-square-linear" size={15} color="var(--primary-300)" />
-        Add More DOS
-      </button>
+        <button type="button" className={styles.addMore} onClick={addBlock}>
+          <Icon name="solar:add-square-linear" size={15} color="var(--primary-300)" />
+          Add More DOS
+        </button>
+      </div>
     </Drawer>
   );
 }

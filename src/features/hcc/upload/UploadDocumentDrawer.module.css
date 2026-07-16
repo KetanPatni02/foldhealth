@@ -152,13 +152,226 @@
 
 /* ── Picker phase v2 (Figma 121:81202) ────────────────────────────── */
 .pickerPhase2 {
-  padding: 16px 20px 20px;
+  padding: 0 20px 20px;
   display: flex;
   flex-direction: column;
   gap: 12px;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+}
+
+/* Tabs + cron strip bleed to the drawer body edges. .pickerPhase2 keeps
+   20px horizontal padding for its content; these two use negative margins
+   to escape it. */
+.pickerPhase2 > :global(._tabBar_1cqv7_1),
+.pickerPhase2 > :global([class*="_tabBar_"]) {
+  margin: 0 -20px;
+}
+.cronStrip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  /* Bleed to drawer edges AND sit flush against the TabStrip above — cancel
+     the pickerPhase2 flex gap that would otherwise push us down 12px. */
+  margin: -12px -20px 0;
+  background: var(--status-success-light);
+  outline: 0.5px solid color-mix(in srgb, var(--status-success) 20%, transparent);
+  outline-offset: -0.5px;
+  font: 500 12px/1.4 'Inter', sans-serif;
+  color: var(--status-success);
+}
+.cronStripText {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--status-success);
+  font-weight: 500;
+}
+.cronStripAction {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  color: var(--status-success);
+  font: 500 12px/1.4 'Inter', sans-serif;
+}
+.cronStripAction:hover { text-decoration: underline; }
+.cronStripDivider {
+  width: 1px;
+  height: 14px;
+  background: color-mix(in srgb, var(--status-success) 25%, transparent);
+}
+.cronStripDismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--status-success);
+}
+.cronStripDismiss:hover { background: color-mix(in srgb, var(--status-success) 8%, transparent); border-radius: 4px; }
+
+/* ── Sectioned records list (Paper 27A3-0) ────────────────────────── */
+.recSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.recSection + .recSection { margin-top: 8px; }
+
+.recSectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.recSectionTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: 500 14px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.recSectionTitle:hover { color: var(--neutral-400); }
+.recSectionAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: 500 13px/1.3 'Inter', sans-serif;
+  color: var(--primary-300);
+  padding: 0;
+}
+.recSectionAction:hover { color: var(--primary-400); }
+
+.recDay { display: flex; flex-direction: column; gap: 4px; }
+.recDayLabel {
+  font: 500 12px/1.3 'Inter', sans-serif;
+  color: var(--neutral-400);
+  padding-left: 2px;
+}
+.recCard {
+  display: flex;
+  flex-direction: column;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  overflow: hidden;
+}
+.recCard > .exRow + .exRow {
+  border-top: 0.5px solid var(--neutral-100);
+}
+
+/* Row styling for records inside a section card. Overrides some of the
+   legacy .exRow tokens so the row reads flush inside the card. */
+.recCard .exRow {
+  padding: 12px 14px;
+  gap: 10px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+.recCard .exRow .exIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--primary-25);
+  border: 0.5px solid var(--primary-100);
+}
+.recCard .exRow .exName {
+  font: 500 14px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.exSubtitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font: 400 12px/1.3 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.exSubDot { color: var(--neutral-300); }
+.exError { color: var(--status-error); font-weight: 500; }
+
+.exReviewBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: var(--primary-300);
+  border: none;
+  color: var(--neutral-0);
+  font: 500 13px/1.2 'Inter', sans-serif;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.exReviewBtn:hover { background: var(--primary-400); }
+
+.exRetryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-200);
+  color: var(--neutral-500);
+  font: 500 13px/1.2 'Inter', sans-serif;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.exRetryBtn:hover { background: var(--neutral-50); }
+
+.exAddedActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* Per-tab empty state (Deleted tab and similar). */
+.tabEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 32px 20px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+  background: var(--neutral-0);
+  text-align: center;
+}
+.tabEmptyIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--neutral-50);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+.tabEmptyTitle {
+  font: 600 13px/1.3 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.tabEmptyBody {
+  font: 400 12px/1.4 'Inter', sans-serif;
+  color: var(--neutral-300);
 }
 
 /* Visual container that wraps the dropzone + staged file list so they

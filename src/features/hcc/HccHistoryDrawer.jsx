@@ -1,13 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Icon } from '../../components/Icon/Icon';
+import { TabStrip } from '../../components/TabBar/TabStrip';
+import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { useAppStore } from '../../store/useAppStore';
 import { EVENTS } from './activityLog';
-// Reuse the rich timeline + filter chip primitives from DiagPanel's ActivityTab.
-// Importing the same CSS module ensures every visual (rail / icon bubble /
-// transition pills / file card / avatar swap) renders identically to the
-// per-encounter timeline shown in the DiagPanel — per spec §2 we want one
-// timeline component, four views.
+// Reuse the rich timeline primitives from DiagPanel's ActivityTab. Importing
+// the same CSS module ensures every visual (rail / icon bubble / transition
+// pills / file card / avatar swap) renders identically to the per-encounter
+// timeline shown in the DiagPanel — per spec §2 we want one timeline
+// component, four views.
 import styles from './DiagPanel/LeftWorkspace.module.css';
 import hccStyles from './HccHistoryDrawer.module.css';
 
@@ -116,69 +118,6 @@ function formatTs(iso) {
   return { date, time, monthLabel };
 }
 
-// ── Filter primitives ────────────────────────────────────────────────
-// Reproduces the FilterChip/FilterRow from LeftWorkspace.jsx with the
-// same CSS classes so the visual chrome matches the per-encounter view.
-
-function FilterChip({ label, value, options, onChange }) {
-  const [open, setOpen] = useState(false);
-  const wrapRef = useRef(null);
-  const isSelected = value != null && value !== '';
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, [open]);
-
-  return (
-    <div className={styles.filterChipWrap} ref={wrapRef}>
-      <button
-        type="button"
-        className={[styles.filterChip, isSelected ? styles.filterChipSelected : ''].join(' ')}
-        onClick={() => setOpen(o => !o)}
-      >
-        <span>{isSelected ? `${label} · ${value}` : label}</span>
-        <Icon
-          name="solar:alt-arrow-down-linear"
-          size={16}
-          color={isSelected ? 'var(--primary-300)' : 'var(--neutral-300)'}
-        />
-      </button>
-      {open && (
-        <div className={styles.filterMenu} role="listbox">
-          {options.length === 0 ? (
-            <div className={styles.filterMenuEmpty}>No options</div>
-          ) : (
-            options.map((opt) => (
-              <button
-                key={opt}
-                type="button"
-                role="option"
-                aria-selected={opt === value}
-                className={[styles.filterMenuItem, opt === value ? styles.filterMenuItemActive : ''].join(' ')}
-                onClick={() => { onChange?.(opt); setOpen(false); }}
-              >
-                {opt}
-              </button>
-            ))
-          )}
-          {isSelected && (
-            <button
-              type="button"
-              className={styles.filterMenuClear}
-              onClick={() => { onChange?.(null); setOpen(false); }}
-            >
-              Clear
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 const DATE_PRESETS = ['Today', 'Last 7 days', 'Last 30 days', 'This month'];
 
 // Compute filter dropdown options from the loaded feed so chips only show
@@ -223,15 +162,18 @@ function matchesDatePreset(d, preset) {
   return true;
 }
 
+// Multi-select filters — every chip carries a string[] of selected values.
+// Empty array means "no filter"; any non-empty array matches ANY of its
+// values (OR within a chip, AND across chips).
 function rowMatchesFilters(row, filters) {
-  if (filters.dos      && row.dos !== filters.dos) return false;
-  if (filters.patient  && (row.payload?.patientName || null) !== filters.patient) return false;
-  if (filters.by       && row.actor_name !== filters.by) return false;
-  if (filters.category && row.category !== filters.category) return false;
-  if (filters.date) {
+  if (filters.dos?.length      && !filters.dos.includes(row.dos)) return false;
+  if (filters.patient?.length  && !filters.patient.includes(row.payload?.patientName || null)) return false;
+  if (filters.by?.length       && !filters.by.includes(row.actor_name)) return false;
+  if (filters.category?.length && !filters.category.includes(row.category)) return false;
+  if (filters.date?.length) {
     const { date } = formatTs(row.ts);
     const d = parseUiDate(date);
-    if (!d || !matchesDatePreset(d, filters.date)) return false;
+    if (!d || !filters.date.some(preset => matchesDatePreset(d, preset))) return false;
   }
   return true;
 }
@@ -419,11 +361,14 @@ export function HccHistoryDrawer() {
   // Tab toggle: 'activity' (timeline) vs 'documents' (one card per upload).
   const [tab, setTab] = useState('activity');
 
-  // FilterChip state — empty / null = unset.
-  const [filters, setFilters] = useState({ dos: null, patient: null, by: null, category: null, date: null });
+  // FilterChip state — each key is a string[] of selected values ([] = unset).
+  // Matches the multi-select pattern used by the worklist's FilterChipBar so
+  // the drawer's filters behave the same way (pick multiple DOSes, multiple
+  // patients, etc.).
+  const [filters, setFilters] = useState({ dos: [], patient: [], by: [], category: [], date: [] });
   const setFilter = (k, v) => setFilters(prev => ({ ...prev, [k]: v }));
-  const clearAll = () => setFilters({ dos: null, patient: null, by: null, category: null, date: null });
-  const hasAnyFilter = Object.values(filters).some(v => v != null && v !== '');
+  const clearAll = () => setFilters({ dos: [], patient: [], by: [], category: [], date: [] });
+  const hasAnyFilter = Object.values(filters).some(v => Array.isArray(v) && v.length > 0);
 
   // Collapsible month groups — empty set = everything expanded.
   const [collapsed, setCollapsed] = useState(() => new Set());
@@ -465,26 +410,16 @@ export function HccHistoryDrawer() {
   return (
     <Drawer title="HCC Activity History" onClose={close}>
       {/* Tab toggle — Activity timeline vs Documents (one card per upload).
-          Sits at the top of the drawer body so both views share the
-          filter row + outer chrome. */}
-      <div className={hccStyles.tabBar}>
-        <button
-          type="button"
-          className={[hccStyles.tab, tab === 'activity' ? hccStyles.tabActive : ''].join(' ')}
-          onClick={() => setTab('activity')}
-        >
-          <Icon name="solar:history-linear" size={14} color={tab === 'activity' ? 'var(--primary-300)' : 'var(--neutral-300)'} />
-          Activity
-        </button>
-        <button
-          type="button"
-          className={[hccStyles.tab, tab === 'documents' ? hccStyles.tabActive : ''].join(' ')}
-          onClick={() => setTab('documents')}
-        >
-          <Icon name="solar:document-text-linear" size={14} color={tab === 'documents' ? 'var(--primary-300)' : 'var(--neutral-300)'} />
-          Documents
-        </button>
-      </div>
+          Uses the shared TabStrip primitive so tab styling matches the app's
+          top-level TabBar. Bleeds edge-to-edge inside the drawer body. */}
+      <TabStrip
+        items={[
+          { key: 'activity',  label: 'Activity',  icon: 'solar:history-linear' },
+          { key: 'documents', label: 'Documents', icon: 'solar:document-text-linear' },
+        ]}
+        activeKey={tab}
+        onChange={setTab}
+      />
       {tab === 'documents' ? (
         <DocumentsTab
           feed={feed}
@@ -503,29 +438,32 @@ export function HccHistoryDrawer() {
         />
       ) : (
       <>
-      {/* Filter row — DOS · Patient · Category · Recorded By · Date + Clear All. */}
-      <div className={styles.filterRow}>
+      {/* Filter row — DOS · Patient · Category · Recorded By · Date + Clear All.
+          Uses the shared multi-select FilterChip so behaviour matches the
+          worklist's FilterChipBar. Sits at a 0px gap directly under the
+          TabStrip and bleeds edge-to-edge inside the drawer. */}
+      <div className={hccStyles.filterRow}>
         <Icon name="solar:filter-linear" size={20} color="var(--neutral-300)" />
-        <div className={styles.filterChips}>
-          <FilterChip label="DOS"         value={filters.dos}      options={options.dos}      onChange={(v) => setFilter('dos', v)} />
-          <FilterChip label="Patient"     value={filters.patient}  options={options.patient}  onChange={(v) => setFilter('patient', v)} />
-          <FilterChip label="Category"    value={filters.category} options={options.category} onChange={(v) => setFilter('category', v)} />
-          <FilterChip label="Recorded By" value={filters.by}       options={options.by}       onChange={(v) => setFilter('by', v)} />
-          <FilterChip label="Date"        value={filters.date}     options={options.date}     onChange={(v) => setFilter('date', v)} />
-          <button
-            type="button"
-            className={styles.filterClearAll}
-            onClick={clearAll}
-            disabled={!hasAnyFilter}
-          >
-            <Icon
-              name="solar:close-circle-linear"
-              size={12}
-              color={hasAnyFilter ? 'var(--primary-300)' : 'var(--neutral-200)'}
-            />
-            Clear All
-          </button>
+        <div className={hccStyles.filterChips}>
+          <FilterChip label="DOS"         options={options.dos}      selected={filters.dos}      onChange={(v) => setFilter('dos', v)} />
+          <FilterChip label="Patient"     options={options.patient}  selected={filters.patient}  onChange={(v) => setFilter('patient', v)} />
+          <FilterChip label="Category"    options={options.category} selected={filters.category} onChange={(v) => setFilter('category', v)} />
+          <FilterChip label="Recorded By" options={options.by}       selected={filters.by}       onChange={(v) => setFilter('by', v)} />
+          <FilterChip label="Date"        options={options.date}     selected={filters.date}     onChange={(v) => setFilter('date', v)} />
         </div>
+        <button
+          type="button"
+          className={hccStyles.clearAll}
+          onClick={clearAll}
+          disabled={!hasAnyFilter}
+        >
+          <Icon
+            name="solar:close-circle-linear"
+            size={12}
+            color={hasAnyFilter ? 'var(--primary-300)' : 'var(--neutral-200)'}
+          />
+          Clear All
+        </button>
       </div>
 
       {loading && feed.length === 0 ? (
@@ -673,9 +611,9 @@ function DocumentsTab({ feed, loading, onReopenReview }) {
         {uploaders.length > 2 && (
           <FilterChip
             label="Uploader"
-            value={uploaderFilter === 'All uploaders' ? null : uploaderFilter}
             options={uploaders.slice(1)}
-            onChange={(v) => setUploaderFilter(v || 'All uploaders')}
+            selected={uploaderFilter === 'All uploaders' ? [] : [uploaderFilter]}
+            onChange={(vals) => setUploaderFilter(vals[0] || 'All uploaders')}
           />
         )}
       </div>

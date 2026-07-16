@@ -1,13 +1,46 @@
 .filterRow {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 12px 0 16px;
+  padding: 10px 16px;
+  /* Bleed edge-to-edge inside the drawer body's 24px horizontal padding. */
+  margin: 0 -24px;
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
   position: sticky;
   top: 0;
-  background: var(--surface, #fff);
   z-index: 2;
 }
+
+.filterChips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.clearAll {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--primary-300);
+  font: 500 12px/1.2 'Inter', sans-serif;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.clearAll:disabled {
+  color: var(--neutral-200);
+  cursor: not-allowed;
+}
+.clearAll:hover:not(:disabled) { color: var(--primary-400); }
 
 .chip {
   display: inline-flex;
@@ -72,39 +105,12 @@
   opacity: .7;
 }
 
-/* ── Tab bar (Activity | Documents) ───────────────────────────────── */
-.tabBar {
-  display: flex;
-  gap: 4px;
-  margin: 0 -16px 8px;
-  padding: 0 16px;
-  border-bottom: 0.5px solid var(--neutral-150);
-}
-.tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 12px;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  font: 500 13px/1.2 'Inter', sans-serif;
-  color: var(--neutral-300);
-  cursor: pointer;
-  margin-bottom: -1px;
-}
-.tab:hover { color: var(--neutral-500); }
-.tabActive {
-  color: var(--primary-300);
-  border-bottom-color: var(--primary-300);
-}
-
 /* ── Documents tab ─────────────────────────────────────────────────── */
 .docsTab {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 4px 0 16px;
+  padding: 12px 0 16px;
 }
 .docsHeaderRow {
   display: flex;

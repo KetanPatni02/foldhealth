@@ -1,4 +1,13 @@
-.body { padding: 0 24px 24px; }
+/* Drawer body — zero padding so the PatientBanner spans edge-to-edge
+   underneath the header. DOS cards + Add More DOS button live inside
+   .bodyContainer below, which supplies its own 12px inset. */
+.body { padding: 0; }
+
+.bodyContainer {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+}
 
 .headerDivider {
   display: inline-block;

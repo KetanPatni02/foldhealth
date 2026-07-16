@@ -1,0 +1,41 @@
+/* TabStrip — matches the pattern of the app's top-level TabBar (Worklist /
+   TOC Agent Queue). Reused by drawers that need the same tab affordance. */
+
+.tabBar {
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* Bleed to the container's edges when the parent (e.g. Drawer body) applies
+   horizontal padding of its own. Consumers pass fullWidth to enable. */
+.fullWidth {
+  margin-left: calc(-1 * var(--drawer-body-padding-x, 24px));
+  margin-right: calc(-1 * var(--drawer-body-padding-x, 24px));
+}
+
+.tabItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 4px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tabItem:hover { color: var(--neutral-400); }
+
+.tabItem.active {
+  color: var(--primary-300);
+  border-bottom-color: var(--primary-300);
+}
