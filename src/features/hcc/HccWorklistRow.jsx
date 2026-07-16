@@ -468,6 +468,10 @@ function Cell({ colKey, hidden, children, ...rest }) {
 // advance past a rejected Support to Coder.
 const TERMINAL_STATUSES = new Set(['Completed', 'Skipped', 'Billing Ready']);
 const BLOCKING_STATUSES = new Set(['Reject', 'Rejected', 'Insufficient']);
+// Narrower — the two variants that specifically mean "a reviewer rejected the
+// stage's work" (Insufficient lives one bucket earlier in the pipeline).
+const REJECTED_STATUSES = new Set(['Rejected', 'Reject']);
+export function isRejectedStatus(s) { return REJECTED_STATUSES.has(s); }
 
 // Sequential workflow order. The first role whose status is NOT terminal
 // is where the DOS currently sits (HCC reality: Support → Coder → Reviewer →
@@ -756,11 +760,12 @@ const CELL_RENDERERS = {
   // DiagPanel drawer never diverge for the same DOS.
   sup: ({ member, dosStateFor }) => {
     const s = dosStateFor(member);
+    const status = s?.support?.status || member.supS;
     return (
-      <td key="sup" data-col="sup" className={styles.colRole}>
+      <td key="sup" data-col="sup" data-status={isRejectedStatus(status) ? 'rejected' : undefined} className={styles.colRole}>
         <RoleStatusCell
           name={s?.support?.assignee ? (staffById(s.support.assignee)?.name || member.sup) : member.sup}
-          status={s?.support?.status || member.supS}
+          status={status}
           date={addDaysToDate(member.date, ROLE_OFFSET.sup)}
           role="support" memberId={member.id} dosDate={member.date} />
       </td>
@@ -768,11 +773,12 @@ const CELL_RENDERERS = {
   },
   cdr: ({ member, dosStateFor }) => {
     const s = dosStateFor(member);
+    const status = s?.coder?.status || member.cdrS;
     return (
-      <td key="cdr" data-col="cdr" className={styles.colRole}>
+      <td key="cdr" data-col="cdr" data-status={isRejectedStatus(status) ? 'rejected' : undefined} className={styles.colRole}>
         <RoleStatusCell
           name={s?.coder?.assignee ? (staffById(s.coder.assignee)?.name || member.cdr) : member.cdr}
-          status={s?.coder?.status || member.cdrS}
+          status={status}
           date={addDaysToDate(member.date, ROLE_OFFSET.cdr)}
           role="coder" memberId={member.id} dosDate={member.date} />
       </td>
@@ -780,11 +786,12 @@ const CELL_RENDERERS = {
   },
   r1: ({ member, dosStateFor }) => {
     const s = dosStateFor(member);
+    const status = s?.reviewer?.status || member.r1s;
     return (
-      <td key="r1" data-col="r1" className={styles.colRole}>
+      <td key="r1" data-col="r1" data-status={isRejectedStatus(status) ? 'rejected' : undefined} className={styles.colRole}>
         <RoleStatusCell
           name={s?.reviewer?.assignee ? (staffById(s.reviewer.assignee)?.name || member.r1) : member.r1}
-          status={s?.reviewer?.status || member.r1s}
+          status={status}
           date={addDaysToDate(member.date, ROLE_OFFSET.r1)}
           role="reviewer" memberId={member.id} dosDate={member.date} />
       </td>
@@ -792,11 +799,12 @@ const CELL_RENDERERS = {
   },
   r2: ({ member, dosStateFor }) => {
     const s = dosStateFor(member);
+    const status = s?.reviewer2?.status || member.r2s;
     return (
-      <td key="r2" data-col="r2" className={styles.colRole}>
+      <td key="r2" data-col="r2" data-status={isRejectedStatus(status) ? 'rejected' : undefined} className={styles.colRole}>
         <RoleStatusCell
           name={s?.reviewer2?.assignee ? (staffById(s.reviewer2.assignee)?.name || member.r2) : member.r2}
-          status={s?.reviewer2?.status || member.r2s}
+          status={status}
           date={addDaysToDate(member.date, ROLE_OFFSET.r2)}
           role="reviewer2" memberId={member.id} dosDate={member.date} />
       </td>
