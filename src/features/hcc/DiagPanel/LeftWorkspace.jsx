@@ -22,6 +22,7 @@ import { OutreachTab as PatientOutreachTab } from '../../patient/components/Outr
 import { DocEvidenceViewer } from './DocEvidenceViewer';
 import { DestructiveDialog } from '../../../components/Modal/DestructiveDialog';
 import { CommentComposer } from '../../../components/CommentComposer/CommentComposer';
+import { Avatar } from '../../../components/Avatar/Avatar';
 import styles from './LeftWorkspace.module.css';
 
 // Two tab sets depending on scope. Counts flow in per-render since
@@ -600,7 +601,7 @@ function ActivityTab({ member, rawEntries: rawEntriesProp, filters }) {
               </span>
             </button>
           ) : (
-            <ActivityEntry key={it.key} item={it.item} isFirst={it.isFirst} isLast={it.isLast} />
+            <ActivityEntry key={it.key} item={it.item} isFirst={it.isFirst} isLast={it.isLast} member={member} />
           ))}
         </div>
       )}
@@ -608,9 +609,26 @@ function ActivityTab({ member, rawEntries: rawEntriesProp, filters }) {
   );
 }
 
-function ActivityEntry({ item, isFirst, isLast }) {
+function ActivityEntry({ item, isFirst, isLast, member }) {
   const [expanded, setExpanded] = useState(false);
   const cfg = ACT_ICON[item.t] || ACT_ICON.accept;
+  const setDiagLeftPanel = useAppStore(s => s.setDiagLeftPanel);
+  const setDiagOpenDocId = useAppStore(s => s.setDiagOpenDocId);
+  const addedCharts = useAppStore(s => s.hccAddedCharts[member?.id]);
+  const chartStatus = useAppStore(s => s.hccChartStatus[member?.id]);
+  const removedCharts = useAppStore(s => s.hccRemovedCharts[member?.id]);
+  // Open the uploaded document in the Documents preview. Matches by
+  // docId when available (new entries), falls back to filename lookup
+  // for older activity records that predate the docId field.
+  const previewDoc = () => {
+    if (!member) return;
+    const docs = getChartDocs(member, addedCharts || [], chartStatus || {}, removedCharts || []);
+    const match = (item.docId && docs.find(d => d.id === item.docId))
+      || (item.file && docs.find(d => d.n === item.file || d.caption === item.file));
+    if (!match) return;
+    setDiagLeftPanel('documents');
+    setDiagOpenDocId(match.id);
+  };
   const meta = [
     item.date,
     item.time,
@@ -660,15 +678,6 @@ function ActivityEntry({ item, isFirst, isLast }) {
           <div className={styles.tlCommentBody}>{item.details[0].note}</div>
         )}
 
-        {/* Accept entries get an "Undo All" affordance (Figma 278:169610)
-            instead of a Details expander — matches the inline review flow. */}
-        {item.t === 'accept' && (
-          <button type="button" className={styles.tlUndoAll}>
-            <Icon name="solar:undo-left-round-linear" size={12} color="var(--primary-300)" />
-            <span>Undo All</span>
-          </button>
-        )}
-
         {/* Status transition (from → to) pills */}
         {(item.t === 'status_dos' || item.t === 'status_hcc') && item.from && item.to && (
           <div className={styles.tlTransition}>
@@ -687,9 +696,18 @@ function ActivityEntry({ item, isFirst, isLast }) {
           <div className={styles.tlTag}>{item.tag}</div>
         )}
 
-        {/* Document attachment card */}
+        {/* Document attachment card — click anywhere to open the file in
+            the Documents preview pane. Users can flip back to Timeline via
+            the tab bar at the top of the workspace. */}
         {item.file && (
-          <div className={styles.tlAttachment}>
+          <div
+            className={styles.tlAttachment}
+            role="button"
+            tabIndex={0}
+            onClick={previewDoc}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); previewDoc(); } }}
+            title={`Preview ${item.file}`}
+          >
             <span className={styles.tlFileBubble}>
               <Icon name="solar:file-text-linear" size={14} color="var(--neutral-300)" />
             </span>
@@ -697,7 +715,12 @@ function ActivityEntry({ item, isFirst, isLast }) {
               <div className={styles.tlFileName}>{item.file}</div>
               {item.fileType && <div className={styles.tlFileType}>{item.fileType}</div>}
             </div>
-            <button type="button" className={styles.tlFilePreview} aria-label="Preview">
+            <button
+              type="button"
+              className={styles.tlFilePreview}
+              aria-label="Preview"
+              onClick={(e) => { e.stopPropagation(); previewDoc(); }}
+            >
               <Icon name="solar:eye-linear" size={14} color="var(--neutral-300)" />
             </button>
           </div>
@@ -749,7 +772,7 @@ function ActivityEntry({ item, isFirst, isLast }) {
 function AvatarPill({ initials, name }) {
   return (
     <span className={styles.avatarPill}>
-      <span className={styles.avatarBubble}>{initials}</span>
+      <Avatar variant="provider" initials={initials} />
       <span className={styles.avatarName}>{name}</span>
     </span>
   );

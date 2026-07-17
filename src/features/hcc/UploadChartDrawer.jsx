@@ -92,6 +92,7 @@ export function UploadChartDrawer() {
         : 'Document Uploaded',
       file: doc.n,
       fileType: docType,
+      docId: doc.id,
     });
     showToast(`Uploaded ${doc.n} to ${member.name}'s documents.`);
     setFile(null);
