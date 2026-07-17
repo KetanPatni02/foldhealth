@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '../../../store/useAppStore';
+import { toast } from '../../../components/Toast/Toast';
 import { Drawer } from '../../../components/Drawer/Drawer';
 import { BulkBar } from '../../../components/BulkBar/BulkBar';
 import { Icon } from '../../../components/Icon/Icon';
@@ -699,8 +700,14 @@ export function DiagPanel() {
         const focused = rowKeys[Math.min(focusIdx, rowKeys.length - 1)];
         if (!focused) return;
         const k = key.toLowerCase();
-        // Support can't accept/reject ICDs — ignore the A / X shortcuts.
-        if ((k === 'a' || k === 'x') && useAppStore.getState().hccUserRole === 'Support') return;
+        // Support can't code ICDs — surface an error toast so the shortcut
+        // isn't silently swallowed. Applies to every ICD-coding shortcut:
+        // A / X / M / D. Matches the tooltip on the disabled action buttons.
+        if (useAppStore.getState().hccUserRole === 'Support') {
+          e.preventDefault();
+          toast.error('Support role cannot code ICDs');
+          return;
+        }
         e.preventDefault();
         const [code, dos] = focused.split('|');
         if (k === 'x') {
@@ -1004,6 +1011,7 @@ export function DiagPanel() {
                   <Switch
                     checked={enabled}
                     ariaLabel={`Toggle DOS ${d.date}`}
+                    disabled={hccUserRole === 'Support'}
                     onChange={() => setDisabledDos(prev => {
                       const next = new Set(prev);
                       if (next.has(d.date)) next.delete(d.date); else next.add(d.date);

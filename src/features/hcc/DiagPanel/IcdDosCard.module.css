@@ -266,7 +266,8 @@
   cursor: pointer;
   color: var(--neutral-400);
 }
-.undoBtn:hover { background: var(--neutral-50); }
+.undoBtn:hover:not(:disabled) { background: var(--neutral-50); }
+.undoBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* "Dismiss Reason ⓘ" link shown on a dismissed row */
 .dismissReasonLink {

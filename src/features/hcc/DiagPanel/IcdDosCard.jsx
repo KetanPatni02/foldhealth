@@ -325,30 +325,62 @@ function DosActionRow({
           {isAccepted ? (
             <>
               <span className={styles.acceptedPill}><CheckIcon size={13} color="currentColor" /> Accepted</span>
-              <button type="button" className={styles.undoBtn} title="Undo" aria-label="Undo accept" onClick={onUndo}>
-                <Icon name="solar:undo-left-round-linear" size={15} />
-              </button>
+              <Tooltip label={canReview ? 'Undo' : (disabledReason || 'Undo')}>
+                <button
+                  type="button"
+                  className={styles.undoBtn}
+                  aria-label="Undo accept"
+                  disabled={!canReview}
+                  onClick={!canReview ? undefined : onUndo}
+                >
+                  <Icon name="solar:undo-left-round-linear" size={15} />
+                </button>
+              </Tooltip>
             </>
           ) : isRejected ? (
             <>
               <span className={styles.dismissedPill}><CloseIcon size={12} color="currentColor" /> Dismissed</span>
-              <button type="button" className={styles.undoBtn} title="Undo" aria-label="Undo dismiss" onClick={onUndo}>
-                <Icon name="solar:undo-left-round-linear" size={15} />
-              </button>
+              <Tooltip label={canReview ? 'Undo' : (disabledReason || 'Undo')}>
+                <button
+                  type="button"
+                  className={styles.undoBtn}
+                  aria-label="Undo dismiss"
+                  disabled={!canReview}
+                  onClick={!canReview ? undefined : onUndo}
+                >
+                  <Icon name="solar:undo-left-round-linear" size={15} />
+                </button>
+              </Tooltip>
             </>
           ) : isMissed ? (
             <>
               <span className={styles.warnPill}><Icon name="solar:flag-linear" size={13} color="currentColor" /> Missed opportunity</span>
-              <button type="button" className={styles.undoBtn} title="Undo" aria-label="Undo missed opportunity" onClick={onUndo}>
-                <Icon name="solar:undo-left-round-linear" size={15} />
-              </button>
+              <Tooltip label={canReview ? 'Undo' : (disabledReason || 'Undo')}>
+                <button
+                  type="button"
+                  className={styles.undoBtn}
+                  aria-label="Undo missed opportunity"
+                  disabled={!canReview}
+                  onClick={!canReview ? undefined : onUndo}
+                >
+                  <Icon name="solar:undo-left-round-linear" size={15} />
+                </button>
+              </Tooltip>
             </>
           ) : isDeferred ? (
             <>
               <span className={styles.warnPill}><Icon name="solar:alarm-linear" size={13} color="currentColor" /> Deferred</span>
-              <button type="button" className={styles.undoBtn} title="Undo" aria-label="Undo defer" onClick={onUndo}>
-                <Icon name="solar:undo-left-round-linear" size={15} />
-              </button>
+              <Tooltip label={canReview ? 'Undo' : (disabledReason || 'Undo')}>
+                <button
+                  type="button"
+                  className={styles.undoBtn}
+                  aria-label="Undo defer"
+                  disabled={!canReview}
+                  onClick={!canReview ? undefined : onUndo}
+                >
+                  <Icon name="solar:undo-left-round-linear" size={15} />
+                </button>
+              </Tooltip>
             </>
           ) : (
             <>

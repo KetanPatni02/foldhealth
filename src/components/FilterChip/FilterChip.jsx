@@ -10,11 +10,17 @@ import styles from './FilterChip.module.css';
  *
  * @param {object}   props
  * @param {string}   props.label
+ * @param {string}   [props.popoverLabel] – Header shown INSIDE the popover.
+ *                                          Defaults to `label`. Use when the
+ *                                          chip trigger text and the popover
+ *                                          header should differ (e.g. chip
+ *                                          "Documents Available" → popover
+ *                                          "Select No. of Documents").
  * @param {string[]} props.options       – available values
  * @param {string[]} [props.selected]    – currently-selected values
  * @param {function} props.onChange      – (string[]) => void
  */
-export function FilterChip({ label, options, selected = [], onChange }) {
+export function FilterChip({ label, popoverLabel, options, selected = [], onChange }) {
   const [rect, setRect] = useState(null);
   const active = selected.length > 0;
 
@@ -46,7 +52,7 @@ export function FilterChip({ label, options, selected = [], onChange }) {
       {rect && (
         <CheckboxListPopover
           anchorRect={rect}
-          label={label}
+          label={popoverLabel || label}
           options={options}
           selected={selected}
           onChange={onChange}

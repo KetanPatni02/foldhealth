@@ -99,7 +99,10 @@ export const FILTER_DEFS = [
   { k: 'coh',    label: 'Cohort',              type: 'multi', opts: ['PCP', 'HCC'] },
   { k: 'g',      label: 'Gender',              type: 'multi', opts: ['Male', 'Female'] },
   { k: 'open',   label: 'Open ICDs',           type: 'radio', opts: ['< 5 Gaps', '5 - 10 Gaps', '10 - 15 Gaps', '> 15 Gaps'] },
-  { k: 'chart',  label: 'Documents Available', type: 'multi', opts: ['Available', 'Not Available'] },
+  // Documents Available — filter by the NUMBER of documents attached to the
+  // record instead of a binary Available/Not-Available flag (Figma 4240:110644).
+  // Buckets: No Documents / 1 - 5 / 6 - 10 / >= 10.
+  { k: 'chart',  label: 'Documents Available', popoverLabel: 'Select No. of Documents', type: 'multi', opts: ['No Documents', '1 - 5', '6 - 10', '>= 10'] },
   // Support / Coder / QA / Compliance statuses — role-specific vocabularies
   // (aligned with ROLE_STATUS_OPTIONS in statusSpec.js). Support has no "New"
   // (work arrives already actionable); Coder has record-request states; QA
@@ -186,10 +189,18 @@ function matchOne(m, k, vals) {
         return false;
       });
     }
-    case 'chart':
-      if (vals.includes('Available') && !vals.includes('Not Available')) return !!m.ch;
-      if (vals.includes('Not Available') && !vals.includes('Available')) return !m.ch;
-      return true;
+    case 'chart': {
+      // Match if the record's document count falls into any of the selected
+      // buckets. Reads the same `ch` field the worklist Documents column uses.
+      const cnt = m.ch || 0;
+      return vals.some(v => {
+        if (v === 'No Documents') return cnt === 0;
+        if (v === '1 - 5') return cnt >= 1 && cnt <= 5;
+        if (v === '6 - 10') return cnt >= 6 && cnt <= 10;
+        if (v === '>= 10') return cnt >= 10;
+        return false;
+      });
+    }
     case 'supS': {
       const set = new Set(vals.flatMap(v => SUPPORT_STATUS_MATCH[v] || [v]));
       return set.has(m.supS);

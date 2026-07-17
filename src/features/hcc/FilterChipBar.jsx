@@ -230,7 +230,7 @@ export function FilterChipBar({ onSaveFilter }) {
           return (
             <CheckboxListPopover
               anchorRect={chipPop.rect}
-              label={def.label}
+              label={def.popoverLabel || def.label}
               options={optsFor(def)}
               selected={current}
               onChange={setVals}

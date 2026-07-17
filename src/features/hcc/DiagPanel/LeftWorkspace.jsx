@@ -189,9 +189,21 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
   };
 
   // Options derived from the activity entries (plus DOS list from member).
+  // "Recorded By" options come from actual authors in the persisted records
+  // (comments, notes, documents) plus the platform-user directory, so the
+  // filter never shows a stale mock-activity author who never actually posted.
+  const dbCommentsAll = useAppStore(s => s.hccDiagComments);
+  const dbNotesAll    = useAppStore(s => s.hccDiagNotes);
+  const dbDocsAll     = useAppStore(s => s.hccDiagDocumentsList);
+  const platformUsersAll = useAppStore(s => s.platformUsers);
   const filterOptions = useMemo(
-    () => computeFilterOptions(rawActivity, member),
-    [rawActivity, member],
+    () => computeFilterOptions(rawActivity, member, {
+      comments: dbCommentsAll,
+      notes: dbNotesAll,
+      docs: dbDocsAll,
+      platformUsers: platformUsersAll,
+    }),
+    [rawActivity, member, dbCommentsAll, dbNotesAll, dbDocsAll, platformUsersAll],
   );
   // Mirror the full DOS option list into filters.dos until the user edits
   // it. Keeps "default = all selected" true even when activity data loads
@@ -293,28 +305,51 @@ const DATE_PRESETS = ['Today', 'Last 7 days', 'Last 30 days', 'This month'];
  * Build the dropdown option lists for each filter chip from the activity
  * entries (plus member.dos_list for the DOS filter).
  */
-function computeFilterOptions(entries, member) {
+function computeFilterOptions(entries, member, extras = {}) {
   const dos = new Set((member?.dos_list || []).map(d => d.date).filter(Boolean));
   const hcc = new Set();
   const icd = new Set();
-  const by  = new Set();
   const HCC_RE = /HCC\s*\d+/g;
+  // Strip a trailing "(Role)" suffix so "You (Coder)" and "You (QA)" collapse
+  // to a single "You" option in the Recorded By list.
+  const stripRole = (raw) => String(raw || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
   for (const e of entries) {
     if (e.t === 'group') continue;
     if (e.dos) dos.add(e.dos);
-    if (e.by)  by.add(e.by);
     if (Array.isArray(e.icds)) e.icds.forEach(c => icd.add(c));
     if (typeof e.headline === 'string') {
       // Normalize "HCC18" / "HCC  18" → "HCC 18" so the dropdown isn't duplicated.
       (e.headline.match(HCC_RE) || []).forEach(c => hcc.add(c.replace(/^HCC\s*/, 'HCC ')));
     }
   }
+  // "Recorded By" options are sourced from platform users (canonical directory)
+  // and augmented with the authors of the persisted records for this record
+  // (comments / notes / documents). Mock activity-log authors that aren't in
+  // either source are excluded — so the dropdown never shows a name that
+  // could never legitimately post a record here.
+  const byPool = new Set();
+  for (const u of (extras.platformUsers || [])) {
+    const name = stripRole(u.name);
+    if (name) byPool.add(name);
+  }
+  for (const c of (extras.comments || [])) {
+    const name = stripRole(c.author);
+    if (name) byPool.add(name);
+  }
+  for (const n of (extras.notes || [])) {
+    const name = stripRole(n.author);
+    if (name) byPool.add(name);
+  }
+  for (const d of (extras.docs || [])) {
+    const name = stripRole(d.uploadedBy || d.author);
+    if (name) byPool.add(name);
+  }
   const cmp = (a, b) => a.localeCompare(b);
   return {
     dos:  [...dos].sort(cmp),
     hcc:  [...hcc].sort(cmp),
     icd:  [...icd].sort(cmp),
-    by:   [...by].sort(cmp),
+    by:   [...byPool].sort(cmp),
     date: DATE_PRESETS,
   };
 }
