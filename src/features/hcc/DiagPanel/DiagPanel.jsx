@@ -163,30 +163,6 @@ const isAISuggested = (icd) => ['Suspect', 'Recapture'].includes(icd.type || '')
 // earlier role never worked the record auto-skips that earlier stage.
 const ROLE_KEY_BY_USER = { Support: 'support', Coder: 'coder', QA: 'reviewer', Compliance: 'reviewer2' };
 
-// Keyboard shortcut legend — mirrors the handlers in DiagPanel's keydown
-// effect. Rendered as the drawer's dark footer bar (Paper 1WXT).
-const SHORTCUTS = [
-  ['A', 'Accept'],
-  ['X', 'Dismiss'],
-  ['M', 'Missed opportunity'],
-  ['D', 'Defer'],
-  ['↑↓', 'Move'],
-  ['Enter', 'Open Document'],
-];
-function ShortcutBar() {
-  return (
-    <div className={styles.shortcutBar}>
-      {SHORTCUTS.map(([k, label]) => (
-        <span key={k} className={styles.shortcutItem}>
-          <kbd className={styles.shortcutKey}>{k}</kbd>
-          <span className={styles.shortcutLabel}>{label}</span>
-        </span>
-      ))}
-    </div>
-  );
-}
-
-
 export function DiagPanel() {
   const memberId = useAppStore(s => s.diagPanelMemberId);
   const closeDiagPanel = useAppStore(s => s.closeDiagPanel);
@@ -390,21 +366,18 @@ export function DiagPanel() {
     return rs?.status || diagDosStatus || 'New';
   }, [dosState, actingRole, diagDosStatus]);
 
-  // Downstream roles wait for their prerequisites:
-  //   • Coder: locked until Support marks the record Completed. The Coder
-  //     must not accept / dismiss / mark missed / defer an ICD while the
-  //     underlying docs haven't been reviewed. Support-blocked states
-  //     (Insufficient / Reject / Rejected) are a subset of "not Completed"
-  //     and stay locked too.
-  //   • QA / Compliance: locked until Support + Coder both Completed.
+  // Coder is locked until Support marks the record Completed — coders
+  // shouldn't accept / dismiss / mark missed / defer while the underlying
+  // docs are still under Support review. Support-blocked states
+  // (Insufficient / Reject / Rejected) are a subset of "not Completed"
+  // and stay locked too.
+  //
+  // QA and Compliance are reviewers of the Coder's work — they take ICD
+  // actions independently and are not gated by Support/Coder completion.
   const stageLocked = useMemo(() => {
+    if (actingRole !== 'coder') return false;
     const supStatus = dosState?.support?.status || member?.supS;
-    const cdrStatus = dosState?.coder?.status || member?.cdrS;
-    const supDone = supStatus === 'Completed';
-    const cdrDone = cdrStatus === 'Completed';
-    if (actingRole === 'coder') return !supDone;
-    if (actingRole === 'reviewer' || actingRole === 'reviewer2') return !(supDone && cdrDone);
-    return false;
+    return supStatus !== 'Completed';
   }, [actingRole, dosState, member]);
 
   // ── Review-progress stages + ring (drives the stage pill) ──
@@ -769,7 +742,6 @@ export function DiagPanel() {
       className={[styles.panel, diagLeftPanel ? styles.panelExpanded : ''].join(' ')}
       bodyClassName={[styles.body, diagLeftPanel ? styles.bodyExpanded : ''].join(' ')}
       headerStyle={{ display: 'none' }}
-      footer={<ShortcutBar />}
     >
       {/* ── Row 1: Title + Close — spans the FULL drawer width. ── */}
       <div className={styles.titleRow}>

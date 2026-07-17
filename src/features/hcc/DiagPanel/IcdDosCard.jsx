@@ -321,7 +321,11 @@ function DosActionRow({
             <Icon name="solar:info-circle-linear" size={12} />
           </button>
         )}
-        <div className={styles.rowActions}>
+        {/* stopPropagation so ICD-action button clicks (Accept / Dismiss /
+            More / Undo) don't bubble to the parent card's toggleSelect
+            handler — which would force-switch the left panel to Documents
+            even when the user has Timeline / Comments / History open. */}
+        <div className={styles.rowActions} onClick={(e) => e.stopPropagation()}>
           {isAccepted ? (
             <>
               <span className={styles.acceptedPill}><CheckIcon size={13} color="currentColor" /> Accepted</span>

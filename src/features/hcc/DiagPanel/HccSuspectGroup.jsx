@@ -192,7 +192,11 @@ export function SuspectCard({ icd, dosList = [], member, reviewLocked = false })
             <Icon name="solar:alt-arrow-down-linear" size={13} color={dos ? 'var(--primary-300)' : 'var(--neutral-300)'} />
           )}
         </button>
-        <div className={styles.dosActions}>
+        {/* stopPropagation so ICD-action button clicks (Missed / Dismiss /
+            More / Undo) don't bubble to the parent Suspect card's
+            toggleSelect handler — the card would otherwise switch the
+            left panel to Documents even when Timeline / Comments is open. */}
+        <div className={styles.dosActions} onClick={(e) => e.stopPropagation()}>
           {action ? (
             <>
               <ResolvedPill action={action} />

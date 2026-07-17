@@ -85,7 +85,7 @@ export function UploadChartDrawer() {
     const doc = makeUploadedChartDoc(member, { file, caption, docType });
     addChartDoc(member.id, doc, file);
     addActivityEntry({
-      t: 'upload', by: 'You', role: 'Coder',
+      t: 'upload', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
       icds: activityIcd ? [activityIcd] : undefined,
       headline: activityIcd
         ? `Document Uploaded for ${activityIcd}`

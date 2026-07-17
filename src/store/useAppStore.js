@@ -3340,7 +3340,7 @@ export const useAppStore = create((set, get) => ({
     // ICD-level log entry → carries icds:[code] so it shows in both the
     // ICD-scoped log AND the DOS-level (global) log.
     get().addActivityEntry({
-      t: 'accept', by: 'You', role: 'Coder',
+      t: 'accept', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
       icds: [code],
       headline: `Accepted ICD ${code}`,
       from: 'Open', to: 'Accepted',
@@ -3356,7 +3356,7 @@ export const useAppStore = create((set, get) => ({
     }));
     persistHccGapUpdate(code, memberName, { status: 'Dismissed', dismiss_reason: reason || null });
     get().addActivityEntry({
-      t: 'dismiss', by: 'You', role: 'Coder',
+      t: 'dismiss', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
       icds: [code],
       headline: `Dismissed ICD ${code}${reason ? ` — ${reason}` : ''}`,
       from: 'Open', to: 'Dismissed',
@@ -3372,7 +3372,7 @@ export const useAppStore = create((set, get) => ({
     }));
     persistHccGapUpdate(code, memberName, { status: 'New', dismiss_reason: null });
     get().addActivityEntry({
-      t: 'status_hcc', by: 'You', role: 'Coder',
+      t: 'status_hcc', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
       icds: [code],
       headline: `Reopened ICD ${code}`,
       from: 'Dismissed', to: 'Open',
@@ -3416,7 +3416,7 @@ export const useAppStore = create((set, get) => ({
     };
     get().addActivityEntry({
       t: action === 'accepted' ? 'accept' : action === 'rejected' ? 'dismiss' : 'status_hcc',
-      by: 'You', role: 'Coder',
+      by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
       icds: [code],
       headline: `${labels[action]} ICD ${code} on DOS ${dos}`,
       from: 'Open', to: labels[action].split(' ')[0],
@@ -3438,7 +3438,7 @@ export const useAppStore = create((set, get) => ({
       dismiss_note: note || null,
     });
     get().addActivityEntry({
-      t: 'dismiss', by: 'You', role: 'Coder',
+      t: 'dismiss', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
       icds: [code],
       headline: `Dismissed ICD ${code} on DOS ${dos} — ${reason}`,
       from: 'Open', to: 'Dismissed',
@@ -3485,7 +3485,7 @@ export const useAppStore = create((set, get) => ({
       removed: true,
     });
     get().addActivityEntry({
-      t: 'status_hcc', by: 'You', role: 'Coder',
+      t: 'status_hcc', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
       icds: [code],
       headline: `Removed DOS ${dos} from ${code}`,
       from: 'Manual', to: 'Removed',
@@ -3520,7 +3520,7 @@ export const useAppStore = create((set, get) => ({
       };
     });
     get().addActivityEntry({
-      t: 'status_hcc', by: 'You', role: 'Coder',
+      t: 'status_hcc', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
       icds: [code],
       headline: `Deleted manually-added ICD ${code}`,
       from: gap.status || 'New', to: 'Deleted',
@@ -3566,7 +3566,7 @@ export const useAppStore = create((set, get) => ({
       if (get().hccJustAddedCode === code) set({ hccJustAddedCode: null });
     }, 2200);
     get().addActivityEntry({
-      t: 'status_hcc', by: 'You', role: 'Coder',
+      t: 'status_hcc', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
       icds: [code],
       headline: `Manually added ICD ${code}`,
       from: '—', to: 'Open',
@@ -3983,7 +3983,7 @@ export const useAppStore = create((set, get) => ({
         const transitionLabel = HCC_TRANSITION_LABEL[kind] || kind;
         useAppStore.getState().addActivityEntry({
           t: 'status_dos',
-          by: 'You', role: 'Coder',
+          by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
           dos: dosDate,
           headline: `DOS ${dosDate} — ${transitionLabel}`,
         });

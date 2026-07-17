@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../components/Icon/Icon';
+import { toast } from '../../../components/Toast/Toast';
 import { getStatusSpec, statusDisplayLabel, ROLE_STATUS_OPTIONS, ALL_STATUS_OPTIONS } from '../statusSpec';
 import { StatusIcon } from '../StatusIcon';
 import styles from './DosStatusMenu.module.css';
@@ -42,7 +43,13 @@ export function DosStatusMenu({ value, onChange, disabled = false, disabledReaso
   const items = itemsForRole(role);
 
   const open = () => {
-    if (disabled) return;
+    if (disabled) {
+      // Clicking a locked pill fires a toast explaining what's blocking the
+      // status change instead of silently no-oping. Falls back to a generic
+      // message when no specific `disabledReason` was passed.
+      toast.error(disabledReason || 'Status change is locked');
+      return;
+    }
     const r = triggerRef.current?.getBoundingClientRect();
     if (!r) return;
     const margin = 8;
