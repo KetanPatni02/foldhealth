@@ -27,6 +27,9 @@ import styles from './HccSuspectGroup.module.css';
 export function SuspectCard({ icd, dosList = [], member, reviewLocked = false }) {
   const openIcdPanel = useAppStore(s => s.openIcdPanel);
   const openIcdActivityLog = useAppStore(s => s.openIcdActivityLog);
+  const diagActivityIcd = useAppStore(s => s.diagActivityIcd);
+  const clearDiagActivityIcd = useAppStore(s => s.clearDiagActivityIcd);
+  const setDiagLeftPanel = useAppStore(s => s.setDiagLeftPanel);
   const dosActions = useAppStore(s => s.hccGapDosActions);
   const dosMeta = useAppStore(s => s.hccGapDosMeta);
   const setDosAction = useAppStore(s => s.setHccGapDosAction);
@@ -108,9 +111,38 @@ export function SuspectCard({ icd, dosList = [], member, reviewLocked = false })
   const confirmDismiss = (reason, note) => { dismissDos(icd.code, dos, reason, note); setDismissOpen(false); };
 
   const isRejected = action === 'rejected';
+  // Clicking the whole card opens (or closes) the source-document preview
+  // for this ICD — matches the IcdDosCard behavior so Suspect / Recapture
+  // rows respond to click + keyboard the same way.
+  const isSelected = diagActivityIcd === code;
+  const toggleSelect = () => {
+    if (isSelected) {
+      clearDiagActivityIcd();
+      setDiagLeftPanel(null);
+    } else {
+      openIcdPanel('documents', code);
+    }
+  };
 
   return (
-    <div className={styles.card}>
+    <div
+      className={[styles.card, isSelected ? styles.cardSelected : ''].filter(Boolean).join(' ')}
+      role="button"
+      tabIndex={0}
+      // Card-level click opens the source document. Every inner button /
+      // combobox / dropdown still functions — we only fire the toggle when
+      // the click landed on non-interactive card chrome.
+      onClick={(e) => {
+        if (e.target.closest?.('button, input, [role="listbox"], [role="option"], [role="dialog"]')) return;
+        toggleSelect();
+      }}
+      onKeyDown={(e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+          e.preventDefault();
+          toggleSelect();
+        }
+      }}
+      title={isSelected ? 'Deselect' : `Open source document for ${code}`}>
       <div className={styles.head}>
         <div className={styles.headMain}>
           <IcdCombobox

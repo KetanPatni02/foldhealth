@@ -641,9 +641,17 @@ export function DiagPanel() {
   // ── Keyboard model — a focus ring walks the flat list of DOS rows;
   // A/X/M/D act on the focused row, Enter opens the Documents workspace.
   // Suppressed while typing in any input.
+  // Keyboard nav includes acted Suspect / Recapture rows so A / X / M / D
+  // + arrow keys can walk through them the same way they do the primary
+  // ICDs. Un-acted suspects still live under the "Suspects and Recaptures"
+  // header and require a DOS pick in their own picker — they're not part
+  // of the row-walk model.
   const rowKeys = useMemo(
-    () => cardIcds.flatMap(c => c.entries.map(e => `${c.code}|${e.dos}`)),
-    [cardIcds],
+    () => [
+      ...cardIcds.flatMap(c => c.entries.map(e => `${c.code}|${e.dos}`)),
+      ...actedSuspects.flatMap(c => (c.entries || []).map(e => `${c.code}|${e.dos}`)),
+    ],
+    [cardIcds, actedSuspects],
   );
   const focusKey = rowKeys[Math.min(focusIdx, rowKeys.length - 1)] || null;
   // Click-to-focus for DOS rows — clicking a row makes it the keyboard
