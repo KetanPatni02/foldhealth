@@ -2,16 +2,18 @@
    without triggering the close timer. */
 .bridge {
   position: fixed;
-  z-index: 9499;
+  z-index: 9599;
   background: transparent;
 }
 
 /* Popover container — Figma 1:67779:
    bg white, border 0.5px Neutral 100, radius 8, padding 8px / 12px,
-   shadow 0 12px 30px rgba(0,0,0,0.06), 8px gap inside. */
+   shadow 0 12px 30px rgba(0,0,0,0.06), 8px gap inside.
+   z-index sits above ChartDetailDrawer's panel (9501) so the popover
+   isn't hidden when triggered from inside the drawer. */
 .popover {
   position: fixed;
-  z-index: 9500;
+  z-index: 9600;
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-100);
   border-radius: 8px;
