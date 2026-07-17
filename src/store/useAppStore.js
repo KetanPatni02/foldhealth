@@ -926,8 +926,12 @@ export const useAppStore = create((set, get) => ({
     persistHccAddedChart(memberId, doc, file);
   },
   // Load persisted uploads so manually-added docs survive a reload. Grouped by
-  // member id into the same map addChartDoc maintains.
+  // member id into the same map addChartDoc maintains. Single-fire per session
+  // — the HCC worklist and DiagPanel both mount and call this on entry.
+  hccAddedChartsDidFetch: false,
   fetchHccAddedCharts: async () => {
+    if (useAppStore.getState().hccAddedChartsDidFetch) return;
+    set({ hccAddedChartsDidFetch: true });
     const { data, error } = await supabase
       .from('hcc_added_charts')
       .select('*')
@@ -2605,7 +2609,14 @@ export const useAppStore = create((set, get) => ({
 
   hccMembers: [],
   hccMembersLoading: false,
+  hccMembersDidFetch: false,
   fetchHccMembers: async () => {
+    // Single-fire per session — SubNav and HccWorklistTable both call this
+    // on mount, and re-mounts across page navigation would otherwise re-run
+    // the whole hcc_members select every route change. The store already
+    // holds the result; no need to re-fetch.
+    if (useAppStore.getState().hccMembersDidFetch) return;
+    set({ hccMembersDidFetch: true });
     // Local helpers scoped to this action — stamp the WS1/WS8 grouping
     // fields onto each worklist row deterministically so the demo is
     // stable across reloads. Real backends would materialize these at

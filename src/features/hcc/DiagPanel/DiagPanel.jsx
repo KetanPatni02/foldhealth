@@ -194,6 +194,7 @@ export function DiagPanel() {
   const showToast = useAppStore(s => s.showToast);
   const fetchHccDiagnosisGaps = useAppStore(s => s.fetchHccDiagnosisGaps);
   const diagnosisGaps = useAppStore(s => s.hccDiagnosisGaps);
+  const diagnosisGapsLoading = useAppStore(s => s.hccDiagnosisGapsLoading);
   const diagDosStatus = useAppStore(s => s.diagDosStatus);
   const setDiagDosStatus = useAppStore(s => s.setDiagDosStatus);
   // Assignment-engine read/write — drives the Coder stage pill below.
@@ -1027,13 +1028,24 @@ export function DiagPanel() {
             regardless of scroll position. */}
 
         <div className={styles.cardsFlow}>
-          {cardIcds.length === 0 && actedSuspects.length === 0 && pendingSuspects.length === 0 && (
+          {/* Skeleton state — replaces the ICD cards while the diagnosis-gap
+              fetch is in flight, so switching between members doesn't flash
+              the previous record's ICDs before the new data lands. */}
+          {diagnosisGapsLoading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={`skel-${i}`} className={styles.icdCardSkeleton} aria-hidden="true">
+                <div className={[styles.skelBar, styles.skelBarTitle].join(' ')} />
+                <div className={[styles.skelBar, styles.skelBarSub].join(' ')} />
+                <div className={styles.skelBar} />
+              </div>
+            ))
+          ) : (cardIcds.length === 0 && actedSuspects.length === 0 && pendingSuspects.length === 0 && (
             <div className={styles.empty}>
               <Icon name="solar:file-text-linear" size={32} color="var(--neutral-200)" />
               <p>No diagnosis gaps {q ? 'match your search' : 'recorded yet for this member'}.</p>
             </div>
-          )}
-          {cardIcds.map((icd, i) => (
+          ))}
+          {!diagnosisGapsLoading && cardIcds.map((icd, i) => (
             <IcdDosCard
               key={`card-${icd.code}-${i}`}
               icd={icd}
@@ -1048,7 +1060,7 @@ export function DiagPanel() {
             />
           ))}
           {/* Acted suspects graduate into the associated list as normal cards. */}
-          {actedSuspects.map((icd, i) => (
+          {!diagnosisGapsLoading && actedSuspects.map((icd, i) => (
             <IcdDosCard
               key={`acted-suspect-${icd.code}-${i}`}
               icd={icd}
@@ -1063,12 +1075,12 @@ export function DiagPanel() {
             />
           ))}
 
-          {pendingSuspects.length > 0 && (
+          {!diagnosisGapsLoading && pendingSuspects.length > 0 && (
             <div className={styles.assocHeader}>
               <span className={styles.assocTitle}>Suspects and Recaptures</span>
             </div>
           )}
-          {pendingSuspects.map((icd, i) => (
+          {!diagnosisGapsLoading && pendingSuspects.map((icd, i) => (
             <SuspectCard
               key={`suspect-${icd.code}-${i}`}
               icd={icd}

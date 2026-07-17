@@ -771,6 +771,36 @@
 }
 .dosPanelSep { color: var(--neutral-200); margin: 0 2px; }
 
+/* Skeleton ICD card — mirrors .card padding/layout so the swap to real
+   content doesn't reflow, and shimmer bars stand in for the ICD title,
+   description, and one DOS row while hccDiagnosisGaps is loading. */
+.icdCardSkeleton {
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  padding: 12px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.skelBar {
+  height: 12px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--neutral-100) 0%, var(--neutral-50) 50%, var(--neutral-100) 100%);
+  background-size: 200% 100%;
+  animation: skelShimmer 1.4s ease-in-out infinite;
+  width: 100%;
+}
+.skelBarTitle { width: 32%; height: 14px; }
+.skelBarSub   { width: 68%; height: 12px; }
+@keyframes skelShimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skelBar { animation: none; }
+}
+
 /* ── Cards flow (ICD cards + HCC suspect groups) ── */
 .cardsFlow {
   display: flex;
