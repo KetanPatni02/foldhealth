@@ -24,7 +24,7 @@ import styles from './HccSuspectGroup.module.css';
  * ⋯ menu. State uses the same per-(code × DOS) store the confirmed ICD card
  * uses, so both behave identically.
  */
-export function SuspectCard({ icd, dosList = [], member }) {
+export function SuspectCard({ icd, dosList = [], member, reviewLocked = false }) {
   const openIcdPanel = useAppStore(s => s.openIcdPanel);
   const openIcdActivityLog = useAppStore(s => s.openIcdActivityLog);
   const dosActions = useAppStore(s => s.hccGapDosActions);
@@ -65,9 +65,15 @@ export function SuspectCard({ icd, dosList = [], member }) {
   // cards live in a shared section, not under a role-specific bucket.
   const hccUserRole = useAppStore(s => s.hccUserRole);
   const roleAllowsIcdActions = hccUserRole !== 'Support';
-  // Actions unlock only once an ICD *and* a DOS are chosen AND the user
-  // holds a role that can code ICDs.
-  const canAct = !!code && !!dos && !action && roleAllowsIcdActions;
+  // Two distinct disabled reasons — matches the treatment on the ICD DOS
+  // cards so the tooltip explains WHY the action is inert.
+  const disabledReason = hccUserRole === 'Support'
+    ? 'Support role cannot code ICDs'
+    : (reviewLocked ? "Support team hasn't reviewed the documents yet" : null);
+  // Actions unlock only once an ICD *and* a DOS are chosen, the user
+  // holds a role that can code ICDs, AND Support has completed its
+  // document review (reviewLocked = false).
+  const canAct = !!code && !!dos && !action && roleAllowsIcdActions && !reviewLocked;
 
   useEffect(() => {
     if (!menuPos) return undefined;
@@ -110,7 +116,7 @@ export function SuspectCard({ icd, dosList = [], member }) {
           <IcdCombobox
             code={code}
             desc={desc}
-            disabled={!roleAllowsIcdActions}
+            disabled={!roleAllowsIcdActions || reviewLocked}
             onSelect={(picked) => setOverride({ code: picked.code, desc: picked.title || picked.desc || '' })}
           />
           {reviewedByLabel(icd.by) && (
@@ -144,11 +150,10 @@ export function SuspectCard({ icd, dosList = [], member }) {
           ref={dosBtnRef}
           type="button"
           className={[styles.dosButton, dos ? styles.dosButtonActive : ''].filter(Boolean).join(' ')}
-          disabled={!!action || singleDos || !roleAllowsIcdActions}
-          onClick={() => (singleDos || !roleAllowsIcdActions ? null : setDosOpen(o => !o))}
-          title={!roleAllowsIcdActions ? 'Support role cannot code ICDs'
-            : singleDos ? 'Only encounter available'
-            : 'Select a DOS'}
+          disabled={!!action || singleDos || !roleAllowsIcdActions || reviewLocked}
+          onClick={() => (singleDos || !roleAllowsIcdActions || reviewLocked ? null : setDosOpen(o => !o))}
+          title={disabledReason
+            || (singleDos ? 'Only encounter available' : 'Select a DOS')}
         >
           <span>{dos || 'Select DOS'}</span>
           {!singleDos && (
@@ -173,7 +178,7 @@ export function SuspectCard({ icd, dosList = [], member }) {
             <>
               {/* Match the ICD-card action row: icon-only 24-tall buttons in
                   Accept (primary tinted) / Dismiss (neutral) / more-menu shape. */}
-              <Tooltip label={canAct ? 'Missed Opportunity' : (!roleAllowsIcdActions ? 'Support role cannot code ICDs' : 'Select an ICD and DOS first')}>
+              <Tooltip label={canAct ? 'Missed Opportunity' : (disabledReason || 'Select an ICD and DOS first')}>
                 <button
                   type="button"
                   className={[styles.missedBtn, canAct ? '' : styles.disabledAction].filter(Boolean).join(' ')}
@@ -184,7 +189,7 @@ export function SuspectCard({ icd, dosList = [], member }) {
                   <Icon name="solar:flag-linear" size={13} color="currentColor" />
                 </button>
               </Tooltip>
-              <Tooltip label={canAct ? 'Dismiss' : (!roleAllowsIcdActions ? 'Support role cannot code ICDs' : 'Select an ICD and DOS first')}>
+              <Tooltip label={canAct ? 'Dismiss' : (disabledReason || 'Select an ICD and DOS first')}>
                 <button
                   type="button"
                   className={[styles.dismissBtn, dismissOpen ? styles.dismissBtnActive : '', canAct ? '' : styles.disabledAction].filter(Boolean).join(' ')}
@@ -195,7 +200,7 @@ export function SuspectCard({ icd, dosList = [], member }) {
                   <CloseIcon size={13} color="currentColor" />
                 </button>
               </Tooltip>
-              <Tooltip label={canAct ? 'More actions' : (!roleAllowsIcdActions ? 'Support role cannot code ICDs' : 'Select an ICD and DOS first')}>
+              <Tooltip label={canAct ? 'More actions' : (disabledReason || 'Select an ICD and DOS first')}>
                 <button
                   ref={moreRef}
                   type="button"

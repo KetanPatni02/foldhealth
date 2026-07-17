@@ -390,21 +390,19 @@ export function DiagPanel() {
   }, [dosState, actingRole, diagDosStatus]);
 
   // Downstream roles wait for their prerequisites:
-  //   • Coder: locked when Support marked the record Insufficient / Reject —
-  //     the coder shouldn't work an ICD when the source docs failed review.
-  //   • QA / Compliance: locked until Support + Coder both Completed, or if
-  //     Support blocked the pipeline (Insufficient / Reject / Rejected).
+  //   • Coder: locked until Support marks the record Completed. The Coder
+  //     must not accept / dismiss / mark missed / defer an ICD while the
+  //     underlying docs haven't been reviewed. Support-blocked states
+  //     (Insufficient / Reject / Rejected) are a subset of "not Completed"
+  //     and stay locked too.
+  //   • QA / Compliance: locked until Support + Coder both Completed.
   const stageLocked = useMemo(() => {
     const supStatus = dosState?.support?.status || member?.supS;
     const cdrStatus = dosState?.coder?.status || member?.cdrS;
-    const supBlocked = supStatus === 'Insufficient' || supStatus === 'Reject' || supStatus === 'Rejected';
-    if (actingRole === 'coder') return supBlocked;
-    if (actingRole === 'reviewer' || actingRole === 'reviewer2') {
-      if (supBlocked) return true;
-      const supDone = supStatus === 'Completed';
-      const cdrDone = cdrStatus === 'Completed';
-      return !(supDone && cdrDone);
-    }
+    const supDone = supStatus === 'Completed';
+    const cdrDone = cdrStatus === 'Completed';
+    if (actingRole === 'coder') return !supDone;
+    if (actingRole === 'reviewer' || actingRole === 'reviewer2') return !(supDone && cdrDone);
     return false;
   }, [actingRole, dosState, member]);
 
@@ -1076,6 +1074,7 @@ export function DiagPanel() {
               icd={icd}
               dosList={dosList}
               member={member}
+              reviewLocked={stageLocked}
             />
           ))}
         </div>
