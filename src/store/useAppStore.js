@@ -3039,22 +3039,34 @@ export const useAppStore = create((set, get) => ({
       set({ hccDiagnosisGaps: [], hccDiagnosisGapsLoading: false });
       return;
     }
-    const gaps = (data || []).map(row => ({
-      id: row.id,
-      code: row.code,
-      desc: row.description,
-      hcc: row.hcc_category,
-      status: row.status,
-      type: row.type,
-      docs: row.docs_count,
-      cmts: row.comments_count,
-      notes: row.notes_count,
-      raf: row.raf_weight,
-      last: row.last_activity,
-      by: hccNormalizeReviewerLabel(row.last_activity_by),
-      dismissReason: row.dismiss_reason,
-      isLinked: row.is_linked,
-    }));
+    const gaps = (data || []).map(row => {
+      // `kind` is the canonical identity — Associated | Manual | Suspect |
+      // Recapture. `type` and `isLinked` are legacy shadows kept in sync for
+      // components that still read them.
+      const kind = row.kind
+        || (row.type === 'Manual'    ? 'Manual'
+          : row.type === 'Recapture' ? 'Recapture'
+          : row.type === 'Suspect'   ? 'Suspect'
+          : row.is_linked === false  ? 'Suspect'
+          : 'Associated');
+      return {
+        id: row.id,
+        code: row.code,
+        desc: row.description,
+        hcc: row.hcc_category,
+        status: row.status,
+        kind,
+        type: kind === 'Associated' ? null : kind,
+        docs: row.docs_count,
+        cmts: row.comments_count,
+        notes: row.notes_count,
+        raf: row.raf_weight,
+        last: row.last_activity,
+        by: hccNormalizeReviewerLabel(row.last_activity_by),
+        dismissReason: row.dismiss_reason,
+        isLinked: kind !== 'Suspect' && kind !== 'Recapture' ? true : row.is_linked,
+      };
+    });
     set({ hccDiagnosisGaps: gaps, hccDiagnosisGapsLoading: false });
     // Hydrate per-DOS action state for the same member. Kept in the
     // same fetch chain so the DiagPanel's ICD cards render with any
@@ -3527,7 +3539,8 @@ export const useAppStore = create((set, get) => ({
         ...s.hccDiagnosisGaps,
         {
           id, code, desc, hcc: hcc || '', status: 'New',
-          type: 'Manual', docs: 0, cmts: 0, notes: 0, raf: 0,
+          kind: 'Manual', type: 'Manual',
+          docs: 0, cmts: 0, notes: 0, raf: 0,
           last: null, by: null, dismissReason: null, isLinked: true,
         },
       ],
@@ -3541,7 +3554,7 @@ export const useAppStore = create((set, get) => ({
       persistHccGapInsert({
         id, member_name: memberName, code,
         description: desc, hcc_category: hcc || '',
-        status: 'New', type: 'Manual',
+        status: 'New', type: 'Manual', kind: 'Manual',
         docs_count: 0, comments_count: 0, notes_count: 0, raf_weight: 0,
         is_linked: true,
       });

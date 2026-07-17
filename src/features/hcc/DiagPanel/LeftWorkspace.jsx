@@ -1974,12 +1974,16 @@ function roleTokenToIndex(token = '') {
 }
 
 // Parse the trailing "(Role)" off an ICD's `by` field → role index, or -1.
-function roleIndexFromBy(by = '') {
+// DB-hydrated gaps can carry `by = null` when the row hasn't been touched
+// yet, so coerce defensively.
+function roleIndexFromBy(by) {
+  if (!by || typeof by !== 'string') return -1;
   const m = by.match(/\(([^)]+)\)/);
   return roleTokenToIndex(m?.[1] || '');
 }
 
-function nameFromBy(by = '') {
+function nameFromBy(by) {
+  if (!by || typeof by !== 'string') return '';
   return by.replace(/\s*\([^)]*\)\s*$/, '').trim();
 }
 
@@ -2000,34 +2004,65 @@ function reachedRole(icd) {
 }
 
 function WorklogTab({ member, filters = {} }) {
-  // Combine the mock's associated ICDs with any Suspect / Recapture rows
-  // that have been acted on (accept / dismiss / missed / defer). Suspects
-  // sit in getNotLinkedForMember and only graduate into the worklog once a
-  // reviewer has touched them — an un-acted suspect is still "not linked".
+  // Source of truth = hccDiagnosisGaps (DB-hydrated via DiagPanel's fetch).
+  // Each gap carries a canonical `kind` — Associated | Manual | Suspect |
+  // Recapture — so bucketing is a straight partition, no reconstruction.
+  // Mock is only a fallback for members not yet seeded into Supabase; we
+  // dedupe by code + derive kind before bucketing so the mock path can't
+  // render the same ICD twice.
   const gapDosActions = useAppStore(s => s.hccGapDosActions) || {};
-  const linkedMock = member?.name ? (getIcdsForMember(member.name) || []) : [];
-  const notLinkedMock = member?.name ? (getNotLinkedForMember(member.name) || []) : [];
-  const addressedSuspects = notLinkedMock.filter((icd) => {
-    if (!icd || !icd.code) return false;
-    const prefix = `${icd.code}|`;
-    return Object.keys(gapDosActions).some((k) => k.startsWith(prefix));
-  });
-  const all = linkedMock.concat(addressedSuspects);
+  const dbGaps = useAppStore(s => s.hccDiagnosisGaps) || [];
+
+  const rows = useMemo(() => {
+    // 1. DB path — one row per (member, code) enforced by the unique index.
+    if (dbGaps.length > 0) {
+      // Suspects only surface once acted on. Associated / Manual always show.
+      return dbGaps.filter((g) => {
+        const k = g.kind || 'Associated';
+        if (k === 'Suspect' || k === 'Recapture') {
+          const prefix = `${g.code}|`;
+          return Object.keys(gapDosActions).some((key) => key.startsWith(prefix));
+        }
+        return true;
+      });
+    }
+    // 2. Mock fallback — derive kind, then dedupe. Priority when the same
+    //    code appears in both linkedMock and notLinkedMock (independent
+    //    generator picks can collide): Manual > Recapture > Suspect > Associated.
+    const linkedMock = member?.name ? (getIcdsForMember(member.name) || []) : [];
+    const notLinkedMock = member?.name ? (getNotLinkedForMember(member.name) || []) : [];
+    const linkedWithKind = linkedMock.map((i) => ({
+      ...i,
+      kind: i.type === 'Manual'    ? 'Manual'
+          : i.type === 'Recapture' ? 'Recapture'
+          : i.type === 'Suspect'   ? 'Suspect'
+          : 'Associated',
+    }));
+    const addressedSuspects = notLinkedMock
+      .filter((icd) => {
+        if (!icd?.code) return false;
+        const prefix = `${icd.code}|`;
+        return Object.keys(gapDosActions).some((k) => k.startsWith(prefix));
+      })
+      .map((i) => ({ ...i, kind: i.type === 'Recapture' ? 'Recapture' : 'Suspect' }));
+    const PRIORITY = { Manual: 4, Recapture: 3, Suspect: 2, Associated: 1 };
+    const byCode = new Map();
+    for (const icd of [...linkedWithKind, ...addressedSuspects]) {
+      const prev = byCode.get(icd.code);
+      if (!prev || PRIORITY[icd.kind] > PRIORITY[prev.kind]) {
+        byCode.set(icd.code, icd);
+      }
+    }
+    return Array.from(byCode.values());
+  }, [dbGaps, member?.name, gapDosActions]);
+
   // Filter chips (ICD / HCC / Recorded By / Date) narrow the row set. DOS is
   // a context chip — the fixture isn't partitioned by DOS, so we ignore it.
-  const icds = all.filter((i) => recordMatchesFilters(i, filters));
-  // Bucket into the three sections shown at the top of the worklog:
-  //   • Manually added — icd.type === 'Manual'
-  //   • Suspect & Recaptured — icd.type is Suspect / Recapture (either the
-  //     mock flag OR the row landed here through addressedSuspects)
-  //   • ICDs associated with DOS — everything else that's associated
-  const suspectCodes = new Set(addressedSuspects.map(x => x.code));
-  const manualIcds  = icds.filter((i) => i.type === 'Manual');
-  const suspectIcds = icds.filter((i) =>
-    !manualIcds.includes(i)
-    && (i.type === 'Suspect' || i.type === 'Recapture' || suspectCodes.has(i.code))
-  );
-  const associatedIcds = icds.filter((i) => !manualIcds.includes(i) && !suspectIcds.includes(i));
+  const icds = rows.filter((i) => recordMatchesFilters(i, filters));
+  // Bucket by the canonical `kind`. Each row lands in exactly one section.
+  const manualIcds     = icds.filter((i) => i.kind === 'Manual');
+  const suspectIcds    = icds.filter((i) => i.kind === 'Suspect' || i.kind === 'Recapture');
+  const associatedIcds = icds.filter((i) => i.kind === 'Associated');
 
   // Engine state — canonical source for role assignees + timestamps. Reads
   // the DOS assignment for the record's primary DOS so the worklog reflects
@@ -2068,7 +2103,7 @@ function WorklogTab({ member, filters = {} }) {
     };
   }
 
-  if (!all.length) {
+  if (!rows.length) {
     return <Empty label="No ICDs recorded for this DOS." />;
   }
   if (!icds.length) {
