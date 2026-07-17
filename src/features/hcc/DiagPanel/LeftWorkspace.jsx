@@ -14,6 +14,8 @@ import {
 import { getChartDocs, makeUploadedChartDoc } from '../data/chartDocs';
 import { ACTIVITY, getActivityFromDb } from '../data/activity';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
+import { dosKey } from '../assignment/dosState';
+import { staffById } from '../assignment/astranaStaff';
 import { normalizeRole } from '../reviewedBy';
 import { SYSTEM_USERS } from '../systemUsers';
 import { OutreachTab as PatientOutreachTab } from '../../patient/components/OutreachTab';
@@ -1981,6 +1983,15 @@ function nameFromBy(by = '') {
   return by.replace(/\s*\([^)]*\)\s*$/, '').trim();
 }
 
+// Engine history entries store timestamps as ISO strings; the worklog
+// shows them as MM/DD/YYYY to match the mock format used elsewhere.
+function formatWorklogDate(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso).slice(0, 10);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()}`;
+}
+
 // How far through the chain an ICD has progressed. The role that last touched
 // it (and every earlier role) is considered done; -1 means a support-only
 // touch, so no Coder/Reviewer column is filled yet.
@@ -1989,12 +2000,73 @@ function reachedRole(icd) {
 }
 
 function WorklogTab({ member, filters = {} }) {
-  const all = getIcdsForMember(member?.name);
+  // Combine the mock's associated ICDs with any Suspect / Recapture rows
+  // that have been acted on (accept / dismiss / missed / defer). Suspects
+  // sit in getNotLinkedForMember and only graduate into the worklog once a
+  // reviewer has touched them — an un-acted suspect is still "not linked".
+  const gapDosActions = useAppStore(s => s.hccGapDosActions) || {};
+  const linkedMock = member?.name ? (getIcdsForMember(member.name) || []) : [];
+  const notLinkedMock = member?.name ? (getNotLinkedForMember(member.name) || []) : [];
+  const addressedSuspects = notLinkedMock.filter((icd) => {
+    if (!icd || !icd.code) return false;
+    const prefix = `${icd.code}|`;
+    return Object.keys(gapDosActions).some((k) => k.startsWith(prefix));
+  });
+  const all = linkedMock.concat(addressedSuspects);
   // Filter chips (ICD / HCC / Recorded By / Date) narrow the row set. DOS is
   // a context chip — the fixture isn't partitioned by DOS, so we ignore it.
   const icds = all.filter((i) => recordMatchesFilters(i, filters));
-  const open = icds.filter((i) => i.status !== 'Accepted' && i.status !== 'Dismissed');
-  const closed = icds.filter((i) => i.status === 'Accepted' || i.status === 'Dismissed');
+  // Bucket into the three sections shown at the top of the worklog:
+  //   • Manually added — icd.type === 'Manual'
+  //   • Suspect & Recaptured — icd.type is Suspect / Recapture (either the
+  //     mock flag OR the row landed here through addressedSuspects)
+  //   • ICDs associated with DOS — everything else that's associated
+  const suspectCodes = new Set(addressedSuspects.map(x => x.code));
+  const manualIcds  = icds.filter((i) => i.type === 'Manual');
+  const suspectIcds = icds.filter((i) =>
+    !manualIcds.includes(i)
+    && (i.type === 'Suspect' || i.type === 'Recapture' || suspectCodes.has(i.code))
+  );
+  const associatedIcds = icds.filter((i) => !manualIcds.includes(i) && !suspectIcds.includes(i));
+
+  // Engine state — canonical source for role assignees + timestamps. Reads
+  // the DOS assignment for the record's primary DOS so the worklog reflects
+  // the same assignments the DiagPanel header shows.
+  const hccDosAssignmentsMap = useAppStore(s => s.hccDosAssignments) || {};
+  const primaryDos = member?.dos_list?.[0]?.date || member?.dos;
+  const dosState = (member?.id && primaryDos)
+    ? hccDosAssignmentsMap[dosKey(member.id, primaryDos, member.rp, member.pos)]
+    : null;
+  const legacyName = {
+    Support:    member?.sup,
+    Coder:      member?.cdr,
+    QA:         member?.r1,
+    Compliance: member?.r2,
+  };
+  const engineByRole = {
+    Support:    dosState?.support,
+    Coder:      dosState?.coder,
+    QA:         dosState?.reviewer,
+    Compliance: dosState?.reviewer2,
+  };
+  const TERMINAL = new Set(['Completed', 'Skipped', 'Rejected', 'Reject']);
+  const roleData = {};
+  for (const role of WORKLOG_ROLES) {
+    const rs = engineByRole[role];
+    const status = rs?.status || null;
+    const engineDone = status ? TERMINAL.has(status) : false;
+    const assignee = rs?.assignee ? (staffById(rs.assignee)?.name || null) : null;
+    const historyLast = Array.isArray(rs?.history) && rs.history.length
+      ? rs.history[rs.history.length - 1]
+      : null;
+    const whenIso = historyLast?.at || null;
+    const engineWhen = whenIso ? formatWorklogDate(whenIso) : null;
+    roleData[role] = {
+      done: engineDone,
+      name: assignee || legacyName[role] || null,
+      when: engineWhen,
+    };
+  }
 
   if (!all.length) {
     return <Empty label="No ICDs recorded for this DOS." />;
@@ -2004,8 +2076,10 @@ function WorklogTab({ member, filters = {} }) {
   }
 
   const renderRows = (rows) => rows.map((icd) => {
-    const reached = reachedRole(icd);
-    const actorIdx = roleIndexFromBy(icd.by);
+    // Mock fallback — used only when the engine hasn't recorded that role
+    // yet, so pre-seed states still surface a name + date for the ICD's
+    // last-known actor.
+    const mockActor = roleIndexFromBy(icd.by);
     return (
       <tr key={icd.code} className={styles.wlRow}>
         <td className={styles.wlIcd}>
@@ -2015,8 +2089,10 @@ function WorklogTab({ member, filters = {} }) {
           <span className={styles.wlDesc}>{icd.desc}</span>
         </td>
         {WORKLOG_ROLES.map((role, ri) => {
-          const done = ri <= reached;
-          const isActor = ri === actorIdx;
+          const info = roleData[role] || {};
+          const done = info.done || ri <= mockActor;
+          const name = info.name || (ri === mockActor ? nameFromBy(icd.by) : null);
+          const when = info.when || (ri === mockActor ? icd.last : null);
           return (
             <td key={role} className={styles.wlCell}>
               {done ? (
@@ -2024,10 +2100,10 @@ function WorklogTab({ member, filters = {} }) {
                   <span className={styles.wlCheckBadge}>
                     <Icon name="solar:check-read-linear" size={12} color="var(--status-success)" />
                   </span>
-                  {isActor && (
+                  {(name || when) && (
                     <span className={styles.wlDoneText}>
-                      <span className={styles.wlWho}>{nameFromBy(icd.by)}</span>
-                      <span className={styles.wlWhen}>{icd.last}</span>
+                      {name && <span className={styles.wlWho}>{name}</span>}
+                      {when && <span className={styles.wlWhen}>{when}</span>}
                     </span>
                   )}
                 </div>
@@ -2053,16 +2129,22 @@ function WorklogTab({ member, filters = {} }) {
             </tr>
           </thead>
           <tbody>
-            {open.length > 0 && (
+            {associatedIcds.length > 0 && (
               <>
-                <tr className={styles.wlGroupRow}><td colSpan={WORKLOG_ROLES.length + 2}>Open ICD's</td></tr>
-                {renderRows(open)}
+                <tr className={styles.wlGroupRow}><td colSpan={WORKLOG_ROLES.length + 2}>ICDs associated with DOS</td></tr>
+                {renderRows(associatedIcds)}
               </>
             )}
-            {closed.length > 0 && (
+            {manualIcds.length > 0 && (
               <>
-                <tr className={styles.wlGroupRow}><td colSpan={WORKLOG_ROLES.length + 2}>Closed ICD's</td></tr>
-                {renderRows(closed)}
+                <tr className={styles.wlGroupRow}><td colSpan={WORKLOG_ROLES.length + 2}>Manually Added</td></tr>
+                {renderRows(manualIcds)}
+              </>
+            )}
+            {suspectIcds.length > 0 && (
+              <>
+                <tr className={styles.wlGroupRow}><td colSpan={WORKLOG_ROLES.length + 2}>Suspect &amp; Recaptured</td></tr>
+                {renderRows(suspectIcds)}
               </>
             )}
           </tbody>
