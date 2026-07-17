@@ -6,6 +6,7 @@ import './index.css'
 import App from './App.jsx'
 import { initTheme } from './lib/theme'
 import { useAppStore } from './store/useAppStore'
+import { startUpdateChecker } from './lib/updateChecker'
 
 // Sentry — error + performance monitoring. browserTracingIntegration adds
 // the Web Vitals transactions (FCP / LCP / INP / TTFB / CLS) we want to
@@ -46,6 +47,17 @@ if (isDeployedProd) {
 // wires the OS preference listener for 'system' mode.)
 initTheme()
 useAppStore.getState()._initThemeSubscriptions()
+
+// Poll /version.json in the background; when a fresh deploy has shipped
+// the UpdateAvailableBanner appears so users refresh before their lazy
+// imports 404 into a white screen.
+startUpdateChecker()
+
+if (import.meta.env.DEV) {
+  // Dev-only escape hatch — lets DevTools poke at store state (e.g. to
+  // preview the update banner without waiting for a real chunk error).
+  window.__store = useAppStore
+}
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

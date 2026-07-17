@@ -123,6 +123,30 @@ export const FILTER_DEFS = [
 
 export const FILTER_DEF_MAP = Object.fromEntries(FILTER_DEFS.map(d => [d.k, d]));
 
+// Role-scoped default filters for the HCC worklist. Each role lands on their
+// own queue: rows they own (Assignee = logged-in user) that are still
+// actionable (Status in New / In Progress for the role's own status column).
+//
+// Support's canonical "New" label is "Action Needed" (per SUPPORT_STATUS_MATCH
+// below), so we use that + In Progress instead of the raw string "New".
+// Assignee is only added when a user name is known — dev sessions without a
+// profile skip it so the list still renders something.
+const ROLE_DEFAULT_FILTERS = {
+  Support:    { statusKey: 'supS', statusVals: ['Action Needed', 'In Progress'] },
+  Coder:      { statusKey: 'cdrS', statusVals: ['New', 'In Progress'] },
+  QA:         { statusKey: 'r1s',  statusVals: ['New', 'In Progress'] },
+  Compliance: { statusKey: 'r2s',  statusVals: ['New', 'In Progress'] },
+};
+export function hccRoleDefaultFilters(role, userName) {
+  const spec = ROLE_DEFAULT_FILTERS[role];
+  if (!spec) return {};
+  const out = { [spec.statusKey]: spec.statusVals };
+  if (userName && typeof userName === 'string' && userName.trim()) {
+    out.asgn = [userName.trim()];
+  }
+  return out;
+}
+
 // Measurement Year options — most-recent 3 years (current + prior two),
 // descending. Kept as strings so the multi-select value compares straight
 // against the DOS year in matchOne('my').

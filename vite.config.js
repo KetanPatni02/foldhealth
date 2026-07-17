@@ -11,9 +11,38 @@ import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
 import { playwright } from '@vitest/browser-playwright';
 const dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 
+// Stable build identifier — the git commit SHA when running on Vercel (or
+// GitHub Actions), a timestamp locally. Baked into the bundle as
+// __APP_VERSION__ and mirrored in /version.json so the running client can
+// detect a fresh deploy and prompt the user to reload before their lazy
+// imports 404.
+const APP_VERSION = process.env.VERCEL_GIT_COMMIT_SHA
+  || process.env.GITHUB_SHA
+  || String(Date.now());
+
+// Writes /version.json into the built output. Served fresh (no immutable
+// cache) so the update-checker poller sees the new SHA seconds after a
+// deploy completes.
+function emitVersionJsonPlugin() {
+  return {
+    name: 'emit-version-json',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'version.json',
+        source: JSON.stringify({ version: APP_VERSION }),
+      });
+    },
+  };
+}
+
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
 export default defineConfig({
-  plugins: [tailwindcss(), react(), devApiPlugin()],
+  define: {
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
+  },
+  plugins: [tailwindcss(), react(), devApiPlugin(), emitVersionJsonPlugin()],
   server: {
     // Honor the harness-assigned PORT so the preview browser and the actual
     // dev server always agree — without this, Vite's default 5173 collides

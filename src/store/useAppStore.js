@@ -27,6 +27,7 @@ import { DEFAULT_SAMPLING_RATES } from '../features/hcc/assignment/sampling';
 import { staffById as hccStaffById } from '../features/hcc/assignment/astranaStaff';
 import { normalizeReviewerLabel as hccNormalizeReviewerLabel } from '../features/hcc/reviewedBy';
 import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activityLog';
+import { hccRoleDefaultFilters } from '../features/hcc/filters';
 
 // Persist a per-(ICD × DOS) coder action to hcc_gap_dos_actions. The
 // row key is deterministic (`${member}|${code}|${dos}`) so the same
@@ -1128,6 +1129,11 @@ export const useAppStore = create((set, get) => ({
   activeFilters: {},  // { gender: 'F', language: 'es', lace: 'High', ... }
   activeSubnavList: 'TOC',  // which SubNav list is selected
 
+  // Flipped to true when the update-checker poller sees a newer build
+  // hash than the one this tab loaded with. Drives UpdateAvailableBanner.
+  hasNewBuild: false,
+  setHasNewBuild: (v) => set({ hasNewBuild: !!v }),
+
   // HCC role — the logged-in user's role for the HCC coding workflow (Support
   // / Coder / QA / Compliance). Drives which status vocab and per-role actions
   // the worklist and DiagPanel expose. Persisted so it survives reload.
@@ -1137,6 +1143,23 @@ export const useAppStore = create((set, get) => ({
   setHccUserRole: (role) => {
     try { localStorage.setItem('hccUserRole', role); } catch {/* */}
     set({ hccUserRole: role });
+    // Reset the worklist to this role's default queue (own assignments in
+    // New / In Progress) so switching roles lands on the right view.
+    get().applyHccRoleDefaultFilters();
+  },
+  // Reset hccFilters to the current role's canonical queue: Assignee = me
+  // + role-specific status in ['New', 'In Progress']. Also detaches any
+  // active saved filter so the SavedFiltersChip doesn't lie.
+  applyHccRoleDefaultFilters: () => {
+    const s = get();
+    const userName = s.currentUserProfile?.name || null;
+    const filters = hccRoleDefaultFilters(s.hccUserRole, userName);
+    set({
+      hccFilters: filters,
+      hccActiveSavedId: null,
+      activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'HCC'),
+      currentPage: 1,
+    });
   },
 
   // ── Population Groups: persistent create-group CSV processing session ──
@@ -2080,6 +2103,14 @@ export const useAppStore = create((set, get) => ({
     if (from !== list) track('nav.list_changed', { from, to: list });
     set({ activeSubnavList: list, currentPage: 1 });
     updateHash(get);
+    // First time we land on the HCC list with no filters yet, seed the
+    // role-scoped default queue so users don't stare at the full worklist.
+    if (list === 'HCC') {
+      const s = get();
+      const hasNoFilters = !s.hccFilters || Object.keys(s.hccFilters).length === 0;
+      const hasNoSaved = !s.activeSavedIdByList?.HCC;
+      if (hasNoFilters && hasNoSaved) get().applyHccRoleDefaultFilters();
+    }
   },
 
   fetchAgents: async () => {
