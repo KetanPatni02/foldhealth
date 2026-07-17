@@ -69,7 +69,12 @@ function ProfilePopover({ user, onClose, onPreferences }) {
     })();
     return () => { alive = false; };
   }, [user?.id]);
-  const hccRolesForUser = (assignedRoles || []).filter(r => ALL_HCC_ROLES.includes(r));
+  const assignedHccRoles = (assignedRoles || []).filter(r => ALL_HCC_ROLES.includes(r));
+  // In dev we always let the switcher offer every HCC role — it lets us
+  // exercise every workflow without touching profiles.clinical_roles in the
+  // DB. In prod we keep the gate: users see only the roles they actually
+  // have assigned.
+  const hccRolesForUser = import.meta.env.DEV ? ALL_HCC_ROLES : assignedHccRoles;
   // Snap hccUserRole to a role the user actually has; if they don't have
   // the currently-selected one, fall through to their first assigned HCC
   // role. Runs when the profile fetch resolves.

@@ -1,13 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { Avatar } from '../../components/Avatar/Avatar';
+import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { Button } from '../../components/Button/Button';
 import { UploadDropField } from '../../components/UploadDropField/UploadDropField';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
 import { Switch } from '../../components/Switch/Switch';
 import { useAppStore } from '../../store/useAppStore';
 import { DocEvidenceViewer } from './DiagPanel/DocEvidenceViewer';
+import { ReviewProgressPopover, buildReviewStages, computeReviewProgress, ProgressRing } from './DiagPanel/ReviewProgressPopover';
+import { dosKey } from './assignment/dosState';
 import { DestructiveDialog } from '../../components/Modal/DestructiveDialog';
 import { RadioButton } from '../../components/RadioButton/RadioButton';
 import { Textarea } from '../../components/Textarea/Textarea';
@@ -167,6 +170,15 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   const [failPrompt, setFailPrompt] = useState(null);
   // Confirmation dialog for the delete action on the per-doc menu.
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(null);
+  // Review Progress popover state — hover-open + click-to-pin (mirrors the
+  // DiagPanel status-pill treatment). Anchored on the "Support Team" badge
+  // in the drawer header so a reviewer can peek at the four-stage timeline
+  // without leaving the drawer.
+  const teamBadgeRef = useRef(null);
+  const [teamPillRect, setTeamPillRect] = useState(null);
+  const [teamPillPinned, setTeamPillPinned] = useState(false);
+  const teamOpenTimer = useRef(null);
+  const teamCloseTimer = useRef(null);
   useEffect(() => {
     if (!moreMenu) return;
     const onDoc = (e) => {
@@ -331,6 +343,62 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     setFailPrompt(null);
   };
 
+  // Build the four-stage review timeline for the popover. Reads the same
+  // dosState + member the ReviewProgressPopover already understands.
+  const hccDosAssignmentsMap = useAppStore(s => s.hccDosAssignments);
+  const dosStateForBadge = (member?.id && dosDate)
+    ? hccDosAssignmentsMap[dosKey(member.id, dosDate, member.rp, member.pos)]
+    : null;
+  const teamReviewStages = buildReviewStages(member, dosStateForBadge);
+  const teamReviewProgress = computeReviewProgress(teamReviewStages);
+
+  const onTeamPillEnter = () => {
+    if (teamCloseTimer.current) { clearTimeout(teamCloseTimer.current); teamCloseTimer.current = null; }
+    if (teamPillRect) return;
+    teamOpenTimer.current = setTimeout(() => {
+      const r = teamBadgeRef.current?.getBoundingClientRect();
+      if (r) setTeamPillRect(r);
+    }, 80);
+  };
+  const onTeamPillLeave = () => {
+    if (teamPillPinned) return;
+    if (teamOpenTimer.current) { clearTimeout(teamOpenTimer.current); teamOpenTimer.current = null; }
+    teamCloseTimer.current = setTimeout(() => setTeamPillRect(null), 200);
+  };
+  const onTeamPillClick = (e) => {
+    e.stopPropagation();
+    if (teamOpenTimer.current) { clearTimeout(teamOpenTimer.current); teamOpenTimer.current = null; }
+    if (teamCloseTimer.current) { clearTimeout(teamCloseTimer.current); teamCloseTimer.current = null; }
+    if (teamPillPinned) {
+      setTeamPillPinned(false); setTeamPillRect(null);
+    } else {
+      const r = teamBadgeRef.current?.getBoundingClientRect();
+      if (r) { setTeamPillRect(r); setTeamPillPinned(true); }
+    }
+  };
+  const cancelTeamClose = () => {
+    if (teamCloseTimer.current) { clearTimeout(teamCloseTimer.current); teamCloseTimer.current = null; }
+  };
+  const requestTeamClose = () => {
+    if (teamPillPinned) return;
+    teamCloseTimer.current = setTimeout(() => setTeamPillRect(null), 200);
+  };
+  useEffect(() => {
+    if (!teamPillPinned) return undefined;
+    const onDoc = (e) => {
+      if (teamBadgeRef.current?.contains(e.target)) return;
+      if (e.target.closest?.('[role="tooltip"][aria-label="Review progress"]')) return;
+      setTeamPillPinned(false); setTeamPillRect(null);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') { setTeamPillPinned(false); setTeamPillRect(null); } };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [teamPillPinned]);
+
   // Unlink a document from this Created-date record. Removes it from the
   // member's chart list (store) + clears its local review state. When it was
   // the last document, keep the drawer open on the Upload section with the
@@ -406,42 +474,10 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
           </button>
         </div>
 
-        {/* Patient banner */}
-        <div className={styles.banner}>
-          <div className={styles.avatar}>{member?.in || 'AB'}</div>
-          <div className={styles.bannerText}>
-            <div className={styles.bannerName}>
-              <span>{member?.name || 'Patient'}</span>
-              <Icon name="solar:arrow-right-linear" size={13} color="var(--neutral-300)" />
-            </div>
-            <div className={styles.bannerMeta}>
-              <span>Patient</span><span className={styles.dot}>•</span>
-              <span>{gender}</span><span className={styles.dot}>•</span>
-              <span>{member?.age || '—'}</span><span className={styles.dot}>•</span>
-              <span>#{member?.memberId || '219384756102'}</span><span className={styles.dot}>•</span>
-              <span>RAF</span>
-              <span className={styles.rafVal}>{member?.raf || '—'}</span>
-              <span className={styles.rafBadge}>
-                {member?.ri || '0.512'}
-                <Icon name={member?.ru === false ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-up-linear'} size={12} color="var(--status-success)" />
-              </span>
-            </div>
-          </div>
-          <div className={styles.bannerActions}>
-            <button type="button" className={styles.iconBtn} aria-label="Call PCP">
-              {/* eslint-disable-next-line no-restricted-syntax -- Solar has no exact match; custom PCP-call glyph (banner uses same icon). */}
-              <Icon name="custom:call-pcp" size={20} color="var(--neutral-300)" />
-            </button>
-            <span className={styles.vDivider} />
-            <button type="button" className={styles.iconBtn} aria-label="Expand">
-              {/* eslint-disable-next-line no-restricted-syntax -- Solar has no matching drawer-expand chevron pair; custom icon reused across drawers. */}
-              <Icon name="custom:expand-drawer" size={20} />
-            </button>
-          </div>
-        </div>
-
         {/* Body — two panes normally; right-pane only once the last doc is
-            unlinked (left preview closed, Upload section shown). */}
+            unlinked (left preview closed, Upload section shown). PatientBanner
+            + Created meta strip live INSIDE the right pane per Figma
+            ICD-Import 4481:112909, so the left PDF gets the full drawer height. */}
         <div className={`${styles.body} ${isEmpty ? styles.bodyEmpty : ''}`}>
           {/* Left — PDF of the selected document */}
           {!isEmpty && selected && (
@@ -459,23 +495,50 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
 
           {/* Right — metadata + document list */}
           <div className={styles.rightPane}>
-            <div className={styles.rightHeader}>
+            {/* Shared PatientBanner — scoped to the right column (Figma
+                ICD-Import 4481:112909). */}
+            <PatientBanner
+              initials={member?.in || (member?.name || 'P').split(' ').map(w => w[0]).slice(0, 2).join('')}
+              name={member?.name || 'Patient'}
+              gender={gender}
+              age={member?.age || ''}
+              memberId={member?.memberId || `#${member?.id || ''}`}
+              raf={member?.raf}
+              rafChange={member?.ri}
+              rafUp={member?.ru !== false}
+            />
+            {/* Created / Support Team / assignee / status strip. */}
+            <div className={styles.metaStrip}>
               <div className={styles.createdGroup}>
                 <span className={styles.createdLabel}>Created :</span>
                 <span className={styles.createdDate}>{member?.date || '06/15/2026'}</span>
                 {overdue && <span className={styles.overdue}>({member.due})</span>}
               </div>
               <span className={styles.vDivider} />
-              <span className={styles.teamBadge}>
-                <span className={styles.progressDot} aria-hidden="true">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <circle cx="8" cy="8" r="6.5" stroke="var(--status-success)" strokeWidth="1.5" />
-                    <path d="M8 2A6 6 0 0 1 8 14Z" fill="var(--status-success)" />
-                  </svg>
-                </span>
-                Support Team
+              <span
+                ref={teamBadgeRef}
+                className={styles.teamBadge}
+                onMouseEnter={onTeamPillEnter}
+                onMouseLeave={onTeamPillLeave}
+                onClick={onTeamPillClick}
+                role="button"
+                tabIndex={0}
+                aria-label={`Support Team — review ${Math.round(teamReviewProgress * 100)}% complete. Hover or click for details.`}
+                aria-expanded={!!teamPillRect}
+              >
+                <ProgressRing progress={teamReviewProgress} size={16} stroke={2} />
+                <span>Support Team</span>
               </span>
-              <div className={styles.rightHeaderEnd}>
+              {teamPillRect && (
+                <ReviewProgressPopover
+                  anchorRect={teamPillRect}
+                  stages={teamReviewStages}
+                  onEnter={cancelTeamClose}
+                  onLeave={requestTeamClose}
+                  onClose={() => { setTeamPillPinned(false); setTeamPillRect(null); }}
+                />
+              )}
+              <div className={styles.metaStripEnd}>
                 {isSupportAssigned ? (
                   <button type="button" ref={dmRef} className={styles.dmBadge} onClick={openAssign} title={supportName}>
                     <span className={styles.dmAvatar}>{supportInitials}</span>
@@ -501,7 +564,6 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
                 </button>
               </div>
             </div>
-
             {showReviewBanner && (
               <div className={styles.passBanner}>
                 <Icon name="solar:info-circle-linear" size={16} color="var(--status-success)" />
@@ -597,9 +659,10 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
               {docs.map((d) => {
                 const action = docActions[d.id] || null;
                 const isSel = d.id === selected.id;
+                const isFailing = failPrompt?.id === d.id;
                 return (
+                  <Fragment key={d.id}>
                   <div
-                    key={d.id}
                     className={`${styles.docCard} ${isSel ? styles.docCardSelected : ''}`}
                     role="button"
                     tabIndex={0}
@@ -663,6 +726,14 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
                       </button>
                     </div>
                   </div>
+                  {isFailing && (
+                    <FailReasonInline
+                      docName={failPrompt.name}
+                      onCancel={() => setFailPrompt(null)}
+                      onConfirm={confirmFailDoc}
+                    />
+                  )}
+                  </Fragment>
                 );
               })}
             </div>
@@ -712,13 +783,6 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
             Delete
           </button>
         </div>
-      )}
-      {failPrompt && (
-        <FailReasonModal
-          docName={failPrompt.name}
-          onCancel={() => setFailPrompt(null)}
-          onConfirm={confirmFailDoc}
-        />
       )}
       {confirmDeleteDoc && (
         <DestructiveDialog
@@ -787,50 +851,65 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   );
 }
 
-// Reasons offered when marking a document Failed. Kept in sync with the
-// Figma spec for the Document Available details drawer.
+// Reasons offered when marking a document Failed. Mirrors the Figma spec
+// on ICD-Import 4806:142581 — HCC-oriented rejection buckets used by the
+// Support team when a document can't be accepted as evidence.
 const FAIL_REASONS = [
-  'Illegible / Poor Quality',
-  'Missing Signature',
   'Wrong Patient',
-  'Incomplete / Missing Pages',
   'Wrong Date of Service',
+  'Illegible / Poor Quality',
+  'Incomplete / Missing Pages',
+  'Missing Signature',
+  'Wrong Document Type',
+  'Duplicate Document',
   'Other',
 ];
 
-function FailReasonModal({ docName, onCancel, onConfirm }) {
+// Inline fail-reason form — renders directly below the doc card whose Fail
+// button was clicked. Keeps every other doc row and header action live so
+// the reviewer can bail out (three-dots, hover on the status pill, etc.)
+// without an overlay blocking the surface.
+function FailReasonInline({ docName, onCancel, onConfirm }) {
   const [reason, setReason] = useState('');
   const [note, setNote] = useState('');
-  return createPortal(
-    <div className={styles.failOverlay} onMouseDown={onCancel}>
-      <div className={styles.failModal} onMouseDown={(e) => e.stopPropagation()}>
-        <div className={styles.failHeader}>
-          <div className={styles.failTitle}>Mark document Failed</div>
-          <div className={styles.failSubtitle}>{docName}</div>
-        </div>
-        <div className={styles.failBody}>
-          <div className={styles.failIntro}>Select a reason for failing this document:</div>
-          <div className={styles.failReasons}>
-            {FAIL_REASONS.map((r) => (
-              <RadioButton
-                key={r}
-                name="fail-reason"
-                value={r}
-                label={r}
-                checked={reason === r}
-                onChange={() => setReason(r)}
-              />
-            ))}
-          </div>
-          <div className={styles.failNoteLabel}>Note (optional)</div>
-          <Textarea rows={3} placeholder="Add a note" value={note} onChange={(e) => setNote(e.target.value)} />
-        </div>
-        <div className={styles.failActions}>
-          <Button variant="secondary" size="M" onClick={onCancel}>Cancel</Button>
-          <Button variant="danger" size="M" disabled={!reason} onClick={() => onConfirm({ reason, note })}>Mark Failed</Button>
-        </div>
+  // "Other" requires a note so a downstream reviewer can see the specific
+  // reason. Every other reason keeps the note optional.
+  const noteRequired = reason === 'Other';
+  const canSubmit = !!reason && (!noteRequired || note.trim().length > 0);
+  return (
+    <div className={styles.failInline} onClick={(e) => e.stopPropagation()}>
+      <div className={styles.failHeader}>
+        <div className={styles.failTitle}>Mark document Failed</div>
+        <div className={styles.failSubtitle}>{docName}</div>
       </div>
-    </div>,
-    document.body,
+      <div className={styles.failBody}>
+        <div className={styles.failIntro}>Select a reason for failing this document:</div>
+        <div className={styles.failReasons}>
+          {FAIL_REASONS.map((r) => (
+            <RadioButton
+              key={r}
+              name="fail-reason"
+              value={r}
+              label={r}
+              checked={reason === r}
+              onChange={() => setReason(r)}
+            />
+          ))}
+        </div>
+        <div className={styles.failNoteLabel}>
+          Note{noteRequired ? <span className={styles.failNoteRequired} aria-hidden="true"> *</span> : ' (optional)'}
+        </div>
+        <Textarea
+          rows={3}
+          placeholder={noteRequired ? 'Add a note explaining the reason' : 'Add a note'}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+      </div>
+      <div className={styles.failActions}>
+        <Button variant="danger" size="S" disabled={!canSubmit} onClick={() => onConfirm({ reason, note })}>Mark Failed</Button>
+        <Button variant="secondary" size="S" onClick={onCancel}>Cancel</Button>
+      </div>
+    </div>
   );
 }
