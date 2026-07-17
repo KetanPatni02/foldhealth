@@ -285,10 +285,11 @@
 .dosPanelMeta { font-size: 12px; color: var(--neutral-300); }
 .dosPanelSep { margin: 0 5px; color: var(--neutral-200); }
 
-/* Per-document "More actions" → Unlink menu. */
+/* Per-document "More actions" → Edit / Unlink / Delete menu. Sits above
+   the drawer panel (z-index 9501) so the popover isn't hidden behind it. */
 .docMoreMenu {
   position: fixed;
-  z-index: 1100;
+  z-index: 9600;
   min-width: 140px;
   padding: 4px;
   background: var(--neutral-0);
@@ -317,35 +318,55 @@
 .docMoreItem:has(svg[color="var(--status-error)"]) { color: var(--status-error); }
 .docMoreItem:has(svg[color="var(--status-error)"]):hover { background: var(--status-error-light); }
 
-/* ── Fail-reason inline panel (renders below the doc card being failed) ── */
+/* ── Fail-reason inline panel — renders INSIDE the doc card being failed,
+       separated from the doc header by a hairline divider. No own border /
+       background; visually reads as the second row of the same card. ── */
 .failInline {
-  margin-top: -4px;
-  padding: 12px;
+  padding: 12px 12px 12px 12px;
+  border-top: 0.5px solid var(--neutral-150);
   background: var(--neutral-25);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 8px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-.failHeader {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.failTitle {
-  font: 500 13px/1.3 'Inter', sans-serif;
-  color: var(--neutral-500);
-}
-.failSubtitle {
-  font: 400 12px/1.3 'Inter', sans-serif;
-  color: var(--neutral-300);
-}
 .failBody { display: flex; flex-direction: column; gap: 8px; }
 .failIntro { font: 400 12px/1.4 'Inter', sans-serif; color: var(--neutral-400); }
 .failReasons { display: flex; flex-direction: column; gap: 4px; }
+.reasonOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  cursor: pointer;
+  outline: none;
+  text-align: left;
+}
+.reasonOption:focus-visible { box-shadow: 0 0 0 2px var(--primary-100); border-radius: 4px; }
+.reasonLabel {
+  font: 400 14px/1.3 'Inter', sans-serif;
+  color: var(--neutral-300);
+  user-select: none;
+}
+.reasonOption[aria-checked="true"] .reasonLabel { color: var(--neutral-400); }
 .failNoteLabel { font: 500 12px/1.3 'Inter', sans-serif; color: var(--neutral-400); }
 .failNoteRequired { color: var(--status-error); }
+/* Inline metadata edit — caption text field + type select share the same
+   compact height so the row lines up with the surrounding form. */
+.editInput {
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  font: 400 14px/1.3 'Inter', sans-serif;
+  color: var(--neutral-400);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-200);
+  border-radius: 6px;
+  outline: none;
+}
+.editInput:focus { border-color: var(--primary-300); }
+.editSelectTrigger { width: 100%; height: 32px; font-size: 14px; }
 .failActions {
   display: flex;
   justify-content: flex-start;
@@ -410,21 +431,31 @@
 
 .docCard {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px;
+  flex-direction: column;
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
   cursor: pointer;
+  overflow: hidden;
 }
 .docCard:hover { background: var(--neutral-25); }
+/* Doc header — thumb + name/meta + actions, sits at the top of the card. */
+.docCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+}
 /* Selected document — primary-300 1px border all around. */
 .docCardSelected,
 .docCardSelected:hover {
   border: 1px solid var(--primary-300);
   background: var(--neutral-0);
 }
+/* Failing state — the fail-reason panel renders inside the card. Keep the
+   outer container non-hovering so the mouse can move freely over the form. */
+.docCardFailing,
+.docCardFailing:hover { background: var(--neutral-0); cursor: default; }
 .docThumb {
   display: inline-flex;
   align-items: center;
