@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '../../../store/useAppStore';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
@@ -39,6 +39,23 @@ export function SuspectCard({ icd, dosList = [], member, reviewLocked = false })
   const [override, setOverride] = useState(null); // { code, desc }
   const code = override?.code || icd.code;
   const desc = override?.desc || icd.desc;
+
+  // Live ICD-scoped counters — comments filtered by `icd`, activity by the
+  // `icds` array. Falls back to seeded fields while the DB slice is empty
+  // so the pills never blank out mid-render.
+  const dbComments = useAppStore(s => s.hccDiagComments);
+  const memberActivity = useAppStore(s => (member?.name ? s.hccActivityLog[member.name] : null));
+  const commentsCount = useMemo(() => {
+    if (!Array.isArray(dbComments) || dbComments.length === 0) {
+      return icd.cmts ?? 0;
+    }
+    return dbComments.filter(c => c?.icd === code).length;
+  }, [dbComments, code, icd.cmts]);
+  const historyCount = useMemo(() => {
+    const list = Array.isArray(memberActivity) ? memberActivity : [];
+    const scoped = list.filter(e => Array.isArray(e?.icds) && e.icds.includes(code)).length;
+    return scoped || ((icd.docs ?? 0) + (icd.notes ?? 0));
+  }, [memberActivity, code, icd.docs, icd.notes]);
 
   // Single DOS selection (from the document's existing encounters). When the
   // document has exactly one encounter, pre-select it so the coder can act
@@ -159,14 +176,14 @@ export function SuspectCard({ icd, dosList = [], member, reviewLocked = false })
           <Tooltip label="Comments">
             <button type="button" className={styles.counter} onClick={() => openIcdPanel('comments', code)}>
               <Icon name="solar:chat-round-line-linear" size={14} />
-              {icd.cmts ?? 0}
+              {commentsCount}
             </button>
           </Tooltip>
           <span className={styles.counterDivider} />
           <Tooltip label="Activity">
             <button type="button" className={styles.counter} onClick={() => openIcdActivityLog(code)}>
               <Icon name="solar:history-linear" size={14} />
-              {(icd.docs ?? 0) + (icd.notes ?? 0)}
+              {historyCount}
             </button>
           </Tooltip>
         </span>

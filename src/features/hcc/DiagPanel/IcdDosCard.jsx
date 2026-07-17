@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '../../../store/useAppStore';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
@@ -58,6 +58,28 @@ export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSe
       cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, [isJustAdded]);
+
+  // Live ICD-scoped counters for the header pills. Comments are keyed by
+  // `icd`; activity entries carry an `icds` array. When the DB slice is
+  // unpopulated, fall back to the seeded `icd.cmts` and DOS-entry count so
+  // the badges never render an under-count during the first paint.
+  const dbComments = useAppStore(s => s.hccDiagComments);
+  const memberName = useAppStore(s => {
+    const id = s.diagPanelMemberId;
+    return id ? s.hccMembers.find(m => m.id === id)?.name : null;
+  });
+  const memberActivity = useAppStore(s => (memberName ? s.hccActivityLog[memberName] : null));
+  const commentsCount = useMemo(() => {
+    if (!Array.isArray(dbComments) || dbComments.length === 0) {
+      return icd.cmts ?? 0;
+    }
+    return dbComments.filter(c => c?.icd === icd.code).length;
+  }, [dbComments, icd.code, icd.cmts]);
+  const historyCount = useMemo(() => {
+    const list = Array.isArray(memberActivity) ? memberActivity : [];
+    const scoped = list.filter(e => Array.isArray(e?.icds) && e.icds.includes(icd.code)).length;
+    return scoped || (icd.entries?.length ?? 0);
+  }, [memberActivity, icd.code, icd.entries]);
 
   const hccShort = (icd.hcc || '').split(' - ')[0].trim();
   // Doc-panel selection — drives the source-document toggle below.
@@ -128,14 +150,14 @@ export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSe
           <Tooltip label="Comments">
             <button type="button" className={styles.counter} onClick={(e) => { e.stopPropagation(); openIcdPanel('comments', icd.code); }}>
               <Icon name="solar:chat-round-line-linear" size={14} />
-              {icd.cmts ?? 0}
+              {commentsCount}
             </button>
           </Tooltip>
           <span className={styles.counterDivider} />
           <Tooltip label="History">
             <button type="button" className={styles.counter} onClick={(e) => { e.stopPropagation(); openIcdPanel('history', icd.code); }}>
               <Icon name="custom:history" size={14} />
-              {icd.entries?.length ?? 0}
+              {historyCount}
             </button>
           </Tooltip>
           {isManualIcd && (

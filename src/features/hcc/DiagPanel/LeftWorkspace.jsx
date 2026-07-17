@@ -262,7 +262,6 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
             onClearAll={clearAllFilters}
             trailing={
               active === 'documents' ? <DocumentsTrailingAction member={member} /> :
-              active === 'notes'     ? <NotesTrailingAction />                    :
               null
             }
           />
@@ -1631,52 +1630,7 @@ function NotesTab({ filters }) {
     () => items.filter(n => recordMatchesFilters(n, filters)),
     [items, filters],
   );
-  const [draft, setDraft] = useState('');
-  const activityIcd = useAppStore(s => s.diagActivityIcd);
-  const addActivityEntry = useAppStore(s => s.addActivityEntry);
-  const addHccDiagNote = useAppStore(s => s.addHccDiagNote);
-  const logHccActivity = useAppStore(s => s.logHccActivity);
-  const diagPanelMemberId = useAppStore(s => s.diagPanelMemberId);
-  const hccMembers = useAppStore(s => s.hccMembers);
   const showToast = useAppStore(s => s.showToast);
-
-  const addNote = () => {
-    const body = draft.trim();
-    if (!body) return;
-    const now = new Date();
-    const pad = (n) => String(n).padStart(2, '0');
-    const date = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
-    const hours = now.getHours();
-    const time = `${((hours + 11) % 12) + 1}:${pad(now.getMinutes())} ${hours >= 12 ? 'PM' : 'AM'}`;
-    const userRole = useAppStore.getState().hccUserRole || 'Coder';
-    const row = { id: `n${Date.now()}`, author: 'You', role: userRole, date, time, body, signed: true };
-    setItems(prev => [row, ...prev]);
-    addHccDiagNote(row);
-    addActivityEntry({
-      t: 'create', by: 'You', role: userRole,
-      icds: activityIcd ? [activityIcd] : undefined,
-      headline: activityIcd ? `Added a Note for ${activityIcd}` : 'Added a Note',
-      details: [{ note: body }],
-    });
-    const patient = hccMembers.find(m => m.id === diagPanelMemberId);
-    logHccActivity?.({
-      eventName: 'note.added',
-      scope:     { patientId: diagPanelMemberId, icd: activityIcd || null, source: 'manual' },
-      payload:   { actor: 'You', role: userRole, body, patientName: patient?.name },
-    });
-    setDraft('');
-  };
-
-  // Persist the Add Note panel state at the tab level so the trailing
-  // "Add Note" toolbar button can open it (state is shared via a tiny
-  // imperative handle on the window — simplest plumbing without a context).
-  if (typeof window !== 'undefined') {
-    window.__hccOpenAddNote = () => {
-      const draftText = draft.trim();
-      if (!draftText) return setDraft(' '); // nudge focus / show composer
-      addNote();
-    };
-  }
 
   return (
     <div className={styles.scroll}>
@@ -1719,40 +1673,7 @@ function NotesTab({ filters }) {
           </div>
         ))}
       </div>
-      {/* Inline composer — appears below the table; Enter posts. */}
-      <input
-        type="text"
-        className={[styles.commentComposer, styles.notesComposerInline].join(' ')}
-        placeholder="Add a clinical note (Enter to post)…"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter' && draft.trim()) addNote(); }}
-      />
     </div>
-  );
-}
-
-// Trailing toolbar action for Notes — focuses the inline note composer.
-// Authoring a clinical note is a coder/QA/compliance action; Support role
-// can't add notes, so we render the button disabled with an explanatory
-// tooltip via the native title attribute.
-function NotesTrailingAction() {
-  const canAddNote = useAppStore(s => s.hccUserRole) !== 'Support';
-  return (
-    <button
-      type="button"
-      className={styles.filterTrailingBtn}
-      disabled={!canAddNote}
-      title={canAddNote ? undefined : 'Support role cannot add clinical notes'}
-      onClick={!canAddNote ? undefined : () => {
-        const el = document.querySelector(`.${'notesComposerInline'.replace(/./g, c => c)}`)
-          || document.querySelector('input[placeholder^="Add a clinical note"]');
-        el?.focus();
-      }}
-    >
-      <Icon name="solar:pen-new-square-linear" size={14} color="var(--primary-300)" />
-      Add Note
-    </button>
   );
 }
 
