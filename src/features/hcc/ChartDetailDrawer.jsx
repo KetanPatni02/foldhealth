@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { Avatar } from '../../components/Avatar/Avatar';
@@ -12,7 +12,7 @@ import { DocEvidenceViewer } from './DiagPanel/DocEvidenceViewer';
 import { ReviewProgressPopover, buildReviewStages, computeReviewProgress, ProgressRing } from './DiagPanel/ReviewProgressPopover';
 import { dosKey } from './assignment/dosState';
 import { DestructiveDialog } from '../../components/Modal/DestructiveDialog';
-import { RadioButton } from '../../components/RadioButton/RadioButton';
+import { Checkbox } from '../../components/ui/checkbox';
 import { Textarea } from '../../components/Textarea/Textarea';
 import { DOC_TYPES, makeUploadedChartDoc } from './data/chartDocs';
 import { staffForRole } from './assignment/astranaStaff';
@@ -168,8 +168,14 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   // Fail-reason prompt — { id, name } | null. Set by failDoc; confirming
   // logs the reason and applies the Fail status.
   const [failPrompt, setFailPrompt] = useState(null);
-  // Confirmation dialog for the delete action on the per-doc menu.
+  // Confirmation dialogs for the destructive actions on the per-doc menu.
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(null);
+  const [confirmUnlinkDoc, setConfirmUnlinkDoc] = useState(null);
+  // Inline edit — when set to a doc id, the doc card renders an inline
+  // Caption + Document Type editor below its header, in place of the
+  // per-row Pass/Fail/⋯ actions. Doesn't reuse UploadChartDrawer here
+  // because that drawer's z-index would sit behind this ChartDetailDrawer.
+  const [editingDocId, setEditingDocId] = useState(null);
   // Review Progress popover state — hover-open + click-to-pin (mirrors the
   // DiagPanel status-pill treatment). Anchored on the "Support Team" badge
   // in the drawer header so a reviewer can peek at the four-stage timeline
@@ -206,8 +212,8 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   const addChartDoc = useAppStore(s => s.addChartDoc);
   const setChartDocStatus = useAppStore(s => s.setChartDocStatus);
   const removeChartDoc = useAppStore(s => s.removeChartDoc);
+  const updateChartDocMeta = useAppStore(s => s.updateChartDocMeta);
   const addActivityEntry = useAppStore(s => s.addActivityEntry);
-  const openHccUploadDrawerForEdit = useAppStore(s => s.openHccUploadDrawerForEdit);
   // Workflow-engine writers — these keep the Support assignee + status in sync
   // with the worklist Support column and the Diagnosis Gaps Details view.
   const hccReassignRole = useAppStore(s => s.hccReassignRole);
@@ -225,8 +231,17 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   const [showUpload, setShowUpload] = useState(false);
   const [upFile, setUpFile] = useState(null);
   const [upCaption, setUpCaption] = useState('');
+  const [upCaptionTouched, setUpCaptionTouched] = useState(false);
   const [upType, setUpType] = useState('');
   const [uploadKey, setUploadKey] = useState(0); // remount UploadDropField to reset it
+  // Once a file lands in the drop zone, seed the Caption with the file's
+  // name (extension stripped) so the user has a sensible default. Stop
+  // auto-syncing as soon as the user types their own caption; a subsequent
+  // file swap re-syncs. Matches the UploadChartDrawer behavior.
+  useEffect(() => {
+    if (!upFile || upCaptionTouched) return;
+    setUpCaption(upFile.name.replace(/\.[a-z0-9]+$/i, ''));
+  }, [upFile, upCaptionTouched]);
   useEffect(() => {
     if (!actionPos) return;
     const onDoc = (e) => {
@@ -330,14 +345,15 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     setFailPrompt({ id, name: doc?.n || 'Document' });
   };
   const undoDoc = (id) => applyDocAction(id, null);
-  const confirmFailDoc = ({ reason, note }) => {
+  const confirmFailDoc = ({ reasons, note }) => {
     if (!failPrompt) return;
     applyDocAction(failPrompt.id, 'fail');
     const doc = docs.find(d => d.id === failPrompt.id);
+    const reasonText = (reasons || []).join(', ');
     addActivityEntry?.({
       t: 'doc-status', by: 'You', role: 'Support Team',
       headline: `Marked "${doc?.n || failPrompt.name}" as Failed`,
-      details: [{ note: note ? `${reason} — ${note}` : reason }],
+      details: [{ note: note ? `${reasonText} — ${note}` : reasonText }],
     });
     showToast(`Marked ${failPrompt.name} failed`);
     setFailPrompt(null);
@@ -451,7 +467,7 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   const showReviewBanner = effectiveStatus === 'completed';
 
   const resetUpload = () => {
-    setShowUpload(false); setUpFile(null); setUpCaption(''); setUpType('');
+    setShowUpload(false); setUpFile(null); setUpCaption(''); setUpCaptionTouched(false); setUpType('');
     setUploadKey(k => k + 1);
   };
   const canSaveUpload = !!(upFile && upCaption.trim() && upType);
@@ -633,7 +649,7 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
                       className={styles.uploadInput}
                       placeholder="Add caption"
                       value={upCaption}
-                      onChange={(e) => setUpCaption(e.target.value)}
+                      onChange={(e) => { setUpCaption(e.target.value); setUpCaptionTouched(true); }}
                     />
                   </div>
                   <div className={styles.uploadField}>
@@ -660,80 +676,98 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
                 const action = docActions[d.id] || null;
                 const isSel = d.id === selected.id;
                 const isFailing = failPrompt?.id === d.id;
+                const isEditingRow = editingDocId === d.id;
                 return (
-                  <Fragment key={d.id}>
                   <div
-                    className={`${styles.docCard} ${isSel ? styles.docCardSelected : ''}`}
+                    key={d.id}
+                    className={`${styles.docCard} ${isSel ? styles.docCardSelected : ''} ${(isFailing || isEditingRow) ? styles.docCardFailing : ''}`}
                     role="button"
                     tabIndex={0}
                     onClick={() => setSelectedId(d.id)}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedId(d.id); } }}
                   >
-                    <span className={styles.docThumb} aria-hidden="true">
-                      <Icon name="custom:pdf-file" size={20} color="var(--neutral-400)" />
-                    </span>
-                    <div className={styles.docCardText}>
-                      <span className={styles.docName}>{d.caption || d.n}</span>
-                      <span className={styles.docMeta}>
-                        {d.t} • {d.dateAdded || '—'} • {d.addedBy || '—'}
+                    <div className={styles.docCardHeader}>
+                      <span className={styles.docThumb} aria-hidden="true">
+                        <Icon name="custom:pdf-file" size={20} color="var(--neutral-400)" />
                       </span>
+                      <div className={styles.docCardText}>
+                        <span className={styles.docName}>{d.caption || d.n}</span>
+                        <span className={styles.docMeta}>
+                          {d.t} • {d.dateAdded || '—'} • {d.addedBy || '—'}
+                        </span>
+                      </div>
+                      <div className={styles.docActions} onClick={(e) => e.stopPropagation()}>
+                        {action === 'pass' ? (
+                          <>
+                            <span className={styles.passedBadge}>
+                              <Icon name="solar:check-read-linear" size={12} color="var(--status-success)" />
+                              Passed
+                            </span>
+                            <button type="button" className={styles.undoBtn} aria-label="Undo" onClick={() => undoDoc(d.id)}>
+                              <Icon name="solar:undo-left-round-linear" size={16} color="var(--neutral-400)" />
+                            </button>
+                          </>
+                        ) : action === 'fail' ? (
+                          <>
+                            <span className={styles.failedBadge}>
+                              <Icon name="solar:close-circle-linear" size={12} color="var(--status-error)" />
+                              Failed
+                            </span>
+                            <button type="button" className={styles.undoBtn} aria-label="Undo" onClick={() => undoDoc(d.id)}>
+                              <Icon name="solar:undo-left-round-linear" size={16} color="var(--neutral-400)" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button type="button" className={styles.passFailPill} title="Pass" onClick={() => passDoc(d.id)}>
+                              <Icon name="solar:check-circle-linear" size={12} color="var(--neutral-300)" />
+                              Pass
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.passFailPill}
+                              title="Fail"
+                              disabled={isFailing}
+                              onClick={() => failDoc(d.id)}
+                            >
+                              <Icon name="solar:close-circle-linear" size={12} color="var(--neutral-300)" />
+                              Fail
+                            </button>
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          className={styles.moreBtn}
+                          aria-label="More actions"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (moreMenu?.docId === d.id) { setMoreMenu(null); return; }
+                            const r = e.currentTarget.getBoundingClientRect();
+                            setMoreMenu({ docId: d.id, top: r.bottom + 4, right: window.innerWidth - r.right });
+                          }}
+                        >
+                          <Icon name="solar:menu-dots-linear" size={15} color="currentColor" />
+                        </button>
+                      </div>
                     </div>
-                    <div className={styles.docActions} onClick={(e) => e.stopPropagation()}>
-                      {action === 'pass' ? (
-                        <>
-                          <span className={styles.passedBadge}>
-                            <Icon name="solar:check-read-linear" size={12} color="var(--status-success)" />
-                            Passed
-                          </span>
-                          <button type="button" className={styles.undoBtn} aria-label="Undo" onClick={() => undoDoc(d.id)}>
-                            <Icon name="solar:undo-left-round-linear" size={16} color="var(--neutral-400)" />
-                          </button>
-                        </>
-                      ) : action === 'fail' ? (
-                        <>
-                          <span className={styles.failedBadge}>
-                            <Icon name="solar:close-circle-linear" size={12} color="var(--status-error)" />
-                            Failed
-                          </span>
-                          <button type="button" className={styles.undoBtn} aria-label="Undo" onClick={() => undoDoc(d.id)}>
-                            <Icon name="solar:undo-left-round-linear" size={16} color="var(--neutral-400)" />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button type="button" className={styles.passFailPill} title="Pass" onClick={() => passDoc(d.id)}>
-                            <Icon name="solar:check-circle-linear" size={12} color="var(--neutral-300)" />
-                            Pass
-                          </button>
-                          <button type="button" className={styles.passFailPill} title="Fail" onClick={() => failDoc(d.id)}>
-                            <Icon name="solar:close-circle-linear" size={12} color="var(--neutral-300)" />
-                            Fail
-                          </button>
-                        </>
-                      )}
-                      <button
-                        type="button"
-                        className={styles.moreBtn}
-                        aria-label="More actions"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (moreMenu?.docId === d.id) { setMoreMenu(null); return; }
-                          const r = e.currentTarget.getBoundingClientRect();
-                          setMoreMenu({ docId: d.id, top: r.bottom + 4, right: window.innerWidth - r.right });
+                    {isFailing && (
+                      <FailReasonInline
+                        onCancel={() => setFailPrompt(null)}
+                        onConfirm={confirmFailDoc}
+                      />
+                    )}
+                    {isEditingRow && (
+                      <EditDocInline
+                        doc={d}
+                        onCancel={() => setEditingDocId(null)}
+                        onSave={({ caption, docType }) => {
+                          updateChartDocMeta(m.id, d.id, { n: caption, caption, t: docType });
+                          showToast(`Updated ${caption}`);
+                          setEditingDocId(null);
                         }}
-                      >
-                        <Icon name="solar:menu-dots-linear" size={15} color="currentColor" />
-                      </button>
-                    </div>
+                      />
+                    )}
                   </div>
-                  {isFailing && (
-                    <FailReasonInline
-                      docName={failPrompt.name}
-                      onCancel={() => setFailPrompt(null)}
-                      onConfirm={confirmFailDoc}
-                    />
-                  )}
-                  </Fragment>
                 );
               })}
             </div>
@@ -741,7 +775,12 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
         </div>
       </div>
 
-      {moreMenu && (
+      {/* Portaled to document.body so `position: fixed` uses the viewport as
+          its containing block. If we left the menu inside the drawer panel,
+          its transform (entry animation) would make the panel the containing
+          block instead, and the right-offset math would push the menu off
+          the visible area. */}
+      {moreMenu && createPortal(
         <div
           className={styles.docMoreMenu}
           style={{ top: moreMenu.top, right: moreMenu.right }}
@@ -754,9 +793,11 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
               const doc = docs.find(d => d.id === moreMenu.docId);
               setMoreMenu(null);
               if (!doc) return;
-              // Reuse the Upload Document drawer as the edit surface. It reads
-              // hccUploadEditDoc and prefills caption + docType from the row.
-              openHccUploadDrawerForEdit(m, doc);
+              // Inline edit — the doc card renders a Caption + Document Type
+              // editor in place of the header actions until the user saves
+              // or cancels.
+              setEditingDocId(doc.id);
+              setSelectedId(doc.id);
             }}
           >
             <Icon name="solar:pen-linear" size={16} color="var(--neutral-400)" />
@@ -765,7 +806,11 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
           <button
             type="button"
             className={styles.docMoreItem}
-            onClick={() => unlinkDoc(moreMenu.docId)}
+            onClick={() => {
+              const doc = docs.find(d => d.id === moreMenu.docId);
+              setMoreMenu(null);
+              if (doc) setConfirmUnlinkDoc({ id: doc.id, name: doc.n });
+            }}
           >
             <Icon name="solar:link-broken-minimalistic-linear" size={16} color="var(--status-error)" />
             Unlink
@@ -782,7 +827,8 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
             <Icon name="solar:trash-bin-2-linear" size={16} color="var(--status-error)" />
             Delete
           </button>
-        </div>
+        </div>,
+        document.body,
       )}
       {confirmDeleteDoc && (
         <DestructiveDialog
@@ -793,6 +839,18 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
           onConfirm={() => {
             unlinkDoc(confirmDeleteDoc.id);
             setConfirmDeleteDoc(null);
+          }}
+        />
+      )}
+      {confirmUnlinkDoc && (
+        <DestructiveDialog
+          title="Unlink document?"
+          description={`"${confirmUnlinkDoc.name}" will be detached from this record. You can re-attach it later.`}
+          confirmLabel="Unlink"
+          onCancel={() => setConfirmUnlinkDoc(null)}
+          onConfirm={() => {
+            unlinkDoc(confirmUnlinkDoc.id);
+            setConfirmUnlinkDoc(null);
           }}
         />
       )}
@@ -852,62 +910,142 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
 }
 
 // Reasons offered when marking a document Failed. Mirrors the Figma spec
-// on ICD-Import 4806:142581 — HCC-oriented rejection buckets used by the
-// Support team when a document can't be accepted as evidence.
+// on ICD-Import 4806:142581 — the canonical HCC review vocabulary used by
+// the Support team when a chart document can't be accepted as evidence.
 const FAIL_REASONS = [
-  'Wrong Patient',
-  'Wrong Date of Service',
-  'Illegible / Poor Quality',
-  'Incomplete / Missing Pages',
-  'Missing Signature',
-  'Wrong Document Type',
-  'Duplicate Document',
+  'Missing signature',
+  'Wrong document type',
+  'Illegible document',
+  'Incomplete fields',
+  'Document belongs to wrong patient',
+  'Document outside valid date range',
+  'Progress Note/Attachment Not available',
+  'DOS Not Charted',
+  'Provider Name Not Printed',
+  'POS Not Available',
   'Other',
 ];
 
-// Inline fail-reason form — renders directly below the doc card whose Fail
-// button was clicked. Keeps every other doc row and header action live so
-// the reviewer can bail out (three-dots, hover on the status pill, etc.)
-// without an overlay blocking the surface.
-function FailReasonInline({ docName, onCancel, onConfirm }) {
-  const [reason, setReason] = useState('');
-  const [note, setNote] = useState('');
-  // "Other" requires a note so a downstream reviewer can see the specific
-  // reason. Every other reason keeps the note optional.
-  const noteRequired = reason === 'Other';
-  const canSubmit = !!reason && (!noteRequired || note.trim().length > 0);
+// Inline fail-reason form — renders INSIDE the doc card whose Fail button
+// was clicked, so the doc header (name + meta + Pass/Fail/⋯) and the
+// reason picker read as one bordered container per Figma. Keeps every
+// other doc row and header action live so the reviewer can bail out
+// (three-dots, hover on the status pill, etc.) without an overlay
+// blocking the surface.
+function FailReasonInline({ onCancel, onConfirm }) {
+  // Multi-select: the reviewer can flag more than one reason on a fail
+  // (e.g. "Illegible" AND "Missing Signature"). Stored as a Set for O(1)
+  // toggle; onConfirm hands out an array in the original option order.
+  const [reasons, setReasons] = useState(() => new Set());
+  const [comment, setComment] = useState('');
+  const toggleReason = (r) => setReasons((prev) => {
+    const next = new Set(prev);
+    if (next.has(r)) next.delete(r); else next.add(r);
+    return next;
+  });
+  // At least one reason is always required. The comment is optional — with
+  // one exception: picking "Other" makes it mandatory, since the reviewer
+  // owes a specific reason for the downstream reviewer to act on. When
+  // required, a red asterisk appears next to the Comment label.
+  const commentRequired = reasons.has('Other');
+  const canSubmit = reasons.size > 0 && (!commentRequired || comment.trim().length > 0);
   return (
     <div className={styles.failInline} onClick={(e) => e.stopPropagation()}>
-      <div className={styles.failHeader}>
-        <div className={styles.failTitle}>Mark document Failed</div>
-        <div className={styles.failSubtitle}>{docName}</div>
-      </div>
       <div className={styles.failBody}>
-        <div className={styles.failIntro}>Select a reason for failing this document:</div>
+        <div className={styles.failIntro}>
+          Select a reason and add a note to mark document as a failed:
+          <span className={styles.failNoteRequired} aria-hidden="true"> *</span>
+        </div>
         <div className={styles.failReasons}>
-          {FAIL_REASONS.map((r) => (
-            <RadioButton
-              key={r}
-              name="fail-reason"
-              value={r}
-              label={r}
-              checked={reason === r}
-              onChange={() => setReason(r)}
-            />
-          ))}
+          {FAIL_REASONS.map((r) => {
+            const checked = reasons.has(r);
+            return (
+              <button
+                key={r}
+                type="button"
+                role="checkbox"
+                aria-checked={checked}
+                aria-label={r}
+                className={styles.reasonOption}
+                onClick={(e) => { e.stopPropagation(); toggleReason(r); }}
+              >
+                <Checkbox
+                  checked={checked}
+                  tabIndex={-1}
+                  aria-hidden
+                  className="pointer-events-none"
+                />
+                <span className={styles.reasonLabel}>{r}</span>
+              </button>
+            );
+          })}
         </div>
         <div className={styles.failNoteLabel}>
-          Note{noteRequired ? <span className={styles.failNoteRequired} aria-hidden="true"> *</span> : ' (optional)'}
+          Comment
+          {commentRequired && <span className={styles.failNoteRequired} aria-hidden="true"> *</span>}
         </div>
         <Textarea
           rows={3}
-          placeholder={noteRequired ? 'Add a note explaining the reason' : 'Add a note'}
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
+          placeholder="Add a Comment"
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
         />
       </div>
       <div className={styles.failActions}>
-        <Button variant="danger" size="S" disabled={!canSubmit} onClick={() => onConfirm({ reason, note })}>Mark Failed</Button>
+        <Button
+          variant="danger"
+          size="S"
+          disabled={!canSubmit}
+          onClick={() => onConfirm({ reasons: FAIL_REASONS.filter(r => reasons.has(r)), note: comment })}
+        >
+          Confirm
+        </Button>
+        <Button variant="secondary" size="S" onClick={onCancel}>Cancel</Button>
+      </div>
+    </div>
+  );
+}
+
+// Inline metadata editor — the doc card's second row when the ⋯ menu's Edit
+// item is picked. Only caption + document type are editable (the file
+// itself stays put); Save writes through updateChartDocMeta upstream.
+function EditDocInline({ doc, onCancel, onSave }) {
+  const [caption, setCaption] = useState(doc?.caption || doc?.n || '');
+  const [docType, setDocType] = useState(doc?.t || '');
+  const canSave = caption.trim().length > 0 && !!docType;
+  return (
+    <div className={styles.failInline} onClick={(e) => e.stopPropagation()}>
+      <div className={styles.failBody}>
+        <div className={styles.failNoteLabel}>Caption</div>
+        <input
+          type="text"
+          className={styles.editInput}
+          value={caption}
+          onChange={(e) => setCaption(e.target.value)}
+          placeholder="Document caption"
+          autoFocus
+        />
+        <div className={styles.failNoteLabel}>Document Type</div>
+        <Select value={docType} onValueChange={setDocType}>
+          <SelectTrigger className={styles.editSelectTrigger}>
+            <SelectValue placeholder="Select a type" />
+          </SelectTrigger>
+          <SelectContent>
+            {DOC_TYPES.map(t => (
+              <SelectItem key={t} value={t}>{t}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className={styles.failActions}>
+        <Button
+          variant="primary"
+          size="S"
+          disabled={!canSave}
+          onClick={() => onSave({ caption: caption.trim(), docType })}
+        >
+          Save
+        </Button>
         <Button variant="secondary" size="S" onClick={onCancel}>Cancel</Button>
       </div>
     </div>

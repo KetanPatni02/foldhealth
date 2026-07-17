@@ -40,7 +40,12 @@
    inline color the StatusIcon already applies). */
 .rowRejected td[data-status="rejected"],
 .rowRejected td[data-status="rejected"] * { color: var(--neutral-300) !important; }
-.rowRejected td[data-status="rejected"] svg { color: var(--status-error) !important; }
+/* The status icon stays in canonical error red — force it on the svg AND
+   its descendants (paths inherit fill from `currentColor`, which the
+   `.rowRejected td[data-status="rejected"] *` rule above would otherwise
+   drag back to neutral). */
+.rowRejected td[data-status="rejected"] svg,
+.rowRejected td[data-status="rejected"] svg * { color: var(--status-error) !important; }
 .rowRejected button:not([aria-label="View Diagnosis Gaps"]),
 .rowRejected [role="button"]:not([aria-label="View Diagnosis Gaps"]) {
   pointer-events: none;

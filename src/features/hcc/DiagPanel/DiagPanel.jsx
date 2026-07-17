@@ -950,7 +950,7 @@ export function DiagPanel() {
           <ActionButton
             icon="solar:history-linear"
             size="S"
-            tooltip="Activity Log"
+            tooltip="Timeline"
             className={diagLeftPanel === 'activity' && !diagActivityIcd ? styles.activeIcon : ''}
             onClick={() => setDiagLeftPanel(diagLeftPanel === 'activity' && !diagActivityIcd ? null : 'activity')}
           />
