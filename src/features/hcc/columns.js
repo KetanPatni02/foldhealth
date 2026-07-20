@@ -38,7 +38,7 @@ export const HCC_COLUMNS = [
   { k: 'dec',      lb: 'Decile',        sortable: true,  sortField: 'dec' },
   { k: 'coh',      lb: 'Cohort',        sortable: false },
   { k: 'rl',       lb: 'Risk Level',    sortable: true,  sortField: 'rl' },
-  { k: 'ad',       lb: 'Advillness',    sortable: true,  sortField: 'ad' },
+  { k: 'ad',       lb: 'Adv. Illness',  sortable: true,  sortField: 'ad' },
   { k: 'fr',       lb: 'Frailty',       sortable: true,  sortField: 'fr' },
 ];
 

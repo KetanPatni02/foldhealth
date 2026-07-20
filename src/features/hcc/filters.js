@@ -39,6 +39,7 @@ export const MORE_FILTER_ITEMS = [
   // Extended — hidden until toggled on via MoreFiltersPopover
   { k: 'rl',     label: 'Risk Level',          primary: false },
   { k: 'coh',    label: 'Cohort',              primary: false },
+  { k: 'ad',     label: 'Adv. Illness',        primary: false },
   { k: 'g',      label: 'Gender',              primary: false },
   { k: 'dec',    label: 'Decile',              primary: false },
   { k: 'dob',    label: 'DOB',                 primary: false },
@@ -97,6 +98,9 @@ export const FILTER_DEFS = [
   { k: 'dosSrc', label: 'DOS Source',          type: 'multi', opts: DOS_SOURCE_LABELS },
   { k: 'rl',     label: 'Risk Level',          type: 'multi', opts: ['Low', 'Medium', 'High'] },
   { k: 'coh',    label: 'Cohort',              type: 'multi', opts: ['PCP', 'HCC'] },
+  // Advanced Illness — CMS frailty adjunct score, integer 1..10. Range
+  // slider matches Decile so the picker is instantly familiar.
+  { k: 'ad',     label: 'Adv. Illness',        type: 'range', opts: ['1','2','3','4','5','6','7','8','9','10'] },
   { k: 'g',      label: 'Gender',              type: 'multi', opts: ['Male', 'Female'] },
   { k: 'open',   label: 'Open ICDs',           type: 'radio', opts: ['< 5 Gaps', '5 - 10 Gaps', '10 - 15 Gaps', '> 15 Gaps'] },
   // Documents Available — filter by the NUMBER of documents attached to the
@@ -265,6 +269,16 @@ function matchOne(m, k, vals) {
         return d >= mn && d <= mx;
       }
       return vals.includes(String(m.dec));
+    }
+    case 'ad': {
+      // Adv. Illness score — same [min, max] range shape as Decile.
+      if (vals.length >= 2) {
+        const mn = parseInt(vals[0], 10);
+        const mx = parseInt(vals[1], 10);
+        const v = parseInt(m.ad, 10) || 0;
+        return v >= mn && v <= mx;
+      }
+      return vals.includes(String(m.ad));
     }
     // Date-range filters (Phase 3d). Values are [startISO, endISO].
     case 'cd':
