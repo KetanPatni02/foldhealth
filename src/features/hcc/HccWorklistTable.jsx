@@ -23,6 +23,7 @@ import { BulkChangeAssigneesDialog } from './BulkChangeAssigneesDialog';
 import { HccUploadProgressRibbon } from './upload/HccUploadProgressRibbon';
 import { HccHistoryDrawer } from './HccHistoryDrawer';
 import { StatusLegend } from './StatusLegend';
+import { HorizontalScrollbar } from '../../components/HorizontalScrollbar/HorizontalScrollbar';
 import styles from './HccWorklistTable.module.css';
 import rowStyles from './HccWorklistRow.module.css';
 
@@ -159,6 +160,9 @@ export function HccWorklistTable() {
   const setHccUploadPhase = useAppStore(s => s.setHccUploadPhase);
   const memberThRef = useRef(null);
   const colCfgBtnRef = useRef(null);
+  // Ref for the horizontal scroll container so <HorizontalScrollbar />
+  // can read scrollLeft / scrollWidth and drive the custom sticky bar.
+  const scrollWrapRef = useRef(null);
 
   useEffect(() => { fetchHccMembers(); }, [fetchHccMembers]);
   useEffect(() => { fetchHccAddedCharts(); }, [fetchHccAddedCharts]);
@@ -342,7 +346,7 @@ export function HccWorklistTable() {
         onCancel={() => setRenameTarget(null)}
       />
 
-      <div className={styles.scrollWrap}>
+      <div className={styles.scrollWrap} ref={scrollWrapRef}>
         {filtered.length === 0 && searchQuery?.trim() && (
           <EmptyState
             title="No results found"
@@ -433,6 +437,7 @@ export function HccWorklistTable() {
           </tbody>
         </table>
       </div>
+      <HorizontalScrollbar targetRef={scrollWrapRef} />
 
       <StatusLegend />
 

@@ -1,0 +1,38 @@
+/* Sits below the scroll container as a normal flex child so it's always
+   in view regardless of the container's own overflow shape. Full-width
+   strip, thin enough to feel like a native scrollbar without dominating. */
+.container {
+  flex-shrink: 0;
+  width: 100%;
+  height: 12px;
+  padding: 2px 8px;
+  background: var(--neutral-0);
+  border-top: 0.5px solid var(--neutral-150);
+  box-sizing: border-box;
+  pointer-events: auto;
+}
+
+.track {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--neutral-100);
+  cursor: pointer;
+}
+
+.thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--neutral-150);
+  cursor: grab;
+  transition: background-color 0.15s ease;
+}
+
+.thumb:active {
+  cursor: grabbing;
+  background: var(--neutral-200);
+}
