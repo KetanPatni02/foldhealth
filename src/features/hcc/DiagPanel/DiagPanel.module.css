@@ -640,14 +640,65 @@
    (Bulk / Search / ICD / Filter / Docs / More) stays legible. The More
    overflow menu remains a placeholder for now; a follow-up will populate
    it with whatever the current width has hidden. */
-@container rhsPane (max-width: 640px) {
+/* Breakpoints are inclusive — set them slightly below the width the
+   toolbar occupies at "normal" widths so nothing hides until the user
+   actively shrinks the pane. The default RHS is 640px (50/50 with LHS
+   open), so Timeline hides at 620 rather than 640 to stay visible at
+   rest. */
+@container rhsPane (max-width: 620px) {
   .hideBelow640 { display: none !important; }
 }
-@container rhsPane (max-width: 540px) {
+@container rhsPane (max-width: 520px) {
   .hideBelow540 { display: none !important; }
 }
-@container rhsPane (max-width: 460px) {
+@container rhsPane (max-width: 440px) {
   .hideBelow460 { display: none !important; }
+}
+
+/* Toolbar overflow (More) menu — anchor + dropdown match the shared
+   BulkBar chrome, but with a smaller footprint that fits inline in the
+   drawer toolbar. */
+.toolbarMoreWrap {
+  position: relative;
+  display: inline-flex;
+}
+.toolbarMoreDropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+  padding: 4px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.toolbarMoreItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--neutral-500);
+  text-align: left;
+  cursor: pointer;
+}
+.toolbarMoreItem:hover { background: var(--neutral-50); }
+.toolbarMoreItemCount {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: var(--neutral-50);
 }
 
 /* Highlight tone for toolbar action buttons whose corresponding left

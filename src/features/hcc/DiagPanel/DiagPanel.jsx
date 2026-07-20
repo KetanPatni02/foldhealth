@@ -247,24 +247,37 @@ export function DiagPanel() {
     const row = contentRowRef.current;
     if (!row) return;
     const rowRect = row.getBoundingClientRect();
+    // Pointer capture pins the pointer stream to the handle for the drag's
+    // whole life — it survives the pointer leaving the browser window,
+    // focus loss, and other cases where a plain window-scoped mouseup can
+    // silently misfire. Without this the mousemove listener would leak
+    // after the first drag and every subsequent hover would resize the
+    // pane before the user could grab the handle again.
+    const handle = e.currentTarget;
+    const { pointerId } = e;
+    try { handle.setPointerCapture(pointerId); } catch { /* ignore */ }
+
+    const maxWidth = Math.floor(rowRect.width * 0.5);
     const onMove = (moveEvt) => {
-      const clientX = moveEvt.clientX;
-      // Desired RHS width = distance from the cursor to the row's right edge.
-      const rawWidth = rowRect.right - clientX;
-      const maxWidth = Math.floor(rowRect.width * 0.5);
+      if (moveEvt.pointerId !== pointerId) return;
+      const rawWidth = rowRect.right - moveEvt.clientX;
       const clamped = Math.max(MIN_RHS_PX, Math.min(rawWidth, maxWidth));
       setRhsWidth(clamped);
     };
-    const onUp = () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
+    const onUp = (upEvt) => {
+      if (upEvt.pointerId !== pointerId) return;
+      handle.removeEventListener('pointermove', onMove);
+      handle.removeEventListener('pointerup', onUp);
+      handle.removeEventListener('pointercancel', onUp);
+      try { handle.releasePointerCapture(pointerId); } catch { /* ignore */ }
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+    handle.addEventListener('pointermove', onMove);
+    handle.addEventListener('pointerup', onUp);
+    handle.addEventListener('pointercancel', onUp);
   }, []);
   const updatePendingGap = useCallback((idx, patch) => {
     setPendingGaps(prev => prev.map((c, i) => i === idx
@@ -275,6 +288,22 @@ export function DiagPanel() {
     setPendingGaps(prev => prev.filter((_, i) => i !== idx));
   }, []);
   const exitAddIcdMode = useCallback(() => setAddIcdMode(false), []);
+  // Toolbar overflow menu — surfaces the actions currently hidden by the
+  // container-query collapse (Documents / Comments / Timeline). Click-outside
+  // closes the dropdown; individual items are still routed to the same
+  // handlers as their toolbar-icon counterparts.
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreWrapRef = useRef(null);
+  useEffect(() => {
+    if (!moreOpen) return undefined;
+    const onDocDown = (e) => {
+      if (moreWrapRef.current && !moreWrapRef.current.contains(e.target)) {
+        setMoreOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocDown);
+    return () => document.removeEventListener('mousedown', onDocDown);
+  }, [moreOpen]);
   // Open/closed state for the removed Overridden/Closed ICD sections — kept
   // commented out rather than deleted.
   // const [overriddenOpen, setOverriddenOpen] = useState(false);
@@ -1060,7 +1089,7 @@ export function DiagPanel() {
               [MIN_RHS_PX, 50% of contentRow]. */}
           <div
             className={styles.resizeHandle}
-            onMouseDown={startResize}
+            onPointerDown={startResize}
             role="separator"
             aria-orientation="vertical"
             aria-label="Resize document workspace"
@@ -1267,12 +1296,54 @@ export function DiagPanel() {
                 onClick={() => setDiagLeftPanel(diagLeftPanel === 'activity' && !diagActivityIcd ? null : 'activity')}
               />
               <span className={[styles.divider, styles.hideBelow640].join(' ')} />
-              <ActionButton
-                icon="solar:menu-dots-linear"
-                size="S"
-                tooltip="More"
-                onClick={noop('More')}
-              />
+              <span className={styles.toolbarMoreWrap} ref={moreWrapRef}>
+                <ActionButton
+                  icon="solar:menu-dots-linear"
+                  size="S"
+                  tooltip="More"
+                  onClick={(e) => { e.stopPropagation(); setMoreOpen(v => !v); }}
+                  className={moreOpen ? styles.activeIcon : ''}
+                />
+                {moreOpen && (
+                  <div className={styles.toolbarMoreDropdown} role="menu">
+                    <button
+                      type="button"
+                      className={styles.toolbarMoreItem}
+                      role="menuitem"
+                      onClick={() => { setMoreOpen(false); openDocsFromToolbar(); }}
+                    >
+                      <Icon name="solar:file-text-linear" size={16} color="var(--neutral-400)" />
+                      <span>Documents</span>
+                      <span className={styles.toolbarMoreItemCount}>{docsCount}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.toolbarMoreItem}
+                      role="menuitem"
+                      onClick={() => {
+                        setMoreOpen(false);
+                        setDiagLeftPanel(diagLeftPanel === 'comments' && !diagActivityIcd ? null : 'comments');
+                      }}
+                    >
+                      <Icon name="solar:chat-round-line-linear" size={16} color="var(--neutral-400)" />
+                      <span>Comments</span>
+                      <span className={styles.toolbarMoreItemCount}>{commentsCount}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.toolbarMoreItem}
+                      role="menuitem"
+                      onClick={() => {
+                        setMoreOpen(false);
+                        setDiagLeftPanel(diagLeftPanel === 'activity' && !diagActivityIcd ? null : 'activity');
+                      }}
+                    >
+                      <Icon name="solar:history-linear" size={16} color="var(--neutral-400)" />
+                      <span>Timeline</span>
+                    </button>
+                  </div>
+                )}
+              </span>
             </div>
           </>
         )}
