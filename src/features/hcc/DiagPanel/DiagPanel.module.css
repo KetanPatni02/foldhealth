@@ -795,6 +795,12 @@
   font-weight: 500;
   color: var(--neutral-400);
 }
+/* Select-all checkbox rendered in the header when bulkMode is on. Sits
+   before the title with the same 6px lane the other actions use. */
+.assocSelectAll {
+  margin-right: 2px;
+  flex-shrink: 0;
+}
 /* "N/M DOSs" badge — expands the per-DOS panel (Paper 1ZV3). */
 .dosBadge {
   display: inline-flex;

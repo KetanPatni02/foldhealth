@@ -17,6 +17,7 @@ import { DosStatusMenu } from './DosStatusMenu';
 import { LeftWorkspace } from './LeftWorkspace';
 import { IcdCard, makeCard, DOS_CUSTOM } from './IcdCard';
 import { IcdSearch } from '../../../components/IcdSearch/IcdSearch';
+import { Checkbox } from '../../../components/ui/checkbox';
 import { POS_BY_VT, PROVIDER_POOL_BY_VT, VISIT_TYPES } from '../reference/visitTypes';
 import { DOC_TYPES } from '../data/chartDocs';
 import {
@@ -927,14 +928,59 @@ export function DiagPanel() {
     if (next.has(key)) next.delete(key); else next.add(key);
     return next;
   });
+  // Tri-state select-all for the "ICDs Associated with" section — reflects
+  // how many of the visible rowKeys are currently selected. Clicking the
+  // header checkbox toggles: nothing/some → select all; all → clear.
+  const associatedSelectState = useMemo(() => {
+    if (rowKeys.length === 0) return 'unchecked';
+    let count = 0;
+    for (const k of rowKeys) if (selectedKeys.has(k)) count += 1;
+    if (count === 0) return 'unchecked';
+    if (count === rowKeys.length) return 'checked';
+    return 'indeterminate';
+  }, [rowKeys, selectedKeys]);
+  const toggleSelectAllAssociated = useCallback(() => {
+    setSelectedKeys(prev => {
+      if (rowKeys.every(k => prev.has(k))) {
+        // All selected → clear only the associated keys (leave any others
+        // untouched — defensive; today rowKeys covers the whole section).
+        const next = new Set(prev);
+        for (const k of rowKeys) next.delete(k);
+        return next;
+      }
+      // None or some selected → select every associated key.
+      const next = new Set(prev);
+      for (const k of rowKeys) next.add(k);
+      return next;
+    });
+  }, [rowKeys]);
   const bulkApply = (action) => {
     selectedKeys.forEach(k => {
       const [code, dos] = k.split('|');
       // Skip toggling rows already in the target state.
       if (hccGapDosActions[k] !== action) setHccGapDosAction(code, dos, action);
     });
-    const verb = { accepted: 'accepted', rejected: 'rejected', missed: 'marked missed', deferred: 'deferred' }[action] || action;
+    const verb = { accepted: 'accepted', rejected: 'dismissed', missed: 'marked missed', deferred: 'deferred' }[action] || action;
     showToast(`${selectedKeys.size} row${selectedKeys.size === 1 ? '' : 's'} ${verb}`);
+    setSelectedKeys(new Set());
+  };
+  // Bulk-undo — clears the DOS action for every selected row that has one
+  // (accepted / dismissed / missed / deferred → undecided). Rows already in
+  // the undecided state are skipped so we don't fire needless persistence.
+  const bulkUndo = () => {
+    let count = 0;
+    selectedKeys.forEach(k => {
+      if (hccGapDosActions[k]) {
+        const [code, dos] = k.split('|');
+        setHccGapDosAction(code, dos, null);
+        count += 1;
+      }
+    });
+    if (count > 0) {
+      showToast(`${count} row${count === 1 ? '' : 's'} reverted to undecided`);
+    } else {
+      showToast('No rows to undo — none had a decision');
+    }
     setSelectedKeys(new Set());
   };
 
@@ -1250,8 +1296,24 @@ export function DiagPanel() {
         )}
 
         {/* Section header — the DOS badge expands an inline per-DOS panel
-            with toggles (Paper 1ZV3). Toggling a DOS off hides its rows. */}
+            with toggles (Paper 1ZV3). Toggling a DOS off hides its rows.
+            In bulk mode a select-all checkbox precedes the title with a
+            tri-state (none/some/all) that mirrors row selection. */}
         <div className={styles.assocHeader}>
+          {bulkMode && rowKeys.length > 0 && (
+            <Checkbox
+              className={styles.assocSelectAll}
+              checked={
+                associatedSelectState === 'checked'
+                  ? true
+                  : associatedSelectState === 'indeterminate'
+                    ? 'indeterminate'
+                    : false
+              }
+              onCheckedChange={toggleSelectAllAssociated}
+              aria-label={associatedSelectState === 'checked' ? 'Deselect all associated ICDs' : 'Select all associated ICDs'}
+            />
+          )}
           <span className={styles.assocTitle}>ICDs Associated with</span>
           <button
             type="button"
@@ -1403,12 +1465,13 @@ export function DiagPanel() {
           selectedIds={[...selectedKeys]}
           onClear={() => setSelectedKeys(new Set())}
           actions={[
-            { label: 'Accept', icon: 'solar:check-read-linear', variant: 'primary',   onClick: () => bulkApply('accepted') },
-            { label: 'Reject', icon: 'solar:close-circle-linear', variant: 'secondary', onClick: () => bulkApply('rejected') },
+            { label: 'Accept',  icon: 'solar:check-read-linear',   variant: 'primary',   onClick: () => bulkApply('accepted') },
+            { label: 'Dismiss', icon: 'solar:close-circle-linear', variant: 'secondary', onClick: () => bulkApply('rejected') },
           ]}
           moreActions={[
             { label: 'Missed Opportunity', icon: 'solar:flag-linear',  onClick: () => bulkApply('missed') },
             { label: 'Defer',              icon: 'solar:alarm-linear', onClick: () => bulkApply('deferred') },
+            { label: 'Undo',               icon: 'solar:undo-left-round-linear', onClick: bulkUndo },
           ]}
         />
       )}
