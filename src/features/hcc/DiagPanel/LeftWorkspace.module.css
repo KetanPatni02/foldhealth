@@ -2028,3 +2028,29 @@
 /* Hide the tab strip's scrollbar — arrows are the primary affordance. */
 .docsBrowserTabs::-webkit-scrollbar { display: none; }
 .docsBrowserTabs { scrollbar-width: none; }
+
+/* "Open in new browser tab" icon anchored to the right edge of the doc
+   viewer tab bar — same shape/hover treatment as the scroll arrows so it
+   feels like part of the toolbar. Disabled on system-seeded docs (no
+   real PDF URL to open). */
+.docsOpenExternalBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin-left: 4px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--neutral-400);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.docsOpenExternalBtn:hover { background: var(--neutral-100); color: var(--neutral-500); }
+.docsOpenExternalBtn:disabled {
+  color: var(--neutral-200);
+  cursor: not-allowed;
+}
+.docsOpenExternalBtn:disabled:hover { background: transparent; }

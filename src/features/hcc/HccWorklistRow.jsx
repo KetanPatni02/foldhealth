@@ -969,6 +969,28 @@ function HccWorklistRowImpl({ member, hiddenCols, columns }) {
       || rejectedStatuses.has(member.r2s);
   })();
 
+  // Identify the role that flipped this record to Rejected so the tooltip
+  // is specific ("Rejected by Coder") — otherwise the muted row just looks
+  // greyed out with no explanation. Engine state wins; falls back to the
+  // legacy member.*S fields when the engine hasn't seeded this DOS yet.
+  const rejectingRole = (() => {
+    if (!isRecordRejected) return null;
+    const map = { support: 'Support', coder: 'Coder', reviewer: 'QA', reviewer2: 'Compliance' };
+    if (dosState) {
+      for (const role of ['support', 'coder', 'reviewer', 'reviewer2']) {
+        if (rejectedStatuses.has(dosState[role]?.status)) return map[role];
+      }
+    }
+    if (rejectedStatuses.has(member.supS)) return 'Support';
+    if (rejectedStatuses.has(member.cdrS)) return 'Coder';
+    if (rejectedStatuses.has(member.r1s))  return 'QA';
+    if (rejectedStatuses.has(member.r2s))  return 'Compliance';
+    return null;
+  })();
+  const rejectedTooltip = isRecordRejected
+    ? `Rejected${rejectingRole ? ` by ${rejectingRole}` : ''} — record is read-only. Expand DOSs or open the record to review comments.`
+    : undefined;
+
   return (
     <>
     <tr
@@ -980,6 +1002,7 @@ function HccWorklistRowImpl({ member, hiddenCols, columns }) {
         isRecordRejected ? styles.rowRejected : '',
       ].filter(Boolean).join(' ')}
       aria-disabled={isRecordRejected || undefined}
+      title={rejectedTooltip}
     >
       {/* Sticky left: checkbox */}
       <td className={`${styles.checkTd} ${styles.stickyLeft} ${styles.stickyCheck}`} onClick={(e) => e.stopPropagation()}>
@@ -1082,7 +1105,16 @@ function HccWorklistRowImpl({ member, hiddenCols, columns }) {
             icon="solar:eye-linear"
             size="L"
             tooltip="View Diagnosis Gaps"
-            onClick={(e) => { e.stopPropagation(); openDiagPanel(member.id); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              // Open the Documents left panel with the first chart doc already
+              // in the preview — mirrors the ICD-card entry point so the user
+              // isn't left staring at a list they have to click through. The
+              // in-drawer "back" arrow returns to the listing.
+              openDiagPanel(member.id, { leftPanel: 'documents' });
+              const firstDoc = charts?.[0];
+              if (firstDoc?.id) useAppStore.getState().setDiagOpenDocId(firstDoc.id);
+            }}
           />
           <span className={styles.actionsDivider} />
           <ActionButton

@@ -46,15 +46,24 @@
    drag back to neutral). */
 .rowRejected td[data-status="rejected"] svg,
 .rowRejected td[data-status="rejected"] svg * { color: var(--status-error) !important; }
-.rowRejected button:not([aria-label="View Diagnosis Gaps"]),
-.rowRejected [role="button"]:not([aria-label="View Diagnosis Gaps"]) {
+/* Read-only affordances survive on a rejected row — the reviewer still
+   needs to inspect what got rejected. View Diagnosis Gaps (eye), and
+   View More (expand extra DOSs) all stay interactive. Everything else
+   drops pointer-events + fades so it reads "not for me." */
+.rowRejected button:not([aria-label="View Diagnosis Gaps"]):not([class*="viewMoreBtn"]),
+.rowRejected [role="button"]:not([aria-label="View Diagnosis Gaps"]):not([class*="viewMoreBtn"]) {
   pointer-events: none;
   opacity: 0.5;
 }
-.rowRejected .actionsRow button[aria-label="View Diagnosis Gaps"] {
+.rowRejected .actionsRow button[aria-label="View Diagnosis Gaps"],
+.rowRejected button[class*="viewMoreBtn"] {
   pointer-events: auto;
   opacity: 1;
 }
+/* Restore the View More label + chevron color the mute rule dragged down,
+   otherwise the button looks disabled even though it's clickable. */
+.rowRejected button[class*="viewMoreBtn"],
+.rowRejected button[class*="viewMoreBtn"] * { color: var(--neutral-300) !important; }
 .rowRejected:hover { background: var(--neutral-0); }
 .rowRejected:hover > td,
 .rowRejected:hover [class*="stickyLeft"],

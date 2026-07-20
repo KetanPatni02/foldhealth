@@ -15,6 +15,7 @@ import { DocEvidenceViewer } from './DiagPanel/DocEvidenceViewer';
 import { ReviewProgressPopover, buildReviewStages, computeReviewProgress, ProgressRing } from './DiagPanel/ReviewProgressPopover';
 import { dosKey } from './assignment/dosState';
 import { DestructiveDialog } from '../../components/Modal/DestructiveDialog';
+import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription } from '../../components/ui/alert-dialog';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Textarea } from '../../components/Textarea/Textarea';
 import { DOC_TYPES, makeUploadedChartDoc } from './data/chartDocs';
@@ -241,6 +242,11 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   const actionRef = useRef(null);
   const [manualStatus, setManualStatus] = useState(null);
   const [actionPos, setActionPos] = useState(null);
+  // Insufficient confirmation modal — non-null when open. Selecting
+  // Insufficient in the status menu opens this instead of applying the
+  // status directly, so support has to name a reason (and can drop a note)
+  // before the record is flagged as unusable evidence.
+  const [insufficientPrompt, setInsufficientPrompt] = useState(null);
   const showToast = useAppStore(s => s.showToast);
   const addChartDoc = useAppStore(s => s.addChartDoc);
   const setChartDocStatus = useAppStore(s => s.setChartDocStatus);
@@ -531,11 +537,43 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   };
 
   // Header status dropdown: assign the acting user, then sync the status.
+  // Insufficient has a two-step gate:
+  //   • no doc has been Failed yet → block with a toast (the DOS is only
+  //     "insufficient" when at least one document has been rejected)
+  //   • ≥1 doc failed → open the Insufficient DOS reasons modal; the
+  //     status is only committed once the user hits Confirm there.
   const chooseStatus = (statusKey) => {
-    setManualStatus(statusKey);
     setActionPos(null);
+    if (statusKey === 'insufficient') {
+      const anyFailed = Object.values(docActions).some(v => v === 'fail');
+      if (!anyFailed) {
+        showToast('Mark at least one document as Failed before setting the record Insufficient.');
+        return;
+      }
+      setInsufficientPrompt({});
+      return;
+    }
+    setManualStatus(statusKey);
     ensureSupportAssignee();
     syncSupportStatus(statusKey);
+  };
+
+  // Called by the Insufficient DOS modal on Confirm. Commits the record's
+  // manual status + fires the same engine sync the normal path uses, and
+  // logs the DOS-level reasons to the activity feed so the Coder can see
+  // exactly why Support rejected the record.
+  const confirmInsufficient = ({ reasons, note }) => {
+    setInsufficientPrompt(null);
+    setManualStatus('insufficient');
+    ensureSupportAssignee();
+    syncSupportStatus('insufficient');
+    const reasonText = (reasons || []).join(', ');
+    addActivityEntry?.({
+      t: 'doc-status', by: 'You', role: 'Support Team',
+      headline: 'Marked record Insufficient',
+      details: [{ note: note ? `${reasonText} — ${note}` : reasonText }],
+    });
+    showToast('Record marked Insufficient.');
   };
 
   // Once Support has handed off (locked), the pill pins to "Completed" — the
@@ -1018,6 +1056,12 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
           }}
         />
       )}
+      {insufficientPrompt && (
+        <InsufficientDosDialog
+          onCancel={() => setInsufficientPrompt(null)}
+          onConfirm={confirmInsufficient}
+        />
+      )}
 
       {assignPos && (
         <div
@@ -1368,3 +1412,104 @@ function ChartCommentsPanel({ member }) {
   );
 }
 
+// DOS-level reasons for marking the whole record Insufficient. A tighter
+// subset of FAIL_REASONS — the record-level vocabulary is narrower than the
+// per-document one because doc-only reasons ("DOS Not Charted", "POS Not
+// Available", …) don't apply once you're grading the DOS as a whole.
+const INSUFFICIENT_REASONS = [
+  'Document belongs to wrong patient',
+  'Document outside valid date range',
+  'Illegible document',
+  'Incomplete fields',
+  'Missing signature',
+  'Wrong document type',
+  'Other',
+];
+
+/**
+ * Modal shown when Support picks the record-level "Insufficient" status.
+ * Design: white card, centred, close X, multi-select reason checkboxes,
+ * optional note (mandatory when "Other" is picked, mirroring the doc-level
+ * FailReasonInline rule). Confirm commits the status upstream.
+ */
+function InsufficientDosDialog({ onCancel, onConfirm }) {
+  const [reasons, setReasons] = useState(() => new Set());
+  const [note, setNote] = useState('');
+  const toggleReason = (r) => setReasons(prev => {
+    const next = new Set(prev);
+    if (next.has(r)) next.delete(r); else next.add(r);
+    return next;
+  });
+  const commentRequired = reasons.has('Other');
+  const canSubmit = reasons.size > 0 && (!commentRequired || note.trim().length > 0);
+  return (
+    <AlertDialog open onOpenChange={(open) => { if (!open) onCancel?.(); }}>
+      <AlertDialogContent className={`${styles.insufficientDialog} !max-w-[420px]`}>
+        <div className={styles.insufficientHeader}>
+          <div className={styles.insufficientTitleGroup}>
+            <AlertDialogTitle className={styles.insufficientTitle}>
+              Mark documents Insufficient
+            </AlertDialogTitle>
+            <AlertDialogDescription className={styles.insufficientSubtitle}>
+              Please select a reason. Adding a note is optional
+            </AlertDialogDescription>
+          </div>
+          <button
+            type="button"
+            className={styles.insufficientClose}
+            onClick={onCancel}
+            aria-label="Close"
+          >
+            <Icon name="solar:close-square-linear" size={16} color="var(--neutral-400)" />
+          </button>
+        </div>
+        <div className={styles.insufficientReasons}>
+          {INSUFFICIENT_REASONS.map((r) => {
+            const checked = reasons.has(r);
+            return (
+              <button
+                key={r}
+                type="button"
+                role="checkbox"
+                aria-checked={checked}
+                aria-label={r}
+                className={styles.reasonOption}
+                onClick={() => toggleReason(r)}
+              >
+                <Checkbox
+                  checked={checked}
+                  tabIndex={-1}
+                  aria-hidden
+                  className="pointer-events-none"
+                />
+                <span className={styles.reasonLabel}>{r}</span>
+              </button>
+            );
+          })}
+        </div>
+        {commentRequired && (
+          <div className={styles.failNoteLabel}>
+            Note<span className={styles.failNoteRequired} aria-hidden="true"> *</span>
+          </div>
+        )}
+        <Textarea
+          rows={2}
+          placeholder={commentRequired ? 'Add a note explaining "Other"' : 'Add a note (optional)'}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+        <div className={styles.insufficientActions}>
+          <Button
+            variant="danger"
+            size="S"
+            disabled={!canSubmit}
+            onClick={() => onConfirm({ reasons: INSUFFICIENT_REASONS.filter(r => reasons.has(r)), note })}
+          >
+            Confirm
+          </Button>
+          <Button variant="secondary" size="S" onClick={onCancel}>Cancel</Button>
+        </div>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}

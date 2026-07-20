@@ -814,3 +814,66 @@
   border-color: var(--primary-200);
 }
 .statusLabel { font-size: 14px; }
+
+/* ── Insufficient DOS confirmation modal ────────────────────────────────
+   Opened when Support picks the record-level "Insufficient" status. Layout
+   mirrors the Figma screenshot: title + close X, small subtitle, vertical
+   list of reason checkboxes, optional note textarea, danger Confirm +
+   Cancel buttons. */
+.insufficientDialog {
+  max-width: 420px;
+  padding: 20px;
+  gap: 12px;
+  display: flex;
+  flex-direction: column;
+}
+.insufficientHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.insufficientTitleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.insufficientTitle {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  line-height: 1.25;
+}
+.insufficientSubtitle {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  line-height: 1.35;
+}
+.insufficientClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  color: var(--neutral-400);
+}
+.insufficientClose:hover { background: var(--neutral-50); }
+.insufficientReasons {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.insufficientActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+  margin-top: 4px;
+}
