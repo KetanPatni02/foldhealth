@@ -1467,14 +1467,15 @@ function InsufficientDosDialog({ onCancel, onConfirm }) {
           {INSUFFICIENT_REASONS.map((r) => {
             const checked = reasons.has(r);
             return (
-              <button
+              <div
                 key={r}
-                type="button"
                 role="checkbox"
+                tabIndex={0}
                 aria-checked={checked}
                 aria-label={r}
                 className={styles.reasonOption}
                 onClick={() => toggleReason(r)}
+                onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleReason(r); } }}
               >
                 <Checkbox
                   checked={checked}
@@ -1483,7 +1484,7 @@ function InsufficientDosDialog({ onCancel, onConfirm }) {
                   className="pointer-events-none"
                 />
                 <span className={styles.reasonLabel}>{r}</span>
-              </button>
+              </div>
             );
           })}
         </div>

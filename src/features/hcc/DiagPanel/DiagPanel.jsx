@@ -42,6 +42,9 @@ import { slaOutcome } from '../sla';
 import { RoleAssigneePicker } from '../RoleAssigneePicker';
 import { ROLE_LABEL } from '../assignment/astranaStaff';
 import { dosKey } from '../assignment/dosState';
+import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription } from '../../../components/ui/alert-dialog';
+import { Textarea } from '../../../components/Textarea/Textarea';
+import { Button } from '../../../components/Button/Button';
 import styles from './DiagPanel.module.css';
 
 // Initials-square avatar to the left of the DOS status pill. Reflects the
@@ -90,13 +93,31 @@ function UnassignedAssignTrigger({ role, memberId, dosDate }) {
   );
 }
 
-function AssigneeAvatar({ member, dosState, currentDos }) {
+function AssigneeAvatar({ member, dosState, currentDos, locked = false }) {
   const a = resolveCurrentAssignee(member, dosState);
   if (!a) return null;
   // Unassigned slot is interactive — opens a candidate picker so the user
   // can assign someone from this exact spot. Lives in its own subcomponent
-  // because of the portal + outside-click bookkeeping.
+  // because of the portal + outside-click bookkeeping. When the record is
+  // rejected the slot renders as a plain dashed placeholder (no picker) so
+  // ownership can't be reshuffled once the audit trail is closed.
   if (a.kind === 'unassigned') {
+    if (locked) {
+      return (
+        <span
+          title="Rejected — assignee is locked"
+          style={{
+            width: 24, height: 24, borderRadius: 6,
+            border: '1px dashed var(--neutral-200)',
+            background: 'transparent',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0, color: 'var(--neutral-200)',
+          }}
+        >
+          <Icon name="solar:user-plus-linear" size={12} color="var(--neutral-200)" />
+        </span>
+      );
+    }
     return <UnassignedAssignTrigger role={a.role} memberId={member?.id} dosDate={currentDos} />;
   }
 
@@ -123,7 +144,32 @@ function AssigneeAvatar({ member, dosState, currentDos }) {
   // Active assignee — always the orange provider palette (the DOS owner is a
   // provider/staff member regardless of stage).
   // Active assignee is reassignable — matches the worklist: an in-flight step
-  // can change owner. Clicking opens the shared searchable picker.
+  // can change owner. Clicking opens the shared searchable picker. Once the
+  // record is Rejected we drop the picker and render a plain, non-interactive
+  // chip; hover still shows the RoleTooltip so it's clear who owns the row.
+  if (locked) {
+    return (
+      <RoleTooltip
+        name={a.name}
+        role={ROLE_LABEL[a.role] || a.role}
+        initials={a.initials}
+        variant="provider"
+      >
+        <span
+          title={`${a.name} — assignee locked (record Rejected)`}
+          style={{
+            width: 24, height: 24, borderRadius: 6,
+            background: 'var(--secondary-100)', border: '0.5px solid var(--secondary-200)',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0, fontSize: 10, fontWeight: 500, color: 'var(--secondary-300)',
+            cursor: 'default', padding: 0,
+          }}
+        >
+          {a.initials}
+        </span>
+      </RoleTooltip>
+    );
+  }
   return (
     <RoleAssigneePicker
       role={a.role}
@@ -319,6 +365,9 @@ export function DiagPanel() {
   // holds the deferred transition until the dialog resolves.
   const [pendingStatusChange, setPendingStatusChange] = useState(null); // { from, to }
   const addHccDiagComment = useAppStore(s => s.addHccDiagComment);
+  const addActivityEntry = useAppStore(s => s.addActivityEntry);
+  const setHccRejectInfo = useAppStore(s => s.setHccRejectInfo);
+  const hccRejectInfoMap = useAppStore(s => s.hccRejectInfo);
   // Filter row (Figma 9810:158181) — toggled by the toolbar Filter button.
   // `filters` is a keyed object; the shared `icdMatchesFilters` predicate
   // applies the same rules across every ICD bucket below.
@@ -773,6 +822,12 @@ export function DiagPanel() {
   // the coder author the explanation inline in CommentsTab — matching the
   // Figma pattern of a card in the comment stream rather than a modal.
   const handleStatusChange = (next) => {
+    if (next === 'Reject' || next === 'Rejected') {
+      // Reject requires a reason + a mandatory comment for every role —
+      // open the confirmation modal instead of applying immediately.
+      setRejectPrompt({});
+      return;
+    }
     const requiresComment =
       actingRole === 'coder' && next === 'Record Requested';
     if (requiresComment) {
@@ -782,6 +837,59 @@ export function DiagPanel() {
     }
     applyStatusChange(next);
   };
+  const [rejectPrompt, setRejectPrompt] = useState(null);
+  // Confirming the Reject dialog: apply the status through the engine +
+  // stamp the reasons and note onto the activity feed / comment stream so
+  // downstream reviewers see exactly why the record was rejected.
+  const confirmReject = ({ reasons, note }) => {
+    setRejectPrompt(null);
+    // Defer the store writes past the dialog-unmount microtask so Radix's
+    // focus-trap teardown finishes before the tree re-renders under a new
+    // `isDosRejected` value — otherwise the focus scope collides with the
+    // re-render cascade and the drawer wedges.
+    setTimeout(() => {
+      applyStatusChange('Reject');
+      const reasonText = (reasons || []).join(', ');
+      const combined = reasonText ? `${reasonText} — ${note}` : note;
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const date = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
+      const hours = now.getHours();
+      const time = `${((hours + 11) % 12) + 1}:${pad(now.getMinutes())} ${hours >= 12 ? 'PM' : 'AM'}`;
+      const userRole = useAppStore.getState().hccUserRole || ROLE_LABEL[actingRole] || 'Coder';
+      if (dosStateKey) {
+        setHccRejectInfo?.(dosStateKey, {
+          by: 'You',
+          role: userRole,
+          date, time,
+          reasons: reasons || [],
+          note: note || '',
+        });
+      }
+      addHccDiagComment?.({
+        id: `c${Date.now()}`,
+        author: 'You', role: userRole, date, time, edited: false,
+        body: `Rejected: ${combined}`,
+        icd: null, dos: currentDos || null,
+      });
+      addActivityEntry?.({
+        t: 'doc-status', by: 'You', role: userRole,
+        headline: 'Rejected the record',
+        details: [{ note: combined }],
+      });
+    }, 0);
+  };
+  const rejectInfo = dosStateKey ? hccRejectInfoMap?.[dosStateKey] : null;
+  // Once any role has flagged the DOS Rejected the record is terminal —
+  // every ICD-level action (Accept / Dismiss / More / Suspect DOS pickers)
+  // freezes across roles, only the Comments composer stays live. Assignee
+  // reassignment is also blocked so the audit trail stays intact.
+  const isDosRejected = (() => {
+    const s = dosState || {};
+    return ['support', 'coder', 'reviewer', 'reviewer2'].some(
+      r => s[r]?.status === 'Reject' || s[r]?.status === 'Rejected',
+    );
+  })();
 
   // Finalize the Record-Requested transition: writes the mandatory
   // comment (tagged with the from/to statuses so the Comments tab and
@@ -1168,7 +1276,7 @@ export function DiagPanel() {
           )}
         </div>
         <div className={styles.dosRowRight}>
-          <AssigneeAvatar member={member} dosState={dosState} currentDos={currentDos} />
+          <AssigneeAvatar member={member} dosState={dosState} currentDos={currentDos} locked={isDosRejected} />
           <span className={styles.dosRowDivider} />
           <DosStatusMenu
             value={actingStatus}
@@ -1374,6 +1482,38 @@ export function DiagPanel() {
 
       {/* ── Body: ICD-first cards + HCC suspect groups + collapsed history ── */}
       <div className={styles.cardsList}>
+        {/* Reject banner takes priority — surfaces terminal-reject context
+            above every other cards-list affordance. */}
+        {isDosRejected && (
+          <div className={styles.rejectBanner} role="status">
+            <Icon name="solar:info-circle-bold" size={16} color="var(--status-error)" />
+            <div className={styles.rejectBannerText}>
+              <div className={styles.rejectBannerTitle}>
+                {rejectInfo?.by
+                  ? <>Rejected by <strong>{rejectInfo.by}</strong>{rejectInfo.role ? ` (${rejectInfo.role})` : ''} on {rejectInfo.date}{rejectInfo.time ? ` · ${rejectInfo.time}` : ''}</>
+                  : 'This record has been rejected.'}
+              </div>
+              {(rejectInfo?.reasons?.length || rejectInfo?.note) && (
+                <div className={styles.rejectBannerBody}>
+                  {rejectInfo?.reasons?.length > 0 && (
+                    <div className={styles.rejectBannerReasons}>
+                      {rejectInfo.reasons.map(r => (
+                        <span key={r} className={styles.rejectBannerReason}>{r}</span>
+                      ))}
+                    </div>
+                  )}
+                  {rejectInfo?.note && (
+                    <div className={styles.rejectBannerNote}>Note: {rejectInfo.note}</div>
+                  )}
+                </div>
+              )}
+              <div className={styles.rejectBannerHint}>
+                All ICD actions are locked. You can still add a Comment.
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* New-DOS-row alert: the last save either spawned a fresh worklist
             row (DOS didn't exist for this patient) or routed the ICD to a
             sibling row. Sits directly below the toolbar (at the same
@@ -1530,7 +1670,7 @@ export function DiagPanel() {
               openDismissKey={openDismissKey}
               onOpenDismiss={setOpenDismissKey}
               onActed={advanceFocusAfterAction}
-              reviewLocked={stageLocked}
+              reviewLocked={stageLocked || isDosRejected}
             />
           ))}
           {/* Acted suspects graduate into the associated list as normal cards. */}
@@ -1545,7 +1685,7 @@ export function DiagPanel() {
               openDismissKey={openDismissKey}
               onOpenDismiss={setOpenDismissKey}
               onActed={advanceFocusAfterAction}
-              reviewLocked={stageLocked}
+              reviewLocked={stageLocked || isDosRejected}
             />
           ))}
 
@@ -1560,7 +1700,7 @@ export function DiagPanel() {
               icd={icd}
               dosList={dosList}
               member={member}
-              reviewLocked={stageLocked}
+              reviewLocked={stageLocked || isDosRejected}
             />
           ))}
         </div>
@@ -1615,7 +1755,110 @@ export function DiagPanel() {
           ]}
         />
       )}
+      {rejectPrompt && (
+        <RejectRecordDialog
+          onCancel={() => setRejectPrompt(null)}
+          onConfirm={confirmReject}
+        />
+      )}
     </Drawer>
+  );
+}
+
+// Record-level Reject reasons. Multi-select; a comment is ALWAYS required
+// (no "optional" branch, unlike Insufficient) — reject is terminal and
+// downstream reviewers need the specific reason on the audit trail.
+const REJECT_RECORD_REASONS = [
+  'All documents belong to wrong patient',
+  'All documents illegible',
+  'All documents missing signature',
+  'All documents outside valid date range',
+  'Fraudulent or invalid submission',
+  'Other',
+];
+
+/**
+ * Modal shown when a reviewer picks "Rejected" in the DosStatusMenu.
+ * Same shape as InsufficientDosDialog on ChartDetailDrawer — white card,
+ * multi-select reasons, MANDATORY comment. Confirm applies the reject.
+ */
+function RejectRecordDialog({ onCancel, onConfirm }) {
+  const [reasons, setReasons] = useState(() => new Set());
+  const [note, setNote] = useState('');
+  const toggleReason = (r) => setReasons(prev => {
+    const next = new Set(prev);
+    if (next.has(r)) next.delete(r); else next.add(r);
+    return next;
+  });
+  const canSubmit = reasons.size > 0 && note.trim().length > 0;
+  return (
+    <AlertDialog open onOpenChange={(open) => { if (!open) onCancel?.(); }}>
+      <AlertDialogContent className={`${styles.rejectDialog} !max-w-[420px]`}>
+        <div className={styles.rejectDialogHeader}>
+          <div className={styles.rejectDialogTitleGroup}>
+            <AlertDialogTitle className={styles.rejectDialogTitle}>
+              Mark record Rejected
+            </AlertDialogTitle>
+            <AlertDialogDescription className={styles.rejectDialogSubtitle}>
+              Please select a reason. A note is required.
+            </AlertDialogDescription>
+          </div>
+          <button
+            type="button"
+            className={styles.rejectDialogClose}
+            onClick={onCancel}
+            aria-label="Close"
+          >
+            <Icon name="solar:close-square-linear" size={16} color="var(--neutral-400)" />
+          </button>
+        </div>
+        <div className={styles.rejectDialogReasons}>
+          {REJECT_RECORD_REASONS.map((r) => {
+            const checked = reasons.has(r);
+            return (
+              <div
+                key={r}
+                role="checkbox"
+                tabIndex={0}
+                aria-checked={checked}
+                aria-label={r}
+                className={styles.rejectReasonOption}
+                onClick={() => toggleReason(r)}
+                onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleReason(r); } }}
+              >
+                <Checkbox
+                  checked={checked}
+                  tabIndex={-1}
+                  aria-hidden
+                  className="pointer-events-none"
+                />
+                <span className={styles.rejectReasonLabel}>{r}</span>
+              </div>
+            );
+          })}
+        </div>
+        <div className={styles.rejectDialogNoteLabel}>
+          Note<span className={styles.rejectDialogRequired} aria-hidden="true"> *</span>
+        </div>
+        <Textarea
+          rows={2}
+          placeholder="Add a note explaining the rejection (required)"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+        <div className={styles.rejectDialogActions}>
+          <Button
+            variant="danger"
+            size="S"
+            disabled={!canSubmit}
+            onClick={() => onConfirm({ reasons: REJECT_RECORD_REASONS.filter(r => reasons.has(r)), note: note.trim() })}
+          >
+            Confirm
+          </Button>
+          <Button variant="secondary" size="S" onClick={onCancel}>Cancel</Button>
+        </div>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
