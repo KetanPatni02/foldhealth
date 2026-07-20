@@ -227,20 +227,19 @@
 .actionNeeded {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  /* Fixed width (sized to the widest label, "Action Needed") so the pill
-     doesn't resize as the status changes. */
-  min-width: 148px;
-  padding: 4px 6px;
+  gap: 6px;
+  padding: 4px 8px;
   border-radius: 4px;
   background: var(--neutral-50);
   border: 0.5px solid color-mix(in srgb, var(--neutral-300) 10%, transparent);
   color: var(--neutral-300);
   font-size: 14px;
   cursor: pointer;
+  white-space: nowrap;
 }
-/* Keep the chevron pinned right regardless of label length. */
-.actionNeeded > :last-child { margin-left: auto; }
+/* Locked-out state: Support handed off and Coder is engaged. Pointer +
+   opacity go muted; the trigger stays legible but not clickable. */
+.actionNeeded:disabled { cursor: not-allowed; opacity: 0.7; }
 
 /* Right body */
 /* Pass banner — shown under the header bar once a document is passed */
@@ -618,6 +617,17 @@
   white-space: nowrap;
 }
 .passFailPill:hover { background: var(--neutral-50); }
+/* Disabled variant — kicks in when Support is locked out during Coder review
+   (matches DiagPanel's disabled-action treatment: muted colours, no hover
+   affordance, not-allowed cursor). Same rule applies to Undo, More, and the
+   record-level status pill below. */
+.passFailPill:disabled,
+.passFailPill[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+  background: var(--neutral-0);
+}
+.passFailPill:disabled:hover { background: var(--neutral-0); }
 /* Passed / Failed result badges */
 .passedBadge,
 .failedBadge {
@@ -700,6 +710,8 @@
   cursor: pointer;
 }
 .undoBtn:hover { background: var(--neutral-50); }
+.undoBtn:disabled { cursor: not-allowed; opacity: 0.5; }
+.undoBtn:disabled:hover { background: transparent; }
 .moreBtn {
   display: inline-flex;
   align-items: center;
@@ -713,6 +725,8 @@
   color: var(--neutral-400);
 }
 .moreBtn:hover { background: var(--neutral-50); }
+.moreBtn:disabled { cursor: not-allowed; opacity: 0.5; }
+.moreBtn:disabled:hover { background: transparent; }
 
 /* ── Assign Support Team dropdown (mirrors the worklist role-assign menu) ── */
 .assignMenu {

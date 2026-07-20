@@ -421,6 +421,17 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     || !!(m?.cdr && m?.cdrS && m.cdrS !== 'Assign');
   const supportLocked = supportCompletedFlag && coderAssignedFlag;
 
+  // While the Coder is actively working the record (any status other than
+  // "Record Requested"), Support has already handed off — so record status
+  // AND per-doc Pass/Fail/Undo/Unlink actions freeze. When the Coder flips to
+  // "Record Requested" they're explicitly bouncing docs back to Support, so
+  // every action unlocks again.
+  const coderStatus = dosStateForBadge?.coder?.status || m?.cdrS || null;
+  const coderEngaged = !!coderStatus && coderStatus !== 'Assign';
+  const supportActionsLocked = supportCompletedFlag && coderEngaged
+    && coderStatus !== 'Record Requested';
+  const supportLockedTip = 'Coder is reviewing this record — Support actions unlock when the Coder requests records.';
+
   const onTeamPillEnter = () => {
     if (teamCloseTimer.current) { clearTimeout(teamCloseTimer.current); teamCloseTimer.current = null; }
     if (teamPillRect) return;
@@ -504,7 +515,13 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     syncSupportStatus(statusKey);
   };
 
-  const effectiveStatus = manualStatus || deriveStatus(docs, docActions);
+  // Once Support has handed off (locked), the pill pins to "Completed" — the
+  // handoff outcome — so it doesn't flicker between "In Progress" and
+  // "Completed" if a doc gets undone downstream. Otherwise it tracks the
+  // manual override / derived doc-review status normally.
+  const effectiveStatus = supportActionsLocked
+    ? 'completed'
+    : (manualStatus || deriveStatus(docs, docActions));
   // Trigger label lookup: "Action Needed" is a derived-only state so it's not
   // in the dropdown, but the trigger still renders it when nothing has been
   // reviewed yet — hence the explicit fallback here.
@@ -660,11 +677,16 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
                   ref={actionRef}
                   className={styles.actionNeeded}
                   style={{ color: currentBadge.color, background: currentBadge.bg, borderColor: currentBadge.border }}
-                  onClick={openAction}
+                  onClick={supportActionsLocked ? undefined : openAction}
+                  disabled={supportActionsLocked}
+                  title={supportActionsLocked ? supportLockedTip : undefined}
+                  aria-disabled={supportActionsLocked}
                 >
                   <StatusIcon status={currentStatus.key} size={12} />
                   {currentStatus.label}
-                  <Icon name="solar:alt-arrow-down-linear" size={12} color={currentBadge.color} />
+                  {!supportActionsLocked && (
+                    <Icon name="solar:alt-arrow-down-linear" size={12} color={currentBadge.color} />
+                  )}
                 </button>
               </div>
             </div>
@@ -803,28 +825,48 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
                               <Icon name="solar:check-read-linear" size={12} color="var(--status-success)" />
                               Passed
                             </span>
-                            <button type="button" className={styles.undoBtn} aria-label="Undo" onClick={() => undoDoc(d.id)}>
+                            <button
+                              type="button"
+                              className={styles.undoBtn}
+                              aria-label="Undo"
+                              disabled={supportActionsLocked}
+                              title={supportActionsLocked ? supportLockedTip : 'Undo'}
+                              onClick={() => undoDoc(d.id)}
+                            >
                               <Icon name="solar:undo-left-round-linear" size={16} color="var(--neutral-400)" />
                             </button>
                           </>
                         ) : action === 'fail' ? (
                           <>
                             <FailedBadgeWithTooltip details={failDetails[d.id]} />
-                            <button type="button" className={styles.undoBtn} aria-label="Undo" onClick={() => undoDoc(d.id)}>
+                            <button
+                              type="button"
+                              className={styles.undoBtn}
+                              aria-label="Undo"
+                              disabled={supportActionsLocked}
+                              title={supportActionsLocked ? supportLockedTip : 'Undo'}
+                              onClick={() => undoDoc(d.id)}
+                            >
                               <Icon name="solar:undo-left-round-linear" size={16} color="var(--neutral-400)" />
                             </button>
                           </>
                         ) : (
                           <>
-                            <button type="button" className={styles.passFailPill} title="Pass" onClick={() => passDoc(d.id)}>
+                            <button
+                              type="button"
+                              className={styles.passFailPill}
+                              title={supportActionsLocked ? supportLockedTip : 'Pass'}
+                              disabled={supportActionsLocked}
+                              onClick={() => passDoc(d.id)}
+                            >
                               <Icon name="solar:check-circle-linear" size={12} color="var(--neutral-300)" />
                               Pass
                             </button>
                             <button
                               type="button"
                               className={styles.passFailPill}
-                              title="Fail"
-                              disabled={isFailing}
+                              title={supportActionsLocked ? supportLockedTip : 'Fail'}
+                              disabled={isFailing || supportActionsLocked}
                               onClick={() => failDoc(d.id)}
                             >
                               <Icon name="solar:close-circle-linear" size={12} color="var(--neutral-300)" />
@@ -836,6 +878,8 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
                           type="button"
                           className={styles.moreBtn}
                           aria-label="More actions"
+                          disabled={supportActionsLocked}
+                          title={supportActionsLocked ? supportLockedTip : undefined}
                           onClick={(e) => {
                             e.stopPropagation();
                             if (moreMenu?.docId === d.id) { setMoreMenu(null); return; }
