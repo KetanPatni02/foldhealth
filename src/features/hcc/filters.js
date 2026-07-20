@@ -140,10 +140,13 @@ export const FILTER_DEF_MAP = Object.fromEntries(FILTER_DEFS.map(d => [d.k, d]))
 //
 // Support's canonical "New" label is "Action Needed" (per SUPPORT_STATUS_MATCH
 // below), so we use that + In Progress instead of the raw string "New".
+// Support also defaults Documents Available to "≥ 1 document" — chart-chasing
+// starts only after at least one doc has been attached to the record.
 // Assignee is only added when a user name is known — dev sessions without a
 // profile skip it so the list still renders something.
+const CHART_HAS_DOCS = ['1 - 5', '6 - 10', '>= 10'];
 const ROLE_DEFAULT_FILTERS = {
-  Support:    { statusKey: 'supS', statusVals: ['Action Needed', 'In Progress'] },
+  Support:    { statusKey: 'supS', statusVals: ['Action Needed', 'In Progress'], chart: CHART_HAS_DOCS },
   Coder:      { statusKey: 'cdrS', statusVals: ['New', 'In Progress'] },
   QA:         { statusKey: 'r1s',  statusVals: ['New', 'In Progress'] },
   Compliance: { statusKey: 'r2s',  statusVals: ['New', 'In Progress'] },
@@ -152,6 +155,7 @@ export function hccRoleDefaultFilters(role, userName) {
   const spec = ROLE_DEFAULT_FILTERS[role];
   if (!spec) return {};
   const out = { [spec.statusKey]: spec.statusVals };
+  if (spec.chart) out.chart = [...spec.chart];
   if (userName && typeof userName === 'string' && userName.trim()) {
     out.asgn = [userName.trim()];
   }
