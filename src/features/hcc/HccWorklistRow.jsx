@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useMemo } from 'react';
+import { useRef, useState, useEffect, useMemo, memo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
@@ -900,7 +900,12 @@ const CELL_RENDERERS = {
  * The same patient can appear in multiple records — the member identity
  * simply repeats, matching the design.
  */
-export function HccWorklistRow({ member, hiddenCols, columns }) {
+// Rows that stay on-screen across page flips (e.g. when the table only
+// re-slices its window) should NOT re-run their internal setup. Wrap in
+// React.memo so a shallow-equal member + columns + hiddenCols skips
+// the re-render. Store slices this row subscribes to still trigger it
+// when their own values change (Zustand handles that independently).
+function HccWorklistRowImpl({ member, hiddenCols, columns }) {
   const selectedHccIds = useAppStore(s => s.selectedHccIds);
   const selectHccMember = useAppStore(s => s.selectHccMember);
   const openDiagPanel = useAppStore(s => s.openDiagPanel);
@@ -1135,3 +1140,12 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
     </>
   );
 }
+
+// Exported wrapper — skips a re-render when the parent hands back the
+// same member reference. `hiddenCols` is a Set from useMemo so its
+// identity is stable across renders too.
+export const HccWorklistRow = memo(HccWorklistRowImpl, (prev, next) => (
+  prev.member === next.member
+  && prev.hiddenCols === next.hiddenCols
+  && prev.columns === next.columns
+));
