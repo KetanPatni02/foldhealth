@@ -1328,6 +1328,22 @@ function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId, 
               <Icon name="solar:alt-arrow-right-linear" size={14} color="currentColor" />
             </button>
           )}
+          {/* Open the currently-active document in a new browser tab so the
+              reviewer can pan/zoom the PDF at full size while keeping the
+              drawer open behind it. Disabled for system-seeded docs with no
+              real PDF URL. */}
+          <button
+            type="button"
+            className={styles.docsOpenExternalBtn}
+            aria-label="Open document in new tab"
+            title={openDoc?.pdf ? 'Open in new browser tab' : 'No file to open — this is a system-generated document'}
+            disabled={!openDoc?.pdf}
+            onClick={() => {
+              if (openDoc?.pdf) window.open(openDoc.pdf, '_blank', 'noopener,noreferrer');
+            }}
+          >
+            <Icon name="solar:square-top-down-linear" size={16} color="currentColor" />
+          </button>
         </div>
         <div className={styles.docsViewerBody}>
           {/* Pass icdScope AND the currently-open doc so each tab renders
