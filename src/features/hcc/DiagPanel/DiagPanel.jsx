@@ -219,6 +219,11 @@ export function DiagPanel() {
   const [disabledDos, setDisabledDos] = useState(() => new Set());
   const [openDismissKey, setOpenDismissKey] = useState(null);
   const dosDeleted = useAppStore(s => s.hccGapDosDeleted);
+  // Status transitions that require the acting user to leave a comment
+  // (currently just Coder → Record Requested). `pendingStatusChange`
+  // holds the deferred transition until the dialog resolves.
+  const [pendingStatusChange, setPendingStatusChange] = useState(null); // { from, to }
+  const addHccDiagComment = useAppStore(s => s.addHccDiagComment);
   // Filter row (Figma 9810:158181) — toggled by the toolbar Filter button.
   // `filters` is a keyed object; the shared `icdMatchesFilters` predicate
   // applies the same rules across every ICD bucket below.
@@ -475,12 +480,12 @@ export function DiagPanel() {
   // status for the current role changes here — ICD statuses are NEVER
   // touched. Unaddressed ICDs stay in their existing state (New / Pending /
   // etc.); acceptance only happens when the user explicitly accepts an ICD.
-  const handleStatusChange = (next) => {
+  // Runs the transition after any gating dialogs have resolved. Split out
+  // so the "Record Requested" flow can pause on the status-change comment
+  // dialog and resume from its onConfirm handler.
+  const applyStatusChange = (next) => {
     if (!member || !currentDos) { setDiagDosStatus(next); return; }
-    // Act on the logged-in role's stage (not just whoever currently owns the
-    // record) so a later role completing correctly triggers the skip logic.
     const role = actingRole;
-
     switch (next) {
       case 'Completed':
         if (role === 'support') {
@@ -527,6 +532,51 @@ export function DiagPanel() {
         break;
     }
     setDiagDosStatus(next);
+  };
+
+  // Public entry point wired to DosStatusMenu. Some transitions require a
+  // mandatory comment before they're allowed (Coder → Record Requested).
+  // For those we defer the transition, open the Comments panel, and let
+  // the coder author the explanation inline in CommentsTab — matching the
+  // Figma pattern of a card in the comment stream rather than a modal.
+  const handleStatusChange = (next) => {
+    const requiresComment =
+      actingRole === 'coder' && next === 'Record Requested';
+    if (requiresComment) {
+      setPendingStatusChange({ from: actingStatus || 'New', to: next });
+      setDiagLeftPanel('comments');
+      return;
+    }
+    applyStatusChange(next);
+  };
+
+  // Finalize the Record-Requested transition: writes the mandatory
+  // comment (tagged with the from/to statuses so the Comments tab and
+  // Activity Log can render the pair together), then applies the status.
+  const confirmPendingStatusChange = (body) => {
+    if (!pendingStatusChange || !member) return;
+    const { from, to } = pendingStatusChange;
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const date = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
+    const hours = now.getHours();
+    const time = `${((hours + 11) % 12) + 1}:${pad(now.getMinutes())} ${hours >= 12 ? 'PM' : 'AM'}`;
+    const userRole = useAppStore.getState().hccUserRole || 'Coder';
+    addHccDiagComment({
+      id: `c${Date.now()}`,
+      author: 'You',
+      role: userRole,
+      date,
+      time,
+      edited: false,
+      body,
+      icd: null,
+      dos: currentDos || null,
+      statusFrom: from,
+      statusTo: to,
+    });
+    setPendingStatusChange(null);
+    applyStatusChange(to);
   };
 
   // ── Card + suspect data assembly (search + DOS filters applied) ──
@@ -767,6 +817,9 @@ export function DiagPanel() {
           onChange={setDiagTab}
           onClose={() => setDiagLeftPanel(null)}
           member={member}
+          pendingStatusChange={pendingStatusChange}
+          onConfirmStatusChange={confirmPendingStatusChange}
+          onCancelStatusChange={() => setPendingStatusChange(null)}
         />
       )}
       <div className={diagLeftPanel ? styles.rightPane : styles.rightPaneFull}>

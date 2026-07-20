@@ -5,6 +5,63 @@
   gap: 4px;
 }
 
+/* Composer in status-change mode — nests the whole card (pills header +
+   textarea + helper + actions) inside a padded container so it visually
+   reads as a single "Status Changed" affordance rather than a stack of
+   loose elements. Used when a workflow transition (Coder → Record
+   Requested) requires a mandatory comment before the transition fires. */
+.wrapStatusMode {
+  padding: 12px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 10px;
+  gap: 10px;
+}
+
+.statusCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.statusHeader {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+
+.statusPillRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statusPill {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.statusPillFrom {
+  background: var(--primary-50);
+  color: var(--primary-300);
+}
+.statusPillTo {
+  background: var(--status-warning-light);
+  color: var(--status-warning);
+}
+.statusPillArrow {
+  color: var(--neutral-300);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.statusHelper {
+  font-size: 12px;
+  color: var(--neutral-400);
+}
+
 .textarea {
   border: 0.5px solid var(--neutral-200);
   border-radius: 4px;

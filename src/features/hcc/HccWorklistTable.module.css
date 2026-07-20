@@ -8,12 +8,45 @@
 
 .scrollWrap {
   flex: 1;
-  overflow: auto;
+  /* Force the horizontal scrollbar to stay visible so coders can see
+     there's more content off-screen without having to scroll first.
+     Vertical stays `auto` — no need to reserve gutter when it isn't
+     needed. Firefox uses scrollbar-color/-width; WebKit uses the
+     ::-webkit-scrollbar rules below. */
+  overflow-x: scroll;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--neutral-200) transparent;
   background: var(--neutral-0);
   /* Leaves clearance below the last table row so the floating BulkBar
      (bottom: 120px in BulkBar.module.css) never crops the bottom-most
      member when the table is scrolled to the end. */
   padding-bottom: 80px;
+}
+
+/* Setting a background on ::-webkit-scrollbar itself (not just the track)
+   is what actually forces Chromium/Safari on macOS to render a classic
+   always-visible scrollbar instead of the auto-hiding overlay it uses by
+   default. Without it, the styles below only apply *when* the user is
+   already scrolling. */
+.scrollWrap::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+  background: var(--neutral-50);
+}
+.scrollWrap::-webkit-scrollbar-track {
+  background: var(--neutral-50);
+}
+.scrollWrap::-webkit-scrollbar-thumb {
+  background: var(--neutral-200);
+  border-radius: 6px;
+  border: 2px solid var(--neutral-50);
+}
+.scrollWrap::-webkit-scrollbar-thumb:hover {
+  background: var(--neutral-300);
+}
+.scrollWrap::-webkit-scrollbar-corner {
+  background: var(--neutral-50);
 }
 
 /* ── TabBar header (mirrors src/components/TabBar/TabBar.module.css) ── */

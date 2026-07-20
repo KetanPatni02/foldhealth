@@ -192,6 +192,12 @@ function persistHccDiagComment(row) {
       // "column ... does not exist" — the warning below surfaces that.
       icd: row.icd ?? null,
       dos: row.dos ?? null,
+      // Status-transition context — added in
+      // supabase/hcc_diag_comment_status_migration.sql. Set when a coder
+      // flips a DOS to a status that requires a mandatory comment
+      // (currently "Record Requested").
+      status_from: row.statusFrom ?? null,
+      status_to:   row.statusTo   ?? null,
     })
     .then(({ error }) => {
       if (error) console.warn(`persistHccDiagComment(${row.id}) failed:`, error.message);
@@ -3332,6 +3338,10 @@ export const useAppStore = create((set, get) => ({
           // Optional ICD/DOS scope — added later; DB rows seeded before the
           // column existed simply won't have these keys.
           icd: r.icd ?? null, dos: r.dos ?? null,
+          // Status-change linkage — populated when the comment was
+          // required for a workflow transition (e.g. Records Requested).
+          statusFrom: r.status_from ?? null,
+          statusTo:   r.status_to   ?? null,
         })),
         hccDiagDocumentsList: (documents?.data || []).map(r => ({
           id: r.id, name: r.name, ext: r.ext, type: r.doc_type,

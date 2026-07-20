@@ -65,7 +65,16 @@ const FILTERED_TABS = new Set(['activity', 'notes', 'comments', 'documents', 'cl
  *  - onClose   (fn)            Collapse the left workspace.
  *  - member    (member shape)  Data lookup for the tab-content components.
  */
-export function LeftWorkspace({ active, icdScope = null, onChange, onClose, member }) {
+export function LeftWorkspace({
+  active,
+  icdScope = null,
+  onChange,
+  onClose,
+  member,
+  pendingStatusChange = null,
+  onConfirmStatusChange,
+  onCancelStatusChange,
+}) {
   // Kick off the org-scoped ancillary fetch once — safe to call repeatedly,
   // the store guards on didFetch. Doing it here means every drawer open
   // primes Comments / Documents / Notes / History without threading a hook
@@ -268,7 +277,15 @@ export function LeftWorkspace({ active, icdScope = null, onChange, onClose, memb
         )}
 
         {active === 'activity'  && <ActivityTab  member={member} rawEntries={rawActivity} filters={filters} />}
-        {active === 'comments'  && <CommentsTab  member={member} filters={filters} />}
+        {active === 'comments'  && (
+          <CommentsTab
+            member={member}
+            filters={filters}
+            pendingStatusChange={pendingStatusChange}
+            onConfirmStatusChange={onConfirmStatusChange}
+            onCancelStatusChange={onCancelStatusChange}
+          />
+        )}
         {active === 'documents' && (
           <DocumentsTab
             member={member}
@@ -782,7 +799,7 @@ function AvatarPill({ initials, name }) {
 // comment is a row with a chat-icon left rail + connector line, a meta line
 // (`date · time · author(role)` + optional Edited badge), and the full body
 // text below. Composer is a single-line input — Enter posts.
-function CommentsTab({ filters }) {
+function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChange, onCancelStatusChange }) {
   // Seed from Supabase (hcc_diag_comments); fall back to the local mock
   // while the DB is empty or unreachable. Local state supports optimistic
   // insert when the composer posts — persistence is a follow-up.
@@ -855,10 +872,24 @@ function CommentsTab({ filters }) {
     return next;
   });
 
+  // Route the single composer's submit through the right handler: a
+  // pending workflow transition takes priority (Coder → Record Requested),
+  // otherwise it's a regular comment on the tab.
+  const composerSubmit = pendingStatusChange
+    ? (body) => onConfirmStatusChange?.(body)
+    : addComment;
+
   return (
     <div className={styles.scroll}>
       <div className={styles.commentComposerWrap}>
-        <CommentComposer onSubmit={addComment} />
+        <CommentComposer
+          onSubmit={composerSubmit}
+          statusChange={pendingStatusChange ? {
+            fromStatus: pendingStatusChange.from,
+            toStatus: pendingStatusChange.to,
+            onCancel: () => onCancelStatusChange?.(),
+          } : null}
+        />
       </div>
       <div className={styles.timeline}>
         {groups.map((g) => {
@@ -1027,7 +1058,26 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
             </div>
           </div>
         ) : (
-          <div className={styles.commentBody}>{renderCommentBody(item.body, usersForMentions)}</div>
+          <>
+            {/* Comment attached to a workflow status transition (currently
+                Coder → Record Requested). Shows the from/to pills above the
+                body so the reason lives next to the change it explains. */}
+            {item.statusFrom && item.statusTo && (
+              <div className={styles.commentStatusChange}>
+                <div className={styles.commentStatusHeader}>Status Changed</div>
+                <div className={styles.commentStatusPills}>
+                  <span className={[styles.tlPill, styles[TRANS_BADGE[item.statusFrom] || 'pillNew']].join(' ')}>
+                    {item.statusFrom}
+                  </span>
+                  <Icon name="solar:arrow-right-linear" size={12} color="var(--neutral-300)" />
+                  <span className={[styles.tlPill, styles[TRANS_BADGE[item.statusTo] || 'pillReturned']].join(' ')}>
+                    {item.statusTo}
+                  </span>
+                </div>
+              </div>
+            )}
+            <div className={styles.commentBody}>{renderCommentBody(item.body, usersForMentions)}</div>
+          </>
         )}
       </div>
     </div>

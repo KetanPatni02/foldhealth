@@ -983,6 +983,30 @@
   margin-top: 4px;
 }
 
+/* Status-change context card — appears above the body when a comment was
+   authored as part of a workflow transition (Coder → Record Requested).
+   Matches the Figma pattern: 'Status Changed' label + from/to pills. */
+.commentStatusChange {
+  margin-top: 6px;
+  padding: 10px 12px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.commentStatusHeader {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.commentStatusPills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* Inline comment body inside the Activity Log timeline — used when an
    entry is t:'comment'. Plain neutral-300 paragraph under the headline. */
 .tlCommentBody {

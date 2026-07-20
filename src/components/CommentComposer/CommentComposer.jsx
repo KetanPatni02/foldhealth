@@ -22,14 +22,22 @@ import styles from './CommentComposer.module.css';
  *                           is passed; parent clears its own state via return.
  *  - placeholder            Overrides the default placeholder.
  *  - autoFocus              Focus the textarea on mount.
+ *  - statusChange           When set the composer morphs into the "Status
+ *                           Changed" card — status pills above the textarea,
+ *                           helper text below, and a Cancel that runs the
+ *                           dedicated handler instead of just clearing the
+ *                           draft. Shape: { fromStatus, toStatus, onCancel }.
  */
 export function CommentComposer({
   onSubmit,
   placeholder = 'Add a comment, use @ to mention someone',
   autoFocus = false,
+  statusChange = null,
 }) {
+  const inStatusMode = !!statusChange;
   const [text, setText] = useState('');
-  const [expanded, setExpanded] = useState(autoFocus);
+  const [expanded, setExpanded] = useState(autoFocus || inStatusMode);
+  useEffect(() => { if (inStatusMode) setExpanded(true); }, [inStatusMode]);
   const textareaRef = useRef(null);
 
   // ── Mention picker state ──────────────────────────────────────────────
@@ -103,6 +111,10 @@ export function CommentComposer({
     setText('');
     setExpanded(false);
     setMention(null);
+    // In status-change mode, Cancel also aborts the pending transition
+    // upstream (parent clears the pending state). Fire the callback after
+    // the local reset so consumers see a clean composer next mount.
+    statusChange?.onCancel?.();
   };
 
   const handleKeyDown = (e) => {
@@ -130,15 +142,29 @@ export function CommentComposer({
     }
   };
 
+  const effectivePlaceholder = inStatusMode
+    ? 'Add a comment explaining what records you need…'
+    : placeholder;
+
   return (
-    <div className={styles.wrap}>
+    <div className={[styles.wrap, inStatusMode ? styles.wrapStatusMode : ''].filter(Boolean).join(' ')}>
+      {inStatusMode && (
+        <div className={styles.statusCard}>
+          <div className={styles.statusHeader}>Status Changed</div>
+          <div className={styles.statusPillRow}>
+            <span className={[styles.statusPill, styles.statusPillFrom].join(' ')}>{statusChange.fromStatus}</span>
+            <span className={styles.statusPillArrow}>→</span>
+            <span className={[styles.statusPill, styles.statusPillTo].join(' ')}>{statusChange.toStatus}</span>
+          </div>
+        </div>
+      )}
       <textarea
         ref={textareaRef}
-        placeholder={placeholder}
+        placeholder={effectivePlaceholder}
         rows={expanded ? 3 : 1}
         className={styles.textarea}
         value={text}
-        autoFocus={autoFocus}
+        autoFocus={autoFocus || inStatusMode}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         onKeyUp={handleSelect}
@@ -149,6 +175,9 @@ export function CommentComposer({
           setTimeout(() => setMention(null), 150);
         }}
       />
+      {inStatusMode && (
+        <div className={styles.statusHelper}>A comment is required to change the status.</div>
+      )}
       {mention && matches.length > 0 && textareaRef.current && (
         <MentionMenu
           anchor={textareaRef.current}
