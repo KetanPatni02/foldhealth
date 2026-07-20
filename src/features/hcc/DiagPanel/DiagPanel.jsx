@@ -515,45 +515,58 @@ export function DiagPanel() {
 
   const savePendingGap = useCallback((idx) => {
     const c = pendingGaps[idx];
-    if (!c) return;
-    if (c.dosMode === 'existing') {
-      addHccGap({
-        code: c.pick.code,
-        desc: c.pick.title,
-        hcc: c.pick.hcc || '',
-        dos: c.dos,
-        provider: c.provider,
-        pos: c.pos,
-        docType: c.docType,
-        linkedDocIds: [...c.linkedDocIds],
-      });
-      showToast(`Added ${c.pick.code} — Manually Added`);
-    } else if (c.dosMode === 'sibling' && c.dosMemberId) {
-      addHccGapToRow({
-        sourceMemberId: member?.id,
-        targetMemberId: c.dosMemberId,
-        code: c.pick.code,
-        desc: c.pick.title,
-        hcc: c.pick.hcc || '',
-        dos: c.dos,
-        provider: c.provider,
-        pos: c.pos,
-        visitType: c.visitType,
-      });
-      showToast(`Added ${c.pick.code} to sibling row`);
-    } else {
-      const newId = addHccGapNewRow({
-        sourceMemberId: member?.id,
-        code: c.pick.code,
-        desc: c.pick.title,
-        hcc: c.pick.hcc || '',
-        dos: c.dos,
-        provider: c.provider,
-        pos: c.pos,
-        visitType: c.visitType,
-      });
-      if (newId) showToast(`Added ${c.pick.code} — new worklist row spawned`);
+    if (!c || !c.dosList?.length) return;
+    let existingCount = 0;
+    let siblingCount = 0;
+    let newRowCount = 0;
+    // Iterate every selected DOS and route each to the right store action.
+    // The form's Provider/POS/VT/DocType are shared across all DOSs on
+    // this card (the user picked them once); each save call gets them.
+    for (const entry of c.dosList) {
+      if (entry.mode === 'existing') {
+        addHccGap({
+          code: c.pick.code,
+          desc: c.pick.title,
+          hcc: c.pick.hcc || '',
+          dos: entry.dosDate,
+          provider: c.provider,
+          pos: c.pos,
+          docType: c.docType,
+          linkedDocIds: [...c.linkedDocIds],
+        });
+        existingCount += 1;
+      } else if (entry.mode === 'sibling' && entry.memberId) {
+        addHccGapToRow({
+          sourceMemberId: member?.id,
+          targetMemberId: entry.memberId,
+          code: c.pick.code,
+          desc: c.pick.title,
+          hcc: c.pick.hcc || '',
+          dos: entry.dosDate,
+          provider: c.provider,
+          pos: c.pos,
+          visitType: c.visitType,
+        });
+        siblingCount += 1;
+      } else {
+        const newId = addHccGapNewRow({
+          sourceMemberId: member?.id,
+          code: c.pick.code,
+          desc: c.pick.title,
+          hcc: c.pick.hcc || '',
+          dos: entry.dosDate,
+          provider: c.provider,
+          pos: c.pos,
+          visitType: c.visitType,
+        });
+        if (newId) newRowCount += 1;
+      }
     }
+    const parts = [];
+    if (existingCount) parts.push(`${existingCount} to current row`);
+    if (siblingCount) parts.push(`${siblingCount} to sibling row${siblingCount === 1 ? '' : 's'}`);
+    if (newRowCount) parts.push(`${newRowCount} new row${newRowCount === 1 ? '' : 's'} spawned`);
+    showToast(`Added ${c.pick.code} — ${parts.join(' · ')}`);
     removePendingGap(idx);
     // Once an ICD is saved, drop the toolbar back to its default state so
     // the search field reverts to filtering the ICD list. Users who want to

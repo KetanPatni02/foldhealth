@@ -22,18 +22,16 @@ export const todayIso = () => {
 };
 
 // Per-card state factory — every new ICD pick gets its own copy.
-// dosMode:
-//   'existing' — DOS is in the current row's dos_list
-//   'sibling'  — DOS is in another same-patient row's dos_list; dosMemberId
-//                identifies which row so Save can route the ICD there
-//   'custom'   — brand-new DOS not on any row for this patient; Save spawns
-//                a fresh worklist row
+// A card holds an array of DOS entries (multi-select). Each entry keeps
+// enough context so Save can route it to the right store action:
+//   mode 'existing' — DOS is in the current row's dos_list
+//   mode 'sibling'  — DOS is in a sibling Created-date row; memberId
+//                     identifies which row so Save can route the ICD there
+//   mode 'custom'   — brand-new DOS not on any row for this patient;
+//                     Save spawns a fresh worklist row for it
 export const makeCard = (icd) => ({
   pick: icd,
-  dos: '',
-  dosValue: '',
-  dosMemberId: null,
-  dosMode: 'existing',
+  dosList: [],                 // [{ value, dosDate, memberId, mode }]
   provider: '',
   pos: '',
   visitType: '',
@@ -44,25 +42,27 @@ export const makeCard = (icd) => ({
   collapsed: false,
 });
 
-export function isDosOnCurrentRow(card, memberDosList) {
-  return card.dosMode === 'existing' && !!card.dos
-    && memberDosList.some(d => d.date === card.dos);
-}
-// True whenever the picked DOS resolves to an existing dos_list row (this
-// patient's current row OR one of its sibling Created-date rows) — used to
-// decide whether to show the Document-Type + Evidence-list mode.
-export function isDosOnAnyRow(card, memberDosList) {
-  return (card.dosMode === 'existing' || card.dosMode === 'sibling') && !!card.dos
-    && (memberDosList.some(d => d.date === card.dos) || card.dosMode === 'sibling');
+// True when EVERY selected DOS resolves to an existing dos_list row
+// (current row or a sibling Created-date row) — drives the DocType +
+// Evidence-list mode. When at least one custom DOS is in the mix, the
+// card falls back to the Visit-Type + dropzone flow so the new row has
+// enough metadata to render.
+export function isDosOnAnyRow(card) {
+  if (!card.dosList?.length) return false;
+  return card.dosList.every(d => d.mode === 'existing' || d.mode === 'sibling');
 }
 
 // Validity check for the per-card Save affordance in the RHS inline flow.
-export function canSaveCard(card, memberDosList) {
-  return !!card.pick && !!card.dos && !!card.provider && !!card.pos && (
-    isDosOnAnyRow(card, memberDosList)
-      ? !!card.docType && (card.linkedDocIds.size > 0 || !!card.file)
-      : !!card.visitType
-  );
+// Provider/POS are always required (form-level values apply to every
+// selected DOS). DocType + evidence apply when all selected DOSs are on
+// existing rows; Visit Type applies when at least one custom DOS is in
+// the mix (spawn-new-row flow needs it).
+export function canSaveCard(card) {
+  if (!card.pick || !card.dosList?.length || !card.provider || !card.pos) return false;
+  if (isDosOnAnyRow(card)) {
+    return !!card.docType && (card.linkedDocIds.size > 0 || !!card.file);
+  }
+  return !!card.visitType;
 }
 
 /**
@@ -96,61 +96,120 @@ export function IcdCard({
     return [...new Set(pool)].map(n => ({ value: n, label: n }));
   }, [card.visitType]);
 
-  const dosIsExisting = isDosOnAnyRow(card, memberDosList);
+  const dosIsExisting = isDosOnAnyRow(card);
 
+  // Bake any custom-picked dates into the options list so they render as
+  // selected in the Select (which only shows options it knows about).
+  // The `+ Custom Date` action stays at the end and is marked as a
+  // singleAction so clicks trigger its own handler rather than toggling.
   const effectiveDosOptions = useMemo(() => {
-    if (card.dosMode === 'custom' && card.dos) {
-      const customEntry = { value: card.dos, label: card.dos };
-      const rest = dosOptions.filter(o => o.value !== DOS_CUSTOM);
-      const changeAction = dosOptions.find(o => o.value === DOS_CUSTOM);
-      return [customEntry, ...rest, changeAction].filter(Boolean);
-    }
-    return dosOptions;
-  }, [card.dosMode, card.dos, dosOptions]);
+    const customEntries = card.dosList
+      .filter(d => d.mode === 'custom')
+      .map(d => ({ value: d.value, label: d.value }));
+    const rest = dosOptions.filter(o => o.value !== DOS_CUSTOM);
+    const customAction = dosOptions.find(o => o.value === DOS_CUSTOM);
+    return [
+      ...customEntries,
+      ...rest,
+      customAction ? { ...customAction, singleAction: true } : null,
+    ].filter(Boolean);
+  }, [card.dosList, dosOptions]);
 
-  const handleDosSelect = (nextValue) => {
-    if (nextValue === DOS_CUSTOM) {
+  // Look up a DOS option by value and return the { dosDate, memberId,
+  // mode } shape used inside card.dosList. Falls back to a `custom` entry
+  // if the value isn't in the options list (which happens for previously-
+  // picked custom dates).
+  const resolveDosEntry = (val) => {
+    const opt = dosOptions.find(o => o.value === val && o.type !== 'header');
+    if (!opt) return { value: val, dosDate: val, memberId: null, mode: 'custom' };
+    const dosDate = opt.dosDate || opt.value;
+    return {
+      value: val,
+      dosDate,
+      memberId: opt.memberId || null,
+      mode: opt.memberId === member?.id ? 'existing' : opt.memberId ? 'sibling' : 'custom',
+    };
+  };
+
+  // Auto-populate the form fields from the DOS entry that owns each row's
+  // metadata. Called on the first DOS pick; subsequent picks don't
+  // overwrite so user edits stick.
+  const populateFieldsFromEntry = (entry, patch) => {
+    if (entry.mode === 'existing') {
+      const match = memberDosList.find(d => d.date === entry.dosDate);
+      if (match) {
+        const vt = match.pos ? Object.entries(POS_BY_VT).find(([, p]) => p.code === match.pos)?.[0] : '';
+        patch.provider = match.provider || '';
+        patch.pos = match.pos || '';
+        patch.visitType = vt || '';
+      }
+    } else if (entry.mode === 'sibling') {
+      const s = useAppStore.getState();
+      const sib = s.hccMembers.find(m => m.id === entry.memberId);
+      const sibDos = sib?.dos_list?.find(d => d.date === entry.dosDate);
+      if (sibDos) {
+        const vt = sibDos.pos ? Object.entries(POS_BY_VT).find(([, p]) => p.code === sibDos.pos)?.[0] : '';
+        patch.provider = sibDos.provider || '';
+        patch.pos = sibDos.pos || '';
+        patch.visitType = vt || '';
+      }
+    }
+    return patch;
+  };
+
+  const handleDosMultiChange = (nextValues) => {
+    // Rebuild dosList so we keep the entry shape (mode/memberId) rather
+    // than losing it. Preserve the order in which values were added.
+    const prevByValue = new Map(card.dosList.map(d => [d.value, d]));
+    const nextList = nextValues.map(v => prevByValue.get(v) || resolveDosEntry(v));
+
+    const patch = { dosList: nextList };
+    // Auto-populate on the first DOS pick, leaving form values untouched
+    // after the user has already selected multiple.
+    if (nextList.length === 1 && card.dosList.length === 0) {
+      const only = nextList[0];
+      patch.provider = '';
+      patch.pos = '';
+      patch.visitType = '';
+      patch.docType = '';
+      patch.linkedDocIds = new Set();
+      patch.showUpload = false;
+      populateFieldsFromEntry(only, patch);
+    }
+    onUpdate(patch);
+  };
+
+  const handleDosSelect = (nextValueOrList) => {
+    // singleAction items (Custom Date) still come through as a scalar in
+    // multi mode. Route to the picker.
+    if (nextValueOrList === DOS_CUSTOM) {
       customDateRef.current?.showPicker?.();
       customDateRef.current?.click?.();
       return;
     }
-    const opt = dosOptions.find(o => o.value === nextValue && o.type !== 'header');
-    if (!opt) return;
-    const dosDate = opt.dosDate || opt.value;
-    if (opt.memberId === member?.id) {
-      const match = memberDosList.find(d => d.date === dosDate);
-      if (!match) return;
-      const vt = match.pos ? Object.entries(POS_BY_VT).find(([, p]) => p.code === match.pos)?.[0] : '';
-      onUpdate({
-        dos: dosDate, dosValue: nextValue, dosMemberId: member?.id,
-        dosMode: 'existing',
-        provider: match.provider || '', pos: match.pos || '', visitType: vt || '',
-        docType: '', linkedDocIds: new Set(), showUpload: false,
-      });
-    } else if (opt.memberId) {
-      const s = useAppStore.getState();
-      const sib = s.hccMembers.find(m => m.id === opt.memberId);
-      const sibDos = sib?.dos_list?.find(d => d.date === dosDate);
-      const vt = sibDos?.pos ? Object.entries(POS_BY_VT).find(([, p]) => p.code === sibDos.pos)?.[0] : '';
-      onUpdate({
-        dos: dosDate, dosValue: nextValue, dosMemberId: opt.memberId,
-        dosMode: 'sibling',
-        provider: sibDos?.provider || '', pos: sibDos?.pos || '', visitType: vt || '',
-        docType: '', linkedDocIds: new Set(), showUpload: false,
-      });
-    }
+    handleDosMultiChange(Array.isArray(nextValueOrList) ? nextValueOrList : [nextValueOrList]);
   };
 
   const handleCustomDate = (iso) => {
     if (!iso) return;
     const [y, m, d] = iso.split('-');
     const formatted = `${m}/${d}/${y}`;
-    onUpdate({
-      dos: formatted, dosValue: formatted, dosMemberId: null,
-      dosMode: 'custom',
-      provider: '', pos: '', visitType: '', docType: '',
-      linkedDocIds: new Set(), showUpload: false,
-    });
+    // Append this custom date to the existing dosList (don't clobber). If
+    // it's already in the list (user re-picked the same date), no-op.
+    if (card.dosList.some(x => x.value === formatted)) return;
+    const nextList = [...card.dosList, { value: formatted, dosDate: formatted, memberId: null, mode: 'custom' }];
+    const patch = { dosList: nextList };
+    if (card.dosList.length === 0) {
+      // First DOS is a custom → clear autoderived defaults so the user
+      // fills provider/POS/VT explicitly.
+      patch.provider = '';
+      patch.pos = '';
+      patch.visitType = '';
+      patch.docType = '';
+      patch.linkedDocIds = new Set();
+      patch.showUpload = false;
+    }
+    onUpdate(patch);
   };
 
   const handleVtChange = (vt) => {
@@ -180,7 +239,7 @@ export function IcdCard({
 
   const showDropzone = !dosIsExisting || card.showUpload;
   const showEvidenceList = dosIsExisting;
-  const saveDisabled = !!onSave && !canSaveCard(card, memberDosList);
+  const saveDisabled = !!onSave && !canSaveCard(card);
 
   return (
     <div className={styles.card}>
@@ -234,8 +293,9 @@ export function IcdCard({
                 DOS <span className={styles.required}>•</span>
               </label>
               <Select
+                multiple
                 options={effectiveDosOptions}
-                value={card.dosValue || card.dos || ''}
+                value={card.dosList.map(d => d.value)}
                 onChange={handleDosSelect}
                 placeholder="Select Date of Service"
               />

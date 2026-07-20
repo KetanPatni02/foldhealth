@@ -32,7 +32,17 @@ export function Select({
   searchable = false,
   searchPlaceholder = 'Search…',
   leadingIcon,
+  // Multi-select mode. When true, `value` is an array of strings and
+  // clicking an option toggles it in place — the menu stays open. The
+  // trigger label collapses to a count summary once more than one item
+  // is picked. Header items (type: 'header') stay non-interactive; an
+  // option with `singleAction: true` (e.g. "+ Custom Date") still fires
+  // onChange with its own value and closes the menu (used to break out
+  // of multi-select into a one-off action).
+  multiple = false,
 }) {
+  const valueArray = multiple ? (Array.isArray(value) ? value : []) : null;
+  const isSelected = (v) => multiple ? valueArray.includes(v) : v === value;
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const wrapRef = useRef(null);
@@ -60,7 +70,18 @@ export function Select({
     if (!open) setQuery('');
   }, [open, searchable]);
 
-  const selected = options.find(o => o.value === value);
+  const selected = multiple ? null : options.find(o => o.value === value);
+  const selectedMulti = multiple
+    ? options.filter(o => o.type !== 'header' && valueArray.includes(o.value))
+    : [];
+  // Trigger label for multi mode — first pick's label + "+N" summary.
+  const multiSummary = () => {
+    if (selectedMulti.length === 0) return null;
+    const first = selectedMulti[0];
+    const firstLabel = first.triggerLabel ?? first.label;
+    if (selectedMulti.length === 1) return firstLabel;
+    return <><span>{firstLabel}</span> <span style={{ color: 'var(--neutral-300)' }}>+{selectedMulti.length - 1}</span></>;
+  };
   const q = query.trim().toLowerCase();
   // Options may carry a `searchText` (plain string) so `label` can be a
   // rich node (e.g. two-line code + description) while search still matches
@@ -77,7 +98,7 @@ export function Select({
         className={[
           styles.trigger,
           variant === 'error' ? styles.triggerError : '',
-          !selected ? styles.triggerPlaceholder : '',
+          (multiple ? selectedMulti.length === 0 : !selected) ? styles.triggerPlaceholder : '',
         ].filter(Boolean).join(' ')}
         disabled={disabled}
         aria-haspopup="listbox"
@@ -88,7 +109,9 @@ export function Select({
           <Icon name={leadingIcon} size={16} color="currentColor" />
         )}
         <span className={styles.triggerLabel} style={selected?.style}>
-          {selected ? (selected.triggerLabel ?? selected.label) : placeholder}
+          {multiple
+            ? (selectedMulti.length > 0 ? multiSummary() : placeholder)
+            : (selected ? (selected.triggerLabel ?? selected.label) : placeholder)}
         </span>
         <Icon
           name="solar:alt-arrow-down-linear"
@@ -135,7 +158,8 @@ export function Select({
                 </li>
               );
             }
-            const isActive = opt.value === value;
+            const isActive = isSelected(opt.value);
+            const isSingleAction = !!opt.singleAction;
             return (
               <li
                 key={opt.value}
@@ -151,6 +175,14 @@ export function Select({
                 style={opt.style}
                 onClick={() => {
                   if (opt.disabled) return;
+                  if (multiple && !isSingleAction) {
+                    // Toggle this option in the value array; keep menu open.
+                    const next = valueArray.includes(opt.value)
+                      ? valueArray.filter(v => v !== opt.value)
+                      : [...valueArray, opt.value];
+                    onChange(next);
+                    return;
+                  }
                   onChange(opt.value);
                   setOpen(false);
                 }}
