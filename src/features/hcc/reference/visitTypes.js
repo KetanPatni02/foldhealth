@@ -4,21 +4,24 @@
 // surface all agree on POS billing rules (Telehealth ≠ Office, ER ≠ Home,
 // etc.).
 
+// POS descs mirror the short names in `data/posCodes.js` (the canonical source
+// of truth). Keeping them in sync means the worklist POS cell and the DOS
+// Select dropdown always render the same label for a given code.
 export const POS_BY_VT = {
   'AWV - Annual Wellness Visit':               { code: '11', desc: 'Office' },
   'IPPE - Initial Preventive Physical Exam':   { code: '11', desc: 'Office' },
   'Annual Physical Exam':                      { code: '11', desc: 'Office' },
   'New Patient Office Visit':                  { code: '11', desc: 'Office' },
   'Established Patient Office Visit':          { code: '11', desc: 'Office' },
-  'Telehealth Visit':                          { code: '02', desc: 'Telehealth (Patient Home)' },
-  'Specialist Visit / Consult':                { code: '22', desc: 'On Campus-Outpatient Hospital' },
-  'ER Visit':                                  { code: '23', desc: 'Emergency Room - Hospital' },
+  'Telehealth Visit':                          { code: '02', desc: 'Telehealth (Other)' },
+  'Specialist Visit / Consult':                { code: '22', desc: 'On-Campus OP Hospital' },
+  'ER Visit':                                  { code: '23', desc: 'ER — Hospital' },
   'Inpatient Visit / Admission':               { code: '21', desc: 'Inpatient Hospital' },
-  'Observation Visit':                         { code: '22', desc: 'On Campus-Outpatient Hospital' },
-  'Skilled Nursing Facility Visit':            { code: '31', desc: 'Skilled Nursing Facility' },
+  'Observation Visit':                         { code: '22', desc: 'On-Campus OP Hospital' },
+  'Skilled Nursing Facility Visit':            { code: '31', desc: 'SNF' },
   'Home Visit':                                { code: '12', desc: 'Home' },
   'Hospice Visit':                             { code: '34', desc: 'Hospice' },
-  'Lab/Imaging Order':                         { code: '81', desc: 'Independent Laboratory' },
+  'Lab/Imaging Order':                         { code: '81', desc: 'Independent Lab' },
   'Transitional Care Management (TCM) Visit':  { code: '11', desc: 'Office' },
   'Chronic Care Management (CCM)':             { code: '11', desc: 'Office' },
 };

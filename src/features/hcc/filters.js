@@ -18,6 +18,7 @@
 import { SYSTEM_USER_NAMES } from './systemUsers';
 import { dosSourceLetter, DOS_SOURCE_LABELS, DOS_SOURCE_LABEL_TO_LETTER } from './dosSource';
 import { canonicalStatus } from './statusSpec';
+import { POS_CODES } from './data/posCodes';
 
 export const MORE_FILTER_ITEMS = [
   // Primary — shown in chip row by default. Order matches Paper 21UY.
@@ -116,6 +117,12 @@ export const FILTER_DEFS = [
   { k: 'r1s',    label: 'QA Status',           type: 'multi', opts: ['New', 'In Progress', 'Rebuttal', 'Skipped', 'Completed', 'Rejected'] },
   { k: 'r2s',    label: 'Compliance Status',   type: 'multi', opts: ['New', 'In Progress', 'Rebuttal', 'Skipped', 'Completed', 'Rejected'] },
   { k: 'dec',    label: 'Decile',              type: 'range', opts: ['1','2','3','4','5','6','7','8','9','10'] },
+  // POS Code — options rendered as "23 - ER — Hospital"; filter value stores
+  // the "23 - ER — Hospital" label so the popover checkbox state and the chip
+  // summary use the same string. matchOne('pos') maps the label back to the
+  // raw 2-digit code before comparing against `m.pos`.
+  { k: 'pos',    label: 'POS Code',            type: 'multi', searchable: true,
+    opts: POS_CODES.map(p => `${p.code} - ${p.name}`) },
   // Phase 3d — date-range filters use the shared DateRangePopover.
   // Values are stored as [startISO, endISO]; the predicate parses them
   // against the row's `date` or other date field.
@@ -261,6 +268,20 @@ function matchOne(m, k, vals) {
     }
     case 'r1s':   return roleStatusVals(vals).has(m.r1s);
     case 'r2s':   return roleStatusVals(vals).has(m.r2s);
+    case 'pos': {
+      // Options in the popover are "<code> - <name>" strings. Extract the
+      // leading 2-digit code and match against the row's `pos`. Match if
+      // ANY of the member's dos_list entries carries a selected POS, so a
+      // record that visited both an ER and an Office still surfaces when
+      // "23 - ER — Hospital" is checked.
+      const codes = new Set(vals.map(v => (String(v).match(/^(\d{2})/)?.[1] || v)));
+      const rowPositions = new Set([
+        m.pos,
+        ...((m.dos_list || []).map(d => d?.pos).filter(Boolean)),
+      ].filter(Boolean));
+      for (const code of rowPositions) if (codes.has(code)) return true;
+      return false;
+    }
     case 'dec': {
       if (vals.length >= 2) {
         const mn = parseInt(vals[0], 10);
