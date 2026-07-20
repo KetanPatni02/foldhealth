@@ -102,6 +102,7 @@
   height: 40px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 0 12px;
   border-bottom: 0.5px solid var(--neutral-150);
   font-size: 14px;
@@ -115,13 +116,16 @@
 
 /* Meta strip — sits full-width below the shared PatientBanner (Figma
    ICD-Import 4481:112909). Carries the Created date + Support Team badge
-   on the left and the assignee + status pills on the right. */
+   on the left and the assignee + status pills on the right. Sizing +
+   typography mirror DiagPanel's `.dosRow` so the two drawers read as one
+   design. */
 .metaStrip {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
-  border-bottom: 0.5px solid var(--neutral-150);
+  padding: 0 12px;
+  height: 40px;
+  border-bottom: 0.5px solid var(--neutral-100);
   flex-shrink: 0;
   background: var(--neutral-0);
   position: relative;
@@ -139,10 +143,13 @@
   border-bottom: 0.5px solid var(--neutral-150);
   flex-shrink: 0;
 }
-.createdGroup { display: inline-flex; align-items: center; gap: 4px; }
-.createdLabel { font-size: 14px; color: var(--neutral-300); }
-.createdDate { font-size: 14px; font-weight: 500; color: var(--neutral-400); }
-.overdue { font-size: 12px; color: var(--status-error); }
+/* Typography matches DiagPanel's `.createdLabel` / `.createdDate` / `.dueTag`
+   so the "Created : <date>" row is visually identical to the Diagnosis Gap
+   Details drawer. */
+.createdGroup { display: inline-flex; align-items: center; gap: 8px; }
+.createdLabel { font-size: 13px; font-weight: 400; color: var(--neutral-300); flex-shrink: 0; }
+.createdDate  { font-size: 13px; font-weight: 600; color: var(--neutral-500); flex-shrink: 0; }
+.overdue      { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 500; color: var(--status-error); flex-shrink: 0; }
 /* Matches DiagPanel .withCoderPill — same ProgressRing + label + tint. */
 .teamBadge {
   display: inline-flex;
@@ -177,6 +184,13 @@
   background: var(--secondary-200);
   cursor: pointer;
   overflow: hidden;
+}
+/* Locked variant — rendered as a static <span> once Support has handed off
+   to the Coder. No chevron, no click, no hover cue: it's an owner label,
+   not a control. */
+.dmBadgeLocked {
+  padding: 0;
+  cursor: default;
 }
 .dmAvatar {
   width: 24px;
@@ -375,6 +389,19 @@
 
 /* Body when the last doc has been unlinked — right pane only, no preview. */
 .bodyEmpty .rightPane { flex: 1; }
+/* Actions clustered at the right end of the "Document Associated with" row —
+   Upload | Comment (icon-only, with a count badge). Divider matches the
+   drawer's other action-group separators (16px × 0.5px, neutral-150). */
+.assocActions { display: inline-flex; align-items: center; gap: 8px; }
+.assocActionsDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+/* Pressed state for the icon-only Comment ActionButton — tints the button
+   without competing with the ActionButton primitive's own focus ring. */
+.commentBtnActive { background: var(--primary-50) !important; }
 .uploadLink {
   display: inline-flex;
   align-items: center;
@@ -384,6 +411,108 @@
   cursor: pointer;
   font-size: 14px;
   color: var(--primary-300);
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+.uploadLink:hover { background: var(--primary-50); }
+.uploadLinkActive {
+  background: var(--primary-50);
+}
+
+/* ── Comment panel (left pane, opened from the header Comment action) ── */
+.commentsPanel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px;
+  gap: 12px;
+  overflow: hidden;
+  background: var(--neutral-0);
+}
+.commentsComposerWrap { flex-shrink: 0; }
+.commentsList {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 4px;
+}
+.commentsEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 32px 12px;
+  color: var(--neutral-300);
+  font-size: 13px;
+  text-align: center;
+}
+.commentRow {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.commentAvatar {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--secondary-50);
+  color: var(--secondary-300);
+  border: 0.5px solid var(--secondary-200);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: 500 11px/1 'Inter', sans-serif;
+}
+.commentBubble {
+  flex: 1;
+  min-width: 0;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-100);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.commentMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 12px/1.3 'Inter', sans-serif;
+  color: var(--neutral-400);
+  flex-wrap: wrap;
+}
+.commentAuthor { color: var(--neutral-500); }
+.commentRole   { color: var(--neutral-300); font-weight: 400; }
+.commentDot    { color: var(--neutral-200); }
+.commentDate   { color: var(--neutral-300); font-weight: 400; font-variant-numeric: tabular-nums; }
+.commentEdited {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--neutral-300);
+  background: var(--neutral-100);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+.commentBody {
+  font: 400 13px/1.4 'Inter', sans-serif;
+  color: var(--neutral-500);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.commentScope {
+  font: 500 11px/1.3 'Inter', sans-serif;
+  color: var(--neutral-300);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-100);
+  border-radius: 4px;
+  padding: 2px 6px;
+  align-self: flex-start;
 }
 
 /* ── Inline upload panel (opened from the Upload link) ── */
@@ -511,6 +640,54 @@
   background: var(--status-error-light);
   border: 0.5px solid var(--status-error);
   color: var(--status-error);
+}
+.failedBadge:focus-visible {
+  outline: 2px solid var(--primary-300);
+  outline-offset: 2px;
+}
+
+/* Hover popover on the doc-row "Failed" badge — Figma spec: white card,
+   "Failed Due to:" header, bulleted reasons, subtle grey Comment box.
+   z-index sits above the drawer panel (9501) so it's not clipped. */
+.failTooltip {
+  position: fixed;
+  z-index: 9600;
+  padding: 12px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-100);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+  color: var(--neutral-400);
+  animation: failtt-fade 0.12s ease-out;
+}
+.failTooltipHeading {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  margin-bottom: 6px;
+}
+.failTooltipList {
+  list-style: disc;
+  padding-left: 18px;
+  margin: 0 0 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  color: var(--neutral-400);
+}
+.failTooltipList li { line-height: 1.35; }
+.failTooltipComment {
+  background: var(--neutral-50);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--neutral-300);
+}
+@keyframes failtt-fade {
+  from { opacity: 0; transform: translateY(-2px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 .undoBtn {
   display: inline-flex;

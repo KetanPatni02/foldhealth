@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { Avatar } from '../../components/Avatar/Avatar';
+import { CommentComposer } from '../../components/CommentComposer/CommentComposer';
+import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { RoleTooltip } from './RoleTooltip';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { Button } from '../../components/Button/Button';
 import { UploadDropField } from '../../components/UploadDropField/UploadDropField';
@@ -18,11 +21,12 @@ import { DOC_TYPES, makeUploadedChartDoc } from './data/chartDocs';
 import { staffForRole } from './assignment/astranaStaff';
 import styles from './ChartDetailDrawer.module.css';
 
-// Document-review status options for the "Action Needed" dropdown. The icon
-// (a light-filled status circle) sits beside the label and is mirrored into the
-// trigger when selected.
+// Manually-selectable statuses. Note "Action Needed" is intentionally NOT
+// listed — it's the auto-derived default when no doc has been reviewed yet,
+// and never needs to be picked by hand. The trigger still renders it when
+// derived, but the dropdown skips it so support can only move the record
+// forward (In Progress → Completed / Insufficient / Rejected).
 const STATUS_OPTIONS = [
-  { key: 'action-needed', label: 'Action Needed' },
   { key: 'in-progress', label: 'In Progress' },
   { key: 'insufficient', label: 'Insufficient' },
   { key: 'completed', label: 'Completed' },
@@ -115,7 +119,7 @@ const actionForStatus = (doc) =>
   doc?.status === 'Passed' ? 'pass' : doc?.status === 'Failed' ? 'fail' : null;
 
 /**
- * ChartDetailDrawer — "Document Available Details" full-width overlay opened
+ * ChartDetailDrawer — "Document Review" full-width overlay opened
  * from the ChartPopover. Left pane shows the selected chart PDF; right pane
  * lists every document on the patient's chart, with the entry document (or,
  * when opened via "View more", the first not-yet-reviewed document) selected
@@ -168,6 +172,11 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   // Fail-reason prompt — { id, name } | null. Set by failDoc; confirming
   // logs the reason and applies the Fail status.
   const [failPrompt, setFailPrompt] = useState(null);
+  // Per-doc fail metadata captured by the inline Fail prompt. Keyed by doc id
+  // so the hover tooltip on each row's "Failed" badge can render the reasons
+  // + comment. Doesn't clear on Undo — the entry is stale until the doc is
+  // failed again, which overwrites it, so we drop it on `undoDoc`.
+  const [failDetails, setFailDetails] = useState({});
   // Confirmation dialogs for the destructive actions on the per-doc menu.
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(null);
   const [confirmUnlinkDoc, setConfirmUnlinkDoc] = useState(null);
@@ -202,6 +211,12 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   const [dosExpanded, setDosExpanded] = useState(false);
   const [disabledDos, setDisabledDos] = useState(() => new Set());
 
+  // Left pane mode. Defaults to the PDF preview; the "Comment" action next to
+  // Upload flips this to a Comment panel that reads/writes the same
+  // hccDiagComments slice the Diagnosis Gap drawer uses (so entries added
+  // here surface in the DiagPanel Comments tab and vice-versa).
+  const [leftPanel, setLeftPanel] = useState('preview');
+
   // Header status dropdown anchored on the status button. The status is
   // derived from the documents' pass/fail state; the user can also manually
   // override it (e.g. force Completed, or Rejected once a doc has passed).
@@ -219,11 +234,20 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   const hccReassignRole = useAppStore(s => s.hccReassignRole);
   const hccSetRoleStatus = useAppStore(s => s.hccSetRoleStatus);
   const hccCompleteSupport = useAppStore(s => s.hccCompleteSupport);
+  const initializeHccPatient = useAppStore(s => s.initializeHccPatient);
   const currentUserProfile = useAppStore(s => s.currentUserProfile);
   // Live member from the store so the assignee badge reflects reassignments
   // made here (or elsewhere) without waiting on the parent's prop to refresh.
   const liveMember = useAppStore(s => s.hccMembers.find(x => x.id === member?.id));
   const m = liveMember || member;
+
+  // Ensure the engine has seeded per-DOS assignments for this patient — the
+  // Chart Review drawer can open from the worklist without the Diagnosis Gaps
+  // drawer having run its own initializeHccPatient effect, and without this
+  // the badge + assignee lookups would read `null` from `hccDosAssignments`.
+  useEffect(() => {
+    if (member?.id) initializeHccPatient(member.id);
+  }, [member?.id, initializeHccPatient]);
 
   // Inline "Upload" panel (opened from the Upload link in the assoc row).
   // Mirrors the Add DOS drawer's upload states: Dropzone → uploading progress
@@ -288,9 +312,16 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   const supportInitials = isSupportAssigned ? nameToInitials(supportName) : null;
   const reviewerName = (isSupportAssigned && supportName) || 'the support team';
 
-  // DOS anchor for engine writes — the drawer is chart-level, so use the
-  // member's primary DOS (falls back to first listed DOS, then created date).
-  const dosDate = member?.dos || member?.dos_list?.[0]?.date || member?.date;
+  // DOS anchor for engine writes + reads. Mirrors DiagPanel's `currentDos`
+  // rule (`dos_list[0]`) so the Chart Review and Diagnosis Gaps drawers
+  // always target the same engine record for the same member — otherwise
+  // Support/Coder status would visibly diverge between the two views.
+  // Falls back to `member.dos` / `member.date` when a member has no
+  // `dos_list` (older seed data).
+  const primaryDosEntry = m?.dos_list?.[0] || null;
+  const dosDate = primaryDosEntry?.date || m?.dos || m?.date;
+  const dosRp = primaryDosEntry?.provider || m?.rp || null;
+  const dosPos = primaryDosEntry?.pos || m?.pos || null;
 
   // The logged-in user acting in the Support role. Real Supabase identity when
   // present; otherwise the first active Support staffer stands in (dev/bypass),
@@ -344,10 +375,14 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     const doc = docs.find(d => d.id === id);
     setFailPrompt({ id, name: doc?.n || 'Document' });
   };
-  const undoDoc = (id) => applyDocAction(id, null);
+  const undoDoc = (id) => {
+    applyDocAction(id, null);
+    setFailDetails(prev => { const n = { ...prev }; delete n[id]; return n; });
+  };
   const confirmFailDoc = ({ reasons, note }) => {
     if (!failPrompt) return;
     applyDocAction(failPrompt.id, 'fail');
+    setFailDetails(prev => ({ ...prev, [failPrompt.id]: { reasons: reasons || [], note: note || '' } }));
     const doc = docs.find(d => d.id === failPrompt.id);
     const reasonText = (reasons || []).join(', ');
     addActivityEntry?.({
@@ -359,14 +394,32 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     setFailPrompt(null);
   };
 
+  // Count of comments the shared `hccDiagComments` store holds — used to
+  // show a numeric badge on the header Comment action so support can see at
+  // a glance how much discussion is on the record without opening the panel.
+  // Same slice DiagPanel's Comments tab reads, so the two counts agree.
+  const hccDiagCommentsAll = useAppStore(s => s.hccDiagComments);
+  const commentsCountForMember = hccDiagCommentsAll.length;
+
   // Build the four-stage review timeline for the popover. Reads the same
   // dosState + member the ReviewProgressPopover already understands.
   const hccDosAssignmentsMap = useAppStore(s => s.hccDosAssignments);
   const dosStateForBadge = (member?.id && dosDate)
-    ? hccDosAssignmentsMap[dosKey(member.id, dosDate, member.rp, member.pos)]
+    ? hccDosAssignmentsMap[dosKey(member.id, dosDate, dosRp, dosPos)]
     : null;
   const teamReviewStages = buildReviewStages(member, dosStateForBadge);
   const teamReviewProgress = computeReviewProgress(teamReviewStages);
+  // Once Support has handed off (marked Completed) and a Coder is on the DOS,
+  // the Support assignee is no longer editable from this drawer — reassigning
+  // would break the linear Support → Coder pipeline the engine enforces.
+  // Falls back to the member-level `sup/supS/cdr` fields because the drawer's
+  // primary-DOS lookup can miss the engine record when member.rp/pos don't
+  // line up with the seeded DOS composite key.
+  const supportCompletedFlag = dosStateForBadge?.support?.status === 'Completed'
+    || m?.supS === 'Completed';
+  const coderAssignedFlag = !!dosStateForBadge?.coder?.assignee
+    || !!(m?.cdr && m?.cdrS && m.cdrS !== 'Assign');
+  const supportLocked = supportCompletedFlag && coderAssignedFlag;
 
   const onTeamPillEnter = () => {
     if (teamCloseTimer.current) { clearTimeout(teamCloseTimer.current); teamCloseTimer.current = null; }
@@ -452,7 +505,11 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   };
 
   const effectiveStatus = manualStatus || deriveStatus(docs, docActions);
-  const currentStatus = STATUS_OPTIONS.find(s => s.key === effectiveStatus) || STATUS_OPTIONS[0];
+  // Trigger label lookup: "Action Needed" is a derived-only state so it's not
+  // in the dropdown, but the trigger still renders it when nothing has been
+  // reviewed yet — hence the explicit fallback here.
+  const currentStatus = STATUS_OPTIONS.find(s => s.key === effectiveStatus)
+    || { key: 'action-needed', label: 'Action Needed' };
   const currentBadge = STATUS_BADGE[effectiveStatus] || STATUS_BADGE['action-needed'];
   const openAction = () => {
     if (actionPos) { setActionPos(null); return; }
@@ -481,10 +538,10 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   return createPortal(
     <>
       <div className={styles.overlay} onClick={onClose} />
-      <div className={styles.panel} role="dialog" aria-label="Document Available Details">
+      <div className={styles.panel} role="dialog" aria-label="Document Review">
         {/* Title bar */}
         <div className={styles.titleBar}>
-          <span className={styles.title}>Document Available Details</span>
+          <span className={styles.title}>Document Review</span>
           <button type="button" className={styles.iconBtn} onClick={onClose} aria-label="Close">
             <Icon name="solar:close-square-linear" size={20} color="var(--neutral-400)" />
           </button>
@@ -495,8 +552,28 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
             + Created meta strip live INSIDE the right pane per Figma
             ICD-Import 4481:112909, so the left PDF gets the full drawer height. */}
         <div className={`${styles.body} ${isEmpty ? styles.bodyEmpty : ''}`}>
-          {/* Left — PDF of the selected document */}
-          {!isEmpty && selected && (
+          {/* Left — PDF preview, or the Comments panel when the header
+              "Comment" action is toggled on. Panel writes/reads the same
+              hccDiagComments store the Diagnosis Gap drawer uses, so support
+              comments dropped here appear in DiagPanel's Comments tab. */}
+          {!isEmpty && leftPanel === 'comments' && (
+            <div className={styles.leftPane}>
+              <div className={styles.paneHeader}>
+                <span>Comments</span>
+                <button
+                  type="button"
+                  className={styles.iconBtn}
+                  onClick={() => setLeftPanel('preview')}
+                  aria-label="Close comments"
+                  title="Close comments"
+                >
+                  <Icon name="solar:close-square-linear" size={18} color="var(--neutral-400)" />
+                </button>
+              </div>
+              <ChartCommentsPanel member={m} />
+            </div>
+          )}
+          {!isEmpty && selected && leftPanel === 'preview' && (
             <div className={styles.leftPane}>
               <div className={styles.paneHeader}>{selected.n}</div>
               <div className={styles.pdfWrap}>
@@ -556,10 +633,21 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
               )}
               <div className={styles.metaStripEnd}>
                 {isSupportAssigned ? (
-                  <button type="button" ref={dmRef} className={styles.dmBadge} onClick={openAssign} title={supportName}>
-                    <span className={styles.dmAvatar}>{supportInitials}</span>
-                    <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--secondary-300)" />
-                  </button>
+                  <RoleTooltip name={supportName} role="Support Team" initials={supportInitials} variant="provider">
+                    {supportLocked ? (
+                      <span
+                        className={`${styles.dmBadge} ${styles.dmBadgeLocked}`}
+                        aria-label={supportName}
+                      >
+                        <span className={styles.dmAvatar}>{supportInitials}</span>
+                      </span>
+                    ) : (
+                      <button type="button" ref={dmRef} className={styles.dmBadge} onClick={openAssign} aria-label={supportName}>
+                        <span className={styles.dmAvatar}>{supportInitials}</span>
+                        <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--secondary-300)" />
+                      </button>
+                    )}
+                  </RoleTooltip>
                 ) : (
                   <button type="button" ref={dmRef} className={styles.dmUnassigned} onClick={openAssign} title="Assign Support Team" aria-label="Assign Support Team">
                     <Icon name="solar:user-plus-linear" size={14} color="var(--neutral-300)" />
@@ -601,10 +689,22 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
                     <Icon name={dosExpanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} size={11} color="var(--primary-300)" />
                   </button>
                 </div>
-                <button type="button" className={styles.uploadLink} onClick={() => setShowUpload(v => !v)}>
-                  <Icon name="solar:upload-minimalistic-linear" size={16} color="var(--primary-300)" />
-                  Upload
-                </button>
+                <div className={styles.assocActions}>
+                  <button type="button" className={styles.uploadLink} onClick={() => setShowUpload(v => !v)}>
+                    <Icon name="solar:upload-minimalistic-linear" size={16} color="var(--primary-300)" />
+                    Upload
+                  </button>
+                  <span className={styles.assocActionsDivider} aria-hidden="true" />
+                  <ActionButton
+                    icon="solar:chat-round-linear"
+                    size="S"
+                    tooltip="Comment"
+                    count={commentsCountForMember > 0 ? String(commentsCountForMember) : undefined}
+                    className={leftPanel === 'comments' ? styles.commentBtnActive : ''}
+                    onClick={() => setLeftPanel(v => v === 'comments' ? 'preview' : 'comments')}
+                    aria-pressed={leftPanel === 'comments'}
+                  />
+                </div>
               </div>
 
               {/* Expandable DOS list with a per-DOS toggle (mirrors the
@@ -709,10 +809,7 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
                           </>
                         ) : action === 'fail' ? (
                           <>
-                            <span className={styles.failedBadge}>
-                              <Icon name="solar:close-circle-linear" size={12} color="var(--status-error)" />
-                              Failed
-                            </span>
+                            <FailedBadgeWithTooltip details={failDetails[d.id]} />
                             <button type="button" className={styles.undoBtn} aria-label="Undo" onClick={() => undoDoc(d.id)}>
                               <Icon name="solar:undo-left-round-linear" size={16} color="var(--neutral-400)" />
                             </button>
@@ -1051,3 +1148,156 @@ function EditDocInline({ doc, onCancel, onSave }) {
     </div>
   );
 }
+
+/**
+ * Hover tooltip for a doc row's "Failed" badge. Renders the design's
+ * "Failed Due to:" card — bulleted reasons + a subtle Comment box — as a
+ * portalled popover so it can escape the doc-row + drawer stacking
+ * contexts. Falls back to the base badge (no tooltip) when there are no
+ * reasons captured (e.g. a legacy fail with no metadata).
+ */
+function FailedBadgeWithTooltip({ details }) {
+  const badgeRef = useRef(null);
+  const openTimer = useRef(null);
+  const [rect, setRect] = useState(null);
+
+  const reasons = details?.reasons || [];
+  const note = (details?.note || '').trim();
+  const hasContent = reasons.length > 0 || note.length > 0;
+
+  const open = () => {
+    if (!hasContent) return;
+    if (openTimer.current) clearTimeout(openTimer.current);
+    openTimer.current = setTimeout(() => {
+      const r = badgeRef.current?.getBoundingClientRect();
+      if (r) setRect(r);
+    }, 120);
+  };
+  const close = () => {
+    if (openTimer.current) { clearTimeout(openTimer.current); openTimer.current = null; }
+    setRect(null);
+  };
+  useEffect(() => () => clearTimeout(openTimer.current), []);
+
+  const W = 260;
+  const style = rect
+    ? { top: rect.bottom + 6, left: Math.min(rect.left, window.innerWidth - W - 8), width: W }
+    : null;
+
+  return (
+    <>
+      <span
+        ref={badgeRef}
+        className={styles.failedBadge}
+        onMouseEnter={open}
+        onMouseLeave={close}
+        onFocus={open}
+        onBlur={close}
+        tabIndex={hasContent ? 0 : -1}
+      >
+        <Icon name="solar:close-circle-linear" size={12} color="var(--status-error)" />
+        Failed
+      </span>
+      {rect && hasContent && createPortal(
+        <div
+          role="tooltip"
+          aria-label="Fail reasons"
+          className={styles.failTooltip}
+          style={style}
+        >
+          {reasons.length > 0 && (
+            <>
+              <div className={styles.failTooltipHeading}>Failed Due to:</div>
+              <ul className={styles.failTooltipList}>
+                {reasons.map(r => <li key={r}>{r}</li>)}
+              </ul>
+            </>
+          )}
+          {note && (
+            <div className={styles.failTooltipComment}>Comment: {note}</div>
+          )}
+        </div>,
+        document.body,
+      )}
+    </>
+  );
+}
+
+/**
+ * Comment panel rendered in the left column when the header "Comment" action
+ * is toggled on. Composer + timeline read/write the SAME `hccDiagComments`
+ * store slice the Diagnosis Gap drawer's Comments tab uses — no separate
+ * chart-scoped list, so a comment posted here shows up there and vice-versa.
+ * Stamps `dos` from the member's primary DOS (matches DiagPanel's scoping);
+ * `icd` is left null because this drawer is chart-level, not ICD-scoped.
+ */
+function ChartCommentsPanel({ member }) {
+  const comments = useAppStore(s => s.hccDiagComments);
+  const addHccDiagComment = useAppStore(s => s.addHccDiagComment);
+  const addActivityEntry = useAppStore(s => s.addActivityEntry);
+  const currentUserProfile = useAppStore(s => s.currentUserProfile);
+  const hccUserRole = useAppStore(s => s.hccUserRole);
+
+  // Show the full comment thread — no per-DOS or per-member filter here.
+  // DiagPanel's Comments tab renders every row too, so the two views agree
+  // 1:1 (per the sync requirement).
+  const visibleComments = comments;
+
+  const addComment = (body) => {
+    if (!body) return;
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const date = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
+    const hours = now.getHours();
+    const time = `${((hours + 11) % 12) + 1}:${pad(now.getMinutes())} ${hours >= 12 ? 'PM' : 'AM'}`;
+    const author = currentUserProfile?.name || 'You';
+    const role = hccUserRole || 'Support';
+    const dos = member?.dos_list?.[0]?.date || member?.dos || null;
+    const row = { id: `c${Date.now()}`, author, role, date, time, body, icd: null, dos };
+    addHccDiagComment(row);
+    addActivityEntry?.({
+      t: 'comment', by: author, role,
+      headline: 'Added a Comment',
+      details: [{ note: body }],
+    });
+  };
+
+  return (
+    <div className={styles.commentsPanel}>
+      <div className={styles.commentsComposerWrap}>
+        <CommentComposer onSubmit={addComment} placeholder="Add a comment, use @ to mention someone" />
+      </div>
+      <div className={styles.commentsList}>
+        {visibleComments.length === 0 ? (
+          <div className={styles.commentsEmpty}>
+            <Icon name="solar:chat-round-linear" size={20} color="var(--neutral-200)" />
+            <span>No comments yet. Drop the first one above.</span>
+          </div>
+        ) : visibleComments.map((c) => (
+          <div key={c.id} className={styles.commentRow}>
+            <span className={styles.commentAvatar} aria-hidden="true">
+              {(c.author || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?'}
+            </span>
+            <div className={styles.commentBubble}>
+              <div className={styles.commentMeta}>
+                <span className={styles.commentAuthor}>{c.author}</span>
+                <span className={styles.commentRole}>({c.role})</span>
+                <span className={styles.commentDot} aria-hidden="true">•</span>
+                <span className={styles.commentDate}>{c.date} · {c.time}</span>
+                {c.edited && <span className={styles.commentEdited}>Edited</span>}
+              </div>
+              <div className={styles.commentBody}>{c.body}</div>
+              {c.icd && (
+                <div className={styles.commentScope}>ICD {c.icd}{c.dos ? ` · DOS ${c.dos}` : ''}</div>
+              )}
+              {!c.icd && c.dos && (
+                <div className={styles.commentScope}>DOS {c.dos}</div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
