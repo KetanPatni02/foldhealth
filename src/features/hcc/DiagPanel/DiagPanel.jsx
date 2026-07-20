@@ -234,6 +234,38 @@ export function DiagPanel() {
   // the document workspace so users can review evidence while adding.
   const [addIcdMode, setAddIcdMode] = useState(false);
   const [pendingGaps, setPendingGaps] = useState([]);
+  // RHS width (px) when the LHS document workspace is open. `null` = default
+  // 50/50 split (both panes flex:1). Users can drag the divider between the
+  // panes to give the LHS more room for viewing documents; the RHS is
+  // clamped to [MIN_RHS_PX, 50% of contentRow] so it never eats the LHS or
+  // collapses past the point where its own controls stop being usable.
+  const [rhsWidth, setRhsWidth] = useState(null);
+  const contentRowRef = useRef(null);
+  const MIN_RHS_PX = 380;
+  const startResize = useCallback((e) => {
+    e.preventDefault();
+    const row = contentRowRef.current;
+    if (!row) return;
+    const rowRect = row.getBoundingClientRect();
+    const onMove = (moveEvt) => {
+      const clientX = moveEvt.clientX;
+      // Desired RHS width = distance from the cursor to the row's right edge.
+      const rawWidth = rowRect.right - clientX;
+      const maxWidth = Math.floor(rowRect.width * 0.5);
+      const clamped = Math.max(MIN_RHS_PX, Math.min(rawWidth, maxWidth));
+      setRhsWidth(clamped);
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, []);
   const updatePendingGap = useCallback((idx, patch) => {
     setPendingGaps(prev => prev.map((c, i) => i === idx
       ? { ...c, ...(typeof patch === 'function' ? patch(c) : patch) }
@@ -1005,25 +1037,40 @@ export function DiagPanel() {
         </ActionButton>
       </div>
 
-      <div className={styles.contentRow}>
+      <div className={styles.contentRow} ref={contentRowRef}>
       {/* Workspace (document preview etc.) sits on the LEFT of the ICD
           listing (Paper 1UD1 / 5IX) — rendered first so it's the left pane.
           The Add-ICD flow now lives entirely on the RHS (via addIcdMode +
           pendingGaps in the toolbar/cardsList), so the LHS stays free for
           the document workspace users need while coding. */}
       {diagLeftPanel && (
-        <LeftWorkspace
-          active={diagLeftPanel}
-          icdScope={diagActivityIcd ? (activeIcdCode ?? diagActivityIcd) : null}
-          onChange={setDiagTab}
-          onClose={() => setDiagLeftPanel(null)}
-          member={member}
-          pendingStatusChange={pendingStatusChange}
-          onConfirmStatusChange={confirmPendingStatusChange}
-          onCancelStatusChange={() => setPendingStatusChange(null)}
-        />
+        <>
+          <LeftWorkspace
+            active={diagLeftPanel}
+            icdScope={diagActivityIcd ? (activeIcdCode ?? diagActivityIcd) : null}
+            onChange={setDiagTab}
+            onClose={() => setDiagLeftPanel(null)}
+            member={member}
+            pendingStatusChange={pendingStatusChange}
+            onConfirmStatusChange={confirmPendingStatusChange}
+            onCancelStatusChange={() => setPendingStatusChange(null)}
+          />
+          {/* Draggable divider — lets users grow the LHS document viewer
+              by shrinking the RHS. Clamped in startResize to
+              [MIN_RHS_PX, 50% of contentRow]. */}
+          <div
+            className={styles.resizeHandle}
+            onMouseDown={startResize}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize document workspace"
+          />
+        </>
       )}
-      <div className={diagLeftPanel ? styles.rightPane : styles.rightPaneFull}>
+      <div
+        className={diagLeftPanel ? styles.rightPane : styles.rightPaneFull}
+        style={diagLeftPanel && rhsWidth != null ? { flex: `0 0 ${rhsWidth}px` } : undefined}
+      >
       {/* ── Row 2: Patient Banner (shared component) ── */}
       <PatientBanner
         initials={member.in}
@@ -1040,18 +1087,18 @@ export function DiagPanel() {
       {/* ── Meta row: Created date + overdue + stage pill | assignee + status ── */}
       <div className={styles.dosRow}>
         <div className={styles.dosRowLeft}>
-          <span className={styles.createdLabel}>Created :</span>
+          <span className={[styles.createdLabel, styles.hideBelow540].join(' ')}>Created :</span>
           <span className={styles.createdDate}>{member.date || '—'}</span>
           {slaVerdict ? (
-            <span className={styles.dueTag} style={{ color: slaVerdict.colorVar }}>
+            <span className={[styles.dueTag, styles.hideBelow460].join(' ')} style={{ color: slaVerdict.colorVar }}>
               <Icon name={slaVerdict.icon} size={12} color={slaVerdict.colorVar} /> {slaVerdict.label}
             </span>
           ) : member.due && (
-            <span className={styles.dueTag} style={{ color: member.dueCol || 'var(--status-error)' }}>
+            <span className={[styles.dueTag, styles.hideBelow460].join(' ')} style={{ color: member.dueCol || 'var(--status-error)' }}>
               ({member.due})
             </span>
           )}
-          <span className={styles.dosRowDivider} />
+          <span className={[styles.dosRowDivider, styles.hideBelow540].join(' ')} />
           {/* Stage pill — hover opens the Review Progress popover; the ring
               is a real progress indicator driven by the engine state. */}
           <span
@@ -1190,27 +1237,36 @@ export function DiagPanel() {
                 size="S"
                 tooltip="Documents"
                 count={String(docsCount)}
-                className={diagLeftPanel === 'documents' && !diagActivityIcd ? styles.activeIcon : ''}
+                className={[
+                  styles.hideBelow460,
+                  diagLeftPanel === 'documents' && !diagActivityIcd ? styles.activeIcon : '',
+                ].filter(Boolean).join(' ')}
                 onClick={openDocsFromToolbar}
               />
-              <span className={styles.divider} />
+              <span className={[styles.divider, styles.hideBelow460].join(' ')} />
               <ActionButton
                 icon="solar:chat-round-line-linear"
                 size="S"
                 tooltip="Comments"
                 count={String(commentsCount)}
-                className={diagLeftPanel === 'comments' && !diagActivityIcd ? styles.activeIcon : ''}
+                className={[
+                  styles.hideBelow540,
+                  diagLeftPanel === 'comments' && !diagActivityIcd ? styles.activeIcon : '',
+                ].filter(Boolean).join(' ')}
                 onClick={() => setDiagLeftPanel(diagLeftPanel === 'comments' && !diagActivityIcd ? null : 'comments')}
               />
-              <span className={styles.divider} />
+              <span className={[styles.divider, styles.hideBelow540].join(' ')} />
               <ActionButton
                 icon="solar:history-linear"
                 size="S"
                 tooltip="Timeline"
-                className={diagLeftPanel === 'activity' && !diagActivityIcd ? styles.activeIcon : ''}
+                className={[
+                  styles.hideBelow640,
+                  diagLeftPanel === 'activity' && !diagActivityIcd ? styles.activeIcon : '',
+                ].filter(Boolean).join(' ')}
                 onClick={() => setDiagLeftPanel(diagLeftPanel === 'activity' && !diagActivityIcd ? null : 'activity')}
               />
-              <span className={styles.divider} />
+              <span className={[styles.divider, styles.hideBelow640].join(' ')} />
               <ActionButton
                 icon="solar:menu-dots-linear"
                 size="S"

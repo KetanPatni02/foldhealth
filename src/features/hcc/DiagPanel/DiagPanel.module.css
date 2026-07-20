@@ -400,11 +400,15 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 0 12px;
-  height: 40px;
+  padding: 6px 12px;
+  min-height: 40px;
   background: var(--neutral-0);
   border-bottom: 0.5px solid var(--neutral-100);
   flex-shrink: 0;
+  /* Wrap when the RHS is too narrow to hold Created / Coder pill / CK
+     avatar / status pill on one line — the right cluster drops to a new
+     line below the left cluster so nothing gets clipped or overlapped. */
+  flex-wrap: wrap;
 }
 
 .dosRowLeft {
@@ -571,16 +575,79 @@
 }
 
 /* When the workspace is open, the left (LeftWorkspace) and right (Diagnosis
-   Gaps) panes split the drawer 50-50. Both use flex:1 with equal basis so
-   neither is squeezed. */
+   Gaps) panes split the drawer 50-50 by default. Users can drag the
+   .resizeHandle divider to shrink the RHS (clamped in JS to
+   [MIN_RHS_PX, 50%]). Container queries in this file collapse toolbar
+   icons progressively as the RHS narrows — see the `@container` blocks
+   below. */
 .rightPane {
   flex: 1 1 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-left: 0.5px solid var(--neutral-150);
   background: var(--neutral-0);
+  container-type: inline-size;
+  container-name: rhsPane;
+}
+
+/* Draggable divider between LeftWorkspace and the RHS. The visible line
+   is 1px so the panes sit flush; a small hover grip appears as the drag
+   affordance, and a ::before pseudo-element extends the invisible hit
+   area 4px into each pane so grabbing is forgiving without adding
+   whitespace to the RHS. */
+.resizeHandle {
+  flex: 0 0 1px;
+  align-self: stretch;
+  background: var(--neutral-150);
+  cursor: col-resize;
+  position: relative;
+  z-index: 1;
+  transition: background 120ms ease;
+}
+.resizeHandle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  right: -4px;
+}
+.resizeHandle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 32px;
+  border-radius: 2px;
+  background: var(--neutral-300);
+  opacity: 0;
+  transition: opacity 120ms ease;
+  pointer-events: none;
+}
+.resizeHandle:hover {
+  background: var(--primary-300);
+}
+.resizeHandle:hover::after {
+  opacity: 1;
+  background: var(--primary-300);
+}
+
+/* Toolbar responsive collapse — as the RHS narrows the low-priority
+   icons (Timeline first, then Comments) drop out so the primary flow
+   (Bulk / Search / ICD / Filter / Docs / More) stays legible. The More
+   overflow menu remains a placeholder for now; a follow-up will populate
+   it with whatever the current width has hidden. */
+@container rhsPane (max-width: 640px) {
+  .hideBelow640 { display: none !important; }
+}
+@container rhsPane (max-width: 540px) {
+  .hideBelow540 { display: none !important; }
+}
+@container rhsPane (max-width: 460px) {
+  .hideBelow460 { display: none !important; }
 }
 
 /* Highlight tone for toolbar action buttons whose corresponding left
