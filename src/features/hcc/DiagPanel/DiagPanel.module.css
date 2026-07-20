@@ -294,6 +294,17 @@
   background: var(--neutral-50);
 }
 
+/* Pending gap cards from the toolbar's + ICD flow — sits above the
+   associated-ICDs section header with the same 8px rhythm as the rest of
+   the cards list. Cards render on a white surface (via IcdCard's own
+   styles.card), lifted slightly above the neutral-50 background. */
+.pendingGaps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 4px;
+}
+
 .empty {
   display: flex;
   flex-direction: column;
@@ -733,6 +744,36 @@
 
 /* Push the icon cluster to the right edge now that search sits inline. */
 .toolbarIcons { margin-left: auto; }
+
+/* addIcdMode — the toolbar collapses to a single dedicated search row.
+   IcdSearch fills the entire width, and the close X sits inside its
+   right edge (over IcdSearch's own right padding). All sibling toolbar
+   actions hide in this mode so the user's focus stays on adding an ICD. */
+.toolbarAddIcd {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+.toolbarAddIcdClose {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  z-index: 2;
+}
+.toolbarAddIcdClose:hover { background: var(--neutral-50); }
 
 /* + ICD trigger — clicking opens the "New Diagnosis Gap" left workspace
    (NewDiagGapPanel). Wrap keeps the layout slot stable even though there

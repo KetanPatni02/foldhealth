@@ -15,7 +15,10 @@ import { IcdDosCard } from './IcdDosCard';
 import { SuspectCard } from './HccSuspectGroup';
 import { DosStatusMenu } from './DosStatusMenu';
 import { LeftWorkspace } from './LeftWorkspace';
-import { NewDiagGapPanel } from './NewDiagGapPanel';
+import { IcdCard, makeCard, DOS_CUSTOM } from './IcdCard';
+import { IcdSearch } from '../../../components/IcdSearch/IcdSearch';
+import { POS_BY_VT, PROVIDER_POOL_BY_VT, VISIT_TYPES } from '../reference/visitTypes';
+import { DOC_TYPES } from '../data/chartDocs';
 import {
   DiagPanelFilterBar,
   icdMatchesFilters,
@@ -177,6 +180,10 @@ export function DiagPanel() {
   // and so they don't leak into sibling rows that share member_name.
   const spawnedGaps = useAppStore(s => s.hccSpawnedGaps?.[memberId]);
   const showToast = useAppStore(s => s.showToast);
+  const hccMembers = useAppStore(s => s.hccMembers);
+  const addHccGap = useAppStore(s => s.addHccGap);
+  const addHccGapNewRow = useAppStore(s => s.addHccGapNewRow);
+  const addHccGapToRow = useAppStore(s => s.addHccGapToRow);
   const fetchHccDiagnosisGaps = useAppStore(s => s.fetchHccDiagnosisGaps);
   const diagnosisGaps = useAppStore(s => s.hccDiagnosisGaps);
   const diagnosisGapsLoading = useAppStore(s => s.hccDiagnosisGapsLoading);
@@ -218,6 +225,23 @@ export function DiagPanel() {
       return next;
     });
   };
+  // Inline + ICD flow (right-side toolbar). Clicking + ICD flips the
+  // toolbar into search mode — the `Search by code…` input is swapped for
+  // an <IcdSearch> autocomplete and the + ICD button hides so the search
+  // reclaims its space. Picking an ICD prepends a gap card to the
+  // associated-ICDs list where the user completes it. LHS stays free for
+  // the document workspace so users can review evidence while adding.
+  const [addIcdMode, setAddIcdMode] = useState(false);
+  const [pendingGaps, setPendingGaps] = useState([]);
+  const updatePendingGap = useCallback((idx, patch) => {
+    setPendingGaps(prev => prev.map((c, i) => i === idx
+      ? { ...c, ...(typeof patch === 'function' ? patch(c) : patch) }
+      : c));
+  }, []);
+  const removePendingGap = useCallback((idx) => {
+    setPendingGaps(prev => prev.filter((_, i) => i !== idx));
+  }, []);
+  const exitAddIcdMode = useCallback(() => setAddIcdMode(false), []);
   // Open/closed state for the removed Overridden/Closed ICD sections — kept
   // commented out rather than deleted.
   // const [overriddenOpen, setOverriddenOpen] = useState(false);
@@ -367,6 +391,113 @@ export function DiagPanel() {
     return getChartDocs(member, hccAddedCharts || [], hccChartStatus || {}, hccRemovedCharts || []);
   }, [member, hccAddedCharts, hccChartStatus, hccRemovedCharts]);
   const docsCount = chartsList.length;
+
+  // Options for pending IcdCard(s) rendered inline in the associated-ICDs
+  // list when the toolbar is in `addIcdMode`. Same shape as
+  // NewDiagGapPanel's derivations so the shared IcdCard component agrees.
+  const memberDosList = useMemo(
+    () => (member?.dos_list || []).filter(d => d?.date),
+    [member?.dos_list],
+  );
+  const siblingRows = useMemo(() => {
+    if (!member) return [];
+    return hccMembers.filter(m =>
+      m.id !== member.id
+      && ((member.memberId && m.memberId === member.memberId) || m.name === member.name)
+    );
+  }, [hccMembers, member]);
+  const gapDosOptions = useMemo(() => {
+    const opts = [];
+    if (memberDosList.length > 0) {
+      opts.push({ type: 'header', value: 'hdr-current', label: `This row (Created ${member?.date || '—'})` });
+      for (const d of memberDosList) {
+        opts.push({ value: d.date, label: d.date, memberId: member?.id });
+      }
+    }
+    for (const sib of siblingRows) {
+      const sibDosList = (sib.dos_list || []).filter(d => d?.date);
+      if (sibDosList.length === 0) continue;
+      opts.push({ type: 'header', value: `hdr-${sib.id}`, label: `Created ${sib.date || '—'}` });
+      for (const d of sibDosList) {
+        opts.push({
+          value: `${sib.id}::${d.date}`,
+          label: d.date,
+          memberId: sib.id,
+          dosDate: d.date,
+        });
+      }
+    }
+    opts.push({ value: DOS_CUSTOM, label: '+ Custom Date' });
+    return opts;
+  }, [memberDosList, siblingRows, member?.id, member?.date]);
+  const gapProviderAll = useMemo(
+    () => [...new Set(Object.values(PROVIDER_POOL_BY_VT).flat())].map(n => ({ value: n, label: n })),
+    [],
+  );
+  const gapPosOptions = useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    for (const p of Object.values(POS_BY_VT)) {
+      if (seen.has(p.code)) continue;
+      seen.add(p.code);
+      out.push({ value: p.code, label: `${p.code} — ${p.desc}` });
+    }
+    return out;
+  }, []);
+  const gapVtOptions = useMemo(() => VISIT_TYPES.map(vt => ({ value: vt, label: vt })), []);
+  const gapDocTypeOptions = useMemo(() => DOC_TYPES.map(t => ({ value: t, label: t })), []);
+  const gapExcludeCodes = useMemo(
+    () => pendingGaps.map(c => c.pick?.code).filter(Boolean),
+    [pendingGaps],
+  );
+
+  const savePendingGap = useCallback((idx) => {
+    const c = pendingGaps[idx];
+    if (!c) return;
+    if (c.dosMode === 'existing') {
+      addHccGap({
+        code: c.pick.code,
+        desc: c.pick.title,
+        hcc: c.pick.hcc || '',
+        dos: c.dos,
+        provider: c.provider,
+        pos: c.pos,
+        docType: c.docType,
+        linkedDocIds: [...c.linkedDocIds],
+      });
+      showToast(`Added ${c.pick.code} — Manually Added`);
+    } else if (c.dosMode === 'sibling' && c.dosMemberId) {
+      addHccGapToRow({
+        sourceMemberId: member?.id,
+        targetMemberId: c.dosMemberId,
+        code: c.pick.code,
+        desc: c.pick.title,
+        hcc: c.pick.hcc || '',
+        dos: c.dos,
+        provider: c.provider,
+        pos: c.pos,
+        visitType: c.visitType,
+      });
+      showToast(`Added ${c.pick.code} to sibling row`);
+    } else {
+      const newId = addHccGapNewRow({
+        sourceMemberId: member?.id,
+        code: c.pick.code,
+        desc: c.pick.title,
+        hcc: c.pick.hcc || '',
+        dos: c.dos,
+        provider: c.provider,
+        pos: c.pos,
+        visitType: c.visitType,
+      });
+      if (newId) showToast(`Added ${c.pick.code} — new worklist row spawned`);
+    }
+    removePendingGap(idx);
+    // Once an ICD is saved, drop the toolbar back to its default state so
+    // the search field reverts to filtering the ICD list. Users who want to
+    // add another ICD click + ICD again.
+    setAddIcdMode(false);
+  }, [pendingGaps, member?.id, addHccGap, addHccGapNewRow, addHccGapToRow, showToast, removePendingGap]);
   // Comments count for the toolbar chip — mirrors what the Comments tab
   // renders (Supabase-hydrated rows when present, mock fallback otherwise).
   const dbComments = useAppStore(s => s.hccDiagComments);
@@ -830,14 +961,11 @@ export function DiagPanel() {
 
       <div className={styles.contentRow}>
       {/* Workspace (document preview etc.) sits on the LEFT of the ICD
-          listing (Paper 1UD1 / 5IX) — rendered first so it's the left pane. */}
-      {diagLeftPanel === 'newDiagGap' ? (
-        <NewDiagGapPanel
-          onClose={() => setDiagLeftPanel(null)}
-          member={member}
-          excludeCodes={[...icdsRaw, ...notLinkedRaw].map(i => i.code)}
-        />
-      ) : diagLeftPanel && (
+          listing (Paper 1UD1 / 5IX) — rendered first so it's the left pane.
+          The Add-ICD flow now lives entirely on the RHS (via addIcdMode +
+          pendingGaps in the toolbar/cardsList), so the LHS stays free for
+          the document workspace users need while coding. */}
+      {diagLeftPanel && (
         <LeftWorkspace
           active={diagLeftPanel}
           icdScope={diagActivityIcd ? (activeIcdCode ?? diagActivityIcd) : null}
@@ -862,40 +990,6 @@ export function DiagPanel() {
         rafUp={member.ru !== false}
         onCall={noop('Call')}
       />
-
-      {/* New-DOS-row alert: the last New Diagnosis Gap save either spawned a
-          fresh worklist row (DOS didn't exist for this patient) or routed
-          the ICD to a sibling row (DOS existed under a different Created
-          date). Clicking navigates to that row and dismisses the notice. */}
-      {newRowNotice && (
-        <div className={styles.newRowBadge} role="status">
-          <Icon name="solar:info-circle-linear" size={16} color="var(--primary-300)" />
-          <span className={styles.newRowBadgeText}>
-            {newRowNotice.kind === 'existing-row'
-              ? <>ICD added to sibling row (Created <strong>{newRowNotice.createdDate}</strong>) for DOS <strong>{newRowNotice.dos}</strong></>
-              : <>New worklist row created for DOS <strong>{newRowNotice.dos}</strong></>}
-          </span>
-          <button
-            type="button"
-            className={styles.newRowBadgeLink}
-            onClick={() => {
-              const { newMemberId } = newRowNotice;
-              dismissNewRowNotice(memberId);
-              openDiagPanel(newMemberId);
-            }}
-          >
-            View row
-            <Icon name="solar:arrow-right-linear" size={12} color="currentColor" />
-          </button>
-          <ActionButton
-            size="S"
-            tooltip="Dismiss"
-            onClick={() => dismissNewRowNotice(memberId)}
-          >
-            <CloseIcon size={14} color="var(--neutral-300)" />
-          </ActionButton>
-        </div>
-      )}
 
       {/* ── Meta row: Created date + overdue + stage pill | assignee + status ── */}
       <div className={styles.dosRow}>
@@ -957,106 +1051,129 @@ export function DiagPanel() {
       </div>
 
       {/* ── Toolbar: bulk | inline search | + ICD, filter, docs, comments,
-          history, more (Paper 1WXT). ── */}
+          history, more (Paper 1WXT). In addIcdMode the toolbar collapses
+          to a single dedicated search row — all sibling actions hide so
+          the user's focus stays on adding an ICD. Exit via the X inside
+          the search field. */}
       <div className={styles.toolbar}>
-        {/* Bulk select is an ICD coding action — Support can't code, so
-            hide the entry entirely (matches the row-level and Suspect-
-            card gating). */}
-        {hccUserRole !== 'Support' && (
-          <>
-            <ActionButton
-              icon={bulkMode ? 'custom:bulk-select-close' : 'custom:bulk-select'}
-              size="S"
-              tooltip={bulkMode ? 'Exit bulk select' : 'Bulk select'}
-              className={bulkMode ? styles.toolbarBtnActive : ''}
-              onClick={toggleBulkMode}
+        {addIcdMode ? (
+          <div className={styles.toolbarAddIcd}>
+            <IcdSearch
+              placeholder="Search & Add ICD"
+              autoFocus
+              excludeCodes={gapExcludeCodes}
+              onSelect={(icd) => setPendingGaps(prev => [makeCard(icd), ...prev])}
             />
-            <span className={styles.divider} />
-          </>
-        )}
-        <div className={styles.toolbarSearch}>
-          <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-300)" />
-          <input
-            type="text"
-            placeholder="Search by code or description"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          {searchQuery && (
             <button
               type="button"
-              className={styles.searchClear}
-              onClick={() => setSearchQuery('')}
-              aria-label="Clear search"
+              className={styles.toolbarAddIcdClose}
+              onClick={exitAddIcdMode}
+              aria-label="Close ICD search"
             >
-              <Icon name="solar:close-linear" size={13} color="var(--neutral-300)" />
+              <Icon name="solar:close-circle-linear" size={16} color="var(--neutral-300)" />
             </button>
-          )}
-        </div>
-
-        <div className={styles.toolbarIcons}>
-          {/* Adding a new manual ICD is a coding action — hide for Support. */}
-          {hccUserRole !== 'Support' && (
-            <>
-              <span className={styles.addIcdWrap}>
+          </div>
+        ) : (
+          <>
+            {/* Bulk select is an ICD coding action — Support can't code,
+                so hide the entry entirely (matches row-level gating). */}
+            {hccUserRole !== 'Support' && (
+              <>
+                <ActionButton
+                  icon={bulkMode ? 'custom:bulk-select-close' : 'custom:bulk-select'}
+                  size="S"
+                  tooltip={bulkMode ? 'Exit bulk select' : 'Bulk select'}
+                  className={bulkMode ? styles.toolbarBtnActive : ''}
+                  onClick={toggleBulkMode}
+                />
+                <span className={styles.divider} />
+              </>
+            )}
+            <div className={styles.toolbarSearch}>
+              <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-300)" />
+              <input
+                type="text"
+                placeholder="Search by code or description"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
                 <button
                   type="button"
-                  className={[
-                    styles.addIcdBtn,
-                    diagLeftPanel === 'newDiagGap' ? styles.addIcdBtnActive : '',
-                  ].filter(Boolean).join(' ')}
-                  onClick={() => setDiagLeftPanel(diagLeftPanel === 'newDiagGap' ? null : 'newDiagGap')}
+                  className={styles.searchClear}
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Clear search"
                 >
-                  <Icon name="solar:add-circle-linear" size={16} color="var(--primary-300)" />
-                  <span>ICD</span>
+                  <Icon name="solar:close-linear" size={13} color="var(--neutral-300)" />
                 </button>
-              </span>
+              )}
+            </div>
+            <div className={styles.toolbarIcons}>
+              {hccUserRole !== 'Support' && (
+                <>
+                  <span className={styles.addIcdWrap}>
+                    <button
+                      type="button"
+                      className={styles.addIcdBtn}
+                      onClick={() => setAddIcdMode(true)}
+                      aria-label="Add ICD"
+                    >
+                      <Icon
+                        name="solar:add-circle-linear"
+                        size={16}
+                        color="var(--primary-300)"
+                      />
+                      <span>ICD</span>
+                    </button>
+                  </span>
+                  <span className={styles.divider} />
+                </>
+              )}
+              <ActionButton
+                icon="custom:filter"
+                size="S"
+                tooltip="Filter"
+                notification={filterCount > 0}
+                count={filterCount > 0 ? String(filterCount) : undefined}
+                className={filterOpen ? styles.activeIcon : ''}
+                onClick={() => setFilterOpen(v => !v)}
+              />
               <span className={styles.divider} />
-            </>
-          )}
-          <ActionButton
-            icon="custom:filter"
-            size="S"
-            tooltip="Filter"
-            notification={filterCount > 0}
-            count={filterCount > 0 ? String(filterCount) : undefined}
-            className={filterOpen ? styles.activeIcon : ''}
-            onClick={() => setFilterOpen(v => !v)}
-          />
-          <span className={styles.divider} />
-          <ActionButton
-            icon="solar:file-text-linear"
-            size="S"
-            tooltip="Documents"
-            count={String(docsCount)}
-            className={diagLeftPanel === 'documents' && !diagActivityIcd ? styles.activeIcon : ''}
-            onClick={openDocsFromToolbar}
-          />
-          <span className={styles.divider} />
-          <ActionButton
-            icon="solar:chat-round-line-linear"
-            size="S"
-            tooltip="Comments"
-            count={String(commentsCount)}
-            className={diagLeftPanel === 'comments' && !diagActivityIcd ? styles.activeIcon : ''}
-            onClick={() => setDiagLeftPanel(diagLeftPanel === 'comments' && !diagActivityIcd ? null : 'comments')}
-          />
-          <span className={styles.divider} />
-          <ActionButton
-            icon="solar:history-linear"
-            size="S"
-            tooltip="Timeline"
-            className={diagLeftPanel === 'activity' && !diagActivityIcd ? styles.activeIcon : ''}
-            onClick={() => setDiagLeftPanel(diagLeftPanel === 'activity' && !diagActivityIcd ? null : 'activity')}
-          />
-          <span className={styles.divider} />
-          <ActionButton
-            icon="solar:menu-dots-linear"
-            size="S"
-            tooltip="More"
-            onClick={noop('More')}
-          />
-        </div>
+              <ActionButton
+                icon="solar:file-text-linear"
+                size="S"
+                tooltip="Documents"
+                count={String(docsCount)}
+                className={diagLeftPanel === 'documents' && !diagActivityIcd ? styles.activeIcon : ''}
+                onClick={openDocsFromToolbar}
+              />
+              <span className={styles.divider} />
+              <ActionButton
+                icon="solar:chat-round-line-linear"
+                size="S"
+                tooltip="Comments"
+                count={String(commentsCount)}
+                className={diagLeftPanel === 'comments' && !diagActivityIcd ? styles.activeIcon : ''}
+                onClick={() => setDiagLeftPanel(diagLeftPanel === 'comments' && !diagActivityIcd ? null : 'comments')}
+              />
+              <span className={styles.divider} />
+              <ActionButton
+                icon="solar:history-linear"
+                size="S"
+                tooltip="Timeline"
+                className={diagLeftPanel === 'activity' && !diagActivityIcd ? styles.activeIcon : ''}
+                onClick={() => setDiagLeftPanel(diagLeftPanel === 'activity' && !diagActivityIcd ? null : 'activity')}
+              />
+              <span className={styles.divider} />
+              <ActionButton
+                icon="solar:menu-dots-linear"
+                size="S"
+                tooltip="More"
+                onClick={noop('More')}
+              />
+            </div>
+          </>
+        )}
       </div>
 
       {filterOpen && (
@@ -1071,6 +1188,67 @@ export function DiagPanel() {
 
       {/* ── Body: ICD-first cards + HCC suspect groups + collapsed history ── */}
       <div className={styles.cardsList}>
+        {/* New-DOS-row alert: the last save either spawned a fresh worklist
+            row (DOS didn't exist for this patient) or routed the ICD to a
+            sibling row. Sits directly below the toolbar (at the same
+            vertical level as pending gap cards) so it's next to the flow
+            that created it. Clicking navigates to the new row. */}
+        {newRowNotice && (
+          <div className={styles.newRowBadge} role="status">
+            <Icon name="solar:info-circle-linear" size={16} color="var(--primary-300)" />
+            <span className={styles.newRowBadgeText}>
+              {newRowNotice.kind === 'existing-row'
+                ? <>ICD added to sibling row (Created <strong>{newRowNotice.createdDate}</strong>) for DOS <strong>{newRowNotice.dos}</strong></>
+                : <>New worklist row created for DOS <strong>{newRowNotice.dos}</strong></>}
+            </span>
+            <button
+              type="button"
+              className={styles.newRowBadgeLink}
+              onClick={() => {
+                const { newMemberId } = newRowNotice;
+                dismissNewRowNotice(memberId);
+                openDiagPanel(newMemberId);
+              }}
+            >
+              View row
+              <Icon name="solar:arrow-right-linear" size={12} color="currentColor" />
+            </button>
+            <ActionButton
+              size="S"
+              tooltip="Dismiss"
+              onClick={() => dismissNewRowNotice(memberId)}
+            >
+              <CloseIcon size={14} color="var(--neutral-300)" />
+            </ActionButton>
+          </div>
+        )}
+
+        {/* Pending gap cards from the toolbar's + ICD flow. Rendered above
+            the associated-ICDs list so the user completes them in place
+            without leaving the drawer or losing sight of the linked docs
+            on the LHS. */}
+        {pendingGaps.length > 0 && (
+          <div className={styles.pendingGaps}>
+            {pendingGaps.map((card, idx) => (
+              <IcdCard
+                key={`pending-${card.pick.code}-${idx}`}
+                card={card}
+                member={member}
+                memberDosList={memberDosList}
+                memberDocs={chartsList}
+                dosOptions={gapDosOptions}
+                posOptions={gapPosOptions}
+                vtOptions={gapVtOptions}
+                docTypeOptions={gapDocTypeOptions}
+                providerAll={gapProviderAll}
+                onUpdate={(patch) => updatePendingGap(idx, patch)}
+                onRemove={() => removePendingGap(idx)}
+                onSave={() => savePendingGap(idx)}
+              />
+            ))}
+          </div>
+        )}
+
         {/* Section header — the DOS badge expands an inline per-DOS panel
             with toggles (Paper 1ZV3). Toggling a DOS off hides its rows. */}
         <div className={styles.assocHeader}>
