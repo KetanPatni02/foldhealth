@@ -147,12 +147,30 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     docs.forEach(d => { const a = actionForStatus(d); if (a) m[d.id] = a; });
     return m;
   });
+  // Flag: has the coder touched any doc's status in this drawer session?
+  // We use it to know whether to sync the Support member status on close;
+  // syncing mid-review would flip Support to Completed and force this
+  // row out of the "New / In Progress" filter, unmounting the drawer
+  // before the user is done reviewing.
+  const pendingSyncRef = useRef(false);
+
+  // Fire once when the drawer is dismissed (Escape, overlay click, close
+  // button). Flushes the Support-status sync using the latest docActions
+  // + docs so the record only moves out of the reviewer's filter AFTER
+  // they've explicitly closed the review session.
+  const handleClose = () => {
+    if (pendingSyncRef.current && !manualStatus) {
+      syncSupportStatus(deriveStatus(docs, docActions));
+      pendingSyncRef.current = false;
+    }
+    onClose?.();
+  };
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
+    const onKey = (e) => { if (e.key === 'Escape') handleClose(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [handleClose]);
 
   // "Assign Support Team" dropdown anchored on the team badge.
   const dmRef = useRef(null);
@@ -364,11 +382,16 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
       ? { ...docActions, [id]: action }
       : (() => { const n = { ...docActions }; delete n[id]; return n; })();
     setDocActions(next);
+    // Persist the per-doc mark immediately so a crash doesn't lose it —
+    // this write is scoped to hcc_chart_status and does NOT flip the
+    // record's Support status by itself.
     setChartDocStatus(member.id, id, action === 'pass' ? 'Passed' : action === 'fail' ? 'Failed' : 'Pending');
     if (action) ensureSupportAssignee();
-    // The header can be manually overridden; when it isn't, the document set
-    // drives the Support status.
-    if (!manualStatus) syncSupportStatus(deriveStatus(docs, next));
+    // Defer the Support-member status sync to drawer close — flipping
+    // it here would move the record out of the "New / In Progress"
+    // filter and unmount the row (and this drawer with it) before the
+    // user finishes reviewing.
+    pendingSyncRef.current = true;
   };
   const passDoc = (id) => { applyDocAction(id, 'pass'); showToast('Support Task is Completed'); };
   const failDoc = (id) => {
@@ -554,12 +577,12 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
 
   return createPortal(
     <>
-      <div className={styles.overlay} onClick={onClose} />
+      <div className={styles.overlay} onClick={handleClose} />
       <div className={styles.panel} role="dialog" aria-label="Document Review">
         {/* Title bar */}
         <div className={styles.titleBar}>
           <span className={styles.title}>Document Review</span>
-          <button type="button" className={styles.iconBtn} onClick={onClose} aria-label="Close">
+          <button type="button" className={styles.iconBtn} onClick={handleClose} aria-label="Close">
             <Icon name="solar:close-square-linear" size={20} color="var(--neutral-400)" />
           </button>
         </div>
