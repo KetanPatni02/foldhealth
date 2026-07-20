@@ -3212,8 +3212,19 @@ export const useAppStore = create((set, get) => ({
   // filter option lists never render empty on cold load.
   platformUsers: [],           // [{ id, name, initials }]
   platformUsersDidFetch: false,
+  // In-flight promise cache. Many components (RoleAssigneePicker,
+  // CommentComposer, mention menus, DiagPanel, ChartDetailDrawer) each
+  // fire fetchPlatformUsers() from their own useEffect. Without this
+  // cache, all of those callers hit Supabase in parallel — the network
+  // tab shows 30+ /profiles round-trips totaling 7s+ on first load.
+  // First caller kicks off the request; every subsequent caller during
+  // the flight awaits the same promise.
+  _platformUsersPromise: null,
   fetchPlatformUsers: async () => {
-    if (get().platformUsersDidFetch) return;
+    const s0 = get();
+    if (s0.platformUsersDidFetch) return;
+    if (s0._platformUsersPromise) return s0._platformUsersPromise;
+    const promise = (async () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -3244,7 +3255,12 @@ export const useAppStore = create((set, get) => ({
     } catch (err) {
       console.warn('fetchPlatformUsers error — pickers will fall back to systemUsers mock:', err?.message || err);
       set({ platformUsersDidFetch: true });
+    } finally {
+      set({ _platformUsersPromise: null });
     }
+    })();
+    set({ _platformUsersPromise: promise });
+    return promise;
   },
 
   // Per-member RAF-Impact breakdown (worklist RAF tooltip)
