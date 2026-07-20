@@ -308,8 +308,8 @@ export function DiagPanel() {
 
   // Fetch diagnosis gaps from Supabase when member changes
   useEffect(() => {
-    if (member?.name) fetchHccDiagnosisGaps(member.name);
-  }, [member?.name, fetchHccDiagnosisGaps]);
+    if (member?.name) fetchHccDiagnosisGaps(member.id, member.name);
+  }, [member?.id, member?.name, fetchHccDiagnosisGaps]);
 
   // Phase 2f — fall back to the local ICD mock when Supabase has no rows for
   // this member. Without the fallback, the panel would render empty for any

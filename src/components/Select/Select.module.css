@@ -137,6 +137,26 @@
   outline: none;
 }
 
+/* Non-interactive section header — pinned inside the menu to label a
+   group of options that follow it. Callers pass options of shape
+   `{ type: 'header', label, value }` to render this variant. */
+.groupHeader {
+  padding: 8px 10px 4px;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-top: 0.5px solid var(--neutral-100);
+  cursor: default;
+  user-select: none;
+}
+.groupHeader:first-child {
+  margin-top: 0;
+  border-top: none;
+}
+
 .item:hover,
 .item:focus { background: var(--primary-50); color: var(--primary-400, #5020A0); }
 

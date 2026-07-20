@@ -5,27 +5,45 @@ import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Button } from '../../../components/Button/Button';
 import { Select } from '../../../components/Select/Select';
+import { DatePicker } from '../../../components/DatePicker/DatePicker';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { IcdSearch } from '../../../components/IcdSearch/IcdSearch';
 import { POS_BY_VT, PROVIDER_POOL_BY_VT, VISIT_TYPES } from '../reference/visitTypes';
 import { getChartDocs, DOC_TYPES } from '../data/chartDocs';
 import styles from './NewDiagGapPanel.module.css';
 
-// Sentinel value in the DOS dropdown that triggers a native date picker.
+// Sentinel value in the DOS dropdown that triggers the calendar picker.
 const DOS_CUSTOM = '__custom__';
 
+// Today in yyyy-mm-dd for the date-input `max` attribute — blocks future
+// dates in the calendar UI.
+const todayIso = () => {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+};
+
 // Per-card state factory — every new ICD pick gets its own copy.
+// dosMode:
+//   'existing' — DOS is in the current row's dos_list
+//   'sibling'  — DOS is in another same-patient row's dos_list; dosMemberId
+//                identifies which row so Save can route the ICD there
+//   'custom'   — brand-new DOS not on any row for this patient; Save spawns
+//                a fresh worklist row
 const makeCard = (icd) => ({
   pick: icd,
   dos: '',
-  dosMode: 'existing',   // 'existing' | 'custom'
+  dosValue: '',          // exact Select value (may be `${memberId}::${date}` for sibling rows)
+  dosMemberId: null,     // row that owns this DOS (null → new/spawned)
+  dosMode: 'existing',
   provider: '',
   pos: '',
   visitType: '',
   docType: '',
   file: null,
   linkedDocIds: new Set(),
-  showUpload: false,     // in existing-DOS mode, render the dropzone below the linked list
+  showUpload: false,
   collapsed: false,
 });
 
@@ -43,6 +61,9 @@ const makeCard = (icd) => ({
  */
 export function NewDiagGapPanel({ onClose, member, excludeCodes = [] }) {
   const addHccGap = useAppStore(s => s.addHccGap);
+  const addHccGapNewRow = useAppStore(s => s.addHccGapNewRow);
+  const addHccGapToRow = useAppStore(s => s.addHccGapToRow);
+  const hccMembers = useAppStore(s => s.hccMembers);
   const showToast = useAppStore(s => s.showToast);
   const addedCharts = useAppStore(s => s.hccAddedCharts?.[member?.id]);
 
@@ -53,15 +74,54 @@ export function NewDiagGapPanel({ onClose, member, excludeCodes = [] }) {
     [member?.dos_list],
   );
 
+  // Sibling rows for the same patient (matched by memberId, then name).
+  // Their DOSs appear under their own Created-date group in the dropdown so
+  // the user can route an ICD to an existing row instead of spawning a
+  // duplicate Created-date entry for a DOS that's already recorded.
+  const siblingRows = useMemo(() => {
+    if (!member) return [];
+    const key = member.memberId || member.name;
+    if (!key) return [];
+    return hccMembers.filter(m =>
+      m.id !== member.id
+      && ((member.memberId && m.memberId === member.memberId) || m.name === member.name)
+    );
+  }, [hccMembers, member]);
+
   const memberDocs = useMemo(
     () => (member ? getChartDocs(member, addedCharts || []) : []),
     [member, addedCharts],
   );
 
-  const dosOptions = useMemo(() => [
-    ...memberDosList.map(d => ({ value: d.date, label: d.date })),
-    { value: DOS_CUSTOM, label: '+ Custom Date' },
-  ], [memberDosList]);
+  // Options layout: current row's DOSs → each sibling row's DOSs under a
+  // "Created MM/DD/YYYY" header → "+ Custom Date". Each real DOS carries
+  // `memberId` so handleDosSelect can route the ICD to the right row.
+  const dosOptions = useMemo(() => {
+    const opts = [];
+    if (memberDosList.length > 0) {
+      opts.push({ type: 'header', value: `hdr-current`, label: `This row (Created ${member?.date || '—'})` });
+      for (const d of memberDosList) {
+        opts.push({ value: d.date, label: d.date, memberId: member?.id });
+      }
+    }
+    for (const sib of siblingRows) {
+      const sibDosList = (sib.dos_list || []).filter(d => d?.date);
+      if (sibDosList.length === 0) continue;
+      opts.push({ type: 'header', value: `hdr-${sib.id}`, label: `Created ${sib.date || '—'}` });
+      for (const d of sibDosList) {
+        opts.push({
+          // Prefix ensures cross-row DOSs with the same date as ours don't
+          // collide with the current row's option keys.
+          value: `${sib.id}::${d.date}`,
+          label: d.date,
+          memberId: sib.id,
+          dosDate: d.date,
+        });
+      }
+    }
+    opts.push({ value: DOS_CUSTOM, label: '+ Custom Date' });
+    return opts;
+  }, [memberDosList, siblingRows, member?.id, member?.date]);
 
   const providerAll = useMemo(
     () => [...new Set(Object.values(PROVIDER_POOL_BY_VT).flat())].map(n => ({ value: n, label: n })),
@@ -96,7 +156,7 @@ export function NewDiagGapPanel({ onClose, member, excludeCodes = [] }) {
   }, []);
 
   const canSaveCard = (c) => !!c.pick && !!c.dos && !!c.provider && !!c.pos && (
-    isDosExisting(c, memberDosList)
+    isDosOnAnyRow(c, memberDosList)
       ? !!c.docType && (c.linkedDocIds.size > 0 || !!c.file)
       : !!c.visitType
   );
@@ -105,21 +165,54 @@ export function NewDiagGapPanel({ onClose, member, excludeCodes = [] }) {
 
   const handleSave = () => {
     if (!canSave) return;
+    let newRowCount = 0;
+    let siblingRowCount = 0;
     for (const c of cards) {
-      const existing = isDosExisting(c, memberDosList);
-      addHccGap({
-        code: c.pick.code,
-        desc: c.pick.title,
-        hcc: c.pick.hcc || '',
-        dos: c.dos,
-        provider: c.provider,
-        pos: c.pos,
-        ...(existing
-          ? { docType: c.docType, linkedDocIds: [...c.linkedDocIds] }
-          : { visitType: c.visitType }),
-      });
+      if (c.dosMode === 'existing') {
+        addHccGap({
+          code: c.pick.code,
+          desc: c.pick.title,
+          hcc: c.pick.hcc || '',
+          dos: c.dos,
+          provider: c.provider,
+          pos: c.pos,
+          docType: c.docType,
+          linkedDocIds: [...c.linkedDocIds],
+        });
+      } else if (c.dosMode === 'sibling' && c.dosMemberId) {
+        // DOS lives on a sibling Created-date row → attach the ICD to that
+        // row instead of spawning a duplicate row for the same DOS.
+        addHccGapToRow({
+          sourceMemberId: member?.id,
+          targetMemberId: c.dosMemberId,
+          code: c.pick.code,
+          desc: c.pick.title,
+          hcc: c.pick.hcc || '',
+          dos: c.dos,
+          provider: c.provider,
+          pos: c.pos,
+          visitType: c.visitType,
+        });
+        siblingRowCount += 1;
+      } else {
+        // Custom DOS → spawn a new worklist row for this patient.
+        const newId = addHccGapNewRow({
+          sourceMemberId: member?.id,
+          code: c.pick.code,
+          desc: c.pick.title,
+          hcc: c.pick.hcc || '',
+          dos: c.dos,
+          provider: c.provider,
+          pos: c.pos,
+          visitType: c.visitType,
+        });
+        if (newId) newRowCount += 1;
+      }
     }
-    showToast(`Added ${cards.length} ICD${cards.length === 1 ? '' : 's'} — Manually Added`);
+    const parts = [`Added ${cards.length} ICD${cards.length === 1 ? '' : 's'} — Manually Added`];
+    if (newRowCount > 0) parts.push(`Spawned ${newRowCount} new worklist row${newRowCount === 1 ? '' : 's'}`);
+    if (siblingRowCount > 0) parts.push(`Routed ${siblingRowCount} ICD${siblingRowCount === 1 ? '' : 's'} to sibling row${siblingRowCount === 1 ? '' : 's'}`);
+    showToast(parts.join(' · '));
     onClose?.();
   };
 
@@ -172,9 +265,16 @@ export function NewDiagGapPanel({ onClose, member, excludeCodes = [] }) {
   );
 }
 
-function isDosExisting(card, memberDosList) {
+function isDosOnCurrentRow(card, memberDosList) {
   return card.dosMode === 'existing' && !!card.dos
     && memberDosList.some(d => d.date === card.dos);
+}
+// True whenever the picked DOS resolves to an existing dos_list row (this
+// patient's current row OR one of its sibling Created-date rows) — used to
+// decide whether to show the Document-Type + Evidence-list mode.
+function isDosOnAnyRow(card, memberDosList) {
+  return (card.dosMode === 'existing' || card.dosMode === 'sibling') && !!card.dos
+    && (memberDosList.some(d => d.date === card.dos) || card.dosMode === 'sibling');
 }
 
 function IcdCard({
@@ -199,40 +299,87 @@ function IcdCard({
     return [...new Set(pool)].map(n => ({ value: n, label: n }));
   }, [card.visitType]);
 
-  const dosIsExisting = isDosExisting(card, memberDosList);
+  // "Existing on any row" — drives which of Document Type / Visit Type +
+  // Evidence-list / dropzone the field grid renders.
+  const dosIsExisting = isDosOnAnyRow(card, memberDosList);
 
-  const handleDosSelect = (nextDos) => {
-    if (nextDos === DOS_CUSTOM) {
+  // Include the current custom-picked date as a real option so the Select
+  // renders it in the "selected" color (neutral-400) instead of leaking the
+  // date through `placeholder` (neutral-200). Existing / sibling DOS values
+  // are already in the base options list.
+  const effectiveDosOptions = useMemo(() => {
+    if (card.dosMode === 'custom' && card.dos) {
+      const customEntry = { value: card.dos, label: card.dos };
+      const rest = dosOptions.filter(o => o.value !== DOS_CUSTOM);
+      const changeAction = dosOptions.find(o => o.value === DOS_CUSTOM);
+      return [customEntry, ...rest, changeAction].filter(Boolean);
+    }
+    return dosOptions;
+  }, [card.dosMode, card.dos, dosOptions]);
+
+  const handleDosSelect = (nextValue) => {
+    if (nextValue === DOS_CUSTOM) {
       // Fire the native picker synchronously so it opens as part of the
       // user-gesture click (some browsers require this).
       customDateRef.current?.showPicker?.();
       customDateRef.current?.click?.();
       return;
     }
-    // Existing DOS chosen → auto-populate the other three fields from that
-    // DOS's record. Reverse-lookup POS → Visit Type so the VT dropdown reads
-    // the right label.
-    const match = memberDosList.find(d => d.date === nextDos);
-    const vt = match?.pos ? Object.entries(POS_BY_VT).find(([, p]) => p.code === match.pos)?.[0] : '';
-    onUpdate({
-      dos: nextDos,
-      dosMode: 'existing',
-      provider: match?.provider || '',
-      pos: match?.pos || '',
-      visitType: vt || '',
-      docType: '',
-      linkedDocIds: new Set(),
-      showUpload: false,
-    });
+    // Find which option the user actually clicked — need memberId + dosDate
+    // to route the ICD to the right row on Save.
+    const opt = dosOptions.find(o => o.value === nextValue && o.type !== 'header');
+    // Selecting the injected custom-date option (present when dosMode is
+    // custom) is a no-op — it exists purely for Select's rendering.
+    if (!opt) return;
+    const dosDate = opt.dosDate || opt.value;
+    if (opt.memberId === member?.id) {
+      // DOS on the current row → auto-populate from this row's dos_list.
+      const match = memberDosList.find(d => d.date === dosDate);
+      if (!match) return;
+      const vt = match.pos ? Object.entries(POS_BY_VT).find(([, p]) => p.code === match.pos)?.[0] : '';
+      onUpdate({
+        dos: dosDate,
+        dosValue: nextValue,
+        dosMemberId: member?.id,
+        dosMode: 'existing',
+        provider: match.provider || '',
+        pos: match.pos || '',
+        visitType: vt || '',
+        docType: '',
+        linkedDocIds: new Set(),
+        showUpload: false,
+      });
+    } else if (opt.memberId) {
+      // DOS on a sibling Created-date row → the ICD will attach to THAT
+      // row on Save. Auto-populate from the sibling's dos_list entry so the
+      // Provider/POS/VT fields agree with the target row.
+      const s = useAppStore.getState();
+      const sib = s.hccMembers.find(m => m.id === opt.memberId);
+      const sibDos = sib?.dos_list?.find(d => d.date === dosDate);
+      const vt = sibDos?.pos ? Object.entries(POS_BY_VT).find(([, p]) => p.code === sibDos.pos)?.[0] : '';
+      onUpdate({
+        dos: dosDate,
+        dosValue: nextValue,
+        dosMemberId: opt.memberId,
+        dosMode: 'sibling',
+        provider: sibDos?.provider || '',
+        pos: sibDos?.pos || '',
+        visitType: vt || '',
+        docType: '',
+        linkedDocIds: new Set(),
+        showUpload: false,
+      });
+    }
   };
 
-  const handleCustomDate = (e) => {
-    const raw = e.target.value; // yyyy-mm-dd
-    if (!raw) return;
-    const [y, m, d] = raw.split('-');
+  const handleCustomDate = (iso) => {
+    if (!iso) return;
+    const [y, m, d] = iso.split('-');
     const formatted = `${m}/${d}/${y}`;
     onUpdate({
       dos: formatted,
+      dosValue: formatted,
+      dosMemberId: null,
       dosMode: 'custom',
       provider: '', pos: '', visitType: '', docType: '',
       linkedDocIds: new Set(), showUpload: false,
@@ -317,16 +464,16 @@ function IcdCard({
                 DOS <span className={styles.required}>•</span>
               </label>
               <Select
-                options={dosOptions}
-                value={card.dos && !dosIsExisting ? '' : card.dos}
+                options={effectiveDosOptions}
+                value={card.dosValue || card.dos || ''}
                 onChange={handleDosSelect}
-                placeholder={card.dos && card.dosMode === 'custom' ? card.dos : 'Select Date of Service'}
+                placeholder="Select Date of Service"
               />
-              <input
+              <DatePicker
                 ref={customDateRef}
-                type="date"
-                className={styles.hiddenDate}
-                onChange={handleCustomDate}
+                hidden
+                max={todayIso()}
+                onSelect={handleCustomDate}
               />
             </div>
             <div className={styles.field}>

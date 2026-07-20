@@ -161,21 +161,6 @@
 }
 .chevronBtn:hover { background: var(--neutral-50); }
 
-/* Hidden native date input driven by the "+ Custom Date" affordance in the
-   DOS dropdown. Kept in the DOM (never display:none) so showPicker() works. */
-.hiddenDate {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  border: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-
 /* ── Evidence Documentation (existing-DOS link mode) ─────────────── */
 .evidenceWrap {
   padding: 0 12px 12px 12px;

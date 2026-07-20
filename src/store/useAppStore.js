@@ -107,6 +107,55 @@ function persistHccGapDelete(code, memberName) {
   });
 }
 
+// Insert a spawned hcc_members row. Called from addHccGapNewRow when a
+// New Diagnosis Gap picks a DOS that doesn't exist for the patient — the
+// app materializes the encounter as its own worklist row so the DOS can
+// carry its own workflow state, and this makes the row survive reload.
+// Fire-and-forget; failures log a warning without rolling back the state
+// change (the row still shows in-session).
+function persistHccMemberInsert(m) {
+  if (!m?.id) return;
+  const dbRow = {
+    id: m.id,
+    member_id: m.memberId || null,
+    name: m.name,
+    initials: m.in,
+    gender: m.g,
+    age: m.age,
+    current_visit: m.cv,
+    total_visits: m.tv,
+    dos_list: m.dos_list || [],
+    visit_type: m.visitType || m.vt,
+    rendering_provider: m.rp,
+    open_icds: m.open,
+    doc_status: m.docStatus || [],
+    chart_count: m.ch,
+    create_date: m.date,
+    due_label: m.due,
+    due_color: m.dueCol,
+    support_name: m.sup, support_status: m.supS,
+    coder_name: m.cdr, coder_status: m.cdrS,
+    reviewer1_name: m.r1, reviewer1_status: m.r1s,
+    reviewer2_name: m.r2, reviewer2_status: m.r2s,
+    raf_score: m.raf,
+    raf_impact: m.ri,
+    risk_utilization: m.ru,
+    ipa: m.ipa,
+    health_plan: m.hp,
+    pcp: m.pcp,
+    decile: m.dec,
+    cohort: m.coh,
+    risk_level: m.rl,
+    advillness: m.ad,
+    frailty: m.fr,
+    language: m.language || 'en',
+    is_spawned: true,
+  };
+  supabase.from('hcc_members').insert(dbRow).then(({ error }) => {
+    if (error) console.warn(`persistHccMemberInsert(${m.id}) failed:`, error.message);
+  });
+}
+
 // Persist a member's dos_list / docStatus / chart_count / other non-role
 // mutations to Supabase. hccCreateOrMergeFromEncounter appends new DOS
 // rows and stamps other member-level metadata; without this write those
@@ -2781,11 +2830,16 @@ export const useAppStore = create((set, get) => ({
       return _fmtMDY(d);
     };
     const normalizeWorklistRow = (row0) => {
+      // Spawned rows carry real user-entered data (Created date = when the
+      // user saved, dos_list = exactly what they picked). Skip the demo-
+      // stabilization (clamp created date, synth extra DOS) that only
+      // makes sense for seeded mock patients.
+      const isSpawned = row0?.is_spawned === true || row0?.isSpawned === true;
       const row = {
         ...row0,
         // Every record's Created Date is normalized to the SLA-relevant range
         // (max ~3 weeks overdue); the year is always the current one (2026).
-        date: _clampCreatedDate(row0),
+        date: isSpawned ? (row0.date || _clampCreatedDate(row0)) : _clampCreatedDate(row0),
         dos: _toPastDate(row0.dos),
         dos_list: Array.isArray(row0.dos_list)
           ? row0.dos_list.map(d => (d && d.date) ? { ...d, date: _toPastDate(d.date) } : d)
@@ -2827,9 +2881,9 @@ export const useAppStore = create((set, get) => ({
       ];
       // Every record must have ≥2 DOS entries — if we only have one, synthesize
       // a second earlier past encounter. Deterministic per record so the mix
-      // stays stable across reloads.
+      // stays stable across reloads. Spawned rows keep their real dos_list.
       const inputDosList = Array.isArray(row.dos_list) ? row.dos_list : [];
-      const paddedDosList = (inputDosList.length >= 2)
+      const paddedDosList = (isSpawned || inputDosList.length >= 2)
         ? inputDosList
         : [
             ...inputDosList,
@@ -3053,6 +3107,10 @@ export const useAppStore = create((set, get) => ({
         language: row.language || 'en',
         pos: pos.code,
         posDesc: pos.desc,
+        // Persisted flag for rows spawned client-side via addHccGapNewRow.
+        // The DiagPanel uses it to skip the name-keyed mock ICD fallback
+        // (which would leak the source patient's ICDs into the new row).
+        isSpawned: row.is_spawned === true,
       };
     });
     set({ hccMembers: await finalize(members), hccMembersLoading: false });
@@ -3061,16 +3119,25 @@ export const useAppStore = create((set, get) => ({
   // HCC Diagnosis Gaps (fetched per member from Supabase)
   hccDiagnosisGaps: [],
   hccDiagnosisGapsLoading: false,
-  fetchHccDiagnosisGaps: async (memberName) => {
+  fetchHccDiagnosisGaps: async (memberId, memberName) => {
     // Clear the previous member's rows immediately — otherwise the panel
     // flashes (and can act on) stale cross-member data while the new
     // member's fetch is in flight.
     set({ hccDiagnosisGaps: [], hccDiagnosisGapsLoading: true });
-    const { data, error } = await supabase
+    // Scope by member_id (per-row identity) so sibling rows of the same
+    // patient don't share gaps. Migration backfilled member_id for every
+    // pre-existing gap, so the id filter is authoritative; the name path
+    // is only for callers that pass an id-less lookup.
+    let q = supabase
       .from('hcc_diagnosis_gaps')
       .select('*')
-      .eq('member_name', memberName)
       .order('created_at', { ascending: true });
+    if (memberId) {
+      q = q.eq('member_id', memberId);
+    } else if (memberName) {
+      q = q.eq('member_name', memberName);
+    }
+    const { data, error } = await q;
     if (error) {
       console.error('fetchHccDiagnosisGaps error:', error.message);
       set({ hccDiagnosisGaps: [], hccDiagnosisGapsLoading: false });
@@ -3102,6 +3169,7 @@ export const useAppStore = create((set, get) => ({
         by: hccNormalizeReviewerLabel(row.last_activity_by),
         dismissReason: row.dismiss_reason,
         isLinked: kind !== 'Suspect' && kind !== 'Recapture' ? true : row.is_linked,
+        dos: row.dos || undefined,
       };
     });
     set({ hccDiagnosisGaps: gaps, hccDiagnosisGapsLoading: false });
@@ -3589,7 +3657,9 @@ export const useAppStore = create((set, get) => ({
   addHccGap: ({ code, desc, hcc }) => {
     const s0 = get();
     if (s0.hccDiagnosisGaps.some(g => g.code === code)) return;
-    const memberName = s0.hccMembers.find(m => m.id === s0.diagPanelMemberId)?.name;
+    const currentMember = s0.hccMembers.find(m => m.id === s0.diagPanelMemberId);
+    const memberName = currentMember?.name;
+    const memberId = currentMember?.id;
     const id = `manual-${code}`;
     set(s => ({
       hccDiagnosisGaps: [
@@ -3603,13 +3673,13 @@ export const useAppStore = create((set, get) => ({
       ],
       hccJustAddedCode: code,
     }));
-    // Persist the new gap into Supabase so it survives reload. member_name
-    // is the store's scoping key; skip the insert entirely when we don't
-    // have a member context (defensive — the drawer that fires this action
-    // is always opened against a specific member).
+    // Persist the new gap into Supabase so it survives reload. Scope by
+    // member_id AND member_name — member_id is the per-row identity so
+    // sibling rows for the same patient don't share gaps; member_name is
+    // kept for legacy fallback in fetchHccDiagnosisGaps.
     if (memberName) {
       persistHccGapInsert({
-        id, member_name: memberName, code,
+        id, member_id: memberId, member_name: memberName, code,
         description: desc, hcc_category: hcc || '',
         status: 'New', type: 'Manual', kind: 'Manual',
         docs_count: 0, comments_count: 0, notes_count: 0, raf_weight: 0,
@@ -3628,6 +3698,152 @@ export const useAppStore = create((set, get) => ({
       headline: `Manually added ICD ${code}`,
       from: '—', to: 'Open',
     });
+  },
+
+  // ─── New-row-from-new-DOS notice ──────────────────────────────────────
+  // When a New Diagnosis Gap is saved with a DOS that doesn't exist on the
+  // current member's dos_list, the store spawns a duplicate hccMembers row
+  // (same patient, new encounter). The source drawer surfaces an alert
+  // badge pointing at the new row; this slice carries the payload.
+  //   sourceMemberId → { newMemberId, dos, code, kind: 'new-row' | 'existing-row' }
+  hccNewRowNotice: {},
+  dismissNewRowNotice: (sourceMemberId) => set(s => {
+    if (!s.hccNewRowNotice[sourceMemberId]) return s;
+    const next = { ...s.hccNewRowNotice };
+    delete next[sourceMemberId];
+    return { hccNewRowNotice: next };
+  }),
+
+  // Gaps attached to spawned rows live here (never in hccDiagnosisGaps).
+  // The reason: hccDiagnosisGaps is refetched from Supabase whenever a
+  // drawer opens (scoped by member_name), and that fetch would overwrite
+  // any client-side insert. Keeping spawned gaps in their own slice lets
+  // them survive drawer navigation and prevents them from leaking into
+  // the source row (which shares member_name with the spawned row).
+  //   memberId → gap[]
+  hccSpawnedGaps: {},
+
+  // Adds an ICD gap AND spawns a new hccMembers row for a new DOS on the
+  // same patient. The new row lands at the top of the worklist and carries
+  // its own workflow state (all roles → Assign). Client-side only for this
+  // iteration; the hcc_members insert is left as a TODO (see notes at
+  // handleSave in NewDiagGapPanel).
+  addHccGapNewRow: ({ sourceMemberId, code, desc, hcc, dos, provider, pos, visitType }) => {
+    const s0 = get();
+    const source = s0.hccMembers.find(m => m.id === sourceMemberId);
+    if (!source) return null;
+    // Duplicate the row with a fresh id + fresh workflow state. Keep the
+    // patient-identity fields (name/memberId/initials/etc.) so shared ICD
+    // mock data + team routing keep working.
+    const newId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : `hcc-new-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+    const today = new Date();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const todayMdy = `${mm}/${dd}/${today.getFullYear()}`;
+    const posDesc = source.dos_list?.find(d => d.pos === pos)?.posDesc
+      || source.posDesc
+      || '';
+    const newRow = {
+      ...source,
+      id: newId,
+      date: todayMdy,
+      createdAt: today.toISOString(),
+      dos: dos,
+      dos_list: [{
+        date: dos,
+        label: 'Manually Added',
+        labelColor: 'var(--neutral-300)',
+        vt: visitType || source.vt,
+        provider: provider || source.rp,
+        pos: pos || source.pos,
+        posDesc,
+        open: 1,
+      }],
+      vt: visitType || source.vt,
+      visitType: visitType || source.visitType,
+      rp: provider || source.rp,
+      pos: pos || source.pos,
+      posDesc,
+      // Reset workflow — a brand-new encounter always starts fresh.
+      supS: 'Assign', cdrS: 'Assign', r1s: 'Assign', r2s: 'Assign',
+      open: 1,
+      // Marker so the DiagPanel doesn't fall back to the name-keyed mock
+      // ICD list (which would leak the source row's ICDs). Spawned rows
+      // read from hccSpawnedGaps[id] exclusively.
+      isSpawned: true,
+    };
+    const spawnedGap = {
+      id: `manual-${code}-${newId}`,
+      code, desc, hcc: hcc || '', status: 'New',
+      kind: 'Manual', type: 'Manual',
+      docs: 0, cmts: 0, notes: 0, raf: 0,
+      last: null, by: null, dismissReason: null, isLinked: true,
+      dos,
+    };
+    set(s => ({
+      hccMembers: [newRow, ...s.hccMembers],
+      hccSpawnedGaps: {
+        ...s.hccSpawnedGaps,
+        [newId]: [spawnedGap],
+      },
+      hccMembersTotal: (s.hccMembersTotal || s.hccMembers.length) + 1,
+      hccNewRowNotice: {
+        ...s.hccNewRowNotice,
+        [sourceMemberId]: { newMemberId: newId, dos, code, kind: 'new-row' },
+      },
+    }));
+    // Persist both the new row and its ICD so the whole thing survives a
+    // reload. Fire-and-forget — in-memory state is authoritative for the
+    // current session; the DB catches up asynchronously.
+    persistHccMemberInsert(newRow);
+    persistHccGapInsert({
+      id: spawnedGap.id, member_id: newId, member_name: newRow.name,
+      code, description: desc, hcc_category: hcc || '',
+      status: 'New', type: 'Manual', kind: 'Manual',
+      docs_count: 0, comments_count: 0, notes_count: 0, raf_weight: 0,
+      is_linked: true, dos,
+    });
+    return newId;
+  },
+
+  // Add a gap to an EXISTING sibling row (same patient, different Created
+  // date) — used when the user picks a DOS from another created-date group
+  // in the NewDiagGapPanel dropdown. Avoids spawning a duplicate row for a
+  // DOS that already lives on another row.
+  addHccGapToRow: ({ sourceMemberId, targetMemberId, code, desc, hcc, dos, provider, pos, visitType }) => {
+    const s0 = get();
+    const target = s0.hccMembers.find(m => m.id === targetMemberId);
+    if (!target) return null;
+    const spawnedGap = {
+      id: `manual-${code}-${targetMemberId}`,
+      code, desc, hcc: hcc || '', status: 'New',
+      kind: 'Manual', type: 'Manual',
+      docs: 0, cmts: 0, notes: 0, raf: 0,
+      last: null, by: null, dismissReason: null, isLinked: true,
+      dos,
+    };
+    set(s => ({
+      hccSpawnedGaps: {
+        ...s.hccSpawnedGaps,
+        [targetMemberId]: [...(s.hccSpawnedGaps[targetMemberId] || []), spawnedGap],
+      },
+      hccNewRowNotice: {
+        ...s.hccNewRowNotice,
+        [sourceMemberId]: { newMemberId: targetMemberId, dos, code, kind: 'existing-row', createdDate: target.date, provider, pos, visitType },
+      },
+    }));
+    // Persist the gap scoped to the target row (not the source), so on
+    // reload it re-appears in the target row's drawer only.
+    persistHccGapInsert({
+      id: spawnedGap.id, member_id: targetMemberId, member_name: target.name,
+      code, description: desc, hcc_category: hcc || '',
+      status: 'New', type: 'Manual', kind: 'Manual',
+      docs_count: 0, comments_count: 0, notes_count: 0, raf_weight: 0,
+      is_linked: true, dos,
+    });
+    return targetMemberId;
   },
 
   // ─── AWV (Annual Wellness Visit) worklist ─────────────────────────────

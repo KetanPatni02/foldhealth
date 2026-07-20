@@ -343,6 +343,44 @@
   text-align: center;
 }
 
+/* ── New-DOS row alert badge ────────────────────────────────────────── */
+/* Surfaced when the last New Diagnosis Gap save spawned a duplicate
+   worklist row for a brand-new DOS. Sits between the PatientBanner and
+   the DOS meta row so it's the first non-identity chrome the user sees. */
+.newRowBadge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 12px 0;
+  padding: 8px 12px;
+  border: 0.5px solid var(--primary-100);
+  border-radius: 6px;
+  background: var(--primary-25, var(--primary-50));
+  font-size: 13px;
+  color: var(--neutral-500);
+}
+.newRowBadgeText {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.newRowBadgeLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-300);
+  border-radius: 4px;
+}
+.newRowBadgeLink:hover { background: var(--primary-50); }
+
 /* ── DOS row (Phase 2a) ───────────────────────────────────────────────── */
 
 .dosRow {

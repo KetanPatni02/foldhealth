@@ -119,7 +119,22 @@ export function Select({
           {shownOptions.length === 0 && (
             <li className={styles.emptyOption} aria-disabled>No matches</li>
           )}
-          {shownOptions.map(opt => {
+          {shownOptions.map((opt, i) => {
+            // Non-interactive section header — used by callers that want to
+            // group options under a label (e.g. cross-row DOSs by Created
+            // date). Pass `{ type: 'header', label, value }` and any value
+            // works so long as it's unique among options.
+            if (opt.type === 'header') {
+              return (
+                <li
+                  key={`h-${i}-${opt.value}`}
+                  role="presentation"
+                  className={styles.groupHeader}
+                >
+                  {opt.label}
+                </li>
+              );
+            }
             const isActive = opt.value === value;
             return (
               <li

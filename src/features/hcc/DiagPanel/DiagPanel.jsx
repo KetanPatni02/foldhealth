@@ -166,7 +166,16 @@ const ROLE_KEY_BY_USER = { Support: 'support', Coder: 'coder', QA: 'reviewer', C
 export function DiagPanel() {
   const memberId = useAppStore(s => s.diagPanelMemberId);
   const closeDiagPanel = useAppStore(s => s.closeDiagPanel);
+  const openDiagPanel = useAppStore(s => s.openDiagPanel);
   const member = useAppStore(s => s.hccMembers.find(m => m.id === memberId));
+  // Notice payload set by addHccGapNewRow when a New Diagnosis Gap saved
+  // with a brand-new DOS spawned a duplicate worklist row for this patient.
+  const newRowNotice = useAppStore(s => s.hccNewRowNotice?.[memberId]);
+  const dismissNewRowNotice = useAppStore(s => s.dismissNewRowNotice);
+  // Gaps added to this row via addHccGapNewRow / addHccGapToRow. Kept
+  // separate from hccDiagnosisGaps so drawer-open refetches don't wipe them
+  // and so they don't leak into sibling rows that share member_name.
+  const spawnedGaps = useAppStore(s => s.hccSpawnedGaps?.[memberId]);
   const showToast = useAppStore(s => s.showToast);
   const fetchHccDiagnosisGaps = useAppStore(s => s.fetchHccDiagnosisGaps);
   const diagnosisGaps = useAppStore(s => s.hccDiagnosisGaps);
@@ -247,23 +256,41 @@ export function DiagPanel() {
 
   // Fetch diagnosis gaps from Supabase when member changes
   useEffect(() => {
-    if (member?.name) fetchHccDiagnosisGaps(member.name);
-  }, [member?.name, fetchHccDiagnosisGaps]);
+    if (member?.name) fetchHccDiagnosisGaps(member.id, member.name);
+  }, [member?.id, member?.name, fetchHccDiagnosisGaps]);
 
   // Phase 2f — fall back to the local ICD mock when Supabase has no rows for
   // this member. Without the fallback, the panel would render empty for any
   // member that hasn't been seeded into `hcc_diagnosis_gaps` yet.
+  // Spawned rows (created client-side via addHccGapNewRow) never fall back
+  // to the mock — they'd inherit their source patient's mock ICDs, which
+  // is wrong. They DO still use DB gaps (member_id-scoped) plus the
+  // session-level spawnedGaps buffer to cover the persist→refetch race.
   const icdsRaw = useMemo(() => {
+    const spawned = (spawnedGaps || []).filter(g => g.isLinked !== false);
     const fromSupabase = diagnosisGaps.filter(g => g.isLinked !== false);
-    if (fromSupabase.length > 0) return fromSupabase;
-    return member?.name ? getIcdsForMember(member.name) : [];
-  }, [diagnosisGaps, member?.name]);
+    // Dedupe by code — the session buffer and the DB fetch can both carry
+    // the same gap once the persist round-trips.
+    const merged = [...fromSupabase];
+    const seen = new Set(fromSupabase.map(g => g.code));
+    for (const g of spawned) if (!seen.has(g.code)) merged.push(g);
+    if (member?.isSpawned) return merged;
+    if (merged.length > 0) return merged;
+    const fromMock = member?.name ? getIcdsForMember(member.name) : [];
+    return [...fromMock, ...spawned];
+  }, [diagnosisGaps, member?.name, member?.isSpawned, spawnedGaps]);
 
   const notLinkedRaw = useMemo(() => {
+    const spawned = (spawnedGaps || []).filter(g => g.isLinked === false);
     const fromSupabase = diagnosisGaps.filter(g => g.isLinked === false);
-    if (fromSupabase.length > 0) return fromSupabase;
-    return member?.name ? getNotLinkedForMember(member.name) : [];
-  }, [diagnosisGaps, member?.name]);
+    const merged = [...fromSupabase];
+    const seen = new Set(fromSupabase.map(g => g.code));
+    for (const g of spawned) if (!seen.has(g.code)) merged.push(g);
+    if (member?.isSpawned) return merged;
+    if (merged.length > 0) return merged;
+    const fromMock = member?.name ? getNotLinkedForMember(member.name) : [];
+    return [...fromMock, ...spawned];
+  }, [diagnosisGaps, member?.name, member?.isSpawned, spawnedGaps]);
 
   // Buckets (see docs/features/hcc-coding-workflow.md §4):
   //  - assocICDs → the ICD-first cards ("ICDs Associated with N/M DOSs").
@@ -835,6 +862,40 @@ export function DiagPanel() {
         rafUp={member.ru !== false}
         onCall={noop('Call')}
       />
+
+      {/* New-DOS-row alert: the last New Diagnosis Gap save either spawned a
+          fresh worklist row (DOS didn't exist for this patient) or routed
+          the ICD to a sibling row (DOS existed under a different Created
+          date). Clicking navigates to that row and dismisses the notice. */}
+      {newRowNotice && (
+        <div className={styles.newRowBadge} role="status">
+          <Icon name="solar:info-circle-linear" size={16} color="var(--primary-300)" />
+          <span className={styles.newRowBadgeText}>
+            {newRowNotice.kind === 'existing-row'
+              ? <>ICD added to sibling row (Created <strong>{newRowNotice.createdDate}</strong>) for DOS <strong>{newRowNotice.dos}</strong></>
+              : <>New worklist row created for DOS <strong>{newRowNotice.dos}</strong></>}
+          </span>
+          <button
+            type="button"
+            className={styles.newRowBadgeLink}
+            onClick={() => {
+              const { newMemberId } = newRowNotice;
+              dismissNewRowNotice(memberId);
+              openDiagPanel(newMemberId);
+            }}
+          >
+            View row
+            <Icon name="solar:arrow-right-linear" size={12} color="currentColor" />
+          </button>
+          <ActionButton
+            size="S"
+            tooltip="Dismiss"
+            onClick={() => dismissNewRowNotice(memberId)}
+          >
+            <CloseIcon size={14} color="var(--neutral-300)" />
+          </ActionButton>
+        </div>
+      )}
 
       {/* ── Meta row: Created date + overdue + stage pill | assignee + status ── */}
       <div className={styles.dosRow}>
