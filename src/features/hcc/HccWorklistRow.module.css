@@ -30,10 +30,12 @@
 .rowRejected .patientName,
 .rowRejected .patientNameLink { color: var(--neutral-150) !important; }
 .rowRejected svg { color: var(--neutral-150) !important; }
-/* Eye button (View Diagnosis Gaps) is the one action that stays live on a
-   rejected row — restore its icon color so it still reads as interactive
-   (matches the ActionButton's default neutral-300 tint on every other row). */
-.rowRejected .actionsRow button[aria-label="View Diagnosis Gaps"] svg { color: var(--neutral-300) !important; }
+/* Every action-column button (eye, Add DOS, ⋯) stays fully interactive
+   on rejected rows — even a rejected record needs to be inspected, have
+   DOS added, or the row menu opened. Restore the ActionButton icon tint
+   so the sticky-right actions column reads as live, not greyed out. */
+.rowRejected .actionsRow button svg,
+.rowRejected .actionsRow button svg * { color: var(--neutral-300) !important; }
 /* The stage cell that flipped to Rejected keeps its normal contrast: the
    assignee name reads neutral-300, the date reads neutral-300, and the
    status icon renders in its canonical red (var(--status-error) via the
@@ -47,15 +49,17 @@
 .rowRejected td[data-status="rejected"] svg,
 .rowRejected td[data-status="rejected"] svg * { color: var(--status-error) !important; }
 /* Read-only affordances survive on a rejected row — the reviewer still
-   needs to inspect what got rejected. View Diagnosis Gaps (eye), and
-   View More (expand extra DOSs) all stay interactive. Everything else
-   drops pointer-events + fades so it reads "not for me." */
-.rowRejected button:not([aria-label="View Diagnosis Gaps"]):not([class*="viewMoreBtn"]),
-.rowRejected [role="button"]:not([aria-label="View Diagnosis Gaps"]):not([class*="viewMoreBtn"]) {
+   needs to inspect what got rejected. Every button inside the sticky-right
+   actions column (eye, Add DOS, ⋯) stays fully interactive, along with
+   the View More expander. Everything else in the row body drops
+   pointer-events + fades so it reads "not for me." */
+.rowRejected button,
+.rowRejected [role="button"] {
   pointer-events: none;
   opacity: 0.5;
 }
-.rowRejected .actionsRow button[aria-label="View Diagnosis Gaps"],
+.rowRejected .actionsRow button,
+.rowRejected .actionsRow [role="button"],
 .rowRejected button[class*="viewMoreBtn"] {
   pointer-events: auto;
   opacity: 1;

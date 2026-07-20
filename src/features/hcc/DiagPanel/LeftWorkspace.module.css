@@ -1990,6 +1990,18 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Wrap the leading status glyph in a fixed 14x14 box so passed, failed, and
+   pending render at exactly the same width — Solar's bold variants have
+   different intrinsic glyph weights and can otherwise look mismatched. */
+.docsBrowserTabStatus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.docsBrowserTabStatus svg { display: block; }
 /* Flex container so the iframe (which has flex:1) fills the full height of
    the viewer, not just its intrinsic size. */
 .docsViewerBody {
@@ -2029,28 +2041,22 @@
 .docsBrowserTabs::-webkit-scrollbar { display: none; }
 .docsBrowserTabs { scrollbar-width: none; }
 
-/* "Open in new browser tab" icon anchored to the right edge of the doc
-   viewer tab bar — same shape/hover treatment as the scroll arrows so it
-   feels like part of the toolbar. Disabled on system-seeded docs (no
-   real PDF URL to open). */
-.docsOpenExternalBtn {
+/* Per-tab "open in new browser tab" arrow — sits inside each doc tab,
+   right after the filename. Renders as an inline anchor so it doesn't
+   nest inside a button (avoids the button-in-button HTML invariant that
+   crashed Radix's focus trap earlier). Hover tints the arrow without
+   pulling focus off the parent tab. */
+.docsTabExternalLink {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
+  width: 18px;
+  height: 18px;
   margin-left: 4px;
-  border: none;
   border-radius: 4px;
-  background: transparent;
   color: var(--neutral-400);
-  cursor: pointer;
+  text-decoration: none;
   flex-shrink: 0;
+  transition: color 0.12s, background 0.12s;
 }
-.docsOpenExternalBtn:hover { background: var(--neutral-100); color: var(--neutral-500); }
-.docsOpenExternalBtn:disabled {
-  color: var(--neutral-200);
-  cursor: not-allowed;
-}
-.docsOpenExternalBtn:disabled:hover { background: transparent; }
+.docsTabExternalLink:hover { background: var(--neutral-100); color: var(--primary-300); }

@@ -181,7 +181,7 @@ const DOC_STATUS_STYLE = {
   Failed:  { color: 'var(--status-error)',   bg: 'var(--status-error-light)',   border: 'rgba(215,40,37,0.2)',   icon: 'solar:info-circle-linear' },
 };
 
-export function ChartPopover({ anchorRect, member, charts, onClose, onUpload, onSelectChart, onViewMore }) {
+export function ChartPopover({ anchorRect, member, charts, onClose, onEnter, onLeave, onUpload, onSelectChart, onViewMore }) {
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
     document.addEventListener('keydown', onKey);
@@ -211,11 +211,20 @@ export function ChartPopover({ anchorRect, member, charts, onClose, onUpload, on
 
   return createPortal(
     <>
-      <div className={styles.overlay} onClick={onClose} />
+      {/* Invisible bridge between the trigger and the popover so the cursor
+          can travel without triggering the close timer. Sized to cover the
+          8px gap above the popover. */}
+      <div
+        style={{ position: 'fixed', top: anchorRect.bottom, left: anchorRect.left, width: anchorRect.width, height: 8, zIndex: 9499, background: 'transparent' }}
+        onMouseEnter={onEnter}
+        onMouseLeave={onLeave}
+      />
       <div
         className={styles.chartPopover}
         style={{ top, left, width: W }}
         onClick={(e) => e.stopPropagation()}
+        onMouseEnter={onEnter}
+        onMouseLeave={onLeave}
         role="dialog"
         aria-label="Document Available"
       >

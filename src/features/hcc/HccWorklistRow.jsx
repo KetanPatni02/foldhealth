@@ -127,7 +127,7 @@ function CreateDateCell({ member, dosState }) {
   );
 }
 
-function HccEvidenceCell({ charts, onClick, onUpload }) {
+function HccEvidenceCell({ charts, onClick, onMouseEnter, onMouseLeave, onUpload }) {
   // No chart on file yet → ghost "Upload" link button (Fold Button variant
   // ghost = transparent bg + neutral-300 text). Click opens the upload
   // drawer for this member.
@@ -155,7 +155,13 @@ function HccEvidenceCell({ charts, onClick, onUpload }) {
   const uniformLabel = pass ? 'All Passed' : fail ? 'All Failed' : pend ? 'All Pending' : 'No Charts';
   const uniformColor = pass ? 'var(--status-success)' : fail ? 'var(--status-error)' : 'var(--neutral-300)';
   return (
-    <button type="button" className={styles.evidenceTrigger} onClick={onClick}>
+    <button
+      type="button"
+      className={styles.evidenceTrigger}
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
       <div className={styles.evidenceBadge}>
         <Icon name="solar:document-text-linear" size={12} color="var(--primary-300)" />
         <span>{count}</span>
@@ -741,11 +747,13 @@ const CELL_RENDERERS = {
       <CreateDateCell member={member} dosState={dosStateFor(member)} />
     </td>
   ),
-  evidence: ({ member, charts, openChart, openUpload }) => (
+  evidence: ({ member, charts, openChartDrawer, openChartPopoverHover, closeChartPopoverHover, openUpload }) => (
     <td key="evidence" data-col="evidence" className={styles.colEvidence} onClick={(e) => e.stopPropagation()}>
       <HccEvidenceCell
         charts={charts}
-        onClick={openChart}
+        onClick={openChartDrawer}
+        onMouseEnter={openChartPopoverHover}
+        onMouseLeave={closeChartPopoverHover}
         onUpload={() => openUpload(member)}
       />
     </td>
@@ -937,10 +945,37 @@ function HccWorklistRowImpl({ member, hiddenCols, columns }) {
   const chartStatus = useAppStore(s => s.hccChartStatus[member.id]);
   const removedCharts = useAppStore(s => s.hccRemovedCharts[member.id]);
   const charts = useMemo(() => getChartDocs(member, addedCharts || [], chartStatus || {}, removedCharts || []), [member, addedCharts, chartStatus, removedCharts]);
-  const openChart = (e) => {
+  // Click → jump straight into the Document Review drawer, bypassing the
+  // popover. The popover is now a hover-only preview so busy reviewers can
+  // peek at document status without a full drawer round-trip.
+  const openChartDrawer = (e) => {
     e.stopPropagation();
+    setChartRect(null);
+    if (chartHoverCloseTimer.current) { clearTimeout(chartHoverCloseTimer.current); chartHoverCloseTimer.current = null; }
+    if (chartHoverOpenTimer.current)  { clearTimeout(chartHoverOpenTimer.current);  chartHoverOpenTimer.current = null; }
+    setChartDetail({ id: null });
+  };
+  // Hover-open the popover with a small 80ms delay so passing over the cell
+  // during a scroll doesn't flash it open. Leaving the trigger closes it
+  // after 200ms — long enough to bridge the gap into the popover, where
+  // its own onMouseEnter clears the timer to keep it pinned.
+  const chartHoverOpenTimer = useRef(null);
+  const chartHoverCloseTimer = useRef(null);
+  const openChartPopoverHover = (e) => {
+    if (chartHoverCloseTimer.current) { clearTimeout(chartHoverCloseTimer.current); chartHoverCloseTimer.current = null; }
+    if (chartRect) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    setChartRect(prev => prev ? null : rect);
+    chartHoverOpenTimer.current = setTimeout(() => setChartRect(rect), 80);
+  };
+  const closeChartPopoverHover = () => {
+    if (chartHoverOpenTimer.current) { clearTimeout(chartHoverOpenTimer.current); chartHoverOpenTimer.current = null; }
+    chartHoverCloseTimer.current = setTimeout(() => setChartRect(null), 200);
+  };
+  const cancelChartPopoverClose = () => {
+    if (chartHoverCloseTimer.current) { clearTimeout(chartHoverCloseTimer.current); chartHoverCloseTimer.current = null; }
+  };
+  const requestChartPopoverClose = () => {
+    chartHoverCloseTimer.current = setTimeout(() => setChartRect(null), 200);
   };
   const openActions = (e) => {
     e.stopPropagation();
@@ -1095,7 +1130,7 @@ function HccWorklistRowImpl({ member, hiddenCols, columns }) {
 
         const render = CELL_RENDERERS[col.k];
         if (!render) return null;
-        return render({ member, charts, dosStateFor, openChart, openDiagPanel, openUpload: (m) => openHccUploadDrawer(m) });
+        return render({ member, charts, dosStateFor, openChartDrawer, openChartPopoverHover, closeChartPopoverHover, openDiagPanel, openUpload: (m) => openHccUploadDrawer(m) });
       })}
 
       {/* Sticky right: actions */}
@@ -1140,9 +1175,11 @@ function HccWorklistRowImpl({ member, hiddenCols, columns }) {
         member={member}
         charts={charts}
         onClose={() => setChartRect(null)}
+        onEnter={cancelChartPopoverClose}
+        onLeave={requestChartPopoverClose}
         onUpload={() => { setChartRect(null); openHccUploadDrawer(member); }}
-        onSelectChart={(chart) => setChartDetail({ id: chart.id })}
-        onViewMore={() => setChartDetail({ id: null })}
+        onSelectChart={(chart) => { setChartRect(null); setChartDetail({ id: chart.id }); }}
+        onViewMore={() => { setChartRect(null); setChartDetail({ id: null }); }}
       />
     )}
     {chartDetail && (

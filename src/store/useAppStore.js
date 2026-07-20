@@ -4128,6 +4128,14 @@ export const useAppStore = create((set, get) => ({
   // transitions live in features/hcc/assignment/lifecycle.js — this slice
   // just stores the result and exposes thin wrappers per AC.
   hccDosAssignments: {},
+  // Reject metadata keyed by dosKey(patientId, dos, provider, pos). Set by
+  // DiagPanel's Reject confirmation dialog; read by the read-only banner
+  // ("Rejected by X — reasons — note") that pins to the top of the ICD
+  // list once a record has been terminally rejected.
+  hccRejectInfo: {},
+  setHccRejectInfo: (key, info) => set(s => ({
+    hccRejectInfo: { ...s.hccRejectInfo, [key]: info },
+  })),
   // Client-level config — sampling rates can be overridden per client.
   hccConfig: {
     astrana: true,

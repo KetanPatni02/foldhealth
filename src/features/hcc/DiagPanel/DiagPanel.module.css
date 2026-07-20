@@ -1105,3 +1105,147 @@
   bottom: 32px !important;
   transform: translateX(-50%) !important;
 }
+
+/* ── Reject record confirmation modal ────────────────────────────────────
+   Same visual shape as the Insufficient dialog on ChartDetailDrawer —
+   title + close X, subtitle, vertical list of reason checkboxes, required
+   note (asterisk), danger Confirm + Cancel. */
+.rejectDialog {
+  padding: 20px;
+  gap: 12px;
+  display: flex;
+  flex-direction: column;
+}
+.rejectDialogHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.rejectDialogTitleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.rejectDialogTitle {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  line-height: 1.25;
+}
+.rejectDialogSubtitle {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  line-height: 1.35;
+}
+.rejectDialogClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  color: var(--neutral-400);
+}
+.rejectDialogClose:hover { background: var(--neutral-50); }
+.rejectDialogReasons {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rejectReasonOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 4px;
+}
+.rejectReasonOption:hover { background: var(--neutral-50); }
+.rejectReasonLabel {
+  font-size: 13px;
+  color: var(--neutral-500);
+  line-height: 1.3;
+}
+.rejectDialogNoteLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  line-height: 1.3;
+}
+.rejectDialogRequired { color: var(--status-error); }
+.rejectDialogActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+  margin-top: 4px;
+}
+
+/* ── Reject info banner (sits above "ICDs Associated with") ──────────────
+   Read-only strip that surfaces who rejected the record, the reasons, and
+   any note — so downstream reviewers understand why every ICD action is
+   locked without having to open the Comments tab. */
+.rejectBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  margin: 0 12px 12px 12px;
+  background: var(--status-error-light);
+  border: 0.5px solid color-mix(in srgb, var(--status-error) 25%, transparent);
+  border-radius: 8px;
+}
+.rejectBannerText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.rejectBannerTitle {
+  font-size: 13px;
+  color: var(--status-error);
+  line-height: 1.35;
+}
+.rejectBannerBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rejectBannerReasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.rejectBannerReason {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  background: var(--neutral-0);
+  border: 0.5px solid color-mix(in srgb, var(--status-error) 30%, transparent);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--status-error);
+  line-height: 1.3;
+}
+.rejectBannerNote {
+  font-size: 12px;
+  color: var(--neutral-500);
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+.rejectBannerHint {
+  font-size: 11px;
+  color: var(--neutral-400);
+  margin-top: 2px;
+}

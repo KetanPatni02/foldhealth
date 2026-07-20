@@ -99,10 +99,12 @@ export function LeftWorkspace({
 
   // Real chart list for THIS record — same source the worklist Documents
   // column uses, so the tab count matches the column count exactly.
-  const addedCharts = useAppStore(s => s.hccAddedCharts?.[member?.id]);
+  const addedCharts    = useAppStore(s => s.hccAddedCharts?.[member?.id]);
+  const chartStatus    = useAppStore(s => s.hccChartStatus?.[member?.id]);
+  const removedCharts  = useAppStore(s => s.hccRemovedCharts?.[member?.id]);
   const charts = useMemo(
-    () => (member ? getChartDocs(member, addedCharts || []) : []),
-    [member, addedCharts],
+    () => (member ? getChartDocs(member, addedCharts || [], chartStatus || {}, removedCharts || []) : []),
+    [member, addedCharts, chartStatus, removedCharts],
   );
   // Per-tab count override — 'documents' takes its count from the record's
   // charts (not the static DOCUMENTS mock).
@@ -1298,21 +1300,51 @@ function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId, 
           <div className={styles.docsBrowserTabs} ref={tabsScrollRef}>
             {list.map((d) => {
               const isOpen = openDoc?.id === d.id;
-              const passed = d.status === 'passed';
+              const status = (d.status || 'pending').toLowerCase();
+              // Reflect the doc-review status on the tab itself so the user
+              // sees at a glance which docs passed/failed/are still pending
+              // without opening the drawer. Colours match the Fold status
+              // legend (success green / error red / neutral for pending).
+              // All three variants use `-bold` so the glyphs read as equal
+              // weight — mixing bold and linear made the failed icon look
+              // heavier than the passed one at the same pixel size.
+              const statusIcon = status === 'passed'
+                ? { name: 'solar:check-circle-bold',  color: 'var(--status-success)', label: 'Passed' }
+                : status === 'failed'
+                  ? { name: 'solar:close-circle-bold', color: 'var(--status-error)',  label: 'Failed' }
+                  : { name: 'solar:clock-circle-bold', color: 'var(--neutral-300)',   label: 'Pending' };
+              // Tab shell is a role=button div so we can nest a real anchor
+              // (the "open in new browser tab" arrow) without triggering the
+              // HTML "button inside button" invariant, which crashes Radix's
+              // focus-trap when a modal opens over the drawer.
               return (
-                <button
+                <div
                   key={d.id}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   className={[styles.docsBrowserTab, isOpen ? styles.docsBrowserTabActive : ''].filter(Boolean).join(' ')}
                   onClick={() => setOpenDocId(d.id)}
-                  title={d.name}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenDocId(d.id); } }}
+                  title={`${d.name} — ${statusIcon.label}`}
                 >
-                  {passed
-                    ? <Icon name="solar:check-circle-bold" size={13} color="var(--status-success)" />
-                    : <Icon name="solar:file-text-linear" size={13} color="currentColor" />
-                  }
+                  <span className={styles.docsBrowserTabStatus} aria-hidden="true">
+                    <Icon name={statusIcon.name} size={14} color={statusIcon.color} />
+                  </span>
                   <span className={styles.docsBrowserTabName}>{d.name}</span>
-                </button>
+                  {d.pdf && (
+                    <a
+                      href={d.pdf}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.docsTabExternalLink}
+                      aria-label={`Open ${d.name} in a new tab`}
+                      title="Open in new browser tab"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Icon name="solar:square-top-down-linear" size={12} color="currentColor" />
+                    </a>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -1328,22 +1360,6 @@ function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId, 
               <Icon name="solar:alt-arrow-right-linear" size={14} color="currentColor" />
             </button>
           )}
-          {/* Open the currently-active document in a new browser tab so the
-              reviewer can pan/zoom the PDF at full size while keeping the
-              drawer open behind it. Disabled for system-seeded docs with no
-              real PDF URL. */}
-          <button
-            type="button"
-            className={styles.docsOpenExternalBtn}
-            aria-label="Open document in new tab"
-            title={openDoc?.pdf ? 'Open in new browser tab' : 'No file to open — this is a system-generated document'}
-            disabled={!openDoc?.pdf}
-            onClick={() => {
-              if (openDoc?.pdf) window.open(openDoc.pdf, '_blank', 'noopener,noreferrer');
-            }}
-          >
-            <Icon name="solar:square-top-down-linear" size={16} color="currentColor" />
-          </button>
         </div>
         <div className={styles.docsViewerBody}>
           {/* Pass icdScope AND the currently-open doc so each tab renders
