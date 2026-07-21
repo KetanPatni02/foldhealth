@@ -31,7 +31,7 @@ import styles from './IcdDosCard.module.css';
  * @param {string} [props.openDismissKey] `${code}|${dos}` whose form is open
  * @param {(key:string|null)=>void} [props.onOpenDismiss]
  */
-export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSelect, openDismissKey, onOpenDismiss, onActed, reviewLocked = false }) {
+export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSelect, openDismissKey, onOpenDismiss, onActed, reviewLocked = false, lockReason = null }) {
   const openIcdPanel = useAppStore(s => s.openIcdPanel);
   const diagActivityIcd = useAppStore(s => s.diagActivityIcd);
   const clearDiagActivityIcd = useAppStore(s => s.clearDiagActivityIcd);
@@ -214,6 +214,7 @@ export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSe
               onDefer={() => { setDosAction(icd.code, entry.dos, 'deferred'); advanceIfActed(); }}
               onRemoveDos={canDelete ? () => setConfirmRemoveDos({ code: icd.code, dos: entry.dos }) : null}
               reviewLocked={reviewLocked}
+              lockReason={lockReason}
             />
           );
         })}
@@ -251,7 +252,7 @@ export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSe
 function DosActionRow({
   rowKey, entry, icd, hccShort, action, meta, focused, onFocusRow, selected, dismissOpen,
   onToggleSelect, onAccept, onOpenDismiss, onCloseDismiss, onConfirmDismiss,
-  onUndo, onMissed, onDefer, onRemoveDos, reviewLocked = false,
+  onUndo, onMissed, onDefer, onRemoveDos, reviewLocked = false, lockReason = null,
 }) {
   const [menuPos, setMenuPos] = useState(null);
   const moreRef = useRef(null);
@@ -259,10 +260,14 @@ function DosActionRow({
   // Compliance are locked out until Support + Coder have completed (reviewLocked).
   const rowRole = useAppStore(s => s.hccUserRole);
   const canReview = rowRole !== 'Support' && !reviewLocked;
-  // Two distinct disabled reasons drive different tooltip copy.
-  const disabledReason = rowRole === 'Support'
-    ? 'Support role cannot code ICDs'
-    : (reviewLocked ? "Support team hasn't reviewed the documents yet" : null);
+  // Tooltip copy is ordered most-specific first: an explicit lockReason from
+  // the parent (e.g. rejection, with rejecting user + date) always wins;
+  // otherwise fall back to role gating, then the generic Support-hasn't-
+  // reviewed message.
+  const disabledReason = lockReason
+    || (rowRole === 'Support'
+      ? 'Support role cannot code ICDs'
+      : (reviewLocked ? "Support team hasn't reviewed the documents yet" : null));
   const openHccClaimForDos = useAppStore(s => s.openHccClaimForDos);
   const isManual = entry.manual || icd.type === 'Manual';
   const isAccepted = action === 'accepted';

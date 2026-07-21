@@ -250,10 +250,12 @@ function matchOne(m, k, vals) {
       return set.has(m.supS);
     }
     case 'asgn': {
-      // Match if any selected user is an assignee on the member (any role or
-      // the current-stage owner).
-      const names = [m.sup, m.cdr, m.r1, m.r2, m.assigneeName].filter(Boolean);
-      return vals.some(v => names.includes(v));
+      // Match against the current assignee shown in the Assignee column only —
+      // HccWorklistTable enriches each row with `assigneeName` from the same
+      // sequential resolver the cell renders (resolveCurrentAssignee). Matching
+      // every role's historical owner would surface rows whose visible assignee
+      // is someone else.
+      return vals.includes(m.assigneeName);
     }
     case 'dosSrc': {
       // Match if ANY of the member's DOS entries maps to a selected source,

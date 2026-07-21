@@ -24,7 +24,7 @@ import styles from './HccSuspectGroup.module.css';
  * ⋯ menu. State uses the same per-(code × DOS) store the confirmed ICD card
  * uses, so both behave identically.
  */
-export function SuspectCard({ icd, dosList = [], member, reviewLocked = false }) {
+export function SuspectCard({ icd, dosList = [], member, reviewLocked = false, lockReason = null }) {
   const openIcdPanel = useAppStore(s => s.openIcdPanel);
   const openIcdActivityLog = useAppStore(s => s.openIcdActivityLog);
   const diagActivityIcd = useAppStore(s => s.diagActivityIcd);
@@ -85,11 +85,13 @@ export function SuspectCard({ icd, dosList = [], member, reviewLocked = false })
   // cards live in a shared section, not under a role-specific bucket.
   const hccUserRole = useAppStore(s => s.hccUserRole);
   const roleAllowsIcdActions = hccUserRole !== 'Support';
-  // Two distinct disabled reasons — matches the treatment on the ICD DOS
-  // cards so the tooltip explains WHY the action is inert.
-  const disabledReason = hccUserRole === 'Support'
-    ? 'Support role cannot code ICDs'
-    : (reviewLocked ? "Support team hasn't reviewed the documents yet" : null);
+  // Tooltip ordered most-specific first: explicit lockReason from the
+  // parent (e.g. rejection with rejecting user + date) wins; then role
+  // gate; then the generic Support-hasn't-reviewed message.
+  const disabledReason = lockReason
+    || (hccUserRole === 'Support'
+      ? 'Support role cannot code ICDs'
+      : (reviewLocked ? "Support team hasn't reviewed the documents yet" : null));
   // Actions unlock only once an ICD *and* a DOS are chosen, the user
   // holds a role that can code ICDs, AND Support has completed its
   // document review (reviewLocked = false).
@@ -364,13 +366,23 @@ function IcdComboPopover({ anchorRef, currentCode, currentDesc, onSelect, onClos
       const margin = 8;
       const vh = window.innerHeight;
       const vw = window.innerWidth;
-      // Search input + up to ~5 rows visible.
+      // Search input + up to ~5 rows visible before scrolling kicks in.
       const estHeight = 320;
       const spaceBelow = vh - r.bottom - margin;
-      const flipUp = spaceBelow < estHeight && r.top > estHeight + margin;
-      const top = flipUp ? Math.max(margin, r.top - estHeight - 6) : r.bottom + 6;
+      const spaceAbove = r.top - margin;
+      const flipUp = spaceBelow < estHeight && spaceAbove > spaceBelow;
       const left = Math.min(Math.max(margin, r.left), vw - width - margin);
-      setPos({ top, left, width, maxHeight: flipUp ? r.top - margin - 6 : spaceBelow });
+      if (flipUp) {
+        // Anchor the popover's BOTTOM edge just above the trigger. Anchoring
+        // by `top: r.top - estHeight - 6` used the ESTIMATED height, so a
+        // short popover (single option, no search results) rendered hundreds
+        // of pixels above the trigger — the "opens in random places" bug.
+        // Bottom-anchor makes the popover hug the trigger regardless of the
+        // actual content height it settles at.
+        setPos({ bottom: vh - r.top + 6, left, width, maxHeight: Math.min(spaceAbove - 6, estHeight) });
+      } else {
+        setPos({ top: r.bottom + 6, left, width, maxHeight: Math.min(spaceBelow, estHeight) });
+      }
     };
     compute();
     window.addEventListener('resize', compute);
@@ -395,7 +407,17 @@ function IcdComboPopover({ anchorRef, currentCode, currentDesc, onSelect, onClos
   return createPortal(
     <>
       <div className={styles.comboOverlay} onClick={onClose} />
-      <div className={styles.comboMenu} style={{ top: pos.top, left: pos.left, width: pos.width, maxHeight: pos.maxHeight, overflowY: 'auto' }}>
+      <div
+        className={styles.comboMenu}
+        style={{
+          ...(pos.top !== undefined ? { top: pos.top } : {}),
+          ...(pos.bottom !== undefined ? { bottom: pos.bottom } : {}),
+          left: pos.left,
+          width: pos.width,
+          maxHeight: pos.maxHeight,
+          overflowY: 'auto',
+        }}
+      >
         <div className={styles.comboSearch}>
           <Icon name="solar:magnifer-linear" size={13} color="var(--neutral-300)" />
           <input

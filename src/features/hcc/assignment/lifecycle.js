@@ -396,6 +396,9 @@ export function markReviewer2InProgress(map, patient, dos, actor) {
   let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
   state = setRoleState(state, 'reviewer2', { status: STATUS.IN_PROGRESS },
     { by: actor, reason: 'reviewer2-start' });
+  // Compliance starting work implies QA won't get to it — skip an unresolved
+  // reviewer (only reviewer is skippable at this point per SKIPPABLE_ROLES).
+  state = autoSkipEarlierRoles(state, 'reviewer2', actor);
   return { nextMap: putState(map, state), events: [] };
 }
 

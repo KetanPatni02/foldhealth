@@ -312,8 +312,11 @@ const ROLE_DEFAULT_STATUS = { support: 'Awaiting', coder: 'New', reviewer: 'New'
  * The status itself isn't spelled out — the row legend at the bottom of the
  * worklist explains the icon meanings.
  */
-function RoleStatusCell({ name, status, date, role, memberId, dosDate }) {
-  const unassigned = !name || !status || status === 'Assign';
+function RoleStatusCell({ name, status, date, role, memberId, dosDate, priorResolved = true }) {
+  // Gate downstream role cells: until the previous role has finished
+  // (Completed or Skipped), don't reveal this role's status/date. Reviewer 2
+  // shouldn't look like it's "New" while QA is still in flight, and so on.
+  const unassigned = !priorResolved || !name || !status || status === 'Assign';
   if (unassigned) {
     return <RolePicker role={role} memberId={memberId} dosDate={dosDate} current={null} />;
   }
@@ -478,6 +481,10 @@ const BLOCKING_STATUSES = new Set(['Reject', 'Rejected', 'Insufficient']);
 // stage's work" (Insufficient lives one bucket earlier in the pipeline).
 const REJECTED_STATUSES = new Set(['Rejected', 'Reject']);
 export function isRejectedStatus(s) { return REJECTED_STATUSES.has(s); }
+// Prior-role "resolved" (Completed or auto-Skipped) — gates whether the
+// downstream role's status column reveals its own state on the worklist row.
+const RESOLVED_STATUSES = new Set(['Completed', 'Skipped']);
+function isRoleResolved(s) { return RESOLVED_STATUSES.has(s); }
 
 // Sequential workflow order. The first role whose status is NOT terminal
 // is where the DOS currently sits (HCC reality: Support → Coder → Reviewer →
@@ -497,7 +504,21 @@ const STAGES_LOW_TO_HIGH = ['support', 'coder', 'reviewer', 'reviewer2'];
  * Walks LOW→HIGH and stops at the first non-terminal stage. Engine state
  * wins; legacy `member.sup/cdr/r1/r2/r3` + status fields are the fallback.
  */
-export function resolveCurrentAssignee(member, dosState) {
+// Resolve a staff id to a display name across BOTH rosters:
+//   1. Astrana staff (seed roster, keyed by short ids like "EJ", "PW")
+//   2. Platform users (Supabase profiles, keyed by UUID)
+// Manual reassignments via RoleAssigneePicker use platform-user UUIDs, so
+// without the second lookup the worklist would render a raw UUID.
+export function resolveStaffName(id, platformUsers = []) {
+  if (!id) return null;
+  const staff = staffById(id);
+  if (staff?.name) return { name: staff.name, initials: staff.initials };
+  const pu = platformUsers.find(u => u.id === id);
+  if (pu?.name) return { name: pu.name, initials: pu.initials || nameToInitials(pu.name) };
+  return null;
+}
+
+export function resolveCurrentAssignee(member, dosState, platformUsers = []) {
   // ── Engine path ────────────────────────────────────────────────────
   if (dosState) {
     for (const role of STAGES_LOW_TO_HIGH) {
@@ -512,18 +533,18 @@ export function resolveCurrentAssignee(member, dosState) {
         // Bucket waiting for assignment. If there's an assignee but no
         // status, treat as active (just-assigned, no work logged yet).
         if (rs?.assignee && status && status !== 'Assign') {
-          return makeActive(rs.assignee, role, status);
+          return makeActive(rs.assignee, role, status, platformUsers);
         }
         return { kind: 'unassigned', role };
       }
       // Blocking status (Reject / Rejected / Insufficient) — the pipeline
       // stops here. Keep the DOS on this stage instead of advancing.
       if (BLOCKING_STATUSES.has(status)) {
-        return makeActive(rs?.assignee, role, status);
+        return makeActive(rs?.assignee, role, status, platformUsers);
       }
       // Stage has a non-terminal status → DOS lives here right now.
       if (!TERMINAL_STATUSES.has(status)) {
-        return makeActive(rs?.assignee, role, status);
+        return makeActive(rs?.assignee, role, status, platformUsers);
       }
       // Otherwise terminal-done → continue down the chain.
     }
@@ -559,12 +580,14 @@ export function resolveCurrentAssignee(member, dosState) {
   return { kind: 'billing' };
 }
 
-function makeActive(staffId, role, status) {
-  const staff = staffById(staffId);
+function makeActive(staffId, role, status, platformUsers = []) {
+  const resolved = resolveStaffName(staffId, platformUsers);
   return {
     kind: 'active',
-    name: staff?.name || staffId || null,
-    initials: staff?.initials || (staffId || '').slice(0, 2),
+    // Fall back to null (renders "—") rather than the raw UUID/id when the
+    // staff can't be resolved — a stray UUID in the cell is worse than empty.
+    name: resolved?.name || null,
+    initials: resolved?.initials || (staffId || '').slice(0, 2),
     role,
     status,
   };
@@ -593,7 +616,8 @@ function nameToInitials(name) {
  *   - 'billing'    → green check chip + "Billing Ready"
  */
 function AssigneeCell({ member, dosState }) {
-  const a = resolveCurrentAssignee(member, dosState);
+  const platformUsers = useAppStore(s => s.platformUsers);
+  const a = resolveCurrentAssignee(member, dosState, platformUsers);
 
   if (!a || (a.kind === 'active' && !a.name)) {
     return <span className={styles.muted}>—</span>;
@@ -766,54 +790,60 @@ const CELL_RENDERERS = {
   // Role columns — status prefers per-DOS engine state (single source of
   // truth) with the legacy member field as a fallback, so the row and the
   // DiagPanel drawer never diverge for the same DOS.
-  sup: ({ member, dosStateFor }) => {
+  sup: ({ member, dosStateFor, nameOf }) => {
     const s = dosStateFor(member);
     const status = s?.support?.status || member.supS;
     return (
       <td key="sup" data-col="sup" data-status={isRejectedStatus(status) ? 'rejected' : undefined} className={styles.colRole}>
         <RoleStatusCell
-          name={s?.support?.assignee ? (staffById(s.support.assignee)?.name || member.sup) : member.sup}
+          name={s?.support?.assignee ? (nameOf(s.support.assignee) || member.sup) : member.sup}
           status={status}
           date={addDaysToDate(member.date, ROLE_OFFSET.sup)}
           role="support" memberId={member.id} dosDate={member.date} />
       </td>
     );
   },
-  cdr: ({ member, dosStateFor }) => {
+  cdr: ({ member, dosStateFor, nameOf }) => {
     const s = dosStateFor(member);
     const status = s?.coder?.status || member.cdrS;
+    const supStatus = s?.support?.status || member.supS;
     return (
       <td key="cdr" data-col="cdr" data-status={isRejectedStatus(status) ? 'rejected' : undefined} className={styles.colRole}>
         <RoleStatusCell
-          name={s?.coder?.assignee ? (staffById(s.coder.assignee)?.name || member.cdr) : member.cdr}
+          name={s?.coder?.assignee ? (nameOf(s.coder.assignee) || member.cdr) : member.cdr}
           status={status}
           date={addDaysToDate(member.date, ROLE_OFFSET.cdr)}
+          priorResolved={isRoleResolved(supStatus)}
           role="coder" memberId={member.id} dosDate={member.date} />
       </td>
     );
   },
-  r1: ({ member, dosStateFor }) => {
+  r1: ({ member, dosStateFor, nameOf }) => {
     const s = dosStateFor(member);
     const status = s?.reviewer?.status || member.r1s;
+    const cdrStatus = s?.coder?.status || member.cdrS;
     return (
       <td key="r1" data-col="r1" data-status={isRejectedStatus(status) ? 'rejected' : undefined} className={styles.colRole}>
         <RoleStatusCell
-          name={s?.reviewer?.assignee ? (staffById(s.reviewer.assignee)?.name || member.r1) : member.r1}
+          name={s?.reviewer?.assignee ? (nameOf(s.reviewer.assignee) || member.r1) : member.r1}
           status={status}
           date={addDaysToDate(member.date, ROLE_OFFSET.r1)}
+          priorResolved={isRoleResolved(cdrStatus)}
           role="reviewer" memberId={member.id} dosDate={member.date} />
       </td>
     );
   },
-  r2: ({ member, dosStateFor }) => {
+  r2: ({ member, dosStateFor, nameOf }) => {
     const s = dosStateFor(member);
     const status = s?.reviewer2?.status || member.r2s;
+    const r1Status = s?.reviewer?.status || member.r1s;
     return (
       <td key="r2" data-col="r2" data-status={isRejectedStatus(status) ? 'rejected' : undefined} className={styles.colRole}>
         <RoleStatusCell
-          name={s?.reviewer2?.assignee ? (staffById(s.reviewer2.assignee)?.name || member.r2) : member.r2}
+          name={s?.reviewer2?.assignee ? (nameOf(s.reviewer2.assignee) || member.r2) : member.r2}
           status={status}
           date={addDaysToDate(member.date, ROLE_OFFSET.r2)}
+          priorResolved={isRoleResolved(r1Status)}
           role="reviewer2" memberId={member.id} dosDate={member.date} />
       </td>
     );
@@ -924,7 +954,12 @@ function HccWorklistRowImpl({ member, hiddenCols, columns }) {
   const openAddDos = useAppStore(s => s.openHccAddDos);
   const openClaimPreview = useAppStore(s => s.openHccClaimPreview);
   const hccDosAssignments = useAppStore(s => s.hccDosAssignments);
+  const platformUsers = useAppStore(s => s.platformUsers);
   const dosStateFor = (m) => (m?.id && m?.dos ? hccDosAssignments[dosKey(m.id, m.dos, m.rp, m.pos)] : null);
+  // Resolve a staff/user id to a display name across BOTH rosters (Astrana
+  // + Supabase platform users). Falls back to null so an unresolved UUID
+  // never leaks into the cell verbatim.
+  const nameOf = (id) => resolveStaffName(id, platformUsers)?.name || null;
 
   const checked = selectedHccIds.includes(member.id);
   const isOpenInDrawer = diagPanelMemberId === member.id;
@@ -1130,7 +1165,7 @@ function HccWorklistRowImpl({ member, hiddenCols, columns }) {
 
         const render = CELL_RENDERERS[col.k];
         if (!render) return null;
-        return render({ member, charts, dosStateFor, openChartDrawer, openChartPopoverHover, closeChartPopoverHover, openDiagPanel, openUpload: (m) => openHccUploadDrawer(m) });
+        return render({ member, charts, dosStateFor, nameOf, openChartDrawer, openChartPopoverHover, closeChartPopoverHover, openDiagPanel, openUpload: (m) => openHccUploadDrawer(m) });
       })}
 
       {/* Sticky right: actions */}

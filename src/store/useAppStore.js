@@ -192,17 +192,31 @@ function persistHccMemberRoleStatus(memberId, role, status, name) {
     reviewer2: { name: 'reviewer2_name', status: 'reviewer2_status' },
   };
   const cols = colsByRole[role];
-  if (!cols || !memberId) return;
+  if (!cols || !memberId) return Promise.resolve({ error: { message: 'invalid role or memberId' } });
   const patch = {};
   if (status !== undefined) patch[cols.status] = status;
   if (name !== undefined && name !== null) patch[cols.name] = name;
-  if (Object.keys(patch).length === 0) return;
-  supabase
+  if (Object.keys(patch).length === 0) return Promise.resolve({ error: null });
+  // Returns the Supabase result so callers can await + surface failure. A
+  // silent fire-and-forget lets successful toasts mask writes that never
+  // reach the DB (RLS, unreachable, missing row), so the assignment
+  // "vanishes" on the next reload with no user-visible signal.
+  return supabase
     .from('hcc_members')
     .update(patch)
     .eq('id', memberId)
-    .then(({ error }) => {
-      if (error) console.warn(`persistHccMemberRoleStatus(${memberId}, ${role}) failed:`, error.message);
+    .select('id')
+    .then(({ data, error }) => {
+      if (error) {
+        console.warn(`persistHccMemberRoleStatus(${memberId}, ${role}) failed:`, error.message);
+        return { error };
+      }
+      if (!data || data.length === 0) {
+        const err = { message: `no hcc_members row for id=${memberId}` };
+        console.warn(`persistHccMemberRoleStatus(${memberId}, ${role}) affected 0 rows`);
+        return { error: err };
+      }
+      return { error: null };
     });
 }
 
@@ -3329,24 +3343,29 @@ export const useAppStore = create((set, get) => ({
       if (error) throw error;
       // Dedupe by name — profiles occasionally carries the same full_name
       // across multiple auth accounts (mail2… vs. .health, etc.), and
-      // downstream people-pickers key their rows by name.
-      const seen = new Set();
-      const rows = [];
+      // downstream people-pickers key their rows by name. UNION the
+      // clinical_roles across duplicates: keeping the first-seen row
+      // silently dropped anyone whose only role-carrying profile row
+      // wasn't first in the sort, which surfaces as "user missing from
+      // the role dropdown" even though admin set the role in Settings.
+      const byName = new Map();
       for (const r of (data || [])) {
         const name = (r.full_name?.trim()
           || [r.first_name, r.last_name].filter(Boolean).join(' ').trim()
           || r.email?.split('@')[0]
           || '').trim();
-        if (!name || seen.has(name)) continue;
-        seen.add(name);
+        if (!name) continue;
+        const roles = r.clinical_roles || [];
+        const existing = byName.get(name);
+        if (existing) {
+          const merged = Array.from(new Set([...existing.clinicalRoles, ...roles]));
+          byName.set(name, { ...existing, clinicalRoles: merged });
+          continue;
+        }
         const initials = name.split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase();
-        rows.push({
-          id: r.id,
-          name,
-          initials,
-          clinicalRoles: r.clinical_roles || [],
-        });
+        byName.set(name, { id: r.id, name, initials, clinicalRoles: roles });
       }
+      const rows = [...byName.values()];
       set({ platformUsers: rows, platformUsersDidFetch: true });
     } catch (err) {
       console.warn('fetchPlatformUsers error — pickers will fall back to systemUsers mock:', err?.message || err);
@@ -3541,6 +3560,26 @@ export const useAppStore = create((set, get) => ({
   // Dismiss reason + note per (code × DOS) — populated by dismissHccGapDos,
   // surfaced by the "Dismiss Reason" link on a dismissed row.
   hccGapDosMeta: {},
+  // Shared: on the first ICD action by the current role (Coder / QA /
+  // Compliance), auto-bump that role's DOS status from New / Assign →
+  // In Progress. Called by both setHccGapDosAction and dismissHccGapDos so
+  // *every* ICD action path (accept, missed, deferred, dismiss-with-reason)
+  // triggers the same worklist transition. Support triages docs, not ICDs,
+  // so it stays out of this path.
+  _maybeAutoBumpInProgress: (memberId, dos) => {
+    const s0 = get();
+    if (!memberId) return;
+    const ROLE_TO_ENGINE = { Coder: 'coder', QA: 'reviewer', Compliance: 'reviewer2' };
+    const STATUS_FIELD  = { coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
+    const engineRole = ROLE_TO_ENGINE[s0.hccUserRole];
+    if (!engineRole) return;
+    const member = s0.hccMembers.find(m => m.id === memberId);
+    const cur = member?.[STATUS_FIELD[engineRole]];
+    if (cur !== 'New' && cur !== 'Assign') return;
+    queueMicrotask(() => {
+      get().hccSetRoleStatus(memberId, dos, engineRole, 'In Progress');
+    });
+  },
   setHccGapDosAction: (code, dos, action) => {
     const s0 = get();
     const key = `${code}|${dos}`;
@@ -3553,25 +3592,7 @@ export const useAppStore = create((set, get) => ({
       if (!next) delete meta[key]; // undo also clears any dismiss reason
       return { hccGapDosActions: { ...s.hccGapDosActions, [key]: next }, hccGapDosMeta: meta };
     });
-    // First ICD action by the current role auto-bumps that role's DOS
-    // status from New/Assign → In Progress so the worklist reflects that
-    // work has actually started. Support triages docs, not ICDs, so it
-    // stays out of this path; Coder/QA/Compliance all take ICD-level
-    // actions and share the same auto-transition.
-    if (next && memberId) {
-      const roleToEngine = { Coder: 'coder', QA: 'reviewer', Compliance: 'reviewer2' };
-      const statusFieldByRole = { coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
-      const engineRole = roleToEngine[s0.hccUserRole];
-      if (engineRole) {
-        const member = s0.hccMembers.find(m => m.id === memberId);
-        const cur = member?.[statusFieldByRole[engineRole]];
-        if (cur === 'New' || cur === 'Assign') {
-          queueMicrotask(() => {
-            get().hccSetRoleStatus(memberId, dos, engineRole, 'In Progress');
-          });
-        }
-      }
-    }
+    if (next) get()._maybeAutoBumpInProgress(memberId, dos);
     // Persist: toggle-off deletes the row; a fresh action upserts it.
     if (!next) {
       persistHccGapDosActionDelete(memberName, code, dos);
@@ -3600,11 +3621,13 @@ export const useAppStore = create((set, get) => ({
   dismissHccGapDos: (code, dos, reason, note) => {
     const s0 = get();
     const key = `${code}|${dos}`;
-    const memberName = s0.hccMembers.find(m => m.id === s0.diagPanelMemberId)?.name;
+    const memberId = s0.diagPanelMemberId;
+    const memberName = s0.hccMembers.find(m => m.id === memberId)?.name;
     set(s => ({
       hccGapDosActions: { ...s.hccGapDosActions, [key]: 'rejected' },
       hccGapDosMeta: { ...s.hccGapDosMeta, [key]: { reason, note: note || '' } },
     }));
+    get()._maybeAutoBumpInProgress(memberId, dos);
     persistHccGapDosAction(memberName, code, dos, {
       action: 'rejected',
       dismiss_reason: reason || null,
@@ -4426,16 +4449,20 @@ export const useAppStore = create((set, get) => ({
     track('hcc.dos_returned', { dosId: dos, toRole: fromRole });
     return useAppStore.getState().transitionHccDos(pid, dos, 'returnDos', { fromRole, actor, reason });
   },
-  hccReassignRole: (pid, dos, role, staffId, actor, reason, displayName) => {
+  hccReassignRole: async (pid, dos, role, staffId, actor, reason, displayName) => {
     track('hcc.role_reassigned', { memberId: pid, fromRole: null, toRole: role });
-    // Snapshot the pre-reassign display name so the activity log can
-    // show "from → to". Reading after transitionHccDos would already
-    // see the patched value.
+    // Preconditions: the member has to exist in local state, the DOS has to
+    // exist on it, and we need a display name (Astrana staff or the picker's
+    // override). Without any of these the downstream patches silently no-op
+    // — the row stays put and the caller can't tell success from failure.
+    // Return an outcome so the picker can toast "assigned" vs "failed"
+    // instead of always showing success.
     const fieldByRoleLocal = { support: 'sup', coder: 'cdr', reviewer: 'r1', reviewer2: 'r2' };
     const preMember = useAppStore.getState().hccMembers.find(m => m.id === pid);
-    const fromName = preMember?.[fieldByRoleLocal[role]] || '—';
-    const patientName = preMember?.name;
-    const dosEntry = (preMember?.dos_list || []).find(d => d.date === dos);
+    if (!preMember) return { ok: false, reason: 'member-not-found' };
+    const fromName = preMember[fieldByRoleLocal[role]] || '—';
+    const patientName = preMember.name;
+    const dosEntry = (preMember.dos_list || []).find(d => d.date === dos);
     const result = useAppStore.getState().transitionHccDos(pid, dos, 'reassignRole', { role, staffId, actor, reason });
     // Also patch the member's legacy role field so the worklist row's
     // RoleStatusCell (which reads member.sup / .cdr / .r1 / .r2 / .r3
@@ -4448,25 +4475,28 @@ export const useAppStore = create((set, get) => ({
     // hccStaffById() returns null and the legacy field would never get
     // patched — the displayName override solves that.
     const staff = hccStaffById(staffId);
-    const name = staff?.name || displayName;
+    const platformName = useAppStore.getState().platformUsers.find(u => u.id === staffId)?.name;
+    const name = staff?.name || displayName || platformName;
     const fieldByRole = { support: 'sup', coder: 'cdr', reviewer: 'r1', reviewer2: 'r2' };
     const statusFieldByRole = { support: 'supS', coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
     const f = fieldByRole[role];
     const sf = statusFieldByRole[role];
+    if (!f || !name) return { ok: false, reason: 'unresolvable-assignee' };
     // Default status on assignment is role-dependent: Support starts at
     // "Awaiting" (displays as "Action Needed"), while Coder / QA / Compliance
     // start at "New". Either value takes the cell out of its "Assign" empty
     // state and marks the role as owned.
     const assignStatus = role === 'support' ? 'Awaiting' : 'New';
-    if (f && name) {
-      set(s => ({
-        hccMembers: s.hccMembers.map(m =>
-          m.id === pid ? { ...m, [f]: name, [sf]: assignStatus } : m,
-        ),
-      }));
-    }
-    // Persist to Supabase so the reassignment survives reload.
-    if (name) persistHccMemberRoleStatus(pid, role, assignStatus, name);
+    set(s => ({
+      hccMembers: s.hccMembers.map(m =>
+        m.id === pid ? { ...m, [f]: name, [sf]: assignStatus } : m,
+      ),
+    }));
+    // Persist to Supabase so the reassignment survives reload. Awaited so
+    // the caller can distinguish "written to DB" from "optimistic only" —
+    // silent writes were masking RLS / missing-row failures in production
+    // (user sees success toast, refresh reverts the assignment).
+    const persist = await persistHccMemberRoleStatus(pid, role, assignStatus, name);
     // Log to the canonical activity feed for the History drawer.
     const ROLE_LABEL = { support: 'Support', coder: 'Coder', reviewer: 'Reviewer', reviewer2: 'Reviewer 2' };
     useAppStore.getState().logHccActivity({
@@ -4501,7 +4531,10 @@ export const useAppStore = create((set, get) => ({
         },
       };
     });
-    return result;
+    if (persist?.error) {
+      return { ok: false, reason: 'persistence-failed', detail: persist.error.message, name, previous: fromName };
+    }
+    return { ok: true, name, previous: fromName };
   },
 
   // Generic role-status patch — used by the DiagPanel status menu for
