@@ -3518,12 +3518,32 @@ export const useAppStore = create((set, get) => ({
     const key = `${code}|${dos}`;
     const prev = s0.hccGapDosActions[key];
     const next = prev === action ? null : action;
-    const memberName = s0.hccMembers.find(m => m.id === s0.diagPanelMemberId)?.name;
+    const memberId = s0.diagPanelMemberId;
+    const memberName = s0.hccMembers.find(m => m.id === memberId)?.name;
     set(s => {
       const meta = { ...s.hccGapDosMeta };
       if (!next) delete meta[key]; // undo also clears any dismiss reason
       return { hccGapDosActions: { ...s.hccGapDosActions, [key]: next }, hccGapDosMeta: meta };
     });
+    // First ICD action by the current role auto-bumps that role's DOS
+    // status from New/Assign → In Progress so the worklist reflects that
+    // work has actually started. Support triages docs, not ICDs, so it
+    // stays out of this path; Coder/QA/Compliance all take ICD-level
+    // actions and share the same auto-transition.
+    if (next && memberId) {
+      const roleToEngine = { Coder: 'coder', QA: 'reviewer', Compliance: 'reviewer2' };
+      const statusFieldByRole = { coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
+      const engineRole = roleToEngine[s0.hccUserRole];
+      if (engineRole) {
+        const member = s0.hccMembers.find(m => m.id === memberId);
+        const cur = member?.[statusFieldByRole[engineRole]];
+        if (cur === 'New' || cur === 'Assign') {
+          queueMicrotask(() => {
+            get().hccSetRoleStatus(memberId, dos, engineRole, 'In Progress');
+          });
+        }
+      }
+    }
     // Persist: toggle-off deletes the row; a fresh action upserts it.
     if (!next) {
       persistHccGapDosActionDelete(memberName, code, dos);
