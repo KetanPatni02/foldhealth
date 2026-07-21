@@ -1470,8 +1470,8 @@ export function DiagPanel() {
                 ].filter(Boolean).join(' ')}
                 onClick={() => setDiagLeftPanel(diagLeftPanel === 'activity' && !diagActivityIcd ? null : 'activity')}
               />
-              <span className={[styles.divider, styles.hideBelow640].join(' ')} />
-              <span className={styles.toolbarMoreWrap} ref={moreWrapRef}>
+              <span className={[styles.divider, styles.showToolbarMore].join(' ')} />
+              <span className={[styles.toolbarMoreWrap, styles.showToolbarMore].join(' ')} ref={moreWrapRef}>
                 <ActionButton
                   icon="solar:menu-dots-linear"
                   size="S"
@@ -1483,7 +1483,7 @@ export function DiagPanel() {
                   <div className={styles.toolbarMoreDropdown} role="menu">
                     <button
                       type="button"
-                      className={styles.toolbarMoreItem}
+                      className={[styles.toolbarMoreItem, styles.showBelow460].join(' ')}
                       role="menuitem"
                       onClick={() => { setMoreOpen(false); openDocsFromToolbar(); }}
                     >
@@ -1493,7 +1493,7 @@ export function DiagPanel() {
                     </button>
                     <button
                       type="button"
-                      className={styles.toolbarMoreItem}
+                      className={[styles.toolbarMoreItem, styles.showBelow540].join(' ')}
                       role="menuitem"
                       onClick={() => {
                         setMoreOpen(false);
@@ -1506,7 +1506,7 @@ export function DiagPanel() {
                     </button>
                     <button
                       type="button"
-                      className={styles.toolbarMoreItem}
+                      className={[styles.toolbarMoreItem, styles.showBelow640].join(' ')}
                       role="menuitem"
                       onClick={() => {
                         setMoreOpen(false);

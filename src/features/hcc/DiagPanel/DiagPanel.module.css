@@ -655,6 +655,26 @@
   .hideBelow460 { display: none !important; }
 }
 
+/* Overflow-menu companions — each dropdown item is the inverse of the
+   inline button's hide breakpoint, so the More dropdown only shows items
+   the toolbar is currently hiding. The More button itself hides above
+   620px (nothing is overflowing) and appears at the same breakpoint as
+   the first inline item to hide (Timeline). */
+.showToolbarMore { display: none !important; }
+.showBelow640,
+.showBelow540,
+.showBelow460 { display: none !important; }
+@container rhsPane (max-width: 620px) {
+  .showToolbarMore { display: inline-flex !important; }
+  .showBelow640 { display: flex !important; }
+}
+@container rhsPane (max-width: 520px) {
+  .showBelow540 { display: flex !important; }
+}
+@container rhsPane (max-width: 440px) {
+  .showBelow460 { display: flex !important; }
+}
+
 /* Toolbar overflow (More) menu — anchor + dropdown match the shared
    BulkBar chrome, but with a smaller footprint that fits inline in the
    drawer toolbar. */
