@@ -56,6 +56,12 @@
 /* ── State: Disabled ── */
 .disabled {
   cursor: not-allowed;
+}
+/* Dim the icon and badges only — never the tooltip. Opacity on the button
+   root would cascade to the tooltip span (a child), and child opacity can't
+   override parent opacity, so a long disabled-tooltip would render at 50% and
+   look broken. Targeting non-tooltip descendants keeps the bubble crisp. */
+.disabled > *:not(.tooltip) {
   opacity: 0.5;
 }
 

@@ -414,6 +414,12 @@
   border-radius: 4px;
 }
 .uploadLink:hover { background: var(--primary-50); }
+.uploadLink:disabled {
+  color: var(--neutral-300);
+  cursor: not-allowed;
+  background: none;
+}
+.uploadLink:disabled svg { color: var(--neutral-300) !important; }
 .uploadLinkActive {
   background: var(--primary-50);
 }

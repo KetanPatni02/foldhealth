@@ -773,7 +773,13 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
                   </button>
                 </div>
                 <div className={styles.assocActions}>
-                  <button type="button" className={styles.uploadLink} onClick={() => setShowUpload(v => !v)}>
+                  <button
+                    type="button"
+                    className={styles.uploadLink}
+                    onClick={() => setShowUpload(v => !v)}
+                    disabled={supportActionsLocked}
+                    title={supportActionsLocked ? supportLockedTip : undefined}
+                  >
                     <Icon name="solar:upload-minimalistic-linear" size={16} color="var(--primary-300)" />
                     Upload
                   </button>
@@ -781,11 +787,14 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
                   <ActionButton
                     icon="solar:chat-round-linear"
                     size="S"
-                    tooltip="Comment"
+                    tooltip={supportActionsLocked ? supportLockedTip : 'Comment'}
+                    tooltipLeft={supportActionsLocked}
+                    tooltipBelow={supportActionsLocked}
                     count={commentsCountForMember > 0 ? String(commentsCountForMember) : undefined}
                     className={leftPanel === 'comments' ? styles.commentBtnActive : ''}
-                    onClick={() => setLeftPanel(v => v === 'comments' ? 'preview' : 'comments')}
+                    onClick={supportActionsLocked ? undefined : () => setLeftPanel(v => v === 'comments' ? 'preview' : 'comments')}
                     aria-pressed={leftPanel === 'comments'}
+                    state={supportActionsLocked ? 'disabled' : 'active'}
                   />
                 </div>
               </div>
