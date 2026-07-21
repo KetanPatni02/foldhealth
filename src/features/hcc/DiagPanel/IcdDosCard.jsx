@@ -325,7 +325,11 @@ function DosActionRow({
           />
         )}
         <span className={styles.dosDate}>{entry.dos}</span>
-        <span className={styles.hccChip}>{hccShort ? `${hccShort} (V28)` : 'No HCC'}</span>
+        <span className={styles.hccChip}>
+          {hccShort
+            ? (/^hcc\s*not\s*linked$/i.test(hccShort) ? hccShort : `${hccShort} (V28)`)
+            : 'No HCC'}
+        </span>
         {entry.claimed && (
           <button
             type="button"

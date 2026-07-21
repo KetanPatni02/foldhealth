@@ -399,14 +399,30 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     // user finishes reviewing.
     pendingSyncRef.current = true;
   };
-  const passDoc = (id) => { applyDocAction(id, 'pass'); showToast('Support Task is Completed'); };
+  const passDoc = (id) => {
+    applyDocAction(id, 'pass');
+    const doc = docs.find(d => d.id === id);
+    addActivityEntry?.({
+      _memberId: member?.id,
+      t: 'doc-status', by: 'You', role: 'Support Team',
+      headline: `Marked "${doc?.n || 'Document'}" as Passed`,
+    });
+    showToast('Support Task is Completed');
+  };
   const failDoc = (id) => {
     const doc = docs.find(d => d.id === id);
     setFailPrompt({ id, name: doc?.n || 'Document' });
   };
   const undoDoc = (id) => {
+    const doc = docs.find(d => d.id === id);
+    const prevStatus = doc?.status;
     applyDocAction(id, null);
     setFailDetails(prev => { const n = { ...prev }; delete n[id]; return n; });
+    addActivityEntry?.({
+      _memberId: member?.id,
+      t: 'doc-status', by: 'You', role: 'Support Team',
+      headline: `Undid ${prevStatus || 'review'} on "${doc?.n || 'Document'}"`,
+    });
   };
   const confirmFailDoc = ({ reasons, note }) => {
     if (!failPrompt) return;
@@ -415,6 +431,7 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     const doc = docs.find(d => d.id === failPrompt.id);
     const reasonText = (reasons || []).join(', ');
     addActivityEntry?.({
+      _memberId: member?.id,
       t: 'doc-status', by: 'You', role: 'Support Team',
       headline: `Marked "${doc?.n || failPrompt.name}" as Failed`,
       details: [{ note: note ? `${reasonText} — ${note}` : reasonText }],
@@ -569,6 +586,7 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     syncSupportStatus('insufficient');
     const reasonText = (reasons || []).join(', ');
     addActivityEntry?.({
+      _memberId: member?.id,
       t: 'doc-status', by: 'You', role: 'Support Team',
       headline: 'Marked record Insufficient',
       details: [{ note: note ? `${reasonText} — ${note}` : reasonText }],

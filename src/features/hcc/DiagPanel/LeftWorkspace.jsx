@@ -519,6 +519,7 @@ const ACT_ICON = {
   outreach:    { icon: 'solar:phone-linear',                 color: 'var(--secondary-300)',     bg: 'var(--secondary-100)',      border: 'rgba(244,122,62,0.2)',    dashed: false },
   status_dos:  { icon: 'solar:eye-scan-linear',              color: 'var(--status-warning)',     bg: 'var(--status-warning-light)', border: 'rgba(217,165,11,0.2)',    dashed: false },
   status_hcc:  { icon: 'solar:eye-scan-linear',              color: 'var(--status-warning)',     bg: 'var(--status-warning-light)', border: 'rgba(217,165,11,0.2)',    dashed: false },
+  status_role: { icon: 'solar:refresh-circle-linear',        color: 'var(--primary-300)',        bg: 'var(--primary-50)',           border: 'rgba(107,68,168,0.2)',    dashed: false },
   accept:      { icon: 'solar:check-read-linear',            color: 'var(--status-success)',     bg: 'var(--status-success-light)', border: 'rgba(0,155,83,0.2)',      dashed: false },
   dismiss:     { icon: 'solar:close-circle-linear',          color: 'var(--status-error)',       bg: 'var(--status-error-light)',   border: 'rgba(215,40,37,0.2)',     dashed: false },
   delete:      { icon: 'solar:trash-bin-trash-linear',       color: 'var(--status-error)',       bg: 'var(--status-error-light)',   border: 'rgba(215,40,37,0.2)',     dashed: false },
@@ -697,7 +698,7 @@ function ActivityEntry({ item, isFirst, isLast, member }) {
         )}
 
         {/* Status transition (from → to) pills */}
-        {(item.t === 'status_dos' || item.t === 'status_hcc') && item.from && item.to && (
+        {(item.t === 'status_dos' || item.t === 'status_hcc' || item.t === 'status_role') && item.from && item.to && (
           <div className={styles.tlTransition}>
             <span className={[styles.tlPill, styles[TRANS_BADGE[item.from] || 'pillOpen']].join(' ')}>
               {item.from}
