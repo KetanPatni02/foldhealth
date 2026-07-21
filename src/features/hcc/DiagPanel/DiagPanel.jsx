@@ -540,7 +540,7 @@ export function DiagPanel() {
         });
       }
     }
-    opts.push({ value: DOS_CUSTOM, label: '+ Custom Date' });
+    opts.push({ value: DOS_CUSTOM, label: '+ Add New DOS' });
     return opts;
   }, [memberDosList, siblingRows, member?.id, member?.date]);
   const gapProviderAll = useMemo(
