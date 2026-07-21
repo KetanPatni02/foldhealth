@@ -31,12 +31,18 @@ export function UploadChartDrawer() {
   // "Documents" column + the ChartPopover / Document Available drawer).
   const addChartDoc = useAppStore(s => s.addChartDoc);
   const updateChartDocMeta = useAppStore(s => s.updateChartDocMeta);
+  const setChartDocStatus = useAppStore(s => s.setChartDocStatus);
+  const hccUserRole = useAppStore(s => s.hccUserRole);
   const isEdit = !!editDoc;
+  // Only reviewer roles can set an initial Pass/Fail on upload; Support
+  // uploads still land in "New" like today.
+  const canSetStatus = !isEdit && ['Coder', 'QA', 'Compliance'].includes(hccUserRole);
 
   const [file, setFile] = useState(null);
   const [caption, setCaption] = useState('');
   const [captionTouched, setCaptionTouched] = useState(false);
   const [docType, setDocType] = useState('');
+  const [initialStatus, setInitialStatus] = useState(null);
   const [uploadKey, setUploadKey] = useState(0); // remount UploadDropField to reset it
 
   // Prefill when opening in edit mode: caption + docType come from the row,
@@ -52,6 +58,7 @@ export function UploadChartDrawer() {
       setDocType('');
     }
     setFile(null);
+    setInitialStatus(null);
     setUploadKey(k => k + 1);
   }, [editDoc, isEdit]);
 
@@ -84,6 +91,9 @@ export function UploadChartDrawer() {
     }
     const doc = makeUploadedChartDoc(member, { file, caption, docType });
     addChartDoc(member.id, doc, file);
+    if (initialStatus) {
+      setChartDocStatus(member.id, doc.id, initialStatus);
+    }
     addActivityEntry({
       t: 'upload', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
       icds: activityIcd ? [activityIcd] : undefined,
@@ -99,6 +109,7 @@ export function UploadChartDrawer() {
     setCaption('');
     setCaptionTouched(false);
     setDocType('');
+    setInitialStatus(null);
     setUploadKey(k => k + 1);
     close();
   };
@@ -108,6 +119,7 @@ export function UploadChartDrawer() {
     setCaption('');
     setCaptionTouched(false);
     setDocType('');
+    setInitialStatus(null);
     setUploadKey(k => k + 1);
     close();
   };
@@ -174,6 +186,32 @@ export function UploadChartDrawer() {
             </SelectContent>
           </Select>
         </div>
+
+        {/* Review Status — reviewer roles can Pass/Fail on upload so a
+            single-step flow lands the doc in a decided state. */}
+        {canSetStatus && (
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>
+              Review Status <span className={styles.optional}>(optional)</span>
+            </span>
+            <div className={styles.statusRow}>
+              <button
+                type="button"
+                className={[styles.statusPill, initialStatus === 'Passed' ? styles.statusPass : ''].filter(Boolean).join(' ')}
+                onClick={() => setInitialStatus(v => v === 'Passed' ? null : 'Passed')}
+              >
+                Pass
+              </button>
+              <button
+                type="button"
+                className={[styles.statusPill, initialStatus === 'Failed' ? styles.statusFail : ''].filter(Boolean).join(' ')}
+                onClick={() => setInitialStatus(v => v === 'Failed' ? null : 'Failed')}
+              >
+                Fail
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </Drawer>
   );

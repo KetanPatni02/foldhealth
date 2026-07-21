@@ -24,7 +24,7 @@ import { makeInitialDocument } from '../features/email-builder/initialDocument';
 import * as hccLifecycle from '../features/hcc/assignment/lifecycle';
 import { hydrateFromMember, dosKey as hccDosKey } from '../features/hcc/assignment/dosState';
 import { DEFAULT_SAMPLING_RATES } from '../features/hcc/assignment/sampling';
-import { staffById as hccStaffById } from '../features/hcc/assignment/astranaStaff';
+import { ASTRANA_STAFF, staffById as hccStaffById } from '../features/hcc/assignment/astranaStaff';
 import { normalizeReviewerLabel as hccNormalizeReviewerLabel } from '../features/hcc/reviewedBy';
 import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activityLog';
 import { hccRoleDefaultFilters } from '../features/hcc/filters';
@@ -1221,9 +1221,21 @@ export const useAppStore = create((set, get) => ({
   // Reset hccFilters to the current role's canonical queue: Assignee = me
   // + role-specific status in ['New', 'In Progress']. Also detaches any
   // active saved filter so the SavedFiltersChip doesn't lie.
-  applyHccRoleDefaultFilters: () => {
-    const s = get();
-    const userName = s.currentUserProfile?.name || null;
+  applyHccRoleDefaultFilters: async () => {
+    let s = get();
+    // Ensure a currentUserProfile has been resolved once — otherwise the very
+    // first paint in dev-bypass mode ships with Assignee = null and the queue
+    // looks empty until profiles arrive.
+    if (!s.currentUserProfile && s.taskProfiles.length === 0) {
+      await get().fetchTaskProfiles();
+      s = get();
+    }
+    const roleToEngine = { Support: 'support', Coder: 'coder', QA: 'reviewer', Compliance: 'reviewer2' };
+    const devFallback = () => {
+      const eng = roleToEngine[s.hccUserRole];
+      return eng ? ASTRANA_STAFF.find(m => m.role === eng && m.active)?.name : null;
+    };
+    const userName = s.currentUserProfile?.name || devFallback();
     const filters = hccRoleDefaultFilters(s.hccUserRole, userName);
     set({
       hccFilters: filters,
@@ -3534,12 +3546,32 @@ export const useAppStore = create((set, get) => ({
     const key = `${code}|${dos}`;
     const prev = s0.hccGapDosActions[key];
     const next = prev === action ? null : action;
-    const memberName = s0.hccMembers.find(m => m.id === s0.diagPanelMemberId)?.name;
+    const memberId = s0.diagPanelMemberId;
+    const memberName = s0.hccMembers.find(m => m.id === memberId)?.name;
     set(s => {
       const meta = { ...s.hccGapDosMeta };
       if (!next) delete meta[key]; // undo also clears any dismiss reason
       return { hccGapDosActions: { ...s.hccGapDosActions, [key]: next }, hccGapDosMeta: meta };
     });
+    // First ICD action by the current role auto-bumps that role's DOS
+    // status from New/Assign → In Progress so the worklist reflects that
+    // work has actually started. Support triages docs, not ICDs, so it
+    // stays out of this path; Coder/QA/Compliance all take ICD-level
+    // actions and share the same auto-transition.
+    if (next && memberId) {
+      const roleToEngine = { Coder: 'coder', QA: 'reviewer', Compliance: 'reviewer2' };
+      const statusFieldByRole = { coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
+      const engineRole = roleToEngine[s0.hccUserRole];
+      if (engineRole) {
+        const member = s0.hccMembers.find(m => m.id === memberId);
+        const cur = member?.[statusFieldByRole[engineRole]];
+        if (cur === 'New' || cur === 'Assign') {
+          queueMicrotask(() => {
+            get().hccSetRoleStatus(memberId, dos, engineRole, 'In Progress');
+          });
+        }
+      }
+    }
     // Persist: toggle-off deletes the row; a fresh action upserts it.
     if (!next) {
       persistHccGapDosActionDelete(memberName, code, dos);
@@ -8103,6 +8135,15 @@ export const useAppStore = create((set, get) => ({
       }
     }
     set({ taskProfiles: profiles, currentUserProfile: me });
+    // If the HCC worklist already applied a role-scoped default filter using a
+    // dev-fallback (or nothing at all), backfill it once the real user profile
+    // is known so the "logged-in user's queue" default actually takes effect.
+    const cur = get();
+    if (me?.name && cur.activeSubnavList === 'HCC' && cur.hccFilters) {
+      const currentAsgn = cur.hccFilters.asgn;
+      const needsUpdate = !currentAsgn || currentAsgn.length !== 1 || currentAsgn[0] !== me.name;
+      if (needsUpdate) set({ hccFilters: { ...cur.hccFilters, asgn: [me.name] } });
+    }
   },
 
   // ── Task Labels (custom labels stored in DB) ──

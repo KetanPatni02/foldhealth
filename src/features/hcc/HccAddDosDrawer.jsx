@@ -461,7 +461,7 @@ export function HccAddDosDrawer() {
 
   // Every mandatory field must be present — including at least one ICD, so a
   // worklist record is never created with a zero ICD count.
-  const canSave = blocks.some(b => b.dos && b.provider && b.pos && b.docType && (b.icds?.length > 0));
+  const canSave = blocks.some(b => b.file && b.dos && b.provider && b.pos && b.docType && (b.icds?.length > 0));
 
   const setBlock = (idx, next) => setBlocks(bs => bs.map((b, i) => i === idx ? next : b));
   // Deleting the only DOS clears it back to a fresh empty block.

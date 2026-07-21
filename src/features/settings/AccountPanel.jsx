@@ -411,8 +411,12 @@ export function AccountPanel() {
     }
     if (!user.email) { showToast('No email address for this user'); return; }
     try {
+      // Bare-origin redirect — Supabase appends its own `#access_token=…`
+      // hash, and stacking our SPA route on top produces a double-hash URL
+      // supabase-js can't parse. App.jsx catches `type=recovery` in the
+      // fragment and routes to ResetPasswordPage.
       const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-        redirectTo: `${window.location.origin}/#/reset-password`,
+        redirectTo: window.location.origin,
       });
       if (error) showToast(`Error: ${error.message}`);
       else showToast(`Password reset email sent to ${user.email}`);
@@ -1231,13 +1235,17 @@ function InviteUserDrawer({ onClose, onInvited }) {
     }
     setSending(true);
     try {
-      // 1. Invite user via Supabase Auth (sends signup email).
-      //    The `invited: 'true'` meta flag is picked up by the
-      //    handle_new_user() Postgres trigger to seed the profile
-      //    with status='Invited' instead of the default 'Active'.
+      // Invite via Supabase Auth (single confirmation email). The temp
+      // password is a placeholder — App.jsx routes users whose metadata
+      // carries invited='true' to ResetPasswordPage, where they set a
+      // real password and are dropped into the app.
+      //
+      // emailRedirectTo is the bare origin — appending our own `#/…` hash
+      // would collide with Supabase's `#access_token=…` fragment and break
+      // supabase-js's detectSessionInUrl parser.
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: form.email,
-        password: crypto.randomUUID(), // temp password — user resets via email
+        password: crypto.randomUUID(),
         options: {
           data: {
             first_name: form.first_name,
@@ -1245,20 +1253,20 @@ function InviteUserDrawer({ onClose, onInvited }) {
             full_name: `${form.first_name} ${form.last_name}`.trim(),
             invited: 'true',
           },
-          emailRedirectTo: `${window.location.origin}/#/reset-password`,
+          emailRedirectTo: window.location.origin,
         },
       });
       if (authError) { showToast(`Invite failed: ${authError.message}`); setSending(false); return; }
 
-      // 2. Create profile with 'Invited' status
+      // Fill in the profile extras (roles, contact, locations, …). The
+      // handle_new_user() trigger has already inserted the base row with
+      // status='Invited', and RLS's profiles_self_insert blocks admins
+      // from INSERTing another user's row — so UPDATE, not upsert.
       const userId = authData?.user?.id;
       if (userId) {
-        const profileData = {
-          id: userId,
-          email: form.email,
+        const profileExtras = {
           full_name: `${form.first_name} ${form.last_name}`.trim(),
           first_name: form.first_name, middle_name: form.middle_name, last_name: form.last_name,
-          status: 'Invited',
           admin_role: form.admin_role,
           role: form.clinical_roles.length > 0 ? form.clinical_roles[0] : 'Viewer',
           clinical_roles: form.clinical_roles,
@@ -1268,14 +1276,9 @@ function InviteUserDrawer({ onClose, onInvited }) {
           credentials: form.credentials, licence_states: form.licence_states,
           locations: form.locations, languages: form.languages,
         };
-        await supabase.from('profiles').upsert(profileData, { onConflict: 'id' });
-        logAudit('UserProfile', userId, profileData.full_name, 'created', `Invited user: ${form.email}`, 'Lifecycle');
+        await supabase.from('profiles').update(profileExtras).eq('id', userId);
+        logAudit('UserProfile', userId, profileExtras.full_name, 'created', `Invited user: ${form.email}`, 'Lifecycle');
       }
-
-      // 3. Send password reset email so user can set their password
-      await supabase.auth.resetPasswordForEmail(form.email, {
-        redirectTo: `${window.location.origin}/#/reset-password`,
-      });
 
       showToast(`Invitation sent to ${form.email}`);
       onInvited();
@@ -1469,20 +1472,30 @@ function InviteUserDrawer({ onClose, onInvited }) {
       for (const row of bulkRows) {
         if (!row.email?.trim()) continue;
         try {
+          // Same single-email invite flow as handleSendInvite — signUp
+          // with invited='true' meta, bare-origin emailRedirectTo so
+          // supabase-js can parse its own recovery fragment.
           const { data: authData, error: authError } = await supabase.auth.signUp({
             email: row.email, password: crypto.randomUUID(),
-            options: { data: { first_name: row.first_name, last_name: row.last_name, full_name: `${row.first_name} ${row.last_name}`.trim() } },
+            options: {
+              data: {
+                first_name: row.first_name,
+                last_name: row.last_name,
+                full_name: `${row.first_name} ${row.last_name}`.trim(),
+                invited: 'true',
+              },
+              emailRedirectTo: window.location.origin,
+            },
           });
           if (authError) continue;
           const userId = authData?.user?.id;
           if (userId) {
-            await supabase.from('profiles').upsert({
-              id: userId, email: row.email, full_name: `${row.first_name} ${row.last_name}`.trim(),
+            await supabase.from('profiles').update({
+              full_name: `${row.first_name} ${row.last_name}`.trim(),
               first_name: row.first_name, middle_name: row.middle_name, last_name: row.last_name,
-              status: 'Invited', admin_role: row.admin_role || 'Employer', role: 'Viewer',
+              admin_role: row.admin_role || 'Employer', role: 'Viewer',
               gender: row.gender, mobile: row.mobile, fax: row.fax, zip_code: row.zip_code,
-            }, { onConflict: 'id' });
-            await supabase.auth.resetPasswordForEmail(row.email, { redirectTo: `${window.location.origin}/#/reset-password` });
+            }).eq('id', userId);
             successCount++;
           }
         } catch (e) { /* skip failed rows */ }
