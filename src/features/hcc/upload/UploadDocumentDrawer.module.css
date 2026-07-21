@@ -2667,13 +2667,189 @@
   overflow-y: auto;
 }
 .singleSection {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex-shrink: 0;
 }
 .singleLabel {
   font: 500 12px/1.4 'Inter', sans-serif;
   color: var(--neutral-400);
+}
+.singleReq { color: var(--status-error); margin-left: 2px; }
+
+/* Member picker — the field itself is the search input. When focused
+   the caret sits inside a Select-styled shell and the match list opens
+   in an absolutely-positioned popover so the DOS card below never
+   shifts down. No separate search box inside the popover. */
+.singleMemberField {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.singleMemberInput {
+  width: 100%;
+  height: 40px;
+  padding: 0 34px 0 14px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  outline: none;
+  font: 400 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  box-sizing: border-box;
+}
+.singleMemberInput::placeholder { color: var(--neutral-300); }
+.singleMemberInput:focus {
+  border-color: var(--primary-200);
+  box-shadow: 0 0 0 2px var(--primary-50);
+}
+.singleMemberField > svg {
+  position: absolute;
+  right: 12px;
+  pointer-events: none;
+}
+/* Selected-member chip — swaps in for the input once a patient is
+   picked, showing the Avatar + demographics inline. Clicking it
+   reopens the picker so the user can search again. */
+.singleMemberSelected {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 40px;
+  padding: 0 34px 0 10px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  font: 400 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  box-sizing: border-box;
+}
+.singleMemberSelected:hover { background: var(--neutral-50); }
+.singleMemberName {
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.singleMemberMeta {
+  font: 400 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.singleMemberPop {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+}
+.singleMemberEmpty {
+  padding: 12px 10px;
+  font: 400 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+  text-align: center;
+}
+
+/* DOS card — mirrors HccAddDosDrawer's DosBlock: head strip + body
+   with 12px inset, so the layout reads identically across manual and
+   worklist entry points. */
+.singleDosCard {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  flex-shrink: 0;
+}
+.singleDosHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.singleDosCollapse {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+}
+.singleDosCollapse:hover { background: var(--neutral-50); }
+.singleDosTitle {
+  font: 600 14px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.singleDosHeadSpacer { flex: 1; }
+.singleDosBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px;
+}
+.singleTrashBtn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  border-radius: 6px;
+  color: var(--neutral-300);
+}
+.singleTrashBtn:hover { background: var(--neutral-50); }
+
+/* ICD Codes — one row per pick, divider between rows. */
+.singleIcdSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.singleIcdRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--neutral-100);
+}
+.singleIcdCode {
+  font: 600 13px/1.4 'Inter', sans-serif;
+  color: var(--neutral-500);
+  flex-shrink: 0;
+  min-width: 52px;
+}
+.singleIcdMain { flex: 1; min-width: 0; }
+.singleIcdDesc { font: 400 13px/1.4 'Inter', sans-serif; color: var(--neutral-500); }
+.singleIcdHcc { font: 400 12px/1.4 'Inter', sans-serif; color: var(--neutral-300); margin-top: 2px; }
+
+/* Add More DOS — dashed primary-tinted CTA below the last DOS card. */
+.addMoreDosBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 0.5px dashed color-mix(in srgb, var(--primary-300) 40%, transparent);
+  border-radius: 8px;
+  background: var(--primary-50);
+  color: var(--primary-300);
+  font: 500 13px/1.2 'Inter', sans-serif;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.addMoreDosBtn:hover {
+  background: color-mix(in srgb, var(--primary-300) 12%, transparent);
 }
 .singlePatientChip {
   display: inline-flex;
@@ -2749,42 +2925,6 @@
   background: var(--neutral-50);
   border-radius: 4px;
 }
-.icdChosen {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
-}
-.icdChosenChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 8px 3px 6px;
-  background: var(--primary-50);
-  border: 0.5px solid var(--primary-200);
-  border-radius: 4px;
-  font: 500 11px/1.4 'Inter', sans-serif;
-  color: var(--primary-300);
-}
-.icdChosenChip code {
-  font-family: 'JetBrains Mono', 'Inter', monospace;
-}
-.icdChosenDesc {
-  font-weight: 400;
-  color: var(--neutral-400);
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.icdChosenRemove {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  padding: 0;
-  display: inline-flex;
-}
-
 .dosSegmented {
   display: inline-flex;
   background: var(--neutral-50);

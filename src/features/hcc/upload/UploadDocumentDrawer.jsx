@@ -9,7 +9,9 @@ import { Input } from '../../../components/Input/Input';
 import { Toggle } from '../../../components/Toggle/Toggle';
 import { Select } from '../../../components/Select/Select';
 import { Dropzone } from '../../../components/Dropzone/Dropzone';
+import { DatePicker } from '../../../components/DatePicker/DatePicker';
 import { IcdSearch } from '../../../components/IcdSearch/IcdSearch';
+import { POS_SELECT_OPTIONS } from '../data/posCodes';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { ConfidenceBadge } from '../components/ConfidenceBadge';
 import { getScoreStyle, getFieldConfidence } from '../data/confidence';
@@ -18,6 +20,7 @@ import { MenuPopover } from '../../../components/Popover/MenuPopover';
 import { FilterChip } from '../../../components/FilterChip/FilterChip';
 import { useAppStore } from '../../../store/useAppStore';
 import { runMockOcr, mandatoryFields, POS_LABEL } from './mockOcr';
+import { PROVIDER_POOL_BY_VT } from '../reference/visitTypes';
 import styles from './UploadDocumentDrawer.module.css';
 
 // Accepted file types for clinical document upload. PDFs are the canonical
@@ -1184,6 +1187,11 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
   // → Confirm applies only selected, marks the rest as rejected, and the
   // History summary entry lists both buckets.
   const [selectedIdxs, setSelectedIdxs] = useState(() => new Set());
+  // SinglePhase (Add a DOS) lifts its save handler up so the header
+  // Save button can invoke the form's commit action. { save, canSave }
+  // is updated from a useEffect inside SinglePhase whenever its state
+  // changes; the header re-renders because setSingleSave triggers it.
+  const [singleSave, setSingleSave] = useState({ save: () => {}, canSave: false });
   const toggleSelected = (idx) => setSelectedIdxs(prev => {
     const next = new Set(prev);
     if (next.has(idx)) next.delete(idx); else next.add(idx);
@@ -1297,6 +1305,10 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
     <span className={styles.titleBlock}>
       <span className={styles.titleMain}>Add Records</span>
     </span>
+  ) : session.phase === 'single' ? (
+    <span className={styles.title}>
+      {singleSave.patientName ? `Add DOS for ${singleSave.patientName}` : 'Add DOS'}
+    </span>
   ) : (
     <span className={styles.title}>
       {session.phase === 'review'
@@ -1306,6 +1318,16 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
   );
 
   const headerRight = session.phase === 'picker' ? null
+  : session.phase === 'single' ? (
+    <Button
+      variant="primary"
+      size="S"
+      disabled={!singleSave.canSave}
+      onClick={singleSave.save}
+    >
+      Save to Worklist
+    </Button>
+  )
   : session.phase === 'review' ? (
     <>
       {/* Source-document peek: clicking opens the page-preview drawer
@@ -1389,6 +1411,7 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
           showToast={showToast}
           createFromEncounter={createFromEncounter}
           onDone={cancel}
+          onSaveApiChange={setSingleSave}
         />
       )}
 
@@ -1627,282 +1650,369 @@ function SftpPhase({ showToast }) {
 // Manual entry path: pick a patient, add ICD chips, fill the encounter
 // context, attach a document, Confirm. Routes through the existing
 // hccCreateOrMergeFromEncounter so dedup + activity-log wiring all works.
-function SinglePhase({ hccMembers, batchId, showToast, createFromEncounter, onDone }) {
+function SinglePhase({ hccMembers, batchId, showToast, createFromEncounter, onDone, onSaveApiChange }) {
   const [patient, setPatient] = useState(null);   // selected hccMember or null
   const [patientQuery, setPatientQuery] = useState('');
-  const [icds, setIcds] = useState([]);             // [{ code, desc, hcc? }]
-  const [dosMode, setDosMode] = useState('existing'); // 'existing' | 'new'
-  const [dos, setDos] = useState('');
-  const [provider, setProvider] = useState('');
-  const [pos, setPos] = useState('11');
-  const [docType, setDocType] = useState('Progress Note');
-  const [condition, setCondition] = useState('');
-  const [file, setFile] = useState(null);
-  const fileInputRef = useRef(null);
-
-  // Patient search — typeahead over hccMembers by name.
+  const [patientPickerOpen, setPatientPickerOpen] = useState(false);
+  const patientPickerWrapRef = useRef(null);
+  const patientInputRef = useRef(null);
   const patientMatches = useMemo(() => {
     const q = patientQuery.trim().toLowerCase();
-    if (!q) return hccMembers.slice(0, 6);
+    if (!q) return hccMembers.slice(0, 20);
     return hccMembers
       .filter(m => (m.name || '').toLowerCase().includes(q))
-      .slice(0, 8);
+      .slice(0, 20);
   }, [hccMembers, patientQuery]);
 
-  const addIcd = (item) => {
-    if (icds.some(i => i.code === item.code)) return;
-    setIcds([...icds, item]);
-  };
-  const removeIcd = (code) => setIcds(icds.filter(i => i.code !== code));
+  // Close the member popover on outside click / Escape.
+  useEffect(() => {
+    if (!patientPickerOpen) return undefined;
+    const onDoc = (e) => {
+      if (patientPickerWrapRef.current && !patientPickerWrapRef.current.contains(e.target)) {
+        setPatientPickerOpen(false);
+      }
+    };
+    const onKey = (e) => { if (e.key === 'Escape') setPatientPickerOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [patientPickerOpen]);
 
-  const existingDosList = patient?.dos_list?.map(d => d.date) || [];
+  // Multiple DOS blocks — each an independent record for the same
+  // patient. New blocks default empty; user fills date/provider/pos +
+  // document type, drops a file, adds ICDs.
+  const newDosBlock = () => ({
+    id: `nd-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+    dos: '',
+    provider: '',
+    pos: '',
+    docType: '',
+    file: null,
+    icds: [],
+  });
+  const [dosBlocks, setDosBlocks] = useState(() => [newDosBlock()]);
+  const patchBlock = (id, patch) => setDosBlocks(prev => prev.map(b => b.id === id ? { ...b, ...patch } : b));
+  const addDosBlock = () => setDosBlocks(prev => [...prev, newDosBlock()]);
+  const removeDosBlock = (id) => setDosBlocks(prev => prev.length > 1 ? prev.filter(b => b.id !== id) : prev);
 
-  const canConfirm = patient && icds.length > 0 && dos && provider && pos;
+  // Provider list is derived once from the reference pool — dedupe
+  // across visit types so the Select shows every doctor the demo seeds.
+  const providerOptions = useMemo(() => {
+    const set = new Set();
+    Object.values(PROVIDER_POOL_BY_VT).forEach(list => list.forEach(p => set.add(p)));
+    return Array.from(set).sort().map(p => ({ value: p, label: p }));
+  }, []);
+  const canSave = !!patient && dosBlocks.every(b => (
+    b.dos && b.provider && b.pos && b.docType && b.file
+  ));
 
-  const handleConfirm = () => {
-    if (!canConfirm) return;
-    // Reuse the same create/merge path used by the OCR flow.
-    const result = createFromEncounter({
-      tempId: `single-${Date.now()}`,
-      patient: {
-        name: patient.name,
-        dob: patient.dob,
-        matchedMemberId: patient.id,
-        matchConfidence: 100,
-      },
-      dos,
-      provider,
-      pos,
-      posDesc: POS_LABEL[pos] || '',
-      icds: icds.map(i => ({ code: i.code, valid: true })),
-      _docName: file?.name || `Manual entry — ${condition || 'encounter'}.pdf`,
-      _docType: docType,
-      errors: [],
+  const handleSave = () => {
+    if (!canSave) return;
+    let created = 0;
+    dosBlocks.forEach((b) => {
+      const result = createFromEncounter({
+        tempId: `single-${b.id}`,
+        patient: {
+          name: patient.name,
+          dob: patient.dob,
+          matchedMemberId: patient.id,
+          matchConfidence: 100,
+        },
+        dos: b.dos,
+        provider: b.provider,
+        pos: b.pos,
+        posDesc: POS_LABEL[b.pos] || '',
+        icds: b.icds.map(i => ({ code: i.code, valid: true })),
+        _docName: b.file?.name || `Manual entry — ${patient.name} ${b.dos}.pdf`,
+        _docType: b.docType || 'Progress Note',
+        errors: [],
+      });
+      if (result.kind !== 'skipped') created += 1;
     });
-    if (result.kind === 'skipped') {
-      showToast('Could not save — patient not matched');
-      return;
-    }
-    const label = result.kind === 'created'
-      ? `Encounter added for ${patient.name}`
-      : result.kind === 'updated'
-        ? `ICDs merged into existing DOS for ${patient.name}`
-        : `Related DOS created for ${patient.name}`;
-    showToast(label);
+    showToast(`Added ${created} DOS record${created === 1 ? '' : 's'} for ${patient.name}`);
     onDone?.();
   };
 
+  // Publish { save, canSave, patientName } up to the drawer header on
+  // every render so both the "Save" button state and the drawer's
+  // contextual title reflect the form's current state.
+  useEffect(() => {
+    onSaveApiChange?.({ save: handleSave, canSave, patientName: patient?.name || '' });
+    return () => onSaveApiChange?.({ save: () => {}, canSave: false, patientName: '' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canSave, patient?.id, patient?.name, dosBlocks]);
+
   return (
     <div className={styles.singlePhase}>
-      <p className={styles.pickerSubtitle}>
-        Add a single encounter manually — pick a patient, attach ICDs, and upload
-        the supporting document.
-      </p>
-
-      {/* Patient picker — same layout as the OCR review's link-patient UI. */}
-      <div className={styles.singleSection}>
-        <label className={styles.singleLabel}>Patient *</label>
-        {patient ? (
-          <div className={styles.singlePatientChip}>
-            <Avatar variant="patient" initials={patient.in} />
-            <div className={styles.singlePatientText}>
-              <div className={styles.singlePatientName}>{patient.name}</div>
-              <div className={styles.singlePatientMeta}>
-                {patient.memberId || patient.member_id || '—'} · DOB {patient.dob || '—'}
-              </div>
-            </div>
+      {/* Member selector — the field itself is the search input. Focus
+          reveals the match list in an absolutely-positioned popover so
+          the DOS card below never shifts. */}
+      <div className={styles.singleSection} ref={patientPickerWrapRef}>
+        <label className={styles.singleLabel}>
+          Member <span className={styles.singleReq}>•</span>
+        </label>
+        <div className={styles.singleMemberField}>
+          {patient && !patientPickerOpen ? (
             <button
               type="button"
-              className={styles.singlePatientChange}
-              onClick={() => { setPatient(null); setPatientQuery(''); }}
+              className={styles.singleMemberSelected}
+              onClick={() => {
+                setPatientQuery('');
+                setPatientPickerOpen(true);
+                setTimeout(() => patientInputRef.current?.focus(), 0);
+              }}
             >
-              Change
-            </button>
-          </div>
-        ) : (
-          <>
-            <Input
-              placeholder="Search Fold patients by name…"
-              value={patientQuery}
-              onChange={(e) => setPatientQuery(e.target.value)}
-              autoFocus
-            />
-            <div className={styles.memberPickerList}>
-              {patientMatches.map(m => (
-                <button
-                  key={m.id}
-                  type="button"
-                  className={styles.memberPickerItem}
-                  onClick={() => { setPatient(m); setPatientQuery(''); }}
-                >
-                  <Avatar variant="patient" initials={m.in} />
-                  <span>{m.name}</span>
-                  <span className={styles.memberPickerMeta}>{m.memberId || m.member_id || ''}</span>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* ICD typeahead + chip list. */}
-      <div className={styles.singleSection}>
-        <label className={styles.singleLabel}>ICD codes *</label>
-        <IcdSearch
-          placeholder="Search by code or description (e.g. E11.9, COPD)…"
-          excludeCodes={icds.map(i => i.code)}
-          onSelect={(icd) => addIcd({ code: icd.code, desc: icd.title, hcc: icd.hcc || '', valid: true })}
-        />
-        {icds.length > 0 && (
-          <div className={styles.icdChosen}>
-            {icds.map(i => (
-              <span key={i.code} className={styles.icdChosenChip}>
-                <code>{i.code}</code>
-                <span className={styles.icdChosenDesc}>{i.desc}</span>
-                <button
-                  type="button"
-                  className={styles.icdChosenRemove}
-                  aria-label={`Remove ${i.code}`}
-                  onClick={() => removeIcd(i.code)}
-                >
-                  <Icon name="solar:close-circle-linear" size={12} color="var(--neutral-300)" />
-                </button>
+              <Avatar variant="patient" initials={patient.in} />
+              <span className={styles.singleMemberName}>{patient.name}</span>
+              <span className={styles.singleMemberMeta}>
+                ({[patient.g, patient.age, patient.memberId || patient.member_id]
+                  .filter(Boolean)
+                  .join(' • ')})
               </span>
+            </button>
+          ) : (
+            <input
+              ref={patientInputRef}
+              type="text"
+              className={styles.singleMemberInput}
+              placeholder="Search and Select Member"
+              value={patientQuery}
+              autoFocus={patientPickerOpen}
+              onFocus={() => setPatientPickerOpen(true)}
+              onChange={(e) => { setPatientQuery(e.target.value); setPatientPickerOpen(true); }}
+            />
+          )}
+          <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" />
+        </div>
+        {patientPickerOpen && (
+          <div className={styles.singleMemberPop}>
+            {patientMatches.length === 0 ? (
+              <div className={styles.singleMemberEmpty}>No matches</div>
+            ) : patientMatches.map(m => (
+              <button
+                key={m.id}
+                type="button"
+                className={styles.memberPickerItem}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  setPatient(m);
+                  setPatientQuery('');
+                  setPatientPickerOpen(false);
+                  patientInputRef.current?.blur();
+                }}
+              >
+                <Avatar variant="patient" initials={m.in} />
+                <span>{m.name}</span>
+                <span className={styles.memberPickerMeta}>{m.memberId || m.member_id || ''}</span>
+              </button>
             ))}
           </div>
         )}
       </div>
 
-      {/* DOS — existing on the patient OR new. Toggle matches the
-          segmented control used elsewhere in the drawer (Option 1/2). */}
-      <div className={styles.singleSection}>
-        <label className={styles.singleLabel}>Date of Service *</label>
-        <Toggle
-          size="S"
-          items={[
-            { key: 'existing', label: 'Use existing', disabled: !patient || existingDosList.length === 0 },
-            { key: 'new',      label: 'New DOS' },
-          ]}
-          active={dosMode}
-          onChange={setDosMode}
+      {/* Repeatable DOS blocks — layout mirrors HccAddDosDrawer's
+          Patient-level Add DOS drawer: dropzone + 2×2 field grid +
+          ICD list. */}
+      {dosBlocks.map((block) => (
+        <SingleDosCard
+          key={block.id}
+          block={block}
+          providerOptions={providerOptions}
+          patient={patient}
+          onPatch={(patch) => patchBlock(block.id, patch)}
+          onRemove={dosBlocks.length > 1 ? () => removeDosBlock(block.id) : null}
+          showToast={showToast}
         />
-        {dosMode === 'existing' && patient ? (
-          <Select
-            options={[
-              { value: '', label: 'Select a DOS…' },
-              ...existingDosList.map(d => ({ value: d, label: d })),
-            ]}
-            value={dos}
-            onChange={setDos}
-            placeholder="Select a DOS…"
+      ))}
+
+      {/* Add More DOS — dashed primary-tinted CTA. */}
+      <button
+        type="button"
+        className={styles.addMoreDosBtn}
+        onClick={addDosBlock}
+      >
+        <Icon name="solar:add-circle-linear" size={14} color="var(--primary-300)" />
+        Add More DOS
+      </button>
+    </div>
+  );
+}
+
+/**
+ * SingleDosCard — one DOS block inside the Add-DOS drawer. Layout
+ * mirrors the Patient-level Add DOS drawer (`HccAddDosDrawer` →
+ * `DosBlock`): expand-arrow + "DOS: {value}" header with Ready/Not
+ * Ready badge + trash, a full-width Dropzone (or attached-file chip),
+ * a 2×2 field grid (DOS · Rendering Provider · POS · Document Type),
+ * and an ICD Codes section listing each pick as its own row.
+ */
+function SingleDosCard({ block, providerOptions, patient, onPatch, onRemove, showToast }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const onPickFile = (file) => {
+    if (!file) return;
+    if (!isAcceptedFile(file)) {
+      showToast?.('Please upload a PDF, DOC, JPG, PNG, or TIFF file');
+      return;
+    }
+    onPatch({ file });
+  };
+  return (
+    <div className={styles.singleDosCard}>
+      <div className={styles.singleDosHead}>
+        <button
+          type="button"
+          className={styles.singleDosCollapse}
+          onClick={() => setCollapsed(v => !v)}
+          aria-label={collapsed ? 'Expand DOS' : 'Collapse DOS'}
+          aria-expanded={!collapsed}
+        >
+          <Icon
+            name={collapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'}
+            size={16}
+            color="var(--neutral-400)"
           />
-        ) : (
-          <Input
-            placeholder="MM/DD/YYYY"
-            value={dos}
-            onChange={(e) => setDos(e.target.value)}
-          />
+        </button>
+        <span className={styles.singleDosTitle}>DOS: {block.dos || '-'}</span>
+        <div className={styles.singleDosHeadSpacer} />
+        {onRemove && (
+          <button
+            type="button"
+            className={styles.singleTrashBtn}
+            onClick={onRemove}
+            aria-label="Remove DOS"
+          >
+            <Icon name="solar:trash-bin-trash-linear" size={16} color="var(--neutral-300)" />
+          </button>
         )}
       </div>
 
-      {/* Encounter context — provider · POS · doc type · condition. */}
-      <div className={styles.singleGrid}>
-        <div className={styles.singleField}>
-          <label className={styles.singleLabel}>Rendering Provider *</label>
-          <Input
-            placeholder="Dr. Sarah Connor"
-            value={provider}
-            onChange={(e) => setProvider(e.target.value)}
-          />
-        </div>
-        <div className={styles.singleField}>
-          <label className={styles.singleLabel}>POS *</label>
-          <Select
-            options={Object.entries(POS_LABEL).map(([code, label]) => ({
-              value: code,
-              label: `${code} — ${label}`,
-            }))}
-            value={pos}
-            onChange={setPos}
-          />
-        </div>
-        <div className={styles.singleField}>
-          <label className={styles.singleLabel}>Document Type</label>
-          <Select
-            options={['Progress Note', 'SOAP Note', 'Telehealth Note', 'Visit Summary', 'Lab Report', 'Imaging Report'].map(t => ({
-              value: t,
-              label: t,
-            }))}
-            value={docType}
-            onChange={setDocType}
-          />
-        </div>
-        <div className={styles.singleField}>
-          <label className={styles.singleLabel}>Condition / Notes</label>
-          <Input
-            placeholder="Short clinical note (optional)"
-            value={condition}
-            onChange={(e) => setCondition(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {/* Document attach. */}
-      <div className={styles.singleSection}>
-        <label className={styles.singleLabel}>Supporting document</label>
-        {file ? (
+      {!collapsed && (
+      <div className={styles.singleDosBody}>
+        {block.file ? (
           <div className={styles.singleFileChip}>
-            <Icon name="solar:file-text-linear" size={16} color="var(--neutral-400)" />
-            <span className={styles.singleFileName}>{file.name}</span>
+            <Icon name="solar:file-text-linear" size={14} color="var(--neutral-400)" />
+            <span className={styles.singleFileName}>{block.file.name}</span>
             <button
               type="button"
               className={styles.singleFileRemove}
-              onClick={() => { setFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+              onClick={() => onPatch({ file: null })}
             >
               Remove
             </button>
           </div>
         ) : (
-          <button
-            type="button"
-            className={styles.singleFileBtn}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Icon name="solar:upload-linear" size={14} color="var(--primary-300)" />
-            Attach document
-          </button>
+          <Dropzone
+            accept={ACCEPT_EXT}
+            helperText="Supported formats: PDF, DOC, JPG, or PNG"
+            secondaryText="Max size: 100 MB"
+            icon="solar:upload-minimalistic-linear"
+            onPick={onPickFile}
+            onReject={() => showToast?.('Please upload a PDF, DOC, JPG, PNG, or TIFF file')}
+          />
         )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={ACCEPT_EXT}
-          style={{ display: 'none' }}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (!f) return;
-            if (!isAcceptedFile(f)) {
-              showToast('Please upload a PDF, DOC, JPG, PNG, or TIFF file');
-              return;
-            }
-            setFile(f);
-          }}
-        />
-      </div>
 
-      {/* Footer — Confirm. */}
-      <div className={styles.singleFooter}>
-        <Button
-          variant="primary"
-          size="M"
-          disabled={!canConfirm}
-          onClick={handleConfirm}
-        >
-          Add Encounter
-        </Button>
+        <div className={styles.singleGrid}>
+          <div className={styles.singleField}>
+            <label className={styles.singleLabel}>
+              DOS <span className={styles.singleReq}>•</span>
+            </label>
+            <DatePicker
+              value={toIsoDate(block.dos)}
+              onSelect={(iso) => onPatch({ dos: fromIsoDate(iso) })}
+            />
+          </div>
+          <div className={styles.singleField}>
+            <label className={styles.singleLabel}>
+              Rendering Provider <span className={styles.singleReq}>•</span>
+            </label>
+            <Select
+              options={providerOptions}
+              value={block.provider}
+              placeholder="Select Rendering Provider"
+              searchable
+              searchPlaceholder="Search providers…"
+              onChange={(v) => onPatch({ provider: v })}
+            />
+          </div>
+          <div className={styles.singleField}>
+            <label className={styles.singleLabel}>
+              POS <span className={styles.singleReq}>•</span>
+            </label>
+            <Select
+              options={POS_SELECT_OPTIONS}
+              value={block.pos}
+              placeholder="Select Place of Service"
+              searchable
+              searchPlaceholder="Search POS code or name…"
+              onChange={(v) => onPatch({ pos: v })}
+            />
+          </div>
+          <div className={styles.singleField}>
+            <label className={styles.singleLabel}>
+              Document Type <span className={styles.singleReq}>•</span>
+            </label>
+            <Select
+              options={DOC_TYPE_OPTIONS}
+              value={block.docType}
+              placeholder="Select Document Type"
+              onChange={(v) => onPatch({ docType: v })}
+            />
+          </div>
+        </div>
+
+        <div className={styles.singleIcdSection}>
+          <label className={styles.singleLabel}>ICD Codes</label>
+          <IcdSearch
+            placeholder="Search and Add ICD Code & Description, HCC Code & Description"
+            excludeCodes={block.icds.map(i => i.code)}
+            onSelect={(icd) => onPatch({
+              icds: [...block.icds, { code: icd.code, desc: icd.title, hcc: icd.hcc || '', valid: true }],
+            })}
+          />
+          {block.icds.map(icd => (
+            <div key={icd.code} className={styles.singleIcdRow}>
+              <span className={styles.singleIcdCode}>{icd.code}</span>
+              <div className={styles.singleIcdMain}>
+                <div className={styles.singleIcdDesc}>{icd.desc}</div>
+                {icd.hcc && <div className={styles.singleIcdHcc}>{icd.hcc}</div>}
+              </div>
+              <button
+                type="button"
+                className={styles.singleTrashBtn}
+                onClick={() => onPatch({ icds: block.icds.filter(x => x.code !== icd.code) })}
+                aria-label={`Remove ${icd.code}`}
+              >
+                <Icon name="solar:trash-bin-trash-linear" size={14} color="var(--neutral-300)" />
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
+      )}
     </div>
   );
 }
+
+// MM/DD/YYYY (state format used by handleSave) ↔ YYYY-MM-DD (native <input type="date">).
+const toIsoDate = (mdy) => {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(mdy || '');
+  return m ? `${m[3]}-${m[1]}-${m[2]}` : '';
+};
+const fromIsoDate = (iso) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+  return m ? `${m[2]}/${m[3]}/${m[1]}` : '';
+};
+
+const DOC_TYPE_OPTIONS = [
+  { value: 'AWV', label: 'AWV Note' },
+  { value: 'Progress Note', label: 'Progress Note' },
+  { value: 'SOAP Note', label: 'SOAP Note' },
+  { value: 'Lab', label: 'Lab' },
+  { value: 'Other', label: 'Other' },
+];
 
 function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, addEnc, selectedIdx, setSelectedIdx, filter, setFilter, layout, selectedIdxs, toggleSelected, setSelectedAll, sourceFileName, showToast, openPagePreview }) {
   // Aggregate counts per status for the filter chips. The bucket keys
