@@ -123,6 +123,11 @@ export const FILTER_DEFS = [
   // raw 2-digit code before comparing against `m.pos`.
   { k: 'pos',    label: 'POS Code',            type: 'multi', searchable: true,
     opts: POS_CODES.map(p => `${p.code} - ${p.name}`) },
+  // Claims — single-select Available / Not Available. A member has claims
+  // "Available" when any of their DOS entries classifies as source "C"
+  // (same classifier the DOS-source badge uses), so this filter agrees with
+  // what the row's source badges show.
+  { k: 'claims', label: 'Claims',              type: 'radio', opts: ['Available', 'Not Available'] },
   // Phase 3d — date-range filters use the shared DateRangePopover.
   // Values are stored as [startISO, endISO]; the predicate parses them
   // against the row's `date` or other date field.
@@ -255,6 +260,12 @@ function matchOne(m, k, vals) {
       // matching the per-DOS badges shown on the row.
       const letters = new Set(memberDosDates(m).map(dosSourceLetter));
       return vals.some(v => letters.has(DOS_SOURCE_LABEL_TO_LETTER[v]));
+    }
+    case 'claims': {
+      // Available = at least one DOS classified as source "C" (Claims), same
+      // classifier the DOS-source badge uses.
+      const hasClaims = memberDosDates(m).some(d => dosSourceLetter(d) === 'C');
+      return vals.includes(hasClaims ? 'Available' : 'Not Available');
     }
     case 'my': {
       // Measurement Year = the service year of any of the member's DOS entries.
