@@ -10,6 +10,8 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Avatar } from '../../../components/Avatar/Avatar';
 import { PatientBanner } from '../../../components/PatientBanner/PatientBanner';
 import { Switch } from '../../../components/Switch/Switch';
+import { Badge } from '../../../components/Badge/Badge';
+import { dosSourceLetter } from '../dosSource';
 import { IcdRow } from './IcdRow';
 import { IcdDosCard } from './IcdDosCard';
 import { SuspectCard } from './HccSuspectGroup';
@@ -1104,6 +1106,32 @@ export function DiagPanel() {
     if (idx >= 0) setFocusIdx(idx);
   }, [diagActivityIcd]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-Complete the current role's DOS status once every ICD row on that
+  // DOS has been addressed (accepted / dismissed / missed / deferred). Mirror
+  // of _maybeAutoBumpInProgress: same role gate (Coder / QA / Compliance —
+  // Support doesn't code), only fires while the DOS is 'In Progress' so a
+  // manual override (Record Requested / Rejected / Skipped) stays put.
+  useEffect(() => {
+    if (!member?.id || !rowKeys.length) return;
+    if (actingRole === 'support') return;
+    // Group rowKeys by DOS.
+    const byDos = new Map();
+    for (const k of rowKeys) {
+      const [, dos] = k.split('|');
+      if (!byDos.has(dos)) byDos.set(dos, []);
+      byDos.get(dos).push(k);
+    }
+    for (const [dos, keys] of byDos) {
+      if (!keys.every(k => hccGapDosActions[k])) continue;
+      const dosEntry = (member.dos_list || []).find(d => d.date === dos);
+      const stateKey = dosKey(member.id, dos, dosEntry?.provider, dosEntry?.pos);
+      const curStatus = hccDosAssignments[stateKey]?.[actingRole]?.status;
+      if (curStatus === 'In Progress') {
+        hccSetRoleStatus(member.id, dos, actingRole, 'Completed');
+      }
+    }
+  }, [rowKeys, hccGapDosActions, hccDosAssignments, member, actingRole, hccSetRoleStatus]);
+
   // ── Bulk selection (row checkboxes → bulk Accept / Reject bar) ──
   const toggleSelected = (key) => setSelectedKeys(prev => {
     const next = new Set(prev);
@@ -1199,7 +1227,7 @@ export function DiagPanel() {
             active={diagLeftPanel}
             icdScope={diagActivityIcd ? (activeIcdCode ?? diagActivityIcd) : null}
             onChange={setDiagTab}
-            onClose={() => setDiagLeftPanel(null)}
+            onClose={() => { setFocusIdx(-1); setDiagLeftPanel(null); }}
             member={member}
             pendingStatusChange={pendingStatusChange}
             onConfirmStatusChange={confirmPendingStatusChange}
@@ -1639,10 +1667,19 @@ export function DiagPanel() {
               const provider = d.provider || member.rp || '—';
               const pos = d.pos || d.posDesc || member.pos || member.posDesc || '—';
               const vt = d.vt || member.vt || 'HCC';
+              // Same D/C/M classifier the worklist letter badge uses, so this
+              // panel and the worklist agree on where each DOS came from.
+              const srcLetter = dosSourceLetter(d.date);
+              const srcMeta = srcLetter === 'D' ? { label: 'Documents', variant: 'dos-source-documents' }
+                : srcLetter === 'C' ? { label: 'Claims',   variant: 'dos-source-claims'    }
+                :                     { label: 'Manual',   variant: 'dos-source-manual'    };
               return (
                 <div key={d.date} className={styles.dosPanelRow}>
                   <div className={styles.dosPanelInfo}>
-                    <div className={styles.dosPanelDate}>{d.date}</div>
+                    <div className={styles.dosPanelDateRow}>
+                      <span className={styles.dosPanelDate}>{d.date}</span>
+                      <Badge variant={srcMeta.variant} label={srcMeta.label} />
+                    </div>
                     <div className={styles.dosPanelMeta}>
                       Rendering Provider: {provider} <span className={styles.dosPanelSep}>•</span> POS: {pos} <span className={styles.dosPanelSep}>•</span> Visit Type: {vt}
                     </div>

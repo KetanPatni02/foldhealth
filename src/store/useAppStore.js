@@ -3541,6 +3541,26 @@ export const useAppStore = create((set, get) => ({
   // Dismiss reason + note per (code × DOS) — populated by dismissHccGapDos,
   // surfaced by the "Dismiss Reason" link on a dismissed row.
   hccGapDosMeta: {},
+  // Shared: on the first ICD action by the current role (Coder / QA /
+  // Compliance), auto-bump that role's DOS status from New / Assign →
+  // In Progress. Called by both setHccGapDosAction and dismissHccGapDos so
+  // *every* ICD action path (accept, missed, deferred, dismiss-with-reason)
+  // triggers the same worklist transition. Support triages docs, not ICDs,
+  // so it stays out of this path.
+  _maybeAutoBumpInProgress: (memberId, dos) => {
+    const s0 = get();
+    if (!memberId) return;
+    const ROLE_TO_ENGINE = { Coder: 'coder', QA: 'reviewer', Compliance: 'reviewer2' };
+    const STATUS_FIELD  = { coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
+    const engineRole = ROLE_TO_ENGINE[s0.hccUserRole];
+    if (!engineRole) return;
+    const member = s0.hccMembers.find(m => m.id === memberId);
+    const cur = member?.[STATUS_FIELD[engineRole]];
+    if (cur !== 'New' && cur !== 'Assign') return;
+    queueMicrotask(() => {
+      get().hccSetRoleStatus(memberId, dos, engineRole, 'In Progress');
+    });
+  },
   setHccGapDosAction: (code, dos, action) => {
     const s0 = get();
     const key = `${code}|${dos}`;
@@ -3553,25 +3573,7 @@ export const useAppStore = create((set, get) => ({
       if (!next) delete meta[key]; // undo also clears any dismiss reason
       return { hccGapDosActions: { ...s.hccGapDosActions, [key]: next }, hccGapDosMeta: meta };
     });
-    // First ICD action by the current role auto-bumps that role's DOS
-    // status from New/Assign → In Progress so the worklist reflects that
-    // work has actually started. Support triages docs, not ICDs, so it
-    // stays out of this path; Coder/QA/Compliance all take ICD-level
-    // actions and share the same auto-transition.
-    if (next && memberId) {
-      const roleToEngine = { Coder: 'coder', QA: 'reviewer', Compliance: 'reviewer2' };
-      const statusFieldByRole = { coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
-      const engineRole = roleToEngine[s0.hccUserRole];
-      if (engineRole) {
-        const member = s0.hccMembers.find(m => m.id === memberId);
-        const cur = member?.[statusFieldByRole[engineRole]];
-        if (cur === 'New' || cur === 'Assign') {
-          queueMicrotask(() => {
-            get().hccSetRoleStatus(memberId, dos, engineRole, 'In Progress');
-          });
-        }
-      }
-    }
+    if (next) get()._maybeAutoBumpInProgress(memberId, dos);
     // Persist: toggle-off deletes the row; a fresh action upserts it.
     if (!next) {
       persistHccGapDosActionDelete(memberName, code, dos);
@@ -3600,11 +3602,13 @@ export const useAppStore = create((set, get) => ({
   dismissHccGapDos: (code, dos, reason, note) => {
     const s0 = get();
     const key = `${code}|${dos}`;
-    const memberName = s0.hccMembers.find(m => m.id === s0.diagPanelMemberId)?.name;
+    const memberId = s0.diagPanelMemberId;
+    const memberName = s0.hccMembers.find(m => m.id === memberId)?.name;
     set(s => ({
       hccGapDosActions: { ...s.hccGapDosActions, [key]: 'rejected' },
       hccGapDosMeta: { ...s.hccGapDosMeta, [key]: { reason, note: note || '' } },
     }));
+    get()._maybeAutoBumpInProgress(memberId, dos);
     persistHccGapDosAction(memberName, code, dos, {
       action: 'rejected',
       dismiss_reason: reason || null,
