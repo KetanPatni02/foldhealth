@@ -24,7 +24,7 @@ import { makeInitialDocument } from '../features/email-builder/initialDocument';
 import * as hccLifecycle from '../features/hcc/assignment/lifecycle';
 import { hydrateFromMember, dosKey as hccDosKey } from '../features/hcc/assignment/dosState';
 import { DEFAULT_SAMPLING_RATES } from '../features/hcc/assignment/sampling';
-import { staffById as hccStaffById } from '../features/hcc/assignment/astranaStaff';
+import { ASTRANA_STAFF, staffById as hccStaffById } from '../features/hcc/assignment/astranaStaff';
 import { normalizeReviewerLabel as hccNormalizeReviewerLabel } from '../features/hcc/reviewedBy';
 import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activityLog';
 import { hccRoleDefaultFilters } from '../features/hcc/filters';
@@ -1205,9 +1205,21 @@ export const useAppStore = create((set, get) => ({
   // Reset hccFilters to the current role's canonical queue: Assignee = me
   // + role-specific status in ['New', 'In Progress']. Also detaches any
   // active saved filter so the SavedFiltersChip doesn't lie.
-  applyHccRoleDefaultFilters: () => {
-    const s = get();
-    const userName = s.currentUserProfile?.name || null;
+  applyHccRoleDefaultFilters: async () => {
+    let s = get();
+    // Ensure a currentUserProfile has been resolved once — otherwise the very
+    // first paint in dev-bypass mode ships with Assignee = null and the queue
+    // looks empty until profiles arrive.
+    if (!s.currentUserProfile && s.taskProfiles.length === 0) {
+      await get().fetchTaskProfiles();
+      s = get();
+    }
+    const roleToEngine = { Support: 'support', Coder: 'coder', QA: 'reviewer', Compliance: 'reviewer2' };
+    const devFallback = () => {
+      const eng = roleToEngine[s.hccUserRole];
+      return eng ? ASTRANA_STAFF.find(m => m.role === eng && m.active)?.name : null;
+    };
+    const userName = s.currentUserProfile?.name || devFallback();
     const filters = hccRoleDefaultFilters(s.hccUserRole, userName);
     set({
       hccFilters: filters,
@@ -8037,6 +8049,15 @@ export const useAppStore = create((set, get) => ({
       }
     }
     set({ taskProfiles: profiles, currentUserProfile: me });
+    // If the HCC worklist already applied a role-scoped default filter using a
+    // dev-fallback (or nothing at all), backfill it once the real user profile
+    // is known so the "logged-in user's queue" default actually takes effect.
+    const cur = get();
+    if (me?.name && cur.activeSubnavList === 'HCC' && cur.hccFilters) {
+      const currentAsgn = cur.hccFilters.asgn;
+      const needsUpdate = !currentAsgn || currentAsgn.length !== 1 || currentAsgn[0] !== me.name;
+      if (needsUpdate) set({ hccFilters: { ...cur.hccFilters, asgn: [me.name] } });
+    }
   },
 
   // ── Task Labels (custom labels stored in DB) ──

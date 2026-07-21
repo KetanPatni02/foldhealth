@@ -169,6 +169,18 @@ export function HccWorklistTable() {
   useEffect(() => { fetchHccChartStatus(); }, [fetchHccChartStatus]);
   useEffect(() => { fetchHccRemovedCharts(); }, [fetchHccRemovedCharts]);
 
+  // If we landed on the HCC tab via the router (hash sync) rather than
+  // through setActiveSubnavList, no default filter was applied. Seed the
+  // role-scoped default (assignee = me + status ∈ {New, In Progress}) on
+  // mount if the user has no filters/saved-list active yet.
+  const applyHccRoleDefaultFilters = useAppStore(s => s.applyHccRoleDefaultFilters);
+  useEffect(() => {
+    const s = useAppStore.getState();
+    const hasNoFilters = !s.hccFilters || Object.keys(s.hccFilters).length === 0;
+    const hasNoSaved = !s.activeSavedIdByList?.HCC;
+    if (hasNoFilters && hasNoSaved) applyHccRoleDefaultFilters();
+  }, [applyHccRoleDefaultFilters]);
+
   // Whenever the active filter/sort/search/due-date changes, jump back to
   // page 1 so the user doesn't end up on an empty page after the result set
   // shrinks. Matches the prototype's behavior (line 4636).
