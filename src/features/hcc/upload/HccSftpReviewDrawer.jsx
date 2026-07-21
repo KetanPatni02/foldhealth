@@ -226,7 +226,7 @@ export function HccSftpReviewDrawer() {
         Previous
       </Button>
       <span className={styles.reviewNavLabel}>
-        Reviewing: {activeIndex + 1} of {totalDocs} Documents
+        Reviewing: {activeIndex + 1} of {stats.patients} {stats.patients === 1 ? 'Patient' : 'Patients'}
       </span>
       <Button
         variant="alt"
@@ -346,6 +346,7 @@ export function HccSftpReviewDrawer() {
                   encStatus={encStatus}
                   onCite={citeField}
                   showToast={showToast}
+                  activeBatch={activeBatch}
                   patchEnc={(enc, patch) => patchEnc?.(activeBatch.id, activeEncs.indexOf(enc), patch)}
                   onAddToWorklist={(enc) => {
                     const r = createFromEncounter?.({ ...enc, _docName: activeBatch.fileName, _batchId: activeBatch.id });
@@ -887,25 +888,30 @@ function DocReviewCompleted({ total, nextBatch, onPickNext, onBackToWorklist }) 
  * grid (DOS · ICD · Provider · POS · Category). Single-DOS patients
  * render with no DOS-count chip and no separators.
  */
-function PatientCard({ group, hccMembers, encStatus, patchEnc, onAddToWorklist, onDelete, onCite, showToast }) {
+function PatientCard({ group, hccMembers, encStatus, patchEnc, onAddToWorklist, onDelete, onCite, showToast, activeBatch }) {
   const first = group.encs[0];
   const isMatched = !!first?.patient?.matchedMemberId;
   const member = isMatched ? hccMembers.find(m => m.id === first.patient.matchedMemberId) : null;
   const displayName = member?.name || first?.patient?.name || '(unmatched)';
   const initials = member?.in || displayName.split(' ').map(p => p[0]).slice(0, 2).join('');
-  const uploadRef = useRef(null);
 
-  // Patient-level "Add to Worklist" — commits every ready DOS for this
-  // patient in one action (only ready rows are eligible).
   const readyEncs = group.encs.filter(e => encStatus(e) === 'ready');
+  const anyMissing = group.encs.some(e => encStatus(e) !== 'ready');
   const handleAddAll = () => {
     let added = 0;
     readyEncs.forEach((enc) => { if (onAddToWorklist(enc)) added += 1; });
     if (added) showToast?.(`Added ${added} DOS for ${displayName} to worklist`);
   };
+  const handleDeleteRecord = () => {
+    group.encs.forEach((enc) => onDelete(enc));
+    showToast?.(`Deleted ${displayName}'s record`);
+  };
 
   return (
     <div className={styles.encCard}>
+      {/* Patient row — avatar, identity, per-record "Missing Field" badge,
+          overflow menu. No inline buttons here per parity spec; actions
+          live in the bottom bar. */}
       <div className={styles.encCardHead}>
         <Avatar variant="patient" initials={initials} />
         <div className={styles.encCardIdent}>
@@ -916,30 +922,19 @@ function PatientCard({ group, hccMembers, encStatus, patchEnc, onAddToWorklist, 
             #{first?.patient?.patientId || first?.patient?.matchedMemberDisplayId || '—'}
           </div>
         </div>
-        <span className={styles.encGroupCount}>{group.encs.length} DOS</span>
-        {/* Patient-level actions — upload a document, add another DOS record,
-            and add every ready DOS to the worklist in one go. */}
-        <div className={styles.encPatientActions}>
-          <input
-            ref={uploadRef}
-            type="file"
-            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.tif,.tiff"
-            style={{ display: 'none' }}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) showToast?.(`Uploaded ${f.name} for ${displayName}`);
-              e.target.value = '';
-            }}
-          />
-          <ActionButton size="S" icon="solar:upload-minimalistic-linear" tooltip="Upload document" onClick={() => uploadRef.current?.click()} />
-          <Button variant="alt" size="S" leadingIcon="solar:add-circle-linear" onClick={() => showToast?.(`Add new record for ${displayName} — coming soon`)}>
-            Add New Record
-          </Button>
-          <Button variant="primary" size="S" leadingIcon="solar:check-read-linear" disabled={readyEncs.length === 0} onClick={handleAddAll}>
-            Add to Worklist
-          </Button>
-        </div>
+        {anyMissing && (
+          <Badge variant="status-review" icon="solar:info-circle-bold" label="Missing Field" />
+        )}
+        <ActionButton
+          size="S"
+          icon="solar:menu-dots-linear"
+          tooltip="More"
+          onClick={() => showToast?.('More actions — coming soon')}
+        />
       </div>
+
+      {/* One collapsible card per DOS — header, Documents subsection,
+          2×2 field grid with confidence badges, and per-DOS ICD list. */}
       {group.encs.map((enc, i) => (
         <EncounterBlock
           key={enc.tempId || `${group.key}:${i}`}
@@ -949,8 +944,37 @@ function PatientCard({ group, hccMembers, encStatus, patchEnc, onAddToWorklist, 
           onPatch={(patch) => patchEnc(enc, patch)}
           onDelete={() => onDelete(enc)}
           onCite={onCite}
+          activeBatch={activeBatch}
+          showToast={showToast}
         />
       ))}
+
+      {/* "+ Add More DOS" affordance — dashed tinted button. */}
+      <button
+        type="button"
+        className={styles.addMoreDos}
+        onClick={() => showToast?.('Add another DOS — coming soon')}
+      >
+        <Icon name="solar:add-circle-linear" size={14} color="var(--primary-300)" />
+        Add More DOS
+      </button>
+
+      {/* Bottom action bar — Delete Record on the left, Add to the
+          Worklist on the right (disabled until at least one DOS is Ready). */}
+      <div className={styles.encCardFooter}>
+        <Button variant="alt" size="S" leadingIcon="solar:trash-bin-trash-linear" onClick={handleDeleteRecord}>
+          Delete Record
+        </Button>
+        <Button
+          variant="primary"
+          size="S"
+          leadingIcon="solar:add-circle-linear"
+          disabled={readyEncs.length === 0}
+          onClick={handleAddAll}
+        >
+          Add to the Worklist
+        </Button>
+      </div>
     </div>
   );
 }
@@ -1004,158 +1028,274 @@ function StatusBadgeWithTip({ variant, icon, label, reason, tone }) {
   );
 }
 
-function EncounterBlock({ enc, status, isFirst, onPatch, onDelete, onCite }) {
-  const [icdOpen, setIcdOpen] = useState(false);
-  const icdWrapRef = useRef(null);
-  useEffect(() => {
-    if (!icdOpen) return undefined;
-    const onDocClick = (e) => { if (!icdWrapRef.current?.contains(e.target)) setIcdOpen(false); };
-    document.addEventListener('mousedown', onDocClick);
-    return () => document.removeEventListener('mousedown', onDocClick);
-  }, [icdOpen]);
-
+function EncounterBlock({ enc, status, isFirst, onPatch, onDelete, onCite, activeBatch, showToast }) {
+  const [collapsed, setCollapsed] = useState(false);
   const errors = new Set(enc.errors || []);
-  const badgeVariant = (
-    status === 'ready'    ? 'status-completed' :
-    status === 'mismatch' ? 'status-review' :
-                            'status-failed'
-  );
-  const badgeIcon = (
-    status === 'ready'    ? 'solar:check-circle-bold' :
-    status === 'mismatch' ? 'solar:question-circle-bold' :
-                            'solar:danger-triangle-bold'
-  );
-  const statusLabel = status === 'ready' ? 'Ready' : status === 'mismatch' ? 'Mismatch' : 'Error';
+  const statusLabel = status === 'ready' ? 'Ready' : status === 'mismatch' ? 'Mismatch' : 'Not Ready';
   const fieldConf = (name) => {
     if (errors.has(name)) return 0;
     return getFieldConfidence(enc, name);
   };
-  // Explain *why* this row is flagged. Mismatch → no roster member, or
-  // OCR'd ID disagrees with the matched member's ID. Error → which
-  // required field(s) couldn't be read from the document.
-  let reason = null;
-  if (status === 'mismatch') {
-    if (enc.patient?.idMismatch) {
-      reason = `Member ID on document (#${enc.patient.patientId || '—'}) doesn't match the linked member's ID`;
-    } else {
-      const bits = [];
-      if (enc.patient?.name) bits.push(`"${enc.patient.name}"`);
-      if (enc.patient?.dob) bits.push(`DOB ${enc.patient.dob}`);
-      reason = `No member found for ${bits.join(' · ') || 'this patient'} in your roster`;
-    }
-  } else if (status === 'error') {
-    const labelMap = { dos: 'DOS', icds: 'ICD codes', provider: 'Provider', pos: 'POS' };
-    const list = (enc.errors || []).map(e => labelMap[e] || e);
-    if (list.length) {
-      reason = `Missing required ${list.length > 1 ? 'fields' : 'field'}: ${list.join(', ')}`;
-    }
-  }
+  const docTypeMissing = errors.has('docType') || !enc.docType;
+  const docTypeHint = enc.docTypeHint;
+
   return (
     <div className={[styles.encBlock, isFirst ? '' : styles.encBlockSep].join(' ')}>
-      <div className={styles.encBlockHead}>
-        <StatusBadgeWithTip
-          variant={badgeVariant}
-          icon={badgeIcon}
+      {/* Collapsible header — chevron, "DOS: <date>", status pill, trash. */}
+      <div className={styles.dosCardHead}>
+        <button
+          type="button"
+          className={styles.dosCardToggle}
+          onClick={() => setCollapsed(v => !v)}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? 'Expand DOS' : 'Collapse DOS'}
+        >
+          <Icon
+            name={collapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'}
+            size={12}
+            color="var(--neutral-400)"
+          />
+        </button>
+        <span className={styles.dosCardTitle}>DOS: {enc.dos || '—'}</span>
+        <Badge
+          variant={status === 'ready' ? 'status-completed' : status === 'mismatch' ? 'status-review' : 'status-review'}
+          icon={status === 'ready' ? 'solar:check-circle-bold' : 'solar:hourglass-line-linear'}
           label={statusLabel}
-          reason={reason}
-          tone={status}
         />
-        <div className={styles.encCardActions}>
-          <ActionButton size="S" icon="solar:trash-bin-trash-linear" tooltip="Remove this DOS" onClick={onDelete} />
-        </div>
+        <span className={styles.dosCardDivider} />
+        <ActionButton size="S" icon="solar:trash-bin-trash-linear" tooltip="Remove this DOS" onClick={onDelete} />
       </div>
 
-      <div className={styles.encGrid}>
-        <FieldBlock label="DOS" required confidence={fieldConf('dos')} sourcePage={enc.sourcePage} onCite={onCite ? () => onCite(enc.sourcePage || 1, enc.tempId, 'dos') : null}>
-          <Input
-            value={enc.dos || ''}
-            placeholder="MM/DD/YYYY"
-            variant={errors.has('dos') ? 'error' : 'default'}
-            onChange={(e) => onPatch({ dos: e.target.value })}
-          />
-        </FieldBlock>
-        <FieldBlock label="ICD Codes" required confidence={fieldConf('icds')} sourcePage={enc.sourcePage} onCite={onCite ? () => onCite(enc.sourcePage || 1, enc.tempId, 'icds') : null}>
-          <div className={styles.encIcds}>
-            {(enc.icds || []).map(icd => (
-              <span key={icd.code} className={styles.encIcdChip}>
-                {icd.code}
-                <button
-                  type="button"
-                  className={styles.encIcdClose}
-                  onClick={() => onPatch({ icds: enc.icds.filter(i => i.code !== icd.code) })}
-                  aria-label={`Remove ${icd.code}`}
-                >
-                  <Icon name="solar:close-circle-linear" size={10} color="var(--primary-300)" />
-                </button>
-              </span>
-            ))}
-            <span className={styles.icdAddWrap} ref={icdWrapRef}>
-              <button
-                type="button"
-                className={styles.icdAddBtn}
-                onClick={() => setIcdOpen((v) => !v)}
-                aria-label="Add ICD"
-              >
-                <Icon name="solar:add-circle-linear" size={13} color="var(--neutral-300)" />
-              </button>
-              {icdOpen && (
-                <span className={styles.icdPickPop}>
-                  <IcdSearch
-                    autoFocus
-                    excludeCodes={(enc.icds || []).map(i => i.code)}
-                    placeholder="Search ICD by code or description"
-                    onSelect={(icd) => {
-                      onPatch({ icds: [...(enc.icds || []), { code: icd.code, desc: icd.title, hcc: icd.hcc || '', valid: true }] });
-                      setIcdOpen(false);
-                    }}
-                  />
-                </span>
-              )}
-            </span>
+      {!collapsed && (
+        <div className={styles.dosCardBody}>
+          {/* Documents subsection — label + Upload text link + document card. */}
+          <div className={styles.dosDocsHead}>
+            <span className={styles.dosSectionLabel}>Documents</span>
+            <button
+              type="button"
+              className={styles.dosUploadLink}
+              onClick={() => showToast?.('Upload document — coming soon')}
+            >
+              <Icon name="solar:upload-minimalistic-linear" size={12} color="var(--primary-300)" />
+              Upload
+            </button>
           </div>
-        </FieldBlock>
-        <FieldBlock label="Rendering Provider" required confidence={fieldConf('provider')} sourcePage={enc.sourcePage} onCite={onCite ? () => onCite(enc.sourcePage || 1, enc.tempId, 'provider') : null}>
-          <Input
-            value={enc.provider || ''}
-            placeholder="Provider"
-            variant={errors.has('provider') ? 'error' : 'default'}
-            onChange={(e) => onPatch({ provider: e.target.value })}
-          />
-        </FieldBlock>
-        <FieldBlock label="POS" required confidence={fieldConf('pos')} sourcePage={enc.sourcePage} onCite={onCite ? () => onCite(enc.sourcePage || 1, enc.tempId, 'pos') : null}>
-          <Input
-            value={enc.pos ? `${enc.pos} - ${POS_LABEL[enc.pos] || ''}` : ''}
-            placeholder="POS"
-            variant={errors.has('pos') ? 'error' : 'default'}
-            onChange={(e) => {
-              const code = e.target.value.split(' ')[0];
-              onPatch({ pos: code, posDesc: POS_LABEL[code] || '' });
-            }}
-          />
-        </FieldBlock>
-        <FieldBlock label="Category" required>
-          <Select
-            value={enc.docType || 'Progress Note'}
-            onChange={(v) => onPatch({ docType: v })}
-            options={[
-              { value: 'AWV',           label: 'AWV' },
-              { value: 'Progress Note', label: 'Progress Note' },
-              { value: 'Lab',           label: 'Lab' },
-              { value: 'Other',         label: 'Other' },
-            ]}
-          />
-        </FieldBlock>
-        {enc._duplicateOfMemberId && (
-          <FieldBlock label="">
+          <div className={styles.dosDocCard}>
+            <span className={styles.pdfBadge} aria-hidden="true">
+              <PdfDocIcon />
+            </span>
+            <div className={styles.dosDocMain}>
+              <div className={styles.dosDocName}>{activeBatch?.fileName || '—'}</div>
+              <div className={styles.dosDocMeta}>
+                {shortDateOrRaw(activeBatch?.ingestedAt) || '—'}
+                {activeBatch?.source === 'sftp' && <>&nbsp;•&nbsp;Imported via SFTP</>}
+              </div>
+            </div>
+            <ActionButton
+              size="S"
+              icon="solar:menu-dots-linear"
+              tooltip="More"
+              onClick={() => showToast?.('Document actions — coming soon')}
+            />
+          </div>
+
+          {/* 2×2 field grid — DOS + Rendering Provider on the top row,
+              POS + Document Type on the bottom row. Each label carries a
+              percent confidence badge with the source-page citation. */}
+          <div className={styles.dosFieldGrid}>
+            <PctFieldBlock
+              label="DOS"
+              required
+              confidence={fieldConf('dos')}
+              sourcePage={enc.sourcePage}
+              onCite={onCite ? () => onCite(enc.sourcePage || 1, enc.tempId, 'dos') : null}
+            >
+              <Input
+                value={enc.dos || ''}
+                placeholder="MM/DD/YYYY"
+                variant={errors.has('dos') ? 'error' : 'default'}
+                onChange={(e) => onPatch({ dos: e.target.value })}
+              />
+            </PctFieldBlock>
+            <PctFieldBlock
+              label="Rendering Provider"
+              required
+              confidence={fieldConf('provider')}
+              sourcePage={enc.sourcePage}
+              onCite={onCite ? () => onCite(enc.sourcePage || 1, enc.tempId, 'provider') : null}
+            >
+              <Input
+                value={enc.provider || ''}
+                placeholder="Provider"
+                variant={errors.has('provider') ? 'error' : 'default'}
+                onChange={(e) => onPatch({ provider: e.target.value })}
+              />
+            </PctFieldBlock>
+            <PctFieldBlock
+              label="POS"
+              required
+              confidence={fieldConf('pos')}
+              sourcePage={enc.sourcePage}
+              onCite={onCite ? () => onCite(enc.sourcePage || 1, enc.tempId, 'pos') : null}
+            >
+              <Input
+                value={enc.pos ? `${enc.pos} - ${POS_LABEL[enc.pos] || ''}` : ''}
+                placeholder="POS"
+                variant={errors.has('pos') ? 'error' : 'default'}
+                onChange={(e) => {
+                  const code = e.target.value.split(' ')[0];
+                  onPatch({ pos: code, posDesc: POS_LABEL[code] || '' });
+                }}
+              />
+            </PctFieldBlock>
+            <PctFieldBlock
+              label="Document Type"
+              required
+              confidence={fieldConf('docType')}
+              sourcePage={enc.sourcePage}
+              onCite={onCite ? () => onCite(enc.sourcePage || 1, enc.tempId, 'docType') : null}
+              hint={docTypeMissing && docTypeHint ? `Maybe: ${docTypeHint}` : null}
+            >
+              <Select
+                value={enc.docType || ''}
+                placeholder="Select Document Type"
+                variant={docTypeMissing ? 'error' : 'default'}
+                onChange={(v) => onPatch({ docType: v })}
+                options={[
+                  { value: 'AWV Note',      label: 'AWV Note' },
+                  { value: 'Progress Note', label: 'Progress Note' },
+                  { value: 'Lab',           label: 'Lab' },
+                  { value: 'Other',         label: 'Other' },
+                ]}
+              />
+            </PctFieldBlock>
+          </div>
+
+          {/* ICD Codes section — full-width search then list of rows. */}
+          <div className={styles.dosIcdSection}>
+            <span className={styles.dosSectionLabel}>ICD Codes</span>
+            <IcdSearch
+              placeholder="Search and Add ICD Code & Description, HCC Code & Description"
+              excludeCodes={(enc.icds || []).map(i => i.code)}
+              onSelect={(icd) => onPatch({
+                icds: [...(enc.icds || []), { code: icd.code, desc: icd.title, hcc: icd.hcc || '', valid: true }],
+              })}
+            />
+            {(enc.icds || []).length > 0 && (
+              <div className={styles.dosIcdList}>
+                {(enc.icds || []).map((icd) => (
+                  <div key={icd.code} className={styles.dosIcdRow}>
+                    <span className={styles.dosIcdCode}>{icd.code}</span>
+                    <div className={styles.dosIcdBody}>
+                      <div className={styles.dosIcdDesc}>{icd.desc || icd.title || ''}</div>
+                      {icd.hcc && <div className={styles.dosIcdHcc}>{icd.hcc}</div>}
+                    </div>
+                    <ConfPct score={icd.confidence ?? fieldConf('icds')} />
+                    <span className={styles.dosIcdDivider} />
+                    <ActionButton
+                      size="S"
+                      icon="solar:trash-bin-trash-linear"
+                      tooltip={`Remove ${icd.code}`}
+                      onClick={() => onPatch({ icds: (enc.icds || []).filter(i => i.code !== icd.code) })}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {enc._duplicateOfMemberId && (
             <span className={styles.encDupWarn} title="Same DOS + Provider + POS already exists for this member">
               <Icon name="solar:danger-triangle-bold" size={11} color="var(--status-warning)" />
               Possible duplicate — review before adding
             </span>
-          </FieldBlock>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
+}
+
+// Format an ISO datetime as MM/DD/YYYY, or return the raw string.
+function shortDateOrRaw(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${p(d.getMonth() + 1)}/${p(d.getDate())}/${d.getFullYear()}`;
+}
+
+// Custom PDF glyph — mirrors the badge used on the upload drawer's
+// document rows so both surfaces read consistently.
+function PdfDocIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M15.3929 4.05365L15.0585 4.42529V4.42529L15.3929 4.05365ZM19.3517 7.61654L19.0172 7.98819V7.98819L19.3517 7.61654ZM3.17157 20.8284L3.52513 20.4749H3.52513L3.17157 20.8284ZM20.8284 20.8284L20.4749 20.4749V20.4749L20.8284 20.8284ZM13 5L12.5 4.99831V5H13ZM5.16 13.68V13.18H4.66V13.68H5.16ZM10.32 13.68V13.18H9.82V13.68H10.32ZM10.32 18.96H9.82V19.46H10.32V18.96ZM15.96 13.68V13.18H15.46V13.68H15.96ZM14 22V21.5H10V22V22.5H14V22ZM2 14H2.5V10H2H1.5V14H2ZM22 13.5629H21.5V14H22H22.5V13.5629H22ZM15.3929 4.05365L15.0585 4.42529L19.0172 7.98819L19.3517 7.61654L19.6862 7.2449L15.7274 3.682L15.3929 4.05365ZM22 13.5629H22.5C22.5 11.8525 22.5101 10.8473 22.1107 9.95068L21.654 10.1541L21.1973 10.3575C21.4899 11.0146 21.5 11.7641 21.5 13.5629H22ZM19.3517 7.61654L19.0172 7.98819C20.3543 9.19151 20.9046 9.70039 21.1972 10.3575L21.654 10.1541L22.1108 9.95068C21.7114 9.05401 20.9576 8.38912 19.6862 7.2449L19.3517 7.61654ZM10.0298 2V2.5C11.5927 2.5 12.2448 2.50772 12.8301 2.73233L13.0092 2.26552L13.1884 1.79871C12.3898 1.49228 11.5169 1.5 10.0298 1.5V2ZM15.3929 4.05365L15.7274 3.682C14.6275 2.69205 13.9868 2.10511 13.1884 1.79871L13.0092 2.26552L12.8301 2.73233C13.4155 2.95697 13.9027 3.3851 15.0585 4.42529L15.3929 4.05365ZM10 22V21.5C8.10025 21.5 6.72573 21.4989 5.67754 21.358C4.64372 21.219 4.00253 20.9523 3.52513 20.4749L3.17157 20.8284L2.81802 21.182C3.51219 21.8762 4.39959 22.1952 5.54429 22.3491C6.6746 22.5011 8.12852 22.5 10 22.5V22ZM2 14H1.5C1.5 15.8715 1.49894 17.3254 1.65091 18.4557C1.80481 19.6004 2.12385 20.4878 2.81802 21.182L3.17157 20.8284L3.52513 20.4749C3.04772 19.9975 2.78098 19.3563 2.64199 18.3225C2.50106 17.2743 2.5 15.8998 2.5 14H2ZM14 22V22.5C15.8715 22.5 17.3254 22.5011 18.4557 22.3491C19.6004 22.1952 20.4878 21.8762 21.182 21.182L20.8284 20.8284L20.4749 20.4749C19.9975 20.9523 19.3563 21.219 18.3225 21.358C17.2743 21.4989 15.8998 21.5 14 21.5V22ZM22 14H21.5C21.5 15.8998 21.4989 17.2743 21.358 18.3225C21.219 19.3563 20.9523 19.9975 20.4749 20.4749L20.8284 20.8284L21.182 21.182C21.8762 20.4878 22.1952 19.6004 22.3491 18.4557C22.5011 17.3254 22.5 15.8715 22.5 14H22ZM2 10H2.5C2.5 8.10025 2.50106 6.72573 2.64199 5.67754C2.78098 4.64372 3.04772 4.00253 3.52513 3.52513L3.17157 3.17157L2.81802 2.81802C2.12385 3.51219 1.80481 4.39959 1.65091 5.54429C1.49894 6.6746 1.5 8.12852 1.5 10H2ZM10.0298 2V1.5C8.14833 1.5 6.68714 1.49895 5.55203 1.65087C4.40292 1.80466 3.51258 2.12346 2.81802 2.81802L3.17157 3.17157L3.52513 3.52513C4.00214 3.04811 4.64535 2.78113 5.68469 2.64203C6.73803 2.50105 8.12015 2.5 10.0298 2.5V2ZM13.0092 2.26552L12.5092 2.26383L12.5 4.99831L13 5L13.5 5.00169L13.5092 2.2672L13.0092 2.26552ZM18 10.1541V10.6541H21.654V10.1541V9.6541H18V10.1541ZM13 5H12.5C12.5 6.16438 12.4989 7.08796 12.596 7.8098C12.695 8.54603 12.9042 9.14682 13.3787 9.62132L13.7322 9.26777L14.0858 8.91421C13.8281 8.65648 13.6711 8.3019 13.5871 7.67656C13.5011 7.03683 13.5 6.19265 13.5 5H13ZM18 10.1541V9.6541C16.823 9.6541 15.9808 9.61478 15.3506 9.4944C14.7325 9.37631 14.3591 9.18749 14.0858 8.91421L13.7322 9.26777L13.3787 9.62132C13.8376 10.0803 14.4196 10.3346 15.163 10.4766C15.8944 10.6164 16.8199 10.6541 18 10.6541V10.1541ZM5.16 13.68V14.18H6.84V13.68V13.18H5.16V13.68ZM5.16 13.68H4.66V16.8H5.16H5.66V13.68H5.16ZM5.16 16.8H4.66V19.2H5.16H5.66V16.8H5.16ZM6.84 16.8V16.3H5.16V16.8V17.3H6.84V16.8ZM8.4 15.24H7.9C7.9 15.8254 7.42542 16.3 6.84 16.3V16.8V17.3C7.9777 17.3 8.9 16.3777 8.9 15.24H8.4ZM6.84 13.68V14.18C7.42542 14.18 7.9 14.6546 7.9 15.24H8.4H8.9C8.9 14.1023 7.9777 13.18 6.84 13.18V13.68ZM10.32 13.68H9.82V18.96H10.32H10.82V13.68H10.32ZM10.32 18.96V19.46H11.76V18.96V18.46H10.32V18.96ZM14.16 16.56H14.66V16.08H14.16H13.66V16.56H14.16ZM11.76 13.68V13.18H10.32V13.68V14.18H11.76V13.68ZM14.16 16.08H14.66C14.66 14.4784 13.3616 13.18 11.76 13.18V13.68V14.18C12.8093 14.18 13.66 15.0307 13.66 16.08H14.16ZM11.76 18.96V19.46C13.3616 19.46 14.66 18.1616 14.66 16.56H14.16H13.66C13.66 17.6094 12.8093 18.46 11.76 18.46V18.96ZM19.2 13.68V13.18H15.96V13.68V14.18H19.2V13.68ZM15.96 13.68H15.46V16.2H15.96H16.46V13.68H15.96ZM15.96 16.2H15.46V19.2H15.96H16.46V16.2H15.96ZM15.96 16.2V16.7H18.96V16.2V15.7H15.96V16.2Z" fill="currentColor"/>
+    </svg>
+  );
+}
+
+// Field wrapper: label + percent confidence badge on the right; optional
+// error-tone hint under the input for "Maybe: X" suggestions.
+function PctFieldBlock({ label, required, confidence, sourcePage, onCite, hint, children }) {
+  return (
+    <div className={styles.fieldBlock}>
+      <div className={styles.fieldBlockHead}>
+        <span className={styles.fieldBlockLabel}>
+          {label}{required && <span className={styles.fieldBlockReq}>•</span>}
+        </span>
+        <ConfPct score={confidence} sourcePage={sourcePage} onCite={onCite} />
+      </div>
+      <div className={styles.fieldBlockBody}>
+        {children}
+      </div>
+      {hint && (
+        <div className={styles.fieldHintError}>
+          {hint} <Icon name="solar:info-circle-linear" size={11} color="var(--status-error)" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Confidence percentage badge — meter icon + "44%" in tier tint.
+// Cutoffs match the AI's tier reporter: ≥85 High (green), ≥60 Medium
+// (amber), else Low (red). No value → dashed placeholder so the field
+// still balances with its siblings.
+function ConfPct({ score, sourcePage, onCite }) {
+  if (typeof score !== 'number' || score === 0) {
+    return <span className={styles.confPctEmpty}>—</span>;
+  }
+  const tier = score >= 85 ? 'high' : score >= 60 ? 'medium' : 'low';
+  const cls = [
+    styles.confPct,
+    styles[`confPct_${tier}`],
+    onCite ? styles.confPctClickable : '',
+  ].filter(Boolean).join(' ');
+  const iconColor = tier === 'high'
+    ? 'var(--status-success)'
+    : tier === 'medium'
+    ? 'var(--status-warning)'
+    : 'var(--status-error)';
+  const content = (
+    <>
+      <Icon name="solar:speedometer-linear" size={11} color={iconColor} />
+      {score}%
+    </>
+  );
+  if (onCite && sourcePage) {
+    return (
+      <button
+        type="button"
+        className={cls}
+        onClick={(e) => { e.preventDefault(); onCite(); }}
+        title={`AI Confidence ${score}% · Source Page ${sourcePage}`}
+      >
+        {content}
+      </button>
+    );
+  }
+  return <span className={cls}>{content}</span>;
 }
 
 /**

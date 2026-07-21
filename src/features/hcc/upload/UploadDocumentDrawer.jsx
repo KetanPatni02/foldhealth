@@ -9,13 +9,18 @@ import { Input } from '../../../components/Input/Input';
 import { Toggle } from '../../../components/Toggle/Toggle';
 import { Select } from '../../../components/Select/Select';
 import { Dropzone } from '../../../components/Dropzone/Dropzone';
+import { DatePicker } from '../../../components/DatePicker/DatePicker';
 import { IcdSearch } from '../../../components/IcdSearch/IcdSearch';
+import { POS_SELECT_OPTIONS } from '../data/posCodes';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { ConfidenceBadge } from '../components/ConfidenceBadge';
 import { getScoreStyle, getFieldConfidence } from '../data/confidence';
 import { TabStrip } from '../../../components/TabBar/TabStrip';
+import { MenuPopover } from '../../../components/Popover/MenuPopover';
+import { FilterChip } from '../../../components/FilterChip/FilterChip';
 import { useAppStore } from '../../../store/useAppStore';
 import { runMockOcr, mandatoryFields, POS_LABEL } from './mockOcr';
+import { PROVIDER_POOL_BY_VT } from '../reference/visitTypes';
 import styles from './UploadDocumentDrawer.module.css';
 
 // Accepted file types for clinical document upload. PDFs are the canonical
@@ -358,19 +363,44 @@ function PickerPhase({ showToast, cancel }) {
   };
 
   // Tab-driven view: Upload (dropzone), Review (needs-review + unreadable),
-  // Added (added-to-worklist), Deleted (empty state), Parked (mix).
+  // Added (added-to-worklist), Deleted (empty state). Parked was removed —
+  // its rows are already visible under Review / Added / Deleted.
   const [activeTab, setActiveTab] = useState('upload');
   const reviewCount = records.filter(r => r.bucket === 'review' || r.bucket === 'unreadable').length;
   const addedCount = records.filter(r => r.bucket === 'added').length;
   const deletedCount = 0;
-  const parkedCount = records.length;
   const tabItems = [
     { key: 'upload',   label: 'Upload' },
     { key: 'review',   label: `Review (${reviewCount})` },
     { key: 'added',    label: `Added (${addedCount})` },
     { key: 'deleted',  label: `Deleted (${deletedCount})` },
-    { key: 'parked',   label: `Parked (${parkedCount})` },
   ];
+
+  // Filter chip row. Toggled by the Filter icon at the right edge of the
+  // tab bar. Chips use the shared FilterChip primitive so behaviour matches
+  // the worklist and DiagPanel filter rows exactly.
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [recordFilters, setRecordFilters] = useState({ by: [], date: [] });
+  const uploaderOptions = useMemo(() => (
+    [...new Set(records.map(r => r.actorName || 'You'))].sort()
+  ), [records]);
+  const dateOptions = useMemo(() => (
+    [...new Set(records.map(r => shortDate(r.dateISO)).filter(Boolean))]
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+  ), [records]);
+  const filterActive = (recordFilters.by?.length || 0) + (recordFilters.date?.length || 0) > 0;
+  const applyRecordFilters = (list) => list.filter((r) => {
+    if (recordFilters.by?.length) {
+      const who = r.actorName || 'You';
+      if (!recordFilters.by.includes(who)) return false;
+    }
+    if (recordFilters.date?.length) {
+      const stamp = shortDate(r.dateISO);
+      if (!stamp || !recordFilters.date.includes(stamp)) return false;
+    }
+    return true;
+  });
+  const clearAllFilters = () => setRecordFilters({ by: [], date: [] });
 
   // Cron-sync info strip — dismissible, reappears on next drawer open (state
   // resets when PickerPhase mounts fresh). Content wired to the last SFTP
@@ -383,11 +413,29 @@ function PickerPhase({ showToast, cancel }) {
 
   return (
     <div className={styles.pickerPhase2}>
-      <TabStrip
-        items={tabItems}
-        activeKey={activeTab}
-        onChange={setActiveTab}
-      />
+      <div className={styles.tabRow}>
+        <TabStrip
+          items={tabItems}
+          activeKey={activeTab}
+          onChange={setActiveTab}
+        />
+        {activeTab !== 'upload' && (
+          <button
+            type="button"
+            className={[styles.filterBtn, filterOpen || filterActive ? styles.filterBtnActive : ''].filter(Boolean).join(' ')}
+            aria-label="Filter records"
+            aria-pressed={filterOpen}
+            onClick={() => setFilterOpen(v => !v)}
+          >
+            <Icon
+              name="solar:filter-linear"
+              size={16}
+              color={filterOpen || filterActive ? 'var(--primary-300)' : 'var(--neutral-400)'}
+            />
+            {filterActive && !filterOpen && <span className={styles.filterBtnDot} aria-hidden="true" />}
+          </button>
+        )}
+      </div>
 
       {!cronDismissed && (
         <div className={styles.cronStrip} role="status">
@@ -412,20 +460,54 @@ function PickerPhase({ showToast, cancel }) {
         </div>
       )}
 
+      {filterOpen && activeTab !== 'upload' && (
+        <div className={styles.filterChipRow}>
+          <FilterChip
+            label="Uploaded By"
+            options={uploaderOptions}
+            selected={recordFilters.by}
+            onChange={(vals) => setRecordFilters(f => ({ ...f, by: vals }))}
+          />
+          <FilterChip
+            label="Uploaded Date"
+            options={dateOptions}
+            selected={recordFilters.date}
+            onChange={(vals) => setRecordFilters(f => ({ ...f, date: vals }))}
+          />
+          {filterActive && (
+            <button type="button" className={styles.filterChipClear} onClick={clearAllFilters}>
+              <Icon name="solar:close-circle-linear" size={12} color="var(--primary-300)" />
+              Clear All
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className={styles.tabContent}>
       {activeTab === 'upload' ? (
         <>
-          {/* Plain dashed dropzone card (Paper 276X-0) — no outer grey
-              wrapper. Supported-formats footer sits directly beneath it. */}
-          <Dropzone
-            accept={ACCEPT_EXT}
-            acceptMime={ACCEPT_MIME}
-            multiple
-            icon="solar:upload-minimalistic-linear"
-            helperText="Supported formats: PDF, DOC, JPG, or PNG"
-            secondaryText="Max size: 100 MB"
-            onPick={handlePick}
-            onReject={() => showToast?.('Please upload a PDF, DOC, JPG, PNG, or TIFF file')}
-          />
+          {/* Upload card — PHI notice sits INSIDE the same card as the
+              dropzone, sharing its border/radius so it reads as one surface
+              (per Communications Figma 1-23639, integrated banner). */}
+          <div className={styles.uploadCard}>
+            <div className={styles.phiStrip} role="note">
+              <Icon name="solar:shield-warning-linear" size={14} color="var(--neutral-200)" />
+              <div className={styles.phiStripText}>
+                <strong>Demo platform.</strong> Do not upload real PHI — use the provided demo files.
+              </div>
+            </div>
+            <Dropzone
+              accept={ACCEPT_EXT}
+              acceptMime={ACCEPT_MIME}
+              multiple
+              icon="solar:upload-minimalistic-linear"
+              helperText="Supported formats: PDF, DOC, JPG, or PNG"
+              secondaryText="Max size: 100 MB"
+              onPick={handlePick}
+              onReject={() => showToast?.('Please upload a PDF, DOC, JPG, PNG, or TIFF file')}
+              className={styles.dropzoneEmbedded}
+            />
+          </div>
 
           {staged.length > 0 && (
             <div className={styles.stagedList}>
@@ -472,7 +554,7 @@ function PickerPhase({ showToast, cancel }) {
         </>
       ) : activeTab === 'review' ? (
         <ExtractedRecords
-          records={records.filter(r => r.bucket === 'review' || r.bucket === 'unreadable')}
+          records={applyRecordFilters(records.filter(r => r.bucket === 'review' || r.bucket === 'unreadable'))}
           activeBucket={activeBucket}
           setActiveBucket={setActiveBucket}
           onReview={reviewRecord}
@@ -481,14 +563,14 @@ function PickerPhase({ showToast, cancel }) {
         />
       ) : activeTab === 'added' ? (
         <ExtractedRecords
-          records={records.filter(r => r.bucket === 'added')}
+          records={applyRecordFilters(records.filter(r => r.bucket === 'added'))}
           activeBucket="added"
           setActiveBucket={setActiveBucket}
           onReview={reviewRecord}
           onDelete={removeRecord}
           tabScope="added"
         />
-      ) : activeTab === 'deleted' ? (
+      ) : (
         <div className={styles.tabEmpty}>
           <div className={styles.tabEmptyIcon}>
             <Icon name="solar:file-remove-linear" size={28} color="var(--neutral-300)" />
@@ -496,16 +578,8 @@ function PickerPhase({ showToast, cancel }) {
           <div className={styles.tabEmptyTitle}>No Deleted Records</div>
           <div className={styles.tabEmptyBody}>Records deleted during review will appear here.</div>
         </div>
-      ) : (
-        <ExtractedRecords
-          records={records}
-          activeBucket={activeBucket}
-          setActiveBucket={setActiveBucket}
-          onReview={reviewRecord}
-          onDelete={removeRecord}
-          tabScope="parked"
-        />
       )}
+      </div>
 
     </div>
   );
@@ -546,12 +620,19 @@ function documentToRecord(batch) {
       ...base,
       bucket: 'unreadable',
       reason: batch?.ocrTier === 'unreadable'
-        ? 'File is corrupted or in an unreadable format'
-        : 'No readable content — blank or unrecognized page',
+        ? 'Corrupted file'
+        : 'Blank / white page upload',
     };
   }
   const bucket = encs.every(e => classifyEncounter(e, batch.ocrTier) === 'added') ? 'added' : 'review';
-  return { ...base, bucket, patientName: encs[0]?.patient?.name || '', dosCount: encs.length };
+  const firstEnc = encs[0];
+  return {
+    ...base,
+    bucket,
+    patientName: firstEnc?.patient?.name || '',
+    patientMemberId: firstEnc?.patient?.matchedMemberId || null,
+    dosCount: encs.length,
+  };
 }
 
 // "MM/DD/YYYY" for the record meta line ('' when the date is missing/invalid).
@@ -674,6 +755,7 @@ function ExtractedRecords({ records, activeBucket, setActiveBucket, onReview, on
           rows={degraded}
           onReview={onReview}
           onDelete={onDelete}
+          variant="degraded"
         />
       )}
 
@@ -685,6 +767,7 @@ function ExtractedRecords({ records, activeBucket, setActiveBucket, onReview, on
           rows={unreadable}
           onReview={onReview}
           onDelete={onDelete}
+          variant="unreadable"
         />
       )}
 
@@ -696,6 +779,7 @@ function ExtractedRecords({ records, activeBucket, setActiveBucket, onReview, on
           rows={added}
           onReview={onReview}
           onDelete={onDelete}
+          variant="added"
         />
       )}
     </div>
@@ -719,9 +803,19 @@ function groupByDay(rows) {
  * with a tone-tinted icon + collapsible chevron + optional "Review All"
  * link. Body groups records by day into rounded cards with dividers.
  */
-function RecordSection({ title, iconName, iconColor, rightAction, rows, onReview, onDelete }) {
+function RecordSection({ title, iconName, iconColor, rightAction, rows, onReview, onDelete, variant = 'added' }) {
   const [collapsed, setCollapsed] = useState(false);
   const groups = groupByDay(rows);
+  const openDiagPanel = useAppStore(s => s.openDiagPanel);
+  const openPatient = (rec) => {
+    if (!rec?.patientMemberId) return;
+    openDiagPanel?.(rec.patientMemberId);
+  };
+  const cardClass = [
+    styles.recCard,
+    variant === 'degraded' ? styles.recCardDegraded : '',
+    variant === 'unreadable' ? styles.recCardUnreadable : '',
+  ].filter(Boolean).join(' ');
   return (
     <section className={styles.recSection}>
       <header className={styles.recSectionHead}>
@@ -748,9 +842,15 @@ function RecordSection({ title, iconName, iconColor, rightAction, rows, onReview
       {!collapsed && groups.map(([heading, dayRows]) => (
         <div key={heading} className={styles.recDay}>
           <div className={styles.recDayLabel}>{heading}</div>
-          <div className={styles.recCard}>
+          <div className={cardClass}>
             {dayRows.map(r => (
-              <ExtractedRow key={r.id} rec={r} onReview={onReview} onDelete={onDelete} />
+              <ExtractedRow
+                key={r.id}
+                rec={r}
+                onReview={onReview}
+                onDelete={onDelete}
+                onOpenPatient={openPatient}
+              />
             ))}
           </div>
         </div>
@@ -767,7 +867,18 @@ function RecordSection({ title, iconName, iconColor, rightAction, rows, onReview
  * Added → eye + download icons. Legacy/no-context rows fall back to a
  * trash affordance.
  */
-function ExtractedRow({ rec, onReview, onDelete }) {
+// Custom document-with-embedded-PDF-letters glyph — no Solar equivalent
+// carries the inline "PDF" wordmark, so a raw SVG is kept here. Uses
+// currentColor so a parent color rule tokens it (neutral-300 by default).
+function PdfDocIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M15.3929 4.05365L15.0585 4.42529V4.42529L15.3929 4.05365ZM19.3517 7.61654L19.0172 7.98819V7.98819L19.3517 7.61654ZM3.17157 20.8284L3.52513 20.4749H3.52513L3.17157 20.8284ZM20.8284 20.8284L20.4749 20.4749V20.4749L20.8284 20.8284ZM13 5L12.5 4.99831V5H13ZM5.16 13.68V13.18H4.66V13.68H5.16ZM10.32 13.68V13.18H9.82V13.68H10.32ZM10.32 18.96H9.82V19.46H10.32V18.96ZM15.96 13.68V13.18H15.46V13.68H15.96ZM14 22V21.5H10V22V22.5H14V22ZM2 14H2.5V10H2H1.5V14H2ZM22 13.5629H21.5V14H22H22.5V13.5629H22ZM15.3929 4.05365L15.0585 4.42529L19.0172 7.98819L19.3517 7.61654L19.6862 7.2449L15.7274 3.682L15.3929 4.05365ZM22 13.5629H22.5C22.5 11.8525 22.5101 10.8473 22.1107 9.95068L21.654 10.1541L21.1973 10.3575C21.4899 11.0146 21.5 11.7641 21.5 13.5629H22ZM19.3517 7.61654L19.0172 7.98819C20.3543 9.19151 20.9046 9.70039 21.1972 10.3575L21.654 10.1541L22.1108 9.95068C21.7114 9.05401 20.9576 8.38912 19.6862 7.2449L19.3517 7.61654ZM10.0298 2V2.5C11.5927 2.5 12.2448 2.50772 12.8301 2.73233L13.0092 2.26552L13.1884 1.79871C12.3898 1.49228 11.5169 1.5 10.0298 1.5V2ZM15.3929 4.05365L15.7274 3.682C14.6275 2.69205 13.9868 2.10511 13.1884 1.79871L13.0092 2.26552L12.8301 2.73233C13.4155 2.95697 13.9027 3.3851 15.0585 4.42529L15.3929 4.05365ZM10 22V21.5C8.10025 21.5 6.72573 21.4989 5.67754 21.358C4.64372 21.219 4.00253 20.9523 3.52513 20.4749L3.17157 20.8284L2.81802 21.182C3.51219 21.8762 4.39959 22.1952 5.54429 22.3491C6.6746 22.5011 8.12852 22.5 10 22.5V22ZM2 14H1.5C1.5 15.8715 1.49894 17.3254 1.65091 18.4557C1.80481 19.6004 2.12385 20.4878 2.81802 21.182L3.17157 20.8284L3.52513 20.4749C3.04772 19.9975 2.78098 19.3563 2.64199 18.3225C2.50106 17.2743 2.5 15.8998 2.5 14H2ZM14 22V22.5C15.8715 22.5 17.3254 22.5011 18.4557 22.3491C19.6004 22.1952 20.4878 21.8762 21.182 21.182L20.8284 20.8284L20.4749 20.4749C19.9975 20.9523 19.3563 21.219 18.3225 21.358C17.2743 21.4989 15.8998 21.5 14 21.5V22ZM22 14H21.5C21.5 15.8998 21.4989 17.2743 21.358 18.3225C21.219 19.3563 20.9523 19.9975 20.4749 20.4749L20.8284 20.8284L21.182 21.182C21.8762 20.4878 22.1952 19.6004 22.3491 18.4557C22.5011 17.3254 22.5 15.8715 22.5 14H22ZM2 10H2.5C2.5 8.10025 2.50106 6.72573 2.64199 5.67754C2.78098 4.64372 3.04772 4.00253 3.52513 3.52513L3.17157 3.17157L2.81802 2.81802C2.12385 3.51219 1.80481 4.39959 1.65091 5.54429C1.49894 6.6746 1.5 8.12852 1.5 10H2ZM10.0298 2V1.5C8.14833 1.5 6.68714 1.49895 5.55203 1.65087C4.40292 1.80466 3.51258 2.12346 2.81802 2.81802L3.17157 3.17157L3.52513 3.52513C4.00214 3.04811 4.64535 2.78113 5.68469 2.64203C6.73803 2.50105 8.12015 2.5 10.0298 2.5V2ZM13.0092 2.26552L12.5092 2.26383L12.5 4.99831L13 5L13.5 5.00169L13.5092 2.2672L13.0092 2.26552ZM18 10.1541V10.6541H21.654V10.1541V9.6541H18V10.1541ZM13 5H12.5C12.5 6.16438 12.4989 7.08796 12.596 7.8098C12.695 8.54603 12.9042 9.14682 13.3787 9.62132L13.7322 9.26777L14.0858 8.91421C13.8281 8.65648 13.6711 8.3019 13.5871 7.67656C13.5011 7.03683 13.5 6.19265 13.5 5H13ZM18 10.1541V9.6541C16.823 9.6541 15.9808 9.61478 15.3506 9.4944C14.7325 9.37631 14.3591 9.18749 14.0858 8.91421L13.7322 9.26777L13.3787 9.62132C13.8376 10.0803 14.4196 10.3346 15.163 10.4766C15.8944 10.6164 16.8199 10.6541 18 10.6541V10.1541ZM5.16 13.68V14.18H6.84V13.68V13.18H5.16V13.68ZM5.16 13.68H4.66V16.8H5.16H5.66V13.68H5.16ZM5.16 16.8H4.66V19.2H5.16H5.66V16.8H5.16ZM6.84 16.8V16.3H5.16V16.8V17.3H6.84V16.8ZM8.4 15.24H7.9C7.9 15.8254 7.42542 16.3 6.84 16.3V16.8V17.3C7.9777 17.3 8.9 16.3777 8.9 15.24H8.4ZM6.84 13.68V14.18C7.42542 14.18 7.9 14.6546 7.9 15.24H8.4H8.9C8.9 14.1023 7.9777 13.18 6.84 13.18V13.68ZM10.32 13.68H9.82V18.96H10.32H10.82V13.68H10.32ZM10.32 18.96V19.46H11.76V18.96V18.46H10.32V18.96ZM14.16 16.56H14.66V16.08H14.16H13.66V16.56H14.16ZM11.76 13.68V13.18H10.32V13.68V14.18H11.76V13.68ZM14.16 16.08H14.66C14.66 14.4784 13.3616 13.18 11.76 13.18V13.68V14.18C12.8093 14.18 13.66 15.0307 13.66 16.08H14.16ZM11.76 18.96V19.46C13.3616 19.46 14.66 18.1616 14.66 16.56H14.16H13.66C13.66 17.6094 12.8093 18.46 11.76 18.46V18.96ZM19.2 13.68V13.18H15.96V13.68V14.18H19.2V13.68ZM15.96 13.68H15.46V16.2H15.96H16.46V13.68H15.96ZM15.96 16.2H15.46V19.2H15.96H16.46V16.2H15.96ZM15.96 16.2V16.7H18.96V16.2V15.7H15.96V16.2Z" fill="currentColor"/>
+    </svg>
+  );
+}
+
+function ExtractedRow({ rec, onReview, onDelete, onOpenPatient }) {
   const source = rec.source === 'SFTP Server' ? 'Imported via SFTP'
     : rec.source === 'Manual Upload' ? `Uploaded by ${rec.actorName || 'You'}`
     : rec.actorName ? `Uploaded by ${rec.actorName}`
@@ -775,15 +886,38 @@ function ExtractedRow({ rec, onReview, onDelete }) {
   const isDegraded = rec.bucket === 'review';
   const isUnreadable = rec.bucket === 'unreadable';
   const isAdded = rec.bucket === 'added';
+  const showToast = useAppStore(s => s.showToast);
+  const moreRef = useRef(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const handleDownload = () => {
+    showToast?.(`Downloading ${rec.fileName}…`);
+  };
   return (
-    <div className={styles.exRow}>
-      <span className={styles.exIcon}>
-        <Icon name="solar:file-text-linear" size={16} color="var(--primary-300)" />
+    <div className={[styles.exRow, isDegraded ? styles.exRowDegraded : isUnreadable ? styles.exRowUnreadable : ''].filter(Boolean).join(' ')}>
+      <span className={styles.pdfBadge} aria-hidden="true">
+        <PdfDocIcon />
       </span>
       <div className={styles.exMain}>
         <div className={styles.exName}>{rec.fileName}</div>
         <div className={styles.exSubtitle}>
           <span>{source}</span>
+          {isAdded && rec.patientName && (
+            <>
+              <span className={styles.exSubDot}>•</span>
+              {rec.patientMemberId ? (
+                <button
+                  type="button"
+                  className={styles.patientLink}
+                  onClick={() => onOpenPatient?.(rec)}
+                >
+                  <span>{rec.patientName}</span>
+                  <Icon name="solar:arrow-right-up-linear" size={12} color="var(--primary-300)" />
+                </button>
+              ) : (
+                <span className={styles.patientLinkText}>{rec.patientName}</span>
+              )}
+            </>
+          )}
           {isUnreadable && rec.reason && (
             <>
               <span className={styles.exSubDot}>•</span>
@@ -800,21 +934,48 @@ function ExtractedRow({ rec, onReview, onDelete }) {
       )}
       {isUnreadable && (
         <button type="button" className={styles.exRetryBtn} onClick={() => onReview(rec)}>
-          <Icon name="solar:refresh-linear" size={14} color="var(--neutral-500)" />
-          Retry
+          <Icon name="solar:eye-linear" size={14} color="var(--neutral-500)" />
+          Review
         </button>
       )}
       {isAdded && (
         <div className={styles.exAddedActions}>
           <ActionButton icon="solar:eye-linear" size="S" tooltip="View" onClick={() => onReview(rec)} />
-          <ActionButton icon="solar:download-minimalistic-linear" size="S" tooltip="Download" onClick={() => onReview(rec)} />
+          <ActionButton icon="solar:download-minimalistic-linear" size="S" tooltip="Download" onClick={handleDownload} />
         </div>
       )}
-      <span className={styles.exDivider} />
-      <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" onClick={() => onDelete(rec)} />
+      {(isDegraded || isUnreadable) && (
+        <>
+          <span className={styles.exDivider} />
+          <span ref={moreRef} className={styles.exMoreWrap}>
+            <ActionButton
+              icon="solar:menu-dots-linear"
+              size="S"
+              tooltip="More"
+              onClick={() => setMenuOpen(v => !v)}
+              aria-expanded={menuOpen}
+            />
+            {menuOpen && (
+              <MenuPopover
+                anchorRef={moreRef}
+                onClose={() => setMenuOpen(false)}
+                items={[
+                  { key: 'download', label: 'Download', icon: 'solar:download-minimalistic-linear' },
+                  { key: 'delete',   label: 'Delete',   icon: 'solar:trash-bin-trash-linear', danger: true },
+                ]}
+                onSelect={(key) => {
+                  if (key === 'download') handleDownload();
+                  else if (key === 'delete') onDelete(rec);
+                }}
+              />
+            )}
+          </span>
+        </>
+      )}
     </div>
   );
 }
+
 
 /**
  * StagedFileRow — single row in the staged-file list. While uploading
@@ -1026,6 +1187,11 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
   // → Confirm applies only selected, marks the rest as rejected, and the
   // History summary entry lists both buckets.
   const [selectedIdxs, setSelectedIdxs] = useState(() => new Set());
+  // SinglePhase (Add a DOS) lifts its save handler up so the header
+  // Save button can invoke the form's commit action. { save, canSave }
+  // is updated from a useEffect inside SinglePhase whenever its state
+  // changes; the header re-renders because setSingleSave triggers it.
+  const [singleSave, setSingleSave] = useState({ save: () => {}, canSave: false });
   const toggleSelected = (idx) => setSelectedIdxs(prev => {
     const next = new Set(prev);
     if (next.has(idx)) next.delete(idx); else next.add(idx);
@@ -1139,6 +1305,10 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
     <span className={styles.titleBlock}>
       <span className={styles.titleMain}>Add Records</span>
     </span>
+  ) : session.phase === 'single' ? (
+    <span className={styles.title}>
+      {singleSave.patientName ? `Add DOS for ${singleSave.patientName}` : 'Add DOS'}
+    </span>
   ) : (
     <span className={styles.title}>
       {session.phase === 'review'
@@ -1148,6 +1318,16 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
   );
 
   const headerRight = session.phase === 'picker' ? null
+  : session.phase === 'single' ? (
+    <Button
+      variant="primary"
+      size="S"
+      disabled={!singleSave.canSave}
+      onClick={singleSave.save}
+    >
+      Save to Worklist
+    </Button>
+  )
   : session.phase === 'review' ? (
     <>
       {/* Source-document peek: clicking opens the page-preview drawer
@@ -1231,6 +1411,7 @@ function Inner({ session, setFile, setEncounters, appendEncounters, patchEnc, re
           showToast={showToast}
           createFromEncounter={createFromEncounter}
           onDone={cancel}
+          onSaveApiChange={setSingleSave}
         />
       )}
 
@@ -1469,282 +1650,369 @@ function SftpPhase({ showToast }) {
 // Manual entry path: pick a patient, add ICD chips, fill the encounter
 // context, attach a document, Confirm. Routes through the existing
 // hccCreateOrMergeFromEncounter so dedup + activity-log wiring all works.
-function SinglePhase({ hccMembers, batchId, showToast, createFromEncounter, onDone }) {
+function SinglePhase({ hccMembers, batchId, showToast, createFromEncounter, onDone, onSaveApiChange }) {
   const [patient, setPatient] = useState(null);   // selected hccMember or null
   const [patientQuery, setPatientQuery] = useState('');
-  const [icds, setIcds] = useState([]);             // [{ code, desc, hcc? }]
-  const [dosMode, setDosMode] = useState('existing'); // 'existing' | 'new'
-  const [dos, setDos] = useState('');
-  const [provider, setProvider] = useState('');
-  const [pos, setPos] = useState('11');
-  const [docType, setDocType] = useState('Progress Note');
-  const [condition, setCondition] = useState('');
-  const [file, setFile] = useState(null);
-  const fileInputRef = useRef(null);
-
-  // Patient search — typeahead over hccMembers by name.
+  const [patientPickerOpen, setPatientPickerOpen] = useState(false);
+  const patientPickerWrapRef = useRef(null);
+  const patientInputRef = useRef(null);
   const patientMatches = useMemo(() => {
     const q = patientQuery.trim().toLowerCase();
-    if (!q) return hccMembers.slice(0, 6);
+    if (!q) return hccMembers.slice(0, 20);
     return hccMembers
       .filter(m => (m.name || '').toLowerCase().includes(q))
-      .slice(0, 8);
+      .slice(0, 20);
   }, [hccMembers, patientQuery]);
 
-  const addIcd = (item) => {
-    if (icds.some(i => i.code === item.code)) return;
-    setIcds([...icds, item]);
-  };
-  const removeIcd = (code) => setIcds(icds.filter(i => i.code !== code));
+  // Close the member popover on outside click / Escape.
+  useEffect(() => {
+    if (!patientPickerOpen) return undefined;
+    const onDoc = (e) => {
+      if (patientPickerWrapRef.current && !patientPickerWrapRef.current.contains(e.target)) {
+        setPatientPickerOpen(false);
+      }
+    };
+    const onKey = (e) => { if (e.key === 'Escape') setPatientPickerOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [patientPickerOpen]);
 
-  const existingDosList = patient?.dos_list?.map(d => d.date) || [];
+  // Multiple DOS blocks — each an independent record for the same
+  // patient. New blocks default empty; user fills date/provider/pos +
+  // document type, drops a file, adds ICDs.
+  const newDosBlock = () => ({
+    id: `nd-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+    dos: '',
+    provider: '',
+    pos: '',
+    docType: '',
+    file: null,
+    icds: [],
+  });
+  const [dosBlocks, setDosBlocks] = useState(() => [newDosBlock()]);
+  const patchBlock = (id, patch) => setDosBlocks(prev => prev.map(b => b.id === id ? { ...b, ...patch } : b));
+  const addDosBlock = () => setDosBlocks(prev => [...prev, newDosBlock()]);
+  const removeDosBlock = (id) => setDosBlocks(prev => prev.length > 1 ? prev.filter(b => b.id !== id) : prev);
 
-  const canConfirm = patient && icds.length > 0 && dos && provider && pos;
+  // Provider list is derived once from the reference pool — dedupe
+  // across visit types so the Select shows every doctor the demo seeds.
+  const providerOptions = useMemo(() => {
+    const set = new Set();
+    Object.values(PROVIDER_POOL_BY_VT).forEach(list => list.forEach(p => set.add(p)));
+    return Array.from(set).sort().map(p => ({ value: p, label: p }));
+  }, []);
+  const canSave = !!patient && dosBlocks.every(b => (
+    b.dos && b.provider && b.pos && b.docType && b.file
+  ));
 
-  const handleConfirm = () => {
-    if (!canConfirm) return;
-    // Reuse the same create/merge path used by the OCR flow.
-    const result = createFromEncounter({
-      tempId: `single-${Date.now()}`,
-      patient: {
-        name: patient.name,
-        dob: patient.dob,
-        matchedMemberId: patient.id,
-        matchConfidence: 100,
-      },
-      dos,
-      provider,
-      pos,
-      posDesc: POS_LABEL[pos] || '',
-      icds: icds.map(i => ({ code: i.code, valid: true })),
-      _docName: file?.name || `Manual entry — ${condition || 'encounter'}.pdf`,
-      _docType: docType,
-      errors: [],
+  const handleSave = () => {
+    if (!canSave) return;
+    let created = 0;
+    dosBlocks.forEach((b) => {
+      const result = createFromEncounter({
+        tempId: `single-${b.id}`,
+        patient: {
+          name: patient.name,
+          dob: patient.dob,
+          matchedMemberId: patient.id,
+          matchConfidence: 100,
+        },
+        dos: b.dos,
+        provider: b.provider,
+        pos: b.pos,
+        posDesc: POS_LABEL[b.pos] || '',
+        icds: b.icds.map(i => ({ code: i.code, valid: true })),
+        _docName: b.file?.name || `Manual entry — ${patient.name} ${b.dos}.pdf`,
+        _docType: b.docType || 'Progress Note',
+        errors: [],
+      });
+      if (result.kind !== 'skipped') created += 1;
     });
-    if (result.kind === 'skipped') {
-      showToast('Could not save — patient not matched');
-      return;
-    }
-    const label = result.kind === 'created'
-      ? `Encounter added for ${patient.name}`
-      : result.kind === 'updated'
-        ? `ICDs merged into existing DOS for ${patient.name}`
-        : `Related DOS created for ${patient.name}`;
-    showToast(label);
+    showToast(`Added ${created} DOS record${created === 1 ? '' : 's'} for ${patient.name}`);
     onDone?.();
   };
 
+  // Publish { save, canSave, patientName } up to the drawer header on
+  // every render so both the "Save" button state and the drawer's
+  // contextual title reflect the form's current state.
+  useEffect(() => {
+    onSaveApiChange?.({ save: handleSave, canSave, patientName: patient?.name || '' });
+    return () => onSaveApiChange?.({ save: () => {}, canSave: false, patientName: '' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canSave, patient?.id, patient?.name, dosBlocks]);
+
   return (
     <div className={styles.singlePhase}>
-      <p className={styles.pickerSubtitle}>
-        Add a single encounter manually — pick a patient, attach ICDs, and upload
-        the supporting document.
-      </p>
-
-      {/* Patient picker — same layout as the OCR review's link-patient UI. */}
-      <div className={styles.singleSection}>
-        <label className={styles.singleLabel}>Patient *</label>
-        {patient ? (
-          <div className={styles.singlePatientChip}>
-            <Avatar variant="patient" initials={patient.in} />
-            <div className={styles.singlePatientText}>
-              <div className={styles.singlePatientName}>{patient.name}</div>
-              <div className={styles.singlePatientMeta}>
-                {patient.memberId || patient.member_id || '—'} · DOB {patient.dob || '—'}
-              </div>
-            </div>
+      {/* Member selector — the field itself is the search input. Focus
+          reveals the match list in an absolutely-positioned popover so
+          the DOS card below never shifts. */}
+      <div className={styles.singleSection} ref={patientPickerWrapRef}>
+        <label className={styles.singleLabel}>
+          Member <span className={styles.singleReq}>•</span>
+        </label>
+        <div className={styles.singleMemberField}>
+          {patient && !patientPickerOpen ? (
             <button
               type="button"
-              className={styles.singlePatientChange}
-              onClick={() => { setPatient(null); setPatientQuery(''); }}
+              className={styles.singleMemberSelected}
+              onClick={() => {
+                setPatientQuery('');
+                setPatientPickerOpen(true);
+                setTimeout(() => patientInputRef.current?.focus(), 0);
+              }}
             >
-              Change
-            </button>
-          </div>
-        ) : (
-          <>
-            <Input
-              placeholder="Search Fold patients by name…"
-              value={patientQuery}
-              onChange={(e) => setPatientQuery(e.target.value)}
-              autoFocus
-            />
-            <div className={styles.memberPickerList}>
-              {patientMatches.map(m => (
-                <button
-                  key={m.id}
-                  type="button"
-                  className={styles.memberPickerItem}
-                  onClick={() => { setPatient(m); setPatientQuery(''); }}
-                >
-                  <Avatar variant="patient" initials={m.in} />
-                  <span>{m.name}</span>
-                  <span className={styles.memberPickerMeta}>{m.memberId || m.member_id || ''}</span>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* ICD typeahead + chip list. */}
-      <div className={styles.singleSection}>
-        <label className={styles.singleLabel}>ICD codes *</label>
-        <IcdSearch
-          placeholder="Search by code or description (e.g. E11.9, COPD)…"
-          excludeCodes={icds.map(i => i.code)}
-          onSelect={(icd) => addIcd({ code: icd.code, desc: icd.title, hcc: icd.hcc || '', valid: true })}
-        />
-        {icds.length > 0 && (
-          <div className={styles.icdChosen}>
-            {icds.map(i => (
-              <span key={i.code} className={styles.icdChosenChip}>
-                <code>{i.code}</code>
-                <span className={styles.icdChosenDesc}>{i.desc}</span>
-                <button
-                  type="button"
-                  className={styles.icdChosenRemove}
-                  aria-label={`Remove ${i.code}`}
-                  onClick={() => removeIcd(i.code)}
-                >
-                  <Icon name="solar:close-circle-linear" size={12} color="var(--neutral-300)" />
-                </button>
+              <Avatar variant="patient" initials={patient.in} />
+              <span className={styles.singleMemberName}>{patient.name}</span>
+              <span className={styles.singleMemberMeta}>
+                ({[patient.g, patient.age, patient.memberId || patient.member_id]
+                  .filter(Boolean)
+                  .join(' • ')})
               </span>
+            </button>
+          ) : (
+            <input
+              ref={patientInputRef}
+              type="text"
+              className={styles.singleMemberInput}
+              placeholder="Search and Select Member"
+              value={patientQuery}
+              autoFocus={patientPickerOpen}
+              onFocus={() => setPatientPickerOpen(true)}
+              onChange={(e) => { setPatientQuery(e.target.value); setPatientPickerOpen(true); }}
+            />
+          )}
+          <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" />
+        </div>
+        {patientPickerOpen && (
+          <div className={styles.singleMemberPop}>
+            {patientMatches.length === 0 ? (
+              <div className={styles.singleMemberEmpty}>No matches</div>
+            ) : patientMatches.map(m => (
+              <button
+                key={m.id}
+                type="button"
+                className={styles.memberPickerItem}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  setPatient(m);
+                  setPatientQuery('');
+                  setPatientPickerOpen(false);
+                  patientInputRef.current?.blur();
+                }}
+              >
+                <Avatar variant="patient" initials={m.in} />
+                <span>{m.name}</span>
+                <span className={styles.memberPickerMeta}>{m.memberId || m.member_id || ''}</span>
+              </button>
             ))}
           </div>
         )}
       </div>
 
-      {/* DOS — existing on the patient OR new. Toggle matches the
-          segmented control used elsewhere in the drawer (Option 1/2). */}
-      <div className={styles.singleSection}>
-        <label className={styles.singleLabel}>Date of Service *</label>
-        <Toggle
-          size="S"
-          items={[
-            { key: 'existing', label: 'Use existing', disabled: !patient || existingDosList.length === 0 },
-            { key: 'new',      label: 'New DOS' },
-          ]}
-          active={dosMode}
-          onChange={setDosMode}
+      {/* Repeatable DOS blocks — layout mirrors HccAddDosDrawer's
+          Patient-level Add DOS drawer: dropzone + 2×2 field grid +
+          ICD list. */}
+      {dosBlocks.map((block) => (
+        <SingleDosCard
+          key={block.id}
+          block={block}
+          providerOptions={providerOptions}
+          patient={patient}
+          onPatch={(patch) => patchBlock(block.id, patch)}
+          onRemove={dosBlocks.length > 1 ? () => removeDosBlock(block.id) : null}
+          showToast={showToast}
         />
-        {dosMode === 'existing' && patient ? (
-          <Select
-            options={[
-              { value: '', label: 'Select a DOS…' },
-              ...existingDosList.map(d => ({ value: d, label: d })),
-            ]}
-            value={dos}
-            onChange={setDos}
-            placeholder="Select a DOS…"
+      ))}
+
+      {/* Add More DOS — dashed primary-tinted CTA. */}
+      <button
+        type="button"
+        className={styles.addMoreDosBtn}
+        onClick={addDosBlock}
+      >
+        <Icon name="solar:add-circle-linear" size={14} color="var(--primary-300)" />
+        Add More DOS
+      </button>
+    </div>
+  );
+}
+
+/**
+ * SingleDosCard — one DOS block inside the Add-DOS drawer. Layout
+ * mirrors the Patient-level Add DOS drawer (`HccAddDosDrawer` →
+ * `DosBlock`): expand-arrow + "DOS: {value}" header with Ready/Not
+ * Ready badge + trash, a full-width Dropzone (or attached-file chip),
+ * a 2×2 field grid (DOS · Rendering Provider · POS · Document Type),
+ * and an ICD Codes section listing each pick as its own row.
+ */
+function SingleDosCard({ block, providerOptions, patient, onPatch, onRemove, showToast }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const onPickFile = (file) => {
+    if (!file) return;
+    if (!isAcceptedFile(file)) {
+      showToast?.('Please upload a PDF, DOC, JPG, PNG, or TIFF file');
+      return;
+    }
+    onPatch({ file });
+  };
+  return (
+    <div className={styles.singleDosCard}>
+      <div className={styles.singleDosHead}>
+        <button
+          type="button"
+          className={styles.singleDosCollapse}
+          onClick={() => setCollapsed(v => !v)}
+          aria-label={collapsed ? 'Expand DOS' : 'Collapse DOS'}
+          aria-expanded={!collapsed}
+        >
+          <Icon
+            name={collapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'}
+            size={16}
+            color="var(--neutral-400)"
           />
-        ) : (
-          <Input
-            placeholder="MM/DD/YYYY"
-            value={dos}
-            onChange={(e) => setDos(e.target.value)}
-          />
+        </button>
+        <span className={styles.singleDosTitle}>DOS: {block.dos || '-'}</span>
+        <div className={styles.singleDosHeadSpacer} />
+        {onRemove && (
+          <button
+            type="button"
+            className={styles.singleTrashBtn}
+            onClick={onRemove}
+            aria-label="Remove DOS"
+          >
+            <Icon name="solar:trash-bin-trash-linear" size={16} color="var(--neutral-300)" />
+          </button>
         )}
       </div>
 
-      {/* Encounter context — provider · POS · doc type · condition. */}
-      <div className={styles.singleGrid}>
-        <div className={styles.singleField}>
-          <label className={styles.singleLabel}>Rendering Provider *</label>
-          <Input
-            placeholder="Dr. Sarah Connor"
-            value={provider}
-            onChange={(e) => setProvider(e.target.value)}
-          />
-        </div>
-        <div className={styles.singleField}>
-          <label className={styles.singleLabel}>POS *</label>
-          <Select
-            options={Object.entries(POS_LABEL).map(([code, label]) => ({
-              value: code,
-              label: `${code} — ${label}`,
-            }))}
-            value={pos}
-            onChange={setPos}
-          />
-        </div>
-        <div className={styles.singleField}>
-          <label className={styles.singleLabel}>Document Type</label>
-          <Select
-            options={['Progress Note', 'SOAP Note', 'Telehealth Note', 'Visit Summary', 'Lab Report', 'Imaging Report'].map(t => ({
-              value: t,
-              label: t,
-            }))}
-            value={docType}
-            onChange={setDocType}
-          />
-        </div>
-        <div className={styles.singleField}>
-          <label className={styles.singleLabel}>Condition / Notes</label>
-          <Input
-            placeholder="Short clinical note (optional)"
-            value={condition}
-            onChange={(e) => setCondition(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {/* Document attach. */}
-      <div className={styles.singleSection}>
-        <label className={styles.singleLabel}>Supporting document</label>
-        {file ? (
+      {!collapsed && (
+      <div className={styles.singleDosBody}>
+        {block.file ? (
           <div className={styles.singleFileChip}>
-            <Icon name="solar:file-text-linear" size={16} color="var(--neutral-400)" />
-            <span className={styles.singleFileName}>{file.name}</span>
+            <Icon name="solar:file-text-linear" size={14} color="var(--neutral-400)" />
+            <span className={styles.singleFileName}>{block.file.name}</span>
             <button
               type="button"
               className={styles.singleFileRemove}
-              onClick={() => { setFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+              onClick={() => onPatch({ file: null })}
             >
               Remove
             </button>
           </div>
         ) : (
-          <button
-            type="button"
-            className={styles.singleFileBtn}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Icon name="solar:upload-linear" size={14} color="var(--primary-300)" />
-            Attach document
-          </button>
+          <Dropzone
+            accept={ACCEPT_EXT}
+            helperText="Supported formats: PDF, DOC, JPG, or PNG"
+            secondaryText="Max size: 100 MB"
+            icon="solar:upload-minimalistic-linear"
+            onPick={onPickFile}
+            onReject={() => showToast?.('Please upload a PDF, DOC, JPG, PNG, or TIFF file')}
+          />
         )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={ACCEPT_EXT}
-          style={{ display: 'none' }}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (!f) return;
-            if (!isAcceptedFile(f)) {
-              showToast('Please upload a PDF, DOC, JPG, PNG, or TIFF file');
-              return;
-            }
-            setFile(f);
-          }}
-        />
-      </div>
 
-      {/* Footer — Confirm. */}
-      <div className={styles.singleFooter}>
-        <Button
-          variant="primary"
-          size="M"
-          disabled={!canConfirm}
-          onClick={handleConfirm}
-        >
-          Add Encounter
-        </Button>
+        <div className={styles.singleGrid}>
+          <div className={styles.singleField}>
+            <label className={styles.singleLabel}>
+              DOS <span className={styles.singleReq}>•</span>
+            </label>
+            <DatePicker
+              value={toIsoDate(block.dos)}
+              onSelect={(iso) => onPatch({ dos: fromIsoDate(iso) })}
+            />
+          </div>
+          <div className={styles.singleField}>
+            <label className={styles.singleLabel}>
+              Rendering Provider <span className={styles.singleReq}>•</span>
+            </label>
+            <Select
+              options={providerOptions}
+              value={block.provider}
+              placeholder="Select Rendering Provider"
+              searchable
+              searchPlaceholder="Search providers…"
+              onChange={(v) => onPatch({ provider: v })}
+            />
+          </div>
+          <div className={styles.singleField}>
+            <label className={styles.singleLabel}>
+              POS <span className={styles.singleReq}>•</span>
+            </label>
+            <Select
+              options={POS_SELECT_OPTIONS}
+              value={block.pos}
+              placeholder="Select Place of Service"
+              searchable
+              searchPlaceholder="Search POS code or name…"
+              onChange={(v) => onPatch({ pos: v })}
+            />
+          </div>
+          <div className={styles.singleField}>
+            <label className={styles.singleLabel}>
+              Document Type <span className={styles.singleReq}>•</span>
+            </label>
+            <Select
+              options={DOC_TYPE_OPTIONS}
+              value={block.docType}
+              placeholder="Select Document Type"
+              onChange={(v) => onPatch({ docType: v })}
+            />
+          </div>
+        </div>
+
+        <div className={styles.singleIcdSection}>
+          <label className={styles.singleLabel}>ICD Codes</label>
+          <IcdSearch
+            placeholder="Search and Add ICD Code & Description, HCC Code & Description"
+            excludeCodes={block.icds.map(i => i.code)}
+            onSelect={(icd) => onPatch({
+              icds: [...block.icds, { code: icd.code, desc: icd.title, hcc: icd.hcc || '', valid: true }],
+            })}
+          />
+          {block.icds.map(icd => (
+            <div key={icd.code} className={styles.singleIcdRow}>
+              <span className={styles.singleIcdCode}>{icd.code}</span>
+              <div className={styles.singleIcdMain}>
+                <div className={styles.singleIcdDesc}>{icd.desc}</div>
+                {icd.hcc && <div className={styles.singleIcdHcc}>{icd.hcc}</div>}
+              </div>
+              <button
+                type="button"
+                className={styles.singleTrashBtn}
+                onClick={() => onPatch({ icds: block.icds.filter(x => x.code !== icd.code) })}
+                aria-label={`Remove ${icd.code}`}
+              >
+                <Icon name="solar:trash-bin-trash-linear" size={14} color="var(--neutral-300)" />
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
+      )}
     </div>
   );
 }
+
+// MM/DD/YYYY (state format used by handleSave) ↔ YYYY-MM-DD (native <input type="date">).
+const toIsoDate = (mdy) => {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(mdy || '');
+  return m ? `${m[3]}-${m[1]}-${m[2]}` : '';
+};
+const fromIsoDate = (iso) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+  return m ? `${m[2]}/${m[3]}/${m[1]}` : '';
+};
+
+const DOC_TYPE_OPTIONS = [
+  { value: 'AWV', label: 'AWV Note' },
+  { value: 'Progress Note', label: 'Progress Note' },
+  { value: 'SOAP Note', label: 'SOAP Note' },
+  { value: 'Lab', label: 'Lab' },
+  { value: 'Other', label: 'Other' },
+];
 
 function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, addEnc, selectedIdx, setSelectedIdx, filter, setFilter, layout, selectedIdxs, toggleSelected, setSelectedAll, sourceFileName, showToast, openPagePreview }) {
   // Aggregate counts per status for the filter chips. The bucket keys

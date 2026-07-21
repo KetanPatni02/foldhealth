@@ -5,6 +5,7 @@ import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { MenuPopover } from '../../components/Popover/MenuPopover';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
 import { useTableSort } from '../../components/Table/useTableSort';
 import { InlineEditable } from '../../components/InlineEditable/InlineEditable';
@@ -26,6 +27,46 @@ import { StatusLegend } from './StatusLegend';
 import { HorizontalScrollbar } from '../../components/HorizontalScrollbar/HorizontalScrollbar';
 import styles from './HccWorklistTable.module.css';
 import rowStyles from './HccWorklistRow.module.css';
+
+/**
+ * Upload toolbar button — clicking it opens a menu with two ways to
+ * add a record: upload a PDF (routes through the OCR / Add Records
+ * drawer's picker phase) or add manually (opens the same drawer in
+ * SinglePhase — patient search + ICDs + DOS/POS/Provider form).
+ * Restores the manual-entry entry point that lived on the chooser
+ * screen before the upload-icon shortcut skipped past it.
+ */
+function UploadMenuButton({ onUploadDocument, onAddManually }) {
+  const wrapRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  return (
+    <span ref={wrapRef} style={{ display: 'inline-flex', position: 'relative' }}>
+      <ActionButton
+        icon="custom:upload"
+        size="L"
+        tooltip="Upload"
+        tooltipBelow
+        onClick={() => setOpen(v => !v)}
+        aria-expanded={open}
+      />
+      {open && (
+        <MenuPopover
+          anchorRef={wrapRef}
+          onClose={() => setOpen(false)}
+          width={220}
+          items={[
+            { key: 'upload',   label: 'Upload Document', icon: 'solar:upload-minimalistic-linear' },
+            { key: 'manual',   label: 'Add Manually',    icon: 'solar:pen-linear' },
+          ]}
+          onSelect={(key) => {
+            if (key === 'upload') onUploadDocument();
+            else if (key === 'manual') onAddManually();
+          }}
+        />
+      )}
+    </span>
+  );
+}
 
 function EmptyState({ title, message, icon = 'solar:magnifer-linear' }) {
   return (
@@ -314,17 +355,9 @@ export function HccWorklistTable() {
             onClick={() => showToast('Export — coming soon')}
           />
           <span className={styles.iconDivider} />
-          <ActionButton
-            icon="custom:upload"
-            size="L"
-            tooltip="Upload"
-            tooltipBelow
-            onClick={() => {
-              // Skip the 3-card chooser and open the Upload a Document
-              // drawer straight into the file-picker phase.
-              startHccUpload(null);
-              setHccUploadPhase('picker');
-            }}
+          <UploadMenuButton
+            onUploadDocument={() => { startHccUpload(null); setHccUploadPhase('picker'); }}
+            onAddManually={() => { startHccUpload(null); setHccUploadPhase('single'); }}
           />
           <span className={styles.iconDivider} />
           <ActionButton

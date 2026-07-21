@@ -152,13 +152,27 @@
 
 /* ── Picker phase v2 (Figma 121:81202) ────────────────────────────── */
 .pickerPhase2 {
-  padding: 0 20px 20px;
+  padding: 0 20px 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+}
+/* Only the tab content region scrolls — tabs, cron strip, and filter row
+   stay pinned at the top so the user always sees them regardless of how
+   far down the record list they scroll. Negative horizontal margin +
+   matching padding preserves the drawer-edge bleed of section headers. */
+.tabContent {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  margin: 0 -20px;
+  padding: 12px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 /* Tabs + cron strip bleed to the drawer body edges. .pickerPhase2 keeps
@@ -168,6 +182,118 @@
 .pickerPhase2 > :global([class*="_tabBar_"]) {
   margin: 0 -20px;
 }
+
+/* Row hosting the TabStrip + trailing Filter icon. The TabStrip already
+   handles its own bleed; the row pins the filter button to the right edge
+   with a soft divider between so the icon reads as tab-adjacent, not a
+   secondary toolbar. */
+.tabRow {
+  display: flex;
+  align-items: stretch;
+  margin: 0 -20px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.tabRow > :global([class*="_tabBar_"]) {
+  flex: 1;
+  margin: 0;
+  border-bottom: none;
+}
+.filterBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 40px;
+  padding: 0 12px;
+  background: none;
+  border: none;
+  border-left: 0.5px solid var(--neutral-150);
+  cursor: pointer;
+  position: relative;
+}
+.filterBtn:hover { background: var(--neutral-50); }
+.filterBtnActive { background: var(--primary-50); }
+.filterBtnActive:hover { background: var(--primary-50); }
+.filterBtnDot {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary-300);
+}
+
+/* Inline FilterChip row shown under the tab bar when the trailing Filter
+   icon is toggled on. Same pattern as the worklist / DiagPanel filter
+   rows — reuses <FilterChip> primitives so the interaction is identical. */
+.filterChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 0 4px 0;
+}
+.filterChipClear {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--primary-300);
+  font: 500 12px/1.3 'Inter', sans-serif;
+  border-radius: 4px;
+}
+.filterChipClear:hover { background: var(--primary-50); }
+
+/* Upload card — the PHI notice + Dropzone share a single rounded border so
+   the warning reads as an integrated header on the upload surface (Figma
+   Communications 1-23639). */
+.uploadCard {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--neutral-0);
+  margin: 12px 0;
+}
+.phiStrip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--neutral-50);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.phiStrip > svg {
+  flex-shrink: 0;
+  color: var(--neutral-200);
+}
+.phiStripText {
+  flex: 1;
+  min-width: 0;
+  font: 400 12px/1.3 'Inter', sans-serif;
+  color: var(--neutral-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.phiStripText strong {
+  font-weight: 600;
+  color: var(--neutral-300);
+}
+/* Embedded dropzone — drop the outer border since .uploadCard owns it. */
+.dropzoneEmbedded > :global([class*="_zone_"]) {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-top: none;
+}
+
+/* Wrapper so the row's kebab MenuPopover can anchor to the exact
+   ActionButton without leaking layout width. */
+.exMoreWrap { position: relative; display: inline-flex; }
 .cronStrip {
   display: flex;
   align-items: center;
@@ -272,6 +398,55 @@
 }
 .recCard > .exRow + .exRow {
   border-top: 0.5px solid var(--neutral-100);
+}
+/* Section variants — left-to-right fade from a status-tinted wash into
+   pure white, per Figma review-tab spec. Border stays neutral-150 across
+   variants so the tint doesn't compete with the card outline. */
+.recCardDegraded {
+  background: linear-gradient(to right, var(--status-warning-light), var(--neutral-0) 65%);
+  border-color: var(--neutral-150);
+}
+.recCardDegraded > .exRow + .exRow {
+  border-top-color: var(--neutral-150);
+}
+.recCardUnreadable {
+  background: linear-gradient(to right, var(--status-error-light), var(--neutral-0) 65%);
+  border-color: var(--neutral-150);
+}
+.recCardUnreadable > .exRow + .exRow {
+  border-top-color: var(--neutral-150);
+}
+
+/* PDF document glyph — custom 24×24 SVG that carries the inline "PDF"
+   letters, so no separate label is needed. Drives color via currentColor
+   so a token change here recolors the paths. */
+.pdfBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  color: var(--neutral-300);
+}
+
+/* Patient name link on Added rows — inline text button that opens the
+   DiagPanel for that member. Purple with a matching trailing arrow. */
+.patientLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: 500 12px/1.3 'Inter', sans-serif;
+  color: var(--primary-300);
+}
+.patientLink:hover { text-decoration: underline; }
+.patientLinkText {
+  font: 500 12px/1.3 'Inter', sans-serif;
+  color: var(--neutral-400);
 }
 
 /* Row styling for records inside a section card. Overrides some of the
@@ -2492,13 +2667,189 @@
   overflow-y: auto;
 }
 .singleSection {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex-shrink: 0;
 }
 .singleLabel {
   font: 500 12px/1.4 'Inter', sans-serif;
   color: var(--neutral-400);
+}
+.singleReq { color: var(--status-error); margin-left: 2px; }
+
+/* Member picker — the field itself is the search input. When focused
+   the caret sits inside a Select-styled shell and the match list opens
+   in an absolutely-positioned popover so the DOS card below never
+   shifts down. No separate search box inside the popover. */
+.singleMemberField {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.singleMemberInput {
+  width: 100%;
+  height: 40px;
+  padding: 0 34px 0 14px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  outline: none;
+  font: 400 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  box-sizing: border-box;
+}
+.singleMemberInput::placeholder { color: var(--neutral-300); }
+.singleMemberInput:focus {
+  border-color: var(--primary-200);
+  box-shadow: 0 0 0 2px var(--primary-50);
+}
+.singleMemberField > svg {
+  position: absolute;
+  right: 12px;
+  pointer-events: none;
+}
+/* Selected-member chip — swaps in for the input once a patient is
+   picked, showing the Avatar + demographics inline. Clicking it
+   reopens the picker so the user can search again. */
+.singleMemberSelected {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 40px;
+  padding: 0 34px 0 10px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  font: 400 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+  box-sizing: border-box;
+}
+.singleMemberSelected:hover { background: var(--neutral-50); }
+.singleMemberName {
+  font: 500 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.singleMemberMeta {
+  font: 400 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+}
+.singleMemberPop {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+}
+.singleMemberEmpty {
+  padding: 12px 10px;
+  font: 400 13px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+  text-align: center;
+}
+
+/* DOS card — mirrors HccAddDosDrawer's DosBlock: head strip + body
+   with 12px inset, so the layout reads identically across manual and
+   worklist entry points. */
+.singleDosCard {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  flex-shrink: 0;
+}
+.singleDosHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.singleDosCollapse {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+}
+.singleDosCollapse:hover { background: var(--neutral-50); }
+.singleDosTitle {
+  font: 600 14px/1.2 'Inter', sans-serif;
+  color: var(--neutral-500);
+}
+.singleDosHeadSpacer { flex: 1; }
+.singleDosBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px;
+}
+.singleTrashBtn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  border-radius: 6px;
+  color: var(--neutral-300);
+}
+.singleTrashBtn:hover { background: var(--neutral-50); }
+
+/* ICD Codes — one row per pick, divider between rows. */
+.singleIcdSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.singleIcdRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--neutral-100);
+}
+.singleIcdCode {
+  font: 600 13px/1.4 'Inter', sans-serif;
+  color: var(--neutral-500);
+  flex-shrink: 0;
+  min-width: 52px;
+}
+.singleIcdMain { flex: 1; min-width: 0; }
+.singleIcdDesc { font: 400 13px/1.4 'Inter', sans-serif; color: var(--neutral-500); }
+.singleIcdHcc { font: 400 12px/1.4 'Inter', sans-serif; color: var(--neutral-300); margin-top: 2px; }
+
+/* Add More DOS — dashed primary-tinted CTA below the last DOS card. */
+.addMoreDosBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 0.5px dashed color-mix(in srgb, var(--primary-300) 40%, transparent);
+  border-radius: 8px;
+  background: var(--primary-50);
+  color: var(--primary-300);
+  font: 500 13px/1.2 'Inter', sans-serif;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.addMoreDosBtn:hover {
+  background: color-mix(in srgb, var(--primary-300) 12%, transparent);
 }
 .singlePatientChip {
   display: inline-flex;
@@ -2574,42 +2925,6 @@
   background: var(--neutral-50);
   border-radius: 4px;
 }
-.icdChosen {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
-}
-.icdChosenChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 8px 3px 6px;
-  background: var(--primary-50);
-  border: 0.5px solid var(--primary-200);
-  border-radius: 4px;
-  font: 500 11px/1.4 'Inter', sans-serif;
-  color: var(--primary-300);
-}
-.icdChosenChip code {
-  font-family: 'JetBrains Mono', 'Inter', monospace;
-}
-.icdChosenDesc {
-  font-weight: 400;
-  color: var(--neutral-400);
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.icdChosenRemove {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  padding: 0;
-  display: inline-flex;
-}
-
 .dosSegmented {
   display: inline-flex;
   background: var(--neutral-50);
@@ -3228,8 +3543,6 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding-top: 16px;
-  border-top: 0.5px solid var(--neutral-150);
 }
 .extractedTitle {
   font-size: 13px;
