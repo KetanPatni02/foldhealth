@@ -434,8 +434,8 @@ export function DiagPanel() {
   // Filter chips apply the same predicate to every bucket so a chip picked
   // in the toolbar affects the whole panel view (Figma 9810:158181).
   const matchesFilters = useCallback(
-    (icd) => icdMatchesFilters(icd, filters, member?.date),
-    [filters, member?.date],
+    (icd) => icdMatchesFilters(icd, filters, member),
+    [filters, member],
   );
   const assocICDs = useMemo(
     () => icdsRaw.filter(i => (!isAISuggested(i) || i.status === 'Accepted') && matchesFilters(i)),
@@ -1282,9 +1282,10 @@ export function DiagPanel() {
             value={actingStatus}
             onChange={handleStatusChange}
             role={actingRole}
-            disabled={stageLocked}
+            disabled={stageLocked || isDosRejected}
             disabledReason={(() => {
               const supStatus = dosState?.support?.status || member?.supS;
+              if (isDosRejected) return 'Record was Rejected upstream — no downstream action';
               if (supStatus === 'Insufficient') return 'Support marked the documents Insufficient — nothing to code yet';
               if (supStatus === 'Reject' || supStatus === 'Rejected') return 'Support rejected this DOS — no downstream action';
               return 'Support and Coder must complete their work first';
@@ -1483,36 +1484,61 @@ export function DiagPanel() {
       {/* ── Body: ICD-first cards + HCC suspect groups + collapsed history ── */}
       <div className={styles.cardsList}>
         {/* Reject banner takes priority — surfaces terminal-reject context
-            above every other cards-list affordance. */}
-        {isDosRejected && (
-          <div className={styles.rejectBanner} role="status">
-            <Icon name="solar:info-circle-bold" size={16} color="var(--status-error)" />
-            <div className={styles.rejectBannerText}>
-              <div className={styles.rejectBannerTitle}>
-                {rejectInfo?.by
-                  ? <>Rejected by <strong>{rejectInfo.by}</strong>{rejectInfo.role ? ` (${rejectInfo.role})` : ''} on {rejectInfo.date}{rejectInfo.time ? ` · ${rejectInfo.time}` : ''}</>
-                  : 'This record has been rejected.'}
-              </div>
-              {(rejectInfo?.reasons?.length || rejectInfo?.note) && (
-                <div className={styles.rejectBannerBody}>
-                  {rejectInfo?.reasons?.length > 0 && (
-                    <div className={styles.rejectBannerReasons}>
-                      {rejectInfo.reasons.map(r => (
-                        <span key={r} className={styles.rejectBannerReason}>{r}</span>
-                      ))}
-                    </div>
-                  )}
-                  {rejectInfo?.note && (
-                    <div className={styles.rejectBannerNote}>Note: {rejectInfo.note}</div>
-                  )}
+            above every other cards-list affordance. Falls back on dosState
+            role history + role-labelled assignee when no in-session
+            rejectInfo exists (persisted rejections). */}
+        {isDosRejected && (() => {
+          const ROLE_LABEL_R = { support: 'Support Team', coder: 'Coder', reviewer: 'QA', reviewer2: 'Compliance' };
+          // Find which role rejected. Preferred: the one whose status is
+          // Reject/Rejected. Comes with dosState[role].by / .at fallbacks.
+          const rejectingRole = ['support', 'coder', 'reviewer', 'reviewer2']
+            .find(r => (dosState?.[r]?.status === 'Reject' || dosState?.[r]?.status === 'Rejected'));
+          const roleRecord = rejectingRole ? dosState?.[rejectingRole] : null;
+          // Assignee name for the rejecting role from the legacy member fields
+          // (sup / cdr / r1 / r2) so we can name a person even when only
+          // persisted state is available.
+          const nameField = { support: 'sup', coder: 'cdr', reviewer: 'r1', reviewer2: 'r2' }[rejectingRole];
+          const fallbackBy = rejectInfo?.by || roleRecord?.by || (nameField ? member?.[nameField] : null);
+          const roleLabel = rejectInfo?.role || ROLE_LABEL_R[rejectingRole] || '';
+          const reasons = rejectInfo?.reasons || (roleRecord?.reason ? [roleRecord.reason] : []);
+          const note = rejectInfo?.note || '';
+          const stamp = rejectInfo?.date
+            ? `${rejectInfo.date}${rejectInfo.time ? ` · ${rejectInfo.time}` : ''}`
+            : null;
+          return (
+            <div className={styles.rejectBanner} role="status">
+              <Icon name="solar:info-circle-bold" size={18} color="var(--status-error)" />
+              <div className={styles.rejectBannerText}>
+                <div className={styles.rejectBannerTitle}>Record Rejected</div>
+                <div className={styles.rejectBannerMeta}>
+                  {fallbackBy
+                    ? <>Rejected by <strong>{fallbackBy}</strong>{roleLabel ? ` (${roleLabel})` : ''}{stamp ? ` on ${stamp}` : ''}</>
+                    : (roleLabel ? `Rejected by ${roleLabel}` : 'This record has been rejected.')}
                 </div>
-              )}
-              <div className={styles.rejectBannerHint}>
-                All ICD actions are locked. You can still add a Comment.
+                {(reasons.length > 0 || note) && (
+                  <div className={styles.rejectBannerBody}>
+                    {reasons.length > 0 && (
+                      <div className={styles.rejectBannerReasons}>
+                        <span className={styles.rejectBannerLabel}>Reason:</span>
+                        {reasons.map(r => (
+                          <span key={r} className={styles.rejectBannerReason}>{r}</span>
+                        ))}
+                      </div>
+                    )}
+                    {note && (
+                      <div className={styles.rejectBannerNote}>
+                        <span className={styles.rejectBannerLabel}>Note:</span> {note}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className={styles.rejectBannerHint}>
+                  All ICD actions are locked. You can still add a Comment.
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* New-DOS-row alert: the last save either spawned a fresh worklist
             row (DOS didn't exist for this patient) or routed the ICD to a

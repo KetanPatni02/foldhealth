@@ -1199,41 +1199,60 @@
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 12px 14px;
   margin: 0 12px 12px 12px;
   background: var(--status-error-light);
   border: 0.5px solid color-mix(in srgb, var(--status-error) 25%, transparent);
   border-radius: 8px;
 }
+.rejectBanner > svg { flex-shrink: 0; margin-top: 1px; }
 .rejectBannerText {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   flex: 1;
   min-width: 0;
 }
 .rejectBannerTitle {
   font-size: 13px;
+  font-weight: 600;
   color: var(--status-error);
-  line-height: 1.35;
+  line-height: 1.3;
 }
+.rejectBannerMeta {
+  font-size: 12px;
+  color: var(--neutral-500);
+  line-height: 1.4;
+}
+.rejectBannerMeta strong { font-weight: 600; color: var(--neutral-600); }
 .rejectBannerBody {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  padding-top: 2px;
+}
+.rejectBannerLabel {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-right: 4px;
 }
 .rejectBannerReasons {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  align-items: center;
+  gap: 6px;
+  row-gap: 4px;
 }
 .rejectBannerReason {
   display: inline-flex;
   align-items: center;
-  padding: 2px 6px;
+  padding: 2px 8px;
   background: var(--neutral-0);
   border: 0.5px solid color-mix(in srgb, var(--status-error) 30%, transparent);
-  border-radius: 4px;
+  border-radius: 999px;
   font-size: 12px;
   color: var(--status-error);
   line-height: 1.3;
@@ -1241,11 +1260,14 @@
 .rejectBannerNote {
   font-size: 12px;
   color: var(--neutral-500);
-  line-height: 1.4;
+  line-height: 1.45;
   white-space: pre-wrap;
 }
 .rejectBannerHint {
   font-size: 11px;
   color: var(--neutral-400);
-  margin-top: 2px;
+  line-height: 1.3;
+  padding-top: 2px;
+  border-top: 0.5px dashed color-mix(in srgb, var(--status-error) 20%, transparent);
+  margin-top: 4px;
 }

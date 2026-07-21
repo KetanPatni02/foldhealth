@@ -980,6 +980,22 @@ export const useAppStore = create((set, get) => ({
     }));
     // Durability: upload the file + persist the record to Supabase.
     persistHccAddedChart(memberId, doc, file);
+    // Always drop a timeline entry so uploads land on the Activity tab
+    // regardless of which surface triggered the add (Chart Review drawer,
+    // Diag Panel Documents tab, quick Upload popover). The 1500ms dedup
+    // guard on addActivityEntry stops a caller that also logs manually
+    // from producing a duplicate row.
+    const activeIcd = useAppStore.getState().diagActivityIcd;
+    const role = useAppStore.getState().hccUserRole || 'Coder';
+    useAppStore.getState().addActivityEntry({
+      _memberId: memberId,
+      t: 'upload', by: 'You', role,
+      icds: activeIcd ? [activeIcd] : undefined,
+      headline: activeIcd ? `Document Uploaded for ${activeIcd}` : 'Document Uploaded',
+      file: doc.n,
+      fileType: doc.docType,
+      docId: doc.id,
+    });
   },
   // Load persisted uploads so manually-added docs survive a reload. Grouped by
   // member id into the same map addChartDoc maintains. Single-fire per session
@@ -4295,10 +4311,29 @@ export const useAppStore = create((set, get) => ({
       queueMicrotask(() => {
         const transitionLabel = HCC_TRANSITION_LABEL[kind] || kind;
         useAppStore.getState().addActivityEntry({
+          _memberId: patientId,
           t: 'status_dos',
           by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
           dos: dosDate,
           headline: `DOS ${dosDate} — ${transitionLabel}`,
+        });
+        // Emit one row per role whose status changed — including engine
+        // cascades (e.g. Support Completed auto-flipping Coder to In
+        // Progress). This is what surfaces the role-pill state changes on
+        // the DiagPanel Activity tab.
+        const ROLE_LABEL_C = { support: 'Support', coder: 'Coder', reviewer: 'Reviewer', reviewer2: 'Reviewer 2' };
+        const prevMember = s.hccMembers.find(m => m.id === patientId);
+        const prevStatusFieldByRole = { support: 'supS', coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
+        statusChanges.forEach(({ role, status }) => {
+          useAppStore.getState().addActivityEntry({
+            _memberId: patientId,
+            t: 'status_role',
+            by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
+            dos: dosDate,
+            headline: `${ROLE_LABEL_C[role] || role} Status Changed`,
+            from: prevMember?.[prevStatusFieldByRole[role]] || '—',
+            to: status,
+          });
         });
       });
       return { hccDosAssignments: result.nextMap, hccMembers: nextMembers };
@@ -4482,6 +4517,7 @@ export const useAppStore = create((set, get) => ({
     const sf = statusFieldByRole[role];
     if (!f || !sf) return;
     const member = useAppStore.getState().hccMembers.find(m => m.id === pid);
+    const prevStatus = member?.[sf] || null;
     const dosEntry = (member?.dos_list || []).find(d => d.date === dos);
     const compositeKey = hccDosKey(pid, dos, dosEntry?.provider, dosEntry?.pos);
     set(s => {
@@ -4500,15 +4536,30 @@ export const useAppStore = create((set, get) => ({
     persistHccMemberRoleStatus(pid, role, status);
     const ROLE_LABEL_S = { support: 'Support', coder: 'Coder', reviewer: 'Reviewer', reviewer2: 'Reviewer 2' };
     const patient = useAppStore.getState().hccMembers.find(m => m.id === pid);
+    const roleLabel = ROLE_LABEL_S[role] || role;
     useAppStore.getState().logHccActivity({
       eventName: 'role.status_changed',
       scope:     { patientId: pid, dos, source: 'manual' },
       payload:   {
         actor: 'You',
-        roleLabel: ROLE_LABEL_S[role] || role,
+        roleLabel,
         status,
         patientName: patient?.name,
       },
+    });
+    // Mirror the change onto the DiagPanel Activity tab. Deferred to a
+    // microtask so it runs after the set() above commits and the panel's
+    // subscription sees the new status before rendering the new entry.
+    queueMicrotask(() => {
+      useAppStore.getState().addActivityEntry({
+        _memberId: pid,
+        t: 'status_role',
+        by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
+        dos,
+        headline: `${roleLabel} Status Changed`,
+        from: prevStatus || '—',
+        to: status,
+      });
     });
     track('hcc.role_status_set', { memberId: pid, role, status });
   },
@@ -4652,26 +4703,47 @@ export const useAppStore = create((set, get) => ({
     if (!row?.id) return;
     set(s => ({ hccDiagComments: [row, ...(s.hccDiagComments || [])] }));
     persistHccDiagComment(row);
+    // Timeline entry (Activity tab). The 1500ms dedup on addActivityEntry
+    // absorbs UI callers that also log manually so we never double-post.
+    useAppStore.getState().addActivityEntry({
+      t: 'comment', by: row.author || 'You', role: row.role || (useAppStore.getState().hccUserRole || 'Coder'),
+      icds: row.icd ? [row.icd] : undefined,
+      headline: row.icd ? `Added a Comment for ${row.icd}` : 'Added a Comment',
+      details: row.body ? [{ note: row.body }] : undefined,
+    });
   },
 
   // Edit an existing comment's body. `edited: true` stamps the row so the
   // UI can render the "Edited" badge. Only the author's UI exposes this.
   updateHccDiagComment: (id, body) => {
     if (!id) return;
+    const before = get().hccDiagComments?.find(c => c.id === id);
     set(s => ({
       hccDiagComments: (s.hccDiagComments || []).map(c =>
         c.id === id ? { ...c, body, edited: true } : c),
     }));
     persistHccDiagCommentUpdate({ id, body });
+    useAppStore.getState().addActivityEntry({
+      t: 'comment', by: before?.author || 'You', role: before?.role || (useAppStore.getState().hccUserRole || 'Coder'),
+      icds: before?.icd ? [before.icd] : undefined,
+      headline: before?.icd ? `Edited a Comment on ${before.icd}` : 'Edited a Comment',
+      details: body ? [{ note: body }] : undefined,
+    });
   },
 
   // Remove a comment. Author-only — the caller checks author identity.
   deleteHccDiagComment: (id) => {
     if (!id) return;
+    const before = get().hccDiagComments?.find(c => c.id === id);
     set(s => ({
       hccDiagComments: (s.hccDiagComments || []).filter(c => c.id !== id),
     }));
     persistHccDiagCommentDelete(id);
+    useAppStore.getState().addActivityEntry({
+      t: 'comment', by: before?.author || 'You', role: before?.role || (useAppStore.getState().hccUserRole || 'Coder'),
+      icds: before?.icd ? [before.icd] : undefined,
+      headline: before?.icd ? `Deleted a Comment on ${before.icd}` : 'Deleted a Comment',
+    });
   },
 
   // Post a new note to the DiagPanel Notes tab. Same pattern as
@@ -4680,6 +4752,12 @@ export const useAppStore = create((set, get) => ({
     if (!row?.id) return;
     set(s => ({ hccDiagNotes: [row, ...(s.hccDiagNotes || [])] }));
     persistHccDiagNote(row);
+    useAppStore.getState().addActivityEntry({
+      t: 'comment', by: row.author || 'You', role: row.role || (useAppStore.getState().hccUserRole || 'Coder'),
+      icds: row.icd ? [row.icd] : undefined,
+      headline: row.icd ? `Added a Note for ${row.icd}` : 'Added a Note',
+      details: row.body ? [{ note: row.body }] : undefined,
+    });
   },
 
   // ── HCC Care Team configuration ─────────────────────────────────────
@@ -4797,11 +4875,19 @@ export const useAppStore = create((set, get) => ({
   // No `icds` (or empty array) means DOS-level only.
   hccActivityLog: {},
   addActivityEntry: (entry) => set(s => {
-    const memberId = s.diagPanelMemberId;
+    // Resolve target member: an explicit `_memberId` on the entry wins so
+    // actions taken from surfaces where the DiagPanel isn't open (chart-
+    // detail drawer opened straight off the worklist row, background
+    // store-side logs) still land on the right timeline. Falls back to the
+    // panel's currently-open member so all in-panel callers keep working.
+    const memberId = entry?._memberId || s.diagPanelMemberId;
     if (!memberId) return {};
     const member = s.hccMembers.find(m => m.id === memberId);
     const memberKey = member?.name;
     if (!memberKey) return {};
+    // Strip the resolver hint so it doesn't leak into the persisted entry.
+    // eslint-disable-next-line no-unused-vars
+    const { _memberId, ...cleanEntry } = entry || {};
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
     const date = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
@@ -4815,7 +4901,7 @@ export const useAppStore = create((set, get) => ({
       ts: now.getTime(),
       date, time,
       dos: effectiveDos,
-      ...entry,
+      ...cleanEntry,
     };
     const list = s.hccActivityLog[memberKey] || [];
     // Dedup guard — React StrictMode in dev double-invokes some store-set
