@@ -313,10 +313,15 @@ const ROLE_DEFAULT_STATUS = { support: 'Awaiting', coder: 'New', reviewer: 'New'
  * worklist explains the icon meanings.
  */
 function RoleStatusCell({ name, status, date, role, memberId, dosDate, priorResolved = true }) {
-  // Gate downstream role cells: until the previous role has finished
-  // (Completed or Skipped), don't reveal this role's status/date. Reviewer 2
-  // shouldn't look like it's "New" while QA is still in flight, and so on.
-  const unassigned = !priorResolved || !name || !status || status === 'Assign';
+  // Show the "Assign" pill only when the role genuinely has no assignee.
+  // The `priorResolved` gate below suppresses the STATUS icon + date until
+  // the upstream role finishes — but the assignee name itself always
+  // renders once picked. Folding priorResolved into the unassigned check
+  // (previous behaviour) made a fresh pick invisible on the worklist
+  // because the cell kept rendering the Assign pill until Support/Coder
+  // reached Completed — indistinguishable from "the assignment silently
+  // failed".
+  const unassigned = !name || !status || status === 'Assign';
   if (unassigned) {
     return <RolePicker role={role} memberId={memberId} dosDate={dosDate} current={null} />;
   }
@@ -329,10 +334,12 @@ function RoleStatusCell({ name, status, date, role, memberId, dosDate, priorReso
   const display = (
     <>
       <span className={styles.roleName}>{name}</span>
-      <span className={styles.roleStatusLine}>
-        <StatusIcon status={effectiveStatus} size={12} color={spec.color} />
-        {date && <span className={styles.roleDate}>{date}</span>}
-      </span>
+      {priorResolved && (
+        <span className={styles.roleStatusLine}>
+          <StatusIcon status={effectiveStatus} size={12} color={spec.color} />
+          {date && <span className={styles.roleDate}>{date}</span>}
+        </span>
+      )}
     </>
   );
   // Completed steps are locked; every step still in flight can be reassigned.
