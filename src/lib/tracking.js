@@ -18,8 +18,10 @@
  * Canonical event names live in /Users/alokk/.claude/plans/i-want-you-to-wondrous-sparrow.md.
  */
 let vercelTrack = () => {};
+let vercelPageview = () => {};
 import('@vercel/analytics').then(m => {
   vercelTrack = m.track;
+  if (m.pageview) vercelPageview = m.pageview;
 }).catch(() => {
   // Silent fallback if blocked by adblockers
 });
@@ -67,4 +69,28 @@ export function track(name, props = {}) {
   }
 
   if (isDev) console.debug('[track]', name, payload);
+}
+
+export function trackPageview(path) {
+  try {
+    let route = path;
+    
+    // Replace standard UUIDs with [id]
+    route = route.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '[id]');
+    // Replace numeric IDs with [id]
+    route = route.replace(/\/\d+(?=\/|$)/g, '/[id]');
+    
+    // Handle specific custom string IDs for this app's routing
+    if (route.match(/^\/f\/[^/]+/)) {
+      route = route.replace(/^\/f\/[^/]+/, '/f/[id]');
+    } else if (route.match(/^\/population\/patient\/[^/]+/)) {
+      route = route.replace(/^\/population\/patient\/[^/]+/, '/population/patient/[id]');
+    } else if (route.match(/^\/settings\/messages\/chat-settings\/(?!new$)[^/]+/)) {
+      route = route.replace(/^\/settings\/messages\/chat-settings\/[^/]+/, '/settings/messages/chat-settings/[id]');
+    }
+
+    vercelPageview({ route, path });
+  } catch (e) {
+    if (isDev) console.warn('[trackPageview] vercel failed', e);
+  }
 }
