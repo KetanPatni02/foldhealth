@@ -22,10 +22,12 @@ function App() {
   // Set when Supabase fires PASSWORD_RECOVERY OR when the URL hash carries
   // the recovery tokens directly (e.g. before supabase-js has processed
   // them). Initial check handles the brief window between mount and the
-  // PASSWORD_RECOVERY event firing.
+  // PASSWORD_RECOVERY event firing. `type=signup` covers invited users
+  // arriving via the confirmation email — we route them to the same page
+  // to set an initial password (see `invited` metadata check below).
   const [recoveryMode, setRecoveryMode] = useState(() => {
     const h = window.location.hash || '';
-    return /type=recovery/.test(h) || h.startsWith('#/reset-password');
+    return /type=recovery/.test(h) || /type=signup/.test(h) || h.startsWith('#/reset-password');
   });
   // Track the hash so the public-form route reacts to navigation.
   const [hash, setHash] = useState(() => window.location.hash);
@@ -51,6 +53,12 @@ function App() {
         setRecoveryMode(false);
       } else if (event === 'SIGNED_IN') {
         track('auth.session_established');
+        // Invited users arrive here via the confirmation email with a
+        // placeholder password. Keep them on ResetPasswordPage so they
+        // can set a real one before dropping into the app.
+        if (s?.user?.user_metadata?.invited === 'true') {
+          setRecoveryMode(true);
+        }
       } else if (event === 'PASSWORD_RECOVERY') {
         track('auth.password_recovery_started');
         setRecoveryMode(true);
@@ -59,6 +67,9 @@ function App() {
     });
 
     supabase.auth.getSession().then(({ data: { session: s } }) => {
+      if (s?.user?.user_metadata?.invited === 'true') {
+        setRecoveryMode(true);
+      }
       setSession(s);
     });
 
@@ -85,9 +96,15 @@ function App() {
   if (recoveryMode) {
     return (
       <ResetPasswordPage
-        onDone={() => {
+        onDone={(opts) => {
           setRecoveryMode(false);
-          window.location.hash = '#/login';
+          if (opts?.enterApp) {
+            // Invited user just set their first password — session is
+            // valid, drop them straight into the app.
+            window.location.hash = '#/home';
+          } else {
+            window.location.hash = '#/login';
+          }
         }}
       />
     );

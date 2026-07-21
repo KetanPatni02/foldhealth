@@ -30,6 +30,10 @@ export function ResetPasswordPage({ onDone }) {
   const [success, setSuccess] = useState('');
   // null = still checking; true/false once known.
   const [hasSession, setHasSession] = useState(null);
+  // Invited-user flow lands here for their first password — treat it as a
+  // "Set Password" welcome rather than a recovery, and drop them straight
+  // into the app on success instead of sending them back to login.
+  const [isInvited, setIsInvited] = useState(false);
 
   // Detect whether Supabase managed to establish a recovery session from
   // the email link. If not, the recovery token is expired or the user
@@ -38,6 +42,7 @@ export function ResetPasswordPage({ onDone }) {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setHasSession(!!session);
+      setIsInvited(session?.user?.user_metadata?.invited === 'true');
     });
   }, []);
 
@@ -47,22 +52,31 @@ export function ResetPasswordPage({ onDone }) {
     if (password !== confirmPassword) { setError('Passwords do not match'); return; }
     setLoading(true);
     setError('');
-    const { error: authError } = await supabase.auth.updateUser({ password });
+    // Update the password and, for invited users, flip the metadata flag
+    // in the same call so App.jsx doesn't loop them back here on refresh.
+    const updates = isInvited
+      ? { password, data: { invited: 'false' } }
+      : { password };
+    const { error: authError } = await supabase.auth.updateUser(updates);
     if (authError) {
       track('auth.password_reset_failed', { reason: authError.message || 'unknown', stage: 'update' });
-      // Translate Supabase's terse error into a user-actionable message.
       const friendly = /Auth session missing/i.test(authError.message || '')
-        ? 'Your reset link has expired. Request a new password reset email from the login page.'
+        ? 'Your link has expired. Ask your admin to resend the invite or use "Forgot password" from the login page.'
         : authError.message;
       setError(friendly);
       setLoading(false);
       return;
     }
-    track('auth.password_reset_completed');
-    setSuccess('Password updated. Redirecting to login...');
-    // Sign out so the user re-authenticates with the new password.
-    await supabase.auth.signOut();
-    setTimeout(() => { onDone?.(); }, 1200);
+    track(isInvited ? 'auth.invite_accepted' : 'auth.password_reset_completed');
+    if (isInvited) {
+      // Session is already valid — send them into the app.
+      setSuccess('Password set. Welcome to Foldhealth!');
+      setTimeout(() => { onDone?.({ enterApp: true }); }, 900);
+    } else {
+      setSuccess('Password updated. Redirecting to login...');
+      await supabase.auth.signOut();
+      setTimeout(() => { onDone?.(); }, 1200);
+    }
   };
 
   return (
@@ -93,6 +107,11 @@ export function ResetPasswordPage({ onDone }) {
                   <span className={styles.welcomePurple}>Link </span>
                   <span className={styles.welcomeDark}>Expired</span>
                 </>
+              ) : isInvited ? (
+                <>
+                  <span className={styles.welcomePurple}>Set your </span>
+                  <span className={styles.welcomeDark}>Password</span>
+                </>
               ) : (
                 <>
                   <span className={styles.welcomePurple}>Set a </span>
@@ -102,7 +121,9 @@ export function ResetPasswordPage({ onDone }) {
             </h1>
             <p className={styles.welcomeSub}>
               {hasSession === false
-                ? 'This password reset link is no longer valid. Request a new one from the login page.'
+                ? 'This link is no longer valid. Ask your admin to resend the invite or request a new reset link from the login page.'
+                : isInvited
+                ? 'Welcome! Choose a password to finish setting up your account.'
                 : 'Choose a new password to finish recovering your account.'}
             </p>
           </div>
@@ -166,7 +187,9 @@ export function ResetPasswordPage({ onDone }) {
             )}
 
             <Button variant="primary" size="L" fullWidth disabled={loading} type="submit">
-              {loading ? 'Updating password...' : 'Update Password'}
+              {loading
+                ? (isInvited ? 'Setting password...' : 'Updating password...')
+                : (isInvited ? 'Set Password' : 'Update Password')}
             </Button>
           </form>
           )}
