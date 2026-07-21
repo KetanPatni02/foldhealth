@@ -152,13 +152,27 @@
 
 /* ── Picker phase v2 (Figma 121:81202) ────────────────────────────── */
 .pickerPhase2 {
-  padding: 0 20px 20px;
+  padding: 0 20px 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+}
+/* Only the tab content region scrolls — tabs, cron strip, and filter row
+   stay pinned at the top so the user always sees them regardless of how
+   far down the record list they scroll. Negative horizontal margin +
+   matching padding preserves the drawer-edge bleed of section headers. */
+.tabContent {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  margin: 0 -20px;
+  padding: 12px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 /* Tabs + cron strip bleed to the drawer body edges. .pickerPhase2 keeps
@@ -168,6 +182,118 @@
 .pickerPhase2 > :global([class*="_tabBar_"]) {
   margin: 0 -20px;
 }
+
+/* Row hosting the TabStrip + trailing Filter icon. The TabStrip already
+   handles its own bleed; the row pins the filter button to the right edge
+   with a soft divider between so the icon reads as tab-adjacent, not a
+   secondary toolbar. */
+.tabRow {
+  display: flex;
+  align-items: stretch;
+  margin: 0 -20px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.tabRow > :global([class*="_tabBar_"]) {
+  flex: 1;
+  margin: 0;
+  border-bottom: none;
+}
+.filterBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 40px;
+  padding: 0 12px;
+  background: none;
+  border: none;
+  border-left: 0.5px solid var(--neutral-150);
+  cursor: pointer;
+  position: relative;
+}
+.filterBtn:hover { background: var(--neutral-50); }
+.filterBtnActive { background: var(--primary-50); }
+.filterBtnActive:hover { background: var(--primary-50); }
+.filterBtnDot {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary-300);
+}
+
+/* Inline FilterChip row shown under the tab bar when the trailing Filter
+   icon is toggled on. Same pattern as the worklist / DiagPanel filter
+   rows — reuses <FilterChip> primitives so the interaction is identical. */
+.filterChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 0 4px 0;
+}
+.filterChipClear {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--primary-300);
+  font: 500 12px/1.3 'Inter', sans-serif;
+  border-radius: 4px;
+}
+.filterChipClear:hover { background: var(--primary-50); }
+
+/* Upload card — the PHI notice + Dropzone share a single rounded border so
+   the warning reads as an integrated header on the upload surface (Figma
+   Communications 1-23639). */
+.uploadCard {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--neutral-0);
+  margin: 12px 0;
+}
+.phiStrip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--neutral-50);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.phiStrip > svg {
+  flex-shrink: 0;
+  color: var(--neutral-200);
+}
+.phiStripText {
+  flex: 1;
+  min-width: 0;
+  font: 400 12px/1.3 'Inter', sans-serif;
+  color: var(--neutral-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.phiStripText strong {
+  font-weight: 600;
+  color: var(--neutral-300);
+}
+/* Embedded dropzone — drop the outer border since .uploadCard owns it. */
+.dropzoneEmbedded > :global([class*="_zone_"]) {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-top: none;
+}
+
+/* Wrapper so the row's kebab MenuPopover can anchor to the exact
+   ActionButton without leaking layout width. */
+.exMoreWrap { position: relative; display: inline-flex; }
 .cronStrip {
   display: flex;
   align-items: center;
@@ -272,6 +398,55 @@
 }
 .recCard > .exRow + .exRow {
   border-top: 0.5px solid var(--neutral-100);
+}
+/* Section variants — left-to-right fade from a status-tinted wash into
+   pure white, per Figma review-tab spec. Border stays neutral-150 across
+   variants so the tint doesn't compete with the card outline. */
+.recCardDegraded {
+  background: linear-gradient(to right, var(--status-warning-light), var(--neutral-0) 65%);
+  border-color: var(--neutral-150);
+}
+.recCardDegraded > .exRow + .exRow {
+  border-top-color: var(--neutral-150);
+}
+.recCardUnreadable {
+  background: linear-gradient(to right, var(--status-error-light), var(--neutral-0) 65%);
+  border-color: var(--neutral-150);
+}
+.recCardUnreadable > .exRow + .exRow {
+  border-top-color: var(--neutral-150);
+}
+
+/* PDF document glyph — custom 24×24 SVG that carries the inline "PDF"
+   letters, so no separate label is needed. Drives color via currentColor
+   so a token change here recolors the paths. */
+.pdfBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  color: var(--neutral-300);
+}
+
+/* Patient name link on Added rows — inline text button that opens the
+   DiagPanel for that member. Purple with a matching trailing arrow. */
+.patientLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: 500 12px/1.3 'Inter', sans-serif;
+  color: var(--primary-300);
+}
+.patientLink:hover { text-decoration: underline; }
+.patientLinkText {
+  font: 500 12px/1.3 'Inter', sans-serif;
+  color: var(--neutral-400);
 }
 
 /* Row styling for records inside a section card. Overrides some of the
@@ -3228,8 +3403,6 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding-top: 16px;
-  border-top: 0.5px solid var(--neutral-150);
 }
 .extractedTitle {
   font-size: 13px;
