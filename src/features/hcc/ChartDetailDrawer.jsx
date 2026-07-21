@@ -185,8 +185,8 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     return () => document.removeEventListener('mousedown', onDoc);
   }, [assignPos]);
 
-  // Per-document "More actions" menu (currently: Unlink). Anchored on the
-  // clicked doc's ⋯ button; holds { docId, top, left }.
+  // Per-document "More actions" menu. Anchored on the clicked doc's ⋯
+  // button; holds { docId, top, left }.
   const [moreMenu, setMoreMenu] = useState(null);
   // Fail-reason prompt — { id, name } | null. Set by failDoc; confirming
   // logs the reason and applies the Fail status.
@@ -198,7 +198,6 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   const [failDetails, setFailDetails] = useState({});
   // Confirmation dialogs for the destructive actions on the per-doc menu.
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(null);
-  const [confirmUnlinkDoc, setConfirmUnlinkDoc] = useState(null);
   // Inline edit — when set to a doc id, the doc card renders an inline
   // Caption + Document Type editor below its header, in place of the
   // per-row Pass/Fail/⋯ actions. Doesn't reuse UploadChartDrawer here
@@ -469,7 +468,7 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
 
   // While the Coder is actively working the record (any status other than
   // "Record Requested"), Support has already handed off — so record status
-  // AND per-doc Pass/Fail/Undo/Unlink actions freeze. When the Coder flips to
+  // AND per-doc Pass/Fail/Undo actions freeze. When the Coder flips to
   // "Record Requested" they're explicitly bouncing docs back to Support, so
   // every action unlocks again.
   const coderStatus = dosStateForBadge?.coder?.status || m?.cdrS || null;
@@ -1038,18 +1037,6 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
             onClick={() => {
               const doc = docs.find(d => d.id === moreMenu.docId);
               setMoreMenu(null);
-              if (doc) setConfirmUnlinkDoc({ id: doc.id, name: doc.n });
-            }}
-          >
-            <Icon name="solar:link-broken-minimalistic-linear" size={16} color="var(--status-error)" />
-            Unlink
-          </button>
-          <button
-            type="button"
-            className={styles.docMoreItem}
-            onClick={() => {
-              const doc = docs.find(d => d.id === moreMenu.docId);
-              setMoreMenu(null);
               if (doc) setConfirmDeleteDoc({ id: doc.id, name: doc.n });
             }}
           >
@@ -1068,18 +1055,6 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
           onConfirm={() => {
             unlinkDoc(confirmDeleteDoc.id);
             setConfirmDeleteDoc(null);
-          }}
-        />
-      )}
-      {confirmUnlinkDoc && (
-        <DestructiveDialog
-          title="Unlink document?"
-          description={`"${confirmUnlinkDoc.name}" will be detached from this record. You can re-attach it later.`}
-          confirmLabel="Unlink"
-          onCancel={() => setConfirmUnlinkDoc(null)}
-          onConfirm={() => {
-            unlinkDoc(confirmUnlinkDoc.id);
-            setConfirmUnlinkDoc(null);
           }}
         />
       )}

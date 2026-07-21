@@ -892,6 +892,31 @@ export function DiagPanel() {
       r => s[r]?.status === 'Reject' || s[r]?.status === 'Rejected',
     );
   })();
+  // Human-readable "Rejected by X (role) on <date>" — used as the tooltip
+  // on locked ICD action buttons so they explain the actual cause (a
+  // rejection upstream) instead of the generic "Support hasn't reviewed
+  // the documents yet". Same fallback chain as the reject banner below.
+  const rejectionLockReason = useMemo(() => {
+    if (!isDosRejected) return null;
+    const ROLE_LABEL_R = { support: 'Support Team', coder: 'Coder', reviewer: 'QA', reviewer2: 'Compliance' };
+    const rejectingRole = ['support', 'coder', 'reviewer', 'reviewer2']
+      .find(r => (dosState?.[r]?.status === 'Reject' || dosState?.[r]?.status === 'Rejected'));
+    const roleRecord = rejectingRole ? dosState?.[rejectingRole] : null;
+    const nameField = { support: 'sup', coder: 'cdr', reviewer: 'r1', reviewer2: 'r2' }[rejectingRole];
+    const by = rejectInfo?.by || roleRecord?.by || (nameField ? member?.[nameField] : null);
+    const roleLabel = rejectInfo?.role || ROLE_LABEL_R[rejectingRole] || '';
+    const stamp = rejectInfo?.date
+      ? `${rejectInfo.date}${rejectInfo.time ? ` · ${rejectInfo.time}` : ''}`
+      : (roleRecord?.at
+          ? new Date(roleRecord.at).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
+          : null);
+    if (by) {
+      return `Record rejected by ${by}${roleLabel ? ` (${roleLabel})` : ''}${stamp ? ` on ${stamp}` : ''}. All ICD actions are locked.`;
+    }
+    return roleLabel
+      ? `Record rejected by ${roleLabel}. All ICD actions are locked.`
+      : 'Record has been rejected. All ICD actions are locked.';
+  }, [isDosRejected, dosState, rejectInfo, member]);
 
   // Finalize the Record-Requested transition: writes the mandatory
   // comment (tagged with the from/to statuses so the Comments tab and
@@ -1734,6 +1759,7 @@ export function DiagPanel() {
               onOpenDismiss={setOpenDismissKey}
               onActed={advanceFocusAfterAction}
               reviewLocked={stageLocked || isDosRejected}
+              lockReason={rejectionLockReason}
             />
           ))}
           {/* Acted suspects graduate into the associated list as normal cards. */}
@@ -1749,6 +1775,7 @@ export function DiagPanel() {
               onOpenDismiss={setOpenDismissKey}
               onActed={advanceFocusAfterAction}
               reviewLocked={stageLocked || isDosRejected}
+              lockReason={rejectionLockReason}
             />
           ))}
 
@@ -1764,6 +1791,7 @@ export function DiagPanel() {
               dosList={dosList}
               member={member}
               reviewLocked={stageLocked || isDosRejected}
+              lockReason={rejectionLockReason}
             />
           ))}
         </div>
