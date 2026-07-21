@@ -99,15 +99,33 @@ export function RoleAssigneePicker({
     };
   }, [pos]);
 
-  const onPick = (u) => {
+  const onPick = async (u) => {
     if (!memberId || !dosDate) {
       showToast?.('Cannot assign — missing patient or DOS context.');
       close();
       return;
     }
-    reassign(memberId, dosDate, role, u.id, 'current-user', reason, u.name);
-    showToast?.(`${u.name} assigned as ${ROLE_LABEL[role] || role}.`);
+    // Toast follows the reassign outcome. Historically the success toast
+    // fired unconditionally, which masked silent no-ops (member missing
+    // from local state, unresolvable staffId) AND silent Supabase failures
+    // — production users saw "assigned" without the row updating, or the
+    // row updated locally but reverted on the next reload. hccReassignRole
+    // now returns { ok, reason? } after awaiting the DB write, so we can
+    // surface the actual result.
     close();
+    const outcome = await reassign(memberId, dosDate, role, u.id, 'current-user', reason, u.name);
+    if (outcome?.ok) {
+      showToast?.(`${u.name} assigned as ${ROLE_LABEL[role] || role}.`);
+      return;
+    }
+    const why = outcome?.reason === 'member-not-found'
+      ? 'record is not in the current worklist'
+      : outcome?.reason === 'unresolvable-assignee'
+        ? 'could not resolve the selected user'
+        : outcome?.reason === 'persistence-failed'
+          ? 'saved locally but the database write failed'
+          : 'unexpected error';
+    showToast?.(`Couldn’t assign ${u.name} — ${why}. Refresh and try again.`);
   };
 
   return (
