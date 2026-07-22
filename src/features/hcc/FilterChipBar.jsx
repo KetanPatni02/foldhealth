@@ -43,12 +43,28 @@ export function FilterChipBar({ onSaveFilter }) {
   // than a static list — e.g. Visit Type lists the distinct visit types
   // actually present in the patient records; Assignee lists platform users
   // straight from the profiles table so it always mirrors Settings → Users.
+  // Per-role assignee filters (supU/cdrU/r1u/r2u) scope down to profiles that
+  // carry the matching clinical_roles entry — same rule the RoleAssigneePicker
+  // enforces when assigning, so the filter and the picker agree on who
+  // "is a Support / Coder / QA / Compliance user".
+  const byRole = (role) => platformUsers
+    .filter(u => u.clinicalRoles?.includes(role))
+    .map(u => u.name);
   const dynamicOpts = useMemo(() => ({
-    vt: [...new Set(hccMembers.map(m => m.visitType || m.vt).filter(Boolean))].sort(),
+    vt:   [...new Set(hccMembers.map(m => m.visitType || m.vt).filter(Boolean))].sort(),
     asgn: platformUsers.map(u => u.name),
+    supU: byRole('Support'),
+    cdrU: byRole('Coder'),
+    r1u:  byRole('QA'),
+    r2u:  byRole('Compliance'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [hccMembers, platformUsers]);
   const optsFor = (def) => {
-    if (def?.dynamic && dynamicOpts[def.k]?.length) return dynamicOpts[def.k];
+    // `dynamic` names the pool a filter reads from — usually the same as its
+    // key (`vt`, `asgn`), but the per-role assignee filters (supU/cdrU/r1u/r2u)
+    // all point at `asgn` so a single platformUsers list feeds all of them.
+    const dynKey = def?.dynamic;
+    if (dynKey && dynamicOpts[dynKey]?.length) return dynamicOpts[dynKey];
     return def?.opts || [];
   };
 

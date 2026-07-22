@@ -55,6 +55,13 @@ export const MORE_FILTER_ITEMS = [
   { k: 'r1CD',   label: 'QA Completion Date',  primary: false },
   { k: 'r2AD',   label: 'Compliance Assigned Date',  primary: false },
   { k: 'r2CD',   label: 'Compliance Completion Date',primary: false },
+  // Per-role assignee filters — pick specific team members and only surface
+  // rows where that person owns the given role. Parallel to the *Status
+  // filters (supS/cdrS/r1s/r2s) but keyed on the assignee, not the state.
+  { k: 'supU',   label: 'Support Team Assignee',   primary: false },
+  { k: 'cdrU',   label: 'Coder Assignee',          primary: false },
+  { k: 'r1u',    label: 'QA Assignee',             primary: false },
+  { k: 'r2u',    label: 'Compliance Assignee',     primary: false },
   { k: 'hccG',   label: 'HCC Gaps',            primary: false },
   { k: 'lgaD',   label: 'Last Gap Assessment Date', primary: false },
   { k: 'pcp',    label: 'PCP',                 primary: false },
@@ -116,6 +123,17 @@ export const FILTER_DEFS = [
   { k: 'cdrS',   label: 'Coder Status',        type: 'multi', opts: ['New', 'In Progress', 'Record Received', 'Record Requested', 'Rebuttal', 'Skipped', 'Completed', 'Rejected'] },
   { k: 'r1s',    label: 'QA Status',           type: 'multi', opts: ['New', 'In Progress', 'Rebuttal', 'Skipped', 'Completed', 'Rejected'] },
   { k: 'r2s',    label: 'Compliance Status',   type: 'multi', opts: ['New', 'In Progress', 'Rebuttal', 'Skipped', 'Completed', 'Rejected'] },
+  // Per-role assignee pickers. Each filter reads from its OWN role-scoped
+  // dynamic pool in FilterChipBar — only users whose profile carries the
+  // matching clinical_roles entry are eligible. Same rule the
+  // RoleAssigneePicker enforces on assignment, so filter options and pickable
+  // assignees agree. `opts: []` intentionally: an empty pool means "no user
+  // has that role" (fix in Settings → Users), not "still loading" — so no
+  // SYSTEM_USER_NAMES fallback here.
+  { k: 'supU',   label: 'Support Team Assignee', type: 'multi', dynamic: 'supU', opts: [], searchable: true },
+  { k: 'cdrU',   label: 'Coder Assignee',        type: 'multi', dynamic: 'cdrU', opts: [], searchable: true },
+  { k: 'r1u',    label: 'QA Assignee',           type: 'multi', dynamic: 'r1u',  opts: [], searchable: true },
+  { k: 'r2u',    label: 'Compliance Assignee',   type: 'multi', dynamic: 'r2u',  opts: [], searchable: true },
   { k: 'dec',    label: 'Decile',              type: 'range', opts: ['1','2','3','4','5','6','7','8','9','10'] },
   // POS Code — options rendered as "23 - ER — Hospital"; filter value stores
   // the "23 - ER — Hospital" label so the popover checkbox state and the chip
@@ -257,6 +275,13 @@ function matchOne(m, k, vals) {
       // is someone else.
       return vals.includes(m.assigneeName);
     }
+    // Per-role assignee filters — same name fields the Support / Coder / QA /
+    // Compliance columns render on the row, so filter matches ↔ what the user
+    // sees in that column.
+    case 'supU': return vals.includes(m.sup);
+    case 'cdrU': return vals.includes(m.cdr);
+    case 'r1u':  return vals.includes(m.r1);
+    case 'r2u':  return vals.includes(m.r2);
     case 'dosSrc': {
       // Match if ANY of the member's DOS entries maps to a selected source,
       // matching the per-DOS badges shown on the row.
