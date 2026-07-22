@@ -327,9 +327,9 @@ INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, st
   ('Julian Rossi', 'I50.9', 'Heart failure, unspecified', 'HCC 226 - Heart Failure, Except End-Stage', 'New', 'Suspect', 'Suspect', 1, 0, 0, 0.331, '03/04/2026', 'O. Twist (Support Team)', true),
   ('Julian Rossi', 'N39.0', 'Urinary tract infection, site not specified', 'HCC Not Linked', 'New', NULL, 'Associated', 1, 0, 0, 0.000, '03/04/2026', 'O. Twist (Support Team)', true);
 
--- ─── hcc-51 · Naomi Kirkland · Asthma + anxiety ───────────────────────────
+-- ─── hcc-51 · Naomie Kirkland · Asthma + anxiety ───────────────────────────
 INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_visit, total_visits, dos_list, chart_count, doc_status, open_icds, create_date, due_label, due_color, support_name, support_status, coder_name, coder_status, reviewer1_name, reviewer1_status, reviewer2_name, reviewer2_status, reviewer3_name, reviewer3_status, rendering_provider, visit_type, raf_score, raf_impact, risk_utilization, ipa, health_plan, pcp, decile, cohort, risk_level, advillness, frailty, language) VALUES (
-  'hcc-51', 'M-1965-4287', 'Naomi Kirkland', 'NK', 'F', '63y 4m',
+  'hcc-51', 'M-1965-4287', 'Naomie Kirkland', 'NK', 'F', '63y 4m',
   1, 1, '[{"date":"05/12/2026","label":"Due in 2 weeks","labelColor":"var(--neutral-200)"}]'::jsonb,
   2, '["passed","pending"]'::jsonb, 4,
   '04/24/2026', 'Due in 2w', 'var(--neutral-200)',
@@ -340,10 +340,10 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   '2', '1', 'en'
 );
 INSERT INTO hcc_diagnosis_gaps (member_name, code, description, hcc_category, status, type, kind, docs_count, comments_count, notes_count, raf_weight, last_activity, last_activity_by, is_linked) VALUES
-  ('Naomi Kirkland', 'J45.50', 'Severe persistent asthma, uncomplicated', 'HCC 279 - Asthma', 'New', NULL, 'Associated', 2, 0, 0, 0.271, '05/12/2026', 'A. Beauchamp (Support Team)', true),
-  ('Naomi Kirkland', 'F41.1', 'Generalized anxiety disorder', 'HCC Not Linked', 'New', NULL, 'Associated', 1, 0, 0, 0.000, '05/12/2026', 'A. Beauchamp (Support Team)', true),
-  ('Naomi Kirkland', 'J30.9', 'Allergic rhinitis, unspecified', 'HCC Not Linked', 'New', NULL, 'Associated', 1, 0, 0, 0.000, '05/12/2026', 'A. Beauchamp (Support Team)', true),
-  ('Naomi Kirkland', 'E66.9', 'Obesity, unspecified', 'HCC Not Linked', 'New', 'Suspect', 'Suspect', 1, 0, 0, 0.000, '05/12/2026', 'A. Beauchamp (Support Team)', true);
+  ('Naomie Kirkland', 'J45.50', 'Severe persistent asthma, uncomplicated', 'HCC 279 - Asthma', 'New', NULL, 'Associated', 2, 0, 0, 0.271, '05/12/2026', 'A. Beauchamp (Support Team)', true),
+  ('Naomie Kirkland', 'F41.1', 'Generalized anxiety disorder', 'HCC Not Linked', 'New', NULL, 'Associated', 1, 0, 0, 0.000, '05/12/2026', 'A. Beauchamp (Support Team)', true),
+  ('Naomie Kirkland', 'J30.9', 'Allergic rhinitis, unspecified', 'HCC Not Linked', 'New', NULL, 'Associated', 1, 0, 0, 0.000, '05/12/2026', 'A. Beauchamp (Support Team)', true),
+  ('Naomie Kirkland', 'E66.9', 'Obesity, unspecified', 'HCC Not Linked', 'New', 'Suspect', 'Suspect', 1, 0, 0, 0.000, '05/12/2026', 'A. Beauchamp (Support Team)', true);
 
 COMMIT;
 
@@ -355,4 +355,4 @@ COMMIT;
 --     'Thomas O''Reilly','Priya Sharma','Wei Chen','Isabella Romano',
 --     'Devon Alexander','Camille Beauchamp','Hiroshi Tanaka','Sophia Petrov',
 --     'Marcus Johnson','Delia Contreras','Bernard Adeyemi','Rosalind Kaur',
---     'Julian Rossi','Naomi Kirkland');                        -- expect 73
+--     'Julian Rossi','Naomie Kirkland');                        -- expect 73

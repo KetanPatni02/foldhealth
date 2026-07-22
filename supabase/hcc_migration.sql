@@ -76,7 +76,7 @@ CREATE INDEX IF NOT EXISTS idx_hcc_gaps_member ON hcc_diagnosis_gaps(member_name
 -- Seed: hcc_members (32 rows)
 -- ══════════════════════════════════════════════════════════════════════════════
 INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_visit, total_visits, dos_list, chart_count, doc_status, open_icds, create_date, due_label, due_color, support_name, support_status, coder_name, coder_status, reviewer1_name, reviewer1_status, reviewer2_name, reviewer2_status, reviewer3_name, reviewer3_status, rendering_provider, visit_type, raf_score, raf_impact, risk_utilization, ipa, health_plan, pcp, decile, cohort, risk_level, advillness, frailty, language) VALUES (
-  'hcc-1', 'M-1000-2500', 'Annette Brave', 'AB', 'M', '67y 3m',
+  'hcc-1', 'M-1000-2500', 'Annette Brave', 'AB', 'F', '67y 3m',
   1, 4, '[{"date":"03/04/2025","label":"Overdue by 1 week","labelColor":"var(--status-error)"},{"date":"06/11/2025","label":"Due in 3 Days","labelColor":"var(--status-warning)"},{"date":"11/10/2024","label":"Due in 5 Days","labelColor":"var(--status-warning)"},{"date":"03/10/2024","label":"Due in 2 weeks","labelColor":"var(--neutral-200)"}]'::jsonb,
   5, '["pending","pending","pending","pending","pending"]'::jsonb, 8,
   '08/01/2026', 'Overdue: 1w', 'var(--status-error)',
@@ -406,7 +406,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   '2', '2', 'en'
 );
 INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_visit, total_visits, dos_list, chart_count, doc_status, open_icds, create_date, due_label, due_color, support_name, support_status, coder_name, coder_status, reviewer1_name, reviewer1_status, reviewer2_name, reviewer2_status, reviewer3_name, reviewer3_status, rendering_provider, visit_type, raf_score, raf_impact, risk_utilization, ipa, health_plan, pcp, decile, cohort, risk_level, advillness, frailty, language) VALUES (
-  'hcc-5', 'M-1068-2624', 'Annette Brave', 'AB', 'M', '67y 3m',
+  'hcc-5', 'M-1068-2624', 'Anita Brave', 'AB', 'F', '67y 3m',
   2, 4, '[{"date":"06/11/2025","label":"Due Today","labelColor":"var(--status-warning)"},{"date":"03/04/2025","label":"Due in 5 Days","labelColor":"var(--status-warning)"},{"date":"11/10/2024","label":"Due in 2 weeks","labelColor":"var(--neutral-200)"}]'::jsonb,
   3, '["passed","passed","pending"]'::jsonb, 6,
   '09/25/2026', 'Due Today', 'var(--status-warning)',
@@ -417,7 +417,7 @@ INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_vis
   '2', '2', 'en'
 );
 INSERT INTO hcc_members (id, member_id, name, initials, gender, age, current_visit, total_visits, dos_list, chart_count, doc_status, open_icds, create_date, due_label, due_color, support_name, support_status, coder_name, coder_status, reviewer1_name, reviewer1_status, reviewer2_name, reviewer2_status, reviewer3_name, reviewer3_status, rendering_provider, visit_type, raf_score, raf_impact, risk_utilization, ipa, health_plan, pcp, decile, cohort, risk_level, advillness, frailty, language) VALUES (
-  'hcc-9', 'M-1136-2748', 'Grace Hill', 'GH', 'F', '70y 10m',
+  'hcc-9', 'M-1136-2748', 'Gracie Hill', 'GH', 'F', '70y 10m',
   2, 3, '[{"date":"10/08/2025","label":"Due in 5 Days","labelColor":"var(--status-info)"},{"date":"06/22/2024","label":"Due in 5 Days","labelColor":"var(--status-warning)"},{"date":"01/15/2024","label":"Due in 2 weeks","labelColor":"var(--neutral-200)"}]'::jsonb,
   2, '["passed","pending"]'::jsonb, 11,
   '11/01/2026', 'Due in 5D', 'var(--status-info)',
