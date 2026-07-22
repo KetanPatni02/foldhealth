@@ -3276,6 +3276,23 @@ export const useAppStore = create((set, get) => ({
         // The DiagPanel uses it to skip the name-keyed mock ICD fallback
         // (which would leak the source patient's ICDs into the new row).
         isSpawned: row.is_spawned === true,
+        // v3 filter-backing fields — contact, gap-count/last-activity, and
+        // per-role Assigned/Completion timestamps. All arrive via the
+        // hcc_members_v2 view; timestamps come back as ISO strings.
+        city:  row.city,
+        state: row.state,
+        tin:   row.tin,
+        hccG:  row.hcc_gap_count ?? null,
+        gaps:  row.hcc_gap_count ?? null,          // "No. Of Gaps" mirrors the count
+        lgaD:  row.last_gap_activity || null,       // "MM/DD/YYYY" ISO date
+        supAD: row.support_assigned_at    || null,
+        supCD: row.support_completed_at   || null,
+        cdrAD: row.coder_assigned_at      || null,
+        cdrCD: row.coder_completed_at     || null,
+        r1AD:  row.reviewer1_assigned_at  || null,
+        r1CD:  row.reviewer1_completed_at || null,
+        r2AD:  row.reviewer2_assigned_at  || null,
+        r2CD:  row.reviewer2_completed_at || null,
       };
     });
     set({ hccMembers: await finalize(members), hccMembersLoading: false });

@@ -134,6 +134,44 @@ export const FILTER_DEFS = [
   { k: 'cdrU',   label: 'Coder Assignee',        type: 'multi', dynamic: 'cdrU', opts: [], searchable: true },
   { k: 'r1u',    label: 'QA Assignee',           type: 'multi', dynamic: 'r1u',  opts: [], searchable: true },
   { k: 'r2u',    label: 'Compliance Assignee',   type: 'multi', dynamic: 'r2u',  opts: [], searchable: true },
+  // Multi-selects backed by row-derived option pools — the list mirrors
+  // exactly what values the currently-loaded worklist actually carries.
+  { k: 'rp',     label: 'Rendering Provider', type: 'multi', dynamic: 'rp',  opts: [], searchable: true },
+  { k: 'pcp',    label: 'PCP',                type: 'multi', dynamic: 'pcp', opts: [], searchable: true },
+  { k: 'ipa',    label: 'IPA',                type: 'multi', dynamic: 'ipa', opts: [] },
+  { k: 'hp',     label: 'HP Code',            type: 'multi', dynamic: 'hp',  opts: [] },
+  // Language — the DB stores 2-letter codes, but the picker shows display
+  // names. matchOne('lang') translates m.language back to the display label
+  // via LANGUAGE_LABEL below before comparing.
+  { k: 'lang',   label: 'Language',           type: 'multi', opts: ['English', 'Spanish', 'Italian', 'Japanese', 'Punjabi'] },
+  // RAF — same integer-bucket range slider Decile / Adv. Illness use.
+  // Real RAF is a decimal in ~[1.0, 6.5]; matchOne compares numerically
+  // against the (mn, mx) integer bounds.
+  { k: 'raf',    label: 'RAF',                type: 'range', opts: ['0','1','2','3','4','5','6','7'] },
+  // Contact / demographics — v3 columns on hcc_members. City / State pools
+  // come from the loaded rows; TIN is a searchable multi (there's one per
+  // record).
+  { k: 'city',   label: 'City',               type: 'multi', dynamic: 'city',  opts: [], searchable: true },
+  { k: 'state',  label: 'State of Residence', type: 'multi', dynamic: 'state', opts: [] },
+  { k: 'tin',    label: 'TIN',                type: 'multi', dynamic: 'tin',   opts: [], searchable: true },
+  // Derived from hcc_diagnosis_gaps via the view:
+  //   hccG = COUNT(*)  — total HCC gaps recorded for the member
+  //   gaps = same count, exposed for the "No. Of Gaps" filter label
+  //   lgaD = MAX(last_activity) — most recent gap-log write
+  { k: 'hccG',   label: 'HCC Gaps',           type: 'radio', opts: ['0','1 - 5','6 - 10','11 - 20','> 20'] },
+  { k: 'gaps',   label: 'No. Of Gaps',        type: 'radio', opts: ['0','1 - 5','6 - 10','11 - 20','> 20'] },
+  { k: 'lgaD',   label: 'Last Gap Assessment Date', type: 'date', field: 'lgaD', kind: 'iso' },
+  // Per-role assigned/completion date filters — ISO timestamps on the row,
+  // stored as YYYY-MM-DD by matchDateRange after parsing. Same shape as
+  // Creation Date but pointed at the role-scoped fields.
+  { k: 'supAD',  label: 'Support Assigned Date',     type: 'date', field: 'supAD', kind: 'iso' },
+  { k: 'supCD',  label: 'Support Completion Date',   type: 'date', field: 'supCD', kind: 'iso' },
+  { k: 'cdrAD',  label: 'Coder Assigned Date',       type: 'date', field: 'cdrAD', kind: 'iso' },
+  { k: 'cdrCD',  label: 'Coder Completion Date',     type: 'date', field: 'cdrCD', kind: 'iso' },
+  { k: 'r1AD',   label: 'QA Assigned Date',          type: 'date', field: 'r1AD',  kind: 'iso' },
+  { k: 'r1CD',   label: 'QA Completion Date',        type: 'date', field: 'r1CD',  kind: 'iso' },
+  { k: 'r2AD',   label: 'Compliance Assigned Date',  type: 'date', field: 'r2AD',  kind: 'iso' },
+  { k: 'r2CD',   label: 'Compliance Completion Date',type: 'date', field: 'r2CD',  kind: 'iso' },
   { k: 'dec',    label: 'Decile',              type: 'range', opts: ['1','2','3','4','5','6','7','8','9','10'] },
   // POS Code — options rendered as "23 - ER — Hospital"; filter value stores
   // the "23 - ER — Hospital" label so the popover checkbox state and the chip
@@ -192,6 +230,18 @@ function measurementYearOpts() {
   const y = new Date().getFullYear();
   return [String(y), String(y - 1), String(y - 2)];
 }
+
+// Language code → display label. The DB stores ISO 639-1 codes on
+// hcc_members.language; the Language filter shows the human-readable names.
+// Only the codes we currently seed are listed; unknown codes pass through
+// as-is so the filter still matches something you can see in the data.
+const LANGUAGE_LABEL = {
+  en: 'English',
+  es: 'Spanish',
+  it: 'Italian',
+  ja: 'Japanese',
+  pa: 'Punjabi',
+};
 
 // Role-status filter → engine value normalization. Coders see "Rebuttal" in the
 // filter option list, but the engine still stores the canonical "Returned"
@@ -282,6 +332,50 @@ function matchOne(m, k, vals) {
     case 'cdrU': return vals.includes(m.cdr);
     case 'r1u':  return vals.includes(m.r1);
     case 'r2u':  return vals.includes(m.r2);
+    // Simple field-equality filters — row-value must be in the selected set.
+    case 'rp':   return vals.includes(m.rp);
+    case 'pcp':  return vals.includes(m.pcp);
+    case 'ipa':  return vals.includes(m.ipa);
+    case 'hp':   return vals.includes(m.hp);
+    case 'lang': return vals.includes(LANGUAGE_LABEL[m.language] || m.language);
+    case 'raf': {
+      // Range slider values are [mn, mx] as string ints; row's raf is numeric.
+      if (vals.length >= 2) {
+        const mn = parseFloat(vals[0]);
+        const mx = parseFloat(vals[1]);
+        const v = Number(m.raf);
+        if (Number.isNaN(v)) return false;
+        return v >= mn && v <= mx;
+      }
+      return true;
+    }
+    case 'city':  return vals.includes(m.city);
+    case 'state': return vals.includes(m.state);
+    case 'tin':   return vals.includes(m.tin);
+    case 'hccG':
+    case 'gaps': {
+      const cnt = m.hccG ?? m.gaps ?? 0;
+      return vals.some(v => {
+        if (v === '0') return cnt === 0;
+        if (v === '1 - 5') return cnt >= 1 && cnt <= 5;
+        if (v === '6 - 10') return cnt >= 6 && cnt <= 10;
+        if (v === '11 - 20') return cnt >= 11 && cnt <= 20;
+        if (v === '> 20') return cnt > 20;
+        return false;
+      });
+    }
+    // Per-role date filters + Last Gap Assessment Date — all use ISO
+    // timestamps as their source (unlike Creation Date / DOS / LVD which
+    // carry MM/DD/YYYY strings) and reuse matchDateRange with 'iso' format.
+    case 'lgaD':  return matchDateRange(m.lgaD, vals, 'iso');
+    case 'supAD': return matchDateRange(m.supAD, vals, 'iso');
+    case 'supCD': return matchDateRange(m.supCD, vals, 'iso');
+    case 'cdrAD': return matchDateRange(m.cdrAD, vals, 'iso');
+    case 'cdrCD': return matchDateRange(m.cdrCD, vals, 'iso');
+    case 'r1AD':  return matchDateRange(m.r1AD, vals, 'iso');
+    case 'r1CD':  return matchDateRange(m.r1CD, vals, 'iso');
+    case 'r2AD':  return matchDateRange(m.r2AD, vals, 'iso');
+    case 'r2CD':  return matchDateRange(m.r2CD, vals, 'iso');
     case 'dosSrc': {
       // Match if ANY of the member's DOS entries maps to a selected source,
       // matching the per-DOS badges shown on the row.
@@ -387,7 +481,14 @@ function parseIsoLocal(s) {
 
 function matchDateRange(value, vals /* [startISO, endISO] */, format) {
   if (vals.length < 2) return true;
-  const target = format === 'mdY' ? parseMdY(value) : new Date(value);
+  // ISO timestamps ('2026-01-24T00:00:00.000Z') come off the wire from the
+  // v3 per-role date columns; parse with the Date constructor. MM/DD/YYYY
+  // strings (create_date, dos_list dates) use parseMdY. Anything unlabeled
+  // falls back to the constructor.
+  let target;
+  if (format === 'mdY') target = parseMdY(value);
+  else if (format === 'iso') target = value ? new Date(value) : null;
+  else target = value ? new Date(value) : null;
   if (!target || isNaN(+target)) return false;
   const start = parseIsoLocal(vals[0]);
   const end = parseIsoLocal(vals[1]);

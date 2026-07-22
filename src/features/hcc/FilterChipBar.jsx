@@ -50,6 +50,11 @@ export function FilterChipBar({ onSaveFilter }) {
   const byRole = (role) => platformUsers
     .filter(u => u.clinicalRoles?.includes(role))
     .map(u => u.name);
+  // Row-derived pools — distinct non-null values across loaded members. Used
+  // by filters whose option list is bounded by whatever the data actually
+  // carries (Rendering Provider, PCP, IPA, HP Code) rather than a curated
+  // canonical list.
+  const distinct = (key) => [...new Set(hccMembers.map(m => m[key]).filter(Boolean))].sort();
   const dynamicOpts = useMemo(() => ({
     vt:   [...new Set(hccMembers.map(m => m.visitType || m.vt).filter(Boolean))].sort(),
     asgn: platformUsers.map(u => u.name),
@@ -57,6 +62,13 @@ export function FilterChipBar({ onSaveFilter }) {
     cdrU: byRole('Coder'),
     r1u:  byRole('QA'),
     r2u:  byRole('Compliance'),
+    rp:    distinct('rp'),
+    pcp:   distinct('pcp'),
+    ipa:   distinct('ipa'),
+    hp:    distinct('hp'),
+    city:  distinct('city'),
+    state: distinct('state'),
+    tin:   distinct('tin'),
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [hccMembers, platformUsers]);
   const optsFor = (def) => {
