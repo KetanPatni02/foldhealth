@@ -962,6 +962,11 @@
   justify-content: center;
   gap: 2px;
 }
+.dosPanelDateRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .dosPanelDate {
   font-size: 14px;
   font-weight: 400;

@@ -72,6 +72,12 @@
 .yes { background: var(--status-error-light); color: var(--status-error); border-color: rgba(215,40,37,0.2); }
 .no { background: var(--neutral-50); color: var(--neutral-300); border-color: rgba(111,122,144,0.2); }
 
+/* DOS source — matches the letter badge in HccWorklistRow (D/C/M) so the
+   DiagPanel and worklist tell the same colour story per source. */
+.dos-source-documents { background: var(--neutral-50);   color: var(--neutral-300);   border-color: var(--neutral-150); }
+.dos-source-claims    { background: var(--primary-50);   color: var(--primary-300);   border-color: var(--primary-200); }
+.dos-source-manual    { background: var(--secondary-50); color: var(--secondary-300); border-color: var(--secondary-200); }
+
 /* Care Plan */
 .care-plan-none { background: var(--neutral-50); color: var(--neutral-300); border-color: rgba(111,122,144,0.2); }
 .care-plan-updated { background: var(--status-success-light); color: var(--status-success); border-color: rgba(0,155,83,0.2); }
