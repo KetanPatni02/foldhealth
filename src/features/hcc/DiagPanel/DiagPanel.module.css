@@ -967,6 +967,21 @@
   align-items: center;
   gap: 8px;
 }
+/* Clickable variant — claim-sourced DOSs open the ClaimsTab detail on
+   click. Keeps the same visual as the static row (matching row height +
+   Badge alignment) so users don't get a jump when the button style
+   swaps in. */
+.dosPanelDateRowBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+.dosPanelDateRowBtn:hover .dosPanelDate { color: var(--primary-300); text-decoration: underline; }
 .dosPanelDate {
   font-size: 14px;
   font-weight: 400;

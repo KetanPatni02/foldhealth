@@ -14,6 +14,7 @@ import {
 import { getChartDocs, makeUploadedChartDoc } from '../data/chartDocs';
 import { ACTIVITY, getActivityFromDb } from '../data/activity';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
+import { dosSourceLetter } from '../dosSource';
 import { dosKey } from '../assignment/dosState';
 import { staffById } from '../assignment/astranaStaff';
 import { normalizeRole } from '../reviewedBy';
@@ -35,9 +36,9 @@ import styles from './LeftWorkspace.module.css';
 // Tab order: Documents → Claims → Timeline → Comments → Notes → History → Worklog.
 // ("Activity Log" is renamed to "Timeline" per product; the tab key stays
 // 'activity' to keep the store's active-tab persistence stable.)
-const buildTabs = ({ commentsCount, notesCount }) => ([
+const buildTabs = ({ commentsCount, notesCount, claimsCount }) => ([
   { key: 'documents', label: 'Documents',     countFor: () => null }, // computed from charts
-  { key: 'claims',    label: 'Claims',        countFor: () => CLAIMS.length },
+  { key: 'claims',    label: 'Claims',        countFor: () => claimsCount },
   { key: 'activity',  label: 'Timeline',      countFor: () => null },
   { key: 'comments',  label: 'Comments',      countFor: () => commentsCount },
   { key: 'notes',     label: 'Notes',         countFor: () => notesCount },
@@ -85,7 +86,21 @@ export function LeftWorkspace({
   const dbNotes    = useAppStore(s => s.hccDiagNotes);
   const commentsForCount = dbComments.length ? dbComments : COMMENTS_MOCK;
   const notesForCount    = dbNotes.length    ? dbNotes    : NOTES_MOCK;
-  const tabs = buildTabs({ commentsCount: commentsForCount.length, notesCount: notesForCount.length });
+  // Per-member claims — one row per claim-sourced DOS on the record.
+  // claimForDos() reuses the CLAIMS fixture when the date matches or
+  // synthesizes a stable row otherwise, so the Claims tab count and its
+  // table always agree (both derive from the same member.dos_list).
+  const memberClaims = useMemo(
+    () => (member?.dos_list || [])
+      .filter(d => dosSourceLetter(d.date) === 'C')
+      .map(d => claimForDos(d.date)),
+    [member?.dos_list],
+  );
+  const tabs = buildTabs({
+    commentsCount: commentsForCount.length,
+    notesCount: notesForCount.length,
+    claimsCount: memberClaims.length,
+  });
   // openDocId lives in the store so other surfaces — the DiagPanel Documents
   // toolbar button and DOS-row clicks in IcdDosCard — can jump straight into
   // the preview for a specific doc.
@@ -299,7 +314,7 @@ export function LeftWorkspace({
           />
         )}
         {active === 'notes'     && <NotesTab     member={member} filters={filters} />}
-        {active === 'claims'    && <ClaimsTab    member={member} filters={filters} />}
+        {active === 'claims'    && <ClaimsTab    member={member} filters={filters} claims={memberClaims} />}
         {active === 'outreach'  && <OutreachTab  member={member} />}
         {active === 'worklog'   && <WorklogTab   member={member} filters={filters} />}
         {active === 'history'   && <HistoryTab    member={member} filters={filters} />}
@@ -1789,7 +1804,7 @@ function claimForDos(dos) {
   };
 }
 
-function ClaimsTab({ member, filters }) {
+function ClaimsTab({ member, filters, claims }) {
   // Clicking a claim opens its detail IN THIS SAME panel (Figma 10891:325889)
   // with a back arrow — no separate overlapping drawer.
   const [selected, setSelected] = useState(null);
@@ -1804,8 +1819,8 @@ function ClaimsTab({ member, filters }) {
     }
   }, [claimDos, clearDiagClaimDos]);
   const visibleClaims = useMemo(
-    () => CLAIMS.filter(c => recordMatchesFilters(c, filters)),
-    [filters],
+    () => (claims || []).filter(c => recordMatchesFilters(c, filters)),
+    [claims, filters],
   );
 
   if (selected) {

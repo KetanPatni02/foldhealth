@@ -493,6 +493,8 @@ export function DiagPanel() {
   // Coder completes the Coder stage, QA completes the QA stage, etc.
   const hccUserRole = useAppStore(s => s.hccUserRole);
   const actingRole = ROLE_KEY_BY_USER[hccUserRole] || 'coder';
+  // Claim-sourced DOS rows link to the ClaimsTab detail view via this action.
+  const openHccClaimForDos = useAppStore(s => s.openHccClaimForDos);
   // Chart-doc count for the Documents toolbar button — mirrors what the
   // Documents tab actually renders (getChartDocs applies added / removed
   // filters), so the badge tracks reality instead of a stale mock field.
@@ -1698,13 +1700,26 @@ export function DiagPanel() {
               const srcMeta = srcLetter === 'D' ? { label: 'Documents', variant: 'dos-source-documents' }
                 : srcLetter === 'C' ? { label: 'Claims',   variant: 'dos-source-claims'    }
                 :                     { label: 'Manual',   variant: 'dos-source-manual'    };
+              const isClaim = srcLetter === 'C';
               return (
                 <div key={d.date} className={styles.dosPanelRow}>
                   <div className={styles.dosPanelInfo}>
-                    <div className={styles.dosPanelDateRow}>
-                      <span className={styles.dosPanelDate}>{d.date}</span>
-                      <Badge variant={srcMeta.variant} label={srcMeta.label} />
-                    </div>
+                    {isClaim ? (
+                      <button
+                        type="button"
+                        className={styles.dosPanelDateRowBtn}
+                        onClick={() => openHccClaimForDos(d.date)}
+                        title={`Open claim for DOS ${d.date}`}
+                      >
+                        <span className={styles.dosPanelDate}>{d.date}</span>
+                        <Badge variant={srcMeta.variant} label={srcMeta.label} />
+                      </button>
+                    ) : (
+                      <div className={styles.dosPanelDateRow}>
+                        <span className={styles.dosPanelDate}>{d.date}</span>
+                        <Badge variant={srcMeta.variant} label={srcMeta.label} />
+                      </div>
+                    )}
                     <div className={styles.dosPanelMeta}>
                       Rendering Provider: {provider} <span className={styles.dosPanelSep}>•</span> POS: {pos} <span className={styles.dosPanelSep}>•</span> Visit Type: {vt}
                     </div>
