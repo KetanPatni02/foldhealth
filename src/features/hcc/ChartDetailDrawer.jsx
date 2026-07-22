@@ -8,6 +8,7 @@ import { RoleTooltip } from './RoleTooltip';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { Button } from '../../components/Button/Button';
 import { UploadDropField } from '../../components/UploadDropField/UploadDropField';
+import { DemoPhiStrip } from '../../components/DemoPhiStrip/DemoPhiStrip';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
 import { Switch } from '../../components/Switch/Switch';
 import { useAppStore } from '../../store/useAppStore';
@@ -850,6 +851,7 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
 
               {showUpload && (
                 <div className={styles.uploadPanel}>
+                  <DemoPhiStrip />
                   <UploadDropField key={uploadKey} onChange={setUpFile} />
                   <div className={styles.uploadField}>
                     <span className={styles.uploadLabel}>Caption<span className={styles.uploadReq} aria-hidden="true" /></span>

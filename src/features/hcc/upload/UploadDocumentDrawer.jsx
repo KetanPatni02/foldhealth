@@ -10,6 +10,7 @@ import { Toggle } from '../../../components/Toggle/Toggle';
 import { Select } from '../../../components/Select/Select';
 import { Dropzone } from '../../../components/Dropzone/Dropzone';
 import { DatePicker } from '../../../components/DatePicker/DatePicker';
+import { DemoPhiStrip } from '../../../components/DemoPhiStrip/DemoPhiStrip';
 import { IcdSearch } from '../../../components/IcdSearch/IcdSearch';
 import { POS_SELECT_OPTIONS } from '../data/posCodes';
 import { Checkbox } from '../../../components/ui/checkbox';
@@ -490,12 +491,7 @@ function PickerPhase({ showToast, cancel }) {
               dropzone, sharing its border/radius so it reads as one surface
               (per Communications Figma 1-23639, integrated banner). */}
           <div className={styles.uploadCard}>
-            <div className={styles.phiStrip} role="note">
-              <Icon name="solar:shield-warning-linear" size={14} color="var(--neutral-200)" />
-              <div className={styles.phiStripText}>
-                <strong>Demo platform.</strong> Do not upload real PHI — use the provided demo files.
-              </div>
-            </div>
+            <DemoPhiStrip variant="card-top" />
             <Dropzone
               accept={ACCEPT_EXT}
               acceptMime={ACCEPT_MIME}
@@ -1904,14 +1900,17 @@ function SingleDosCard({ block, providerOptions, patient, onPatch, onRemove, sho
             </button>
           </div>
         ) : (
-          <Dropzone
-            accept={ACCEPT_EXT}
-            helperText="Supported formats: PDF, DOC, JPG, or PNG"
-            secondaryText="Max size: 100 MB"
-            icon="solar:upload-minimalistic-linear"
-            onPick={onPickFile}
-            onReject={() => showToast?.('Please upload a PDF, DOC, JPG, PNG, or TIFF file')}
-          />
+          <>
+            <DemoPhiStrip />
+            <Dropzone
+              accept={ACCEPT_EXT}
+              helperText="Supported formats: PDF, DOC, JPG, or PNG"
+              secondaryText="Max size: 100 MB"
+              icon="solar:upload-minimalistic-linear"
+              onPick={onPickFile}
+              onReject={() => showToast?.('Please upload a PDF, DOC, JPG, PNG, or TIFF file')}
+            />
+          </>
         )}
 
         <div className={styles.singleGrid}>

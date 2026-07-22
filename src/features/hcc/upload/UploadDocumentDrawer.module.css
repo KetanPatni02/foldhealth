@@ -259,31 +259,6 @@
   background: var(--neutral-0);
   margin: 12px 0;
 }
-.phiStrip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: var(--neutral-50);
-  border-bottom: 0.5px solid var(--neutral-150);
-}
-.phiStrip > svg {
-  flex-shrink: 0;
-  color: var(--neutral-200);
-}
-.phiStripText {
-  flex: 1;
-  min-width: 0;
-  font: 400 12px/1.3 'Inter', sans-serif;
-  color: var(--neutral-300);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.phiStripText strong {
-  font-weight: 600;
-  color: var(--neutral-300);
-}
 /* Embedded dropzone — drop the outer border since .uploadCard owns it. */
 .dropzoneEmbedded > :global([class*="_zone_"]) {
   border-top-left-radius: 0;
