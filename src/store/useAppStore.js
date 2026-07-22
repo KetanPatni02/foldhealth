@@ -29,6 +29,29 @@ import { normalizeReviewerLabel as hccNormalizeReviewerLabel } from '../features
 import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activityLog';
 import { hccRoleDefaultFilters } from '../features/hcc/filters';
 
+// Central failure reporter for every persistHccXxx helper. Historically
+// each of these was fire-and-forget with only console.warn on error — so
+// when RLS blocked a write, or an UPDATE matched 0 rows (spawned row
+// never persisted), or the underlying table didn't exist (e.g. the
+// hcc_activity_log migration was never applied), the user saw a success
+// UI + optimistic toast but the change reverted on refresh with no
+// signal. Route every failure through this helper so:
+//   1. console.warn stays (dev debug),
+//   2. an event lands in tracking (production observability),
+//   3. a single user-visible toast surfaces (debounced 3s so a burst of
+//      failures doesn't stack toasts).
+let _lastPersistToastAt = 0;
+function reportPersistFailure(op, error) {
+  const msg = (error && error.message) || 'unknown error';
+  console.warn(`${op} failed:`, msg);
+  try { track('persist.failed', { op, message: msg }); } catch { /* ignore */ }
+  const now = Date.now();
+  if (now - _lastPersistToastAt > 3000) {
+    _lastPersistToastAt = now;
+    try { toast.error?.("Couldn't save changes — refresh to see the last saved state."); } catch { /* ignore */ }
+  }
+}
+
 // Persist a per-(ICD × DOS) coder action to hcc_gap_dos_actions. The
 // row key is deterministic (`${member}|${code}|${dos}`) so the same
 // helper handles both first-write inserts and subsequent updates via
@@ -48,8 +71,10 @@ function persistHccGapDosAction(memberName, code, dos, patch) {
   supabase
     .from('hcc_gap_dos_actions')
     .upsert(row, { onConflict: 'id' })
-    .then(({ error }) => {
-      if (error) console.warn(`persistHccGapDosAction(${code}|${dos}) failed:`, error.message);
+    .select('id')
+    .then(({ data, error }) => {
+      if (error) return reportPersistFailure(`persistHccGapDosAction(${code}|${dos})`, error);
+      if (!data || data.length === 0) reportPersistFailure(`persistHccGapDosAction(${code}|${dos})`, { message: 'affected 0 rows' });
     });
 }
 // Clear a DOS-action row entirely — used when the user toggles the same
@@ -62,7 +87,9 @@ function persistHccGapDosActionDelete(memberName, code, dos) {
     .delete()
     .eq('id', dosActionRowKey(memberName, code, dos))
     .then(({ error }) => {
-      if (error) console.warn(`persistHccGapDosActionDelete(${code}|${dos}) failed:`, error.message);
+      // No .select() here — deleting a row that doesn't exist is a no-op,
+      // not a failure (undo of an action never persisted).
+      if (error) reportPersistFailure(`persistHccGapDosActionDelete(${code}|${dos})`, error);
     });
 }
 // Wipe every DOS-action row scoped to a deleted manual ICD — mirrors the
@@ -75,7 +102,7 @@ function persistHccGapDosActionDeleteAll(memberName, code) {
     .eq('member_name', memberName)
     .eq('code', code)
     .then(({ error }) => {
-      if (error) console.warn(`persistHccGapDosActionDeleteAll(${code}) failed:`, error.message);
+      if (error) reportPersistFailure(`persistHccGapDosActionDeleteAll(${code})`, error);
     });
 }
 
@@ -88,14 +115,15 @@ function persistHccGapUpdate(code, memberName, patch) {
   if (!code) return;
   let q = supabase.from('hcc_diagnosis_gaps').update(patch).eq('code', code);
   if (memberName) q = q.eq('member_name', memberName);
-  q.then(({ error }) => {
-    if (error) console.warn(`persistHccGapUpdate(${code}) failed:`, error.message);
+  q.select('code').then(({ data, error }) => {
+    if (error) return reportPersistFailure(`persistHccGapUpdate(${code})`, error);
+    if (!data || data.length === 0) reportPersistFailure(`persistHccGapUpdate(${code})`, { message: 'affected 0 rows' });
   });
 }
 function persistHccGapInsert(row) {
   if (!row?.code) return;
   supabase.from('hcc_diagnosis_gaps').insert(row).then(({ error }) => {
-    if (error) console.warn(`persistHccGapInsert(${row.code}) failed:`, error.message);
+    if (error) reportPersistFailure(`persistHccGapInsert(${row.code})`, error);
   });
 }
 function persistHccGapDelete(code, memberName) {
@@ -103,7 +131,8 @@ function persistHccGapDelete(code, memberName) {
   let q = supabase.from('hcc_diagnosis_gaps').delete().eq('code', code);
   if (memberName) q = q.eq('member_name', memberName);
   q.then(({ error }) => {
-    if (error) console.warn(`persistHccGapDelete(${code}) failed:`, error.message);
+    // 0-row delete is fine (already gone / never persisted) — don't flag it.
+    if (error) reportPersistFailure(`persistHccGapDelete(${code})`, error);
   });
 }
 
@@ -152,7 +181,7 @@ function persistHccMemberInsert(m) {
     is_spawned: true,
   };
   supabase.from('hcc_members').insert(dbRow).then(({ error }) => {
-    if (error) console.warn(`persistHccMemberInsert(${m.id}) failed:`, error.message);
+    if (error) reportPersistFailure(`persistHccMemberInsert(${m.id})`, error);
   });
 }
 
@@ -174,8 +203,10 @@ function persistHccMemberDetails(memberId) {
     .from('hcc_members')
     .update(patch)
     .eq('id', memberId)
-    .then(({ error }) => {
-      if (error) console.warn(`persistHccMemberDetails(${memberId}) failed:`, error.message);
+    .select('id')
+    .then(({ data, error }) => {
+      if (error) return reportPersistFailure(`persistHccMemberDetails(${memberId})`, error);
+      if (!data || data.length === 0) reportPersistFailure(`persistHccMemberDetails(${memberId})`, { message: 'affected 0 rows (spawned row never persisted?)' });
     });
 }
 
@@ -230,7 +261,7 @@ function persistHccActivityRow(row) {
     .from('hcc_activity_log')
     .insert(row)
     .then(({ error }) => {
-      if (error) console.warn(`persistHccActivityRow(${row.event_name}) failed:`, error.message);
+      if (error) reportPersistFailure(`persistHccActivityRow(${row.event_name})`, error);
     });
 }
 
@@ -263,7 +294,7 @@ function persistHccDiagComment(row) {
       status_to:   row.statusTo   ?? null,
     })
     .then(({ error }) => {
-      if (error) console.warn(`persistHccDiagComment(${row.id}) failed:`, error.message);
+      if (error) reportPersistFailure(`persistHccDiagComment(${row.id})`, error);
     });
 }
 
@@ -273,8 +304,10 @@ function persistHccDiagCommentUpdate(row) {
     .from('hcc_diag_comments')
     .update({ body: row.body, edited: true })
     .eq('id', row.id)
-    .then(({ error }) => {
-      if (error) console.warn(`persistHccDiagCommentUpdate(${row.id}) failed:`, error.message);
+    .select('id')
+    .then(({ data, error }) => {
+      if (error) return reportPersistFailure(`persistHccDiagCommentUpdate(${row.id})`, error);
+      if (!data || data.length === 0) reportPersistFailure(`persistHccDiagCommentUpdate(${row.id})`, { message: 'affected 0 rows' });
     });
 }
 
@@ -285,7 +318,7 @@ function persistHccDiagCommentDelete(id) {
     .delete()
     .eq('id', id)
     .then(({ error }) => {
-      if (error) console.warn(`persistHccDiagCommentDelete(${id}) failed:`, error.message);
+      if (error) reportPersistFailure(`persistHccDiagCommentDelete(${id})`, error);
     });
 }
 
@@ -304,7 +337,7 @@ function persistHccDiagNote(row) {
       body: row.body,
     })
     .then(({ error }) => {
-      if (error) console.warn(`persistHccDiagNote(${row.id}) failed:`, error.message);
+      if (error) reportPersistFailure(`persistHccDiagNote(${row.id})`, error);
     });
 }
 
@@ -324,7 +357,7 @@ function persistHccDiagDocument(row) {
       status: row.status || 'pending',
     })
     .then(({ error }) => {
-      if (error) console.warn(`persistHccDiagDocument(${row.id}) failed:`, error.message);
+      if (error) reportPersistFailure(`persistHccDiagDocument(${row.id})`, error);
     });
 }
 
@@ -343,7 +376,7 @@ async function persistHccAddedChart(memberId, doc, file) {
         .from('chart-uploads')
         .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: true });
       if (upErr) {
-        console.warn('persistHccAddedChart upload failed:', upErr.message);
+        reportPersistFailure(`persistHccAddedChart.upload(${doc.id})`, upErr);
       } else {
         storagePath = path;
         pdfUrl = supabase.storage.from('chart-uploads').getPublicUrl(path).data.publicUrl;
@@ -352,9 +385,9 @@ async function persistHccAddedChart(memberId, doc, file) {
     const { error } = await supabase
       .from('hcc_added_charts')
       .insert(addedChartToRow(memberId, { ...doc, pdf: pdfUrl, storagePath }));
-    if (error) console.warn('persistHccAddedChart insert failed:', error.message);
+    if (error) reportPersistFailure(`persistHccAddedChart.insert(${doc.id})`, error);
   } catch (e) {
-    console.warn('persistHccAddedChart failed:', e?.message || e);
+    reportPersistFailure(`persistHccAddedChart(${doc.id})`, e || { message: 'unknown' });
   }
 }
 
