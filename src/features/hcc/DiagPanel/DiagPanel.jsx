@@ -1470,7 +1470,14 @@ export function DiagPanel() {
                   styles.hideBelow640,
                   diagLeftPanel === 'activity' && !diagActivityIcd ? styles.activeIcon : '',
                 ].filter(Boolean).join(' ')}
-                onClick={() => setDiagLeftPanel(diagLeftPanel === 'activity' && !diagActivityIcd ? null : 'activity')}
+                onClick={() => {
+                  const closing = diagLeftPanel === 'activity' && !diagActivityIcd;
+                  // Deselect the currently-focused ICD so the right-pane ICD
+                  // card highlight clears at the same time the left panel
+                  // drops out of ICD scope.
+                  setFocusIdx(-1);
+                  setDiagLeftPanel(closing ? null : 'activity');
+                }}
               />
               <span className={[styles.divider, styles.hideBelow640].join(' ')} />
               <span className={styles.toolbarMoreWrap} ref={moreWrapRef}>
