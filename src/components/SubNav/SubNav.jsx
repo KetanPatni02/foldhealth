@@ -1,10 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useMemo } from 'react';
 import { Icon } from '../Icon/Icon';
 import { useAppStore } from '../../store/useAppStore';
 import { HEDIS_MEMBERS } from '../../features/hedis-worklist/data/mock';
-import { FilterNameDialog } from '../../features/hcc/FilterNameDialog';
-import { memberMatchesFilters } from '../../features/hcc/filters';
 import styles from './SubNav.module.css';
 
 // Define which lists map to which filter criteria
@@ -29,44 +26,6 @@ export function SubNav({ collapsed }) {
   const fetchAwvMembers = useAppStore(s => s.fetchAwvMembers);
   const clearSelected = useAppStore(s => s.clearSelected);
   const clearHccSelected = useAppStore(s => s.clearHccSelected);
-  // Saved filters per shared list — appears whenever the user is on a
-  // shared list (HCC, TOC, SNP, AWV, HEDIS, High Utilizers, DM). The store
-  // keys by list label and persists each list's saved views in localStorage.
-  const savedFiltersByList = useAppStore(s => s.savedFiltersByList);
-  const activeSavedIdByList = useAppStore(s => s.activeSavedIdByList);
-  const applySavedFilter = useAppStore(s => s.applySavedFilter);
-  const renameSavedFilter = useAppStore(s => s.renameSavedFilter);
-  const deleteSavedFilter = useAppStore(s => s.deleteSavedFilter);
-  const activeSavedId = activeSavedIdByList[activeSubnavList] || null;
-  // Per-row dots menu + rename dialog. filterMenu tracks the row's parent list
-  // because saved filters live per worklist — mutations always target that
-  // parent, not the currently-selected list.
-  const [filterMenu, setFilterMenu] = useState(null); // { id, listLabel, rect } | null
-  const [renameTarget, setRenameTarget] = useState(null); // { id, listLabel, name }
-  // Collapsable "Saved Filters" section — behaves like a worklist group. Open
-  // by default; user can collapse/expand by clicking the section header.
-  const [savedOpen, setSavedOpen] = useState(true);
-
-  // Flatten every list's saved filters into one list — each row carries its
-  // own parent-list label so the count and management stay scoped to where the
-  // filter was originally saved (not the currently-selected worklist).
-  const allSavedFilters = useMemo(() => {
-    const out = [];
-    for (const list of SHARED_LISTS) {
-      const items = savedFiltersByList[list.label] || [];
-      for (const sf of items) out.push({ listLabel: list.label, sf });
-    }
-    return out;
-  }, [savedFiltersByList]);
-
-  // Count of records each saved filter would surface within its OWN worklist.
-  // Only computed for HCC today (the primary surface with real counts).
-  const savedFilterCount = (listLabel, sf) => {
-    if (listLabel === 'HCC') {
-      return (hccMembers || []).filter(m => memberMatchesFilters(m, sf.filters || {})).length;
-    }
-    return 0;
-  };
 
   // Prefetch HCC and AWV members on mount so the count is available immediately
   useEffect(() => {
@@ -119,76 +78,6 @@ export function SubNav({ collapsed }) {
           <span className={styles.count}>{getCounts[item.label] || 0}</span>
         </div>
       ))}
-      {/* Saved Filters — behaves like a worklist group: always visible,
-          collapsable, and each row shows the count of records the filter
-          would surface in ITS OWN parent worklist (not the currently
-          selected one). The ⋯ menu appears only when the user is on the
-          parent worklist, since mutations happen there. */}
-      {allSavedFilters.length > 0 && (
-        <>
-          <div
-            className={styles.subLabel}
-            style={{
-              marginTop: 8, display: 'flex', alignItems: 'center',
-              justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none',
-            }}
-            onClick={() => setSavedOpen(v => !v)}
-            title={savedOpen ? 'Collapse Saved Filters' : 'Expand Saved Filters'}
-          >
-            <span>Saved Filters</span>
-            <Icon
-              name={savedOpen ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'}
-              size={14}
-              color="var(--neutral-300)"
-            />
-          </div>
-          {savedOpen && allSavedFilters.map(({ listLabel, sf }) => {
-            const isActiveSaved = listLabel === activeSubnavList && activeSavedId === sf.id;
-            const canManage = listLabel === activeSubnavList;
-            return (
-              <div
-                key={`${listLabel}::${sf.id}`}
-                className={[styles.item, isActiveSaved ? styles.active : ''].filter(Boolean).join(' ')}
-                onClick={() => {
-                  // Switch to the parent worklist (so the filter's data source
-                  // is loaded) THEN apply. No-op if we're already there.
-                  const parent = SHARED_LISTS.find(l => l.label === listLabel);
-                  if (parent && activeSubnavList !== listLabel) handleListClick(parent);
-                  applySavedFilter(listLabel, sf.id);
-                }}
-              >
-                <span
-                  style={{
-                    flex: 1, minWidth: 0, overflow: 'hidden',
-                    textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}
-                >
-                  {sf.name}
-                </span>
-                {canManage ? (
-                  <button
-                    type="button"
-                    aria-label={`Manage ${sf.name}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      setFilterMenu({ id: sf.id, listLabel, rect });
-                    }}
-                    style={{
-                      border: 'none', background: 'transparent', cursor: 'pointer',
-                      padding: 2, display: 'inline-flex', borderRadius: 4,
-                    }}
-                  >
-                    <Icon name="solar:menu-dots-bold" size={14} color="var(--neutral-300)" />
-                  </button>
-                ) : (
-                  <span className={styles.count}>{savedFilterCount(listLabel, sf)}</span>
-                )}
-              </div>
-            );
-          })}
-        </>
-      )}
       <div className={styles.sectionLabel} style={{ marginTop: 8 }}>Patients</div>
       <div
         className={[styles.item, activeSubnavList === 'My Patients' ? styles.active : ''].filter(Boolean).join(' ')}
@@ -237,82 +126,6 @@ export function SubNav({ collapsed }) {
         HCC
         <span className={styles.count}>{hccMembers.length || 0}</span>
       </div>
-
-      {filterMenu && createPortal(
-        <>
-          <div
-            onClick={() => setFilterMenu(null)}
-            style={{ position: 'fixed', inset: 0, zIndex: 70 }}
-          />
-          <div
-            style={{
-              position: 'fixed',
-              top: filterMenu.rect.bottom + 4,
-              left: Math.min(filterMenu.rect.right + 4, window.innerWidth - 170),
-              zIndex: 71,
-              background: 'var(--neutral-0)',
-              border: '0.5px solid var(--neutral-150)',
-              borderRadius: 8,
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-              padding: 4,
-              minWidth: 150,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 2,
-              fontFamily: 'Inter, sans-serif',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                padding: '6px 8px', border: 'none', background: 'transparent',
-                borderRadius: 4, cursor: 'pointer', textAlign: 'left',
-                fontSize: 13, fontWeight: 500, color: 'var(--neutral-500)',
-              }}
-              onClick={() => {
-                const list = filterMenu.listLabel;
-                const sf = (savedFiltersByList[list] || []).find(x => x.id === filterMenu.id);
-                setFilterMenu(null);
-                if (sf) setRenameTarget({ ...sf, listLabel: list });
-              }}
-            >
-              <Icon name="solar:pen-linear" size={14} color="var(--neutral-400)" />
-              Edit Name
-            </button>
-            <button
-              type="button"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                padding: '6px 8px', border: 'none', background: 'transparent',
-                borderRadius: 4, cursor: 'pointer', textAlign: 'left',
-                fontSize: 13, fontWeight: 500, color: 'var(--status-error)',
-              }}
-              onClick={() => {
-                deleteSavedFilter(filterMenu.listLabel, filterMenu.id);
-                setFilterMenu(null);
-              }}
-            >
-              <Icon name="solar:trash-bin-trash-linear" size={14} color="var(--status-error)" />
-              Delete
-            </button>
-          </div>
-        </>,
-        document.body,
-      )}
-
-      <FilterNameDialog
-        open={!!renameTarget}
-        title="Rename Filter"
-        submitLabel="Save"
-        initialName={renameTarget?.name || ''}
-        onSubmit={(name) => {
-          renameSavedFilter(renameTarget.listLabel, renameTarget.id, name);
-          setRenameTarget(null);
-        }}
-        onCancel={() => setRenameTarget(null)}
-      />
     </aside>
   );
 }
