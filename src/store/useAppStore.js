@@ -1060,7 +1060,7 @@ export const useAppStore = create((set, get) => ({
       set({ hccChartStatusDidFetch: true });
     }
   },
-  setChartDocStatus: (memberId, docId, status) => {
+  setChartDocStatus: (memberId, docId, status, opts) => {
     if (!memberId || !docId) return;
     set((state) => ({
       hccChartStatus: {
@@ -1081,6 +1081,12 @@ export const useAppStore = create((set, get) => ({
       .then(({ error }) => {
         if (error) console.warn(`setChartDocStatus persist(${memberId}|${docId}) failed:`, error.message);
       });
+    // Callers reviewing docs inside the ChartDetailDrawer pass deferSync so
+    // the record's supS doesn't flip mid-review — flipping it there would
+    // drop the row out of the "New / In Progress" filter and unmount the
+    // drawer before the user finishes reviewing. The drawer syncs the
+    // derived status itself on close via deriveStatus + syncSupportStatus.
+    if (opts?.deferSync) return;
     // Cascade to Support status when Support has just marked docs failed —
     // "all documents failed" is the coder's contract for Insufficient. If
     // AT LEAST ONE doc lands as Passed later, revert Support to In Progress

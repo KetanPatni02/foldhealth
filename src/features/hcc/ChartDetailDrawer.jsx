@@ -400,8 +400,15 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     setDocActions(next);
     // Persist the per-doc mark immediately so a crash doesn't lose it —
     // this write is scoped to hcc_chart_status and does NOT flip the
-    // record's Support status by itself.
-    setChartDocStatus(member.id, id, action === 'pass' ? 'Passed' : action === 'fail' ? 'Failed' : 'Pending');
+    // record's Support status by itself. `deferSync` suppresses the
+    // store's all-failed → Insufficient cascade; the drawer syncs the
+    // derived status itself on close via handleClose.
+    setChartDocStatus(
+      member.id,
+      id,
+      action === 'pass' ? 'Passed' : action === 'fail' ? 'Failed' : 'Pending',
+      { deferSync: true },
+    );
     if (action) ensureSupportAssignee();
     // Defer the Support-member status sync to drawer close — flipping
     // it here would move the record out of the "New / In Progress"
