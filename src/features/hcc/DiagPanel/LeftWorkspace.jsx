@@ -96,11 +96,20 @@ export function LeftWorkspace({
       .map(d => claimForDos(d.date)),
     [member?.dos_list],
   );
+  // History is scoped to a specific ICD — it lists prior reviews of that
+  // code. Hide the tab at DOS-level (icdScope null); it re-appears when the
+  // user drills into an ICD via the ICD card or its History icon.
   const tabs = buildTabs({
     commentsCount: commentsForCount.length,
     notesCount: notesForCount.length,
     claimsCount: memberClaims.length,
-  });
+  }).filter(t => t.key !== 'history' || !!icdScope);
+  // If the user was on History when the ICD scope cleared, snap to the
+  // first visible tab so the workspace doesn't render an orphaned pane
+  // with no active tab button.
+  useEffect(() => {
+    if (active === 'history' && !icdScope) onChange?.(tabs[0]?.key || 'documents');
+  }, [active, icdScope, onChange, tabs]);
   // openDocId lives in the store so other surfaces — the DiagPanel Documents
   // toolbar button and DOS-row clicks in IcdDosCard — can jump straight into
   // the preview for a specific doc.
