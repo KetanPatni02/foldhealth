@@ -347,10 +347,11 @@ function DosActionRow({
         )}
         {isManual && <span className={styles.manualChip}>Manually Added</span>}
         {isRejected && (
-          <button type="button" className={styles.dismissReasonLink} onClick={onOpenDismiss} title={meta?.reason || 'View dismiss reason'}>
-            Dismiss Reason
-            <Icon name="solar:info-circle-linear" size={12} />
-          </button>
+          <DismissReasonHoverLink
+            reason={meta?.reason || ''}
+            note={meta?.note || ''}
+            onClick={onOpenDismiss}
+          />
         )}
         {/* stopPropagation so ICD-action button clicks (Accept / Dismiss /
             More / Undo) don't bubble to the parent card's toggleSelect
@@ -489,6 +490,76 @@ function DosActionRow({
                 Remove DOS
               </button>
             </>
+          )}
+        </div>,
+        document.body,
+      )}
+    </>
+  );
+}
+
+/**
+ * Hover popover for the "Dismiss Reason" link on a dismissed DOS row. Mirrors
+ * the ChartDetailDrawer failed-badge tooltip pattern — a portalled card with a
+ * "Dismiss Reason:" heading, the reason text, and an optional Note box — so
+ * both surfaces read as one system. Click still opens the inline reason form.
+ */
+function DismissReasonHoverLink({ reason, note, onClick }) {
+  const linkRef = useRef(null);
+  const openTimer = useRef(null);
+  const [rect, setRect] = useState(null);
+  const trimmedNote = (note || '').trim();
+  const hasContent = !!reason || !!trimmedNote;
+
+  const open = () => {
+    if (!hasContent) return;
+    if (openTimer.current) clearTimeout(openTimer.current);
+    openTimer.current = setTimeout(() => {
+      const r = linkRef.current?.getBoundingClientRect();
+      if (r) setRect(r);
+    }, 120);
+  };
+  const close = () => {
+    if (openTimer.current) { clearTimeout(openTimer.current); openTimer.current = null; }
+    setRect(null);
+  };
+  useEffect(() => () => clearTimeout(openTimer.current), []);
+
+  const W = 260;
+  const style = rect
+    ? { top: rect.bottom + 6, left: Math.min(rect.left, window.innerWidth - W - 8), width: W }
+    : null;
+
+  return (
+    <>
+      <button
+        ref={linkRef}
+        type="button"
+        className={styles.dismissReasonLink}
+        onClick={onClick}
+        onMouseEnter={open}
+        onMouseLeave={close}
+        onFocus={open}
+        onBlur={close}
+      >
+        Dismiss Reason
+        <Icon name="solar:info-circle-linear" size={12} />
+      </button>
+      {rect && hasContent && createPortal(
+        <div
+          role="tooltip"
+          aria-label="Dismiss reason"
+          className={styles.reasonTooltip}
+          style={style}
+        >
+          {reason && (
+            <>
+              <div className={styles.reasonTooltipHeading}>Dismiss Reason:</div>
+              <div className={styles.reasonTooltipBody}>{reason}</div>
+            </>
+          )}
+          {trimmedNote && (
+            <div className={styles.reasonTooltipNote}>Note: {trimmedNote}</div>
           )}
         </div>,
         document.body,

@@ -30,7 +30,16 @@ export function DismissReasonForm({ initialReason = '', initialNote = '', onCanc
   const [note, setNote] = useState(initialNote);
 
   return (
-    <div className={styles.dismissForm}>
+    // The form is a sibling of the DOS row (not inside it), so clicks bubble
+    // straight to the parent IcdDosCard whose whole-card handler toggles the
+    // ICD selection. Contain events here so confirming/cancelling doesn't
+    // deselect the ICD or drop the doc viewer back to its no-scope fallback.
+    <div
+      className={styles.dismissForm}
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+    >
       <div className={styles.dismissTitle}>Select a reason and add a note to dismiss the diagnosis gap:</div>
       <div className={styles.reasonList}>
         {DISMISS_REASONS.map((r) => (

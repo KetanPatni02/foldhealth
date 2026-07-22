@@ -415,6 +415,13 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     // filter and unmount the row (and this drawer with it) before the
     // user finishes reviewing.
     pendingSyncRef.current = true;
+    // "Support Task is Completed" toast fires only on the transition from
+    // partially-reviewed → every-doc-reviewed. Firing on each pass would
+    // mislead when only 1 of N docs is done; firing on undo would be wrong
+    // too (transition goes the other way, so this branch stays silent).
+    const wasAllReviewed = docs.length > 0 && docs.every(d => !!docActions[d.id]);
+    const isAllReviewed = docs.length > 0 && docs.every(d => !!next[d.id]);
+    if (!wasAllReviewed && isAllReviewed) showToast('Support Task is Completed');
   };
   const passDoc = (id) => {
     applyDocAction(id, 'pass');
@@ -424,7 +431,6 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
       t: 'doc-status', by: 'You', role: 'Support Team',
       headline: `Marked "${doc?.n || 'Document'}" as Passed`,
     });
-    showToast('Support Task is Completed');
   };
   const failDoc = (id) => {
     const doc = docs.find(d => d.id === id);
