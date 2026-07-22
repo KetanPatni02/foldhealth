@@ -282,6 +282,48 @@
   color: var(--neutral-400);
 }
 .dismissReasonLink:hover { color: var(--neutral-500); text-decoration: underline; }
+
+/* Hover popover on the "Dismiss Reason" link — mirrors the ChartDetailDrawer
+   failed-badge tooltip so both surfaces feel like one system, but promotes the
+   reason itself to a larger, darker body line (the reason IS the payload here;
+   the "Failed Due to:" list is what's payload there). Portalled so it can
+   escape the drawer / card stacking contexts. */
+.reasonTooltip {
+  position: fixed;
+  z-index: 9600;
+  padding: 12px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-100);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+  animation: reasontt-fade 0.12s ease-out;
+}
+.reasonTooltipHeading {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--neutral-400);
+  margin-bottom: 2px;
+}
+.reasonTooltipBody {
+  font-size: 14px;
+  line-height: 1.35;
+  font-weight: 500;
+  color: var(--neutral-500);
+  margin: 0 0 10px 0;
+}
+.reasonTooltipBody:last-child { margin-bottom: 0; }
+.reasonTooltipNote {
+  background: var(--neutral-50);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--neutral-400);
+}
+@keyframes reasontt-fade {
+  from { opacity: 0; transform: translateY(-2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 .moreBtn {
   display: inline-flex;
   align-items: center;
