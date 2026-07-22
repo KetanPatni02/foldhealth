@@ -222,11 +222,17 @@ export function HccWorklistTable() {
     if (hasNoFilters && hasNoSaved) applyHccRoleDefaultFilters();
   }, [applyHccRoleDefaultFilters]);
 
-  // Whenever the active filter/sort/search/due-date changes, jump back to
-  // page 1 so the user doesn't end up on an empty page after the result set
-  // shrinks. Matches the prototype's behavior (line 4636).
-  const setCurrentPage = useAppStore(s => s.setCurrentPage);
-  useEffect(() => { setCurrentPage(1); }, [hccDueDateFilter, hccFilters, searchQuery, setCurrentPage]);
+  // "Reset to page 1 on filter change" was previously done via a useEffect
+  // watching [hccDueDateFilter, hccFilters, searchQuery]. Every harmless
+  // hccFilters ref-change (e.g. fetchTaskProfiles backfilling `asgn` after
+  // mount) fired it, resetting currentPage to 1 while the user was
+  // mid-navigation. When it ran during a Pagination render, React 18
+  // logged "Cannot update Pagination while rendering OpenIcdsCell" and,
+  // on pages containing spawned rows that re-triggered profile fetches,
+  // livelocked the renderer — the pagination click never committed and
+  // the app appeared to crash on page 5. The reset is now atomic inside
+  // the store setters (setHccFilter / clearHccFilters / setHccDueDateFilter /
+  // setSearchQuery), so no effect is needed here.
 
   // Decorate members with derived sort fields so the Member-column sort axes
   // (First Name / Last Name / Gender / DOB Year) and a few special table sorts

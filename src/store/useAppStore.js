@@ -3159,8 +3159,12 @@ export const useAppStore = create((set, get) => ({
     };
 
     set({ hccMembersLoading: true });
+    // Reads the compatibility view that rebuilds the pre-normalization JSON
+    // shape (dos_list / doc_status) on top of the new normalized child tables
+    // (hcc_member_visits / hcc_member_documents). See
+    // supabase/hcc_schema_v2_types_and_normalization.sql.
     const { data, error } = await supabase
-      .from('hcc_members')
+      .from('hcc_members_v2')
       .select('*')
       // SLA default: oldest Created Date first (closest to breaching the window).
       .order('create_date', { ascending: true });
@@ -3185,6 +3189,30 @@ export const useAppStore = create((set, get) => ({
     // by name. This keeps the DiagPanel's DosSelector + Snapshot tiles
     // populated even when the backend hasn't seeded that data yet.
     const { HCC_MEMBER_BY_NAME } = await import('../features/hcc/data/mock');
+    // Schema v2 (see supabase/hcc_schema_v2_types_and_normalization.sql) now
+    // stores real Postgres types. PostgREST hands NUMERIC columns back as
+    // strings (to preserve precision) and DATE columns as 'YYYY-MM-DD'. The
+    // rest of the app still expects the legacy string shapes (raf as string
+    // ok, age as "67y 3m", dates as MM/DD/YYYY because they're used as lookup
+    // keys in hccDosAssignments), so we adapt at the store boundary.
+    const _isoToMdy = (iso) => {
+      if (!iso) return null;
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso));
+      return m ? `${m[2]}/${m[3]}/${m[1]}` : String(iso);
+    };
+    const _ageFromDob = (dob) => {
+      if (!dob) return null;
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dob));
+      if (!m) return null;
+      const birth = new Date(+m[1], +m[2] - 1, +m[3]);
+      const now = new Date();
+      let years = now.getFullYear() - birth.getFullYear();
+      let months = now.getMonth() - birth.getMonth();
+      if (now.getDate() < birth.getDate()) months -= 1;
+      if (months < 0) { years -= 1; months += 12; }
+      return `${years}y ${months}m`;
+    };
+    const _num = (v) => (v == null || v === '' ? null : Number(v));
     const members = (data || []).map(row => {
       const mock = HCC_MEMBER_BY_NAME[row.name] || {};
       const dosList = (row.dos_list && row.dos_list.length) ? row.dos_list : (mock.dos_list || []);
@@ -3201,7 +3229,11 @@ export const useAppStore = create((set, get) => ({
         in: row.initials,
         name: row.name,
         g: row.gender,
-        age: row.age,
+        // Age is derived from date_of_birth for display. dob is exposed too so
+        // callers that want to compute a birthday, sort by DOB, or run their
+        // own age math can do it without re-parsing the display string.
+        dob: row.date_of_birth || null,
+        age: _ageFromDob(row.date_of_birth),
         cv: row.current_visit ?? mock.cv ?? null,
         tv: row.total_visits  ?? mock.tv ?? null,
         dos_list: dosList,
@@ -3212,7 +3244,10 @@ export const useAppStore = create((set, get) => ({
         ch: row.chart_count ?? mock.ch ?? null,
         docStatus: (row.doc_status && row.doc_status.length) ? row.doc_status : (mock.docStatus || []),
         open: openIcds,
-        date: row.create_date,
+        // create_date arrives as ISO 'YYYY-MM-DD'; downstream normalizeWorklistRow
+        // and the hccDosAssignments map both key off MM/DD/YYYY, so convert once
+        // here at the boundary.
+        date: _isoToMdy(row.create_date),
         due: row.due_label,
         dueCol: row.due_color,
         sup: row.support_name, supS: row.support_status,
@@ -3221,17 +3256,19 @@ export const useAppStore = create((set, get) => ({
         r2: row.reviewer2_name, r2s: row.reviewer2_status,
         rp: provider,
         vt: visitType,
-        raf: row.raf_score,
-        ri: row.raf_impact,
+        // NUMERIC columns come back as strings from PostgREST; coerce to real
+        // numbers so the table sort compares numerically without regex fallback.
+        raf: _num(row.raf_score),
+        ri: _num(row.raf_impact),
         ru: row.risk_utilization,
         ipa: row.ipa,
         hp: row.health_plan,
         pcp: row.pcp,
-        dec: row.decile,
+        dec: row.decile,       // INTEGER — already a JS number
         coh: row.cohort,
         rl: row.risk_level,
-        ad: row.advillness,
-        fr: row.frailty,
+        ad: row.advillness,    // INTEGER
+        fr: row.frailty,       // INTEGER
         language: row.language || 'en',
         pos: pos.code,
         posDesc: pos.desc,
@@ -4113,7 +4150,7 @@ export const useAppStore = create((set, get) => ({
   hccListTitle: 'Worklist',
   setHccListTitle: (title) => set({ hccListTitle: title }),
   hccDueDateFilter: null, // null | 'Overdue' | 'Due Today' | 'Due This Week' | 'Due Next Week' | 'Due More Than 2 Weeks'
-  setHccDueDateFilter: (cat) => set({ hccDueDateFilter: cat }),
+  setHccDueDateFilter: (cat) => set({ hccDueDateFilter: cat, currentPage: 1 }),
 
   // ─── HCC worklist filter state ───
   // hccFilters: { [filterKey]: string[] } — empty object = no filters applied.
@@ -4126,12 +4163,15 @@ export const useAppStore = create((set, get) => ({
       if (!vals || !vals.length) delete next[k];
       else next[k] = vals;
       // Changing a filter detaches us from any "applied saved filter" highlight
-      return { hccFilters: next, hccActiveSavedId: null, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'HCC') };
+      // and jumps back to page 1 in the same atomic set() — the previous
+      // useEffect-in-HccWorklistTable pattern raced with the user's own
+      // pagination clicks (see docs comment there).
+      return { hccFilters: next, hccActiveSavedId: null, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'HCC'), currentPage: 1 };
     });
   },
   clearHccFilters: () => {
     track('hcc.filters_cleared_all');
-    set(s => ({ hccFilters: {}, hccActiveSavedId: null, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'HCC') }));
+    set(s => ({ hccFilters: {}, hccActiveSavedId: null, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'HCC'), currentPage: 1 }));
   },
 
   // Which filter chip keys appear in the chip row. The MoreFiltersPopover
