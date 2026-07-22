@@ -1169,6 +1169,53 @@ export const useAppStore = create((set, get) => ({
       });
   },
 
+  // Support-only DOS deletion. Surface-agnostic: strips the entry from
+  // member.dos_list (so ChartDetailDrawer and the Diagnosis Gap drawer,
+  // which both read that array, drop the DOS on the next render) and
+  // clears every hccDosAssignments entry for that date. Fire-and-forget
+  // Supabase write via persistHccMemberDetails so the removal survives a
+  // reload. Callers are expected to enforce the role/stage gate — this
+  // action does not re-check it.
+  hccDeleteDos: (memberId, dosDate) => {
+    if (!memberId || !dosDate) return;
+    const st = useAppStore.getState();
+    const member = st.hccMembers.find(m => m.id === memberId);
+    if (!member) return;
+    const idx = (member.dos_list || []).findIndex(d => d.date === dosDate);
+    if (idx < 0) return;
+    set((state) => ({
+      hccMembers: state.hccMembers.map(m => {
+        if (m.id !== memberId) return m;
+        const nextDosList = (m.dos_list || []).filter(d => d.date !== dosDate);
+        const nextDocStatus = Array.isArray(m.docStatus)
+          ? m.docStatus.filter((_, i) => i !== idx)
+          : m.docStatus;
+        return { ...m, dos_list: nextDosList, docStatus: nextDocStatus };
+      }),
+      // Composite hccDosAssignments keys are `${memberId}|${dos}|…`. Strip
+      // every key that matches this member + date so downstream role state
+      // for the deleted DOS doesn't linger.
+      hccDosAssignments: Object.fromEntries(
+        Object.entries(state.hccDosAssignments || {}).filter(([, v]) =>
+          !(v?.patientId === memberId && v?.dosDate === dosDate)
+        )
+      ),
+    }));
+    persistHccMemberDetails(memberId);
+    useAppStore.getState().addActivityEntry({
+      _memberId: memberId,
+      t: 'delete_dos',
+      by: 'You', role: useAppStore.getState().hccUserRole || 'Support',
+      dos: dosDate,
+      headline: `Deleted DOS ${dosDate}`,
+    });
+    useAppStore.getState().logHccActivity?.({
+      eventName: 'dos.deleted',
+      scope:     { patientId: memberId, dos: dosDate, source: 'manual' },
+      payload:   { actor: 'You', patientName: member.name, dos: dosDate },
+    });
+  },
+
   // Care Programs — enrolled programs are per-patient. A patient starts with
   // none; only programs a user explicitly adds are visible on their profile.
   careProgramsByPatient: {},
