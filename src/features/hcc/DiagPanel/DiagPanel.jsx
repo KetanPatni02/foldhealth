@@ -1712,7 +1712,6 @@ export function DiagPanel() {
                   <Switch
                     checked={enabled}
                     ariaLabel={`Toggle DOS ${d.date}`}
-                    disabled={hccUserRole === 'Support'}
                     onChange={() => setDisabledDos(prev => {
                       const next = new Set(prev);
                       if (next.has(d.date)) next.delete(d.date); else next.add(d.date);
