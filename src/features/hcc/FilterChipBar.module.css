@@ -1,6 +1,6 @@
 .bar {
   display: flex;
-  align-items: flex-start; /* right controls align to the first chip row */
+  align-items: flex-start;
   gap: 6px;
   padding: 8px 16px;
   border-bottom: 0.5px solid var(--neutral-150);
@@ -92,12 +92,16 @@
   background: var(--primary-100);
 }
 
-.right {
-  display: flex;
+/* Tail cluster (More Filters / Clear All / Save Filter) — inline-flex so
+   the vertical dividers never split across a wrap boundary; the whole
+   cluster wraps as a single unit at the end of the chip list, sitting
+   immediately after the last visible chip on whatever row it lands on.
+   Spacing to the previous chip comes from the parent's `gap`. */
+.tail {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
-  margin-left: auto;
 }
 
 .moreBtn {

@@ -54,6 +54,7 @@ export function FilterChipBar({ onSaveFilter }) {
 
   const chipsRef = useRef(null);
   const measureRef = useRef(null);
+  const tailRef = useRef(null);
   // Auto-fit: which inactive PRIMARY chips fit one row (null until measured).
   const [autoInactive, setAutoInactive] = useState(null);
 
@@ -90,6 +91,12 @@ export function FilterChipBar({ onSaveFilter }) {
     const compute = () => {
       const avail = container.clientWidth;
       let budget = avail;
+      // Reserve room for the tail group (More Filters / Clear All / Save
+      // Filter) so it stays on the same row as chips when they fit. Chips
+      // that don't fit push into "More Filters" as before; if the user
+      // customizes chips into a real second row, the tail wraps with them.
+      const tailW = tailRef.current?.offsetWidth ?? 0;
+      if (tailW) budget -= tailW + GAP;
       activeKeys.forEach(k => { budget -= widthOf(k) + GAP; }); // active always shown
       const fit = new Set();
       for (const k of inactivePrimary) {
@@ -175,48 +182,51 @@ export function FilterChipBar({ onSaveFilter }) {
     <div className={styles.bar}>
       <div className={styles.chips} ref={chipsRef}>
         {visibleKeys.map((k) => renderChip(k, false))}
+        {/* Tail cluster — flows with the chip wrap so it lands next to the
+            last visible chip (on whatever row it ends up on) instead of
+            being pinned to the top-right. Kept as one inline-flex group so
+            the vertical dividers never split across a wrap boundary. */}
+        <div className={styles.tail} ref={tailRef}>
+          <button
+            ref={moreBtnRef}
+            type="button"
+            className={[styles.moreBtn, moreRect ? styles.moreBtnActive : ''].join(' ')}
+            onClick={moreRect ? closeMore : openMore}
+          >
+            More Filters
+            <Icon
+              name="solar:alt-arrow-down-linear"
+              size={11}
+              color={moreRect ? 'var(--primary-300)' : 'var(--neutral-300)'}
+            />
+          </button>
+
+          {hasActiveFilters && (
+            <>
+              <span className={styles.vDivider} />
+              <button
+                type="button"
+                className={styles.linkBtn}
+                onClick={clearHccFilters}
+              >
+                Clear All
+              </button>
+              <span className={styles.vDivider} />
+              <button
+                type="button"
+                className={[styles.linkBtn, styles.linkBtnPrimary].join(' ')}
+                onClick={onSaveFilter}
+              >
+                Save Filter
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Hidden mirror — all PRIMARY chips, for stable width measurement. */}
       <div className={styles.measure} ref={measureRef} aria-hidden="true">
         {PRIMARY_FILTER_KEYS.map((k) => renderChip(k, true))}
-      </div>
-
-      <div className={styles.right}>
-        <button
-          ref={moreBtnRef}
-          type="button"
-          className={[styles.moreBtn, moreRect ? styles.moreBtnActive : ''].join(' ')}
-          onClick={moreRect ? closeMore : openMore}
-        >
-          More Filters
-          <Icon
-            name="solar:alt-arrow-down-linear"
-            size={11}
-            color={moreRect ? 'var(--primary-300)' : 'var(--neutral-300)'}
-          />
-        </button>
-
-        {hasActiveFilters && (
-          <>
-            <span className={styles.vDivider} />
-            <button
-              type="button"
-              className={styles.linkBtn}
-              onClick={clearHccFilters}
-            >
-              Clear All
-            </button>
-            <span className={styles.vDivider} />
-            <button
-              type="button"
-              className={[styles.linkBtn, styles.linkBtnPrimary].join(' ')}
-              onClick={onSaveFilter}
-            >
-              Save Filter
-            </button>
-          </>
-        )}
       </div>
 
       {/* Chip popovers — Phase 1b/c dispatch by FILTER_DEFS type */}
