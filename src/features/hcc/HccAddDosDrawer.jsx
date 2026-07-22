@@ -8,6 +8,7 @@ import { Button } from '../../components/Button/Button';
 import { Select } from '../../components/Select/Select';
 import { DatePicker } from '../../components/DatePicker/DatePicker';
 import { Dropzone } from '../../components/Dropzone/Dropzone';
+import { DemoPhiStrip } from '../../components/DemoPhiStrip/DemoPhiStrip';
 import { Icon } from '../../components/Icon/Icon';
 import { CloseIcon } from '../../components/Icon/CloseIcon';
 import { IcdSearch } from '../../components/IcdSearch/IcdSearch';
@@ -302,13 +303,16 @@ function DosBlock({ block, providerOptions, onChange, onRemove }) {
       {proc ? (
         <ProcessingCard proc={proc} onCancel={() => setProc(null)} />
       ) : !extracted ? (
-        <Dropzone
-          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-          helperText="Supported formats: PDF, DOC, JPG, or PNG"
-          secondaryText="Max size: 100 MB"
-          icon="solar:upload-minimalistic-linear"
-          onPick={onPick}
-        />
+        <>
+          <DemoPhiStrip />
+          <Dropzone
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+            helperText="Supported formats: PDF, DOC, JPG, or PNG"
+            secondaryText="Max size: 100 MB"
+            icon="solar:upload-minimalistic-linear"
+            onPick={onPick}
+          />
+        </>
       ) : (
         <div className={styles.docsSection}>
           <div className={styles.docsHead}>

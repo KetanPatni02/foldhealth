@@ -1093,7 +1093,7 @@ export const useAppStore = create((set, get) => ({
       set({ hccChartStatusDidFetch: true });
     }
   },
-  setChartDocStatus: (memberId, docId, status) => {
+  setChartDocStatus: (memberId, docId, status, opts) => {
     if (!memberId || !docId) return;
     set((state) => ({
       hccChartStatus: {
@@ -1114,6 +1114,12 @@ export const useAppStore = create((set, get) => ({
       .then(({ error }) => {
         if (error) console.warn(`setChartDocStatus persist(${memberId}|${docId}) failed:`, error.message);
       });
+    // Callers reviewing docs inside the ChartDetailDrawer pass deferSync so
+    // the record's supS doesn't flip mid-review — flipping it there would
+    // drop the row out of the "New / In Progress" filter and unmount the
+    // drawer before the user finishes reviewing. The drawer syncs the
+    // derived status itself on close via deriveStatus + syncSupportStatus.
+    if (opts?.deferSync) return;
     // Cascade to Support status when Support has just marked docs failed —
     // "all documents failed" is the coder's contract for Insufficient. If
     // AT LEAST ONE doc lands as Passed later, revert Support to In Progress
@@ -1200,6 +1206,53 @@ export const useAppStore = create((set, get) => ({
       .then(({ error }) => {
         if (error) console.warn(`removeChartDoc(${memberId}, ${docId}) delete failed:`, error.message);
       });
+  },
+
+  // Support-only DOS deletion. Surface-agnostic: strips the entry from
+  // member.dos_list (so ChartDetailDrawer and the Diagnosis Gap drawer,
+  // which both read that array, drop the DOS on the next render) and
+  // clears every hccDosAssignments entry for that date. Fire-and-forget
+  // Supabase write via persistHccMemberDetails so the removal survives a
+  // reload. Callers are expected to enforce the role/stage gate — this
+  // action does not re-check it.
+  hccDeleteDos: (memberId, dosDate) => {
+    if (!memberId || !dosDate) return;
+    const st = useAppStore.getState();
+    const member = st.hccMembers.find(m => m.id === memberId);
+    if (!member) return;
+    const idx = (member.dos_list || []).findIndex(d => d.date === dosDate);
+    if (idx < 0) return;
+    set((state) => ({
+      hccMembers: state.hccMembers.map(m => {
+        if (m.id !== memberId) return m;
+        const nextDosList = (m.dos_list || []).filter(d => d.date !== dosDate);
+        const nextDocStatus = Array.isArray(m.docStatus)
+          ? m.docStatus.filter((_, i) => i !== idx)
+          : m.docStatus;
+        return { ...m, dos_list: nextDosList, docStatus: nextDocStatus };
+      }),
+      // Composite hccDosAssignments keys are `${memberId}|${dos}|…`. Strip
+      // every key that matches this member + date so downstream role state
+      // for the deleted DOS doesn't linger.
+      hccDosAssignments: Object.fromEntries(
+        Object.entries(state.hccDosAssignments || {}).filter(([, v]) =>
+          !(v?.patientId === memberId && v?.dosDate === dosDate)
+        )
+      ),
+    }));
+    persistHccMemberDetails(memberId);
+    useAppStore.getState().addActivityEntry({
+      _memberId: memberId,
+      t: 'delete_dos',
+      by: 'You', role: useAppStore.getState().hccUserRole || 'Support',
+      dos: dosDate,
+      headline: `Deleted DOS ${dosDate}`,
+    });
+    useAppStore.getState().logHccActivity?.({
+      eventName: 'dos.deleted',
+      scope:     { patientId: memberId, dos: dosDate, source: 'manual' },
+      payload:   { actor: 'You', patientName: member.name, dos: dosDate },
+    });
   },
 
   // Care Programs — enrolled programs are per-patient. A patient starts with

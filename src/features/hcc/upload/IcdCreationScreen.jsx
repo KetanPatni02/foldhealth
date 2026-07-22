@@ -5,6 +5,7 @@ import { Icon } from '../../../components/Icon/Icon';
 import { Button } from '../../../components/Button/Button';
 import { Badge } from '../../../components/Badge/Badge';
 import { Dropzone } from '../../../components/Dropzone/Dropzone';
+import { DemoPhiStrip } from '../../../components/DemoPhiStrip/DemoPhiStrip';
 import { CloseIcon } from '../../../components/Icon/CloseIcon';
 import { POS_LABEL } from './mockOcr';
 import { Avatar } from '../../../components/Avatar/Avatar';
@@ -247,6 +248,7 @@ function UploadPhase({ queue, extracting, onRemoveQueued, onStart, onDiscard, wh
 
   return (
     <>
+      <DemoPhiStrip />
       <Dropzone
         accept={ACCEPT_EXT}
         acceptMime={ACCEPT_MIME}

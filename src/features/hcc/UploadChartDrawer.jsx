@@ -4,6 +4,7 @@ import { Drawer } from '../../components/Drawer/Drawer';
 import { Button } from '../../components/Button/Button';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { UploadDropField } from '../../components/UploadDropField/UploadDropField';
+import { DemoPhiStrip } from '../../components/DemoPhiStrip/DemoPhiStrip';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
 import { DOC_TYPES, makeUploadedChartDoc } from './data/chartDocs';
 import styles from './UploadChartDrawer.module.css';
@@ -152,6 +153,7 @@ export function UploadChartDrawer() {
       <div className={styles.form}>
         {/* Drop zone → uploading → uploaded states (shared with the Document
             Available details drawer). */}
+        <DemoPhiStrip />
         <UploadDropField key={uploadKey} onChange={setFile} />
 
         {/* Caption */}

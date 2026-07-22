@@ -8,8 +8,9 @@ import { RoleTooltip } from './RoleTooltip';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { Button } from '../../components/Button/Button';
 import { UploadDropField } from '../../components/UploadDropField/UploadDropField';
+import { DemoPhiStrip } from '../../components/DemoPhiStrip/DemoPhiStrip';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
-import { Switch } from '../../components/Switch/Switch';
+import { ConfirmDialog } from '../../components/Modal/ConfirmDialog';
 import { useAppStore } from '../../store/useAppStore';
 import { DocEvidenceViewer } from './DiagPanel/DocEvidenceViewer';
 import { ReviewProgressPopover, buildReviewStages, computeReviewProgress, ProgressRing } from './DiagPanel/ReviewProgressPopover';
@@ -225,9 +226,12 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   // right pane to the Upload section (left preview hidden) instead of closing.
   const [emptiedViaUnlink, setEmptiedViaUnlink] = useState(false);
 
-  // "N/M DOSs" expandable toggle list (mirrors the Diagnosis Gap drawer).
+  // "N/M DOSs" expandable list (mirrors the Diagnosis Gap drawer). Support
+  // can delete a DOS from here while the record is in their stage; the
+  // confirm modal target lives in `dosToDelete` (the date string) and
+  // clearing it dismisses the dialog.
   const [dosExpanded, setDosExpanded] = useState(false);
-  const [disabledDos, setDisabledDos] = useState(() => new Set());
+  const [dosToDelete, setDosToDelete] = useState(null);
 
   // Left pane mode. Defaults to the PDF preview; the "Comment" action next to
   // Upload flips this to a Comment panel that reads/writes the same
@@ -257,6 +261,8 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   const hccReassignRole = useAppStore(s => s.hccReassignRole);
   const hccSetRoleStatus = useAppStore(s => s.hccSetRoleStatus);
   const hccCompleteSupport = useAppStore(s => s.hccCompleteSupport);
+  const hccDeleteDos = useAppStore(s => s.hccDeleteDos);
+  const hccUserRole = useAppStore(s => s.hccUserRole);
   const initializeHccPatient = useAppStore(s => s.initializeHccPatient);
   const currentUserProfile = useAppStore(s => s.currentUserProfile);
   // Live member from the store so the assignee badge reflects reassignments
@@ -311,12 +317,17 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   const dosList = m?.dos_list?.length
     ? m.dos_list
     : (m?.dos ? [{ date: m.dos }] : []);
-  const enabledDosCount = dosList.filter(d => !disabledDos.has(d.date)).length;
-  const toggleDos = (date) => setDisabledDos(prev => {
-    const next = new Set(prev);
-    if (next.has(date)) next.delete(date); else next.add(date);
-    return next;
-  });
+  // Support-only DOS deletion. Available only while Support still owns the
+  // record — the moment support marks Completed/Rejected the record moves
+  // downstream to the Coder and Delete disappears.
+  const canDeleteDos = hccUserRole === 'Support'
+    && !['Completed', 'Rejected'].includes(m?.supS);
+  const confirmDeleteDos = () => {
+    if (!dosToDelete) return;
+    hccDeleteDos(m.id, dosToDelete);
+    setDosToDelete(null);
+    showToast?.(`DOS ${dosToDelete} deleted`);
+  };
 
   const supportStaff = staffForRole('support');
   const openAssign = () => {
@@ -389,8 +400,15 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     setDocActions(next);
     // Persist the per-doc mark immediately so a crash doesn't lose it —
     // this write is scoped to hcc_chart_status and does NOT flip the
-    // record's Support status by itself.
-    setChartDocStatus(member.id, id, action === 'pass' ? 'Passed' : action === 'fail' ? 'Failed' : 'Pending');
+    // record's Support status by itself. `deferSync` suppresses the
+    // store's all-failed → Insufficient cascade; the drawer syncs the
+    // derived status itself on close via handleClose.
+    setChartDocStatus(
+      member.id,
+      id,
+      action === 'pass' ? 'Passed' : action === 'fail' ? 'Failed' : 'Pending',
+      { deferSync: true },
+    );
     if (action) ensureSupportAssignee();
     // Defer the Support-member status sync to drawer close — flipping
     // it here would move the record out of the "New / In Progress"
@@ -785,7 +803,7 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
                     onClick={() => setDosExpanded(o => !o)}
                     aria-expanded={dosExpanded}
                   >
-                    {enabledDosCount}/{dosList.length} DOSs
+                    {dosList.length} DOSs
                     <Icon name={dosExpanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} size={11} color="var(--primary-300)" />
                   </button>
                 </div>
@@ -821,7 +839,6 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
               {dosExpanded && dosList.length > 0 && (
                 <div className={styles.dosPanel}>
                   {dosList.map(d => {
-                    const enabled = !disabledDos.has(d.date);
                     const provider = d.provider || m?.rp || '—';
                     const pos = d.pos || d.posDesc || m?.pos || m?.posDesc || '—';
                     const vt = d.vt || m?.vt || 'HCC';
@@ -837,11 +854,14 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
                             Visit Type: {vt}
                           </div>
                         </div>
-                        <Switch
-                          checked={enabled}
-                          ariaLabel={`Toggle DOS ${d.date}`}
-                          onChange={() => toggleDos(d.date)}
-                        />
+                        {canDeleteDos && (
+                          <ActionButton
+                            size="S"
+                            icon="solar:trash-bin-trash-linear"
+                            tooltip="Delete DOS"
+                            onClick={() => setDosToDelete(d.date)}
+                          />
+                        )}
                       </div>
                     );
                   })}
@@ -850,6 +870,7 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
 
               {showUpload && (
                 <div className={styles.uploadPanel}>
+                  <DemoPhiStrip />
                   <UploadDropField key={uploadKey} onChange={setUpFile} />
                   <div className={styles.uploadField}>
                     <span className={styles.uploadLabel}>Caption<span className={styles.uploadReq} aria-hidden="true" /></span>
@@ -1062,6 +1083,19 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
         <InsufficientDosDialog
           onCancel={() => setInsufficientPrompt(null)}
           onConfirm={confirmInsufficient}
+        />
+      )}
+
+      {dosToDelete && (
+        <ConfirmDialog
+          icon="solar:trash-bin-trash-linear"
+          iconColor="var(--status-error)"
+          title={`Delete DOS ${dosToDelete}?`}
+          description="This removes the DOS from both the Document Review and Diagnosis Gap drawers. This action can't be undone."
+          confirmLabel="Delete"
+          variant="error"
+          onCancel={() => setDosToDelete(null)}
+          onConfirm={confirmDeleteDos}
         />
       )}
 
