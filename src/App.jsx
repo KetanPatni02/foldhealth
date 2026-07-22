@@ -8,7 +8,7 @@ import { ResetPasswordPage } from './features/auth/ResetPasswordPage';
 import { useAppStore } from './store/useAppStore';
 import { supabase } from './lib/supabase';
 import { initRouter } from './lib/router';
-import { track } from './lib/tracking';
+import { track, trackPageview } from './lib/tracking';
 
 // Public, shareable form fill-view (#/f/{id}) — rendered without auth so a
 // link can be opened by anyone. RLS on forms/form_responses ('Allow all')
@@ -32,8 +32,19 @@ function App() {
   // Track the hash so the public-form route reacts to navigation.
   const [hash, setHash] = useState(() => window.location.hash);
   useEffect(() => {
-    const onHash = () => setHash(window.location.hash);
+    const onHash = () => {
+      const newHash = window.location.hash;
+      setHash(newHash);
+      const path = newHash.replace(/^#/, '') || '/';
+      trackPageview(path);
+    };
     window.addEventListener('hashchange', onHash);
+    
+    // Also track the initial page view since Vercel's default page view 
+    // will just be for '/' and won't include the initial hash path.
+    const initialPath = window.location.hash.replace(/^#/, '') || '/';
+    trackPageview(initialPath);
+    
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
