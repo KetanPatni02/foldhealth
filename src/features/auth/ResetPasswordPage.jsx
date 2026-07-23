@@ -10,17 +10,38 @@ import styles from './LoginPage.module.css';
 
 /**
  * ResetPasswordPage — shown when the user arrives via a Supabase
- * password-recovery email link.
+ * password-recovery or invite/confirmation email link.
  *
- * App.jsx routes to this page when:
- *   1. supabase.auth.onAuthStateChange fires PASSWORD_RECOVERY, or
- *   2. the URL hash is #/reset-password (covers manual navigation).
+ * Two arrival modes:
  *
- * Supabase has already exchanged the recovery token for a session by
- * the time we render. We DO NOT sign the user in — we hold them on
- * this page until they submit a new password, then sign them out and
- * send them back to login.
+ * 1. Token-hash links (preferred — requires the custom email templates):
+ *    the email points at `{{ .SiteURL }}/#/reset-password?token_hash=…&type=…`
+ *    so the link is on OUR domain (not *.supabase.co, which corporate
+ *    firewalls block) and merely opening it consumes nothing. The one-time
+ *    token is redeemed via verifyOtp() only when the user submits the form,
+ *    so mail-security scanners that prefetch links can't burn it.
+ *
+ * 2. Legacy implicit-flow links ({{ .ConfirmationURL }}): Supabase has
+ *    already exchanged the token for a session by the time we render;
+ *    App.jsx routes here off PASSWORD_RECOVERY / invited metadata.
+ *
+ * Recovery users are signed out after the update and sent back to login;
+ * invited/confirmed users drop straight into the app.
  */
+
+// Read token-hash params from the email link. They ride in the hash-route
+// query (#/reset-password?token_hash=…&type=recovery) with a plain-search
+// fallback (?token_hash=…). Read once at mount via useState initializer so
+// a later hash rewrite by the SPA router can't lose them.
+function readTokenFromUrl() {
+  const h = window.location.hash || '';
+  const qIndex = h.indexOf('?');
+  const params = new URLSearchParams(qIndex >= 0 ? h.slice(qIndex + 1) : window.location.search);
+  const tokenHash = params.get('token_hash');
+  if (!tokenHash) return null;
+  return { tokenHash, type: params.get('type') || 'recovery' };
+}
+
 export function ResetPasswordPage({ onDone }) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -34,11 +55,15 @@ export function ResetPasswordPage({ onDone }) {
   // "Set Password" welcome rather than a recovery, and drop them straight
   // into the app on success instead of sending them back to login.
   const [isInvited, setIsInvited] = useState(false);
+  // Token-hash params from the new-style email links. Non-null means the
+  // token is redeemed at submit time (verifyOtp) instead of relying on a
+  // pre-established session.
+  const [tokenParams] = useState(readTokenFromUrl);
 
   // Detect whether Supabase managed to establish a recovery session from
-  // the email link. If not, the recovery token is expired or the user
-  // navigated here directly without a token — show a dead-end state with
-  // a path back to login instead of letting them submit into a failure.
+  // the email link. If not — and there's no token_hash to redeem later —
+  // the link is expired or the user navigated here directly; show a
+  // dead-end state instead of letting them submit into a failure.
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setHasSession(!!session);
@@ -46,15 +71,46 @@ export function ResetPasswordPage({ onDone }) {
     });
   }, []);
 
+  // First-time setup (invite / signup confirmation) vs recovery — drives the
+  // heading copy before any session exists. Token links carry the answer in
+  // `type`; legacy links fall back to the session's invited metadata.
+  const setupFlow = tokenParams ? tokenParams.type !== 'recovery' : isInvited;
+  // Dead end only when BOTH arrival modes have nothing to work with.
+  const linkDead = hasSession === false && !tokenParams;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
     if (password !== confirmPassword) { setError('Passwords do not match'); return; }
     setLoading(true);
     setError('');
+
+    // Token-hash flow: redeem the one-time token NOW, at submit time.
+    // Deferring redemption to a human interaction is what makes the links
+    // immune to mail-security prefetchers — a GET of the page burns nothing.
+    let invited = isInvited;
+    if (tokenParams) {
+      const { data: otpData, error: otpError } = await supabase.auth.verifyOtp({
+        type: tokenParams.type,
+        token_hash: tokenParams.tokenHash,
+      });
+      if (otpError) {
+        // The token may already be redeemed (e.g. an earlier submit failed
+        // after verifyOtp) — if a session exists we can still proceed.
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          track('auth.password_reset_failed', { reason: otpError.message || 'unknown', stage: 'verify' });
+          setError('This link has expired or was already used. Ask your admin to resend the invite or request a new reset link from the login page.');
+          setLoading(false);
+          return;
+        }
+      }
+      if (otpData?.user?.user_metadata?.invited === 'true') invited = true;
+    }
+
     // Update the password and, for invited users, flip the metadata flag
     // in the same call so App.jsx doesn't loop them back here on refresh.
-    const updates = isInvited
+    const updates = invited
       ? { password, data: { invited: 'false' } }
       : { password };
     const { error: authError } = await supabase.auth.updateUser(updates);
@@ -67,8 +123,8 @@ export function ResetPasswordPage({ onDone }) {
       setLoading(false);
       return;
     }
-    track(isInvited ? 'auth.invite_accepted' : 'auth.password_reset_completed');
-    if (isInvited) {
+    track(invited ? 'auth.invite_accepted' : 'auth.password_reset_completed');
+    if (invited || setupFlow) {
       // Session is already valid — send them into the app.
       setSuccess('Password set. Welcome to Foldhealth!');
       setTimeout(() => { onDone?.({ enterApp: true }); }, 900);
@@ -102,12 +158,12 @@ export function ResetPasswordPage({ onDone }) {
 
           <div className={styles.welcome}>
             <h1 className={styles.welcomeTitle}>
-              {hasSession === false ? (
+              {linkDead ? (
                 <>
                   <span className={styles.welcomePurple}>Link </span>
                   <span className={styles.welcomeDark}>Expired</span>
                 </>
-              ) : isInvited ? (
+              ) : setupFlow ? (
                 <>
                   <span className={styles.welcomePurple}>Set your </span>
                   <span className={styles.welcomeDark}>Password</span>
@@ -120,15 +176,15 @@ export function ResetPasswordPage({ onDone }) {
               )}
             </h1>
             <p className={styles.welcomeSub}>
-              {hasSession === false
+              {linkDead
                 ? 'This link is no longer valid. Ask your admin to resend the invite or request a new reset link from the login page.'
-                : isInvited
+                : setupFlow
                 ? 'Welcome! Choose a password to finish setting up your account.'
                 : 'Choose a new password to finish recovering your account.'}
             </p>
           </div>
 
-          {hasSession === false ? (
+          {linkDead ? (
             <div className={styles.form}>
               <div className={styles.error}>
                 <Icon name="solar:danger-triangle-linear" size={14} color="var(--status-error)" />
@@ -188,8 +244,8 @@ export function ResetPasswordPage({ onDone }) {
 
             <Button variant="primary" size="L" fullWidth disabled={loading} type="submit">
               {loading
-                ? (isInvited ? 'Setting password...' : 'Updating password...')
-                : (isInvited ? 'Set Password' : 'Update Password')}
+                ? (setupFlow ? 'Setting password...' : 'Updating password...')
+                : (setupFlow ? 'Set Password' : 'Update Password')}
             </Button>
           </form>
           )}

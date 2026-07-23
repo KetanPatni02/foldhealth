@@ -28,7 +28,10 @@ function App() {
   // to set an initial password (see `invited` metadata check below).
   const [recoveryMode, setRecoveryMode] = useState(() => {
     const h = window.location.hash || '';
-    return /type=recovery/.test(h) || /type=signup/.test(h) || h.startsWith('#/reset-password');
+    // `token_hash=` covers the custom email-template links
+    // (#/reset-password?token_hash=…) — see ResetPasswordPage for the flow.
+    return /type=recovery/.test(h) || /type=signup/.test(h)
+      || /token_hash=/.test(h) || h.startsWith('#/reset-password');
   });
   // Track the hash so the public-form route reacts to navigation.
   const [hash, setHash] = useState(() => window.location.hash);

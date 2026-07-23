@@ -1,0 +1,51 @@
+# Supabase project config — source of truth for `supabase config push`.
+#
+# ⚠️  IMPORTANT: `supabase config push` pushes the FULL auth config — any
+# field NOT declared here gets reset to the CLI default on the remote.
+# Every remote setting that differs from CLI defaults MUST be declared in
+# this file. (Learned the hard way: a minimal config wiped site_url etc.)
+#
+# The email templates use token-hash links pointing at OUR domain (Site URL)
+# instead of the default {{ .ConfirmationURL }} (*.supabase.co), because:
+#   1. corporate firewalls block *.supabase.co links outright, and
+#   2. mail-security scanners prefetch links, consuming one-time verify
+#      tokens — with token_hash links the token is only redeemed when the
+#      user submits the Set Password form (see ResetPasswordPage.jsx).
+
+project_id = "osnihfqqrcchsaqhagcx"
+
+# CLI default is enabled=true, but vector buckets are a paid-tier feature —
+# without this override every push 402s on the Storage step (free tier).
+[storage.vector]
+enabled = false
+
+[auth]
+site_url = "https://foldhealth.org/"
+additional_redirect_urls = [
+  "https://foldhealth.org/",
+  "https://foldhealth.org/**",
+  "https://foldhealth-alokfold.vercel.app/",
+  "https://foldhealth-alokfold.vercel.app/**",
+  "https://foldhealth-*-alokfold.vercel.app",
+  "https://foldhealth-*-alokfold.vercel.app/**",
+]
+
+[auth.rate_limit]
+sign_in_sign_ups = 100
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[auth.email]
+enable_confirmations = true
+max_frequency = "1m0s"
+otp_length = 8
+
+[auth.email.template.recovery]
+subject = "Reset Your Foldhealth Password"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.confirmation]
+subject = "Confirm Your Signup"
+content_path = "./supabase/templates/confirmation.html"
