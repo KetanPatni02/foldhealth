@@ -48,6 +48,18 @@
   gap: 8px;
 }
 
+/* Static list title — derives from the SubNav worklist name (same 15px/500
+   type the old InlineEditable rendered at size L). */
+.listTitle {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 22px;
+  color: var(--neutral-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .tabItem {
   display: flex;
   align-items: center;

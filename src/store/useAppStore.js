@@ -4164,8 +4164,8 @@ export const useAppStore = create((set, get) => ({
   clearHccSelected: () => set({ selectedHccIds: [] }),
 
   // ─── HCC worklist sub-header state ───
-  hccListTitle: 'Worklist',
-  setHccListTitle: (title) => set({ hccListTitle: title }),
+  // (list title is no longer stored — the tab bar derives it from
+  //  activeSubnavList so it always matches the SubNav worklist name)
   hccDueDateFilter: null, // null | 'Overdue' | 'Due Today' | 'Due This Week' | 'Due Next Week' | 'Due More Than 2 Weeks'
   setHccDueDateFilter: (cat) => set({ hccDueDateFilter: cat, currentPage: 1 }),
 

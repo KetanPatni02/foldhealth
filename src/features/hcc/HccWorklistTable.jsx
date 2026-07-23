@@ -9,7 +9,6 @@ import { Button } from '../../components/Button/Button';
 import { MenuPopover } from '../../components/Popover/MenuPopover';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
 import { useTableSort } from '../../components/Table/useTableSort';
-import { InlineEditable } from '../../components/InlineEditable/InlineEditable';
 import { SortPopover } from '../../components/Popover/SortPopover';
 import { DueDateChip } from './DueDateChip';
 import { slaDueCategory } from './sla';
@@ -164,8 +163,7 @@ export function HccWorklistTable() {
   const currentPage = useAppStore(s => s.currentPage);
   const perPage = useAppStore(s => s.perPage);
   const showToast = useAppStore(s => s.showToast);
-  const hccListTitle = useAppStore(s => s.hccListTitle);
-  const setHccListTitle = useAppStore(s => s.setHccListTitle);
+  const activeSubnavList = useAppStore(s => s.activeSubnavList);
   const hccDueDateFilter = useAppStore(s => s.hccDueDateFilter);
   const setHccDueDateFilter = useAppStore(s => s.setHccDueDateFilter);
   const hccFilters = useAppStore(s => s.hccFilters);
@@ -311,14 +309,9 @@ export function HccWorklistTable() {
       <HccUploadProgressRibbon />
       <div className={styles.tabBar}>
         <div className={styles.tabLeft}>
-          <InlineEditable
-            value={hccListTitle}
-            onCommit={setHccListTitle}
-            size="L"
-            maxLength={60}
-            placeholder="Worklist"
-            title="Rename this list"
-          />
+          {/* Title mirrors the worklist's name in the SubNav — renaming
+              happens there, not here, so the two can never disagree. */}
+          <span className={styles.listTitle}>{activeSubnavList}</span>
           <DueDateChip value={hccDueDateFilter} onChange={setHccDueDateFilter} />
         </div>
 
