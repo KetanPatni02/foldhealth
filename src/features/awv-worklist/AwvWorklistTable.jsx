@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
+import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { Checkbox } from '../../components/ui/checkbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
@@ -126,14 +127,12 @@ export function AwvWorklistTable() {
                 placeholder="Search by name or member ID…"
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
-              <button
-                type="button"
-                className={styles.searchClose}
+              <CloseButton
+                size={14}
                 onClick={() => { setSearchOpen(false); setSearchQuery(''); }}
-                aria-label="Close search"
-              >
-                <Icon name="solar:close-circle-linear" size={14} color="var(--neutral-300)" />
-              </button>
+                className={styles.searchClose}
+                label="Close search"
+              />
             </div>
           ) : (
             <SearchIconButton title="Search" tooltipBelow onClick={() => setSearchOpen(true)} />

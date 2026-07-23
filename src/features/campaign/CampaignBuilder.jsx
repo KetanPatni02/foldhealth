@@ -422,14 +422,12 @@ function ChipMultiSelect({ options, value, onChange, placeholder }) {
             {selectedIds.map(id => (
               <span key={id} className={styles.chip}>
                 {labelFor(id)}
-                <button
-                  type="button"
-                  className={styles.chipRemove}
+                <CloseButton
+                  size={12}
                   onClick={e => { e.stopPropagation(); toggle(id); }}
-                  aria-label={`Remove ${labelFor(id)}`}
-                >
-                  <Icon name="solar:close-circle-linear" size={12} color="currentColor" />
-                </button>
+                  className={styles.chipRemove}
+                  label={`Remove ${labelFor(id)}`}
+                />
               </span>
             ))}
             {open && (

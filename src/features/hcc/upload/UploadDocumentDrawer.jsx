@@ -451,14 +451,7 @@ function PickerPhase({ showToast, cancel }) {
             Review
           </button>
           <span className={styles.cronStripDivider} />
-          <button
-            type="button"
-            className={styles.cronStripDismiss}
-            aria-label="Dismiss"
-            onClick={() => setCronDismissed(true)}
-          >
-            <Icon name="solar:close-circle-linear" size={14} color="var(--status-success)" />
-          </button>
+          <CloseButton size={14} onClick={() => setCronDismissed(true)} className={styles.cronStripDismiss} label="Dismiss" />
         </div>
       )}
 
@@ -2791,14 +2784,12 @@ function IcdChipStack({ icds, onRemove, onAdd, onEdit }) {
           onClick={() => setPicker({ editingCode: icd.code })}
         >
           {icd.code}
-          <button
-            type="button"
-            className={styles.icdChipClose}
+          <CloseButton
+            size={10}
             onClick={(e) => { e.stopPropagation(); onRemove?.(icd.code); }}
-            aria-label={`Remove ${icd.code}`}
-          >
-            <Icon name="solar:close-circle-linear" size={10} color="var(--primary-300)" />
-          </button>
+            className={styles.icdChipClose}
+            label={`Remove ${icd.code}`}
+          />
         </span>
       ))}
       {overflow > 0 && (
@@ -3062,14 +3053,12 @@ function EncounterCard({ enc, hccMembers, onPatch }) {
               title={icd.valid === false ? 'Not a V28 HCC code' : undefined}
             >
               {icd.code}
-              <button
-                type="button"
-                className={styles.icdChipClose}
+              <CloseButton
+                size={12}
                 onClick={() => removeIcd(icd.code)}
-                aria-label={`Remove ${icd.code}`}
-              >
-                <Icon name="solar:close-circle-linear" size={12} color="var(--neutral-300)" />
-              </button>
+                className={styles.icdChipClose}
+                label={`Remove ${icd.code}`}
+              />
             </span>
           ))}
         </div>
@@ -3162,14 +3151,7 @@ function PagePreviewModal({ page, maxPage, fileName, onChangePage, onClose }) {
               <Icon name="solar:alt-arrow-right-linear" size={14} color="var(--neutral-400)" />
             </button>
             <span className={styles.headerDivider} />
-            <button
-              type="button"
-              className={styles.previewCloseBtn}
-              onClick={onClose}
-              aria-label="Close preview"
-            >
-              <Icon name="solar:close-circle-linear" size={16} color="var(--neutral-400)" />
-            </button>
+            <CloseButton size={16} onClick={onClose} className={styles.previewCloseBtn} label="Close preview" />
           </div>
         </div>
         <div className={styles.previewBody}>

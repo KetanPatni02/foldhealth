@@ -8,6 +8,7 @@
  */
 import { useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
+import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { Button } from '../../../components/Button/Button';
 import { Input } from '../../../components/Input/Input';
 import { Select } from '../../../components/Select/Select';
@@ -153,9 +154,7 @@ export function ScorePanel({ fields, scoring, onChange }) {
                   onChange={(v) => setBand(i, { severity: v })}
                 />
                 {!locked ? (
-                  <button className={styles.optRemove} onClick={() => removeBand(i)} aria-label="Remove band">
-                    <Icon name="solar:close-circle-linear" size={16} color="var(--neutral-300)" />
-                  </button>
+                  <CloseButton size={16} onClick={() => removeBand(i)} className={styles.optRemove} label="Remove band" />
                 ) : null}
               </div>
             ))}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../components/Icon/Icon';
+import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { SmsIcon } from '../../../components/Icon/SmsIcon';
 import { AddTaskIcon } from '../../../components/Icon/AddTaskIcon';
 import { OutreachIcon } from '../../../components/Icon/OutreachIcon';
@@ -1115,13 +1116,12 @@ export function OutreachTab({
                     >
                       Use This
                     </button>
-                    <button
-                      type="button"
-                      className={styles.callBannerCloseBtn}
+                    <CloseButton
+                      size={12}
                       onClick={() => setCallBannerVisible(false)}
-                    >
-                      <Icon name="solar:close-linear" size={12} color="var(--neutral-300)" />
-                    </button>
+                      className={styles.callBannerCloseBtn}
+                      label="Dismiss call banner"
+                    />
                   </div>
                 )}
 

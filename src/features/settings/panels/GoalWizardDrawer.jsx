@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
+import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { CheckIcon } from '../../../components/Icon/CheckIcon';
 import { Badge } from '../../../components/Badge/Badge';
 import { Drawer } from '../../../components/Drawer/Drawer';
@@ -429,9 +430,7 @@ export function GoalWizardDrawer() {
             <div key={i} className={s.successItem} style={{ fontSize: 14 }}>
               <CheckIcon size={14} color="#009B53" />
               <span style={{ flex: 1 }}>{m}</span>
-              <button className={s.metricRemove} onClick={() => removeMetric(i)}>
-                <Icon name="solar:close-circle-linear" size={14} color="var(--neutral-200)" />
-              </button>
+              <CloseButton size={14} onClick={() => removeMetric(i)} className={s.metricRemove} label="Remove metric" />
             </div>
           ))}
         </div>

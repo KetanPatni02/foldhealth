@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
+import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { Badge } from '../../../components/Badge/Badge';
 import { Button } from '../../../components/Button/Button';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
@@ -243,9 +244,7 @@ export function DomainRegistryPanel({ searchQuery = '' }) {
           <div style={{ fontSize: 12, color: 'var(--status-info)', lineHeight: 1.5, flex: 1 }}>
             Domains are account-scoped. Only URLs from registered domains can be used when configuring components.
           </div>
-          <button onClick={() => setInfoDismissed(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, flexShrink: 0, lineHeight: 1 }}>
-            <Icon name="solar:close-circle-linear" size={16} color="var(--status-info)" />
-          </button>
+          <CloseButton size={16} onClick={() => setInfoDismissed(true)} label="Dismiss info banner" />
         </div>
       )}
 

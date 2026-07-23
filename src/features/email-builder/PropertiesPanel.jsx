@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { renderEmailHtml } from './patchEmailHtml';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
+import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { Toggle } from '../../components/Toggle/Toggle';
 import { Input } from '../../components/Input/Input';
 import { Textarea } from '../../components/Textarea/Textarea';
@@ -1122,9 +1123,7 @@ function BulkDesignTab({ doc, bulkIds, updateBlock }) {
       <div className={styles.bulkHeader}>
         <Icon name="solar:layers-linear" size={14} color="var(--primary-400)" />
         <span>{bulkIds.length} blocks selected</span>
-        <button className={styles.bulkClear} onClick={() => clearBulk([])}>
-          <Icon name="solar:close-circle-linear" size={14} color="var(--neutral-400)" />
-        </button>
+        <CloseButton size={14} onClick={() => clearBulk([])} className={styles.bulkClear} label="Clear bulk selection" />
       </div>
 
       {/* ── Layout ── */}
@@ -2593,14 +2592,7 @@ function ColorVariablesEditor() {
             onChange={e => updateColorVariable(cv.name, { hex: e.target.value })}
             className={styles.colorVarHexInput}
           />
-          <button
-            type="button"
-            className={styles.colorVarRemove}
-            onClick={() => removeColorVariable(cv.name)}
-            aria-label="Remove"
-          >
-            <Icon name="solar:close-circle-linear" size={14} color="currentColor" />
-          </button>
+          <CloseButton size={14} onClick={() => removeColorVariable(cv.name)} className={styles.colorVarRemove} label="Remove" />
         </div>
       ))}
       <button type="button" className={styles.colorVarAdd} onClick={handleAdd}>
@@ -2762,9 +2754,7 @@ function TableEditor({ columns, rows, onChangeColumns, onChangeRows }) {
               style={{ fontWeight: 600 }}
             />
             {columns.length > 1 && (
-              <button className={styles.tableEditorRemoveBtn} onClick={() => removeColumn(ci)} title="Remove column">
-                <Icon name="solar:close-circle-linear" size={10} color="var(--neutral-300)" />
-              </button>
+              <CloseButton size={10} onClick={() => removeColumn(ci)} className={styles.tableEditorRemoveBtn} label="Remove column" />
             )}
           </div>
         ))}
@@ -2780,9 +2770,7 @@ function TableEditor({ columns, rows, onChangeColumns, onChangeRows }) {
                 />
               </div>
             ))}
-            <button className={styles.tableEditorRemoveRowBtn} onClick={() => removeRow(ri)} title="Remove row">
-              <Icon name="solar:close-circle-linear" size={12} color="var(--neutral-300)" />
-            </button>
+            <CloseButton size={12} onClick={() => removeRow(ri)} className={styles.tableEditorRemoveRowBtn} label="Remove row" />
           </Fragment>
         ))}
       </div>
@@ -2889,9 +2877,7 @@ function SocialEditor({ platforms, onChange }) {
             placeholder="URL"
             style={{ flex: 1 }}
           />
-          <button className={styles.tableEditorRemoveRowBtn} onClick={() => removePlatform(i)} title="Remove">
-            <Icon name="solar:close-circle-linear" size={12} color="var(--neutral-300)" />
-          </button>
+          <CloseButton size={12} onClick={() => removePlatform(i)} className={styles.tableEditorRemoveRowBtn} label="Remove platform" />
         </div>
       ))}
       <div className={styles.socialPresets}>
@@ -2934,9 +2920,7 @@ function NavLinkEditor({ links, onChange }) {
             placeholder="URL"
             style={{ flex: 1 }}
           />
-          <button className={styles.tableEditorRemoveRowBtn} onClick={() => removeLink(i)} title="Remove">
-            <Icon name="solar:close-circle-linear" size={12} color="var(--neutral-300)" />
-          </button>
+          <CloseButton size={12} onClick={() => removeLink(i)} className={styles.tableEditorRemoveRowBtn} label="Remove link" />
         </div>
       ))}
       <button className={styles.tableEditorAddBtn} onClick={addLink}>+ Add link</button>

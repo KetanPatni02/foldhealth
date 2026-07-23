@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../components/Icon/Icon';
+import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { Badge } from '../../../components/Badge/Badge';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Switch } from '../../../components/Switch/Switch';
@@ -337,12 +338,7 @@ export function ComponentLibraryPanel({ searchQuery = '' }) {
               Re-register domain
             </a>
           </div>
-          <button onClick={() => setWarningDismissed(true)} style={{
-            background: 'none', border: 'none', cursor: 'pointer', padding: 4,
-            flexShrink: 0, lineHeight: 1,
-          }}>
-            <Icon name="solar:close-circle-linear" size={16} color="var(--status-warning)" />
-          </button>
+          <CloseButton size={16} onClick={() => setWarningDismissed(true)} label="Dismiss warning" />
         </div>
       )}
 

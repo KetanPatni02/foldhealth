@@ -362,13 +362,12 @@ function Properties({ field, onPatch, settings, onSettingsChange }) {
                   value={o.score ?? ''}
                   onChange={(e) => setOpt(i, { score: e.target.value === '' ? undefined : Number(e.target.value) })}
                 />
-                <button
-                  className={styles.optRemove}
+                <CloseButton
+                  size={16}
                   onClick={() => onPatch({ options: field.options.filter((_, idx) => idx !== i) })}
-                  aria-label="Remove option"
-                >
-                  <Icon name="solar:close-circle-linear" size={16} color="var(--neutral-300)" />
-                </button>
+                  className={styles.optRemove}
+                  label="Remove option"
+                />
               </div>
             ))}
             <button

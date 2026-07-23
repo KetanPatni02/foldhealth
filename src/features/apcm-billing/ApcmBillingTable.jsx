@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, useRef } from 'react';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Button } from '../../components/Button/Button';
 import { Icon } from '../../components/Icon/Icon';
+import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
@@ -475,13 +476,12 @@ export function ApcmBillingTable({ searchQuery = '', filtersOpen = false }) {
           <span className={styles.bulkDivider} />
           <ActionButton icon="solar:menu-dots-linear" size="L" tooltip="More options" onClick={() => {}} />
           <span className={styles.bulkDivider} />
-          <button
-            className={styles.bulkClose}
-            title="Clear selection"
+          <CloseButton
+            size={16}
             onClick={() => setSelectedIds(prev => prev.filter(id => !allFilteredIds.includes(id)))}
-          >
-            <Icon name="solar:close-circle-linear" size={16} />
-          </button>
+            className={styles.bulkClose}
+            label="Clear selection"
+          />
         </div>
       )}
 

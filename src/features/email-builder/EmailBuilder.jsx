@@ -104,9 +104,7 @@ function ShortcutsHelpButton() {
         <div className={styles.shortcutsPopover}>
           <div className={styles.shortcutsHeader}>
             <span className={styles.shortcutsTitle}>Keyboard shortcuts</span>
-            <button className={styles.shortcutsClose} onClick={() => setOpen(false)}>
-              <Icon name="solar:close-circle-linear" size={18} />
-            </button>
+            <CloseButton size={18} onClick={() => setOpen(false)} className={styles.shortcutsClose} label="Close shortcuts" />
           </div>
           {SHORTCUTS.map(s => (
             <div key={s.label} className={styles.shortcutRow}>

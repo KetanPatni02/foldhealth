@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Icon } from '../../components/Icon/Icon';
+import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { useAppStore } from '../../store/useAppStore';
 import { GoalDetailDrawer } from '../settings/panels/GoalDetailDrawer';
 import styles from './ConfigurePanel.module.css';
@@ -292,9 +293,7 @@ function GoalSelector({ selectedIds, onToggle, onPreview }) {
               <button className={styles.goalTagPreview} type="button" onClick={() => onPreview(g.id)} title="Preview goal">
                 <Icon name="solar:eye-linear" size={14} color="#8C5AE2" />
               </button>
-              <button className={styles.goalTagRemove} type="button" onClick={() => onToggle(g.id)} title="Remove">
-                <Icon name="solar:close-circle-linear" size={12} color="#6F7A90" />
-              </button>
+              <CloseButton size={12} onClick={() => onToggle(g.id)} className={styles.goalTagRemove} label="Remove" />
             </span>
           ))}
         </div>

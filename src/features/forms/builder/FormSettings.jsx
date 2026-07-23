@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { Select } from '../../../components/Select/Select';
 import { Switch } from '../../../components/Switch/Switch';
 import { Icon } from '../../../components/Icon/Icon';
+import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { Input } from '../../../components/Input/Input';
 import { Textarea } from '../../../components/Textarea/Textarea';
 import { Button } from '../../../components/Button/Button';
@@ -38,9 +39,7 @@ function HiddenFields({ s, set }) {
           {names.map((n) => (
             <span key={n} className={styles.chip}>
               {n}
-              <button type="button" className={styles.chipX} onClick={() => set({ hidden: names.filter((x) => x !== n) })} aria-label={`Remove ${n}`}>
-                <Icon name="solar:close-circle-linear" size={14} color="var(--neutral-300)" />
-              </button>
+              <CloseButton size={14} onClick={() => set({ hidden: names.filter((x) => x !== n) })} className={styles.chipX} label={`Remove ${n}`} />
             </span>
           ))}
         </div>
