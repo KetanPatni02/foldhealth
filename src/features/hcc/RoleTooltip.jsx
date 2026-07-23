@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Avatar } from '../../components/Avatar/Avatar';
 import styles from './RoleTooltip.module.css';
 
 /**
@@ -91,9 +92,11 @@ function TooltipCard({ rect, name, role, initials, variant }) {
   return createPortal(
     <div className={styles.tooltip} style={style} role="tooltip">
       <div className={[styles.card, variant === 'patient' ? styles.cardPatient : styles.cardProvider].join(' ')}>
-        <span className={[styles.avatar, variant === 'patient' ? styles.avatarPatient : styles.avatarProvider].join(' ')}>
-          {initials}
-        </span>
+        <Avatar
+          variant={variant === 'patient' ? 'patient' : 'provider'}
+          initials={initials}
+          className={[styles.avatar, variant === 'patient' ? styles.avatarPatient : styles.avatarProvider].join(' ')}
+        />
         <div className={styles.text}>
           {name && <div className={styles.name}>{name}</div>}
           {role && <div className={styles.role}>{role}</div>}

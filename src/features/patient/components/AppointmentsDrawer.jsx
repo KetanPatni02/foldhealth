@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Drawer } from '../../../components/Drawer/Drawer';
 import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
+import { Avatar } from '../../../components/Avatar/Avatar';
 import { ALL_APPOINTMENTS } from '../data/overviewMock';
 import styles from './AppointmentsDrawer.module.css';
 
@@ -42,7 +43,7 @@ export function AppointmentsDrawer({ onClose }) {
           <div key={appt.id} className={styles.card}>
             <div className={styles.cardBody}>
               <div className={styles.cardTop}>
-                <div className={styles.avatar}>{appt.initials}</div>
+                <Avatar variant="provider" initials={appt.initials} />
                 <span className={styles.providerName}>{appt.name}</span>
                 <span className={styles.roleBadge}>{appt.role}</span>
               </div>

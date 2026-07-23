@@ -7,6 +7,7 @@
 import { useMemo, useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { Input } from '../../../components/Input/Input';
+import { Avatar } from '../../../components/Avatar/Avatar';
 import { leafFields, answerAverage, responseCompletion } from './aggregate';
 import { fieldIcon, initials, fmtDate, formatAnswerValue, SEV_COLOR } from './formAnalyticsUi';
 import styles from './FormAnalyticsPanel.module.css';
@@ -78,7 +79,7 @@ export function ResponsesView({ fields, scoring, formName, completed, pending })
               const isPending = r.status === 'in_progress';
               return (
                 <button key={r.id} className={`${styles.respItem} ${r.id === active?.id ? styles.respItemActive : ''}`} onClick={() => setActiveId(r.id)}>
-                  <span className={styles.avatar}>{initials(name)}</span>
+                  <Avatar variant="provider" initials={initials(name)} className={styles.avatar} />
                   <span className={styles.respItemBody}>
                     <span className={styles.respName}>{name}</span>
                     <span className={styles.respSub}>
@@ -110,7 +111,7 @@ export function ResponsesView({ fields, scoring, formName, completed, pending })
                 <>
                   <div className={styles.detailHead}>
                     <div className={styles.detailWho}>
-                      <span className={styles.avatar} style={{ width: 40, height: 40, fontSize: 14 }}>{initials(name)}</span>
+                      <Avatar variant="provider" size={40} initials={initials(name)} className={styles.avatar} />
                       <div>
                         <div className={styles.detailName}>{name}</div>
                         <div className={styles.detailMeta}>{formName} · {activeIsPending ? 'in progress' : 'response'}</div>
