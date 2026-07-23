@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
+import { Button } from '../../../components/Button/Button';
 import { BannerExpandIcon } from '../../../components/Icon/BannerExpandIcon';
 import { ProgressRing } from '../../hcc/DiagPanel/ReviewProgressPopover';
 import { PROGRAM_STEPS_MOCK, PROGRAM_LETTERS_MOCK } from '../data/programActivityMock';
@@ -230,15 +231,17 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
           <div className={styles.contentHeader}>
             <span className={styles.contentTitle}>Program Related Letters</span>
             <div className={styles.contentActions}>
-              <button className={styles.actionBtn}>
+              {/* variant=ghost gives Button its bare shell (cursor, focus, structure)
+                  so the caller's .actionBtn / .reviewedBtn class fully defines the
+                  color state (neutral border for Assign/Skip, green border for
+                  Reviewed) without Button's variant tokens overriding. */}
+              <Button variant="ghost" size="S" trailingIcon="solar:alt-arrow-down-linear" className={styles.actionBtn}>
                 Assign
-                <Icon name="solar:alt-arrow-down-linear" size={16} color="var(--neutral-300)" />
-              </button>
-              <button className={styles.actionBtn}>Skip</button>
-              <button className={styles.reviewedBtn}>
-                <Icon name="solar:check-circle-linear" size={16} color="var(--status-success)" />
+              </Button>
+              <Button variant="ghost" size="S" className={styles.actionBtn}>Skip</Button>
+              <Button variant="ghost" size="S" leadingIcon="solar:check-circle-linear" className={styles.reviewedBtn}>
                 Reviewed
-              </button>
+              </Button>
               <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
             </div>
           </div>

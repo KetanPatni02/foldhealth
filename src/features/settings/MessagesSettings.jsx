@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Icon } from '../../components/Icon/Icon';
+import { Button } from '../../components/Button/Button';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
 import { ChatSettingsPanel } from './panels/ChatSettingsPanel';
 import { useAppStore } from '../../store/useAppStore';
@@ -54,10 +55,15 @@ export function MessagesSettings() {
                 )}
               </div>
               <span className={styles.tabDivider} />
-              <button className={styles.createBtn} onClick={() => setChatGroupDetailId('new')}>
-                <Icon name="solar:add-circle-linear" size={16} />
+              <Button
+                variant="primary"
+                size="S"
+                leadingIcon="solar:add-circle-linear"
+                className={styles.createBtn}
+                onClick={() => setChatGroupDetailId('new')}
+              >
                 Add/Update Group
-              </button>
+              </Button>
             </>
           )}
         </div>

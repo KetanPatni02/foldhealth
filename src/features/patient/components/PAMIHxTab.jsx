@@ -123,11 +123,7 @@ function CollapseWrapper({ collapsed, children }) {
 }
 
 function AddBtn({ onClick }) {
-  return (
-    <button className={styles.addBtn} onClick={onClick}>
-      <Icon name="solar:add-linear" size={14} color="var(--neutral-300)" />
-    </button>
-  );
+  return <ActionButton icon="solar:add-linear" size="S" tooltip="Add" className={styles.addBtn} onClick={onClick} />;
 }
 
 // — Row components —

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Icon } from '../../components/Icon/Icon';
+import { Button } from '../../components/Button/Button';
 import { useAppStore } from '../../store/useAppStore';
 import { getNodeConfig } from './nodes/nodeConfig';
 import styles from './NodeSettings.module.css';
@@ -246,7 +247,7 @@ export function NodeSettings({ node, allNodes, onSave, onClose, onDelete }) {
             <div className={styles.sectionHeader}>
               <span className={styles.sectionLabel}>Transition</span>
               <div className={styles.addBtnWrap} ref={addMenuRef}>
-                <button className={styles.addBtn} onClick={() => setShowAddMenu(v => !v)}>+ Add New</button>
+                <Button variant="secondary" size="S" className={styles.addBtn} onClick={() => setShowAddMenu(v => !v)}>+ Add New</Button>
                 {showAddMenu && (
                   <div className={styles.addDropdown}>
                     <button className={styles.addDropdownItem} onClick={() => addTransition('prompt')}>
