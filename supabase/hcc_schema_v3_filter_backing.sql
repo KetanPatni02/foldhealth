@@ -93,7 +93,10 @@ UPDATE hcc_members SET
 -- Step 3 + refresh — hcc_members_v2 view with the new columns + derived counts
 -- ─────────────────────────────────────────────────────────────────────────────
 DROP VIEW IF EXISTS hcc_members_v2;
-CREATE VIEW hcc_members_v2 AS
+-- security_invoker=on so RLS on the underlying tables is evaluated as the
+-- querying user (anon/authenticated), not the view's owner. Without this
+-- the view acts SECURITY-DEFINER and Supabase's advisor flags it.
+CREATE VIEW hcc_members_v2 WITH (security_invoker = on) AS
 SELECT
   m.*,
   COALESCE(
