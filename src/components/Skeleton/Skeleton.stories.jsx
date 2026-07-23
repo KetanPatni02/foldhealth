@@ -1,4 +1,4 @@
-import { TableSkeleton, SimpleTableSkeleton, CardSkeleton, KpiSkeleton } from './CardSkeleton';
+import { CardSkeleton, KpiSkeleton, SimpleTableSkeleton } from './CardSkeleton';
 import { TableSkeleton as FullTableSkeleton } from './TableSkeleton';
 
 // The Skeleton directory exports several composed loading-state skeletons
@@ -9,7 +9,7 @@ export default {
   argTypes: {
     variant: {
       control: 'select',
-      options: ['TableSkeleton', 'SimpleTableSkeleton', 'CardSkeleton', 'KpiSkeleton'],
+      options: ['FullTableSkeleton', 'SimpleTableSkeleton', 'CardSkeleton', 'KpiSkeleton'],
       description: 'Which skeleton composition to render',
     },
     rows: { control: { type: 'number', min: 1, max: 20 }, description: 'Row count (Table/SimpleTable)' },
@@ -19,7 +19,7 @@ export default {
 };
 
 function Wrapper({ variant, rows, cols, count }) {
-  if (variant === 'TableSkeleton') return <FullTableSkeleton rows={rows} />;
+  if (variant === 'FullTableSkeleton') return <FullTableSkeleton rows={rows} />;
   if (variant === 'SimpleTableSkeleton') return <SimpleTableSkeleton rows={rows} cols={cols} />;
   if (variant === 'CardSkeleton') return <CardSkeleton count={count} />;
   if (variant === 'KpiSkeleton') return <KpiSkeleton count={count} />;
@@ -28,7 +28,7 @@ function Wrapper({ variant, rows, cols, count }) {
 
 export const Playground = {
   render: (args) => <Wrapper {...args} />,
-  args: { variant: 'TableSkeleton', rows: 6, cols: 6, count: 4 },
+  args: { variant: 'FullTableSkeleton', rows: 6, cols: 6, count: 4 },
 };
 
 export const AllExamples = {
