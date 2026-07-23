@@ -56,7 +56,6 @@
     "@xyflow/react": "^12.10.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "featurebase-js": "^1.0.3",
     "jspdf": "^4.2.1",
     "pdfjs-dist": "^5.7.284",
     "preact": "^10.29.2",

@@ -10,7 +10,6 @@ import { supabase } from './lib/supabase';
 import { initRouter } from './lib/router';
 import { track, trackPageview } from './lib/tracking';
 import { maybeApplyOrgDefaults } from './lib/orgDefaults';
-import { FeaturebaseProvider } from 'featurebase-js/react';
 
 // Public, shareable form fill-view (#/f/{id}) — rendered without auth so a
 // link can be opened by anyone. RLS on forms/form_responses ('Allow all')
@@ -34,6 +33,22 @@ function App() {
     return /type=recovery/.test(h) || /type=signup/.test(h)
       || /token_hash=/.test(h) || h.startsWith('#/reset-password');
   });
+  // Featurebase identity-verification JWT — minted server-side by the
+  // featurebase-jwt Edge Function (the signing secret never reaches the
+  // client). The Help popover's "Give Feedback" builds the portal SSO link
+  // from it so users land on the feedback portal already signed in.
+  // Dev-bypass sessions stay anonymous (plain portal link).
+  useEffect(() => {
+    const setFeaturebaseJwt = useAppStore.getState().setFeaturebaseJwt;
+    if (!session?.user) { setFeaturebaseJwt(null); return; }
+    let cancelled = false;
+    supabase.functions.invoke('featurebase-jwt').then(({ data, error }) => {
+      if (error) console.warn('[featurebase] jwt mint failed:', error.message);
+      if (!cancelled && data?.jwt) setFeaturebaseJwt(data.jwt);
+    });
+    return () => { cancelled = true; };
+  }, [session]);
+
   // Track the hash so the public-form route reacts to navigation.
   const [hash, setHash] = useState(() => window.location.hash);
   useEffect(() => {
@@ -179,25 +194,14 @@ function App() {
     window.location.hash = '#/home';
   }
 
-  // Authenticated — show app. FeaturebaseProvider powers the Help section's
-  // feedback board + changelog widgets (Sidebar/HelpPopover); messenger={false}
-  // keeps Featurebase's floating chat launcher out of the app. Identity is
-  // the plain (unverified) fields — dev-bypass sessions just stay anonymous.
+  // Authenticated — show app
   return (
-    <FeaturebaseProvider
-      appId="6a626c892c9fe4e7178fe114"
-      messenger={false}
-      userId={session?.user?.id}
-      email={session?.user?.email}
-      name={session?.user?.user_metadata?.full_name || undefined}
-    >
-      <Suspense fallback={null}>
-        <UpdateAvailableBanner />
-        <AppLayout />
-        <Analytics />
-        <SpeedInsights />
-      </Suspense>
-    </FeaturebaseProvider>
+    <Suspense fallback={null}>
+      <UpdateAvailableBanner />
+      <AppLayout />
+      <Analytics />
+      <SpeedInsights />
+    </Suspense>
   );
 }
 

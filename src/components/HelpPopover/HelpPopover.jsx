@@ -255,7 +255,7 @@ const FEATURES = [
   },
 ];
 
-export function HelpPopover({ onClose, onOpenChangelog, changelogUnread = 0 }) {
+export function HelpPopover({ onClose, onOpenFeedback, onOpenChangelog, changelogUnread = 0 }) {
   const setActivePage = useAppStore(s => s.setActivePage);
   const setActiveTab = useAppStore(s => s.setActiveTab);
   const setCurrentPage = useAppStore(s => s.setCurrentPage);
@@ -303,20 +303,16 @@ export function HelpPopover({ onClose, onOpenChangelog, changelogUnread = 0 }) {
         {/* Pinned Featurebase actions — feedback board + changelog. */}
         <div className={styles.group}>
           <div className={styles.groupLabel}>Feedback &amp; Updates</div>
-          {/* data-featurebase-feedback — the booted feedback widget (see
-              Sidebar) opens its panel on clicks from any element carrying
-              this attribute; the panel outlives this popover closing. */}
           <button
             className={styles.item}
-            data-featurebase-feedback=""
-            onClick={onClose}
+            onClick={() => { onOpenFeedback?.(); onClose(); }}
           >
             <div className={styles.itemIcon}>
               <Icon name="solar:chat-round-like-linear" size={16} />
             </div>
             <div className={styles.itemContent}>
               <div className={styles.breadcrumb}><span>Give Feedback</span></div>
-              <div className={styles.description}>Share ideas, report issues, and vote on feature requests.</div>
+              <div className={styles.description}>Share ideas, report issues, and vote on feature requests — opens the feedback portal in a new tab.</div>
             </div>
           </button>
           <button

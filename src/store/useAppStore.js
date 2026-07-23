@@ -856,6 +856,13 @@ export const useAppStore = create((set, get) => ({
     set({ navStyle: applied });
   },
 
+  // ─── Featurebase (Help → Give Feedback) ─────────────────────────────
+  // Identity-verification JWT minted by the featurebase-jwt Edge Function
+  // after login (see App.jsx). Used to build the portal SSO link so users
+  // land on feedback.foldhealth signed in. Null for dev-bypass sessions.
+  featurebaseJwt: null,
+  setFeaturebaseJwt: (jwt) => set({ featurebaseJwt: jwt }),
+
   // ─── Changelog (Help → What's New) ──────────────────────────────────
   // Rows are inserted by .github/workflows/changelog.yml on each push to
   // main; the app only reads. `changelogSeenAt` drives the unread badge and
