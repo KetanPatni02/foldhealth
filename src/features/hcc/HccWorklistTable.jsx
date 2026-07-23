@@ -5,6 +5,7 @@ import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { Button } from '../../components/Button/Button';
 import { MenuPopover } from '../../components/Popover/MenuPopover';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
 import { useTableSort } from '../../components/Table/useTableSort';
@@ -68,12 +69,13 @@ function UploadMenuButton({ onUploadDocument, onAddManually }) {
   );
 }
 
-function EmptyState({ title, message, icon = 'solar:magnifer-linear' }) {
+function EmptyState({ title, message, icon = 'solar:magnifer-linear', action = null }) {
   return (
     <div className={styles.empty}>
       <Icon name={icon} size={40} color="var(--neutral-200)" />
       <p className={styles.emptyTitle}>{title}</p>
       <p className={styles.emptyMessage}>{message}</p>
+      {action}
     </div>
   );
 }
@@ -167,6 +169,7 @@ export function HccWorklistTable() {
   const hccDueDateFilter = useAppStore(s => s.hccDueDateFilter);
   const setHccDueDateFilter = useAppStore(s => s.setHccDueDateFilter);
   const hccFilters = useAppStore(s => s.hccFilters);
+  const clearHccFilters = useAppStore(s => s.clearHccFilters);
   const saveHccFilter = useAppStore(s => s.saveHccFilter);
   const renameHccSavedFilter = useAppStore(s => s.renameHccSavedFilter);
   const openHccHistoryDrawer = useAppStore(s => s.openHccHistoryDrawer);
@@ -273,6 +276,10 @@ export function HccWorklistTable() {
     );
     return rows;
   }, [enriched, searchQuery, hccDueDateFilter, hccFilters]);
+
+  // Any filter that can scope rows out — chip filters or the Due Date chip.
+  // Drives the "change your filters" empty state vs the true-empty one.
+  const filtersActive = !!hccDueDateFilter || countActiveFilters(hccFilters) > 0;
 
   // SLA default (Astrana DOS worklist): Created Date ascending — oldest first,
   // so records closest to breaching the 14-day window surface at the top.
@@ -404,7 +411,26 @@ export function HccWorklistTable() {
             message={`No members match "${searchQuery.trim()}". Try a different search term.`}
           />
         )}
-        {filtered.length === 0 && !searchQuery?.trim() && !hccMembersLoading && (
+        {/* Filters (chips or Due Date) scoped everything out — prompt the
+            user to adjust them instead of implying the list is empty. */}
+        {filtered.length === 0 && !searchQuery?.trim() && filtersActive && !hccMembersLoading && (
+          <EmptyState
+            title="No records match your filters"
+            message="Try changing or removing some filters to see more records."
+            icon="solar:filter-linear"
+            action={
+              <Button
+                variant="secondary"
+                size="S"
+                leadingIcon="solar:close-circle-linear"
+                onClick={() => { clearHccFilters(); setHccDueDateFilter(null); }}
+              >
+                Clear All Filters
+              </Button>
+            }
+          />
+        )}
+        {filtered.length === 0 && !searchQuery?.trim() && !filtersActive && !hccMembersLoading && (
           <EmptyState
             title="No HCC members yet"
             message="Members will appear here once assigned."
