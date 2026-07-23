@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
+import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { Badge } from '../../components/Badge/Badge';
 import { Button } from '../../components/Button/Button';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
@@ -1078,9 +1079,7 @@ function TagInput({ value = [], onChange, placeholder }) {
       {value.map(tag => (
         <span key={tag} className={styles.tag}>
           {tag}
-          <button className={styles.tagClose} onClick={() => removeTag(tag)}>
-            <Icon name="solar:close-linear" size={10} color="var(--neutral-300)" />
-          </button>
+          <CloseButton size={10} onClick={() => removeTag(tag)} className={styles.tagClose} label="Remove" />
         </span>
       ))}
       <input
@@ -1138,9 +1137,7 @@ function MultiSelectField({ label, required, options, value = [], onChange }) {
           {value.length > 0 ? value.map(v => (
             <span key={v} className={styles.tag}>
               {v}
-              <button className={styles.tagClose} onClick={e => { e.stopPropagation(); toggle(v); }}>
-                <Icon name="solar:close-linear" size={10} color="var(--neutral-300)" />
-              </button>
+              <CloseButton size={10} onClick={e => { e.stopPropagation(); toggle(v); }} className={styles.tagClose} label="Remove" />
             </span>
           )) : <span style={{ color: 'var(--neutral-200)', fontSize: 14 }}>Select...</span>}
           <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" style={{ marginLeft: 'auto', flexShrink: 0 }} />

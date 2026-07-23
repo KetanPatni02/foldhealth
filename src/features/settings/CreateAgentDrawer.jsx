@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Icon } from '../../components/Icon/Icon';
+import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { CloseIcon } from '../../components/Icon/CloseIcon';
 import { Button } from '../../components/Button/Button';
 import { Input } from '../../components/Input/Input';
@@ -367,9 +368,7 @@ function StepPrompt({ agentName, setAgentName, onBack, prompt, setPrompt }) {
               <div key={i} className={styles.attachedFile}>
                 <Icon name="solar:document-text-linear" size={14} color="var(--primary-300)" />
                 <span>{f}</span>
-                <button className={styles.removeFileBtn} onClick={() => removeFile(i)}>
-                  <Icon name="solar:close-circle-linear" size={14} color="var(--neutral-300)" />
-                </button>
+                <CloseButton size={14} onClick={() => removeFile(i)} className={styles.removeFileBtn} label="Remove file" />
               </div>
             ))}
           </div>

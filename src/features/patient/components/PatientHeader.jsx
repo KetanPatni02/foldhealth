@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Avatar } from '../../../components/Avatar/Avatar';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Icon } from '../../../components/Icon/Icon';
+import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { CONDITION_TAGS, HEADER_METRICS } from '../data/overviewMock';
 import styles from './PatientHeader.module.css';
 
@@ -87,9 +88,7 @@ export function PatientHeader({ patient }) {
           <span key={i} className={styles.tag}>
             {tag.label}
             {tag.removable && (
-              <button className={styles.tagClose} onClick={() => setTags(prev => prev.filter((_, j) => j !== i))}>
-                <Icon name="solar:close-linear" size={10} color="var(--neutral-300)" />
-              </button>
+              <CloseButton size={10} onClick={() => setTags(prev => prev.filter((_, j) => j !== i))} className={styles.tagClose} label="Remove tag" />
             )}
           </span>
         ))}

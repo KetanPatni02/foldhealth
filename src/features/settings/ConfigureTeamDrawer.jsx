@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Button } from '../../components/Button/Button';
 import { Icon } from '../../components/Icon/Icon';
+import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { useAppStore } from '../../store/useAppStore';
 import { FALLBACK_USERS } from './AccountPanel';
@@ -581,9 +582,7 @@ function UserCard({ member, teamType, priorUtilization, breakdown = [], usersFor
           />
           <span className={drawerStyles.capacityPct}>%</span>
         </div>
-        <button type="button" className={drawerStyles.userRemoveBtn} onClick={onRemove} aria-label="Remove">
-          <Icon name="solar:close-linear" size={14} color="var(--neutral-300)" />
-        </button>
+        <CloseButton size={14} onClick={onRemove} className={drawerStyles.userRemoveBtn} label="Remove" />
       </div>
 
       {/* Assign To */}
