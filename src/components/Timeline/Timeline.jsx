@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Icon } from '../Icon/Icon';
+import { Badge } from '../Badge/Badge';
 
 /**
  * Timeline — month-grouped vertical timeline used by Domain Registry's
@@ -28,7 +29,7 @@ export function Timeline({ entries, currentUserName, renderExtra, emptyLabel = '
         <div key={group.label}>
           <div style={{
             fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)',
-            textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 8, paddingLeft: 4,
+            marginBottom: 8, paddingLeft: 4,
           }}>
             {group.label}
           </div>
@@ -79,13 +80,15 @@ const ACTION_CONFIG = {
 };
 const DEFAULT_CONFIG = { icon: 'solar:document-text-linear', bg: 'var(--neutral-50)', border: 'color-mix(in srgb, var(--neutral-300) 10%, transparent)', color: 'var(--neutral-300)' };
 
-const STATUS_COLORS = {
-  Enabled:  { bg: 'var(--status-success-light)', color: 'var(--status-success-bright)' },
-  Disabled: { bg: 'var(--status-warning-light)', color: 'var(--status-warning)' },
-  Active:   { bg: 'var(--status-success-light)', color: 'var(--status-success-bright)' },
-  Inactive: { bg: 'var(--status-warning-light)', color: 'var(--status-warning)' },
-  Verified: { bg: 'var(--status-success-light)', color: 'var(--status-success-bright)' },
-  Removed:  { bg: 'var(--status-error-light)', color: 'var(--status-error)' },
+// Map status strings to the shared Badge component's variant keys so status
+// pills in the changelog match the rest of the app's status badges.
+const STATUS_VARIANT = {
+  Enabled:  'status-ready',
+  Disabled: 'status-queued',
+  Active:   'status-ready',
+  Inactive: 'status-queued',
+  Verified: 'status-ready',
+  Removed:  'status-failed',
 };
 
 function ArrowRight() {
@@ -95,13 +98,11 @@ function ArrowRight() {
 /** A single field-level change row inside a TimelineEntry. */
 export function ChangeDisplay({ change }) {
   if (change.type === 'status') {
-    const fromColor = STATUS_COLORS[change.from] || { bg: 'var(--neutral-50)', color: 'var(--neutral-300)' };
-    const toColor = STATUS_COLORS[change.to] || { bg: 'var(--neutral-50)', color: 'var(--neutral-300)' };
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ display: 'inline-flex', padding: '2px 6px', borderRadius: 4, fontSize: 12, background: fromColor.bg, color: fromColor.color }}>{change.from}</span>
+        <Badge variant={STATUS_VARIANT[change.from] || 'toc-new'} label={change.from} />
         <ArrowRight />
-        <span style={{ display: 'inline-flex', padding: '2px 6px', borderRadius: 4, fontSize: 12, background: toColor.bg, color: toColor.color }}>{change.to}</span>
+        <Badge variant={STATUS_VARIANT[change.to] || 'toc-new'} label={change.to} />
       </div>
     );
   }
@@ -178,7 +179,9 @@ export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderE
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6, marginBottom: 4 }}>
               {entry.changes.map((c, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--neutral-200)', minWidth: 60, textTransform: 'capitalize' }}>{c.field}</span>
+                  {c.field && (
+                    <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--neutral-200)', textTransform: 'capitalize' }}>{c.field}</span>
+                  )}
                   <ChangeDisplay change={c} />
                 </div>
               ))}
