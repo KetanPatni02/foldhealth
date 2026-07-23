@@ -64,6 +64,9 @@
   font-size: 14px;
   opacity: 0.9;
   font-weight: 400;
+  /* Sonner's default CSS sets its own description color; force white so it
+     stays legible on top of the tinted success/error/warning/info background. */
+  color: var(--neutral-0) !important;
 }
 
 .closeButton {

@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Toaster, toast } from './Toast';
 import { Button } from '../Button/Button';
+import { Switch } from '../Switch/Switch';
 
 export default {
   title: 'Overlays/Toast',
@@ -14,19 +16,46 @@ export default {
   },
 };
 
-export const Playground = {
-  render: () => (
-    <div style={{ padding: 24 }}>
+function Playground_() {
+  const [withDescription, setWithDescription] = useState(false);
+  const desc = (text) => (withDescription ? { description: text } : undefined);
+
+  return (
+    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
       <Toaster />
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <Button variant="success" onClick={() => toast.success('Uploaded chart.pdf')}>Success</Button>
-        <Button variant="danger" onClick={() => toast.error('Upload failed')}>Error</Button>
-        <Button variant="info" onClick={() => toast.info('A newer version of Foldhealth is available.')}>Info</Button>
-        <Button variant="alt" onClick={() => toast.warning('Session will expire in 2 minutes.')}>Warning</Button>
-        <Button variant="primary" onClick={() => toast.success('DOS reassigned', { description: 'Ownership handed off to Priya Nair. The prior coder\'s notes are preserved.' })}>
-          With description
+        <Button
+          variant="success"
+          onClick={() => toast.success('Uploaded chart.pdf', desc('Sent to the Coder queue for review.'))}
+        >
+          Success
+        </Button>
+        <Button
+          variant="danger"
+          onClick={() => toast.error('Upload failed', desc('The file exceeds the 100 MB limit. Try a smaller file.'))}
+        >
+          Error
+        </Button>
+        <Button
+          variant="info"
+          onClick={() => toast.info('New Foldhealth version available', desc('Reload to pick up the latest build.'))}
+        >
+          Info
+        </Button>
+        <Button
+          variant="alt"
+          onClick={() => toast.warning('Session will expire in 2 minutes', desc('Save any open work — unsaved changes will be lost.'))}
+        >
+          Warning
         </Button>
       </div>
+      <Switch
+        checked={withDescription}
+        onChange={setWithDescription}
+        label="Include description in every toast"
+      />
     </div>
-  ),
-};
+  );
+}
+
+export const Playground = { render: () => <Playground_ /> };
