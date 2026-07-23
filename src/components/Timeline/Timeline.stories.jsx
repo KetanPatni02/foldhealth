@@ -42,9 +42,45 @@ export default {
 };
 
 const SAMPLE = [
-  { id: 1, t: 'note', by: 'You', role: 'Coder', headline: 'Added a note', body: 'Confirmed diabetes with retinopathy.', at: '2026-07-22T10:00:00Z' },
-  { id: 2, t: 'status', by: 'Ana Torres', role: 'QA', headline: 'Marked as Reviewed', at: '2026-07-21T15:00:00Z' },
-  { id: 3, t: 'upload', by: 'You', role: 'Coder', headline: 'Uploaded chart.pdf', file: 'chart.pdf', at: '2026-07-20T09:15:00Z' },
+  {
+    id: 1,
+    createdAt: '2026-07-22T10:00:00Z',
+    date: 'Jul 22, 2026',
+    time: '10:00 AM',
+    user: 'You',
+    action: 'note',
+    details: 'Confirmed diabetes with retinopathy. Ophthalmology note attached.',
+    category: 'Coder note',
+  },
+  {
+    id: 2,
+    createdAt: '2026-07-21T15:00:00Z',
+    date: 'Jul 21, 2026',
+    time: '3:00 PM',
+    user: 'Ana Torres',
+    action: 'updated',
+    details: 'Marked review as complete',
+    changes: [{ type: 'status', from: 'In Progress', to: 'Verified' }],
+  },
+  {
+    id: 3,
+    createdAt: '2026-07-20T09:15:00Z',
+    date: 'Jul 20, 2026',
+    time: '9:15 AM',
+    user: 'You',
+    action: 'created',
+    details: 'Uploaded chart.pdf',
+    category: 'Document',
+  },
+  {
+    id: 4,
+    createdAt: '2026-06-30T11:42:00Z',
+    date: 'Jun 30, 2026',
+    time: '11:42 AM',
+    user: 'Priya Nair',
+    action: 'previewed',
+    details: 'Reviewed prior encounter notes',
+  },
 ];
 
 export const Playground = { args: { entries: SAMPLE, currentUserName: 'You' } };
