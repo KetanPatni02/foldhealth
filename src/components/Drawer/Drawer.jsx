@@ -1,7 +1,12 @@
+import { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../Icon/Icon';
 import { CloseIcon } from '../Icon/CloseIcon';
 import styles from './Drawer.module.css';
+
+// Matches the slideOut / overlayOut animation duration in Drawer.module.css.
+// Keep in sync — bumping one without the other clips or lags the exit.
+const CLOSE_ANIM_MS = 250;
 
 /**
  * Shared Drawer shell — the standard floating right-side panel.
@@ -32,15 +37,26 @@ import styles from './Drawer.module.css';
  *  - Animation: slideIn .25s ease (translateX)
  */
 export function Drawer({ title, onClose, headerRight, banner, footer, children, className, bodyClassName, headerStyle, titleStyle, noCloseDivider }) {
+  // `closing` flips true when the user requests close; we keep the drawer
+  // mounted for CLOSE_ANIM_MS so the slideOut + fade-out play, then call
+  // the parent's onClose to actually unmount. Overlay clicks and close-
+  // button clicks both go through this same gate.
+  const [closing, setClosing] = useState(false);
+  const requestClose = useCallback(() => {
+    if (closing) return;
+    setClosing(true);
+    setTimeout(() => onClose?.(), CLOSE_ANIM_MS);
+  }, [closing, onClose]);
+
   return createPortal(
     <>
-      <div className={styles.overlay} onClick={onClose} />
-      <div className={`${styles.panel}${className ? ` ${className}` : ''}`}>
+      <div className={styles.overlay} data-closing={closing ? 'true' : 'false'} onClick={requestClose} />
+      <div className={`${styles.panel}${className ? ` ${className}` : ''}`} data-closing={closing ? 'true' : 'false'}>
         <div className={styles.header} style={headerStyle}>
           <h2 className={styles.headerTitle} style={titleStyle}>{title}</h2>
           <div className={styles.headerRight}>
             {headerRight}
-            <button className={`${styles.closeBtn}${noCloseDivider ? ` ${styles.closeBtnNoDivider}` : ''}`} onClick={onClose}>
+            <button className={`${styles.closeBtn}${noCloseDivider ? ` ${styles.closeBtnNoDivider}` : ''}`} onClick={requestClose}>
               <CloseIcon size={20} />
             </button>
           </div>

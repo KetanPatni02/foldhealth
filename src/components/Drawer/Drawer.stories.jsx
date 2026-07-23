@@ -16,16 +16,19 @@ export default {
   },
 };
 
+const centerStage = { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 24 };
+
 /**
- * Stories render the Drawer open by default so the panel is visible in the
- * canvas. Closing it reveals a "Reopen Drawer" button to demo the open path.
+ * Drawer starts closed; the centered trigger opens it. Close via overlay
+ * click or the close button — both play the slideOut + overlay fade before
+ * unmounting.
  */
 function DrawerDemo({ title = "Drawer Title", children }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   return (
-    <div style={{ padding: 24, minHeight: "100vh" }}>
+    <div style={centerStage}>
       <Button variant="primary" onClick={() => setOpen(true)}>
-        Reopen Drawer
+        Open Drawer
       </Button>
       {open && (
         <Drawer title={title} onClose={() => setOpen(false)}>
@@ -53,11 +56,11 @@ export const Default = {
 
 export const WithPatientBanner = {
   render: () => {
-    const [open, setOpen] = useState(true);
+    const [open, setOpen] = useState(false);
     return (
-      <div style={{ padding: 24, minHeight: "100vh" }}>
+      <div style={centerStage}>
         <Button variant="primary" onClick={() => setOpen(true)}>
-          Reopen Drawer
+          Open Drawer
         </Button>
         {open && (
           <Drawer
