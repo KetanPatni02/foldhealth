@@ -4,6 +4,14 @@ export default {
   title: 'Core/Button',
   component: Button,
   tags: ['autodocs'],
+  parameters: {
+    docs: {
+      description: {
+        component:
+          'The single button primitive used everywhere in the app. Pick a `variant` for meaning (primary for the main action, secondary for the alternative, ghost for low-emphasis controls, success / danger / info for status-flavored actions) and a `size` for context (S for dense toolbars, L for standard use, XL for mobile). Supports leading and trailing Solar icons and can be flipped to an `iconOnly` square variant when the layout is tight.',
+      },
+    },
+  },
   argTypes: {
     variant: {
       control: 'select',

@@ -6,6 +6,15 @@ import { UnityIcon } from '../UnityIcon/UnityIcon';
 export default {
   title: 'Core/Icon',
   component: Icon,
+  tags: ['autodocs'],
+  parameters: {
+    docs: {
+      description: {
+        component:
+          'Renders any Iconify icon by name — the app standardizes on the Solar set at 1px stroke (see `solar:*-linear` variants) with a handful of in-repo `custom:*` icons for shapes Solar doesn\'t cover. Use this instead of importing SVGs directly so sizing, color, and stroke-width stay consistent.',
+      },
+    },
+  },
   argTypes: {
     name: { control: 'text' },
     size: { control: 'number' },

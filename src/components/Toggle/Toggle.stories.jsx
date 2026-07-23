@@ -5,6 +5,14 @@ export default {
   title: 'Core/Toggle',
   component: Toggle,
   tags: ['autodocs'],
+  parameters: {
+    docs: {
+      description: {
+        component:
+          'A segmented on/off control — two to four short labels with a sliding pill that animates to the active option. Use it for view switches (HCC / ICD, Workflow / Configure / Analytics) where the choices are always visible and mutually exclusive. For binary on/off preferences prefer `Switch`; for longer option lists prefer `Select` or `RadioButton`.',
+      },
+    },
+  },
   argTypes: {
     size: { control: 'select', options: ['S', 'M'], description: 'S = 28px/13px, M = 32px/14px' },
     fullWidth: { control: 'boolean', description: 'Flex buttons to fill width' },
