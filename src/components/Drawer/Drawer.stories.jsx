@@ -52,24 +52,40 @@ export const Default = {
 };
 
 export const WithPatientBanner = {
-  render: () => (
-    <DrawerDemo title="Patient Detail">
-      <PatientBanner
-        initials="JD"
-        name="Jane Doe"
-        gender="Female"
-        age="67y 2m"
-        memberId="#219384756102"
-        raf="4.234"
-        rafChange="0.512"
-        onCall={() => {}}
-      />
-      <p style={{ color: "var(--neutral-400)", fontSize: 14, lineHeight: 1.6, marginTop: 16 }}>
-        The same Drawer shell with a <strong>PatientBanner</strong> composed
-        at the top of the body — the canonical layout for patient-context
-        drawers (call queue, care-gap review, HCC). Use the expand chevron on
-        the banner to reveal patient details and synopsis.
-      </p>
-    </DrawerDemo>
-  ),
+  render: () => {
+    const [open, setOpen] = useState(true);
+    return (
+      <div style={{ padding: 24, minHeight: "100vh" }}>
+        <Button variant="primary" onClick={() => setOpen(true)}>
+          Reopen Drawer
+        </Button>
+        {open && (
+          <Drawer
+            title="Patient Detail"
+            onClose={() => setOpen(false)}
+            banner={
+              <PatientBanner
+                initials="JD"
+                name="Jane Doe"
+                gender="Female"
+                age="67y 2m"
+                memberId="#219384756102"
+                raf="4.234"
+                rafChange="0.512"
+                onCall={() => {}}
+              />
+            }
+          >
+            <p style={{ color: "var(--neutral-400)", fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+              The same Drawer shell with a <strong>PatientBanner</strong>
+              passed via the <code>banner</code> prop — it stacks between the
+              header and the body, full-width, hugging the drawer edges. This
+              is the canonical layout for patient-context drawers (call queue,
+              care-gap review, HCC).
+            </p>
+          </Drawer>
+        )}
+      </div>
+    );
+  },
 };

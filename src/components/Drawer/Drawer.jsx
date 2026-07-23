@@ -13,8 +13,12 @@ import styles from './Drawer.module.css';
  *  - title        (ReactNode)  Header title text / element
  *  - onClose      (function)   Called when overlay or close button is clicked
  *  - headerRight  (ReactNode)  Extra elements rendered to the left of the close button
+ *  - banner       (ReactNode)  Full-bleed slot rendered between header and body
+ *                              (used for PatientBanner / hero rows that should
+ *                              hug the drawer edges instead of sitting inside
+ *                              the padded body)
  *  - footer       (ReactNode)  Optional sticky footer content
- *  - children     (ReactNode)  Scrollable body content
+ *  - children     (ReactNode)  Scrollable body content (16px padded)
  *  - className    (string)     Extra class on the panel root (rare)
  *
  * Design tokens (DO NOT change without design review):
@@ -27,7 +31,7 @@ import styles from './Drawer.module.css';
  *  - Footer padding: 16px 24px (if present)
  *  - Animation: slideIn .25s ease (translateX)
  */
-export function Drawer({ title, onClose, headerRight, footer, children, className, bodyClassName, headerStyle, titleStyle, noCloseDivider }) {
+export function Drawer({ title, onClose, headerRight, banner, footer, children, className, bodyClassName, headerStyle, titleStyle, noCloseDivider }) {
   return createPortal(
     <>
       <div className={styles.overlay} onClick={onClose} />
@@ -41,6 +45,7 @@ export function Drawer({ title, onClose, headerRight, footer, children, classNam
             </button>
           </div>
         </div>
+        {banner && <div className={styles.banner}>{banner}</div>}
         <div className={`${styles.body}${bodyClassName ? ` ${bodyClassName}` : ''}`}>
           {children}
         </div>

@@ -93,6 +93,13 @@
   color: var(--neutral-400);
 }
 
+/* Full-bleed slot between header and body. Callers pass their own
+   fully-styled element (typically PatientBanner) that should hug the
+   drawer edges — no side padding here. */
+.banner {
+  flex-shrink: 0;
+}
+
 .body {
   flex: 1;
   overflow-y: auto;
