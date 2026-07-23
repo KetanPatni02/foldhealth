@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Drawer } from '../../../components/Drawer/Drawer';
 import { Button } from '../../../components/Button/Button';
 import { Icon } from '../../../components/Icon/Icon';
+import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { Avatar } from '../../../components/Avatar/Avatar';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Input } from '../../../components/Input/Input';
@@ -1008,9 +1009,7 @@ function StagedFileRow({ file, onRemove, onPreview }) {
       </div>
       <div className={styles.stagedActions}>
         {isUploading && (
-          <button type="button" className={styles.stagedActionBtn} onClick={onRemove} title="Remove">
-            <Icon name="solar:close-circle-linear" size={14} color="var(--neutral-300)" />
-          </button>
+          <CloseButton size={14} onClick={onRemove} className={styles.stagedActionBtn} label="Remove" />
         )}
       </div>
     </div>

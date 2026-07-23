@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
+import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Button } from '../../../components/Button/Button';
 import { Badge } from '../../../components/Badge/Badge';
@@ -1712,9 +1713,7 @@ function DocUploaderFileRow({ file, phase, progress, onRefresh, onRemove }) {
             </button>
           )}
           <span className={styles.docFileRowDivider} />
-          <button type="button" className={styles.docFileRowIconBtn} onClick={onRemove} aria-label="Remove">
-            <Icon name="solar:close-circle-linear" size={14} color="var(--neutral-300)" />
-          </button>
+          <CloseButton size={14} onClick={onRemove} className={styles.docFileRowIconBtn} label="Remove" />
         </div>
       </div>
       {phase === 'uploading' && (

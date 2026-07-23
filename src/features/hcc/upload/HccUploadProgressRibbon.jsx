@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
+import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import styles from './HccUploadProgressRibbon.module.css';
 
 /**
@@ -66,14 +67,7 @@ export function HccUploadProgressRibbon() {
           <Icon name="solar:magic-stick-3-linear" size={13} color="#fff" />
           Ready to Review
         </button>
-        <button
-          type="button"
-          className={styles.ribbonClose}
-          onClick={() => dismissAll()}
-          aria-label="Dismiss"
-        >
-          <Icon name="solar:close-circle-linear" size={14} color="var(--neutral-300)" />
-        </button>
+        <CloseButton size={14} onClick={() => dismissAll()} className={styles.ribbonClose} label="Dismiss" />
       </div>
     );
   }
@@ -99,14 +93,7 @@ export function HccUploadProgressRibbon() {
         <Icon name="solar:magic-stick-3-linear" size={12} color="var(--primary-300)" />
         View
       </button>
-      <button
-        type="button"
-        className={styles.ribbonClose}
-        onClick={() => dismissAll()}
-        aria-label="Dismiss"
-      >
-        <Icon name="solar:close-circle-linear" size={14} color="var(--neutral-300)" />
-      </button>
+      <CloseButton size={14} onClick={() => dismissAll()} className={styles.ribbonClose} label="Dismiss" />
     </div>
   );
 }
