@@ -24,6 +24,9 @@ const CLOSE_ANIM_MS = 250;
  *                              the padded body)
  *  - footer       (ReactNode)  Optional sticky footer content
  *  - children     (ReactNode)  Scrollable body content (16px padded)
+ *  - width        (number|string) Override the default 700px panel width
+ *                              (e.g. 1300 for the HCC Document Review drawer).
+ *                              Numbers are treated as px.
  *  - className    (string)     Extra class on the panel root (rare)
  *
  * Design tokens (DO NOT change without design review):
@@ -36,7 +39,10 @@ const CLOSE_ANIM_MS = 250;
  *  - Footer padding: 16px 24px (if present)
  *  - Animation: slideIn .25s ease (translateX)
  */
-export function Drawer({ title, onClose, headerRight, banner, footer, children, className, bodyClassName, headerStyle, titleStyle, noCloseDivider }) {
+export function Drawer({ title, onClose, headerRight, banner, footer, children, className, bodyClassName, headerStyle, titleStyle, noCloseDivider, width }) {
+  const panelStyle = width !== undefined
+    ? { width: typeof width === 'number' ? `${width}px` : width }
+    : undefined;
   // `closing` flips true when the user requests close; we keep the drawer
   // mounted for CLOSE_ANIM_MS so the slideOut + fade-out play, then call
   // the parent's onClose to actually unmount. Overlay clicks and close-
@@ -51,7 +57,7 @@ export function Drawer({ title, onClose, headerRight, banner, footer, children, 
   return createPortal(
     <>
       <div className={styles.overlay} data-closing={closing ? 'true' : 'false'} onClick={requestClose} />
-      <div className={`${styles.panel}${className ? ` ${className}` : ''}`} data-closing={closing ? 'true' : 'false'}>
+      <div className={`${styles.panel}${className ? ` ${className}` : ''}`} data-closing={closing ? 'true' : 'false'} style={panelStyle}>
         <div className={styles.header} style={headerStyle}>
           <h2 className={styles.headerTitle} style={titleStyle}>{title}</h2>
           <div className={styles.headerRight}>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { CloseButton } from '../../components/CloseButton/CloseButton';
+import { Drawer } from '../../components/Drawer/Drawer';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { CommentComposer } from '../../components/CommentComposer/CommentComposer';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
@@ -655,21 +656,23 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     resetUpload();
   };
 
-  return createPortal(
+  // Wraps the shared Drawer so this reviewer participates in the same
+  // portal + slide animation + overlay behavior as every other drawer.
+  // `width={1300}` keeps the wide two-pane layout; `bodyClassName={styles.body}`
+  // resets the shared 16px body padding to the flex two-pane container.
+  return (
     <>
-      <div className={styles.overlay} onClick={handleClose} />
-      <div className={styles.panel} role="dialog" aria-label="Document Review">
-        {/* Title bar */}
-        <div className={styles.titleBar}>
-          <span className={styles.title}>Document Review</span>
-          <CloseButton size={20} onClick={handleClose} className={styles.iconBtn} />
-        </div>
-
+      <Drawer
+        title="Document Review"
+        onClose={handleClose}
+        width={1300}
+        bodyClassName={`${styles.body} ${isEmpty ? styles.bodyEmpty : ''}`}
+      >
         {/* Body — two panes normally; right-pane only once the last doc is
             unlinked (left preview closed, Upload section shown). PatientBanner
             + Created meta strip live INSIDE the right pane per Figma
             ICD-Import 4481:112909, so the left PDF gets the full drawer height. */}
-        <div className={`${styles.body} ${isEmpty ? styles.bodyEmpty : ''}`}>
+        <>
           {/* Left — PDF preview, or the Comments panel when the header
               "Comment" action is toggled on. Panel writes/reads the same
               hccDiagComments store the Diagnosis Gap drawer uses, so support
@@ -1018,8 +1021,8 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
               })}
             </div>
           </div>
-        </div>
-      </div>
+        </>
+      </Drawer>
 
       {/* Portaled to document.body so `position: fixed` uses the viewport as
           its containing block. If we left the menu inside the drawer panel,
@@ -1145,8 +1148,7 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
           })}
         </div>
       )}
-    </>,
-    document.body,
+    </>
   );
 }
 
