@@ -24,7 +24,7 @@ import styles from './HccSuspectGroup.module.css';
  * ⋯ menu. State uses the same per-(code × DOS) store the confirmed ICD card
  * uses, so both behave identically.
  */
-export function SuspectCard({ icd, dosList = [], member, reviewLocked = false, lockReason = null }) {
+export function SuspectCard({ icd, dosList = [], member, reviewLocked = false, lockReason = null, bulkDisabled = false }) {
   const openIcdPanel = useAppStore(s => s.openIcdPanel);
   const openIcdActivityLog = useAppStore(s => s.openIcdActivityLog);
   const diagActivityIcd = useAppStore(s => s.diagActivityIcd);
@@ -78,6 +78,16 @@ export function SuspectCard({ icd, dosList = [], member, reviewLocked = false, l
   const [dismissOpen, setDismissOpen] = useState(false);
   const [menuPos, setMenuPos] = useState(null);
   const moreRef = useRef(null);
+
+  // Bulk select only applies to associated ICD cards — while it's active this
+  // card is inert (dimmed, no pointer events), so close anything it had open.
+  useEffect(() => {
+    if (bulkDisabled) {
+      setDosOpen(false);
+      setMenuPos(null);
+      setDismissOpen(false);
+    }
+  }, [bulkDisabled]);
 
   // Support can't work ICDs (that's the coder's job). QA / Compliance
   // consume the same lock as the ICD card (reviewLocked = Support not
@@ -145,23 +155,28 @@ export function SuspectCard({ icd, dosList = [], member, reviewLocked = false, l
 
   return (
     <div
-      className={[styles.card, isSelected ? styles.cardSelected : ''].filter(Boolean).join(' ')}
+      className={[styles.card, isSelected ? styles.cardSelected : '', bulkDisabled ? styles.cardBulkDisabled : ''].filter(Boolean).join(' ')}
       role="button"
-      tabIndex={0}
+      tabIndex={bulkDisabled ? -1 : 0}
+      aria-disabled={bulkDisabled || undefined}
       // Card-level click opens the source document. Every inner button /
       // combobox / dropdown still functions — we only fire the toggle when
       // the click landed on non-interactive card chrome.
       onClick={(e) => {
+        if (bulkDisabled) return;
         if (e.target.closest?.('button, input, [role="listbox"], [role="option"], [role="dialog"]')) return;
         toggleSelect();
       }}
       onKeyDown={(e) => {
+        if (bulkDisabled) return;
         if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
           e.preventDefault();
           toggleSelect();
         }
       }}
-      title={isSelected ? 'Deselect' : `Open source document for ${code}`}>
+      title={bulkDisabled
+        ? 'Bulk actions don’t apply to Suspects and Recaptures'
+        : (isSelected ? 'Deselect' : `Open source document for ${code}`)}>
       <div className={styles.head}>
         <div className={styles.headMain}>
           <IcdCombobox

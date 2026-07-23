@@ -12,6 +12,15 @@
   gap: 8px;
 }
 
+/* Bulk-select mode — bulk actions only apply to associated ICD cards, so
+   Suspect / Recapture cards go inert: dimmed, and pointer-events: none
+   silences every inner control (combobox, DOS picker, counters, actions)
+   in one rule. */
+.cardBulkDisabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
 /* ── Head: switchable ICD combobox + counters ── */
 .head { display: flex; align-items: flex-start; gap: 12px; }
 .headMain { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }

@@ -1815,6 +1815,7 @@ export function DiagPanel() {
               member={member}
               reviewLocked={stageLocked || isDosRejected}
               lockReason={rejectionLockReason}
+              bulkDisabled={bulkMode}
             />
           ))}
         </div>
