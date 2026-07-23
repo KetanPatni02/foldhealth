@@ -1,0 +1,53 @@
+import { UploadDropField } from './UploadDropField';
+
+export default {
+  title: 'Forms/UploadDropField',
+  component: UploadDropField,
+  tags: ['autodocs'],
+  argTypes: {
+    accept: {
+      control: 'text',
+      description: 'Comma-separated extensions forwarded to the underlying Dropzone',
+      table: { defaultValue: { summary: '.pdf,.doc,.docx,.jpg,.jpeg,.png' } },
+    },
+    helperText: {
+      control: 'text',
+      description: 'Left helper row shown under the drop area',
+      table: { defaultValue: { summary: 'Supported formats: PDF, DOC, JPG, or PNG' } },
+    },
+    secondaryText: {
+      control: 'text',
+      description: 'Right helper row shown under the drop area',
+      table: { defaultValue: { summary: 'Max size: 100 MB' } },
+    },
+  },
+};
+
+export const Playground = {
+  args: {
+    accept: '.pdf,.doc,.docx,.jpg,.jpeg,.png',
+    helperText: 'Supported formats: PDF, DOC, JPG, or PNG',
+    secondaryText: 'Max size: 100 MB',
+    onChange: (file) => console.log('onChange', file),
+  },
+};
+
+export const AllExamples = {
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 480 }}>
+      <div>
+        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Default — drop a file to see the uploading + uploaded states</span>
+        <UploadDropField onChange={(file) => console.log('onChange', file)} />
+      </div>
+      <div>
+        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>PDF only, custom copy</span>
+        <UploadDropField
+          accept=".pdf"
+          helperText="PDF only"
+          secondaryText="Max size: 25 MB"
+          onChange={(file) => console.log('onChange', file)}
+        />
+      </div>
+    </div>
+  ),
+};

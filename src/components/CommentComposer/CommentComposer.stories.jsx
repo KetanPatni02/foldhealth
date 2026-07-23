@@ -1,0 +1,84 @@
+import { useState } from 'react';
+import { CommentComposer } from './CommentComposer';
+
+export default {
+  title: 'Composed/CommentComposer',
+  component: CommentComposer,
+  tags: ['autodocs'],
+  parameters: { layout: 'padded' },
+  argTypes: {
+    placeholder: {
+      control: 'text',
+      description: 'Placeholder text',
+      table: { defaultValue: { summary: 'Add a comment, use @ to mention someone' } },
+    },
+    autoFocus: {
+      control: 'boolean',
+      description: 'Focus the textarea and expand actions on mount',
+      table: { defaultValue: { summary: 'false' } },
+    },
+    statusChange: {
+      control: 'object',
+      description: 'Morph into status-change card: { fromStatus, toStatus, onCancel }',
+    },
+    onSubmit: { action: 'onSubmit', description: 'Fires with the trimmed body on Comment click' },
+  },
+};
+
+function Wrapper(props) {
+  const [submissions, setSubmissions] = useState([]);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 560 }}>
+      <CommentComposer
+        {...props}
+        onSubmit={(body) => {
+          setSubmissions(s => [...s, body]);
+          props.onSubmit?.(body);
+        }}
+      />
+      {submissions.length > 0 && (
+        <div style={{ fontSize: 12, color: 'var(--neutral-300)', borderTop: '1px solid var(--neutral-150)', paddingTop: 8 }}>
+          <div style={{ marginBottom: 4, fontWeight: 500 }}>Submitted:</div>
+          {submissions.map((s, i) => <div key={i}>{i + 1}. {s}</div>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export const Playground = {
+  render: (args) => <Wrapper {...args} />,
+  args: {
+    placeholder: 'Add a comment, use @ to mention someone',
+    autoFocus: false,
+  },
+};
+
+export const AllExamples = {
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 32, maxWidth: 560 }}>
+      <div>
+        <p style={{ fontSize: 13, color: 'var(--neutral-300)', marginBottom: 8 }}>Default — collapses to single line until focused</p>
+        <Wrapper />
+      </div>
+      <div>
+        <p style={{ fontSize: 13, color: 'var(--neutral-300)', marginBottom: 8 }}>Auto-focused / expanded</p>
+        <Wrapper autoFocus />
+      </div>
+      <div>
+        <p style={{ fontSize: 13, color: 'var(--neutral-300)', marginBottom: 8 }}>Custom placeholder</p>
+        <Wrapper placeholder="Explain why this diagnosis is being rebutted…" />
+      </div>
+      <div>
+        <p style={{ fontSize: 13, color: 'var(--neutral-300)', marginBottom: 8 }}>Status-change mode</p>
+        <Wrapper
+          statusChange={{
+            fromStatus: 'In Progress',
+            toStatus: 'Missing Records',
+            onCancel: () => {},
+          }}
+        />
+      </div>
+    </div>
+  ),
+};

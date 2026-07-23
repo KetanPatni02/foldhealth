@@ -2,23 +2,17 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "TOC Worklist React",
+      "name": "Foldhealth Demo",
       "runtimeExecutable": "/bin/sh",
       "runtimeArgs": ["-c", "export PATH=$HOME/.bun/bin:/opt/homebrew/bin:$PATH && bun --bun run dev -- --port $PORT"],
       "port": 5173,
       "autoPort": true
     },
     {
-      "name": "HCC Prototype",
+      "name": "Storybook",
       "runtimeExecutable": "/bin/sh",
-      "runtimeArgs": ["-c", "export PATH=/opt/homebrew/bin:$PATH && cd /Users/ketanp/Downloads/HCC && npx vite --port 5174"],
-      "port": 5174
-    },
-    {
-      "name": "Fold Docs (Mintlify)",
-      "runtimeExecutable": "/bin/sh",
-      "runtimeArgs": ["-c", "export PATH=$HOME/.bun/bin:/opt/homebrew/bin:$PATH && cd docs && mint dev --port $PORT"],
-      "port": 3000,
+      "runtimeArgs": ["-c", "export PATH=$HOME/.bun/bin:/opt/homebrew/bin:$PATH && bun run storybook -- --port $PORT --no-open"],
+      "port": 6006,
       "autoPort": true
     }
   ]

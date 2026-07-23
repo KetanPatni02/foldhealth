@@ -1,0 +1,94 @@
+import { Dropzone } from './Dropzone';
+
+export default {
+  title: 'Forms/Dropzone',
+  component: Dropzone,
+  tags: ['autodocs'],
+  argTypes: {
+    accept: {
+      control: 'text',
+      description: 'Native `accept` attribute for the underlying `<input type="file">` (comma-separated extensions or MIME types)',
+    },
+    acceptMime: {
+      control: 'object',
+      description: 'Set or array of MIME types used by the runtime validator (browsers can\'t be trusted to enforce the picker filter)',
+    },
+    multiple: {
+      control: 'boolean',
+      description: 'Allow multi-file selection',
+      table: { defaultValue: { summary: 'false' } },
+    },
+    disabled: {
+      control: 'boolean',
+      description: 'Disable interaction',
+      table: { defaultValue: { summary: 'false' } },
+    },
+    icon: {
+      control: 'text',
+      description: 'Solar icon rendered above the CTA',
+      table: { defaultValue: { summary: 'solar:upload-minimalistic-linear' } },
+    },
+    iconSize: {
+      control: { type: 'number', min: 12, max: 64 },
+      description: 'Icon size in px',
+      table: { defaultValue: { summary: '24' } },
+    },
+    helperText: {
+      control: 'text',
+      description: 'Left-aligned helper row rendered below the drop area',
+    },
+    secondaryText: {
+      control: 'text',
+      description: 'Right-aligned helper row rendered below the drop area',
+    },
+  },
+};
+
+export const Playground = {
+  args: {
+    accept: '.pdf,.doc,.docx,.jpg,.jpeg,.png',
+    multiple: false,
+    disabled: false,
+    icon: 'solar:upload-minimalistic-linear',
+    iconSize: 24,
+    helperText: 'Supported formats: PDF, DOC, JPG, or PNG',
+    secondaryText: 'Max size: 100 MB',
+    onPick: (file) => console.log('picked', file),
+    onReject: (files) => console.log('rejected', files),
+  },
+};
+
+export const AllExamples = {
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 480 }}>
+      <div>
+        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Default</span>
+        <Dropzone
+          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+          helperText="Supported formats: PDF, DOC, JPG, or PNG"
+          secondaryText="Max size: 100 MB"
+          onPick={(file) => console.log('picked', file)}
+        />
+      </div>
+      <div>
+        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Multiple files, custom icon</span>
+        <Dropzone
+          accept=".png,.jpg,.jpeg"
+          multiple
+          icon="solar:gallery-linear"
+          helperText="Images only"
+          secondaryText="Up to 10 files"
+          onPick={(files) => console.log('picked', files)}
+        />
+      </div>
+      <div>
+        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Disabled</span>
+        <Dropzone
+          accept=".pdf"
+          disabled
+          helperText="Uploads paused"
+        />
+      </div>
+    </div>
+  ),
+};

@@ -1,0 +1,69 @@
+import { useState } from 'react';
+import { SearchBar } from './SearchBar';
+
+export default {
+  title: 'Forms/SearchBar',
+  component: SearchBar,
+  tags: ['autodocs'],
+  argTypes: {
+    placeholder: {
+      control: 'text',
+      table: { defaultValue: { summary: 'Search…' } },
+    },
+    autoFocus: {
+      control: 'boolean',
+      description: 'Focus the input on mount',
+      table: { defaultValue: { summary: 'true' } },
+    },
+    fullWidth: {
+      control: 'boolean',
+      description: 'Stretch to fill the parent container',
+      table: { defaultValue: { summary: 'false' } },
+    },
+    showClose: {
+      control: 'boolean',
+      description: 'When true, the story wires an onClose handler and the ✕ button appears',
+    },
+  },
+};
+
+function Wrapper({ initial = '', showClose = false, ...props }) {
+  const [value, setValue] = useState(initial);
+  return (
+    <SearchBar
+      {...props}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onClose={showClose ? () => setValue('') : undefined}
+    />
+  );
+}
+
+export const Playground = {
+  render: (args) => <Wrapper {...args} />,
+  args: {
+    placeholder: 'Search patients…',
+    autoFocus: false,
+    fullWidth: false,
+    showClose: true,
+  },
+};
+
+export const AllExamples = {
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 420 }}>
+      <div>
+        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Empty</span>
+        <Wrapper autoFocus={false} placeholder="Search patients…" />
+      </div>
+      <div>
+        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>With value + close</span>
+        <Wrapper autoFocus={false} initial="Jane" showClose placeholder="Search patients…" />
+      </div>
+      <div>
+        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Full width</span>
+        <Wrapper autoFocus={false} fullWidth placeholder="Search everything…" />
+      </div>
+    </div>
+  ),
+};
