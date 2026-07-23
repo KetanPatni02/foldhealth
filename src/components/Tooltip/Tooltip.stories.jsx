@@ -5,9 +5,30 @@ export default {
   title: 'Overlays/Tooltip',
   component: Tooltip,
   tags: ['autodocs'],
+  parameters: {
+    docs: {
+      description: {
+        component: 'Small floating label shown on hover of the wrapped element.',
+      },
+    },
+  },
   argTypes: {
-    label: { control: 'text', description: 'Tooltip text' },
-    placement: { control: 'select', options: ['top', 'bottom', 'left', 'right'] },
+    label: {
+      control: 'text',
+      description: 'Tooltip text',
+      table: { type: { summary: 'string' } },
+    },
+    placement: {
+      control: 'select',
+      options: ['top', 'bottom', 'left', 'right'],
+      description: 'Placement relative to the trigger',
+      table: { type: { summary: "'top' | 'right' | 'bottom' | 'left'" }, defaultValue: { summary: 'top' } },
+    },
+    className: {
+      control: 'text',
+      description: 'Extra class on the tooltip element',
+      table: { type: { summary: 'string' } },
+    },
   },
 };
 

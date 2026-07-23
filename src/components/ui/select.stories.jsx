@@ -7,6 +7,14 @@ import {
 export default {
   title: 'shadcn/Select',
   tags: ['autodocs'],
+  parameters: {
+    docs: {
+      description: {
+        component:
+          'shadcn/ui compound `Select` (Radix-backed). Compose: `Select` (root, value + onValueChange), `SelectTrigger` + `SelectValue`, `SelectContent`, optionally grouped with `SelectGroup` / `SelectLabel` / `SelectSeparator`, then `SelectItem` per option.',
+      },
+    },
+  },
 };
 
 function Wrapper({ withGroups } = {}) {

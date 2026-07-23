@@ -5,10 +5,49 @@ export default {
   title: 'shadcn/Slider',
   component: Slider,
   tags: ['autodocs'],
+  parameters: {
+    docs: {
+      description: {
+        component: 'shadcn/ui `Slider` (Radix-backed). Pass one value for a single thumb, two for a range slider.',
+      },
+    },
+  },
   argTypes: {
-    min: { control: 'number' },
-    max: { control: 'number' },
-    step: { control: 'number' },
+    value: {
+      control: 'object',
+      description: 'Current value(s) — one entry per thumb.',
+      table: { type: { summary: 'number[]' } },
+    },
+    defaultValue: {
+      control: 'object',
+      description: 'Initial value(s) for uncontrolled use.',
+      table: { type: { summary: 'number[]' } },
+    },
+    onValueChange: {
+      action: 'onValueChange',
+      description: 'Fires with the new value array while dragging.',
+      table: { type: { summary: '(next: number[]) => void' } },
+    },
+    min: {
+      control: 'number',
+      description: 'Minimum value.',
+      table: { type: { summary: 'number' }, defaultValue: { summary: '0' } },
+    },
+    max: {
+      control: 'number',
+      description: 'Maximum value.',
+      table: { type: { summary: 'number' }, defaultValue: { summary: '100' } },
+    },
+    step: {
+      control: 'number',
+      description: 'Increment size.',
+      table: { type: { summary: 'number' }, defaultValue: { summary: '1' } },
+    },
+    disabled: {
+      control: 'boolean',
+      description: 'Disables the slider.',
+      table: { type: { summary: 'boolean' }, defaultValue: { summary: 'false' } },
+    },
   },
 };
 

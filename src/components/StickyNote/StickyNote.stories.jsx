@@ -5,26 +5,48 @@ export default {
   title: 'Composed/StickyNote',
   component: StickyNote,
   tags: ['autodocs'],
-  parameters: { layout: 'padded' },
+  parameters: {
+    layout: 'padded',
+    docs: {
+      description: { component: 'Patient-scoped sticky note card. Collapses to a single line; expands to a full editor with pagination between multiple notes.' },
+    },
+  },
   argTypes: {
     notes: {
       control: 'object',
-      description: 'Array of note objects { id, text, author_name, author_date, ehr_profile }',
+      description: 'Notes to render.',
+      table: { type: { summary: '{ id, text, author_name, author_date, ehr_profile }[]' } },
     },
     collapsedOnly: {
       control: 'boolean',
-      description: 'Force the single-line collapsed view (no expand-on-click)',
-      table: { defaultValue: { summary: 'false' } },
+      description: 'Force the single-line collapsed view (no expand-on-click).',
+      table: { type: { summary: 'boolean' }, defaultValue: { summary: 'false' } },
     },
     initialExpanded: {
       control: 'boolean',
-      description: 'Start in the expanded view',
-      table: { defaultValue: { summary: 'false' } },
+      description: 'Start in the expanded view.',
+      table: { type: { summary: 'boolean' }, defaultValue: { summary: 'false' } },
     },
-    onSave: { action: 'onSave', description: '(id, text) => void' },
-    onCreate: { action: 'onCreate', description: '(text) => void' },
-    onDelete: { action: 'onDelete', description: '(id) => void — soft-delete' },
-    onAuditLog: { action: 'onAuditLog', description: 'Open audit log' },
+    onSave: {
+      action: 'onSave',
+      description: 'Fires when an existing note is edited.',
+      table: { type: { summary: '(id: string, text: string) => void' } },
+    },
+    onCreate: {
+      action: 'onCreate',
+      description: 'Fires when a new note is added.',
+      table: { type: { summary: '(text: string) => void' } },
+    },
+    onDelete: {
+      action: 'onDelete',
+      description: 'Fires when a note is soft-deleted.',
+      table: { type: { summary: '(id: string) => void' } },
+    },
+    onAuditLog: {
+      action: 'onAuditLog',
+      description: 'Open the audit log for this note stream.',
+      table: { type: { summary: '() => void' } },
+    },
   },
 };
 

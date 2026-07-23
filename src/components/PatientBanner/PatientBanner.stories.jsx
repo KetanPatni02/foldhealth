@@ -4,30 +4,64 @@ export default {
   title: 'Composed/PatientBanner',
   component: PatientBanner,
   tags: ['autodocs'],
-  parameters: { layout: 'padded' },
+  parameters: {
+    layout: 'padded',
+    docs: {
+      description: { component: 'Compact patient-header row used at the top of chart drawers, call drawers, and detail views. Shows avatar, name, gender/age, member ID, and (optional) RAF trend.' },
+    },
+  },
   argTypes: {
-    initials: { control: 'text', description: 'Avatar initials (usually 2 letters)' },
-    name: { control: 'text', description: 'Patient full name' },
+    initials: {
+      control: 'text',
+      description: 'Avatar initials (usually 2 letters).',
+      table: { type: { summary: 'string' } },
+    },
+    name: {
+      control: 'text',
+      description: 'Patient full name.',
+      table: { type: { summary: 'string' } },
+    },
     gender: {
       control: 'select',
       options: ['Male', 'Female'],
-      description: 'Patient gender label',
+      description: 'Patient gender label.',
+      table: { type: { summary: "'Male' | 'Female'" } },
     },
-    age: { control: 'text', description: 'Age string, e.g. "67y 2m"' },
-    memberId: { control: 'text', description: 'Member ID, e.g. "#219384756102"' },
-    raf: { control: 'text', description: 'RAF score, e.g. "4.234" (optional)' },
-    rafChange: { control: 'text', description: 'RAF change, e.g. "0.512" (optional)' },
+    age: {
+      control: 'text',
+      description: 'Age string, e.g. "67y 2m".',
+      table: { type: { summary: 'string' } },
+    },
+    memberId: {
+      control: 'text',
+      description: 'Member ID, e.g. "#219384756102".',
+      table: { type: { summary: 'string' } },
+    },
+    raf: {
+      control: 'text',
+      description: 'RAF score, e.g. "4.234" (optional).',
+      table: { type: { summary: 'string' } },
+    },
+    rafChange: {
+      control: 'text',
+      description: 'RAF change, e.g. "0.512" (optional).',
+      table: { type: { summary: 'string' } },
+    },
     rafUp: {
       control: 'boolean',
-      description: 'RAF trend direction: true = up (green), false = down (red)',
-      table: { defaultValue: { summary: 'true' } },
+      description: 'RAF trend direction: `true` = up (green), `false` = down (red).',
+      table: { type: { summary: 'boolean' }, defaultValue: { summary: 'true' } },
     },
     hidePatientLabel: {
       control: 'boolean',
-      description: 'Omit the leading "Patient" meta label',
-      table: { defaultValue: { summary: 'false' } },
+      description: 'Omit the leading "Patient" meta label.',
+      table: { type: { summary: 'boolean' }, defaultValue: { summary: 'false' } },
     },
-    onCall: { action: 'onCall', description: 'Call button handler (omitting hides the phone button)' },
+    onCall: {
+      action: 'onCall',
+      description: 'Call button handler — omit to hide the phone button.',
+      table: { type: { summary: '() => void' } },
+    },
   },
 };
 

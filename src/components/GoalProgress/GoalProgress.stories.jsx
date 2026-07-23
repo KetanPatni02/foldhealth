@@ -4,15 +4,22 @@ export default {
   title: 'Composed/GoalProgress',
   component: GoalProgress,
   tags: ['autodocs'],
-  parameters: { layout: 'padded' },
+  parameters: {
+    layout: 'padded',
+    docs: {
+      description: { component: 'Goal checklist with pass/fail markers and progress meter. Accepts either a flat list or a Mandatory/Optional structured shape.' },
+    },
+  },
   argTypes: {
     goalsDetail: {
       control: 'object',
-      description: 'Flat list of goals: [{ name, desc, pass }] — used by callDetails / DetailDrawer.',
+      description: 'Flat list of goals — used by callDetails / DetailDrawer.',
+      table: { type: { summary: '{ name, desc, pass }[]' } },
     },
     goals: {
       control: 'object',
-      description: 'Structured shape: { mandatory: [], optional: [], progress, passed, total, mandatoryMet }.',
+      description: 'Structured shape with Mandatory/Optional sections.',
+      table: { type: { summary: '{ mandatory, optional, progress, passed, total, mandatoryMet }' } },
     },
   },
 };

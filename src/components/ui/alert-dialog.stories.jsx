@@ -15,7 +15,15 @@ import { Button } from '../Button/Button';
 export default {
   title: 'shadcn/AlertDialog',
   tags: ['autodocs'],
-  parameters: { layout: 'fullscreen' },
+  parameters: {
+    layout: 'fullscreen',
+    docs: {
+      description: {
+        component:
+          'shadcn/ui compound `AlertDialog` (Radix-backed) — modal dialog that requires the user to acknowledge or cancel. Compose: `AlertDialog` (root, open state), `AlertDialogTrigger`, `AlertDialogContent`, `AlertDialogHeader`, `AlertDialogTitle`, `AlertDialogDescription`, `AlertDialogFooter`, `AlertDialogAction`, `AlertDialogCancel`.',
+      },
+    },
+  },
 };
 
 function Playground_() {

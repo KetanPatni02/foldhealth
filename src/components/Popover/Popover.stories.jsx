@@ -7,7 +7,15 @@ import { SearchListPopover } from './SearchListPopover';
 export default {
   title: 'Overlays/Popover',
   tags: ['autodocs'],
-  parameters: { layout: 'fullscreen' },
+  parameters: {
+    layout: 'fullscreen',
+    docs: {
+      description: {
+        component:
+          'Family of anchor-positioned popovers that FilterChip and toolbar buttons open. Every variant takes an `anchorRect` (the trigger\'s bounding rect) plus its own value/options shape:\n\n- **`MenuPopover`** — flat action list (used by `⋯` overflow menus)\n- **`CheckboxListPopover`** — multi-select with optional search + Clear\n- **`RadioListPopover`** — single-select with optional Clear\n- **`SortPopover`** — sortable-column picker with asc/desc directions\n- **`SearchListPopover`** — search-filtered single-pick list\n- **`DateRangePopover`** — two-calendar date range picker\n- **`RangeSliderPopover`** — numeric min/max slider with unit label',
+      },
+    },
+  },
 };
 
 function PopoverDemo({ buttonLabel = 'Open popover', children }) {

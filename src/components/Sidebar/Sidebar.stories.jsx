@@ -4,8 +4,14 @@ export default {
   title: 'Navigation/Sidebar',
   component: Sidebar,
   tags: ['autodocs'],
-  parameters: { layout: 'fullscreen' },
-  argTypes: {},
+  parameters: {
+    layout: 'fullscreen',
+    docs: {
+      description: {
+        component: 'Global left-rail navigation (Home, Population, Calendar, Tasks, Messages, Calls, Leads, Campaign, Analytics, Settings). Store-driven — active page, theme, and unread badge come from `useAppStore`; no props.',
+      },
+    },
+  },
 };
 
 /**

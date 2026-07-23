@@ -5,10 +5,35 @@ export default {
   title: 'Navigation/TabStrip',
   component: TabStrip,
   tags: ['autodocs'],
-  parameters: { layout: 'padded' },
+  parameters: {
+    layout: 'padded',
+    docs: {
+      description: {
+        component: 'Horizontal tab bar with animated underline. Controlled — parent owns the active key.',
+      },
+    },
+  },
   argTypes: {
-    fullWidth: { control: 'boolean' },
-    items: { control: 'object' },
+    items: {
+      control: 'object',
+      description: 'Tabs, in display order.',
+      table: { type: { summary: '{ key: string; label: string }[]' } },
+    },
+    activeKey: {
+      control: 'text',
+      description: 'Currently selected tab key.',
+      table: { type: { summary: 'string' } },
+    },
+    onChange: {
+      action: 'onChange',
+      description: 'Fires with the picked tab key.',
+      table: { type: { summary: '(key: string) => void' } },
+    },
+    fullWidth: {
+      control: 'boolean',
+      description: 'When true, tabs stretch to fill the container.',
+      table: { type: { summary: 'boolean' }, defaultValue: { summary: 'true' } },
+    },
   },
 };
 

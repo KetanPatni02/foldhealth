@@ -5,7 +5,20 @@ export default {
   title: 'Data/HorizontalScrollbar',
   component: HorizontalScrollbar,
   tags: ['autodocs'],
-  parameters: { layout: 'padded' },
+  parameters: {
+    layout: 'padded',
+    docs: {
+      description: {
+        component: 'Sticky, always-visible horizontal scrollbar that mirrors an internal-scrolled container. Pair with a `ref` to that container.',
+      },
+    },
+  },
+  argTypes: {
+    targetRef: {
+      description: 'React ref pointing at the horizontally-scrollable container to mirror.',
+      table: { type: { summary: 'React.RefObject<HTMLElement>' } },
+    },
+  },
 };
 
 export const Default = {

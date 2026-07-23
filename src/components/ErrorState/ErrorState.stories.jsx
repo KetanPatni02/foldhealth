@@ -4,14 +4,34 @@ export default {
   title: 'Feedback/ErrorState',
   component: ErrorState,
   tags: ['autodocs'],
+  parameters: {
+    docs: {
+      description: {
+        component: 'Full-panel error placeholder — icon, title, message, and optional retry button.',
+      },
+    },
+  },
   argTypes: {
     icon: {
       control: 'text',
-      description: 'Solar icon name (defaults to solar:danger-triangle-bold)',
+      description: 'Solar icon name.',
+      table: { type: { summary: 'string' }, defaultValue: { summary: 'solar:danger-triangle-bold' } },
     },
-    title: { control: 'text', description: 'Heading text' },
-    message: { control: 'text', description: 'Supporting message' },
-    onRetry: { action: 'onRetry', description: 'Retry click handler (button hidden when omitted)' },
+    title: {
+      control: 'text',
+      description: 'Heading text.',
+      table: { type: { summary: 'string' } },
+    },
+    message: {
+      control: 'text',
+      description: 'Supporting message.',
+      table: { type: { summary: 'string' } },
+    },
+    onRetry: {
+      action: 'onRetry',
+      description: 'Retry click handler — button hidden when omitted.',
+      table: { type: { summary: '() => void' } },
+    },
   },
 };
 

@@ -4,6 +4,14 @@ import { RadioGroup, RadioGroupItem } from './radio-group';
 export default {
   title: 'shadcn/RadioGroup',
   tags: ['autodocs'],
+  parameters: {
+    docs: {
+      description: {
+        component:
+          'shadcn/ui compound `RadioGroup` (Radix-backed). `RadioGroup` owns `value` + `onValueChange`; wrap each `RadioGroupItem` in its own `<label>` for accessible click-through.',
+      },
+    },
+  },
 };
 
 function Wrapper({ options = [], defaultValue }) {

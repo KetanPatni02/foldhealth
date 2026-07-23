@@ -4,10 +4,40 @@ export default {
   title: 'Data/Timeline',
   component: Timeline,
   tags: ['autodocs'],
-  parameters: { layout: 'padded' },
+  parameters: {
+    layout: 'padded',
+    docs: {
+      description: {
+        component:
+          'Vertical activity feed grouped by month. Each entry renders with an icon, actor, headline, and (optional) body.',
+      },
+    },
+  },
   argTypes: {
-    currentUserName: { control: 'text' },
-    emptyLabel: { control: 'text' },
+    entries: {
+      control: 'object',
+      description: 'Activity entries in reverse-chronological order.',
+      table: {
+        type: {
+          summary:
+            "Array<{ id, t: 'note'|'status'|'upload'|…, by, role, headline, body?, file?, at: ISOString }>",
+        },
+      },
+    },
+    currentUserName: {
+      control: 'text',
+      description: 'Name of the current user — used to render "You" replacements.',
+      table: { type: { summary: 'string' } },
+    },
+    emptyLabel: {
+      control: 'text',
+      description: 'Shown when `entries` is empty.',
+      table: { type: { summary: 'string' }, defaultValue: { summary: 'No activity yet.' } },
+    },
+    renderExtra: {
+      description: 'Optional render prop for injecting custom content per entry.',
+      table: { type: { summary: '(entry) => React.ReactNode' } },
+    },
   },
 };
 

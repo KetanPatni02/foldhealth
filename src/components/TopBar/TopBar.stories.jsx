@@ -4,8 +4,14 @@ export default {
   title: 'Navigation/TopBar',
   component: TopBar,
   tags: ['autodocs'],
-  parameters: { layout: 'fullscreen' },
-  argTypes: {},
+  parameters: {
+    layout: 'fullscreen',
+    docs: {
+      description: {
+        component: 'App-wide top bar — breadcrumbs, patient search, Ask Unity, Notifications, Create New popover, Schedule drawer trigger, profile popover. Store-driven — no props.',
+      },
+    },
+  },
 };
 
 /**

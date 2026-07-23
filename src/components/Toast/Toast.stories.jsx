@@ -4,6 +4,14 @@ import { Button } from '../Button/Button';
 export default {
   title: 'Overlays/Toast',
   tags: ['autodocs'],
+  parameters: {
+    docs: {
+      description: {
+        component:
+          'Imperative toast notifications backed by Sonner. Mount `<Toaster />` once at the app root, then call `toast(...)`, `toast.success(...)`, or `toast.error(...)` from anywhere.',
+      },
+    },
+  },
 };
 
 export const Playground = {

@@ -6,15 +6,36 @@ import { TableSkeleton as FullTableSkeleton } from './TableSkeleton';
 export default {
   title: 'Feedback/Skeleton',
   tags: ['autodocs'],
+  parameters: {
+    docs: {
+      description: {
+        component:
+          'Loading-state placeholders — the directory exports several compositions (`CardSkeleton`, `KpiSkeleton`, `SimpleTableSkeleton`, `TableSkeleton`) rather than one primitive. Pick the shape closest to the layout you\'re replacing.',
+      },
+    },
+  },
   argTypes: {
     variant: {
       control: 'select',
       options: ['FullTableSkeleton', 'SimpleTableSkeleton', 'CardSkeleton', 'KpiSkeleton'],
-      description: 'Which skeleton composition to render',
+      description: 'Which skeleton composition to render.',
+      table: { type: { summary: "'FullTableSkeleton' | 'SimpleTableSkeleton' | 'CardSkeleton' | 'KpiSkeleton'" }, defaultValue: { summary: 'FullTableSkeleton' } },
     },
-    rows: { control: { type: 'number', min: 1, max: 20 }, description: 'Row count (Table/SimpleTable)' },
-    cols: { control: { type: 'number', min: 1, max: 12 }, description: 'Column count (SimpleTable)' },
-    count: { control: { type: 'number', min: 1, max: 12 }, description: 'Card/KPI count (Card/Kpi)' },
+    rows: {
+      control: { type: 'number', min: 1, max: 20 },
+      description: 'Row count (Table/SimpleTable).',
+      table: { type: { summary: 'number' }, defaultValue: { summary: '6' } },
+    },
+    cols: {
+      control: { type: 'number', min: 1, max: 12 },
+      description: 'Column count (SimpleTable).',
+      table: { type: { summary: 'number' }, defaultValue: { summary: '6' } },
+    },
+    count: {
+      control: { type: 'number', min: 1, max: 12 },
+      description: 'Card/KPI count (Card/Kpi).',
+      table: { type: { summary: 'number' }, defaultValue: { summary: '4' } },
+    },
   },
 };
 

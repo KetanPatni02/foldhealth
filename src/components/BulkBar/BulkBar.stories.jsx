@@ -4,21 +4,37 @@ export default {
   title: 'Composed/BulkBar',
   component: BulkBar,
   tags: ['autodocs'],
-  parameters: { layout: 'fullscreen' },
+  parameters: {
+    layout: 'fullscreen',
+    docs: {
+      description: { component: 'Floating bottom bar that appears when rows are selected in a list. Shows the selection count and bulk actions.' },
+    },
+  },
   argTypes: {
     selectedIds: {
       control: 'object',
       description: 'Array of selected row IDs. Bar appears when length > 0.',
+      table: { type: { summary: 'string[]' } },
     },
-    onClear: { action: 'onClear', description: 'Clear-all handler' },
-    onChangeAssignee: { action: 'onChangeAssignee', description: 'Override default "Change Assignee" action' },
+    onClear: {
+      action: 'onClear',
+      description: 'Clear-all handler.',
+      table: { type: { summary: '() => void' } },
+    },
+    onChangeAssignee: {
+      action: 'onChangeAssignee',
+      description: 'Override the default "Change Assignee" action.',
+      table: { type: { summary: '() => void' } },
+    },
     actions: {
       control: 'object',
-      description: 'Custom action buttons: [{ label, icon?, variant?, onClick }]. Replaces default cluster.',
+      description: 'Custom action buttons — replaces the default cluster.',
+      table: { type: { summary: '{ label, icon?, variant?, onClick }[]' } },
     },
     moreActions: {
       control: 'object',
-      description: 'Overflow menu items: [{ label, icon?, variant?, onClick }]. Only when `actions` also provided.',
+      description: 'Overflow menu items — only rendered when `actions` is also provided.',
+      table: { type: { summary: '{ label, icon?, variant?, onClick }[]' } },
     },
   },
 };

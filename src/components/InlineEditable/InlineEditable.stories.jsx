@@ -5,12 +5,50 @@ export default {
   title: 'Core/InlineEditable',
   component: InlineEditable,
   tags: ['autodocs'],
+  parameters: {
+    docs: {
+      description: {
+        component: 'Text that becomes an input on click; commits on blur or Enter. Used for renaming groups, boards, and other in-place editable titles.',
+      },
+    },
+  },
   argTypes: {
-    placeholder: { control: 'text' },
-    size: { control: 'select', options: ['S', 'M', 'L'] },
-    maxLength: { control: 'number' },
-    disabled: { control: 'boolean' },
-    title: { control: 'text' },
+    value: {
+      control: 'text',
+      description: 'Committed value.',
+      table: { type: { summary: 'string' } },
+    },
+    onCommit: {
+      action: 'onCommit',
+      description: 'Fires with the new value on blur or Enter.',
+      table: { type: { summary: '(next: string) => void' } },
+    },
+    placeholder: {
+      control: 'text',
+      description: 'Shown when the value is empty.',
+      table: { type: { summary: 'string' }, defaultValue: { summary: 'Untitled' } },
+    },
+    size: {
+      control: 'select',
+      options: ['S', 'M', 'L'],
+      description: 'Type scale.',
+      table: { type: { summary: "'S' | 'M' | 'L'" }, defaultValue: { summary: 'M' } },
+    },
+    maxLength: {
+      control: 'number',
+      description: 'Max characters accepted while editing.',
+      table: { type: { summary: 'number' } },
+    },
+    disabled: {
+      control: 'boolean',
+      description: 'Disables editing; renders as read-only text.',
+      table: { type: { summary: 'boolean' }, defaultValue: { summary: 'false' } },
+    },
+    title: {
+      control: 'text',
+      description: 'Native title attribute (hover tooltip).',
+      table: { type: { summary: 'string' } },
+    },
   },
 };
 

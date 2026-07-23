@@ -5,23 +5,33 @@ export default {
   title: 'Composed/CommentComposer',
   component: CommentComposer,
   tags: ['autodocs'],
-  parameters: { layout: 'padded' },
+  parameters: {
+    layout: 'padded',
+    docs: {
+      description: { component: 'Multi-line comment composer used on task, chart, and diagnosis drawers. Supports @-mentions and can morph into a status-change card.' },
+    },
+  },
   argTypes: {
     placeholder: {
       control: 'text',
-      description: 'Placeholder text',
-      table: { defaultValue: { summary: 'Add a comment, use @ to mention someone' } },
+      description: 'Placeholder text.',
+      table: { type: { summary: 'string' }, defaultValue: { summary: 'Add a comment, use @ to mention someone' } },
     },
     autoFocus: {
       control: 'boolean',
-      description: 'Focus the textarea and expand actions on mount',
-      table: { defaultValue: { summary: 'false' } },
+      description: 'Focus the textarea and expand actions on mount.',
+      table: { type: { summary: 'boolean' }, defaultValue: { summary: 'false' } },
     },
     statusChange: {
       control: 'object',
-      description: 'Morph into status-change card: { fromStatus, toStatus, onCancel }',
+      description: 'When provided, morphs into a status-change card.',
+      table: { type: { summary: '{ fromStatus, toStatus, onCancel }' } },
     },
-    onSubmit: { action: 'onSubmit', description: 'Fires with the trimmed body on Comment click' },
+    onSubmit: {
+      action: 'onSubmit',
+      description: 'Fires with the trimmed body on Comment click.',
+      table: { type: { summary: '(body: string) => void' } },
+    },
   },
 };
 

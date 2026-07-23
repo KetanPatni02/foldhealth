@@ -4,8 +4,12 @@ export default {
   title: 'Composed/FilterBar',
   component: FilterBar,
   tags: ['autodocs'],
-  parameters: { layout: 'fullscreen' },
-  argTypes: {},
+  parameters: {
+    layout: 'fullscreen',
+    docs: {
+      description: { component: 'The full worklist filter bar — View By toggle plus the FilterChip cluster. Reads/writes state directly from the shared Zustand store; no props.' },
+    },
+  },
 };
 
 // FilterBar pulls state entirely from the shared Zustand store

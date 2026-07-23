@@ -6,11 +6,46 @@ export default {
   title: 'Overlays/ReasonDialog',
   component: ReasonDialog,
   tags: ['autodocs'],
+  parameters: {
+    docs: {
+      description: {
+        component:
+          'Confirmation dialog that collects a required reason before completing a Pass/Fail decision (used by document review, dismiss/reject flows).',
+      },
+    },
+  },
   argTypes: {
-    title: { control: 'text' },
-    description: { control: 'text' },
-    decision: { control: 'select', options: ['pass', 'fail'] },
-    standardReasons: { control: 'object', description: 'Preset reason strings' },
+    title: {
+      control: 'text',
+      description: 'Dialog heading.',
+      table: { type: { summary: 'string' } },
+    },
+    description: {
+      control: 'text',
+      description: 'Supporting body copy under the title.',
+      table: { type: { summary: 'string' } },
+    },
+    decision: {
+      control: 'select',
+      options: ['pass', 'fail'],
+      description: 'Which decision is being confirmed — controls copy + button color.',
+      table: { type: { summary: "'pass' | 'fail'" }, defaultValue: { summary: 'fail' } },
+    },
+    standardReasons: {
+      control: 'object',
+      description: 'Preset reason chips shown as one-click picks (last entry is typically "Other").',
+      table: { type: { summary: 'string[]' }, defaultValue: { summary: '[]' } },
+    },
+    onSubmit: {
+      action: 'onSubmit',
+      description: 'Fires with the chosen reason + free-text note.',
+      table: { type: { summary: '(reason: string, note?: string) => void' } },
+    },
+    onCancel: {
+      action: 'onCancel',
+      description: 'Fires when the user dismisses the dialog.',
+      table: { type: { summary: '() => void' } },
+    },
   },
 };
 

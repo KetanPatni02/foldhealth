@@ -14,7 +14,15 @@ import { Button } from '../Button/Button';
 export default {
   title: 'shadcn/Dialog',
   tags: ['autodocs'],
-  parameters: { layout: 'fullscreen' },
+  parameters: {
+    layout: 'fullscreen',
+    docs: {
+      description: {
+        component:
+          'shadcn/ui compound `Dialog` (Radix-backed) — general-purpose modal. Compose: `Dialog` (root, open state), `DialogTrigger`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogFooter`, `DialogClose`.',
+      },
+    },
+  },
 };
 
 function Playground_() {
