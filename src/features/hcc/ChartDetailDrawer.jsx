@@ -678,15 +678,7 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
             <div className={styles.leftPane}>
               <div className={styles.paneHeader}>
                 <span>Comments</span>
-                <button
-                  type="button"
-                  className={styles.iconBtn}
-                  onClick={() => setLeftPanel('preview')}
-                  aria-label="Close comments"
-                  title="Close comments"
-                >
-                  <Icon name="solar:close-square-linear" size={18} color="var(--neutral-400)" />
-                </button>
+                <CloseButton size={18} onClick={() => setLeftPanel('preview')} className={styles.iconBtn} label="Close comments" />
               </div>
               <ChartCommentsPanel member={m} />
             </div>

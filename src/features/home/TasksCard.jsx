@@ -1,4 +1,5 @@
 import { Icon } from '../../components/Icon/Icon';
+import { ActionButton } from '../../components/ActionButton/ActionButton';
 import styles from './HomeView.module.css';
 
 const TASKS = [
@@ -19,7 +20,7 @@ export function TasksCard({ dragHandleClassName }) {
           <span className={styles.countChip}>{TASKS.length}</span>
         </div>
         <div className={styles.cardActions}>
-          <button className={styles.iconBtn} aria-label="Filter"><Icon name="custom:filter" size={14} /></button>
+          <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
         </div>
       </div>
       <div className={styles.cardBody}>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Icon } from '../../components/Icon/Icon';
+import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Toggle } from '../../components/Toggle/Toggle';
 import { Select as SharedSelect } from '../../components/Select/Select';
 import {
@@ -275,14 +276,12 @@ function GradientPicker({ value, onChange, variables }) {
           value={grad.type}
           onChange={(v) => emit({ ...grad, type: v })}
         />
-        <button
-          type="button"
-          className={styles.iconBtn}
-          title="Reverse stops"
+        <ActionButton
+          icon="solar:transfer-horizontal-linear"
+          size="S"
+          tooltip="Reverse stops"
           onClick={reverseStops}
-        >
-          <Icon name="solar:transfer-horizontal-linear" size={14} color="var(--neutral-400)" />
-        </button>
+        />
       </div>
 
       <div className={styles.gradientPreview} style={{ background: previewCss }} />
@@ -304,9 +303,7 @@ function GradientPicker({ value, onChange, variables }) {
 
       <div className={styles.stopsHeader}>
         <span className={styles.sectionLabel}>Stops</span>
-        <button type="button" className={styles.iconBtn} title="Add stop" onClick={addStop}>
-          <Icon name="solar:add-circle-linear" size={14} color="var(--primary-300)" />
-        </button>
+        <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add stop" onClick={addStop} />
       </div>
 
       <div className={styles.stopsList}>

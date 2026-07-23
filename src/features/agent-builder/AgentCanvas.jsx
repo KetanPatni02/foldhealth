@@ -13,6 +13,7 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import { Icon } from '../../components/Icon/Icon';
+import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { Button } from '../../components/Button/Button';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../../components/ui/dialog';
@@ -557,24 +558,20 @@ export function AgentCanvas() {
         </div>
 
         <div className={styles.toolbarRight}>
-          <button
-            className={styles.iconBtn}
+          <ActionButton
+            icon="solar:undo-left-linear"
+            size="L"
+            tooltip="Undo (⌘Z)"
+            state={canUndo ? 'active' : 'disabled'}
             onClick={handleUndo}
-            disabled={!canUndo}
-            title="Undo (⌘Z)"
-            aria-label="Undo"
-          >
-            <Icon name="solar:undo-left-linear" size={16} color={canUndo ? 'var(--neutral-400)' : 'var(--neutral-200)'} />
-          </button>
-          <button
-            className={styles.iconBtn}
+          />
+          <ActionButton
+            icon="solar:undo-right-linear"
+            size="L"
+            tooltip="Redo (⌘⇧Z)"
+            state={canRedo ? 'active' : 'disabled'}
             onClick={handleRedo}
-            disabled={!canRedo}
-            title="Redo (⌘⇧Z)"
-            aria-label="Redo"
-          >
-            <Icon name="solar:undo-right-linear" size={16} color={canRedo ? 'var(--neutral-400)' : 'var(--neutral-200)'} />
-          </button>
+          />
           <span className={styles.toolbarDivider} />
           <Button variant="secondary" size="L" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save'}

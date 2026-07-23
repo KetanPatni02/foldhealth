@@ -1,4 +1,5 @@
 import { Icon } from '../../components/Icon/Icon';
+import { ActionButton } from '../../components/ActionButton/ActionButton';
 import styles from './HomeView.module.css';
 
 const ASSIGNED = [
@@ -15,8 +16,8 @@ export function AssignedToMeCard({ dragHandleClassName }) {
           Assigned to me
         </div>
         <div className={styles.cardActions}>
-          <button className={styles.iconBtn} aria-label="Share"><Icon name="solar:share-linear" size={14} /></button>
-          <button className={styles.iconBtn} aria-label="Filter"><Icon name="custom:filter" size={14} /></button>
+          <ActionButton icon="solar:share-linear" size="S" tooltip="Share" />
+          <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
         </div>
       </div>
       <div className={styles.cardBody}>

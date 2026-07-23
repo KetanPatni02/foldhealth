@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Icon } from '../../components/Icon/Icon';
+import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './HomeView.module.css';
@@ -46,9 +47,9 @@ export function AlertsMonitoringCard({ dragHandleClassName }) {
           Alerts &amp; Monitoring
         </div>
         <div className={styles.cardActions}>
-          <button className={styles.iconBtn} aria-label="Assignee view"><Icon name="solar:user-linear" size={14} /></button>
-          <button className={styles.iconBtn} aria-label="List view"><Icon name="solar:hamburger-menu-linear" size={14} /></button>
-          <button className={styles.iconBtn} aria-label="Filter"><Icon name="custom:filter" size={14} /></button>
+          <ActionButton icon="solar:user-linear" size="S" tooltip="Assignee view" />
+          <ActionButton icon="solar:hamburger-menu-linear" size="S" tooltip="List view" />
+          <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
         </div>
       </div>
       <div className={styles.cardBody}>

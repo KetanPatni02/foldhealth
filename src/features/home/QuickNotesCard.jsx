@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { Icon } from '../../components/Icon/Icon';
+import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { StickyNoteAuditDrawer } from '../../components/StickyNote/StickyNoteAuditDrawer';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './HomeView.module.css';
@@ -163,9 +164,7 @@ export function QuickNotesCard({ dragHandleClassName }) {
           Quick Notes
         </div>
         <div className={styles.cardActions}>
-          <button className={styles.iconBtn} aria-label="Add note" onClick={() => setAddingNew(true)}>
-            <Icon name="solar:add-circle-linear" size={14} />
-          </button>
+          <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add note" onClick={() => setAddingNew(true)} />
         </div>
       </div>
       <div className={styles.quickNotesBody}>
