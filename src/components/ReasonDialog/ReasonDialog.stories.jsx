@@ -52,9 +52,9 @@ export default {
 const REASONS = ['Illegible', 'Missing signature', 'Wrong DOS', 'Missing provider', 'Other'];
 
 function Wrapper(props) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   return (
-    <div style={{ padding: 24 }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 24 }}>
       <Button variant="danger" onClick={() => setOpen(true)}>Open ReasonDialog</Button>
       {open && (
         <ReasonDialog

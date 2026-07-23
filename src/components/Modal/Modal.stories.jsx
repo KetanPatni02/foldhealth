@@ -69,10 +69,12 @@ export default {
   },
 };
 
+const centerStage = { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 24 };
+
 function ConfirmWrapper(props) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   return (
-    <div style={{ padding: 24 }}>
+    <div style={centerStage}>
       <Button variant="secondary" onClick={() => setOpen(true)}>Open ConfirmDialog</Button>
       {open && <ConfirmDialog {...props} onConfirm={() => setOpen(false)} onCancel={() => setOpen(false)} />}
     </div>
@@ -80,9 +82,9 @@ function ConfirmWrapper(props) {
 }
 
 function DestructiveWrapper(props) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   return (
-    <div style={{ padding: 24 }}>
+    <div style={centerStage}>
       <Button variant="danger" onClick={() => setOpen(true)}>Open DestructiveDialog</Button>
       {open && <DestructiveDialog {...props} onConfirm={() => setOpen(false)} onCancel={() => setOpen(false)} />}
     </div>

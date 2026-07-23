@@ -21,11 +21,8 @@ export default {
 function PopoverDemo({ buttonLabel = 'Open popover', children }) {
   const btnRef = useRef(null);
   const [rect, setRect] = useState(null);
-  useEffect(() => {
-    if (btnRef.current) setRect(btnRef.current.getBoundingClientRect());
-  }, []);
   return (
-    <div style={{ padding: 32, minHeight: 360 }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 24 }}>
       <button
         ref={btnRef}
         type="button"

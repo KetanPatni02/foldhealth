@@ -19,10 +19,12 @@ export default {
 export const Playground = {
   render: () => (
     <TooltipProvider>
-      <Tooltip defaultOpen>
-        <TooltipTrigger asChild><Button variant="secondary">Hover me</Button></TooltipTrigger>
-        <TooltipContent>Deletes the record permanently.</TooltipContent>
-      </Tooltip>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 24 }}>
+        <Tooltip>
+          <TooltipTrigger asChild><Button variant="secondary">Hover me</Button></TooltipTrigger>
+          <TooltipContent>Deletes the record permanently.</TooltipContent>
+        </Tooltip>
+      </div>
     </TooltipProvider>
   ),
 };
