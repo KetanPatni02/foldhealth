@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useFeedbackWidget } from 'featurebase-js/react';
 import { Icon } from '../Icon/Icon';
 import { HelpPopover } from '../HelpPopover/HelpPopover';
+import { WhatsNewDrawer } from '../WhatsNewDrawer/WhatsNewDrawer';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './Sidebar.module.css';
 
@@ -30,6 +32,26 @@ export function Sidebar() {
   const setSettingsNavItem = useAppStore(s => s.setSettingsNavItem);
   const setMemberLeadsTab = useAppStore(s => s.setMemberLeadsTab);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
+
+  // Featurebase feedback widget — lives here (not in HelpPopover) so the
+  // panel survives the popover closing: the hook tears the widget down on
+  // unmount, and the popover unmounts the moment a menu entry is clicked.
+  // The launcher itself is hidden via CSS (index.css); the HelpPopover's
+  // "Give Feedback" row opens the panel via data-featurebase-feedback.
+  // Note: the iframe *embed* variant is paid-plan-only; this widget is free.
+  const resolvedTheme = useAppStore(s => s.resolvedTheme);
+  useFeedbackWidget({ theme: resolvedTheme === 'dark' ? 'dark' : 'light', placement: 'bottom-right' });
+
+  // In-house changelog (Supabase-backed) — prefetch so the Help popover's
+  // unread badge is accurate before the drawer is ever opened.
+  const fetchChangelog = useAppStore(s => s.fetchChangelog);
+  useEffect(() => { fetchChangelog(); }, [fetchChangelog]);
+  const changelogEntries = useAppStore(s => s.changelogEntries);
+  const changelogSeenAt = useAppStore(s => s.changelogSeenAt);
+  const changelogUnread = changelogEntries.filter(
+    e => new Date(e.created_at) > new Date(changelogSeenAt || 0),
+  ).length;
 
   const showToast = useAppStore(s => s.showToast);
   const messagesUnreadCount = useAppStore(s => s.messagesUnreadCount);
@@ -119,7 +141,14 @@ export function Sidebar() {
           );
         })}
       </div>
-      {helpOpen && <HelpPopover onClose={() => setHelpOpen(false)} />}
+      {helpOpen && (
+        <HelpPopover
+          onClose={() => setHelpOpen(false)}
+          onOpenChangelog={() => setWhatsNewOpen(true)}
+          changelogUnread={changelogUnread}
+        />
+      )}
+      {whatsNewOpen && <WhatsNewDrawer onClose={() => setWhatsNewOpen(false)} />}
     </nav>
   );
 }

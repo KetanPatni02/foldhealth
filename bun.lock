@@ -37,6 +37,7 @@
         "@xyflow/react": "^12.10.1",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
+        "featurebase-js": "^1.0.3",
         "jspdf": "^4.2.1",
         "pdfjs-dist": "^5.7.284",
         "preact": "^10.29.2",
@@ -1067,6 +1068,8 @@
     "fastq": ["fastq@1.20.1", "", { "dependencies": { "reusify": "^1.0.4" } }, "sha512-GGToxJ/w1x32s/D2EKND7kTil4n8OVk/9mycTc4VDza13lOvpUZTGX3mFSCtV9ksdGBVzvsyAVLM6mHFThxXxw=="],
 
     "fdir": ["fdir@6.5.0", "", { "peerDependencies": { "picomatch": "^3 || ^4" }, "optionalPeers": ["picomatch"] }, "sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg=="],
+
+    "featurebase-js": ["featurebase-js@1.0.3", "", { "peerDependencies": { "react": ">=17" }, "optionalPeers": ["react"] }, "sha512-Q52xH6KEy6mYpxBl0ZRDzCaxW8EhoUjUxLbgG5e2GIMeiaS4uhKGHPK44yTRUmD+PTBgJ79/dc1GDFSwzz/sgg=="],
 
     "fflate": ["fflate@0.8.3", "", {}, "sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA=="],
 

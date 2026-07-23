@@ -285,3 +285,15 @@ html { scroll-behavior: smooth; }
 *:focus-visible {
   outline-color: var(--primary-300);
 }
+
+/* ═══════════════════════════════════════════════════════════
+   Featurebase feedback widget
+   Hide the default floating "Feedback" launcher — the widget is
+   opened exclusively from the Help popover's "Give Feedback" row
+   (data-featurebase-feedback trigger in HelpPopover.jsx). The
+   panel itself lives in a separate .fb-feedback-widget-overlay,
+   so it still opens and positions normally.
+   ═══════════════════════════════════════════════════════════ */
+.fb-feedback-widget-feedback-button-container {
+  display: none !important;
+}

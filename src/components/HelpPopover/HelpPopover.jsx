@@ -255,7 +255,7 @@ const FEATURES = [
   },
 ];
 
-export function HelpPopover({ onClose }) {
+export function HelpPopover({ onClose, onOpenChangelog, changelogUnread = 0 }) {
   const setActivePage = useAppStore(s => s.setActivePage);
   const setActiveTab = useAppStore(s => s.setActiveTab);
   const setCurrentPage = useAppStore(s => s.setCurrentPage);
@@ -300,6 +300,43 @@ export function HelpPopover({ onClose }) {
         </button>
       </div>
       <div className={styles.body}>
+        {/* Pinned Featurebase actions — feedback board + changelog. */}
+        <div className={styles.group}>
+          <div className={styles.groupLabel}>Feedback &amp; Updates</div>
+          {/* data-featurebase-feedback — the booted feedback widget (see
+              Sidebar) opens its panel on clicks from any element carrying
+              this attribute; the panel outlives this popover closing. */}
+          <button
+            className={styles.item}
+            data-featurebase-feedback=""
+            onClick={onClose}
+          >
+            <div className={styles.itemIcon}>
+              <Icon name="solar:chat-round-like-linear" size={16} />
+            </div>
+            <div className={styles.itemContent}>
+              <div className={styles.breadcrumb}><span>Give Feedback</span></div>
+              <div className={styles.description}>Share ideas, report issues, and vote on feature requests.</div>
+            </div>
+          </button>
+          <button
+            className={styles.item}
+            onClick={() => { onOpenChangelog?.(); onClose(); }}
+          >
+            <div className={styles.itemIcon}>
+              <Icon name="solar:gift-linear" size={16} />
+            </div>
+            <div className={styles.itemContent}>
+              <div className={styles.breadcrumb}>
+                <span>What&rsquo;s New</span>
+                {changelogUnread > 0 && (
+                  <span className={styles.unreadBadge}>{changelogUnread}</span>
+                )}
+              </div>
+              <div className={styles.description}>Latest product updates and improvements.</div>
+            </div>
+          </button>
+        </div>
         {FEATURES.map(section => (
           <div key={section.group} className={styles.group}>
             <div className={styles.groupLabel}>{section.group}</div>

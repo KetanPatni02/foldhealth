@@ -37,6 +37,13 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Help → Feedback & What's New** — the sidebar Help popover now hosts a
+  Featurebase feedback panel (ideas / bug reports / voting) and an in-house
+  changelog drawer backed by Supabase (`changelog_entries`). A GitHub Action
+  (`.github/workflows/changelog.yml`) publishes entries automatically from
+  commit messages on every push to main (feat → New, fix → Fixed,
+  perf/refactor → Improved; chores skipped). Requires the
+  `SUPABASE_SERVICE_ROLE_KEY` repo secret.
 - **Storybook + Chromatic** — every primitive under `src/components/`
   (Core, Forms, Overlays, Feedback, Data, Navigation, Composed, shadcn/ui)
   now has a story. Storybook is published to Chromatic — links above.

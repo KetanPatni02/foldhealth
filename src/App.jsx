@@ -10,6 +10,7 @@ import { supabase } from './lib/supabase';
 import { initRouter } from './lib/router';
 import { track, trackPageview } from './lib/tracking';
 import { maybeApplyOrgDefaults } from './lib/orgDefaults';
+import { FeaturebaseProvider } from 'featurebase-js/react';
 
 // Public, shareable form fill-view (#/f/{id}) — rendered without auth so a
 // link can be opened by anyone. RLS on forms/form_responses ('Allow all')
@@ -178,14 +179,25 @@ function App() {
     window.location.hash = '#/home';
   }
 
-  // Authenticated — show app
+  // Authenticated — show app. FeaturebaseProvider powers the Help section's
+  // feedback board + changelog widgets (Sidebar/HelpPopover); messenger={false}
+  // keeps Featurebase's floating chat launcher out of the app. Identity is
+  // the plain (unverified) fields — dev-bypass sessions just stay anonymous.
   return (
-    <Suspense fallback={null}>
-      <UpdateAvailableBanner />
-      <AppLayout />
-      <Analytics />
-      <SpeedInsights />
-    </Suspense>
+    <FeaturebaseProvider
+      appId="6a626c892c9fe4e7178fe114"
+      messenger={false}
+      userId={session?.user?.id}
+      email={session?.user?.email}
+      name={session?.user?.user_metadata?.full_name || undefined}
+    >
+      <Suspense fallback={null}>
+        <UpdateAvailableBanner />
+        <AppLayout />
+        <Analytics />
+        <SpeedInsights />
+      </Suspense>
+    </FeaturebaseProvider>
   );
 }
 

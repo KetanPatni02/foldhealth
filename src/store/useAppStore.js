@@ -856,6 +856,31 @@ export const useAppStore = create((set, get) => ({
     set({ navStyle: applied });
   },
 
+  // ─── Changelog (Help → What's New) ──────────────────────────────────
+  // Rows are inserted by .github/workflows/changelog.yml on each push to
+  // main; the app only reads. `changelogSeenAt` drives the unread badge and
+  // persists per-browser so the count survives reloads.
+  changelogEntries: [],
+  changelogLoading: false,
+  _changelogFetched: false,
+  changelogSeenAt: (() => { try { return localStorage.getItem('changelogSeenAt'); } catch { return null; } })(),
+  fetchChangelog: async () => {
+    if (get()._changelogFetched) return;
+    set({ _changelogFetched: true, changelogLoading: true });
+    const { data, error } = await supabase
+      .from('changelog_entries')
+      .select('id, title, kind, compare_url, created_at')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) console.warn('[store] changelog fetch failed:', error.message);
+    set({ changelogEntries: data || [], changelogLoading: false });
+  },
+  markChangelogSeen: () => {
+    const now = new Date().toISOString();
+    try { localStorage.setItem('changelogSeenAt', now); } catch { /* private mode */ }
+    set({ changelogSeenAt: now });
+  },
+
   // Pending add-task request — set by CreateNewPopover or WorklistRow "Add Task"
   pendingAddTask: null,
 

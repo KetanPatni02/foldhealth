@@ -139,6 +139,20 @@
   font-weight: 400;
 }
 
+/* Unread-changelog count pill on the "What's New" row. */
+.unreadBadge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--primary-50);
+  color: var(--primary-300);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  vertical-align: text-bottom;
+}
+
 .description {
   font-size: 12px;
   font-weight: 400;
