@@ -150,9 +150,12 @@ export function icdMatchesFilters(icd, filters, memberOrCreatedDate) {
 
   // Claims — single-select Available / Not Available. Available = the ICD's
   // DOS classifies as source "C" (same classifier the DOS-source badge uses);
-  // Not Available = every other source (D/M) or no DOS on file.
+  // Not Available = every other source (D/M) or no DOS on file. Rows with no
+  // document on file never resolve to 'D', keeping this in sync with the
+  // badge that renders on the row.
   if (filters.claims?.length) {
-    const source = icd.dos ? dosSourceLetter(icd.dos) : null;
+    const hasDoc = member?.ch != null;
+    const source = icd.dos ? dosSourceLetter(icd.dos, hasDoc) : null;
     const bucket = source === 'C' ? 'Available' : 'Not Available';
     if (!filters.claims.includes(bucket)) return false;
   }

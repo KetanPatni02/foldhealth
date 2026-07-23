@@ -378,14 +378,18 @@ function matchOne(m, k, vals) {
     case 'r2CD':  return matchDateRange(m.r2CD, vals, 'iso');
     case 'dosSrc': {
       // Match if ANY of the member's DOS entries maps to a selected source,
-      // matching the per-DOS badges shown on the row.
-      const letters = new Set(memberDosDates(m).map(dosSourceLetter));
+      // matching the per-DOS badges shown on the row. `hasDoc` mirrors the
+      // row's "Upload" state (m.ch is null when no document is on file) so
+      // rows with no document can never bucket into "Document".
+      const hasDoc = m?.ch != null;
+      const letters = new Set(memberDosDates(m).map(d => dosSourceLetter(d, hasDoc)));
       return vals.some(v => letters.has(DOS_SOURCE_LABEL_TO_LETTER[v]));
     }
     case 'claims': {
       // Available = at least one DOS classified as source "C" (Claims), same
       // classifier the DOS-source badge uses.
-      const hasClaims = memberDosDates(m).some(d => dosSourceLetter(d) === 'C');
+      const hasDoc = m?.ch != null;
+      const hasClaims = memberDosDates(m).some(d => dosSourceLetter(d, hasDoc) === 'C');
       return vals.includes(hasClaims ? 'Available' : 'Not Available');
     }
     case 'my': {

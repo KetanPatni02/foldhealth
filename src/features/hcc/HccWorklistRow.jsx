@@ -680,8 +680,8 @@ const DOS_LEVEL_COLS = new Set(['dos', 'open', 'vt', 'rp', 'pos']);
 // Small circular source badge next to the DOS date (D=Document, C=Claim,
 // M=Manual). Classifier + meta come from the shared `dosSource` module so the
 // badge and the "DOS Source" filter agree on the source per date.
-function DosSourceBadge({ date }) {
-  const letter = dosSourceLetter(date);
+function DosSourceBadge({ date, hasDoc = true }) {
+  const letter = dosSourceLetter(date, hasDoc);
   const meta = DOS_SOURCE_META[letter] || DOS_SOURCE_META.D;
   const [pos, setPos] = useState(null);
   const ref = useRef(null);
@@ -722,11 +722,11 @@ function DosSourceBadge({ date }) {
 // Inner content (NOT the <td>) for each DOS-level column, given one
 // dos_list entry. The main row wraps these in a stacked `<td>`.
 const DOS_INNER = {
-  dos: (entry, { openClaimPreview, member }) => {
+  dos: (entry, { openClaimPreview, member, hasDoc }) => {
     // Only claim-sourced DOS (the "C" badge) open the Claims drawer;
     // document/manual dates render as plain grey text. Date colour is
     // neutral-300 in all cases (no purple link styling).
-    const isClaim = dosSourceLetter(entry.date) === 'C';
+    const isClaim = dosSourceLetter(entry.date, hasDoc) === 'C';
     return (
       <span className={styles.dosItem}>
         {isClaim ? (
@@ -736,7 +736,7 @@ const DOS_INNER = {
         ) : (
           <span className={styles.lastVisitDate}>{entry.date}</span>
         )}
-        <DosSourceBadge date={entry.date} />
+        <DosSourceBadge date={entry.date} hasDoc={hasDoc} />
       </span>
     );
   },
@@ -1025,7 +1025,10 @@ function HccWorklistRowImpl({ member, hiddenCols, columns }) {
     setActionsRect(prev => prev ? null : rect);
   };
 
-  const innerCtx = { member, openClaimPreview, openDiagPanel };
+  // A row with no document on file cannot produce a Document-sourced DOS
+  // badge — drives the exclusion inside `dosSourceLetter`.
+  const hasDoc = (charts?.length || 0) > 0;
+  const innerCtx = { member, openClaimPreview, openDiagPanel, hasDoc };
 
   // Any role marking the record Rejected disables row-level actions and
   // locks the avatars. Reads the engine-state first (canonical source),

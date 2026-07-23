@@ -92,10 +92,15 @@ export function LeftWorkspace({
   // synthesizes a stable row otherwise, so the Claims tab count and its
   // table always agree (both derive from the same member.dos_list).
   const memberClaims = useMemo(
-    () => (member?.dos_list || [])
-      .filter(d => dosSourceLetter(d.date) === 'C')
-      .map(d => claimForDos(d.date)),
-    [member?.dos_list],
+    () => {
+      // A record with no document on file can't have any 'D'-sourced DOSs;
+      // pass hasDoc so those dates re-bucket to Claim/Manual consistently.
+      const hasDoc = member?.ch != null;
+      return (member?.dos_list || [])
+        .filter(d => dosSourceLetter(d.date, hasDoc) === 'C')
+        .map(d => claimForDos(d.date));
+    },
+    [member?.dos_list, member?.ch],
   );
   // History is scoped to a specific ICD — it lists prior reviews of that
   // code. Hide the tab at DOS-level (icdScope null); it re-appears when the

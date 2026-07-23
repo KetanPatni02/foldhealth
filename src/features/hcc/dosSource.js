@@ -5,11 +5,25 @@
 
 export const DOS_SOURCES = ['D', 'C', 'M'];
 
-export function dosSourceLetter(date) {
+// Sources that remain valid when the record has no document on file — a
+// row with no upload cannot possibly have a Document-sourced DOS.
+const DOS_SOURCES_NO_DOC = DOS_SOURCES.filter(l => l !== 'D');
+
+/**
+ * Classify a DOS date to a source letter (D=Document, C=Claim, M=Manual).
+ * Deterministic per date so the demo stays stable across renders.
+ *
+ * @param {string} date    The DOS date string used as the hash seed.
+ * @param {boolean} hasDoc Whether the record has any document on file.
+ *                         When false, 'D' is excluded — a DOS cannot be
+ *                         document-sourced if the row has no document.
+ */
+export function dosSourceLetter(date, hasDoc = true) {
   let h = 0;
   const s = String(date || '');
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0xffffffff;
-  return DOS_SOURCES[Math.abs(h) % DOS_SOURCES.length];
+  const pool = hasDoc ? DOS_SOURCES : DOS_SOURCES_NO_DOC;
+  return pool[Math.abs(h) % pool.length];
 }
 
 // What each DOS-source letter means — drives the badge colour + the hover
