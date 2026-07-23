@@ -9,6 +9,7 @@ import { useAppStore } from './store/useAppStore';
 import { supabase } from './lib/supabase';
 import { initRouter } from './lib/router';
 import { track, trackPageview } from './lib/tracking';
+import { maybeApplyOrgDefaults } from './lib/orgDefaults';
 
 // Public, shareable form fill-view (#/f/{id}) — rendered without auth so a
 // link can be opened by anyone. RLS on forms/form_responses ('Allow all')
@@ -53,6 +54,16 @@ function App() {
     // Subscribe FIRST so we never miss PASSWORD_RECOVERY, which can fire
     // synchronously from inside the first getSession() call when there
     // are recovery tokens in the URL.
+    // Apply the domain-scoped defaults (theme + nav style) once per user
+    // per browser. Called from both SIGNED_IN and the initial getSession
+    // check below so returning users on reload also get the defaults on
+    // their first login from a given browser.
+    const applyDefaults = (u) => {
+      if (!u) return;
+      const store = useAppStore.getState();
+      maybeApplyOrgDefaults(u, { setTheme: store.setTheme, setNavStyle: store.setNavStyle });
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       // Sentry/Vercel events for major auth transitions. Supabase emits
       // SIGNED_IN once after a successful login (covers password, OAuth
@@ -64,6 +75,7 @@ function App() {
         setRecoveryMode(false);
       } else if (event === 'SIGNED_IN') {
         track('auth.session_established');
+        applyDefaults(s?.user);
         // Invited users arrive here via the confirmation email with a
         // placeholder password. Keep them on ResetPasswordPage so they
         // can set a real one before dropping into the app.
@@ -81,6 +93,7 @@ function App() {
       if (s?.user?.user_metadata?.invited === 'true') {
         setRecoveryMode(true);
       }
+      applyDefaults(s?.user);
       setSession(s);
     });
 
