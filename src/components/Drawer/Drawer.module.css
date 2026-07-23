@@ -97,7 +97,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 24px 24px;
+  padding: 16px;
 }
 
 .footer {

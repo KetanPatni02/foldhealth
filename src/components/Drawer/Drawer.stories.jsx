@@ -39,18 +39,14 @@ function DrawerDemo({ title = "Drawer Title", children }) {
 export const Default = {
   render: () => (
     <DrawerDemo>
-      <div style={{ padding: 16 }}>
-        <p
-          style={{ color: "var(--neutral-400)", fontSize: 14, lineHeight: 1.6 }}
-        >
-          This is the shared Drawer component — 700px wide, 8px inset, 16px
-          border-radius. Used across the entire app for all side panels (call
-          queue, detail view, preferences, HCC diagnosis review, etc.).
-        </p>
-        <p style={{ color: "var(--neutral-300)", fontSize: 13, marginTop: 12 }}>
-          Click the overlay or the close button to dismiss.
-        </p>
-      </div>
+      <p style={{ color: "var(--neutral-400)", fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+        This is the shared Drawer component — 700px wide, 8px inset, 16px
+        border-radius. Used across the entire app for all side panels (call
+        queue, detail view, preferences, HCC diagnosis review, etc.).
+      </p>
+      <p style={{ color: "var(--neutral-300)", fontSize: 13, marginTop: 12, marginBottom: 0 }}>
+        Click the overlay or the close button to dismiss.
+      </p>
     </DrawerDemo>
   ),
 };
@@ -68,16 +64,12 @@ export const WithPatientBanner = {
         rafChange="0.512"
         onCall={() => {}}
       />
-      <div style={{ padding: 16 }}>
-        <p
-          style={{ color: "var(--neutral-400)", fontSize: 14, lineHeight: 1.6 }}
-        >
-          The same Drawer shell with a <strong>PatientBanner</strong> composed
-          at the top of the body — the canonical layout for patient-context
-          drawers (call queue, care-gap review, HCC). Use the expand chevron on
-          the banner to reveal patient details and synopsis.
-        </p>
-      </div>
+      <p style={{ color: "var(--neutral-400)", fontSize: 14, lineHeight: 1.6, marginTop: 16 }}>
+        The same Drawer shell with a <strong>PatientBanner</strong> composed
+        at the top of the body — the canonical layout for patient-context
+        drawers (call queue, care-gap review, HCC). Use the expand chevron on
+        the banner to reveal patient details and synopsis.
+      </p>
     </DrawerDemo>
   ),
 };
