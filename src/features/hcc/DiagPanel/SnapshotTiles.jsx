@@ -1,4 +1,5 @@
 import { Icon } from '../../../components/Icon/Icon';
+import { Button } from '../../../components/Button/Button';
 import styles from './SnapshotTiles.module.css';
 
 /**
@@ -37,15 +38,16 @@ export function SnapshotTiles({ counts, filter, onFilter, open, onToggle }) {
           </span>
         )}
         {open && filter && (
-          <span
+          <Button
+            variant="ghost"
+            size="S"
+            leadingIcon="solar:close-linear"
             className={styles.clearChip}
-            onClick={(e) => { e.stopPropagation(); onFilter(null); }}
-            role="button"
             aria-label="Clear snapshot filter"
+            onClick={(e) => { e.stopPropagation(); onFilter(null); }}
           >
-            <Icon name="solar:close-linear" size={12} color="var(--neutral-300)" />
-            <span>Clear</span>
-          </span>
+            Clear
+          </Button>
         )}
         <Icon
           name={open ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'}

@@ -345,14 +345,15 @@ export function IcdRow({ icd }) {
                   <span className={styles.scoreLabel}>&bull; {scoreStyle.label}</span>
                 </span>
               </button>
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="S"
+                leadingIcon="solar:close-linear"
                 className={styles.expandClose}
                 onClick={() => setPanel('none')}
               >
-                <Icon name="solar:close-linear" size={12} color="var(--neutral-300)" />
-                <span>Close</span>
-              </button>
+                Close
+              </Button>
             </div>
             {confOpen && (
               <div className={styles.evidenceWrap}>

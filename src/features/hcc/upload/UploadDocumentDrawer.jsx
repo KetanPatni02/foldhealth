@@ -470,10 +470,15 @@ function PickerPhase({ showToast, cancel }) {
             onChange={(vals) => setRecordFilters(f => ({ ...f, date: vals }))}
           />
           {filterActive && (
-            <button type="button" className={styles.filterChipClear} onClick={clearAllFilters}>
-              <Icon name="solar:close-circle-linear" size={12} color="var(--primary-300)" />
+            <Button
+              variant="ghost"
+              size="S"
+              leadingIcon="solar:close-circle-linear"
+              className={styles.filterChipClear}
+              onClick={clearAllFilters}
+            >
               Clear All
-            </button>
+            </Button>
           )}
         </div>
       )}
