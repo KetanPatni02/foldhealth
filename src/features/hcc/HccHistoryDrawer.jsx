@@ -3,6 +3,7 @@ import { Drawer } from '../../components/Drawer/Drawer';
 import { Icon } from '../../components/Icon/Icon';
 import { TabStrip } from '../../components/TabBar/TabStrip';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
+import { Avatar } from '../../components/Avatar/Avatar';
 import { useAppStore } from '../../store/useAppStore';
 import { EVENTS } from './activityLog';
 // Reuse the rich timeline primitives from DiagPanel's ActivityTab. Importing
@@ -182,7 +183,7 @@ function rowMatchesFilters(row, filters) {
 function AvatarPill({ initials, name }) {
   return (
     <span className={styles.avatarPill}>
-      <span className={styles.avatarBubble}>{initials}</span>
+      <Avatar variant="provider" initials={initials} />
       <span className={styles.avatarName}>{name}</span>
     </span>
   );
