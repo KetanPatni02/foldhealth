@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
+import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { CommentComposer } from '../../components/CommentComposer/CommentComposer';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
@@ -661,9 +662,7 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
         {/* Title bar */}
         <div className={styles.titleBar}>
           <span className={styles.title}>Document Review</span>
-          <button type="button" className={styles.iconBtn} onClick={handleClose} aria-label="Close">
-            <Icon name="solar:close-square-linear" size={20} color="var(--neutral-400)" />
-          </button>
+          <CloseButton size={20} onClick={handleClose} className={styles.iconBtn} />
         </div>
 
         {/* Body — two panes normally; right-pane only once the last doc is
@@ -1496,14 +1495,7 @@ function InsufficientDosDialog({ onCancel, onConfirm }) {
               Please select a reason. Adding a note is optional
             </AlertDialogDescription>
           </div>
-          <button
-            type="button"
-            className={styles.insufficientClose}
-            onClick={onCancel}
-            aria-label="Close"
-          >
-            <Icon name="solar:close-square-linear" size={16} color="var(--neutral-400)" />
-          </button>
+          <CloseButton size={16} onClick={onCancel} className={styles.insufficientClose} />
         </div>
         <div className={styles.insufficientReasons}>
           {INSUFFICIENT_REASONS.map((r) => {

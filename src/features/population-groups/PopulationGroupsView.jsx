@@ -8,7 +8,7 @@ import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from
 import { Icon } from '../../components/Icon/Icon';
 import { ConfirmDialog } from '../../components/Modal/ConfirmDialog';
 import { Badge } from '../../components/Badge/Badge';
-import { CloseIcon } from '../../components/Icon/CloseIcon';
+import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { UpdatePopGroupDrawer } from './UpdatePopGroupDrawer';
 import { Input as FoldInput } from '../../components/Input/Input';
 import { Textarea } from '../../components/Textarea/Textarea';
@@ -2191,9 +2191,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
             <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
                 <span style={{ fontSize:16, fontWeight:500, color:'var(--neutral-400)' }}>Save Changes ?</span>
-                <button onClick={() => setShowSaveConfirm(false)} aria-label="Close" style={{ border:'none', background:'none', padding:2, cursor:'pointer', display:'flex', flexShrink:0 }}>
-                  <CloseIcon size={20} color="var(--neutral-300)" />
-                </button>
+                <CloseButton size={20} onClick={() => setShowSaveConfirm(false)} />
               </div>
               <p style={{ margin:0, fontSize:14, color:'var(--neutral-200)', lineHeight:1.5 }}>
                 Please confirm to save the changes you made for this population group.

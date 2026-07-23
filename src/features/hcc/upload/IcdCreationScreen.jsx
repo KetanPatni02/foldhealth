@@ -6,7 +6,7 @@ import { Button } from '../../../components/Button/Button';
 import { Badge } from '../../../components/Badge/Badge';
 import { Dropzone } from '../../../components/Dropzone/Dropzone';
 import { DemoPhiStrip } from '../../../components/DemoPhiStrip/DemoPhiStrip';
-import { CloseIcon } from '../../../components/Icon/CloseIcon';
+import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { POS_LABEL } from './mockOcr';
 import { Avatar } from '../../../components/Avatar/Avatar';
 import { OCR_TIER_LABEL, OCR_TIER_TONE } from '../compliance';
@@ -174,9 +174,7 @@ export function IcdCreationScreen() {
         {/* Title bar */}
         <header className={styles.titleBar}>
           <h2 className={styles.title}>ICD Creation</h2>
-          <button type="button" className={styles.closeBtn} onClick={close} aria-label="Close">
-            <CloseIcon size={20} />
-          </button>
+          <CloseButton size={20} onClick={close} className={styles.closeBtn} />
         </header>
 
         {reviewInline ? (

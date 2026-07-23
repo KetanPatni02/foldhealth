@@ -7,6 +7,7 @@ import { BulkBar } from '../../../components/BulkBar/BulkBar';
 import { Icon } from '../../../components/Icon/Icon';
 import { CloseIcon } from '../../../components/Icon/CloseIcon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
+import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { Avatar } from '../../../components/Avatar/Avatar';
 import { PatientBanner } from '../../../components/PatientBanner/PatientBanner';
 import { Switch } from '../../../components/Switch/Switch';
@@ -1915,14 +1916,7 @@ function RejectRecordDialog({ onCancel, onConfirm }) {
               Please select a reason. A note is required.
             </AlertDialogDescription>
           </div>
-          <button
-            type="button"
-            className={styles.rejectDialogClose}
-            onClick={onCancel}
-            aria-label="Close"
-          >
-            <Icon name="solar:close-square-linear" size={16} color="var(--neutral-400)" />
-          </button>
+          <CloseButton size={16} onClick={onCancel} className={styles.rejectDialogClose} />
         </div>
         <div className={styles.rejectDialogReasons}>
           {REJECT_RECORD_REASONS.map((r) => {
