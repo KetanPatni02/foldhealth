@@ -820,15 +820,20 @@ export function OutreachTab({
   defaultCalledTo,
   defaultLogFor = 'hcc-gaps',
   hideLogForRow = false,
+  defaultPrograms = [],
+  defaultFormOpen = false,
+  scopedProgram = null,
 } = {}) {
-  const PROGRAM_OPTIONS = programs && programs.length ? programs : PROGRAMS;
+  // Preselected programs are always available as pills even if not in the
+  // standard list (e.g. the open care program in the Program Detail view).
+  const PROGRAM_OPTIONS = [...new Set([...(programs && programs.length ? programs : PROGRAMS), ...defaultPrograms])];
   const CALLED_TO_OPTIONS = recipientOptions && recipientOptions.length
     ? recipientOptions
     : ['Dr. Katherine Moss (581 824-1591)', 'Carlos Hernandez (555 000-0000)'];
   const INITIAL_CALLED_TO = defaultCalledTo || CALLED_TO_OPTIONS[0];
 
   const currentUserProfile = useAppStore(s => s.currentUserProfile);
-  const [formOpen, setFormOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(defaultFormOpen);
   // Id of the row currently being edited (null = creating a new one).
   // When set, handleSave updates that row in place instead of pushing.
   const [editingId, setEditingId] = useState(null);
@@ -837,8 +842,8 @@ export function OutreachTab({
   const [activityFilter, setActivityFilter] = useState('All');
   const [logGroups, setLogGroups] = useState(INITIAL_LOG_GROUPS);
   const [type, setType] = useState(defaultLogFor === 'hcc-gaps' ? 'Call' : 'General');
-  const [datetime, setDatetime] = useState('');
-  const [selectedProgs, setSelectedProgs] = useState([]);
+  const [datetime, setDatetime] = useState(defaultFormOpen ? formatNow() : '');
+  const [selectedProgs, setSelectedProgs] = useState(defaultPrograms);
   const [outcome, setOutcome] = useState(null);
   const [separateNotes, setSeparateNotes] = useState(false);
   const [panels, setPanels] = useState({});
@@ -1359,8 +1364,14 @@ export function OutreachTab({
         </div>
       </div>
 
-      {/* Activity log */}
-      {logGroups.map(group => (
+      {/* Activity log — scoped to the current program when opened from a
+          program's Outreach step (only that program's entries show). */}
+      {(scopedProgram
+        ? logGroups
+            .map(g => ({ ...g, logs: g.logs.filter(l => (l.programs || []).includes(scopedProgram)) }))
+            .filter(g => g.logs.length > 0)
+        : logGroups
+      ).map(group => (
         <LogGroup
           key={group.id}
           label={group.label}

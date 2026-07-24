@@ -287,6 +287,14 @@
 }
 .reviewedBtn:hover { background: #F5FFFA; }
 
+/* Outreach step — the shared OutreachTab (log form + activity) scrolls
+   within the content column. */
+.outreachWrap {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+}
 .contentInner {
   display: flex;
   flex-direction: column;
@@ -338,9 +346,9 @@
   border-collapse: collapse;
 }
 .table thead th {
-  padding: 8px 12px;
+  padding: 10px 12px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--neutral-300);
   text-align: left;
   white-space: nowrap;
@@ -353,14 +361,29 @@
 .table tbody tr { border-bottom: 0.5px solid var(--neutral-100); }
 .table tbody tr:hover { background: rgba(22,24,29,0.02); }
 .table tbody td {
-  padding: 8px 12px;
+  padding: 10px 12px;
   font-size: 14px;
-  color: var(--neutral-300);
+  color: var(--neutral-400);
   white-space: nowrap;
+  vertical-align: middle;
 }
-.fileNameCell {
+/* Select column — narrow; the shared Checkbox aligns to the row middle. */
+.checkCell { width: 36px; }
+.checkCell > * { vertical-align: middle; }
+/* File Name — darkest; File Type — muted grey. */
+.fileNameCell { color: var(--neutral-500); }
+.colMuted { color: var(--neutral-300); }
+/* Sent Via chips (neutral-50 pill, neutral-300 text) — one per channel. */
+.viaChips { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.viaChip {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  color: var(--neutral-500);
+  height: 24px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--neutral-50);
+  color: var(--neutral-300);
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: nowrap;
 }
