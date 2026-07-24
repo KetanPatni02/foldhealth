@@ -90,7 +90,10 @@
 .bannerActions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
 /* ── Body / panes ── */
-.body { display: flex; flex: 1; min-height: 0; }
+/* padding: 0 overrides the shared Drawer body's default 16px padding so
+   the two panes hug the drawer edges — same pattern as the Split Panes
+   story. Content padding lives INSIDE each pane, not on the row. */
+.body { display: flex; flex: 1; min-height: 0; padding: 0; }
 .leftPane {
   flex: 1;
   min-width: 0;
