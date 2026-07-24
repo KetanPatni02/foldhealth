@@ -4,8 +4,13 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Button } from '../../../components/Button/Button';
 import { BannerExpandIcon } from '../../../components/Icon/BannerExpandIcon';
 import { ProgressRing } from '../../hcc/DiagPanel/ReviewProgressPopover';
+import { Checkbox } from '../../../components/ui/checkbox';
 import { PROGRAM_STEPS_MOCK, PROGRAM_LETTERS_MOCK } from '../data/programActivityMock';
+import { OutreachTab } from './OutreachTab';
 import styles from './ProgramDetailView.module.css';
+
+// Flat list of every step (top-level + section children) for id lookups.
+const ALL_STEPS = PROGRAM_STEPS_MOCK.flatMap(s => (s.type === 'section' ? s.children : [s]));
 
 function DetailRow({ icon, label, value }) {
   return (
@@ -67,9 +72,26 @@ function SectionHeader({ name, expanded, onToggle }) {
 const LETTER_SUB_TABS = ['All', 'Sent', 'Not Sent'];
 
 export function ProgramDetailView({ program, onClose, startAtFirstStep = false }) {
-  const [activeStep, setActiveStep] = useState(startAtFirstStep ? PROGRAM_STEPS_MOCK[0]?.id : 'step-2');
+  const firstStep = PROGRAM_STEPS_MOCK[0];
+  const firstStepIsOutreach = firstStep?.name === 'Outreach';
+  // When the first step is Outreach, land on it so the Log New Outreach
+  // component is the default view; otherwise keep the prior default.
+  const [activeStep, setActiveStep] = useState(
+    startAtFirstStep || firstStepIsOutreach ? firstStep?.id : 'step-2',
+  );
   const [expandedSections, setExpandedSections] = useState({ 'step-3': true, 'step-4': false });
   const [activeLetterTab, setActiveLetterTab] = useState('All');
+  const [selectedLetters, setSelectedLetters] = useState(() => new Set());
+
+  const allLettersSelected = selectedLetters.size === PROGRAM_LETTERS_MOCK.length && PROGRAM_LETTERS_MOCK.length > 0;
+  const someLettersSelected = selectedLetters.size > 0 && !allLettersSelected;
+  const toggleAllLetters = () =>
+    setSelectedLetters(prev => (prev.size === PROGRAM_LETTERS_MOCK.length ? new Set() : new Set(PROGRAM_LETTERS_MOCK.map(l => l.id))));
+  const toggleLetter = (id) =>
+    setSelectedLetters(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+
+  const activeStepObj = ALL_STEPS.find(s => s.id === activeStep);
+  const isOutreachStep = activeStepObj?.name === 'Outreach';
 
   const [detailsExpanded, setDetailsExpanded] = useState(false);
 
@@ -229,7 +251,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
         {/* Right content */}
         <div className={styles.content}>
           <div className={styles.contentHeader}>
-            <span className={styles.contentTitle}>Program Related Letters</span>
+            <span className={styles.contentTitle}>{isOutreachStep ? 'Outreach' : 'Program Related Letters'}</span>
             <div className={styles.contentActions}>
               {/* variant=ghost gives Button its bare shell (cursor, focus, structure)
                   so the caller's .actionBtn / .reviewedBtn class fully defines the
@@ -246,6 +268,16 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
             </div>
           </div>
 
+          {isOutreachStep ? (
+            <div className={styles.outreachWrap}>
+              <OutreachTab
+                defaultPrograms={[program.code].filter(Boolean)}
+                scopedProgram={program.code}
+                defaultLogFor="care-program"
+                defaultFormOpen
+              />
+            </div>
+          ) : (
           <div className={styles.contentInner}>
             <div className={styles.contentSubTabs}>
               <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" />
@@ -269,6 +301,13 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
               <table className={styles.table}>
                 <thead>
                   <tr>
+                    <th className={styles.checkCell}>
+                      <Checkbox
+                        checked={someLettersSelected ? 'indeterminate' : allLettersSelected}
+                        onCheckedChange={toggleAllLetters}
+                        aria-label="Select all letters"
+                      />
+                    </th>
                     <th>File Name</th>
                     <th>File Type</th>
                     <th>Sent Via</th>
@@ -279,14 +318,22 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
                 <tbody>
                   {PROGRAM_LETTERS_MOCK.map(letter => (
                     <tr key={letter.id}>
+                      <td className={styles.checkCell}>
+                        <Checkbox
+                          checked={selectedLetters.has(letter.id)}
+                          onCheckedChange={() => toggleLetter(letter.id)}
+                          aria-label={`Select ${letter.fileName}`}
+                        />
+                      </td>
+                      <td className={styles.fileNameCell}>{letter.fileName}</td>
+                      <td className={styles.colMuted}>{letter.fileType}</td>
                       <td>
-                        <span className={styles.fileNameCell}>
-                          <Icon name="solar:document-linear" size={16} color="var(--neutral-300)" />
-                          {letter.fileName}
+                        <span className={styles.viaChips}>
+                          {letter.sentVia.map(v => (
+                            <span key={v} className={styles.viaChip}>{v}</span>
+                          ))}
                         </span>
                       </td>
-                      <td>{letter.fileType}</td>
-                      <td>{letter.sentVia}</td>
                       <td>{letter.lastSent}</td>
                       <td>{letter.sentBy}</td>
                     </tr>
@@ -295,6 +342,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
               </table>
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>

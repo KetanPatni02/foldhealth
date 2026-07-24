@@ -25,12 +25,32 @@ function ExpandedDemographics({ p, className }) {
   );
 }
 
-function ExpandedHealthStatus({ p, className }) {
+function ExpandedHealthStatus({ p, className, movedMetrics = false }) {
   const v = p.recent_vitals || {};
   return (
     <div className={className ?? styles.expandCol}>
       <h4 className={styles.expandTitle}>Health Status</h4>
       <div className={styles.expandRows}>
+        {/* Responsive: Programs + Last Contact relocate here from the banner
+            row once it's too narrow to hold them. */}
+        {movedMetrics && (
+          <>
+            <div className={styles.expandItem}>
+              <span className={styles.expandLabel}>Programs:</span>
+              <div className={styles.programBadges}>
+                {(p.programs || []).map(pr => <span key={pr} className={`${styles.badge} ${styles.badgeInfo}`}>{pr}</span>)}
+                <span className={`${styles.badge} ${styles.badgeGrey}`}>+2</span>
+              </div>
+            </div>
+            <div className={styles.expandItem}>
+              <span className={styles.expandLabel}>Last Contact:</span>
+              <div className={styles.lastContactBtn}>
+                <Icon name="solar:phone-calling-linear" size={16} color="var(--status-error)" />
+                <span className={styles.lastContactText}>{p.last_contact_type}({p.last_contact_days}d)</span>
+              </div>
+            </div>
+          </>
+        )}
         <div className={styles.expandItem}>
           <span className={styles.expandLabel}>Chronic Condition:</span>
           <div className={styles.conditionBadges}>{(p.chronic_conditions || []).map(c => <span key={c} className={styles.conditionBadge}>{c}</span>)}</div>
@@ -106,6 +126,24 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
 
   const [showScheduleDrawer, setShowScheduleDrawer] = useState(false);
   const callBtnRef = useRef(null);
+
+  // Responsive size tiers for the full banner (measured, not viewport, so it
+  // reacts to the sidebar/drawer too):
+  //   wide   → all metrics inline
+  //   medium → Programs + Last Contact move into the Health Status expansion
+  //   narrow → also drop Next Appt. (it's in Upcoming Appointments already)
+  const bannerRef = useRef(null);
+  const [bannerSize, setBannerSize] = useState('wide');
+  useEffect(() => {
+    const el = bannerRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(([entry]) => {
+      const w = entry.contentRect.width;
+      setBannerSize(w >= 1200 ? 'wide' : w >= 960 ? 'medium' : 'narrow');
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const p360Profile = useAppStore(s => s.p360Profile);
   const fetchP360Profile = useAppStore(s => s.fetchP360Profile);
@@ -353,7 +391,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
   }
 
   return (
-    <div className={styles.banner}>
+    <div className={styles.banner} ref={bannerRef}>
       {/* ── ROW 1: Profile strip ── */}
       <div className={styles.row1}>
         {/* User info */}
@@ -444,29 +482,35 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
             </div>
           </div>
 
-          {/* Next Appt */}
-          <div className={styles.metricCol}>
-            <span className={styles.metricLabel}>Next Appt.</span>
-            <div className={styles.metricValueRow}><span className={styles.nextApptValue}>{p.next_appointment_date || '—'}</span></div>
-          </div>
-
-          {/* Last Contact */}
-          <div className={styles.metricCol}>
-            <span className={styles.metricLabel}>Last Contact</span>
-            <div className={styles.lastContactBtn}>
-              <Icon name="solar:phone-calling-linear" size={16} color="var(--status-error)" />
-              <span className={styles.lastContactText}>{p.last_contact_type}({p.last_contact_days}d)</span>
+          {/* Next Appt — hidden at narrow width (shown in Upcoming Appointments). */}
+          {bannerSize !== 'narrow' && (
+            <div className={styles.metricCol}>
+              <span className={styles.metricLabel}>Next Appt.</span>
+              <div className={styles.metricValueRow}><span className={styles.nextApptValue}>{p.next_appointment_date || '—'}</span></div>
             </div>
-          </div>
+          )}
 
-          {/* Programs */}
-          <div className={styles.metricCol}>
-            <span className={styles.metricLabel}>Programs</span>
-            <div className={styles.programBadges}>
-              {(p.programs || []).map(pr => <span key={pr} className={`${styles.badge} ${styles.badgeInfo}`} style={{ width: pr.length > 3 ? 'auto' : 40 }}>{pr}</span>)}
-              <span className={`${styles.badge} ${styles.badgeGrey}`} style={{ width: 30 }}>+2</span>
+          {/* Last Contact — moves into Health Status expansion below wide. */}
+          {bannerSize === 'wide' && (
+            <div className={styles.metricCol}>
+              <span className={styles.metricLabel}>Last Contact</span>
+              <div className={styles.lastContactBtn}>
+                <Icon name="solar:phone-calling-linear" size={16} color="var(--status-error)" />
+                <span className={styles.lastContactText}>{p.last_contact_type}({p.last_contact_days}d)</span>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Programs — moves into Health Status expansion below wide. */}
+          {bannerSize === 'wide' && (
+            <div className={styles.metricCol}>
+              <span className={styles.metricLabel}>Programs</span>
+              <div className={styles.programBadges}>
+                {(p.programs || []).map(pr => <span key={pr} className={`${styles.badge} ${styles.badgeInfo}`} style={{ width: pr.length > 3 ? 'auto' : 40 }}>{pr}</span>)}
+                <span className={`${styles.badge} ${styles.badgeGrey}`} style={{ width: 30 }}>+2</span>
+              </div>
+            </div>
+          )}
 
           {/* Expand arrow */}
           <button
@@ -518,7 +562,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
       {expanded && (
         <div className={styles.expandedGrid}>
           <ExpandedDemographics p={p} />
-          <ExpandedHealthStatus p={p} />
+          <ExpandedHealthStatus p={p} movedMetrics={bannerSize !== 'wide'} />
           <ExpandedAppointments p={p} />
           <ExpandedFamily p={p} />
         </div>

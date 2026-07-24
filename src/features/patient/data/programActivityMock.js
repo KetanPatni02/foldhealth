@@ -273,7 +273,12 @@ export const PROGRAM_STEPS_MOCK = [
 ];
 
 export const PROGRAM_LETTERS_MOCK = [
-  { id: 'l-1', fileName: 'AMTX COC UTR Letter', fileType: 'PDF', sentVia: 'Email', lastSent: '02/19/2024', sentBy: 'Delores Conn' },
-  { id: 'l-2', fileName: 'Discharge Summary', fileType: 'PDF', sentVia: 'Mail', lastSent: '02/15/2024', sentBy: 'Aldo Richman' },
-  { id: 'l-3', fileName: 'Welcome Letter', fileType: 'PDF', sentVia: 'Email', lastSent: '01/10/2024', sentBy: 'Ivy Ralph' },
+  { id: 'l-1', fileName: 'Intro or Welcome Letter - Patient', fileType: 'Letter', sentVia: ['Email', 'SMS'], lastSent: '07/02/2025', sentBy: 'Mark Emard' },
+  { id: 'l-2', fileName: 'Consent letter - Patient', fileType: 'Letter', sentVia: ['Email'], lastSent: '07/01/2025', sentBy: 'Faye Romaguera' },
+  { id: 'l-3', fileName: 'ICT Invite - Member', fileType: 'Form', sentVia: ['Email'], lastSent: '06/29/2025', sentBy: 'Melinda Effertz' },
+  { id: 'l-4', fileName: 'ICT Invite - PCP', fileType: 'Letter', sentVia: ['SMS'], lastSent: '06/15/2025', sentBy: 'Rachael Jast' },
+  { id: 'l-5', fileName: 'ICP Letter - Member', fileType: 'Letter', sentVia: ['Email'], lastSent: '06/14/2025', sentBy: 'Lewis Bogisich' },
+  { id: 'l-6', fileName: 'ICP Letter - Provider', fileType: 'Letter', sentVia: ['Mailroom'], lastSent: '05/30/2025', sentBy: 'Domingo Toy' },
+  { id: 'l-7', fileName: 'UTR Letter', fileType: 'Letter', sentVia: ['Email'], lastSent: '05/23/2025', sentBy: 'Ernestine Leffler' },
+  { id: 'l-8', fileName: 'Member Flyers', fileType: 'Flyer', sentVia: ['Email'], lastSent: '05/18/2025', sentBy: 'Priscilla Romaguera' },
 ];
