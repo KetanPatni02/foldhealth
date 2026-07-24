@@ -1,5 +1,6 @@
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Icon } from '../../components/Icon/Icon';
+import { FilePreview } from '../../components/FilePreview/FilePreview';
 import { DocEvidenceViewer } from './DiagPanel/DocEvidenceViewer';
 import styles from './DocPreviewDrawer.module.css';
 
@@ -40,7 +41,7 @@ export function DocPreviewDrawer({ charts, initialId, member, onClose }) {
       }
     >
       {doc.pdf ? (
-        <iframe className={styles.pdf} src={doc.pdf} title={doc.n} />
+        <FilePreview className={styles.pdf} src={doc.pdf} name={doc.n} ext={doc.ext} />
       ) : (
         <DocEvidenceViewer member={member} />
       )}

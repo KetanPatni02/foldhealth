@@ -1254,7 +1254,10 @@ function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId, 
       uploadedBy: (c.addedBy || '').split(' (')[0] || 'System',
       role: /(Support Team|Coder|QA|Compliance)/.exec(c.addedBy || '')?.[1] || '',
       status: (c.status || 'pending').toLowerCase(),
-      ext: extFromName(c.n || c.caption),
+      // Real extension first (uploads carry ext/fname; display names are
+      // captions and usually have none); Storage URLs embed the original
+      // filename so they type correctly as a last resort.
+      ext: c.ext || extFromName(c.fname) || extFromName(c.n || c.caption) || extFromName(c.pdf),
       pdf: c.pdf,
     }));
   }, [charts]);
@@ -1474,14 +1477,20 @@ function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId, 
 // Three-phase flow:
 //   • empty    → dashed drop-zone with "Choose file"
 //   • uploading → file row with name + size + green progress bar + X cancel
-//   • ready    → file row with refresh/X + Document Type/Category dropdowns
-//                + required Caption input + Upload/Cancel buttons
-// On Upload: appends a 'pending' doc to the listing and logs to the Activity
-// Log (ICD scope → both ICD & DOS-level logs; no scope → DOS-only).
+//   • ready    → file row with refresh/X + Caption (pre-filled with the file
+//                name) + Document Category / Document Status dropdowns
+//                + Upload/Cancel buttons
+// On Upload: appends the doc (with the chosen Pass/Fail status) to the
+// listing and logs to the Activity Log (ICD scope → both ICD & DOS-level
+// logs; no scope → DOS-only).
 const DOC_ACCEPT = '.pdf,.doc,.docx,.png,.jpg,.csv,.xls,.xlsx';
 const DOC_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
-const DOC_TYPES = ['HCC Document', 'Clinical Note', 'Lab Result', 'Imaging', 'Other'];
 const DOC_CATEGORIES = ['Discharge Summary', 'Consult Note', 'Lab Report', 'Imaging', 'Chart', 'Physical Therapy'];
+// Dropdown labels → stored doc.status values ('Passed' | 'Failed').
+const DOC_STATUSES = [
+  { label: 'Pass', value: 'Passed' },
+  { label: 'Fail', value: 'Failed' },
+];
 
 function formatBytes(n) {
   if (n < 1024) return `${n} B`;
@@ -1511,7 +1520,7 @@ function DocumentsUploader() {
   const [progress, setProgress] = useState(0);
   const [drag, setDrag] = useState(false);
   const [error, setError] = useState('');
-  const [docType, setDocType] = useState(DOC_TYPES[0]);
+  const [docStatus, setDocStatus] = useState(DOC_STATUSES[0].value);
   const [category, setCategory] = useState(DOC_CATEGORIES[0]);
   const [caption, setCaption] = useState('');
 
@@ -1534,12 +1543,15 @@ function DocumentsUploader() {
 
   const reset = () => {
     setFile(null); setProgress(0); setError(''); setCaption('');
-    setDocType(DOC_TYPES[0]); setCategory(DOC_CATEGORIES[0]);
+    setDocStatus(DOC_STATUSES[0].value); setCategory(DOC_CATEGORIES[0]);
     setPhase('empty');
   };
   const startUpload = (f) => {
     if (!f) return;
     if (f.size > DOC_MAX_BYTES) { setError('File exceeds 5 MB.'); return; }
+    // Pre-fill the caption with the file name — but never clobber a caption
+    // the user already typed (swapping files updates an auto-filled one).
+    setCaption(prev => (!prev.trim() || prev === file?.name) ? f.name : prev);
     setError(''); setFile(f); setProgress(0); setPhase('uploading');
   };
   const pick = () => inputRef.current?.click();
@@ -1560,6 +1572,7 @@ function DocumentsUploader() {
       file,
       caption: caption.trim(),
       docType: category,
+      status: docStatus,
     });
     addChartDoc(diagPanelMemberId, doc, file);
     const userRole = useAppStore.getState().hccUserRole || 'Coder';
@@ -1583,7 +1596,7 @@ function DocumentsUploader() {
         patientName: patient?.name,
       },
     });
-    showToast(`Uploaded ${doc.n} — pending review.`);
+    showToast(`Uploaded ${doc.n} — marked ${docStatus}.`);
     reset(); close();
   };
   const onCancel = () => { reset(); close(); };
@@ -1641,28 +1654,6 @@ function DocumentsUploader() {
 
       {phase === 'ready' && (
         <div className={styles.docUploaderForm}>
-          <div className={styles.docUploaderFormRow}>
-            <label className={styles.docUploaderField}>
-              <span className={styles.docUploaderFieldLabel}>Document Type</span>
-              <select
-                className={styles.docUploaderSelect}
-                value={docType}
-                onChange={(e) => setDocType(e.target.value)}
-              >
-                {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </label>
-            <label className={styles.docUploaderField}>
-              <span className={styles.docUploaderFieldLabel}>Document Category</span>
-              <select
-                className={styles.docUploaderSelect}
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-              >
-                {DOC_CATEGORIES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </label>
-          </div>
           <label className={styles.docUploaderField}>
             <span className={styles.docUploaderFieldLabel}>
               Caption <span className={styles.docUploaderRequired}>•</span>
@@ -1675,6 +1666,28 @@ function DocumentsUploader() {
               placeholder="HCC80 Evidence Document"
             />
           </label>
+          <div className={styles.docUploaderFormRow}>
+            <label className={styles.docUploaderField}>
+              <span className={styles.docUploaderFieldLabel}>Document Category</span>
+              <select
+                className={styles.docUploaderSelect}
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                {DOC_CATEGORIES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </label>
+            <label className={styles.docUploaderField}>
+              <span className={styles.docUploaderFieldLabel}>Document Status</span>
+              <select
+                className={styles.docUploaderSelect}
+                value={docStatus}
+                onChange={(e) => setDocStatus(e.target.value)}
+              >
+                {DOC_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+            </label>
+          </div>
         </div>
       )}
 

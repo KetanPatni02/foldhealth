@@ -97,9 +97,8 @@ export const DOC_TYPES = [
  * points so the shape stays identical. `pdf` is an object URL for an instant
  * in-session preview; once persisted, the Supabase Storage URL replaces it.
  */
-export function makeUploadedChartDoc(member, { file, caption, docType }) {
+export function makeUploadedChartDoc(member, { file, caption, docType, status = 'Pending' }) {
   const uploadedOn = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
-  const isPdf = file && (file.type === 'application/pdf' || /\.pdf$/i.test(file.name));
   const cap = (caption || '').trim();
   // Caption is the user-facing document name (surfaces in the worklist
   // Documents column AND the DiagPanel Documents tab). Fall back to the
@@ -110,10 +109,15 @@ export function makeUploadedChartDoc(member, { file, caption, docType }) {
     n: displayName,
     caption: displayName,
     t: docType,
-    pdf: isPdf ? URL.createObjectURL(file) : undefined,
+    // Object URL for EVERY file type (not just PDF) so images / DOCX
+    // preview in-session too — FilePreview routes by `ext`/`fname`.
+    // Once persisted, the Supabase Storage URL replaces it.
+    pdf: file ? URL.createObjectURL(file) : undefined,
+    fname: file?.name || '',
+    ext: ((file?.name || '').match(/\.([a-z0-9]+)$/i)?.[1] || '').toLowerCase(),
     dateAdded: uploadedOn,
     addedBy: 'You',
     meta: `${uploadedOn} · ${docType}`,
-    status: 'Pending',
+    status,
   };
 }

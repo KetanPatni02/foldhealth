@@ -10,6 +10,7 @@ import { RoleTooltip } from './RoleTooltip';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { Button } from '../../components/Button/Button';
 import { UploadDropField } from '../../components/UploadDropField/UploadDropField';
+import { FilePreview } from '../../components/FilePreview/FilePreview';
 import { DemoPhiStrip } from '../../components/DemoPhiStrip/DemoPhiStrip';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
 import { ConfirmDialog } from '../../components/Modal/ConfirmDialog';
@@ -691,7 +692,7 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
               <div className={styles.paneHeader}>{selected.n}</div>
               <div className={styles.pdfWrap}>
                 {selected.pdf ? (
-                  <iframe src={selected.pdf} title={selected.n} />
+                  <FilePreview src={selected.pdf} name={selected.n} ext={selected.ext} />
                 ) : (
                   <DocEvidenceViewer member={member} />
                 )}

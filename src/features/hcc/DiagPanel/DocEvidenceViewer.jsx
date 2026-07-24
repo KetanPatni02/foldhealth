@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
+import { FilePreview } from '../../../components/FilePreview/FilePreview';
 import { getIcdsForMember } from '../data/icds';
 import styles from './DocEvidenceViewer.module.css';
 
@@ -17,13 +18,10 @@ import styles from './DocEvidenceViewer.module.css';
  *      coding evidence. This keeps demo/system-seeded docs viewable
  *      until a real backend streams the source file.
  */
-const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg']);
-
 export function DocEvidenceViewer({ member, icdScope, openDoc = null }) {
   const [url, setUrl] = useState(null);
   const docPdf = openDoc?.pdf || null;
   const docExt = (openDoc?.ext || '').toLowerCase();
-  const isImage = IMAGE_EXTS.has(docExt);
   const useDirect = !!docPdf; // real uploaded file — render as-is
 
   // Build a synthesized note (blob URL) only when we DON'T have a real doc
@@ -38,22 +36,15 @@ export function DocEvidenceViewer({ member, icdScope, openDoc = null }) {
   }, [useDirect, member?.name, member?.dos, icdScope, openDoc?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (useDirect) {
-    if (isImage) {
-      return (
-        <img
-          key={docPdf}
-          src={docPdf}
-          alt={openDoc.name || 'Uploaded document'}
-          className={styles.frame}
-          style={{ objectFit: 'contain', background: 'var(--neutral-50)' }}
-        />
-      );
-    }
+    // FilePreview routes by type — image/pdf inline, DOCX rendered to HTML,
+    // anything else gets an explicit open-in-new-tab card (never a
+    // surprise download from an <iframe> the browser can't render).
     return (
-      <iframe
+      <FilePreview
         key={docPdf}
-        title={openDoc.name || 'Source document'}
         src={docPdf}
+        name={openDoc.name || 'Source document'}
+        ext={docExt}
         className={styles.frame}
       />
     );
