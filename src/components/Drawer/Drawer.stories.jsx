@@ -162,7 +162,7 @@ function SplitPanesDemo() {
 }
 
 export const SplitPanesWithDragHandle = {
-  name: 'Split Panes (LHS / RHS + Drag Handle)',
+  name: 'Split Panes',
   parameters: {
     docs: {
       description: {
