@@ -3415,6 +3415,84 @@ export const useAppStore = create((set, get) => ({
     } catch (err) {
       console.warn('fetch hcc_gap_dos_actions failed:', err?.message || err);
     }
+    // Once the fetch is settled, promote any mock-only "HCC Not Linked"
+    // suggestions that already have evidence into hcc_diagnosis_gaps. This
+    // keeps unlinked ICDs like I10 from staying purely client-side once
+    // there's a claim or document behind them.
+    get().backfillMockNotLinkedGaps(memberId, memberName);
+  },
+
+  // Promote every mock "HCC Not Linked" ICD for a member that has evidence
+  // (any linked document OR claim) into hcc_diagnosis_gaps. Skips codes
+  // already persisted for this member. Fire-and-forget batch insert with an
+  // optimistic append so the panel switches from mock-fallback to DB-backed
+  // rows immediately.
+  //
+  // "Evidence" = mock.docs > 0 OR mock.cmts > 0 — the seed data uses those
+  // counters to record how many documents / claim mentions back the code,
+  // which matches the OR semantics agreed for this feature.
+  // Per-session guard so React StrictMode's double-invoke of the DiagPanel
+  // fetch effect doesn't insert the same rows twice. Reset never — a page
+  // reload gets a fresh module and a fresh Set, which is the right window.
+  _hccNotLinkedBackfilled: new Set(),
+  backfillMockNotLinkedGaps: async (memberId, memberName) => {
+    if (!memberId || !memberName) return;
+    const seen = get()._hccNotLinkedBackfilled;
+    if (seen.has(memberId)) return;
+    seen.add(memberId);
+    const { getNotLinkedForMember } = await import('../features/hcc/data/icds');
+    const mock = getNotLinkedForMember(memberName) || [];
+    if (!mock.length) return;
+    const s = get();
+    // Dedupe against every gap already scoped to this member, regardless of
+    // is_linked — the DB carries a UNIQUE (member_name, code) constraint
+    // (see hcc_diag_kind_migration.sql), so promoting a code that's already
+    // present as a Linked gap would fail the insert. Skip it either way.
+    const existing = new Set(
+      (s.hccDiagnosisGaps || []).map(g => g.code)
+    );
+    const eligible = mock.filter(m =>
+      !existing.has(m.code) && ((m.docs ?? 0) > 0 || (m.cmts ?? 0) > 0)
+    );
+    if (!eligible.length) return;
+    const newId = () => (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : `${memberId}-${Math.random().toString(36).slice(2, 10)}`;
+    const rows = eligible.map(m => {
+      const kind = m.type === 'Recapture' ? 'Recapture' : 'Suspect';
+      return {
+        id: newId(),
+        member_id: memberId,
+        member_name: memberName,
+        code: m.code,
+        description: m.desc,
+        hcc_category: m.hcc || '',
+        status: m.status || 'New',
+        kind,
+        type: kind,
+        docs_count: m.docs ?? 0,
+        comments_count: m.cmts ?? 0,
+        notes_count: m.notes ?? 0,
+        raf_weight: m.raf ?? 0,
+        is_linked: false,
+      };
+    });
+    // Optimistic append — mirrors fetchHccDiagnosisGaps's row-shape so
+    // downstream memos see the promoted rows immediately.
+    set(state => ({
+      hccDiagnosisGaps: [
+        ...state.hccDiagnosisGaps,
+        ...rows.map(r => ({
+          id: r.id, code: r.code, desc: r.description, hcc: r.hcc_category,
+          status: r.status, kind: r.kind, type: r.type,
+          docs: r.docs_count, cmts: r.comments_count, notes: r.notes_count,
+          raf: r.raf_weight, last: null, by: null,
+          dismissReason: null, isLinked: false,
+        })),
+      ],
+    }));
+    const { error } = await supabase.from('hcc_diagnosis_gaps').insert(rows);
+    if (error) reportPersistFailure(`backfillMockNotLinkedGaps(${memberName})`, error);
   },
 
   // Per-member Activity Log entries (DiagPanel Timeline tab)
