@@ -14,6 +14,7 @@ import { QueueSummaryBar } from '../features/toc-queue/QueueSummaryBar';
 import { HccWorklistTable } from '../features/hcc/HccWorklistTable';
 import { HedisWorklistTable } from '../features/hedis-worklist/HedisWorklistTable';
 import { AwvWorklistTable } from '../features/awv-worklist/AwvWorklistTable';
+import { CcmWorklistTable } from '../features/ccm-worklist/CcmWorklistTable';
 import { AllPatientsTable } from '../features/all-patients/AllPatientsTable';
 import { PopulationGroupsView } from '../features/population-groups/PopulationGroupsView';
 import { PgProcessingHost } from '../features/population-groups/PgProcessingHost';
@@ -123,15 +124,16 @@ function PopulationView() {
   const isHcc = activeSubnavList === 'HCC';
   const isHccArchived = activeSubnavList === 'HCC (Archived)';
   const isHedis = activeSubnavList === 'HEDIS';
+  const isCcm = activeSubnavList === 'CCM';
   const isAllPatients = activeSubnavList === 'All Patients';
   const isPopulationGroup = activeSubnavList.startsWith('pg:');
   const isSchedulingList = activeSubnavList === 'Scheduling List';
   const TOC_LISTS = ['TOC'];
-  const isToc = TOC_LISTS.includes(activeSubnavList) || (!isHcc && !isHccArchived && !isHedis && !isAwv && !isAllPatients && !isSchedulingList && !isPopulationGroup && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
+  const isToc = TOC_LISTS.includes(activeSubnavList) || (!isHcc && !isHccArchived && !isHedis && !isCcm && !isAwv && !isAllPatients && !isSchedulingList && !isPopulationGroup && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
   const isComingSoon = ['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList);
   const pgFilter = activeSubnavList === 'pg:Static' ? 'Static' : activeSubnavList === 'pg:Dynamic' ? 'Dynamic' : 'All';
 
-  const chromeless = isHcc || isHccArchived || isHedis || isAwv || isComingSoon || isPopulationGroup || isSchedulingList;
+  const chromeless = isHcc || isHccArchived || isHedis || isCcm || isAwv || isComingSoon || isPopulationGroup || isSchedulingList;
 
   return (
     <div className={styles.main}>
@@ -142,7 +144,7 @@ function PopulationView() {
         <div className={styles.content}>
           {!chromeless && <TabBar />}
           {!chromeless && showFilterBar && <FilterBar />}
-          {!isHcc && !isHccArchived && !isHedis && !isAwv && !isAllPatients && !isComingSoon && !isSchedulingList && !isPopulationGroup && activeTab === 'toc-queue' && <QueueSummaryBar />}
+          {!isHcc && !isHccArchived && !isHedis && !isCcm && !isAwv && !isAllPatients && !isComingSoon && !isSchedulingList && !isPopulationGroup && activeTab === 'toc-queue' && <QueueSummaryBar />}
           {isSchedulingList
             ? <SchedulingListTable />
             : isHccArchived
@@ -151,6 +153,8 @@ function PopulationView() {
               ? <HccWorklistTable />
               : isHedis
                 ? <HedisWorklistTable />
+                : isCcm
+                  ? <CcmWorklistTable />
                 : isAwv
                   ? <AwvWorklistTable />
                   : isAllPatients

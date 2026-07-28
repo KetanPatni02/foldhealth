@@ -18,6 +18,7 @@ import { POS_CODES } from '../src/features/hcc/data/posCodes.js';
 import { ICDS, NOT_LINKED, getIcdsForMember, getNotLinkedForMember } from '../src/features/hcc/data/icds.js';
 import { HCC_MEMBER_BY_NAME } from '../src/features/hcc/data/mock.js';
 import { CCM_BILLING_PERIODS, CCM_BILLABLE_ACTIVITIES, CCM_BILLING_REPORTS } from '../src/features/patient/data/ccmBillingMock.js';
+import { CCM_WORKLIST_MEMBERS } from '../src/features/ccm-worklist/data/mock.js';
 
 // Patients whose HCC diagnosis gaps have been modernized to V28 + 2025/26
 // dates (see docs/features/hcc-coding-workflow.md). Re-seeding rewrites just
@@ -169,6 +170,38 @@ DROP POLICY IF EXISTS "Allow all for ccm_billable_activities" ON ccm_billable_ac
 CREATE POLICY "Allow all for ccm_billable_activities" ON ccm_billable_activities FOR ALL USING (true);
 `;
 
+const CCM_WORKLIST_DDL = `
+CREATE TABLE IF NOT EXISTS ccm_worklist_members (
+  id                    text PRIMARY KEY,
+  initials              text,
+  name                  text NOT NULL,
+  gender                text,
+  age                   text,
+  member_id             text,
+  language              text DEFAULT 'en',
+  status                text NOT NULL,
+  next_action_due       text,
+  next_action_overdue   boolean DEFAULT false,
+  outreach_status       text,
+  outreach_date         text,
+  assignee_id           text,
+  assignee_name         text,
+  assignee_initials     text,
+  start_date            text,
+  last_admission        text,
+  risk_level            text,
+  task_count            int DEFAULT 0,
+  care_plan_status      text,
+  billable_seconds      int DEFAULT 0,
+  unlogged_seconds      int DEFAULT 0,
+  patient_id            text,
+  created_at            timestamptz DEFAULT now()
+);
+ALTER TABLE ccm_worklist_members ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for ccm_worklist_members" ON ccm_worklist_members;
+CREATE POLICY "Allow all for ccm_worklist_members" ON ccm_worklist_members FOR ALL USING (true);
+`;
+
 const CCM_REPORTS_DDL = `
 CREATE TABLE IF NOT EXISTS ccm_billing_reports (
   id                        text PRIMARY KEY,
@@ -287,6 +320,34 @@ function ccmActivityToRow(a) {
   };
 }
 
+function ccmWorklistToRow(m) {
+  return {
+    id:                   m.id,
+    initials:             m.initials ?? null,
+    name:                 m.name,
+    gender:               m.gender ?? null,
+    age:                  m.age ?? null,
+    member_id:            m.memberId ?? null,
+    language:             m.language || 'en',
+    status:               m.status,
+    next_action_due:      m.nextActionDue ?? null,
+    next_action_overdue:  !!m.nextActionOverdue,
+    outreach_status:      m.outreachStatus ?? null,
+    outreach_date:        m.outreachDate ?? null,
+    assignee_id:          m.assigneeId ?? null,
+    assignee_name:        m.assigneeName ?? null,
+    assignee_initials:    m.assigneeInitials ?? null,
+    start_date:           m.startDate ?? null,
+    last_admission:       m.lastAdmission ?? null,
+    risk_level:           m.riskLevel ?? null,
+    task_count:           m.taskCount ?? 0,
+    care_plan_status:     m.carePlanStatus ?? null,
+    billable_seconds:     m.billableSeconds ?? 0,
+    unlogged_seconds:     m.unloggedSeconds ?? 0,
+    patient_id:           m.patientId ?? null,
+  };
+}
+
 function ccmReportToRow(r) {
   return {
     id:                       r.id,
@@ -359,6 +420,8 @@ async function main() {
     console.log('  ✓ ccm_billable_activities — created / already exists');
     await db.query(CCM_REPORTS_DDL);
     console.log('  ✓ ccm_billing_reports — created / already exists');
+    await db.query(CCM_WORKLIST_DDL);
+    console.log('  ✓ ccm_worklist_members — created / already exists');
     await db.end();
   } catch (e) {
     console.warn(`  ⚠  Could not connect via pg (${e.message})`);
@@ -417,6 +480,13 @@ async function main() {
     .from('ccm_billing_reports')
     .upsert(reportRows, { onConflict: 'id' });
   if (cre) { console.error('  ✗', cre.message); } else { console.log(`  ✓ ${reportRows.length} reports`); }
+
+  console.log('Seeding ccm_worklist_members...');
+  const worklistRows = CCM_WORKLIST_MEMBERS.map(ccmWorklistToRow);
+  const { error: cwe } = await supabase
+    .from('ccm_worklist_members')
+    .upsert(worklistRows, { onConflict: 'id' });
+  if (cwe) { console.error('  ✗', cwe.message); } else { console.log(`  ✓ ${worklistRows.length} worklist members`); }
 
   // Re-seed HCC gaps + member DOS dates for the modernized patients. The
   // gaps table has no (member_name, code) unique key, so we delete-then-

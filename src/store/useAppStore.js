@@ -2741,6 +2741,51 @@ export const useAppStore = create((set, get) => ({
     });
   },
 
+  // ─── CCM Worklist (shared list) ─────────────────────────────────────────
+  ccmWorklistMembers: [],
+  ccmWorklistLoading: false,
+  fetchCcmWorklistMembers: async () => {
+    set({ ccmWorklistLoading: true });
+    const { data, error } = await supabase
+      .from('ccm_worklist_members')
+      .select('*')
+      .order('name', { ascending: true });
+    if (error || !data?.length) {
+      if (error) console.warn('fetchCcmWorklistMembers — falling back:', error.message);
+      const { CCM_WORKLIST_MEMBERS } = await import('../features/ccm-worklist/data/mock');
+      set({ ccmWorklistMembers: CCM_WORKLIST_MEMBERS, ccmWorklistLoading: false });
+      return;
+    }
+    set({
+      ccmWorklistMembers: data.map(r => ({
+        id:                  r.id,
+        initials:            r.initials,
+        name:                r.name,
+        gender:              r.gender,
+        age:                 r.age,
+        memberId:            r.member_id,
+        language:            r.language || 'en',
+        status:              r.status,
+        nextActionDue:       r.next_action_due,
+        nextActionOverdue:   !!r.next_action_overdue,
+        outreachStatus:      r.outreach_status,
+        outreachDate:        r.outreach_date,
+        assigneeId:          r.assignee_id,
+        assigneeName:        r.assignee_name,
+        assigneeInitials:    r.assignee_initials,
+        startDate:           r.start_date,
+        lastAdmission:       r.last_admission,
+        riskLevel:           r.risk_level,
+        taskCount:           r.task_count ?? 0,
+        carePlanStatus:      r.care_plan_status,
+        billableSeconds:     r.billable_seconds ?? 0,
+        unloggedSeconds:     r.unlogged_seconds ?? 0,
+        patientId:           r.patient_id,
+      })),
+      ccmWorklistLoading: false,
+    });
+  },
+
   // ─── CCM Billing ───────────────────────────────────────────────────────
   // Keyed by patientId — the Billing Review step only ever needs one
   // patient's data at a time, so we avoid loading everything up front.

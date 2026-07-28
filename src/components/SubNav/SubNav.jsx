@@ -11,6 +11,7 @@ const SHARED_LISTS = [
   { label: 'TOC', filter: null },  // default — shows all TOC patients
   { label: 'HCC', filter: null, view: 'hcc' },
   { label: 'HEDIS', filter: null, view: 'hedis' },
+  { label: 'CCM', filter: null, view: 'ccm' },
   { label: 'High Utilizers', filter: { readmission: 'Yes' } },
   { label: 'DM', filter: null },
 ];
@@ -22,15 +23,19 @@ export function SubNav({ collapsed }) {
   const patients = useAppStore(s => s.patients);
   const hccMembers = useAppStore(s => s.hccMembers);
   const awvMembers = useAppStore(s => s.awvMembers || []);
+  const ccmWorklistMembers = useAppStore(s => s.ccmWorklistMembers || []);
   const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
   const fetchAwvMembers = useAppStore(s => s.fetchAwvMembers);
+  const fetchCcmWorklistMembers = useAppStore(s => s.fetchCcmWorklistMembers);
   const clearSelected = useAppStore(s => s.clearSelected);
   const clearHccSelected = useAppStore(s => s.clearHccSelected);
 
-  // Prefetch HCC and AWV members on mount so the count is available immediately
+  // Prefetch HCC, AWV, and CCM worklists on mount so counts show up
+  // right away.
   useEffect(() => {
     fetchHccMembers();
     fetchAwvMembers();
+    fetchCcmWorklistMembers();
   }, []);
 
   // Only TOC, HCC, and AWV show real counts; all others show 0
@@ -39,12 +44,13 @@ export function SubNav({ collapsed }) {
     for (const list of SHARED_LISTS) {
       if (list.view === 'hcc') counts[list.label] = hccMembers.length;
       else if (list.view === 'hedis') counts[list.label] = HEDIS_MEMBERS.length;
+      else if (list.view === 'ccm') counts[list.label] = ccmWorklistMembers.length;
       else if (list.label === 'Annual Visit') counts[list.label] = awvMembers.length;
       else if (list.label === 'TOC') counts[list.label] = patients.length;
       else counts[list.label] = 0;
     }
     return counts;
-  }, [patients, hccMembers, awvMembers]);
+  }, [patients, hccMembers, awvMembers, ccmWorklistMembers]);
 
   const allPatientsCount = patients.length + hccMembers.length;
 
