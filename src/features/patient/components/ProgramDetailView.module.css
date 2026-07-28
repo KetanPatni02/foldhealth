@@ -236,7 +236,8 @@
 }
 
 /* ── Right content area ── */
-.content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+/* position: relative so the letters bulk-action bar can center on this column. */
+.content { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
 
 .contentHeader {
   display: flex;
@@ -289,18 +290,27 @@
 
 /* ── Floating bulk-action bar (Letters selection) ── */
 .bulkBar {
-  position: fixed;
-  left: 50%;
-  bottom: 100px;
-  transform: translateX(-50%);
+  position: absolute;
+  /* left/right:0 + margin:auto rather than left:50% + translateX — with only
+     `left` set, shrink-to-fit would cap the bar at half the column's width. */
+  left: 0;
+  right: 0;
+  bottom: 24px;
+  margin: 0 auto;
+  width: fit-content;
   z-index: 200;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 8px 12px;
   background: var(--neutral-0);
   border-radius: 8px;
   box-shadow: var(--shadow-popover);
+  /* The content column is overflow:hidden, so keep the bar inside it and let
+     it wrap rather than get clipped when the column is very narrow. */
+  max-width: calc(100% - 24px);
+  flex-wrap: wrap;
 }
 .bulkSelect {
   display: inline-flex;

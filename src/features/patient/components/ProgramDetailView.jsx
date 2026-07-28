@@ -457,42 +457,44 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
             </div>
           </div>
           )}
+
+          {/* Floating bulk-action bar — appears when letters are selected. Figma 439:614595.
+              Lives inside the content column so it centers on the letters pane
+              rather than the whole window, and is gated on that pane being the
+              visible one so a selection can't float it over Billing Review /
+              Outreach / Pre-visit. */}
+          {isLettersPane && selectedLetters.size > 0 && (
+            <div className={styles.bulkBar} role="toolbar" aria-label="Letter bulk actions">
+              <div className={styles.bulkSelect}>
+                <Checkbox
+                  checked={someLettersSelected ? 'indeterminate' : allLettersSelected}
+                  onCheckedChange={toggleAllLetters}
+                  aria-label="Select all letters"
+                />
+                <span className={styles.bulkCount}>{selectedLetters.size} Selected</span>
+              </div>
+              <span className={styles.bulkDivider} />
+              <Button variant="secondary" size="L" leadingIcon="solar:download-minimalistic-linear" onClick={downloadSelectedLetters}>
+                Download Files
+              </Button>
+              <Button variant="primary" size="L" leadingIcon="solar:plain-linear" onClick={() => setSendDrawerOpen(true)}>
+                Send Files
+              </Button>
+              <span className={styles.bulkDivider} />
+              <ActionButton
+                icon="solar:close-square-linear"
+                size="S"
+                tooltip="Clear selection"
+                onClick={() => setSelectedLetters(new Set())}
+              />
+            </div>
+          )}
         </div>
       </div>
 
       {/* CCM-only persistent time tracker — floats bottom-right; a Stop
           from any step logs the elapsed time as a billable activity. */}
       {isCcm && <CcmTimerWidget program={program} />}
-
-      {/* Floating bulk-action bar — appears when letters are selected. Figma 439:614595.
-          Gated on the letters pane being the visible one, so a selection made
-          here can't float the bar over Billing Review / Outreach / Pre-visit. */}
-      {isLettersPane && selectedLetters.size > 0 && (
-        <div className={styles.bulkBar} role="toolbar" aria-label="Letter bulk actions">
-          <div className={styles.bulkSelect}>
-            <Checkbox
-              checked={someLettersSelected ? 'indeterminate' : allLettersSelected}
-              onCheckedChange={toggleAllLetters}
-              aria-label="Clear selection"
-            />
-            <span className={styles.bulkCount}>{selectedLetters.size} Selected</span>
-          </div>
-          <span className={styles.bulkDivider} />
-          <Button variant="secondary" size="L" leadingIcon="solar:download-minimalistic-linear" onClick={downloadSelectedLetters}>
-            Download Files
-          </Button>
-          <Button variant="primary" size="L" leadingIcon="solar:plain-linear" onClick={() => setSendDrawerOpen(true)}>
-            Send Files
-          </Button>
-          <span className={styles.bulkDivider} />
-          <ActionButton
-            icon="solar:close-square-linear"
-            size="S"
-            tooltip="Clear selection"
-            onClick={() => setSelectedLetters(new Set())}
-          />
-        </div>
-      )}
 
       {sendDrawerOpen && (
         <SendLetterDrawer
