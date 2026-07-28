@@ -5,12 +5,21 @@ import { Button } from '../../../components/Button/Button';
 import { BannerExpandIcon } from '../../../components/Icon/BannerExpandIcon';
 import { ProgressRing } from '../../hcc/DiagPanel/ReviewProgressPopover';
 import { Checkbox } from '../../../components/ui/checkbox';
-import { PROGRAM_STEPS_MOCK, PROGRAM_LETTERS_MOCK } from '../data/programActivityMock';
+import { PROGRAM_STEPS_MOCK, PROGRAM_LETTERS_MOCK, CCM_PROGRAM_STEPS } from '../data/programActivityMock';
 import { OutreachTab } from './OutreachTab';
+import { CcmBillingReview } from './CcmBillingReview';
+import { CcmTimerWidget } from './CcmTimerWidget';
 import styles from './ProgramDetailView.module.css';
 
-// Flat list of every step (top-level + section children) for id lookups.
-const ALL_STEPS = PROGRAM_STEPS_MOCK.flatMap(s => (s.type === 'section' ? s.children : [s]));
+// Programs with a custom step list — CCM's workflow is billing-centric, not
+// outreach + assessment like the default. Every other code falls back to
+// PROGRAM_STEPS_MOCK.
+const STEPS_BY_PROGRAM = {
+  CCM: CCM_PROGRAM_STEPS,
+};
+
+const stepsFor = (code) => STEPS_BY_PROGRAM[code] || PROGRAM_STEPS_MOCK;
+const flatSteps = (list) => list.flatMap(s => (s.type === 'section' ? s.children : [s]));
 
 function DetailRow({ icon, label, value }) {
   return (
@@ -72,14 +81,23 @@ function SectionHeader({ name, expanded, onToggle }) {
 const LETTER_SUB_TABS = ['All', 'Sent', 'Not Sent'];
 
 export function ProgramDetailView({ program, onClose, startAtFirstStep = false }) {
-  const firstStep = PROGRAM_STEPS_MOCK[0];
+  const isCcm = program.code === 'CCM';
+  const stepList = stepsFor(program.code);
+  const ALL_STEPS = flatSteps(stepList);
+  const firstStep = stepList[0];
   const firstStepIsOutreach = firstStep?.name === 'Outreach';
   // When the first step is Outreach, land on it so the Log New Outreach
   // component is the default view; otherwise keep the prior default.
   const [activeStep, setActiveStep] = useState(
-    startAtFirstStep || firstStepIsOutreach ? firstStep?.id : 'step-2',
+    startAtFirstStep || firstStepIsOutreach
+      ? firstStep?.id
+      : (isCcm ? 'ccm-billing' : 'step-2'),
   );
-  const [expandedSections, setExpandedSections] = useState({ 'step-3': true, 'step-4': false });
+  const [expandedSections, setExpandedSections] = useState(
+    isCcm
+      ? { 'ccm-assess': true }
+      : { 'step-3': true, 'step-4': false },
+  );
   const [activeLetterTab, setActiveLetterTab] = useState('All');
   const [selectedLetters, setSelectedLetters] = useState(() => new Set());
 
@@ -92,6 +110,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
 
   const activeStepObj = ALL_STEPS.find(s => s.id === activeStep);
   const isOutreachStep = activeStepObj?.name === 'Outreach';
+  const isBillingStep = activeStepObj?.kind === 'billing';
 
   const [detailsExpanded, setDetailsExpanded] = useState(false);
 
@@ -151,6 +170,19 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
           </button>
         </div>
         <div className={styles.headerRight}>
+          {isCcm && (
+            <>
+              <span className={styles.secondaryBadge}>
+                <ProgressRing progress={0.5} size={14} stroke={2} />
+                BHI
+              </span>
+              <span className={styles.secondaryBadge}>
+                <ProgressRing progress={0.75} size={14} stroke={2} />
+                APCM
+              </span>
+              <span className={styles.headerDivider} />
+            </>
+          )}
           <ActionButton icon="solar:alt-arrow-left-linear" size="S" tooltip="Previous" />
           <ActionButton icon="solar:alt-arrow-right-linear" size="S" tooltip="Next" />
           <span className={styles.headerDivider} />
@@ -159,6 +191,40 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
           <ActionButton icon="solar:close-square-linear" size="S" tooltip="Close" onClick={onClose} />
         </div>
       </div>
+
+      {/* CCM-only info bar — the horizontal read-only strip under the header
+          in the Figma. Uses the same DetailRow styling as the expand panel so
+          typography stays consistent. */}
+      {isCcm && (
+        <div className={styles.ccmInfoBar}>
+          <span className={styles.ccmInfoItem}>
+            <span className={styles.ccmInfoLabel}>Last Updated:</span> 09/11/2024
+          </span>
+          <span className={styles.ccmInfoDivider} />
+          <span className={styles.ccmInfoItem}>
+            <span className={styles.ccmInfoLabel}>DM Type:</span> CKD
+          </span>
+          <span className={styles.ccmInfoDivider} />
+          <span className={styles.ccmInfoItem}>
+            <span className={styles.ccmInfoLabel}>1st Outreach Due on:</span> 08/22/2024
+            <Icon name="solar:check-circle-linear" size={14} color="var(--status-success)" />
+          </span>
+          <span className={styles.ccmInfoDivider} />
+          <span className={styles.ccmInfoItem}>
+            <span className={styles.ccmInfoLabel}>Chronic Condition:</span> 3 Active
+            <Icon name="solar:alt-arrow-down-linear" size={14} color="var(--neutral-300)" />
+          </span>
+          <span className={styles.ccmInfoDivider} />
+          <span className={styles.ccmInfoItem}>
+            <span className={styles.ccmInfoLabel}>Program Due on:</span> 08/22/2024
+          </span>
+          <span className={styles.ccmInfoDivider} />
+          <span className={styles.ccmInfoItem}>
+            <span className={styles.ccmInfoLabel}>Next Cadence:</span> 09/13/2024
+            <Icon name="solar:alt-arrow-down-linear" size={14} color="var(--neutral-300)" />
+          </span>
+        </div>
+      )}
 
       {/* Expanded program details */}
       {detailsExpanded && (
@@ -219,7 +285,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
       <div className={styles.body}>
         {/* Step list sidebar */}
         <div className={styles.stepList}>
-          {PROGRAM_STEPS_MOCK.map(step => {
+          {stepList.map(step => {
             if (step.type === 'section') {
               const expanded = expandedSections[step.id] ?? step.expanded;
               return (
@@ -251,7 +317,11 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
         {/* Right content */}
         <div className={styles.content}>
           <div className={styles.contentHeader}>
-            <span className={styles.contentTitle}>{isOutreachStep ? 'Outreach' : 'Program Related Letters'}</span>
+            <span className={styles.contentTitle}>
+              {isBillingStep ? 'Billing Review'
+                : isOutreachStep ? 'Outreach'
+                : 'Program Related Letters'}
+            </span>
             <div className={styles.contentActions}>
               {/* variant=ghost gives Button its bare shell (cursor, focus, structure)
                   so the caller's .actionBtn / .reviewedBtn class fully defines the
@@ -268,7 +338,9 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
             </div>
           </div>
 
-          {isOutreachStep ? (
+          {isBillingStep ? (
+            <CcmBillingReview program={program} />
+          ) : isOutreachStep ? (
             <div className={styles.outreachWrap}>
               <OutreachTab
                 defaultPrograms={[program.code].filter(Boolean)}
@@ -345,6 +417,10 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
           )}
         </div>
       </div>
+
+      {/* CCM-only persistent time tracker — floats bottom-right; a Stop
+          from any step logs the elapsed time as a billable activity. */}
+      {isCcm && <CcmTimerWidget program={program} />}
     </div>
   );
 }

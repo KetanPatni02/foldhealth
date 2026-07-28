@@ -2740,6 +2740,157 @@ export const useAppStore = create((set, get) => ({
       apcmPatientsLoading: false,
     });
   },
+
+  // ─── CCM Billing ───────────────────────────────────────────────────────
+  // Keyed by patientId — the Billing Review step only ever needs one
+  // patient's data at a time, so we avoid loading everything up front.
+  ccmBillingPeriodsByPatient: {},
+  ccmBillableActivitiesByPatient: {},
+  ccmBillingLoadingByPatient: {},
+
+  fetchCcmBilling: async (patientId) => {
+    if (!patientId) return;
+    set(s => ({ ccmBillingLoadingByPatient: { ...s.ccmBillingLoadingByPatient, [patientId]: true } }));
+
+    const [periodsRes, activitiesRes] = await Promise.all([
+      supabase.from('ccm_billing_periods').select('*').eq('patient_id', patientId).order('year_month', { ascending: false }),
+      supabase.from('ccm_billable_activities').select('*').eq('patient_id', patientId).order('occurred_at', { ascending: false }),
+    ]);
+
+    const periodsError = periodsRes.error;
+    const activitiesError = activitiesRes.error;
+    const periodsData = periodsRes.data;
+    const activitiesData = activitiesRes.data;
+
+    // Fall back to local mock if either fetch fails or returns 0 rows — same
+    // pattern apcmPatients uses so the UI still renders while migration is
+    // pending on a fresh env.
+    if (periodsError || activitiesError || !periodsData?.length) {
+      if (periodsError) console.warn('fetchCcmBilling: periods →', periodsError.message);
+      if (activitiesError) console.warn('fetchCcmBilling: activities →', activitiesError.message);
+      const { CCM_BILLING_PERIODS, CCM_BILLABLE_ACTIVITIES } = await import('../features/patient/data/ccmBillingMock');
+      // Clone the reference mock (patient 'p1') for whichever patient is on
+      // screen so the UI has something to render before the migration lands.
+      // Once real rows exist for this patient the Supabase path above takes
+      // over and this block never runs.
+      const periods = CCM_BILLING_PERIODS.map(p => ({ ...p, patientId }));
+      const activities = CCM_BILLABLE_ACTIVITIES.map(a => ({ ...a, patientId }));
+      set(s => ({
+        ccmBillingPeriodsByPatient: { ...s.ccmBillingPeriodsByPatient, [patientId]: periods },
+        ccmBillableActivitiesByPatient: { ...s.ccmBillableActivitiesByPatient, [patientId]: activities },
+        ccmBillingLoadingByPatient: { ...s.ccmBillingLoadingByPatient, [patientId]: false },
+      }));
+      return;
+    }
+
+    const periods = periodsData.map(r => ({
+      id:               r.id,
+      patientId:        r.patient_id,
+      programId:        r.program_id,
+      yearMonth:        r.year_month,
+      complexity:       r.complexity,
+      requiredMinutes:  r.required_minutes,
+      billStatus:       r.bill_status,
+      claimStatus:      r.claim_status,
+      generatedAt:      r.generated_at,
+      sentAt:           r.sent_at,
+    }));
+    const activities = (activitiesData || []).map(r => ({
+      id:               r.id,
+      periodId:         r.period_id,
+      patientId:        r.patient_id,
+      activityType:     r.activity_type,
+      description:      r.description || '',
+      durationSeconds:  r.duration_seconds ?? 0,
+      loggedBy:         r.logged_by,
+      loggedByInitials: r.logged_by_initials,
+      occurredAt:       r.occurred_at,
+      isUnlogged:       !!r.is_unlogged,
+    }));
+
+    set(s => ({
+      ccmBillingPeriodsByPatient: { ...s.ccmBillingPeriodsByPatient, [patientId]: periods },
+      ccmBillableActivitiesByPatient: { ...s.ccmBillableActivitiesByPatient, [patientId]: activities },
+      ccmBillingLoadingByPatient: { ...s.ccmBillingLoadingByPatient, [patientId]: false },
+    }));
+  },
+
+  // Historical billing reports (one per closed month). Read-only from the
+  // UI's perspective for now; a future "Generate Bill" flow would insert
+  // rows here from the current-month period.
+  ccmBillingReportsByPatient: {},
+  fetchCcmBillingReports: async (patientId) => {
+    if (!patientId) return;
+    const { data, error } = await supabase
+      .from('ccm_billing_reports')
+      .select('*')
+      .eq('patient_id', patientId)
+      .order('generated_at', { ascending: false });
+
+    if (error || !data?.length) {
+      if (error) console.warn('fetchCcmBillingReports — falling back:', error.message);
+      const { CCM_BILLING_REPORTS } = await import('../features/patient/data/ccmBillingMock');
+      // Clone the reference mock for the on-screen patient so the History
+      // tab has something to render before Alok runs the migration.
+      const reports = CCM_BILLING_REPORTS.map(r => ({ ...r, patientId }));
+      set(s => ({
+        ccmBillingReportsByPatient: { ...s.ccmBillingReportsByPatient, [patientId]: reports },
+      }));
+      return;
+    }
+
+    const reports = data.map(r => ({
+      id:                     r.id,
+      reportNumber:           r.report_number,
+      patientId:              r.patient_id,
+      periodId:               r.period_id,
+      yearMonth:              r.year_month,
+      generatedAt:            r.generated_at,
+      estBillingAmount:       Number(r.est_billing_amount),
+      totalSeconds:           r.total_seconds ?? 0,
+      integratedEhr:          r.integrated_ehr,
+      providerName:           r.provider_name,
+      providerInitials:       r.provider_initials,
+      medicalDecisionMaking:  r.medical_decision_making,
+      cptCodes:               typeof r.cpt_codes === 'string' ? JSON.parse(r.cpt_codes) : (r.cpt_codes || []),
+    }));
+
+    set(s => ({
+      ccmBillingReportsByPatient: { ...s.ccmBillingReportsByPatient, [patientId]: reports },
+    }));
+  },
+
+  // Optimistic add — inserts locally, then persists. The row must already
+  // include a client id (`act-<uuid>`), periodId, patientId, activityType,
+  // durationSeconds, occurredAt. Called by the timer widget on Stop and by
+  // the unlogged-time drawer when classifying entries.
+  addCcmBillableActivity: async (activity) => {
+    const { patientId } = activity;
+    set(s => {
+      const prev = s.ccmBillableActivitiesByPatient[patientId] || [];
+      return {
+        ccmBillableActivitiesByPatient: {
+          ...s.ccmBillableActivitiesByPatient,
+          [patientId]: [activity, ...prev],
+        },
+      };
+    });
+    const row = {
+      id:                 activity.id,
+      period_id:          activity.periodId,
+      patient_id:         activity.patientId,
+      activity_type:      activity.activityType,
+      description:        activity.description || '',
+      duration_seconds:   activity.durationSeconds ?? 0,
+      logged_by:          activity.loggedBy ?? null,
+      logged_by_initials: activity.loggedByInitials ?? null,
+      occurred_at:        activity.occurredAt,
+      is_unlogged:        !!activity.isUnlogged,
+    };
+    const { error } = await supabase.from('ccm_billable_activities').insert(row);
+    if (error) console.warn('addCcmBillableActivity — insert failed:', error.message);
+  },
+
   updateGapStatus: (memberId, gapCode, nextStatus) => {
     track('hedis.gap_status_updated', { memberId, gapCode, status: nextStatus });
     set(s => ({

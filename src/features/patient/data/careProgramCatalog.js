@@ -12,4 +12,5 @@ export const CARE_PROGRAM_CATALOG = [
   { code: 'DM', name: 'Disease Management' },
   { code: 'APCM', name: 'Advanced Primary Care Management' },
   { code: 'HRCM', name: 'High-Risk Care Management' },
+  { code: 'CCM', name: 'Chronic Care Management' },
 ];

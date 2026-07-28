@@ -272,6 +272,24 @@ export const PROGRAM_STEPS_MOCK = [
   { id: 'step-11', name: 'Referral Review', status: 'pending', mandatory: true },
 ];
 
+// CCM-specific step list. Distinct from PROGRAM_STEPS_MOCK because CCM's
+// workflow centers on time-billed care management, not outreach + assessment
+// like SNP. The Billing Review step carries `kind: 'billing'` so
+// ProgramDetailView can swap in the CcmBillingReview content pane.
+export const CCM_PROGRAM_STEPS = [
+  { id: 'ccm-outreach', name: 'Outreach', status: 'pending' },
+  {
+    id: 'ccm-assess', name: 'Assess Patient', type: 'section', expanded: true,
+    children: [
+      { id: 'ccm-assess-overview', name: 'Overview', status: 'pending' },
+      { id: 'ccm-assess-health', name: 'Health Management', status: 'pending' },
+    ],
+  },
+  { id: 'ccm-med-review', name: 'Medication Review', status: 'pending' },
+  { id: 'ccm-care-plan', name: 'Care Plan Details', status: 'pending' },
+  { id: 'ccm-billing', name: 'Billing Review', kind: 'billing', status: 'pending', hasAlert: true },
+];
+
 export const PROGRAM_LETTERS_MOCK = [
   { id: 'l-1', fileName: 'Intro or Welcome Letter - Patient', fileType: 'Letter', sentVia: ['Email', 'SMS'], lastSent: '07/02/2025', sentBy: 'Mark Emard' },
   { id: 'l-2', fileName: 'Consent letter - Patient', fileType: 'Letter', sentVia: ['Email'], lastSent: '07/01/2025', sentBy: 'Faye Romaguera' },

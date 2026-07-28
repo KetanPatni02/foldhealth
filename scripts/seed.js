@@ -17,6 +17,7 @@ import { FALLBACK_ICDS } from '../src/lib/icd/catalog.js';
 import { POS_CODES } from '../src/features/hcc/data/posCodes.js';
 import { ICDS, NOT_LINKED, getIcdsForMember, getNotLinkedForMember } from '../src/features/hcc/data/icds.js';
 import { HCC_MEMBER_BY_NAME } from '../src/features/hcc/data/mock.js';
+import { CCM_BILLING_PERIODS, CCM_BILLABLE_ACTIVITIES, CCM_BILLING_REPORTS } from '../src/features/patient/data/ccmBillingMock.js';
 
 // Patients whose HCC diagnosis gaps have been modernized to V28 + 2025/26
 // dates (see docs/features/hcc-coding-workflow.md). Re-seeding rewrites just
@@ -126,6 +127,70 @@ DROP POLICY IF EXISTS "Read pos_codes" ON pos_codes;
 CREATE POLICY "Read pos_codes" ON pos_codes FOR SELECT USING (true);
 `;
 
+// CCM Billing tables — mirrored in supabase/ccm_billing_migration.sql. Keep
+// column names + defaults in sync so a fresh `bun run seed` on an empty
+// project produces the same shape the migration would.
+const CCM_PERIODS_DDL = `
+CREATE TABLE IF NOT EXISTS ccm_billing_periods (
+  id                text PRIMARY KEY,
+  patient_id        text NOT NULL,
+  program_id        text,
+  year_month        text NOT NULL,
+  complexity        text DEFAULT 'moderate',
+  required_minutes  int  DEFAULT 20,
+  bill_status       text DEFAULT 'draft',
+  claim_status      text DEFAULT 'unsent',
+  generated_at      timestamptz,
+  sent_at           timestamptz,
+  created_at        timestamptz DEFAULT now(),
+  UNIQUE (patient_id, year_month)
+);
+ALTER TABLE ccm_billing_periods ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for ccm_billing_periods" ON ccm_billing_periods;
+CREATE POLICY "Allow all for ccm_billing_periods" ON ccm_billing_periods FOR ALL USING (true);
+`;
+
+const CCM_ACTIVITIES_DDL = `
+CREATE TABLE IF NOT EXISTS ccm_billable_activities (
+  id                  text PRIMARY KEY,
+  period_id           text REFERENCES ccm_billing_periods(id) ON DELETE CASCADE,
+  patient_id          text NOT NULL,
+  activity_type       text NOT NULL,
+  description         text DEFAULT '',
+  duration_seconds    int  NOT NULL DEFAULT 0,
+  logged_by           text,
+  logged_by_initials  text,
+  occurred_at         timestamptz NOT NULL,
+  is_unlogged         boolean DEFAULT false,
+  created_at          timestamptz DEFAULT now()
+);
+ALTER TABLE ccm_billable_activities ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for ccm_billable_activities" ON ccm_billable_activities;
+CREATE POLICY "Allow all for ccm_billable_activities" ON ccm_billable_activities FOR ALL USING (true);
+`;
+
+const CCM_REPORTS_DDL = `
+CREATE TABLE IF NOT EXISTS ccm_billing_reports (
+  id                        text PRIMARY KEY,
+  report_number             int  NOT NULL,
+  patient_id                text NOT NULL,
+  period_id                 text REFERENCES ccm_billing_periods(id) ON DELETE SET NULL,
+  year_month                text NOT NULL,
+  generated_at              timestamptz NOT NULL,
+  est_billing_amount        numeric(10,2) NOT NULL,
+  total_seconds             int NOT NULL DEFAULT 0,
+  integrated_ehr            text,
+  provider_name             text,
+  provider_initials         text,
+  medical_decision_making   text DEFAULT 'moderate',
+  cpt_codes                 jsonb DEFAULT '[]',
+  created_at                timestamptz DEFAULT now()
+);
+ALTER TABLE ccm_billing_reports ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for ccm_billing_reports" ON ccm_billing_reports;
+CREATE POLICY "Allow all for ccm_billing_reports" ON ccm_billing_reports FOR ALL USING (true);
+`;
+
 // ── Row mappers (JS shape → DB columns) ───────────────────────────────────────
 
 function hedisToRow(m) {
@@ -192,6 +257,54 @@ function icdToRow(i) {
   };
 }
 
+function ccmPeriodToRow(p) {
+  return {
+    id:               p.id,
+    patient_id:       p.patientId,
+    program_id:       p.programId ?? null,
+    year_month:       p.yearMonth,
+    complexity:       p.complexity || 'moderate',
+    required_minutes: p.requiredMinutes ?? 20,
+    bill_status:      p.billStatus || 'draft',
+    claim_status:     p.claimStatus || 'unsent',
+    generated_at:     p.generatedAt ?? null,
+    sent_at:          p.sentAt ?? null,
+  };
+}
+
+function ccmActivityToRow(a) {
+  return {
+    id:                 a.id,
+    period_id:          a.periodId,
+    patient_id:         a.patientId,
+    activity_type:      a.activityType,
+    description:        a.description || '',
+    duration_seconds:   a.durationSeconds ?? 0,
+    logged_by:          a.loggedBy ?? null,
+    logged_by_initials: a.loggedByInitials ?? null,
+    occurred_at:        a.occurredAt,
+    is_unlogged:        !!a.isUnlogged,
+  };
+}
+
+function ccmReportToRow(r) {
+  return {
+    id:                       r.id,
+    report_number:            r.reportNumber,
+    patient_id:               r.patientId,
+    period_id:                r.periodId ?? null,
+    year_month:               r.yearMonth,
+    generated_at:             r.generatedAt,
+    est_billing_amount:       r.estBillingAmount,
+    total_seconds:            r.totalSeconds ?? 0,
+    integrated_ehr:           r.integratedEhr ?? null,
+    provider_name:            r.providerName ?? null,
+    provider_initials:        r.providerInitials ?? null,
+    medical_decision_making:  r.medicalDecisionMaking || 'moderate',
+    cpt_codes:                r.cptCodes ?? [],
+  };
+}
+
 // Mock ICD → hcc_diagnosis_gaps row. Deterministic id (member::code) makes
 // the re-seed idempotent.
 function gapToRow(name, i, isLinked) {
@@ -240,6 +353,12 @@ async function main() {
     console.log('  ✓ icd_codes — created / already exists');
     await db.query(POS_DDL);
     console.log('  ✓ pos_codes — created / already exists');
+    await db.query(CCM_PERIODS_DDL);
+    console.log('  ✓ ccm_billing_periods — created / already exists');
+    await db.query(CCM_ACTIVITIES_DDL);
+    console.log('  ✓ ccm_billable_activities — created / already exists');
+    await db.query(CCM_REPORTS_DDL);
+    console.log('  ✓ ccm_billing_reports — created / already exists');
     await db.end();
   } catch (e) {
     console.warn(`  ⚠  Could not connect via pg (${e.message})`);
@@ -277,6 +396,27 @@ async function main() {
     .from('pos_codes')
     .upsert(POS_CODES.map(p => ({ code: p.code, name: p.name })), { onConflict: 'code' });
   if (pe) { console.error('  ✗', pe.message); } else { console.log(`  ✓ ${POS_CODES.length} POS codes`); }
+
+  console.log('Seeding ccm_billing_periods...');
+  const periodRows = CCM_BILLING_PERIODS.map(ccmPeriodToRow);
+  const { error: cpe } = await supabase
+    .from('ccm_billing_periods')
+    .upsert(periodRows, { onConflict: 'id' });
+  if (cpe) { console.error('  ✗', cpe.message); } else { console.log(`  ✓ ${periodRows.length} periods`); }
+
+  console.log('Seeding ccm_billable_activities...');
+  const activityRows = CCM_BILLABLE_ACTIVITIES.map(ccmActivityToRow);
+  const { error: cae } = await supabase
+    .from('ccm_billable_activities')
+    .upsert(activityRows, { onConflict: 'id' });
+  if (cae) { console.error('  ✗', cae.message); } else { console.log(`  ✓ ${activityRows.length} activities`); }
+
+  console.log('Seeding ccm_billing_reports...');
+  const reportRows = CCM_BILLING_REPORTS.map(ccmReportToRow);
+  const { error: cre } = await supabase
+    .from('ccm_billing_reports')
+    .upsert(reportRows, { onConflict: 'id' });
+  if (cre) { console.error('  ✗', cre.message); } else { console.log(`  ✓ ${reportRows.length} reports`); }
 
   // Re-seed HCC gaps + member DOS dates for the modernized patients. The
   // gaps table has no (member_name, code) unique key, so we delete-then-
