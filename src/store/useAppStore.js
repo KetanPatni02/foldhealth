@@ -1297,14 +1297,49 @@ export const useAppStore = create((set, get) => ({
 
   // Care Programs — enrolled programs are per-patient. A patient starts with
   // none; only programs a user explicitly adds are visible on their profile.
+  // Persisted to Supabase (patient_care_programs) so enrollments survive
+  // reload; on cold load we hydrate from the DB and fall back to
+  // programsForPatient() when the row set is empty.
   careProgramsByPatient: {},
+  careProgramsLoadedFor: {},
+
+  fetchCareProgramsForPatient: async (patientId) => {
+    if (!patientId) return;
+    if (get().careProgramsLoadedFor[patientId]) return;
+    const { data, error } = await supabase
+      .from('patient_care_programs')
+      .select('*')
+      .eq('patient_id', patientId)
+      .order('created_at', { ascending: true });
+    if (error) console.warn('fetchCareProgramsForPatient:', error.message);
+    const rows = (data || []).map(r => ({
+      id:           r.id,
+      code:         r.code,
+      name:         r.name,
+      acuity:       r.acuity,
+      status:       r.status || 'New',
+      statusColor:  r.status_color || 'var(--primary-300)',
+      startDate:    r.start_date || '—',
+      endDate:      r.end_date || '—',
+      lastUpdated:  r.last_updated || '—',
+      assignee:     r.assignee || 'Unassigned',
+      pcp:          r.pcp || '—',
+      progress:     Number(r.progress) || 0,
+    }));
+    set(s => ({
+      careProgramsByPatient: { ...s.careProgramsByPatient, [patientId]: rows },
+      careProgramsLoadedFor: { ...s.careProgramsLoadedFor, [patientId]: true },
+    }));
+  },
+
   addCareProgram: (patientId, entry) => {
     if (!patientId || !entry) return;
+    let program;
     set((state) => {
       const existing = state.careProgramsByPatient[patientId] || [];
       if (existing.some((p) => p.code === entry.code)) return {};
-      const program = {
-        id: `cp-${patientId}-${entry.code}`,
+      program = {
+        id: `pcp-${patientId}-${entry.code}`,
         code: entry.code,
         name: `${entry.name} (${entry.code})`,
         acuity: null,
@@ -1325,6 +1360,27 @@ export const useAppStore = create((set, get) => ({
         },
       };
     });
+    // Persist. Fire-and-forget — the optimistic local update already
+    // rendered the row; a slow network shouldn't block the UI.
+    if (program) {
+      supabase.from('patient_care_programs').upsert({
+        id:            program.id,
+        patient_id:    patientId,
+        code:          program.code,
+        name:          program.name,
+        acuity:        program.acuity,
+        status:        program.status,
+        status_color:  program.statusColor,
+        start_date:    program.startDate,
+        end_date:      program.endDate,
+        last_updated:  program.lastUpdated,
+        assignee:      program.assignee,
+        pcp:           program.pcp,
+        progress:      program.progress,
+      }, { onConflict: 'id' }).then(({ error }) => {
+        if (error) console.warn('addCareProgram — insert failed:', error.message);
+      });
+    }
   },
 
   // Table

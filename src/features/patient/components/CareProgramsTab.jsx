@@ -42,8 +42,15 @@ export function CareProgramsTab() {
   const patientId = useAppStore(s => s.selectedPatientId);
   const careProgramsByPatient = useAppStore(s => s.careProgramsByPatient);
   const addCareProgram = useAppStore(s => s.addCareProgram);
+  const fetchCareProgramsForPatient = useAppStore(s => s.fetchCareProgramsForPatient);
   const pendingCareProgramCode = useAppStore(s => s.pendingCareProgramCode);
   const clearPendingCareProgramCode = useAppStore(s => s.clearPendingCareProgramCode);
+
+  // Hydrate enrollments from Supabase on mount so programs the user
+  // enrolled in previous sessions render on cold load.
+  useEffect(() => {
+    if (patientId) fetchCareProgramsForPatient(patientId);
+  }, [patientId, fetchCareProgramsForPatient]);
   const programs = useMemo(
     () => careProgramsByPatient[patientId] || [],
     [careProgramsByPatient, patientId],
