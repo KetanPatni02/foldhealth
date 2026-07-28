@@ -167,6 +167,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
   border: 0.5px solid color-mix(in srgb, var(--primary-300) 20%, transparent);
 }
 
