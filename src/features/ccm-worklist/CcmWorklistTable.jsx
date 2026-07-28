@@ -5,76 +5,12 @@ import { Checkbox } from '../../components/ui/checkbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
 import { Input } from '../../components/Input/Input';
-import { Pagination } from '../../components/Pagination/Pagination';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
+import { Pagination } from '../../components/Pagination/Pagination';
 import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
-import { CCM_STATUS_META } from './data/mock';
+import { BulkBar } from '../../components/BulkBar/BulkBar';
+import { CcmWorklistRow } from './CcmWorklistRow';
 import styles from './CcmWorklistTable.module.css';
-
-// MM:SS formatter for the Billable / Unlogged Mins columns. Matches the
-// Figma format ("18:09 Mins" / "00:06 Mins").
-const formatMins = (seconds) => {
-  if (!seconds && seconds !== 0) return '--';
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')} Mins`;
-};
-
-// Language-badge two-letter code (En / Ch / Es / …), matches the pattern
-// used by the other worklists.
-const langLabel = (l) => {
-  if (!l) return '';
-  return l.slice(0, 1).toUpperCase() + l.slice(1, 2).toLowerCase();
-};
-
-function StatusPill({ status }) {
-  const meta = CCM_STATUS_META[status] || { color: 'var(--neutral-300)', kind: 'ring' };
-  return (
-    <span className={styles.statusPill}>
-      {meta.kind === 'half' ? (
-        <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" className={styles.statusIcon}>
-          <circle cx="7" cy="7" r="5.5" fill="none" stroke={meta.color} strokeWidth="1.5" />
-          <path d="M7 1.5A5.5 5.5 0 0 1 7 12.5Z" fill={meta.color} />
-        </svg>
-      ) : (
-        <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" className={styles.statusIcon}>
-          <circle cx="7" cy="7" r="5.5" fill="none" stroke={meta.color} strokeWidth="1.5" />
-        </svg>
-      )}
-      <span className={styles.statusLabel}>{status}</span>
-    </span>
-  );
-}
-
-function AssigneeChip({ initials, name }) {
-  if (!name) {
-    return (
-      <span className={styles.assignPlaceholder}>
-        <Icon name="solar:user-plus-linear" size={14} color="var(--neutral-300)" />
-        Assign User
-      </span>
-    );
-  }
-  return (
-    <span className={styles.assigneeChip}>
-      <span className={styles.assigneeAvatar}>{initials || name.slice(0, 2).toUpperCase()}</span>
-      <span className={styles.assigneeName}>{name}</span>
-    </span>
-  );
-}
-
-function OutreachCell({ status, date }) {
-  if (!status) return <span className={styles.mutedDash}>--</span>;
-  return (
-    <span className={styles.outreachCell}>
-      <Icon name="solar:phone-calling-linear" size={14} color="var(--status-success)" />
-      <span className={styles.outreachCol}>
-        <span className={styles.outreachStatus}>{status}</span>
-        <span className={styles.outreachDate}>{date}</span>
-      </span>
-    </span>
-  );
-}
 
 const FILTER_KEYS = [
   { key: 'status',    label: 'Status' },
@@ -82,11 +18,22 @@ const FILTER_KEYS = [
   { key: 'riskLevel', label: 'Risk Level' },
 ];
 
+function EmptySearch() {
+  return (
+    <div className={styles.emptySearch}>
+      <Icon name="solar:magnifer-linear" size={40} color="var(--neutral-200)" />
+      <p className={styles.emptyTitle}>No results found</p>
+      <p className={styles.emptyText}>
+        No CCM members match your current filters. Try adjusting them or clearing all filters.
+      </p>
+    </div>
+  );
+}
+
 export function CcmWorklistTable() {
   const members = useAppStore(s => s.ccmWorklistMembers);
   const loading = useAppStore(s => s.ccmWorklistLoading);
   const fetchMembers = useAppStore(s => s.fetchCcmWorklistMembers);
-  const navigateToPatient = useAppStore(s => s.navigateToPatient);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -118,17 +65,19 @@ export function CcmWorklistTable() {
     return rows;
   }, [members, searchQuery, filters]);
 
-  const pageRows = useMemo(() => {
+  const paginated = useMemo(() => {
     const start = (page - 1) * perPage;
     return filtered.slice(start, start + perPage);
   }, [filtered, page, perPage]);
 
-  const allSelected = pageRows.length > 0 && pageRows.every(r => selectedIds.has(r.id));
-  const someSelected = pageRows.some(r => selectedIds.has(r.id)) && !allSelected;
-  const toggleAll = (checked) => setSelectedIds(prev => {
+  const allIds = paginated.map(r => r.id);
+  const allSelected = allIds.length > 0 && allIds.every(id => selectedIds.has(id));
+  const someSelected = paginated.some(r => selectedIds.has(r.id)) && !allSelected;
+
+  const handleSelectAll = (checked) => setSelectedIds(prev => {
     const next = new Set(prev);
-    if (checked) pageRows.forEach(r => next.add(r.id));
-    else pageRows.forEach(r => next.delete(r.id));
+    if (checked) allIds.forEach(id => next.add(id));
+    else allIds.forEach(id => next.delete(id));
     return next;
   });
   const toggleOne = (id) => setSelectedIds(prev => {
@@ -140,13 +89,29 @@ export function CcmWorklistTable() {
   const setFilter = (key, vals) => setFilters(f => ({ ...f, [key]: vals }));
   const clearFilters = () => setFilters({ status: [], assignee: [], riskLevel: [] });
 
-  const openMember = (row) => {
-    if (row.patientId) navigateToPatient(row.patientId);
+  // Inline table header style mirrors src/features/toc-worklist/WorklistTable.jsx
+  // so the two tables render with identical typography, padding, and sticky
+  // behavior.
+  const thStyle = {
+    padding: '8px 14px',
+    fontSize: 12,
+    fontWeight: 500,
+    color: 'var(--neutral-300)',
+    borderBottom: '1px solid var(--neutral-150)',
+    background: 'var(--neutral-0)',
+    position: 'sticky',
+    top: 0,
+    zIndex: 2,
+    textAlign: 'left',
+    whiteSpace: 'nowrap',
+    userSelect: 'none',
   };
+
+  const colCount = 14;
 
   return (
     <div className={styles.wrap}>
-      {/* Top strip: title + filters + action row */}
+      {/* Top strip: title + top actions. Matches the TOC worklist chrome. */}
       <div className={styles.topBar}>
         <span className={styles.title}>CCM</span>
         <div className={styles.topActions}>
@@ -186,98 +151,51 @@ export function CcmWorklistTable() {
         </button>
       </div>
 
-      {loading && members.length === 0 ? (
-        <TableSkeleton rows={10} columns={14} />
-      ) : (
-        <div className={styles.tableScroll}>
+      {/* Table body. Uses the same inline th styles + sticky columns as
+          src/features/toc-worklist/WorklistTable.jsx. */}
+      <div className={styles.tableScroll}>
+        {loading && members.length === 0 ? (
+          <TableSkeleton rows={perPage} columns={colCount} />
+        ) : (
           <table className={styles.table}>
             <thead>
               <tr>
-                <th className={styles.checkCell}>
-                  <Checkbox
-                    checked={someSelected ? 'indeterminate' : allSelected}
-                    onCheckedChange={toggleAll}
-                    aria-label="Select all"
-                  />
+                <th style={{ ...thStyle, width: 36, padding: '8px 10px', position: 'sticky', top: 0, left: 0, zIndex: 4 }}>
+                  <Checkbox checked={someSelected ? 'indeterminate' : allSelected} onCheckedChange={handleSelectAll} />
                 </th>
-                <th>Members</th>
-                <th>Status</th>
-                <th>Next Action Due</th>
-                <th>Outreach</th>
-                <th>Assignee</th>
-                <th>Start Date</th>
-                <th>Last Admission</th>
-                <th>Billable Mins</th>
-                <th>Unlogged Mins</th>
-                <th>Risk Level</th>
-                <th>Task</th>
-                <th>Care Plan Status</th>
-                <th className={styles.actionCell}>Actions</th>
+                <th style={{ ...thStyle, padding: '8px 12px', position: 'sticky', top: 0, left: 36, zIndex: 4, borderRight: '1px solid var(--neutral-150)' }}>
+                  Members
+                </th>
+                <th style={thStyle}>Status</th>
+                <th style={thStyle}>Next Action Due</th>
+                <th style={thStyle}>Outreach</th>
+                <th style={thStyle}>Assignee</th>
+                <th style={thStyle}>Start Date</th>
+                <th style={thStyle}>Last Admission</th>
+                <th style={thStyle}>Billable Mins</th>
+                <th style={thStyle}>Unlogged Mins</th>
+                <th style={thStyle}>Risk Level</th>
+                <th style={thStyle}>Task</th>
+                <th style={thStyle}>Care Plan Status</th>
+                <th style={{ ...thStyle, width: 140, position: 'sticky', top: 0, right: 0, zIndex: 3, textAlign: 'right' }}>
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
-              {pageRows.map(m => (
-                <tr
+              {paginated.map(m => (
+                <CcmWorklistRow
                   key={m.id}
-                  className={styles.row}
-                  onClick={() => openMember(m)}
-                >
-                  <td className={styles.checkCell} onClick={e => e.stopPropagation()}>
-                    <Checkbox
-                      checked={selectedIds.has(m.id)}
-                      onCheckedChange={() => toggleOne(m.id)}
-                      aria-label={`Select ${m.name}`}
-                    />
-                  </td>
-                  <td>
-                    <div className={styles.memberCell}>
-                      <span className={styles.avatar}>{m.initials}</span>
-                      <div className={styles.memberBody}>
-                        <span className={styles.memberName}>
-                          {m.name}
-                          <span className={styles.memberMeta}>
-                            ({m.gender} · {m.age})
-                          </span>
-                        </span>
-                        <span className={styles.memberSub}>
-                          {m.memberId} · {langLabel(m.language)}
-                        </span>
-                      </div>
-                    </div>
-                  </td>
-                  <td><StatusPill status={m.status} /></td>
-                  <td className={m.nextActionOverdue ? styles.overdue : ''}>
-                    {m.nextActionDue || '--'}
-                  </td>
-                  <td><OutreachCell status={m.outreachStatus} date={m.outreachDate} /></td>
-                  <td><AssigneeChip initials={m.assigneeInitials} name={m.assigneeName} /></td>
-                  <td className={m.startDateOverdue ? styles.overdue : ''}>{m.startDate || '--'}</td>
-                  <td className={styles.mutedText}>{m.lastAdmission || '--'}</td>
-                  <td className={styles.billableCell}>{formatMins(m.billableSeconds)}</td>
-                  <td className={styles.unloggedCell}>{formatMins(m.unloggedSeconds)}</td>
-                  <td>{m.riskLevel || <span className={styles.mutedDash}>-</span>}</td>
-                  <td>{m.taskCount ? `${m.taskCount} Task` : <span className={styles.mutedDash}>-</span>}</td>
-                  <td className={styles.carePlanCell}>{m.carePlanStatus || '--'}</td>
-                  <td className={styles.actionCell} onClick={e => e.stopPropagation()}>
-                    <div className={styles.actions}>
-                      <ActionButton icon="solar:document-text-linear" size="S" tooltip="View report" />
-                      <ActionButton icon="solar:phone-calling-linear" size="S" tooltip="Call" />
-                      <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
-                    </div>
-                  </td>
-                </tr>
+                  member={m}
+                  isSelected={selectedIds.has(m.id)}
+                  onSelect={toggleOne}
+                />
               ))}
-              {pageRows.length === 0 && !loading && (
-                <tr>
-                  <td colSpan={14} className={styles.emptyState}>
-                    No CCM members match your filters.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
-        </div>
-      )}
+        )}
+        {!loading && filtered.length === 0 && <EmptySearch />}
+      </div>
 
       <Pagination
         currentPage={page}
@@ -286,6 +204,8 @@ export function CcmWorklistTable() {
         onPageChange={setPage}
         onPageSizeChange={(n) => { setPerPage(n); setPage(1); }}
       />
+
+      <BulkBar />
     </div>
   );
 }

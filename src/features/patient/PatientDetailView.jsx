@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { PatientP360Banner } from './components/PatientP360Banner';
@@ -43,6 +43,7 @@ export function PatientDetailView() {
   const selectedPatientId = useAppStore(s => s.selectedPatientId);
   const patients = useAppStore(s => s.patients);
   const hccMembers = useAppStore(s => s.hccMembers);
+  const navigateBackToWorklist = useAppStore(s => s.navigateBackToWorklist);
   const [activeTab, setActiveTab] = useState('Overview');
   const [leftWidth, setLeftWidth] = useState(496);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
@@ -79,16 +80,15 @@ export function PatientDetailView() {
   const patient = patients.find(p => p.id === selectedPatientId)
     || hccMemberToPatient(hccMembers.find(m => m.id === selectedPatientId));
 
-  if (!patient) {
-    return (
-      <div className={styles.wrapper}>
-        <div className={styles.placeholder}>
-          <Icon name="solar:user-cross-linear" size={40} color="var(--neutral-150)" />
-          <span className={styles.placeholderTitle}>Patient not found</span>
-        </div>
-      </div>
-    );
-  }
+  // The app assumes we're always inside a real patient's record — if the id
+  // doesn't resolve to a patient (e.g. a stale hash from a deleted row, or a
+  // worklist row wired to a placeholder id), bounce straight back to the
+  // worklist instead of showing an orphan "Patient not found" screen.
+  useEffect(() => {
+    if (selectedPatientId && !patient) navigateBackToWorklist();
+  }, [selectedPatientId, patient, navigateBackToWorklist]);
+
+  if (!patient) return null;
 
   return (
     <div className={styles.wrapper}>

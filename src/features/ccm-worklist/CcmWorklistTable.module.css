@@ -54,165 +54,34 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
+  position: relative;
+  overscroll-behavior: none;
 }
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
-}
-.table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  text-align: left;
-  padding: 10px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--neutral-300);
-  background: var(--neutral-25);
-  border-bottom: 0.5px solid var(--neutral-100);
-  white-space: nowrap;
-}
-.table tbody td {
-  padding: 10px 12px;
-  border-bottom: 0.5px solid var(--neutral-100);
-  vertical-align: middle;
-  color: var(--neutral-400);
-}
-.row {
-  cursor: pointer;
-  transition: background 0.12s ease;
-}
-.row:hover { background: var(--neutral-25); }
-
-.checkCell {
-  width: 32px;
-  padding-left: 16px !important;
-  padding-right: 8px !important;
-}
-.actionCell { text-align: right; }
-.actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  justify-content: flex-end;
+  min-width: 1400px;
 }
 
-/* ── Member cell ──────────────────────────────────────────────── */
-.memberCell {
+/* Empty search — mirrors the TOC empty state. */
+.emptySearch {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-.avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--primary-100);
-  color: var(--primary-400);
-  font-size: 11px;
-  font-weight: 500;
-  display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-}
-.memberBody { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.memberName {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--primary-400);
-}
-.memberMeta {
-  font-weight: 400;
-  color: var(--neutral-400);
-  margin-left: 4px;
-  font-size: 12px;
-}
-.memberSub {
-  font-size: 11px;
+  padding: 64px 24px;
+  gap: 12px;
   color: var(--neutral-300);
 }
-
-/* ── Status pill ─────────────────────────────────────────────── */
-.statusPill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
+.emptyTitle {
+  font-size: 16px;
+  font-weight: 500;
   color: var(--neutral-400);
+  margin: 0;
 }
-.statusIcon { flex-shrink: 0; }
-.statusLabel { font-weight: 400; }
-
-/* ── Outreach cell ───────────────────────────────────────────── */
-.outreachCell {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.outreachCol { display: inline-flex; flex-direction: column; }
-.outreachStatus {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--status-success);
-}
-.outreachDate {
-  font-size: 11px;
-  color: var(--neutral-300);
-}
-
-/* ── Assignee ────────────────────────────────────────────────── */
-.assigneeChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.assigneeAvatar {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--status-warning-light);
-  color: var(--status-warning);
-  font-size: 10px;
-  font-weight: 500;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.assigneeName {
-  font-size: 12px;
-  color: var(--neutral-400);
-}
-.assignPlaceholder {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--neutral-300);
-  font-size: 12px;
-}
-
-/* ── Mins columns (purple/pink accent per Figma) ─────────────── */
-.billableCell,
-.unloggedCell {
-  color: var(--primary-300);
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.unloggedCell { color: var(--neutral-300); font-weight: 400; }
-
-.overdue { color: var(--status-error) !important; font-weight: 500; }
-.mutedText { color: var(--neutral-300); }
-.mutedDash { color: var(--neutral-200); }
-
-.carePlanCell { color: var(--neutral-400); }
-
-.emptyState {
-  padding: 32px 16px;
+.emptyText {
+  font-size: 14px;
+  margin: 0;
   text-align: center;
-  color: var(--neutral-300);
-  font-size: 13px;
+  max-width: 320px;
 }
