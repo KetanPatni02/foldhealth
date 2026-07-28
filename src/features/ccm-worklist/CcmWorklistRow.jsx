@@ -39,9 +39,24 @@ export function CcmWorklistRow({ member, isSelected, onSelect }) {
 
   const m = member;
 
+  // Billable Mins cell → same-page drawer overlay (quick peek).
   const openBilling = (e) => {
     e.stopPropagation();
     setBillingOpen(true);
+  };
+
+  // Action-row document icon → navigate INTO the patient profile and open
+  // the CCM care program on landing. Different intent than the peek drawer.
+  const openInCarePlan = (e) => {
+    e.stopPropagation();
+    if (!m.patientId) {
+      showToast(`${m.name} — no linked patient record yet`);
+      return;
+    }
+    navigateToPatient(m.patientId, {
+      profileTab: 'Care Programs',
+      programCode: 'CCM',
+    });
   };
 
   const handleRowClick = () => {
@@ -151,7 +166,7 @@ export function CcmWorklistRow({ member, isSelected, onSelect }) {
 
       <td className={`${styles.td} ${styles.stickyRight}`} onClick={e => e.stopPropagation()}>
         <div className={styles.actionsCell}>
-          <ActionButton icon="solar:document-text-linear" size="L" tooltip="View billing" onClick={openBilling} />
+          <ActionButton icon="solar:document-text-linear" size="L" tooltip="Open CCM care program" onClick={openInCarePlan} />
           <span className={styles.actionDivider} />
           <ActionButton icon="solar:phone-linear" size="L" tooltip="Call patient" />
           <span className={styles.actionDivider} />

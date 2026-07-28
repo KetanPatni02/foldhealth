@@ -44,7 +44,10 @@ export function PatientDetailView() {
   const patients = useAppStore(s => s.patients);
   const hccMembers = useAppStore(s => s.hccMembers);
   const navigateBackToWorklist = useAppStore(s => s.navigateBackToWorklist);
-  const [activeTab, setActiveTab] = useState('Overview');
+  // Active profile tab is stored on the store so callers (e.g. the CCM
+  // worklist's "View billing" button) can deep-link into a specific tab.
+  const activeTab = useAppStore(s => s.patientProfileTab);
+  const setActiveTab = useAppStore(s => s.setPatientProfileTab);
   const [leftWidth, setLeftWidth] = useState(496);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const dragging = useRef(false);

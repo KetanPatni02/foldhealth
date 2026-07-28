@@ -1024,11 +1024,18 @@ export const useAppStore = create((set, get) => ({
 
   // Patient detail view
   selectedPatientId: null,
-  patientProfileTab: 'Care Management',
-  navigateToPatient: (patientId) => {
+  patientProfileTab: 'Overview',
+  // When set alongside a navigateToPatient({ programCode }) call, the Care
+  // Programs tab picks this up, ensures the program is enrolled, and opens
+  // its ProgramDetailView on mount. Cleared once consumed.
+  pendingCareProgramCode: null,
+  navigateToPatient: (patientId, opts = {}) => {
     const from = get().activePage;
     track('nav.patient_opened', { patientId, from });
-    set({ selectedPatientId: patientId });
+    const updates = { selectedPatientId: patientId };
+    if (opts.profileTab) updates.patientProfileTab = opts.profileTab;
+    if (opts.programCode) updates.pendingCareProgramCode = opts.programCode;
+    set(updates);
     const state = get();
     if (state.activePage !== 'population') set({ activePage: 'population' });
     updateHash?.(get());
@@ -1036,7 +1043,7 @@ export const useAppStore = create((set, get) => ({
   navigateBackToWorklist: () => {
     const patientId = get().selectedPatientId;
     track('nav.patient_closed', { patientId });
-    set({ selectedPatientId: null });
+    set({ selectedPatientId: null, pendingCareProgramCode: null });
     updateHash?.(get());
   },
   setPatientProfileTab: (tab) => {
@@ -1044,6 +1051,7 @@ export const useAppStore = create((set, get) => ({
     track('nav.patient_tab_changed', { patientId: get().selectedPatientId, from, to: tab });
     set({ patientProfileTab: tab });
   },
+  clearPendingCareProgramCode: () => set({ pendingCareProgramCode: null }),
 
   // HCC chart documents manually added via "Upload New Chart" (per member id).
   // System (default) docs come from chartDocs.generateDefaultCharts; these are

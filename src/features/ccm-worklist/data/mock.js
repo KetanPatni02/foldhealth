@@ -27,7 +27,9 @@ export const CCM_WORKLIST_MEMBERS = [
     riskLevel: 'High',
     taskCount: 2,
     carePlanStatus: 'Updated',
-    patientId: 'p1',
+    // Linked to the HCC-worklist patient of the same demo cohort so clicking
+    // "Open CCM care program" navigates into a real patient profile.
+    patientId: 'hcc-42',
   },
   {
     id: 'ccmw-002',

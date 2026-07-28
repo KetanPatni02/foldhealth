@@ -42,10 +42,32 @@ export function CareProgramsTab() {
   const patientId = useAppStore(s => s.selectedPatientId);
   const careProgramsByPatient = useAppStore(s => s.careProgramsByPatient);
   const addCareProgram = useAppStore(s => s.addCareProgram);
+  const pendingCareProgramCode = useAppStore(s => s.pendingCareProgramCode);
+  const clearPendingCareProgramCode = useAppStore(s => s.clearPendingCareProgramCode);
   const programs = useMemo(
     () => careProgramsByPatient[patientId] || [],
     [careProgramsByPatient, patientId],
   );
+
+  // Deep-link: when a caller navigated in with { programCode }, either open
+  // the existing program row or enroll and open it. Runs once per pending
+  // code, then clears the store flag.
+  useEffect(() => {
+    if (!pendingCareProgramCode || !patientId) return;
+    const existing = programs.find(p => p.code === pendingCareProgramCode);
+    if (existing) {
+      setPendingProgram({ program: existing, firstStep: false });
+    } else {
+      const entry = CARE_PROGRAM_CATALOG.find(e => e.code === pendingCareProgramCode);
+      if (entry) {
+        addCareProgram(patientId, entry);
+        const created = useAppStore.getState().careProgramsByPatient[patientId]?.find(p => p.code === entry.code);
+        if (created) setPendingProgram({ program: created, firstStep: false });
+      }
+    }
+    clearPendingCareProgramCode();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingCareProgramCode, patientId]);
 
   // New Program picker options — short codes only, disabled once enrolled.
   const programOptions = useMemo(() => {
