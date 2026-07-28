@@ -5,7 +5,7 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { CardSkeleton } from '../../../components/Skeleton/CardSkeleton';
 import { useAppStore } from '../../../store/useAppStore';
 import { CCM_UNLOGGED_SECONDS, secondsToTime } from '../data/ccmBillingMock';
-import { CcmUnloggedDrawer } from './CcmUnloggedDrawer';
+import { CcmUnloggedTable } from './CcmUnloggedTable';
 import { CcmBillingReportDrawer } from './CcmBillingReportDrawer';
 import styles from './CcmBillingReview.module.css';
 
@@ -121,7 +121,7 @@ export function CcmBillingReview({ program, patientId: patientIdProp }) {
 
   const [activeTab, setActiveTab] = useState('Billable');
   const [complexity, setComplexity] = useState('high');
-  const [unloggedOpen, setUnloggedOpen] = useState(false);
+  const [unloggedExpanded, setUnloggedExpanded] = useState(false);
   const [openReport, setOpenReport] = useState(null);
 
   useEffect(() => {
@@ -214,17 +214,16 @@ export function CcmBillingReview({ program, patientId: patientIdProp }) {
             </div>
           </div>
 
-          {/* Unlogged banner */}
-          <button
-            type="button"
-            className={styles.unloggedBanner}
-            onClick={() => setUnloggedOpen(true)}
-          >
-            <span className={styles.unloggedText}>
-              Review <strong>{secondsToTime(CCM_UNLOGGED_SECONDS)} mins</strong> of Unlogged Time
-            </span>
-            <Icon name="solar:alt-arrow-right-linear" size={16} color="var(--primary-300)" />
-          </button>
+          {/* Unlogged time — collapsible inline table (Figma 450:19899).
+              Click the header to expand into a per-session grid where the
+              user classifies + logs each chunk into billable activities. */}
+          <CcmUnloggedTable
+            patientId={patientId}
+            periodId={currentPeriod?.id}
+            expanded={unloggedExpanded}
+            onToggleExpanded={() => setUnloggedExpanded(v => !v)}
+            initialSeconds={CCM_UNLOGGED_SECONDS}
+          />
 
           {/* Activities section */}
           <div className={styles.activitiesHead}>
@@ -308,13 +307,6 @@ export function CcmBillingReview({ program, patientId: patientIdProp }) {
         <CcmBillingReportDrawer report={openReport} onClose={() => setOpenReport(null)} />
       )}
 
-      {unloggedOpen && (
-        <CcmUnloggedDrawer
-          patientId={patientId}
-          periodId={currentPeriod?.id}
-          onClose={() => setUnloggedOpen(false)}
-        />
-      )}
     </div>
   );
 }
