@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
 import { Checkbox } from '../../components/ui/checkbox';
 import { useAppStore } from '../../store/useAppStore';
+import { CcmBillingReviewDrawer } from './CcmBillingReviewDrawer';
 import styles from './CcmWorklistRow.module.css';
 
 const LANG_MAP = { en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese', ko: 'Korean', vi: 'Vietnamese', hi: 'Hindi', pa: 'Punjabi', ch: 'Chinese' };
@@ -33,8 +35,14 @@ export function CcmWorklistRow({ member, isSelected, onSelect }) {
   const openQuickView = useAppStore(s => s.openQuickView);
   const navigateToPatient = useAppStore(s => s.navigateToPatient);
   const showToast = useAppStore(s => s.showToast);
+  const [billingOpen, setBillingOpen] = useState(false);
 
   const m = member;
+
+  const openBilling = (e) => {
+    e.stopPropagation();
+    setBillingOpen(true);
+  };
 
   const handleRowClick = () => {
     if (m.patientId) navigateToPatient(m.patientId);
@@ -55,6 +63,7 @@ export function CcmWorklistRow({ member, isSelected, onSelect }) {
   };
 
   return (
+    <>
     <tr className={styles.row} onClick={handleRowClick}>
       <td className={`${styles.checkTd} ${styles.stickyLeft}`} style={{ left: 0 }} onClick={e => e.stopPropagation()}>
         <Checkbox checked={isSelected} onCheckedChange={() => onSelect(m.id)} aria-label={`Select ${m.name}`} />
@@ -121,7 +130,11 @@ export function CcmWorklistRow({ member, isSelected, onSelect }) {
       <td className={styles.td}><span className={styles.dateText}>{m.startDate || '—'}</span></td>
       <td className={styles.td}><span className={styles.dateText}>{m.lastAdmission || '—'}</span></td>
 
-      <td className={styles.td}><span className={styles.billableMins}>{formatMins(m.billableSeconds)}</span></td>
+      <td className={styles.td} onClick={openBilling}>
+        <button type="button" className={styles.billableMins} onClick={openBilling}>
+          {formatMins(m.billableSeconds)}
+        </button>
+      </td>
       <td className={styles.td}><span className={styles.unloggedMins}>{formatMins(m.unloggedSeconds)}</span></td>
 
       <td className={styles.td}>
@@ -138,7 +151,7 @@ export function CcmWorklistRow({ member, isSelected, onSelect }) {
 
       <td className={`${styles.td} ${styles.stickyRight}`} onClick={e => e.stopPropagation()}>
         <div className={styles.actionsCell}>
-          <ActionButton icon="solar:document-text-linear" size="L" tooltip="View report" />
+          <ActionButton icon="solar:document-text-linear" size="L" tooltip="View billing" onClick={openBilling} />
           <span className={styles.actionDivider} />
           <ActionButton icon="solar:phone-linear" size="L" tooltip="Call patient" />
           <span className={styles.actionDivider} />
@@ -146,5 +159,9 @@ export function CcmWorklistRow({ member, isSelected, onSelect }) {
         </div>
       </td>
     </tr>
+    {billingOpen && (
+      <CcmBillingReviewDrawer member={m} onClose={() => setBillingOpen(false)} />
+    )}
+    </>
   );
 }

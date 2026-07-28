@@ -107,8 +107,11 @@ export function ActivityRow({ activity }) {
   );
 }
 
-export function CcmBillingReview({ program }) {
-  const patientId = useAppStore(s => s.selectedPatientId);
+export function CcmBillingReview({ program, patientId: patientIdProp }) {
+  // Allow callers (e.g. the CCM worklist's Billable Mins drawer) to pass an
+  // explicit patientId; falls back to the routed patient when omitted.
+  const selectedPatientId = useAppStore(s => s.selectedPatientId);
+  const patientId = patientIdProp || selectedPatientId;
   const periods = useAppStore(s => s.ccmBillingPeriodsByPatient[patientId]);
   const activities = useAppStore(s => s.ccmBillableActivitiesByPatient[patientId]);
   const reports = useAppStore(s => s.ccmBillingReportsByPatient[patientId]);
