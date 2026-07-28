@@ -52,7 +52,24 @@ export function SubNav({ collapsed }) {
     return counts;
   }, [patients, hccMembers, awvMembers, ccmWorklistMembers]);
 
-  const allPatientsCount = patients.length + hccMembers.length;
+  // Unique patient count across every worklist. Different worklists use
+  // different id spaces (p1, hcc-42, ccmw-001), so we key the union on a
+  // normalized memberId (# stripped, trimmed, lowercased) — that's the one
+  // field every worklist shares. Patients missing a memberId fall back to
+  // their row id so they still count once.
+  const allPatientsCount = useMemo(() => {
+    const seen = new Set();
+    const collect = (rows) => rows.forEach(r => {
+      const key = (r?.memberId || r?.id || '').toString().replace(/^#/, '').trim().toLowerCase();
+      if (key) seen.add(key);
+    });
+    collect(patients);
+    collect(hccMembers);
+    collect(awvMembers);
+    collect(HEDIS_MEMBERS);
+    collect(ccmWorklistMembers);
+    return seen.size;
+  }, [patients, hccMembers, awvMembers, ccmWorklistMembers]);
 
   const handleListClick = (list) => {
     setActiveSubnavList(list.label);
