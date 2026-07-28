@@ -12,11 +12,118 @@ import { BulkBar } from '../../components/BulkBar/BulkBar';
 import { CcmWorklistRow } from './CcmWorklistRow';
 import styles from './CcmWorklistTable.module.css';
 
+// Every filter chip in the row is a multi-select of *string buckets*. For
+// raw fields (Status, Gender, IPA, …) the bucket is the value itself; for
+// numeric / date fields we derive a bucket label per row via BUCKET_FN
+// below. Order here matches the Figma chip row left → right.
 const FILTER_KEYS = [
-  { key: 'status',    label: 'Status' },
-  { key: 'assignee',  label: 'Assignee' },
-  { key: 'riskLevel', label: 'Risk Level' },
+  { key: 'dob',                 label: 'DOB' },
+  { key: 'gender',              label: 'Gender' },
+  { key: 'language',            label: 'Language' },
+  { key: 'utrFlag',             label: 'UTR Flag' },
+  { key: 'utrAge',              label: 'UTR Age' },
+  { key: 'assignee',            label: 'Assigned to' },
+  { key: 'status',              label: 'Status' },
+  { key: 'programDueDate',      label: 'Program Due Date' },
+  { key: 'lastOutreachDate',    label: 'Last Outreach Date' },
+  { key: 'lastOutreachOutcome', label: 'Last Outreach Outcome' },
+  { key: 'assignmentDate',      label: 'Assignment Date' },
+  { key: 'ipa',                 label: 'IPA' },
+  { key: 'hpCode',              label: 'HP Code' },
+  { key: 'memberStatus',        label: 'Member Status' },
+  { key: 'billableMins',        label: 'Billable Mins' },
+  { key: 'unloggedMins',        label: 'Unlogged Mins' },
+  { key: 'unloggedUser',        label: 'Unlogged User' },
 ];
+
+const LANG_LABEL = { en: 'English', ch: 'Chinese', es: 'Spanish', ko: 'Korean', vi: 'Vietnamese' };
+
+// Parse an "MM/DD/YYYY" string; returns null when the input is missing or
+// malformed so callers can bucket that as 'None' / 'Never'.
+const parseUsDate = (s) => {
+  if (!s) return null;
+  const [mm, dd, yyyy] = String(s).split('/').map(Number);
+  if (!mm || !dd || !yyyy) return null;
+  return new Date(yyyy, mm - 1, dd);
+};
+
+// Bucket helpers keep the filter logic declarative. Each returns a string
+// so the FilterChip's multi-select value can key off it directly.
+const dueBucket = (dateStr) => {
+  const d = parseUsDate(dateStr);
+  if (!d) return 'None';
+  const now = new Date();
+  if (d < now) return 'Overdue';
+  const daysAway = Math.floor((d - now) / 86400000);
+  if (daysAway <= 30) return 'This Month';
+  if (daysAway <= 60) return 'Next Month';
+  return 'Later';
+};
+const outreachDateBucket = (mmddyy) => {
+  if (!mmddyy) return 'Never';
+  const [mm, dd, yy] = String(mmddyy).split('/').map(Number);
+  const d = new Date(2000 + (yy || 0), (mm || 1) - 1, dd || 1);
+  const daysAgo = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (daysAgo <= 7)  return 'Last 7 days';
+  if (daysAgo <= 30) return 'Last 30 days';
+  return 'Older';
+};
+const assignmentBucket = (dateStr) => {
+  const d = parseUsDate(dateStr);
+  if (!d) return 'None';
+  const daysAgo = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (daysAgo <= 30)  return 'Last 30 days';
+  if (daysAgo <= 90)  return '1-3 months ago';
+  if (daysAgo <= 180) return '3-6 months ago';
+  return '6+ months ago';
+};
+const utrAgeBucket = (days) => {
+  if (!days || days <= 0) return 'N/A';
+  if (days <= 7)  return '1-7 days';
+  if (days <= 30) return '8-30 days';
+  return '30+ days';
+};
+const billableBucket = (seconds) => {
+  const mins = (seconds || 0) / 60;
+  if (mins < 15) return '< 15 mins';
+  if (mins < 25) return '15-25 mins';
+  return '25+ mins';
+};
+const unloggedBucket = (seconds) => {
+  const mins = (seconds || 0) / 60;
+  if (mins < 0.5) return '< 30s';
+  if (mins < 1)   return '30-60s';
+  return '1+ min';
+};
+const dobDecade = (iso) => {
+  if (!iso) return 'Unknown';
+  return `${iso.slice(0, 3)}0s`;
+};
+
+// A single per-row → bucket lookup used both for populating the FilterChip
+// option lists AND for evaluating each row against a selected filter — keeps
+// the two branches consistent by construction.
+const BUCKET_FN = {
+  dob:                 (m) => dobDecade(m.dob),
+  gender:              (m) => m.gender || 'Unknown',
+  language:            (m) => LANG_LABEL[m.language] || 'Other',
+  utrFlag:             (m) => m.utrFlag || 'No',
+  utrAge:              (m) => utrAgeBucket(m.utrAgeDays),
+  assignee:            (m) => m.assigneeName || 'Unassigned',
+  status:              (m) => m.status,
+  programDueDate:      (m) => dueBucket(m.programDueDate),
+  lastOutreachDate:    (m) => outreachDateBucket(m.outreachDate),
+  lastOutreachOutcome: (m) => m.lastOutreachOutcome || 'None',
+  assignmentDate:      (m) => assignmentBucket(m.assignmentDate),
+  ipa:                 (m) => m.ipa || 'Unknown',
+  hpCode:              (m) => m.hpCode || 'Unknown',
+  memberStatus:        (m) => m.memberStatus || 'Active',
+  billableMins:        (m) => billableBucket(m.billableSeconds),
+  unloggedMins:        (m) => unloggedBucket(m.unloggedSeconds),
+  unloggedUser:        (m) => m.assigneeName || 'Unassigned',
+};
+
+const EMPTY_FILTERS = Object.fromEntries(FILTER_KEYS.map(f => [f.key, []]));
 
 function EmptySearch() {
   return (
@@ -37,18 +144,23 @@ export function CcmWorklistTable() {
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({ status: [], assignee: [], riskLevel: [] });
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
 
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
 
-  const filterOptions = useMemo(() => ({
-    status:    [...new Set(members.map(m => m.status).filter(Boolean))],
-    assignee:  [...new Set(members.map(m => m.assigneeName).filter(Boolean))].sort(),
-    riskLevel: [...new Set(members.map(m => m.riskLevel).filter(Boolean))].sort(),
-  }), [members]);
+  // Build option lists by walking the members once per filter key, running
+  // each row through BUCKET_FN and deduping. Empty buckets (e.g. 'Unknown'
+  // when no member has that field) drop out via the Set.
+  const filterOptions = useMemo(() => {
+    const opts = {};
+    for (const { key } of FILTER_KEYS) {
+      opts[key] = [...new Set(members.map(m => BUCKET_FN[key](m)).filter(Boolean))].sort();
+    }
+    return opts;
+  }, [members]);
 
   const filtered = useMemo(() => {
     let rows = members;
@@ -59,9 +171,10 @@ export function CcmWorklistTable() {
         (m.memberId || '').toLowerCase().includes(q),
       );
     }
-    if (filters.status.length)    rows = rows.filter(m => filters.status.includes(m.status));
-    if (filters.assignee.length)  rows = rows.filter(m => filters.assignee.includes(m.assigneeName));
-    if (filters.riskLevel.length) rows = rows.filter(m => filters.riskLevel.includes(m.riskLevel));
+    for (const { key } of FILTER_KEYS) {
+      const vals = filters[key];
+      if (vals && vals.length) rows = rows.filter(m => vals.includes(BUCKET_FN[key](m)));
+    }
     return rows;
   }, [members, searchQuery, filters]);
 
@@ -87,7 +200,7 @@ export function CcmWorklistTable() {
   });
 
   const setFilter = (key, vals) => setFilters(f => ({ ...f, [key]: vals }));
-  const clearFilters = () => setFilters({ status: [], assignee: [], riskLevel: [] });
+  const clearFilters = () => setFilters(EMPTY_FILTERS);
 
   // Inline table header style mirrors src/features/toc-worklist/WorklistTable.jsx
   // so the two tables render with identical typography, padding, and sticky

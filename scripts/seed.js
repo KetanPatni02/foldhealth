@@ -194,6 +194,15 @@ CREATE TABLE IF NOT EXISTS ccm_worklist_members (
   care_plan_status      text,
   billable_seconds      int DEFAULT 0,
   unlogged_seconds      int DEFAULT 0,
+  dob                   text,
+  utr_flag              text DEFAULT 'No',
+  utr_age_days          int DEFAULT 0,
+  program_due_date      text,
+  last_outreach_outcome text,
+  assignment_date       text,
+  ipa                   text,
+  hp_code               text,
+  member_status         text DEFAULT 'Active',
   patient_id            text,
   created_at            timestamptz DEFAULT now()
 );
@@ -344,6 +353,15 @@ function ccmWorklistToRow(m) {
     care_plan_status:     m.carePlanStatus ?? null,
     billable_seconds:     m.billableSeconds ?? 0,
     unlogged_seconds:     m.unloggedSeconds ?? 0,
+    dob:                  m.dob ?? null,
+    utr_flag:             m.utrFlag || 'No',
+    utr_age_days:         m.utrAgeDays ?? 0,
+    program_due_date:     m.programDueDate ?? null,
+    last_outreach_outcome: m.lastOutreachOutcome ?? null,
+    assignment_date:      m.assignmentDate ?? null,
+    ipa:                  m.ipa ?? null,
+    hp_code:              m.hpCode ?? null,
+    member_status:        m.memberStatus || 'Active',
     patient_id:           m.patientId ?? null,
   };
 }

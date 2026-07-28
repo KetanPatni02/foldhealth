@@ -35,6 +35,16 @@ CREATE TABLE IF NOT EXISTS ccm_worklist_members (
   care_plan_status      TEXT,                    -- 'Updated' | 'Pending' | null
   billable_seconds      INT DEFAULT 0,           -- monthly roll-up; overwritten from activities when available
   unlogged_seconds      INT DEFAULT 0,           -- untracked time waiting to be classified
+  -- Extended filterable dimensions surfaced in the CCM worklist chip row.
+  dob                   TEXT,                    -- 'YYYY-MM-DD'
+  utr_flag              TEXT DEFAULT 'No',       -- 'Yes' | 'No'
+  utr_age_days          INT DEFAULT 0,           -- days since UTR flag was set
+  program_due_date      TEXT,                    -- 'MM/DD/YYYY'
+  last_outreach_outcome TEXT,                    -- 'Reached' | 'Voicemail' | 'No Answer' | null
+  assignment_date       TEXT,                    -- 'MM/DD/YYYY'
+  ipa                   TEXT,                    -- 'CFC' | 'Astrana'
+  hp_code               TEXT,                    -- 'H1234' | 'H5678'
+  member_status         TEXT DEFAULT 'Active'    -- 'Active' | 'Inactive' | 'On Hold'
   patient_id            TEXT,                    -- FK to patients.id when linked
   created_at            TIMESTAMPTZ DEFAULT now()
 );
