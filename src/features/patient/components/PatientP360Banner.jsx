@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { Avatar } from '../../../components/Avatar/Avatar';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Icon } from '../../../components/Icon/Icon';
@@ -37,9 +37,9 @@ function ExpandedHealthStatus({ p, className, movedMetrics = false }) {
           <>
             <div className={styles.expandItem}>
               <span className={styles.expandLabel}>Programs:</span>
-              <div className={styles.programBadges}>
-                {(p.programs || []).map(pr => <span key={pr} className={`${styles.badge} ${styles.badgeInfo}`}>{pr}</span>)}
-                <span className={`${styles.badge} ${styles.badgeGrey}`}>+2</span>
+              <div className={styles.conditionBadges}>
+                {(p.programs || []).map(pr => <span key={pr} className={styles.conditionBadge}>{pr}</span>)}
+                <span className={styles.conditionBadgeGrey}>+2</span>
               </div>
             </div>
             <div className={styles.expandItem}>
@@ -127,23 +127,62 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
   const [showScheduleDrawer, setShowScheduleDrawer] = useState(false);
   const callBtnRef = useRef(null);
 
-  // Responsive size tiers for the full banner (measured, not viewport, so it
-  // reacts to the sidebar/drawer too):
+  // Responsive size tiers for the full banner. Rather than fixed width
+  // breakpoints (which never line up with the real content width), we measure
+  // the live gap between the last detail (the expand arrow) and the actions
+  // group and step down the instant that gap would drop below 24px — so no
+  // detail ever coincides with the actions:
   //   wide   → all metrics inline
   //   medium → Programs + Last Contact move into the Health Status expansion
   //   narrow → also drop Next Appt. (it's in Upcoming Appointments already)
   const bannerRef = useRef(null);
+  const expandArrowRef = useRef(null);
+  const actionsGroupRef = useRef(null);
+  const nextApptRef = useRef(null);
+  const lastContactRef = useRef(null);
+  const programsRef = useRef(null);
+  // Cached widths (incl. the 24px inter-metric gap) of the optional metrics,
+  // captured while they're on screen, so we know how much slack it takes to
+  // bring them back when the banner widens again.
+  const metricW = useRef({ nextAppt: 110, lastContact: 110, programs: 180 });
   const [bannerSize, setBannerSize] = useState('wide');
-  useEffect(() => {
+
+  const MIN_GAP = 24;
+  const measureBanner = useCallback(() => {
+    const arrow = expandArrowRef.current;
+    const actions = actionsGroupRef.current;
+    if (!arrow || !actions) return;
+    if (nextApptRef.current) metricW.current.nextAppt = nextApptRef.current.offsetWidth + 24;
+    if (lastContactRef.current) metricW.current.lastContact = lastContactRef.current.offsetWidth + 24;
+    if (programsRef.current) metricW.current.programs = programsRef.current.offsetWidth + 24;
+    const gap = actions.getBoundingClientRect().left - arrow.getBoundingClientRect().right;
+    setBannerSize(prev => {
+      if (gap < MIN_GAP) {
+        if (prev === 'wide') return 'medium';
+        if (prev === 'medium') return 'narrow';
+        return prev;
+      }
+      // Slack beyond the required 24px gap — only restore a metric when it
+      // fully fits (plus an 8px deadband) so the tier can't oscillate.
+      const slack = gap - MIN_GAP;
+      if (prev === 'narrow' && slack >= metricW.current.nextAppt + 8) return 'medium';
+      if (prev === 'medium' && slack >= metricW.current.lastContact + metricW.current.programs + 8) return 'wide';
+      return prev;
+    });
+  }, []);
+
+  useLayoutEffect(() => {
     const el = bannerRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return undefined;
-    const ro = new ResizeObserver(([entry]) => {
-      const w = entry.contentRect.width;
-      setBannerSize(w >= 1200 ? 'wide' : w >= 960 ? 'medium' : 'narrow');
-    });
+    const ro = new ResizeObserver(() => measureBanner());
     ro.observe(el);
+    measureBanner();
     return () => ro.disconnect();
-  }, []);
+  }, [measureBanner]);
+
+  // Re-measure after a tier change settles, so a large jump can cascade
+  // through multiple tiers in one resize (and converge).
+  useLayoutEffect(() => { measureBanner(); }, [bannerSize, measureBanner]);
 
   const p360Profile = useAppStore(s => s.p360Profile);
   const fetchP360Profile = useAppStore(s => s.fetchP360Profile);
@@ -484,7 +523,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
 
           {/* Next Appt — hidden at narrow width (shown in Upcoming Appointments). */}
           {bannerSize !== 'narrow' && (
-            <div className={styles.metricCol}>
+            <div className={styles.metricCol} ref={nextApptRef}>
               <span className={styles.metricLabel}>Next Appt.</span>
               <div className={styles.metricValueRow}><span className={styles.nextApptValue}>{p.next_appointment_date || '—'}</span></div>
             </div>
@@ -492,7 +531,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
 
           {/* Last Contact — moves into Health Status expansion below wide. */}
           {bannerSize === 'wide' && (
-            <div className={styles.metricCol}>
+            <div className={styles.metricCol} ref={lastContactRef}>
               <span className={styles.metricLabel}>Last Contact</span>
               <div className={styles.lastContactBtn}>
                 <Icon name="solar:phone-calling-linear" size={16} color="var(--status-error)" />
@@ -503,7 +542,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
 
           {/* Programs — moves into Health Status expansion below wide. */}
           {bannerSize === 'wide' && (
-            <div className={styles.metricCol}>
+            <div className={styles.metricCol} ref={programsRef}>
               <span className={styles.metricLabel}>Programs</span>
               <div className={styles.programBadges}>
                 {(p.programs || []).map(pr => <span key={pr} className={`${styles.badge} ${styles.badgeInfo}`} style={{ width: pr.length > 3 ? 'auto' : 40 }}>{pr}</span>)}
@@ -514,6 +553,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
 
           {/* Expand arrow */}
           <button
+            ref={expandArrowRef}
             className={styles.expandArrow}
             onClick={() => setExpanded(v => !v)}
             aria-label={expanded ? 'Collapse details' : 'Expand details'}
@@ -526,7 +566,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
         </div>
 
         {/* Actions: EHR | Call | Email | ... */}
-        <div className={styles.actionsGroup}>
+        <div className={styles.actionsGroup} ref={actionsGroupRef}>
           <div className={styles.actionCol}><ActionButton icon="solar:square-top-down-linear" size="L" tooltip="EHR" /><span className={styles.actionLabel}>EHR</span></div>
           <span className={styles.hDivider} />
           <div className={styles.actionCol}><ActionButton icon="solar:phone-linear" size="L" tooltip="Call" /><span className={styles.actionLabel}>Call</span></div>

@@ -272,6 +272,204 @@ export const PROGRAM_STEPS_MOCK = [
   { id: 'step-11', name: 'Referral Review', status: 'pending', mandatory: true },
 ];
 
+// ─── Pre-visit step content, keyed by program type ─────────────────────────
+// The Pre-visit step renders different sections depending on the program:
+//   • SNP (default) → General Info (Trigger + Payer grid) + Care Team +
+//     Pre-visit Assessment
+//   • TOC IP / TOC ED, HIU, DM → General Info split into icon sub-sections
+//     (bordered key/value tables) + Care Team
+const CARE_TEAM_SNP = [
+  { role: 'Coordinator', name: 'Delores Conn', initials: 'DC' },
+  { role: 'Nurse', name: 'Robert Fox', initials: 'RF' },
+  { role: 'Medical Records', name: 'Leigh Reynolds', initials: 'LR' },
+];
+const CARE_TEAM_FULL = [
+  { role: 'Coordinator', name: 'Delores Conn', initials: 'DC' },
+  { role: 'Nurse', name: 'Robert Fox', initials: 'RF' },
+  { role: 'Nurse Practitioner', name: 'Lila Jones', initials: 'LJ' },
+  { role: 'Medical Records', name: 'Leigh Reynolds', initials: 'LR' },
+];
+
+export const PRE_VISIT_MOCK = {
+  snp: {
+    variant: 'snp',
+    general: {
+      top: [
+        { label: 'Trigger Type', value: 'Transfer' },
+        { label: 'Trigger Date', value: '29/04/2024' },
+        { label: 'Managed By HP', value: 'Yes' },
+      ],
+      payerTitle: 'Payer - LA Care',
+      payerCols: [
+        [
+          { label: 'PPG Region Code', value: 'North Central (PPG-NC-002)' },
+          { label: 'SNP ID', value: 'H1234-045' },
+          { label: 'Beneficiary CMC CIN', value: 'A12345678' },
+          { label: 'Beneficiary MBI', value: '1EG4-TE5-MK73' },
+          { label: 'LA Care Effective Date', value: '05/14/2025' },
+          { label: 'PPG Effective Date', value: '05/16/2025' },
+          { label: 'Case Management Assignment', value: '05/17/2025' },
+          { label: 'Current CM Assignment Date', value: '05/19/2025' },
+          { label: 'Initial HRA', value: '05/16/2025' },
+          { label: 'Latest HRA', value: '05/20/2025' },
+          { label: 'Prior Year HRA', value: '05/16/2025' },
+          { label: 'SNP Assessment Date', value: '05/19/2025' },
+        ],
+        [
+          { label: 'Initial Care Plan Date', value: '08/07/2025' },
+          { label: 'Care Plan Update Post Latest HRA', value: '07/18/2025' },
+          { label: 'Latest TOC Discharge Date', value: '07/13/2025' },
+          { label: 'Care plan Update after TOC Discharge', value: '07/03/2025' },
+          { label: 'Latest Care Plan Date', value: '07/03/2025' },
+          { label: 'Care Plan Type', value: 'Chronic Care Plan' },
+          { label: 'Date ICP Shared to Member', value: '06/26/2025' },
+          { label: 'Date ICP Shared to Provider', value: '06/23/2025' },
+          { label: 'Initial ICT', value: '06/02/2025' },
+          { label: 'Latest ICT', value: '05/21/2025' },
+          { label: 'Last Outreach Date', value: '05/15/2025' },
+        ],
+      ],
+    },
+    careTeam: CARE_TEAM_SNP,
+    showAddRole: false,
+    assessment: [
+      'Did you upload the HRA document?',
+      'Did you share the Intro and Consent letter with patient?',
+      'Did you take the consent from patient?',
+    ],
+  },
+
+  toc: {
+    variant: 'sectioned',
+    sections: [
+      {
+        icon: 'solar:buildings-2-linear', title: 'Admission & Discharge Info',
+        rows: [
+          ['TOC Type', 'Hospital to Home'],
+          ['Admission Date & Time', '08/04/2024, 12:30pm'],
+          ['Discharge Date & Time', '08/06/2024, 12:30pm'],
+          ['Length of Stay (LOS)', '4 Days'],
+          ['Admit Class', 'Inpatient'],
+          ['Facility', 'Hospital'],
+          ['Discharge To', 'Home'],
+          ['Admission Diagnosis', 'Acute Abdominal Pain'],
+        ],
+      },
+      {
+        icon: 'solar:danger-circle-linear', title: 'Risk & Acuity',
+        rows: [
+          ['Recent LACE Score', '9'],
+          ['Recent Acuity Level', 'High'],
+          ['Chronic Conditions', 'COPD, Type 2 Diabetes, Hypertension'],
+        ],
+      },
+      {
+        icon: 'solar:user-rounded-linear', title: 'DM/CCM Eligibility',
+        rows: [
+          ['Re-admission flag - - 30 days', 'No'],
+          ['Active CCM Program Start Date', '08/04/2024'],
+          ['Discharge Diagnosis Codes', 'J18.9, E11.9, I10'],
+        ],
+      },
+    ],
+    careTeam: CARE_TEAM_FULL,
+    showAddRole: true,
+  },
+
+  hiu: {
+    variant: 'sectioned',
+    sections: [
+      {
+        icon: 'solar:buildings-2-linear', title: 'Admission & Discharge Info',
+        rows: [
+          ['Program Assignment Date', '01/09/2025'],
+          ['Recent Discharge Date', '01/09/2025'],
+          ['Re-admission', 'Yes'],
+          ['Risk Stratification Level', 'High (Source : Population Group)'],
+        ],
+      },
+      {
+        icon: 'solar:danger-circle-linear', title: 'Risk & Acuity',
+        rows: [
+          ['Recent LACE Score', '—'],
+          ['Recent Acuity Level', 'Low-risk'],
+          ['Chronic Conditions', "Hypertension, Parkinson's Disease, Kidney Disease"],
+        ],
+      },
+      {
+        icon: 'solar:clipboard-check-linear', title: 'Program Milestones',
+        rows: [
+          ['1st Outreach Due', '14'],
+          ['Engaged On (1st Outreach Complete)', '01/13/2025'],
+          ['Assessment Due', '01/17/2025'],
+          ['Enrolled On (Assessment Done)', '01/17/2025'],
+          ['Next Follow-Up', '05/19/2025'],
+          ['No. of Follow Ups Scheduled', '2'],
+        ],
+      },
+      {
+        icon: 'solar:bed-linear', title: 'Utilizations',
+        rows: [
+          ['Before Enrolled Admits 6 mon-1 year prior', '2'],
+          ['Before Enrolled Admits 4-6 month prior', '0'],
+          ['Before Enrolled Admits 0-3 months prior', '1'],
+          ['After Enrolled Admits 0-3 mon', '3'],
+          ['After Enrolled Admits 4-6 months', '4'],
+          ['After Enrolled Admits 7 mon-1 year', '5'],
+          ['READMITS', '3'],
+        ],
+      },
+    ],
+    careTeam: CARE_TEAM_FULL,
+    showAddRole: true,
+  },
+
+  dm: {
+    variant: 'sectioned',
+    sections: [
+      {
+        icon: 'solar:buildings-2-linear', title: 'Admission & Discharge Info',
+        rows: [
+          ['Program Assignment Date', '01/09/2025'],
+          ['DM Type', 'CKD'],
+          ['Recent Discharge Date', '01/09/2025'],
+          ['Recent Discharge Diagnosis', 'N18.4- CKD, Stage 4 (Severe)'],
+        ],
+      },
+      {
+        icon: 'solar:danger-circle-linear', title: 'Risk & Acuity',
+        rows: [
+          ['Recent LACE Score', '14'],
+          ['Recent Acuity Level', 'Low-risk'],
+          ['Chronic Conditions', "Hypertension, Parkinson's Disease, Kidney Disease"],
+        ],
+      },
+      {
+        icon: 'solar:clipboard-check-linear', title: 'Program Milestones',
+        rows: [
+          ['1st Outreach Due', '14'],
+          ['Engaged On (1st Outreach Complete)', '01/13/2025'],
+          ['Assessment Due', '01/17/2025'],
+          ['Enrolled On (Assessment Done)', '01/17/2025'],
+          ['Next Follow-Up', '05/19/2025'],
+          ['No. of Follow Ups Scheduled', '2'],
+        ],
+      },
+    ],
+    careTeam: CARE_TEAM_FULL,
+    showAddRole: true,
+  },
+};
+
+// Map a program code (SNP, TOC IP, TOC ED, HIU, DM, …) to its Pre-visit config.
+export function preVisitForProgram(code) {
+  const c = (code || '').toUpperCase();
+  if (c === 'TOC IP' || c === 'TOC ED') return PRE_VISIT_MOCK.toc;
+  if (c === 'HIU') return PRE_VISIT_MOCK.hiu;
+  if (c === 'DM') return PRE_VISIT_MOCK.dm;
+  return PRE_VISIT_MOCK.snp;
+}
+
 export const PROGRAM_LETTERS_MOCK = [
   { id: 'l-1', fileName: 'Intro or Welcome Letter - Patient', fileType: 'Letter', sentVia: ['Email', 'SMS'], lastSent: '07/02/2025', sentBy: 'Mark Emard' },
   { id: 'l-2', fileName: 'Consent letter - Patient', fileType: 'Letter', sentVia: ['Email'], lastSent: '07/01/2025', sentBy: 'Faye Romaguera' },

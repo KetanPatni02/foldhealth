@@ -277,15 +277,47 @@
   gap: 4px;
   height: 28px;
   padding: 4px 8px;
-  border: 1px solid var(--status-success);
+  border: 1px solid var(--primary-300);
   border-radius: 4px;
   background: white;
   font-size: 14px;
-  color: var(--status-success);
+  color: var(--primary-300);
   cursor: pointer;
   white-space: nowrap;
 }
-.reviewedBtn:hover { background: #F5FFFA; }
+.reviewedBtn:hover { background: var(--primary-100); }
+
+/* ── Floating bulk-action bar (Letters selection) ── */
+.bulkBar {
+  position: fixed;
+  left: 50%;
+  bottom: 100px;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--neutral-0);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+}
+.bulkSelect {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.bulkCount {
+  font-size: 14px;
+  color: var(--neutral-400);
+  white-space: nowrap;
+}
+.bulkDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
 
 /* Outreach step — the shared OutreachTab (log form + activity) scrolls
    within the content column. */
@@ -370,6 +402,12 @@
 /* Select column — narrow; the shared Checkbox aligns to the row middle. */
 .checkCell { width: 36px; }
 .checkCell > * { vertical-align: middle; }
+/* Selected row (bulk-action mode) — Figma 439:612596: primary-100 fill,
+   primary-200 bottom border, 2px primary-300 left accent, primary-300 name. */
+.table tbody tr.rowSelected,
+.table tbody tr.rowSelected:hover { background: var(--primary-100); border-bottom-color: var(--primary-200); }
+.table tbody tr.rowSelected .checkCell { box-shadow: inset 2px 0 0 var(--primary-300); }
+.table tbody tr.rowSelected .fileNameCell { color: var(--primary-300); }
 /* File Name — darkest; File Type — muted grey. */
 .fileNameCell { color: var(--neutral-500); }
 .colMuted { color: var(--neutral-300); }

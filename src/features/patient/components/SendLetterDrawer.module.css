@@ -1,0 +1,69 @@
+.headerDivider {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  margin: 0 4px;
+}
+
+.body {
+  padding: 16px 12px 24px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+/* Prefilled / system-populated fields render on a neutral-50 fill. */
+.fieldFilled input {
+  background: var(--neutral-50);
+}
+
+.fieldLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--neutral-200);
+}
+.reqDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--status-error);
+  flex-shrink: 0;
+}
+
+/* Date field — calendar affordance pinned to the right edge. */
+.dateField {
+  position: relative;
+}
+.dateField input {
+  padding-right: 30px;
+}
+.dateIcon {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.efaxRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  cursor: pointer;
+}
+.efaxLabel {
+  font-size: 14px;
+  color: var(--neutral-200);
+}
