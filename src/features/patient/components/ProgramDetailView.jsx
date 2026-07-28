@@ -5,10 +5,13 @@ import { Button } from '../../../components/Button/Button';
 import { BannerExpandIcon } from '../../../components/Icon/BannerExpandIcon';
 import { ProgressRing } from '../../hcc/DiagPanel/ReviewProgressPopover';
 import { Checkbox } from '../../../components/ui/checkbox';
+import { toast } from '../../../components/Toast/Toast';
 import { PROGRAM_STEPS_MOCK, PROGRAM_LETTERS_MOCK, CCM_PROGRAM_STEPS } from '../data/programActivityMock';
 import { OutreachTab } from './OutreachTab';
 import { CcmBillingReview } from './CcmBillingReview';
 import { CcmTimerWidget } from './CcmTimerWidget';
+import { SendLetterDrawer } from './SendLetterDrawer';
+import { PreVisitStep } from './PreVisitStep';
 import styles from './ProgramDetailView.module.css';
 
 // Programs with a custom step list — CCM's workflow is billing-centric, not
@@ -100,6 +103,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
   );
   const [activeLetterTab, setActiveLetterTab] = useState('All');
   const [selectedLetters, setSelectedLetters] = useState(() => new Set());
+  const [sendDrawerOpen, setSendDrawerOpen] = useState(false);
 
   const allLettersSelected = selectedLetters.size === PROGRAM_LETTERS_MOCK.length && PROGRAM_LETTERS_MOCK.length > 0;
   const someLettersSelected = selectedLetters.size > 0 && !allLettersSelected;
@@ -108,9 +112,36 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
   const toggleLetter = (id) =>
     setSelectedLetters(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
+  // Download every selected letter as a file, then confirm with a success toast.
+  const downloadSelectedLetters = () => {
+    const chosen = PROGRAM_LETTERS_MOCK.filter(l => selectedLetters.has(l.id));
+    if (chosen.length === 0) return;
+    chosen.forEach(letter => {
+      const body =
+        `${letter.fileName}\n\n` +
+        `File Type: ${letter.fileType}\n` +
+        `Sent Via: ${letter.sentVia.join(', ')}\n` +
+        `Last Sent: ${letter.lastSent}\n` +
+        `Sent By: ${letter.sentBy}\n`;
+      const url = URL.createObjectURL(new Blob([body], { type: 'text/plain' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${letter.fileName}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+    toast.success(
+      chosen.length === 1 ? 'File downloaded successfully' : `${chosen.length} files downloaded successfully`,
+    );
+  };
+
   const activeStepObj = ALL_STEPS.find(s => s.id === activeStep);
   const isOutreachStep = activeStepObj?.name === 'Outreach';
   const isBillingStep = activeStepObj?.kind === 'billing';
+  const isPreVisitStep = activeStepObj?.name === 'Pre-visit';
+  const isLettersPane = !isBillingStep && !isOutreachStep && !isPreVisitStep;
 
   const [detailsExpanded, setDetailsExpanded] = useState(false);
 
@@ -320,6 +351,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
             <span className={styles.contentTitle}>
               {isBillingStep ? 'Billing Review'
                 : isOutreachStep ? 'Outreach'
+                : isPreVisitStep ? 'Pre-visit'
                 : 'Program Related Letters'}
             </span>
             <div className={styles.contentActions}>
@@ -331,7 +363,12 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
                 Assign
               </Button>
               <Button variant="ghost" size="S" className={styles.actionBtn}>Skip</Button>
-              <Button variant="ghost" size="S" leadingIcon="solar:check-circle-linear" className={styles.reviewedBtn}>
+              <Button
+                variant="ghost"
+                size="S"
+                leadingIconElement={<Icon name="solar:check-circle-linear" size={14} color="var(--primary-300)" />}
+                className={styles.reviewedBtn}
+              >
                 Reviewed
               </Button>
               <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
@@ -349,6 +386,8 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
                 defaultFormOpen
               />
             </div>
+          ) : isPreVisitStep ? (
+            <PreVisitStep programCode={program.code} />
           ) : (
           <div className={styles.contentInner}>
             <div className={styles.contentSubTabs}>
@@ -389,7 +428,10 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
                 </thead>
                 <tbody>
                   {PROGRAM_LETTERS_MOCK.map(letter => (
-                    <tr key={letter.id}>
+                    <tr
+                      key={letter.id}
+                      className={selectedLetters.has(letter.id) ? styles.rowSelected : undefined}
+                    >
                       <td className={styles.checkCell}>
                         <Checkbox
                           checked={selectedLetters.has(letter.id)}
@@ -421,6 +463,48 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
       {/* CCM-only persistent time tracker — floats bottom-right; a Stop
           from any step logs the elapsed time as a billable activity. */}
       {isCcm && <CcmTimerWidget program={program} />}
+
+      {/* Floating bulk-action bar — appears when letters are selected. Figma 439:614595.
+          Gated on the letters pane being the visible one, so a selection made
+          here can't float the bar over Billing Review / Outreach / Pre-visit. */}
+      {isLettersPane && selectedLetters.size > 0 && (
+        <div className={styles.bulkBar} role="toolbar" aria-label="Letter bulk actions">
+          <div className={styles.bulkSelect}>
+            <Checkbox
+              checked={someLettersSelected ? 'indeterminate' : allLettersSelected}
+              onCheckedChange={toggleAllLetters}
+              aria-label="Clear selection"
+            />
+            <span className={styles.bulkCount}>{selectedLetters.size} Selected</span>
+          </div>
+          <span className={styles.bulkDivider} />
+          <Button variant="secondary" size="L" leadingIcon="solar:download-minimalistic-linear" onClick={downloadSelectedLetters}>
+            Download Files
+          </Button>
+          <Button variant="primary" size="L" leadingIcon="solar:plain-linear" onClick={() => setSendDrawerOpen(true)}>
+            Send Files
+          </Button>
+          <span className={styles.bulkDivider} />
+          <ActionButton
+            icon="solar:close-square-linear"
+            size="S"
+            tooltip="Clear selection"
+            onClick={() => setSelectedLetters(new Set())}
+          />
+        </div>
+      )}
+
+      {sendDrawerOpen && (
+        <SendLetterDrawer
+          letterName={
+            selectedLetters.size === 1
+              ? PROGRAM_LETTERS_MOCK.find(l => selectedLetters.has(l.id))?.fileName || 'Letter'
+              : 'Letters'
+          }
+          onClose={() => setSendDrawerOpen(false)}
+          onSent={() => setSelectedLetters(new Set())}
+        />
+      )}
     </div>
   );
 }

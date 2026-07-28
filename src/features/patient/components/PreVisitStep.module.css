@@ -1,0 +1,226 @@
+.container {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 16px;
+}
+
+/* ── Collapsible section ── */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sectionToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+
+/* ── Sectioned variant (TOC / HIU / DM) ── */
+.sectioned {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.subSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.subHead {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.subTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+
+.kvTable {
+  width: 100%;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.kvRow {
+  display: grid;
+  grid-template-columns: minmax(200px, 320px) 1fr;
+}
+.kvRow + .kvRow {
+  border-top: 0.5px solid var(--neutral-150);
+}
+.kvLabel {
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--neutral-300);
+  border-right: 0.5px solid var(--neutral-150);
+}
+.kvValue {
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--neutral-400);
+}
+
+/* ── SNP General Info (stacked label/value, no cell borders) ── */
+.generalSnp {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.stackGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 24px;
+}
+.payerTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-300);
+}
+.payerGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 24px;
+  align-items: start;
+}
+.payerCol {
+  display: flex;
+  flex-direction: column;
+}
+.stackCell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 8px 8px 0;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.stackLabel {
+  font-size: 14px;
+  color: var(--neutral-300);
+}
+.stackValue {
+  font-size: 14px;
+  color: var(--neutral-400);
+}
+
+/* ── Care Team table ── */
+.careTable {
+  width: 100%;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.careHeadRow,
+.careRow {
+  display: grid;
+  grid-template-columns: 290px 1fr 40px;
+  align-items: center;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.careRow {
+  min-height: 40px;
+}
+.careHeadCell {
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-300);
+}
+.careHeadRow .careHeadCell:first-child,
+.careRow .careRole {
+  border-right: 0.5px solid var(--neutral-150);
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+.careRole {
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--neutral-500);
+}
+.careProvider {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--neutral-500);
+}
+.careActionCol {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.addRoleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--neutral-300);
+}
+
+/* ── Pre-visit Assessment (SNP) ── */
+.assessment {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.question {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.questionText {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.questionNum {
+  width: 24px;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 14px;
+  color: var(--neutral-400);
+}
+.questionLabel {
+  font-size: 14px;
+  color: var(--neutral-400);
+}
+.reqDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--status-error);
+  flex-shrink: 0;
+}
+.questionOptions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-left: 28px;
+}

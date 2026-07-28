@@ -263,6 +263,8 @@
 /* Health expanded */
 .conditionBadges { display: flex; gap: 4px; flex-wrap: wrap; }
 .conditionBadge { font-size: 12px; color: var(--status-info); background: var(--status-info-light); border: 0.5px solid color-mix(in srgb, var(--status-info) 20%, transparent); border-radius: 4px; padding: 1px 6px; }
+/* Grey "+N" counterpart, sized to match .conditionBadge (used for moved-in Programs). */
+.conditionBadgeGrey { font-size: 12px; color: var(--neutral-300); background: var(--neutral-0); border: 0.5px solid color-mix(in srgb, var(--neutral-300) 10%, transparent); border-radius: 4px; padding: 1px 6px; }
 .vitalsGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; font-size: 12px; color: var(--neutral-300); }
 
 /* Appointments expanded */

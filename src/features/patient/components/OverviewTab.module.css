@@ -16,6 +16,13 @@
 .synopsisBody { display: flex; gap: 16px; padding: 12px; }
 .synopsisLeft { flex: 1; display: flex; flex-direction: column; gap: 10px; }
 .synopsisRight { width: 280px; flex-shrink: 0; }
+
+/* Below 1400px the synopsis + health map stack vertically instead of sitting
+   side by side, so neither gets cramped on narrower screens. */
+@media (max-width: 1400px) {
+  .synopsisBody { flex-direction: column; }
+  .synopsisRight { width: 100%; }
+}
 .templateRow { display: flex; align-items: center; justify-content: space-between; }
 .templateDropdown { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--neutral-400); font-family: 'Inter', sans-serif; background: none; border: 0.5px solid var(--neutral-150); border-radius: 4px; padding: 4px 8px; cursor: pointer; }
 .synopsisActions { display: flex; align-items: center; gap: 2px; }
