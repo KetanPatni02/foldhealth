@@ -15,7 +15,10 @@ export const SNP_WORKLIST_MEMBERS = [
     programSubStatus: '2nd Cont. – Fail', carePlanStatus: 'Signed', nextActionDue: '07/07/2025',
     outreach: null, assigneeName: 'Daniel Arsulo', assigneeInitials: 'DA',
     triggerDate: '06/23/2025', lastAdmission: null, trigger: 'Reassessment', riskIq: 'Undetermined',
-    tags: [{ label: 'A1C/KED Kit', tone: 'blue' }], tagsMore: 0, taskCount: 0, patientId: 'p17',
+    // patientId stays null: no patient record has memberId #2468029990101. It
+    // previously pointed at 'p17', which is Carlos Hernandez (#2468029990010) —
+    // transposed digits — so Open navigated to the wrong member's chart.
+    tags: [{ label: 'A1C/KED Kit', tone: 'blue' }], tagsMore: 0, taskCount: 0, patientId: null,
   },
   {
     id: 'snpw-002', initials: 'WD', name: 'William Davis', gender: 'M', age: '77y 11m', memberId: '#2468029990016', language: 'en',
