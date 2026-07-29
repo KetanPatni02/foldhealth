@@ -51,26 +51,3 @@ export const Playground = {
   render: (args) => <Wrapper {...args} />,
   args: { variant: 'FullTableSkeleton', rows: 6, cols: 6, count: 4 },
 };
-
-export const AllExamples = {
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <section>
-        <div style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 6 }}>KpiSkeleton — stat tile row</div>
-        <KpiSkeleton count={4} />
-      </section>
-      <section>
-        <div style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 6 }}>SimpleTableSkeleton — small table rows</div>
-        <SimpleTableSkeleton rows={4} cols={6} />
-      </section>
-      <section>
-        <div style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 6 }}>TableSkeleton — worklist row (avatar + cells + actions)</div>
-        <FullTableSkeleton rows={3} />
-      </section>
-      <section>
-        <div style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 6 }}>CardSkeleton — card grid</div>
-        <CardSkeleton count={3} />
-      </section>
-    </div>
-  ),
-};

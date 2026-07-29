@@ -19,136 +19,99 @@ export default {
     docs: {
       description: {
         component:
-          'shadcn/ui compound `Dialog` (Radix-backed) — general-purpose modal. Compose: `Dialog` (root, open state), `DialogTrigger`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogFooter`, `DialogClose`.',
+          'shadcn/ui compound `Dialog` (Radix-backed) — general-purpose modal. Compose: `Dialog` (root, open state), `DialogTrigger`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogFooter`, `DialogClose`. Use the `example` control to flip between the composition patterns.',
       },
     },
   },
+  argTypes: {
+    example: {
+      control: { type: 'select' },
+      options: ['edit-form', 'info', 'confirm-destructive'],
+      description: 'Composition pattern: form dialog, single-action info, or destructive confirm.',
+    },
+  },
+  args: { example: 'edit-form' },
 };
 
-function Playground_() {
-  const [open, setOpen] = useState(false);
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 24 }}>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button variant="primary">Open Dialog</Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit profile</DialogTitle>
-            <DialogDescription>
-              Make changes to your profile here. Click save when done.
-            </DialogDescription>
-          </DialogHeader>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
-            <label style={{ fontSize: 13, color: 'var(--neutral-400)' }}>
-              Name
-              <input
-                type="text"
-                defaultValue="Jane Doe"
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  marginTop: 4,
-                  padding: '6px 10px',
-                  border: '0.5px solid var(--neutral-150)',
-                  borderRadius: 4,
-                  fontSize: 14,
-                }}
-              />
-            </label>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="secondary">Cancel</Button>
-            </DialogClose>
-            <Button variant="primary">Save</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-export const Playground = { render: () => <Playground_ /> };
-
-function Info_() {
-  const [open, setOpen] = useState(false);
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 24 }}>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button variant="secondary">What's new</Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>What's new in Fold</DialogTitle>
-            <DialogDescription>
-              A round-up of the latest changes across the worklist and drawers.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="primary">Got it</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-function ConfirmDestructive_() {
-  const [open, setOpen] = useState(false);
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 24 }}>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button variant="danger">Discard changes</Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Discard unsaved changes?</DialogTitle>
-            <DialogDescription>
-              You have unsaved edits. Closing now will drop them.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="secondary">Keep editing</Button>
-            </DialogClose>
-            <Button variant="danger">Discard</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-export const Info = { render: () => <Info_ /> };
-export const ConfirmDestructive = { render: () => <ConfirmDestructive_ /> };
-
-export const AllExamples = {
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 32, padding: 24 }}>
-      <div>
-        <div style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 8 }}>
-          Edit form
-        </div>
-        <Playground_ />
+const EXAMPLES = {
+  'edit-form': {
+    trigger: <Button variant="primary">Open Dialog</Button>,
+    title: 'Edit profile',
+    description: 'Make changes to your profile here. Click save when done.',
+    body: (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
+        <label style={{ fontSize: 13, color: 'var(--neutral-400)' }}>
+          Name
+          <input
+            type="text"
+            defaultValue="Jane Doe"
+            style={{
+              display: 'block',
+              width: '100%',
+              marginTop: 4,
+              padding: '6px 10px',
+              border: '0.5px solid var(--neutral-150)',
+              borderRadius: 4,
+              fontSize: 14,
+            }}
+          />
+        </label>
       </div>
-      <div>
-        <div style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 8 }}>
-          Info — single action
-        </div>
-        <Info_ />
-      </div>
-      <div>
-        <div style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 8 }}>
-          Confirm — destructive
-        </div>
-        <ConfirmDestructive_ />
-      </div>
-    </div>
-  ),
+    ),
+    footer: (
+      <>
+        <DialogClose asChild>
+          <Button variant="secondary">Cancel</Button>
+        </DialogClose>
+        <Button variant="primary">Save</Button>
+      </>
+    ),
+  },
+  'info': {
+    trigger: <Button variant="secondary">What's new</Button>,
+    title: "What's new in Fold",
+    description: 'A round-up of the latest changes across the worklist and drawers.',
+    body: null,
+    footer: (
+      <DialogClose asChild>
+        <Button variant="primary">Got it</Button>
+      </DialogClose>
+    ),
+  },
+  'confirm-destructive': {
+    trigger: <Button variant="danger">Discard changes</Button>,
+    title: 'Discard unsaved changes?',
+    description: 'You have unsaved edits. Closing now will drop them.',
+    body: null,
+    footer: (
+      <>
+        <DialogClose asChild>
+          <Button variant="secondary">Keep editing</Button>
+        </DialogClose>
+        <Button variant="danger">Discard</Button>
+      </>
+    ),
+  },
 };
+
+function PlaygroundDialog({ example }) {
+  const [open, setOpen] = useState(false);
+  const cfg = EXAMPLES[example] || EXAMPLES['edit-form'];
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 24 }}>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>{cfg.trigger}</DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{cfg.title}</DialogTitle>
+            <DialogDescription>{cfg.description}</DialogDescription>
+          </DialogHeader>
+          {cfg.body}
+          <DialogFooter>{cfg.footer}</DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+export const Playground = { render: (args) => <PlaygroundDialog {...args} /> };

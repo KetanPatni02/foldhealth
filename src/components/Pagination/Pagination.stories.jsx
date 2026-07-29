@@ -59,5 +59,3 @@ function Wrapper(props) {
 }
 
 export const Playground = { render: (args) => <Wrapper {...args} />, args: { totalItems: 137, currentPage: 1, perPage: 10 } };
-export const OneOfMany = { render: () => <Wrapper totalItems={2413} currentPage={12} perPage={25} /> };
-export const FewItems = { render: () => <Wrapper totalItems={4} currentPage={1} perPage={10} /> };

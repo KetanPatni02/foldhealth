@@ -20,113 +20,73 @@ export default {
     docs: {
       description: {
         component:
-          'shadcn/ui compound `AlertDialog` (Radix-backed) — modal dialog that requires the user to acknowledge or cancel. Compose: `AlertDialog` (root, open state), `AlertDialogTrigger`, `AlertDialogContent`, `AlertDialogHeader`, `AlertDialogTitle`, `AlertDialogDescription`, `AlertDialogFooter`, `AlertDialogAction`, `AlertDialogCancel`.',
+          'shadcn/ui compound `AlertDialog` (Radix-backed) — modal dialog that requires the user to acknowledge or cancel. Compose: `AlertDialog` (root, open state), `AlertDialogTrigger`, `AlertDialogContent`, `AlertDialogHeader`, `AlertDialogTitle`, `AlertDialogDescription`, `AlertDialogFooter`, `AlertDialogAction`, `AlertDialogCancel`. Use the `example` control to flip between the composition patterns.',
       },
     },
   },
+  argTypes: {
+    example: {
+      control: { type: 'select' },
+      options: ['confirm', 'confirm-destructive', 'info'],
+      description: 'Composition pattern: standard confirm, destructive confirm, or single-action notice.',
+    },
+  },
+  args: { example: 'confirm' },
 };
 
-function Playground_() {
-  const [open, setOpen] = useState(false);
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 24 }}>
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogTrigger asChild>
-          <Button variant="primary">Open Alert Dialog</Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. It will permanently remove the item
-              and revoke any associated access.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction>Continue</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-}
-
-export const Playground = { render: () => <Playground_ /> };
-
-function ConfirmDestructive_() {
-  const [open, setOpen] = useState(false);
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 24 }}>
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogTrigger asChild>
-          <Button variant="danger">Delete Account</Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this account?</AlertDialogTitle>
-            <AlertDialogDescription>
-              All patient records, worklists, and history for this account will
-              be permanently deleted. This cannot be reversed.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              style={{ background: 'var(--danger-300)', color: 'white' }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-}
-
-function Info_() {
-  const [open, setOpen] = useState(false);
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 24 }}>
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogTrigger asChild>
-          <Button variant="secondary">Show Notice</Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Session about to expire</AlertDialogTitle>
-            <AlertDialogDescription>
-              Your session will expire in 2 minutes. Save your work to avoid
-              losing progress.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction>Got it</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-}
-
-export const ConfirmDestructive = { render: () => <ConfirmDestructive_ /> };
-export const Info = { render: () => <Info_ /> };
-
-export const AllExamples = {
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 32, padding: 24 }}>
-      <div>
-        <div style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 8 }}>
-          Confirm — destructive
-        </div>
-        <ConfirmDestructive_ />
-      </div>
-      <div>
-        <div style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 8 }}>
-          Info — single action
-        </div>
-        <Info_ />
-      </div>
-    </div>
-  ),
+const EXAMPLES = {
+  'confirm': {
+    trigger: <Button variant="primary">Open Alert Dialog</Button>,
+    title: 'Are you absolutely sure?',
+    description:
+      'This action cannot be undone. It will permanently remove the item and revoke any associated access.',
+    footer: (
+      <>
+        <AlertDialogCancel>Cancel</AlertDialogCancel>
+        <AlertDialogAction>Continue</AlertDialogAction>
+      </>
+    ),
+  },
+  'confirm-destructive': {
+    trigger: <Button variant="danger">Delete Account</Button>,
+    title: 'Delete this account?',
+    description:
+      'All patient records, worklists, and history for this account will be permanently deleted. This cannot be reversed.',
+    footer: (
+      <>
+        <AlertDialogCancel>Cancel</AlertDialogCancel>
+        <AlertDialogAction style={{ background: 'var(--danger-300)', color: 'white' }}>
+          Delete
+        </AlertDialogAction>
+      </>
+    ),
+  },
+  'info': {
+    trigger: <Button variant="secondary">Show Notice</Button>,
+    title: 'Session about to expire',
+    description:
+      'Your session will expire in 2 minutes. Save your work to avoid losing progress.',
+    footer: <AlertDialogAction>Got it</AlertDialogAction>,
+  },
 };
+
+function PlaygroundAlertDialog({ example }) {
+  const [open, setOpen] = useState(false);
+  const cfg = EXAMPLES[example] || EXAMPLES['confirm'];
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 24 }}>
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogTrigger asChild>{cfg.trigger}</AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{cfg.title}</AlertDialogTitle>
+            <AlertDialogDescription>{cfg.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>{cfg.footer}</AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+export const Playground = { render: (args) => <PlaygroundAlertDialog {...args} /> };

@@ -58,12 +58,3 @@ function Wrapper(props) {
 }
 
 export const Playground = { render: (args) => <Wrapper {...args} />, args: { value: 'Untitled group', size: 'M', placeholder: 'Type a name…' } };
-export const Sizes = {
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <Wrapper value="Small title" size="S" />
-      <Wrapper value="Medium title" size="M" />
-      <Wrapper value="Large title" size="L" />
-    </div>
-  ),
-};

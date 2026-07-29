@@ -36,12 +36,3 @@ export default {
 };
 
 export const Playground = { args: { size: 18, label: 'Close' } };
-export const Sizes = {
-  render: () => (
-    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-      <CloseButton size={14} />
-      <CloseButton size={18} />
-      <CloseButton size={24} />
-    </div>
-  ),
-};

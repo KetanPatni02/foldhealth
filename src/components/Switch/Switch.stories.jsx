@@ -53,30 +53,3 @@ export const Playground = {
     disabled: false,
   },
 };
-
-export const AllExamples = {
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>OFF</span>
-        <Wrapper ariaLabel="off example" />
-      </div>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>ON</span>
-        <Wrapper checked ariaLabel="on example" />
-      </div>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>With label</span>
-        <Wrapper label="Auto-generate summary" />
-      </div>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Disabled OFF</span>
-        <Wrapper disabled label="Locked" />
-      </div>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Disabled ON</span>
-        <Wrapper checked disabled label="Locked on" />
-      </div>
-    </div>
-  ),
-};

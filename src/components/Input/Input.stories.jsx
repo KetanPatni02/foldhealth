@@ -55,30 +55,3 @@ export const Playground = {
     defaultValue: '',
   },
 };
-
-export const AllExamples = {
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 320 }}>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Default</span>
-        <Input placeholder="Placeholder text" />
-      </div>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Filled</span>
-        <Input defaultValue="Jane Doe" />
-      </div>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Error</span>
-        <Input variant="error" defaultValue="invalid@" />
-      </div>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Disabled</span>
-        <Input disabled defaultValue="Can't edit me" />
-      </div>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Read-only</span>
-        <Input readOnly defaultValue="Read only" />
-      </div>
-    </div>
-  ),
-};

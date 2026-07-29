@@ -21,10 +21,19 @@ export default {
           'Bundles the header (active tab title + Search / Filter / History / Export icons), an optional ' +
           'filter chip row, a sticky-column table body, BulkBar, and Pagination. Callers plug in the ' +
           'columns, row renderer, filter chips, and selection / pagination state. ' +
-          'Reach for this whenever building a new worklist so all tables share one chrome.',
+          'Reach for this whenever building a new worklist so all tables share one chrome. ' +
+          'Use the `state` control to flip between the populated, loading-skeleton, and empty views.',
       },
     },
   },
+  argTypes: {
+    state: {
+      control: { type: 'select' },
+      options: ['default', 'loading', 'empty'],
+      description: 'Shell state: populated table, loading skeleton, or empty message.',
+    },
+  },
+  args: { state: 'default' },
 };
 
 // ── Sample data — patient-like rows so the story mirrors the real feature ──
@@ -60,8 +69,8 @@ const COLUMNS = [
   { key: 'actions',  label: 'Actions',       sticky: 'right',    width: 100 },
 ];
 
-export const Default = {
-  render: () => {
+export const Playground = {
+  render: ({ state }) => {
     const [rows] = useState(SAMPLE_MEMBERS);
     const [searchValue, setSearchValue] = useState('');
     const [showFilters, setShowFilters] = useState(true);
@@ -139,6 +148,34 @@ export const Default = {
       </div>
     );
 
+    // The `state` control swaps between the three shell modes. Branching
+    // happens AFTER every hook above so React's hook order stays stable
+    // when the control changes.
+    if (state === 'loading') {
+      return (
+        <div style={{ height: '100vh', display: 'flex' }}>
+          <WorklistShell title="Sample Worklist" columns={COLUMNS} loading perPage={8} />
+        </div>
+      );
+    }
+    if (state === 'empty') {
+      return (
+        <div style={{ height: '100vh', display: 'flex' }}>
+          <WorklistShell
+            title="Sample Worklist"
+            columns={COLUMNS}
+            rows={[]}
+            renderRow={() => null}
+            emptyState={
+              <div style={{ padding: 60, textAlign: 'center', color: 'var(--neutral-300)' }}>
+                No members yet. New patients will appear here once enrolled.
+              </div>
+            }
+          />
+        </div>
+      );
+    }
+
     return (
       <div style={{ height: '100vh', display: 'flex' }}>
         <WorklistShell
@@ -176,35 +213,4 @@ export const Default = {
       </div>
     );
   },
-};
-
-export const LoadingState = {
-  render: () => (
-    <div style={{ height: '100vh', display: 'flex' }}>
-      <WorklistShell
-        title="Sample Worklist"
-        columns={COLUMNS}
-        loading
-        perPage={8}
-      />
-    </div>
-  ),
-};
-
-export const EmptyState = {
-  render: () => (
-    <div style={{ height: '100vh', display: 'flex' }}>
-      <WorklistShell
-        title="Sample Worklist"
-        columns={COLUMNS}
-        rows={[]}
-        renderRow={() => null}
-        emptyState={
-          <div style={{ padding: 60, textAlign: 'center', color: 'var(--neutral-300)' }}>
-            No members yet. New patients will appear here once enrolled.
-          </div>
-        }
-      />
-    </div>
-  ),
 };

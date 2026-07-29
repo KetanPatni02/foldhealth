@@ -77,33 +77,3 @@ export const Playground = {
     value: 'yes',
   },
 };
-
-export const AllExamples = {
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Unselected</span>
-        <SingleWrapper label="Option A" />
-      </div>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Selected</span>
-        <SingleWrapper checked label="Option B" />
-      </div>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Disabled</span>
-        <SingleWrapper disabled label="Locked option" />
-      </div>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Group (mutually exclusive)</span>
-        <GroupWrapper
-          initial="phone"
-          options={[
-            { value: 'phone', label: 'Phone call' },
-            { value: 'sms', label: 'Text message' },
-            { value: 'email', label: 'Email' },
-          ]}
-        />
-      </div>
-    </div>
-  ),
-};

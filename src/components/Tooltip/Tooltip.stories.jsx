@@ -40,15 +40,3 @@ export const Playground = {
     </Tooltip>
   ),
 };
-
-export const AllExamples = {
-  render: () => (
-    <div style={{ display: 'flex', gap: 32, padding: 48 }}>
-      {['top', 'right', 'bottom', 'left'].map(p => (
-        <Tooltip key={p} label={`Placed ${p}`} placement={p}>
-          <Button variant="secondary">{p}</Button>
-        </Tooltip>
-      ))}
-    </div>
-  ),
-};

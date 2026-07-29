@@ -98,30 +98,3 @@ export const Playground = {
     initialExpanded: false,
   },
 };
-
-export const AllExamples = {
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 480 }}>
-      <div>
-        <p style={{ fontSize: 13, color: 'var(--neutral-300)', marginBottom: 8 }}>Empty — collapsed prompt</p>
-        <Wrapper initialNotes={[]} />
-      </div>
-      <div>
-        <p style={{ fontSize: 13, color: 'var(--neutral-300)', marginBottom: 8 }}>Single note — collapsed</p>
-        <Wrapper initialNotes={[SAMPLE_NOTE]} />
-      </div>
-      <div>
-        <p style={{ fontSize: 13, color: 'var(--neutral-300)', marginBottom: 8 }}>Expanded on mount</p>
-        <Wrapper initialNotes={[SAMPLE_NOTE]} initialExpanded />
-      </div>
-      <div>
-        <p style={{ fontSize: 13, color: 'var(--neutral-300)', marginBottom: 8 }}>Multiple notes (chevron pagination)</p>
-        <Wrapper initialNotes={MULTI_NOTES} initialExpanded />
-      </div>
-      <div>
-        <p style={{ fontSize: 13, color: 'var(--neutral-300)', marginBottom: 8 }}>Collapsed-only (locked)</p>
-        <Wrapper initialNotes={[SAMPLE_NOTE]} collapsedOnly />
-      </div>
-    </div>
-  ),
-};

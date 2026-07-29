@@ -50,4 +50,3 @@ const ITEMS = [
 ];
 
 export const Playground = { render: (args) => <Wrapper {...args} />, args: { items: ITEMS, fullWidth: true } };
-export const InlineWidth = { render: () => <Wrapper items={ITEMS} fullWidth={false} /> };

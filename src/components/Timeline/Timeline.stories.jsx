@@ -84,4 +84,3 @@ const SAMPLE = [
 ];
 
 export const Playground = { args: { entries: SAMPLE, currentUserName: 'You' } };
-export const Empty = { args: { entries: [], emptyLabel: 'No activity yet.' } };

@@ -63,32 +63,3 @@ export const Playground = {
     autoFocus: false,
   },
 };
-
-export const AllExamples = {
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 32, maxWidth: 560 }}>
-      <div>
-        <p style={{ fontSize: 13, color: 'var(--neutral-300)', marginBottom: 8 }}>Default — collapses to single line until focused</p>
-        <Wrapper />
-      </div>
-      <div>
-        <p style={{ fontSize: 13, color: 'var(--neutral-300)', marginBottom: 8 }}>Auto-focused / expanded</p>
-        <Wrapper autoFocus />
-      </div>
-      <div>
-        <p style={{ fontSize: 13, color: 'var(--neutral-300)', marginBottom: 8 }}>Custom placeholder</p>
-        <Wrapper placeholder="Explain why this diagnosis is being rebutted…" />
-      </div>
-      <div>
-        <p style={{ fontSize: 13, color: 'var(--neutral-300)', marginBottom: 8 }}>Status-change mode</p>
-        <Wrapper
-          statusChange={{
-            fromStatus: 'In Progress',
-            toStatus: 'Missing Records',
-            onCancel: () => {},
-          }}
-        />
-      </div>
-    </div>
-  ),
-};

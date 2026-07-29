@@ -62,4 +62,3 @@ function Wrapper(props) {
 }
 
 export const Playground = { render: (args) => <Wrapper {...args} />, args: { min: 0, max: 100, step: 1 } };
-export const RangeSlider = { render: () => <Wrapper min={0} max={100} step={1} defaultValue={[20, 70]} /> };

@@ -65,26 +65,3 @@ export const Playground = {
     goalsDetail: GOALS_MID,
   },
 };
-
-export const AllExamples = {
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 520 }}>
-      <div>
-        <p style={{ fontSize: 13, color: 'var(--neutral-300)', marginBottom: 8 }}>0% — all failing</p>
-        <GoalProgress goalsDetail={GOALS_ALL_FAIL} />
-      </div>
-      <div>
-        <p style={{ fontSize: 13, color: 'var(--neutral-300)', marginBottom: 8 }}>50% — half passed</p>
-        <GoalProgress goalsDetail={GOALS_MID} />
-      </div>
-      <div>
-        <p style={{ fontSize: 13, color: 'var(--neutral-300)', marginBottom: 8 }}>100% — all passed</p>
-        <GoalProgress goalsDetail={GOALS_ALL_PASS} />
-      </div>
-      <div>
-        <p style={{ fontSize: 13, color: 'var(--neutral-300)', marginBottom: 8 }}>Structured shape (Mandatory / Optional sections)</p>
-        <GoalProgress goals={STRUCTURED_GOALS} />
-      </div>
-    </div>
-  ),
-};

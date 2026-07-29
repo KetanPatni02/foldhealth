@@ -5,6 +5,25 @@ import { CountsRow } from './CountsRow';
 
 export default {
   title: 'HCC/DiagPanel Components',
+  parameters: {
+    docs: {
+      description: {
+        component:
+          'Building blocks of the HCC Diagnosis Gaps panel: `HccCard` (expandable group of ICDs), `IcdRow` (one ICD line), `RoleDots` (per-role review progress), and `CountsRow`. Use the `example` control to flip between component states.',
+      },
+    },
+  },
+  argTypes: {
+    example: {
+      control: { type: 'select' },
+      options: [
+        'hcc-card-expanded', 'hcc-card-closed', 'icd-row', 'icd-row-dismissed',
+        'role-dots-unassigned', 'role-dots-partial', 'role-dots-reviewed', 'counts-row',
+      ],
+      description: 'Which DiagPanel building block / state to render.',
+    },
+  },
+  args: { example: 'hcc-card-expanded' },
 };
 
 const SAMPLE_ICDS = [
@@ -13,16 +32,13 @@ const SAMPLE_ICDS = [
   { code: 'E41.0', desc: 'Nutritional marasmus', hcc: 'HCC 18', status: 'Dismissed', type: null, docs: 1, cmts: 3, notes: 1, raf: 0.081, last: '06/27/2025', by: 'Deborah Hintz (Coder)', dismissReason: 'Not clinically supported' },
 ];
 
-export const HccCardExpanded = {
-  render: () => (
+const EXAMPLES = {
+  'hcc-card-expanded': () => (
     <div style={{ width: 560 }}>
       <HccCard hccTitle="HCC 18 - Diabetes w/ Complications" icds={SAMPLE_ICDS} rafImpact={0.302} />
     </div>
   ),
-};
-
-export const HccCardClosed = {
-  render: () => (
+  'hcc-card-closed': () => (
     <div style={{ width: 560 }}>
       <HccCard
         hccTitle="HCC 85 - Congestive Heart Failure"
@@ -31,32 +47,20 @@ export const HccCardClosed = {
       />
     </div>
   ),
-};
-
-export const SingleIcdRow = {
-  render: () => (
+  'icd-row': () => (
     <div style={{ width: 560, border: '1px solid var(--neutral-150)', borderRadius: 8 }}>
       <IcdRow icd={SAMPLE_ICDS[0]} />
     </div>
   ),
-};
-
-export const IcdRowDismissed = {
-  render: () => (
+  'icd-row-dismissed': () => (
     <div style={{ width: 560, border: '1px solid var(--neutral-150)', borderRadius: 8 }}>
       <IcdRow icd={SAMPLE_ICDS[2]} />
     </div>
   ),
-};
-
-export const RoleDotsAllAssign = {
-  render: () => (
+  'role-dots-unassigned': () => (
     <RoleDots member={{ supS: 'Assign', cdrS: 'Assign', r1s: 'Assign', r2s: 'Assign', r3s: 'Assign' }} />
   ),
-};
-
-export const RoleDotsPartialProgress = {
-  render: () => (
+  'role-dots-partial': () => (
     <RoleDots member={{
       sup: 'A. Beauchamp', supS: 'Completed',
       cdr: 'Deborah Hintz', cdrS: 'In Progress',
@@ -65,10 +69,7 @@ export const RoleDotsPartialProgress = {
       r3: null, r3s: 'Assign',
     }} />
   ),
-};
-
-export const RoleDotsFullyReviewed = {
-  render: () => (
+  'role-dots-reviewed': () => (
     <RoleDots member={{
       sup: 'K. Stroman', supS: 'Completed',
       cdr: 'D. Hintz', cdrS: 'Completed',
@@ -77,12 +78,13 @@ export const RoleDotsFullyReviewed = {
       r3: 'B. Olafson', r3s: 'In Progress',
     }} />
   ),
-};
-
-export const CountsRowExample = {
-  render: () => (
+  'counts-row': () => (
     <div style={{ width: 400 }}>
       <CountsRow icds={SAMPLE_ICDS} />
     </div>
   ),
+};
+
+export const Playground = {
+  render: ({ example }) => (EXAMPLES[example] || EXAMPLES['hcc-card-expanded'])(),
 };

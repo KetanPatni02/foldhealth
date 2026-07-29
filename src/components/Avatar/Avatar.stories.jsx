@@ -19,16 +19,6 @@ export default {
   },
 };
 
-export const Patient = { args: { variant: 'patient', initials: 'AB' } };
-export const Agent = { args: { variant: 'agent', initials: 'E' } };
-export const Large = { args: { variant: 'patient', initials: 'JR', size: 'lg' } };
-
-export const AllSizes = {
-  render: () => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-      <Avatar variant="patient" initials="SM" size="sm" />
-      <Avatar variant="patient" initials="MD" />
-      <Avatar variant="patient" initials="LG" size="lg" />
-    </div>
-  ),
+export const Playground = {
+  args: { variant: 'patient', initials: 'AB', size: 'md' },
 };

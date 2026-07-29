@@ -41,23 +41,3 @@ export const Playground = {
     onChange: (file) => console.log('onChange', file),
   },
 };
-
-export const AllExamples = {
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 480 }}>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Default — drop a file to see the uploading + uploaded states</span>
-        <UploadDropField onChange={(file) => console.log('onChange', file)} />
-      </div>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>PDF only, custom copy</span>
-        <UploadDropField
-          accept=".pdf"
-          helperText="PDF only"
-          secondaryText="Max size: 25 MB"
-          onChange={(file) => console.log('onChange', file)}
-        />
-      </div>
-    </div>
-  ),
-};

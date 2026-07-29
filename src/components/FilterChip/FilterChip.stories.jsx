@@ -67,60 +67,6 @@ export const Playground = {
   },
 };
 
-export const AllExamples = {
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: 24 }}>
-      <Row title="Inactive (default)">
-        <Wrapper label="Status" options={['New', 'In Progress', 'Under Review', 'Closed']} />
-        <Wrapper label="Priority" options={['Low', 'Medium', 'High']} />
-      </Row>
-
-      <Row title="Active — single value">
-        <Wrapper label="Priority" options={['Low', 'Medium', 'High']} selected={['High']} />
-      </Row>
-
-      <Row title="Active — two values (comma-joined)">
-        <Wrapper
-          label="Tags"
-          options={['Urgent', 'Follow-up', 'Compliance', 'Insurance']}
-          selected={['Urgent', 'Follow-up']}
-        />
-      </Row>
-
-      <Row title="Active — 3+ values (first +N)">
-        <Wrapper
-          label="Tags"
-          options={['Urgent', 'Follow-up', 'Compliance', 'Insurance']}
-          selected={['Urgent', 'Follow-up', 'Compliance']}
-        />
-      </Row>
-
-      <Row title="Single-select (radio popover)">
-        <Wrapper
-          label="Assignee"
-          options={['Alice Nguyen', 'Bob Chen', 'Charlie Rivera', 'Diana Patel']}
-          singleSelect
-        />
-        <Wrapper
-          label="Bucket"
-          options={['Bucket A', 'Bucket B', 'Bucket C']}
-          selected={['Bucket A']}
-          singleSelect
-        />
-      </Row>
-
-      <Row title="Distinct popover header (`popoverLabel`)">
-        <Wrapper
-          label="Documents Available"
-          popoverLabel="Select No. of Documents"
-          options={['0', '1', '2', '3+']}
-          singleSelect
-        />
-      </Row>
-    </div>
-  ),
-};
-
 function Row({ title, children }) {
   return (
     <div>

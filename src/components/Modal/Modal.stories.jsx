@@ -15,6 +15,11 @@ export default {
     },
   },
   argTypes: {
+    dialog: {
+      control: 'select',
+      options: ['confirm', 'destructive'],
+      description: 'Which modal component to render: ConfirmDialog or DestructiveDialog.',
+    },
     icon: {
       control: 'text',
       description: 'Solar icon name shown in the header (ConfirmDialog only).',
@@ -71,54 +76,30 @@ export default {
 
 const centerStage = { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 24 };
 
-function ConfirmWrapper(props) {
+function DialogWrapper({ dialog, ...props }) {
   const [open, setOpen] = useState(false);
+  const Component = dialog === 'destructive' ? DestructiveDialog : ConfirmDialog;
   return (
     <div style={centerStage}>
-      <Button variant="secondary" onClick={() => setOpen(true)}>Open ConfirmDialog</Button>
-      {open && <ConfirmDialog {...props} onConfirm={() => setOpen(false)} onCancel={() => setOpen(false)} />}
+      <Button
+        variant={dialog === 'destructive' ? 'danger' : 'secondary'}
+        onClick={() => setOpen(true)}
+      >
+        Open {dialog === 'destructive' ? 'DestructiveDialog' : 'ConfirmDialog'}
+      </Button>
+      {open && <Component {...props} onConfirm={() => setOpen(false)} onCancel={() => setOpen(false)} />}
     </div>
   );
 }
 
-function DestructiveWrapper(props) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div style={centerStage}>
-      <Button variant="danger" onClick={() => setOpen(true)}>Open DestructiveDialog</Button>
-      {open && <DestructiveDialog {...props} onConfirm={() => setOpen(false)} onCancel={() => setOpen(false)} />}
-    </div>
-  );
-}
-
-export const Confirm = {
-  render: (args) => <ConfirmWrapper {...args} />,
+export const Playground = {
+  render: (args) => <DialogWrapper {...args} />,
   args: {
+    dialog: 'confirm',
     title: 'Delete this DOS?',
     description: 'This will remove the DOS row and all associated ICDs.',
     confirmLabel: 'Delete',
     cancelLabel: 'Cancel',
     variant: 'error',
-  },
-};
-
-export const ConfirmSuccessVariant = {
-  render: (args) => <ConfirmWrapper {...args} />,
-  args: {
-    icon: 'solar:check-circle-linear',
-    iconColor: 'var(--status-success)',
-    title: 'Submit for review?',
-    description: 'The record will be locked once submitted.',
-    confirmLabel: 'Submit',
-    variant: 'success',
-  },
-};
-
-export const Destructive = {
-  render: (args) => <DestructiveWrapper {...args} />,
-  args: {
-    title: 'Remove Jane Doe from the worklist?',
-    description: 'This cannot be undone — the audit trail will retain the removal.',
-    confirmLabel: 'Remove',
   },
 };

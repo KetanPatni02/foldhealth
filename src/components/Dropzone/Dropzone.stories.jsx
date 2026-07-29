@@ -76,38 +76,3 @@ export const Playground = {
     onReject: (files) => console.log('rejected', files),
   },
 };
-
-export const AllExamples = {
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 480 }}>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Default</span>
-        <Dropzone
-          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-          helperText="Supported formats: PDF, DOC, JPG, or PNG"
-          secondaryText="Max size: 100 MB"
-          onPick={(file) => console.log('picked', file)}
-        />
-      </div>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Multiple files, custom icon</span>
-        <Dropzone
-          accept=".png,.jpg,.jpeg"
-          multiple
-          icon="solar:gallery-linear"
-          helperText="Images only"
-          secondaryText="Up to 10 files"
-          onPick={(files) => console.log('picked', files)}
-        />
-      </div>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Disabled</span>
-        <Dropzone
-          accept=".pdf"
-          disabled
-          helperText="Uploads paused"
-        />
-      </div>
-    </div>
-  ),
-};

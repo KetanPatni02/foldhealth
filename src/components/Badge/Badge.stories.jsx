@@ -32,16 +32,3 @@ export default {
 export const Playground = {
   args: { variant: 'status-completed', label: 'Completed' },
 };
-
-export const AllVariants = {
-  render: () => (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-      {[
-        ['status-completed', 'Completed'], ['status-scheduled', 'Scheduled'], ['status-queued', '6'], ['status-failed', 'Failed'],
-        ['lace-high', 'High'], ['lace-medium', 'Medium'], ['lace-low', 'Low'],
-        ['toc-enrolled', 'Enrolled'], ['toc-new', 'New'], ['ai-care', 'RAF +0.3'],
-        ['outreach-48h', 'TOC 48h'], ['outreach-7d', 'TOC 7d'],
-      ].map(([v, l]) => <Badge key={v} variant={v} label={l} />)}
-    </div>
-  ),
-};

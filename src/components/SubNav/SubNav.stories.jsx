@@ -21,5 +21,7 @@ export default {
   },
 };
 
-export const Expanded = { render: () => <SubNav collapsed={false} /> };
-export const Collapsed = { render: () => <SubNav collapsed={true} /> };
+export const Playground = {
+  args: { collapsed: false },
+  render: (args) => <SubNav {...args} />,
+};

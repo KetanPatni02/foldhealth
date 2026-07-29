@@ -71,30 +71,3 @@ export const Playground = {
     disabled: false,
   },
 };
-
-/**
- * Quick visual reference of every variant at size L.
- */
-export const AllVariants = {
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-        {['primary', 'secondary', 'tertiary', 'ghost', 'alt', 'success', 'danger', 'dangerFilled', 'info'].map(v => (
-          <Button key={v} variant={v}>{v}</Button>
-        ))}
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-        {['primary', 'secondary', 'tertiary', 'ghost', 'alt', 'success', 'danger', 'dangerFilled', 'info'].map(v => (
-          <Button key={v} variant={v} size="S">{v} (S)</Button>
-        ))}
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-        {['primary', 'secondary', 'ghost'].map(v => (
-          <Button key={v} variant={v} leadingIcon="solar:add-circle-linear">With Icon</Button>
-        ))}
-        <Button variant="primary" iconOnly leadingIcon="solar:pen-linear" />
-        <Button variant="primary" disabled>Disabled</Button>
-      </div>
-    </div>
-  ),
-};

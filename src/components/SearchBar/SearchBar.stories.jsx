@@ -70,22 +70,3 @@ export const Playground = {
     showClose: true,
   },
 };
-
-export const AllExamples = {
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 420 }}>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Empty</span>
-        <Wrapper autoFocus={false} placeholder="Search patients…" />
-      </div>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>With value + close</span>
-        <Wrapper autoFocus={false} initial="Jane" showClose placeholder="Search patients…" />
-      </div>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Full width</span>
-        <Wrapper autoFocus={false} fullWidth placeholder="Search everything…" />
-      </div>
-    </div>
-  ),
-};

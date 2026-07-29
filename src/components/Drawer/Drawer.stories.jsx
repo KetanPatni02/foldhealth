@@ -12,10 +12,18 @@ export default {
     docs: {
       description: {
         component:
-          'The shared side-panel used across the entire app — patient details, chart review, HCC diagnosis, call queue, preferences, and every other right-side workflow. Standard shape: 700px wide, 8px inset from the viewport edge, 16px border-radius, with a header (title + close button, and optional action buttons in `headerRight`) and a scrollable body. Renders via a portal so it always sits above sticky headers and z-indexed content.',
+          'The shared side-panel used across the entire app — patient details, chart review, HCC diagnosis, call queue, preferences, and every other right-side workflow. Standard shape: 700px wide, 8px inset from the viewport edge, 16px border-radius, with a header (title + close button, and optional action buttons in `headerRight`) and a scrollable body. Renders via a portal so it always sits above sticky headers and z-indexed content. Use the `layout` control to flip between the plain body, the split-pane body with a draggable divider (HCC Diagnosis Gaps layout), and the patient-banner variant.',
       },
     },
   },
+  argTypes: {
+    layout: {
+      control: { type: 'select' },
+      options: ['default', 'split-panes', 'patient-banner'],
+      description: 'Body composition: plain content, resizable two-pane split, or PatientBanner between header and body.',
+    },
+  },
+  args: { layout: 'default' },
 };
 
 const centerStage = { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 24 };
@@ -41,8 +49,8 @@ function DrawerDemo({ title = "Drawer Title", children }) {
   );
 }
 
-export const Default = {
-  render: () => (
+function DefaultDemo() {
+  return (
     <DrawerDemo>
       <p style={{ color: "var(--neutral-400)", fontSize: 14, lineHeight: 1.6, margin: 0 }}>
         This is the shared Drawer component — 700px wide, 8px inset, 16px
@@ -53,8 +61,8 @@ export const Default = {
         Click the overlay or the close button to dismiss.
       </p>
     </DrawerDemo>
-  ),
-};
+  );
+}
 
 /**
  * Split two-pane body with a draggable divider — the layout the HCC
@@ -161,54 +169,49 @@ function SplitPanesDemo() {
   );
 }
 
-export const SplitPanesWithDragHandle = {
-  name: 'Split Panes',
-  parameters: {
-    docs: {
-      description: {
-        story:
-          'Two-pane drawer body with a draggable divider — the layout used by the HCC worklist’s Diagnosis Gaps drawer (document workspace left, ICD cards right). Drag the 1px divider to resize: the drag uses pointer capture so it survives leaving the window, and the right pane is clamped between 380px and half the drawer. Hovering the divider shows the grip; the visible line stays 1px so the panes sit flush.',
-      },
-    },
-  },
-  render: () => <SplitPanesDemo />,
-};
+function PatientBannerDemo() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={centerStage}>
+      <Button variant="primary" onClick={() => setOpen(true)}>
+        Open Drawer
+      </Button>
+      {open && (
+        <Drawer
+          title="Patient Detail"
+          onClose={() => setOpen(false)}
+          banner={
+            <PatientBanner
+              initials="JD"
+              name="Jane Doe"
+              gender="Female"
+              age="67y 2m"
+              memberId="#219384756102"
+              raf="4.234"
+              rafChange="0.512"
+              onCall={() => {}}
+            />
+          }
+        >
+          <p style={{ color: "var(--neutral-400)", fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+            The same Drawer shell with a <strong>PatientBanner</strong>
+            passed via the <code>banner</code> prop — it stacks between the
+            header and the body, full-width, hugging the drawer edges. This
+            is the canonical layout for patient-context drawers (call queue,
+            care-gap review, HCC).
+          </p>
+        </Drawer>
+      )}
+    </div>
+  );
+}
 
-export const WithPatientBanner = {
-  render: () => {
-    const [open, setOpen] = useState(false);
-    return (
-      <div style={centerStage}>
-        <Button variant="primary" onClick={() => setOpen(true)}>
-          Open Drawer
-        </Button>
-        {open && (
-          <Drawer
-            title="Patient Detail"
-            onClose={() => setOpen(false)}
-            banner={
-              <PatientBanner
-                initials="JD"
-                name="Jane Doe"
-                gender="Female"
-                age="67y 2m"
-                memberId="#219384756102"
-                raf="4.234"
-                rafChange="0.512"
-                onCall={() => {}}
-              />
-            }
-          >
-            <p style={{ color: "var(--neutral-400)", fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-              The same Drawer shell with a <strong>PatientBanner</strong>
-              passed via the <code>banner</code> prop — it stacks between the
-              header and the body, full-width, hugging the drawer edges. This
-              is the canonical layout for patient-context drawers (call queue,
-              care-gap review, HCC).
-            </p>
-          </Drawer>
-        )}
-      </div>
-    );
+export const Playground = {
+  render: ({ layout }) => {
+    // Each layout is its own component, so switching the control swaps the
+    // whole subtree — no shared hook order to preserve.
+    if (layout === 'split-panes') return <SplitPanesDemo />;
+    if (layout === 'patient-banner') return <PatientBannerDemo />;
+    return <DefaultDemo />;
   },
 };

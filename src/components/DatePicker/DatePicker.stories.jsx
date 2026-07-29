@@ -76,30 +76,3 @@ export const Playground = {
     max: '',
   },
 };
-
-export const AllExamples = {
-  render: () => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 260 }}>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Empty</span>
-        <Wrapper />
-      </div>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>With value</span>
-        <Wrapper value="2026-01-15" />
-      </div>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Bounded (min/max)</span>
-        <Wrapper value="2026-06-01" min="2026-01-01" max="2026-12-31" />
-      </div>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Error</span>
-        <Wrapper value="2026-01-15" hasError />
-      </div>
-      <div>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 4, display: 'block' }}>Disabled</span>
-        <Wrapper value="2026-01-15" disabled />
-      </div>
-    </div>
-  ),
-};
