@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Icon } from '../Icon/Icon';
 import { HelpPopover } from '../HelpPopover/HelpPopover';
 import { WhatsNewDrawer } from '../WhatsNewDrawer/WhatsNewDrawer';
@@ -19,7 +19,7 @@ const NAV_ITEMS = [
 ];
 
 const BOTTOM_ITEMS = [
-  { icon: 'solar:question-circle-linear', label: 'Help', action: 'help' },
+  { icon: 'solar:question-circle-linear', filledIcon: 'solar:question-circle-bold', label: 'Help', action: 'help' },
 ];
 
 export function Sidebar() {
@@ -61,6 +61,60 @@ export function Sidebar() {
   const messagesUnreadCount = useAppStore(s => s.messagesUnreadCount);
   const implementedPages = ['home', 'population', 'settings', 'analytics', 'calendar', 'messages', 'calls', 'tasks', 'campaign'];
 
+  // ── Sliding-pill motion for tab switching ──
+  // One absolutely-positioned pill lives inside .navItems and reads its
+  // rect from the active <a>'s ref on every change. CSS transitions
+  // `top` / `height` so the purple background glides between items
+  // instead of snapping. We measure with useLayoutEffect (pre-paint) so
+  // the very first render already positions the pill correctly — no
+  // flash from origin.
+  const navItemsRef = useRef(null);
+  // Ref map keyed by nav-item label. Points at the inner .itemInner card
+  // (not the outer <a> tile) so the pill exactly overlays the 60×60 card
+  // — 1:1 aspect — instead of the 64×64 tile which includes 2px padding.
+  const innerRefs = useRef({});
+  const [pill, setPill] = useState(null); // { top, left, width, height } | null
+  const [pillReady, setPillReady] = useState(false); // gate first-paint transition
+
+  const measurePill = () => {
+    const activeItem = NAV_ITEMS.find(
+      it => activePage === it.page || (it.page === 'settings' && activePage === 'builder'),
+    );
+    const inner = activeItem ? innerRefs.current[activeItem.label] : null;
+    const container = navItemsRef.current;
+    if (!inner || !container) { setPill(null); return; }
+    // .itemInner sits inside an .item that has position:relative — its
+    // offsetParent is that anchor, so total top = anchor.offsetTop +
+    // inner.offsetTop (the 2px padding). Width/height come straight
+    // from the inner card so the pill is always a perfect square.
+    const anchor = inner.offsetParent; // the .item <a>
+    setPill({
+      top: (anchor?.offsetTop ?? 0) + inner.offsetTop,
+      left: (anchor?.offsetLeft ?? 0) + inner.offsetLeft,
+      width: inner.offsetWidth,
+      height: inner.offsetHeight,
+    });
+  };
+
+  useLayoutEffect(() => {
+    measurePill();
+    // Skip the CSS transition on first paint so the pill lands at rest,
+    // not glides in from the top.
+    const raf = requestAnimationFrame(() => setPillReady(true));
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePage]);
+
+  // Re-measure on resize (font swap can change tile height, scrollbar
+  // appearing can shift layout) so the pill never desyncs.
+  useEffect(() => {
+    if (!navItemsRef.current) return;
+    const ro = new ResizeObserver(measurePill);
+    ro.observe(navItemsRef.current);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const navigateBackToWorklist = useAppStore(s => s.navigateBackToWorklist);
   const handleClick = (e, page) => {
     e.preventDefault();
@@ -99,7 +153,14 @@ export function Sidebar() {
           </svg>
         )}
       </div>
-      <div className={styles.navItems}>
+      <div ref={navItemsRef} className={styles.navItems}>
+        {pill && (
+          <span
+            className={[styles.activePill, pillReady ? styles.activePillAnimated : ''].filter(Boolean).join(' ')}
+            style={{ top: pill.top, left: pill.left, width: pill.width, height: pill.height }}
+            aria-hidden="true"
+          />
+        )}
         {NAV_ITEMS.map((item) => {
           const isActive = activePage === item.page || (item.page === 'settings' && activePage === 'builder');
           return (
@@ -114,8 +175,23 @@ export function Sidebar() {
                 ? (messagesUnreadCount > 0 && <span className={styles.badge}>{messagesUnreadCount}</span>)
                 : (item.badge && <span className={styles.badge}>{item.badge}</span>)
               }
-              <div className={styles.itemInner}>
-                <Icon name={isActive ? item.filledIcon : item.icon} size={22} />
+              <div
+                ref={(el) => { innerRefs.current[item.label] = el; }}
+                className={styles.itemInner}
+              >
+                {/* Crossfade linear ↔ bold. Wrap each Icon in a positioned
+                    span so the layer classes attach to a stable element —
+                    the Icon component intercepts some solar:* names and
+                    renders a custom SVG that ignores className, which would
+                    leave the linear icon visible behind the bold. */}
+                <span className={styles.iconStack}>
+                  <span className={`${styles.iconLayer} ${isActive ? styles.iconLayerHidden : ''}`}>
+                    <Icon name={item.icon} size={22} />
+                  </span>
+                  <span className={`${styles.iconLayer} ${isActive ? '' : styles.iconLayerHidden}`}>
+                    <Icon name={item.filledIcon} size={22} />
+                  </span>
+                </span>
                 <span>{item.label}</span>
               </div>
             </a>
@@ -138,7 +214,18 @@ export function Sidebar() {
               }}
             >
               <div className={styles.itemInner}>
-                <Icon name={item.icon} size={22} />
+                {/* Same crossfade pattern as the primary nav so Help
+                    picks up the filled variant when its popover is open. */}
+                <span className={styles.iconStack}>
+                  <span className={`${styles.iconLayer} ${isActive ? styles.iconLayerHidden : ''}`}>
+                    <Icon name={item.icon} size={22} />
+                  </span>
+                  {item.filledIcon && (
+                    <span className={`${styles.iconLayer} ${isActive ? '' : styles.iconLayerHidden}`}>
+                      <Icon name={item.filledIcon} size={22} />
+                    </span>
+                  )}
+                </span>
                 <span>{item.label}</span>
               </div>
             </a>

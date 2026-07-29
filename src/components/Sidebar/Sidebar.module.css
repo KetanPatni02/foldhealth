@@ -46,6 +46,40 @@
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
   transition: scrollbar-color .15s ease;
+  /* Anchor the sliding pill inside this column. */
+  position: relative;
+}
+
+/* Sliding pill — single element that slides between the active nav item's
+   position. Every nav item's active background used to live on
+   .item.active .itemInner (a static per-item paint); now the pill owns it
+   and glides. Apple-style spring easing gives a distinctive lift-and-settle
+   feel over ~360ms. */
+/* Pill inherits its exact top/left/width/height from JS measurement of
+   the active .itemInner (60×60), so the box is a perfect square. No CSS
+   margin — that would compound with the measured top and shift the pill
+   below its target. */
+.activePill {
+  position: absolute;
+  background: var(--sidebar-active-bg);
+  border: 0.5px solid var(--sidebar-active-border);
+  border-radius: 12px;
+  pointer-events: none;
+  z-index: 0;
+  box-sizing: border-box;
+  will-change: top, left, width, height;
+}
+
+.activePillAnimated {
+  transition:
+    top 360ms cubic-bezier(0.32, 0.72, 0, 1),
+    left 360ms cubic-bezier(0.32, 0.72, 0, 1),
+    width 360ms cubic-bezier(0.32, 0.72, 0, 1),
+    height 360ms cubic-bezier(0.32, 0.72, 0, 1),
+    /* Color transitions are snappier than the slide (200ms vs 360ms) so
+       hover feedback registers immediately, without lagging the tap. */
+    background-color 200ms cubic-bezier(0.32, 0.72, 0, 1),
+    border-color 200ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 .navItems:hover {
@@ -146,8 +180,9 @@
   transition: color .15s;
 }
 
-/* Hover (inactive) */
-.item:hover .itemInner {
+/* Hover (inactive) — paint the inner card. Active items skip this rule
+   because the pill owns the paint (see .item.active:hover below). */
+.item:not(.active):hover .itemInner {
   background: var(--sidebar-hover-bg);
 }
 
@@ -155,10 +190,11 @@
   color: var(--sidebar-fg);
 }
 
-/* Active state */
-.item.active .itemInner {
-  background: var(--sidebar-active-bg);
-  border-color: var(--sidebar-active-border);
+/* Active state — background is painted by the sliding pill above, so we
+   only tint the label + icon here. The pill sits at z-index 0 and the
+   item's content stays above it via .item { z-index: 1 }. */
+.item {
+  z-index: 1;
 }
 
 .item.active span {
@@ -169,10 +205,33 @@
   color: var(--sidebar-active-fg, var(--sidebar-fg));
 }
 
-/* Active + Hover */
-.item.active:hover .itemInner {
-  background: linear-gradient(90deg, var(--sidebar-active-overlay) 0%, var(--sidebar-active-overlay) 100%), var(--sidebar-active-bg);
+/* Active + Hover — tint the pill itself, so the hover response reads as
+   one shape (the pill) rather than a second box painted on top of it.
+   :has() lets the parent .navItems paint a sibling ~ selection: the pill
+   sits above the items in DOM order, so we scope from the container. */
+.navItems:has(.item.active:hover) .activePill {
+  background: var(--sidebar-active-overlay);
   border-color: var(--sidebar-active-overlay-border);
+}
+
+/* Icon crossfade (linear → bold) so the swap when a tab becomes active
+   glides instead of blinking. Both icons live in the same 22px cell
+   via absolute stacking; only one is opaque at a time. */
+.iconStack {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  display: inline-block;
+}
+
+.iconLayer {
+  position: absolute;
+  inset: 0;
+  transition: opacity 240ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.iconLayerHidden {
+  opacity: 0;
 }
 
 /* ── Notification badge ── */
