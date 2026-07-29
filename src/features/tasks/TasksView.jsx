@@ -24,7 +24,8 @@ import { ConfirmDialog } from '../../components/Modal/ConfirmDialog';
 import { CommentComposer } from '../../components/CommentComposer/CommentComposer';
 import { PdfPreviewOverlay } from '../../components/PdfPreviewOverlay/PdfPreviewOverlay';
 import { ClinicalNotePanel } from '../hedis-worklist/ClinicalNotePanel';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
+import { Select } from '../../components/Select/Select';
+import { MenuPopover } from '../../components/Popover/MenuPopover';
 import { useAppStore } from '../../store/useAppStore';
 import { toast } from '../../components/Toast/Toast';
 import styles from './TasksView.module.css';
@@ -442,16 +443,32 @@ function RowActionMenu({ task }) {
 function RowStatusDropdown({ task }) {
   const updateTask = useAppStore(s => s.updateTask);
   const showToast = useAppStore(s => s.showToast);
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef(null);
 
   return (
-    <Select value={task.status} onValueChange={v => { updateTask(task.id, { status: v }); showToast(`Status changed to ${STATUS_LABELS[v]}`); }}>
-      <SelectTrigger className="h-6 text-xs [&>svg]:hidden" style={{ background: 'transparent', border: 'none', padding: 0, minWidth: 'auto', gap: 0 }} onClick={e => e.stopPropagation()}>
+    <>
+      <button
+        type="button"
+        ref={btnRef}
+        style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}
+        onClick={e => { e.stopPropagation(); setOpen(v => !v); }}
+        aria-label="Change status"
+      >
         <Badge variant={STATUS_BADGE_VARIANTS[task.status]} label={STATUS_LABELS[task.status]} trailingIcon="solar:alt-arrow-down-linear" />
-      </SelectTrigger>
-      <SelectContent>
-        {STATUS_ORDER.map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>)}
-      </SelectContent>
-    </Select>
+      </button>
+      {open && (
+        <MenuPopover
+          anchorRef={btnRef}
+          items={STATUS_ORDER.map(s => ({ key: s, label: STATUS_LABELS[s] }))}
+          onSelect={v => { updateTask(task.id, { status: v }); showToast(`Status changed to ${STATUS_LABELS[v]}`); }}
+          onClose={() => setOpen(false)}
+          width={160}
+          align="left"
+          ariaLabel="Change status"
+        />
+      )}
+    </>
   );
 }
 
@@ -1324,14 +1341,12 @@ function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCreated })
           <div className={styles.drawerDetails}>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Status</span>
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className="h-8 text-sm w-[140px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_ORDER.map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Select
+                style={{ width: 140 }}
+                options={STATUS_ORDER.map(s => ({ value: s, label: STATUS_LABELS[s] }))}
+                value={status}
+                onChange={setStatus}
+              />
             </div>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Task Pool</span>

@@ -150,7 +150,21 @@
 .nameBlock { display: flex; flex-direction: column; gap: 2px; }
 .nameRow { display: flex; align-items: center; gap: 4px; }
 .name { font-size: 16px; font-weight: 600; color: var(--neutral-500); font-family: 'Inter', sans-serif; white-space: nowrap; }
-.meta { font-size: 14px; color: var(--neutral-300); font-family: 'Inter', sans-serif; white-space: nowrap; }
+.meta { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--neutral-300); white-space: nowrap; }
+.metaDot { color: var(--neutral-200); }
+/* Consent moved inline (narrow) — mirrors the Quick View drawer badge. */
+.metaConsent {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--status-warning-light);
+  border: 0.5px solid color-mix(in srgb, var(--status-warning) 20%, transparent);
+  color: var(--status-warning);
+  font-size: 13px;
+  cursor: pointer;
+}
 
 /* Vertical divider */
 .vDivider { width: 0.5px; align-self: stretch; background: var(--neutral-150); flex-shrink: 0; }

@@ -3,7 +3,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
 import { Button } from '../../components/Button/Button';
-import { Checkbox } from '../../components/ui/checkbox';
+import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Icon } from '../../components/Icon/Icon';
 import {

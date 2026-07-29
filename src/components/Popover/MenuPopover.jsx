@@ -20,6 +20,8 @@ import styles from './MenuPopover.module.css';
  * @param {DOMRect}  [props.anchorRect]
  * @param {object}   [props.anchorRef]
  * @param {Array}    props.items          – [{ key, icon, label, trailing, danger, disabled, hint }]
+ *                                          Also accepts { section: 'Label' } for an uppercase
+ *                                          group header and { divider: true } for a rule line.
  * @param {function} props.onSelect       – (key, item) => void
  * @param {function} props.onClose
  * @param {string}   [props.ariaLabel='Menu']
@@ -59,8 +61,12 @@ export function MenuPopover({
   const rect = anchorRect || anchorRef?.current?.getBoundingClientRect();
   if (!rect) return null;
 
-  // Cap so the menu can't overflow the viewport vertically.
-  const top = Math.min(rect.bottom + 4, window.innerHeight - items.length * 36 - 16);
+  // Cap so the menu can't overflow the viewport vertically. Sections and
+  // dividers are shorter than action rows, so estimate per item type.
+  const estHeight = items.reduce(
+    (h, it) => h + (it.divider ? 5 : it.section ? 25 : 34), 16,
+  );
+  const top = Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - estHeight - 8));
   const style = { top, width };
   if (align === 'right') {
     style.right = Math.max(8, window.innerWidth - rect.right);
@@ -79,7 +85,14 @@ export function MenuPopover({
         role="menu"
         aria-label={ariaLabel}
       >
-        {items.map((item) => (
+        {items.map((item, idx) => {
+          if (item.section) {
+            return <div key={`section-${item.section}`} className={styles.section}>{item.section}</div>;
+          }
+          if (item.divider) {
+            return <div key={`divider-${idx}`} className={styles.divider} />;
+          }
+          return (
           <button
             key={item.key || item.label}
             type="button"
@@ -105,7 +118,8 @@ export function MenuPopover({
               <Icon name="solar:alt-arrow-right-linear" size={10} color="var(--neutral-300)" />
             )}
           </button>
-        ))}
+          );
+        })}
       </div>
     </>,
     document.body,

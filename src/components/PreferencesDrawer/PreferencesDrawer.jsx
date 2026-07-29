@@ -8,8 +8,8 @@ import { Button } from '../Button/Button';
 import { Avatar } from '../Avatar/Avatar';
 import { Badge } from '../Badge/Badge';
 import { ActionButton } from '../ActionButton/ActionButton';
-import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
+import { RadioButton } from '../RadioButton/RadioButton';
+import { Select } from '../Select/Select';
 import styles from './PreferencesDrawer.module.css';
 
 const PREF_TABS = [
@@ -61,6 +61,7 @@ function MultiSelect({ options, value = [], onChange, placeholder }) {
 
 export function PreferencesDrawer({ onClose }) {
   const [activeTab, setActiveTab] = useState('account');
+  const [inboxView, setInboxView] = useState('all');
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({});
@@ -209,10 +210,12 @@ export function PreferencesDrawer({ onClose }) {
                   </div>
                   <div className={styles.formField}>
                     <label className={styles.formLabel}>Gender</label>
-                    <Select value={form.gender || undefined} onValueChange={v => set('gender', v)}>
-                      <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
-                      <SelectContent>{GENDER_OPTIONS.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
-                    </Select>
+                    <Select
+                      options={GENDER_OPTIONS.map(g => ({ value: g, label: g }))}
+                      value={form.gender || undefined}
+                      onChange={v => set('gender', v)}
+                      placeholder="Select gender"
+                    />
                   </div>
                   <div className={styles.formField}>
                     <label className={styles.formLabel}>Date of Birth</label>
@@ -273,11 +276,20 @@ export function PreferencesDrawer({ onClose }) {
               <div className={styles.settingsCard}>
                 <div className={styles.settingsCardTitle}>EMAIL INBOX VIEW</div>
                 <p className={styles.settingsCardDesc}>Choose the default view for your email inbox to display specific types of messages.</p>
-                <RadioGroup defaultValue="all" className={styles.radioList}>
-                  <label className={styles.radioItem}><RadioGroupItem value="all" /><span>All (includes Patients, Leads, Contacts & others)</span></label>
-                  <label className={styles.radioItem}><RadioGroupItem value="patients" /><span>Only Patients, Leads and Contacts</span></label>
-                  <label className={styles.radioItem}><RadioGroupItem value="others" /><span>Only Others</span></label>
-                </RadioGroup>
+                <div className={styles.radioList} role="radiogroup">
+                  {[
+                    { value: 'all', label: 'All (includes Patients, Leads, Contacts & others)' },
+                    { value: 'patients', label: 'Only Patients, Leads and Contacts' },
+                    { value: 'others', label: 'Only Others' },
+                  ].map(opt => (
+                    <RadioButton
+                      key={opt.value}
+                      label={opt.label}
+                      checked={inboxView === opt.value}
+                      onChange={() => setInboxView(opt.value)}
+                    />
+                  ))}
+                </div>
               </div>
               <div className={styles.settingsCard}>
                 <div className={styles.settingsCardTitle}>EMAIL SIGNATURE</div>

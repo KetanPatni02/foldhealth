@@ -7,14 +7,14 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Switch } from '../../../components/Switch/Switch';
 import { Input } from '../../../components/Input/Input';
 import { Drawer } from '../../../components/Drawer/Drawer';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../../components/ui/select';
+import { Select } from '../../../components/Select/Select';
 import { ConfirmDialog } from '../../../components/Modal/ConfirmDialog';
 import { SimpleTableSkeleton } from '../../../components/Skeleton/CardSkeleton';
 import { useAppStore } from '../../../store/useAppStore';
 import { DOMAIN_CATEGORIES, HIPAA_OPTIONS, COMPONENTS } from '../../../data/embeddedComponents';
 import { AuditLogDrawer } from './AuditLogDrawer';
-import { useTableSort } from '../../../components/Table/useTableSort';
-import { SortableHeader } from '../../../components/Table/SortableHeader';
+import { useTableSort } from '../../../components/SortableHeader/useTableSort';
+import { SortableHeader } from '../../../components/SortableHeader/SortableHeader';
 
 const thStyle = {
   textAlign: 'left', padding: '8px 16px', color: 'var(--neutral-300)', fontWeight: 500,
@@ -84,16 +84,18 @@ function AddDomainDrawer({ onClose, onSave }) {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <FormField label="Category">
-            <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{DOMAIN_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-            </Select>
+            <Select
+              options={DOMAIN_CATEGORIES.map(c => ({ value: c, label: c }))}
+              value={form.category}
+              onChange={v => setForm(f => ({ ...f, category: v }))}
+            />
           </FormField>
           <FormField label="HIPAA compliance">
-            <Select value={form.hipaa} onValueChange={v => setForm(f => ({ ...f, hipaa: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{HIPAA_OPTIONS.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
-            </Select>
+            <Select
+              options={HIPAA_OPTIONS.map(h => ({ value: h, label: h }))}
+              value={form.hipaa}
+              onChange={v => setForm(f => ({ ...f, hipaa: v }))}
+            />
           </FormField>
         </div>
 
@@ -138,16 +140,18 @@ function EditDomainDrawer({ domain, onClose, onSave }) {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <FormField label="Category">
-            <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{DOMAIN_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-            </Select>
+            <Select
+              options={DOMAIN_CATEGORIES.map(c => ({ value: c, label: c }))}
+              value={form.category}
+              onChange={v => setForm(f => ({ ...f, category: v }))}
+            />
           </FormField>
           <FormField label="HIPAA compliance">
-            <Select value={form.hipaa} onValueChange={v => setForm(f => ({ ...f, hipaa: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{HIPAA_OPTIONS.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
-            </Select>
+            <Select
+              options={HIPAA_OPTIONS.map(h => ({ value: h, label: h }))}
+              value={form.hipaa}
+              onChange={v => setForm(f => ({ ...f, hipaa: v }))}
+            />
           </FormField>
         </div>
 

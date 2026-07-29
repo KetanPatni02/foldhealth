@@ -43,7 +43,7 @@ const ICD_LOOKUP = (() => {
   });
   return map;
 })();
-import { Checkbox } from '../../../components/ui/checkbox';
+import { Checkbox } from '../../../components/ShadcnCheckbox/checkbox';
 import { AuditBadge } from '../../../components/AuditBadge/AuditBadge';
 import { ReasonDialog } from '../../../components/ReasonDialog/ReasonDialog';
 import {

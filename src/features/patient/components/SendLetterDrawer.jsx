@@ -3,7 +3,7 @@ import { Drawer } from '../../../components/Drawer/Drawer';
 import { Button } from '../../../components/Button/Button';
 import { Input } from '../../../components/Input/Input';
 import { Icon } from '../../../components/Icon/Icon';
-import { Checkbox } from '../../../components/ui/checkbox';
+import { Checkbox } from '../../../components/ShadcnCheckbox/checkbox';
 import { toast } from '../../../components/Toast/Toast';
 import styles from './SendLetterDrawer.module.css';
 
@@ -28,10 +28,10 @@ function Field({ label, required, filled, children }) {
  * @param {function} props.onClose
  * @param {function} [props.onSent]   – called after a successful send
  */
-export function SendLetterDrawer({ letterName = 'Letter', onClose, onSent }) {
+export function SendLetterDrawer({ letterName = 'Letter', memberName, memberId, onClose, onSent }) {
   const [form, setForm] = useState({
-    memberName: 'Annette Brave',
-    memberId: '23094852345',
+    memberName: memberName || 'Annette Brave',
+    memberId: memberId || '23094852345',
     companyId: '236278272828',
     sendDate: '06/27/2025',
     street: '4, Privet Drive, apartment 201',

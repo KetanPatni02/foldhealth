@@ -78,6 +78,11 @@
 .dos-source-claims    { background: var(--primary-50);   color: var(--primary-300);   border-color: var(--primary-200); }
 .dos-source-manual    { background: var(--secondary-50); color: var(--secondary-300); border-color: var(--secondary-200); }
 
+/* @mention pill rendered inline inside CommentComposer's contenteditable
+   text field — matches secondary token pairing so it reads as a distinct
+   linked entity, not accent chrome. */
+.mention { background: var(--secondary-50); color: var(--secondary-300); border-color: var(--secondary-200); font-weight: 500; }
+
 /* Care Plan */
 .care-plan-none { background: var(--neutral-50); color: var(--neutral-300); border-color: rgba(111,122,144,0.2); }
 .care-plan-updated { background: var(--status-success-light); color: var(--status-success); border-color: rgba(0,155,83,0.2); }

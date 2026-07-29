@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Checkbox } from '../ui/checkbox';
+import { Checkbox } from '../ShadcnCheckbox/checkbox';
 import styles from './CheckboxListPopover.module.css';
 
 /**

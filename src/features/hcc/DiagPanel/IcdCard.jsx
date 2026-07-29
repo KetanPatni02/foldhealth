@@ -5,7 +5,7 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Button } from '../../../components/Button/Button';
 import { Select } from '../../../components/Select/Select';
 import { DatePicker } from '../../../components/DatePicker/DatePicker';
-import { Checkbox } from '../../../components/ui/checkbox';
+import { Checkbox } from '../../../components/ShadcnCheckbox/checkbox';
 import { DemoPhiStrip } from '../../../components/DemoPhiStrip/DemoPhiStrip';
 import { POS_BY_VT, PROVIDER_POOL_BY_VT } from '../reference/visitTypes';
 import styles from './NewDiagGapPanel.module.css';

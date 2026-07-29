@@ -527,9 +527,8 @@
 }
 .bulkInput:focus { border-color: var(--primary-300); }
 
+/* Sizing wrapper for the shared <Select> in bulk-edit cells. */
 .bulkSelectTrigger {
-  height: 30px !important;
-  font-size: 13px !important;
   min-width: 120px;
 }
 

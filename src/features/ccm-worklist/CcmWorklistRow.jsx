@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
-import { Checkbox } from '../../components/ui/checkbox';
+import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
+import { MenuPopover } from '../../components/Popover/MenuPopover';
+import { buildPatientRowMenuItems } from '../../components/Popover/patientRowMenuItems';
 import { useAppStore } from '../../store/useAppStore';
 import { CcmBillingReviewDrawer } from './CcmBillingReviewDrawer';
 import styles from './CcmWorklistRow.module.css';
@@ -35,9 +37,30 @@ export function CcmWorklistRow({ member, isSelected, onSelect }) {
   const openQuickView = useAppStore(s => s.openQuickView);
   const navigateToPatient = useAppStore(s => s.navigateToPatient);
   const showToast = useAppStore(s => s.showToast);
+  const requestAddTask = useAppStore(s => s.requestAddTask);
   const [billingOpen, setBillingOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuBtnRef = useRef(null);
+
+  const toggleMenu = (e) => {
+    e.stopPropagation();
+    setMenuOpen(v => !v);
+  };
 
   const m = member;
+
+  const menuItems = buildPatientRowMenuItems([
+    { key: 'Open Care Program', icon: 'solar:folder-open-linear', label: 'Open Care Program' },
+  ]);
+
+  const handleMenuSelect = (key) => {
+    if (key === 'Add Task') { requestAddTask?.({ member: m.name }); return; }
+    if (key === 'Open Care Program') {
+      if (m.patientId) navigateToPatient(m.patientId, { profileTab: 'Care Programs', programCode: 'CCM' });
+      return;
+    }
+    showToast(`${key} – coming soon`);
+  };
 
   // Billable Mins cell → same-page drawer overlay (quick peek).
   const openBilling = (e) => {
@@ -170,10 +193,26 @@ export function CcmWorklistRow({ member, isSelected, onSelect }) {
           <span className={styles.actionDivider} />
           <ActionButton icon="solar:phone-linear" size="L" tooltip="Call patient" />
           <span className={styles.actionDivider} />
-          <ActionButton icon="solar:menu-dots-linear" size="L" tooltip="More options" />
+          <ActionButton
+            ref={menuBtnRef}
+            icon="solar:menu-dots-linear"
+            size="L"
+            tooltip="More options"
+            onClick={toggleMenu}
+          />
         </div>
       </td>
     </tr>
+    {menuOpen && (
+      <MenuPopover
+        anchorRef={menuBtnRef}
+        items={menuItems}
+        onSelect={handleMenuSelect}
+        onClose={() => setMenuOpen(false)}
+        width={220}
+        ariaLabel="Row actions"
+      />
+    )}
     {billingOpen && (
       <CcmBillingReviewDrawer member={m} onClose={() => setBillingOpen(false)} />
     )}

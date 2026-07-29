@@ -10,13 +10,7 @@ import { Input } from '../../components/Input/Input';
 import { Toggle } from '../../components/Toggle/Toggle';
 import { DetailDrawer } from '../../components/DetailDrawer/DetailDrawer';
 import { AgentsIcon } from '../agent-builder/nodes/NodeIcons';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../components/ui/select';
+import { Select } from '../../components/Select/Select';
 import { useAppStore } from '../../store/useAppStore';
 import { CallTypeAvatar, DIR_LABEL } from '../../components/Avatar/CallTypeAvatar';
 import styles from './CallsView.module.css';
@@ -214,6 +208,7 @@ export function CallsView() {
   const [listFilter, setListFilter] = useState('all');
   const [listSearch, setListSearch] = useState('');
   const [dialNumber, setDialNumber] = useState('');
+  const [dialCountry, setDialCountry] = useState('us');
   const [callLine, setCallLine] = useState('all');
   const [showSearch, setShowSearch] = useState(false);
 
@@ -407,16 +402,12 @@ export function CallsView() {
             {callsConfigLoading ? (
               <div className={styles.skeletonSelect} />
             ) : (
-              <Select value={callLine} onValueChange={setCallLine}>
-                <SelectTrigger className={styles.callLineTrigger}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {callLines.map(line => (
-                    <SelectItem key={line.id} value={line.id}>{line.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Select
+                className={styles.callLineTrigger}
+                options={callLines.map(line => ({ value: line.id, label: line.label }))}
+                value={callLine}
+                onChange={setCallLine}
+              />
             )}
           </div>
 
@@ -470,16 +461,16 @@ export function CallsView() {
           <div className={styles.dialPad}>
             <div className={styles.dialLabel}>Dial a Number</div>
             <div className={styles.dialRow}>
-              <Select defaultValue="us">
-                <SelectTrigger className={styles.countryTrigger}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="us">🇺🇸 +1</SelectItem>
-                  <SelectItem value="gb">🇬🇧 +44</SelectItem>
-                  <SelectItem value="in">🇮🇳 +91</SelectItem>
-                </SelectContent>
-              </Select>
+              <Select
+                className={styles.countryTrigger}
+                options={[
+                  { value: 'us', label: '🇺🇸 +1' },
+                  { value: 'gb', label: '🇬🇧 +44' },
+                  { value: 'in', label: '🇮🇳 +91' },
+                ]}
+                value={dialCountry}
+                onChange={setDialCountry}
+              />
               <div className={styles.dialInputWrap}>
                 <Input
                   placeholder="Enter Number Here"

@@ -1,7 +1,7 @@
 import { Icon } from '../../components/Icon/Icon';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
-import { Checkbox } from '../../components/ui/checkbox';
+import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './HedisWorklistRow.module.css';

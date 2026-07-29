@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { CloseButton } from '../../components/CloseButton/CloseButton';
-import { Checkbox } from '../../components/ui/checkbox';
+import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
 import { Input } from '../../components/Input/Input';
@@ -11,8 +11,8 @@ import { Pagination } from '../../components/Pagination/Pagination';
 // Canonical table primitives — same as HCC + TOC. Keeps sortable column
 // behavior, sort indicators, and the empty-state semantics identical
 // across all three worklists.
-import { useTableSort } from '../../components/Table/useTableSort';
-import { SortableHeader } from '../../components/Table/SortableHeader';
+import { useTableSort } from '../../components/SortableHeader/useTableSort';
+import { SortableHeader } from '../../components/SortableHeader/SortableHeader';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { InlineEditable } from '../../components/InlineEditable/InlineEditable';
 import { AwvWorklistRow } from './AwvWorklistRow';

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
-import { Checkbox } from '../../components/ui/checkbox';
+import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
 import { LANG_MAP, getCptCode, CPT_FEES, initialStatusOf } from './data/mock';
 import styles from './ApcmBillingRow.module.css';
 

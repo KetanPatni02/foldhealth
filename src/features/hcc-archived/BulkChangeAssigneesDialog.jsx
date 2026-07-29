@@ -7,7 +7,7 @@ import { Input } from '../../components/Input/Input';
 import { Select } from '../../components/Select/Select';
 import { useAppStore } from '../../store/useAppStore';
 import { ASTRANA_STAFF, ROLE_LABEL, ROLES } from './assignment/astranaStaff';
-import { FALLBACK_USERS } from '../settings/AccountPanel';
+import { FALLBACK_USERS } from '../settings/fallbackUsers';
 import styles from './BulkChangeAssigneesDialog.module.css';
 
 // Merged system-user pool — Account → Users + Astrana HCC staff, deduped

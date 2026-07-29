@@ -3,7 +3,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Icon } from '../../components/Icon/Icon';
 import { Button } from '../../components/Button/Button';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
+import { Select } from '../../components/Select/Select';
 import styles from './UploadChartDrawer.module.css';
 
 const DOC_TYPES = [
@@ -145,16 +145,13 @@ export function UploadChartDrawer() {
             Document Type
             <span className={styles.required} aria-hidden="true" />
           </span>
-          <Select value={docType} onValueChange={setDocType}>
-            <SelectTrigger className={styles.select}>
-              <SelectValue placeholder="Select Type" />
-            </SelectTrigger>
-            <SelectContent>
-              {DOC_TYPES.map((t) => (
-                <SelectItem key={t} value={t}>{t}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Select
+            className={styles.select}
+            options={DOC_TYPES.map((t) => ({ value: t, label: t }))}
+            value={docType}
+            onChange={setDocType}
+            placeholder="Select Type"
+          />
         </div>
       </div>
     </Drawer>

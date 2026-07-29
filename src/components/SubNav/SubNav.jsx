@@ -6,7 +6,7 @@ import styles from './SubNav.module.css';
 
 // Define which lists map to which filter criteria
 const SHARED_LISTS = [
-  { label: 'SNP', filter: null },
+  { label: 'SNP', filter: null, view: 'snp' },
   { label: 'Annual Visit', filter: null },
   { label: 'TOC', filter: null },  // default — shows all TOC patients
   { label: 'HCC', filter: null, view: 'hcc' },
@@ -24,33 +24,38 @@ export function SubNav({ collapsed }) {
   const hccMembers = useAppStore(s => s.hccMembers);
   const awvMembers = useAppStore(s => s.awvMembers || []);
   const ccmWorklistMembers = useAppStore(s => s.ccmWorklistMembers || []);
+  const snpWorklistMembers = useAppStore(s => s.snpWorklistMembers || []);
   const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
   const fetchAwvMembers = useAppStore(s => s.fetchAwvMembers);
   const fetchCcmWorklistMembers = useAppStore(s => s.fetchCcmWorklistMembers);
+  const fetchSnpWorklistMembers = useAppStore(s => s.fetchSnpWorklistMembers);
   const clearSelected = useAppStore(s => s.clearSelected);
   const clearHccSelected = useAppStore(s => s.clearHccSelected);
 
-  // Prefetch HCC, AWV, and CCM worklists on mount so counts show up
+  // Prefetch HCC, AWV, CCM, and SNP worklists on mount so counts show up
   // right away.
   useEffect(() => {
     fetchHccMembers();
     fetchAwvMembers();
     fetchCcmWorklistMembers();
+    fetchSnpWorklistMembers();
   }, []);
 
-  // Only TOC, HCC, and AWV show real counts; all others show 0
+  // Lists with a backing worklist (TOC, HCC, HEDIS, CCM, SNP, Annual Visit)
+  // show real row counts; the rest have no data source yet and show 0.
   const getCounts = useMemo(() => {
     const counts = {};
     for (const list of SHARED_LISTS) {
       if (list.view === 'hcc') counts[list.label] = hccMembers.length;
       else if (list.view === 'hedis') counts[list.label] = HEDIS_MEMBERS.length;
       else if (list.view === 'ccm') counts[list.label] = ccmWorklistMembers.length;
+      else if (list.view === 'snp') counts[list.label] = snpWorklistMembers.length;
       else if (list.label === 'Annual Visit') counts[list.label] = awvMembers.length;
       else if (list.label === 'TOC') counts[list.label] = patients.length;
       else counts[list.label] = 0;
     }
     return counts;
-  }, [patients, hccMembers, awvMembers, ccmWorklistMembers]);
+  }, [patients, hccMembers, awvMembers, ccmWorklistMembers, snpWorklistMembers]);
 
   // Unique patient count across every worklist. Different worklists use
   // different id spaces (p1, hcc-42, ccmw-001), so we key the union on a
@@ -68,8 +73,9 @@ export function SubNav({ collapsed }) {
     collect(awvMembers);
     collect(HEDIS_MEMBERS);
     collect(ccmWorklistMembers);
+    collect(snpWorklistMembers);
     return seen.size;
-  }, [patients, hccMembers, awvMembers, ccmWorklistMembers]);
+  }, [patients, hccMembers, awvMembers, ccmWorklistMembers, snpWorklistMembers]);
 
   const handleListClick = (list) => {
     setActiveSubnavList(list.label);

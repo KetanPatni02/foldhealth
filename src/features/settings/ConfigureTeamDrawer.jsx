@@ -5,7 +5,7 @@ import { Icon } from '../../components/Icon/Icon';
 import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { useAppStore } from '../../store/useAppStore';
-import { FALLBACK_USERS } from './AccountPanel';
+import { FALLBACK_USERS } from './fallbackUsers';
 import { ASTRANA_STAFF, ROLE_LABEL } from '../hcc/assignment/astranaStaff';
 import {
   TEAM_TYPE_OPTIONS,

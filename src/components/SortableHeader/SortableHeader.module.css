@@ -1,0 +1,35 @@
+/* SortableHeader — clickable column header with a sort indicator.
+   Explicitly sets the canonical table-header typography (12px / weight 500 /
+   neutral-300) so its <th> matches a plain sibling <th> — <th>'s browser
+   default `font-weight: bold` doesn't leak through. */
+
+.th {
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  background: var(--neutral-0);
+  white-space: nowrap;
+  user-select: none;
+  vertical-align: middle;
+}
+
+.sortable {
+  cursor: pointer;
+  transition: color 0.12s;
+}
+.sortable:hover { color: var(--neutral-400); }
+
+.active { color: var(--primary-300) !important; }
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sortIcon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}

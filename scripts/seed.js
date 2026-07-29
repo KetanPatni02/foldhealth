@@ -19,6 +19,7 @@ import { ICDS, NOT_LINKED, getIcdsForMember, getNotLinkedForMember } from '../sr
 import { HCC_MEMBER_BY_NAME } from '../src/features/hcc/data/mock.js';
 import { CCM_BILLING_PERIODS, CCM_BILLABLE_ACTIVITIES, CCM_BILLING_REPORTS } from '../src/features/patient/data/ccmBillingMock.js';
 import { CCM_WORKLIST_MEMBERS } from '../src/features/ccm-worklist/data/mock.js';
+import { SNP_WORKLIST_MEMBERS } from '../src/features/snp-worklist/data/mock.js';
 
 // Patients whose HCC diagnosis gaps have been modernized to V28 + 2025/26
 // dates (see docs/features/hcc-coding-workflow.md). Re-seeding rewrites just
@@ -211,6 +212,37 @@ DROP POLICY IF EXISTS "Allow all for ccm_worklist_members" ON ccm_worklist_membe
 CREATE POLICY "Allow all for ccm_worklist_members" ON ccm_worklist_members FOR ALL USING (true);
 `;
 
+const SNP_WORKLIST_DDL = `
+CREATE TABLE IF NOT EXISTS snp_worklist_members (
+  id                  text PRIMARY KEY,
+  initials            text,
+  name                text NOT NULL,
+  gender              text,
+  age                 text,
+  member_id           text,
+  language            text DEFAULT 'en',
+  program_sub_status  text,
+  care_plan_status    text,
+  next_action_due     text,
+  outreach            jsonb,
+  assignee_id         text,
+  assignee_name       text,
+  assignee_initials   text,
+  trigger_date        text,
+  last_admission      text,
+  trigger             text,
+  risk_iq             text DEFAULT 'Undetermined',
+  tags                jsonb DEFAULT '[]'::jsonb,
+  tags_more           int  DEFAULT 0,
+  task_count          int  DEFAULT 0,
+  patient_id          text,
+  created_at          timestamptz DEFAULT now()
+);
+ALTER TABLE snp_worklist_members ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for snp_worklist_members" ON snp_worklist_members;
+CREATE POLICY "Allow all for snp_worklist_members" ON snp_worklist_members FOR ALL USING (true);
+`;
+
 const CCM_REPORTS_DDL = `
 CREATE TABLE IF NOT EXISTS ccm_billing_reports (
   id                        text PRIMARY KEY,
@@ -366,6 +398,33 @@ function ccmWorklistToRow(m) {
   };
 }
 
+function snpWorklistToRow(m) {
+  return {
+    id:                 m.id,
+    initials:           m.initials ?? null,
+    name:               m.name,
+    gender:             m.gender ?? null,
+    age:                m.age ?? null,
+    member_id:          m.memberId ?? null,
+    language:           m.language || 'en',
+    program_sub_status: m.programSubStatus ?? null,
+    care_plan_status:   m.carePlanStatus ?? null,
+    next_action_due:    m.nextActionDue ?? null,
+    outreach:           m.outreach ?? null,
+    assignee_id:        m.assigneeId ?? null,
+    assignee_name:      m.assigneeName ?? null,
+    assignee_initials:  m.assigneeInitials ?? null,
+    trigger_date:       m.triggerDate ?? null,
+    last_admission:     m.lastAdmission ?? null,
+    trigger:            m.trigger ?? null,
+    risk_iq:            m.riskIq || 'Undetermined',
+    tags:               m.tags ?? [],
+    tags_more:          m.tagsMore ?? 0,
+    task_count:         m.taskCount ?? 0,
+    patient_id:         m.patientId ?? null,
+  };
+}
+
 function ccmReportToRow(r) {
   return {
     id:                       r.id,
@@ -440,6 +499,8 @@ async function main() {
     console.log('  ✓ ccm_billing_reports — created / already exists');
     await db.query(CCM_WORKLIST_DDL);
     console.log('  ✓ ccm_worklist_members — created / already exists');
+    await db.query(SNP_WORKLIST_DDL);
+    console.log('  ✓ snp_worklist_members — created / already exists');
     await db.end();
   } catch (e) {
     console.warn(`  ⚠  Could not connect via pg (${e.message})`);
@@ -505,6 +566,13 @@ async function main() {
     .from('ccm_worklist_members')
     .upsert(worklistRows, { onConflict: 'id' });
   if (cwe) { console.error('  ✗', cwe.message); } else { console.log(`  ✓ ${worklistRows.length} worklist members`); }
+
+  console.log('Seeding snp_worklist_members...');
+  const snpWorklistRows = SNP_WORKLIST_MEMBERS.map(snpWorklistToRow);
+  const { error: swe } = await supabase
+    .from('snp_worklist_members')
+    .upsert(snpWorklistRows, { onConflict: 'id' });
+  if (swe) { console.error('  ✗', swe.message); } else { console.log(`  ✓ ${snpWorklistRows.length} SNP worklist members`); }
 
   // Re-seed HCC gaps + member DOS dates for the modernized patients. The
   // gaps table has no (member_name, code) unique key, so we delete-then-

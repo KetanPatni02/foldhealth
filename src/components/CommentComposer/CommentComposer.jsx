@@ -1,33 +1,111 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '../../store/useAppStore';
 import { Button } from '../Button/Button';
 import { Avatar } from '../Avatar/Avatar';
+import badgeStyles from '../Badge/Badge.module.css';
 import { SYSTEM_USERS } from '../../features/hcc/systemUsers';
 import styles from './CommentComposer.module.css';
 
 /**
- * CommentComposer — shared textarea + Comment/Cancel actions used by the
- * TaskDetailDrawer and the DiagPanel Comments tab. Starts as a single-line
- * placeholder and expands to a 3-row textarea on focus with primary /
- * secondary action buttons.
+ * CommentComposer — shared comment field + Comment/Cancel actions used by
+ * the TaskDetailDrawer and the DiagPanel Comments tab. Starts as a
+ * single-line placeholder and expands to a taller field on focus with
+ * primary / secondary action buttons.
  *
- * Supports @mention: typing "@" opens a portaled list of platform users
- * (falls back to the SYSTEM_USERS mock while the fetch is warming). The
- * query keeps refining as the user types after the "@"; selecting a name
- * replaces the fragment with "@<Name> ".
+ * The input is a contenteditable div (not a <textarea>) so accepted
+ * @mentions render as inline Badge chips right inside the text — matching
+ * the look of the DOS-source / mention pill. Chips are contenteditable=
+ * "false" atoms: arrow keys jump over them, backspace at the boundary
+ * removes the whole chip, and the composer serializes them back to
+ * "@Name " tokens when the user submits so downstream storage stays a
+ * plain string.
  *
  * Props:
- *  - onSubmit(text)         Fires when the user clicks Comment. Trimmed body
- *                           is passed; parent clears its own state via return.
- *  - placeholder            Overrides the default placeholder.
- *  - autoFocus              Focus the textarea on mount.
- *  - statusChange           When set the composer morphs into the "Status
- *                           Changed" card — status pills above the textarea,
- *                           helper text below, and a Cancel that runs the
- *                           dedicated handler instead of just clearing the
- *                           draft. Shape: { fromStatus, toStatus, onCancel }.
+ *  - onSubmit(text)  Fires on Comment. Serialized body — mention chips
+ *                    become "@Name " tokens — is passed; parent clears its
+ *                    own state and the composer resets.
+ *  - placeholder     Overrides the default placeholder.
+ *  - autoFocus       Focus the input on mount.
+ *  - statusChange    When set the composer morphs into the "Status
+ *                    Changed" card. Shape: { fromStatus, toStatus, onCancel }.
  */
+
+// Walk the editor's children and emit a plain string: text nodes verbatim,
+// mention chips as "@Name". Used both for submit output and to keep the
+// `text` state in sync so the Comment button's disabled state is accurate.
+function serialize(root) {
+  if (!root) return '';
+  let out = '';
+  root.childNodes.forEach((node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      out += node.nodeValue || '';
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      const el = /** @type {HTMLElement} */ (node);
+      if (el.dataset?.mentionName) {
+        out += `@${el.dataset.mentionName}`;
+      } else if (el.tagName === 'BR') {
+        out += '\n';
+      } else {
+        out += el.textContent || '';
+      }
+    }
+  });
+  return out;
+}
+
+// Build the DOM node for a mention chip. Rendering imperatively (rather
+// than via <Badge/>) keeps the chip out of React's reconciliation path —
+// which would otherwise fight the contenteditable's own DOM mutations —
+// and lets us reuse Badge's CSS module classes for pixel-identical styling.
+function createMentionChip(name) {
+  const chip = document.createElement('span');
+  chip.contentEditable = 'false';
+  chip.className = styles.mentionChip;
+  chip.dataset.mentionName = name;
+  const badge = document.createElement('span');
+  badge.className = `${badgeStyles.badge} ${badgeStyles.mention}`;
+  badge.textContent = `@${name}`;
+  chip.appendChild(badge);
+  return chip;
+}
+
+// Detect the "@query" fragment before the caret inside the editor. Walks
+// the current selection's text node backwards to the last "@" and returns
+// { range, query } if that "@" is at start-of-input or preceded by
+// whitespace — otherwise null.
+function detectMention(editor) {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return null;
+  const range = sel.getRangeAt(0);
+  if (!range.collapsed) return null;
+  if (!editor.contains(range.startContainer)) return null;
+  const node = range.startContainer;
+  if (node.nodeType !== Node.TEXT_NODE) return null;
+  const text = node.nodeValue || '';
+  const caret = range.startOffset;
+  const upToCaret = text.slice(0, caret);
+  // Look for @ + word-chars (no whitespace) at the end of the string.
+  const match = /(^|\s)@([^\s@]*)$/.exec(upToCaret);
+  if (!match) return null;
+  const atOffset = caret - match[2].length - 1; // position of the "@" itself
+  const atRange = document.createRange();
+  atRange.setStart(node, atOffset);
+  atRange.setEnd(node, caret);
+  return { range: atRange, query: match[2] };
+}
+
+// Place caret after a specific node inside the editor.
+function caretAfter(node) {
+  const sel = window.getSelection();
+  if (!sel) return;
+  const range = document.createRange();
+  range.setStartAfter(node);
+  range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
 export function CommentComposer({
   onSubmit,
   placeholder = 'Add a comment, use @ to mention someone',
@@ -35,13 +113,13 @@ export function CommentComposer({
   statusChange = null,
 }) {
   const inStatusMode = !!statusChange;
+  const editorRef = useRef(null);
   const [text, setText] = useState('');
   const [expanded, setExpanded] = useState(autoFocus || inStatusMode);
   useEffect(() => { if (inStatusMode) setExpanded(true); }, [inStatusMode]);
-  const textareaRef = useRef(null);
 
   // ── Mention picker state ──────────────────────────────────────────────
-  const [mention, setMention] = useState(null); // { start, query } | null
+  const [mention, setMention] = useState(null); // { range, query } | null
   const [mentionIdx, setMentionIdx] = useState(0);
   const platformUsers = useAppStore(s => s.platformUsers);
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
@@ -61,59 +139,63 @@ export function CommentComposer({
   }, [users, mention]);
   useEffect(() => { setMentionIdx(0); }, [mention?.query]);
 
-  // Detect the trailing "@word" fragment before the caret. If present and the
-  // "@" is at start-of-input or preceded by whitespace, open the picker.
-  const detectMention = (value, caret) => {
-    const upToCaret = value.slice(0, caret);
-    const match = /(^|\s)@([^\s@]*)$/.exec(upToCaret);
-    if (!match) return null;
-    return { start: caret - match[2].length - 1, query: match[2] };
-  };
+  // Autofocus on mount when requested.
+  useEffect(() => {
+    if ((autoFocus || inStatusMode) && editorRef.current) {
+      editorRef.current.focus();
+    }
+  }, [autoFocus, inStatusMode]);
 
-  const handleChange = (e) => {
-    const value = e.target.value;
-    setText(value);
-    setMention(detectMention(value, e.target.selectionStart ?? value.length));
-  };
-  const handleSelect = (e) => {
-    setMention(detectMention(e.target.value, e.target.selectionStart ?? 0));
+  const refresh = useCallback(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    setText(serialize(editor));
+    setMention(detectMention(editor));
+  }, []);
+
+  const handleInput = () => refresh();
+  const handleSelect = () => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    setMention(detectMention(editor));
   };
 
   const insertMention = (name) => {
-    const el = textareaRef.current;
-    if (!el || !mention) return;
-    const caret = el.selectionStart ?? text.length;
-    const before = text.slice(0, mention.start);
-    const after = text.slice(caret);
-    // Names with spaces are legal — we still emit them raw. Downstream code
-    // can parse them via /@([\w]+(?:\s+[\w]+)*)/ or with a token-based store.
-    const inserted = `@${name} `;
-    const next = before + inserted + after;
-    setText(next);
+    const editor = editorRef.current;
+    if (!editor || !mention) return;
+    editor.focus();
+    // Delete the "@query" fragment, insert the chip + a trailing space,
+    // then park the caret after the space.
+    mention.range.deleteContents();
+    const chip = createMentionChip(name);
+    const space = document.createTextNode(' ');
+    mention.range.insertNode(space);
+    mention.range.insertNode(chip);
+    caretAfter(space);
     setMention(null);
-    // Restore caret + focus after React re-renders.
-    requestAnimationFrame(() => {
-      el.focus();
-      const pos = before.length + inserted.length;
-      el.setSelectionRange(pos, pos);
-    });
+    // DOM mutated imperatively → resync state.
+    setText(serialize(editor));
+  };
+
+  const resetEditor = () => {
+    const editor = editorRef.current;
+    if (editor) editor.innerHTML = '';
+    setText('');
+    setMention(null);
   };
 
   const submit = () => {
     const body = text.trim();
     if (!body) return;
     onSubmit?.(body);
-    setText('');
+    resetEditor();
     setExpanded(false);
-    setMention(null);
   };
   const cancel = () => {
-    setText('');
+    resetEditor();
     setExpanded(false);
-    setMention(null);
     // In status-change mode, Cancel also aborts the pending transition
-    // upstream (parent clears the pending state). Fire the callback after
-    // the local reset so consumers see a clean composer next mount.
+    // upstream (parent clears the pending state).
     statusChange?.onCancel?.();
   };
 
@@ -142,6 +224,16 @@ export function CommentComposer({
     }
   };
 
+  // Paste: strip HTML so text stays visually clean and doesn't smuggle in
+  // arbitrary styled markup. Insert as plain text at the caret.
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const plain = e.clipboardData?.getData('text/plain') ?? '';
+    // insertText via execCommand is the widely-supported way to paste plain
+    // text into a contenteditable without pulling in a full editing lib.
+    document.execCommand('insertText', false, plain);
+  };
+
   const effectivePlaceholder = inStatusMode
     ? 'Add a comment explaining what records you need…'
     : placeholder;
@@ -158,17 +250,22 @@ export function CommentComposer({
           </div>
         </div>
       )}
-      <textarea
-        ref={textareaRef}
-        placeholder={effectivePlaceholder}
-        rows={expanded ? 3 : 1}
+      <div
+        ref={editorRef}
+        role="textbox"
+        aria-multiline="true"
+        aria-label={effectivePlaceholder}
+        contentEditable
+        suppressContentEditableWarning
         className={styles.textarea}
-        value={text}
-        autoFocus={autoFocus || inStatusMode}
-        onChange={handleChange}
+        data-empty={text.length === 0 ? 'true' : 'false'}
+        data-placeholder={effectivePlaceholder}
+        style={{ minHeight: expanded ? 62 : 32 }}
+        onInput={handleInput}
         onKeyDown={handleKeyDown}
         onKeyUp={handleSelect}
         onClick={handleSelect}
+        onPaste={handlePaste}
         onFocus={() => setExpanded(true)}
         onBlur={() => {
           // Delay closing so click on a menu item can register.
@@ -178,9 +275,9 @@ export function CommentComposer({
       {inStatusMode && (
         <div className={styles.statusHelper}>A comment is required to change the status.</div>
       )}
-      {mention && matches.length > 0 && textareaRef.current && (
+      {mention && matches.length > 0 && editorRef.current && (
         <MentionMenu
-          anchor={textareaRef.current}
+          anchor={editorRef.current}
           matches={matches}
           activeIdx={mentionIdx}
           onPick={insertMention}

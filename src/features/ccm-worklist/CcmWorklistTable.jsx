@@ -1,16 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
-import { Checkbox } from '../../components/ui/checkbox';
-import { ActionButton } from '../../components/ActionButton/ActionButton';
-import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
-import { Input } from '../../components/Input/Input';
+import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
 import { BulkBar } from '../../components/BulkBar/BulkBar';
 import { CcmWorklistRow } from './CcmWorklistRow';
+import {
+  TimeFilterPopover,
+  matchTimeFilter,
+  summarizeTimeFilter,
+  isTimeFilterActive,
+  ALL_USERS,
+} from './TimeFilterChip';
 import styles from './CcmWorklistTable.module.css';
+
+// Threshold radio lists for the two time filters. Order matches the Figma.
+const BILLABLE_THRESHOLDS = ['No Time', '> 5 mins', '>10 mins', '>15 mins', '>20 mins', '>90 mins'];
+const UNLOGGED_THRESHOLDS = ['No Time', '> 5 mins', '>10 mins', '>15 mins', '>20 mins'];
+const EMPTY_TIME_FILTER = { user: ALL_USERS, threshold: null };
 
 // Every filter chip in the row is a multi-select of *string buckets*. For
 // raw fields (Status, Gender, IPA, …) the bucket is the value itself; for
@@ -31,8 +40,9 @@ const FILTER_KEYS = [
   { key: 'ipa',                 label: 'IPA' },
   { key: 'hpCode',              label: 'HP Code' },
   { key: 'memberStatus',        label: 'Member Status' },
-  { key: 'billableMins',        label: 'Billable Mins' },
-  { key: 'unloggedMins',        label: 'Unlogged Mins' },
+  // billableMins / unloggedMins are rendered via TimeFilterChip below (they
+  // compose a user selector + threshold radio, not a multi-select bucket),
+  // so they don't live in this key list.
   { key: 'unloggedUser',        label: 'Unlogged User' },
 ];
 
@@ -83,18 +93,6 @@ const utrAgeBucket = (days) => {
   if (days <= 30) return '8-30 days';
   return '30+ days';
 };
-const billableBucket = (seconds) => {
-  const mins = (seconds || 0) / 60;
-  if (mins < 15) return '< 15 mins';
-  if (mins < 25) return '15-25 mins';
-  return '25+ mins';
-};
-const unloggedBucket = (seconds) => {
-  const mins = (seconds || 0) / 60;
-  if (mins < 0.5) return '< 30s';
-  if (mins < 1)   return '30-60s';
-  return '1+ min';
-};
 const dobDecade = (iso) => {
   if (!iso) return 'Unknown';
   return `${iso.slice(0, 3)}0s`;
@@ -118,8 +116,6 @@ const BUCKET_FN = {
   ipa:                 (m) => m.ipa || 'Unknown',
   hpCode:              (m) => m.hpCode || 'Unknown',
   memberStatus:        (m) => m.memberStatus || 'Active',
-  billableMins:        (m) => billableBucket(m.billableSeconds),
-  unloggedMins:        (m) => unloggedBucket(m.unloggedSeconds),
   unloggedUser:        (m) => m.assigneeName || 'Unassigned',
 };
 
@@ -141,10 +137,16 @@ export function CcmWorklistTable() {
   const members = useAppStore(s => s.ccmWorklistMembers);
   const loading = useAppStore(s => s.ccmWorklistLoading);
   const fetchMembers = useAppStore(s => s.fetchCcmWorklistMembers);
+  // Search query + filter-bar visibility are both owned by the shared TabBar
+  // (via useAppStore.searchQuery / .showFilterBar) — the TOC pattern —
+  // so the top-bar Filter icon toggles CCM's chip row the same way it
+  // toggles TOC's <FilterBar />.
+  const searchQuery = useAppStore(s => s.searchQuery);
+  const showFilterBar = useAppStore(s => s.showFilterBar);
 
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [billableFilter, setBillableFilter] = useState(EMPTY_TIME_FILTER);
+  const [unloggedFilter, setUnloggedFilter] = useState(EMPTY_TIME_FILTER);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
@@ -175,8 +177,17 @@ export function CcmWorklistTable() {
       const vals = filters[key];
       if (vals && vals.length) rows = rows.filter(m => vals.includes(BUCKET_FN[key](m)));
     }
+    // Billable + Unlogged filters compose user + threshold so we can't
+    // fold them into the bucket-based FILTER_KEYS loop.
+    rows = rows.filter(m => matchTimeFilter(m.billableSeconds, m.assigneeName, billableFilter));
+    rows = rows.filter(m => matchTimeFilter(m.unloggedSeconds, m.assigneeName, unloggedFilter));
     return rows;
-  }, [members, searchQuery, filters]);
+  }, [members, searchQuery, filters, billableFilter, unloggedFilter]);
+
+  const userOptions = useMemo(
+    () => [...new Set(members.map(m => m.assigneeName).filter(Boolean))].sort(),
+    [members],
+  );
 
   const paginated = useMemo(() => {
     const start = (page - 1) * perPage;
@@ -200,7 +211,11 @@ export function CcmWorklistTable() {
   });
 
   const setFilter = (key, vals) => setFilters(f => ({ ...f, [key]: vals }));
-  const clearFilters = () => setFilters(EMPTY_FILTERS);
+  const clearFilters = () => {
+    setFilters(EMPTY_FILTERS);
+    setBillableFilter(EMPTY_TIME_FILTER);
+    setUnloggedFilter(EMPTY_TIME_FILTER);
+  };
 
   // Inline table header style mirrors src/features/toc-worklist/WorklistTable.jsx
   // so the two tables render with identical typography, padding, and sticky
@@ -224,32 +239,19 @@ export function CcmWorklistTable() {
 
   return (
     <div className={styles.wrap}>
-      {/* Top strip: title + top actions. Matches the TOC worklist chrome. */}
-      <div className={styles.topBar}>
-        <span className={styles.title}>CCM</span>
-        <div className={styles.topActions}>
-          {searchOpen ? (
-            <Input
-              autoFocus
-              size="S"
-              placeholder="Search patients or members"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              onBlur={() => { if (!searchQuery) setSearchOpen(false); }}
-            />
-          ) : (
-            <SearchIconButton size="S" onClick={() => setSearchOpen(true)} />
-          )}
-          <ActionButton icon="solar:filter-linear" size="S" tooltip="Filter" />
-          <ActionButton icon="solar:sort-linear" size="S" tooltip="Sort" />
-          <ActionButton icon="solar:history-linear" size="S" tooltip="History" />
-          <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
-        </div>
-      </div>
+      {/* The shared TabBar (rendered by AppLayout for CCM) sits above this
+          component and owns the title + right-side action icons — same
+          chrome TOC uses. Below it we render just the filter chip row
+          and the sticky-column table. */}
 
-      {/* Filter chip row */}
+      {/* Filter chip row. Visible only when the TabBar's Filter icon has
+          been toggled on (showFilterBar) — same pattern TOC uses for its
+          FilterBar. All the bucket-based chips render from FILTER_KEYS;
+          Billable Mins + Unlogged Mins slot in between memberStatus and
+          unloggedUser to match the Figma order. */}
+      {showFilterBar && (
       <div className={styles.chipRow}>
-        {FILTER_KEYS.map(f => (
+        {FILTER_KEYS.filter(f => f.key !== 'unloggedUser').map(f => (
           <FilterChip
             key={f.key}
             label={f.label}
@@ -258,11 +260,52 @@ export function CcmWorklistTable() {
             onChange={vals => setFilter(f.key, vals)}
           />
         ))}
+        <FilterChip
+          label="Billable Mins"
+          active={isTimeFilterActive(billableFilter)}
+          activeSummary={summarizeTimeFilter(billableFilter)}
+          onClear={() => setBillableFilter(EMPTY_TIME_FILTER)}
+          renderPopover={({ anchorRect, onClose }) => (
+            <TimeFilterPopover
+              anchorRect={anchorRect}
+              onClose={onClose}
+              label="Billable Mins"
+              thresholds={BILLABLE_THRESHOLDS}
+              userOptions={userOptions}
+              value={billableFilter}
+              onChange={setBillableFilter}
+            />
+          )}
+        />
+        <FilterChip
+          label="Unlogged Mins"
+          active={isTimeFilterActive(unloggedFilter)}
+          activeSummary={summarizeTimeFilter(unloggedFilter)}
+          onClear={() => setUnloggedFilter(EMPTY_TIME_FILTER)}
+          renderPopover={({ anchorRect, onClose }) => (
+            <TimeFilterPopover
+              anchorRect={anchorRect}
+              onClose={onClose}
+              label="Unlogged Mins"
+              thresholds={UNLOGGED_THRESHOLDS}
+              userOptions={userOptions}
+              value={unloggedFilter}
+              onChange={setUnloggedFilter}
+            />
+          )}
+        />
+        <FilterChip
+          label="Unlogged User"
+          options={filterOptions.unloggedUser}
+          selected={filters.unloggedUser}
+          onChange={vals => setFilter('unloggedUser', vals)}
+        />
         <button className={styles.clearAll} onClick={clearFilters}>
           <Icon name="solar:backspace-linear" size={14} color="var(--primary-300)" />
           Clear All
         </button>
       </div>
+      )}
 
       {/* Table body. Uses the same inline th styles + sticky columns as
           src/features/toc-worklist/WorklistTable.jsx. */}
@@ -318,7 +361,12 @@ export function CcmWorklistTable() {
         onPageSizeChange={(n) => { setPerPage(n); setPage(1); }}
       />
 
-      <BulkBar />
+      {/* Feed CCM's local selection (a Set) into the shared BulkBar so
+          the floating action bar surfaces the same way TOC's does. */}
+      <BulkBar
+        selectedIds={Array.from(selectedIds)}
+        onClear={() => setSelectedIds(new Set())}
+      />
     </div>
   );
 }

@@ -7,7 +7,7 @@
 // here so they always offer the exact same roster.
 
 import { ASTRANA_STAFF, ROLE_LABEL } from './assignment/astranaStaff';
-import { FALLBACK_USERS } from '../settings/AccountPanel';
+import { FALLBACK_USERS } from '../settings/fallbackUsers';
 
 export const SYSTEM_USERS = (() => {
   const astrana = ASTRANA_STAFF.map(s => ({

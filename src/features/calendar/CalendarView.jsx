@@ -4,7 +4,7 @@ import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { ScheduleDrawer, FALLBACK_APPOINTMENT_TYPES } from '../../components/ScheduleDrawer/ScheduleDrawer';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
+import { Select } from '../../components/Select/Select';
 import { useAppStore } from '../../store/useAppStore';
 import { supabase } from '../../lib/supabase';
 import styles from './CalendarView.module.css';
@@ -648,60 +648,57 @@ export function CalendarView() {
           <UserPickerDropdown users={users} value={filterUser} onChange={setFilterUser} />
 
           {/* Locations */}
-          <Select value={filterLocation} onValueChange={setFilterLocation}>
-            <SelectTrigger className="h-7 text-xs min-w-[120px] max-w-[160px]">
-              <SelectValue placeholder="All Locations" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Locations</SelectItem>
-              {LOCATIONS.map(loc => (
-                <SelectItem key={loc} value={loc}>{loc}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Select
+            style={{ width: 'auto', minWidth: 120, maxWidth: 160 }}
+            options={[
+              { value: 'all', label: 'All Locations' },
+              ...LOCATIONS.map(loc => ({ value: loc, label: loc })),
+            ]}
+            value={filterLocation}
+            onChange={setFilterLocation}
+            placeholder="All Locations"
+          />
 
           {/* Appointment Types — from DB or fallback */}
-          <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="h-7 text-xs min-w-[140px] max-w-[180px]">
-              <SelectValue placeholder="All Appointment Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Appointment Types</SelectItem>
-              {apptTypesForFilter.map(t => (
-                <SelectItem key={t.name} value={t.name}>
+          <Select
+            style={{ width: 'auto', minWidth: 140, maxWidth: 180 }}
+            options={[
+              { value: 'all', label: 'All Appointment Types' },
+              ...apptTypesForFilter.map(t => ({
+                value: t.name,
+                label: (
                   <span className="flex items-center gap-1.5">
                     <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />
                     {t.name}
                   </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+                ),
+                searchText: t.name,
+              })),
+            ]}
+            value={filterType}
+            onChange={setFilterType}
+            placeholder="All Appointment Types"
+          />
 
           {/* Status */}
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="h-7 text-xs min-w-[100px] max-w-[140px]">
-              <SelectValue placeholder="All Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              {STATUSES.map(s => (
-                <SelectItem key={s} value={s}>{s}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Select
+            style={{ width: 'auto', minWidth: 100, maxWidth: 140 }}
+            options={[
+              { value: 'all', label: 'All Status' },
+              ...STATUSES.map(s => ({ value: s, label: s })),
+            ]}
+            value={filterStatus}
+            onChange={setFilterStatus}
+            placeholder="All Status"
+          />
 
           {/* Timezone */}
-          <Select value={timezone} onValueChange={setTimezone}>
-            <SelectTrigger className="h-7 text-xs min-w-[100px] max-w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TIMEZONE_OPTIONS.map(tz => (
-                <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Select
+            style={{ width: 'auto', minWidth: 100, maxWidth: 140 }}
+            options={TIMEZONE_OPTIONS}
+            value={timezone}
+            onChange={setTimezone}
+          />
 
           <label className={styles.availabilityToggle}>
             <input type="checkbox" />

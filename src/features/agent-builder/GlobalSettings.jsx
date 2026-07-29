@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Switch } from '../../components/Switch/Switch';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
-import { Slider } from '../../components/ui/slider';
+import { Select } from '../../components/Select/Select';
+import { Slider } from '../../components/ShadcnSlider/slider';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './GlobalSettings.module.css';
 
@@ -328,12 +328,11 @@ export function GlobalSettings() {
           description="Persona, instructions, and guardrails applied across every node."
         >
           <Field label="Model">
-            <Select value={settings.llmModel} onValueChange={v => update('llmModel', v)}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {LLM_MODELS.map(m => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Select
+              options={LLM_MODELS.map(m => ({ value: m.id, label: m.label }))}
+              value={settings.llmModel}
+              onChange={v => update('llmModel', v)}
+            />
           </Field>
           <textarea
             className={styles.textarea}
@@ -370,14 +369,15 @@ export function GlobalSettings() {
           description="How the agent connects with users — voice, chat, or both — and which languages it speaks."
         >
           <Field label="Modality">
-            <Select value={settings.interfaceMode} onValueChange={v => update('interfaceMode', v)}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="voice">Voice</SelectItem>
-                <SelectItem value="chat">Chat</SelectItem>
-                <SelectItem value="both">Both</SelectItem>
-              </SelectContent>
-            </Select>
+            <Select
+              options={[
+                { value: 'voice', label: 'Voice' },
+                { value: 'chat', label: 'Chat' },
+                { value: 'both', label: 'Both' },
+              ]}
+              value={settings.interfaceMode}
+              onChange={v => update('interfaceMode', v)}
+            />
           </Field>
           <ToggleRow
             label="Allow multiple languages"
@@ -401,12 +401,11 @@ export function GlobalSettings() {
                 ))}
               </div>
             ) : (
-              <Select value={settings.agentLanguage} onValueChange={v => update('agentLanguage', v)}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {LANGUAGES.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Select
+                options={LANGUAGES.map(l => ({ value: l, label: l }))}
+                value={settings.agentLanguage}
+                onChange={v => update('agentLanguage', v)}
+              />
             )}
           </Field>
         </Section>
@@ -418,12 +417,11 @@ export function GlobalSettings() {
           defaultOpen={false}
         >
           <Field label="Voice">
-            <Select value={settings.voiceId} onValueChange={v => update('voiceId', v)}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {VOICES.map(v => <SelectItem key={v.id} value={v.id}>{v.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Select
+              options={VOICES.map(v => ({ value: v.id, label: v.label }))}
+              value={settings.voiceId}
+              onChange={v => update('voiceId', v)}
+            />
           </Field>
           <SliderField
             label="Voice Temperature"
@@ -459,12 +457,11 @@ export function GlobalSettings() {
           defaultOpen={false}
         >
           <Field label="Background Sound">
-            <Select value={settings.backgroundSound} onValueChange={v => update('backgroundSound', v)}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {BACKGROUND_SOUNDS.map(s => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Select
+              options={BACKGROUND_SOUNDS.map(s => ({ value: s.id, label: s.label }))}
+              value={settings.backgroundSound}
+              onChange={v => update('backgroundSound', v)}
+            />
           </Field>
 
           <SliderField
@@ -545,12 +542,11 @@ export function GlobalSettings() {
           {settings.voicemailDetection && (
             <>
               <Field label="When voicemail is detected">
-                <Select value={settings.voicemailAction} onValueChange={v => update('voicemailAction', v)}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {VOICEMAIL_ACTIONS.map(a => <SelectItem key={a.id} value={a.id}>{a.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Select
+                  options={VOICEMAIL_ACTIONS.map(a => ({ value: a.id, label: a.label }))}
+                  value={settings.voicemailAction}
+                  onChange={v => update('voicemailAction', v)}
+                />
               </Field>
               {settings.voicemailAction === 'leave' && (
                 <Field label="Voicemail Message">
@@ -594,13 +590,14 @@ export function GlobalSettings() {
             onChange={v => update('pauseBeforeSpeakingSec', v)}
           />
           <Field label="Speaker Priority">
-            <Select value={settings.speakerPriority} onValueChange={v => update('speakerPriority', v)}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="agent">Agent speaks first</SelectItem>
-                <SelectItem value="user">User speaks first</SelectItem>
-              </SelectContent>
-            </Select>
+            <Select
+              options={[
+                { value: 'agent', label: 'Agent speaks first' },
+                { value: 'user', label: 'User speaks first' },
+              ]}
+              value={settings.speakerPriority}
+              onChange={v => update('speakerPriority', v)}
+            />
           </Field>
         </Section>
 
@@ -626,12 +623,11 @@ export function GlobalSettings() {
             />
           </Field>
           <Field label="Fallback Behavior" hint="What to do if the agent fails or stalls.">
-            <Select value={settings.fallbackBehavior} onValueChange={v => update('fallbackBehavior', v)}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {FALLBACK_BEHAVIORS.map(f => <SelectItem key={f.id} value={f.id}>{f.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Select
+              options={FALLBACK_BEHAVIORS.map(f => ({ value: f.id, label: f.label }))}
+              value={settings.fallbackBehavior}
+              onChange={v => update('fallbackBehavior', v)}
+            />
           </Field>
         </Section>
 

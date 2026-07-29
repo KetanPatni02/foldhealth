@@ -16,7 +16,7 @@ import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { Button } from '../../components/Button/Button';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../../components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../../components/ShadcnDialog/dialog';
 import { useAppStore } from '../../store/useAppStore';
 import { NodePanel } from './NodePanel';
 import { NodeSettings } from './NodeSettings';

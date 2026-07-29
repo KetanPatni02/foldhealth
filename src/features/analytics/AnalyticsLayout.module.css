@@ -125,12 +125,9 @@
 .filterBar {
   display: flex; align-items: center; gap: 8px; flex-shrink: 0;
 }
-.filterSelect {
-  background: var(--neutral-0); border: 0.5px solid var(--neutral-150);
-  border-radius: 6px; padding: 6px 10px; font-family: 'Inter', sans-serif;
-  font-size: 14px; font-weight: 400; color: var(--neutral-400); cursor: pointer; outline: none;
-}
-.filterSelect:focus { border-color: var(--primary-300); box-shadow: 0 0 0 2px rgba(140,90,226,.12); }
+/* Sizing wrapper for the shared <Select> (trigger chrome comes from the
+   component itself) — auto width so each slicer sizes to its content. */
+.filterSelect { width: auto; min-width: 150px; }
 .filterBtn {
   display: inline-flex; align-items: center; gap: 5px;
   background: var(--neutral-0); border: 0.5px solid var(--neutral-150);

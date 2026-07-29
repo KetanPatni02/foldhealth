@@ -74,9 +74,32 @@
   max-height: 120px;
   box-sizing: border-box;
   transition: border-color 0.15s ease;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
 }
 .textarea:focus { border-color: var(--primary-200); }
-.textarea::placeholder { color: var(--neutral-200); }
+
+/* Placeholder for the contenteditable — driven by data-empty so it also
+   suppresses when the field holds only mention chips (which leave no text
+   nodes but should still hide the placeholder). */
+.textarea[data-empty='true']::before {
+  content: attr(data-placeholder);
+  color: var(--neutral-200);
+  pointer-events: none;
+}
+
+/* Inline mention chip inside the contenteditable — contenteditable="false"
+   so the browser treats it as an atomic node (arrow keys jump over it,
+   backspace at the boundary removes the whole chip). */
+.mentionChip {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: baseline;
+  user-select: all;
+  margin: 0 1px;
+}
 
 .actions {
   display: flex;

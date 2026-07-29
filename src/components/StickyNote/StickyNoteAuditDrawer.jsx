@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Drawer } from '../Drawer/Drawer';
 import { Button } from '../Button/Button';
 import { Avatar } from '../Avatar/Avatar';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
+import { Select } from '../Select/Select';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './StickyNoteAuditDrawer.module.css';
 
@@ -44,14 +44,11 @@ export function StickyNoteAuditDrawer({ patientId, note, profileOptions, onClose
       <div className={styles.formSection}>
         <div className={styles.field}>
           <label className={styles.fieldLabel}>Member Profile</label>
-          <Select value={selectedProfile} onValueChange={setSelectedProfile}>
-            <SelectTrigger className="h-9 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {profiles.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Select
+            options={profiles.map(p => ({ value: p, label: p }))}
+            value={selectedProfile}
+            onChange={setSelectedProfile}
+          />
         </div>
 
         <div className={styles.field}>

@@ -1,0 +1,120 @@
+/* Mirrors src/features/ccm-worklist/CcmWorklistRow.module.css so all shared
+   worklists share the same visual language: sticky-left checkbox + Members
+   column, sticky-right Actions column, row hover in primary-25. */
+
+.row {
+  border-bottom: 1px solid var(--neutral-150);
+  transition: background 0.1s;
+  cursor: pointer;
+}
+.row:hover              { background: var(--primary-25); }
+.row:hover .stickyRight { background: var(--primary-25); }
+.row:hover .stickyLeft  { background: var(--primary-25) !important; }
+
+.stickyLeft {
+  position: sticky;
+  background: var(--neutral-0);
+  z-index: 3;
+}
+.stickyRight {
+  position: sticky;
+  right: 0;
+  background: var(--neutral-0);
+  border-left: 1px solid var(--neutral-150);
+  box-shadow: var(--shadow-card);
+  z-index: 3;
+}
+
+.td {
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-400);
+  vertical-align: middle;
+}
+.checkTd { padding: 8px 10px; vertical-align: middle; }
+.membersTd {
+  padding: 8px 12px;
+  border-right: 1px solid var(--neutral-150);
+  vertical-align: middle;
+}
+
+/* Members cell */
+.patientCell { display: flex; align-items: center; gap: 12px; }
+.patientName { font-size: 14px; font-weight: 500; color: var(--neutral-400); white-space: nowrap; }
+.patientNameLink {
+  background: none; border: none; padding: 0; font: inherit; color: inherit;
+  cursor: pointer; font-weight: 500;
+}
+.patientNameLink:hover { color: var(--primary-300); text-decoration: underline; }
+.patientDemo { font-size: 13px; font-weight: 400; color: var(--neutral-300); }
+.patientMeta { font-size: 13px; color: var(--neutral-200); margin-top: 3px; }
+.langBadge {
+  display: inline-flex; align-items: center; background: transparent;
+  color: var(--neutral-300); border: none; padding: 0; font-size: 13px;
+  text-transform: uppercase; position: relative; cursor: pointer; transition: color 0.12s;
+}
+.langBadge:hover { color: var(--primary-300); text-decoration: underline; text-underline-offset: 2px; }
+.langTooltip {
+  display: none; position: absolute; bottom: calc(100% + 6px); left: 50%;
+  transform: translateX(-50%); white-space: nowrap; padding: 6px 10px;
+  background: var(--neutral-500); color: var(--neutral-0); border-radius: 6px;
+  font-size: 12px; z-index: 100; pointer-events: none; text-transform: none;
+}
+.langBadge:hover .langTooltip { display: block; }
+
+/* Status dropdown cells (Program Sub Status / Care Plan Status) */
+.statusDropdown {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-size: 14px; color: var(--neutral-400); white-space: nowrap;
+}
+.statusDropdown:hover { color: var(--primary-300); }
+
+.dateText { font-size: 14px; color: var(--neutral-400); white-space: nowrap; }
+.mutedDash { color: var(--neutral-200); font-size: 14px; }
+.triggerText { font-size: 14px; color: var(--neutral-400); white-space: nowrap; }
+.riskText { font-size: 14px; color: var(--neutral-300); white-space: nowrap; }
+
+/* Outreach cell */
+.outreachCell { display: inline-flex; align-items: flex-start; gap: 6px; }
+.outreachNone { display: inline-flex; align-items: center; gap: 6px; }
+.outreachBody { display: inline-flex; flex-direction: column; gap: 2px; }
+.outreachStatus { font-size: 13px; font-weight: 500; color: var(--status-error); }
+.outreachDate { font-size: 13px; color: var(--status-error); }
+.dots { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; }
+.dot { width: 6px; height: 6px; border-radius: 50%; }
+
+/* Assignee cell — names render in success-green per the design */
+.assigneeCell { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.assigneeName {
+  background: none; border: none; padding: 0; font: inherit; cursor: pointer;
+  font-size: 14px; color: var(--status-success);
+}
+.assigneeName:hover { text-decoration: underline; }
+.assignBtn {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-size: 14px; color: var(--neutral-300); white-space: nowrap;
+}
+
+/* Tags */
+.tagCell { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tag {
+  display: inline-flex; align-items: center; height: 24px; padding: 2px 8px;
+  border-radius: 999px; font-size: 13px; white-space: nowrap;
+}
+.tag_blue  { background: var(--status-info-light);   color: var(--status-info); }
+.tag_green { background: var(--status-success-light); color: var(--status-success); }
+.tag_amber { background: var(--status-warning-light); color: var(--status-warning); }
+.tag_grey  { background: var(--neutral-50);           color: var(--neutral-300); }
+.tagMore { font-size: 13px; color: var(--neutral-300); white-space: nowrap; }
+
+/* Tasks */
+.taskLink {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-size: 14px; font-weight: 500; color: var(--primary-400);
+}
+.taskLink:hover { text-decoration: underline; }
+
+.actionsCell { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }

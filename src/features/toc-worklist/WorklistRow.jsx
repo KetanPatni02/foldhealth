@@ -1,11 +1,13 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
-import { Checkbox } from '../../components/ui/checkbox';
+import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
 import { OutreachPopover } from '../../components/OutreachPopover/OutreachPopover';
+import { MenuPopover } from '../../components/Popover/MenuPopover';
+import { buildPatientRowMenuItems } from '../../components/Popover/patientRowMenuItems';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './WorklistRow.module.css';
 
@@ -98,81 +100,16 @@ function OutreachCell({ patient }) {
   );
 }
 
-function DropdownMenu({ patientId, onClose }) {
-  const openWorkflow = useAppStore(s => s.openWorkflow);
-  const showToast = useAppStore(s => s.showToast);
-  const requestAddTask = useAppStore(s => s.requestAddTask);
-  const patients = useAppStore(s => s.patients);
-  const p = patients.find(x => x.id === patientId);
-
-  return (
-    <div className={styles.dropdown} onClick={e => e.stopPropagation()}>
-      <div className={styles.dropdownSection}>Communication</div>
-      {['Send SMS','Send Email','Start Meeting','Chat'].map(l => (
-        <button key={l} className={styles.dropdownItem} onClick={() => { showToast(`${l} – coming soon`); onClose(); }}>
-          <Icon name={l === 'Send SMS' ? 'solar:chat-round-line-linear' : l === 'Send Email' ? 'solar:letter-linear' : l === 'Start Meeting' ? 'solar:videocamera-record-linear' : 'solar:chat-dots-linear'} size={18} color="var(--neutral-300)" />
-          {l}
-        </button>
-      ))}
-      <div className={styles.dropdownDivider} />
-      <div className={styles.dropdownSection}>Care Actions</div>
-      {['Send Assessment','Initiate Protocol','Send Education','Warm Referral','Add to Program','Upload File'].map(l => (
-        <button key={l} className={styles.dropdownItem} onClick={() => { showToast(`${l} – coming soon`); onClose(); }}>
-          <Icon name="solar:clipboard-check-linear" size={18} color="var(--neutral-300)" />
-          {l}
-        </button>
-      ))}
-      <button className={styles.dropdownItem} onClick={() => { requestAddTask({ member: p?.name }); onClose(); }}>
-        <Icon name="solar:checklist-minimalistic-linear" size={18} color="var(--neutral-300)" />
-        Add Task
-      </button>
-      <div className={styles.dropdownDivider} />
-      <div className={styles.dropdownSection}>Automation</div>
-      <button className={styles.dropdownItem} onClick={() => { showToast('Run Automation – coming soon'); onClose(); }}>
-        <Icon name="solar:bolt-linear" size={18} color="var(--neutral-300)" />
-        Run Automation
-      </button>
-      <div className={styles.dropdownDivider} />
-      <div className={styles.dropdownSection}>Admin Actions</div>
-      <button className={styles.dropdownItem} onClick={() => { openWorkflow(patientId); onClose(); }}>
-        <Icon name="solar:clipboard-list-linear" size={18} color="var(--neutral-300)" />
-        Open Workflow
-      </button>
-      {(p?.status === 'scheduled' || p?.status === 'queued') && (
-        <button className={`${styles.dropdownItem} ${styles.danger}`} onClick={() => { showToast(`Cancelled call`); onClose(); }}>
-          <Icon name="solar:close-circle-linear" size={18} color="#DC2626" />
-          {p?.status === 'queued' ? 'Cancel Queued Call' : 'Cancel Scheduled Call'}
-        </button>
-      )}
-    </div>
-  );
-}
-
 export function WorklistRow({ patient, isSelected, onSelect }) {
   const openWorkflow = useAppStore(s => s.openWorkflow);
   const openCallPopover = useAppStore(s => s.openCallPopover);
   const openDetail = useAppStore(s => s.openDetail);
   const openLiveDrawer = useAppStore(s => s.openLiveDrawer);
+  const showToast = useAppStore(s => s.showToast);
+  const requestAddTask = useAppStore(s => s.requestAddTask);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
   const dropBtnRef = useRef(null);
   const callBtnRef = useRef(null);
-
-  useEffect(() => {
-    if (!showDropdown) return;
-    const clickHandler = () => setShowDropdown(false);
-    const closeHandler = (e) => { if (e.detail !== patient.id) setShowDropdown(false); };
-    // Use requestAnimationFrame to avoid the opening click from immediately closing
-    const raf = requestAnimationFrame(() => {
-      document.addEventListener('click', clickHandler);
-      document.addEventListener('close-all-dropdowns', closeHandler);
-    });
-    return () => {
-      cancelAnimationFrame(raf);
-      document.removeEventListener('click', clickHandler);
-      document.removeEventListener('close-all-dropdowns', closeHandler);
-    };
-  }, [showDropdown, patient.id]);
 
   const handleRowClick = () => {
     if (patient.status === 'completed') {
@@ -197,25 +134,30 @@ export function WorklistRow({ patient, isSelected, onSelect }) {
 
   const handleDropdownToggle = (e) => {
     e.stopPropagation();
-    document.dispatchEvent(new CustomEvent('close-all-dropdowns', { detail: patient.id }));
-    const btn = dropBtnRef.current;
-    if (btn) {
-      const rect = btn.getBoundingClientRect();
-      const dropdownHeight = 420;
-      const spaceBelow = window.innerHeight - rect.bottom - 8;
-      const top = spaceBelow < dropdownHeight
-        ? Math.max(8, rect.top - Math.min(dropdownHeight, rect.top - 8))
-        : rect.bottom + 4;
-      setDropdownPos({
-        top,
-        right: window.innerWidth - rect.right,
-      });
-    }
     setShowDropdown(v => !v);
   };
 
   const p = patient;
   const outreachBadgeVariant = p.outreachType === '48h' ? 'outreach-48h' : 'outreach-7d';
+
+  const menuItems = buildPatientRowMenuItems([
+    { key: 'Open Workflow', icon: 'solar:clipboard-list-linear', label: 'Open Workflow' },
+    ...(p.status === 'scheduled' || p.status === 'queued'
+      ? [{
+          key: 'Cancel Call',
+          icon: 'solar:close-circle-linear',
+          label: p.status === 'queued' ? 'Cancel Queued Call' : 'Cancel Scheduled Call',
+          danger: true,
+        }]
+      : []),
+  ]);
+
+  const handleMenuSelect = (key) => {
+    if (key === 'Add Task') { requestAddTask({ member: p.name }); return; }
+    if (key === 'Open Workflow') { openWorkflow(p.id); return; }
+    if (key === 'Cancel Call') { showToast('Cancelled call'); return; }
+    showToast(`${key} – coming soon`);
+  };
 
   return (
     <>
@@ -321,11 +263,15 @@ export function WorklistRow({ patient, isSelected, onSelect }) {
                 tooltip="More options"
                 onClick={handleDropdownToggle}
               />
-              {showDropdown && createPortal(
-                <div style={{ position: 'fixed', top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999 }}>
-                  <DropdownMenu patientId={p.id} onClose={() => setShowDropdown(false)} />
-                </div>,
-                document.body
+              {showDropdown && (
+                <MenuPopover
+                  anchorRef={dropBtnRef}
+                  items={menuItems}
+                  onSelect={handleMenuSelect}
+                  onClose={() => setShowDropdown(false)}
+                  width={220}
+                  ariaLabel="Row actions"
+                />
               )}
             </div>
           </div>
