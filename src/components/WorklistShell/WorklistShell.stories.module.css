@@ -1,0 +1,53 @@
+/* Story-only styles for the sample row rendered in WorklistShell.stories.
+   The row mirrors src/features/toc-worklist/WorklistRow's visual language
+   (sticky-left checkbox + Members col, sticky-right Actions col, primary-25
+   hover) so the story doubles as a copy-paste starting point. */
+
+.row {
+  border-bottom: 1px solid var(--neutral-150);
+  transition: background 0.1s;
+  cursor: pointer;
+}
+.row:hover { background: var(--primary-25); }
+.row:hover .stickyLeft { background: var(--primary-25) !important; }
+.row:hover .stickyRight { background: var(--primary-25); }
+
+.td {
+  padding: 8px 14px;
+  font-size: 14px;
+  color: var(--neutral-400);
+  vertical-align: middle;
+}
+.stickyLeft {
+  position: sticky;
+  background: var(--neutral-0);
+  z-index: 3;
+}
+.stickyRight {
+  position: sticky;
+  right: 0;
+  background: var(--neutral-0);
+  border-left: 1px solid var(--neutral-150);
+  box-shadow: var(--shadow-card);
+  z-index: 3;
+}
+.memberTd { border-right: 1px solid var(--neutral-150); }
+
+.memberCell { display: flex; align-items: center; gap: 12px; }
+.memberName { font-size: 14px; font-weight: 500; color: var(--neutral-400); white-space: nowrap; }
+.memberDemo { font-size: 13px; font-weight: 400; color: var(--neutral-300); }
+.memberMeta { font-size: 13px; color: var(--neutral-200); margin-top: 3px; }
+
+.rowActions { display: inline-flex; align-items: center; gap: 8px; }
+.actionDivider { width: 1px; height: 16px; background: var(--neutral-150); }
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 60px 24px;
+  color: var(--neutral-300);
+}
+.emptyTitle { margin: 0; font-size: 16px; font-weight: 500; color: var(--neutral-400); }
+.emptyText { margin: 0; font-size: 14px; text-align: center; max-width: 340px; }
