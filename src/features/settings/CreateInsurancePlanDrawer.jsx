@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Drawer }          from '../../components/Drawer/Drawer';
 import { Button }          from '../../components/Button/Button';
 import { Input }           from '../../components/Input/Input';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ShadcnSelect/select';
+import { Select } from '../../components/Select/Select';
 import { Switch }          from '../../components/Switch/Switch';
 import { RadioButton }     from '../../components/RadioButton/RadioButton';
 import { AVERGENT_THEME, PROMINENCE_THEME, NO_THEME } from './CardThemePicker';
@@ -222,12 +222,12 @@ function TierForm({ tier, index, expanded, isActive, onToggle, onUpdate, onDelet
               </div>
               <div className={styles.field}>
                 <FieldLabel>Coverage Type</FieldLabel>
-                <Select value={tier.coverageType || undefined} onValueChange={setTierVal('coverageType')}>
-                  <SelectTrigger><SelectValue placeholder="Select Coverage Type" /></SelectTrigger>
-                  <SelectContent>
-                    {COVERAGE_TYPE_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Select
+                  options={COVERAGE_TYPE_OPTIONS}
+                  value={tier.coverageType || undefined}
+                  onChange={setTierVal('coverageType')}
+                  placeholder="Select Coverage Type"
+                />
               </div>
             </>
           )}
@@ -613,12 +613,12 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {}, initialP
                 <div className={styles.row}>
                   <div className={styles.field}>
                     <FieldLabel>Medical Benefits</FieldLabel>
-                    <Select value={form.medicalBenefits || undefined} onValueChange={setVal('medicalBenefits')}>
-                      <SelectTrigger><SelectValue placeholder="Select Medical Benefits" /></SelectTrigger>
-                      <SelectContent>
-                        {MEDICAL_BENEFITS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Select
+                      options={MEDICAL_BENEFITS_OPTIONS}
+                      value={form.medicalBenefits || undefined}
+                      onChange={setVal('medicalBenefits')}
+                      placeholder="Select Medical Benefits"
+                    />
                   </div>
                   {/* empty half to keep Medical Benefits at half width */}
                   <div className={styles.field} aria-hidden="true" />

@@ -37,6 +37,16 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Component library consolidation** — one primitive per job. The three
+  Radix duplicates (`ShadcnSelect`, `ShadcnTooltip`, `ShadcnRadioGroup`) were
+  removed; every dropdown now uses the shared `Select` (new `style` prop for
+  width constraints), every tooltip the portaled `Tooltip` (new `maxWidth`
+  prop for wrapping), and every radio the shared `RadioButton`. All inline
+  row-action dropdowns (TOC, CCM, All Patients, Agents table, Outreach log)
+  were migrated to the shared `MenuPopover`, which now supports
+  `{ section }` headers and `{ divider }` rules; TOC/CCM share one menu
+  vocabulary via `buildPatientRowMenuItems`. Also fixed a fragile import
+  cycle by moving `FALLBACK_USERS` into `settings/fallbackUsers.js`.
 - **Help → Feedback & What's New** — the sidebar Help popover now hosts a
   Featurebase feedback panel (ideas / bug reports / voting) and an in-house
   changelog drawer backed by Supabase (`changelog_entries`). A GitHub Action

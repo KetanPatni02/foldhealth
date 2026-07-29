@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Input } from '../../components/Input/Input';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
-import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../../components/ShadcnTooltip/tooltip';
+import { Tooltip } from '../../components/Tooltip/Tooltip';
 import styles from './InsurancePlanFormUtils.module.css';
 
 /* ── FieldLabel — label row with optional required dot and info-icon tooltip ── */
@@ -12,28 +12,11 @@ export function FieldLabel({ children, required, info }) {
       {children}
       {required && <span className={styles.required} />}
       {info && (
-        <TooltipProvider delayDuration={100}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button type="button" className={styles.infoBtn} aria-label="More information">
-                <Icon name="solar:info-circle-linear" size={12} color="var(--neutral-200)" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent
-              side="top"
-              style={{
-                zIndex: 10000,
-                background: 'var(--neutral-0)',
-                color: 'var(--neutral-400)',
-                border: '0.5px solid var(--neutral-150)',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
-              }}
-              className="max-w-[260px] leading-[1.45] font-normal text-xs"
-            >
-              {info}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Tooltip label={info} maxWidth={260}>
+          <button type="button" className={styles.infoBtn} aria-label="More information">
+            <Icon name="solar:info-circle-linear" size={12} color="var(--neutral-200)" />
+          </button>
+        </Tooltip>
       )}
     </div>
   );

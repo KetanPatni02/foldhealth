@@ -12,8 +12,8 @@ import { Drawer } from '../../components/Drawer/Drawer';
 import { Input } from '../../components/Input/Input';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
 import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ShadcnSelect/select';
-import { RadioGroup, RadioGroupItem } from '../../components/ShadcnRadioGroup/radio-group';
+import { Select } from '../../components/Select/Select';
+import { RadioButton } from '../../components/RadioButton/RadioButton';
 import { useTableSort } from '../../components/SortableHeader/useTableSort';
 import { SortableHeader } from '../../components/SortableHeader/SortableHeader';
 import { Pagination } from '../../components/Pagination/Pagination';
@@ -34,6 +34,9 @@ import {
   AlertDialogCancel,
 } from '../../components/ShadcnAlertDialog/alert-dialog';
 import { OrgPanel } from './panels/OrgPanel';
+// FALLBACK_USERS lives in ./fallbackUsers.js so module-eval-time consumers
+// (hcc/systemUsers.js) don't import-cycle through this component file.
+import { FALLBACK_USERS } from './fallbackUsers';
 import styles from './AccountPanel.module.css';
 
 const ALL_TABS = ['Org', 'Users', 'Teams', 'Access Control', 'Locations', 'Insurance Plans', 'Holiday Configuration', 'Merged Or Delayed', 'Allowed Phone', 'Allowed Emails'];
@@ -72,24 +75,6 @@ function getInitials(name) {
 
 const MOCK_ROLES = Object.keys(ROLE_COLORS);
 const MOCK_LOCATIONS = ['Toms River', 'Montebello', 'Sparks', 'Chesapeake', 'Visalia', 'Lowell', 'Palm Bay', 'Lawton', 'Oceanside', 'Merced', 'Oakland Park'];
-
-export const FALLBACK_USERS = [
-  { name: 'Amy Brenneman', email: 'amy.brenneman@email.com', role: 'Physician/Doctor', location: 'Toms River', extraRoles: 4, extraLocations: 0 },
-  { name: 'Michael Corleone', email: 'michael.corleone@email.com', role: 'Nurse', location: 'Montebello', extraRoles: 9, extraLocations: 12 },
-  { name: 'Larry Sanders', email: 'larry.sanders@email.com', role: 'Medical Assistant', location: 'Sparks', extraRoles: 6, extraLocations: 0 },
-  { name: 'Tina Turner', email: 'tina.turner@email.com', role: 'Admin/Practice Manager', location: 'Chesapeake', extraRoles: 12, extraLocations: 1 },
-  { name: 'Manny Grizwald', email: 'manny.grizwald@email.com', role: 'Billing Specialist', location: 'Visalia', extraRoles: 10, extraLocations: 4 },
-  { name: 'Bobby Brown', email: 'bobby.brown@email.com', role: 'Front Desk Staff/Receptionist', location: 'Lowell', extraRoles: 0, extraLocations: 2 },
-  { name: 'Charlie Chaplin', email: 'charlie.chaplin@email.com', role: 'Lab Technician', location: 'Palm Bay', extraRoles: 13, extraLocations: 3 },
-  { name: 'John Doe', email: 'john.doe@email.com', role: 'Pharmacist', location: 'Lawton', extraRoles: 10, extraLocations: 2 },
-  { name: 'Bruce Springsteen', email: 'bruce.springsteen@email.com', role: 'Health Information Manager (HIM)', location: 'Oceanside', extraRoles: 14, extraLocations: 40 },
-  { name: 'Elon Butters', email: 'elon.butters@email.com', role: 'Radiologist', location: 'Merced', extraRoles: 9, extraLocations: 7 },
-  { name: 'Samatha Abington', email: 'samanthab@email.com', role: 'Patient', location: 'Oakland Park', extraRoles: 1, extraLocations: 4 },
-].map((u, i) => ({
-  id: `fallback-${i}`, ...u,
-  initials: getInitials(u.name).toUpperCase(),
-  status: 'Active',
-}));
 
 /* ── Overflow Tabs: visible tabs + "More" dropdown ── */
 function OverflowTabs({ tabs, activeTab, onTabChange }) {
@@ -1566,15 +1551,21 @@ function InviteUserDrawer({ onClose, onInvited }) {
                     {bulkColumns.map(col => (
                       <td key={col} style={{ background: highlightCol === col ? 'var(--primary-25)' : undefined, transition: 'background .5s' }}>
                         {col === 'admin_role' ? (
-                          <Select value={row[col] || undefined} onValueChange={v => updateRow(row._id, col, v)}>
-                            <SelectTrigger className={styles.bulkSelectTrigger}><SelectValue placeholder="Select Admin R..." /></SelectTrigger>
-                            <SelectContent>{ADMIN_ROLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
-                          </Select>
+                          <Select
+                            className={styles.bulkSelectTrigger}
+                            options={ADMIN_ROLES.map(r => ({ value: r, label: r }))}
+                            value={row[col] || undefined}
+                            onChange={v => updateRow(row._id, col, v)}
+                            placeholder="Select Admin R..."
+                          />
                         ) : col === 'gender' ? (
-                          <Select value={row[col] || undefined} onValueChange={v => updateRow(row._id, col, v)}>
-                            <SelectTrigger className={styles.bulkSelectTrigger}><SelectValue placeholder="Select..." /></SelectTrigger>
-                            <SelectContent>{GENDER_OPTIONS.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
-                          </Select>
+                          <Select
+                            className={styles.bulkSelectTrigger}
+                            options={GENDER_OPTIONS.map(g => ({ value: g, label: g }))}
+                            value={row[col] || undefined}
+                            onChange={v => updateRow(row._id, col, v)}
+                            placeholder="Select..."
+                          />
                         ) : (
                           <input className={styles.bulkInput} value={row[col] || ''} onChange={e => updateRow(row._id, col, e.target.value)} placeholder={COL_LABELS[col] || ''} />
                         )}
@@ -1648,11 +1639,11 @@ function InviteUserDrawer({ onClose, onInvited }) {
         {/* Administrative Roles */}
         <div className={styles.formSection}>
           <label className={styles.formLabel}>Administrative Roles <span className={styles.required}>*</span></label>
-          <RadioGroup value={form.admin_role} onValueChange={v => set('admin_role', v)} className={styles.radioGroup}>
+          <div className={styles.radioGroup} role="radiogroup">
             {ADMIN_ROLES.map(role => (
-              <label key={role} className={styles.radioItem}><RadioGroupItem value={role} /><span>{role}</span></label>
+              <RadioButton key={role} label={role} checked={form.admin_role === role} onChange={() => set('admin_role', role)} />
             ))}
-          </RadioGroup>
+          </div>
         </div>
 
         {/* Clinical Roles */}
@@ -1676,10 +1667,12 @@ function InviteUserDrawer({ onClose, onInvited }) {
               </div>
               <div className={styles.formField}>
                 <label className={styles.formLabel}>Gender <span className={styles.required}>*</span></label>
-                <Select value={form.gender || undefined} onValueChange={v => set('gender', v)}>
-                  <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
-                  <SelectContent>{GENDER_OPTIONS.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
-                </Select>
+                <Select
+                  options={GENDER_OPTIONS.map(g => ({ value: g, label: g }))}
+                  value={form.gender || undefined}
+                  onChange={v => set('gender', v)}
+                  placeholder="Select gender"
+                />
               </div>
             </div>
 
@@ -1948,14 +1941,11 @@ function EditUserDrawer({ user, onClose, onSave }) {
           {/* Administrative Roles */}
           <div className={styles.formSection}>
             <label className={styles.formLabel}>Administrative Roles <span className={styles.required}>*</span></label>
-            <RadioGroup value={form.admin_role} onValueChange={v => set('admin_role', v)} className={styles.radioGroup}>
+            <div className={styles.radioGroup} role="radiogroup">
               {ADMIN_ROLES.map(role => (
-                <label key={role} className={styles.radioItem}>
-                  <RadioGroupItem value={role} />
-                  <span>{role}</span>
-                </label>
+                <RadioButton key={role} label={role} checked={form.admin_role === role} onChange={() => set('admin_role', role)} />
               ))}
-            </RadioGroup>
+            </div>
           </div>
 
           {/* Clinical & Operational Roles */}
@@ -1972,20 +1962,20 @@ function EditUserDrawer({ user, onClose, onSave }) {
             <label className={styles.formLabel}>Map User to EHR <span className={styles.required}>*</span></label>
             <div className={styles.formGrid}>
               <div className={styles.formField}>
-                <Select value={form.ehr_mapping || undefined} onValueChange={v => set('ehr_mapping', v)}>
-                  <SelectTrigger><SelectValue placeholder="Select EHR system" /></SelectTrigger>
-                  <SelectContent>
-                    {EHR_SYSTEMS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Select
+                  options={EHR_SYSTEMS.map(s => ({ value: s, label: s }))}
+                  value={form.ehr_mapping || undefined}
+                  onChange={v => set('ehr_mapping', v)}
+                  placeholder="Select EHR system"
+                />
               </div>
               <div className={styles.formField}>
-                <Select value={form.ehr_user || undefined} onValueChange={v => set('ehr_user', v)}>
-                  <SelectTrigger><SelectValue placeholder="Select EHR user" /></SelectTrigger>
-                  <SelectContent>
-                    {[`${form.first_name} ${form.last_name} (${form.ehr_mapping || 'EHR'})`, 'Amy Brenneman (Athena Health)', 'John Doe (Epic)', 'Jane Smith (Cerner)'].filter(Boolean).map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Select
+                  options={[`${form.first_name} ${form.last_name} (${form.ehr_mapping || 'EHR'})`, 'Amy Brenneman (Athena Health)', 'John Doe (Epic)', 'Jane Smith (Cerner)'].filter(Boolean).map(u => ({ value: u, label: u }))}
+                  value={form.ehr_user || undefined}
+                  onChange={v => set('ehr_user', v)}
+                  placeholder="Select EHR user"
+                />
               </div>
             </div>
           </div>
@@ -2042,12 +2032,12 @@ function EditUserDrawer({ user, onClose, onSave }) {
               </div>
               <div className={styles.formField}>
                 <label className={styles.formLabel}>Gender <span className={styles.required}>*</span></label>
-                <Select value={form.gender || undefined} onValueChange={v => set('gender', v)}>
-                  <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
-                  <SelectContent>
-                    {GENDER_OPTIONS.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Select
+                  options={GENDER_OPTIONS.map(g => ({ value: g, label: g }))}
+                  value={form.gender || undefined}
+                  onChange={v => set('gender', v)}
+                  placeholder="Select gender"
+                />
               </div>
             </div>
           </div>

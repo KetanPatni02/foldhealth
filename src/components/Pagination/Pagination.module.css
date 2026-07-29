@@ -34,16 +34,10 @@
   font-size: 14px;
 }
 
+/* Sizing wrapper for the shared <Select> — trigger chrome comes from the
+   component itself. */
 .perPage {
-  padding: 6px 10px;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 6px;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  color: var(--neutral-400);
-  background: var(--neutral-0);
-  cursor: pointer;
-  outline: none;
+  width: 110px;
 }
 
 .goToWrapper {

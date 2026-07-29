@@ -12,7 +12,7 @@ import { Button } from '../../components/Button/Button';
 import { UploadDropField } from '../../components/UploadDropField/UploadDropField';
 import { FilePreview } from '../../components/FilePreview/FilePreview';
 import { DemoPhiStrip } from '../../components/DemoPhiStrip/DemoPhiStrip';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ShadcnSelect/select';
+import { Select } from '../../components/Select/Select';
 import { ConfirmDialog } from '../../components/Modal/ConfirmDialog';
 import { useAppStore } from '../../store/useAppStore';
 import { DocEvidenceViewer } from './DiagPanel/DocEvidenceViewer';
@@ -885,16 +885,13 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
                   </div>
                   <div className={styles.uploadField}>
                     <span className={styles.uploadLabel}>Document Type<span className={styles.uploadReq} aria-hidden="true" /></span>
-                    <Select value={upType} onValueChange={setUpType}>
-                      <SelectTrigger className={styles.uploadSelect}>
-                        <SelectValue placeholder="Select Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {DOC_TYPES.map((t) => (
-                          <SelectItem key={t} value={t}>{t}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Select
+                      className={styles.uploadSelect}
+                      options={DOC_TYPES.map((t) => ({ value: t, label: t }))}
+                      value={upType}
+                      onChange={setUpType}
+                      placeholder="Select Type"
+                    />
                   </div>
                   <div className={styles.uploadActions}>
                     <Button variant="primary" size="S" disabled={!canSaveUpload} onClick={saveUpload}>Save</Button>
@@ -1270,16 +1267,13 @@ function EditDocInline({ doc, onCancel, onSave }) {
           autoFocus
         />
         <div className={styles.failNoteLabel}>Document Type</div>
-        <Select value={docType} onValueChange={setDocType}>
-          <SelectTrigger className={styles.editSelectTrigger}>
-            <SelectValue placeholder="Select a type" />
-          </SelectTrigger>
-          <SelectContent>
-            {DOC_TYPES.map(t => (
-              <SelectItem key={t} value={t}>{t}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Select
+          className={styles.editSelectTrigger}
+          options={DOC_TYPES.map(t => ({ value: t, label: t }))}
+          value={docType}
+          onChange={setDocType}
+          placeholder="Select a type"
+        />
       </div>
       <div className={styles.failActions}>
         <Button

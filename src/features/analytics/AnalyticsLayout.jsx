@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Icon } from '../../components/Icon/Icon';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ShadcnSelect/select';
+import { Select } from '../../components/Select/Select';
 import { useAppStore } from '../../store/useAppStore';
 import { PAGES, VIEW_TITLES, PERSONA_ACCESS, PERSONA_LABELS, PERSONA_DETAILS, ORGANIZATIONS, QUARTERS } from './analyticsData';
 import { ExecutiveView } from './views/ExecutiveView';
@@ -126,14 +126,12 @@ export function AnalyticsLayout() {
       <div className={s.slicerBar}>
         <div className={s.slicerGroup}>
           <span className={s.slicerLabel}>Organization</span>
-          <Select value={analyticsOrg} onValueChange={setAnalyticsOrg}>
-            <SelectTrigger className={s.filterSelect}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ORGANIZATIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Select
+            className={s.filterSelect}
+            options={ORGANIZATIONS}
+            value={analyticsOrg}
+            onChange={setAnalyticsOrg}
+          />
         </div>
 
         <div className={s.slicerGroup}>
@@ -146,35 +144,32 @@ export function AnalyticsLayout() {
 
         <div className={s.slicerGroup}>
           <span className={s.slicerLabel}>Quarter</span>
-          <Select value={analyticsQuarter} onValueChange={setAnalyticsQuarter}>
-            <SelectTrigger className={s.filterSelect}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {QUARTERS.map(q => <SelectItem key={q.value} value={q.value}>{q.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Select
+            className={s.filterSelect}
+            options={QUARTERS}
+            value={analyticsQuarter}
+            onChange={setAnalyticsQuarter}
+          />
         </div>
 
         <div className={s.slicerDivider} />
 
         <div className={s.slicerGroup}>
           <span className={s.slicerLabel}>Persona</span>
-          <Select value={analyticsPersona} onValueChange={setAnalyticsPersona}>
-            <SelectTrigger className={s.filterSelect}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(PERSONA_DETAILS).map(([k, d]) => (
-                <SelectItem key={k} value={k}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: d.dot, flexShrink: 0, display: 'inline-block' }} />
-                    {d.name} — {d.role}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Select
+            className={s.filterSelect}
+            options={Object.entries(PERSONA_DETAILS).map(([k, d]) => ({
+              value: k,
+              label: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: d.dot, flexShrink: 0, display: 'inline-block' }} />
+                  {d.name} — {d.role}
+                </span>
+              ),
+            }))}
+            value={analyticsPersona}
+            onChange={setAnalyticsPersona}
+          />
         </div>
 
         <div className={s.slicerDivider} />
@@ -251,14 +246,12 @@ export function AnalyticsLayout() {
               <div className={s.viewSub}>{meta.sub}</div>
             </div>
             <div className={s.filterBar}>
-              <Select value={analyticsPractice} onValueChange={setAnalyticsPractice}>
-                <SelectTrigger className={s.filterSelect}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRACTICES.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Select
+                className={s.filterSelect}
+                options={PRACTICES}
+                value={analyticsPractice}
+                onChange={setAnalyticsPractice}
+              />
               <button className={s.filterBtn} onClick={() => showToast('Exporting report...')}>
                 <Icon name="solar:download-minimalistic-linear" size={14} />
                 Export

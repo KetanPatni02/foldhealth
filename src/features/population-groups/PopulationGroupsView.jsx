@@ -19,7 +19,7 @@ import { Avatar } from '../../components/Avatar/Avatar';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
 import { Link } from '../../components/Link/Link';
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '../../components/ShadcnTooltip/tooltip';
+import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { SortableHeader } from '../../components/SortableHeader/SortableHeader';
 import { useTableSort } from '../../components/SortableHeader/useTableSort';
 
@@ -66,7 +66,6 @@ function BulkSelectIcon({ size = 20 }) {
 function GroupName({ name }) {
   const ref = useRef(null);
   const [truncated, setTruncated] = useState(false);
-  const [open, setOpen] = useState(false);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -85,19 +84,15 @@ function GroupName({ name }) {
   }, [name]);
 
   return (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip open={truncated && open} onOpenChange={setOpen}>
-        <TooltipTrigger asChild>
-          <span
-            ref={ref}
-            style={{ fontSize:14, fontWeight:500, color:'var(--neutral-400)', lineHeight:1.4, minWidth:0, display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden', wordBreak:'break-word' }}
-          >
-            {name}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent className="max-w-sm whitespace-normal">{name}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    // Empty label when not truncated → shared Tooltip renders nothing.
+    <Tooltip label={truncated ? name : ''} maxWidth={380}>
+      <span
+        ref={ref}
+        style={{ fontSize:14, fontWeight:500, color:'var(--neutral-400)', lineHeight:1.4, minWidth:0, display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden', wordBreak:'break-word' }}
+      >
+        {name}
+      </span>
+    </Tooltip>
   );
 }
 

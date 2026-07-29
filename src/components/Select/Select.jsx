@@ -15,6 +15,7 @@ import styles from './Select.module.css';
  *  - disabled   (boolean)
  *  - variant    'default' | 'error'
  *  - className  (string)
+ *  - style      (object)        — inline style on the outer wrap (e.g. widths)
  *  - id         (string)        — passes through to the trigger button
  *  - menuAlign  'left' | 'right' — popover horizontal anchor (defaults left)
  *  - leadingIcon (string)       — optional Solar icon shown before the label
@@ -27,6 +28,7 @@ export function Select({
   disabled = false,
   variant = 'default',
   className,
+  style,
   id,
   menuAlign = 'left',
   searchable = false,
@@ -91,7 +93,7 @@ export function Select({
     : options;
 
   return (
-    <div ref={wrapRef} className={[styles.wrap, className || ''].filter(Boolean).join(' ')}>
+    <div ref={wrapRef} className={[styles.wrap, className || ''].filter(Boolean).join(' ')} style={style}>
       <button
         id={id}
         type="button"

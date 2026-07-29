@@ -179,38 +179,3 @@
   flex-shrink: 0;
 }
 
-/* Row three-dots dropdown — mirrors src/features/toc-worklist/WorklistRow
-   so the two worklists share one menu look + item vocabulary. */
-.dropdown {
-  background: var(--neutral-0);
-  border: 1px solid var(--neutral-150);
-  border-radius: 10px;
-  min-width: 240px;
-  max-height: 420px;
-  overflow-y: auto;
-  box-shadow: var(--shadow-popover);
-}
-.dropdownSection {
-  padding: 8px 14px 4px;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--neutral-200);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.dropdownItem {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--neutral-400);
-  cursor: pointer;
-  border: none;
-  background: none;
-  width: 100%;
-  text-align: left;
-}
-.dropdownItem:hover { background: var(--neutral-50); }
-.dropdownDivider { height: 1px; background: var(--neutral-100); margin: 2px 0; }

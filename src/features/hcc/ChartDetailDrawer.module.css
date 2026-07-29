@@ -382,7 +382,7 @@
   outline: none;
 }
 .editInput:focus { border-color: var(--primary-300); }
-.editSelectTrigger { width: 100%; height: 32px; font-size: 14px; }
+.editSelectTrigger { width: 100%; }
 .failActions {
   display: flex;
   justify-content: flex-start;
@@ -562,8 +562,8 @@
 }
 .uploadInput:focus { border-color: var(--primary-300); }
 .uploadInput::placeholder { color: var(--neutral-200); }
-.uploadSelect { width: 100%; height: 32px; font-size: 14px; border: 0.5px solid var(--neutral-200); }
-.uploadSelect:focus { border-color: var(--primary-300); }
+/* Sizing wrapper for the shared <Select> — chrome comes from the component. */
+.uploadSelect { width: 100%; }
 .uploadActions { display: flex; align-items: center; gap: 8px; }
 
 .docCard {

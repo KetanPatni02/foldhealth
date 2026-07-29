@@ -5,7 +5,7 @@ import { Button } from '../../components/Button/Button';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { UploadDropField } from '../../components/UploadDropField/UploadDropField';
 import { DemoPhiStrip } from '../../components/DemoPhiStrip/DemoPhiStrip';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ShadcnSelect/select';
+import { Select } from '../../components/Select/Select';
 import { DOC_TYPES, makeUploadedChartDoc } from './data/chartDocs';
 import styles from './UploadChartDrawer.module.css';
 
@@ -177,16 +177,13 @@ export function UploadChartDrawer() {
             Document Type
             <span className={styles.required} aria-hidden="true" />
           </span>
-          <Select value={docType} onValueChange={setDocType}>
-            <SelectTrigger className={styles.select}>
-              <SelectValue placeholder="Select Type" />
-            </SelectTrigger>
-            <SelectContent>
-              {DOC_TYPES.map((t) => (
-                <SelectItem key={t} value={t}>{t}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Select
+            className={styles.select}
+            options={DOC_TYPES.map((t) => ({ value: t, label: t }))}
+            value={docType}
+            onChange={setDocType}
+            placeholder="Select Type"
+          />
         </div>
 
         {/* Review Status — reviewer roles can Pass/Fail on upload so a

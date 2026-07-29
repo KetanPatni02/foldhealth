@@ -1,74 +1,16 @@
-import { useState, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, useRef } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
 import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
+import { MenuPopover } from '../../components/Popover/MenuPopover';
+import { buildPatientRowMenuItems } from '../../components/Popover/patientRowMenuItems';
 import { useAppStore } from '../../store/useAppStore';
 import rowStyles from '../toc-worklist/WorklistRow.module.css';
 import styles from './AllPatientsRow.module.css';
 
 const LANG_MAP = { en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese', ko: 'Korean', vi: 'Vietnamese', hi: 'Hindi', pa: 'Punjabi' };
-
-function DropdownMenu({ row, onClose }) {
-  const showToast = useAppStore(s => s.showToast);
-  const startHccUpload = useAppStore(s => s.startHccUpload);
-
-  const COMM = [
-    { l: 'Send SMS', i: 'solar:chat-round-line-linear' },
-    { l: 'Send Email', i: 'solar:letter-linear' },
-    { l: 'Start Meeting', i: 'solar:videocamera-record-linear' },
-    { l: 'Chat', i: 'solar:chat-dots-linear' },
-  ];
-  const CARE = [
-    'Send Assessment', 'Add Task', 'Initiate Protocol',
-    'Send Education', 'Warm Referral', 'Add to Program',
-  ];
-
-  const handleUploadFile = () => {
-    // Pre-seed the upload session with this patient so ambiguous OCR
-    // matches auto-link to them in the review panel (AC-1 + AC-9 helper).
-    startHccUpload(row?.id || null);
-    onClose();
-  };
-
-  return (
-    <div className={rowStyles.dropdown} onClick={e => e.stopPropagation()}>
-      <div className={rowStyles.dropdownSection}>Communication</div>
-      {COMM.map(({ l, i }) => (
-        <button key={l} className={rowStyles.dropdownItem} onClick={() => { showToast(`${l} – coming soon`); onClose(); }}>
-          <Icon name={i} size={18} color="var(--neutral-300)" />
-          {l}
-        </button>
-      ))}
-      <div className={rowStyles.dropdownDivider} />
-      <div className={rowStyles.dropdownSection}>Care Actions</div>
-      {CARE.map(l => (
-        <button key={l} className={rowStyles.dropdownItem} onClick={() => { showToast(`${l} – coming soon`); onClose(); }}>
-          <Icon name="solar:clipboard-check-linear" size={18} color="var(--neutral-300)" />
-          {l}
-        </button>
-      ))}
-      <button className={rowStyles.dropdownItem} onClick={handleUploadFile}>
-        <Icon name="solar:upload-linear" size={18} color="var(--neutral-300)" />
-        Upload File
-      </button>
-      <div className={rowStyles.dropdownDivider} />
-      <div className={rowStyles.dropdownSection}>Automation</div>
-      <button className={rowStyles.dropdownItem} onClick={() => { showToast('Run Automation – coming soon'); onClose(); }}>
-        <Icon name="solar:bolt-linear" size={18} color="var(--neutral-300)" />
-        Run Automation
-      </button>
-      <div className={rowStyles.dropdownDivider} />
-      <div className={rowStyles.dropdownSection}>Admin Actions</div>
-      <button className={rowStyles.dropdownItem} onClick={() => { showToast('Open Workflow – coming soon'); onClose(); }}>
-        <Icon name="solar:clipboard-list-linear" size={18} color="var(--neutral-300)" />
-        Open Workflow
-      </button>
-    </div>
-  );
-}
 
 function TagList({ tags, max = 2 }) {
   if (!tags?.length) return <span className={styles.dash}>—</span>;
@@ -125,42 +67,27 @@ function AttributesCell({ row }) {
 
 export function AllPatientsRow({ row, isSelected, onSelect }) {
   const showToast = useAppStore(s => s.showToast);
+  const startHccUpload = useAppStore(s => s.startHccUpload);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
   const dropBtnRef = useRef(null);
-
-  useEffect(() => {
-    if (!showDropdown) return;
-    const clickHandler = () => setShowDropdown(false);
-    const closeHandler = (e) => { if (e.detail !== row.id) setShowDropdown(false); };
-    const raf = requestAnimationFrame(() => {
-      document.addEventListener('click', clickHandler);
-      document.addEventListener('close-all-dropdowns', closeHandler);
-    });
-    return () => {
-      cancelAnimationFrame(raf);
-      document.removeEventListener('click', clickHandler);
-      document.removeEventListener('close-all-dropdowns', closeHandler);
-    };
-  }, [showDropdown, row.id]);
 
   const handleDropdownToggle = (e) => {
     e.stopPropagation();
-    document.dispatchEvent(new CustomEvent('close-all-dropdowns', { detail: row.id }));
-    const btn = dropBtnRef.current;
-    if (btn) {
-      const rect = btn.getBoundingClientRect();
-      const dropdownHeight = 420;
-      const spaceBelow = window.innerHeight - rect.bottom - 8;
-      const top = spaceBelow < dropdownHeight
-        ? Math.max(8, rect.top - Math.min(dropdownHeight, rect.top - 8))
-        : rect.bottom + 4;
-      setDropdownPos({
-        top,
-        right: window.innerWidth - rect.right,
-      });
-    }
     setShowDropdown(v => !v);
+  };
+
+  const menuItems = buildPatientRowMenuItems([
+    { key: 'Open Workflow', icon: 'solar:clipboard-list-linear', label: 'Open Workflow' },
+  ]);
+
+  const handleMenuSelect = (key) => {
+    if (key === 'Upload File') {
+      // Pre-seed the upload session with this patient so ambiguous OCR
+      // matches auto-link to them in the review panel (AC-1 + AC-9 helper).
+      startHccUpload(row?.id || null);
+      return;
+    }
+    showToast(`${key} – coming soon`);
   };
 
   const handleRowClick = () => {
@@ -278,11 +205,15 @@ export function AllPatientsRow({ row, isSelected, onSelect }) {
               tooltip="More options"
               onClick={handleDropdownToggle}
             />
-            {showDropdown && createPortal(
-              <div style={{ position: 'fixed', top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999 }}>
-                <DropdownMenu row={row} onClose={() => setShowDropdown(false)} />
-              </div>,
-              document.body
+            {showDropdown && (
+              <MenuPopover
+                anchorRef={dropBtnRef}
+                items={menuItems}
+                onSelect={handleMenuSelect}
+                onClose={() => setShowDropdown(false)}
+                width={220}
+                ariaLabel="Row actions"
+              />
             )}
           </div>
         </div>

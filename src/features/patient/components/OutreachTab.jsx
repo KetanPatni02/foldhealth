@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../components/Icon/Icon';
+import { MenuPopover } from '../../../components/Popover/MenuPopover';
 import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { SmsIcon } from '../../../components/Icon/SmsIcon';
 import { AddTaskIcon } from '../../../components/Icon/AddTaskIcon';
@@ -442,18 +443,17 @@ function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOpen, sho
  */
 function LogRowMenu({ log, onEdit, onDelete }) {
   const [open, setOpen] = useState(false);
-  const wrapRef = useRef(null);
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, [open]);
+  const btnRef = useRef(null);
   if (!onEdit && !onDelete) return null;
+  const items = [
+    ...(onEdit ? [{ key: 'edit', icon: 'solar:pen-2-linear', label: 'Edit' }] : []),
+    ...(onDelete ? [{ key: 'delete', icon: 'solar:trash-bin-trash-linear', label: 'Delete', danger: true }] : []),
+  ];
   return (
-    <span ref={wrapRef} className={styles.logRowMenuWrap}>
+    <span className={styles.logRowMenuWrap}>
       <button
         type="button"
+        ref={btnRef}
         className={styles.logRowMenuTrigger}
         onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
         aria-label="More actions"
@@ -462,30 +462,14 @@ function LogRowMenu({ log, onEdit, onDelete }) {
         <Icon name="solar:menu-dots-linear" size={14} color="var(--neutral-300)" />
       </button>
       {open && (
-        <div className={styles.logRowMenu} role="menu">
-          {onEdit && (
-            <button
-              type="button"
-              role="menuitem"
-              className={styles.logRowMenuItem}
-              onClick={(e) => { e.stopPropagation(); setOpen(false); onEdit(log); }}
-            >
-              <Icon name="solar:pen-2-linear" size={13} color="var(--neutral-400)" />
-              Edit
-            </button>
-          )}
-          {onDelete && (
-            <button
-              type="button"
-              role="menuitem"
-              className={[styles.logRowMenuItem, styles.logRowMenuItemDanger].join(' ')}
-              onClick={(e) => { e.stopPropagation(); setOpen(false); onDelete(log); }}
-            >
-              <Icon name="solar:trash-bin-trash-linear" size={13} color="var(--status-error)" />
-              Delete
-            </button>
-          )}
-        </div>
+        <MenuPopover
+          anchorRef={btnRef}
+          items={items}
+          onSelect={(key) => { if (key === 'edit') onEdit(log); else onDelete(log); }}
+          onClose={() => setOpen(false)}
+          width={140}
+          ariaLabel="Log actions"
+        />
       )}
     </span>
   );

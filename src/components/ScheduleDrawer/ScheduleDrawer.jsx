@@ -6,7 +6,7 @@ import { Drawer } from '../Drawer/Drawer';
 import { Avatar } from '../Avatar/Avatar';
 import { ActionButton } from '../ActionButton/ActionButton';
 import { Switch } from '../Switch/Switch';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ShadcnSelect/select';
+import { Select } from '../Select/Select';
 import { useAppStore } from '../../store/useAppStore';
 import { supabase } from '../../lib/supabase';
 import styles from './ScheduleDrawer.module.css';
@@ -557,14 +557,13 @@ export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointm
           {/* Status bar */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--neutral-50)', borderRadius: 8, padding: 8 }}>
             <div style={{ flex: 1 }}>
-              <Select value={apptStatus} onValueChange={handleStatusChange} disabled={isPastAppointment}>
-                <SelectTrigger className="h-8 text-sm w-[120px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {APPOINTMENT_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Select
+                style={{ width: 120 }}
+                options={APPOINTMENT_STATUSES.map(s => ({ value: s, label: s }))}
+                value={apptStatus}
+                onChange={handleStatusChange}
+                disabled={isPastAppointment}
+              />
             </div>
             <ActionButton icon="solar:paperclip-linear" size="L" tooltip="Attach" />
             <span style={{ width: 0.5, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
+import { MenuPopover } from '../../components/Popover/MenuPopover';
 import { Button } from '../../components/Button/Button';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
@@ -105,11 +106,33 @@ function VoiceBadge({ voice }) {
 // StatusToggle now uses the shared Switch component
 import { Switch } from '../../components/Switch/Switch';
 
-/* ── 3-dot action dropdown ── */
-function AgentActionMenu({ agent, onClose, onRequestDelete, onAuditLog }) {
+/* ── 3-dot action dropdown (items rendered via shared MenuPopover) ── */
+const AGENT_MENU_ITEMS = [
+  { key: 'edit', icon: 'solar:pen-new-square-linear', label: 'Edit Agent' },
+  { key: 'duplicate', icon: 'solar:copy-linear', label: 'Duplicate' },
+  { key: 'audit', icon: 'solar:history-linear', label: 'Audit Log' },
+  { divider: true },
+  { key: 'delete', icon: 'solar:trash-bin-minimalistic-linear', label: 'Delete Agent', danger: true },
+];
+
+function AgentRow({ agent, isFirst }) {
+  const updateAgent = useAppStore(s => s.updateAgent);
   const openBuilder = useAppStore(s => s.openBuilder);
   const fetchAgents = useAppStore(s => s.fetchAgents);
   const showToast = useAppStore(s => s.showToast);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [auditDrawerEntity, setAuditDrawerEntity] = useState(null);
+  const [showCallQueue, setShowCallQueue] = useState(false);
+  const [callQueueInitTab, setCallQueueInitTab] = useState(null);
+  const [viewingUser, setViewingUser] = useState(null);
+  const moreBtnRef = useRef(null);
+
+  const handleMoreClick = (e) => {
+    e.stopPropagation();
+    setShowMenu(v => !v);
+  };
 
   const handleDuplicate = async () => {
     const dup = {
@@ -125,71 +148,14 @@ function AgentActionMenu({ agent, onClose, onRequestDelete, onAuditLog }) {
     await supabase.from('agents').insert(dup);
     await fetchAgents();
     showToast(`"${agent.name}" duplicated`);
-    onClose();
   };
 
-  return (
-    <div className={styles.dropdown} onClick={e => e.stopPropagation()}>
-      <button className={styles.dropdownItem} onClick={() => { openBuilder({ id: agent.id, name: agent.name }); onClose(); }}>
-        <Icon name="solar:pen-new-square-linear" size={16} color="var(--neutral-300)" />
-        Edit Agent
-      </button>
-      <button className={styles.dropdownItem} onClick={handleDuplicate}>
-        <Icon name="solar:copy-linear" size={16} color="var(--neutral-300)" />
-        Duplicate
-      </button>
-      <button className={styles.dropdownItem} onClick={() => { onAuditLog(); onClose(); }}>
-        <Icon name="solar:history-linear" size={16} color="var(--neutral-300)" />
-        Audit Log
-      </button>
-      <div className={styles.dropdownDivider} />
-      <button className={`${styles.dropdownItem} ${styles.dropdownItemDanger}`} onClick={() => { onClose(); onRequestDelete(); }}>
-        <Icon name="solar:trash-bin-minimalistic-linear" size={16} color="var(--status-error)" />
-        Delete Agent
-      </button>
-    </div>
-  );
-}
-
-function AgentRow({ agent, isFirst }) {
-  const updateAgent = useAppStore(s => s.updateAgent);
-  const openBuilder = useAppStore(s => s.openBuilder);
-  const fetchAgents = useAppStore(s => s.fetchAgents);
-  const showToast = useAppStore(s => s.showToast);
-  const [showMenu, setShowMenu] = useState(false);
-  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [auditDrawerEntity, setAuditDrawerEntity] = useState(null);
-  const [showCallQueue, setShowCallQueue] = useState(false);
-  const [callQueueInitTab, setCallQueueInitTab] = useState(null);
-  const [viewingUser, setViewingUser] = useState(null);
-  const moreBtnRef = useRef(null);
-
-  const handleMoreClick = (e) => {
-    e.stopPropagation();
-    const btn = moreBtnRef.current;
-    if (btn) {
-      const rect = btn.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom - 8;
-      const menuH = 160;
-      setMenuPos({
-        top: spaceBelow < menuH ? Math.max(8, rect.top - menuH) : rect.bottom + 4,
-        right: window.innerWidth - rect.right,
-      });
-    }
-    setShowMenu(v => !v);
+  const handleMenuSelect = (key) => {
+    if (key === 'edit') { openBuilder({ id: agent.id, name: agent.name }); return; }
+    if (key === 'duplicate') { handleDuplicate(); return; }
+    if (key === 'audit') { setAuditDrawerEntity({ type: 'Agent', name: agent.name, id: agent.id }); return; }
+    if (key === 'delete') setShowDeleteConfirm(true);
   };
-
-  // Close on outside click (use click instead of mousedown so menu button handlers fire first)
-  useEffect(() => {
-    if (!showMenu) return;
-    const close = (e) => {
-      if (moreBtnRef.current && !moreBtnRef.current.contains(e.target)) setShowMenu(false);
-    };
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [showMenu]);
 
   return (
     <tr>
@@ -245,16 +211,14 @@ function AgentRow({ agent, isFirst }) {
           <span className={styles.actionDivider} />
           <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More Options" ref={moreBtnRef} onClick={handleMoreClick} {...(isFirst ? { 'data-tour': 'more-options-btn' } : {})} />
         </div>
-        {showMenu && createPortal(
-          <div style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999 }}>
-            <AgentActionMenu
-              agent={agent}
-              onClose={() => setShowMenu(false)}
-              onRequestDelete={() => setShowDeleteConfirm(true)}
-              onAuditLog={() => setAuditDrawerEntity({ type: 'Agent', name: agent.name, id: agent.id })}
-            />
-          </div>,
-          document.body
+        {showMenu && (
+          <MenuPopover
+            anchorRef={moreBtnRef}
+            items={AGENT_MENU_ITEMS}
+            onSelect={handleMenuSelect}
+            onClose={() => setShowMenu(false)}
+            ariaLabel="Agent actions"
+          />
         )}
         {showDeleteConfirm && (
           <ConfirmDialog

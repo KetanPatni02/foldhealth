@@ -6,7 +6,7 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Drawer } from '../../../components/Drawer/Drawer';
 import { Switch } from '../../../components/Switch/Switch';
 import { Input } from '../../../components/Input/Input';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../../components/ShadcnSelect/select';
+import { Select } from '../../../components/Select/Select';
 import { useAppStore } from '../../../store/useAppStore';
 import {
   DOMAINS, COMPONENTS, COMPONENT_CATEGORIES, ICON_OPTIONS, VISIBILITY_OPTIONS,
@@ -125,32 +125,29 @@ function StepIdentity({ data, onChange }) {
         </FormField>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <FormField label="Category">
-            <Select value={data.category} onValueChange={v => onChange({ category: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {COMPONENT_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Select
+              options={COMPONENT_CATEGORIES.map(c => ({ value: c, label: c }))}
+              value={data.category}
+              onChange={v => onChange({ category: v })}
+            />
           </FormField>
           <FormField label="Visible to">
-            <Select value={data.visibleTo} onValueChange={v => onChange({ visibleTo: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {VISIBILITY_OPTIONS.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Select
+              options={VISIBILITY_OPTIONS.map(v => ({ value: v, label: v }))}
+              value={data.visibleTo}
+              onChange={v => onChange({ visibleTo: v })}
+            />
           </FormField>
         </div>
         <FormField label={<>Description <span style={{ fontWeight: 400, color: 'var(--neutral-200)' }}>(shown to providers in About popup)</span></>} hint={`${data.description.length}/200`}>
           <textarea className={s.textarea} value={data.description} onChange={e => onChange({ description: e.target.value.slice(0, 200) })} maxLength={200} placeholder="What does this component do?" />
         </FormField>
         <FormField label="Activation">
-          <Select value={data.activation} onValueChange={v => onChange({ activation: v })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {ACTIVATION_OPTIONS.map(a => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Select
+            options={ACTIVATION_OPTIONS.map(a => ({ value: a.value, label: a.label }))}
+            value={data.activation}
+            onChange={v => onChange({ activation: v })}
+          />
         </FormField>
       </div>
       {data.activation === 'conditional' && (
@@ -159,12 +156,11 @@ function StepIdentity({ data, onChange }) {
             Component surfaces only when the selected condition is true — prevents irrelevant components from cluttering the provider view.
           </div>
           <FormField label="Show when">
-            <Select value={data.condition} onValueChange={v => onChange({ condition: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {CONDITION_OPTIONS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Select
+              options={CONDITION_OPTIONS.map(c => ({ value: c, label: c }))}
+              value={data.condition}
+              onChange={v => onChange({ condition: v })}
+            />
           </FormField>
         </div>
       )}
@@ -342,28 +338,25 @@ function StepSurfaces({ data, onChange }) {
                   </span>
                 </div>
                 <FormField label="Opens via">
-                  <Select value={data.opensVia} onValueChange={v => onChange({ opensVia: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {['Action menu item only', 'Nav tab + action menu', 'Inline button (e.g. in gap list)'].map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Select
+                    options={['Action menu item only', 'Nav tab + action menu', 'Inline button (e.g. in gap list)'].map(o => ({ value: o, label: o }))}
+                    value={data.opensVia}
+                    onChange={v => onChange({ opensVia: v })}
+                  />
                 </FormField>
                 <FormField label="Show in tab context">
-                  <Select value={data.tabContext} onValueChange={v => onChange({ tabContext: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {['All patient tabs', 'Gaps tab only', 'Orders tab only', 'Care Programs tab'].map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Select
+                    options={['All patient tabs', 'Gaps tab only', 'Orders tab only', 'Care Programs tab'].map(o => ({ value: o, label: o }))}
+                    value={data.tabContext}
+                    onChange={v => onChange({ tabContext: v })}
+                  />
                 </FormField>
                 <FormField label="Background behavior">
-                  <Select value={data.background} onValueChange={v => onChange({ background: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {['Dim patient chart', 'No dim'].map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Select
+                    options={['Dim patient chart', 'No dim'].map(o => ({ value: o, label: o }))}
+                    value={data.background}
+                    onChange={v => onChange({ background: v })}
+                  />
                 </FormField>
               </div>
             )}
@@ -379,20 +372,18 @@ function StepSurfaces({ data, onChange }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <FormField label="Display in drawer tab" hint="Widget appears as a card within this tab">
-                    <Select value={data.drawerTab} onValueChange={v => onChange({ drawerTab: v, widgetOrder: null })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {DRAWER_TAB_OPTIONS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Select
+                      options={DRAWER_TAB_OPTIONS.map(t => ({ value: t, label: t }))}
+                      value={data.drawerTab}
+                      onChange={v => onChange({ drawerTab: v, widgetOrder: null })}
+                    />
                   </FormField>
                   <FormField label="Widget height">
-                    <Select value={data.widgetHeight} onValueChange={v => onChange({ widgetHeight: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {['Auto (up to 280px)', 'Fixed 200px', 'Fixed 300px'].map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Select
+                      options={['Auto (up to 280px)', 'Fixed 200px', 'Fixed 300px'].map(o => ({ value: o, label: o }))}
+                      value={data.widgetHeight}
+                      onChange={v => onChange({ widgetHeight: v })}
+                    />
                   </FormField>
                 </div>
 
@@ -442,12 +433,11 @@ function StepSurfaces({ data, onChange }) {
                   })}
                 </div>
                 <FormField label="Action triggers">
-                  <Select value={data.actionTrigger} onValueChange={v => onChange({ actionTrigger: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {['Opens a drawer on the right', 'Opens full-screen view'].map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Select
+                    options={['Opens a drawer on the right', 'Opens full-screen view'].map(o => ({ value: o, label: o }))}
+                    value={data.actionTrigger}
+                    onChange={v => onChange({ actionTrigger: v })}
+                  />
                 </FormField>
               </div>
             )}
@@ -491,12 +481,11 @@ function StepSurfaces({ data, onChange }) {
                 )}
                 {data.sidecarPlacement === 'widget' && (
                   <FormField label="Display in existing tab" hint="Widget appears as a collapsible card within this tab">
-                    <Select value={data.sidecarWidgetTab} onValueChange={v => onChange({ sidecarWidgetTab: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {DRAWER_TAB_OPTIONS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Select
+                      options={DRAWER_TAB_OPTIONS.map(t => ({ value: t, label: t }))}
+                      value={data.sidecarWidgetTab}
+                      onChange={v => onChange({ sidecarWidgetTab: v })}
+                    />
                   </FormField>
                 )}
               </>
@@ -504,12 +493,11 @@ function StepSurfaces({ data, onChange }) {
               <>
                 <div className={s.infoAmber} style={{ marginBottom: 10 }}>No patient context available. JWT contains only userId and accountId. Suitable for account-level dashboards or task notifications only.</div>
                 <FormField label="Placement in global view">
-                  <Select value={data.sidecarGlobalPlacement} onValueChange={v => onChange({ sidecarGlobalPlacement: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {SIDECAR_GLOBAL_PLACEMENTS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Select
+                    options={SIDECAR_GLOBAL_PLACEMENTS.map(p => ({ value: p, label: p }))}
+                    value={data.sidecarGlobalPlacement}
+                    onChange={v => onChange({ sidecarGlobalPlacement: v })}
+                  />
                 </FormField>
               </>
             )}
@@ -566,12 +554,11 @@ function StepContext({ data, onChange }) {
     <div style={{ maxWidth: '100%' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
         <FormField label="Domain *">
-          <Select value={String(data.domainId)} onValueChange={v => onChange({ domainId: Number(v) })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {activeDomains.map(d => <SelectItem key={d.id} value={String(d.id)}>{d.domain}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Select
+            options={activeDomains.map(d => ({ value: String(d.id), label: d.domain }))}
+            value={String(data.domainId)}
+            onChange={v => onChange({ domainId: Number(v) })}
+          />
         </FormField>
         <FormField label="Path *" hint={fullUrl ? `Full URL: ${fullUrl}` : undefined}>
           <Input value={data.url} onChange={e => onChange({ url: e.target.value })} placeholder="/widget/..." />
@@ -580,12 +567,11 @@ function StepContext({ data, onChange }) {
           <Input value={data.stagingUrl} onChange={e => onChange({ stagingUrl: e.target.value })} placeholder="/widget/...?env=staging" />
         </FormField>
         <FormField label="Token lifetime" hint={data.tokenLifetime === 30 ? 'Use 30 min for complex workflows like prior auth' : undefined}>
-          <Select value={String(data.tokenLifetime)} onValueChange={v => onChange({ tokenLifetime: Number(v) })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {TOKEN_LIFETIME_OPTIONS.map(t => <SelectItem key={t.value} value={String(t.value)}>{t.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Select
+            options={TOKEN_LIFETIME_OPTIONS.map(t => ({ value: String(t.value), label: t.label }))}
+            value={String(data.tokenLifetime)}
+            onChange={v => onChange({ tokenLifetime: Number(v) })}
+          />
         </FormField>
       </div>
 
@@ -659,12 +645,11 @@ function StepConfigure({ data, onChange, embedDomains }) {
       {/* 3. Domain & Path */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         <FormField label="Domain *">
-          <Select value={String(data.domainId)} onValueChange={v => onChange({ domainId: Number(v) })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {activeDomains.map(d => <SelectItem key={d.id} value={String(d.id)}>{d.domain}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Select
+            options={activeDomains.map(d => ({ value: String(d.id), label: d.domain }))}
+            value={String(data.domainId)}
+            onChange={v => onChange({ domainId: Number(v) })}
+          />
         </FormField>
         <FormField label="Path *" hint={fullUrl ? `${fullUrl}` : undefined}>
           <Input value={data.url} onChange={e => onChange({ url: e.target.value })} placeholder="/widget/..." />
@@ -674,20 +659,18 @@ function StepConfigure({ data, onChange, embedDomains }) {
       {/* 4. Category & Visible To */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         <FormField label="Category">
-          <Select value={data.category} onValueChange={v => onChange({ category: v })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {COMPONENT_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Select
+            options={COMPONENT_CATEGORIES.map(c => ({ value: c, label: c }))}
+            value={data.category}
+            onChange={v => onChange({ category: v })}
+          />
         </FormField>
         <FormField label="Visible to">
-          <Select value={data.visibleTo} onValueChange={v => onChange({ visibleTo: v })}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {VISIBILITY_OPTIONS.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Select
+            options={VISIBILITY_OPTIONS.map(v => ({ value: v, label: v }))}
+            value={data.visibleTo}
+            onChange={v => onChange({ visibleTo: v })}
+          />
         </FormField>
       </div>
 
@@ -711,32 +694,29 @@ function StepConfigure({ data, onChange, embedDomains }) {
           <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: 14 }}>
             {/* Activation */}
             <FormField label="Activation">
-              <Select value={data.activation} onValueChange={v => onChange({ activation: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {ACTIVATION_OPTIONS.map(a => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Select
+                options={ACTIVATION_OPTIONS.map(a => ({ value: a.value, label: a.label }))}
+                value={data.activation}
+                onChange={v => onChange({ activation: v })}
+              />
             </FormField>
             {data.activation === 'conditional' && (
               <FormField label="Show when">
-                <Select value={data.condition} onValueChange={v => onChange({ condition: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {CONDITION_OPTIONS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Select
+                  options={CONDITION_OPTIONS.map(c => ({ value: c, label: c }))}
+                  value={data.condition}
+                  onChange={v => onChange({ condition: v })}
+                />
               </FormField>
             )}
 
             {/* Token Lifetime */}
             <FormField label="Token lifetime" hint={data.tokenLifetime === 30 ? 'Use 30 min for complex workflows' : undefined}>
-              <Select value={String(data.tokenLifetime)} onValueChange={v => onChange({ tokenLifetime: Number(v) })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {TOKEN_LIFETIME_OPTIONS.map(t => <SelectItem key={t.value} value={String(t.value)}>{t.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Select
+                options={TOKEN_LIFETIME_OPTIONS.map(t => ({ value: String(t.value), label: t.label }))}
+                value={String(data.tokenLifetime)}
+                onChange={v => onChange({ tokenLifetime: Number(v) })}
+              />
             </FormField>
 
             {/* JWT Context Scope */}

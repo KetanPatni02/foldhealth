@@ -65,3 +65,19 @@
 .disabled:hover {
   background: transparent;
 }
+
+.section {
+  padding: 8px 8px 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--neutral-200);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.divider {
+  height: 1px;
+  background: var(--neutral-100);
+  margin: 2px 0;
+  flex-shrink: 0;
+}

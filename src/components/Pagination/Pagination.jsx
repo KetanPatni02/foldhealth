@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../Icon/Icon';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ShadcnSelect/select';
+import { Select } from '../Select/Select';
 import styles from './Pagination.module.css';
 
 /**
@@ -184,16 +184,16 @@ export function Pagination({
         <Icon name="solar:alt-arrow-right-linear" size={18} />
       </button>
 
-      <Select value={String(perPage)} onValueChange={handlePerPageChange}>
-        <SelectTrigger className={styles.perPage}>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="10">10 / Page</SelectItem>
-          <SelectItem value="25">25 / Page</SelectItem>
-          <SelectItem value="50">50 / Page</SelectItem>
-        </SelectContent>
-      </Select>
+      <Select
+        className={styles.perPage}
+        options={[
+          { value: '10', label: '10 / Page' },
+          { value: '25', label: '25 / Page' },
+          { value: '50', label: '50 / Page' },
+        ]}
+        value={String(perPage)}
+        onChange={handlePerPageChange}
+      />
 
       <div className={styles.goToWrapper}>
         <input

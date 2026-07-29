@@ -14,8 +14,10 @@ import styles from './Tooltip.module.css';
  *  - children (ReactNode)  The trigger element.
  *  - placement ('top' | 'bottom')  Vertical placement. Defaults to 'top'.
  *  - className (string)  Optional class on the inline wrapper span.
+ *  - maxWidth (number)  Wrap long content at this pixel width (default is a
+ *             single nowrap line — pass this for sentence-length tooltips).
  */
-export function Tooltip({ label, children, placement = 'top', className }) {
+export function Tooltip({ label, children, placement = 'top', className, maxWidth }) {
   const triggerRef = useRef(null);
   const openTimer = useRef(null);
   const [rect, setRect] = useState(null);
@@ -39,6 +41,11 @@ export function Tooltip({ label, children, placement = 'top', className }) {
       ? { top: rect.bottom + 6, left: rect.left + rect.width / 2 }
       : { top: rect.top - 6,     left: rect.left + rect.width / 2 }
     : null;
+  if (style && maxWidth) {
+    style.maxWidth = maxWidth;
+    style.whiteSpace = 'normal';
+    style.textAlign = 'left';
+  }
 
   return (
     <span
