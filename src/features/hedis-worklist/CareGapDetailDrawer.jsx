@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Button } from '../../components/Button/Button';
 import { Input } from '../../components/Input/Input';
@@ -29,14 +30,34 @@ const MEASURE_NAMES = {
 
 const STATUSES = ['Open', 'Closed', 'Excluded', 'Completed', 'Submitted', 'Closed-Data'];
 
-const STATUS_COLOR = {
-  Open:         styles.statusOpen,
-  Completed:    styles.statusCompleted,
-  Submitted:    styles.statusCompleted,
-  Closed:       styles.statusExcluded,
-  Excluded:     styles.statusExcluded,
-  'Closed-Data': styles.statusExcluded,
+// Per-status color triple (color/bg/border) applied inline on the status
+// button so it matches the HCC ChartDetailDrawer's `.actionNeeded` pill
+// pattern. Keys map 1:1 to the STATUSES list.
+const STATUS_STYLE = {
+  Open:          { color: 'var(--status-warning)',  bg: 'var(--status-warning-light)', border: 'color-mix(in srgb, var(--status-warning) 24%, transparent)' },
+  Completed:     { color: 'var(--status-success)',  bg: 'var(--status-success-light)', border: 'color-mix(in srgb, var(--status-success) 24%, transparent)' },
+  Submitted:     { color: 'var(--status-success)',  bg: 'var(--status-success-light)', border: 'color-mix(in srgb, var(--status-success) 24%, transparent)' },
+  Closed:        { color: 'var(--neutral-300)',     bg: 'var(--neutral-50)',           border: 'color-mix(in srgb, var(--neutral-300) 10%, transparent)' },
+  Excluded:      { color: 'var(--neutral-300)',     bg: 'var(--neutral-50)',           border: 'color-mix(in srgb, var(--neutral-300) 10%, transparent)' },
+  'Closed-Data': { color: 'var(--neutral-300)',     bg: 'var(--neutral-50)',           border: 'color-mix(in srgb, var(--neutral-300) 10%, transparent)' },
 };
+
+// Kebab menu actions — matches the design's "More actions" panel (Figma
+// New-Care-Gap-Workflow node 1178:58434). `handler` receives the drawer's
+// helper bag so items that need to open a subpanel (e.g. Add Clinical Note)
+// can hook in without duplicating callback wiring.
+const MORE_ACTIONS = [
+  { key: 'outreach',    label: 'Add Outreach',       icon: 'solar:phone-calling-linear' },
+  { key: 'lab',         label: 'Add Lab Order',      icon: 'solar:test-tube-linear' },
+  { key: 'imaging',     label: 'Add Imaging Order',  icon: 'solar:medical-kit-linear' },
+  { key: 'referral',    label: 'Send Referral',      icon: 'solar:arrow-right-up-linear' },
+  { key: 'appointment', label: 'Schedule Appointment', icon: 'solar:calendar-linear' },
+  { key: 'document',    label: 'Add Document',       icon: 'solar:upload-minimalistic-linear' },
+  { key: 'reminder',    label: 'Set Reminder',       icon: 'solar:bell-linear' },
+  { key: 'task',        label: 'Add Task',           icon: 'solar:clipboard-check-linear' },
+  { key: 'clinical-note', label: 'Add Clinical Note', icon: 'solar:notes-linear', openClinicalNote: true },
+];
+
 
 // Tab labels with the static counts shown in the design reference. Only
 // Activity Log has live content; the rest are stubbed (coming soon).
@@ -49,6 +70,28 @@ const TABS = [
   { key: 'Clinical Notes', label: 'Clinical Notes' },
   { key: 'Orders', label: 'Orders' },
 ];
+
+// First-letter initials from a full name (max 2 chars). "Donna Harold" → "DH";
+// single-word names fall back to the first character. Powers the assignee
+// avatar chip next to the gap status.
+function initialsOf(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '';
+  const first = parts[0][0] || '';
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : '';
+  return (first + last).toUpperCase();
+}
+
+// "Nd ago" for the gap-start subtitle. Accepts MM/DD/YYYY (the shape carried
+// on the mock gap objects) or any Date-parseable string. Returns '' when the
+// date is missing/unparseable so callers can drop the parenthetical.
+function daysAgo(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return '';
+  const days = Math.max(0, Math.floor((Date.now() - d.getTime()) / 86_400_000));
+  return `${days}d ago`;
+}
 
 // Map a raw caregapActivity entry into the shape the shared Timeline
 // component expects. The Timeline handles month grouping internally.
@@ -92,6 +135,20 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
 
   const [statusOpen, setStatusOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  // Kebab menu (More actions) — anchored to the button's rect so it can
+  // escape the drawer body's scroll container.
+  const moreBtnRef = useRef(null);
+  const [moreMenuRect, setMoreMenuRect] = useState(null);
+  const openMoreMenu = () => {
+    const r = moreBtnRef.current?.getBoundingClientRect();
+    if (r) setMoreMenuRect(r);
+  };
+  const closeMoreMenu = () => setMoreMenuRect(null);
+  const runMoreAction = (a) => {
+    closeMoreMenu();
+    if (a.openClinicalNote) setShowClinicalNote(true);
+    else showToast(`${a.label} — coming soon`);
+  };
   const [activeTab, setActiveTab] = useState('Activity Log');
   const [showClinicalNote, setShowClinicalNote] = useState(false);
   const [pdfPreview, setPdfPreview] = useState(null);
@@ -166,86 +223,145 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
           <span className={styles.headerDivider} />
         </div>
       }
+      // Banner slot sits between the drawer header and its scrolling body
+      // (flex-shrink:0), so the patient banner stays pinned in place while
+      // the gap header + activity log scroll under it.
+      banner={
+        <div className={styles.patientBannerWrap}>
+          <PatientBanner
+            initials={member.in}
+            name={member.name}
+            gender={member.gender}
+            age={member.age}
+            memberId={member.memberId}
+            hidePatientLabel
+            onCall={() => showToast('Call — coming soon')}
+          />
+        </div>
+      }
     >
-      {/* ── Patient banner (shared component) ── */}
-      <div className={styles.patientBannerWrap}>
-        <PatientBanner
-          initials={member.in}
-          name={member.name}
-          gender={member.gender}
-          age={member.age}
-          memberId={member.memberId}
-          hidePatientLabel
-          onCall={() => showToast('Call — coming soon')}
-        />
-      </div>
-
       <div className={styles.contentBody}>
       {/* ── Gap header ── */}
       <div className={styles.gapHeader}>
+        {/* Row 1: Measurement Year scope chip on the left, quick actions on
+            the right. Status + assignee no longer live here — they moved
+            down to the title row where the gap's identity lives. */}
         <div className={styles.gapToolbar}>
-          {/* Status dropdown — disabled when Completed (AC-4 lockout) */}
-          <div className={styles.statusWrap}>
-            <button
-              className={`${styles.statusBtn} ${STATUS_COLOR[status] ?? ''}`}
-              onClick={() => { if (!statusLocked) setStatusOpen(v => !v); }}
-              disabled={statusLocked}
-              title={statusLocked ? 'Completed gaps are locked' : ''}
-              style={statusLocked ? { cursor: 'not-allowed', opacity: 0.75 } : undefined}
-            >
-              {status}
-              <Icon name={statusLocked ? 'solar:lock-keyhole-minimalistic-linear' : 'solar:alt-arrow-down-linear'} size={12} />
-            </button>
-            {statusOpen && !statusLocked && (
-              <div className={styles.statusMenu}>
-                {STATUSES.map(s => (
-                  <button
-                    key={s}
-                    className={`${styles.statusMenuItem} ${s === status ? styles.statusMenuItemActive : ''}`}
-                    onClick={() => { updateGapStatus(member.id, gap.code, s); setStatusOpen(false); }}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            )}
+          <div className={styles.yearChip}>
+            <span className={styles.yearChipLabel}>Measurement Year</span>
+            <span className={styles.yearChipSep}>:</span>
+            <span className={styles.yearChipValue}>{year}</span>
+            <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--neutral-300)" />
           </div>
 
           <div className={styles.gapToolbarRight}>
-            <button
-              className={`${styles.assignBtn} ${gap.assignee ? styles.assigned : ''}`}
-              onClick={() => showToast('Assign — coming soon')}
-            >
-              <Icon name="solar:user-linear" size={15} color="currentColor" />
-              {gap.assignee || 'Assign'}
-              <Icon name="solar:alt-arrow-down-linear" size={12} color="currentColor" />
-            </button>
+            {/* tooltipBelow: the toolbar sits at the top of the scrolling body,
+                so upward-opening tooltips get clipped by the drawer edge. */}
+            <ActionButton icon="solar:clipboard-add-linear" size="L" tooltip="Add Task" tooltipBelow onClick={() => showToast('Add Task — coming soon')} />
             <span className={styles.headerDivider} />
-            <ActionButton icon="solar:clipboard-add-linear" size="L" tooltip="Add Task" onClick={() => showToast('Add Task — coming soon')} />
+            <ActionButton icon="solar:notes-linear" size="L" tooltip="Add Clinical Note" tooltipBelow onClick={() => setShowClinicalNote(true)} />
             <span className={styles.headerDivider} />
-            <ActionButton icon="solar:notes-linear" size="L" tooltip="Notes" onClick={() => showToast('Notes — coming soon')} />
-            <span className={styles.headerDivider} />
-            <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More" onClick={() => showToast('More — coming soon')} />
+            <ActionButton
+              ref={moreBtnRef}
+              icon="solar:menu-dots-linear"
+              size="L"
+              tooltip="More"
+              tooltipBelow
+              tooltipLeft
+              onClick={moreMenuRect ? closeMoreMenu : openMoreMenu}
+            />
           </div>
         </div>
 
-        <div className={styles.gapTitle}>{measureName}</div>
-        <div className={styles.gapSubRow}>
-          <span>Measure Year {year}</span>
-          <span className={styles.gapSubDot}>&bull;</span>
-          <button className={styles.moreDetailsBtn} onClick={() => setMoreOpen(v => !v)}>
-            More Details
-            <Icon
-              name="solar:alt-arrow-down-linear"
-              size={13}
-              color="currentColor"
-              className={`${styles.moreChevron} ${moreOpen ? styles.moreChevronOpen : ''}`}
-            />
-          </button>
+        {/* Row 2: title/subtitle on the left, assignee + status on the right.
+            Wrapped in .gapTitleWrap to give it side-padding while the toolbar
+            above stays edge-to-edge. */}
+        <div className={styles.gapTitleWrap}>
+        <div className={styles.gapTitleRow}>
+          <div className={styles.gapTitleCol}>
+            <div className={styles.gapTitle}>
+              {gap.code} - {measureName}
+            </div>
+            <div className={styles.gapSubRow}>
+              {gap.startDate && (
+                <>
+                  <span>{gap.startDate}{daysAgo(gap.startDate) ? ` (${daysAgo(gap.startDate)})` : ''}</span>
+                  <span className={styles.gapSubDot}>&bull;</span>
+                </>
+              )}
+              <button className={styles.moreDetailsBtn} onClick={() => setMoreOpen(v => !v)}>
+                More Details
+                <Icon
+                  name="solar:alt-arrow-down-linear"
+                  size={13}
+                  color="currentColor"
+                  className={`${styles.moreChevron} ${moreOpen ? styles.moreChevronOpen : ''}`}
+                />
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.gapTitleActions}>
+            {gap.assignee ? (
+              <button
+                type="button"
+                className={styles.assigneeChip}
+                onClick={() => showToast('Assign — coming soon')}
+                title={`Assigned to ${gap.assignee}`}
+                aria-label={gap.assignee}
+              >
+                <span className={styles.assigneeAvatar}>{initialsOf(gap.assignee)}</span>
+                <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--secondary-300)" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={styles.assigneeChipEmpty}
+                onClick={() => showToast('Assign — coming soon')}
+                title="Assign"
+                aria-label="Assign"
+              >
+                <Icon name="solar:user-plus-linear" size={14} color="var(--neutral-300)" />
+                <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--neutral-300)" />
+              </button>
+            )}
+            <div className={styles.statusWrap}>
+              <button
+                className={styles.statusBtn}
+                onClick={() => { if (!statusLocked) setStatusOpen(v => !v); }}
+                disabled={statusLocked}
+                title={statusLocked ? 'Completed gaps are locked' : ''}
+                style={{
+                  color: STATUS_STYLE[status]?.color,
+                  background: STATUS_STYLE[status]?.bg,
+                  borderColor: STATUS_STYLE[status]?.border,
+                }}
+              >
+                {status}
+                {!statusLocked && (
+                  <Icon name="solar:alt-arrow-down-linear" size={12} color="currentColor" />
+                )}
+              </button>
+              {statusOpen && !statusLocked && (
+                <div className={styles.statusMenu}>
+                  {STATUSES.map(s => (
+                    <button
+                      key={s}
+                      className={`${styles.statusMenuItem} ${s === status ? styles.statusMenuItemActive : ''}`}
+                      onClick={() => { updateGapStatus(member.id, gap.code, s); setStatusOpen(false); }}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
+        </div>
         {/* More Details expansion — Measure Requirements + Instructions live here */}
-        <div className={`${styles.moreDetails} ${moreOpen ? styles.moreDetailsOpen : ''}`}>
+        <div className={`${styles.moreDetails} ${moreOpen ? styles.moreDetailsOpen : ''}`} style={{ padding: '0 16px' }}>
           <div className={styles.moreDetailsInner}>
             <div className={styles.moreDetailsBody}>
               <div className={styles.infoBanner}>
@@ -281,13 +397,12 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
         Suggested Actions
       </div>
       <div className={styles.suggestActions}>
-        <Button variant="primary" size="L" leadingIcon="solar:document-add-linear" onClick={() => setShowClinicalNote(true)}>
-          Add Clinical Note
+        <Button variant="primary" size="L" onClick={() => showToast('Schedule with Specialist — coming soon')}>
+          Schedule with Specialist
         </Button>
-        <Button variant="tertiary" size="L" onClick={() => showToast('Add Referral — coming soon')}>
-          Add Referral
+        <Button variant="tertiary" size="L" onClick={() => showToast('Add MRC Task — coming soon')}>
+          Add MRC Task
         </Button>
-        <span className={styles.suggestDivider} />
         <Button variant="secondary" size="L" onClick={() => showToast('Add Outreach — coming soon')}>
           Add Outreach
         </Button>
@@ -297,7 +412,8 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
       </div>
       </div>
 
-      {/* ── Tabs ── */}
+      {/* ── Tabs ── Full-bleed row so its bottom border spans edge-to-edge;
+          horizontal padding on the row itself indents the tab labels. */}
       <div className={styles.tabBar}>
         <div className={styles.tabsScroll}>
           {TABS.map(tab => (
@@ -314,6 +430,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
       </div>
 
       {/* ── Tab content ── */}
+      <div className={styles.tabContentWrap}>
       {activeTab === 'Activity Log' ? (
         <div className={styles.activityLog}>
           <div className={styles.commentInput}>
@@ -365,7 +482,33 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
         </div>
       )}
       </div>
+      </div>
     </Drawer>
+    {moreMenuRect && createPortal(
+      <>
+        <div className={styles.moreMenuOverlay} onClick={closeMoreMenu} />
+        <div
+          className={styles.moreMenu}
+          style={{
+            top: moreMenuRect.bottom + 6,
+            left: Math.min(moreMenuRect.right - 220, window.innerWidth - 220 - 8),
+          }}
+        >
+          {MORE_ACTIONS.map(a => (
+            <button
+              key={a.key}
+              type="button"
+              className={styles.moreMenuItem}
+              onClick={() => runMoreAction(a)}
+            >
+              <Icon name={a.icon} size={16} color="var(--neutral-300)" />
+              {a.label}
+            </button>
+          ))}
+        </div>
+      </>,
+      document.body,
+    )}
     {pdfPreview && (
       <PdfPreviewOverlay
         blob={pdfPreview.blob}
