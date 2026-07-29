@@ -6,9 +6,10 @@ import { Input } from '../../components/Input/Input';
 import { ClinicalNotePanel } from './ClinicalNotePanel';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { Avatar } from '../../components/Avatar/Avatar';
 import { Icon } from '../../components/Icon/Icon';
-import { PdfPreviewOverlay } from '../../components/PdfPreviewOverlay/PdfPreviewOverlay';
-import { Timeline } from '../../components/Timeline/Timeline';
+import { ActivityLog } from '../../components/ActivityLog/ActivityLog';
+import { OutreachTab } from '../patient/components/OutreachTab';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './CareGapDetailDrawer.module.css';
 
@@ -93,39 +94,76 @@ function daysAgo(dateStr) {
   return `${days}d ago`;
 }
 
-// Map a raw caregapActivity entry into the shape the shared Timeline
-// component expects. The Timeline handles month grouping internally.
-function toTimelineEntry(e, i) {
-  const d = new Date(e.when ?? e.at);
-  const valid = !Number.isNaN(d.getTime());
-  const mm = valid ? String(d.getMonth() + 1).padStart(2, '0') : '';
-  const dd = valid ? String(d.getDate()).padStart(2, '0') : '';
-  const yyyy = valid ? d.getFullYear() : '';
-  let hh = valid ? d.getHours() : 0;
-  const min = valid ? String(d.getMinutes()).padStart(2, '0') : '';
-  const ampm = hh >= 12 ? 'PM' : 'AM';
-  hh = hh % 12 || 12;
-  return {
-    id: e.id ?? `${e.when ?? e.at}-${i}`,
-    createdAt: e.when ?? e.at,
-    date: valid ? `${mm}/${dd}/${yyyy}` : '',
-    time: valid ? `${hh}:${min} ${ampm}` : '',
-    user: e.actor || e.user || 'System',
-    icon: e.icon || 'solar:shield-check-linear',
-    iconBg: 'var(--neutral-50)',
-    iconBorder: 'color-mix(in srgb, var(--neutral-300) 12%, transparent)',
-    iconColor: 'var(--neutral-300)',
-    details: e.title,
-    category: e.detail,
-    attachment: e.attachment,
-  };
+// Color the outcome text for outreach entries — green for success signals,
+// red for failure signals, otherwise neutral. Matches OutreachTab's
+// convention so the two feeds read the same.
+function outreachOutcomeColor(outcome) {
+  const s = String(outcome || '').toLowerCase();
+  if (/completed|engaged|enrolled|attended|scheduled/.test(s)) return 'var(--status-success)';
+  if (/failed|no answer|voicemail|declined/.test(s))          return 'var(--status-error)';
+  return 'var(--neutral-400)';
+}
+
+// Map raw HEDIS caregapActivity entries → the shape ActivityLog consumes.
+// Enriched fields (`callDetails`, `detailCard`, `commentBody`, `file`,
+// `fromAssignee`/`toAssignee`, explicit `t`, `from`/`to`) pass through
+// verbatim so each variant renders its own UI. This function only derives
+// timing bits (`date` / `time` / `by` / `role`) and injects `t:"group"`
+// month headers.
+function toActivityLogEntries(rawEntries) {
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const out = [];
+  let currentGroup = '';
+  const sorted = [...(rawEntries || [])].sort((a, b) =>
+    new Date(b.when ?? b.at) - new Date(a.when ?? a.at)
+  );
+  for (const e of sorted) {
+    const d = new Date(e.when ?? e.at);
+    const valid = !Number.isNaN(d.getTime());
+    const groupLabel = valid ? `${MONTHS[d.getMonth()]} ${d.getFullYear()}` : '';
+    if (groupLabel && groupLabel !== currentGroup) {
+      out.push({ t: 'group', label: groupLabel });
+      currentGroup = groupLabel;
+    }
+    const mm = valid ? String(d.getMonth() + 1).padStart(2, '0') : '';
+    const dd = valid ? String(d.getDate()).padStart(2, '0') : '';
+    const yyyy = valid ? d.getFullYear() : '';
+    let hh = valid ? d.getHours() : 0;
+    const min = valid ? String(d.getMinutes()).padStart(2, '0') : '';
+    const ampm = hh >= 12 ? 'PM' : 'AM';
+    hh = hh % 12 || 12;
+    // Actor may carry the role in parens ("Delores Conn (Co-Ordinator)").
+    const actor = e.actor || e.user || 'System';
+    const roleMatch = actor.match(/^(.+?)\s*\((.+?)\)\s*$/);
+    // Outreach outcome gets a status-tinted color; other variants use their
+    // own visual chrome (transition pills, detail card, avatar transition,
+    // attachment card) so we don't need to color-code them here.
+    const outcomeColor = (e.t === 'outreach' || e.t === 'call' || e.t === 'sms')
+      ? outreachOutcomeColor(e.outcome)
+      : null;
+    out.push({
+      ...e,
+      date:  valid ? `${mm}/${dd}/${yyyy}` : '',
+      time:  valid ? `${hh}:${min} ${ampm}` : '',
+      by:    roleMatch ? roleMatch[1] : actor,
+      role:  roleMatch ? roleMatch[2] : null,
+      outcomeColor: outcomeColor || e.outcomeColor,
+    });
+  }
+  return out;
 }
 
 export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const showToast = useAppStore(s => s.showToast);
   const updateGapStatus = useAppStore(s => s.updateGapStatus);
+  const updateGapAssignee = useAppStore(s => s.updateGapAssignee);
   const logCareGapActivity = useAppStore(s => s.logCareGapActivity);
   const activityEntries = useAppStore(s => s.caregapActivity[member?.id]);
+  // Assignee picker pulls from the same profiles roster shown in
+  // Settings → Account → Users. The store guards against duplicate fetches.
+  const platformUsers = useAppStore(s => s.platformUsers);
+  const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
+  useEffect(() => { fetchPlatformUsers(); }, [fetchPlatformUsers]);
 
   // Internal gap selection so the header prev/next arrows can cycle through
   // the member's care gaps without re-opening the drawer.
@@ -135,6 +173,25 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
 
   const [statusOpen, setStatusOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  // Assignee popover — anchored to the chip's rect and portalled so it can
+  // escape the drawer's scroll container.
+  const assigneeBtnRef = useRef(null);
+  const [assigneePos, setAssigneePos] = useState(null);
+  const [assigneeQuery, setAssigneeQuery] = useState('');
+  const openAssignee = () => {
+    const r = assigneeBtnRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setAssigneeQuery('');
+    setAssigneePos({ top: r.bottom + 4, right: window.innerWidth - r.right });
+  };
+  const closeAssignee = () => setAssigneePos(null);
+  // Measurement Year scope chip — locally scoped so selecting a different
+  // year updates the chip + downstream text (info banner, ClinicalNotePanel)
+  // without needing a callback back to the parent worklist filter.
+  const [selectedYear, setSelectedYear] = useState(year);
+  useEffect(() => { setSelectedYear(year); }, [year]);
+  const [yearOpen, setYearOpen] = useState(false);
+  const yearOptions = [year, year - 1, year - 2];
   // Kebab menu (More actions) — anchored to the button's rect so it can
   // escape the drawer body's scroll container.
   const moreBtnRef = useRef(null);
@@ -151,7 +208,6 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   };
   const [activeTab, setActiveTab] = useState('Activity Log');
   const [showClinicalNote, setShowClinicalNote] = useState(false);
-  const [pdfPreview, setPdfPreview] = useState(null);
   const [commentText, setCommentText] = useState('');
   const [commentExpanded, setCommentExpanded] = useState(false);
 
@@ -166,8 +222,9 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const measureName = MEASURE_NAMES[gap.code] ?? gap.code;
   const statusLocked = status === 'Completed';
 
-  // Adapt raw caregapActivity entries to Timeline's entry shape.
-  const timelineEntries = (activityEntries || []).map(toTimelineEntry);
+  // Adapt raw caregapActivity entries to the shape the shared ActivityLog
+  // expects — same visual language as the HCC DiagPanel timeline.
+  const activityLogEntries = toActivityLogEntries(activityEntries);
 
   const goPrev = () => { if (canPrev) { setCurrentCode(gaps[idx - 1].code); setStatusOpen(false); } };
   const goNext = () => { if (canNext) { setCurrentCode(gaps[idx + 1].code); setStatusOpen(false); } };
@@ -178,12 +235,9 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
     logCareGapActivity(member.id, {
       when: new Date().toISOString(),
       actor: 'Alok Kumar',
-      icon: 'solar:chat-round-linear',
-      iconBg: 'var(--primary-100)',
-      iconBorder: 'color-mix(in srgb, var(--primary-300) 20%, transparent)',
-      iconColor: 'var(--primary-300)',
-      title: text,
-      detail: 'Comment',
+      t: 'comment',
+      title: 'Added a Comment',
+      commentBody: text,
     });
     setCommentText('');
     setCommentExpanded(false);
@@ -195,7 +249,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
       <ClinicalNotePanel
         member={member}
         gapCode={gap.code}
-        year={year}
+        year={selectedYear}
         onClose={() => setShowClinicalNote(false)}
       />
     )}
@@ -247,11 +301,38 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
             the right. Status + assignee no longer live here — they moved
             down to the title row where the gap's identity lives. */}
         <div className={styles.gapToolbar}>
-          <div className={styles.yearChip}>
-            <span className={styles.yearChipLabel}>Measurement Year</span>
-            <span className={styles.yearChipSep}>:</span>
-            <span className={styles.yearChipValue}>{year}</span>
-            <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--neutral-300)" />
+          <div className={styles.yearWrap}>
+            <button
+              type="button"
+              className={styles.yearChip}
+              onClick={() => setYearOpen(v => !v)}
+              aria-haspopup="listbox"
+              aria-expanded={yearOpen}
+            >
+              <span className={styles.yearChipLabel}>Measurement Year</span>
+              <span className={styles.yearChipSep}>:</span>
+              <span className={styles.yearChipValue}>{selectedYear}</span>
+              <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--neutral-300)" />
+            </button>
+            {yearOpen && (
+              <>
+                <div className={styles.yearMenuOverlay} onClick={() => setYearOpen(false)} />
+                <div className={styles.yearMenu} role="listbox">
+                  {yearOptions.map(y => (
+                    <button
+                      key={y}
+                      type="button"
+                      role="option"
+                      aria-selected={y === selectedYear}
+                      className={`${styles.yearMenuItem} ${y === selectedYear ? styles.yearMenuItemActive : ''}`}
+                      onClick={() => { setSelectedYear(y); setYearOpen(false); }}
+                    >
+                      {y}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
 
           <div className={styles.gapToolbarRight}>
@@ -304,9 +385,10 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
           <div className={styles.gapTitleActions}>
             {gap.assignee ? (
               <button
+                ref={assigneeBtnRef}
                 type="button"
                 className={styles.assigneeChip}
-                onClick={() => showToast('Assign — coming soon')}
+                onClick={() => (assigneePos ? closeAssignee() : openAssignee())}
                 title={`Assigned to ${gap.assignee}`}
                 aria-label={gap.assignee}
               >
@@ -315,9 +397,10 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
               </button>
             ) : (
               <button
+                ref={assigneeBtnRef}
                 type="button"
                 className={styles.assigneeChipEmpty}
-                onClick={() => showToast('Assign — coming soon')}
+                onClick={() => (assigneePos ? closeAssignee() : openAssignee())}
                 title="Assign"
                 aria-label="Assign"
               >
@@ -343,17 +426,32 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                 )}
               </button>
               {statusOpen && !statusLocked && (
-                <div className={styles.statusMenu}>
-                  {STATUSES.map(s => (
-                    <button
-                      key={s}
-                      className={`${styles.statusMenuItem} ${s === status ? styles.statusMenuItemActive : ''}`}
-                      onClick={() => { updateGapStatus(member.id, gap.code, s); setStatusOpen(false); }}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
+                <>
+                  <div className={styles.statusMenuOverlay} onClick={() => setStatusOpen(false)} />
+                  <div className={styles.statusMenu} role="menu">
+                    <div className={styles.statusMenuHeader}>Change Status</div>
+                    <div className={styles.statusMenuItems}>
+                      {STATUSES.map(s => {
+                        const isSel = s === status;
+                        return (
+                          <button
+                            key={s}
+                            type="button"
+                            role="menuitemradio"
+                            aria-checked={isSel}
+                            className={`${styles.statusMenuItem} ${isSel ? styles.statusMenuItemActive : ''}`}
+                            onClick={() => { updateGapStatus(member.id, gap.code, s); setStatusOpen(false); }}
+                          >
+                            <span className={styles.statusMenuItemLabel}>{s}</span>
+                            {isSel && (
+                              <Icon name="solar:check-read-linear" size={12} color="var(--primary-300)" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -369,7 +467,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                   <Icon name="solar:info-circle-linear" size={15} color="var(--status-info, #145ECC)" />
                 </span>
                 <span>
-                  Evidence uploaded will be recorded for measurement year {year}. The measurement year filter is displayed above for your reference.
+                  Evidence uploaded will be recorded for measurement year {selectedYear}. The measurement year filter is displayed above for your reference.
                 </span>
               </div>
 
@@ -458,23 +556,20 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
               </div>
             )}
           </div>
-          <Timeline
-            entries={timelineEntries}
-            emptyLabel="No activity yet for this care gap."
-            renderExtra={(entry) =>
-              entry.attachment?.blob ? (
-                <button
-                  type="button"
-                  className={styles.activityAttachment}
-                  onClick={(e) => { e.stopPropagation(); setPdfPreview(entry.attachment); }}
-                >
-                  <Icon name="solar:paperclip-linear" size={13} color="var(--primary-300)" />
-                  {entry.attachment.filename || 'Consolidated note.pdf'}
-                </button>
-              ) : null
-            }
-          />
+          <ActivityLog entries={activityLogEntries} emptyLabel="No activity yet for this care gap." />
         </div>
+      ) : activeTab === 'Outreaches' ? (
+        // Reuse the patient-profile Outreach experience — same log form,
+        // activity feed, and filter chrome. `defaultPrograms=[gap.code]`
+        // preselects this gap in the form; the activity feed itself renders
+        // the same shared entries as the patient profile Quick View, since
+        // scoping by a HEDIS gap code (no matching entries in the mock)
+        // would otherwise show an empty feed.
+        <OutreachTab
+          defaultPrograms={[gap.code]}
+          defaultLogFor="care-program"
+          hideLogForRow
+        />
       ) : (
         <div className={styles.emptyTab}>
           <Icon name="solar:hourglass-line-linear" size={36} color="var(--neutral-200)" />
@@ -484,6 +579,75 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
       </div>
       </div>
     </Drawer>
+    {assigneePos && createPortal(
+      <>
+        <div className={styles.assigneeMenuOverlay} onClick={closeAssignee} />
+        <div
+          className={styles.assigneeMenu}
+          style={{ top: assigneePos.top, right: assigneePos.right }}
+          role="menu"
+        >
+          <div className={styles.assigneeMenuHeader}>{gap.assignee ? 'Change Assignee' : 'Assign to'}</div>
+          <div className={styles.assigneeMenuSearch}>
+            <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-300)" />
+            <input
+              autoFocus
+              type="text"
+              className={styles.assigneeMenuInput}
+              placeholder="Search users…"
+              value={assigneeQuery}
+              onChange={(e) => setAssigneeQuery(e.target.value)}
+            />
+          </div>
+          <div className={styles.assigneeMenuList}>
+            {(() => {
+              const q = assigneeQuery.trim().toLowerCase();
+              const list = q
+                ? platformUsers.filter(u => u.name.toLowerCase().includes(q))
+                : platformUsers;
+              if (list.length === 0) {
+                return (
+                  <div className={styles.assigneeMenuEmpty}>
+                    {q ? 'No users match your search.' : 'No users found.'}
+                  </div>
+                );
+              }
+              return list.map(u => {
+                const isSel = gap.assignee === u.name;
+                return (
+                  <button
+                    key={u.id}
+                    type="button"
+                    className={`${styles.assigneeMenuItem} ${isSel ? styles.assigneeMenuItemActive : ''}`}
+                    onClick={() => {
+                      updateGapAssignee(member.id, gap.code, u.name);
+                      closeAssignee();
+                    }}
+                  >
+                    <Avatar variant="assignee" initials={u.initials} />
+                    <span className={styles.assigneeMenuName}>{u.name}</span>
+                    {isSel && (
+                      <Icon name="solar:check-read-linear" size={12} color="var(--primary-300)" />
+                    )}
+                  </button>
+                );
+              });
+            })()}
+          </div>
+          {gap.assignee && (
+            <button
+              type="button"
+              className={styles.assigneeMenuClear}
+              onClick={() => { updateGapAssignee(member.id, gap.code, null); closeAssignee(); }}
+            >
+              <Icon name="solar:user-cross-linear" size={14} color="var(--status-error)" />
+              Unassign
+            </button>
+          )}
+        </div>
+      </>,
+      document.body,
+    )}
     {moreMenuRect && createPortal(
       <>
         <div className={styles.moreMenuOverlay} onClick={closeMoreMenu} />
@@ -508,13 +672,6 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
         </div>
       </>,
       document.body,
-    )}
-    {pdfPreview && (
-      <PdfPreviewOverlay
-        blob={pdfPreview.blob}
-        filename={pdfPreview.filename}
-        onClose={() => setPdfPreview(null)}
-      />
     )}
     </>
   );

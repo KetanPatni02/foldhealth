@@ -2706,15 +2706,94 @@ export const useAppStore = create((set, get) => ({
   // ── HEDIS worklist — local state for now, no Supabase backing yet ───────
   // Activity log per member: { [memberId]: [{ id, type, message, at, by }] }
   caregapActivity: {
+    // Rich mock covering every ActivityLog variant so the drawer's Activity
+    // Log renders realistic data across outreach / status change / clinical
+    // note / task / assignee change / upload evidence / comment.
     hd1: [
-      { id: 'a1-1', when: '2026-05-14T14:30:00', actor: 'Delores Conn (Co-Ordinator)', icon: 'solar:phone-calling-linear', iconBg: 'var(--primary-100)', iconBorder: 'color-mix(in srgb, var(--primary-300) 20%, transparent)', iconColor: 'var(--primary-300)', title: '4th Outreach — Outgoing Call', detail: 'Completed, Engaged' },
-      { id: 'a1-2', when: '2026-04-28T11:15:00', actor: 'Alok Kumar', icon: 'solar:clipboard-text-linear', iconBg: 'var(--status-success-light)', iconBorder: 'color-mix(in srgb, var(--status-success) 20%, transparent)', iconColor: 'var(--status-success)', title: 'Status changed: Open → Closed', detail: 'Manually closed after care was documented' },
-      { id: 'a1-3', when: '2026-04-10T09:00:00', actor: 'Dr. Aldo Richman', icon: 'solar:document-add-linear', iconBg: 'var(--secondary-100)', iconBorder: 'color-mix(in srgb, var(--secondary-300) 20%, transparent)', iconColor: 'var(--secondary-300)', title: 'Clinical Note Added', detail: 'BP reading 118/76 — within target range' },
-      { id: 'a1-4', when: '2026-03-22T16:00:00', actor: 'Delores Conn (Co-Ordinator)', icon: 'solar:phone-linear', iconBg: 'var(--status-error-light)', iconBorder: 'color-mix(in srgb, var(--status-error) 25%, transparent)', iconColor: 'var(--status-error)', title: '1st Outreach — Patient Chat', detail: 'Scheduled with PCP' },
+      // Outreach — full OutreachTab.LogEntry shape (call details + transcript
+      // + recording/transcript action buttons expand on "View Note").
+      {
+        id: 'a1-1', when: '2026-05-14T14:30:00', actor: 'Delores Conn (Co-Ordinator)', t: 'outreach',
+        title: '4th Outreach — Outgoing Call', outcome: 'Completed, Engaged',
+        callDetails: {
+          via: '(581) 824-1591', to: '(336) 812-2923', durationMin: 5,
+          recordingUrl: '#', transcriptUrl: '#',
+          transcript: [
+            { speaker: 'Delores Conn', t: '00:09', text: 'Hi, Christian. Thanks for taking the time to speak with me today. How are you feeling?' },
+            { speaker: 'Christian Silva', t: '00:27', text: "Hi, Doctor. I've been feeling pretty tired lately. And I've noticed a bit of shortness of breath over the past week…" },
+            { speaker: 'Delores Conn', t: '01:12', text: 'Understood — I want to make sure your PCP knows about that.' },
+          ],
+        },
+        note: 'Patient confirmed BP readings will be logged daily; agreed to next-week follow-up.',
+      },
+      // Status change — transition pills only. No View Note.
+      {
+        id: 'a1-2', when: '2026-04-28T11:15:00', actor: 'Alok Kumar', t: 'status_change',
+        title: 'Status Changed', from: 'Open', to: 'Closed',
+      },
+      // Assignee change — from → to avatar transition.
+      {
+        id: 'a1-3', when: '2026-04-22T10:00:00', actor: 'Alok Kumar', t: 'assignee_change',
+        title: 'Assignee Changed',
+        fromAssignee: { initials: 'DH', name: 'D. Hintz' },
+        toAssignee:   { initials: 'AK', name: 'Alok Kumar' },
+      },
+      // Task — nested detail card (handle icon, title + lock, assignee,
+      // status pill, external-link icon).
+      {
+        id: 'a1-4', when: '2026-04-15T09:30:00', actor: 'Delores Conn (Co-Ordinator)', t: 'task',
+        title: 'Task Added',
+        detailCard: {
+          title: 'Request for Sign-off - Consolidated Clinical Note',
+          locked: true, handle: true,
+          assignee: 'Dr. Robert Langdon',
+          status: 'Pending',
+        },
+      },
+      // Clinical Note — nested detail card (sub-meta, bold title + Gaps
+      // chip, submitted-to subtitle, status pill, eye + kebab icons, linked
+      // score groups link).
+      {
+        id: 'a1-5', when: '2026-04-10T09:00:00', actor: 'Dr. Aldo Richman', t: 'clinical_note',
+        title: 'Clinical Note Added',
+        detailCard: {
+          subMeta: '04/10/2026, 09:00 • Dr. Aldo Richman • CBP Non-Visit N…',
+          title: 'Consolidated Clinical Note',
+          chip: '3 Gaps',
+          subtitle: 'Submitted for Review to Dr. Robert Langdon',
+          status: 'Pending Review',
+          linkedGroups: true,
+        },
+      },
+      // Comment — HCC inline paragraph under the headline.
+      {
+        id: 'a1-6', when: '2026-04-02T15:45:00', actor: 'Alok Kumar', t: 'comment',
+        title: 'Added a Comment',
+        commentBody: 'Patient confirmed home BP monitor is calibrated; readings will be shared with PCP this week.',
+      },
+      // Outreach — earlier attempt with no call details.
+      {
+        id: 'a1-7', when: '2026-03-22T16:00:00', actor: 'Delores Conn (Co-Ordinator)', t: 'outreach',
+        title: '1st Outreach — Patient Chat', outcome: 'Scheduled with PCP',
+      },
+      // Document evidence — the source PDF the gap was detected from.
+      // Anchors the timeline: shows *why* this care gap opened.
+      {
+        id: 'a1-8', when: '2026-03-15T08:30:00', actor: 'Astrana Ingestion', t: 'upload',
+        title: 'Care Gap Detected from Document',
+        file: 'CBP Progress Note - 03-15-2026.pdf', fileType: 'Visit Note',
+      },
     ],
     hd2: [
-      { id: 'a2-1', when: '2026-05-10T10:00:00', actor: 'Sarah Lee', icon: 'solar:phone-calling-linear', iconBg: 'var(--primary-100)', iconBorder: 'color-mix(in srgb, var(--primary-300) 20%, transparent)', iconColor: 'var(--primary-300)', title: '2nd Outreach — Outgoing Call', detail: 'No answer — voicemail left' },
-      { id: 'a2-2', when: '2026-04-18T13:45:00', actor: 'Marcus Chen', icon: 'solar:clipboard-add-linear', iconBg: 'var(--neutral-50)', iconBorder: 'color-mix(in srgb, var(--neutral-300) 12%, transparent)', iconColor: 'var(--neutral-300)', title: 'Task Added', detail: 'Follow up for colorectal screening referral' },
+      { id: 'a2-1', when: '2026-05-10T10:00:00', actor: 'Sarah Lee', t: 'outreach',
+        title: '2nd Outreach — Outgoing Call', outcome: 'No answer — voicemail left' },
+      { id: 'a2-2', when: '2026-04-18T13:45:00', actor: 'Marcus Chen', t: 'task',
+        title: 'Task Added',
+        detailCard: {
+          title: 'Follow up for colorectal screening referral',
+          handle: true, assignee: 'Marcus Chen', status: 'Pending',
+        },
+      },
     ],
   },
   // Status updates applied to the local HEDIS mock data via setHedisMembers.
@@ -3062,6 +3141,39 @@ export const useAppStore = create((set, get) => ({
           gaps: (m.gaps || []).map(g => g.code === gapCode ? { ...g, status: nextStatus } : g),
         }
       ),
+    }));
+  },
+  updateGapAssignee: (memberId, gapCode, nextAssignee) => {
+    track('hedis.gap_assignee_updated', { memberId, gapCode, assignee: nextAssignee });
+    // Snapshot the previous assignee before we overwrite it so the activity
+    // entry can show a `from → to` avatar transition.
+    const s0 = get();
+    const prevMember = (s0.hedisMembers || []).find(m => m.id === memberId);
+    const prevGap    = prevMember?.gaps?.find(g => g.code === gapCode);
+    const prevName   = prevGap?.assignee || null;
+    const initialsOf = (n) => (String(n || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '');
+    set(s => ({
+      hedisMembers: (s.hedisMembers || []).map(m =>
+        m.id !== memberId ? m : {
+          ...m,
+          gaps: (m.gaps || []).map(g => g.code === gapCode ? { ...g, assignee: nextAssignee } : g),
+        }
+      ),
+      caregapActivity: {
+        ...s.caregapActivity,
+        [memberId]: [
+          {
+            id: `assign-${Date.now()}`,
+            at: new Date().toISOString(),
+            actor: 'Alok Kumar',
+            t: 'assignee_change',
+            title: 'Assignee Changed',
+            fromAssignee: prevName ? { initials: initialsOf(prevName), name: prevName } : null,
+            toAssignee:   nextAssignee ? { initials: initialsOf(nextAssignee), name: nextAssignee } : null,
+          },
+          ...(s.caregapActivity[memberId] || []),
+        ],
+      },
     }));
   },
   bulkUpdateGapStatuses: (memberId, updates) => {

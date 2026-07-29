@@ -5,21 +5,38 @@
   margin: 0 4px; flex-shrink: 0;
 }
 
-/* Drawer body override — zero out default padding so banner is full-bleed */
-.drawerBody { padding: 0 !important; }
+/* Drawer body override — no padding + no scroll here; the tab content pane
+   below owns the only scroll region so the toolbar / title / suggested
+   actions / tab bar stay pinned when the activity log or outreach feed
+   grows. `overflow: hidden` beats Drawer.module.css's default `overflow-y:
+   auto` (which would let the whole surface scroll). */
+.drawerBody {
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden !important;
+  min-height: 0;
+}
 
 /* PatientBanner stretches edge-to-edge; its own background + border-bottom handle separation */
 .patientBannerWrap { }
 
-/* Body wrapper — no default padding; each section handles its own so the
-   toolbar strip can extend edge-to-edge while the title / suggested-actions
-   / tabs stay indented. */
-.contentBody { padding: 0; display: flex; flex-direction: column; }
+/* Body wrapper — flex column that fills the drawer body. Children default
+   to `flex-shrink: 0` (pinned); only .tabContentWrap grows and scrolls. */
+.contentBody {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
 
-/* Gap header block — title row + expandable More Details. Padding is
-   applied per-child so the toolbar strip above can stay full-bleed. */
+/* Gap header block — pinned above the scrolling tab content. Padding is
+   applied per-child so the toolbar strip can stay full-bleed. */
 .gapHeader {
   padding: 0;
+  flex-shrink: 0;
 }
 /* Flat, transparent toolbar row — hairline bottom border separates it from
    the title row below. Fixed 40px total height per spec. */
@@ -59,25 +76,56 @@
 }
 .moreMenuItem:hover { background: var(--neutral-50); }
 
-/* Content sections that follow the toolbar — share 16px horizontal indent. */
-.gapTitleWrap { padding: 8px 16px; }
-.suggestSection { padding: 4px 16px 12px 16px; display: flex; flex-direction: column; gap: 10px; }
-.tabBarWrap { padding: 0 16px; }
-.tabContentWrap { padding: 14px 16px 20px 16px; }
+/* Content sections that follow the toolbar — share 16px horizontal indent.
+   All pinned (flex-shrink: 0) so the tab content pane below is the only
+   region that scrolls when its feed grows past the drawer height. */
+.gapTitleWrap  { padding: 8px 16px; flex-shrink: 0; }
+.suggestSection { padding: 4px 16px 12px 16px; display: flex; flex-direction: column; gap: 10px; flex-shrink: 0; }
+.tabBarWrap    { padding: 0 16px; flex-shrink: 0; }
+.tabContentWrap {
+  padding: 14px 16px 20px 16px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
 
 /* Measurement Year scope chip — compact 24px pill with the value inline
-   (`Label : Value ⌄`), matching the toolbar's tightened height. */
+   (`Label : Value ⌄`), matching the toolbar's tightened height. Wrapper
+   is `position:relative` so the year dropdown menu anchors to the chip. */
+.yearWrap { position: relative; }
 .yearChip {
   display: inline-flex; align-items: center; gap: 4px;
   height: 24px; padding: 0 8px; border-radius: 4px;
   border: 0.5px solid var(--neutral-150);
   background: var(--neutral-0);
   font-size: 12px; color: var(--neutral-400);
-  cursor: default; white-space: nowrap;
+  cursor: pointer; white-space: nowrap;
 }
+.yearChip:hover { border-color: var(--neutral-200); }
 .yearChipLabel { color: var(--neutral-300); }
 .yearChipSep   { color: var(--neutral-300); }
 .yearChipValue { font-weight: 500; color: var(--neutral-500); }
+
+/* Year dropdown — left-anchored below the chip. Follows the same visual
+   language as .statusMenu / .moreMenu so all popovers in this drawer read
+   as one system. */
+.yearMenuOverlay {
+  position: fixed; inset: 0; z-index: 40; background: transparent;
+}
+.yearMenu {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 50;
+  background: var(--neutral-0); border: 0.5px solid var(--neutral-150);
+  border-radius: 8px; box-shadow: var(--shadow-popover);
+  padding: 4px; min-width: 96px;
+}
+.yearMenuItem {
+  display: block; width: 100%; padding: 7px 12px; background: none;
+  border: none; text-align: left; font-size: 13px; cursor: pointer;
+  border-radius: 5px; color: var(--neutral-400);
+}
+.yearMenuItem:hover { background: var(--neutral-50); }
+.yearMenuItemActive { color: var(--primary-300); font-weight: 500; }
 
 /* Title row (below toolbar) — big title/subtitle on the left, assignee +
    status pinned to the right so the gap's identity and its state read
@@ -156,22 +204,118 @@
   white-space: nowrap;
 }
 .statusBtn:disabled { cursor: not-allowed; opacity: 0.7; }
-/* Right-aligned to the button — the status button sits at the drawer's
-   right edge, so anchoring the menu's right side keeps it inside the panel
-   instead of overflowing past the border. */
+/* Status change menu — mirrors the HCC DiagPanel `DosStatusMenu` so the two
+   drawers use one popover language. Header + item list with a check icon on
+   the currently-selected status; danger variant reserved for terminal
+   rejection statuses (not used by HEDIS yet). Right-anchored to the trigger
+   so it stays inside the drawer body. */
+.statusMenuOverlay {
+  position: fixed; inset: 0; z-index: 40; background: transparent;
+}
 .statusMenu {
   position: absolute; top: calc(100% + 4px); right: 0; z-index: 50;
-  background: var(--neutral-0); border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0); border: 0.5px solid var(--neutral-100);
   border-radius: 8px; box-shadow: var(--shadow-popover);
-  padding: 4px; min-width: 140px;
+  padding: 8px; min-width: 210px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.statusMenuHeader {
+  padding: 4px 8px;
+  font-size: 14px; font-weight: 500; color: var(--neutral-300);
+}
+.statusMenuItems {
+  display: flex; flex-direction: column; gap: 4px;
 }
 .statusMenuItem {
-  display: block; width: 100%; padding: 7px 12px; background: none;
-  border: none; text-align: left; font-size: 13px; cursor: pointer;
-  border-radius: 5px; font-family: 'Inter', sans-serif; color: var(--neutral-400);
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: transparent; border: none;
+  min-height: 32px;
+  cursor: pointer;
+  transition: background 0.12s;
+  text-align: left;
 }
 .statusMenuItem:hover { background: var(--neutral-50); }
-.statusMenuItemActive { color: var(--primary-300); font-weight: 500; }
+.statusMenuItemActive { background: var(--primary-50); }
+.statusMenuItemActive:hover { background: var(--primary-50); }
+.statusMenuItemLabel {
+  flex: 1;
+  font-size: 14px; color: var(--neutral-400);
+}
+
+/* Assignee picker — portalled searchable list of platform users
+   (Settings → Account). Same visual language as the status menu, plus a
+   search input and per-row avatar. */
+.assigneeMenuOverlay {
+  position: fixed; inset: 0; z-index: 9500; background: transparent;
+}
+.assigneeMenu {
+  position: fixed; z-index: 9501;
+  min-width: 260px; max-width: 320px; max-height: 360px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-100);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+  padding: 8px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.assigneeMenuHeader {
+  padding: 4px 8px;
+  font-size: 14px; font-weight: 500; color: var(--neutral-300);
+}
+.assigneeMenuSearch {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+}
+.assigneeMenuInput {
+  flex: 1; min-width: 0;
+  border: none; background: none; outline: none;
+  font-size: 13px; font-weight: 400; color: var(--neutral-500);
+}
+.assigneeMenuInput::placeholder { color: var(--neutral-300); }
+.assigneeMenuList {
+  display: flex; flex-direction: column; gap: 2px;
+  overflow-y: auto;
+  min-height: 40px;
+  max-height: 240px;
+}
+.assigneeMenuItem {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: transparent; border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+}
+.assigneeMenuItem:hover { background: var(--neutral-50); }
+.assigneeMenuItemActive { background: var(--primary-50); }
+.assigneeMenuItemActive:hover { background: var(--primary-50); }
+.assigneeMenuName {
+  flex: 1; min-width: 0;
+  font-size: 13px; font-weight: 500; color: var(--neutral-500);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.assigneeMenuEmpty {
+  padding: 10px 8px;
+  font-size: 13px; color: var(--neutral-300);
+  text-align: center;
+}
+.assigneeMenuClear {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 8px;
+  margin-top: 2px;
+  border: none; background: transparent;
+  border-top: 0.5px solid var(--neutral-100);
+  border-radius: 0;
+  cursor: pointer;
+  font-size: 13px; color: var(--status-error);
+  text-align: left;
+}
+.assigneeMenuClear:hover { background: var(--neutral-50); }
 
 /* Title + subrow */
 .gapTitle {
@@ -288,18 +432,6 @@
 .commentActions {
   display: flex; align-items: center; justify-content: flex-start; gap: 8px;
 }
-.activityAttachment {
-  display: inline-flex; align-items: center; gap: 6px;
-  margin-top: 6px;
-  padding: 8px 12px; border-radius: 8px;
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  font-size: 13px; font-weight: 500; color: var(--neutral-400);
-  font-family: 'Inter', sans-serif; cursor: pointer;
-  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.activityAttachment:hover { border-color: var(--primary-300); }
-
 /* ── Empty tab ── */
 .emptyTab {
   display: flex; flex-direction: column; align-items: center;

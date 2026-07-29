@@ -28,6 +28,7 @@
 .btn:hover:not(:disabled) { background: var(--neutral-50); }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .btn.active { background: var(--primary-300); color: #fff; border-color: var(--primary-300); }
+.btn.active:hover:not(:disabled) { background: var(--primary-400); border-color: var(--primary-400); }
 
 .ellipsis {
   color: var(--neutral-300);
