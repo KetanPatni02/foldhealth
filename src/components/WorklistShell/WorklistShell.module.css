@@ -84,9 +84,10 @@
   font-size: 14px;
 }
 
-/* Header row — pinned to 32px so checkbox state toggles / bulk-bar
-   appearances don't reflow the row. The single row-level bottom border
-   is what makes the header read as one continuous line even when
+/* Header row — pinned to 32px via an explicit height + zero vertical
+   padding on the cells, so checkbox state toggles never reflow the row.
+   Content is centered via `vertical-align: middle`. The single
+   row-level bottom border reads as one continuous divider even when
    sticky-left cells paint their own backgrounds. */
 .headRow {
   height: 32px;
@@ -95,16 +96,18 @@
   position: sticky;
   top: 0;
   z-index: 2;
+  height: 32px;
+  box-sizing: border-box;
   background: var(--neutral-0);
   border-bottom: 1px solid var(--neutral-150);
 }
 
-/* SortableHeader.module.css now sets the canonical header typography
-   (12px / weight 500 / neutral-300), so plain <th className={styles.th}>
-   just needs the matching values here. Both variants land at the same
-   visual weight without any !important hack. */
+/* Plain <th className={styles.th}> — SortableHeader.module.css sets the
+   same typography for its own header, so both variants match visually.
+   Vertical padding is 0 (row height controls height); horizontal padding
+   14px matches SortableHeader. */
 .th {
-  padding: 8px 14px;
+  padding: 0 14px;
   font-size: 12px;
   font-weight: 500;
   color: var(--neutral-300);
