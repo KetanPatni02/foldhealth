@@ -6,7 +6,7 @@ import { Badge } from '../Badge/Badge';
 import { ActionButton } from '../ActionButton/ActionButton';
 import { Checkbox } from '../ui/checkbox';
 import { Icon } from '../Icon/Icon';
-import { useTableSort } from '../Table/useTableSort';
+import { useTableSort } from '../SortableHeader/useTableSort';
 import styles from './WorklistShell.stories.module.css';
 
 export default {
@@ -56,8 +56,8 @@ const COLUMNS = [
   { key: 'status',   label: 'Status',        sortKey: 'status' },
   { key: 'assignee', label: 'Assignee' },
   { key: 'start',    label: 'Start Date',    sortKey: 'startDate' },
-  { key: 'mins',     label: 'Billable Mins', sortKey: 'mins',    align: 'right' },
-  { key: 'actions',  label: 'Actions',       sticky: 'right',    width: 100, align: 'right' },
+  { key: 'mins',     label: 'Billable Mins', sortKey: 'mins' },
+  { key: 'actions',  label: 'Actions',       sticky: 'right',    width: 100 },
 ];
 
 export const Default = {
@@ -117,8 +117,8 @@ export const Default = {
           <td className={styles.td}><Badge variant={cfg.variant} label={cfg.label} icon={cfg.icon} /></td>
           <td className={styles.td}>{r.assignee}</td>
           <td className={styles.td}>{r.startDate}</td>
-          <td className={styles.td} style={{ textAlign: 'right' }}>{fmtMins(r.mins)}</td>
-          <td className={`${styles.td} ${styles.stickyRight}`} style={{ textAlign: 'right' }}>
+          <td className={styles.td}>{fmtMins(r.mins)}</td>
+          <td className={`${styles.td} ${styles.stickyRight}`}>
             <div className={styles.rowActions}>
               <ActionButton icon="solar:document-text-linear" size="L" tooltip="View" />
               <span className={styles.actionDivider} />

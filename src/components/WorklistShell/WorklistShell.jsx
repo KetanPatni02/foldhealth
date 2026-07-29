@@ -3,7 +3,7 @@ import { ActionButton } from '../ActionButton/ActionButton';
 import { SearchIconButton } from '../SearchIconButton/SearchIconButton';
 import { SearchBar } from '../SearchBar/SearchBar';
 import { Checkbox } from '../ui/checkbox';
-import { SortableHeader } from '../Table/SortableHeader';
+import { SortableHeader } from '../SortableHeader/SortableHeader';
 import { Pagination } from '../Pagination/Pagination';
 import { BulkBar } from '../BulkBar/BulkBar';
 import { TableSkeleton } from '../Skeleton/TableSkeleton';

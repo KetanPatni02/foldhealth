@@ -84,12 +84,12 @@
   font-size: 14px;
 }
 
-/* Header row lives here so every cell in the row gets the same bottom
-   border — individual .th cells don't paint their own so the border reads
-   as one line across the row. The tr also pins a min-height so bulk-bar
-   toggles / checkbox state changes don't reflow the header. */
+/* Header row — pinned to 32px so checkbox state toggles / bulk-bar
+   appearances don't reflow the row. The single row-level bottom border
+   is what makes the header read as one continuous line even when
+   sticky-left cells paint their own backgrounds. */
 .headRow {
-  height: 40px;
+  height: 32px;
 }
 .headRow > th {
   position: sticky;
@@ -99,14 +99,14 @@
   border-bottom: 1px solid var(--neutral-150);
 }
 
-/* Higher specificity via `.headRow > .th` beats SortableHeader.module.css
-   so the sortable + plain headers render with identical typography. The
-   `!important` on font-weight overrides the browser's default `bold` on
-   <th> which no class selector can otherwise cascade past. */
-.headRow > .th {
+/* SortableHeader.module.css now sets the canonical header typography
+   (12px / weight 500 / neutral-300), so plain <th className={styles.th}>
+   just needs the matching values here. Both variants land at the same
+   visual weight without any !important hack. */
+.th {
   padding: 8px 14px;
-  font-size: 12px !important;
-  font-weight: 500 !important;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--neutral-300);
   text-align: left;
   white-space: nowrap;
