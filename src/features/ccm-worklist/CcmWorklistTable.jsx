@@ -137,9 +137,12 @@ export function CcmWorklistTable() {
   const members = useAppStore(s => s.ccmWorklistMembers);
   const loading = useAppStore(s => s.ccmWorklistLoading);
   const fetchMembers = useAppStore(s => s.fetchCcmWorklistMembers);
-  // Search query is owned by the shared TabBar (via useAppStore.searchQuery)
-  // so the top-bar search field TOC uses can drive CCM's row filter too.
+  // Search query + filter-bar visibility are both owned by the shared TabBar
+  // (via useAppStore.searchQuery / .showFilterBar) — the TOC pattern —
+  // so the top-bar Filter icon toggles CCM's chip row the same way it
+  // toggles TOC's <FilterBar />.
   const searchQuery = useAppStore(s => s.searchQuery);
+  const showFilterBar = useAppStore(s => s.showFilterBar);
 
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [billableFilter, setBillableFilter] = useState(EMPTY_TIME_FILTER);
@@ -241,9 +244,12 @@ export function CcmWorklistTable() {
           chrome TOC uses. Below it we render just the filter chip row
           and the sticky-column table. */}
 
-      {/* Filter chip row. All the bucket-based chips render from
-          FILTER_KEYS; Billable Mins + Unlogged Mins slot in between
-          memberStatus and unloggedUser to match the Figma order. */}
+      {/* Filter chip row. Visible only when the TabBar's Filter icon has
+          been toggled on (showFilterBar) — same pattern TOC uses for its
+          FilterBar. All the bucket-based chips render from FILTER_KEYS;
+          Billable Mins + Unlogged Mins slot in between memberStatus and
+          unloggedUser to match the Figma order. */}
+      {showFilterBar && (
       <div className={styles.chipRow}>
         {FILTER_KEYS.filter(f => f.key !== 'unloggedUser').map(f => (
           <FilterChip
@@ -299,6 +305,7 @@ export function CcmWorklistTable() {
           Clear All
         </button>
       </div>
+      )}
 
       {/* Table body. Uses the same inline th styles + sticky columns as
           src/features/toc-worklist/WorklistTable.jsx. */}
@@ -354,7 +361,12 @@ export function CcmWorklistTable() {
         onPageSizeChange={(n) => { setPerPage(n); setPage(1); }}
       />
 
-      <BulkBar />
+      {/* Feed CCM's local selection (a Set) into the shared BulkBar so
+          the floating action bar surfaces the same way TOC's does. */}
+      <BulkBar
+        selectedIds={Array.from(selectedIds)}
+        onClear={() => setSelectedIds(new Set())}
+      />
     </div>
   );
 }

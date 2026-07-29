@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
@@ -7,6 +8,66 @@ import { Checkbox } from '../../components/ui/checkbox';
 import { useAppStore } from '../../store/useAppStore';
 import { CcmBillingReviewDrawer } from './CcmBillingReviewDrawer';
 import styles from './CcmWorklistRow.module.css';
+
+// Portalled dropdown menu for the row's three-dots action. Mirrors the
+// TOC row's DropdownMenu — Communication / Care Actions / Automation /
+// Admin sections — so the two worklists share one menu vocabulary.
+function RowDropdownMenu({ member, onClose }) {
+  const showToast = useAppStore(s => s.showToast);
+  const requestAddTask = useAppStore(s => s.requestAddTask);
+  const navigateToPatient = useAppStore(s => s.navigateToPatient);
+
+  const stub = (label) => () => { showToast(`${label} – coming soon`); onClose(); };
+
+  return (
+    <div className={styles.dropdown} onClick={e => e.stopPropagation()}>
+      <div className={styles.dropdownSection}>Communication</div>
+      {['Send SMS', 'Send Email', 'Start Meeting', 'Chat'].map(l => (
+        <button key={l} className={styles.dropdownItem} onClick={stub(l)}>
+          <Icon
+            name={l === 'Send SMS' ? 'solar:chat-round-line-linear'
+              : l === 'Send Email' ? 'solar:letter-linear'
+              : l === 'Start Meeting' ? 'solar:videocamera-record-linear'
+              : 'solar:chat-dots-linear'}
+            size={18}
+            color="var(--neutral-300)"
+          />
+          {l}
+        </button>
+      ))}
+      <div className={styles.dropdownDivider} />
+      <div className={styles.dropdownSection}>Care Actions</div>
+      {['Send Assessment', 'Initiate Protocol', 'Send Education', 'Warm Referral', 'Add to Program', 'Upload File'].map(l => (
+        <button key={l} className={styles.dropdownItem} onClick={stub(l)}>
+          <Icon name="solar:clipboard-check-linear" size={18} color="var(--neutral-300)" />
+          {l}
+        </button>
+      ))}
+      <button className={styles.dropdownItem} onClick={() => { requestAddTask?.({ member: member?.name }); onClose(); }}>
+        <Icon name="solar:checklist-minimalistic-linear" size={18} color="var(--neutral-300)" />
+        Add Task
+      </button>
+      <div className={styles.dropdownDivider} />
+      <div className={styles.dropdownSection}>Automation</div>
+      <button className={styles.dropdownItem} onClick={stub('Run Automation')}>
+        <Icon name="solar:bolt-linear" size={18} color="var(--neutral-300)" />
+        Run Automation
+      </button>
+      <div className={styles.dropdownDivider} />
+      <div className={styles.dropdownSection}>Admin Actions</div>
+      <button
+        className={styles.dropdownItem}
+        onClick={() => {
+          if (member?.patientId) navigateToPatient(member.patientId, { profileTab: 'Care Programs', programCode: 'CCM' });
+          onClose();
+        }}
+      >
+        <Icon name="solar:folder-open-linear" size={18} color="var(--neutral-300)" />
+        Open Care Program
+      </button>
+    </div>
+  );
+}
 
 const LANG_MAP = { en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese', ko: 'Korean', vi: 'Vietnamese', hi: 'Hindi', pa: 'Punjabi', ch: 'Chinese' };
 
@@ -36,6 +97,35 @@ export function CcmWorklistRow({ member, isSelected, onSelect }) {
   const navigateToPatient = useAppStore(s => s.navigateToPatient);
   const showToast = useAppStore(s => s.showToast);
   const [billingOpen, setBillingOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState(null);
+  const menuBtnRef = useRef(null);
+
+  // Close on outside click; the initial click that opened the menu is
+  // deferred via rAF so it doesn't immediately fall through and close it.
+  useEffect(() => {
+    if (!menuPos) return;
+    const onDoc = (e) => {
+      if (!e.target.closest(`.${styles.dropdown}`)) setMenuPos(null);
+    };
+    const raf = requestAnimationFrame(() => document.addEventListener('click', onDoc));
+    return () => {
+      cancelAnimationFrame(raf);
+      document.removeEventListener('click', onDoc);
+    };
+  }, [menuPos]);
+
+  const toggleMenu = (e) => {
+    e.stopPropagation();
+    if (menuPos) { setMenuPos(null); return; }
+    const rect = menuBtnRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const dropdownH = 420;
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    const top = spaceBelow < dropdownH
+      ? Math.max(8, rect.top - Math.min(dropdownH, rect.top - 8))
+      : rect.bottom + 4;
+    setMenuPos({ top, right: window.innerWidth - rect.right });
+  };
 
   const m = member;
 
@@ -170,10 +260,22 @@ export function CcmWorklistRow({ member, isSelected, onSelect }) {
           <span className={styles.actionDivider} />
           <ActionButton icon="solar:phone-linear" size="L" tooltip="Call patient" />
           <span className={styles.actionDivider} />
-          <ActionButton icon="solar:menu-dots-linear" size="L" tooltip="More options" />
+          <ActionButton
+            ref={menuBtnRef}
+            icon="solar:menu-dots-linear"
+            size="L"
+            tooltip="More options"
+            onClick={toggleMenu}
+          />
         </div>
       </td>
     </tr>
+    {menuPos && createPortal(
+      <div style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999 }}>
+        <RowDropdownMenu member={m} onClose={() => setMenuPos(null)} />
+      </div>,
+      document.body,
+    )}
     {billingOpen && (
       <CcmBillingReviewDrawer member={m} onClose={() => setBillingOpen(false)} />
     )}
