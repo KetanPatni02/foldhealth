@@ -28,10 +28,10 @@ function Field({ label, required, filled, children }) {
  * @param {function} props.onClose
  * @param {function} [props.onSent]   – called after a successful send
  */
-export function SendLetterDrawer({ letterName = 'Letter', onClose, onSent }) {
+export function SendLetterDrawer({ letterName = 'Letter', memberName, memberId, onClose, onSent }) {
   const [form, setForm] = useState({
-    memberName: 'Annette Brave',
-    memberId: '23094852345',
+    memberName: memberName || 'Annette Brave',
+    memberId: memberId || '23094852345',
     companyId: '236278272828',
     sendDate: '06/27/2025',
     street: '4, Privet Drive, apartment 201',

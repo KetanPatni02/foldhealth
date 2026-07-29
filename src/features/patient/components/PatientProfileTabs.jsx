@@ -12,6 +12,7 @@ import { VitalsLabsTab } from './VitalsLabsTab';
 import { CommsTab } from './CommsTab';
 import { OutreachTab } from './OutreachTab';
 import { SummaryTab } from './SummaryTab';
+import { TasksTab } from './TasksTab';
 import { CARE_GAP_SECTIONS_EXTENDED, CARE_GAP_TABS } from '../data/careGapsMock';
 import styles from './PatientProfileTabs.module.css';
 
@@ -212,7 +213,9 @@ export function PatientProfileTabs({ patientId }) {
 
         {activeTab === 5 && <SummaryTab />}
 
-        {activeTab > 5 && (
+        {activeTab === 6 && <TasksTab />}
+
+        {activeTab > 6 && (
           <div className={styles.placeholder}>
             <Icon name="solar:document-text-linear" size={32} color="var(--neutral-150)" />
             <span>Coming soon</span>

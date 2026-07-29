@@ -2859,6 +2859,50 @@ export const useAppStore = create((set, get) => ({
     });
   },
 
+  // ─── SNP worklist ──────────────────────────────────────────────────────
+  snpWorklistMembers: [],
+  snpWorklistLoading: false,
+  fetchSnpWorklistMembers: async () => {
+    set({ snpWorklistLoading: true });
+    const { data, error } = await supabase
+      .from('snp_worklist_members')
+      .select('*')
+      .order('name', { ascending: true });
+    if (error || !data?.length) {
+      if (error) console.warn('fetchSnpWorklistMembers — falling back:', error.message);
+      const { SNP_WORKLIST_MEMBERS } = await import('../features/snp-worklist/data/mock');
+      set({ snpWorklistMembers: SNP_WORKLIST_MEMBERS, snpWorklistLoading: false });
+      return;
+    }
+    set({
+      snpWorklistMembers: data.map(r => ({
+        id:               r.id,
+        initials:         r.initials,
+        name:             r.name,
+        gender:           r.gender,
+        age:              r.age,
+        memberId:         r.member_id,
+        language:         r.language || 'en',
+        programSubStatus: r.program_sub_status,
+        carePlanStatus:   r.care_plan_status,
+        nextActionDue:    r.next_action_due,
+        outreach:         r.outreach || null,
+        assigneeId:       r.assignee_id,
+        assigneeName:     r.assignee_name,
+        assigneeInitials: r.assignee_initials,
+        triggerDate:      r.trigger_date,
+        lastAdmission:    r.last_admission,
+        trigger:          r.trigger,
+        riskIq:           r.risk_iq || 'Undetermined',
+        tags:             r.tags || [],
+        tagsMore:         r.tags_more ?? 0,
+        taskCount:        r.task_count ?? 0,
+        patientId:        r.patient_id,
+      })),
+      snpWorklistLoading: false,
+    });
+  },
+
   // ─── CCM Billing ───────────────────────────────────────────────────────
   // Keyed by patientId — the Billing Review step only ever needs one
   // patient's data at a time, so we avoid loading everything up front.
@@ -7567,6 +7611,20 @@ export const useAppStore = create((set, get) => ({
       return formRowToJs(retry.data);
     }
     return formRowToJs(data);
+  },
+
+  // Look up a single full form by its (case-insensitive) name — used to render a
+  // named form (e.g. "HRA Assessment form") inside the program workflow.
+  fetchFormByName: async (name) => {
+    if (!name) return null;
+    const { data, error } = await supabase
+      .from('forms')
+      .select('*')
+      .ilike('name', name)
+      .order('updated_at', { ascending: false, nullsFirst: false })
+      .limit(1);
+    if (error || !data || !data.length) return null;
+    return formRowToJs(data[0]);
   },
 
   // Resolve the current user's profiles.id to stamp as updated_by. The DB

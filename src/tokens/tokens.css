@@ -57,6 +57,7 @@
   --shadow-popover: 0 12px 60px rgba(0, 0, 0, 0.06);
   --shadow-drawer:  -2px 0 24px rgba(0, 0, 0, 0.04);
   --shadow-card:    0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-bulk-bar: 4px 15px 60px 24px rgba(0, 0, 0, 0.15);
 
   /* Modal / dialog backdrop tint */
   --surface-overlay: rgba(0, 0, 0, 0.40);
@@ -214,6 +215,7 @@
   --shadow-popover: 0 12px 60px rgba(0, 0, 0, 0.50);
   --shadow-drawer:  -2px 0 24px rgba(0, 0, 0, 0.40);
   --shadow-card:    0 1px 3px rgba(0, 0, 0, 0.30);
+  --shadow-bulk-bar: 4px 15px 60px 24px rgba(0, 0, 0, 0.45);
 
   /* Modal backdrop a touch denser on dark */
   --surface-overlay: rgba(0, 0, 0, 0.60);

@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
+import { MenuPopover } from '../../../components/Popover/MenuPopover';
 import { Button } from '../../../components/Button/Button';
 import { BannerExpandIcon } from '../../../components/Icon/BannerExpandIcon';
 import { ProgressRing } from '../../hcc/DiagPanel/ReviewProgressPopover';
@@ -12,6 +14,8 @@ import { CcmBillingReview } from './CcmBillingReview';
 import { CcmTimerWidget } from './CcmTimerWidget';
 import { SendLetterDrawer } from './SendLetterDrawer';
 import { PreVisitStep } from './PreVisitStep';
+import { AssessmentFormView } from './AssessmentFormView';
+import { CarePlanView } from './CarePlanView';
 import styles from './ProgramDetailView.module.css';
 
 // Programs with a custom step list — CCM's workflow is billing-centric, not
@@ -83,6 +87,14 @@ function SectionHeader({ name, expanded, onToggle }) {
 
 const LETTER_SUB_TABS = ['All', 'Sent', 'Not Sent'];
 
+// Steps that render a saved form (from Settings → Content → Forms) in the
+// Review layout. Keyed by step name → the form to load + review-header meta.
+const ASSESSMENT_STEPS = {
+  HRA: { formName: 'HRA Assessment form', title: 'Health Risk Assessment', filledBy: 'Annette Brave', filledDate: '10/11/24', reviewedBy: 'Robert Fox', reviewedDate: '10/11/24' },
+  'BRCSI Assessment': { formName: 'BRCSI Assessment form', title: 'BRCSI Assessment', filledBy: 'Annette Brave', filledDate: '10/11/24', reviewedBy: 'Robert Fox', reviewedDate: '10/11/24' },
+  'SNP Assessment': { formName: 'SNP Assessment form', title: 'SNP Assessment', filledBy: 'Annette Brave', filledDate: '10/11/24', reviewedBy: 'Robert Fox', reviewedDate: '10/11/24' },
+};
+
 export function ProgramDetailView({ program, onClose, startAtFirstStep = false }) {
   const isCcm = program.code === 'CCM';
   const stepList = stepsFor(program.code);
@@ -103,7 +115,14 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
   );
   const [activeLetterTab, setActiveLetterTab] = useState('All');
   const [selectedLetters, setSelectedLetters] = useState(() => new Set());
-  const [sendDrawerOpen, setSendDrawerOpen] = useState(false);
+  // Send-letter drawer target: null | { letterName, clearOnSent }. Opened from
+  // the bulk bar (all/selected) or a single row's send icon.
+  const [sendTarget, setSendTarget] = useState(null);
+  // Per-row "more" menu (Preview / Download): { id, rect } | null.
+  const [rowMenu, setRowMenu] = useState(null);
+
+  // The member whose care program we're in — drives the send-letter prefill.
+  const currentPatient = useAppStore(s => s.patients.find(p => p.id === s.selectedPatientId));
 
   const allLettersSelected = selectedLetters.size === PROGRAM_LETTERS_MOCK.length && PROGRAM_LETTERS_MOCK.length > 0;
   const someLettersSelected = selectedLetters.size > 0 && !allLettersSelected;
@@ -112,10 +131,10 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
   const toggleLetter = (id) =>
     setSelectedLetters(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
-  // Download every selected letter as a file, then confirm with a success toast.
-  const downloadSelectedLetters = () => {
-    const chosen = PROGRAM_LETTERS_MOCK.filter(l => selectedLetters.has(l.id));
-    if (chosen.length === 0) return;
+  // Download the given letters as files, then confirm with a success toast.
+  // Defaults to the current bulk selection.
+  const downloadLetters = (chosen) => {
+    if (!chosen || chosen.length === 0) return;
     chosen.forEach(letter => {
       const body =
         `${letter.fileName}\n\n` +
@@ -136,12 +155,15 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
       chosen.length === 1 ? 'File downloaded successfully' : `${chosen.length} files downloaded successfully`,
     );
   };
+  const downloadSelectedLetters = () => downloadLetters(PROGRAM_LETTERS_MOCK.filter(l => selectedLetters.has(l.id)));
 
   const activeStepObj = ALL_STEPS.find(s => s.id === activeStep);
   const isOutreachStep = activeStepObj?.name === 'Outreach';
   const isBillingStep = activeStepObj?.kind === 'billing';
   const isPreVisitStep = activeStepObj?.name === 'Pre-visit';
-  const isLettersPane = !isBillingStep && !isOutreachStep && !isPreVisitStep;
+  const isCarePlanStep = activeStepObj?.name === 'Care Plan';
+  const assessmentCfg = ASSESSMENT_STEPS[activeStepObj?.name];
+  const isLettersPane = !isBillingStep && !isOutreachStep && !isPreVisitStep && !isCarePlanStep && !assessmentCfg;
 
   const [detailsExpanded, setDetailsExpanded] = useState(false);
 
@@ -348,30 +370,71 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
         {/* Right content */}
         <div className={styles.content}>
           <div className={styles.contentHeader}>
-            <span className={styles.contentTitle}>
-              {isBillingStep ? 'Billing Review'
-                : isOutreachStep ? 'Outreach'
-                : isPreVisitStep ? 'Pre-visit'
-                : 'Program Related Letters'}
-            </span>
+            {assessmentCfg ? (
+              <div className={styles.assessmentHeader}>
+                <Icon name="solar:clipboard-text-linear" size={18} color="var(--primary-300)" />
+                <div className={styles.assessmentHeaderText}>
+                  <span className={styles.assessmentTitle}>{assessmentCfg.title}</span>
+                  <span className={styles.assessmentMeta}>
+                    Filled by {assessmentCfg.filledBy} on {assessmentCfg.filledDate} • Reviewed by {assessmentCfg.reviewedBy} on {assessmentCfg.reviewedDate}
+                  </span>
+                </div>
+              </div>
+            ) : isCarePlanStep ? (
+              <div className={styles.assessmentHeader}>
+                <Icon name="solar:clipboard-text-linear" size={18} color="var(--primary-300)" />
+                <div className={styles.assessmentHeaderText}>
+                  <span className={styles.assessmentTitle}>Care Plan</span>
+                  <span className={styles.assessmentMeta}>Created by Ivy Ralph on 09/11/24</span>
+                </div>
+              </div>
+            ) : (
+              <span className={styles.contentTitle}>
+                {isBillingStep ? 'Billing Review'
+                  : isOutreachStep ? 'Outreach'
+                  : isPreVisitStep ? 'Pre-visit'
+                  : 'Program Related Letters'}
+              </span>
+            )}
             <div className={styles.contentActions}>
-              {/* variant=ghost gives Button its bare shell (cursor, focus, structure)
-                  so the caller's .actionBtn / .reviewedBtn class fully defines the
-                  color state (neutral border for Assign/Skip, green border for
-                  Reviewed) without Button's variant tokens overriding. */}
-              <Button variant="ghost" size="S" trailingIcon="solar:alt-arrow-down-linear" className={styles.actionBtn}>
-                Assign
-              </Button>
-              <Button variant="ghost" size="S" className={styles.actionBtn}>Skip</Button>
-              <Button
-                variant="ghost"
-                size="S"
-                leadingIconElement={<Icon name="solar:check-circle-linear" size={14} color="var(--primary-300)" />}
-                className={styles.reviewedBtn}
-              >
-                Reviewed
-              </Button>
-              <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
+              {isCarePlanStep ? (
+                <>
+                  <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" />
+                  <ActionButton icon="solar:download-minimalistic-linear" size="S" tooltip="Download" />
+                  <Button variant="ghost" size="S" leadingIcon="solar:add-circle-linear" className={styles.actionBtn}>
+                    Add Care Plan
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="S"
+                    leadingIconElement={<Icon name="solar:pen-2-linear" size={14} color="var(--primary-300)" />}
+                    className={styles.reviewedBtn}
+                  >
+                    Sign &amp; Share
+                  </Button>
+                  <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
+                </>
+              ) : (
+                <>
+                  {/* variant=ghost gives Button its bare shell (cursor, focus, structure)
+                      so the caller's .actionBtn / .reviewedBtn class fully defines the
+                      color state (neutral border for Assign/Skip, green border for
+                      Reviewed) without Button's variant tokens overriding. */}
+                  <Button variant="ghost" size="S" trailingIcon="solar:alt-arrow-down-linear" className={styles.actionBtn}>
+                    Assign
+                  </Button>
+                  <Button variant="ghost" size="S" className={styles.actionBtn}>Skip</Button>
+                  <Button
+                    variant="ghost"
+                    size="S"
+                    leadingIconElement={<Icon name="solar:check-circle-linear" size={14} color="var(--primary-300)" />}
+                    className={styles.reviewedBtn}
+                  >
+                    Reviewed
+                  </Button>
+                  <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
+                </>
+              )}
             </div>
           </div>
 
@@ -388,6 +451,10 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
             </div>
           ) : isPreVisitStep ? (
             <PreVisitStep programCode={program.code} />
+          ) : isCarePlanStep ? (
+            <CarePlanView />
+          ) : assessmentCfg ? (
+            <AssessmentFormView formName={assessmentCfg.formName} />
           ) : (
           <div className={styles.contentInner}>
             <div className={styles.contentSubTabs}>
@@ -424,6 +491,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
                     <th>Sent Via</th>
                     <th>Last Sent</th>
                     <th>Sent By</th>
+                    <th aria-label="Actions" />
                   </tr>
                 </thead>
                 <tbody>
@@ -450,6 +518,24 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
                       </td>
                       <td>{letter.lastSent}</td>
                       <td>{letter.sentBy}</td>
+                      <td className={styles.rowActionsCell}>
+                        {selectedLetters.size === 0 && (
+                          <div className={styles.rowActions}>
+                            <ActionButton
+                              icon="solar:plain-linear"
+                              size="S"
+                              tooltip="Send letter"
+                              onClick={() => setSendTarget({ letterName: letter.fileName, clearOnSent: false })}
+                            />
+                            <ActionButton
+                              icon="solar:menu-dots-linear"
+                              size="S"
+                              tooltip="More actions"
+                              onClick={(e) => setRowMenu({ id: letter.id, rect: e.currentTarget.getBoundingClientRect() })}
+                            />
+                          </div>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -477,7 +563,17 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
               <Button variant="secondary" size="L" leadingIcon="solar:download-minimalistic-linear" onClick={downloadSelectedLetters}>
                 Download Files
               </Button>
-              <Button variant="primary" size="L" leadingIcon="solar:plain-linear" onClick={() => setSendDrawerOpen(true)}>
+              <Button
+                variant="primary"
+                size="L"
+                leadingIcon="solar:plain-linear"
+                onClick={() => setSendTarget({
+                  letterName: selectedLetters.size === 1
+                    ? PROGRAM_LETTERS_MOCK.find(l => selectedLetters.has(l.id))?.fileName || 'Letter'
+                    : 'Letters',
+                  clearOnSent: true,
+                })}
+              >
                 Send Files
               </Button>
               <span className={styles.bulkDivider} />
@@ -496,15 +592,32 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
           from any step logs the elapsed time as a billable activity. */}
       {isCcm && <CcmTimerWidget program={program} />}
 
-      {sendDrawerOpen && (
+      {sendTarget && (
         <SendLetterDrawer
-          letterName={
-            selectedLetters.size === 1
-              ? PROGRAM_LETTERS_MOCK.find(l => selectedLetters.has(l.id))?.fileName || 'Letter'
-              : 'Letters'
-          }
-          onClose={() => setSendDrawerOpen(false)}
-          onSent={() => setSelectedLetters(new Set())}
+          letterName={sendTarget.letterName}
+          memberName={currentPatient?.name}
+          memberId={currentPatient?.memberId}
+          onClose={() => setSendTarget(null)}
+          onSent={() => { if (sendTarget.clearOnSent) setSelectedLetters(new Set()); }}
+        />
+      )}
+
+      {rowMenu && (
+        <MenuPopover
+          anchorRect={rowMenu.rect}
+          ariaLabel="Letter actions"
+          width={168}
+          items={[
+            { key: 'preview', icon: 'solar:eye-linear', label: 'Preview' },
+            { key: 'download', icon: 'solar:download-minimalistic-linear', label: 'Download' },
+          ]}
+          onSelect={(key) => {
+            const letter = PROGRAM_LETTERS_MOCK.find(l => l.id === rowMenu.id);
+            if (!letter) return;
+            if (key === 'download') downloadLetters([letter]);
+            else if (key === 'preview') toast.success(`Previewing ${letter.fileName}`);
+          }}
+          onClose={() => setRowMenu(null)}
         />
       )}
     </div>

@@ -2,9 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { Checkbox } from '../../components/ui/checkbox';
-import { ActionButton } from '../../components/ActionButton/ActionButton';
-import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
-import { Input } from '../../components/Input/Input';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
@@ -140,9 +137,10 @@ export function CcmWorklistTable() {
   const members = useAppStore(s => s.ccmWorklistMembers);
   const loading = useAppStore(s => s.ccmWorklistLoading);
   const fetchMembers = useAppStore(s => s.fetchCcmWorklistMembers);
+  // Search query is owned by the shared TabBar (via useAppStore.searchQuery)
+  // so the top-bar search field TOC uses can drive CCM's row filter too.
+  const searchQuery = useAppStore(s => s.searchQuery);
 
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [billableFilter, setBillableFilter] = useState(EMPTY_TIME_FILTER);
   const [unloggedFilter, setUnloggedFilter] = useState(EMPTY_TIME_FILTER);
@@ -238,28 +236,10 @@ export function CcmWorklistTable() {
 
   return (
     <div className={styles.wrap}>
-      {/* Top strip: title + top actions. Matches the TOC worklist chrome. */}
-      <div className={styles.topBar}>
-        <span className={styles.title}>CCM</span>
-        <div className={styles.topActions}>
-          {searchOpen ? (
-            <Input
-              autoFocus
-              size="S"
-              placeholder="Search patients or members"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              onBlur={() => { if (!searchQuery) setSearchOpen(false); }}
-            />
-          ) : (
-            <SearchIconButton size="S" onClick={() => setSearchOpen(true)} />
-          )}
-          <ActionButton icon="solar:filter-linear" size="S" tooltip="Filter" />
-          <ActionButton icon="solar:sort-linear" size="S" tooltip="Sort" />
-          <ActionButton icon="solar:history-linear" size="S" tooltip="History" />
-          <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
-        </div>
-      </div>
+      {/* The shared TabBar (rendered by AppLayout for CCM) sits above this
+          component and owns the title + right-side action icons — same
+          chrome TOC uses. Below it we render just the filter chip row
+          and the sticky-column table. */}
 
       {/* Filter chip row. All the bucket-based chips render from
           FILTER_KEYS; Billable Mins + Unlogged Mins slot in between
