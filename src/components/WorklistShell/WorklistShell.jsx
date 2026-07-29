@@ -150,7 +150,7 @@ export function WorklistShell({
         ) : (
           <table className={styles.table} style={{ minWidth: minTableWidth }}>
             <thead>
-              <tr>
+              <tr className={styles.headRow}>
                 {columns.map((col, idx) => {
                   const stickyStyle = col.sticky === 'left'
                     ? { position: 'sticky', left: col.left || 0, background: 'var(--neutral-0)', zIndex: 4 }
@@ -175,6 +175,9 @@ export function WorklistShell({
 
                   if (col.sortKey && onSort) {
                     return (
+                      // Pass styles.th so the sortable header inherits the
+                      // WorklistShell font weight / size / color and matches
+                      // the plain <th>s in the same row.
                       <SortableHeader
                         key={col.key || idx}
                         label={col.label}
@@ -183,6 +186,7 @@ export function WorklistShell({
                         currentDir={sortDir}
                         onSort={onSort}
                         align={col.align || 'left'}
+                        className={styles.th}
                         style={{ ...stickyStyle, width: col.width }}
                       />
                     );
