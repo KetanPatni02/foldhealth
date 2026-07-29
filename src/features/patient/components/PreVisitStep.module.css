@@ -87,9 +87,10 @@
   flex-direction: column;
   gap: 16px;
 }
+/* Details lay out in 3 columns by default; drop to 2 on narrower panels. */
 .stackGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   column-gap: 24px;
 }
 .payerTitle {
@@ -99,13 +100,15 @@
 }
 .payerGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   column-gap: 24px;
   align-items: start;
 }
-.payerCol {
-  display: flex;
-  flex-direction: column;
+@media (max-width: 1200px) {
+  .stackGrid,
+  .payerGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 .stackCell {
   display: flex;

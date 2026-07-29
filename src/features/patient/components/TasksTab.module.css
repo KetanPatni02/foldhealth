@@ -1,0 +1,142 @@
+.tab {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px;
+}
+
+/* ── Toolbar: scope tabs + actions ── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.scopeTabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.scopeTab {
+  padding: 4px 10px;
+  border: 0.5px solid transparent;
+  border-radius: 4px;
+  background: none;
+  font-size: 14px;
+  color: var(--neutral-300);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.scopeTabActive {
+  color: var(--neutral-500);
+  border-color: var(--neutral-150);
+  background: var(--neutral-0);
+}
+.toolbarActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Section ── */
+.section {
+  display: flex;
+  flex-direction: column;
+}
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  padding: 4px 0 8px;
+}
+
+/* Shared 4-column grid: check | name | priority | due */
+.colHead,
+.row {
+  display: grid;
+  grid-template-columns: 32px 1fr 40px 92px;
+  align-items: start;
+}
+.colHead {
+  padding: 4px 0;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.colHead span {
+  font-size: 14px;
+  color: var(--neutral-300);
+}
+.row {
+  padding: 12px 0;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+
+/* ── Cells ── */
+.checkCell {
+  display: flex;
+  align-items: flex-start;
+  padding-top: 1px;
+}
+.checkEmpty {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--neutral-200);
+  background: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.checkBtn {
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.nameCell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding-right: 12px;
+}
+.taskTitle {
+  font-size: 14px;
+  color: var(--neutral-400);
+  line-height: 1.35;
+}
+.taskTitleDone {
+  color: var(--neutral-500);
+}
+.completedOn {
+  font-size: 14px;
+  color: var(--status-success);
+}
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
+}
+.metaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--neutral-300);
+}
+
+.pCell {
+  display: flex;
+  align-items: flex-start;
+  padding-top: 1px;
+}
+.dueCell {
+  font-size: 14px;
+  color: var(--neutral-400);
+  white-space: nowrap;
+}
+.dueOverdue {
+  color: var(--status-error);
+}

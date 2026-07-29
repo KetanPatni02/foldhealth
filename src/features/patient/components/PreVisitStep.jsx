@@ -140,12 +140,8 @@ export function PreVisitStep({ programCode }) {
             </div>
             <div className={styles.payerTitle}>{config.general.payerTitle}</div>
             <div className={styles.payerGrid}>
-              {config.general.payerCols.map((col, ci) => (
-                <div key={ci} className={styles.payerCol}>
-                  {col.map(f => (
-                    <StackCell key={f.label} label={f.label} value={f.value} />
-                  ))}
-                </div>
+              {config.general.payerCols.flat().map(f => (
+                <StackCell key={f.label} label={f.label} value={f.value} />
               ))}
             </div>
           </div>

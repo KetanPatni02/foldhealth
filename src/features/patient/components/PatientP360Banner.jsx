@@ -102,6 +102,62 @@ function ExpandedFamily({ p, className }) {
   );
 }
 
+/* Quick-view-style expanded panel — a metrics strip over a 2-column layout.
+   Shared by the drawer variant AND the full banner's responsive expansion so
+   both surface the same detail view. */
+function QuickViewExpanded({ p }) {
+  return (
+    <div className={styles.drawerExpandedPanel}>
+      <div className={styles.drawerMetricsStrip}>
+        <div className={styles.drawerMetricItem}>
+          <span className={styles.drawerMetricLabel}>Acuity</span>
+          <span className={`${styles.badge} ${styles.badgeError}`}>{p.acuity}</span>
+        </div>
+        <span className={styles.drawerMetricDivider} />
+        <div className={styles.drawerMetricItem}>
+          <span className={styles.drawerMetricLabel}>RAF</span>
+          <div className={styles.metricValueRow}>
+            <span className={styles.rafValue}>{p.raf_score}</span>
+            {p.raf_change > 0 && <span className={styles.rafChangeBadge}>+{p.raf_change} <Icon name="solar:arrow-up-linear" size={12} color="var(--status-error)" /></span>}
+          </div>
+        </div>
+        <span className={styles.drawerMetricDivider} />
+        <div className={styles.drawerMetricItem}>
+          <span className={styles.drawerMetricLabel}>Next Appt.</span>
+          <span className={styles.nextApptValue}>{p.next_appointment_date || '—'}</span>
+        </div>
+        <span className={styles.drawerMetricDivider} />
+        <div className={styles.drawerMetricItem}>
+          <span className={styles.drawerMetricLabel}>Last Contact</span>
+          <div className={styles.lastContactBtn}>
+            <Icon name="solar:phone-calling-linear" size={16} color="var(--status-error)" />
+            <span className={styles.lastContactText}>{p.last_contact_type}({p.last_contact_days}d)</span>
+          </div>
+        </div>
+        <span className={styles.drawerMetricDivider} />
+        <div className={styles.drawerMetricItem}>
+          <span className={styles.drawerMetricLabel}>Programs</span>
+          <div className={styles.programBadges}>
+            {(p.programs || []).map(pr => <span key={pr} className={`${styles.badge} ${styles.badgeInfo}`}>{pr}</span>)}
+            <span className={`${styles.badge} ${styles.badgeGrey}`}>+2</span>
+          </div>
+        </div>
+      </div>
+      <div className={styles.drawerExpandedCols}>
+        <div className={styles.drawerExpandedCol}>
+          <ExpandedDemographics p={p} className={styles.drawerExpandedSection} />
+          <ExpandedFamily p={p} className={styles.drawerExpandedSection} />
+        </div>
+        <span className={styles.drawerExpandedColDivider} />
+        <div className={styles.drawerExpandedCol}>
+          <ExpandedHealthStatus p={p} className={styles.drawerExpandedSection} />
+          <ExpandedAppointments p={p} className={styles.drawerExpandedSection} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const DRAWER_ACTIONS = [
   { icon: 'solar:arrow-right-up-linear', label: 'Elation' },
   { icon: 'solar:phone-linear', label: 'Call' },
@@ -127,48 +183,21 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
   const [showScheduleDrawer, setShowScheduleDrawer] = useState(false);
   const callBtnRef = useRef(null);
 
-  // Responsive size tiers for the full banner. Rather than fixed width
-  // breakpoints (which never line up with the real content width), we measure
-  // the live gap between the last detail (the expand arrow) and the actions
-  // group and step down the instant that gap would drop below 24px — so no
-  // detail ever coincides with the actions:
-  //   wide   → all metrics inline
-  //   medium → Programs + Last Contact move into the Health Status expansion
-  //   narrow → also drop Next Appt. (it's in Upcoming Appointments already)
+  // Responsive behavior keys off a fixed 1200px banner-width breakpoint:
+  //   wide (≥1200)  → Consent/Acuity/RAF/Next Appt stay inline in row 1; only
+  //                   Programs + Last Contact move into the horizontal
+  //                   (4-column) expansion.
+  //   narrow (<1200) → every metric column moves into the quick-view
+  //                    expansion; row 1 keeps just profile + actions and shows
+  //                    Consent inline in the patient meta row (like Quick View).
   const bannerRef = useRef(null);
-  const expandArrowRef = useRef(null);
-  const actionsGroupRef = useRef(null);
-  const nextApptRef = useRef(null);
-  const lastContactRef = useRef(null);
-  const programsRef = useRef(null);
-  // Cached widths (incl. the 24px inter-metric gap) of the optional metrics,
-  // captured while they're on screen, so we know how much slack it takes to
-  // bring them back when the banner widens again.
-  const metricW = useRef({ nextAppt: 110, lastContact: 110, programs: 180 });
   const [bannerSize, setBannerSize] = useState('wide');
 
-  const MIN_GAP = 24;
   const measureBanner = useCallback(() => {
-    const arrow = expandArrowRef.current;
-    const actions = actionsGroupRef.current;
-    if (!arrow || !actions) return;
-    if (nextApptRef.current) metricW.current.nextAppt = nextApptRef.current.offsetWidth + 24;
-    if (lastContactRef.current) metricW.current.lastContact = lastContactRef.current.offsetWidth + 24;
-    if (programsRef.current) metricW.current.programs = programsRef.current.offsetWidth + 24;
-    const gap = actions.getBoundingClientRect().left - arrow.getBoundingClientRect().right;
-    setBannerSize(prev => {
-      if (gap < MIN_GAP) {
-        if (prev === 'wide') return 'medium';
-        if (prev === 'medium') return 'narrow';
-        return prev;
-      }
-      // Slack beyond the required 24px gap — only restore a metric when it
-      // fully fits (plus an 8px deadband) so the tier can't oscillate.
-      const slack = gap - MIN_GAP;
-      if (prev === 'narrow' && slack >= metricW.current.nextAppt + 8) return 'medium';
-      if (prev === 'medium' && slack >= metricW.current.lastContact + metricW.current.programs + 8) return 'wide';
-      return prev;
-    });
+    const el = bannerRef.current;
+    if (!el) return;
+    const w = el.getBoundingClientRect().width;
+    setBannerSize(w < 1200 ? 'narrow' : 'wide');
   }, []);
 
   useLayoutEffect(() => {
@@ -179,10 +208,6 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
     measureBanner();
     return () => ro.disconnect();
   }, [measureBanner]);
-
-  // Re-measure after a tier change settles, so a large jump can cascade
-  // through multiple tiers in one resize (and converge).
-  useLayoutEffect(() => { measureBanner(); }, [bannerSize, measureBanner]);
 
   const p360Profile = useAppStore(s => s.p360Profile);
   const fetchP360Profile = useAppStore(s => s.fetchP360Profile);
@@ -225,7 +250,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
       setShowProfileDropdown(true);
     };
 
-    return (
+    const drawerLayout = (
       <>
         {/* Row 1: Compact banner */}
         <div className={styles.drawerPatientBanner}>
@@ -289,56 +314,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
         </div>
 
         {/* Expanded panel: metrics strip + 2-col content */}
-        {drawerExpanded && (
-          <div className={styles.drawerExpandedPanel}>
-            <div className={styles.drawerMetricsStrip}>
-              <div className={styles.drawerMetricItem}>
-                <span className={styles.drawerMetricLabel}>Acuity</span>
-                <span className={`${styles.badge} ${styles.badgeError}`}>{p.acuity}</span>
-              </div>
-              <span className={styles.drawerMetricDivider} />
-              <div className={styles.drawerMetricItem}>
-                <span className={styles.drawerMetricLabel}>RAF</span>
-                <div className={styles.metricValueRow}>
-                  <span className={styles.rafValue}>{p.raf_score}</span>
-                  {p.raf_change > 0 && <span className={styles.rafChangeBadge}>+{p.raf_change} <Icon name="solar:arrow-up-linear" size={12} color="var(--status-error)" /></span>}
-                </div>
-              </div>
-              <span className={styles.drawerMetricDivider} />
-              <div className={styles.drawerMetricItem}>
-                <span className={styles.drawerMetricLabel}>Next Appt.</span>
-                <span className={styles.nextApptValue}>{p.next_appointment_date || '—'}</span>
-              </div>
-              <span className={styles.drawerMetricDivider} />
-              <div className={styles.drawerMetricItem}>
-                <span className={styles.drawerMetricLabel}>Last Contact</span>
-                <div className={styles.lastContactBtn}>
-                  <Icon name="solar:phone-calling-linear" size={16} color="var(--status-error)" />
-                  <span className={styles.lastContactText}>{p.last_contact_type}({p.last_contact_days}d)</span>
-                </div>
-              </div>
-              <span className={styles.drawerMetricDivider} />
-              <div className={styles.drawerMetricItem}>
-                <span className={styles.drawerMetricLabel}>Programs</span>
-                <div className={styles.programBadges}>
-                  {(p.programs || []).map(pr => <span key={pr} className={`${styles.badge} ${styles.badgeInfo}`}>{pr}</span>)}
-                  <span className={`${styles.badge} ${styles.badgeGrey}`}>+2</span>
-                </div>
-              </div>
-            </div>
-            <div className={styles.drawerExpandedCols}>
-              <div className={styles.drawerExpandedCol}>
-                <ExpandedDemographics p={p} className={styles.drawerExpandedSection} />
-                <ExpandedFamily p={p} className={styles.drawerExpandedSection} />
-              </div>
-              <span className={styles.drawerExpandedColDivider} />
-              <div className={styles.drawerExpandedCol}>
-                <ExpandedHealthStatus p={p} className={styles.drawerExpandedSection} />
-                <ExpandedAppointments p={p} className={styles.drawerExpandedSection} />
-              </div>
-            </div>
-          </div>
-        )}
+        {drawerExpanded && <QuickViewExpanded p={p} />}
 
         {/* Row 3: Actions */}
         <div className={styles.drawerActionsRow}>
@@ -427,6 +403,12 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
         )}
       </>
     );
+    // Real drawer usage returns the layout directly; the compact fallback of
+    // the full banner keeps the measuring container so it can restore as it
+    // widens back out.
+    return variant === 'drawer'
+      ? drawerLayout
+      : <div className={styles.banner} ref={bannerRef}>{drawerLayout}</div>;
   }
 
   return (
@@ -441,7 +423,18 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
               <span className={styles.name}>{patient.name}</span>
               <Icon name="solar:pen-2-linear" size={16} color="var(--neutral-200)" />
             </div>
-            <div className={styles.meta}>{patient.gender} • {patient.dob || '9/14/1968'} ({patient.age})</div>
+            <div className={styles.meta}>
+              {patient.gender} • {patient.dob || '9/14/1968'} ({patient.age})
+              {bannerSize !== 'wide' && (
+                <>
+                  <span className={styles.metaDot}>•</span>
+                  <button type="button" className={styles.metaConsent}>
+                    Consent: {p.consent_given}/{p.consent_total}
+                    <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--status-warning)" />
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
@@ -496,23 +489,29 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
             )}
           </div>
 
-          {/* Consent */}
+          {/* At ≥1200 (wide) Consent/Acuity/RAF/Next Appt stay inline; Programs
+              + Last Contact live only in the horizontal expansion. Under 1200
+              (narrow) every column moves into the quick-view expansion and
+              Consent shows inline in the meta row above. */}
+          {bannerSize === 'wide' && (
           <div className={styles.metricCol}>
             <span className={styles.metricLabel}>Consent</span>
             <div className={styles.metricValueRow}>
               <span className={`${styles.badge} ${styles.badgeWarning}`}>{p.consent_given}/{p.consent_total} <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--status-warning)" /></span>
             </div>
           </div>
+          )}
 
-          {/* Acuity */}
+          {bannerSize === 'wide' && (
           <div className={styles.metricCol}>
             <span className={styles.metricLabel}>Acuity</span>
             <div className={styles.metricValueRow}>
               <span className={`${styles.badge} ${styles.badgeError}`}>{p.acuity}</span>
             </div>
           </div>
+          )}
 
-          {/* RAF */}
+          {bannerSize === 'wide' && (
           <div className={styles.metricCol}>
             <span className={styles.metricLabel}>RAF</span>
             <div className={styles.metricValueRow}>
@@ -520,40 +519,17 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
               {p.raf_change > 0 && <span className={styles.rafChangeBadge}>+{p.raf_change} <Icon name="solar:arrow-up-linear" size={12} color="var(--status-error)" /></span>}
             </div>
           </div>
+          )}
 
-          {/* Next Appt — hidden at narrow width (shown in Upcoming Appointments). */}
-          {bannerSize !== 'narrow' && (
-            <div className={styles.metricCol} ref={nextApptRef}>
+          {bannerSize === 'wide' && (
+            <div className={styles.metricCol}>
               <span className={styles.metricLabel}>Next Appt.</span>
               <div className={styles.metricValueRow}><span className={styles.nextApptValue}>{p.next_appointment_date || '—'}</span></div>
             </div>
           )}
 
-          {/* Last Contact — moves into Health Status expansion below wide. */}
-          {bannerSize === 'wide' && (
-            <div className={styles.metricCol} ref={lastContactRef}>
-              <span className={styles.metricLabel}>Last Contact</span>
-              <div className={styles.lastContactBtn}>
-                <Icon name="solar:phone-calling-linear" size={16} color="var(--status-error)" />
-                <span className={styles.lastContactText}>{p.last_contact_type}({p.last_contact_days}d)</span>
-              </div>
-            </div>
-          )}
-
-          {/* Programs — moves into Health Status expansion below wide. */}
-          {bannerSize === 'wide' && (
-            <div className={styles.metricCol} ref={programsRef}>
-              <span className={styles.metricLabel}>Programs</span>
-              <div className={styles.programBadges}>
-                {(p.programs || []).map(pr => <span key={pr} className={`${styles.badge} ${styles.badgeInfo}`} style={{ width: pr.length > 3 ? 'auto' : 40 }}>{pr}</span>)}
-                <span className={`${styles.badge} ${styles.badgeGrey}`} style={{ width: 30 }}>+2</span>
-              </div>
-            </div>
-          )}
-
           {/* Expand arrow */}
           <button
-            ref={expandArrowRef}
             className={styles.expandArrow}
             onClick={() => setExpanded(v => !v)}
             aria-label={expanded ? 'Collapse details' : 'Expand details'}
@@ -566,7 +542,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
         </div>
 
         {/* Actions: EHR | Call | Email | ... */}
-        <div className={styles.actionsGroup} ref={actionsGroupRef}>
+        <div className={styles.actionsGroup}>
           <div className={styles.actionCol}><ActionButton icon="solar:square-top-down-linear" size="L" tooltip="EHR" /><span className={styles.actionLabel}>EHR</span></div>
           <span className={styles.hDivider} />
           <div className={styles.actionCol}><ActionButton icon="solar:phone-linear" size="L" tooltip="Call" /><span className={styles.actionLabel}>Call</span></div>
@@ -598,14 +574,21 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
         <button className={styles.addTagBtn} aria-label="Add tag"><Icon name="solar:add-circle-linear" size={12} color="var(--neutral-300)" /></button>
       </div>
 
-      {/* ── Expanded: 4-column grid ── */}
+      {/* Expanded details. At wide (≥1200) the horizontal 4-column grid, with
+          Programs + Last Contact moved into its Health Status column. Under
+          1200 the expansion switches to the quick-view layout — a metrics strip
+          over 2 columns — housing all the moved-out metrics. */}
       {expanded && (
-        <div className={styles.expandedGrid}>
-          <ExpandedDemographics p={p} />
-          <ExpandedHealthStatus p={p} movedMetrics={bannerSize !== 'wide'} />
-          <ExpandedAppointments p={p} />
-          <ExpandedFamily p={p} />
-        </div>
+        bannerSize === 'wide' ? (
+          <div className={styles.expandedGrid}>
+            <ExpandedDemographics p={p} />
+            <ExpandedHealthStatus p={p} movedMetrics />
+            <ExpandedAppointments p={p} />
+            <ExpandedFamily p={p} />
+          </div>
+        ) : (
+          <QuickViewExpanded p={p} />
+        )
       )}
     </div>
   );

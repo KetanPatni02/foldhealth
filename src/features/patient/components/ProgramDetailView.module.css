@@ -252,6 +252,32 @@
   font-weight: 600;
   color: var(--neutral-500);
 }
+/* Assessment steps: form icon + title/meta block (Review header). */
+.assessmentHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.assessmentHeaderText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.assessmentTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--neutral-500);
+  white-space: nowrap;
+}
+.assessmentMeta {
+  font-size: 12px;
+  color: var(--neutral-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .contentActions {
   display: flex;
   align-items: center;
@@ -306,7 +332,7 @@
   padding: 8px 12px;
   background: var(--neutral-0);
   border-radius: 8px;
-  box-shadow: var(--shadow-popover);
+  box-shadow: var(--shadow-bulk-bar);
   /* The content column is overflow:hidden, so keep the bar inside it and let
      it wrap rather than get clipped when the column is very narrow. */
   max-width: calc(100% - 24px);
@@ -418,6 +444,18 @@
 .table tbody tr.rowSelected:hover { background: var(--primary-100); border-bottom-color: var(--primary-200); }
 .table tbody tr.rowSelected .checkCell { box-shadow: inset 2px 0 0 var(--primary-300); }
 .table tbody tr.rowSelected .fileNameCell { color: var(--primary-300); }
+/* Per-row actions (send + more) — revealed on row hover when no bulk
+   selection is active. Keeps its column width so the layout doesn't shift. */
+.rowActionsCell { width: 72px; text-align: right; white-space: nowrap; }
+.rowActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  justify-content: flex-end;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.table tbody tr:hover .rowActions { opacity: 1; }
 /* File Name — darkest; File Type — muted grey. */
 .fileNameCell { color: var(--neutral-500); }
 .colMuted { color: var(--neutral-300); }
