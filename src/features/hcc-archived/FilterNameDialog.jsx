@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogTitle } from '../../components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '../../components/ui/dialog/dialog';
 import { Button } from '../../components/Button/Button';
 import styles from './FilterNameDialog.module.css';
 

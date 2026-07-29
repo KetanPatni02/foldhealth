@@ -7,14 +7,14 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Switch } from '../../../components/Switch/Switch';
 import { Input } from '../../../components/Input/Input';
 import { Drawer } from '../../../components/Drawer/Drawer';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../../components/ui/select';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../../components/ui/select/select';
 import { ConfirmDialog } from '../../../components/Modal/ConfirmDialog';
 import { SimpleTableSkeleton } from '../../../components/Skeleton/CardSkeleton';
 import { useAppStore } from '../../../store/useAppStore';
 import { DOMAIN_CATEGORIES, HIPAA_OPTIONS, COMPONENTS } from '../../../data/embeddedComponents';
 import { AuditLogDrawer } from './AuditLogDrawer';
-import { useTableSort } from '../../../components/Table/useTableSort';
-import { SortableHeader } from '../../../components/Table/SortableHeader';
+import { useTableSort } from '../../../components/SortableHeader/useTableSort';
+import { SortableHeader } from '../../../components/SortableHeader/SortableHeader';
 
 const thStyle = {
   textAlign: 'left', padding: '8px 16px', color: 'var(--neutral-300)', fontWeight: 500,

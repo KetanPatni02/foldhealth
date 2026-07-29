@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { Card, safeConfigData } from './shared';
 import { SavingsAreaChart } from './charts';
-import { Slider } from '../../../components/ui/slider';
+import { Slider } from '../../../components/ui/slider/slider';
 import { EditableGrid } from './EditableGrid';
 import s from '../AnalyticsLayout.module.css';
 

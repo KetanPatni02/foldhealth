@@ -5,7 +5,7 @@ import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import { Icon } from '../../../components/Icon/Icon';
 import { CheckIcon } from '../../../components/Icon/CheckIcon';
 import { CloseIcon } from '../../../components/Icon/CloseIcon';
-import { Checkbox } from '../../../components/ui/checkbox';
+import { Checkbox } from '../../../components/ui/checkbox/checkbox';
 import { DismissReasonForm } from './DismissReasonForm';
 import { DestructiveDialog } from '../../../components/Modal/DestructiveDialog';
 import { reviewedByLabel } from '../reviewedBy';

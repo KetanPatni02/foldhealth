@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Switch } from '../../components/Switch/Switch';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
-import { Slider } from '../../components/ui/slider';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select/select';
+import { Slider } from '../../components/ui/slider/slider';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './GlobalSettings.module.css';
 

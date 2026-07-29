@@ -8,7 +8,7 @@ import { Input } from '../../../components/Input/Input';
 import { Toggle } from '../../../components/Toggle/Toggle';
 import { Select } from '../../../components/Select/Select';
 import { Dropzone } from '../../../components/Dropzone/Dropzone';
-import { Checkbox } from '../../../components/ui/checkbox';
+import { Checkbox } from '../../../components/ui/checkbox/checkbox';
 import { ConfidenceBadge } from '../components/ConfidenceBadge';
 import { getScoreStyle, getFieldConfidence } from '../data/confidence';
 import { useAppStore } from '../../../store/useAppStore';

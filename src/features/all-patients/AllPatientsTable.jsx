@@ -3,7 +3,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { AllPatientsRow } from './AllPatientsRow';
 import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
 import { Icon } from '../../components/Icon/Icon';
-import { Checkbox } from '../../components/ui/checkbox';
+import { Checkbox } from '../../components/ui/checkbox/checkbox';
 
 const CITIES = [
   ['Queens', 'NY'], ['Brooklyn', 'NY'], ['Manhattan', 'NY'], ['Bronx', 'NY'],

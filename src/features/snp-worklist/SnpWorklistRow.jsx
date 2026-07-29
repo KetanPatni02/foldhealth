@@ -1,7 +1,7 @@
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
-import { Checkbox } from '../../components/ui/checkbox';
+import { Checkbox } from '../../components/ui/checkbox/checkbox';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './SnpWorklistRow.module.css';
 

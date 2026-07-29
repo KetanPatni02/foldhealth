@@ -12,10 +12,10 @@ import { Drawer } from '../../components/Drawer/Drawer';
 import { Input } from '../../components/Input/Input';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
 import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
-import { RadioGroup, RadioGroupItem } from '../../components/ui/radio-group';
-import { useTableSort } from '../../components/Table/useTableSort';
-import { SortableHeader } from '../../components/Table/SortableHeader';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select/select';
+import { RadioGroup, RadioGroupItem } from '../../components/ui/radio-group/radio-group';
+import { useTableSort } from '../../components/SortableHeader/useTableSort';
+import { SortableHeader } from '../../components/SortableHeader/SortableHeader';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { AuditLogContent } from './panels/AuditLogDrawer';
@@ -32,7 +32,7 @@ import {
   AlertDialogFooter,
   AlertDialogAction,
   AlertDialogCancel,
-} from '../../components/ui/alert-dialog';
+} from '../../components/ui/alert-dialog/alert-dialog';
 import { OrgPanel } from './panels/OrgPanel';
 import styles from './AccountPanel.module.css';
 

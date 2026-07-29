@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Input } from '../../components/Input/Input';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
-import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../../components/ui/tooltip';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '../../components/ui/tooltip/tooltip';
 import styles from './InsurancePlanFormUtils.module.css';
 
 /* ── FieldLabel — label row with optional required dot and info-icon tooltip ── */

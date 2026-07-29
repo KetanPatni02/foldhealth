@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Drawer }          from '../../components/Drawer/Drawer';
 import { Button }          from '../../components/Button/Button';
 import { Input }           from '../../components/Input/Input';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select/select';
 import { Switch }          from '../../components/Switch/Switch';
 import { RadioButton }     from '../../components/RadioButton/RadioButton';
 import { AVERGENT_THEME, PROMINENCE_THEME, NO_THEME } from './CardThemePicker';
@@ -20,14 +20,14 @@ import {
   AlertDialogFooter,
   AlertDialogAction,
   AlertDialogCancel,
-} from '../../components/ui/alert-dialog';
+} from '../../components/ui/alert-dialog/alert-dialog';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '../../components/ui/dialog';
+} from '../../components/ui/dialog/dialog';
 import styles from './CreateInsurancePlanDrawer.module.css';
 
 /* ── Option lists ── */

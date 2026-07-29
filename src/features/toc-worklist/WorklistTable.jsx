@@ -5,7 +5,7 @@ import { BulkBar } from '../../components/BulkBar/BulkBar';
 import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
 import { ErrorState } from '../../components/ErrorState/ErrorState';
 import { Icon } from '../../components/Icon/Icon';
-import { Checkbox } from '../../components/ui/checkbox';
+import { Checkbox } from '../../components/ui/checkbox/checkbox';
 
 function EmptySearch() {
   return (

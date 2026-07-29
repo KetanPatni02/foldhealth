@@ -18,8 +18,8 @@ import { AuditLogDrawer } from './panels/AuditLogDrawer';
 import { CallQueueDrawer } from '../../components/CallQueueDrawer/CallQueueDrawer';
 import { ViewUserDrawer } from './AccountPanel';
 import { ProductTour } from '../../components/ProductTour/ProductTour';
-import { useTableSort } from '../../components/Table/useTableSort';
-import { SortableHeader } from '../../components/Table/SortableHeader';
+import { useTableSort } from '../../components/SortableHeader/useTableSort';
+import { SortableHeader } from '../../components/SortableHeader/SortableHeader';
 import { VoicePreviewPopover } from '../../components/VoicePreviewPopover/VoicePreviewPopover';
 import styles from './AgentsTable.module.css';
 

@@ -6,7 +6,7 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Drawer } from '../../../components/Drawer/Drawer';
 import { Switch } from '../../../components/Switch/Switch';
 import { Input } from '../../../components/Input/Input';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../../components/ui/select';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../../components/ui/select/select';
 import { useAppStore } from '../../../store/useAppStore';
 import {
   DOMAINS, COMPONENTS, COMPONENT_CATEGORIES, ICON_OPTIONS, VISIBILITY_OPTIONS,

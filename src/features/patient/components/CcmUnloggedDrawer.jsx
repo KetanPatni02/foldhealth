@@ -3,7 +3,7 @@ import { Drawer } from '../../../components/Drawer/Drawer';
 import { Button } from '../../../components/Button/Button';
 import { Select } from '../../../components/Select/Select';
 import { Textarea } from '../../../components/Textarea/Textarea';
-import { Checkbox } from '../../../components/ui/checkbox';
+import { Checkbox } from '../../../components/ui/checkbox/checkbox';
 import { Icon } from '../../../components/Icon/Icon';
 import { useAppStore } from '../../../store/useAppStore';
 import { CCM_ACTIVITY_TYPES, CCM_UNLOGGED_SECONDS, secondsToTime } from '../data/ccmBillingMock';

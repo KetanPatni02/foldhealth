@@ -9,7 +9,7 @@ import {
   DialogContent,
   DialogTitle,
   DialogDescription,
-} from '../ui/dialog';
+} from '../ui/dialog/dialog';
 
 const AGENTS = [
   { name: 'Ricardo', role: 'SNP Agent' },

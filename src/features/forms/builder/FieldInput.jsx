@@ -9,7 +9,7 @@ import { Textarea } from '../../../components/Textarea/Textarea';
 import { Select } from '../../../components/Select/Select';
 import { DatePicker } from '../../../components/DatePicker/DatePicker';
 import { RadioButton } from '../../../components/RadioButton/RadioButton';
-import { Checkbox } from '../../../components/ui/checkbox';
+import { Checkbox } from '../../../components/ui/checkbox/checkbox';
 import styles from './FormBuilder.module.css';
 
 export function FieldInput({ field, value, onChange, interactive = false, idPrefix = 'f', className }) {

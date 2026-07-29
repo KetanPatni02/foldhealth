@@ -5,7 +5,7 @@ import {
   AlertDialogFooter,
   AlertDialogTitle,
   AlertDialogDescription,
-} from '../ui/alert-dialog';
+} from '../ui/alert-dialog/alert-dialog';
 import { Icon } from '../Icon/Icon';
 import { Button } from '../Button/Button';
 

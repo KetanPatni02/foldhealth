@@ -3,7 +3,7 @@ import { Drawer } from '../../../components/Drawer/Drawer';
 import { Button } from '../../../components/Button/Button';
 import { Input } from '../../../components/Input/Input';
 import { Icon } from '../../../components/Icon/Icon';
-import { Checkbox } from '../../../components/ui/checkbox';
+import { Checkbox } from '../../../components/ui/checkbox/checkbox';
 import { toast } from '../../../components/Toast/Toast';
 import styles from './SendLetterDrawer.module.css';
 

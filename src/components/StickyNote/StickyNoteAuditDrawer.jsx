@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Drawer } from '../Drawer/Drawer';
 import { Button } from '../Button/Button';
 import { Avatar } from '../Avatar/Avatar';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select/select';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './StickyNoteAuditDrawer.module.css';
 

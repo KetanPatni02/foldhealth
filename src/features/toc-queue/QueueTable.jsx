@@ -1,7 +1,7 @@
 import { useMemo, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
-import { Checkbox } from '../../components/ui/checkbox';
+import { Checkbox } from '../../components/ui/checkbox/checkbox';
 import { QueueRow } from './QueueRow';
 import { QueueEmptyState } from './QueueEmptyState';
 import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
