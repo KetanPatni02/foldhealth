@@ -12,8 +12,8 @@ import { Drawer } from '../../components/Drawer/Drawer';
 import { Input } from '../../components/Input/Input';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
 import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select/select';
-import { RadioGroup, RadioGroupItem } from '../../components/ui/radio-group/radio-group';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ShadcnSelect/select';
+import { RadioGroup, RadioGroupItem } from '../../components/ShadcnRadioGroup/radio-group';
 import { useTableSort } from '../../components/SortableHeader/useTableSort';
 import { SortableHeader } from '../../components/SortableHeader/SortableHeader';
 import { Pagination } from '../../components/Pagination/Pagination';
@@ -32,7 +32,7 @@ import {
   AlertDialogFooter,
   AlertDialogAction,
   AlertDialogCancel,
-} from '../../components/ui/alert-dialog/alert-dialog';
+} from '../../components/ShadcnAlertDialog/alert-dialog';
 import { OrgPanel } from './panels/OrgPanel';
 import styles from './AccountPanel.module.css';
 

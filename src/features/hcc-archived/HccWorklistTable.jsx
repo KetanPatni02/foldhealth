@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { HccWorklistRow, resolveCurrentAssignee } from './HccWorklistRow';
 import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
-import { Checkbox } from '../../components/ui/checkbox/checkbox';
+import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';

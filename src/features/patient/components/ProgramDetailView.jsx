@@ -6,7 +6,7 @@ import { MenuPopover } from '../../../components/Popover/MenuPopover';
 import { Button } from '../../../components/Button/Button';
 import { BannerExpandIcon } from '../../../components/Icon/BannerExpandIcon';
 import { ProgressRing } from '../../hcc/DiagPanel/ReviewProgressPopover';
-import { Checkbox } from '../../../components/ui/checkbox/checkbox';
+import { Checkbox } from '../../../components/ShadcnCheckbox/checkbox';
 import { toast } from '../../../components/Toast/Toast';
 import { PROGRAM_STEPS_MOCK, PROGRAM_LETTERS_MOCK, CCM_PROGRAM_STEPS } from '../data/programActivityMock';
 import { OutreachTab } from './OutreachTab';

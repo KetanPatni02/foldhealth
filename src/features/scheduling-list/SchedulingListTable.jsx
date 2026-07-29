@@ -7,7 +7,7 @@ import { ErrorState } from '../../components/ErrorState/ErrorState';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
-import { Checkbox } from '../../components/ui/checkbox/checkbox';
+import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
 import tabStyles from '../../components/TabBar/TabBar.module.css';
 import filterStyles from '../../components/FilterBar/FilterBar.module.css';
 import styles from './SchedulingList.module.css';

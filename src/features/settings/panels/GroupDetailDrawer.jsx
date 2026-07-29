@@ -5,9 +5,9 @@ import { Button } from '../../../components/Button/Button';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Drawer } from '../../../components/Drawer/Drawer';
 import { Badge } from '../../../components/Badge/Badge';
-import { RadioGroup, RadioGroupItem } from '../../../components/ui/radio-group/radio-group';
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '../../../components/ui/tooltip/tooltip';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../../components/ui/select/select';
+import { RadioGroup, RadioGroupItem } from '../../../components/ShadcnRadioGroup/radio-group';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '../../../components/ShadcnTooltip/tooltip';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../../components/ShadcnSelect/select';
 import { useAppStore } from '../../../store/useAppStore';
 import { Switch } from '../../../components/Switch/Switch';
 import { availableUsers, availableRoles } from '../../../data/chatGroups'; // Participant lists — TODO: move to store

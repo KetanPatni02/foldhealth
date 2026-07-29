@@ -8,8 +8,8 @@ import { Button } from '../Button/Button';
 import { Avatar } from '../Avatar/Avatar';
 import { Badge } from '../Badge/Badge';
 import { ActionButton } from '../ActionButton/ActionButton';
-import { RadioGroup, RadioGroupItem } from '../ui/radio-group/radio-group';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select/select';
+import { RadioGroup, RadioGroupItem } from '../ShadcnRadioGroup/radio-group';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ShadcnSelect/select';
 import styles from './PreferencesDrawer.module.css';
 
 const PREF_TABS = [

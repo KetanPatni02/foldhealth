@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Dialog, DialogContent } from '../ui/dialog/dialog';
+import { Dialog, DialogContent } from '../ShadcnDialog/dialog';
 import { Select } from '../Select/Select';
 import { Textarea } from '../Textarea/Textarea';
 import { Button } from '../Button/Button';

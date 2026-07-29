@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogTitle } from '../../../components/ui/dialog/dialog';
+import { Dialog, DialogContent, DialogTitle } from '../../../components/ShadcnDialog/dialog';
 import { Button } from '../../../components/Button/Button';
 import { Icon } from '../../../components/Icon/Icon';
 import styles from './DismissConfirmModal.module.css';

@@ -21,7 +21,7 @@ import { Button } from '../../../components/Button/Button';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Input } from '../../../components/Input/Input';
 import { Textarea } from '../../../components/Textarea/Textarea';
-import { Checkbox } from '../../../components/ui/checkbox/checkbox';
+import { Checkbox } from '../../../components/ShadcnCheckbox/checkbox';
 import { Toggle } from '../../../components/Toggle/Toggle';
 import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { useAppStore } from '../../../store/useAppStore';

@@ -4,7 +4,7 @@ import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
-import { Checkbox } from '../../components/ui/checkbox/checkbox';
+import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
 import { useAppStore } from '../../store/useAppStore';
 import rowStyles from '../toc-worklist/WorklistRow.module.css';
 import styles from './AllPatientsRow.module.css';

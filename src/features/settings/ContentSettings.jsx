@@ -7,7 +7,7 @@ import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { ConfirmDialog } from '../../components/Modal/ConfirmDialog';
-import { Checkbox } from '../../components/ui/checkbox/checkbox';
+import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
 import { CloseIcon } from '../../components/Icon/CloseIcon';
 import { useAppStore } from '../../store/useAppStore';
 import { EmailPreviewDrawer } from './EmailPreviewDrawer';

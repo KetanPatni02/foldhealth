@@ -4,7 +4,7 @@ import { FilterChip } from '../FilterChip/FilterChip';
 import { Avatar } from '../Avatar/Avatar';
 import { Badge } from '../Badge/Badge';
 import { ActionButton } from '../ActionButton/ActionButton';
-import { Checkbox } from '../ui/checkbox/checkbox';
+import { Checkbox } from '../ShadcnCheckbox/checkbox';
 import { Icon } from '../Icon/Icon';
 import { useTableSort } from '../SortableHeader/useTableSort';
 import styles from './WorklistShell.stories.module.css';

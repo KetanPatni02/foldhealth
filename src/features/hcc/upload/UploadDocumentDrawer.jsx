@@ -14,7 +14,7 @@ import { DatePicker } from '../../../components/DatePicker/DatePicker';
 import { DemoPhiStrip } from '../../../components/DemoPhiStrip/DemoPhiStrip';
 import { IcdSearch } from '../../../components/IcdSearch/IcdSearch';
 import { POS_SELECT_OPTIONS } from '../data/posCodes';
-import { Checkbox } from '../../../components/ui/checkbox/checkbox';
+import { Checkbox } from '../../../components/ShadcnCheckbox/checkbox';
 import { ConfidenceBadge } from '../components/ConfidenceBadge';
 import { getScoreStyle, getFieldConfidence } from '../data/confidence';
 import { TabStrip } from '../../../components/TabBar/TabStrip';

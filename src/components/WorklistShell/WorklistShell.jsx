@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ActionButton } from '../ActionButton/ActionButton';
 import { SearchIconButton } from '../SearchIconButton/SearchIconButton';
 import { SearchBar } from '../SearchBar/SearchBar';
-import { Checkbox } from '../ui/checkbox/checkbox';
+import { Checkbox } from '../ShadcnCheckbox/checkbox';
 import { SortableHeader } from '../SortableHeader/SortableHeader';
 import { Pagination } from '../Pagination/Pagination';
 import { BulkBar } from '../BulkBar/BulkBar';

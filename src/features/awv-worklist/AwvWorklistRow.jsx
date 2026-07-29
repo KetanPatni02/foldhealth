@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Avatar } from '../../components/Avatar/Avatar';
-import { Checkbox } from '../../components/ui/checkbox/checkbox';
+import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { MenuPopover } from '../../components/Popover/MenuPopover';
 import { useAppStore } from '../../store/useAppStore';

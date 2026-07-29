@@ -24,7 +24,7 @@ import { ConfirmDialog } from '../../components/Modal/ConfirmDialog';
 import { CommentComposer } from '../../components/CommentComposer/CommentComposer';
 import { PdfPreviewOverlay } from '../../components/PdfPreviewOverlay/PdfPreviewOverlay';
 import { ClinicalNotePanel } from '../hedis-worklist/ClinicalNotePanel';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select/select';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ShadcnSelect/select';
 import { useAppStore } from '../../store/useAppStore';
 import { toast } from '../../components/Toast/Toast';
 import styles from './TasksView.module.css';

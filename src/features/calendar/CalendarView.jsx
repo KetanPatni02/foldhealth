@@ -4,7 +4,7 @@ import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { ScheduleDrawer, FALLBACK_APPOINTMENT_TYPES } from '../../components/ScheduleDrawer/ScheduleDrawer';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select/select';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ShadcnSelect/select';
 import { useAppStore } from '../../store/useAppStore';
 import { supabase } from '../../lib/supabase';
 import styles from './CalendarView.module.css';

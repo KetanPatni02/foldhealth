@@ -5,7 +5,7 @@ import { Button } from '../../components/Button/Button';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { UploadDropField } from '../../components/UploadDropField/UploadDropField';
 import { DemoPhiStrip } from '../../components/DemoPhiStrip/DemoPhiStrip';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select/select';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ShadcnSelect/select';
 import { DOC_TYPES, makeUploadedChartDoc } from './data/chartDocs';
 import styles from './UploadChartDrawer.module.css';
 

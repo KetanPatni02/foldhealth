@@ -7,7 +7,7 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Switch } from '../../../components/Switch/Switch';
 import { Input } from '../../../components/Input/Input';
 import { Drawer } from '../../../components/Drawer/Drawer';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../../components/ui/select/select';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../../components/ShadcnSelect/select';
 import { ConfirmDialog } from '../../../components/Modal/ConfirmDialog';
 import { SimpleTableSkeleton } from '../../../components/Skeleton/CardSkeleton';
 import { useAppStore } from '../../../store/useAppStore';

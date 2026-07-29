@@ -3,7 +3,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Icon } from '../../components/Icon/Icon';
 import { Button } from '../../components/Button/Button';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ui/select/select';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../components/ShadcnSelect/select';
 import styles from './UploadChartDrawer.module.css';
 
 const DOC_TYPES = [

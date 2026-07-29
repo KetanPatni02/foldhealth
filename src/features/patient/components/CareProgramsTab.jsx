@@ -5,7 +5,7 @@ import { Button } from '../../../components/Button/Button';
 import { SearchListPopover } from '../../../components/Popover/SearchListPopover';
 import { SearchBar } from '../../../components/SearchBar/SearchBar';
 import { FilterChip } from '../../../components/FilterChip/FilterChip';
-import { Checkbox } from '../../../components/ui/checkbox/checkbox';
+import { Checkbox } from '../../../components/ShadcnCheckbox/checkbox';
 import { ProgressRing } from '../../hcc/DiagPanel/ReviewProgressPopover';
 import { CP_SUB_TABS, CP_FILTERS } from '../data/programActivityMock';
 import { CARE_PROGRAM_CATALOG } from '../data/careProgramCatalog';

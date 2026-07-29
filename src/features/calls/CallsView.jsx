@@ -16,7 +16,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../../components/ui/select/select';
+} from '../../components/ShadcnSelect/select';
 import { useAppStore } from '../../store/useAppStore';
 import { CallTypeAvatar, DIR_LABEL } from '../../components/Avatar/CallTypeAvatar';
 import styles from './CallsView.module.css';
