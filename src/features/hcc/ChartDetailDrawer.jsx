@@ -912,7 +912,13 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
                     role="button"
                     tabIndex={0}
                     onClick={() => setSelectedId(d.id)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedId(d.id); } }}
+                    onKeyDown={(e) => {
+                      // Only act when the card div itself is focused — otherwise a
+                      // space typed into the inline Fail form's textarea (or any
+                      // nested input) bubbles up and gets preventDefault'd here.
+                      if (e.target !== e.currentTarget) return;
+                      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedId(d.id); }
+                    }}
                   >
                     <div className={styles.docCardHeader}>
                       <span className={styles.docThumb} aria-hidden="true">

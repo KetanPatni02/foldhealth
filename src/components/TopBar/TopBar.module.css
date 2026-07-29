@@ -11,23 +11,33 @@
   z-index: 100;
 }
 
+/* Left and right get equal flex share (basis 0) so the in-flow center
+   block stays visually centered while space allows; when space runs out
+   everything shrinks in-flow instead of overlapping. */
 .left {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: 1 1 0;
+  min-width: 0;
 }
 
+/* min-width: 0 down the chain so the breadcrumb truncates inside its flex
+   slot when the bar is tight, instead of painting over the search box. */
 .breadcrumb {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 14px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .breadcrumbLink {
   color: var(--neutral-300);
   text-decoration: none;
   font-weight: 400;
+  white-space: nowrap;
 }
 
 .breadcrumbLink:hover { color: var(--primary-300); }
@@ -35,22 +45,32 @@
 .breadcrumbCurrent {
   color: var(--neutral-400);
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .sep { color: var(--neutral-200); }
 
+/* In flow (NOT absolutely centered): an absolute center block is invisible
+   to the flex layout, so at narrow widths it slid underneath the right
+   cluster (Ask Unity overlapping the bell). As a flex item between two
+   equal-flex siblings it stays centered while space allows, and the
+   search box shrinks gracefully when it doesn't. */
 .center {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0 12px;
 }
 
 .searchWrap {
   position: relative;
+  flex: 0 1 280px;
+  min-width: 140px;
 }
 
 .searchBox {
@@ -61,7 +81,8 @@
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 6px;
-  width: 280px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .searchClear {
@@ -168,6 +189,9 @@
   font-weight: 500;
   cursor: pointer;
   font-family: 'Inter', sans-serif;
+  /* The search box is the shrink target — the button keeps its label. */
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .askUnity:hover { background: var(--primary-300); color: #FFFFFF; border-color: var(--primary-300); }
@@ -175,7 +199,11 @@
 .right {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
+  flex: 1 1 0;
+  /* Buttons/avatar keep their natural size — this cluster never crushes. */
+  min-width: fit-content;
 }
 
 /* Bell wrap — relative so the unread dot + popover position to the

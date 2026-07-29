@@ -228,7 +228,15 @@
 .tableWrap {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
+  /* Narrow viewports get a horizontal scrollbar rather than crushing the
+     task title column to zero. Every horizontal band (header, group bar,
+     rows) shares ONE fixed minimum — the sum of the column widths below —
+     so they always lay out identically and columns stay aligned. Never
+     use per-element `min-width: fit-content` here: it resolves against
+     each row's own content, so rows with long titles end up wider than
+     their neighbors and every fixed column drifts right. */
+  --tasks-table-min-width: 1252px; /* 48+260+60+130+150+160+160+220+48 cols + 16 row padding */
+  overflow-x: auto;
   background: var(--neutral-0);
 }
 
@@ -240,6 +248,8 @@
   flex-shrink: 0;
   padding: 0 8px;
   border-bottom: 0.5px solid var(--neutral-150);
+  box-sizing: border-box;
+  min-width: var(--tasks-table-min-width);
 }
 
 .thCell {
@@ -253,14 +263,25 @@
   color: var(--neutral-300);
 }
 
-.colCheck { width: 48px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-.colTask  { flex: 1; min-width: 0; padding: 0 12px 0 0; }
-.colP     { width: 60px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+/* .thCell's `padding: 0 12px` shorthand applies to every header cell that
+   doesn't set its own padding — the check/P/actions columns didn't, which
+   made those three headers 24px wider than their data cells and cascaded
+   into a 72px offset by the end of the row. Explicit `padding: 0` on
+   the three centered columns reset them to match .cellCheck / .cellP /
+   .cellActions exactly. */
+.colCheck { width: 48px; flex-shrink: 0; padding: 0; display: flex; align-items: center; justify-content: center; }
+/* Floor task-title width so it stays readable when the viewport narrows —
+   before this, the flex:1 column would collapse to 0 as the fixed
+   sibling columns claimed the space. The parent .tableWrap now scrolls
+   horizontally past this floor. Mirrored on .cellTask below. */
+.colTask  { flex: 1; min-width: 260px; padding: 0 12px 0 0; }
+.colP     { width: 60px; flex-shrink: 0; padding: 0; display: flex; align-items: center; justify-content: center; }
 .colStatus { width: 130px; flex-shrink: 0; padding: 0 12px; }
 .colDue   { width: 150px; flex-shrink: 0; padding: 0 12px; }
 .colAssigned { width: 160px; flex-shrink: 0; padding: 0 12px; }
 .colMember { width: 160px; flex-shrink: 0; padding: 0 12px; }
 .colLabels { width: 220px; flex-shrink: 0; padding: 0 12px; }
+.colActions { width: 48px; flex-shrink: 0; padding: 0; display: flex; align-items: center; justify-content: center; }
 
 /* ── Status Group ── */
 .statusGroup {
@@ -275,6 +296,10 @@
   border-bottom: 0.5px solid var(--neutral-150);
   cursor: pointer;
   user-select: none;
+  box-sizing: border-box;
+  /* Span the same fixed minimum as the rows so the section bar continues
+     across the full scroll range instead of ending at the viewport edge. */
+  min-width: var(--tasks-table-min-width);
 }
 
 .groupHeader:hover {
@@ -307,6 +332,8 @@
   border-bottom: 0.5px solid var(--neutral-150);
   transition: background 100ms;
   padding: 0 8px;
+  box-sizing: border-box;
+  min-width: var(--tasks-table-min-width);
 }
 
 .taskRow:hover {
@@ -354,7 +381,10 @@
 /* Task info */
 .cellTask {
   flex: 1;
-  min-width: 0;
+  /* Same floor as .colTask so the row's natural width includes this
+     minimum; below the floor the .tableWrap starts scrolling instead of
+     the title column collapsing to zero. */
+  min-width: 260px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1772,7 +1802,8 @@
 .addTaskTextarea::placeholder { color: var(--neutral-200); }
 
 /* ── Actions Column ── */
-.colActions { width: 48px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+/* .colActions is declared with the other column widths further up (near
+   .colCheck) so all column defs live in one block. */
 .cellActions {
   width: 48px;
   flex-shrink: 0;

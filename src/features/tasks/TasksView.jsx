@@ -843,11 +843,15 @@ function StatusGroup({ status, label: labelProp, tasks, onToggle, onTaskClick, h
           <span className={styles.groupTitle}>{label}</span>
           <Badge variant="overflow" label={`${tasks.length} ${tasks.length === 1 ? 'task' : 'tasks'}`} />
         </div>
+        {/* tooltipLeft: these sit at the scroll container's right edge —
+            a right-opening tooltip bubble extends scrollWidth past the
+            container and produces a phantom horizontal scrollbar. */}
         <div className={styles.groupActions}>
           <ActionButton
             icon="solar:add-circle-linear"
             size="S"
             tooltip="Add task"
+            tooltipLeft
             onClick={e => { e.stopPropagation(); onAddTask?.(status); }}
           />
           <div style={{ width: 0.5, height: 16, background: 'var(--neutral-150)' }} />
@@ -855,6 +859,7 @@ function StatusGroup({ status, label: labelProp, tasks, onToggle, onTaskClick, h
             icon={collapsed ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-up-linear'}
             size="S"
             tooltip={collapsed ? 'Expand' : 'Collapse'}
+            tooltipLeft
             onClick={e => { e.stopPropagation(); setCollapsed(v => !v); }}
           />
         </div>
@@ -1769,14 +1774,12 @@ function TaskDetailDrawer({ task, onClose, onSelectTask }) {
       <div className={styles.drawerContent}>
         {/* Toolbar */}
         <div className={styles.drawerToolbar}>
-          <Select value={task.status} onValueChange={handleStatusChange}>
-            <SelectTrigger className="h-8 text-sm w-[120px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_ORDER.map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Select
+            style={{ width: 120 }}
+            options={STATUS_ORDER.map(s => ({ value: s, label: STATUS_LABELS[s] }))}
+            value={task.status}
+            onChange={handleStatusChange}
+          />
           <div className={styles.drawerToolbarRight}>
             {task.pool && !task.assigned_to && (
               <Button variant="primary" size="S" onClick={handleClaim}>Claim Task</Button>
