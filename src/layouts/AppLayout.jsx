@@ -144,7 +144,10 @@ function PopulationView() {
       <div className={styles.bodyRow}>
         <SubNav collapsed={subnavCollapsed} />
         <div className={styles.content}>
-          {!chromeless && <TabBar />}
+          {/* CCM is otherwise chromeless, but we want the same TabBar header
+              TOC uses (title tab + right-side action icons) so the two
+              worklists share one visual pattern. */}
+          {(!chromeless || isCcm) && <TabBar />}
           {!chromeless && showFilterBar && <FilterBar />}
           {!isHcc && !isHccArchived && !isHedis && !isCcm && !isSnp && !isAwv && !isAllPatients && !isComingSoon && !isSchedulingList && !isPopulationGroup && activeTab === 'toc-queue' && <QueueSummaryBar />}
           {isSchedulingList

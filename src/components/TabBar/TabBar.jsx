@@ -114,6 +114,10 @@ export function TabBar() {
             <div className={`${styles.tabItem} ${styles.active}`}>
               HCC Worklist
             </div>
+          ) : activeSubnavList === 'CCM' ? (
+            <div className={`${styles.tabItem} ${styles.active}`}>
+              CCM Worklist
+            </div>
           ) : (
             <>
               <div

@@ -26,9 +26,33 @@ import styles from './FilterChip.module.css';
  *                                         so callers don't need a second
  *                                         shape. Popover auto-closes on pick.
  */
-export function FilterChip({ label, popoverLabel, options, selected = [], onChange, singleSelect = false }) {
+export function FilterChip({
+  label,
+  popoverLabel,
+  options,
+  selected = [],
+  onChange,
+  singleSelect = false,
+  // Extended API for filters whose popover isn't a plain list — the caller
+  // decides when the chip counts as "active", what to summarize on the
+  // pill, how to clear, and renders the popover body itself. When set, the
+  // options/selected/onChange trio is ignored and the chip becomes a thin
+  // trigger for the custom popover. See TimeFilter for the reference case.
+  renderPopover,
+  active: activeProp,
+  activeSummary,
+  onClear,
+}) {
   const [rect, setRect] = useState(null);
-  const active = selected.length > 0;
+  const custom = typeof renderPopover === 'function';
+  const active = custom ? !!activeProp : selected.length > 0;
+  const summary = custom ? activeSummary : summarize(selected);
+
+  const handleClear = (e) => {
+    e.stopPropagation();
+    if (custom) onClear?.();
+    else onChange([]);
+  };
 
   return (
     <>
@@ -41,12 +65,12 @@ export function FilterChip({ label, popoverLabel, options, selected = [], onChan
         {active ? (
           <>
             <span className={styles.divider} aria-hidden="true">|</span>
-            <span className={styles.chipValue}>{summarize(selected)}</span>
+            <span className={styles.chipValue}>{summary}</span>
             <span
               className={styles.clearIcon}
               role="button"
               aria-label={`Clear ${label} filter`}
-              onClick={(e) => { e.stopPropagation(); onChange([]); }}
+              onClick={handleClear}
             >
               <Icon name="solar:close-circle-linear" size={12} color="var(--primary-300)" />
             </span>
@@ -55,25 +79,27 @@ export function FilterChip({ label, popoverLabel, options, selected = [], onChan
           <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--neutral-300)" />
         )}
       </button>
-      {rect && (singleSelect ? (
-        <RadioListPopover
-          anchorRect={rect}
-          label={popoverLabel || label}
-          options={options}
-          selected={selected}
-          onChange={(next) => { onChange(next); setRect(null); }}
-          onClose={() => setRect(null)}
-        />
-      ) : (
-        <CheckboxListPopover
-          anchorRect={rect}
-          label={popoverLabel || label}
-          options={options}
-          selected={selected}
-          onChange={onChange}
-          onClose={() => setRect(null)}
-        />
-      ))}
+      {rect && (custom
+        ? renderPopover({ anchorRect: rect, onClose: () => setRect(null) })
+        : singleSelect ? (
+          <RadioListPopover
+            anchorRect={rect}
+            label={popoverLabel || label}
+            options={options}
+            selected={selected}
+            onChange={(next) => { onChange(next); setRect(null); }}
+            onClose={() => setRect(null)}
+          />
+        ) : (
+          <CheckboxListPopover
+            anchorRect={rect}
+            label={popoverLabel || label}
+            options={options}
+            selected={selected}
+            onChange={onChange}
+            onClose={() => setRect(null)}
+          />
+        ))}
     </>
   );
 }

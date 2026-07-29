@@ -1,0 +1,85 @@
+/* Popover body for the CCM worklist's Billable Mins / Unlogged Mins
+   filters — mounted via FilterChip's renderPopover slot, so the outer
+   chip button uses the shared design-system styles.  These rules cover
+   only the popover contents (user selector + threshold radios). */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+}
+.overlay > * { pointer-events: auto; }
+
+.popover {
+  position: fixed;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 10px;
+  box-shadow: var(--shadow-popover);
+  padding: 10px 10px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.header {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  padding: 2px 4px;
+}
+
+.userRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px 6px;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.userRow > :global([role="combobox"]),
+.userRow > :global([role="button"]) { flex: 1; }
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 2px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--neutral-400);
+  text-align: left;
+}
+.row:hover { background: var(--neutral-50); }
+
+.radio {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--neutral-200);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.radioActive { border-color: var(--primary-300); }
+.radioDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary-300);
+}
+
+.rowLabel {
+  font-variant-numeric: tabular-nums;
+}
