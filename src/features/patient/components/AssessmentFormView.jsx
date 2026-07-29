@@ -8,6 +8,10 @@ import { resolveRecall } from '../../forms/render/recall';
 import { isAnswered } from '../../forms/scoring/util';
 import styles from './AssessmentFormView.module.css';
 
+// Stable identity for "no answers yet" so the scoring/visibility memos below
+// don't re-run on every render before the first answer is given.
+const EMPTY_ANSWERS = {};
+
 // Recursively render the saved form's fields exactly as defined — sections,
 // display blocks, and numbered leaf questions (numbering only the answerable
 // leaves, matching the Review view). Branching (visibility) and recall (piped
@@ -59,23 +63,29 @@ function renderNode(field, ctx) {
 export function AssessmentFormView({ formName, interpretation = 'High Risk' }) {
   const fetchFormByName = useAppStore(s => s.fetchFormByName);
   const [form, setForm] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [answers, setAnswers] = useState({});
+  // Which form the loaded `form` belongs to. `loading` is derived from it
+  // rather than set at the top of the fetch effect, so switching forms shows
+  // the loading state without a synchronous setState during the effect.
+  const [loadedFor, setLoadedFor] = useState(null);
+  const loading = loadedFor !== formName;
+  // Answers keyed by form name, so pointing at a different form starts from a
+  // clean sheet without an explicit reset.
+  const [answersByForm, setAnswersByForm] = useState({});
+  const answers = answersByForm[formName] ?? EMPTY_ANSWERS;
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
-    setAnswers({});
     fetchFormByName(formName).then(f => {
       if (!active) return;
       setForm(f);
-      setLoading(false);
+      setLoadedFor(formName);
     });
     return () => { active = false; };
   }, [formName, fetchFormByName]);
 
   const items = useMemo(() => form?.schema?.items || [], [form]);
-  const onAnswer = (linkId, v) => setAnswers(prev => ({ ...prev, [linkId]: v }));
+  const onAnswer = (linkId, v) =>
+    setAnswersByForm(prev => ({ ...prev, [formName]: { ...(prev[formName] ?? {}), [linkId]: v } }));
 
   const evalResult = useMemo(() => {
     try {

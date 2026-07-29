@@ -28,6 +28,7 @@ import { ASTRANA_STAFF, staffById as hccStaffById } from '../features/hcc/assign
 import { normalizeReviewerLabel as hccNormalizeReviewerLabel } from '../features/hcc/reviewedBy';
 import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activityLog';
 import { hccRoleDefaultFilters } from '../features/hcc/filters';
+import { CAREGAP_ACTIVITY_MOCK } from '../features/hedis-worklist/data/caregapActivityMock';
 
 // Central failure reporter for every persistHccXxx helper. Historically
 // each of these was fire-and-forget with only console.warn on error — so
@@ -124,6 +125,40 @@ function persistHccGapInsert(row) {
   if (!row?.code) return;
   supabase.from('hcc_diagnosis_gaps').insert(row).then(({ error }) => {
     if (error) reportPersistFailure(`persistHccGapInsert(${row.code})`, error);
+  });
+}
+// ── caregap_activity row mapping ──
+// Common columns are lifted out; everything variant-specific (callDetails,
+// detailCard, fromAssignee, commentBody, file, …) rides in `payload` jsonb so
+// new ActivityLog variants never need a schema change.
+function caregapActivityToRow(memberId, entry) {
+  const { id, when, at, actor, t, title, ...payload } = entry;
+  return {
+    id: String(id),
+    member_id: memberId,
+    at: when ?? at ?? new Date().toISOString(),
+    actor: actor ?? null,
+    t: t ?? null,
+    title: title ?? null,
+    payload,
+  };
+}
+function caregapRowToEntry(row) {
+  return {
+    id: row.id,
+    when: row.at,
+    actor: row.actor ?? undefined,
+    t: row.t ?? undefined,
+    title: row.title ?? undefined,
+    ...(row.payload || {}),
+  };
+}
+// Fire-and-forget insert — the local state is already updated optimistically;
+// a failed write is surfaced through the shared persist-failure toast.
+function persistCaregapActivityInsert(memberId, entry) {
+  if (!memberId || !entry?.id) return;
+  supabase.from('caregap_activity').insert(caregapActivityToRow(memberId, entry)).then(({ error }) => {
+    if (error) reportPersistFailure(`persistCaregapActivityInsert(${entry.id})`, error);
   });
 }
 function persistHccGapDelete(code, memberName) {
@@ -2704,97 +2739,28 @@ export const useAppStore = create((set, get) => ({
 
   // ─── HCC Worklist (Supabase-backed) ───
   // ── HEDIS worklist — local state for now, no Supabase backing yet ───────
-  // Activity log per member: { [memberId]: [{ id, type, message, at, by }] }
-  caregapActivity: {
-    // Rich mock covering every ActivityLog variant so the drawer's Activity
-    // Log renders realistic data across outreach / status change / clinical
-    // note / task / assignee change / upload evidence / comment.
-    hd1: [
-      // Outreach — full OutreachTab.LogEntry shape (call details + transcript
-      // + recording/transcript action buttons expand on "View Note").
-      {
-        id: 'a1-1', when: '2026-05-14T14:30:00', actor: 'Delores Conn (Co-Ordinator)', t: 'outreach',
-        title: '4th Outreach — Outgoing Call', outcome: 'Completed, Engaged',
-        callDetails: {
-          via: '(581) 824-1591', to: '(336) 812-2923', durationMin: 5,
-          recordingUrl: '#', transcriptUrl: '#',
-          transcript: [
-            { speaker: 'Delores Conn', t: '00:09', text: 'Hi, Christian. Thanks for taking the time to speak with me today. How are you feeling?' },
-            { speaker: 'Christian Silva', t: '00:27', text: "Hi, Doctor. I've been feeling pretty tired lately. And I've noticed a bit of shortness of breath over the past week…" },
-            { speaker: 'Delores Conn', t: '01:12', text: 'Understood — I want to make sure your PCP knows about that.' },
-          ],
-        },
-        note: 'Patient confirmed BP readings will be logged daily; agreed to next-week follow-up.',
-      },
-      // Status change — transition pills only. No View Note.
-      {
-        id: 'a1-2', when: '2026-04-28T11:15:00', actor: 'Alok Kumar', t: 'status_change',
-        title: 'Status Changed', from: 'Open', to: 'Closed',
-      },
-      // Assignee change — from → to avatar transition.
-      {
-        id: 'a1-3', when: '2026-04-22T10:00:00', actor: 'Alok Kumar', t: 'assignee_change',
-        title: 'Assignee Changed',
-        fromAssignee: { initials: 'DH', name: 'D. Hintz' },
-        toAssignee:   { initials: 'AK', name: 'Alok Kumar' },
-      },
-      // Task — nested detail card (handle icon, title + lock, assignee,
-      // status pill, external-link icon).
-      {
-        id: 'a1-4', when: '2026-04-15T09:30:00', actor: 'Delores Conn (Co-Ordinator)', t: 'task',
-        title: 'Task Added',
-        detailCard: {
-          title: 'Request for Sign-off - Consolidated Clinical Note',
-          locked: true, handle: true,
-          assignee: 'Dr. Robert Langdon',
-          status: 'Pending',
-        },
-      },
-      // Clinical Note — nested detail card (sub-meta, bold title + Gaps
-      // chip, submitted-to subtitle, status pill, eye + kebab icons, linked
-      // score groups link).
-      {
-        id: 'a1-5', when: '2026-04-10T09:00:00', actor: 'Dr. Aldo Richman', t: 'clinical_note',
-        title: 'Clinical Note Added',
-        detailCard: {
-          subMeta: '04/10/2026, 09:00 • Dr. Aldo Richman • CBP Non-Visit N…',
-          title: 'Consolidated Clinical Note',
-          chip: '3 Gaps',
-          subtitle: 'Submitted for Review to Dr. Robert Langdon',
-          status: 'Pending Review',
-          linkedGroups: true,
-        },
-      },
-      // Comment — HCC inline paragraph under the headline.
-      {
-        id: 'a1-6', when: '2026-04-02T15:45:00', actor: 'Alok Kumar', t: 'comment',
-        title: 'Added a Comment',
-        commentBody: 'Patient confirmed home BP monitor is calibrated; readings will be shared with PCP this week.',
-      },
-      // Outreach — earlier attempt with no call details.
-      {
-        id: 'a1-7', when: '2026-03-22T16:00:00', actor: 'Delores Conn (Co-Ordinator)', t: 'outreach',
-        title: '1st Outreach — Patient Chat', outcome: 'Scheduled with PCP',
-      },
-      // Document evidence — the source PDF the gap was detected from.
-      // Anchors the timeline: shows *why* this care gap opened.
-      {
-        id: 'a1-8', when: '2026-03-15T08:30:00', actor: 'Astrana Ingestion', t: 'upload',
-        title: 'Care Gap Detected from Document',
-        file: 'CBP Progress Note - 03-15-2026.pdf', fileType: 'Visit Note',
-      },
-    ],
-    hd2: [
-      { id: 'a2-1', when: '2026-05-10T10:00:00', actor: 'Sarah Lee', t: 'outreach',
-        title: '2nd Outreach — Outgoing Call', outcome: 'No answer — voicemail left' },
-      { id: 'a2-2', when: '2026-04-18T13:45:00', actor: 'Marcus Chen', t: 'task',
-        title: 'Task Added',
-        detailCard: {
-          title: 'Follow up for colorectal screening referral',
-          handle: true, assignee: 'Marcus Chen', status: 'Pending',
-        },
-      },
-    ],
+  caregapActivity: CAREGAP_ACTIVITY_MOCK,
+  caregapActivityLoaded: false,
+  // Hydrate the activity feeds from Supabase. Rows exist per member; when the
+  // table is empty or unreachable we keep the local mock so the drawer still
+  // renders a realistic feed. `caregapActivityLoaded` gates the drawer's
+  // skeleton so it shows once on cold load and never sticks.
+  fetchCaregapActivity: async () => {
+    if (get().caregapActivityLoaded) return;
+    const { data, error } = await supabase
+      .from('caregap_activity')
+      .select('*')
+      .order('at', { ascending: false });
+    if (error || !data?.length) {
+      if (error) console.warn('fetchCaregapActivity — keeping local mock:', error.message);
+      set({ caregapActivityLoaded: true });
+      return;
+    }
+    const byMember = {};
+    for (const row of data) {
+      (byMember[row.member_id] ??= []).push(caregapRowToEntry(row));
+    }
+    set({ caregapActivity: byMember, caregapActivityLoaded: true });
   },
   // Status updates applied to the local HEDIS mock data via setHedisMembers.
   hedisMembers: [],
@@ -3152,6 +3118,15 @@ export const useAppStore = create((set, get) => ({
     const prevGap    = prevMember?.gaps?.find(g => g.code === gapCode);
     const prevName   = prevGap?.assignee || null;
     const initialsOf = (n) => (String(n || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '');
+    const entry = {
+      id: `assign-${Date.now()}`,
+      at: new Date().toISOString(),
+      actor: get().currentActorName(),
+      t: 'assignee_change',
+      title: 'Assignee Changed',
+      fromAssignee: prevName ? { initials: initialsOf(prevName), name: prevName } : null,
+      toAssignee:   nextAssignee ? { initials: initialsOf(nextAssignee), name: nextAssignee } : null,
+    };
     set(s => ({
       hedisMembers: (s.hedisMembers || []).map(m =>
         m.id !== memberId ? m : {
@@ -3161,20 +3136,10 @@ export const useAppStore = create((set, get) => ({
       ),
       caregapActivity: {
         ...s.caregapActivity,
-        [memberId]: [
-          {
-            id: `assign-${Date.now()}`,
-            at: new Date().toISOString(),
-            actor: 'Alok Kumar',
-            t: 'assignee_change',
-            title: 'Assignee Changed',
-            fromAssignee: prevName ? { initials: initialsOf(prevName), name: prevName } : null,
-            toAssignee:   nextAssignee ? { initials: initialsOf(nextAssignee), name: nextAssignee } : null,
-          },
-          ...(s.caregapActivity[memberId] || []),
-        ],
+        [memberId]: [entry, ...(s.caregapActivity[memberId] || [])],
       },
     }));
+    persistCaregapActivityInsert(memberId, entry);
   },
   bulkUpdateGapStatuses: (memberId, updates) => {
     // updates: { [gapCode]: nextStatus }
@@ -3189,12 +3154,14 @@ export const useAppStore = create((set, get) => ({
     }));
   },
   logCareGapActivity: (memberId, entry) => {
+    const full = { id: Date.now(), at: new Date().toISOString(), ...entry };
     set(s => ({
       caregapActivity: {
         ...s.caregapActivity,
-        [memberId]: [{ id: Date.now(), at: new Date().toISOString(), ...entry }, ...(s.caregapActivity[memberId] || [])],
+        [memberId]: [full, ...(s.caregapActivity[memberId] || [])],
       },
     }));
+    persistCaregapActivityInsert(memberId, full);
   },
   // Push a real consolidated sign-off task into the existing `tasks` slice so
   // TasksView surfaces it (one task per patient per Submit-for-Review batch).
@@ -8832,6 +8799,11 @@ export const useAppStore = create((set, get) => ({
   // ── Task Profiles (assignees from Settings → Users / profiles table) ──
   taskProfiles: [],
   currentUserProfile: null,
+  // Display name to stamp on things the signed-in user just did (activity
+  // entries, audit lines). `currentUserProfile` only resolves once
+  // fetchTaskProfiles has run against a real session, so fall back to the
+  // same 'You' label the rest of the store uses in dev-bypass mode.
+  currentActorName: () => get().currentUserProfile?.name || 'You',
   fetchTaskProfiles: async () => {
     const { data: sessionData } = await supabase.auth.getSession();
     const authUser = sessionData?.session?.user;

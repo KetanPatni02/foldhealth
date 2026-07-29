@@ -9,7 +9,9 @@ import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Icon } from '../../components/Icon/Icon';
 import { ActivityLog } from '../../components/ActivityLog/ActivityLog';
+import { CardSkeleton } from '../../components/Skeleton/CardSkeleton';
 import { OutreachTab } from '../patient/components/OutreachTab';
+import { OUTREACH_LOG_COUNT } from '../patient/data/outreachLogMock';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './CareGapDetailDrawer.module.css';
 
@@ -60,14 +62,15 @@ const MORE_ACTIONS = [
 ];
 
 
-// Tab labels with the static counts shown in the design reference. Only
-// Activity Log has live content; the rest are stubbed (coming soon).
+// Tab labels. Counts are derived per-render from what each pane actually
+// renders (see `tabCounts` below) — the tabs that are still stubbed
+// ("coming soon") deliberately carry no count rather than a fabricated one.
 const TABS = [
   { key: 'Activity Log', label: 'Activity Log' },
-  { key: 'Outreaches', label: 'Outreaches', count: 1 },
-  { key: 'Referrals', label: 'Referrals', count: 2 },
-  { key: 'Tasks', label: 'Tasks', count: 8 },
-  { key: 'Appt/Reminders', label: 'Appt/Reminders', count: 5 },
+  { key: 'Outreaches', label: 'Outreaches' },
+  { key: 'Referrals', label: 'Referrals' },
+  { key: 'Tasks', label: 'Tasks' },
+  { key: 'Appt/Reminders', label: 'Appt/Reminders' },
   { key: 'Clinical Notes', label: 'Clinical Notes' },
   { key: 'Orders', label: 'Orders' },
 ];
@@ -158,18 +161,33 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const updateGapStatus = useAppStore(s => s.updateGapStatus);
   const updateGapAssignee = useAppStore(s => s.updateGapAssignee);
   const logCareGapActivity = useAppStore(s => s.logCareGapActivity);
+  const currentActorName = useAppStore(s => s.currentActorName);
   const activityEntries = useAppStore(s => s.caregapActivity[member?.id]);
   // Assignee picker pulls from the same profiles roster shown in
   // Settings → Account → Users. The store guards against duplicate fetches.
   const platformUsers = useAppStore(s => s.platformUsers);
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
   useEffect(() => { fetchPlatformUsers(); }, [fetchPlatformUsers]);
+  // Hydrate activity feeds from Supabase (falls back to the local mock when
+  // the table is empty/unreachable). Single-fire — the store guards reruns.
+  const caregapActivityLoaded = useAppStore(s => s.caregapActivityLoaded);
+  const fetchCaregapActivity = useAppStore(s => s.fetchCaregapActivity);
+  useEffect(() => { fetchCaregapActivity(); }, [fetchCaregapActivity]);
 
   // Internal gap selection so the header prev/next arrows can cycle through
   // the member's care gaps without re-opening the drawer.
   const gaps = member?.gaps ?? [];
   const [currentCode, setCurrentCode] = useState(gapCode);
-  useEffect(() => { setCurrentCode(gapCode); }, [gapCode, member?.id]);
+  // Re-sync to the incoming gap when the caller points us at a different gap
+  // or member. Adjusted during render rather than in an effect — React drops
+  // the in-progress render and retries, so there's no extra commit or flash
+  // (https://react.dev/reference/react/useState#storing-information-from-previous-renders).
+  const gapKey = `${member?.id ?? ''}|${gapCode ?? ''}`;
+  const [prevGapKey, setPrevGapKey] = useState(gapKey);
+  if (prevGapKey !== gapKey) {
+    setPrevGapKey(gapKey);
+    setCurrentCode(gapCode);
+  }
 
   const [statusOpen, setStatusOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -188,8 +206,14 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   // Measurement Year scope chip — locally scoped so selecting a different
   // year updates the chip + downstream text (info banner, ClinicalNotePanel)
   // without needing a callback back to the parent worklist filter.
+  // Re-sync on a new `year` prop the same way (see the gapKey note above), so
+  // changing the worklist's year resets any local override.
   const [selectedYear, setSelectedYear] = useState(year);
-  useEffect(() => { setSelectedYear(year); }, [year]);
+  const [prevYear, setPrevYear] = useState(year);
+  if (prevYear !== year) {
+    setPrevYear(year);
+    setSelectedYear(year);
+  }
   const [yearOpen, setYearOpen] = useState(false);
   const yearOptions = [year, year - 1, year - 2];
   // Kebab menu (More actions) — anchored to the button's rect so it can
@@ -226,6 +250,15 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   // expects — same visual language as the HCC DiagPanel timeline.
   const activityLogEntries = toActivityLogEntries(activityEntries);
 
+  // Counts beside a tab label must equal what that pane renders. Activity Log
+  // counts the member's real activity rows (not the month-group headers
+  // toActivityLogEntries injects); Outreaches counts the shared feed
+  // OutreachTab actually shows. Everything else is a stub, so it gets none.
+  const tabCounts = {
+    'Activity Log': activityEntries?.length ?? 0,
+    Outreaches: OUTREACH_LOG_COUNT,
+  };
+
   const goPrev = () => { if (canPrev) { setCurrentCode(gaps[idx - 1].code); setStatusOpen(false); } };
   const goNext = () => { if (canNext) { setCurrentCode(gaps[idx + 1].code); setStatusOpen(false); } };
 
@@ -234,7 +267,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
     if (!text) return;
     logCareGapActivity(member.id, {
       when: new Date().toISOString(),
-      actor: 'Alok Kumar',
+      actor: currentActorName(),
       t: 'comment',
       title: 'Added a Comment',
       commentBody: text,
@@ -521,7 +554,9 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
               onClick={() => setActiveTab(tab.key)}
             >
               {tab.label}
-              {tab.count != null && <span className={styles.tabCount}>({tab.count})</span>}
+              {tabCounts[tab.key] != null && (
+                <span className={styles.tabCount}>({tabCounts[tab.key]})</span>
+              )}
             </button>
           ))}
         </div>
@@ -556,7 +591,9 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
               </div>
             )}
           </div>
-          <ActivityLog entries={activityLogEntries} emptyLabel="No activity yet for this care gap." />
+          {caregapActivityLoaded
+            ? <ActivityLog entries={activityLogEntries} emptyLabel="No activity yet for this care gap." />
+            : <CardSkeleton />}
         </div>
       ) : activeTab === 'Outreaches' ? (
         // Reuse the patient-profile Outreach experience — same log form,

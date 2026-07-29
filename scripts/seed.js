@@ -20,6 +20,7 @@ import { HCC_MEMBER_BY_NAME } from '../src/features/hcc/data/mock.js';
 import { CCM_BILLING_PERIODS, CCM_BILLABLE_ACTIVITIES, CCM_BILLING_REPORTS } from '../src/features/patient/data/ccmBillingMock.js';
 import { CCM_WORKLIST_MEMBERS } from '../src/features/ccm-worklist/data/mock.js';
 import { SNP_WORKLIST_MEMBERS } from '../src/features/snp-worklist/data/mock.js';
+import { CAREGAP_ACTIVITY_MOCK } from '../src/features/hedis-worklist/data/caregapActivityMock.js';
 
 // Patients whose HCC diagnosis gaps have been modernized to V28 + 2025/26
 // dates (see docs/features/hcc-coding-workflow.md). Re-seeding rewrites just
@@ -243,6 +244,23 @@ DROP POLICY IF EXISTS "Allow all for snp_worklist_members" ON snp_worklist_membe
 CREATE POLICY "Allow all for snp_worklist_members" ON snp_worklist_members FOR ALL USING (true);
 `;
 
+const CAREGAP_ACTIVITY_DDL = `
+CREATE TABLE IF NOT EXISTS caregap_activity (
+  id         text PRIMARY KEY,
+  member_id  text NOT NULL,
+  at         timestamptz NOT NULL DEFAULT now(),
+  actor      text,
+  t          text,
+  title      text,
+  payload    jsonb DEFAULT '{}'::jsonb,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE caregap_activity ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for caregap_activity" ON caregap_activity;
+CREATE POLICY "Allow all for caregap_activity" ON caregap_activity FOR ALL USING (true);
+CREATE INDEX IF NOT EXISTS idx_caregap_activity_member ON caregap_activity (member_id, at DESC);
+`;
+
 const CCM_REPORTS_DDL = `
 CREATE TABLE IF NOT EXISTS ccm_billing_reports (
   id                        text PRIMARY KEY,
@@ -425,6 +443,21 @@ function snpWorklistToRow(m) {
   };
 }
 
+// Mirrors caregapActivityToRow in useAppStore.js — common columns lifted out,
+// variant-specific fields ride in payload jsonb.
+function caregapActivityToRow(memberId, e) {
+  const { id, when, at, actor, t, title, ...payload } = e;
+  return {
+    id:        String(id),
+    member_id: memberId,
+    at:        when ?? at ?? new Date().toISOString(),
+    actor:     actor ?? null,
+    t:         t ?? null,
+    title:     title ?? null,
+    payload,
+  };
+}
+
 function ccmReportToRow(r) {
   return {
     id:                       r.id,
@@ -501,6 +534,8 @@ async function main() {
     console.log('  ✓ ccm_worklist_members — created / already exists');
     await db.query(SNP_WORKLIST_DDL);
     console.log('  ✓ snp_worklist_members — created / already exists');
+    await db.query(CAREGAP_ACTIVITY_DDL);
+    console.log('  ✓ caregap_activity — created / already exists');
     await db.end();
   } catch (e) {
     console.warn(`  ⚠  Could not connect via pg (${e.message})`);
@@ -573,6 +608,15 @@ async function main() {
     .from('snp_worklist_members')
     .upsert(snpWorklistRows, { onConflict: 'id' });
   if (swe) { console.error('  ✗', swe.message); } else { console.log(`  ✓ ${snpWorklistRows.length} SNP worklist members`); }
+
+  console.log('Seeding caregap_activity...');
+  const caregapRows = Object.entries(CAREGAP_ACTIVITY_MOCK).flatMap(
+    ([memberId, entries]) => entries.map(e => caregapActivityToRow(memberId, e)),
+  );
+  const { error: cge } = await supabase
+    .from('caregap_activity')
+    .upsert(caregapRows, { onConflict: 'id' });
+  if (cge) { console.error('  ✗', cge.message); } else { console.log(`  ✓ ${caregapRows.length} care gap activity entries`); }
 
   // Re-seed HCC gaps + member DOS dates for the modernized patients. The
   // gaps table has no (member_name, code) unique key, so we delete-then-
