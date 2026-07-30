@@ -4,7 +4,7 @@ import { track } from '../../lib/tracking';
 import { Input } from '../../components/Input/Input';
 import { Button } from '../../components/Button/Button';
 import { Icon } from '../../components/Icon/Icon';
-import { FoldhealthLogo } from '../../components/FoldhealthLogo/FoldhealthLogo';
+import { FoldHealthLogo } from '../../components/FoldHealthLogo/FoldHealthLogo';
 import loginHero from '../../assets/login-hero.png';
 import styles from './LoginPage.module.css';
 
@@ -193,7 +193,7 @@ export function LoginPage({ onBypass }) {
         <div className={styles.formContainer}>
           {/* Logo */}
           <div className={styles.logo}>
-            <FoldhealthLogo size={32} />
+            <FoldHealthLogo size={32} />
             <span className={styles.logoText}>Foldhealth</span>
           </div>
 

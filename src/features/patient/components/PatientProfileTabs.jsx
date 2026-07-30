@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { StickyNote } from '../../../components/StickyNote/StickyNote';
-import { StickyNoteAuditDrawer } from '../../../components/StickyNote/StickyNoteAuditDrawer';
+import { StickyNoteAuditDrawer } from '../../../components/StickyNoteAuditDrawer/StickyNoteAuditDrawer';
 import { useAppStore } from '../../../store/useAppStore';
 import { CareGapSection } from './CareGapSection';
 import { DiagnosisGapsTable } from './DiagnosisGapsTable';

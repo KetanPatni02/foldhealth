@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Icon } from '../../components/Icon/Icon';
-import { TabStrip } from '../../components/TabBar/TabStrip';
+import { TabStrip } from '../../components/TabStrip/TabStrip';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { useAppStore } from '../../store/useAppStore';

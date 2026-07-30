@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
-import { StickyNoteAuditDrawer } from '../../components/StickyNote/StickyNoteAuditDrawer';
+import { StickyNoteAuditDrawer } from '../../components/StickyNoteAuditDrawer/StickyNoteAuditDrawer';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './HomeView.module.css';
 

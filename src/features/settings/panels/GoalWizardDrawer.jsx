@@ -9,7 +9,7 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Input } from '../../../components/Input/Input';
 import { useAppStore } from '../../../store/useAppStore';
 import { Switch } from '../../../components/Switch/Switch';
-import { ConfirmDialog } from '../../../components/Modal/ConfirmDialog';
+import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { GOAL_TEMPLATES } from '../../../data/goals'; // Templates are config, not DB data
 import s from './GoalsPanel.module.css';
 

@@ -5,9 +5,9 @@ import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import { Icon } from '../../../components/Icon/Icon';
 import { CheckIcon } from '../../../components/Icon/CheckIcon';
 import { CloseIcon } from '../../../components/Icon/CloseIcon';
-import { Checkbox } from '../../../components/ShadcnCheckbox/checkbox';
+import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { DismissReasonForm } from './DismissReasonForm';
-import { DestructiveDialog } from '../../../components/Modal/DestructiveDialog';
+import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { reviewedByLabel } from '../reviewedBy';
 import styles from './IcdDosCard.module.css';
 
@@ -220,7 +220,7 @@ export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSe
         })}
       </div>
       {confirmDeleteIcd && (
-        <DestructiveDialog
+        <ConfirmDialog variant="destructive"
           title={`Delete ${icd.code}?`}
           description={`This manually-added ICD and all its DOS rows will be removed. This can't be undone.`}
           confirmLabel="Delete"
@@ -233,7 +233,7 @@ export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSe
         />
       )}
       {confirmRemoveDos && (
-        <DestructiveDialog
+        <ConfirmDialog variant="destructive"
           title="Remove DOS?"
           description={`${confirmRemoveDos.code} on ${confirmRemoveDos.dos} will be removed. This can't be undone.`}
           confirmLabel="Remove"

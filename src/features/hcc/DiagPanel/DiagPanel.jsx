@@ -20,7 +20,7 @@ import { DosStatusMenu } from './DosStatusMenu';
 import { LeftWorkspace } from './LeftWorkspace';
 import { IcdCard, makeCard, DOS_CUSTOM } from './IcdCard';
 import { IcdSearch } from '../../../components/IcdSearch/IcdSearch';
-import { Checkbox } from '../../../components/ShadcnCheckbox/checkbox';
+import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { POS_BY_VT, PROVIDER_POOL_BY_VT, VISIT_TYPES } from '../reference/visitTypes';
 import { DOC_TYPES } from '../data/chartDocs';
 import {
@@ -45,7 +45,7 @@ import { slaOutcome } from '../sla';
 import { RoleAssigneePicker } from '../RoleAssigneePicker';
 import { ROLE_LABEL } from '../assignment/astranaStaff';
 import { dosKey } from '../assignment/dosState';
-import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription } from '../../../components/ShadcnAlertDialog/alert-dialog';
+import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription } from '../../../components/ShadcnAlertDialog/ShadcnAlertDialog';
 import { Textarea } from '../../../components/Textarea/Textarea';
 import { Button } from '../../../components/Button/Button';
 import styles from './DiagPanel.module.css';

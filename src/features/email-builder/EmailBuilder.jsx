@@ -7,7 +7,7 @@ import { Badge } from '../../components/Badge/Badge';
 import { Button } from '../../components/Button/Button';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Toggle } from '../../components/Toggle/Toggle';
-import { ConfirmDialog } from '../../components/Modal/ConfirmDialog';
+import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { FontSubstitutionDialog } from './FontSubstitutionDialog';
 import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { ComponentsPanel } from './ComponentsPanel';

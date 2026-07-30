@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { ActionButton } from '../ActionButton/ActionButton';
 import { SearchIconButton } from '../SearchIconButton/SearchIconButton';
 import { SearchBar } from '../SearchBar/SearchBar';
-import { Checkbox } from '../ShadcnCheckbox/checkbox';
+import { Checkbox } from '../ShadcnCheckbox/ShadcnCheckbox';
 import { SortableHeader } from '../SortableHeader/SortableHeader';
 import { Pagination } from '../Pagination/Pagination';
 import { BulkBar } from '../BulkBar/BulkBar';
-import { TableSkeleton } from '../Skeleton/TableSkeleton';
+import { TableSkeleton } from '../TableSkeleton/TableSkeleton';
 import styles from './WorklistShell.module.css';
 
 /**

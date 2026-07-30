@@ -8,7 +8,7 @@ import { CreateNewPopover } from '../CreateNewPopover/CreateNewPopover';
 import { PreferencesDrawer } from '../PreferencesDrawer/PreferencesDrawer';
 import { ScheduleDrawer } from '../ScheduleDrawer/ScheduleDrawer';
 import { ThemePicker } from '../ThemePicker/ThemePicker';
-import { NotificationsPopover } from './NotificationsPopover';
+import { NotificationsPopover } from '../NotificationsPopover/NotificationsPopover';
 import { useAppStore } from '../../store/useAppStore';
 import { supabase } from '../../lib/supabase';
 import styles from './TopBar.module.css';

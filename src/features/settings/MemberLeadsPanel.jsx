@@ -6,7 +6,7 @@ import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
-import { DestructiveDialog } from '../../components/Modal/DestructiveDialog';
+import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { useAppStore } from '../../store/useAppStore';
 import { ConfigureTeamDrawer } from './ConfigureTeamDrawer';
 import { KIND_LABEL, KIND_BADGE_VARIANT } from './teamTypeConfig';
@@ -416,7 +416,8 @@ function CareTeamTable({ searchVal = '', onEdit }) {
         document.body,
       )}
       {confirmDelete && (
-        <DestructiveDialog
+        <ConfirmDialog
+          variant="destructive"
           title={`Delete "${confirmDelete.name}"?`}
           description="This action will permanently delete this team and its assignment rules from the system."
           confirmLabel="Delete Team"

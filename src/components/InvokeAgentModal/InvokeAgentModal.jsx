@@ -9,7 +9,7 @@ import {
   DialogContent,
   DialogTitle,
   DialogDescription,
-} from '../ShadcnDialog/dialog';
+} from '../ShadcnDialog/ShadcnDialog';
 
 const AGENTS = [
   { name: 'Ricardo', role: 'SNP Agent' },

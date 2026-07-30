@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Slider } from './slider';
+import { Slider } from './ShadcnSlider';
 
 export default {
   title: 'shadcn/Slider',

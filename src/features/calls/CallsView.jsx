@@ -12,7 +12,7 @@ import { DetailDrawer } from '../../components/DetailDrawer/DetailDrawer';
 import { AgentsIcon } from '../agent-builder/nodes/NodeIcons';
 import { Select } from '../../components/Select/Select';
 import { useAppStore } from '../../store/useAppStore';
-import { CallTypeAvatar, DIR_LABEL } from '../../components/Avatar/CallTypeAvatar';
+import { CallTypeAvatar, DIR_LABEL } from '../../components/CallTypeAvatar/CallTypeAvatar';
 import styles from './CallsView.module.css';
 
 // ── Helpers ──

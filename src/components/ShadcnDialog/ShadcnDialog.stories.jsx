@@ -8,7 +8,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogClose,
-} from './dialog';
+} from './ShadcnDialog';
 import { Button } from '../Button/Button';
 
 export default {

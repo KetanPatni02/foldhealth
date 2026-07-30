@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { Select } from '../../../components/Select/Select';
 import { Input } from '../../../components/Input/Input';
-import { Checkbox } from '../../../components/ShadcnCheckbox/checkbox';
+import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { useAppStore } from '../../../store/useAppStore';
 import { CCM_ACTIVITY_TYPES, secondsToTime, timeToSeconds } from '../data/ccmBillingMock';
 import styles from './CcmUnloggedTable.module.css';

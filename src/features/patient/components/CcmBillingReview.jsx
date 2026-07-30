@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { Button } from '../../../components/Button/Button';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
-import { CardSkeleton } from '../../../components/Skeleton/CardSkeleton';
+import { CardSkeleton } from '../../../components/CardSkeleton/CardSkeleton';
 import { useAppStore } from '../../../store/useAppStore';
 import { CCM_UNLOGGED_SECONDS, secondsToTime } from '../data/ccmBillingMock';
 import { CcmUnloggedTable } from './CcmUnloggedTable';

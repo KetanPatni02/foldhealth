@@ -22,7 +22,7 @@ import { normalizeRole } from '../reviewedBy';
 import { SYSTEM_USERS } from '../systemUsers';
 import { OutreachTab as PatientOutreachTab } from '../../patient/components/OutreachTab';
 import { DocEvidenceViewer } from './DocEvidenceViewer';
-import { DestructiveDialog } from '../../../components/Modal/DestructiveDialog';
+import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { CommentComposer } from '../../../components/CommentComposer/CommentComposer';
 import { Avatar } from '../../../components/Avatar/Avatar';
 import styles from './LeftWorkspace.module.css';
@@ -955,7 +955,7 @@ function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChange, onCa
         })}
       </div>
       {confirmDeleteComment && (
-        <DestructiveDialog
+        <ConfirmDialog variant="destructive"
           title="Delete comment?"
           description="This comment will be permanently removed. This can't be undone."
           confirmLabel="Delete"
@@ -1456,7 +1456,7 @@ function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId, 
         })}
       </div>
       {confirmDelete && (
-        <DestructiveDialog
+        <ConfirmDialog variant="destructive"
           title="Delete document?"
           description={`"${confirmDelete.name}" will be removed from this record. This can't be undone.`}
           confirmLabel="Delete"

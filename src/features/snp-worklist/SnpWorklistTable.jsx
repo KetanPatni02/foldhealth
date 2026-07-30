@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
-import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
+import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
 import { Input } from '../../components/Input/Input';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { Pagination } from '../../components/Pagination/Pagination';
-import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
+import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { SnpWorklistRow } from './SnpWorklistRow';
 import styles from './SnpWorklistTable.module.css';
 

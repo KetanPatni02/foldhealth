@@ -1,5 +1,7 @@
-import { CardSkeleton, KpiSkeleton, SimpleTableSkeleton } from './CardSkeleton';
-import { TableSkeleton as FullTableSkeleton } from './TableSkeleton';
+import { CardSkeleton } from './CardSkeleton';
+import { KpiSkeleton } from '../KpiSkeleton/KpiSkeleton';
+import { SimpleTableSkeleton } from '../SimpleTableSkeleton/SimpleTableSkeleton';
+import { TableSkeleton as FullTableSkeleton } from '../TableSkeleton/TableSkeleton';
 
 // The Skeleton directory exports several composed loading-state skeletons
 // (no single "Skeleton" primitive). This story showcases each one.

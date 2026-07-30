@@ -13,14 +13,13 @@ import { UploadDropField } from '../../components/UploadDropField/UploadDropFiel
 import { FilePreview } from '../../components/FilePreview/FilePreview';
 import { DemoPhiStrip } from '../../components/DemoPhiStrip/DemoPhiStrip';
 import { Select } from '../../components/Select/Select';
-import { ConfirmDialog } from '../../components/Modal/ConfirmDialog';
+import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { useAppStore } from '../../store/useAppStore';
 import { DocEvidenceViewer } from './DiagPanel/DocEvidenceViewer';
 import { ReviewProgressPopover, buildReviewStages, computeReviewProgress, ProgressRing } from './DiagPanel/ReviewProgressPopover';
 import { dosKey } from './assignment/dosState';
-import { DestructiveDialog } from '../../components/Modal/DestructiveDialog';
-import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription } from '../../components/ShadcnAlertDialog/alert-dialog';
-import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
+import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription } from '../../components/ShadcnAlertDialog/ShadcnAlertDialog';
+import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Textarea } from '../../components/Textarea/Textarea';
 import { DOC_TYPES, makeUploadedChartDoc } from './data/chartDocs';
 import { staffForRole } from './assignment/astranaStaff';
@@ -1072,7 +1071,7 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
         document.body,
       )}
       {confirmDeleteDoc && (
-        <DestructiveDialog
+        <ConfirmDialog variant="destructive"
           title="Delete document?"
           description={`"${confirmDeleteDoc.name}" will be removed from this record. This can't be undone.`}
           confirmLabel="Delete"

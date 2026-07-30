@@ -1,8 +1,8 @@
-import { FoldhealthLogo } from './FoldhealthLogo';
+import { FoldHealthLogo } from './FoldHealthLogo';
 
 export default {
-  title: 'Core/FoldhealthLogo',
-  component: FoldhealthLogo,
+  title: 'Core/FoldHealthLogo',
+  component: FoldHealthLogo,
   tags: ['autodocs'],
   parameters: {
     docs: {

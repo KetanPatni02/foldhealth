@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { HccWorklistRow, resolveCurrentAssignee } from './HccWorklistRow';
-import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
-import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
+import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
+import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
 import { useTableSort } from '../../components/SortableHeader/useTableSort';
-import { SortPopover } from '../../components/Popover/SortPopover';
+import { SortPopover } from '../../components/SortPopover/SortPopover';
 import { DueDateChip, getDueCategory } from './DueDateChip';
 import { FilterChipBar } from './FilterChipBar';
 import { FilterNameDialog } from './FilterNameDialog';

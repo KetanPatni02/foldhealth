@@ -1,4 +1,4 @@
-import { Avatar } from './Avatar';
+import { Avatar } from '../Avatar/Avatar';
 import { Icon } from '../Icon/Icon';
 import { MissedCallIcon } from '../Icon/MissedCallIcon';
 import { DeclinedCallIcon } from '../Icon/DeclinedCallIcon';

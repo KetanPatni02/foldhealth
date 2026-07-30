@@ -2,10 +2,10 @@ import { useMemo, useState, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { WorklistRow } from './WorklistRow';
 import { BulkBar } from '../../components/BulkBar/BulkBar';
-import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
+import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { ErrorState } from '../../components/ErrorState/ErrorState';
 import { Icon } from '../../components/Icon/Icon';
-import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
+import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 
 function EmptySearch() {
   return (

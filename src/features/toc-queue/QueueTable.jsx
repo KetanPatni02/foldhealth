@@ -1,10 +1,10 @@
 import { useMemo, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
-import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
+import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { QueueRow } from './QueueRow';
 import { QueueEmptyState } from './QueueEmptyState';
-import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
+import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 
 export function QueueTable() {
   const patients = useAppStore(s => s.patients);

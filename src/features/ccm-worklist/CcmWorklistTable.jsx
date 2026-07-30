@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
-import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
+import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { Pagination } from '../../components/Pagination/Pagination';
-import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
+import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { BulkBar } from '../../components/BulkBar/BulkBar';
 import { CcmWorklistRow } from './CcmWorklistRow';
 import {

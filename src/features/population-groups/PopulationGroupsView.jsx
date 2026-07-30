@@ -6,13 +6,13 @@
 
 import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { Icon } from '../../components/Icon/Icon';
-import { ConfirmDialog } from '../../components/Modal/ConfirmDialog';
+import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { Badge } from '../../components/Badge/Badge';
 import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { UpdatePopGroupDrawer } from './UpdatePopGroupDrawer';
 import { Input as FoldInput } from '../../components/Input/Input';
 import { Textarea } from '../../components/Textarea/Textarea';
-import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
+import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Button } from '../../components/Button/Button';
 import { Avatar } from '../../components/Avatar/Avatar';

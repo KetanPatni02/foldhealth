@@ -11,7 +11,7 @@ import { Avatar } from '../../components/Avatar/Avatar';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Input } from '../../components/Input/Input';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
-import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
+import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { Select } from '../../components/Select/Select';
 import { RadioButton } from '../../components/RadioButton/RadioButton';
 import { useTableSort } from '../../components/SortableHeader/useTableSort';
@@ -32,7 +32,7 @@ import {
   AlertDialogFooter,
   AlertDialogAction,
   AlertDialogCancel,
-} from '../../components/ShadcnAlertDialog/alert-dialog';
+} from '../../components/ShadcnAlertDialog/ShadcnAlertDialog';
 import { OrgPanel } from './panels/OrgPanel';
 // FALLBACK_USERS lives in ./fallbackUsers.js so module-eval-time consumers
 // (hcc/systemUsers.js) don't import-cycle through this component file.

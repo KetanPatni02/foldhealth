@@ -6,7 +6,7 @@ import { Button } from '../../../components/Button/Button';
 import { Input } from '../../../components/Input/Input';
 import { Textarea } from '../../../components/Textarea/Textarea';
 import { Switch } from '../../../components/Switch/Switch';
-import { FoldhealthLogo } from '../../../components/FoldhealthLogo/FoldhealthLogo';
+import { FoldHealthLogo } from '../../../components/FoldHealthLogo/FoldHealthLogo';
 import { ColorInput } from '../../email-builder/ColorInput';
 import styles from './OrgPanel.module.css';
 
@@ -220,7 +220,7 @@ export function OrgPanel() {
             <div className={styles.poweredBy}>
               <span className={styles.poweredByLabel}>Powered By</span>
               <div className={styles.poweredByBrand}>
-                <FoldhealthLogo size={14} color={primaryColor} />
+                <FoldHealthLogo size={14} color={primaryColor} />
                 <span className={styles.poweredByName}>Foldhealth</span>
               </div>
             </div>

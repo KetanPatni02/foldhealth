@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Switch } from '../../components/Switch/Switch';
 import { Select } from '../../components/Select/Select';
-import { Slider } from '../../components/ShadcnSlider/slider';
+import { Slider } from '../../components/ShadcnSlider/ShadcnSlider';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './GlobalSettings.module.css';
 

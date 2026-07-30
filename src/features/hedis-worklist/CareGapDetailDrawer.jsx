@@ -9,7 +9,7 @@ import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Icon } from '../../components/Icon/Icon';
 import { ActivityLog } from '../../components/ActivityLog/ActivityLog';
-import { CardSkeleton } from '../../components/Skeleton/CardSkeleton';
+import { CardSkeleton } from '../../components/CardSkeleton/CardSkeleton';
 import { OutreachTab } from '../patient/components/OutreachTab';
 import { OUTREACH_LOG_COUNT } from '../patient/data/outreachLogMock';
 import { useAppStore } from '../../store/useAppStore';

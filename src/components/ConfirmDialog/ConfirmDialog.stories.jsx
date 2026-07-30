@@ -1,34 +1,34 @@
 import { useState } from 'react';
 import { ConfirmDialog } from './ConfirmDialog';
-import { DestructiveDialog } from './DestructiveDialog';
 import { Button } from '../Button/Button';
 
 export default {
-  title: 'Overlays/Modal',
+  title: 'Overlays/ConfirmDialog',
   tags: ['autodocs'],
   parameters: {
     docs: {
       description: {
         component:
-          'Two flavors of centered modal dialog: `ConfirmDialog` (icon + title + description + Confirm/Cancel, tokenized variant colors) and `DestructiveDialog` (red-styled shortcut for irreversible actions).',
+          'Centered modal dialog for confirming an action. Use `variant="destructive"` (filled red-circle icon, danger button) for irreversible actions like delete/discard; `variant="warning"` (default) for reversible warnings; `variant="primary"` for informational confirms.',
       },
     },
   },
   argTypes: {
-    dialog: {
+    variant: {
       control: 'select',
-      options: ['confirm', 'destructive'],
-      description: 'Which modal component to render: ConfirmDialog or DestructiveDialog.',
+      options: ['warning', 'destructive', 'primary'],
+      description: 'Preset look. `destructive` = filled red icon + danger button. `warning` = triangle icon + danger button. `primary` = info icon + primary button.',
+      table: { type: { summary: "'warning' | 'destructive' | 'primary'" }, defaultValue: { summary: 'warning' } },
     },
     icon: {
       control: 'text',
-      description: 'Solar icon name shown in the header (ConfirmDialog only).',
-      table: { type: { summary: 'string' }, defaultValue: { summary: 'solar:danger-triangle-linear' } },
+      description: 'Override the variant\'s default Iconify name.',
+      table: { type: { summary: 'string' } },
     },
     iconColor: {
       control: 'color',
-      description: 'CSS color for the icon (ConfirmDialog only).',
-      table: { type: { summary: 'string' }, defaultValue: { summary: 'var(--status-error)' } },
+      description: 'Override the icon color.',
+      table: { type: { summary: 'string' } },
     },
     title: {
       control: 'text',
@@ -42,7 +42,7 @@ export default {
     },
     confirmLabel: {
       control: 'text',
-      description: 'Label for the primary/destructive button.',
+      description: 'Label for the primary action button.',
       table: { type: { summary: 'string' }, defaultValue: { summary: 'Delete' } },
     },
     cancelLabel: {
@@ -50,20 +50,14 @@ export default {
       description: 'Label for the cancel button.',
       table: { type: { summary: 'string' }, defaultValue: { summary: 'Cancel' } },
     },
-    variant: {
-      control: 'select',
-      options: ['error', 'success', 'warning', 'info'],
-      description: 'Colors the confirm button + default icon (ConfirmDialog only).',
-      table: { type: { summary: "'error' | 'success' | 'warning' | 'info'" }, defaultValue: { summary: 'error' } },
-    },
     loading: {
       control: 'boolean',
-      description: 'Disables Confirm and shows a busy state while an async action is pending.',
+      description: 'Disables both buttons and shows a busy state while an async action is pending.',
       table: { type: { summary: 'boolean' }, defaultValue: { summary: 'false' } },
     },
     onConfirm: {
       action: 'onConfirm',
-      description: 'Fires when the primary/destructive button is clicked.',
+      description: 'Fires when the primary button is clicked.',
       table: { type: { summary: '() => void' } },
     },
     onCancel: {
@@ -76,18 +70,17 @@ export default {
 
 const centerStage = { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 24 };
 
-function DialogWrapper({ dialog, ...props }) {
+function DialogWrapper(props) {
   const [open, setOpen] = useState(false);
-  const Component = dialog === 'destructive' ? DestructiveDialog : ConfirmDialog;
   return (
     <div style={centerStage}>
       <Button
-        variant={dialog === 'destructive' ? 'danger' : 'secondary'}
+        variant={props.variant === 'destructive' ? 'danger' : 'secondary'}
         onClick={() => setOpen(true)}
       >
-        Open {dialog === 'destructive' ? 'DestructiveDialog' : 'ConfirmDialog'}
+        Open ConfirmDialog
       </Button>
-      {open && <Component {...props} onConfirm={() => setOpen(false)} onCancel={() => setOpen(false)} />}
+      {open && <ConfirmDialog {...props} onConfirm={() => setOpen(false)} onCancel={() => setOpen(false)} />}
     </div>
   );
 }
@@ -95,11 +88,10 @@ function DialogWrapper({ dialog, ...props }) {
 export const Playground = {
   render: (args) => <DialogWrapper {...args} />,
   args: {
-    dialog: 'confirm',
+    variant: 'destructive',
     title: 'Delete this DOS?',
     description: 'This will remove the DOS row and all associated ICDs.',
     confirmLabel: 'Delete',
     cancelLabel: 'Cancel',
-    variant: 'error',
   },
 };

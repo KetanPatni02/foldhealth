@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
-import { CheckboxListPopover } from '../../components/Popover/CheckboxListPopover';
-import { RadioListPopover } from '../../components/Popover/RadioListPopover';
-import { RangeSliderPopover } from '../../components/Popover/RangeSliderPopover';
-import { DateRangePopover } from '../../components/Popover/DateRangePopover';
+import { CheckboxListPopover } from '../../components/CheckboxListPopover/CheckboxListPopover';
+import { RadioListPopover } from '../../components/RadioListPopover/RadioListPopover';
+import { RangeSliderPopover } from '../../components/RangeSliderPopover/RangeSliderPopover';
+import { DateRangePopover } from '../../components/DateRangePopover/DateRangePopover';
 import { useAppStore } from '../../store/useAppStore';
 import { FILTER_DEF_MAP, MORE_FILTER_ITEMS, PRIMARY_FILTER_KEYS } from './filters';
 import { MoreFiltersPopover } from './MoreFiltersPopover';

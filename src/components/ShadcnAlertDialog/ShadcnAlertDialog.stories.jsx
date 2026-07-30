@@ -9,7 +9,7 @@ import {
   AlertDialogDescription,
   AlertDialogAction,
   AlertDialogCancel,
-} from './alert-dialog';
+} from './ShadcnAlertDialog';
 import { Button } from '../Button/Button';
 
 export default {

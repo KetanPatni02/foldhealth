@@ -1,12 +1,12 @@
 /**
- * FoldhealthLogo — the Foldhealth brand mark.
+ * FoldHealthLogo — the Fold Health brand mark.
  *
  * Single source of truth for the logo SVG. Both LoginPage and
  * ResetPasswordPage used to inline this path; extracting it prevents
  * copy-paste drift (e.g. accidentally truncating the path during a
  * file rewrite, which produced an incomplete mark on the reset page).
  */
-export function FoldhealthLogo({ size = 32, color = '#8C5AE2', className }) {
+export function FoldHealthLogo({ size = 32, color = '#8C5AE2', className }) {
   return (
     <svg
       width={size}

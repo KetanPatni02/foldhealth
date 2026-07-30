@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
 import { MenuPopover } from './MenuPopover';
-import { CheckboxListPopover } from './CheckboxListPopover';
-import { RadioListPopover } from './RadioListPopover';
-import { SearchListPopover } from './SearchListPopover';
+import { CheckboxListPopover } from '../CheckboxListPopover/CheckboxListPopover';
+import { RadioListPopover } from '../RadioListPopover/RadioListPopover';
+import { SearchListPopover } from '../SearchListPopover/SearchListPopover';
 
 export default {
   title: 'Overlays/Popover',

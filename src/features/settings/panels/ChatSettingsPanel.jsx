@@ -5,8 +5,8 @@ import { Badge } from '../../../components/Badge/Badge';
 import { Button } from '../../../components/Button/Button';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { useAppStore } from '../../../store/useAppStore';
-import { SimpleTableSkeleton } from '../../../components/Skeleton/CardSkeleton';
-import { ConfirmDialog } from '../../../components/Modal/ConfirmDialog';
+import { SimpleTableSkeleton } from '../../../components/SimpleTableSkeleton/SimpleTableSkeleton';
+import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { AuditLogDrawer } from './AuditLogDrawer';
 
 const thStyle = {

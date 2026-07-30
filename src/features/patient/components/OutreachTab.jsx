@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../components/Icon/Icon';
-import { MenuPopover } from '../../../components/Popover/MenuPopover';
+import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
 import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { SmsIcon } from '../../../components/Icon/SmsIcon';
 import { AddTaskIcon } from '../../../components/Icon/AddTaskIcon';

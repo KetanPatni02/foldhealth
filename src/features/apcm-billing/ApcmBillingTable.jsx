@@ -1,12 +1,12 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
+import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Button } from '../../components/Button/Button';
 import { Icon } from '../../components/Icon/Icon';
 import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
-import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
+import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { ApcmBillingRow } from './ApcmBillingRow';
 import { AttestationModal } from './AttestationModal';
 // Patients now come from the Supabase-backed store (fetch below), but the

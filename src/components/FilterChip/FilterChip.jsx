@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Icon } from '../Icon/Icon';
-import { CheckboxListPopover } from '../Popover/CheckboxListPopover';
-import { RadioListPopover } from '../Popover/RadioListPopover';
+import { CheckboxListPopover } from '../CheckboxListPopover/CheckboxListPopover';
+import { RadioListPopover } from '../RadioListPopover/RadioListPopover';
 import styles from './FilterChip.module.css';
 
 /**

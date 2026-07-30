@@ -20,14 +20,14 @@ import {
   AlertDialogFooter,
   AlertDialogAction,
   AlertDialogCancel,
-} from '../../components/ShadcnAlertDialog/alert-dialog';
+} from '../../components/ShadcnAlertDialog/ShadcnAlertDialog';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '../../components/ShadcnDialog/dialog';
+} from '../../components/ShadcnDialog/ShadcnDialog';
 import styles from './CreateInsurancePlanDrawer.module.css';
 
 /* ── Option lists ── */

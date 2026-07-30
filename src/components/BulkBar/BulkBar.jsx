@@ -4,7 +4,7 @@ import { CloseIcon } from '../Icon/CloseIcon';
 import { BotIcon } from '../Icon/BotIcon';
 import { Button } from '../Button/Button';
 import { ActionButton } from '../ActionButton/ActionButton';
-import { Checkbox } from '../ShadcnCheckbox/checkbox';
+import { Checkbox } from '../ShadcnCheckbox/ShadcnCheckbox';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './BulkBar.module.css';
 

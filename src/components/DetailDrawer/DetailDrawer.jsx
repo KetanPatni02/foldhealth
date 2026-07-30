@@ -6,7 +6,7 @@ import { Drawer } from '../Drawer/Drawer';
 import { useAppStore } from '../../store/useAppStore';
 import { EngagementCard } from '../EngagementCard/EngagementCard';
 import { GoalProgress } from '../GoalProgress/GoalProgress';
-import { CallTypeAvatar, DIR_LABEL } from '../Avatar/CallTypeAvatar';
+import { CallTypeAvatar, DIR_LABEL } from '../CallTypeAvatar/CallTypeAvatar';
 import styles from './DetailDrawer.module.css';
 
 /* ── Waveform data (seeded random heights for consistent look) ── */

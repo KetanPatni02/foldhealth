@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { Drawer } from '../Drawer/Drawer';
 import { Badge } from '../Badge/Badge';
 import { Icon } from '../Icon/Icon';
-import { CardSkeleton } from '../Skeleton/CardSkeleton';
+import { CardSkeleton } from '../CardSkeleton/CardSkeleton';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './WhatsNewDrawer.module.css';
 

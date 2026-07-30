@@ -6,7 +6,7 @@ import { Button } from '../../../components/Button/Button';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Drawer } from '../../../components/Drawer/Drawer';
 import { useAppStore } from '../../../store/useAppStore';
-import { ConfirmDialog } from '../../../components/Modal/ConfirmDialog';
+import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import s from './GoalsPanel.module.css';
 
 export function GoalDetailDrawer() {
