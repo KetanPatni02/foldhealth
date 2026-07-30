@@ -64,7 +64,7 @@ export function FilterChip({
         <span className={styles.chipLabel}>{label}</span>
         {active ? (
           <>
-            <span className={styles.divider} aria-hidden="true">|</span>
+            <span className={styles.divider} aria-hidden="true">:</span>
             <span className={styles.chipValue}>{summary}</span>
             <span
               className={styles.clearIcon}
