@@ -75,10 +75,12 @@ export function ClinicalNotePanel({ member, gapCode, year, onClose, editingTaskI
   const createCareGapSignOffTask = useAppStore(s => s.createCareGapSignOffTask);
   const updateSignOffTaskPdf = useAppStore(s => s.updateSignOffTaskPdf);
 
-  // Open gaps for the patient = anything not Closed/Excluded/Completed.
+  // Active gaps = anything not in the terminal Completed or Closed - * buckets.
   // AC-1: opening + Clinical Note from one gap shows ALL open gaps.
   const activeGaps = useMemo(
-    () => member.gaps.filter(g => !['Closed', 'Excluded', 'Closed-Data', 'Completed'].includes(g.status)),
+    () => member.gaps.filter(g => (
+      g.status !== 'Completed' && !String(g.status).startsWith('Closed')
+    )),
     [member.gaps]
   );
 

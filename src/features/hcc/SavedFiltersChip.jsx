@@ -10,14 +10,28 @@ import styles from './DueDateChip.module.css';
  * saved views on this worklist now that the SubNav's Saved Filters section
  * has been removed: applies a view on click, filters the list with a search
  * box, and exposes Rename / Delete per row via a ⋯ menu.
+ *
+ * Props:
+ *  - list (string)  Worklist name ('HCC' | 'HEDIS'). Scopes which saved
+ *                   filters are read from the store and which filter slice
+ *                   the Clear/Apply actions write to. Defaults to 'HCC' so
+ *                   HccWorklistTable's existing callsite keeps working.
  */
-export function SavedFiltersChip() {
-  const savedFilters = useAppStore(s => s.savedFiltersByList.HCC || []);
-  const activeId = useAppStore(s => s.activeSavedIdByList.HCC || null);
-  const applyHccSavedFilter = useAppStore(s => s.applyHccSavedFilter);
+// Stable empty-array fallback so `s.savedFiltersByList[list] ?? EMPTY`
+// returns the SAME reference across renders when a list hasn't been seeded
+// yet. Inlining `|| []` there minted a fresh `[]` each render, which
+// triggered React 18's "getSnapshot should be cached" infinite loop.
+const EMPTY_SAVED = [];
+
+export function SavedFiltersChip({ list = 'HCC' }) {
+  const savedFilters = useAppStore(s => s.savedFiltersByList[list] ?? EMPTY_SAVED);
+  const activeId = useAppStore(s => s.activeSavedIdByList[list] ?? null);
+  const applySavedFilter = useAppStore(s => s.applySavedFilter);
   const clearHccFilters = useAppStore(s => s.clearHccFilters);
+  const clearHedisFilters = useAppStore(s => s.clearHedisFilters);
   const renameSavedFilter = useAppStore(s => s.renameSavedFilter);
   const deleteSavedFilter = useAppStore(s => s.deleteSavedFilter);
+  const clearFilters = list === 'HEDIS' ? clearHedisFilters : clearHccFilters;
 
   const triggerRef = useRef(null);
   const [pos, setPos] = useState(null);
@@ -51,10 +65,10 @@ export function SavedFiltersChip() {
           pos={pos}
           savedFilters={savedFilters}
           activeId={activeId}
-          onSelect={(id) => { applyHccSavedFilter(id); close(); }}
-          onClear={() => { clearHccFilters(); close(); }}
+          onSelect={(id) => { applySavedFilter(list, id); close(); }}
+          onClear={() => { clearFilters(); close(); }}
           onRename={(f) => setRenameTarget({ id: f.id, name: f.name })}
-          onDelete={(f) => deleteSavedFilter('HCC', f.id)}
+          onDelete={(f) => deleteSavedFilter(list, f.id)}
           onClose={close}
         />
       )}
@@ -64,7 +78,7 @@ export function SavedFiltersChip() {
         submitLabel="Save"
         initialName={renameTarget?.name || ''}
         onSubmit={(name) => {
-          renameSavedFilter('HCC', renameTarget.id, name);
+          renameSavedFilter(list, renameTarget.id, name);
           setRenameTarget(null);
         }}
         onCancel={() => setRenameTarget(null)}

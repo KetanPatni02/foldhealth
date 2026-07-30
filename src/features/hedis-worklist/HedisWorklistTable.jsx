@@ -10,28 +10,20 @@ import { SearchIconButton } from '../../components/SearchIconButton/SearchIconBu
 import { SortableHeader } from '../../components/SortableHeader/SortableHeader';
 import { useTableSort } from '../../components/SortableHeader/useTableSort';
 import { Pagination } from '../../components/Pagination/Pagination';
+import { FilterChipBar } from '../hcc/FilterChipBar';
+import { SavedFiltersChip } from '../hcc/SavedFiltersChip';
+import { FilterNameDialog } from '../hcc/FilterNameDialog';
+import {
+  FILTER_DEF_MAP as HEDIS_FILTER_DEF_MAP,
+  MORE_FILTER_ITEMS as HEDIS_MORE_FILTER_ITEMS,
+  PRIMARY_FILTER_KEYS as HEDIS_PRIMARY_FILTER_KEYS,
+  memberMatchesFilters as hedisMemberMatchesFilters,
+  countActiveFilters as countActiveHedisFilters,
+} from './hedisFilters';
 import styles from './HedisWorklistTable.module.css';
 import rowStyles from './HedisWorklistRow.module.css';
 
 const YEARS = [2024, 2025, 2026];
-
-const FILTER_CHIPS = [
-  { key: 'memberStatus', label: 'Member Status', defaultActive: true, defaultValue: 'Active' },
-  { key: 'phone', label: 'Phone Number' },
-  { key: 'dob', label: 'DOB' },
-  { key: 'gender', label: 'Gender' },
-  { key: 'language', label: 'Language' },
-  { key: 'gapStatus', label: 'Gap Status' },
-  { key: 'assignee', label: 'Assignee' },
-  { key: 'lastOutreachDate', label: 'Last Outreach Date' },
-  { key: 'lastOutreachOutcome', label: 'Last Outreach Outcome' },
-  { key: 'ipa', label: 'IPA' },
-  { key: 'hpCode', label: 'HP Codes' },
-  { key: 'zip', label: 'Zip Code' },
-  { key: 'city', label: 'City' },
-  { key: 'preferredCallTime', label: 'Preferred Call Time' },
-  { key: 'state', label: 'State of Residence' },
-];
 
 export function HedisWorklistTable() {
   const currentPage = useAppStore(s => s.currentPage);
@@ -41,14 +33,19 @@ export function HedisWorklistTable() {
   const showToast = useAppStore(s => s.showToast);
   const hedisMembers = useAppStore(s => s.hedisMembers);
 
+  // HEDIS filter state now lives in the store (same shape as HCC's hccFilters
+  // — `{ [k]: string[] }`) so the shared FilterChipBar + SavedFiltersChip
+  // and the saveSavedFilter / applySavedFilter machinery drive it directly.
+  const hedisFilters = useAppStore(s => s.hedisFilters);
+  const saveHedisFilter = useAppStore(s => s.saveHedisFilter);
+
   const [year, setYear] = useState(2026);
   const [yearOpen, setYearOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBarOpen, setFilterBarOpen] = useState(true);
-  // activeFilters: object of chip key → value (null means chip is shown but not active)
-  const [activeFilters, setActiveFilters] = useState({ memberStatus: 'Active' });
   const [selectedIds, setSelectedIds] = useState([]);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [drawerMemberId, setDrawerMemberId] = useState(null);
   const [drawerGapCode, setDrawerGapCode] = useState(null);
 
@@ -94,17 +91,25 @@ export function HedisWorklistTable() {
         m.in.toLowerCase().includes(q)
       );
     }
-    if (activeFilters.memberStatus) {
-      result = result.filter(m => m.memberStatus === activeFilters.memberStatus);
-    }
-    if (activeFilters.gender) {
-      result = result.filter(m => m.gender === activeFilters.gender);
-    }
-    if (activeFilters.gapStatus) {
-      result = result.filter(m => m.gaps.some(g => g.status === activeFilters.gapStatus));
-    }
-    return result;
-  }, [searchQuery, activeFilters, hedisMembers]);
+    return result.filter(m => hedisMemberMatchesFilters(m, hedisFilters));
+  }, [searchQuery, hedisFilters, hedisMembers]);
+
+  // Data-derived option pools passed to the FilterChipBar so `dynamic` chips
+  // (Assignee, State, City, IPA, HP Code) enumerate only what the loaded
+  // members actually carry — same pattern HCC's FilterChipBar uses.
+  const platformUsers = useAppStore(s => s.platformUsers);
+  const dynamicOpts = useMemo(() => {
+    const distinct = (fn) => [...new Set((hedisMembers || []).map(fn).filter(Boolean))].sort();
+    return {
+      assignee: platformUsers?.length ? platformUsers.map(u => u.name) : distinct(m => m.assignee),
+      state:    distinct(m => m.state),
+      city:     distinct(m => m.city),
+      ipa:      distinct(m => m.ipa),
+      hpCode:   distinct(m => m.hpCode),
+    };
+  }, [hedisMembers, platformUsers]);
+
+  const activeFilterCount = countActiveHedisFilters(hedisFilters);
 
   const { sorted, sortKey, sortDir, requestSort } = useTableSort(filtered, 'startDate', 'desc');
 
@@ -124,13 +129,6 @@ export function HedisWorklistTable() {
   const handleSelectAll = (checked) => {
     setSelectedIds(checked ? allIds : []);
   };
-
-  const removeFilter = (key) => {
-    setActiveFilters(prev => { const n = { ...prev }; delete n[key]; return n; });
-  };
-  const clearAllFilters = () => setActiveFilters({});
-
-  const activeFilterCount = Object.keys(activeFilters).length;
 
   const thStyle = `${rowStyles.stickyLeft}`;
 
@@ -162,6 +160,8 @@ export function HedisWorklistTable() {
         </div>
 
         <div className={styles.headerRight}>
+          <SavedFiltersChip list="HEDIS" />
+          <span className={styles.iconDivider} />
           {searchOpen ? (
             <div className={styles.searchInput}>
               <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-300)" />
@@ -179,67 +179,33 @@ export function HedisWorklistTable() {
           )}
           <span className={styles.iconDivider} />
           <ActionButton
+            icon="custom:filter"
+            size="L"
+            tooltip={filterBarOpen ? 'Hide filters' : 'Show filters'}
+            notification={activeFilterCount > 0}
+            count={activeFilterCount > 0 ? String(activeFilterCount) : undefined}
+            onClick={() => setFilterBarOpen(v => !v)}
+          />
+          <span className={styles.iconDivider} />
+          <ActionButton
             icon="solar:upload-minimalistic-linear"
             size="L"
             tooltip="Export"
             onClick={() => showToast('Export — coming soon')}
           />
-          <span className={styles.iconDivider} />
-          <div className={styles.filterBadge}>
-            <ActionButton
-              icon="custom:filter"
-              size="L"
-              tooltip="Filter"
-              onClick={() => setFilterBarOpen(v => !v)}
-            />
-            {activeFilterCount > 0 && (
-              <span className={styles.filterCount}>{activeFilterCount}</span>
-            )}
-          </div>
         </div>
       </div>
 
-      {/* ── Filter bar ── */}
+      {/* ── Filter chip bar (shared with HCC) ── */}
       {filterBarOpen && (
-        <div className={styles.filterBar}>
-          {FILTER_CHIPS.map(chip => {
-            const isActive = activeFilters[chip.key] != null;
-            const value = activeFilters[chip.key];
-            return (
-              <div
-                key={chip.key}
-                className={[styles.filterChip, isActive ? styles.filterChipActive : ''].join(' ')}
-                onClick={() => !isActive && showToast(`${chip.label} filter — coming soon`)}
-              >
-                {chip.label}{isActive ? `: ${value}` : ':'}
-                {!isActive && <Icon name="solar:alt-arrow-down-linear" size={11} />}
-                {isActive && (
-                  <button
-                    className={styles.filterChipRemove}
-                    onClick={e => { e.stopPropagation(); removeFilter(chip.key); }}
-                    title={`Remove ${chip.label} filter`}
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            );
-          })}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <div
-              className={styles.filterChip}
-              onClick={() => showToast('More filters — coming soon')}
-            >
-              More Filters
-              <Icon name="solar:alt-arrow-down-linear" size={11} />
-            </div>
-            {activeFilterCount > 0 && (
-              <button className={styles.filterClearAll} onClick={clearAllFilters}>
-                ✕ Clear All
-              </button>
-            )}
-          </div>
-        </div>
+        <FilterChipBar
+          list="HEDIS"
+          filterDefMap={HEDIS_FILTER_DEF_MAP}
+          moreFilterItems={HEDIS_MORE_FILTER_ITEMS}
+          primaryFilterKeys={HEDIS_PRIMARY_FILTER_KEYS}
+          dynamicOpts={dynamicOpts}
+          onSaveFilter={() => setSaveDialogOpen(true)}
+        />
       )}
 
       {/* ── Table ── */}
@@ -327,6 +293,13 @@ export function HedisWorklistTable() {
         onClose={closeGapDrawer}
       />
     )}
+    <FilterNameDialog
+      open={saveDialogOpen}
+      title="Save Filter"
+      submitLabel="Save"
+      onSubmit={(name) => { saveHedisFilter(name); setSaveDialogOpen(false); }}
+      onCancel={() => setSaveDialogOpen(false)}
+    />
     </>
   );
 }

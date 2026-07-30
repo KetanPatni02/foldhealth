@@ -31,18 +31,35 @@ const MEASURE_NAMES = {
   GSD3:     'Glycemic Status Assessment',
 };
 
-const STATUSES = ['Open', 'Closed', 'Excluded', 'Completed', 'Submitted', 'Closed-Data'];
+// Canonical HEDIS gap statuses, grouped by their color band:
+//   • Not Started (primary purple) — Open
+//   • In Progress (warning yellow) — Engaged / Engaged Requires Follow-Up / Submitted
+//   • Done        (success green)  — Completed
+//   • Closed      (neutral grey)   — Closed - Do not call / Closed - UTR / Closed - Other
+const STATUSES = [
+  'Open',
+  'Engaged',
+  'Engaged Requires Follow-Up',
+  'Submitted',
+  'Completed',
+  'Closed - Do not call',
+  'Closed - UTR',
+  'Closed - Other',
+];
 
 // Per-status color triple (color/bg/border) applied inline on the status
 // button so it matches the HCC ChartDetailDrawer's `.actionNeeded` pill
-// pattern. Keys map 1:1 to the STATUSES list.
+// pattern. Keys map 1:1 to the STATUSES list above; colors follow the four
+// canonical status groups.
 const STATUS_STYLE = {
-  Open:          { color: 'var(--status-warning)',  bg: 'var(--status-warning-light)', border: 'color-mix(in srgb, var(--status-warning) 24%, transparent)' },
-  Completed:     { color: 'var(--status-success)',  bg: 'var(--status-success-light)', border: 'color-mix(in srgb, var(--status-success) 24%, transparent)' },
-  Submitted:     { color: 'var(--status-success)',  bg: 'var(--status-success-light)', border: 'color-mix(in srgb, var(--status-success) 24%, transparent)' },
-  Closed:        { color: 'var(--neutral-300)',     bg: 'var(--neutral-50)',           border: 'color-mix(in srgb, var(--neutral-300) 10%, transparent)' },
-  Excluded:      { color: 'var(--neutral-300)',     bg: 'var(--neutral-50)',           border: 'color-mix(in srgb, var(--neutral-300) 10%, transparent)' },
-  'Closed-Data': { color: 'var(--neutral-300)',     bg: 'var(--neutral-50)',           border: 'color-mix(in srgb, var(--neutral-300) 10%, transparent)' },
+  Open:                         { color: 'var(--primary-300)',    bg: 'var(--primary-50)',           border: 'color-mix(in srgb, var(--primary-300) 24%, transparent)' },
+  Engaged:                      { color: 'var(--status-warning)', bg: 'var(--status-warning-light)', border: 'color-mix(in srgb, var(--status-warning) 24%, transparent)' },
+  'Engaged Requires Follow-Up': { color: 'var(--status-warning)', bg: 'var(--status-warning-light)', border: 'color-mix(in srgb, var(--status-warning) 24%, transparent)' },
+  Submitted:                    { color: 'var(--status-warning)', bg: 'var(--status-warning-light)', border: 'color-mix(in srgb, var(--status-warning) 24%, transparent)' },
+  Completed:                    { color: 'var(--status-success)', bg: 'var(--status-success-light)', border: 'color-mix(in srgb, var(--status-success) 24%, transparent)' },
+  'Closed - Do not call':       { color: 'var(--neutral-300)',    bg: 'var(--neutral-50)',           border: 'color-mix(in srgb, var(--neutral-300) 10%, transparent)' },
+  'Closed - UTR':               { color: 'var(--neutral-300)',    bg: 'var(--neutral-50)',           border: 'color-mix(in srgb, var(--neutral-300) 10%, transparent)' },
+  'Closed - Other':             { color: 'var(--neutral-300)',    bg: 'var(--neutral-50)',           border: 'color-mix(in srgb, var(--neutral-300) 10%, transparent)' },
 };
 
 // Kebab menu actions — matches the design's "More actions" panel (Figma

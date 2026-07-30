@@ -189,22 +189,26 @@
   font-size: 12px;
   white-space: nowrap;
 }
+/* HEDIS "Not Started" + HCC status-transition states that read as "in
+   the reviewer's queue" (Audited) share the primary purple treatment. */
 .pillOpen,
+.pillAudited      { color: var(--primary-300);    background: var(--primary-50); }
+/* HEDIS "In Progress" + HCC in-progress/new/pending states — warning yellow. */
+.pillInProgress,
+.pillSubmitted,
 .pillNew,
 .pillPending      { color: var(--status-warning); background: var(--status-warning-light); }
-.pillInProgress,
-.pillAudited      { color: var(--primary-300);    background: var(--primary-50); }
+/* HEDIS "Done" + HCC completion signals — success green. */
 .pillAccepted,
-.pillCompleted,
-.pillSubmitted    { color: var(--status-success); background: var(--status-success-light); }
+.pillCompleted    { color: var(--status-success); background: var(--status-success-light); }
+/* HCC negative transitions — error red. */
 .pillDismissed,
 .pillReturned,
 .pillRejected     { color: var(--status-error);   background: var(--status-error-light); }
+/* HEDIS "Closed - *" + HCC neutral endpoints — muted grey. */
 .pillDeleted,
 .pillNone,
-.pillClosed,
-.pillExcluded,
-.pillClosedData   { color: var(--neutral-300);    background: var(--neutral-50); }
+.pillClosed       { color: var(--neutral-300);    background: var(--neutral-50); }
 
 /* ── Expanded (outreach) card ───────────────────────────────────────── */
 .expandedCard {

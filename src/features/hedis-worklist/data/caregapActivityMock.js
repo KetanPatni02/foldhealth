@@ -24,7 +24,7 @@ export const CAREGAP_ACTIVITY_MOCK = {
     // Status change — transition pills only. No View Note.
     {
       id: 'a1-2', when: '2026-04-28T11:15:00', actor: 'Alok Kumar', t: 'status_change',
-      title: 'Status Changed', from: 'Open', to: 'Closed',
+      title: 'Status Changed', from: 'Open', to: 'Engaged',
     },
     // Assignee change — from → to avatar transition.
     {

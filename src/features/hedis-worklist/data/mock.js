@@ -93,7 +93,7 @@ export const HEDIS_MEMBERS = [
   {
     id: 'hd9', in: 'DB', name: 'David Brooks',
     gender: 'M', age: '67y 0m', memberId: '#HPM666777888', language: 'en',
-    gaps: [{ code: 'CBP', status: 'Excluded' }],
+    gaps: [{ code: 'CBP', status: 'Closed - UTR' }],
     assignee: null, assigneeInitials: null,
     startDate: '05/08/2026',
     advIllness: 2, frailty: 2, riskLevel: '1_High', tasks: 1,
