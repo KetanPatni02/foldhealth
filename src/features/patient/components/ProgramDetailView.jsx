@@ -16,6 +16,11 @@ import { SendLetterDrawer } from './SendLetterDrawer';
 import { PreVisitStep } from './PreVisitStep';
 import { AssessmentFormView } from './AssessmentFormView';
 import { CarePlanView } from './CarePlanView';
+import { AppointmentStep } from './AppointmentStep';
+import { PostVisitChecklist } from './PostVisitChecklist';
+import { OpenCareGaps } from './OpenCareGaps';
+import { MedicationReconciliation } from './MedicationReconciliation';
+import { ProgramRelatedTasks } from './ProgramRelatedTasks';
 import styles from './ProgramDetailView.module.css';
 
 // Programs with a custom step list — CCM's workflow is billing-centric, not
@@ -93,6 +98,9 @@ const ASSESSMENT_STEPS = {
   HRA: { formName: 'HRA Assessment form', title: 'Health Risk Assessment', filledBy: 'Annette Brave', filledDate: '10/11/24', reviewedBy: 'Robert Fox', reviewedDate: '10/11/24' },
   'BRCSI Assessment': { formName: 'BRCSI Assessment form', title: 'BRCSI Assessment', filledBy: 'Annette Brave', filledDate: '10/11/24', reviewedBy: 'Robert Fox', reviewedDate: '10/11/24' },
   'SNP Assessment': { formName: 'SNP Assessment form', title: 'SNP Assessment', filledBy: 'Annette Brave', filledDate: '10/11/24', reviewedBy: 'Robert Fox', reviewedDate: '10/11/24' },
+  // Post Visit Checklist is a fixed checklist (not a saved form), so it shares
+  // the review header but renders the PostVisitChecklist body.
+  'Post Visit Checklist': { checklist: true, title: 'Post Visit Check List', filledBy: 'Robert Fox', filledDate: '10/11/24', reviewedBy: 'Robert Fox', reviewedDate: '10/11/24' },
 };
 
 export function ProgramDetailView({ program, onClose, startAtFirstStep = false }) {
@@ -162,8 +170,12 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
   const isBillingStep = activeStepObj?.kind === 'billing';
   const isPreVisitStep = activeStepObj?.name === 'Pre-visit';
   const isCarePlanStep = activeStepObj?.name === 'Care Plan';
+  const isAppointmentStep = /appointment/i.test(activeStepObj?.name || '');
+  const isOpenCareGapsStep = activeStepObj?.name === 'Open Care Gaps';
+  const isMedReconStep = activeStepObj?.name === 'Medication Reconciliation';
+  const isProgramTasksStep = activeStepObj?.name === 'Program Related Task';
   const assessmentCfg = ASSESSMENT_STEPS[activeStepObj?.name];
-  const isLettersPane = !isBillingStep && !isOutreachStep && !isPreVisitStep && !isCarePlanStep && !assessmentCfg;
+  const isLettersPane = !isBillingStep && !isOutreachStep && !isPreVisitStep && !isCarePlanStep && !isAppointmentStep && !isOpenCareGapsStep && !isMedReconStep && !isProgramTasksStep && !assessmentCfg;
 
   const [detailsExpanded, setDetailsExpanded] = useState(false);
 
@@ -380,6 +392,14 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
                   </span>
                 </div>
               </div>
+            ) : isMedReconStep ? (
+              <div className={styles.assessmentHeader}>
+                <Icon name="solar:clipboard-text-linear" size={18} color="var(--primary-300)" />
+                <div className={styles.assessmentHeaderText}>
+                  <span className={styles.assessmentTitle}>Medication Reconciliation</span>
+                  <span className={styles.assessmentMeta}>Last Reviewed by Robert Fox on 11/10/24</span>
+                </div>
+              </div>
             ) : isCarePlanStep ? (
               <div className={styles.assessmentHeader}>
                 <Icon name="solar:clipboard-text-linear" size={18} color="var(--primary-300)" />
@@ -393,6 +413,9 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
                 {isBillingStep ? 'Billing Review'
                   : isOutreachStep ? 'Outreach'
                   : isPreVisitStep ? 'Pre-visit'
+                  : isAppointmentStep ? 'Follow Up Appointments'
+                  : isOpenCareGapsStep ? 'Open Care Gaps'
+                  : isProgramTasksStep ? 'Program Related Tasks'
                   : 'Program Related Letters'}
               </span>
             )}
@@ -413,6 +436,27 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
                     Sign &amp; Share
                   </Button>
                   <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
+                </>
+              ) : isMedReconStep ? (
+                <>
+                  <Button variant="ghost" size="S" trailingIcon="solar:alt-arrow-down-linear" className={styles.actionBtn}>
+                    Assign
+                  </Button>
+                  <Button variant="ghost" size="S" className={styles.actionBtn}>Skip</Button>
+                  <Button variant="ghost" size="S" trailingIcon="solar:alt-arrow-down-linear" className={styles.reviewedBtn}>
+                    Sign
+                  </Button>
+                  <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
+                </>
+              ) : isProgramTasksStep ? (
+                <>
+                  <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" />
+                  <span className={styles.headerDivider} />
+                  <Button variant="ghost" size="S" leadingIcon="solar:add-circle-linear" className={styles.reviewedBtn}>
+                    Add Task
+                  </Button>
+                  <span className={styles.headerDivider} />
+                  <ActionButton icon="solar:filter-linear" size="S" tooltip="Filter" />
                 </>
               ) : (
                 <>
@@ -453,8 +497,18 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
             <PreVisitStep programCode={program.code} />
           ) : isCarePlanStep ? (
             <CarePlanView />
+          ) : isAppointmentStep ? (
+            <AppointmentStep patientId={currentPatient?.id} programCode={program.code} />
+          ) : isOpenCareGapsStep ? (
+            <OpenCareGaps />
+          ) : isMedReconStep ? (
+            <MedicationReconciliation />
+          ) : isProgramTasksStep ? (
+            <ProgramRelatedTasks />
           ) : assessmentCfg ? (
-            <AssessmentFormView formName={assessmentCfg.formName} />
+            assessmentCfg.checklist
+              ? <PostVisitChecklist />
+              : <AssessmentFormView formName={assessmentCfg.formName} />
           ) : (
           <div className={styles.contentInner}>
             <div className={styles.contentSubTabs}>

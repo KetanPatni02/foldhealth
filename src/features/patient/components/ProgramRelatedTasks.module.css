@@ -1,0 +1,107 @@
+.container {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 16px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+}
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  padding: 0 4px 8px;
+}
+
+/* Shared 7-column grid. */
+.headRow,
+.row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 96px 28px 140px 100px 44px;
+  align-items: center;
+  column-gap: 8px;
+}
+.headRow {
+  padding: 6px 4px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-size: 14px;
+  color: var(--neutral-300);
+}
+.row {
+  padding: 12px 4px;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+
+/* Status circle */
+.statusCell { display: flex; align-items: flex-start; padding-top: 1px; }
+.checkEmpty {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--neutral-200);
+  background: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.checkBtn { display: flex; align-items: center; background: none; border: none; padding: 0; cursor: pointer; }
+
+/* Title block */
+.titleCell { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding-right: 8px; }
+.parentLine { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--neutral-300); }
+.title { font-size: 14px; color: var(--neutral-500); line-height: 1.35; }
+.context { font-size: 13px; color: var(--neutral-300); }
+
+/* Meta counts */
+.metaCell { display: inline-flex; align-items: center; justify-content: flex-start; gap: 12px; }
+.metaItem { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; color: var(--neutral-300); }
+
+.pCell { display: flex; align-items: center; }
+
+/* Status pill */
+.statusPillCell { display: flex; align-items: center; }
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.statusPending {
+  color: var(--status-warning);
+  background: var(--status-warning-light);
+  border: 0.5px solid color-mix(in srgb, var(--status-warning) 20%, transparent);
+}
+.statusOverdue {
+  color: var(--status-error);
+  background: var(--status-error-light);
+  border: 0.5px solid color-mix(in srgb, var(--status-error) 20%, transparent);
+}
+.statusCompleted {
+  color: var(--status-success);
+  background: var(--status-success-light);
+  border: 0.5px solid color-mix(in srgb, var(--status-success) 20%, transparent);
+}
+
+.dueCell { font-size: 14px; color: var(--neutral-400); white-space: nowrap; }
+.dueOverdue { color: var(--status-error); }
+
+.actionCell { display: flex; align-items: center; justify-content: flex-end; }
+
+/* Compact pager under the Open section */
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 4px 0;
+}
+.pagerText { font-size: 13px; color: var(--neutral-300); margin-right: 4px; }
