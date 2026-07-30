@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { Button } from '../../../components/Button/Button';
-import { Checkbox } from '../../../components/ui/checkbox';
+import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { MED_RECON_MOCK } from '../data/medReconMock';
 import styles from './MedicationReconciliation.module.css';
 

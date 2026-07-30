@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { Button } from '../../../components/Button/Button';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
-import { Checkbox } from '../../../components/ui/checkbox';
+import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { ScheduleDrawer } from '../../../components/ScheduleDrawer/ScheduleDrawer';
 import { toast } from '../../../components/Toast/Toast';
 import { PATIENT_APPOINTMENTS_MOCK } from '../data/patientAppointmentsMock';

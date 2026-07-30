@@ -1,6 +1,6 @@
 import { Icon } from '../../../components/Icon/Icon';
 import { Button } from '../../../components/Button/Button';
-import { Checkbox } from '../../../components/ui/checkbox';
+import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { CARE_GAP_SECTIONS_EXTENDED } from '../data/careGapsMock';
 import styles from './OpenCareGaps.module.css';
 
