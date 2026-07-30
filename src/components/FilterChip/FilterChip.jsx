@@ -33,6 +33,7 @@ export function FilterChip({
   selected = [],
   onChange,
   singleSelect = false,
+  size = 'M',
   // Extended API for filters whose popover isn't a plain list — the caller
   // decides when the chip counts as "active", what to summarize on the
   // pill, how to clear, and renders the popover body itself. When set, the
@@ -58,7 +59,7 @@ export function FilterChip({
     <>
       <button
         type="button"
-        className={[styles.chip, active ? styles.chipActive : ''].filter(Boolean).join(' ')}
+        className={[styles.chip, active ? styles.chipActive : '', size === 'S' ? styles.sizeS : ''].filter(Boolean).join(' ')}
         onClick={(e) => setRect(rect ? null : e.currentTarget.getBoundingClientRect())}
       >
         <span className={styles.chipLabel}>{label}</span>

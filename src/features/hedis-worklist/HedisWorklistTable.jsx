@@ -1,12 +1,11 @@
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { HedisWorklistRow } from './HedisWorklistRow';
 import { CareGapDetailDrawer } from './CareGapDetailDrawer';
 import { TableSkeleton } from '../../components/Skeleton/TableSkeleton';
 import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
 import { Icon } from '../../components/Icon/Icon';
-import { ActionButton } from '../../components/ActionButton/ActionButton';
-import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
+import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { SortableHeader } from '../../components/SortableHeader/SortableHeader';
 import { useTableSort } from '../../components/SortableHeader/useTableSort';
 import { Pagination } from '../../components/Pagination/Pagination';
@@ -40,8 +39,6 @@ export function HedisWorklistTable() {
   const saveHedisFilter = useAppStore(s => s.saveHedisFilter);
 
   const [year, setYear] = useState(2026);
-  const [yearOpen, setYearOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBarOpen, setFilterBarOpen] = useState(true);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -61,7 +58,6 @@ export function HedisWorklistTable() {
   };
   const closeGapDrawer = () => { setDrawerMemberId(null); setDrawerGapCode(null); };
 
-  const yearRef = useRef(null);
   const fetchHedisMembers = useAppStore(s => s.fetchHedisMembers);
   const hedisLoading = useAppStore(s => s.hedisLoading);
 
@@ -72,14 +68,6 @@ export function HedisWorklistTable() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Close year dropdown on outside click
-  useEffect(() => {
-    if (!yearOpen) return;
-    const handler = (e) => { if (yearRef.current && !yearRef.current.contains(e.target)) setYearOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [yearOpen]);
 
   const filtered = useMemo(() => {
     let result = hedisMembers || [];
@@ -135,66 +123,33 @@ export function HedisWorklistTable() {
   return (
     <>
     <div className={styles.wrap}>
-      {/* ── Header bar ── */}
-      <div className={styles.headerBar}>
-        <div className={styles.headerLeft}>
-          <div ref={yearRef} style={{ position: 'relative' }}>
-            <button className={styles.yearBtn} onClick={() => setYearOpen(v => !v)}>
-              <span className={styles.yearLabel}>HEDIS {year}</span>
-              <Icon name="solar:alt-arrow-down-linear" size={14} />
-            </button>
-            {yearOpen && (
-              <div className={styles.yearDropdown}>
-                {YEARS.map(y => (
-                  <button
-                    key={y}
-                    className={[styles.yearOption, y === year ? styles.yearOptionActive : ''].join(' ')}
-                    onClick={() => { setYear(y); setYearOpen(false); }}
-                  >
-                    {y}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className={styles.headerRight}>
-          <SavedFiltersChip list="HEDIS" />
-          <span className={styles.iconDivider} />
-          {searchOpen ? (
-            <div className={styles.searchInput}>
-              <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-300)" />
-              <input
-                autoFocus
-                type="text"
-                placeholder="Search by member name…"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-              />
-              <button className={styles.searchClose} onClick={() => { setSearchOpen(false); setSearchQuery(''); }}>✕</button>
-            </div>
-          ) : (
-            <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
-          )}
-          <span className={styles.iconDivider} />
-          <ActionButton
-            icon="custom:filter"
-            size="L"
-            tooltip={filterBarOpen ? 'Hide filters' : 'Show filters'}
-            notification={activeFilterCount > 0}
-            count={activeFilterCount > 0 ? String(activeFilterCount) : undefined}
-            onClick={() => setFilterBarOpen(v => !v)}
-          />
-          <span className={styles.iconDivider} />
-          <ActionButton
-            icon="solar:upload-minimalistic-linear"
-            size="L"
-            tooltip="Export"
-            onClick={() => showToast('Export — coming soon')}
-          />
-        </div>
-      </div>
+      {/* ── Header bar (SectionTitleBar · variant 2 · titleWithDropdown) ── */}
+      <SectionTitleBar
+        variant="titleWithDropdown"
+        title="HEDIS"
+        dropdownLabel="Year"
+        dropdownOptions={YEARS.map(String)}
+        dropdownValue={String(year)}
+        onDropdownChange={(v) => setYear(Number(v) || 2026)}
+        showSearch
+        searchPlaceholder="Search by member name…"
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        showFilter
+        filterActive={filterBarOpen}
+        filterBadgeCount={activeFilterCount}
+        onFilter={() => setFilterBarOpen(v => !v)}
+        showDownload
+        onDownload={() => showToast('Export — coming soon')}
+        showHistory
+        onHistory={() => showToast('History — coming soon')}
+        rightExtras={
+          <>
+            <SavedFiltersChip list="HEDIS" />
+            <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
+          </>
+        }
+      />
 
       {/* ── Filter chip bar (shared with HCC) ── */}
       {filterBarOpen && (
