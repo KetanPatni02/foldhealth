@@ -1,0 +1,116 @@
+/* ── Fold Health SectionTitleBar ──
+ * Third-level header sitting between SubNav and page content.
+ * Three left variants (tabs / title+dropdown / title+toggle), flag-based
+ * right-side icon cluster. Shares the tab-bar chrome across the demo
+ * platform so every worklist reads with the same rhythm.
+ */
+
+.tabBar {
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
+  display: flex;
+  /* Stretch direct children so the tabs' underline can hug the container's
+     bottom hairline instead of floating in a vertically-centered box. */
+  align-items: stretch;
+  padding: 0 16px;
+  flex-shrink: 0;
+  justify-content: space-between;
+  min-height: 48px;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  /* Re-align content inside a stretched flex column. */
+  align-self: stretch;
+}
+
+/* ── Tabs variant ── */
+.tabsRow {
+  display: flex;
+  gap: 12px;
+  align-self: stretch;
+}
+
+.tabItem {
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  font-size: 14px;
+  font-weight: 500;
+  /* neutral-400 (#3A485F) instead of neutral-300 (#6F7A90) so inactive tab
+     labels clear WCAG AA on white. */
+  color: var(--neutral-400);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  /* Overlap the .tabBar's 0.5px bottom hairline so the active underline
+     visually sits ON that line, not above it. */
+  margin-bottom: -0.5px;
+  transition: color .15s, border-color .15s;
+  gap: 6px;
+}
+
+.tabItem:hover { color: var(--neutral-500); }
+/* Active label uses primary-400 (#5020A0) for a compliant 9:1 contrast on
+   white; the 2px underline can stay on the brand primary-300 since
+   non-text UI has no contrast requirement. */
+.tabItem.active { color: var(--primary-400); border-bottom-color: var(--primary-300); }
+
+.notifDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--secondary-300);
+  animation: sectionTitleBarPulse 1.4s infinite;
+}
+
+@keyframes sectionTitleBarPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .5; transform: scale(.75); }
+}
+
+/* ── Title (dropdown + toggle variants) ── */
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  white-space: nowrap;
+}
+
+/* ── Right-side actions ── */
+.right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.iconDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+.searchWrap {
+  display: flex;
+  align-items: center;
+}
+
+.iconActive {
+  background: var(--primary-100);
+  color: var(--primary-300);
+}
+
+.savedFiltersActive {
+  background: var(--primary-50);
+  border-color: var(--primary-200);
+}

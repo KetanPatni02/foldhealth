@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
+import { Button } from '../../components/Button/Button';
 import { useAppStore } from '../../store/useAppStore';
 import { FilterNameDialog } from './FilterNameDialog';
 import styles from './DueDateChip.module.css';
@@ -47,19 +48,15 @@ export function SavedFiltersChip({ list = 'HCC' }) {
 
   return (
     <>
-      <button
+      <Button
         ref={triggerRef}
-        type="button"
-        className={[styles.chip, active ? styles.chipActive : ''].join(' ')}
+        variant="secondary"
+        size="L"
+        trailingIcon="solar:alt-arrow-down-linear"
         onClick={pos ? close : open}
       >
-        <span>{active ? active.name : 'Saved Filters'}</span>
-        <Icon
-          name="solar:alt-arrow-down-linear"
-          size={12}
-          color={active ? 'var(--primary-300)' : 'var(--neutral-300)'}
-        />
-      </button>
+        {active ? active.name : 'Saved Filters'}
+      </Button>
       {pos && (
         <SavedFiltersPopover
           pos={pos}
