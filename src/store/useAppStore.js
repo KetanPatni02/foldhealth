@@ -4709,6 +4709,42 @@ export const useAppStore = create((set, get) => ({
   setHccVisibleFilterKeys: (list) => set({ hccVisibleFilterKeys: [...list] }),
   clearHccVisibleFilters: () => set({ hccVisibleFilterKeys: [] }),
 
+  // ─── HEDIS worklist filter state ───
+  // Same shape as hccFilters — `{ [filterKey]: string[] }`. The store's
+  // save/apply flow already routes HEDIS via LIST_FILTER_KEY['HEDIS']. Hydrated
+  // from the active saved filter so a reload keeps the applied view.
+  hedisFilters: hydrateListFilters('HEDIS'),
+  setHedisFilter: (k, vals) => {
+    track('hedis.filter_applied', { filterKey: k, filterValue: Array.isArray(vals) ? vals.join(',') : vals });
+    set(s => {
+      const next = { ...s.hedisFilters };
+      if (!vals || !vals.length) delete next[k];
+      else next[k] = vals;
+      return {
+        hedisFilters: next,
+        activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'HEDIS'),
+        currentPage: 1,
+      };
+    });
+  },
+  clearHedisFilters: () => {
+    track('hedis.filters_cleared_all');
+    set(s => ({
+      hedisFilters: {},
+      activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'HEDIS'),
+      currentPage: 1,
+    }));
+  },
+  hedisVisibleFilterKeys: null,
+  setHedisVisibleFilterKeys: (keys) => set({ hedisVisibleFilterKeys: [...keys] }),
+  clearHedisVisibleFilters: () => set({ hedisVisibleFilterKeys: [] }),
+  // HEDIS-specific save/apply wrappers, matching the HCC ones so the shared
+  // FilterChipBar and SavedFiltersChip only need to know a list-scoped verb.
+  saveHedisFilter: (name) => useAppStore.getState().saveSavedFilter('HEDIS', name),
+  renameHedisSavedFilter: (id, name) => useAppStore.getState().renameSavedFilter('HEDIS', id, name),
+  deleteHedisSavedFilter: (id) => useAppStore.getState().deleteSavedFilter('HEDIS', id),
+  applyHedisSavedFilter: (id) => useAppStore.getState().applySavedFilter('HEDIS', id),
+
   // Saved filter sets, keyed by shared-list label (HCC, TOC, SNP, AWV,
   // HEDIS, High Utilizers, DM). Each entry: { id, name, filters }. Persisted
   // to localStorage so users keep their saved views across reloads.

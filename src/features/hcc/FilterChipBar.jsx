@@ -5,32 +5,76 @@ import { RadioListPopover } from '../../components/Popover/RadioListPopover';
 import { RangeSliderPopover } from '../../components/Popover/RangeSliderPopover';
 import { DateRangePopover } from '../../components/Popover/DateRangePopover';
 import { useAppStore } from '../../store/useAppStore';
-import { FILTER_DEF_MAP, MORE_FILTER_ITEMS, PRIMARY_FILTER_KEYS } from './filters';
+import {
+  FILTER_DEF_MAP as HCC_FILTER_DEF_MAP,
+  MORE_FILTER_ITEMS as HCC_MORE_FILTER_ITEMS,
+  PRIMARY_FILTER_KEYS as HCC_PRIMARY_FILTER_KEYS,
+} from './filters';
 import { MoreFiltersPopover } from './MoreFiltersPopover';
 import styles from './FilterChipBar.module.css';
 
 /**
  * The horizontal chip row sitting above the worklist table. Renders one chip
- * per filter in `hccVisibleFilterKeys`, plus a "More Filters" trigger and the
- * "Clear All" / "Save Filter" right-aligned controls.
+ * per filter in the list's visible-filter set, plus a "More Filters" trigger
+ * and the "Clear All" / "Save Filter" right-aligned controls.
  *
- * Chip click → opens the popover for that filter's `type`. For Phase 1b only
- * `multi` filters wire to a real popover (CheckboxListPopover); the other
- * types are stubbed and Phase 1c will fill them in.
+ * Chip click → opens the popover for that filter's `type`.
  *
  * Props:
- *  - onSaveFilter (fn)  Open the parent's SaveFilterDialog.
+ *  - list (string)                Which worklist's store slice this bar drives
+ *                                 ('HCC' | 'HEDIS'). Selects the filters
+ *                                 slice, visible-keys slice, and clear/set
+ *                                 actions. Defaults to 'HCC' so pre-existing
+ *                                 callers don't have to change.
+ *  - filterDefMap (object)        Map from filter key → def object (defines
+ *                                 `type`, `opts`, `dynamic`, `searchable`,
+ *                                 …). Defaults to HCC's FILTER_DEF_MAP.
+ *  - moreFilterItems (array)      Full roster of filters (order, labels,
+ *                                 primary/extended). Defaults to HCC's.
+ *  - primaryFilterKeys (string[]) Keys that appear in the chip row by default
+ *                                 (in auto-fit mode). Defaults to HCC's.
+ *  - dynamicOpts (object)         `{ [poolKey]: string[] }` — data-derived
+ *                                 option pools that a def's `dynamic` field
+ *                                 points at (e.g. distinct cities on the
+ *                                 loaded rows). Defaults to `{}`.
+ *  - onSaveFilter (fn)            Open the parent's SaveFilterDialog.
  */
-const KEY_ORDER = Object.fromEntries(MORE_FILTER_ITEMS.map((x, i) => [x.k, i]));
-const orderKeys = (keys) => [...new Set(keys)].sort((a, b) => (KEY_ORDER[a] ?? 99) - (KEY_ORDER[b] ?? 99));
+const STORE_SELECTORS_BY_LIST = {
+  HCC: {
+    filters:       'hccFilters',
+    setFilter:     'setHccFilter',
+    clearFilters:  'clearHccFilters',
+    visibleKeys:   'hccVisibleFilterKeys',
+    setVisible:    'setHccVisibleFilterKeys',
+    clearVisible:  'clearHccVisibleFilters',
+  },
+  HEDIS: {
+    filters:       'hedisFilters',
+    setFilter:     'setHedisFilter',
+    clearFilters:  'clearHedisFilters',
+    visibleKeys:   'hedisVisibleFilterKeys',
+    setVisible:    'setHedisVisibleFilterKeys',
+    clearVisible:  'clearHedisVisibleFilters',
+  },
+};
 
-export function FilterChipBar({ onSaveFilter }) {
-  const hccFilters = useAppStore(s => s.hccFilters);
-  const setHccFilter = useAppStore(s => s.setHccFilter);
-  const clearHccFilters = useAppStore(s => s.clearHccFilters);
-  const storedVisible = useAppStore(s => s.hccVisibleFilterKeys);
-  const setHccVisibleFilterKeys = useAppStore(s => s.setHccVisibleFilterKeys);
-  const clearHccVisibleFilters = useAppStore(s => s.clearHccVisibleFilters);
+export function FilterChipBar({
+  list = 'HCC',
+  filterDefMap = HCC_FILTER_DEF_MAP,
+  moreFilterItems = HCC_MORE_FILTER_ITEMS,
+  primaryFilterKeys = HCC_PRIMARY_FILTER_KEYS,
+  dynamicOpts: dynamicOptsProp,
+  onSaveFilter,
+}) {
+  const sel = STORE_SELECTORS_BY_LIST[list] || STORE_SELECTORS_BY_LIST.HCC;
+
+  const filters             = useAppStore(s => s[sel.filters]);
+  const setFilter           = useAppStore(s => s[sel.setFilter]);
+  const clearFilters        = useAppStore(s => s[sel.clearFilters]);
+  const storedVisible       = useAppStore(s => s[sel.visibleKeys]);
+  const setVisibleFilterKeys= useAppStore(s => s[sel.setVisible]);
+  const clearVisibleFilters = useAppStore(s => s[sel.clearVisible]);
+
   const showToast = useAppStore(s => s.showToast);
   const hccMembers = useAppStore(s => s.hccMembers);
   // Platform users drive the Assignee filter's options (Settings → Users).
@@ -40,22 +84,13 @@ export function FilterChipBar({ onSaveFilter }) {
   useEffect(() => { fetchPlatformUsers(); }, [fetchPlatformUsers]);
 
   // Options for `dynamic` filters are computed from the loaded records rather
-  // than a static list — e.g. Visit Type lists the distinct visit types
-  // actually present in the patient records; Assignee lists platform users
-  // straight from the profiles table so it always mirrors Settings → Users.
-  // Per-role assignee filters (supU/cdrU/r1u/r2u) scope down to profiles that
-  // carry the matching clinical_roles entry — same rule the RoleAssigneePicker
-  // enforces when assigning, so the filter and the picker agree on who
-  // "is a Support / Coder / QA / Compliance user".
+  // than a static list. HCC keeps its historical logic below; other worklists
+  // pass a precomputed `dynamicOpts` object via the prop.
   const byRole = (role) => platformUsers
     .filter(u => u.clinicalRoles?.includes(role))
     .map(u => u.name);
-  // Row-derived pools — distinct non-null values across loaded members. Used
-  // by filters whose option list is bounded by whatever the data actually
-  // carries (Rendering Provider, PCP, IPA, HP Code) rather than a curated
-  // canonical list.
   const distinct = (key) => [...new Set(hccMembers.map(m => m[key]).filter(Boolean))].sort();
-  const dynamicOpts = useMemo(() => ({
+  const hccDynamicOpts = useMemo(() => ({
     vt:   [...new Set(hccMembers.map(m => m.visitType || m.vt).filter(Boolean))].sort(),
     asgn: platformUsers.map(u => u.name),
     supU: byRole('Support'),
@@ -71,10 +106,8 @@ export function FilterChipBar({ onSaveFilter }) {
     tin:   distinct('tin'),
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [hccMembers, platformUsers]);
+  const dynamicOpts = dynamicOptsProp || (list === 'HCC' ? hccDynamicOpts : {});
   const optsFor = (def) => {
-    // `dynamic` names the pool a filter reads from — usually the same as its
-    // key (`vt`, `asgn`), but the per-role assignee filters (supU/cdrU/r1u/r2u)
-    // all point at `asgn` so a single platformUsers list feeds all of them.
     const dynKey = def?.dynamic;
     if (dynKey && dynamicOpts[dynKey]?.length) return dynamicOpts[dynKey];
     return def?.opts || [];
@@ -86,24 +119,28 @@ export function FilterChipBar({ onSaveFilter }) {
   // Auto-fit: which inactive PRIMARY chips fit one row (null until measured).
   const [autoInactive, setAutoInactive] = useState(null);
 
+  const KEY_ORDER = useMemo(
+    () => Object.fromEntries(moreFilterItems.map((x, i) => [x.k, i])),
+    [moreFilterItems],
+  );
+  const orderKeys = (keys) => [...new Set(keys)]
+    .sort((a, b) => (KEY_ORDER[a] ?? 99) - (KEY_ORDER[b] ?? 99));
+
   const activeKeys = useMemo(
-    () => MORE_FILTER_ITEMS.map(x => x.k).filter(k => (hccFilters[k] || []).length > 0),
-    [hccFilters],
+    () => moreFilterItems.map(x => x.k).filter(k => (filters[k] || []).length > 0),
+    [filters, moreFilterItems],
   );
   const customized = storedVisible != null;
 
-  // The chips actually shown in the bar. Customized → the user's set (+ any
-  // active filter). Default → active filters + the inactive PRIMARY chips
-  // that fit one row (measured); before measuring, show all (trimmed in the
-  // layout effect before paint, so no flash).
   const inactivePrimary = useMemo(
-    () => PRIMARY_FILTER_KEYS.filter(k => !(hccFilters[k] || []).length),
-    [hccFilters],
+    () => primaryFilterKeys.filter(k => !(filters[k] || []).length),
+    [filters, primaryFilterKeys],
   );
   const visibleKeys = useMemo(() => {
     if (customized) return orderKeys([...storedVisible, ...activeKeys]);
     const shownInactive = autoInactive ? inactivePrimary.filter(k => autoInactive.has(k)) : inactivePrimary;
     return orderKeys([...activeKeys, ...shownInactive]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customized, storedVisible, activeKeys, inactivePrimary, autoInactive]);
 
   // Measure (default mode only): fit inactive PRIMARY chips into one row after
@@ -119,13 +156,9 @@ export function FilterChipBar({ onSaveFilter }) {
     const compute = () => {
       const avail = container.clientWidth;
       let budget = avail;
-      // Reserve room for the tail group (More Filters / Clear All / Save
-      // Filter) so it stays on the same row as chips when they fit. Chips
-      // that don't fit push into "More Filters" as before; if the user
-      // customizes chips into a real second row, the tail wraps with them.
       const tailW = tailRef.current?.offsetWidth ?? 0;
       if (tailW) budget -= tailW + GAP;
-      activeKeys.forEach(k => { budget -= widthOf(k) + GAP; }); // active always shown
+      activeKeys.forEach(k => { budget -= widthOf(k) + GAP; });
       const fit = new Set();
       for (const k of inactivePrimary) {
         const w = widthOf(k) + GAP;
@@ -141,7 +174,6 @@ export function FilterChipBar({ onSaveFilter }) {
 
   // Which chip popover is open: { key, rect } | null
   const [chipPop, setChipPop] = useState(null);
-  // More-filters popover state
   const moreBtnRef = useRef(null);
   const [moreRect, setMoreRect] = useState(null);
 
@@ -154,26 +186,24 @@ export function FilterChipBar({ onSaveFilter }) {
   };
   const closeMore = () => setMoreRect(null);
 
-  // Toggle a filter's presence in the bar from More Filters. Operates on the
-  // current *effective* visible set so it's consistent in auto-fit mode too.
   const toggleVisible = (k) => {
     const next = new Set(visibleKeys);
     if (next.has(k)) next.delete(k); else next.add(k);
-    setHccVisibleFilterKeys([...next]);
+    setVisibleFilterKeys([...next]);
   };
 
   const openChipFor = (k, currentTarget) => {
-    const item = MORE_FILTER_ITEMS.find(x => x.k === k);
-    const def = FILTER_DEF_MAP[k];
+    const item = moreFilterItems.find(x => x.k === k);
+    const def = filterDefMap[k];
     if (!def) { showToast(`Filter "${item?.label}" — coming soon`); return; }
     if (['multi', 'radio', 'range', 'date'].includes(def.type)) openChip(k, currentTarget);
     else showToast(`Filter "${item?.label}" popover — not yet wired`);
   };
 
   const renderChip = (k, mirror) => {
-    const item = MORE_FILTER_ITEMS.find(x => x.k === k);
+    const item = moreFilterItems.find(x => x.k === k);
     if (!item) return null;
-    const vals = hccFilters[k] || [];
+    const vals = filters[k] || [];
     const active = vals.length > 0;
     return (
       <button
@@ -192,7 +222,7 @@ export function FilterChipBar({ onSaveFilter }) {
               className={styles.clearIcon}
               role="button"
               aria-label={`Clear ${item.label} filter`}
-              onClick={mirror ? undefined : (e) => { e.stopPropagation(); setHccFilter(k, []); }}
+              onClick={mirror ? undefined : (e) => { e.stopPropagation(); setFilter(k, []); }}
             >
               <Icon name="solar:close-circle-linear" size={12} color="var(--primary-300)" />
             </span>
@@ -210,10 +240,6 @@ export function FilterChipBar({ onSaveFilter }) {
     <div className={styles.bar}>
       <div className={styles.chips} ref={chipsRef}>
         {visibleKeys.map((k) => renderChip(k, false))}
-        {/* Tail cluster — flows with the chip wrap so it lands next to the
-            last visible chip (on whatever row it ends up on) instead of
-            being pinned to the top-right. Kept as one inline-flex group so
-            the vertical dividers never split across a wrap boundary. */}
         <div className={styles.tail} ref={tailRef}>
           <button
             ref={moreBtnRef}
@@ -235,7 +261,7 @@ export function FilterChipBar({ onSaveFilter }) {
               <button
                 type="button"
                 className={styles.linkBtn}
-                onClick={clearHccFilters}
+                onClick={clearFilters}
               >
                 Clear All
               </button>
@@ -254,15 +280,14 @@ export function FilterChipBar({ onSaveFilter }) {
 
       {/* Hidden mirror — all PRIMARY chips, for stable width measurement. */}
       <div className={styles.measure} ref={measureRef} aria-hidden="true">
-        {PRIMARY_FILTER_KEYS.map((k) => renderChip(k, true))}
+        {primaryFilterKeys.map((k) => renderChip(k, true))}
       </div>
 
-      {/* Chip popovers — Phase 1b/c dispatch by FILTER_DEFS type */}
       {chipPop && (() => {
-        const def = FILTER_DEF_MAP[chipPop.key];
+        const def = filterDefMap[chipPop.key];
         if (!def) return null;
-        const current = hccFilters[chipPop.key] || [];
-        const setVals = (next) => setHccFilter(chipPop.key, next);
+        const current = filters[chipPop.key] || [];
+        const setVals = (next) => setFilter(chipPop.key, next);
 
         if (def.type === 'multi') {
           return (
@@ -325,13 +350,13 @@ export function FilterChipBar({ onSaveFilter }) {
         return null;
       })()}
 
-      {/* More-filters popover */}
       {moreRect && (
         <MoreFiltersPopover
           anchorRect={moreRect}
           visibleKeys={visibleKeys}
+          moreFilterItems={moreFilterItems}
           onToggle={toggleVisible}
-          onClear={clearHccVisibleFilters}
+          onClear={clearVisibleFilters}
           onClose={closeMore}
         />
       )}
@@ -342,8 +367,7 @@ export function FilterChipBar({ onSaveFilter }) {
 // Format the active value list for the chip's right-hand label.
 function summarize(k, vals) {
   if (k === 'dec' && vals.length >= 2) return `${vals[0]}–${vals[1]}`;
-  // Date-range filters store ISO strings — show MM/DD format on the chip.
-  if (['cd', 'dos', 'dob', 'lvd'].includes(k) && vals.length >= 2) {
+  if (['cd', 'dos', 'dob', 'lvd', 'lastOutreachDate'].includes(k) && vals.length >= 2) {
     return `${formatShortDate(vals[0])} – ${formatShortDate(vals[1])}`;
   }
   if (vals.length > 2) return `${vals[0]} +${vals.length - 1}`;

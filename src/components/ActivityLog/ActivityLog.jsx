@@ -30,25 +30,37 @@ const TYPE_ICON = {
   referral:        'solar:arrow-right-up-linear',
 };
 
-// Status label → pill style class in the CSS. Unknown falls to `pillNone`.
+// Status label → pill style class in the CSS. HEDIS canonical status
+// grouping drives the color band: Open → primary (Not Started); Engaged /
+// Engaged Requires Follow-Up / Submitted → warning (In Progress); Completed
+// → success (Done); Closed - * → neutral (Closed). HCC-only labels
+// (Accepted / Dismissed / Audited / Returned / …) keep their existing
+// classes so both worklists share the map. Unknown falls to `pillNone`.
 const TRANS_BADGE = {
-  Accepted:         'pillAccepted',
-  Dismissed:        'pillDismissed',
-  Deleted:          'pillDeleted',
-  None:             'pillNone',
-  Open:             'pillOpen',
-  Returned:         'pillReturned',
-  New:              'pillNew',
-  Completed:        'pillCompleted',
-  Submitted:        'pillSubmitted',
-  Audited:          'pillAudited',
-  'In Progress':    'pillInProgress',
-  'Pending':        'pillPending',
-  'Pending Review': 'pillPending',
-  Closed:           'pillClosed',
-  Excluded:         'pillExcluded',
-  'Closed-Data':    'pillClosedData',
-  Rejected:         'pillRejected',
+  // HEDIS — Not Started (primary)
+  Open:                          'pillOpen',
+  // HEDIS — In Progress (warning)
+  Engaged:                       'pillInProgress',
+  'Engaged Requires Follow-Up':  'pillInProgress',
+  Submitted:                     'pillInProgress',
+  // HEDIS — Done (success)
+  Completed:                     'pillCompleted',
+  // HEDIS — Closed (neutral)
+  'Closed - Do not call':        'pillClosed',
+  'Closed - UTR':                'pillClosed',
+  'Closed - Other':              'pillClosed',
+  // HCC vocabulary
+  Accepted:                      'pillAccepted',
+  Dismissed:                     'pillDismissed',
+  Deleted:                       'pillDeleted',
+  None:                          'pillNone',
+  Returned:                      'pillReturned',
+  New:                           'pillNew',
+  Audited:                       'pillAudited',
+  'In Progress':                 'pillInProgress',
+  'Pending':                     'pillPending',
+  'Pending Review':              'pillPending',
+  Rejected:                      'pillRejected',
 };
 
 /**

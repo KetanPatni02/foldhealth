@@ -142,9 +142,6 @@
 .gapItem + .gapItem { border-top: 0.5px solid var(--neutral-150); }
 
 /* Gap status */
-.gapStatusOpen { color: var(--status-warning); font-weight: 500; }
-.gapStatusClosed { color: var(--status-success); font-weight: 500; }
-.gapStatusExcluded { color: var(--neutral-200); font-weight: 500; }
 
 /* Outreach cell — lifted from src/features/toc-worklist/WorklistRow.module.css */
 .outreachWl { display: flex; flex-direction: column; gap: 4px; }

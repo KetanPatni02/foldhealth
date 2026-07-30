@@ -20,7 +20,24 @@ const RISK_BADGE_VARIANT = {
   '5_Low':      'compliance-pass',
 };
 
-const STATUS_CLASS = { Open: styles.gapStatusOpen, Closed: styles.gapStatusClosed, Excluded: styles.gapStatusExcluded };
+// HEDIS gap status → shared Badge variant. Four canonical status groups
+// (per Care Gap workflow spec):
+//   • Not Started (primary purple) — Open
+//   • In Progress (warning yellow) — Engaged / Engaged Requires Follow-Up / Submitted
+//   • Done        (success green)  — Completed
+//   • Closed      (neutral grey)   — Closed - Do not call / Closed - UTR / Closed - Other
+// Any unrecognised status falls back to `ai-neutral` so the cell never
+// renders as raw text.
+const STATUS_BADGE_VARIANT = {
+  Open:                            'ai-care',
+  Engaged:                         'status-queued',
+  'Engaged Requires Follow-Up':    'status-queued',
+  Submitted:                       'status-queued',
+  Completed:                       'status-completed',
+  'Closed - Do not call':          'ai-neutral',
+  'Closed - UTR':                  'ai-neutral',
+  'Closed - Other':                'ai-neutral',
+};
 
 // Outreach cell — mirrors the TOC worklist's outreach pattern
 // (src/features/toc-worklist/WorklistRow.jsx OutreachCell).
@@ -143,7 +160,7 @@ export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
         <div className={styles.gapItems}>
           {gaps.map(g => (
             <div key={g.code} className={styles.gapItem}>
-              <span className={STATUS_CLASS[g.status] || ''}>{g.status}</span>
+              <Badge variant={STATUS_BADGE_VARIANT[g.status] || 'ai-neutral'} label={g.status} />
             </div>
           ))}
         </div>

@@ -64,7 +64,7 @@ const STATUS_CHANGE = {
   date: '04/28/2026', time: '11:15 AM', by: 'Alok Kumar',
   title: 'Status Changed',
   from: 'Open',
-  to: 'Closed',
+  to: 'Engaged',
 };
 
 const ASSIGNEE_CHANGE = {

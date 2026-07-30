@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { Checkbox } from '../../components/ShadcnCheckbox/checkbox';
-import { MORE_FILTER_ITEMS } from './filters';
+import { MORE_FILTER_ITEMS as HCC_MORE_FILTER_ITEMS } from './filters';
 import styles from './MoreFiltersPopover.module.css';
 
 /**
@@ -16,8 +16,12 @@ import styles from './MoreFiltersPopover.module.css';
  *  - onToggle   (fn(k: string))   Toggle a key in/out of the visible set.
  *  - onClear    (fn)              Hide all chips.
  *  - onClose    (fn)              Dismiss the popover.
+ *  - moreFilterItems ([{k, label, primary}])  Filter roster for the popover.
+ *                                 Defaults to HCC's list so existing callers
+ *                                 don't change; other worklists (e.g. HEDIS)
+ *                                 pass their own.
  */
-export function MoreFiltersPopover({ anchorRect, visibleKeys, onToggle, onClear, onClose }) {
+export function MoreFiltersPopover({ anchorRect, visibleKeys, onToggle, onClear, onClose, moreFilterItems = HCC_MORE_FILTER_ITEMS }) {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
@@ -42,14 +46,14 @@ export function MoreFiltersPopover({ anchorRect, visibleKeys, onToggle, onClear,
   const { primary, extended } = useMemo(() => {
     const q = search.trim().toLowerCase();
     const match = (x) => !q || x.label.toLowerCase().includes(q);
-    const inPrimary   = MORE_FILTER_ITEMS.filter(x =>  x.primary && match(x));
-    const inExtended  = MORE_FILTER_ITEMS.filter(x => !x.primary && match(x));
+    const inPrimary   = moreFilterItems.filter(x =>  x.primary && match(x));
+    const inExtended  = moreFilterItems.filter(x => !x.primary && match(x));
     const wasChecked  = (x) => initialVisible.has(x.k);
     const checkedAll  = [...inPrimary.filter(wasChecked),  ...inExtended.filter(wasChecked)];
     const primaryOff  = inPrimary.filter(x => !wasChecked(x));
     const extendedOff = inExtended.filter(x => !wasChecked(x));
     return { primary: [...checkedAll, ...primaryOff], extended: extendedOff };
-  }, [search, initialVisible]);
+  }, [search, initialVisible, moreFilterItems]);
 
   if (!anchorRect) return null;
 
