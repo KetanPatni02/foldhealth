@@ -13,6 +13,16 @@ import styles from './ScheduleDrawer.module.css';
 
 export const FALLBACK_APPOINTMENT_TYPES = [
   { name: 'Annual Wellness Visit', code: 'AWV', mode: 'In-person', duration: '60 min', color: '#D9A50B' },
+  // Program-related appointment types — one per care program. When booked for
+  // a patient they surface under "Program related appointments" in that
+  // program's Appointment step (matched by `programCode`).
+  { name: 'SNP Care Program Visit', code: 'SNP', mode: 'In-person', duration: '45 min', color: 'var(--primary-300)' },
+  { name: 'TOC Inpatient Visit', code: 'TOC IP', mode: 'In-person', duration: '45 min', color: 'var(--status-info)' },
+  { name: 'TOC Emergency Dept. Visit', code: 'TOC ED', mode: 'In-person', duration: '45 min', color: 'var(--status-error)' },
+  { name: 'High Utilizers Visit', code: 'HIU', mode: 'In-person/Virtual', duration: '30 min', color: 'var(--secondary-300)' },
+  { name: 'Disease Management Visit', code: 'DM', mode: 'In-person/Virtual', duration: '30 min', color: 'var(--status-success)' },
+  { name: 'Chronic Care Management Visit', code: 'CCM', mode: 'Virtual', duration: '20 min', color: 'var(--status-warning)' },
+  { name: 'Transitional Care Visit', code: 'TCM', mode: 'In-person', duration: '30 min', color: 'var(--accent-cyan)' },
   { name: 'Follow-up Appointment', code: 'Routine', mode: 'In-person/Virtual', duration: '15-30 min', color: '#8C5AE2' },
   { name: 'Specialty Consultation', code: 'Routine', mode: 'In-person', duration: '45 min', color: '#009B53' },
   { name: 'Telehealth Consultation', code: 'Routine', mode: 'Virtual', duration: '30 min', color: '#145ECC' },

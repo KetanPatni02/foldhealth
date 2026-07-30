@@ -1,0 +1,146 @@
+.container {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+
+/* ── Empty "not scheduled" card ── */
+.emptyCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 24px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+  background: var(--neutral-0);
+}
+.iconWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 1px dashed var(--neutral-150);
+}
+.iconInner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--neutral-50);
+}
+.emptyText {
+  font-size: 14px;
+  color: var(--neutral-400);
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ── Section (Program related / Upcoming) ── */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.collapseToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.sectionActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.viewBy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--neutral-400);
+}
+.viewAll {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-300);
+}
+.sectionEmpty {
+  font-size: 14px;
+  color: var(--neutral-300);
+  padding: 4px 22px;
+}
+
+/* ── Appointments table ── */
+.table {
+  display: flex;
+  flex-direction: column;
+}
+.headRow,
+.row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 140px 140px 160px;
+  align-items: center;
+  column-gap: 8px;
+}
+.headRow {
+  padding: 8px 4px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-size: 14px;
+  color: var(--neutral-300);
+}
+.row {
+  padding: 10px 4px;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.checkCell { display: flex; align-items: center; }
+.titleCell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.titleText { font-size: 14px; color: var(--neutral-500); }
+.subtitle { font-size: 13px; color: var(--neutral-300); }
+.typeCell { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--neutral-300); }
+.recurring {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: var(--primary-100);
+}
+.dateCell { display: flex; flex-direction: column; gap: 2px; font-size: 14px; color: var(--neutral-400); }
+.time { font-size: 13px; color: var(--neutral-300); }
+.assigneeCell { font-size: 14px; color: var(--neutral-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

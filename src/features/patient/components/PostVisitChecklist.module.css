@@ -1,0 +1,55 @@
+.container {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 16px;
+}
+
+.question {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.questionText {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.num {
+  width: 16px;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 14px;
+  color: var(--neutral-400);
+}
+.label {
+  font-size: 14px;
+  color: var(--neutral-400);
+}
+
+/* Answer row aligns under the question text (past the number). */
+.answer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-left: 24px;
+}
+
+.dateField {
+  position: relative;
+  width: 320px;
+  max-width: 100%;
+}
+.dateField input {
+  padding-right: 30px;
+}
+.dateIcon {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}

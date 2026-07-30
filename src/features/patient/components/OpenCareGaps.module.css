@@ -1,0 +1,73 @@
+.container {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sectionLabel {
+  font-size: 14px;
+  color: var(--neutral-300);
+  padding: 4px 4px 0;
+}
+
+.table {
+  display: flex;
+  flex-direction: column;
+}
+.headRow,
+.row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 90px 160px 120px;
+  align-items: center;
+  column-gap: 8px;
+}
+.headRow {
+  padding: 8px 4px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-size: 14px;
+  color: var(--neutral-300);
+}
+.row {
+  padding: 10px 4px;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+
+.checkCell { display: flex; align-items: center; }
+.titleCell { font-size: 14px; color: var(--neutral-500); min-width: 0; }
+.statusCell { font-size: 14px; color: var(--neutral-300); }
+
+.assigneeCell { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.assigneeName {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--status-success);
+  white-space: nowrap;
+}
+.assigneeName:hover { text-decoration: underline; }
+.assignBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+
+.actionCell { display: flex; align-items: center; }
