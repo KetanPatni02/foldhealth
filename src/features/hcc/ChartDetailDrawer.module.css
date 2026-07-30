@@ -260,7 +260,10 @@
   flex-shrink: 0;
 }
 
-.rightBody { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 12px; overflow-y: auto; }
+/* overflow-x: hidden is explicit because `overflow-y: auto` alone silently
+   promotes overflow-x to `auto` (CSS spec), which surfaces a horizontal
+   scrollbar whenever any inner row overflows even by a pixel or two. */
+.rightBody { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 12px; overflow-x: hidden; overflow-y: auto; }
 .assocRow { display: flex; align-items: center; gap: 4px; padding: 4px 0; }
 .assocLeft { flex: 1; display: flex; align-items: center; gap: 4px; }
 .assocLabel { font-size: 14px; font-weight: 500; color: var(--neutral-400); }
@@ -573,7 +576,10 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
   cursor: pointer;
-  overflow: hidden;
+  /* No overflow clip — the inline Fail form (FailReasonInline) expands the
+     card beyond its header height and needs to be fully visible; the
+     .rightBody parent's overflow-y:auto handles scrolling when the whole
+     doc list runs longer than the drawer. */
 }
 .docCard:hover { background: var(--neutral-25); }
 /* Doc header — thumb + name/meta + actions, sits at the top of the card. */

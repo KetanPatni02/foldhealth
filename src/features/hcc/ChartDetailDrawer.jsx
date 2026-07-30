@@ -426,6 +426,9 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     if (!wasAllReviewed && isAllReviewed) showToast('Support Task is Completed');
   };
   const passDoc = (id) => {
+    // Passing a doc supersedes any open Fail form on the same doc — close it
+    // so the reason list + comment field don't linger over a Passed doc.
+    if (failPrompt?.id === id) setFailPrompt(null);
     applyDocAction(id, 'pass');
     const doc = docs.find(d => d.id === id);
     addActivityEntry?.({
