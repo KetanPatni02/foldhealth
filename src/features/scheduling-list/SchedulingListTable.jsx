@@ -5,10 +5,8 @@ import { BulkBar } from '../../components/BulkBar/BulkBar';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { ErrorState } from '../../components/ErrorState/ErrorState';
 import { Icon } from '../../components/Icon/Icon';
-import { ActionButton } from '../../components/ActionButton/ActionButton';
-import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
+import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
-import tabStyles from '../../components/TabBar/TabBar.module.css';
 import filterStyles from '../../components/FilterBar/FilterBar.module.css';
 import styles from './SchedulingList.module.css';
 
@@ -128,7 +126,6 @@ export function SchedulingListTable() {
   const perPage = useAppStore(s => s.perPage);
   const showToast = useAppStore(s => s.showToast);
 
-  const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [providerFilter, setProviderFilter] = useState('');
@@ -194,45 +191,22 @@ export function SchedulingListTable() {
 
   return (
     <>
-      <div className={tabStyles.tabBar}>
-        <div className={tabStyles.left}>
-          <div className={`${tabStyles.tabItem} ${tabStyles.active}`}>
-            Scheduling List
-          </div>
-        </div>
-
-        <div className={tabStyles.right}>
-          <div className={tabStyles.searchWrap}>
-            {searchOpen ? (
-              <div className={tabStyles.searchInput}>
-                <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
-                <input
-                  autoFocus
-                  type="text"
-                  placeholder="Search by name, provider, location…"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                />
-                <button className={tabStyles.searchClose} onClick={() => { setSearchOpen(false); setSearch(''); }}>✕</button>
-              </div>
-            ) : (
-              <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
-            )}
-          </div>
-          <span className={tabStyles.iconDivider} />
-          <ActionButton
-            icon="custom:filter"
-            size="L"
-            tooltip="Filter"
-            className={showFilters ? tabStyles.active : ''}
-            onClick={() => setShowFilters(!showFilters)}
-          />
-          <span className={tabStyles.iconDivider} />
-          <ActionButton icon="solar:history-linear" size="L" tooltip="History" onClick={() => showToast('History – coming soon')} />
-          <span className={tabStyles.iconDivider} />
-          <ActionButton icon="solar:upload-minimalistic-linear" size="L" tooltip="Export" onClick={() => showToast('Export – coming soon')} />
-        </div>
-      </div>
+      <SectionTitleBar
+        variant="titleWithToggle"
+        title="Scheduling List"
+        toggleItems={[]}
+        showSearch
+        searchPlaceholder="Search by name, provider, location…"
+        searchValue={search}
+        onSearchChange={setSearch}
+        showFilter
+        filterActive={showFilters}
+        onFilter={() => setShowFilters(v => !v)}
+        showHistory
+        onHistory={() => showToast('History – coming soon')}
+        showDownload
+        onDownload={() => showToast('Export – coming soon')}
+      />
 
       {showFilters && (
         <div className={filterStyles.filterBar}>

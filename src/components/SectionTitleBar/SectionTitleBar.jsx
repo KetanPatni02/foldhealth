@@ -139,6 +139,7 @@ export function SectionTitleBar({
               ) : (
                 <SearchIconButton
                   title="Search"
+                  tooltipBelow
                   onClick={() => {
                     setSearchOpen(true);
                     if (onSearch) onSearch();
@@ -156,6 +157,7 @@ export function SectionTitleBar({
               icon="custom:filter"
               size="L"
               tooltip="Filter"
+              tooltipBelow
               notification={typeof filterBadgeCount === 'number' && filterBadgeCount > 0}
               count={typeof filterBadgeCount === 'number' && filterBadgeCount > 0 ? String(filterBadgeCount) : undefined}
               className={filterActive ? styles.iconActive : ''}
@@ -171,6 +173,7 @@ export function SectionTitleBar({
               icon="solar:download-minimalistic-linear"
               size="L"
               tooltip="Download"
+              tooltipBelow
               onClick={onDownload}
             />
             <span className={styles.iconDivider} />
@@ -197,6 +200,7 @@ export function SectionTitleBar({
             icon="solar:history-linear"
             size="L"
             tooltip="History"
+            tooltipBelow
             onClick={onHistory}
           />
         )}
@@ -244,10 +248,16 @@ function TitleDropdownSection({ title, label, value, options, onChange }) {
 }
 
 function TitleToggleSection({ title, items, active, onChange }) {
+  // With 0 or 1 items the segmented control has no meaningful switch — render
+  // just the title so single-list surfaces (All Patients, HCC, CCM) can share
+  // this variant without a lopsided one-button pill.
+  const hasToggle = Array.isArray(items) && items.length > 1;
   return (
     <div className={styles.titleRow}>
       <span className={styles.title}>{title}</span>
-      <Toggle items={items} active={active} onChange={onChange} size="S" />
+      {hasToggle && (
+        <Toggle items={items} active={active} onChange={onChange} size="S" />
+      )}
     </div>
   );
 }

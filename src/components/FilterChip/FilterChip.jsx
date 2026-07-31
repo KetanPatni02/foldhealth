@@ -34,6 +34,9 @@ export function FilterChip({
   onChange,
   singleSelect = false,
   size = 'M',
+  // Passthrough to CheckboxListPopover — enables the in-popover search box for
+  // long option lists (e.g. Assignee, IPA, HP Code).
+  searchable = false,
   // Extended API for filters whose popover isn't a plain list — the caller
   // decides when the chip counts as "active", what to summarize on the
   // pill, how to clear, and renders the popover body itself. When set, the
@@ -41,13 +44,19 @@ export function FilterChip({
   // trigger for the custom popover. See TimeFilter for the reference case.
   renderPopover,
   active: activeProp,
+  // Optional override for the pill's right-hand value text. Falls back to the
+  // built-in summarize() (first two values joined, or "X +N"). Used by the
+  // shared FilterChipBar to format date ranges (mm/dd–mm/dd) and decade
+  // ranges (X–Y) without re-implementing the whole chip.
   activeSummary,
   onClear,
 }) {
   const [rect, setRect] = useState(null);
   const custom = typeof renderPopover === 'function';
   const active = custom ? !!activeProp : selected.length > 0;
-  const summary = custom ? activeSummary : summarize(selected);
+  const summary = custom
+    ? activeSummary
+    : (activeSummary != null ? activeSummary : summarize(selected));
 
   const handleClear = (e) => {
     e.stopPropagation();
@@ -99,6 +108,7 @@ export function FilterChip({
             selected={selected}
             onChange={onChange}
             onClose={() => setRect(null)}
+            searchable={searchable}
           />
         ))}
     </>

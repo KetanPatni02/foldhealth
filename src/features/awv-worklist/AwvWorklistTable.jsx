@@ -1,11 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
-import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
-import { ActionButton } from '../../components/ActionButton/ActionButton';
-import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
-import { Input } from '../../components/Input/Input';
+import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { BulkBar } from '../../components/BulkBar/BulkBar';
 import { Pagination } from '../../components/Pagination/Pagination';
 // Canonical table primitives — same as HCC + TOC. Keeps sortable column
@@ -53,7 +50,6 @@ export function AwvWorklistTable() {
   const showToast = useAppStore(s => s.showToast);
   const openHistoryDrawer = useAppStore(s => s.openHccHistoryDrawer);
 
-  const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBarOpen, setFilterBarOpen] = useState(true);
   const [page, setPage] = useState(1);
@@ -104,10 +100,13 @@ export function AwvWorklistTable() {
 
   return (
     <div className={styles.wrap}>
-      {/* Toolbar — mirrors HCC's TabBar treatment: inline editable title on the left,
-          action icons + divider on the right, single bottom border. */}
-      <div className={styles.toolbar}>
-        <div className={styles.toolbarLeft}>
+      {/* Header (SectionTitleBar · variant 3 · titleWithToggle with empty toggleItems).
+          Title is a ReactNode — the rename-in-place InlineEditable stays exactly
+          where it was. Search / Filter / History / Export use SectionTitleBar
+          built-ins so this worklist reads with the same chrome as HCC / HEDIS. */}
+      <SectionTitleBar
+        variant="titleWithToggle"
+        title={(
           <InlineEditable
             value={listTitle}
             onCommit={setListTitle}
@@ -116,54 +115,20 @@ export function AwvWorklistTable() {
             placeholder="Worklist"
             title="Rename this list"
           />
-        </div>
-        <div className={styles.toolbarRight}>
-          {searchOpen ? (
-            <div className={styles.searchInline}>
-              <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-300)" />
-              <Input
-                autoFocus
-                value={searchQuery}
-                placeholder="Search by name or member ID…"
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <CloseButton
-                size={14}
-                onClick={() => { setSearchOpen(false); setSearchQuery(''); }}
-                className={styles.searchClose}
-                label="Close search"
-              />
-            </div>
-          ) : (
-            <SearchIconButton title="Search" tooltipBelow onClick={() => setSearchOpen(true)} />
-          )}
-          <span className={styles.iconDivider} />
-          <ActionButton
-            icon="solar:filter-linear"
-            size="L"
-            tooltip={filterBarOpen ? 'Hide filters' : 'Show filters'}
-            tooltipBelow
-            className={filterBarOpen ? styles.iconActive : ''}
-            onClick={() => setFilterBarOpen(v => !v)}
-          />
-          <span className={styles.iconDivider} />
-          <ActionButton
-            icon="solar:clock-circle-linear"
-            size="L"
-            tooltip="History"
-            tooltipBelow
-            onClick={openHistoryDrawer}
-          />
-          <span className={styles.iconDivider} />
-          <ActionButton
-            icon="solar:download-square-linear"
-            size="L"
-            tooltip="Export"
-            tooltipBelow
-            onClick={() => showToast('Export — coming soon')}
-          />
-        </div>
-      </div>
+        )}
+        toggleItems={[]}
+        showSearch
+        searchPlaceholder="Search by name or member ID…"
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        showFilter
+        filterActive={filterBarOpen}
+        onFilter={() => setFilterBarOpen(v => !v)}
+        showHistory
+        onHistory={openHistoryDrawer}
+        showDownload
+        onDownload={() => showToast('Export — coming soon')}
+      />
 
       {/* Filter chip bar */}
       {filterBarOpen && (

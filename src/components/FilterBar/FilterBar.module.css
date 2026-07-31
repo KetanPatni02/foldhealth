@@ -128,31 +128,74 @@
   font-size: 12px;
 }
 
+/* "More Filters" trigger — matches the HCC FilterChipBar's version so the
+   two worklists read as one system. Sits at the end of the chip row and
+   opens the shared MoreFiltersPopover. */
+.moreBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 4px;
+  border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  font-size: 13px;
+  color: var(--neutral-300);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.moreBtn:hover {
+  background: var(--neutral-50);
+  color: var(--neutral-400);
+}
+.moreBtnActive {
+  border-color: var(--primary-300);
+  background: var(--primary-50);
+  color: var(--primary-300);
+}
+
+/* Tail cluster — More Filters | Clear All | Save Filter grouped as one
+   inline-flex unit that sits immediately after the last chip. Vertical
+   dividers between the buttons. Mirrors HCC's FilterChipBar pattern. */
+.tail {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.vDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+}
+
 .clearAll {
   font-size: 13px;
   color: var(--neutral-300);
   cursor: pointer;
-  margin-left: auto;
-  text-decoration: underline;
   background: none;
   border: none;
+  padding: 0;
   font-family: 'Inter', sans-serif;
+  transition: color 0.12s;
 }
-
-.clearAll:hover { color: var(--primary-300); }
+.clearAll:hover { color: var(--neutral-400); }
 
 /* Save Filter — same link style as Clear All but tinted primary to draw
-   the eye since saving is the commit action. Mirrors the HCC
-   FilterChipBar pattern. */
+   the eye since saving is the commit action. */
 .saveFilter {
   font-size: 13px;
+  font-weight: 500;
   color: var(--primary-300);
   cursor: pointer;
-  text-decoration: underline;
   background: none;
   border: none;
+  padding: 0;
   font-family: 'Inter', sans-serif;
-  margin-left: 8px;
+  transition: color 0.12s;
 }
 .saveFilter:hover { color: var(--primary-400); }
 

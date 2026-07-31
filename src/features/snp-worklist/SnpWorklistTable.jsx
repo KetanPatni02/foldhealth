@@ -3,8 +3,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
-import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
-import { Input } from '../../components/Input/Input';
+import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
@@ -49,8 +48,8 @@ export function SnpWorklistTable() {
   const loading = useAppStore(s => s.snpWorklistLoading);
   const fetchMembers = useAppStore(s => s.fetchSnpWorklistMembers);
 
-  const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterBarOpen, setFilterBarOpen] = useState(true);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [page, setPage] = useState(1);
@@ -126,42 +125,44 @@ export function SnpWorklistTable() {
 
   return (
     <div className={styles.wrap}>
-      <div className={styles.topBar}>
-        <span className={styles.title}>SNP</span>
-        <div className={styles.topActions}>
-          {searchOpen ? (
-            <Input
-              autoFocus
-              size="S"
-              placeholder="Search patients or members"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              onBlur={() => { if (!searchQuery) setSearchOpen(false); }}
-            />
-          ) : (
-            <SearchIconButton size="S" onClick={() => setSearchOpen(true)} />
-          )}
-          <ActionButton icon="solar:import-linear" size="S" tooltip="Import" />
-          <ActionButton icon="solar:filter-linear" size="S" tooltip="Filter" />
-          <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
-        </div>
-      </div>
+      <SectionTitleBar
+        variant="titleWithToggle"
+        title="SNP"
+        toggleItems={[]}
+        showSearch
+        searchPlaceholder="Search patients or members"
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        showFilter
+        filterActive={filterBarOpen}
+        onFilter={() => setFilterBarOpen(v => !v)}
+        rightExtras={
+          <>
+            <ActionButton icon="solar:import-linear" size="L" tooltip="Import" tooltipBelow />
+            <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
+            <ActionButton icon="solar:menu-dots-linear" size="L" tooltip="More" tooltipBelow />
+            <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
+          </>
+        }
+      />
 
-      <div className={styles.chipRow}>
-        {FILTER_KEYS.map(f => (
-          <FilterChip
-            key={f.key}
-            label={f.label}
-            options={filterOptions[f.key]}
-            selected={filters[f.key]}
-            onChange={vals => setFilter(f.key, vals)}
-          />
-        ))}
-        <button className={styles.clearAll} onClick={clearFilters}>
-          <Icon name="solar:backspace-linear" size={14} color="var(--primary-300)" />
-          Clear All
-        </button>
-      </div>
+      {filterBarOpen && (
+        <div className={styles.chipRow}>
+          {FILTER_KEYS.map(f => (
+            <FilterChip
+              key={f.key}
+              label={f.label}
+              options={filterOptions[f.key]}
+              selected={filters[f.key]}
+              onChange={vals => setFilter(f.key, vals)}
+            />
+          ))}
+          <button className={styles.clearAll} onClick={clearFilters}>
+            <Icon name="solar:backspace-linear" size={14} color="var(--primary-300)" />
+            Clear All
+          </button>
+        </div>
+      )}
 
       <div className={styles.tableScroll}>
         {loading && members.length === 0 ? (
