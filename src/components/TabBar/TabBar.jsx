@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Icon } from '../Icon/Icon';
 import { Button } from '../Button/Button';
-import { ActionButton } from '../ActionButton/ActionButton';
-import { SearchIconButton } from '../SearchIconButton/SearchIconButton';
-import { SearchBar } from '../SearchBar/SearchBar';
+import { SectionTitleBar } from '../SectionTitleBar/SectionTitleBar';
+import { SavedFiltersChip } from '../../features/hcc/SavedFiltersChip';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './TabBar.module.css';
 
@@ -47,6 +46,10 @@ function ConfirmDialog({ message, onConfirm, onCancel }) {
   );
 }
 
+// Two-tab TOC switch (Worklist / Agent Queue) rendered through SectionTitleBar
+// variant 3. Falls back to a title-only header for single-list subnav routes
+// (All Patients, HCC, CCM) — SectionTitleBar drops the segmented toggle when
+// only one item is supplied.
 export function TabBar() {
   const activeTab = useAppStore(s => s.activeTab);
   const setActiveTab = useAppStore(s => s.setActiveTab);
@@ -62,7 +65,6 @@ export function TabBar() {
   const agents = useAppStore(s => s.agents);
   const openBuilder = useAppStore(s => s.openBuilder);
   const activeSubnavList = useAppStore(s => s.activeSubnavList);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [confirmAbort, setConfirmAbort] = useState(false);
   const [showEditConfirm, setShowEditConfirm] = useState(false);
 
@@ -102,85 +104,81 @@ export function TabBar() {
     }
   };
 
+  // Left-side config per subnav route. Single-list routes render as a plain
+  // title (empty toggleItems → SectionTitleBar skips the Toggle).
+  const { title, toggleItems } = (() => {
+    if (activeSubnavList === 'All Patients') return { title: 'All Patients', toggleItems: [] };
+    if (activeSubnavList === 'HCC')          return { title: 'HCC Worklist', toggleItems: [] };
+    if (activeSubnavList === 'CCM')          return { title: 'CCM Worklist', toggleItems: [] };
+    return {
+      title: 'TOC',
+      toggleItems: [
+        { key: 'toc-worklist', label: 'Worklist' },
+        { key: 'toc-queue',    label: 'Agent Queue' },
+      ],
+    };
+  })();
+
+  const onQueueTab = activeTab === 'toc-queue';
+
   return (
     <>
-      <div className={styles.tabBar}>
-        <div className={styles.left}>
-          {activeSubnavList === 'All Patients' ? (
-            <div className={`${styles.tabItem} ${styles.active}`}>
-              All Patients
-            </div>
-          ) : activeSubnavList === 'HCC' ? (
-            <div className={`${styles.tabItem} ${styles.active}`}>
-              HCC Worklist
-            </div>
-          ) : activeSubnavList === 'CCM' ? (
-            <div className={`${styles.tabItem} ${styles.active}`}>
-              CCM Worklist
-            </div>
-          ) : (
-            <>
-              <div
-                className={[styles.tabItem, activeTab === 'toc-worklist' ? styles.active : ''].filter(Boolean).join(' ')}
-                onClick={() => handleTabChange('toc-worklist')}
-              >
-                TOC Worklist
-              </div>
-              <div
-                className={[styles.tabItem, activeTab === 'toc-queue' ? styles.active : ''].filter(Boolean).join(' ')}
-                onClick={() => handleTabChange('toc-queue')}
-              >
-                TOC Agent Queue
-                {queueTabDot && <span className={styles.notifDot} title="Agent invoked — view queue" />}
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className={styles.right}>
-          {activeTab === 'toc-queue' && (
-            <div className={styles.queueActions}>
-              <Button variant="secondary" size="L" leadingIcon="solar:pen-new-square-linear" onClick={handleEditConfiguration}>
-                Edit Configuration
-              </Button>
-              <Button
-                variant="danger"
-                size="L"
-                leadingIcon="solar:close-circle-bold"
-                onClick={handleAbort}
-                disabled={!hasActiveAgents}
-              >
-                {confirmAbort ? 'Click again to confirm' : 'Abort'}
-              </Button>
-            </div>
-          )}
-
-          <div className={styles.searchWrap}>
-            {searchOpen ? (
-              <SearchBar
-                placeholder="Search by member name…"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                onClose={() => { setSearchOpen(false); setSearchQuery(''); }}
-              />
-            ) : (
-              <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
-            )}
-          </div>
-          <span className={styles.iconDivider} />
-          <ActionButton
-            icon="custom:filter"
-            size="L"
-            tooltip="Filter"
-            className={showFilterBar ? styles.active : ''}
-            onClick={() => setShowFilterBar(!showFilterBar)}
+      <SectionTitleBar
+        variant="titleWithToggle"
+        title={title}
+        toggleItems={toggleItems}
+        toggleActive={activeTab}
+        onToggleChange={handleTabChange}
+        leftExtras={queueTabDot && toggleItems.length > 1 && (
+          <span
+            className={styles.notifDot}
+            title="Agent invoked — view queue"
+            aria-label="Agent Queue has new activity"
           />
-          <span className={styles.iconDivider} />
-          <ActionButton icon="solar:history-linear" size="L" tooltip="History" onClick={() => showToast('History – coming soon')} />
-          <span className={styles.iconDivider} />
-          <ActionButton icon="solar:upload-minimalistic-linear" size="L" tooltip="Export" onClick={() => showToast('Export – coming soon')} />
-        </div>
-      </div>
+        )}
+        showSearch
+        searchPlaceholder="Search by member name…"
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        showFilter
+        filterActive={showFilterBar}
+        onFilter={() => setShowFilterBar(!showFilterBar)}
+        showHistory
+        onHistory={() => showToast('History – coming soon')}
+        showDownload
+        onDownload={() => showToast('Export – coming soon')}
+        rightExtras={
+          <>
+            {onQueueTab && (
+              <>
+                <Button
+                  variant="secondary"
+                  size="L"
+                  leadingIcon="solar:pen-new-square-linear"
+                  onClick={handleEditConfiguration}
+                >
+                  Edit Configuration
+                </Button>
+                <Button
+                  variant="danger"
+                  size="L"
+                  leadingIcon="solar:close-circle-bold"
+                  onClick={handleAbort}
+                  disabled={!hasActiveAgents}
+                >
+                  {confirmAbort ? 'Click again to confirm' : 'Abort'}
+                </Button>
+                <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
+              </>
+            )}
+            {/* Saved Filters dropdown — writes to whichever list this TabBar
+                is currently rendering (TOC / SNP / High Utilizers / DM),
+                falling back to 'TOC' when no subnav list is active. */}
+            <SavedFiltersChip list={activeSubnavList || 'TOC'} />
+            <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
+          </>
+        }
+      />
 
       {showEditConfirm && (
         <ConfirmDialog

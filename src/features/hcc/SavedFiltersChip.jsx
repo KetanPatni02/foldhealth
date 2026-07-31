@@ -30,9 +30,17 @@ export function SavedFiltersChip({ list = 'HCC' }) {
   const applySavedFilter = useAppStore(s => s.applySavedFilter);
   const clearHccFilters = useAppStore(s => s.clearHccFilters);
   const clearHedisFilters = useAppStore(s => s.clearHedisFilters);
+  const clearAllFilters = useAppStore(s => s.clearAllFilters);
   const renameSavedFilter = useAppStore(s => s.renameSavedFilter);
   const deleteSavedFilter = useAppStore(s => s.deleteSavedFilter);
-  const clearFilters = list === 'HEDIS' ? clearHedisFilters : clearHccFilters;
+  // Route the "Clear active saved filter" action to the right store slice —
+  // HEDIS and HCC each have their own filter buckets; every other list
+  // (TOC / SNP / High Utilizers / DM / …) shares `activeFilters`, so falls
+  // back to `clearAllFilters`.
+  const clearFilters =
+    list === 'HEDIS' ? clearHedisFilters :
+    list === 'HCC'   ? clearHccFilters :
+    clearAllFilters;
 
   const triggerRef = useRef(null);
   const [pos, setPos] = useState(null);

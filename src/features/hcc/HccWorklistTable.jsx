@@ -7,10 +7,10 @@ import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Button } from '../../components/Button/Button';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
-import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
+import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { useTableSort } from '../../components/SortableHeader/useTableSort';
 import { SortPopover } from '../../components/SortPopover/SortPopover';
-import { DueDateChip } from './DueDateChip';
+import { DUE_OPTIONS } from './DueDateChip';
 import { slaDueCategory } from './sla';
 import { SavedFiltersChip } from './SavedFiltersChip';
 import { FilterChipBar } from './FilterChipBar';
@@ -190,7 +190,6 @@ export function HccWorklistTable() {
     [hccColumnOrder],
   );
 
-  const [searchOpen, setSearchOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(true);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState(null);
@@ -307,74 +306,48 @@ export function HccWorklistTable() {
   return (
     <div className={styles.wrap}>
       <HccUploadProgressRibbon />
-      <div className={styles.tabBar}>
-        <div className={styles.tabLeft}>
-          {/* Title mirrors the worklist's name in the SubNav — renaming
-              happens there, not here, so the two can never disagree. */}
-          <span className={styles.listTitle}>{activeSubnavList}</span>
-          <DueDateChip value={hccDueDateFilter} onChange={setHccDueDateFilter} />
-        </div>
-
-        <div className={styles.tabRight}>
-          <SavedFiltersChip />
-          <span className={styles.iconDivider} />
-          <div className={styles.searchWrap}>
-            {searchOpen ? (
-              <div className={styles.searchInput}>
-                <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
-                <input
-                  autoFocus
-                  type="text"
-                  placeholder="Search by member name…"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                <button
-                  className={styles.searchClose}
-                  onClick={() => { setSearchOpen(false); setSearchQuery(''); }}
-                  aria-label="Close search"
-                >
-                  ✕
-                </button>
-              </div>
-            ) : (
-              <SearchIconButton title="Search" tooltipBelow onClick={() => setSearchOpen(true)} />
-            )}
-          </div>
-          <span className={styles.iconDivider} />
-          <ActionButton
-            icon="custom:filter"
-            size="L"
-            tooltip={filterOpen ? 'Hide filters' : 'Show filters'}
-            tooltipBelow
-            notification={activeFilterCount > 0}
-            count={activeFilterCount > 0 ? String(activeFilterCount) : undefined}
-            className={filterOpen ? styles.iconActive : ''}
-            onClick={() => setFilterOpen(v => !v)}
-          />
-          <span className={styles.iconDivider} />
-          <ActionButton
-            icon="custom:export"
-            size="L"
-            tooltip="Export"
-            tooltipBelow
-            onClick={() => showToast('Export — coming soon')}
-          />
-          <span className={styles.iconDivider} />
-          <UploadMenuButton
-            onUploadDocument={() => { startHccUpload(null); setHccUploadPhase('picker'); }}
-            onAddManually={() => { startHccUpload(null); setHccUploadPhase('single'); }}
-          />
-          <span className={styles.iconDivider} />
-          <ActionButton
-            icon="custom:history"
-            size="L"
-            tooltip="History"
-            tooltipBelow
-            onClick={openHccHistoryDrawer}
-          />
-        </div>
-      </div>
+      {/* Header (SectionTitleBar · variant 2 · titleWithDropdown).
+          `activeSubnavList` (from SubNav) drives the title so renaming a
+          worklist in the SubNav ripples here without a second source of
+          truth. Due Date routes through FilterChip singleSelect via the
+          shared component; SavedFiltersChip / Export / UploadMenu / History
+          keep their HCC-specific popovers via rightExtras. */}
+      <SectionTitleBar
+        variant="titleWithDropdown"
+        title={activeSubnavList}
+        dropdownLabel="Due Date"
+        dropdownOptions={DUE_OPTIONS}
+        dropdownValue={hccDueDateFilter}
+        onDropdownChange={setHccDueDateFilter}
+        showSearch
+        searchPlaceholder="Search by member name…"
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        showFilter
+        filterActive={filterOpen}
+        filterBadgeCount={activeFilterCount}
+        onFilter={() => setFilterOpen(v => !v)}
+        showHistory
+        onHistory={openHccHistoryDrawer}
+        rightExtras={
+          <>
+            <SavedFiltersChip />
+            <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
+            <ActionButton
+              icon="custom:export"
+              size="L"
+              tooltip="Export"
+              tooltipBelow
+              onClick={() => showToast('Export — coming soon')}
+            />
+            <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
+            <UploadMenuButton
+              onUploadDocument={() => { startHccUpload(null); setHccUploadPhase('picker'); }}
+              onAddManually={() => { startHccUpload(null); setHccUploadPhase('single'); }}
+            />
+          </>
+        }
+      />
 
       {filterOpen && <FilterChipBar onSaveFilter={() => setSaveDialogOpen(true)} />}
       {/* Saved filters live exclusively in the left SubNav (under HCC).

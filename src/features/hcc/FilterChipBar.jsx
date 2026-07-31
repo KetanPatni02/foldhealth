@@ -1,7 +1,6 @@
 import { useRef, useState, useMemo, useEffect, useLayoutEffect } from 'react';
 import { Icon } from '../../components/Icon/Icon';
-import { CheckboxListPopover } from '../../components/CheckboxListPopover/CheckboxListPopover';
-import { RadioListPopover } from '../../components/RadioListPopover/RadioListPopover';
+import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { RangeSliderPopover } from '../../components/RangeSliderPopover/RangeSliderPopover';
 import { DateRangePopover } from '../../components/DateRangePopover/DateRangePopover';
 import { useAppStore } from '../../store/useAppStore';
@@ -172,13 +171,8 @@ export function FilterChipBar({
     return () => ro.disconnect();
   }, [customized, activeKeys, inactivePrimary]);
 
-  // Which chip popover is open: { key, rect } | null
-  const [chipPop, setChipPop] = useState(null);
   const moreBtnRef = useRef(null);
   const [moreRect, setMoreRect] = useState(null);
-
-  const openChip = (k, anchor) => setChipPop({ key: k, rect: anchor.getBoundingClientRect() });
-  const closeChip = () => setChipPop(null);
 
   const openMore = () => {
     const rect = moreBtnRef.current?.getBoundingClientRect();
@@ -192,46 +186,129 @@ export function FilterChipBar({
     setVisibleFilterKeys([...next]);
   };
 
-  const openChipFor = (k, currentTarget) => {
-    const item = moreFilterItems.find(x => x.k === k);
-    const def = filterDefMap[k];
-    if (!def) { showToast(`Filter "${item?.label}" — coming soon`); return; }
-    if (['multi', 'radio', 'range', 'date'].includes(def.type)) openChip(k, currentTarget);
-    else showToast(`Filter "${item?.label}" popover — not yet wired`);
-  };
-
+  /**
+   * Render a single chip via the shared FilterChip. Each filter type is
+   * expressed as different FilterChip prop combinations:
+   *   • multi  → default (checkbox list, optional `searchable`)
+   *   • radio  → `singleSelect`
+   *   • date   → `renderPopover` with DateRangePopover
+   *   • range  → `renderPopover` with RangeSliderPopover
+   * Unwired filters (no def or a def whose type isn't one of these four)
+   * fall back to a coming-soon toast when the trigger is clicked.
+   *
+   * `mirror` (true) means this instance is inside the hidden measurement
+   * mirror — wrapped in a positioned div so the auto-fit code can look up
+   * the chip's rendered width by `[data-mk="${k}"]`.
+   */
   const renderChip = (k, mirror) => {
     const item = moreFilterItems.find(x => x.k === k);
     if (!item) return null;
+    const def = filterDefMap[k];
     const vals = filters[k] || [];
     const active = vals.length > 0;
-    return (
-      <button
+    const summary = active ? summarize(k, vals) : undefined;
+    const setVals = (next) => setFilter(k, next);
+
+    let chip;
+    if (!def || !['multi', 'radio', 'range', 'date'].includes(def?.type)) {
+      // Unknown / not-yet-wired filter — keep the same visual affordance but
+      // fire the historical toast instead of opening a popover.
+      chip = (
+        <FilterChip
+          label={item.label}
+          active={false}
+          renderPopover={({ onClose }) => {
+            showToast(
+              def ? `Filter "${item.label}" popover — not yet wired`
+                  : `Filter "${item.label}" — coming soon`
+            );
+            onClose();
+            return null;
+          }}
+        />
+      );
+    } else if (def.type === 'multi') {
+      chip = (
+        <FilterChip
+          label={item.label}
+          popoverLabel={def.popoverLabel}
+          options={optsFor(def)}
+          selected={vals}
+          onChange={setVals}
+          searchable={def.searchable}
+          activeSummary={summary}
+        />
+      );
+    } else if (def.type === 'radio') {
+      chip = (
+        <FilterChip
+          label={item.label}
+          popoverLabel={def.popoverLabel}
+          options={def.opts}
+          selected={vals}
+          onChange={setVals}
+          singleSelect
+          activeSummary={summary}
+        />
+      );
+    } else if (def.type === 'date') {
+      chip = (
+        <FilterChip
+          label={item.label}
+          active={active}
+          activeSummary={summary}
+          onClear={() => setVals([])}
+          renderPopover={({ anchorRect, onClose }) => (
+            <DateRangePopover
+              anchorRect={anchorRect}
+              label={def.label}
+              selected={vals}
+              onChange={setVals}
+              onClose={onClose}
+            />
+          )}
+        />
+      );
+    } else if (def.type === 'range') {
+      const lo = def.opts[0];
+      const hi = def.opts[def.opts.length - 1];
+      const initMin = vals.length >= 2 ? parseInt(vals[0], 10) : parseInt(lo, 10);
+      const initMax = vals.length >= 2 ? parseInt(vals[1], 10) : parseInt(hi, 10);
+      chip = (
+        <FilterChip
+          label={item.label}
+          active={active}
+          activeSummary={summary}
+          onClear={() => setVals([])}
+          renderPopover={({ anchorRect, onClose }) => (
+            <RangeSliderPopover
+              anchorRect={anchorRect}
+              label={def.label}
+              min={parseInt(lo, 10)}
+              max={parseInt(hi, 10)}
+              step={1}
+              initialMin={initMin}
+              initialMax={initMax}
+              onApply={(mn, mx) => { setVals([String(mn), String(mx)]); onClose(); }}
+              onClose={onClose}
+            />
+          )}
+        />
+      );
+    }
+
+    // Wrap mirror instances so the auto-fit measurement can pick up widths
+    // (FilterChip doesn't itself surface `data-mk`).
+    return mirror ? (
+      <span
         key={k}
-        {...(mirror ? { 'data-mk': k, tabIndex: -1, 'aria-hidden': true } : {})}
-        type="button"
-        className={[styles.chip, active ? styles.chipActive : ''].join(' ')}
-        onClick={mirror ? undefined : (e) => openChipFor(k, e.currentTarget)}
+        data-mk={k}
+        aria-hidden="true"
+        style={{ display: 'inline-flex' }}
       >
-        <span className={styles.chipLabel}>{item.label}</span>
-        {active ? (
-          <>
-            <span className={styles.divider} aria-hidden="true">|</span>
-            <span className={styles.chipValue}>{summarize(k, vals)}</span>
-            <span
-              className={styles.clearIcon}
-              role="button"
-              aria-label={`Clear ${item.label} filter`}
-              onClick={mirror ? undefined : (e) => { e.stopPropagation(); setFilter(k, []); }}
-            >
-              <Icon name="solar:close-circle-linear" size={12} color="var(--primary-300)" />
-            </span>
-          </>
-        ) : (
-          <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--neutral-300)" />
-        )}
-      </button>
-    );
+        {chip}
+      </span>
+    ) : <span key={k}>{chip}</span>;
   };
 
   const hasActiveFilters = activeKeys.length > 0;
@@ -282,73 +359,6 @@ export function FilterChipBar({
       <div className={styles.measure} ref={measureRef} aria-hidden="true">
         {primaryFilterKeys.map((k) => renderChip(k, true))}
       </div>
-
-      {chipPop && (() => {
-        const def = filterDefMap[chipPop.key];
-        if (!def) return null;
-        const current = filters[chipPop.key] || [];
-        const setVals = (next) => setFilter(chipPop.key, next);
-
-        if (def.type === 'multi') {
-          return (
-            <CheckboxListPopover
-              anchorRect={chipPop.rect}
-              label={def.popoverLabel || def.label}
-              options={optsFor(def)}
-              selected={current}
-              onChange={setVals}
-              onClose={closeChip}
-              searchable={def.searchable}
-            />
-          );
-        }
-        if (def.type === 'radio') {
-          return (
-            <RadioListPopover
-              anchorRect={chipPop.rect}
-              label={def.label}
-              options={def.opts}
-              selected={current}
-              onChange={(next) => { setVals(next); closeChip(); }}
-              onClose={closeChip}
-            />
-          );
-        }
-        if (def.type === 'date') {
-          return (
-            <DateRangePopover
-              anchorRect={chipPop.rect}
-              label={def.label}
-              selected={current}
-              onChange={setVals}
-              onClose={closeChip}
-            />
-          );
-        }
-        if (def.type === 'range') {
-          const lo = def.opts[0];
-          const hi = def.opts[def.opts.length - 1];
-          const initMin = current.length >= 2 ? parseInt(current[0], 10) : parseInt(lo, 10);
-          const initMax = current.length >= 2 ? parseInt(current[1], 10) : parseInt(hi, 10);
-          return (
-            <RangeSliderPopover
-              anchorRect={chipPop.rect}
-              label={def.label}
-              min={parseInt(lo, 10)}
-              max={parseInt(hi, 10)}
-              step={1}
-              initialMin={initMin}
-              initialMax={initMax}
-              onApply={(mn, mx) => {
-                setVals([String(mn), String(mx)]);
-                closeChip();
-              }}
-              onClose={closeChip}
-            />
-          );
-        }
-        return null;
-      })()}
 
       {moreRect && (
         <MoreFiltersPopover
