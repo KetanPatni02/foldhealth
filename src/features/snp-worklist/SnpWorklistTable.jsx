@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
@@ -7,19 +7,59 @@ import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBa
 import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
+import { SavedFiltersChip } from '../hcc/SavedFiltersChip';
+import { MoreFiltersPopover } from '../hcc/MoreFiltersPopover';
+import { FilterNameDialog } from '../hcc/FilterNameDialog';
 import { SnpWorklistRow } from './SnpWorklistRow';
 import styles from './SnpWorklistTable.module.css';
 
 // Filter chips — each is a multi-select of string buckets derived per row.
+// `primary: true` chips render by default; extended chips are opt-in via the
+// More Filters popover. The extended set mirrors the full SNP-filter roster
+// (Member Status → Tags) even when the underlying member data doesn't yet
+// carry those fields — filtering on those is a no-op today.
 const FILTER_KEYS = [
-  { key: 'programSubStatus', label: 'Program Sub Status' },
-  { key: 'carePlanStatus',   label: 'Care Plan Status' },
-  { key: 'assignee',         label: 'Assigned to' },
-  { key: 'trigger',          label: 'Trigger' },
-  { key: 'riskIq',           label: 'Risk IQ' },
-  { key: 'outreach',         label: 'Outreach' },
+  { key: 'programSubStatus', label: 'Program Sub Status', primary: true },
+  { key: 'carePlanStatus',   label: 'Care Plan Status',   primary: true },
+  { key: 'assignee',         label: 'Assigned to',        primary: true },
+  { key: 'trigger',          label: 'Trigger',            primary: true },
+  { key: 'riskIq',           label: 'Risk IQ',            primary: true },
+  { key: 'outreach',         label: 'Outreach',           primary: true },
+  // Extended (hidden by default — opt in via More Filters).
+  { key: 'memberStatus',      label: 'Member Status',        primary: false },
+  { key: 'phone',             label: 'Phone Number',         primary: false },
+  { key: 'dob',               label: 'DOB',                  primary: false },
+  { key: 'gender',            label: 'Gender',               primary: false },
+  { key: 'language',          label: 'Language',             primary: false },
+  { key: 'programDueDate',    label: 'Program Due Date',     primary: false },
+  { key: 'nextActionDueDate', label: 'Next Action Due Date', primary: false },
+  { key: 'triggerDate',       label: 'Trigger Date',         primary: false },
+  { key: 'triggerType',       label: 'Trigger Type',         primary: false },
+  { key: 'lastOutreachDate',  label: 'Last Outreach Date',   primary: false },
+  { key: 'lastOutreachOutcome', label: 'Last Outreach Outcome', primary: false },
+  { key: 'programStartDate',  label: 'Program Start Date',   primary: false },
+  { key: 'lastAdmissionDate', label: 'Last Admission Date',  primary: false },
+  { key: 'ipa',               label: 'IPA',                  primary: false },
+  { key: 'hpCodes',           label: 'HP Codes',             primary: false },
+  { key: 'isOwnedIpa',        label: 'Is Owned IPA',         primary: false },
+  { key: 'lob',               label: 'LOB',                  primary: false },
+  { key: 'hpGroup',           label: 'HP Group',             primary: false },
+  { key: 'contractType',      label: 'Contract Type',        primary: false },
+  { key: 'snpType',           label: 'SNP Type',             primary: false },
+  { key: 'networkMarket',     label: 'Network Market',       primary: false },
+  { key: 'zipCode',           label: 'Zip Code',             primary: false },
+  { key: 'city',              label: 'City',                 primary: false },
+  { key: 'preferredCallTime', label: 'Preferred Call Time',  primary: false },
+  { key: 'pcp',               label: 'PCP',                  primary: false },
+  { key: 'pcpCounty',         label: 'PCP County',           primary: false },
+  { key: 'pcpState',          label: 'PCP State',            primary: false },
+  { key: 'pcpPod',            label: 'PCP Pod',              primary: false },
+  { key: 'pcpVendor',         label: 'PCP Vendor',           primary: false },
+  { key: 'tags',              label: 'Tags',                 primary: false },
 ];
 
+// Only the six primary keys have live bucket functions today; extended keys
+// return empty option pools so their chips render but don't filter yet.
 const BUCKET_FN = {
   programSubStatus: (m) => m.programSubStatus || 'None',
   carePlanStatus:   (m) => m.carePlanStatus || 'None',
@@ -27,9 +67,14 @@ const BUCKET_FN = {
   trigger:          (m) => m.trigger || 'None',
   riskIq:           (m) => m.riskIq || 'Undetermined',
   outreach:         (m) => (m.outreach ? m.outreach.status : 'None'),
+  gender:           (m) => m.gender || null,
+  language:         (m) => m.language || null,
 };
 
-const EMPTY_FILTERS = Object.fromEntries(FILTER_KEYS.map(f => [f.key, []]));
+const MORE_FILTER_ITEMS = FILTER_KEYS.map(f => ({ k: f.key, label: f.label, primary: f.primary }));
+const PRIMARY_FILTER_KEYS = FILTER_KEYS.filter(f => f.primary).map(f => f.key);
+const KEY_BY = Object.fromEntries(FILTER_KEYS.map(f => [f.key, f]));
+const KEY_ORDER = Object.fromEntries(FILTER_KEYS.map((f, i) => [f.key, i]));
 
 function EmptySearch() {
   return (
@@ -47,20 +92,42 @@ export function SnpWorklistTable() {
   const members = useAppStore(s => s.snpWorklistMembers);
   const loading = useAppStore(s => s.snpWorklistLoading);
   const fetchMembers = useAppStore(s => s.fetchSnpWorklistMembers);
+  const showToast = useAppStore(s => s.showToast);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBarOpen, setFilterBarOpen] = useState(true);
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  // SNP filters live in the store now (matches HCC/HEDIS shape) so save/apply/
+  // clear routes through the shared saveSavedFilter flow. Local state remains
+  // only for view-only chrome (search, pagination, selection).
+  const filters = useAppStore(s => s.snpFilters);
+  const setFilter = useAppStore(s => s.setSnpFilter);
+  const clearFilters = useAppStore(s => s.clearSnpFilters);
+  const storedVisible = useAppStore(s => s.snpVisibleFilterKeys);
+  const setVisibleFilterKeys = useAppStore(s => s.setSnpVisibleFilterKeys);
+  const clearVisibleFilters = useAppStore(s => s.clearSnpVisibleFilters);
+  const saveSnpFilter = useAppStore(s => s.saveSnpFilter);
+
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const moreBtnRef = useRef(null);
+  const [moreRect, setMoreRect] = useState(null);
 
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
+
+  // Ensure the row-level assignee picker has users to show — one-shot
+  // fetch, guarded in the store so repeat mounts don't re-round-trip.
+  const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
+  useEffect(() => { fetchPlatformUsers(); }, [fetchPlatformUsers]);
 
   const filterOptions = useMemo(() => {
     const opts = {};
     for (const { key } of FILTER_KEYS) {
-      opts[key] = [...new Set(members.map(m => BUCKET_FN[key](m)).filter(Boolean))].sort();
+      const bucket = BUCKET_FN[key];
+      opts[key] = bucket
+        ? [...new Set(members.map(m => bucket(m)).filter(Boolean))].sort()
+        : [];
     }
     return opts;
   }, [members]);
@@ -77,10 +144,42 @@ export function SnpWorklistTable() {
     }
     for (const { key } of FILTER_KEYS) {
       const vals = filters[key];
-      if (vals && vals.length) rows = rows.filter(m => vals.includes(BUCKET_FN[key](m)));
+      const bucket = BUCKET_FN[key];
+      if (!bucket || !vals || !vals.length) continue;
+      rows = rows.filter(m => vals.includes(bucket(m)));
     }
     return rows;
   }, [members, searchQuery, filters]);
+
+  // Visible chips = primary set (or user-customised set) plus any chip that
+  // has an active value — otherwise applying a saved filter could hide the
+  // very chip whose value it just set.
+  const activeKeys = useMemo(
+    () => FILTER_KEYS.map(f => f.key).filter(k => (filters[k] || []).length > 0),
+    [filters],
+  );
+  const orderKeys = (keys) => [...new Set(keys)].sort(
+    (a, b) => (KEY_ORDER[a] ?? 99) - (KEY_ORDER[b] ?? 99),
+  );
+  const visibleKeys = useMemo(() => {
+    const base = storedVisible ?? PRIMARY_FILTER_KEYS;
+    return orderKeys([...base, ...activeKeys]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storedVisible, activeKeys]);
+
+  const toggleVisible = (k) => {
+    const next = new Set(storedVisible ?? PRIMARY_FILTER_KEYS);
+    if (next.has(k)) next.delete(k); else next.add(k);
+    setVisibleFilterKeys([...next]);
+  };
+
+  const openMore = () => {
+    const rect = moreBtnRef.current?.getBoundingClientRect();
+    if (rect) setMoreRect(rect);
+  };
+  const closeMore = () => setMoreRect(null);
+
+  const hasActiveFilters = activeKeys.length > 0;
 
   const paginated = useMemo(() => {
     const start = (page - 1) * perPage;
@@ -103,9 +202,6 @@ export function SnpWorklistTable() {
     return next;
   });
 
-  const setFilter = (key, vals) => setFilters(f => ({ ...f, [key]: vals }));
-  const clearFilters = () => setFilters(EMPTY_FILTERS);
-
   // Inline header style mirrors the CCM / TOC worklists for identical chrome.
   const thStyle = {
     padding: '8px 14px',
@@ -125,6 +221,9 @@ export function SnpWorklistTable() {
 
   return (
     <div className={styles.wrap}>
+      {/* Header (SectionTitleBar · variant 3). Mirrors the HCC/HEDIS right-side
+          layout so every worklist reads with one chrome:
+          rightExtras (SavedFiltersChip + Upload) → Search → Filter → History. */}
       <SectionTitleBar
         variant="titleWithToggle"
         title="SNP"
@@ -136,11 +235,19 @@ export function SnpWorklistTable() {
         showFilter
         filterActive={filterBarOpen}
         onFilter={() => setFilterBarOpen(v => !v)}
+        showHistory
+        onHistory={() => showToast('History – coming soon')}
         rightExtras={
           <>
-            <ActionButton icon="solar:import-linear" size="L" tooltip="Import" tooltipBelow />
+            <SavedFiltersChip list="SNP" />
             <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
-            <ActionButton icon="solar:menu-dots-linear" size="L" tooltip="More" tooltipBelow />
+            <ActionButton
+              icon="solar:upload-minimalistic-linear"
+              size="L"
+              tooltip="Upload Document"
+              tooltipBelow
+              onClick={() => showToast('Upload Document – coming soon')}
+            />
             <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
           </>
         }
@@ -148,21 +255,73 @@ export function SnpWorklistTable() {
 
       {filterBarOpen && (
         <div className={styles.chipRow}>
-          {FILTER_KEYS.map(f => (
-            <FilterChip
-              key={f.key}
-              label={f.label}
-              options={filterOptions[f.key]}
-              selected={filters[f.key]}
-              onChange={vals => setFilter(f.key, vals)}
-            />
-          ))}
-          <button className={styles.clearAll} onClick={clearFilters}>
-            <Icon name="solar:backspace-linear" size={14} color="var(--primary-300)" />
-            Clear All
-          </button>
+          {visibleKeys.map(k => {
+            const def = KEY_BY[k];
+            if (!def) return null;
+            return (
+              <FilterChip
+                key={def.key}
+                label={def.label}
+                options={filterOptions[def.key] || []}
+                selected={filters[def.key] || []}
+                onChange={vals => setFilter(def.key, vals)}
+              />
+            );
+          })}
+
+          {/* Tail cluster — More Filters | Clear All | Save Filter grouped as
+              one inline unit right after the last chip, matching HCC/TOC. */}
+          <div className={styles.tail}>
+            <button
+              ref={moreBtnRef}
+              type="button"
+              className={[styles.moreBtn, moreRect ? styles.moreBtnActive : ''].join(' ')}
+              onClick={moreRect ? closeMore : openMore}
+            >
+              More Filters
+              <Icon
+                name="solar:alt-arrow-down-linear"
+                size={11}
+                color={moreRect ? 'var(--primary-300)' : 'var(--neutral-300)'}
+              />
+            </button>
+
+            {hasActiveFilters && (
+              <>
+                <span className={styles.vDivider} />
+                <button className={styles.linkBtn} onClick={clearFilters}>Clear All</button>
+                <span className={styles.vDivider} />
+                <button
+                  className={[styles.linkBtn, styles.linkBtnPrimary].join(' ')}
+                  onClick={() => setSaveDialogOpen(true)}
+                >
+                  Save Filter
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
+
+      {moreRect && (
+        <MoreFiltersPopover
+          anchorRect={moreRect}
+          visibleKeys={visibleKeys}
+          moreFilterItems={MORE_FILTER_ITEMS}
+          onToggle={toggleVisible}
+          onClear={clearVisibleFilters}
+          onClose={closeMore}
+        />
+      )}
+
+      <FilterNameDialog
+        open={saveDialogOpen}
+        title="Save Filter"
+        submitLabel="Save & Apply"
+        initialName=""
+        onSubmit={(name) => { saveSnpFilter(name); setSaveDialogOpen(false); }}
+        onCancel={() => setSaveDialogOpen(false)}
+      />
 
       <div className={styles.tableScroll}>
         {loading && members.length === 0 ? (

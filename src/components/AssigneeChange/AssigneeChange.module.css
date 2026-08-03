@@ -1,0 +1,184 @@
+/* ── AssigneeChange ── shared worklist assignee cell.
+ * Assigned: fixed 140px, name truncates. Unassigned: intrinsic width.
+ * Hover / focus: neutral-50 fill + chevron reveal.
+ */
+
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+  text-align: left;
+  color: var(--neutral-400);
+  box-sizing: border-box;
+}
+.root:hover,
+.root:focus-visible {
+  background: var(--neutral-50);
+}
+.root:focus-visible { outline: none; }
+
+.assigned {
+  width: 140px;
+  max-width: 140px;
+}
+.unassigned {
+  width: fit-content;
+}
+
+/* Assigned — text column between the avatar and the chevron. min-width:0 lets
+   the name and role shrink so `text-overflow: ellipsis` actually engages. */
+.textBody {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.name {
+  font-size: 14px;
+  color: var(--neutral-400);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.role {
+  font-size: 12px;
+  color: var(--neutral-300);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Unassigned — outlined 24×24 slot mirroring the provider avatar footprint,
+   with a person outline icon inside. */
+.unassignedSlot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid var(--neutral-150);
+  background: var(--neutral-0);
+  flex-shrink: 0;
+}
+.textLabel {
+  font-size: 14px;
+  color: var(--neutral-400);
+  white-space: nowrap;
+}
+
+.chevron {
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  flex-shrink: 0;
+}
+.root:hover .chevron,
+.root:focus-visible .chevron { opacity: 1; }
+
+/* ── Portaled user picker ─────────────────────────────────────────────── */
+
+.menu {
+  position: fixed;
+  z-index: 999;
+  width: 280px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.menuTitle {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  padding: 2px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.search {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: var(--neutral-0);
+}
+.search:focus-within { border-color: var(--primary-300); }
+.searchInput {
+  border: none;
+  outline: none;
+  background: transparent;
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--neutral-400);
+}
+.searchInput::placeholder { color: var(--neutral-200); }
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.userRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+.userRow:hover { background: var(--neutral-50); }
+.userRowActive { background: var(--primary-50); }
+.userRowActive:hover { background: var(--primary-50); }
+
+.userText {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.userName {
+  font-size: 13px;
+  color: var(--neutral-400);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.userRole {
+  font-size: 11px;
+  color: var(--neutral-300);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empty {
+  padding: 16px 8px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--neutral-300);
+}

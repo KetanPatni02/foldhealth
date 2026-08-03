@@ -71,6 +71,14 @@
 }
 .statusDropdown:hover { color: var(--primary-300); }
 
+/* Wraps the shared <Badge> so it can act as a click target for the
+   status-change MenuPopover. Chrome-free — the badge already carries
+   its own border/background. */
+.statusBadgeBtn {
+  background: none; border: none; padding: 0; cursor: pointer;
+  display: inline-flex; align-items: center;
+}
+
 .dateText { font-size: 14px; color: var(--neutral-400); white-space: nowrap; }
 .mutedDash { color: var(--neutral-200); font-size: 14px; }
 .triggerText { font-size: 14px; color: var(--neutral-400); white-space: nowrap; }
@@ -85,29 +93,14 @@
 .dots { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; }
 .dot { width: 6px; height: 6px; border-radius: 50%; }
 
-/* Assignee cell — names render in success-green per the design */
-.assigneeCell { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-.assigneeName {
-  background: none; border: none; padding: 0; font: inherit; cursor: pointer;
-  font-size: 14px; color: var(--status-success);
-}
-.assigneeName:hover { text-decoration: underline; }
-.assignBtn {
-  display: inline-flex; align-items: center; gap: 4px;
-  background: none; border: none; padding: 0; cursor: pointer;
-  font-size: 14px; color: var(--neutral-300); white-space: nowrap;
-}
+/* Assignee cell — the shared <AssigneeChange> primitive owns its own visuals
+   (24px provider avatar + grey name + optional role, hover-fill background,
+   chevron on hover/focus). See src/components/AssigneeChange. */
 
-/* Tags */
+/* Tags — the pills themselves are the shared <Badge> component (see
+   Badge.module.css `.tag-*`). Only the row container + "+N More" chrome
+   live here. */
 .tagCell { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.tag {
-  display: inline-flex; align-items: center; height: 24px; padding: 2px 8px;
-  border-radius: 999px; font-size: 13px; white-space: nowrap;
-}
-.tag_blue  { background: var(--status-info-light);   color: var(--status-info); }
-.tag_green { background: var(--status-success-light); color: var(--status-success); }
-.tag_amber { background: var(--status-warning-light); color: var(--status-warning); }
-.tag_grey  { background: var(--neutral-50);           color: var(--neutral-300); }
 .tagMore { font-size: 13px; color: var(--neutral-300); white-space: nowrap; }
 
 /* Tasks */
@@ -118,3 +111,9 @@
 .taskLink:hover { text-decoration: underline; }
 
 .actionsCell { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.actionDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
