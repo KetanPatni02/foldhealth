@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
-import { Button } from '../../components/Button/Button';
 import { Badge } from '../../components/Badge/Badge';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
-import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
+import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
@@ -649,7 +648,6 @@ export function ContentSettings() {
   const activeTab    = useAppStore(s => s.contentTab) || 'emails';
   const setActiveTab = useAppStore(s => s.setContentTab);
 
-  const [searchOpen, setSearchOpen]     = useState(false);
   // searchInputVal is what the input shows (updates on every keystroke);
   // searchVal is the debounced value passed down to the data layer. Avoids
   // firing a Supabase request per keystroke.
@@ -747,44 +745,29 @@ export function ContentSettings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
+  const primaryActionLabel = isListTab
+    ? isForms
+      ? (formBuilderSaving ? 'Creating…' : 'New Form')
+      : (campaignBuilderSaving ? 'Creating…' : 'New Email')
+    : undefined;
+  const primaryActionDisabled = isListTab && (isForms ? formBuilderSaving : campaignBuilderSaving);
+  const onPrimaryAction = () => (isForms ? openFormBuilder(null) : openContentEmailBuilder(null));
+
   return (
     <div className={styles.wrapper}>
-      <div className={styles.tabBar}>
-        <div className={styles.tabs}>
-          {CONTENT_TABS.map(tab => (
-            <button
-              key={tab.key}
-              className={[styles.tab, activeTab === tab.key ? styles.tabActive : ''].filter(Boolean).join(' ')}
-              onClick={() => setActiveTab(tab.key)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {isListTab ? (
-          <div className={styles.tabActions}>
-            <div className={styles.searchWrap}>
-              {searchOpen ? (
-                <div className={styles.searchInput}>
-                  <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
-                  <input
-                    autoFocus
-                    type="text"
-                    placeholder={isForms ? 'Search forms...' : 'Search emails...'}
-                    value={searchInputVal}
-                    onChange={e => setSearchInputVal(e.target.value)}
-                  />
-                  <button
-                    className={styles.searchClose}
-                    onClick={() => { setSearchOpen(false); setSearchInputVal(''); setSearchVal(''); }}
-                  >✕</button>
-                </div>
-              ) : (
-                <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
-              )}
-            </div>
-            <span className={styles.tabDivider} />
+      <SectionTitleBar
+        tabs={CONTENT_TABS}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        showSearch={isListTab}
+        searchPlaceholder={isForms ? 'Search forms…' : 'Search emails…'}
+        searchValue={searchInputVal}
+        onSearchChange={setSearchInputVal}
+        primaryActionLabel={primaryActionLabel}
+        primaryActionDisabled={primaryActionDisabled}
+        onPrimaryAction={onPrimaryAction}
+        rightExtras={isListTab && (
+          <>
             <ActionButton
               size="L"
               tooltip={bulkMode ? 'Exit bulk select' : 'Bulk select'}
@@ -796,9 +779,8 @@ export function ContentSettings() {
             >
               {bulkMode ? <BulkSelectCloseIcon /> : <BulkSelectIcon />}
             </ActionButton>
-            {isEmails ? (
+            {isEmails && (
               <>
-                <span className={styles.tabDivider} />
                 <ActionButton
                   icon="custom:filter"
                   size="L"
@@ -808,7 +790,7 @@ export function ContentSettings() {
                     setStatusFilter(STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length]);
                   }}
                 />
-                {statusBadge ? (
+                {statusBadge && (
                   <span
                     className={styles.filterChip}
                     onClick={() => setStatusFilter('all')}
@@ -816,34 +798,12 @@ export function ContentSettings() {
                   >
                     <Badge variant={statusBadge.variant} label={statusBadge.label} />
                   </span>
-                ) : null}
+                )}
               </>
-            ) : null}
-            <span className={styles.tabDivider} />
-            {isForms ? (
-              <Button
-                variant="secondary"
-                size="L"
-                leadingIcon="solar:add-circle-linear"
-                disabled={formBuilderSaving}
-                onClick={() => openFormBuilder(null)}
-              >
-                {formBuilderSaving ? 'Creating…' : 'New Form'}
-              </Button>
-            ) : (
-              <Button
-                variant="secondary"
-                size="L"
-                leadingIcon="solar:add-circle-linear"
-                disabled={campaignBuilderSaving}
-                onClick={() => openContentEmailBuilder(null)}
-              >
-                {campaignBuilderSaving ? 'Creating…' : 'New Email'}
-              </Button>
             )}
-          </div>
-        ) : null}
-      </div>
+          </>
+        )}
+      />
 
       <div className={styles.content}>
         {isEmails ? (

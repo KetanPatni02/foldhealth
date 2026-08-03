@@ -10,7 +10,7 @@ import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Input } from '../../components/Input/Input';
-import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
+import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { Select } from '../../components/Select/Select';
 import { RadioButton } from '../../components/RadioButton/RadioButton';
@@ -67,119 +67,6 @@ function getInitials(name) {
 const MOCK_ROLES = Object.keys(ROLE_COLORS);
 const MOCK_LOCATIONS = ['Toms River', 'Montebello', 'Sparks', 'Chesapeake', 'Visalia', 'Lowell', 'Palm Bay', 'Lawton', 'Oceanside', 'Merced', 'Oakland Park'];
 
-/* ── Overflow Tabs: visible tabs + "More" dropdown ── */
-function OverflowTabs({ tabs, activeTab, onTabChange }) {
-  const [visibleCount, setVisibleCount] = useState(tabs.length);
-  const [moreOpen, setMoreOpen] = useState(false);
-  const tabsRef = useRef(null);
-  const moreBtnRef = useRef(null);
-
-  // Measure how many tabs fit in the available space
-  const measure = useCallback(() => {
-    const measurer = tabsRef.current;
-    if (!measurer) return;
-    // Find the .tabs parent container
-    const tabsContainer = measurer.closest('[class*="tabs"]') || measurer.parentElement;
-    const tabBar = tabsContainer?.parentElement;
-    if (!tabBar) return;
-    // Measure available width (tab bar minus actions area)
-    const actionsEl = tabBar.querySelector('[class*="tabActions"]');
-    const availableWidth = tabBar.offsetWidth - (actionsEl?.offsetWidth || 200) - 16;
-    // Measure total width of all tabs
-    let totalAllTabs = 0;
-    const children = measurer.querySelectorAll('[data-tab-item]');
-    const widths = [];
-    for (const child of children) {
-      const w = child.offsetWidth + 4;
-      widths.push(w);
-      totalAllTabs += w;
-    }
-    // If all tabs fit, show all (no More button needed)
-    if (totalAllTabs <= availableWidth) {
-      setVisibleCount(tabs.length);
-      return;
-    }
-    // Otherwise, fit as many as possible leaving 70px for "More ▾"
-    let total = 0;
-    let count = 0;
-    for (const w of widths) {
-      if (total + w > availableWidth - 70) break;
-      total += w;
-      count++;
-    }
-    setVisibleCount(Math.max(1, count));
-  }, [tabs.length]);
-
-  useEffect(() => {
-    measure();
-    window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
-  }, [measure, tabs]);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    if (!moreOpen) return;
-    const close = (e) => { if (!moreBtnRef.current?.contains(e.target)) setMoreOpen(false); };
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [moreOpen]);
-
-  // If activeTab is in overflow, swap it with the last visible tab
-  const activeIdx = tabs.indexOf(activeTab);
-  let displayTabs = [...tabs];
-  if (activeIdx >= visibleCount) {
-    const swapIdx = visibleCount - 1;
-    [displayTabs[swapIdx], displayTabs[activeIdx]] = [displayTabs[activeIdx], displayTabs[swapIdx]];
-  }
-
-  const visible = displayTabs.slice(0, visibleCount);
-  const overflow = displayTabs.slice(visibleCount);
-
-  return (
-    <>
-      {/* Hidden measurer */}
-      <div ref={tabsRef} style={{ position: 'absolute', visibility: 'hidden', whiteSpace: 'nowrap', display: 'flex', gap: 4, pointerEvents: 'none' }}>
-        {tabs.map(tab => <div key={tab} data-tab-item style={{ padding: '10px 8px', fontSize: 14, fontWeight: 500 }}>{tab}</div>)}
-      </div>
-
-      {/* Visible tabs */}
-      {visible.map(tab => (
-        <div
-          key={tab}
-          className={`${styles.tab} ${activeTab === tab ? styles.tabActive : ''}`}
-          onClick={() => onTabChange(tab)}
-        >
-          {tab}
-        </div>
-      ))}
-
-      {/* More dropdown */}
-      {overflow.length > 0 && (
-        <div style={{ position: 'relative' }} ref={moreBtnRef}>
-          <div className={`${styles.tab} ${styles.tabMore} ${overflow.includes(activeTab) ? styles.tabActive : ''}`} onClick={() => setMoreOpen(v => !v)}>
-            More<Icon name="solar:alt-arrow-down-linear" size={12} color="currentColor" style={{ marginLeft: 3, flexShrink: 0 }} />
-          </div>
-          {moreOpen && createPortal(
-            <div className={styles.moreDropdown} style={{
-              position: 'fixed',
-              top: moreBtnRef.current.getBoundingClientRect().bottom + 4,
-              left: moreBtnRef.current.getBoundingClientRect().left,
-              zIndex: 9999,
-            }}>
-              {overflow.map(tab => (
-                <button key={tab} className={styles.moreItem} onClick={() => { onTabChange(tab); setMoreOpen(false); }}>
-                  {tab}
-                </button>
-              ))}
-            </div>,
-            document.body
-          )}
-        </div>
-      )}
-    </>
-  );
-}
-
 /* ── Overflow Badge with hover dropdown ── */
 function OverflowBadge({ count, items }) {
   const [open, setOpen] = useState(false);
@@ -214,7 +101,6 @@ export function AccountPanel() {
   const setActiveTab = (tab) => { setActiveTabLocal(tab); setStoreTab(tabNameToKey(tab)); };
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [searchVal, setSearchVal] = useState('');
   const [editingUser, setEditingUser] = useState(null);
   const [viewingUser, setViewingUser] = useState(null);
@@ -225,7 +111,6 @@ export function AccountPanel() {
   const [viewingPlan, setViewingPlan] = useState(null);
   const [editingPlan, setEditingPlan] = useState(null);
   const [deletingPlanId, setDeletingPlanId] = useState(null);
-  const [planSearchOpen, setPlanSearchOpen] = useState(false);
   const [planSearchVal, setPlanSearchVal] = useState('');
   // Legacy single-status filter kept only to satisfy the old badge until the
   // multi-chip row below replaces it fully. Reset on unmount so switching
@@ -479,55 +364,40 @@ export function AccountPanel() {
     [sortedUsers, userPage, userPerPage],
   );
 
+  const isInsurancePlans = activeTab === 'Insurance Plans';
+  const tabsForBar = ALL_TABS.map(t => ({ key: t, label: t }));
+
   return (
     <div className={styles.wrapper}>
-      <div className={styles.tabBar}>
-        <div className={styles.tabs}>
-          <OverflowTabs tabs={ALL_TABS} activeTab={activeTab} onTabChange={setActiveTab} />
-        </div>
-        {activeTab === 'Insurance Plans' ? (
-          <div className={styles.tabActions}>
-            <div className={styles.searchWrap}>
-              {planSearchOpen ? (
-                <div className={styles.searchInput}>
-                  <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
-                  <input autoFocus type="text" placeholder="Search plans..." value={planSearchVal} onChange={e => setPlanSearchVal(e.target.value)} />
-                  <button className={styles.searchClose} onClick={() => { setPlanSearchOpen(false); setPlanSearchVal(''); }}>&#x2715;</button>
-                </div>
-              ) : (
-                <SearchIconButton title="Search" onClick={() => setPlanSearchOpen(true)} />
-              )}
-            </div>
-            <span className={styles.tabDivider} />
-            <Button variant="secondary" size="L" leadingIcon="solar:add-circle-linear" onClick={() => setShowCreateInsurance(true)}>New Insurance Plan</Button>
-          </div>
-        ) : (
-          <div className={styles.tabActions}>
-            <div className={styles.searchWrap}>
-              {searchOpen ? (
-                <div className={styles.searchInput}>
-                  <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
-                  <input autoFocus type="text" placeholder="Search users..." value={searchVal} onChange={e => setSearchVal(e.target.value)} />
-                  <button className={styles.searchClose} onClick={() => { setSearchOpen(false); setSearchVal(''); }}>&#x2715;</button>
-                </div>
-              ) : (
-                <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
-              )}
-            </div>
-            <ActionButton
-              icon="custom:filter"
-              size="L"
-              tooltip={filterOpen ? 'Hide filters' : 'Show filters'}
-              notification={userFiltersActive > 0}
-              count={userFiltersActive > 0 ? String(userFiltersActive) : undefined}
-              className={filterOpen ? styles.iconActive : ''}
-              onClick={() => setFilterOpen(v => !v)}
-            />
-            <span className={styles.tabDivider} />
-            <Button variant="secondary" size="L" leadingIcon="solar:add-circle-linear" onClick={() => setShowInvite(true)}>Invite User</Button>
-          </div>
-        )}
-      </div>
+      {isInsurancePlans ? (
+        <SectionTitleBar
+          tabs={tabsForBar}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          showSearch
+          searchPlaceholder="Search plans…"
+          searchValue={planSearchVal}
+          onSearchChange={setPlanSearchVal}
+          primaryActionLabel="New Insurance Plan"
+          onPrimaryAction={() => setShowCreateInsurance(true)}
+        />
+      ) : (
+        <SectionTitleBar
+          tabs={tabsForBar}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          showSearch
+          searchPlaceholder="Search users…"
+          searchValue={searchVal}
+          onSearchChange={setSearchVal}
+          showFilter
+          filterActive={filterOpen}
+          filterBadgeCount={userFiltersActive}
+          onFilter={() => setFilterOpen(v => !v)}
+          primaryActionLabel="Invite User"
+          onPrimaryAction={() => setShowInvite(true)}
+        />
+      )}
 
       {activeTab === 'Users' && filterOpen && (
         <div className={styles.filterBar}>

@@ -10,7 +10,7 @@ export default {
     docs: {
       description: {
         component:
-          'Shared third-level header. Flip `variant` between `tabs`, `titleOnly`, `titleWithDropdown`, and `titleWithToggle`. When in `tabs` mode, use `tabCount` and `tabLabels` to preview how the bar handles overflow — extras collapse into a `More ▾` dropdown so nothing overlaps the right-side action cluster. Toggle the right-side icons via the `show*` flags.',
+          'Shared third-level header. Flip `variant` between `tabs`, `titleOnly`, `titleWithDropdown`, and `titleWithToggle`. When in `tabs` mode, use `tabCount` and `tabLabels` to preview how the bar handles overflow — extras collapse into a `More ▾` dropdown so nothing overlaps the right-side action cluster. Tabs can carry a count badge (`showTabCounts`) or the pulsing "new activity" dot (`showNotifDot`). Toggle the right-side icons via the `show*` flags, or set `primaryActionLabel` to append a primary CTA button after the icon cluster.',
       },
     },
   },
@@ -41,6 +41,11 @@ export default {
       description: 'When true, the second tab renders the pulsing notif dot ("new activity") indicator.',
       if: { arg: 'variant', eq: 'tabs' },
     },
+    showTabCounts: {
+      control: 'boolean',
+      description: 'Attach a count Badge (overflow variant) to each tab — mirrors the Tasks/Campaigns pattern.',
+      if: { arg: 'variant', eq: 'tabs' },
+    },
     showSearch: { control: 'boolean' },
     showFilter: { control: 'boolean' },
     showHistory: { control: 'boolean' },
@@ -49,6 +54,19 @@ export default {
     showSavedFilters: { control: 'boolean' },
     filterBadgeCount: { control: 'number' },
     uploadHasDropdown: { control: 'boolean' },
+    primaryActionLabel: {
+      control: 'text',
+      description: 'Label for the primary action button (appended after the icon cluster). Leave blank to hide.',
+    },
+    primaryActionVariant: {
+      control: 'select',
+      options: ['primary', 'secondary'],
+      if: { arg: 'primaryActionLabel', truthy: true },
+    },
+    primaryActionIcon: {
+      control: 'text',
+      if: { arg: 'primaryActionLabel', truthy: true },
+    },
   },
 };
 
@@ -64,7 +82,7 @@ const SNP_TOGGLE = [
   { key: 'eligible', label: 'Eligible' },
 ];
 
-function Wrapper({ tabCount, tabLabels, showNotifDot, ...props }) {
+function Wrapper({ tabCount, tabLabels, showNotifDot, showTabCounts, ...props }) {
   const tabs = useMemo(() => {
     const custom = (tabLabels || '')
       .split(',')
@@ -76,8 +94,9 @@ function Wrapper({ tabCount, tabLabels, showNotifDot, ...props }) {
       key: `tab-${i}`,
       label: labels[i] ?? `Tab ${i + 1}`,
       notif: showNotifDot && i === 1,
+      count: showTabCounts ? (i + 1) * 4 : undefined,
     }));
-  }, [tabCount, tabLabels, showNotifDot]);
+  }, [tabCount, tabLabels, showNotifDot, showTabCounts]);
 
   const [activeTab, setActiveTab] = useState('tab-0');
   const [dropdown, setDropdown] = useState(null);
@@ -104,6 +123,7 @@ function Wrapper({ tabCount, tabLabels, showNotifDot, ...props }) {
       onUpload={() => {}}
       onDownload={() => {}}
       onSavedFilters={() => {}}
+      onPrimaryAction={() => {}}
     />
   );
 }
@@ -116,13 +136,17 @@ export const Playground = {
     tabCount: 2,
     tabLabels: '',
     showNotifDot: true,
+    showTabCounts: false,
     showSearch: true,
     showFilter: true,
     showHistory: true,
-    showUpload: true,
+    showUpload: false,
     showDownload: false,
     showSavedFilters: false,
     filterBadgeCount: 0,
     uploadHasDropdown: false,
+    primaryActionLabel: '',
+    primaryActionVariant: 'secondary',
+    primaryActionIcon: 'solar:add-circle-linear',
   },
 };

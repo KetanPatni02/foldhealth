@@ -5,6 +5,7 @@ import { Badge } from '../../components/Badge/Badge';
 import { Switch } from '../../components/Switch/Switch';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { TopBar } from '../../components/TopBar/TopBar';
+import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './CampaignView.module.css';
 
@@ -533,42 +534,22 @@ export function CampaignView() {
     <div className={styles.page}>
       <TopBar />
 
-      {/* Sub-nav: tabs + actions */}
-      <div className={styles.subNav}>
-        <div className={styles.tabs}>
-          {[
-            { key: 'active', label: 'Active' },
-            { key: 'drafts', label: 'Drafts' },
-            { key: 'ended',  label: 'Ended' },
-          ].map(t => (
-            <button
-              key={t.key}
-              className={[styles.tab, activeTab === t.key ? styles.tabActive : ''].join(' ')}
-              onClick={() => setActiveTab(t.key)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <div className={styles.subNavActions}>
-          <ActionButton
-            icon="solar:filter-linear"
-            size="L"
-            tooltip="Filter"
-            notification={activeFilterCount > 0}
-            onClick={() => setShowFilters(v => !v)}
-          />
-          <Button
-            variant="secondary"
-            size="L"
-            leadingIcon="solar:add-circle-linear"
-            disabled={campaignBuilderSaving}
-            onClick={() => openCampaignBuilder(null)}
-          >
-            {campaignBuilderSaving ? 'Creating…' : 'New Campaign'}
-          </Button>
-        </div>
-      </div>
+      <SectionTitleBar
+        tabs={[
+          { key: 'active', label: 'Active' },
+          { key: 'drafts', label: 'Drafts' },
+          { key: 'ended',  label: 'Ended' },
+        ]}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        showFilter
+        filterActive={showFilters}
+        filterBadgeCount={activeFilterCount}
+        onFilter={() => setShowFilters(v => !v)}
+        primaryActionLabel={campaignBuilderSaving ? 'Creating…' : 'New Campaign'}
+        primaryActionDisabled={campaignBuilderSaving}
+        onPrimaryAction={() => openCampaignBuilder(null)}
+      />
 
       {/* Filter bar */}
       {showFilters && (

@@ -23,52 +23,6 @@
   line-height: 1.2;
 }
 
-/* ── Sub-nav ── */
-.subNav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 12px;
-  border-bottom: 0.5px solid var(--neutral-150);
-  background: var(--neutral-0);
-  flex-shrink: 0;
-}
-
-.tabs {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.tab {
-  height: 40px;
-  padding: 4px 6px;
-  border: none;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--neutral-300);
-  white-space: nowrap;
-  transition: color 0.15s, border-color 0.15s;
-}
-
-.tab:hover { color: var(--neutral-400); }
-
-.tabActive {
-  font-weight: 500;
-  color: var(--primary-300);
-  border-bottom-color: var(--primary-300);
-}
-
-.subNavActions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
 /* ── Filter bar (chip-style, matches toc-worklist) ── */
 .filterBar {
   background: var(--neutral-0);

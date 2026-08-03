@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { Button } from '../../components/Button/Button';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
-import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
+import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
 import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
@@ -12,9 +12,8 @@ import { ConfigureTeamDrawer } from './ConfigureTeamDrawer';
 import { KIND_LABEL, KIND_BADGE_VARIANT } from './teamTypeConfig';
 import { HoverCard } from './HoverCard';
 import hoverStyles from './HoverCard.module.css';
-// Reuse the AgentsTable shell (wrapper / tabBar / tabs / table / etc.) so the
-// Member/Leads Care Team view picks up the same Fold table primitives the
-// rest of Settings uses — only the per-cell visuals are unique here.
+// Reuse the AgentsTable shell (wrapper / table primitives) so the Member/Leads
+// Care Team view keeps the same Fold chrome the rest of Settings uses.
 import agentStyles from './AgentsTable.module.css';
 import styles from './MemberLeadsPanel.module.css';
 
@@ -53,7 +52,6 @@ export function MemberLeadsPanel() {
   const activeTab = useAppStore(s => s.memberLeadsTab);
   const setActiveTab = useAppStore(s => s.setMemberLeadsTab);
   const fetchHccCareTeams = useAppStore(s => s.fetchHccCareTeams);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [searchVal, setSearchVal] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const createBtnRef = useRef(null);
@@ -77,32 +75,15 @@ export function MemberLeadsPanel() {
 
   return (
     <div className={agentStyles.wrapper}>
-      {/* Top tab strip + actions — mirrors the AgentsTable header. */}
-      <div className={agentStyles.tabBar}>
-        <div className={agentStyles.tabs}>
-          {TABS.map(tab => (
-            <div
-              key={tab.key}
-              className={[agentStyles.tab, activeTab === tab.key ? agentStyles.tabActive : ''].filter(Boolean).join(' ')}
-              onClick={() => setActiveTab(tab.key)}
-            >
-              {tab.label}
-            </div>
-          ))}
-        </div>
-        <div className={agentStyles.tabActions}>
-          <div className={agentStyles.searchWrap}>
-            {searchOpen ? (
-              <div className={agentStyles.searchInput}>
-                <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
-                <input autoFocus type="text" placeholder="Search teams…" value={searchVal} onChange={e => setSearchVal(e.target.value)} />
-                <button className={agentStyles.searchClose} onClick={() => { setSearchOpen(false); setSearchVal(''); }}>✕</button>
-              </div>
-            ) : (
-              <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
-            )}
-          </div>
-          <span className={agentStyles.tabDivider} />
+      <SectionTitleBar
+        tabs={TABS}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        showSearch
+        searchPlaceholder="Search teams…"
+        searchValue={searchVal}
+        onSearchChange={setSearchVal}
+        rightExtras={
           <div className={styles.createWrap} ref={createBtnRef}>
             <Button
               variant="secondary"
@@ -128,8 +109,8 @@ export function MemberLeadsPanel() {
               </div>
             )}
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Tab content */}
       {activeTab === 'care-team' ? (

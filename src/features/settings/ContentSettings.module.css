@@ -8,102 +8,10 @@
   font-family: 'Inter', sans-serif;
 }
 
-/* ── Tab bar ── */
-.tabBar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
-  border-bottom: 0.5px solid var(--neutral-150);
-  flex-shrink: 0;
-  gap: 12px;
-}
-
-.tabs {
-  display: flex;
-  gap: 4px;
-}
-
-.tabActions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.searchWrap {
-  display: flex;
-  align-items: center;
-}
-
-.searchInput {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 0.5px solid var(--primary-300);
-  border-radius: 6px;
-  padding: 0 10px;
-  height: 32px;
-  width: 220px;
-  background: var(--neutral-0);
-}
-
-.searchInput input {
-  border: none;
-  outline: none;
-  font-size: 13px;
-  font-family: 'Inter', sans-serif;
-  color: var(--neutral-400);
-  flex: 1;
-  background: transparent;
-}
-
-.searchInput input::placeholder { color: var(--neutral-200); }
-
-.searchClose {
-  background: none;
-  border: none;
-  color: var(--neutral-300);
-  cursor: pointer;
-  font-size: 13px;
-  padding: 0;
-  line-height: 1;
-}
-
-.tabDivider {
-  width: 0.5px;
-  height: 16px;
-  background: var(--neutral-150);
-  flex-shrink: 0;
-}
-
 .filterChip {
   display: inline-flex;
   align-items: center;
   cursor: pointer;
-}
-
-.tab {
-  height: 40px;
-  padding: 4px 8px;
-  border: none;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--neutral-300);
-  white-space: nowrap;
-  transition: color 0.15s, border-color 0.15s;
-}
-
-.tab:hover { color: var(--neutral-400); }
-
-.tabActive {
-  font-weight: 500;
-  color: var(--primary-300);
-  border-bottom-color: var(--primary-300);
 }
 
 /* ── Content area (scrollable) ── */

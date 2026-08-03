@@ -10,47 +10,9 @@
   background: var(--neutral-0);
 }
 
-/* ── Tab Bar (mirrors TabBar.module.css) ── */
-.tabBar {
-  background: var(--neutral-0);
-  border-bottom: 0.5px solid var(--neutral-150);
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  flex-shrink: 0;
-  justify-content: space-between;
-}
-
-.tabLeft {
-  display: flex;
-  gap: 12px;
-}
-
-.tabItem {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 4px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--neutral-300);
-  cursor: pointer;
-  border: none;
-  background: none;
-  border-bottom: 2px solid transparent;
-  transition: color .15s, border-color .15s;
-  white-space: nowrap;
-}
-
-.tabItem:hover { color: var(--neutral-400); }
-.tabItem.active { color: var(--primary-300); border-bottom-color: var(--primary-300); }
-
-.tabRight {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
+/* Vertical hairline used inside the TaskDetailDrawer footer to separate
+   action-button clusters. The page-level tab bar has migrated to the
+   shared SectionTitleBar; this class is retained for the drawer only. */
 .iconDivider {
   width: 1px;
   height: 16px;

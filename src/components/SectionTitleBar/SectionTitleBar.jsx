@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Icon } from '../Icon/Icon';
 import { Button } from '../Button/Button';
 import { ActionButton } from '../ActionButton/ActionButton';
+import { Badge } from '../Badge/Badge';
 import { SearchBar } from '../SearchBar/SearchBar';
 import { SearchIconButton } from '../SearchIconButton/SearchIconButton';
 import { Toggle } from '../Toggle/Toggle';
@@ -79,6 +80,16 @@ export function SectionTitleBar({
   savedFiltersActive = false,
   uploadLabel = 'Upload Record',
   uploadHasDropdown = false,
+
+  // Primary action button — renders after the icon cluster. Used across
+  // tasks / campaigns / settings for the "New X / Invite / Add" secondary
+  // button. Pass `rightExtras` for anything more complex (Toggle, menus).
+  primaryActionLabel,
+  primaryActionIcon = 'solar:add-circle-linear',
+  primaryActionVariant = 'secondary',
+  primaryActionDisabled = false,
+  onPrimaryAction,
+
   rightExtras,
   leftExtras,
   className,
@@ -225,6 +236,18 @@ export function SectionTitleBar({
             onClick={onHistory}
           />
         )}
+
+        {primaryActionLabel && (
+          <Button
+            variant={primaryActionVariant}
+            size="L"
+            leadingIcon={primaryActionIcon || undefined}
+            disabled={primaryActionDisabled}
+            onClick={onPrimaryAction}
+          >
+            {primaryActionLabel}
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -347,6 +370,9 @@ function TabsSection({ tabs, activeTab, onTabChange, barRef, rightRef }) {
           onClick={() => onTabChange && onTabChange(tab.key)}
         >
           {tab.label}
+          {typeof tab.count === 'number' && (
+            <Badge variant="overflow" label={String(tab.count)} />
+          )}
           {tab.notif && <span className={styles.notifDot} title="New activity" />}
         </div>
       ))}

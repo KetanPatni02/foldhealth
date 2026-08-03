@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
-import { Button } from '../../components/Button/Button';
-import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
+import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { ChatSettingsPanel } from './panels/ChatSettingsPanel';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './AgentsTable.module.css';
@@ -13,65 +12,37 @@ const TAB_MAP = {
   'efax': 'eFax',
 };
 const TAB_KEYS = Object.keys(TAB_MAP);
+const TABS = TAB_KEYS.map(key => ({ key, label: TAB_MAP[key] }));
 
 export function MessagesSettings() {
   const messageTab = useAppStore(s => s.messageTab) || 'chat-settings';
   const setMessageTab = useAppStore(s => s.setMessageTab);
   const setChatGroupDetailId = useAppStore(s => s.setChatGroupDetailId);
   const fetchChatGroups = useAppStore(s => s.fetchChatGroups);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchVal, setSearchVal] = useState('');
+  const [chatSearchQuery, setChatSearchQuery] = useState('');
 
   useEffect(() => { fetchChatGroups(); }, [fetchChatGroups]);
 
   const activeTabLabel = TAB_MAP[messageTab] || 'Chat Settings';
+  const isChatSettings = messageTab === 'chat-settings';
 
   return (
     <div className={styles.wrapper}>
-      <div className={styles.tabBar}>
-        <div className={styles.tabs}>
-          {TAB_KEYS.map(key => (
-            <div
-              key={key}
-              className={[styles.tab, messageTab === key ? styles.tabActive : ''].filter(Boolean).join(' ')}
-              onClick={() => setMessageTab(key)}
-            >
-              {TAB_MAP[key]}
-            </div>
-          ))}
-        </div>
-        <div className={styles.tabActions}>
-          {messageTab === 'chat-settings' && (
-            <>
-              <div className={styles.searchWrap}>
-                {searchOpen ? (
-                  <div className={styles.searchInput}>
-                    <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
-                    <input autoFocus type="text" placeholder="Search groups..." value={searchVal} onChange={e => setSearchVal(e.target.value)} />
-                    <button className={styles.searchClose} onClick={() => { setSearchOpen(false); setSearchVal(''); }}>✕</button>
-                  </div>
-                ) : (
-                  <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
-                )}
-              </div>
-              <span className={styles.tabDivider} />
-              <Button
-                variant="primary"
-                size="S"
-                leadingIcon="solar:add-circle-linear"
-                className={styles.createBtn}
-                onClick={() => setChatGroupDetailId('new')}
-              >
-                Add/Update Group
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
+      <SectionTitleBar
+        tabs={TABS}
+        activeTab={messageTab}
+        onTabChange={setMessageTab}
+        showSearch={isChatSettings}
+        searchPlaceholder="Search groups…"
+        searchValue={chatSearchQuery}
+        onSearchChange={setChatSearchQuery}
+        primaryActionLabel={isChatSettings ? 'Add/Update Group' : undefined}
+        onPrimaryAction={() => setChatGroupDetailId('new')}
+      />
 
       <div className={styles.tableWrap}>
-        {messageTab === 'chat-settings' ? (
-          <ChatSettingsPanel searchQuery={searchVal} />
+        {isChatSettings ? (
+          <ChatSettingsPanel searchQuery={chatSearchQuery} />
         ) : (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
             <div style={{ textAlign: 'center' }}>

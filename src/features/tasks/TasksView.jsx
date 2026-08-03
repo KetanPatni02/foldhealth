@@ -19,6 +19,7 @@ import { Badge } from '../../components/Badge/Badge';
 import { Toggle } from '../../components/Toggle/Toggle';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { TopBar } from '../../components/TopBar/TopBar';
+import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { CommentComposer } from '../../components/CommentComposer/CommentComposer';
@@ -2616,41 +2617,27 @@ export function TasksView() {
     <div className={styles.wrapper}>
       <TopBar />
 
-      <div className={styles.tabBar}>
-        <div className={styles.tabLeft}>
-          {TABS.map(tab => (
-            <button
-              key={tab.key}
-              className={`${styles.tabItem} ${tasksTab === tab.key ? styles.active : ''}`}
-              onClick={() => setTasksTab(tab.key)}
-            >
-              {tab.label}
-              <Badge variant="overflow" label={String(tabCounts[tab.key])} />
-            </button>
-          ))}
-        </div>
-        <div className={styles.tabRight}>
-          <Toggle
-            items={VIEW_TOGGLE_ITEMS}
-            active={tasksViewMode}
-            onChange={setTasksViewMode}
-            size="S"
-          />
-          <span className={styles.iconDivider} />
-          <ActionButton
-            icon="custom:filter"
-            size="L"
-            tooltip={showTasksFilterBar ? 'Hide filters' : 'Show filters'}
-            onClick={toggleTasksFilterBar}
-          />
-          <span className={styles.iconDivider} />
-          <Button variant="secondary" size="L" leadingIcon="solar:add-circle-linear" onClick={() => { setAddDrawerStatus('pending'); setShowAddDrawer(true); }}>
-            Add Task
-          </Button>
-          <span className={styles.iconDivider} />
-          <ActionButton icon="solar:settings-linear" size="L" tooltip="Settings" />
-        </div>
-      </div>
+      <SectionTitleBar
+        tabs={TABS.map(t => ({ ...t, count: tabCounts[t.key] }))}
+        activeTab={tasksTab}
+        onTabChange={setTasksTab}
+        rightExtras={
+          <>
+            <Toggle
+              items={VIEW_TOGGLE_ITEMS}
+              active={tasksViewMode}
+              onChange={setTasksViewMode}
+              size="S"
+            />
+            <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} aria-hidden="true" />
+          </>
+        }
+        showFilter
+        filterActive={showTasksFilterBar}
+        onFilter={toggleTasksFilterBar}
+        primaryActionLabel="Add Task"
+        onPrimaryAction={() => { setAddDrawerStatus('pending'); setShowAddDrawer(true); }}
+      />
 
       {showTasksFilterBar && (
         <div className={styles.filterBar}>

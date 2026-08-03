@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { Icon } from '../../components/Icon/Icon';
 import { Button } from '../../components/Button/Button';
-import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
+import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { ProductTour } from '../../components/ProductTour/ProductTour';
 import { DomainRegistryPanel } from './panels/DomainRegistryPanel';
 import { ComponentLibraryPanel } from './panels/ComponentLibraryPanel';
@@ -13,6 +12,7 @@ const TAB_MAP = {
   'component-library': 'Component Library',
 };
 const TAB_KEYS = Object.keys(TAB_MAP);
+const TABS = TAB_KEYS.map(key => ({ key, label: TAB_MAP[key] }));
 
 export function EmbeddedComponentsSettings() {
   const embeddedComponentsTab = useAppStore(s => s.embeddedComponentsTab) || 'domain-registry';
@@ -20,61 +20,34 @@ export function EmbeddedComponentsSettings() {
   const setComponentWizard = useAppStore(s => s.setComponentWizard);
   const setDomainAddTrigger = useAppStore(s => s.setDomainAddTrigger);
 
-  const [searchOpen, setSearchOpen] = useState(false);
   const [searchVal, setSearchVal] = useState('');
+  const isComponentLibrary = embeddedComponentsTab === 'component-library';
 
   return (
-    <div className={styles.wrapper}>
-      <div className={styles.tabBar} data-tour="embed-tabs">
-        <div className={styles.tabs}>
-          {TAB_KEYS.map(key => (
-            <div
-              key={key}
-              className={[styles.tab, embeddedComponentsTab === key ? styles.tabActive : ''].filter(Boolean).join(' ')}
-              onClick={() => setEmbeddedComponentsTab(key)}
-            >
-              {TAB_MAP[key]}
-            </div>
-          ))}
-        </div>
-        <div className={styles.tabActions}>
-          <div className={styles.searchWrap}>
-            {searchOpen ? (
-              <div className={styles.searchInput}>
-                <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
-                <input
-                  autoFocus
-                  type="text"
-                  placeholder={embeddedComponentsTab === 'component-library' ? 'Search components...' : 'Search domains...'}
-                  value={searchVal}
-                  onChange={e => setSearchVal(e.target.value)}
-                />
-                <button className={styles.searchClose} onClick={() => { setSearchOpen(false); setSearchVal(''); }}>
-                  ✕
-                </button>
-              </div>
-            ) : (
-              <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
-            )}
-          </div>
-          <span className={styles.tabDivider} />
+    <div className={styles.wrapper} data-tour="embed-tabs">
+      <SectionTitleBar
+        tabs={TABS}
+        activeTab={embeddedComponentsTab}
+        onTabChange={setEmbeddedComponentsTab}
+        showSearch
+        searchPlaceholder={isComponentLibrary ? 'Search components…' : 'Search domains…'}
+        searchValue={searchVal}
+        onSearchChange={setSearchVal}
+        rightExtras={
           <Button
             variant="secondary"
             size="L"
             leadingIcon="solar:add-circle-linear"
             data-tour="embed-register-btn"
             onClick={() => {
-              if (embeddedComponentsTab === 'component-library') {
-                setComponentWizard(true, null);
-              } else {
-                setDomainAddTrigger(true);
-              }
+              if (isComponentLibrary) setComponentWizard(true, null);
+              else setDomainAddTrigger(true);
             }}
           >
-            {embeddedComponentsTab === 'component-library' ? 'New Component' : 'Register Domain'}
+            {isComponentLibrary ? 'New Component' : 'Register Domain'}
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <div className={styles.tableWrap}>
         {embeddedComponentsTab === 'domain-registry' ? (

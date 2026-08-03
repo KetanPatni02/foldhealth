@@ -5,7 +5,7 @@ import { Icon } from '../../components/Icon/Icon';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { Button } from '../../components/Button/Button';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
-import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
+import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
@@ -259,11 +259,32 @@ export function AgentsTable() {
   const setGoalWizard = useAppStore(s => s.setGoalWizard);
   const fetchGoals = useAppStore(s => s.fetchGoals);
 
-  const [searchOpen, setSearchOpen] = useState(false);
   const [searchVal, setSearchVal] = useState('');
   const [goalsFilter, setGoalsFilter] = useState('all');
   const [goalsViewMode, setGoalsViewMode] = useState('table');
   const [goalsFilterOpen, setGoalsFilterOpen] = useState(false);
+
+  const tabKey = settingsTab === 'agents' ? 'agents' : settingsTab;
+  const tabsForBar = TABS.map(label => ({ key: label.toLowerCase(), label }));
+  const searchPlaceholder = settingsTab === 'goals'
+    ? 'Search goals…'
+    : settingsTab === 'knowledge base'
+      ? 'Search FAQs…'
+      : 'Search agents…';
+  const primaryActionLabel = settingsTab === 'goals'
+    ? 'New Goal'
+    : settingsTab === 'knowledge base'
+      ? 'Add FAQ'
+      : 'Create New';
+  const handlePrimaryAction = () => {
+    if (settingsTab === 'goals') {
+      useAppStore.setState({ goalWizardOpen: true, goalWizardEditId: null });
+    } else if (settingsTab === 'knowledge base') {
+      useAppStore.getState().setKbAddTrigger(true);
+    } else {
+      setShowCreateAgent(true);
+    }
+  };
 
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
   useEffect(() => { if (settingsTab === 'goals') fetchGoals(); }, [settingsTab, fetchGoals]);
@@ -286,49 +307,21 @@ export function AgentsTable() {
   const paginatedAgents = sortedAgents.slice(startIdx, startIdx + perPage);
 
   return (
-    <div className={styles.wrapper}>
-      <div className={styles.tabBar} data-tour="settings-tabs">
-        <div className={styles.tabs}>
-          {TABS.map(tab => (
-            <div
-              key={tab}
-              className={[styles.tab, (tab.toLowerCase() === settingsTab || (tab === 'Agents' && settingsTab === 'agents')) ? styles.tabActive : ''].filter(Boolean).join(' ')}
-              onClick={() => setSettingsTab(tab.toLowerCase())}
-            >
-              {tab}
-            </div>
-          ))}
-        </div>
-        <div className={styles.tabActions}>
-          <div className={styles.searchWrap}>
-            {searchOpen ? (
-              <div className={styles.searchInput}>
-                <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
-                <input autoFocus type="text" placeholder={settingsTab === 'goals' ? 'Search goals…' : settingsTab === 'knowledge base' ? 'Search FAQs…' : 'Search agents…'} value={searchVal} onChange={e => setSearchVal(e.target.value)} />
-                <button className={styles.searchClose} onClick={() => { setSearchOpen(false); setSearchVal(''); }}>✕</button>
-              </div>
-            ) : (
-              <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
-            )}
-          </div>
-          {settingsTab === 'goals' && (
-            <ActionButton icon="custom:filter" size="L" tooltip="Filter" onClick={() => setGoalsFilterOpen(v => !v)}
-              style={goalsFilterOpen ? { background: 'var(--primary-50)' } : {}} />
-          )}
-          <span className={styles.tabDivider} />
-          <Button variant="secondary" size="L" leadingIcon="solar:add-circle-linear" onClick={() => {
-            if (settingsTab === 'goals') {
-              useAppStore.setState({ goalWizardOpen: true, goalWizardEditId: null });
-            } else if (settingsTab === 'knowledge base') {
-              useAppStore.getState().setKbAddTrigger(true);
-            } else {
-              setShowCreateAgent(true);
-            }
-          }}>
-            {settingsTab === 'goals' ? 'New Goal' : settingsTab === 'knowledge base' ? 'Add FAQ' : 'Create New'}
-          </Button>
-        </div>
-      </div>
+    <div className={styles.wrapper} data-tour="settings-tabs">
+      <SectionTitleBar
+        tabs={tabsForBar}
+        activeTab={tabKey}
+        onTabChange={setSettingsTab}
+        showSearch
+        searchPlaceholder={searchPlaceholder}
+        searchValue={searchVal}
+        onSearchChange={setSearchVal}
+        showFilter={settingsTab === 'goals'}
+        filterActive={goalsFilterOpen}
+        onFilter={() => setGoalsFilterOpen(v => !v)}
+        primaryActionLabel={primaryActionLabel}
+        onPrimaryAction={handlePrimaryAction}
+      />
 
       {/* Goals filter bar */}
       {settingsTab === 'goals' && goalsFilterOpen && (
