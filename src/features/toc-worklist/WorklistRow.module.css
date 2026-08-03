@@ -118,6 +118,11 @@
   align-items: flex-start;
 }
 
+/* Badge defaults to `align-self: center` for row-flex parents; in this
+   column-flex cell that centers it horizontally. Force flex-start so the
+   TOC 48h chip hugs the left edge alongside the "0h left" row below. */
+.outreachCell > * { align-self: flex-start; }
+
 .outreachOncall {
   font-size: 12px;
   color: var(--status-success);
