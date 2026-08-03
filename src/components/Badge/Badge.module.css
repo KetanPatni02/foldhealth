@@ -88,6 +88,12 @@
 .care-plan-updated { background: var(--status-success-light); color: var(--status-success); border-color: rgba(0,155,83,0.2); }
 .care-plan-pending { background: var(--status-warning-light); color: var(--status-warning); border-color: rgba(217,165,11,0.2); }
 
+/* No new SNP-specific or tag-specific variants are declared here — SNP Program
+   Sub Status pills and worklist row Tags cells map their values to the
+   existing status/tone variants above (toc-* / lace-* / priority-* /
+   ai-* / outreach-*). See features/snp-worklist/SnpWorklistRow.jsx for the
+   value → variant lookup tables. */
+
 /* Language */
 .lang {
   background: var(--primary-100);

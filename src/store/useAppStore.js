@@ -681,6 +681,7 @@ const HCC_TRANSITION_LABEL = {
 const LIST_FILTER_KEY = {
   HCC:   'hccFilters',
   HEDIS: 'hedisFilters',
+  SNP:   'snpFilters',
 };
 
 // Remove a list's active saved-filter selection and persist the change.
@@ -2978,6 +2979,64 @@ export const useAppStore = create((set, get) => ({
       snpWorklistLoading: false,
     });
   },
+
+  // Optimistic in-memory update for an SNP member's Program Sub Status —
+  // the row's badge + dropdown call this on select. Persistence to Supabase
+  // is out of scope for the demo; the filter chip options recompute from the
+  // updated array automatically.
+  setSnpProgramSubStatus: (id, next) => {
+    set(s => ({
+      snpWorklistMembers: s.snpWorklistMembers.map(m =>
+        m.id === id ? { ...m, programSubStatus: next } : m,
+      ),
+    }));
+  },
+
+  // Assign / re-assign an SNP member to a platform user. Accepts the shape
+  // AssigneeChange's picker emits — { id, name, initials, role } — and also
+  // tolerates raw platformUsers rows that carry `clinicalRoles[]`. Passing
+  // null clears the assignment.
+  setSnpAssignee: (memberId, user) => {
+    const role = user?.role || user?.clinicalRoles?.[0] || null;
+    set(s => ({
+      snpWorklistMembers: s.snpWorklistMembers.map(m =>
+        m.id === memberId
+          ? {
+              ...m,
+              assigneeId:       user?.id || null,
+              assigneeName:     user?.name || null,
+              assigneeInitials: user?.initials || null,
+              assigneeRole:     role,
+            }
+          : m,
+      ),
+    }));
+  },
+
+  // ─── SNP filter slice ──────────────────────────────────────────────────
+  // Same {[k]: string[]} shape HCC/HEDIS use so the shared saveSavedFilter /
+  // applySavedFilter / clearSavedFilters flow works for SNP too — LIST_FILTER_KEY
+  // routes 'SNP' → 'snpFilters'.
+  snpFilters: {},
+  snpVisibleFilterKeys: null,
+  setSnpFilter: (k, vals) => {
+    set(s => ({
+      snpFilters: { ...s.snpFilters, [k]: vals },
+      currentPage: 1,
+      activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'SNP'),
+    }));
+  },
+  clearSnpFilters: () => {
+    set(s => ({
+      snpFilters: {},
+      currentPage: 1,
+      activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'SNP'),
+    }));
+  },
+  setSnpVisibleFilterKeys: (keys) => set({ snpVisibleFilterKeys: keys }),
+  clearSnpVisibleFilters: () => set({ snpVisibleFilterKeys: null }),
+  saveSnpFilter: (name) => useAppStore.getState().saveSavedFilter('SNP', name),
+  applySnpSavedFilter: (id) => useAppStore.getState().applySavedFilter('SNP', id),
 
   // ─── CCM Billing ───────────────────────────────────────────────────────
   // Keyed by patientId — the Billing Review step only ever needs one
