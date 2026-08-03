@@ -91,6 +91,8 @@ export function AllPatientsTable() {
   const fetchAllPatients = useAppStore(s => s.fetchAllPatients);
   const patients = useAppStore(s => s.patients);
   const hccMembers = useAppStore(s => s.hccMembers);
+  const snpWorklistMembers = useAppStore(s => s.snpWorklistMembers || []);
+  const fetchSnpWorklistMembers = useAppStore(s => s.fetchSnpWorklistMembers);
   const selectedIds = useAppStore(s => s.selectedAllPatientsIds);
   const selectOne = useAppStore(s => s.selectAllPatient);
   const selectAll = useAppStore(s => s.selectAllAllPatients);
@@ -100,10 +102,43 @@ export function AllPatientsTable() {
   const searchQuery = useAppStore(s => s.searchQuery);
 
   useEffect(() => { fetchAllPatients(); }, [fetchAllPatients]);
+  // SubNav already prefetches this on mount, but landing directly on All
+  // Patients (e.g. via hash route) can beat that, so make sure the SNP roster
+  // is in the store before we compose the union below.
+  useEffect(() => { fetchSnpWorklistMembers(); }, [fetchSnpWorklistMembers]);
 
-  // If Supabase has data, use it; otherwise fall back to combining TOC + HCC in memory
+  // The Supabase all_patients table is TOC+HCC-only today (its `source`
+  // CHECK constraint restricts to toc/hcc/manual). To keep SNP counted in
+  // this view — matching what SubNav's dedupe union already reports — we
+  // supplement with any SNP member whose memberId isn't already present,
+  // keyed on the normalized memberId used everywhere else in the app.
+  const normMemberId = (v) => (v || '').toString().replace(/^#/, '').trim().toLowerCase();
+  const snpAsAllPatientRows = useMemo(() => snpWorklistMembers.map(m => ({
+    id: `snp-${m.id}`,
+    source: 'snp',
+    name: m.name,
+    initials: m.initials,
+    gender: m.gender,
+    age: m.age,
+    memberId: m.memberId,
+    language: m.language,
+    assignee: m.assigneeName,
+    assigneeInitials: m.assigneeInitials,
+    tags: (m.tags || []).map(t => t.label).filter(Boolean),
+  })), [snpWorklistMembers]);
+
+  // If Supabase has data, use it and add SNP members not already covered
+  // (dedupe by normalized memberId). Otherwise fall back to combining
+  // TOC + HCC + SNP in memory.
   const baseRows = useMemo(() => {
-    if (allPatients.length > 0) return allPatients;
+    if (allPatients.length > 0) {
+      const seen = new Set(allPatients.map(r => normMemberId(r.memberId)).filter(Boolean));
+      const extra = snpAsAllPatientRows.filter(r => {
+        const k = normMemberId(r.memberId);
+        return k && !seen.has(k);
+      });
+      return [...allPatients, ...extra];
+    }
 
     const tocRows = patients.map(p => ({
       id: `toc-${p.id}`,
@@ -132,8 +167,14 @@ export function AllPatientsTable() {
       tags: m.rl ? [`Risk ${m.rl}`] : [],
     }));
 
-    return [...tocRows, ...hccRows];
-  }, [allPatients, patients, hccMembers]);
+    const seen = new Set([...tocRows, ...hccRows].map(r => normMemberId(r.memberId)).filter(Boolean));
+    const snpRows = snpAsAllPatientRows.filter(r => {
+      const k = normMemberId(r.memberId);
+      return k && !seen.has(k);
+    });
+
+    return [...tocRows, ...hccRows, ...snpRows];
+  }, [allPatients, patients, hccMembers, snpAsAllPatientRows]);
 
   const filled = useMemo(() => baseRows.map((r, i) => fillDummy(r, i)), [baseRows]);
 

@@ -161,6 +161,25 @@ function persistCaregapActivityInsert(memberId, entry) {
     if (error) reportPersistFailure(`persistCaregapActivityInsert(${entry.id})`, error);
   });
 }
+// SNP worklist row updates — one helper for both mutation paths (status +
+// assignee). Fire-and-forget; the local state is updated optimistically
+// before we call this, and a failed write reports through the shared toast.
+// The affected-rows sanity check catches an id that isn't in Supabase yet
+// (e.g. the mock-fallback path where the store never fetched from the DB).
+function persistSnpMemberUpdate(id, patch) {
+  if (!id || !patch || Object.keys(patch).length === 0) return;
+  supabase
+    .from('snp_worklist_members')
+    .update(patch)
+    .eq('id', id)
+    .select('id')
+    .then(({ data, error }) => {
+      if (error) return reportPersistFailure(`persistSnpMemberUpdate(${id})`, error);
+      if (!data || data.length === 0) {
+        reportPersistFailure(`persistSnpMemberUpdate(${id})`, { message: 'affected 0 rows' });
+      }
+    });
+}
 function persistHccGapDelete(code, memberName) {
   if (!code) return;
   let q = supabase.from('hcc_diagnosis_gaps').delete().eq('code', code);
@@ -2967,6 +2986,7 @@ export const useAppStore = create((set, get) => ({
         assigneeId:       r.assignee_id,
         assigneeName:     r.assignee_name,
         assigneeInitials: r.assignee_initials,
+        assigneeRole:     r.assignee_role,
         triggerDate:      r.trigger_date,
         lastAdmission:    r.last_admission,
         trigger:          r.trigger,
@@ -2980,22 +3000,23 @@ export const useAppStore = create((set, get) => ({
     });
   },
 
-  // Optimistic in-memory update for an SNP member's Program Sub Status —
-  // the row's badge + dropdown call this on select. Persistence to Supabase
-  // is out of scope for the demo; the filter chip options recompute from the
-  // updated array automatically.
+  // Optimistic in-memory update for an SNP member's Program Sub Status,
+  // then persisted to snp_worklist_members. The filter chip options
+  // recompute from the updated array automatically.
   setSnpProgramSubStatus: (id, next) => {
     set(s => ({
       snpWorklistMembers: s.snpWorklistMembers.map(m =>
         m.id === id ? { ...m, programSubStatus: next } : m,
       ),
     }));
+    persistSnpMemberUpdate(id, { program_sub_status: next });
   },
 
   // Assign / re-assign an SNP member to a platform user. Accepts the shape
   // AssigneeChange's picker emits — { id, name, initials, role } — and also
   // tolerates raw platformUsers rows that carry `clinicalRoles[]`. Passing
-  // null clears the assignment.
+  // null clears the assignment. Persisted to Supabase alongside the local
+  // update so a reload keeps the new assignment.
   setSnpAssignee: (memberId, user) => {
     const role = user?.role || user?.clinicalRoles?.[0] || null;
     set(s => ({
@@ -3011,6 +3032,12 @@ export const useAppStore = create((set, get) => ({
           : m,
       ),
     }));
+    persistSnpMemberUpdate(memberId, {
+      assignee_id:       user?.id || null,
+      assignee_name:     user?.name || null,
+      assignee_initials: user?.initials || null,
+      assignee_role:     role,
+    });
   },
 
   // ─── SNP filter slice ──────────────────────────────────────────────────
