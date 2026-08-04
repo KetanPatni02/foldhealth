@@ -1,15 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
-import { FilterChip } from '../../components/FilterChip/FilterChip';
+import { FilterBar } from '../../components/FilterBar/FilterBar';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { SavedFiltersChip } from '../hcc/SavedFiltersChip';
-import { MoreFiltersPopover } from '../hcc/MoreFiltersPopover';
-import { FilterNameDialog } from '../hcc/FilterNameDialog';
 import { SnpWorklistRow } from './SnpWorklistRow';
 import styles from './SnpWorklistTable.module.css';
 
@@ -73,7 +71,6 @@ const BUCKET_FN = {
 
 const MORE_FILTER_ITEMS = FILTER_KEYS.map(f => ({ k: f.key, label: f.label, primary: f.primary }));
 const PRIMARY_FILTER_KEYS = FILTER_KEYS.filter(f => f.primary).map(f => f.key);
-const KEY_BY = Object.fromEntries(FILTER_KEYS.map(f => [f.key, f]));
 const KEY_ORDER = Object.fromEntries(FILTER_KEYS.map((f, i) => [f.key, i]));
 
 function EmptySearch() {
@@ -110,9 +107,6 @@ export function SnpWorklistTable() {
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const moreBtnRef = useRef(null);
-  const [moreRect, setMoreRect] = useState(null);
 
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
 
@@ -172,14 +166,6 @@ export function SnpWorklistTable() {
     if (next.has(k)) next.delete(k); else next.add(k);
     setVisibleFilterKeys([...next]);
   };
-
-  const openMore = () => {
-    const rect = moreBtnRef.current?.getBoundingClientRect();
-    if (rect) setMoreRect(rect);
-  };
-  const closeMore = () => setMoreRect(null);
-
-  const hasActiveFilters = activeKeys.length > 0;
 
   const paginated = useMemo(() => {
     const start = (page - 1) * perPage;
@@ -254,74 +240,21 @@ export function SnpWorklistTable() {
       />
 
       {filterBarOpen && (
-        <div className={styles.chipRow}>
-          {visibleKeys.map(k => {
-            const def = KEY_BY[k];
-            if (!def) return null;
-            return (
-              <FilterChip
-                key={def.key}
-                label={def.label}
-                options={filterOptions[def.key] || []}
-                selected={filters[def.key] || []}
-                onChange={vals => setFilter(def.key, vals)}
-              />
-            );
-          })}
-
-          {/* Tail cluster — More Filters | Clear All | Save Filter grouped as
-              one inline unit right after the last chip, matching HCC/TOC. */}
-          <div className={styles.tail}>
-            <button
-              ref={moreBtnRef}
-              type="button"
-              className={[styles.moreBtn, moreRect ? styles.moreBtnActive : ''].join(' ')}
-              onClick={moreRect ? closeMore : openMore}
-            >
-              More Filters
-              <Icon
-                name="solar:alt-arrow-down-linear"
-                size={11}
-                color={moreRect ? 'var(--primary-300)' : 'var(--neutral-300)'}
-              />
-            </button>
-
-            {hasActiveFilters && (
-              <>
-                <span className={styles.vDivider} />
-                <button className={styles.linkBtn} onClick={clearFilters}>Clear All</button>
-                <span className={styles.vDivider} />
-                <button
-                  className={[styles.linkBtn, styles.linkBtnPrimary].join(' ')}
-                  onClick={() => setSaveDialogOpen(true)}
-                >
-                  Save Filter
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {moreRect && (
-        <MoreFiltersPopover
-          anchorRect={moreRect}
+        <FilterBar
+          filterDefs={FILTER_KEYS}
+          filters={filters}
+          onFilterChange={(k, vals) => setFilter(k, vals)}
+          onClearAll={clearFilters}
+          onSaveFilter={(name) => saveSnpFilter(name)}
+          getOptions={(def) => filterOptions[def.key] || []}
+          multiSelect
           visibleKeys={visibleKeys}
+          onToggleVisible={toggleVisible}
+          onClearVisible={clearVisibleFilters}
           moreFilterItems={MORE_FILTER_ITEMS}
-          onToggle={toggleVisible}
-          onClear={clearVisibleFilters}
-          onClose={closeMore}
+          leading={null}
         />
       )}
-
-      <FilterNameDialog
-        open={saveDialogOpen}
-        title="Save Filter"
-        submitLabel="Save & Apply"
-        initialName=""
-        onSubmit={(name) => { saveSnpFilter(name); setSaveDialogOpen(false); }}
-        onCancel={() => setSaveDialogOpen(false)}
-      />
 
       <div className={styles.tableScroll}>
         {loading && members.length === 0 ? (

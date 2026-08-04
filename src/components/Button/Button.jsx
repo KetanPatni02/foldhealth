@@ -27,6 +27,7 @@ export const Button = forwardRef(function Button(
     leadingIcon,
     leadingIconElement,
     trailingIcon,
+    trailingIconElement,
     iconOnly = false,
     fullWidth = false,
     disabled = false,
@@ -81,7 +82,8 @@ export const Button = forwardRef(function Button(
         <Icon name={leadingIcon} size={iconSize} color={iconColor} className={styles.icon} />
       )}
       {!iconOnly && children}
-      {trailingIcon && (
+      {trailingIconElement && trailingIconElement}
+      {!trailingIconElement && trailingIcon && (
         <Icon name={trailingIcon} size={iconSize} color={iconColor} className={styles.icon} />
       )}
     </button>
