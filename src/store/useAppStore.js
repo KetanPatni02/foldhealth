@@ -1493,11 +1493,24 @@ export const useAppStore = create((set, get) => ({
   // only auto-lands on the top worklist while this is still false.
   _subnavNavigated: false,
 
+  // Boot-safe identity for worklist prefs. auth.getUser() validates against
+  // the server and returns null on cold load while the persisted JWT is
+  // still refreshing — which made fetch read the wrong row ("order resets
+  // after refresh"). getSession() awaits client init and reads the locally
+  // persisted session, so fetch and save always agree on the same key.
+  _resolveWorklistUser: async () => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session?.user?.id) return data.session.user.id;
+    } catch { /* fall through */ }
+    return get().currentUserProfile?.id || 'local-dev';
+  },
+
   fetchWorklistOrder: async (defaultLabels) => {
     if (get().worklistOrderLoaded) return;
     let order = null;
     try {
-      const userId = (await get()._resolveUpdatedBy()) || 'local-dev';
+      const userId = await get()._resolveWorklistUser();
       const { data, error } = await supabase
         .from('user_worklist_prefs')
         .select('worklist_order')
@@ -1527,7 +1540,7 @@ export const useAppStore = create((set, get) => ({
   saveWorklistOrder: async (order) => {
     set({ worklistOrder: order }); // optimistic
     try {
-      const userId = (await get()._resolveUpdatedBy()) || 'local-dev';
+      const userId = await get()._resolveWorklistUser();
       const { error } = await supabase
         .from('user_worklist_prefs')
         .upsert(
