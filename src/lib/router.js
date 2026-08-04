@@ -328,12 +328,19 @@ export function hashToState(route) {
   if (route.section && URL_TO_LIST[route.section]) {
     updates.activeSubnavList = URL_TO_LIST[route.section];
     updates.activeTab = 'toc-worklist'; // Default to worklist view within lists
+    // Mark the selection as user-driven so fetchWorklistOrder's "land the
+    // user on the top worklist" fallback doesn't clobber it after refresh
+    // (that fallback only fires when _subnavNavigated is still false).
+    updates._subnavNavigated = true;
     return updates;
   }
 
-  // Default TOC routes: toc-worklist or toc-queue
+  // Default TOC routes: toc-worklist or toc-queue — also lock the selection
+  // so a refresh on /#/toc or /#/toc-queue stays on TOC even when the
+  // saved worklist order puts something else first.
   updates.activeSubnavList = 'TOC';
   updates.activeTab = route.section === 'toc-queue' ? 'toc-queue' : 'toc-worklist';
+  updates._subnavNavigated = true;
   return updates;
 }
 

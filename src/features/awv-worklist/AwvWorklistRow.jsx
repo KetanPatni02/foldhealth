@@ -46,6 +46,7 @@ const LANG_MAP = {
  */
 export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, showToast }) {
   const updateAwvMemberStatus = useAppStore(s => s.updateAwvMemberStatus);
+  const openQuickView = useAppStore(s => s.openQuickView);
   const [statusAnchor, setStatusAnchor] = useState(null);
 
   const statusVariant = STATUS_VARIANT[member.progSubStatus] || 'awv-new';
@@ -72,7 +73,18 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
               <button
                 type="button"
                 className={styles.patientNameLink}
-                onClick={onView}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openQuickView({
+                    id: member.id,
+                    name: member.name,
+                    initials: member.in,
+                    gender: member.g,
+                    age: member.age,
+                    memberId: member.memberId,
+                    language: member.language,
+                  });
+                }}
               >
                 {member.name}
               </button>{' '}

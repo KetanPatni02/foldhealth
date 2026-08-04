@@ -19,11 +19,11 @@ function TabPlaceholder({ tabName }) {
   );
 }
 
-// HCC / AWV members live in a different store slice than the patients list.
-// When the user opens a profile from the HCC worklist, we still want the
-// banner to render — so we map the HCC row's fields to the shape the banner
-// expects instead of falling back to "Patient not found".
-function hccMemberToPatient(m) {
+// Every worklist (HCC, AWV, CCM, SNP, HEDIS) keeps its own member slice
+// with a compact row shape (id, in, g, memberId, …). The patient banner
+// expects the fuller patients-table shape, so we normalize any worklist
+// row into that shape before the profile view consumes it.
+function worklistMemberToPatient(m) {
   if (!m) return null;
   return {
     id: m.id,
@@ -43,6 +43,10 @@ export function PatientDetailView() {
   const selectedPatientId = useAppStore(s => s.selectedPatientId);
   const patients = useAppStore(s => s.patients);
   const hccMembers = useAppStore(s => s.hccMembers);
+  const awvMembers = useAppStore(s => s.awvMembers);
+  const ccmWorklistMembers = useAppStore(s => s.ccmWorklistMembers);
+  const snpWorklistMembers = useAppStore(s => s.snpWorklistMembers);
+  const hedisMembers = useAppStore(s => s.hedisMembers);
   const navigateBackToWorklist = useAppStore(s => s.navigateBackToWorklist);
   // Active profile tab is stored on the store so callers (e.g. the CCM
   // worklist's "View billing" button) can deep-link into a specific tab.
@@ -78,10 +82,14 @@ export function PatientDetailView() {
     document.addEventListener('mouseup', handleMouseUp);
   }, []);
 
-  // Fall back to the HCC/AWV worklist when the id isn't in the main patients
-  // list — those rows live in a separate slice and shouldn't 404.
+  // Fall back through every worklist slice when the id isn't in the main
+  // patients list — those rows live in separate slices and shouldn't 404.
   const patient = patients.find(p => p.id === selectedPatientId)
-    || hccMemberToPatient(hccMembers.find(m => m.id === selectedPatientId));
+    || worklistMemberToPatient(hccMembers.find(m => m.id === selectedPatientId))
+    || worklistMemberToPatient(awvMembers?.find(m => m.id === selectedPatientId))
+    || worklistMemberToPatient(ccmWorklistMembers?.find(m => m.id === selectedPatientId))
+    || worklistMemberToPatient(snpWorklistMembers?.find(m => m.id === selectedPatientId))
+    || worklistMemberToPatient(hedisMembers?.find(m => m.id === selectedPatientId));
 
   // The app assumes we're always inside a real patient's record — if the id
   // doesn't resolve to a patient (e.g. a stale hash from a deleted row, or a
