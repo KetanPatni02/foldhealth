@@ -1482,6 +1482,64 @@ export const useAppStore = create((set, get) => ({
   activeFilters: {},  // { gender: 'F', language: 'es', lace: 'High', ... }
   activeSubnavList: 'TOC',  // which SubNav list is selected
 
+  // ── Per-user worklist ordering (SubNav drag-and-drop) ──
+  // Array of worklist labels in the user's preferred display order. Loaded
+  // from user_worklist_prefs on Population mount; SubNav renders in this
+  // order and the user initially lands on the first entry. Null until the
+  // fetch resolves so SubNav can fall back to the canonical default order.
+  worklistOrder: null,
+  worklistOrderLoaded: false,
+  // Set once the user manually picks a list this session — fetchWorklistOrder
+  // only auto-lands on the top worklist while this is still false.
+  _subnavNavigated: false,
+
+  fetchWorklistOrder: async (defaultLabels) => {
+    if (get().worklistOrderLoaded) return;
+    let order = null;
+    try {
+      const userId = (await get()._resolveUpdatedBy()) || 'local-dev';
+      const { data, error } = await supabase
+        .from('user_worklist_prefs')
+        .select('worklist_order')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (!error && Array.isArray(data?.worklist_order) && data.worklist_order.length > 0) {
+        order = data.worklist_order;
+      }
+    } catch { /* table may not exist yet — fall back to default order */ }
+
+    // Reconcile the saved order with the current worklist set: drop labels
+    // that no longer exist, append any new worklists at the end.
+    const known = defaultLabels || [];
+    const saved = (order || []).filter(l => known.includes(l));
+    const merged = [...saved, ...known.filter(l => !saved.includes(l))];
+
+    set({ worklistOrder: merged, worklistOrderLoaded: true });
+
+    // Land the user on the top worklist — but never override a list they've
+    // already picked this session.
+    if (!get()._subnavNavigated && merged[0] && get().activeSubnavList !== merged[0]) {
+      get().setActiveSubnavList(merged[0]);
+      set({ _subnavNavigated: false }); // programmatic — keep the flag clear
+    }
+  },
+
+  saveWorklistOrder: async (order) => {
+    set({ worklistOrder: order }); // optimistic
+    try {
+      const userId = (await get()._resolveUpdatedBy()) || 'local-dev';
+      const { error } = await supabase
+        .from('user_worklist_prefs')
+        .upsert(
+          { user_id: userId, worklist_order: order, updated_at: new Date().toISOString() },
+          { onConflict: 'user_id' },
+        );
+      if (error) console.warn('[store] saveWorklistOrder failed:', error.message);
+    } catch (e) {
+      console.warn('[store] saveWorklistOrder failed:', e?.message);
+    }
+  },
+
   // Flipped to true when the update-checker poller sees a newer build
   // hash than the one this tab loaded with. Drives UpdateAvailableBanner.
   hasNewBuild: false,
@@ -2466,7 +2524,9 @@ export const useAppStore = create((set, get) => ({
   setActiveSubnavList: (list) => {
     const from = get().activeSubnavList;
     if (from !== list) track('nav.list_changed', { from, to: list });
-    set({ activeSubnavList: list, currentPage: 1 });
+    // Any explicit list change pins the session — fetchWorklistOrder's
+    // top-of-list auto-landing resets this flag after its own call.
+    set({ activeSubnavList: list, currentPage: 1, _subnavNavigated: true });
     updateHash(get);
     // First time we land on the HCC list with no filters yet, seed the
     // role-scoped default queue so users don't stare at the full worklist.

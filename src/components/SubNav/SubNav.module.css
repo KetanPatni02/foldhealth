@@ -14,43 +14,16 @@
   border-right: none;
 }
 
+/* Title-case section headers — no uppercase transform, so the label reads
+   as written in JSX ("Worklists", "Population Groups", …). */
 .sectionLabel {
   padding: 16px 16px 8px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--neutral-300);
-  text-transform: uppercase;
-  letter-spacing: .06em;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  white-space: nowrap;
-}
-
-.sectionLabel button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--neutral-300);
-  padding: 4px;
-  border-radius: 4px;
-  display: flex;
-  font-size: 16px;
-  align-items: center;
-}
-
-.sectionLabel button:hover {
-  color: var(--primary-300);
-  background: var(--primary-100);
-}
-
-.subLabel {
-  padding: 6px 16px 4px;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--neutral-200);
-  text-transform: uppercase;
-  letter-spacing: .06em;
   white-space: nowrap;
 }
 
@@ -68,6 +41,16 @@
 }
 
 .item:hover { background: var(--neutral-50); }
+
+/* Row being dragged — lift above siblings and dim slightly so the drop
+   position reads clearly. dnd-kit moves the element via transform. */
+.item.dragging {
+  opacity: 0.85;
+  background: var(--neutral-0);
+  box-shadow: var(--shadow-card);
+  position: relative;
+  z-index: 2;
+}
 
 .item.active {
   background: var(--primary-50);

@@ -1,11 +1,24 @@
 import { useEffect, useMemo } from 'react';
-import { Icon } from '../Icon/Icon';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useAppStore } from '../../store/useAppStore';
 import { HEDIS_MEMBERS } from '../../features/hedis-worklist/data/mock';
 import styles from './SubNav.module.css';
 
 // Define which lists map to which filter criteria
-const SHARED_LISTS = [
+const WORKLISTS = [
   { label: 'SNP', filter: null, view: 'snp' },
   { label: 'Annual Visit', filter: null },
   { label: 'TOC', filter: null },  // default — shows all TOC patients
@@ -15,6 +28,35 @@ const SHARED_LISTS = [
   { label: 'High Utilizers', filter: { readmission: 'Yes' } },
   { label: 'DM', filter: null },
 ];
+const WORKLIST_LABELS = WORKLISTS.map(w => w.label);
+const WORKLIST_BY_LABEL = Object.fromEntries(WORKLISTS.map(w => [w.label, w]));
+
+// One draggable worklist row. Drag activates after an 8px pointer move so
+// plain clicks still select the list without jitter.
+function SortableWorklistItem({ item, active, count, onClick }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.label });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={[
+        styles.item,
+        active ? styles.active : '',
+        isDragging ? styles.dragging : '',
+      ].filter(Boolean).join(' ')}
+      onClick={onClick}
+      {...attributes}
+      {...listeners}
+    >
+      {item.label}
+      <span className={styles.count}>{count}</span>
+    </div>
+  );
+}
 
 export function SubNav({ collapsed }) {
   const activeSubnavList = useAppStore(s => s.activeSubnavList);
@@ -29,23 +71,38 @@ export function SubNav({ collapsed }) {
   const fetchAwvMembers = useAppStore(s => s.fetchAwvMembers);
   const fetchCcmWorklistMembers = useAppStore(s => s.fetchCcmWorklistMembers);
   const fetchSnpWorklistMembers = useAppStore(s => s.fetchSnpWorklistMembers);
+  const fetchWorklistOrder = useAppStore(s => s.fetchWorklistOrder);
+  const saveWorklistOrder = useAppStore(s => s.saveWorklistOrder);
+  const worklistOrder = useAppStore(s => s.worklistOrder);
   const clearSelected = useAppStore(s => s.clearSelected);
   const clearHccSelected = useAppStore(s => s.clearHccSelected);
 
+  // Require an 8px pointer move before a drag starts so ordinary clicks
+  // still select the worklist.
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+
   // Prefetch HCC, AWV, CCM, and SNP worklists on mount so counts show up
-  // right away.
+  // right away; the order fetch also lands the user on their top worklist.
   useEffect(() => {
     fetchHccMembers();
     fetchAwvMembers();
     fetchCcmWorklistMembers();
     fetchSnpWorklistMembers();
+    fetchWorklistOrder(WORKLIST_LABELS);
   }, []);
+
+  // User-ordered worklists — store order (already reconciled against the
+  // canonical set) or the default until the fetch resolves.
+  const orderedWorklists = useMemo(() => {
+    const order = worklistOrder && worklistOrder.length > 0 ? worklistOrder : WORKLIST_LABELS;
+    return order.map(l => WORKLIST_BY_LABEL[l]).filter(Boolean);
+  }, [worklistOrder]);
 
   // Lists with a backing worklist (TOC, HCC, HEDIS, CCM, SNP, Annual Visit)
   // show real row counts; the rest have no data source yet and show 0.
   const getCounts = useMemo(() => {
     const counts = {};
-    for (const list of SHARED_LISTS) {
+    for (const list of WORKLISTS) {
       if (list.view === 'hcc') counts[list.label] = hccMembers.length;
       else if (list.view === 'hedis') counts[list.label] = HEDIS_MEMBERS.length;
       else if (list.view === 'ccm') counts[list.label] = ccmWorklistMembers.length;
@@ -90,23 +147,29 @@ export function SubNav({ collapsed }) {
     }
   };
 
+  const handleDragEnd = ({ active, over }) => {
+    if (!over || active.id === over.id) return;
+    const labels = orderedWorklists.map(w => w.label);
+    const next = arrayMove(labels, labels.indexOf(active.id), labels.indexOf(over.id));
+    saveWorklistOrder(next);
+  };
+
   return (
     <aside className={[styles.subnav, collapsed ? styles.collapsed : ''].filter(Boolean).join(' ')}>
-      <div className={styles.sectionLabel}>
-        Worklists
-        <button title="Add"><Icon name="solar:add-circle-linear" size={18} /></button>
-      </div>
-      <div className={styles.subLabel}>Shared Lists</div>
-      {SHARED_LISTS.map(item => (
-        <div
-          key={item.label}
-          className={[styles.item, activeSubnavList === item.label ? styles.active : ''].filter(Boolean).join(' ')}
-          onClick={() => handleListClick(item)}
-        >
-          {item.label}
-          <span className={styles.count}>{getCounts[item.label] || 0}</span>
-        </div>
-      ))}
+      <div className={styles.sectionLabel}>Worklists</div>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={orderedWorklists.map(w => w.label)} strategy={verticalListSortingStrategy}>
+          {orderedWorklists.map(item => (
+            <SortableWorklistItem
+              key={item.label}
+              item={item}
+              active={activeSubnavList === item.label}
+              count={getCounts[item.label] || 0}
+              onClick={() => handleListClick(item)}
+            />
+          ))}
+        </SortableContext>
+      </DndContext>
       <div className={styles.sectionLabel} style={{ marginTop: 8 }}>Patients</div>
       <div
         className={[styles.item, activeSubnavList === 'My Patients' ? styles.active : ''].filter(Boolean).join(' ')}
