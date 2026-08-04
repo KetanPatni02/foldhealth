@@ -1,98 +1,12 @@
-.subnav {
-  width: 200px;
-  flex-shrink: 0;
-  background: var(--neutral-0);
-  border-right: 1px solid var(--neutral-150);
-  overflow-y: auto;
-  overflow-x: hidden;
+/* ── Population SubNav ──
+ * Visuals live in the shared SideNav component; this module only keeps the
+ * width-collapse animation the Population layout toggles.
+ */
+
+.rail {
   transition: width 0.2s ease;
-  position: relative;
 }
 
-.subnav.collapsed {
-  width: 0;
+.rail.collapsed {
   border-right: none;
-}
-
-/* Title-case section headers — no uppercase transform, so the label reads
-   as written in JSX ("Worklists", "Population Groups", …). */
-.sectionLabel {
-  padding: 16px 16px 8px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--neutral-300);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  white-space: nowrap;
-}
-
-/* Sliding highlight for the active row. One absolutely-positioned element
-   translated to the active item (measured in JS), so switching lists reads
-   as a single pill gliding between rows instead of a hard background swap.
-   Items sit above it via z-index so text and counts stay crisp. */
-.activeIndicator {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  background: var(--primary-50);
-  border-left: 3px solid var(--primary-300);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.activeIndicatorAnimated {
-  transition:
-    transform 280ms cubic-bezier(0.32, 0.72, 0, 1),
-    height 280ms cubic-bezier(0.32, 0.72, 0, 1),
-    opacity 160ms ease-out;
-}
-
-.item {
-  padding: 10px 16px;
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--neutral-400);
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  transition: background .1s, color .15s;
-  white-space: nowrap;
-  position: relative;
-  z-index: 1;
-}
-
-.item:hover:not(.active) { background: var(--neutral-50); }
-
-/* Row being dragged — lift above siblings and dim slightly so the drop
-   position reads clearly. dnd-kit moves the element via transform. */
-.item.dragging {
-  opacity: 0.85;
-  background: var(--neutral-0);
-  box-shadow: var(--shadow-card);
-  z-index: 2;
-}
-
-/* Background + left border live on .activeIndicator; the row itself only
-   changes text tone, so padding stays constant and labels never shift. */
-.item.active {
-  color: var(--primary-300);
-  font-weight: 500;
-}
-
-.count {
-  font-size: 11px;
-  color: var(--neutral-200);
-  background: var(--neutral-50);
-  padding: 2px 7px;
-  border-radius: 4px;
-  border: 0.5px solid var(--neutral-150);
-}
-
-.item.active .count {
-  background: var(--primary-100);
-  color: var(--primary-300);
-  border-color: rgba(140,90,226,0.2);
 }

@@ -19,72 +19,7 @@
   overflow: hidden;
 }
 
-/* ─────────────────────────── Left comm panel (200px) ─────────────────────────── */
-.commPanel {
-  width: 200px;
-  flex-shrink: 0;
-  border-right: 0.5px solid var(--neutral-150);
-  background: var(--neutral-0);
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  padding-bottom: 16px;
-}
-
-.commPanelHeader {
-  padding: 12px 12px 4px;
-  flex-shrink: 0;
-}
-
-.commSection {
-  padding: 8px 16px 4px;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--neutral-300);
-  flex-shrink: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.commMenuItem {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 1.2;
-  color: var(--neutral-300);
-  cursor: pointer;
-  border: none;
-  background: none;
-  width: 100%;
-  font-family: 'Inter', sans-serif;
-  transition: background .12s, color .12s;
-  white-space: nowrap;
-  border-left: 2px solid transparent;
-  flex-shrink: 0;
-  text-align: left;
-}
-
-.commMenuItem:hover {
-  background: var(--neutral-50);
-}
-
-.commMenuItem.active {
-  color: var(--primary-300);
-  background: var(--primary-100);
-  border-left-color: var(--primary-300);
-  font-weight: 500;
-}
-
-.commMenuLabel {
-  flex: 1;
-  font-size: 14px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+/* The left comm panel now uses the shared SideNav component. */
 
 /* ─────────────────────────── Middle conv panel (350px) ─────────────────────────── */
 .convPanel {
@@ -685,33 +620,6 @@
 
 .skeletonLineWide   { width: 65%; }
 .skeletonLineNarrow { width: 40%; }
-
-/* Nav item skeleton (left commPanel) */
-.skeletonNavItem {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 12px;
-}
-
-.skeletonNavIcon {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  flex-shrink: 0;
-  background: linear-gradient(90deg, var(--neutral-100) 25%, var(--neutral-150) 50%, var(--neutral-100) 75%);
-  background-size: 800px 100%;
-  animation: shimmer 1.4s infinite linear;
-}
-
-.skeletonNavLabel {
-  height: 10px;
-  width: 90px;
-  border-radius: 5px;
-  background: linear-gradient(90deg, var(--neutral-100) 25%, var(--neutral-150) 50%, var(--neutral-100) 75%);
-  background-size: 800px 100%;
-  animation: shimmer 1.4s infinite linear;
-}
 
 /* Select skeleton (call line dropdown) */
 .skeletonSelect {

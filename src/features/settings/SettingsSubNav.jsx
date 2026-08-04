@@ -1,5 +1,4 @@
-import { Icon } from '../../components/Icon/Icon';
-import styles from './SettingsSubNav.module.css';
+import { SideNav } from '../../components/SideNav/SideNav';
 
 const MENU_ITEMS = [
   { icon: 'solar:user-check-rounded-linear', label: 'Member/Leads' },
@@ -20,23 +19,22 @@ const MENU_ITEMS = [
   { icon: 'solar:shield-user-linear', label: 'Account' },
 ];
 
+const SECTIONS = [{
+  key: 'settings',
+  items: MENU_ITEMS.map(item => ({
+    key: item.key || item.label.toLowerCase(),
+    label: item.label,
+    icon: item.icon,
+  })),
+}];
+
 export function SettingsSubNav({ activeItem = 'agents', onItemClick }) {
   return (
-    <aside className={styles.nav}>
-      {MENU_ITEMS.map(item => {
-        const key = item.key || item.label.toLowerCase();
-        const isActive = key === activeItem;
-        return (
-          <div
-            key={item.label}
-            className={[styles.item, isActive ? styles.active : ''].filter(Boolean).join(' ')}
-            onClick={() => onItemClick?.(key)}
-          >
-            <Icon name={item.icon} size={16} color={isActive ? 'var(--primary-300)' : 'var(--neutral-300)'} />
-            <span>{item.label}</span>
-          </div>
-        );
-      })}
-    </aside>
+    <SideNav
+      width={180}
+      sections={SECTIONS}
+      activeKey={activeItem}
+      onSelect={(key) => onItemClick?.(key)}
+    />
   );
 }

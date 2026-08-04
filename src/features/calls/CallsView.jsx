@@ -6,6 +6,7 @@ import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { DeclinedCallIcon } from '../../components/Icon/DeclinedCallIcon';
 import { Button } from '../../components/Button/Button';
+import { SideNav } from '../../components/SideNav/SideNav';
 import { Input } from '../../components/Input/Input';
 import { Toggle } from '../../components/Toggle/Toggle';
 import { DetailDrawer } from '../../components/DetailDrawer/DetailDrawer';
@@ -306,9 +307,11 @@ export function CallsView() {
       <TopBar />
 
       <div className={styles.panels}>
-        {/* ── Left commPanel ── */}
-        <div className={styles.commPanel}>
-          <div className={styles.commPanelHeader}>
+        {/* ── Left commPanel — shared SideNav ── */}
+        <SideNav
+          width={200}
+          loading={callsConfigLoading}
+          header={
             <Button
               variant="primary"
               size="L"
@@ -318,58 +321,29 @@ export function CallsView() {
             >
               New Call
             </Button>
-          </div>
-
-          <div className={styles.commSection}>Inbox</div>
-          {callsConfigLoading
-            ? Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className={styles.skeletonNavItem}>
-                  <div className={styles.skeletonNavIcon} />
-                  <div className={styles.skeletonNavLabel} />
-                </div>
-              ))
-            : inboxItems.map(item => {
-                const isActive = activeInbox === item.id;
-                const iconColor = isActive ? 'var(--primary-300)' : 'var(--neutral-300)';
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={[styles.commMenuItem, isActive ? styles.active : ''].join(' ')}
-                    onClick={() => setActiveInbox(item.id)}
-                  >
-                    {item.isCustomIcon
-                      ? <MissedCallIcon size={16} color={iconColor} />
-                      : <Icon name={item.icon} size={16} color={iconColor} />}
-                    <span className={styles.commMenuLabel}>{item.label}</span>
-                  </button>
-                );
-              })}
-
-          <div className={styles.commSection} style={{ marginTop: 8 }}>Channels</div>
-          {callsConfigLoading
-            ? Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className={styles.skeletonNavItem}>
-                  <div className={styles.skeletonNavIcon} />
-                  <div className={styles.skeletonNavLabel} />
-                </div>
-              ))
-            : channelItems.map(item => {
-                const isActive = activeInbox === item.id;
-                const iconColor = isActive ? 'var(--primary-300)' : 'var(--neutral-300)';
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={[styles.commMenuItem, isActive ? styles.active : ''].join(' ')}
-                    onClick={() => setActiveInbox(item.id)}
-                  >
-                    <Icon name={item.icon} size={16} color={iconColor} />
-                    <span className={styles.commMenuLabel}>{item.label}</span>
-                  </button>
-                );
-              })}
-        </div>
+          }
+          sections={[
+            {
+              key: 'inbox',
+              label: 'Inbox',
+              items: inboxItems.map(item => ({
+                key: item.id,
+                label: item.label,
+                icon: item.isCustomIcon ? undefined : item.icon,
+                iconElement: item.isCustomIcon
+                  ? <MissedCallIcon size={16} color={activeInbox === item.id ? 'var(--primary-300)' : 'var(--neutral-300)'} />
+                  : undefined,
+              })),
+            },
+            {
+              key: 'channels',
+              label: 'Channels',
+              items: channelItems.map(item => ({ key: item.id, label: item.label, icon: item.icon })),
+            },
+          ]}
+          activeKey={activeInbox}
+          onSelect={setActiveInbox}
+        />
 
         {/* ── Middle: Call history list ── */}
         <div className={styles.convPanel}>

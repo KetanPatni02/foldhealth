@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Select } from '../../components/Select/Select';
+import { SideNav } from '../../components/SideNav/SideNav';
 import { useAppStore } from '../../store/useAppStore';
 import { PAGES, VIEW_TITLES, PERSONA_ACCESS, PERSONA_LABELS, PERSONA_DETAILS, ORGANIZATIONS, QUARTERS } from './analyticsData';
 import { ExecutiveView } from './views/ExecutiveView';
@@ -189,31 +190,24 @@ export function AnalyticsLayout() {
 
       {/* ── Body (nav + canvas) ── */}
       <div className={s.body}>
-        {/* ── Page Navigator ── */}
-        <aside className={s.pageNav}>
-          <div className={s.pnHeader}>Report Pages</div>
-          <div className={s.pnScroll}>
-            {PAGES.map(sec => (
-              <div key={sec.section}>
-                <div className={s.pnSection}>{sec.section}</div>
-                {sec.items.map(p => {
-                  const locked = isViewLocked(p.id);
-                  return (
-                    <button
-                      key={p.id}
-                      className={`${s.pnItem} ${view === p.id ? s.active : ''}`}
-                      onClick={() => locked ? showToast(`${p.label} is restricted for ${PERSONA_LABELS[analyticsPersona] || analyticsPersona} persona`) : switchView(p.id)}
-                      style={locked ? { opacity: 0.45 } : undefined}
-                    >
-                      <Icon name={locked ? 'solar:lock-linear' : p.icon} size={16} color={locked ? 'var(--neutral-200)' : view === p.id ? 'var(--primary-300)' : 'var(--neutral-300)'} />
-                      {p.label}
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        </aside>
+        {/* ── Page Navigator — shared SideNav ── */}
+        <SideNav
+          width={210}
+          sections={PAGES.map(sec => ({
+            key: sec.section,
+            label: sec.section,
+            items: sec.items.map(p => ({
+              key: p.id,
+              label: p.label,
+              icon: p.icon,
+              locked: isViewLocked(p.id),
+            })),
+          }))}
+          activeKey={view}
+          onSelect={(id, item) => item.locked
+            ? showToast(`${item.label} is restricted for ${PERSONA_LABELS[analyticsPersona] || analyticsPersona} persona`)
+            : switchView(id)}
+        />
 
         {/* ── Canvas ── */}
         <div className={s.canvas} ref={canvasRef}>

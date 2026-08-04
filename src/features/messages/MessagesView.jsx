@@ -4,6 +4,7 @@ import { Icon } from '../../components/Icon/Icon';
 import { MissedCallIcon } from '../../components/Icon/MissedCallIcon';
 import { TopBar } from '../../components/TopBar/TopBar';
 import { Button } from '../../components/Button/Button';
+import { SideNav } from '../../components/SideNav/SideNav';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Input } from '../../components/Input/Input';
 import { useAppStore } from '../../store/useAppStore';
@@ -223,9 +224,10 @@ export function MessagesView() {
       <TopBar />
 
       <div className={styles.panels}>
-        {/* ── Communication sidebar ── */}
-        <div className={styles.commPanel}>
-          <div style={{ padding: '12px 12px 4px' }}>
+        {/* ── Communication sidebar — shared SideNav ── */}
+        <SideNav
+          width={200}
+          header={
             <Button
               variant="primary"
               size="L"
@@ -235,44 +237,36 @@ export function MessagesView() {
             >
               Create New
             </Button>
-          </div>
-
-          <div className={styles.commSection}>Inbox</div>
-          {INBOX_ITEMS.map(item => {
-            const isActive = activeChannel === item.id;
-            return (
-              <button
-                key={item.id}
-                className={[styles.commMenuItem, isActive ? styles.active : ''].join(' ')}
-                onClick={() => setActiveChannel(item.id)}
-              >
-                {item.isCustomIcon
-                  ? <MissedCallIcon size={16} color={isActive ? 'var(--primary-300)' : 'var(--neutral-300)'} />
-                  : <Icon name={item.icon} size={16} color={isActive ? 'var(--primary-300)' : 'var(--neutral-300)'} />}
-                <span className={styles.commMenuLabel}>{item.label}</span>
-                {item.badge != null && <span className={styles.commBadge}>{item.badge}</span>}
-              </button>
-            );
-          })}
-
-          <div className={styles.commSection} style={{ marginTop: 8 }}>Channels</div>
-          {CHANNEL_ITEMS.map(item => {
-            const isActive = activeChannel === item.id;
-            // Show unread badge on internal-chat channels only
-            const badge = ['all', 'chat', 'internal'].includes(item.id) && totalUnread > 0 ? totalUnread : null;
-            return (
-              <button
-                key={item.id}
-                className={[styles.commMenuItem, isActive ? styles.active : ''].join(' ')}
-                onClick={() => setActiveChannel(item.id)}
-              >
-                <Icon name={item.icon} size={16} color={isActive ? 'var(--primary-300)' : 'var(--neutral-300)'} />
-                <span className={styles.commMenuLabel}>{item.label}</span>
-                {badge != null && <span className={styles.commBadge}>{badge}</span>}
-              </button>
-            );
-          })}
-        </div>
+          }
+          sections={[
+            {
+              key: 'inbox',
+              label: 'Inbox',
+              items: INBOX_ITEMS.map(item => ({
+                key: item.id,
+                label: item.label,
+                icon: item.isCustomIcon ? undefined : item.icon,
+                iconElement: item.isCustomIcon
+                  ? <MissedCallIcon size={16} color={activeChannel === item.id ? 'var(--primary-300)' : 'var(--neutral-300)'} />
+                  : undefined,
+                count: item.badge ?? undefined,
+              })),
+            },
+            {
+              key: 'channels',
+              label: 'Channels',
+              items: CHANNEL_ITEMS.map(item => ({
+                key: item.id,
+                label: item.label,
+                icon: item.icon,
+                // Show unread badge on internal-chat channels only
+                count: ['all', 'chat', 'internal'].includes(item.id) && totalUnread > 0 ? totalUnread : undefined,
+              })),
+            },
+          ]}
+          activeKey={activeChannel}
+          onSelect={setActiveChannel}
+        />
 
         {/* ── Conversation list ── */}
         <div className={styles.convPanel}>

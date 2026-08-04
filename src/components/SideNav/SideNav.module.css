@@ -1,0 +1,158 @@
+/* ── Fold Health SideNav ──
+ * Shared second-level navigation rail (Population worklists, Messages/Calls
+ * comm panels, Analytics report pages, Settings menu). One visual system:
+ * neutral-0 rail with a right hairline, sectioned 14px rows, and a single
+ * sliding indicator that carries the active background + left accent.
+ */
+
+.nav {
+  flex-shrink: 0;
+  background: var(--neutral-0);
+  border-right: 0.5px solid var(--neutral-150);
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  padding-bottom: 16px;
+}
+
+.nav::-webkit-scrollbar { width: 4px; }
+.nav::-webkit-scrollbar-thumb { background: var(--neutral-150); border-radius: 4px; }
+
+/* Optional slot above the sections — e.g. a full-width "Create New" Button. */
+.header {
+  padding: 12px 12px 4px;
+  position: relative;
+  z-index: 1;
+}
+
+.section { display: contents; }
+
+/* Section labels. Title-case by default in JSX; the uppercase variant is a
+   modifier so comm panels / analytics keep their small-caps look. */
+.sectionLabel {
+  padding: 16px 16px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  white-space: nowrap;
+  position: relative;
+  z-index: 1;
+}
+
+.sectionLabelUppercase {
+  padding: 8px 16px 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Sliding highlight for the active row — one element translated to the
+   active item (measured in JS). Carries the background + left accent so the
+   rows themselves never change padding and labels never shift. */
+.activeIndicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background: var(--primary-50);
+  border-left: 3px solid var(--primary-300);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.activeIndicatorAnimated {
+  transition:
+    transform 280ms cubic-bezier(0.32, 0.72, 0, 1),
+    height 280ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 160ms ease-out;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--neutral-400);
+  cursor: pointer;
+  transition: background .1s, color .15s;
+  white-space: nowrap;
+  position: relative;
+  z-index: 1;
+  user-select: none;
+}
+
+.item:hover:not(.active) { background: var(--neutral-50); }
+
+.item.active {
+  color: var(--primary-300);
+  font-weight: 500;
+}
+
+.item.locked { opacity: 0.45; }
+
+.itemIcon { display: inline-flex; flex-shrink: 0; }
+
+.itemLabel {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.count {
+  font-size: 11px;
+  color: var(--neutral-200);
+  background: var(--neutral-50);
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+
+.item.active .count {
+  background: var(--primary-100);
+  color: var(--primary-300);
+  border-color: color-mix(in srgb, var(--primary-300) 20%, transparent);
+}
+
+/* Row being dragged — lift above siblings so the drop position reads
+   clearly. dnd-kit moves the element via transform. */
+.item.dragging {
+  opacity: 0.85;
+  background: var(--neutral-0);
+  box-shadow: var(--shadow-card);
+  z-index: 2;
+}
+
+/* Loading skeleton rows (Calls waits on calls_config). */
+.skeletonItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+}
+
+.skeletonIcon {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: var(--neutral-100);
+  flex-shrink: 0;
+  animation: sideNavPulse 1.4s ease-in-out infinite;
+}
+
+.skeletonLabel {
+  height: 12px;
+  width: 60%;
+  border-radius: 4px;
+  background: var(--neutral-100);
+  animation: sideNavPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes sideNavPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}
