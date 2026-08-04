@@ -5,6 +5,7 @@ import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { useAppStore } from '../../store/useAppStore';
+import { formatFoldId, handleFoldIdClick } from '../../lib/foldId';
 import { AWV_STATUS, RISK_COLOR } from './data/mock';
 import styles from './AwvWorklistRow.module.css';
 
@@ -44,7 +45,15 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
                 ({member.g}•{member.age})
               </span>
             </button>
-            <span className={styles.memberId}>{member.memberId} • EN</span>
+            <span className={styles.memberId}>
+              <span
+                className={styles.foldId}
+                title="Click to copy"
+                onClick={handleFoldIdClick(member.memberId, showToast)}
+              >
+                {formatFoldId(member.memberId)}
+              </span>{' '}• EN
+            </span>
           </div>
         </div>
       </td>

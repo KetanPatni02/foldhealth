@@ -44,6 +44,8 @@
   font: 400 11px/1.4 'Inter', sans-serif;
   color: var(--neutral-300);
 }
+.foldId { cursor: pointer; transition: color .12s; }
+.foldId:hover { color: var(--primary-300); text-decoration: underline; }
 
 .pill {
   display: inline-flex;

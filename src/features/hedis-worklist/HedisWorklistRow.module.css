@@ -59,6 +59,8 @@
 .patientNameLink:hover { color: var(--primary-300); text-decoration: underline; }
 .patientDemo { font-size: 13px; font-weight: 400; color: var(--neutral-300); }
 .patientMeta { font-size: 13px; color: var(--neutral-200); margin-top: 3px; }
+.foldId { cursor: pointer; transition: color .12s; }
+.foldId:hover { color: var(--primary-300); text-decoration: underline; }
 
 /* Language badge — inline plain-text link inside .patientMeta, matches
    src/features/toc-worklist (WorklistRow.module.css). Tooltip renders

@@ -10,6 +10,7 @@ import { ScheduleDrawer } from '../ScheduleDrawer/ScheduleDrawer';
 import { ThemePicker } from '../ThemePicker/ThemePicker';
 import { NotificationsPopover } from '../NotificationsPopover/NotificationsPopover';
 import { useAppStore } from '../../store/useAppStore';
+import { formatFoldId, matchesFoldId } from '../../lib/foldId';
 import { supabase } from '../../lib/supabase';
 import styles from './TopBar.module.css';
 
@@ -316,7 +317,8 @@ export function TopBar() {
         const q = searchQuery.toLowerCase().trim();
         return p.name?.toLowerCase().includes(q) ||
           p.memberId?.toLowerCase().includes(q) ||
-          p.initials?.toLowerCase().includes(q);
+          p.initials?.toLowerCase().includes(q) ||
+          matchesFoldId(p.memberId, q);
       }).slice(0, 8)
     : [];
   const showResults = searchFocused && searchResults.length > 0;
@@ -422,7 +424,7 @@ export function TopBar() {
                   <div className={styles.searchResultInfo}>
                     <div className={styles.searchResultName}>{p.name}</div>
                     <div className={styles.searchResultMeta}>
-                      {p.gender === 'M' ? 'Male' : p.gender === 'F' ? 'Female' : p.gender} • {p.memberId || '—'}
+                      {p.gender === 'M' ? 'Male' : p.gender === 'F' ? 'Female' : p.gender} • {formatFoldId(p.memberId)}
                     </div>
                   </div>
                 </button>

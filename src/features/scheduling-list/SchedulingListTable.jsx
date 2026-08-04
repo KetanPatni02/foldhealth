@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { useAppStore } from '../../store/useAppStore';
+import { matchesFoldId } from '../../lib/foldId';
 import { WorklistRow } from '../toc-worklist/WorklistRow';
 import { BulkBar } from '../../components/BulkBar/BulkBar';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
@@ -145,7 +146,8 @@ export function SchedulingListTable() {
         p.memberId?.toLowerCase().includes(q) ||
         p.initials?.toLowerCase().includes(q) ||
         p.provider?.toLowerCase().includes(q) ||
-        p.location?.toLowerCase().includes(q)
+        p.location?.toLowerCase().includes(q) ||
+        matchesFoldId(p.memberId, q)
       );
     }
 

@@ -200,7 +200,10 @@ function persistHccMemberInsert(m) {
   if (!m?.id) return;
   const dbRow = {
     id: m.id,
-    member_id: m.memberId || null,
+    // id and member_id are the same Fold ID now (unified identity scheme —
+    // see supabase/patient_id_unification_migration.sql), not the source
+    // patient's old payer id.
+    member_id: m.id,
     name: m.name,
     initials: m.in,
     gender: m.g,
@@ -4651,11 +4654,14 @@ export const useAppStore = create((set, get) => ({
     const source = s0.hccMembers.find(m => m.id === sourceMemberId);
     if (!source) return null;
     // Duplicate the row with a fresh id + fresh workflow state. Keep the
-    // patient-identity fields (name/memberId/initials/etc.) so shared ICD
-    // mock data + team routing keep working.
-    const newId = (typeof crypto !== 'undefined' && crypto.randomUUID)
-      ? crypto.randomUUID()
-      : `hcc-new-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+    // patient-identity fields (name/initials/etc.) so shared ICD mock data
+    // + team routing keep working. id/memberId are now the same Fold-ID
+    // space as every other worklist row (see
+    // supabase/patient_id_unification_migration.sql) — millisecond
+    // timestamp keeps this synchronous (no DB round-trip to mint a
+    // sequence value) while staying a plain, searchable number and, in
+    // practice, never colliding with another spawn in the same session.
+    const newId = String(Date.now());
     const today = new Date();
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dd = String(today.getDate()).padStart(2, '0');
@@ -4666,6 +4672,7 @@ export const useAppStore = create((set, get) => ({
     const newRow = {
       ...source,
       id: newId,
+      memberId: newId,
       date: todayMdy,
       createdAt: today.toISOString(),
       dos: dos,

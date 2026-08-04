@@ -91,6 +91,11 @@
   color: var(--neutral-200);
   margin-top: 3px;
 }
+.foldId {
+  cursor: pointer;
+  transition: color .12s;
+}
+.foldId:hover { color: var(--primary-300); text-decoration: underline; }
 /* Plain text-link badge — sits inside .patientMeta. Grey by default, picks
    up the primary-300 underline on hover. Tooltip wrapper stays unchanged. */
 .langBadge {

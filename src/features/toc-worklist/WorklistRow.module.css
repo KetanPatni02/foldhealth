@@ -49,6 +49,15 @@
 .patientDemo { font-size: 13px; font-weight: 400; color: var(--neutral-300); }
 .patientMeta { font-size: 13px; color: var(--neutral-200); margin-top: 3px; }
 
+/* Fold ID — click to copy. Shared by every worklist row that imports this
+   module for .patientMeta (TOC/HCC/HCC-archived/CCM/SNP/HEDIS/APCM/Queue/
+   AllPatients all reuse this file rather than duplicating the rule). */
+.foldId {
+  cursor: pointer;
+  transition: color .12s;
+}
+.foldId:hover { color: var(--primary-300); text-decoration: underline; }
+
 /* Plain text-link badge — sits inside .patientMeta. Grey by default, picks
    up the primary-300 underline on hover. Tooltip styles below stay unchanged
    and continue to render on hover via the existing :hover .langTooltip rule. */

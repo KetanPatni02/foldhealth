@@ -8,6 +8,7 @@ import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { buildPatientRowMenuItems } from '../../components/MenuPopover/patientRowMenuItems';
 import { useAppStore } from '../../store/useAppStore';
+import { formatFoldId, handleFoldIdClick } from '../../lib/foldId';
 import styles from './SnpWorklistRow.module.css';
 
 // SNP Program Sub Status → shared Badge variant. Each value maps onto an
@@ -214,7 +215,13 @@ export function SnpWorklistRow({ member, isSelected, onSelect }) {
               <span className={styles.patientDemo}>({m.gender}•{m.age})</span>
             </div>
             <div className={styles.patientMeta}>
-              {m.memberId} •{' '}
+              <span
+                className={styles.foldId}
+                title="Click to copy"
+                onClick={handleFoldIdClick(m.memberId, showToast)}
+              >
+                {formatFoldId(m.memberId)}
+              </span>{' '}•{' '}
               <button type="button" className={styles.langBadge} onClick={e => e.stopPropagation()}>
                 {(m.language || 'en').toUpperCase()}
                 <span className={styles.langTooltip}>Preferred Language: {LANG_MAP[m.language] || 'English'}</span>

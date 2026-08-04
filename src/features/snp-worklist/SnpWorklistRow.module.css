@@ -49,6 +49,8 @@
 .patientNameLink:hover { color: var(--primary-300); text-decoration: underline; }
 .patientDemo { font-size: 13px; font-weight: 400; color: var(--neutral-300); }
 .patientMeta { font-size: 13px; color: var(--neutral-200); margin-top: 3px; }
+.foldId { cursor: pointer; transition: color .12s; }
+.foldId:hover { color: var(--primary-300); text-decoration: underline; }
 .langBadge {
   display: inline-flex; align-items: center; background: transparent;
   color: var(--neutral-300); border: none; padding: 0; font-size: 13px;

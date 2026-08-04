@@ -9,6 +9,7 @@ import { OutreachPopover } from '../../components/OutreachPopover/OutreachPopove
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { buildPatientRowMenuItems } from '../../components/MenuPopover/patientRowMenuItems';
 import { useAppStore } from '../../store/useAppStore';
+import { formatFoldId, handleFoldIdClick } from '../../lib/foldId';
 import styles from './WorklistRow.module.css';
 
 const LANG_MAP = { en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese', ko: 'Korean', vi: 'Vietnamese', hi: 'Hindi', pa: 'Punjabi' };
@@ -174,7 +175,13 @@ export function WorklistRow({ patient, isSelected, onSelect }) {
             <div>
               <div className={styles.patientName}><button className={styles.patientNameLink} onClick={e => { e.stopPropagation(); useAppStore.getState().openQuickView({ id: p.id, name: p.name, initials: p.initials, gender: p.gender, age: p.age, memberId: p.memberId, language: p.language, lace: p.lace }); }}>{p.name}</button> <span className={styles.patientDemo}>({p.gender}•{p.age})</span></div>
               <div className={styles.patientMeta}>
-                {p.memberId} •{' '}
+                <span
+                  className={styles.foldId}
+                  title="Click to copy"
+                  onClick={handleFoldIdClick(p.memberId, showToast)}
+                >
+                  {formatFoldId(p.memberId)}
+                </span>{' '}•{' '}
                 <button
                   type="button"
                   className={styles.langBadge}
