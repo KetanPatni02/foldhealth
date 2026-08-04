@@ -1,0 +1,192 @@
+/* WorklistRow — canonical base classes for every worklist row (TOC, AWV,
+   HCC, CCM, HEDIS, SNP, All Patients, APCM Billing, Queue).
+ *
+ * Row modules `composes:` from this file so the whole app's worklists
+ * share one visual system: row divider, hover tint, sticky-column
+ * backgrounds, cell padding + typography, the patient/member cell layout,
+ * the outreach status cell, and the actions divider.
+ *
+ * Feature-specific styles (status pills, program badges, task badges, etc.)
+ * stay in each feature's own row module — this file only owns the shell.
+ *
+ * DO NOT change tokens without design review — TOC / AWV / HCC read
+ * identically today because they all inherit from these values. */
+
+/* ── Row + sticky wrappers ── */
+
+.row {
+  border-bottom: 1px solid var(--neutral-150);
+  transition: background .1s;
+}
+.row:hover { background: var(--primary-25); }
+.row:hover .stickyRight { background: var(--primary-25); }
+.row:hover .stickyLeft { background: var(--primary-25) !important; }
+
+/* Optional: features whose row-click opens a workflow (TOC) compose
+   this on top of .row. Non-clickable rows (AWV) skip it. */
+.rowClickable { cursor: pointer; }
+
+.rowSelected { background: var(--primary-50); }
+.rowSelected .stickyLeft,
+.rowSelected .stickyRight { background: var(--primary-50); }
+.rowSelected:hover,
+.rowSelected:hover .stickyLeft,
+.rowSelected:hover .stickyRight { background: var(--primary-100) !important; }
+
+.stickyLeft {
+  position: sticky;
+  background: var(--neutral-0);
+  z-index: 3;
+}
+
+.stickyRight {
+  position: sticky;
+  right: 0;
+  background: var(--neutral-0);
+  border-left: 1px solid var(--neutral-150);
+  box-shadow: var(--shadow-card);
+  z-index: 3;
+}
+
+/* ── Cell base ── */
+
+.td {
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-400);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.checkTd {
+  padding: 8px 10px;
+  vertical-align: middle;
+}
+
+.membersTd {
+  padding: 8px 12px;
+  border-right: 1px solid var(--neutral-150);
+  vertical-align: middle;
+}
+
+/* ── Patient / member cell ── */
+
+.patientCell { display: flex; align-items: center; gap: 12px; }
+.patientName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  white-space: nowrap;
+}
+.patientNameLink {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  font-weight: 500;
+}
+.patientNameLink:hover {
+  color: var(--primary-300);
+  text-decoration: underline;
+}
+.patientDemo { font-size: 13px; font-weight: 400; color: var(--neutral-300); }
+.patientMeta { font-size: 13px; color: var(--neutral-200); margin-top: 3px; }
+
+/* FoldId (click to copy) — reused by every row. */
+.foldId {
+  cursor: pointer;
+  transition: color .12s;
+}
+.foldId:hover {
+  color: var(--primary-300);
+  text-decoration: underline;
+}
+
+/* Language badge — plain text link with hover tooltip. Tooltip is opt-in
+   markup (feature emits a nested <span class={langTooltip}>…</span>). */
+.langBadge {
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  color: var(--neutral-300);
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: uppercase;
+  position: relative;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.12s;
+}
+.langBadge:hover {
+  color: var(--primary-300);
+  text-decoration: underline;
+  text-decoration-color: var(--primary-300);
+  text-underline-offset: 2px;
+}
+.langBadge:focus-visible {
+  outline: 2px solid var(--primary-300);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.langTooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 6px 10px;
+  background: var(--neutral-500);
+  color: var(--neutral-0);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 400;
+  z-index: 100;
+  pointer-events: none;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.langTooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--neutral-500);
+}
+.langBadge:hover .langTooltip { display: block; }
+
+/* ── Outreach status cell (used by TOC + AWV) ── */
+
+.outreachWl { display: flex; flex-direction: column; gap: 4px; }
+.outreachWlMain { display: flex; align-items: center; gap: 6px; }
+.outreachWlText { font-size: 13px; color: var(--neutral-400); }
+.outreachWlDate { font-size: 12px; color: var(--status-success); font-weight: 500; }
+.outreachWlFailed { font-size: 13px; color: var(--status-error); font-weight: 500; }
+.outreachWlNone { font-size: 13px; color: var(--neutral-200); }
+.dotsRow { display: flex; align-items: center; gap: 4px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.success { background: var(--status-success); }
+.failed  { background: var(--secondary-300); }
+.pending { background: var(--neutral-150); }
+
+/* ── Actions cell — L-size buttons separated by 1px × 16px dividers ── */
+
+.actionsCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.actionDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}

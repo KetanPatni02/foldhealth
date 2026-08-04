@@ -1,25 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { Icon } from '../../components/Icon/Icon';
-import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { WorklistShell } from '../../components/WorklistShell/WorklistShell';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
-import { BulkBar } from '../../components/BulkBar/BulkBar';
-import { Pagination } from '../../components/Pagination/Pagination';
-// Canonical table primitives — same as HCC + TOC. Keeps sortable column
-// behavior, sort indicators, and the empty-state semantics identical
-// across all three worklists.
-import { useTableSort } from '../../components/SortableHeader/useTableSort';
-import { SortableHeader } from '../../components/SortableHeader/SortableHeader';
 import { FilterBar } from '../../components/FilterBar/FilterBar';
-import { InlineEditable } from '../../components/InlineEditable/InlineEditable';
+import { useTableSort } from '../../components/SortableHeader/useTableSort';
 import { AwvWorklistRow } from './AwvWorklistRow';
-import { AWV_COLUMNS, AWV_STATUS, RISK_COLOR } from './data/mock';
-import styles from './AwvWorklistTable.module.css';
+import { AWV_COLUMNS } from './data/mock';
 
-// Map our column key → the field on a member row the sort comparator
-// should read. Some columns (Outreach Log, Task) read numeric values that
-// share their column key; others (Risk Level, Decile) map straight across.
+// Map WorklistShell column key → the field on a member row the sort
+// comparator reads. Matches HCC / TOC conventions.
 const SORT_KEY_BY_COL = {
+  name:          'name',
   progSubStatus: 'progSubStatus',
   progName:      'progName',
   due:           'due',
@@ -34,22 +25,35 @@ const SORT_KEY_BY_COL = {
   task:          'task',
 };
 
-// Filter defs feeding the shared FilterBar. All seven chips are primary so
-// they show on wide viewports; auto-fit trims the tail into More Filters on
-// narrow screens (same UX as HCC / HEDIS / CCM).
+// FilterBar chip definitions — all seven are primary so they show on wide
+// viewports; auto-fit trims the tail into More Filters on narrow screens.
 const AWV_FILTER_DEFS = [
   { key: 'progSubStatus', label: 'Program Sub Status', primary: true },
   { key: 'progName',      label: 'Program Name',       primary: true },
   { key: 'ri',            label: 'Risk IQ',            primary: true },
   { key: 'dec',           label: 'Decile',             primary: true },
-  { key: 'ad',            label: 'Advillness',         primary: true },
+  { key: 'ad',            label: 'AdvIllness',         primary: true },
   { key: 'fr',            label: 'Frailty',            primary: true },
   { key: 'assignee',      label: 'Assignee',           primary: true },
 ];
 const AWV_MORE_FILTER_ITEMS = AWV_FILTER_DEFS.map(fd => ({ k: fd.key, label: fd.label, primary: fd.primary }));
 const AWV_PRIMARY_KEYS = AWV_FILTER_DEFS.filter(fd => fd.primary).map(fd => fd.key);
 
-
+// WorklistShell column defs — sticky checkbox + sticky Members col on the
+// left, all AWV data columns in the middle, sticky Actions on the right.
+// Same shape TOC uses (once it migrates); keeps the sticky-column scroll
+// behaviour consistent with HCC / TOC.
+const AWV_SHELL_COLUMNS = [
+  { key: 'select', showCheckbox: true, sticky: 'left', left: 0, width: 36 },
+  { key: 'name',   label: 'Members', sortKey: 'name', sticky: 'left', left: 36, width: 240 },
+  ...AWV_COLUMNS.map(c => ({
+    key: c.k,
+    label: c.lb,
+    sortKey: SORT_KEY_BY_COL[c.k],
+    width: c.w,
+  })),
+  { key: 'actions', label: 'Actions', sticky: 'right', width: 120 },
+];
 
 export function AwvWorklistTable() {
   const members = useAppStore(s => s.awvMembers);
@@ -67,12 +71,11 @@ export function AwvWorklistTable() {
   const saveSavedFilter = useAppStore(s => s.saveSavedFilter);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterBarOpen, setFilterBarOpen] = useState(true);
+  const [filterBarOpen, setFilterBarOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  const [listTitle, setListTitle] = useState('Annual Visit');
-  // `null` = uncustomised (FilterBar's autoFit picks visible chips from the
-  // primary set). Once the user opens More Filters and toggles anything, the
+  // `null` = uncustomised (FilterBar autoFit picks visible chips from the
+  // primary set). Once the user toggles anything from More Filters, the
   // custom set takes over.
   const [visibleKeys, setVisibleKeys] = useState(null);
   const toggleVisible = (k) => setVisibleKeys(prev => {
@@ -85,8 +88,6 @@ export function AwvWorklistTable() {
 
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
 
-  // Derive filter chip options from the loaded data so chips only show
-  // values that actually exist.
   const filterOptions = useMemo(() => ({
     progSubStatus: [...new Set(members.map(m => m.progSubStatus).filter(Boolean))],
     progName:      [...new Set(members.map(m => m.progName).filter(Boolean))],
@@ -113,8 +114,6 @@ export function AwvWorklistTable() {
     return rows;
   }, [members, searchQuery, filters]);
 
-  // Sort via the shared hook so behavior matches TOC/HCC (numeric vs
-  // string detection, null-handling, asc/desc cycle on click).
   const { sorted, sortKey, sortDir, requestSort } = useTableSort(filtered, 'due', 'asc');
 
   const pageRows = useMemo(() => {
@@ -122,133 +121,79 @@ export function AwvWorklistTable() {
     return sorted.slice(start, start + perPage);
   }, [sorted, page, perPage]);
 
-  const allOnPageSelected = pageRows.length > 0 && pageRows.every(r => selectedIds.includes(r.id));
-  const someOnPageSelected = pageRows.some(r => selectedIds.includes(r.id));
+  const handleSelectAll = (checked) => {
+    if (checked) selectAll([...new Set([...selectedIds, ...pageRows.map(r => r.id)])]);
+    else         selectAll(selectedIds.filter(id => !pageRows.find(r => r.id === id)));
+  };
+
+  const filterNode = (
+    <FilterBar
+      autoFit
+      multiSelect
+      leading={null}
+      filterDefs={AWV_FILTER_DEFS}
+      filters={filters}
+      onFilterChange={(k, vals) => setFilter(k, vals)}
+      onClearAll={clearFilters}
+      onSaveFilter={(name) => saveSavedFilter('AWV', name)}
+      getOptions={(def) => filterOptions[def.key] || []}
+      moreFilterItems={AWV_MORE_FILTER_ITEMS}
+      {...(visibleKeys !== null ? { visibleKeys } : {})}
+      onToggleVisible={toggleVisible}
+      onClearVisible={clearVisible}
+    />
+  );
+
+  const header = (
+    <SectionTitleBar
+      variant="titleOnly"
+      title="Annual Visit"
+      showSearch
+      searchPlaceholder="Search by name or member ID…"
+      searchValue={searchQuery}
+      onSearchChange={setSearchQuery}
+      showFilter
+      filterActive={filterBarOpen}
+      onFilter={() => setFilterBarOpen(v => !v)}
+      showHistory
+      onHistory={openHistoryDrawer}
+      showDownload
+      onDownload={() => showToast('Export — coming soon')}
+    />
+  );
 
   return (
-    <div className={styles.wrap}>
-      {/* Header (SectionTitleBar · variant 3 · titleWithToggle with empty toggleItems).
-          Title is a ReactNode — the rename-in-place InlineEditable stays exactly
-          where it was. Search / Filter / History / Export use SectionTitleBar
-          built-ins so this worklist reads with the same chrome as HCC / HEDIS. */}
-      <SectionTitleBar
-        variant="titleWithToggle"
-        title={(
-          <InlineEditable
-            value={listTitle}
-            onCommit={setListTitle}
-            size="L"
-            maxLength={60}
-            placeholder="Worklist"
-            title="Rename this list"
-          />
-        )}
-        toggleItems={[]}
-        showSearch
-        searchPlaceholder="Search by name or member ID…"
-        searchValue={searchQuery}
-        onSearchChange={setSearchQuery}
-        showFilter
-        filterActive={filterBarOpen}
-        onFilter={() => setFilterBarOpen(v => !v)}
-        showHistory
-        onHistory={openHistoryDrawer}
-        showDownload
-        onDownload={() => showToast('Export — coming soon')}
-      />
-
-      {/* Filter chip bar — delegates its shell (chip row, More Filters
-          trigger, MoreFiltersPopover, tail cluster) + auto-fit-to-one-line
-          to the shared <FilterBar />. Matches HCC / HEDIS / CCM. */}
-      {filterBarOpen && (
-        <FilterBar
-          autoFit
-          multiSelect
-          leading={null}
-          filterDefs={AWV_FILTER_DEFS}
-          filters={filters}
-          onFilterChange={(k, vals) => setFilter(k, vals)}
-          onClearAll={clearFilters}
-          onSaveFilter={(name) => saveSavedFilter('AWV', name)}
-          getOptions={(def) => filterOptions[def.key] || []}
-          moreFilterItems={AWV_MORE_FILTER_ITEMS}
-          {...(visibleKeys !== null ? { visibleKeys } : {})}
-          onToggleVisible={toggleVisible}
-          onClearVisible={clearVisible}
+    <WorklistShell
+      header={header}
+      showFilters={filterBarOpen}
+      filters={filterNode}
+      columns={AWV_SHELL_COLUMNS}
+      sortKey={sortKey}
+      sortDir={sortDir}
+      onSort={requestSort}
+      rows={pageRows}
+      renderRow={(m) => (
+        <AwvWorklistRow
+          key={m.id}
+          member={m}
+          selected={selectedIds.includes(m.id)}
+          onToggle={() => selectMember(m.id)}
+          onView={() => showToast(`Program details for ${m.name} — coming soon`)}
+          onCall={() => showToast(`Calling ${m.name} — coming soon`)}
+          showToast={showToast}
         />
       )}
-
-      {/* Table */}
-      <div className={styles.tableScroll}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th className={styles.thCheck} style={{ position: 'sticky', top: 0, left: 0, zIndex: 4 }}>
-                <Checkbox
-                  checked={allOnPageSelected}
-                  onCheckedChange={(checked) => {
-                    if (checked) selectAll([...new Set([...selectedIds, ...pageRows.map(r => r.id)])]);
-                    else          selectAll(selectedIds.filter(id => !pageRows.find(r => r.id === id)));
-                  }}
-                  aria-label="Select all on this page"
-                />
-              </th>
-              <SortableHeader
-                label="Members"
-                sortKey="name"
-                currentKey={sortKey}
-                currentDir={sortDir}
-                onSort={requestSort}
-                className={styles.thMember}
-                style={{ position: 'sticky', top: 0, left: 36, zIndex: 4 }}
-              />
-              {AWV_COLUMNS.map(c => (
-                <SortableHeader
-                  key={c.k}
-                  label={c.lb}
-                  sortKey={SORT_KEY_BY_COL[c.k]}
-                  currentKey={sortKey}
-                  currentDir={sortDir}
-                  onSort={requestSort}
-                  style={{ minWidth: c.w }}
-                />
-              ))}
-              <th className={styles.thActions} style={{ position: 'sticky', top: 0, right: 0, zIndex: 3 }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && pageRows.length === 0 ? (
-              <tr><td colSpan={AWV_COLUMNS.length + 3} className={styles.empty}>Loading…</td></tr>
-            ) : pageRows.length === 0 ? (
-              <tr><td colSpan={AWV_COLUMNS.length + 3} className={styles.empty}>No members match the current filters.</td></tr>
-            ) : pageRows.map(m => (
-              <AwvWorklistRow
-                key={m.id}
-                member={m}
-                selected={selectedIds.includes(m.id)}
-                onToggle={() => selectMember(m.id)}
-                onView={() => showToast(`Program details for ${m.name} — coming soon`)}
-                onCall={() => showToast(`Calling ${m.name} — coming soon`)}
-                showToast={showToast}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <BulkBar
-        selectedIds={selectedIds}
-        onClear={clearSelected}
-        onChangeAssignee={() => showToast('Bulk Change Assignee — coming soon')}
-      />
-
-      <Pagination
-        totalItems={filtered.length}
-        currentPage={page}
-        perPage={perPage}
-        onPageChange={setPage}
-        onPerPageChange={(p) => { setPerPage(p); setPage(1); }}
-      />
-    </div>
+      loading={loading && pageRows.length === 0}
+      emptyState="No members match the current filters."
+      selectedIds={selectedIds}
+      onSelectAll={handleSelectAll}
+      onClearSelection={clearSelected}
+      page={page}
+      perPage={perPage}
+      totalItems={filtered.length}
+      onPageChange={setPage}
+      onPageSizeChange={(p) => { setPerPage(p); setPage(1); }}
+      minTableWidth={1900}
+    />
   );
 }

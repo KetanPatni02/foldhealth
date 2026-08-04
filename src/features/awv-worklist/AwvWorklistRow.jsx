@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
@@ -9,11 +9,18 @@ import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import { AWV_STATUS, RISK_COLOR } from './data/mock';
 import styles from './AwvWorklistRow.module.css';
 
+const LANG_MAP = {
+  en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese',
+  ko: 'Korean', vi: 'Vietnamese', hi: 'Hindi', pa: 'Punjabi',
+};
+
 /**
- * Single AWV worklist row. Mirrors HccWorklistRow's column ordering but
- * with AWV-specific cells: program-status pill, due-date chip, outreach
- * log count, NP appointment date, last AWV, decile/advillness/frailty
- * vitals, risk-level pill, task count, and the Actions trio.
+ * Single AWV worklist row. Row-level styling comes from
+ * AwvWorklistRow.module.css, which mirrors TOC's WorklistRow.module.css
+ * so both worklists read as the same visual system (row divider, cell
+ * padding, sticky column backgrounds, L-size action buttons with
+ * dividers). AWV-specific cells (program-status pill, due-date chip,
+ * task badge, assignee assign-button) sit on top of that shared base.
  */
 export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, showToast }) {
   const updateAwvMemberStatus = useAppStore(s => s.updateAwvMemberStatus);
@@ -21,10 +28,12 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
 
   const statusCfg = AWV_STATUS[member.progSubStatus] || AWV_STATUS.New;
   const riskCfg = RISK_COLOR[member.ri] || RISK_COLOR.Low;
+  const language = member.language || 'en';
 
   return (
     <tr className={[styles.row, selected ? styles.rowSelected : ''].filter(Boolean).join(' ')}>
-      <td className={styles.tdCheck} style={{ position: 'sticky', left: 0, zIndex: 1, background: 'inherit' }}>
+      {/* Sticky-left checkbox */}
+      <td className={`${styles.checkTd} ${styles.stickyLeft}`} style={{ left: 0 }}>
         <Checkbox
           checked={selected}
           onCheckedChange={onToggle}
@@ -32,28 +41,38 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
         />
       </td>
 
-      {/* Member — sticky-left so it stays visible during horizontal scroll.
-          background:inherit pulls the row's bg so scrolled content
-          doesn't bleed through during scroll. */}
-      <td className={styles.tdMember} style={{ position: 'sticky', left: 36, zIndex: 1, background: 'inherit', borderRight: '0.5px solid var(--neutral-150)' }}>
-        <div className={styles.memberCell}>
+      {/* Sticky-left Members cell — mirrors TOC's DOM structure exactly */}
+      <td className={`${styles.membersTd} ${styles.stickyLeft}`} style={{ left: 36 }}>
+        <div className={styles.patientCell}>
           <Avatar variant="patient" initials={member.in} />
-          <div className={styles.memberText}>
-            <button type="button" className={styles.memberName} onClick={onView}>
-              {member.name}
-              <span className={styles.memberMeta}>
-                ({member.g}•{member.age})
-              </span>
-            </button>
-            <span className={styles.memberId}>
-              <FoldIdTag id={member.memberId} className={styles.foldId} showToast={showToast} />{' '}• EN
-            </span>
+          <div>
+            <div className={styles.patientName}>
+              <button
+                type="button"
+                className={styles.patientNameLink}
+                onClick={onView}
+              >
+                {member.name}
+              </button>{' '}
+              <span className={styles.patientDemo}>({member.g}•{member.age})</span>
+            </div>
+            <div className={styles.patientMeta}>
+              <FoldIdTag id={member.memberId} className={styles.foldId} showToast={showToast} />{' '}•{' '}
+              <button
+                type="button"
+                className={styles.langBadge}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {language.toUpperCase()}
+                <span className={styles.langTooltip}>Preferred Language: {LANG_MAP[language] || 'English'}</span>
+              </button>
+            </div>
           </div>
         </div>
       </td>
 
-      {/* Program Sub Status */}
-      <td>
+      {/* Program Sub Status — clickable pill w/ dropdown */}
+      <td className={styles.td}>
         <button
           type="button"
           className={styles.pill}
@@ -62,8 +81,6 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
             background: statusCfg.bg,
             borderColor: statusCfg.color,
             cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
             gap: 4,
           }}
           onClick={(e) => {
@@ -74,7 +91,6 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
           {member.progSubStatus}
           <Icon name="solar:alt-arrow-down-linear" size={12} color={statusCfg.color} />
         </button>
-
         {statusAnchor && (
           <MenuPopover
             anchorRef={{ current: statusAnchor }}
@@ -91,10 +107,10 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
       </td>
 
       {/* Program Name */}
-      <td>{member.progName}</td>
+      <td className={styles.td}>{member.progName}</td>
 
-      {/* Due Date */}
-      <td>
+      {/* Due Date — date on top, colored label below */}
+      <td className={styles.td}>
         <div className={styles.dueCell}>
           <div className={styles.dueDate}>{member.due}</div>
           <div className={styles.dueLabel} style={{ color: member.dueCol }}>
@@ -105,12 +121,12 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
       </td>
 
       {/* Outreach */}
-      <td>
+      <td className={styles.td}>
         <AwvOutreachCell member={member} />
       </td>
 
       {/* Assignee */}
-      <td>
+      <td className={styles.td}>
         {member.assignee ? (
           <div className={styles.assigneeCell}>
             <Avatar variant="assignee" initials={member.assigneeIn} />
@@ -128,19 +144,19 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
       </td>
 
       {/* NP Appointment */}
-      <td className={styles.tdDate}>{member.npAppt || '—'}</td>
+      <td className={styles.td}>{member.npAppt || '—'}</td>
 
       {/* Last AWV */}
-      <td className={styles.tdDate}>{member.lastAwv || '—'}</td>
+      <td className={styles.td}>{member.lastAwv || '—'}</td>
 
-      {/* Advillness */}
-      <td className={styles.tdMetric}>{member.ad}</td>
+      {/* AdvIllness */}
+      <td className={styles.td} style={{ textAlign: 'center' }}>{member.ad}</td>
 
       {/* Frailty */}
-      <td className={styles.tdMetric}>{member.fr}</td>
+      <td className={styles.td} style={{ textAlign: 'center' }}>{member.fr}</td>
 
       {/* Risk IQ */}
-      <td>
+      <td className={styles.td}>
         <span
           className={styles.pill}
           style={{ color: riskCfg.color, background: riskCfg.bg, borderColor: riskCfg.color }}
@@ -150,10 +166,10 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
       </td>
 
       {/* Decile */}
-      <td className={styles.tdMetric}>{member.dec}</td>
+      <td className={styles.td} style={{ textAlign: 'center' }}>{member.dec}</td>
 
       {/* Task */}
-      <td className={styles.tdMetric}>
+      <td className={styles.td} style={{ textAlign: 'center' }}>
         {member.task > 0 ? (
           <span className={styles.taskBadge}>{member.task}</span>
         ) : (
@@ -161,24 +177,26 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
         )}
       </td>
 
-      {/* Actions — sticky-right so the icon trio stays reachable. */}
-      <td className={styles.tdActions} style={{ position: 'sticky', right: 0, zIndex: 1, background: 'inherit', borderLeft: '0.5px solid var(--neutral-150)' }}>
-        <div className={styles.actionsRow}>
+      {/* Actions — sticky-right, L-size buttons with dividers, matches TOC */}
+      <td className={`${styles.td} ${styles.stickyRight}`}>
+        <div className={styles.actionsCell}>
           <ActionButton
-            icon="solar:eye-linear"
-            size="S"
+            icon="solar:document-text-linear"
+            size="L"
             tooltip="View Program"
             onClick={onView}
           />
+          <span className={styles.actionDivider} />
           <ActionButton
-            icon="solar:phone-calling-rounded-linear"
-            size="S"
+            icon="solar:phone-linear"
+            size="L"
             tooltip="Call"
             onClick={onCall}
           />
+          <span className={styles.actionDivider} />
           <ActionButton
             icon="solar:menu-dots-linear"
-            size="S"
+            size="L"
             tooltip="More"
             onClick={() => showToast(`More actions for ${member.name} — coming soon`)}
           />
@@ -188,10 +206,8 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
   );
 }
 
-// AwvOutreachCell — mirrors TOC's OutreachCell exactly: status icon +
-// label + date stacked, with a 3-dot history strip below. Dots come from
-// a small derivation since the AWV mock stores attempt-count instead of
-// per-attempt dot status (real backend would store the array).
+// AWV Outreach cell — status icon+label stacked over 3-dot history.
+// Ported from TOC's OutreachCell so both worklists render identical UI.
 function AwvOutreachCell({ member }) {
   const n = member.outreach || 0;
   const isEngaged = member.progSubStatus === 'Engaged' || member.progSubStatus === 'Engaged - Requires Follow Up';
@@ -199,8 +215,7 @@ function AwvOutreachCell({ member }) {
   const dots = (() => {
     if (n === 0) return ['pending', 'pending', 'pending'];
     if (isEngaged) return ['success', 'success', n >= 3 ? 'success' : 'pending'];
-    if (isUnableToReach)  return ['failed',  'failed',  n >= 3 ? 'failed'  : 'pending'];
-    // In-progress outreach — first attempts failed, latest still pending
+    if (isUnableToReach) return ['failed', 'failed', n >= 3 ? 'failed' : 'pending'];
     return [
       n >= 1 ? 'failed' : 'pending',
       n >= 2 ? 'failed' : 'pending',
@@ -208,7 +223,7 @@ function AwvOutreachCell({ member }) {
     ];
   })();
   const hasSuccess = dots.includes('success');
-  const hasFailed  = dots.includes('failed') && !hasSuccess;
+  const hasFailed = dots.includes('failed') && !hasSuccess;
   return (
     <div className={styles.outreachWl}>
       <div className={styles.outreachWlMain}>

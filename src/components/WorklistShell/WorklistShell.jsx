@@ -57,6 +57,13 @@ export function WorklistShell({
   searchValue,
   onSearchChange,
   searchPlaceholder = 'Search by member name…',
+  // Optional header override — when a caller passes their own header
+  // (e.g. <SectionTitleBar variant="titleOnly" …/>), that node renders
+  // in place of the built-in TabBar-style header. The shell's other
+  // built-in header props (title, onHistory, onExport, search*) are then
+  // ignored — the caller owns those handlers on its own header. Filter
+  // chip row + table + bulk bar + pagination stay unchanged.
+  header,
   showFilters,
   onToggleFilters,
   filters,
@@ -89,54 +96,58 @@ export function WorklistShell({
 
   return (
     <div className={styles.shell}>
-      {/* Header (mirrors src/layouts/TabBar): title as an active tab
-          on the left, right-side action icons with dividers. */}
-      <div className={styles.header}>
-        <div className={styles.left}>
-          <div className={`${styles.tabItem} ${styles.tabActive}`}>{title}</div>
-        </div>
-        <div className={styles.right}>
-          <div className={styles.searchWrap}>
-            {searchOpen ? (
-              <SearchBar
-                placeholder={searchPlaceholder}
-                value={searchValue}
-                onChange={(e) => onSearchChange?.(e.target.value)}
-                onClose={() => {
-                  setSearchOpen(false);
-                  onSearchChange?.('');
-                }}
-              />
-            ) : (
-              <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
+      {header ?? (
+        /* Default header (mirrors src/layouts/TabBar): title as an active
+           tab on the left, right-side action icons with dividers. Callers
+           can pass a `header` prop (e.g. <SectionTitleBar>) to replace
+           this entire block with their own chrome. */
+        <div className={styles.header}>
+          <div className={styles.left}>
+            <div className={`${styles.tabItem} ${styles.tabActive}`}>{title}</div>
+          </div>
+          <div className={styles.right}>
+            <div className={styles.searchWrap}>
+              {searchOpen ? (
+                <SearchBar
+                  placeholder={searchPlaceholder}
+                  value={searchValue}
+                  onChange={(e) => onSearchChange?.(e.target.value)}
+                  onClose={() => {
+                    setSearchOpen(false);
+                    onSearchChange?.('');
+                  }}
+                />
+              ) : (
+                <SearchIconButton title="Search" onClick={() => setSearchOpen(true)} />
+              )}
+            </div>
+            {onToggleFilters && (
+              <>
+                <span className={styles.iconDivider} />
+                <ActionButton
+                  icon="custom:filter"
+                  size="L"
+                  tooltip="Filter"
+                  className={showFilters ? styles.iconActive : ''}
+                  onClick={() => onToggleFilters(!showFilters)}
+                />
+              </>
+            )}
+            {onHistory && (
+              <>
+                <span className={styles.iconDivider} />
+                <ActionButton icon="solar:history-linear" size="L" tooltip="History" onClick={onHistory} />
+              </>
+            )}
+            {onExport && (
+              <>
+                <span className={styles.iconDivider} />
+                <ActionButton icon="solar:upload-minimalistic-linear" size="L" tooltip="Export" onClick={onExport} />
+              </>
             )}
           </div>
-          {onToggleFilters && (
-            <>
-              <span className={styles.iconDivider} />
-              <ActionButton
-                icon="custom:filter"
-                size="L"
-                tooltip="Filter"
-                className={showFilters ? styles.iconActive : ''}
-                onClick={() => onToggleFilters(!showFilters)}
-              />
-            </>
-          )}
-          {onHistory && (
-            <>
-              <span className={styles.iconDivider} />
-              <ActionButton icon="solar:history-linear" size="L" tooltip="History" onClick={onHistory} />
-            </>
-          )}
-          {onExport && (
-            <>
-              <span className={styles.iconDivider} />
-              <ActionButton icon="solar:upload-minimalistic-linear" size="L" tooltip="Export" onClick={onExport} />
-            </>
-          )}
         </div>
-      </div>
+      )}
 
       {/* Filter chip row — visible only when the caller toggles showFilters. */}
       {showFilters && filters && <div className={styles.filterBar}>{filters}</div>}
@@ -228,9 +239,9 @@ export function WorklistShell({
         <Pagination
           currentPage={page}
           totalItems={totalItems}
-          pageSize={perPage}
+          perPage={perPage}
           onPageChange={onPageChange}
-          onPageSizeChange={onPageSizeChange}
+          onPerPageChange={onPageSizeChange}
         />
       )}
     </div>
