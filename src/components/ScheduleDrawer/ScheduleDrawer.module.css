@@ -2,6 +2,16 @@
 
 .drawerBody { padding: 0 !important; }
 
+/* Vertical divider between the "Schedule" action button and the close
+   button — pairs with <Drawer noCloseDivider> so the close button doesn't
+   draw its own border. Standard 1px × 16px neutral-150. */
+.headerDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
 .content {
   padding: 16px 24px;
   display: flex;

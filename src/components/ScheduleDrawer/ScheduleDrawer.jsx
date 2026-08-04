@@ -369,10 +369,15 @@ export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointm
   // Use DB types, fall back to hardcoded
   const appointmentTypes = storeApptTypes.length > 0 ? storeApptTypes : FALLBACK_APPOINTMENT_TYPES;
 
-  // Ensure patients and appointment types are loaded
+  // Ensure patients and appointment types are loaded — only fetch when
+  // empty. Unconditionally calling fetchPatients() flips patientsLoading
+  // true in the store, which unmounts the worklist behind the drawer and
+  // shows its skeleton (looks like the worklist "reloads" every time the
+  // Schedule button is clicked). Skip when we already have the data.
   useEffect(() => {
-    if (fetchPatients) fetchPatients();
-    if (fetchAppointmentTypes) fetchAppointmentTypes();
+    if (fetchPatients && patients.length === 0) fetchPatients();
+    if (fetchAppointmentTypes && storeApptTypes.length === 0) fetchAppointmentTypes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Pre-fill patient when initialPatientId is provided
@@ -767,8 +772,11 @@ export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointm
   }
 
   return (
-    <Drawer title="Schedule Appointment" onClose={onClose} headerRight={
-      <Button variant="primary" size="L" disabled={!canSchedule} onClick={handleSchedule}>Schedule</Button>
+    <Drawer title="Schedule Appointment" onClose={onClose} noCloseDivider headerRight={
+      <>
+        <Button variant="primary" size="L" disabled={!canSchedule} onClick={handleSchedule}>Schedule</Button>
+        <span className={styles.headerDivider} />
+      </>
     } bodyClassName={styles.drawerBody}>
       <div className={styles.content}>
         {/* Patient Selection */}
