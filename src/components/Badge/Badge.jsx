@@ -1,11 +1,57 @@
 import { Icon } from '../Icon/Icon';
 import styles from './Badge.module.css';
 
-export function Badge({ variant, label, icon, trailingIcon, trailingIconElement, dot, className, style }) {
-  const variantClass = variant ? styles[variant.replace(/-/g, '_')] || styles[variant] || '' : '';
+/**
+ * Badge — small colored pill for status, category, count, or tag values.
+ *
+ * Canonical props (Figma "Fold Pixel 1.0" spec — Badge node 24:1678):
+ *   • tone — one of white | grey | ghost | primary | secondary | success |
+ *            warning | error | info | disabled. Drives the color palette.
+ *   • size — 'S' | 'M' | 'L' — matches Figma S=18px / M=22px / L=30px heights.
+ *   • hover — force the hover-state class (used by Storybook to demo the
+ *             hover appearance; real UX still uses CSS :hover).
+ *
+ * Legacy `variant` prop stays supported for backward compatibility — every
+ * existing worklist / feature variant (lace-*, toc-*, awv-*, status-*,
+ * outreach-*, ai-*, care-plan-*, compliance-*, dos-source-*, etc.) is still
+ * declared in Badge.module.css. New callers should prefer `tone` + `size`.
+ *
+ * Slot props:
+ *   • label — text content
+ *   • dot — leading colored dot
+ *   • icon — leading Solar icon name
+ *   • trailingIcon — trailing Solar icon name
+ *   • trailingIconElement — trailing custom node (wins over trailingIcon)
+ */
+export function Badge({
+  tone,
+  // No default — leaving `size` unset keeps existing callers rendering at
+  // the base `.badge` sizing (12px, 2px 6px padding, ≈18px height, which
+  // is basically Figma S). New callers who want the Figma sizing curve
+  // explicitly opt into 'S' / 'M' / 'L'.
+  size,
+  hover = false,
+  variant,
+  label,
+  icon,
+  trailingIcon,
+  trailingIconElement,
+  dot,
+  className,
+  style,
+}) {
+  const variantClass = variant
+    ? styles[variant.replace(/-/g, '_')] || styles[variant] || ''
+    : '';
+  const toneClass = tone ? styles[`tone-${tone}`] || styles[`tone${tone[0].toUpperCase()}${tone.slice(1)}`] || '' : '';
+  const sizeClass = size ? styles[`size${size}`] || '' : '';
+  const hoverClass = hover ? styles.hover : '';
+
   return (
     <span
-      className={[styles.badge, variantClass, className || ''].filter(Boolean).join(' ')}
+      className={[styles.badge, sizeClass, toneClass, variantClass, hoverClass, className || '']
+        .filter(Boolean)
+        .join(' ')}
       style={style}
     >
       {dot && <span className={styles.dot} />}
@@ -16,7 +62,3 @@ export function Badge({ variant, label, icon, trailingIcon, trailingIconElement,
     </span>
   );
 }
-
-// Convenience: map variant name to CSS class (handles hyphens → underscores issue)
-// CSS modules convert hyphens to camelCase
-// We keep both forms in the CSS so it works
