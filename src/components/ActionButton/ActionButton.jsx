@@ -21,6 +21,7 @@ import styles from './ActionButton.module.css';
  * @param {boolean}  [props.dot=false]                  – Show red status dot
  * @param {boolean}  [props.chevron=false]              – Show dropdown chevron
  * @param {boolean}  [props.chevronOpen=false]          – Rotate chevron when open
+ * @param {boolean}  [props.active=false]               – Toggle state (exposed as aria-pressed)
  * @param {string}   [props.className]                  – Extra class
  * @param {string}   [props.iconColor]                  – Override icon color
  */
@@ -35,6 +36,9 @@ export const ActionButton = forwardRef(function ActionButton({
   dot = false,
   chevron = false,
   chevronOpen = false,
+  // Destructured so a boolean `active` from callers never reaches the DOM
+  // via {...rest} (React warns on non-boolean attributes).
+  active = false,
   tooltipBelow = false,
   tooltipLeft = false,
   className,
@@ -65,6 +69,7 @@ export const ActionButton = forwardRef(function ActionButton({
       className={cls}
       disabled={state === 'disabled'}
       aria-label={tooltip}
+      aria-pressed={active || undefined}
       {...rest}
     >
       {children || <Icon name={icon} size={iconSize} color={resolvedColor} />}
