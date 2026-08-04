@@ -17,6 +17,19 @@
   max-width: 100%;
 }
 
+/* Hidden mirror — measures chip widths for the auto-fit calculation.
+   Rendered inside FilterBar itself when `autoFit` is on. */
+.measure {
+  position: absolute;
+  top: -9999px;
+  left: -9999px;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .chipWrap {
   position: relative;
 }

@@ -54,15 +54,17 @@ export function FilterChip({
   const [rect, setRect] = useState(null);
   const custom = typeof renderPopover === 'function';
   const active = custom ? !!activeProp : selected.length > 0;
-  const summary = custom
-    ? activeSummary
-    : (activeSummary != null ? activeSummary : summarize(selected));
+  const summary = activeSummary != null
+    ? { text: activeSummary }
+    : (custom ? { text: '' } : summarize(selected));
 
   const handleClear = (e) => {
     e.stopPropagation();
     if (custom) onClear?.();
     else onChange([]);
   };
+
+  const iconSize = size === 'S' ? 14 : 16;
 
   return (
     <>
@@ -75,18 +77,25 @@ export function FilterChip({
         {active ? (
           <>
             <span className={styles.divider} aria-hidden="true">:</span>
-            <span className={styles.chipValue}>{summary}</span>
+            <span className={styles.chipValue}>{summary.text}</span>
+            {summary.extra != null && (
+              <span className={styles.chipExtra}>+{summary.extra}</span>
+            )}
             <span
               className={styles.clearIcon}
               role="button"
               aria-label={`Clear ${label} filter`}
               onClick={handleClear}
             >
-              <Icon name="solar:close-circle-linear" size={12} color="var(--primary-300)" />
+              <svg width={iconSize} height={iconSize} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M12.495 4.49501C12.7683 4.22164 12.7683 3.77842 12.495 3.50506C12.2216 3.23169 11.7784 3.23169 11.505 3.50506L12 4.00003L12.495 4.49501ZM3.50506 11.505C3.23169 11.7784 3.23169 12.2216 3.50506 12.495C3.77843 12.7683 4.22164 12.7683 4.49501 12.495L4.00003 12L3.50506 11.505ZM4.49497 3.50503C4.22161 3.23166 3.77839 3.23166 3.50503 3.50503C3.23166 3.77839 3.23166 4.22161 3.50503 4.49497L4 4L4.49497 3.50503ZM11.505 12.4949C11.7784 12.7683 12.2216 12.7683 12.4949 12.4949C12.7683 12.2216 12.7683 11.7784 12.4949 11.505L12 12L11.505 12.4949ZM12 4.00003L11.505 3.50506L7.50504 7.50504L8.00002 8.00002L8.49499 8.49499L12.495 4.49501L12 4.00003ZM8.00002 8.00002L7.50504 7.50504L3.50506 11.505L4.00003 12L4.49501 12.495L8.49499 8.49499L8.00002 8.00002ZM4 4L3.50503 4.49497L7.50504 8.49499L8.00002 8.00002L8.49499 7.50504L4.49497 3.50503L4 4ZM8.00002 8.00002L7.50504 8.49499L11.505 12.4949L12 12L12.4949 11.505L8.49499 7.50504L8.00002 8.00002Z" fill="var(--primary-300)" />
+              </svg>
             </span>
           </>
         ) : (
-          <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--neutral-300)" />
+          <svg width={iconSize} height={iconSize} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M12 6L8.00001 10L4 6" stroke="var(--neutral-300)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         )}
       </button>
       {rect && (custom
@@ -116,5 +125,6 @@ export function FilterChip({
 }
 
 function summarize(vals) {
-  return vals.length > 2 ? `${vals[0]} +${vals.length - 1}` : vals.join(', ');
+  if (vals.length > 2) return { text: vals[0], extra: vals.length - 1 };
+  return { text: vals.join(', ') };
 }

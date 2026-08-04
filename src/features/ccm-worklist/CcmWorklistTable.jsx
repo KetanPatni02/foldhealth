@@ -3,6 +3,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
+import { FilterBar } from '../../components/FilterBar/FilterBar';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { BulkBar } from '../../components/BulkBar/BulkBar';
@@ -121,6 +122,29 @@ const BUCKET_FN = {
 
 const EMPTY_FILTERS = Object.fromEntries(FILTER_KEYS.map(f => [f.key, []]));
 
+// Chip definitions for the shared FilterBar. First 8 chips are `primary`
+// (rendered by default, on one line — the shared FilterBar's autoFit packer
+// hides overflow into More Filters); the rest are extended (hidden by
+// default, opt-in via More Filters).
+const CCM_PRIMARY_KEYS = new Set([
+  'dob', 'gender', 'language', 'utrFlag',
+  'utrAge', 'assignee', 'status', 'programDueDate',
+]);
+const CCM_FILTER_DEFS = [
+  ...FILTER_KEYS.filter(f => f.key !== 'unloggedUser').map(f => ({
+    ...f,
+    primary: CCM_PRIMARY_KEYS.has(f.key),
+  })),
+  { key: 'billableMins', label: 'Billable Mins', primary: false },
+  { key: 'unloggedMins', label: 'Unlogged Mins', primary: false },
+  { key: 'unloggedUser', label: 'Unlogged User', primary: false },
+];
+const CCM_MORE_FILTER_ITEMS = CCM_FILTER_DEFS.map(fd => ({
+  k: fd.key,
+  label: fd.label,
+  primary: fd.primary,
+}));
+
 function EmptySearch() {
   return (
     <div className={styles.emptySearch}>
@@ -143,10 +167,14 @@ export function CcmWorklistTable() {
   // toggles TOC's <FilterBar />.
   const searchQuery = useAppStore(s => s.searchQuery);
   const showFilterBar = useAppStore(s => s.showFilterBar);
+  const showToast = useAppStore(s => s.showToast);
 
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [billableFilter, setBillableFilter] = useState(EMPTY_TIME_FILTER);
   const [unloggedFilter, setUnloggedFilter] = useState(EMPTY_TIME_FILTER);
+  // `null` = default (FilterBar's autoFit packer picks visible chips); a
+  // populated array = user-customized set from the More Filters popover.
+  const [visibleKeys, setVisibleKeys] = useState(null);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
@@ -216,6 +244,10 @@ export function CcmWorklistTable() {
     setBillableFilter(EMPTY_TIME_FILTER);
     setUnloggedFilter(EMPTY_TIME_FILTER);
   };
+  const hasAnyActive =
+    Object.values(filters).some(v => v.length > 0) ||
+    isTimeFilterActive(billableFilter) ||
+    isTimeFilterActive(unloggedFilter);
 
   // Inline table header style mirrors src/features/toc-worklist/WorklistTable.jsx
   // so the two tables render with identical typography, padding, and sticky
@@ -250,61 +282,91 @@ export function CcmWorklistTable() {
           Billable Mins + Unlogged Mins slot in between memberStatus and
           unloggedUser to match the Figma order. */}
       {showFilterBar && (
-      <div className={styles.chipRow}>
-        {FILTER_KEYS.filter(f => f.key !== 'unloggedUser').map(f => (
-          <FilterChip
-            key={f.key}
-            label={f.label}
-            options={filterOptions[f.key]}
-            selected={filters[f.key]}
-            onChange={vals => setFilter(f.key, vals)}
-          />
-        ))}
-        <FilterChip
-          label="Billable Mins"
-          active={isTimeFilterActive(billableFilter)}
-          activeSummary={summarizeTimeFilter(billableFilter)}
-          onClear={() => setBillableFilter(EMPTY_TIME_FILTER)}
-          renderPopover={({ anchorRect, onClose }) => (
-            <TimeFilterPopover
-              anchorRect={anchorRect}
-              onClose={onClose}
-              label="Billable Mins"
-              thresholds={BILLABLE_THRESHOLDS}
-              userOptions={userOptions}
-              value={billableFilter}
-              onChange={setBillableFilter}
-            />
-          )}
+        <FilterBar
+          autoFit
+          leading={null}
+          filterDefs={CCM_FILTER_DEFS}
+          moreFilterItems={CCM_MORE_FILTER_ITEMS}
+          filters={{
+            ...filters,
+            // Mirror the two time-filter chips into FilterBar's `filters` bag
+            // so autoFit treats them as active (always visible) when set.
+            billableMins: isTimeFilterActive(billableFilter) ? ['active'] : [],
+            unloggedMins: isTimeFilterActive(unloggedFilter) ? ['active'] : [],
+          }}
+          multiSelect
+          onClearAll={clearFilters}
+          onSaveFilter={(name) => showToast(`Saved filter "${name}"`)}
+          hasActive={hasAnyActive}
+          visibleKeys={visibleKeys ?? undefined}
+          onToggleVisible={(k) => {
+            setVisibleKeys(prev => {
+              const seed = prev
+                ?? CCM_FILTER_DEFS.filter(fd => fd.primary).map(fd => fd.key);
+              const next = new Set(seed);
+              if (next.has(k)) next.delete(k); else next.add(k);
+              return [...next];
+            });
+          }}
+          onClearVisible={() => setVisibleKeys([])}
+          renderChip={(k /* , mirror */) => {
+            if (k === 'billableMins') {
+              return (
+                <FilterChip
+                  key={k}
+                  label="Billable Mins"
+                  active={isTimeFilterActive(billableFilter)}
+                  activeSummary={summarizeTimeFilter(billableFilter)}
+                  onClear={() => setBillableFilter(EMPTY_TIME_FILTER)}
+                  renderPopover={({ anchorRect, onClose }) => (
+                    <TimeFilterPopover
+                      anchorRect={anchorRect}
+                      onClose={onClose}
+                      label="Billable Mins"
+                      thresholds={BILLABLE_THRESHOLDS}
+                      userOptions={userOptions}
+                      value={billableFilter}
+                      onChange={setBillableFilter}
+                    />
+                  )}
+                />
+              );
+            }
+            if (k === 'unloggedMins') {
+              return (
+                <FilterChip
+                  key={k}
+                  label="Unlogged Mins"
+                  active={isTimeFilterActive(unloggedFilter)}
+                  activeSummary={summarizeTimeFilter(unloggedFilter)}
+                  onClear={() => setUnloggedFilter(EMPTY_TIME_FILTER)}
+                  renderPopover={({ anchorRect, onClose }) => (
+                    <TimeFilterPopover
+                      anchorRect={anchorRect}
+                      onClose={onClose}
+                      label="Unlogged Mins"
+                      thresholds={UNLOGGED_THRESHOLDS}
+                      userOptions={userOptions}
+                      value={unloggedFilter}
+                      onChange={setUnloggedFilter}
+                    />
+                  )}
+                />
+              );
+            }
+            const def = CCM_FILTER_DEFS.find(d => d.key === k);
+            if (!def) return null;
+            return (
+              <FilterChip
+                key={k}
+                label={def.label}
+                options={filterOptions[k] || []}
+                selected={filters[k] || []}
+                onChange={vals => setFilter(k, vals)}
+              />
+            );
+          }}
         />
-        <FilterChip
-          label="Unlogged Mins"
-          active={isTimeFilterActive(unloggedFilter)}
-          activeSummary={summarizeTimeFilter(unloggedFilter)}
-          onClear={() => setUnloggedFilter(EMPTY_TIME_FILTER)}
-          renderPopover={({ anchorRect, onClose }) => (
-            <TimeFilterPopover
-              anchorRect={anchorRect}
-              onClose={onClose}
-              label="Unlogged Mins"
-              thresholds={UNLOGGED_THRESHOLDS}
-              userOptions={userOptions}
-              value={unloggedFilter}
-              onChange={setUnloggedFilter}
-            />
-          )}
-        />
-        <FilterChip
-          label="Unlogged User"
-          options={filterOptions.unloggedUser}
-          selected={filters.unloggedUser}
-          onChange={vals => setFilter('unloggedUser', vals)}
-        />
-        <button className={styles.clearAll} onClick={clearFilters}>
-          <Icon name="solar:backspace-linear" size={14} color="var(--primary-300)" />
-          Clear All
-        </button>
-      </div>
       )}
 
       {/* Table body. Uses the same inline th styles + sticky columns as

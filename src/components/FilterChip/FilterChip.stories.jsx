@@ -40,6 +40,12 @@ export default {
       description: 'Use the RadioListPopover (single-select) instead of the checkbox popover.',
       table: { type: { summary: 'boolean' }, defaultValue: { summary: 'false' } },
     },
+    size: {
+      control: 'inline-radio',
+      options: ['M', 'S'],
+      description: 'Regular (32px, 14px font, 16px icons) or Small (28px, 12px font, 14px icons).',
+      table: { type: { summary: "'M' | 'S'" }, defaultValue: { summary: "'M'" } },
+    },
     onChange: {
       action: 'onChange',
       description: 'Fires with the new selected array whenever the user picks a value.',
@@ -64,7 +70,23 @@ export const Playground = {
     options: ['New', 'In Progress', 'Under Review', 'Closed'],
     selected: [],
     singleSelect: false,
+    size: 'M',
   },
+};
+
+export const Sizes = {
+  render: () => (
+    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <Row title="Regular (M) — 32px, 14px font, 16px icons">
+        <Wrapper label="Status" options={['New', 'In Progress', 'Under Review', 'Closed']} size="M" />
+        <Wrapper label="Status" options={['New', 'In Progress', 'Under Review', 'Closed']} selected={['New', 'In Progress', 'Under Review']} size="M" />
+      </Row>
+      <Row title="Small (S) — 28px, 12px font, 14px icons">
+        <Wrapper label="Status" options={['New', 'In Progress', 'Under Review', 'Closed']} size="S" />
+        <Wrapper label="Status" options={['New', 'In Progress', 'Under Review', 'Closed']} selected={['New', 'In Progress', 'Under Review']} size="S" />
+      </Row>
+    </div>
+  ),
 };
 
 function Row({ title, children }) {
