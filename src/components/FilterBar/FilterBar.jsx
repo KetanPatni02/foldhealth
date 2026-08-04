@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, useLayoutEffect } from 'react';
 import { Icon } from '../Icon/Icon';
+import { DownChevronIcon } from '../Icon/DownChevronIcon';
 import { FilterChip } from '../FilterChip/FilterChip';
 import { useAppStore } from '../../store/useAppStore';
 import { FilterNameDialog } from '../../features/hcc/FilterNameDialog';
@@ -435,9 +436,7 @@ export function FilterBar({
               onClick={moreRect ? closeMore : openMore}
             >
               More Filters
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M12 6L8.00001 10L4 6" stroke={moreRect ? 'var(--primary-300)' : 'var(--neutral-300)'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <DownChevronIcon color={moreRect ? 'var(--primary-300)' : 'var(--neutral-300)'} />
             </button>
           )}
 

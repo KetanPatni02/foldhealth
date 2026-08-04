@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../Icon/Icon';
+import { DownChevronIcon } from '../Icon/DownChevronIcon';
 import { Button } from '../Button/Button';
 import { ActionButton } from '../ActionButton/ActionButton';
 import { Badge } from '../Badge/Badge';
@@ -145,11 +146,7 @@ export function SectionTitleBar({
             <Button
               variant="secondary"
               size="L"
-              trailingIconElement={
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                  <path d="M12 6L8.00001 10L4 6" stroke="var(--neutral-300)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              }
+              trailingIconElement={<DownChevronIcon />}
               onClick={onSavedFilters}
               className={savedFiltersActive ? styles.savedFiltersActive : ''}
             >

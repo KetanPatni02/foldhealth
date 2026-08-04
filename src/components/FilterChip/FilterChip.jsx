@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Icon } from '../Icon/Icon';
+import { DownChevronIcon } from '../Icon/DownChevronIcon';
 import { CheckboxListPopover } from '../CheckboxListPopover/CheckboxListPopover';
 import { RadioListPopover } from '../RadioListPopover/RadioListPopover';
 import styles from './FilterChip.module.css';
@@ -55,7 +55,7 @@ export function FilterChip({
   const custom = typeof renderPopover === 'function';
   const active = custom ? !!activeProp : selected.length > 0;
   const summary = activeSummary != null
-    ? { text: activeSummary }
+    ? parseActiveSummary(activeSummary)
     : (custom ? { text: '' } : summarize(selected));
 
   const handleClear = (e) => {
@@ -93,9 +93,7 @@ export function FilterChip({
             </span>
           </>
         ) : (
-          <svg width={iconSize} height={iconSize} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M12 6L8.00001 10L4 6" stroke="var(--neutral-300)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <DownChevronIcon size={iconSize} />
         )}
       </button>
       {rect && (custom
@@ -127,4 +125,14 @@ export function FilterChip({
 function summarize(vals) {
   if (vals.length > 2) return { text: vals[0], extra: vals.length - 1 };
   return { text: vals.join(', ') };
+}
+
+// Split a caller-provided activeSummary string into `{ text, extra }` so a
+// trailing " +N" always renders as the same badge treatment the built-in
+// summarize() produces. Anything without a numeric trailer stays a plain
+// text summary (e.g. date ranges like "03/12 – 03/19").
+function parseActiveSummary(s) {
+  if (typeof s !== 'string') return { text: s };
+  const m = s.match(/^(.*\S)\s+\+(\d+)$/);
+  return m ? { text: m[1], extra: Number(m[2]) } : { text: s };
 }

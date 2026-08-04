@@ -1,7 +1,7 @@
 import { Icon } from '../Icon/Icon';
 import styles from './Badge.module.css';
 
-export function Badge({ variant, label, icon, trailingIcon, dot, className, style }) {
+export function Badge({ variant, label, icon, trailingIcon, trailingIconElement, dot, className, style }) {
   const variantClass = variant ? styles[variant.replace(/-/g, '_')] || styles[variant] || '' : '';
   return (
     <span
@@ -11,7 +11,8 @@ export function Badge({ variant, label, icon, trailingIcon, dot, className, styl
       {dot && <span className={styles.dot} />}
       {icon && <Icon name={icon} size={13} />}
       {label}
-      {trailingIcon && <Icon name={trailingIcon} size={13} />}
+      {trailingIconElement}
+      {!trailingIconElement && trailingIcon && <Icon name={trailingIcon} size={13} />}
     </span>
   );
 }
