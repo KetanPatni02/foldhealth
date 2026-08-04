@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { formatFoldId, handleFoldIdClick } from '../../lib/foldId';
+import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
 import { Button } from '../../components/Button/Button';
@@ -746,13 +746,7 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
               <span className={styles.patientDemo}>({member.g}&bull;{member.age})</span>
             </div>
             <div className={styles.patientMeta}>
-              <span
-                className={styles.foldId}
-                title="Click to copy"
-                onClick={handleFoldIdClick(member.memberId, showToast)}
-              >
-                {formatFoldId(member.memberId)}
-              </span>{' '}&bull;{' '}
+              <FoldIdTag id={member.memberId} className={styles.foldId} showToast={showToast} />{' '}&bull;{' '}
               <button
                 type="button"
                 className={styles.langBadge}

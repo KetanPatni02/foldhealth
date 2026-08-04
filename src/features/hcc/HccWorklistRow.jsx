@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useMemo, memo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { formatFoldId, handleFoldIdClick } from '../../lib/foldId';
+import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
 import { Button } from '../../components/Button/Button';
@@ -1121,13 +1121,7 @@ function HccWorklistRowImpl({ member, hiddenCols, columns }) {
               })()}
             </div>
             <div className={styles.patientMeta}>
-              <span
-                className={styles.foldId}
-                title="Click to copy"
-                onClick={handleFoldIdClick(member.memberId, showToast)}
-              >
-                {formatFoldId(member.memberId)}
-              </span>{' '}&bull;{' '}
+              <FoldIdTag id={member.memberId} className={styles.foldId} showToast={showToast} />{' '}&bull;{' '}
               <button type="button" className={styles.langBadge} onClick={(e) => e.stopPropagation()}>
                 {(member.language || 'en').toUpperCase()}
                 <span className={styles.langTooltip}>Preferred Language: English</span>

@@ -4,7 +4,7 @@ import { Badge } from '../../components/Badge/Badge';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { useAppStore } from '../../store/useAppStore';
-import { formatFoldId, handleFoldIdClick } from '../../lib/foldId';
+import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import styles from './HedisWorklistRow.module.css';
 
 const LANG_MAP = {
@@ -133,13 +133,7 @@ export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
               <span className={styles.patientDemo}>({member.gender}&bull;{member.age})</span>
             </div>
             <div className={styles.patientMeta}>
-              <span
-                className={styles.foldId}
-                title="Click to copy"
-                onClick={handleFoldIdClick(member.memberId, showToast)}
-              >
-                {formatFoldId(member.memberId)}
-              </span>{' '}&bull;{' '}
+              <FoldIdTag id={member.memberId} className={styles.foldId} showToast={showToast} />{' '}&bull;{' '}
               <span className={styles.langBadge}>
                 {langShort}
                 <span className={styles.langTooltip}>Preferred Language: {langFull}</span>

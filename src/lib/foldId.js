@@ -32,19 +32,3 @@ export async function copyFoldId(id) {
     return false;
   }
 }
-
-/**
- * Click handler for a Fold ID span: stops the click from bubbling into the
- * row's own onClick (every worklist row opens something on row-click), then
- * copies and toasts. `showToast` is the store action every feature already
- * has in scope.
- */
-export function handleFoldIdClick(id, showToast) {
-  return (e) => {
-    e.stopPropagation();
-    if (id == null || id === '') return;
-    copyFoldId(id).then(ok => {
-      showToast(ok ? `Copied ${formatFoldId(id)}` : 'Could not copy to clipboard');
-    });
-  };
-}

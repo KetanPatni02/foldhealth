@@ -6,7 +6,7 @@ import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { useAppStore } from '../../store/useAppStore';
-import { formatFoldId, handleFoldIdClick } from '../../lib/foldId';
+import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import rowStyles from '../toc-worklist/WorklistRow.module.css';
 import styles from './QueueRow.module.css';
 
@@ -297,13 +297,7 @@ export function QueueRow({ patient }) {
           <div>
             <div className={rowStyles.patientName}>{p.name} <span className={rowStyles.patientDemo}>({p.gender}•{p.age})</span></div>
             <div className={rowStyles.patientMeta}>
-              <span
-                className={rowStyles.foldId}
-                title="Click to copy"
-                onClick={handleFoldIdClick(p.memberId, showToast)}
-              >
-                {formatFoldId(p.memberId)}
-              </span>{' '}•{' '}
+              <FoldIdTag id={p.memberId} className={rowStyles.foldId} showToast={showToast} />{' '}•{' '}
               <button
                 type="button"
                 className={rowStyles.langBadge}

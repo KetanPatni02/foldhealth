@@ -7,7 +7,7 @@ import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { buildPatientRowMenuItems } from '../../components/MenuPopover/patientRowMenuItems';
 import { useAppStore } from '../../store/useAppStore';
-import { formatFoldId, handleFoldIdClick } from '../../lib/foldId';
+import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import rowStyles from '../toc-worklist/WorklistRow.module.css';
 import styles from './AllPatientsRow.module.css';
 
@@ -115,13 +115,7 @@ export function AllPatientsRow({ row, isSelected, onSelect }) {
               )}
             </div>
             <div className={rowStyles.patientMeta}>
-              <span
-                className={rowStyles.foldId}
-                title="Click to copy"
-                onClick={handleFoldIdClick(row.memberId || row.id, showToast)}
-              >
-                {formatFoldId(row.memberId || row.id)}
-              </span>{' '}•{' '}
+              <FoldIdTag id={row.memberId || row.id} className={rowStyles.foldId} showToast={showToast} />{' '}•{' '}
               <button
                 type="button"
                 className={rowStyles.langBadge}

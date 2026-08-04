@@ -3,8 +3,8 @@ import { Icon } from '../../components/Icon/Icon';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import { useAppStore } from '../../store/useAppStore';
-import { copyFoldId } from '../../lib/foldId';
 import { LANG_MAP, getCptCode, CPT_FEES, initialStatusOf } from './data/mock';
 import styles from './ApcmBillingRow.module.css';
 
@@ -184,18 +184,13 @@ export function ApcmBillingRow({ patient, isSelected, isActive, onSelect, onTrig
               {/* APCM is an independent billing roster (not part of the
                   unified Fold ID graph) — still copyable, but shown as its
                   own payer member id rather than a #Fold ID. */}
-              <span
+              <FoldIdTag
+                id={patient.memberId}
+                display={patient.memberId || '—'}
+                label="Click to copy member ID"
                 className={styles.foldId}
-                title="Click to copy"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!patient.memberId) return;
-                  copyFoldId(patient.memberId).then(ok =>
-                    showToast(ok ? `Copied ${patient.memberId}` : 'Could not copy to clipboard'));
-                }}
-              >
-                {patient.memberId || '—'}
-              </span>{' '}•{' '}
+                showToast={showToast}
+              />{' '}•{' '}
               <button
                 type="button"
                 className={styles.langBadge}
