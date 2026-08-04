@@ -121,14 +121,14 @@ export function ProductTour({ tourId, steps, run = true, onFinish, continuous = 
       spotlightClicks
       callback={handleCallback}
       tooltipComponent={TourTooltip}
-      styles={{
-        options: {
-          zIndex: 10000,
-          overlayColor: 'rgba(0, 0, 0, 0.35)',
-        },
-        spotlight: {
-          borderRadius: 8,
-        },
+      // react-joyride v3 API: zIndex/overlayColor moved from styles.options
+      // to the options prop, and spotlight rounding is the spotlightRadius
+      // option — styles.spotlight is spread as props onto an SVG <path>, so
+      // borderRadius there hits the DOM and triggers a React warning.
+      options={{
+        zIndex: 10000,
+        overlayColor: 'rgba(0, 0, 0, 0.35)',
+        spotlightRadius: 8,
       }}
       floaterProps={{
         disableAnimation: true,
