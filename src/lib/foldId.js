@@ -23,10 +23,33 @@ export function matchesFoldId(id, query) {
 }
 
 /** Copy a Fold ID to the clipboard and report success/failure to the
- *  caller so it can show the right toast. */
+ *  caller so it can show the right toast.
+ *
+ *  Tries the legacy `document.execCommand('copy')` path FIRST because it
+ *  runs synchronously inside the click handler's user-gesture window —
+ *  which is the only way it works in sandboxed iframes (e.g. Storybook's
+ *  preview) where the async Clipboard API is blocked. Only falls back to
+ *  the modern async Clipboard API if execCommand isn't available or
+ *  refuses (e.g. some no-textarea browser configs). */
 export async function copyFoldId(id) {
+  const text = String(id);
   try {
-    await navigator.clipboard.writeText(String(id));
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '0';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (ok) return true;
+  } catch {
+    // fall through to Clipboard API
+  }
+  try {
+    await navigator.clipboard.writeText(text);
     return true;
   } catch {
     return false;

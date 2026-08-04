@@ -181,13 +181,11 @@ export function ApcmBillingRow({ patient, isSelected, isActive, onSelect, onTrig
               {patient.name}
             </button>
             <div className={styles.patientMeta}>
-              {/* APCM is an independent billing roster (not part of the
-                  unified Fold ID graph) — still copyable, but shown as its
-                  own payer member id rather than a #Fold ID. */}
+              {/* APCM is an independent billing roster — shown as its own
+                  payer member id (no `#` prefix), copied via the same tag. */}
               <FoldIdTag
                 id={patient.memberId}
                 display={patient.memberId || '—'}
-                label="Click to copy member ID"
                 className={styles.foldId}
                 showToast={showToast}
               />{' '}•{' '}

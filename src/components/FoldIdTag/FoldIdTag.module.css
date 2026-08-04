@@ -1,0 +1,25 @@
+/* Label swap animation: fade + tiny slide in when the tooltip text
+   flips between "Click to copy Member ID" and "Copied: #10070", triggered
+   by remounting the keyed inner span on state change. Kept subtle — motion
+   over ~180ms so the confirmation registers without feeling flashy. */
+.labelFade {
+  display: inline-block;
+  animation: foldIdTagLabelFade 180ms ease-out;
+}
+
+@keyframes foldIdTagLabelFade {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .labelFade {
+    animation: none;
+  }
+}
