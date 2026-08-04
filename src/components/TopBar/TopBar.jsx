@@ -348,8 +348,6 @@ export function TopBar() {
           {isPatientView ? (
             <>
               <a className={styles.breadcrumbLink} href="#" onClick={e => { e.preventDefault(); navigateBackToWorklist(); }}>Population</a>
-              <span className={styles.sep}>/</span>
-              <a className={styles.breadcrumbLink} href="#" onClick={e => { e.preventDefault(); navigateBackToWorklist(); }}>Worklists</a>
               {activeSubnavList && !activeSubnavList.startsWith('pg:') && (
                 <>
                   <span className={styles.sep}>/</span>
@@ -392,8 +390,6 @@ export function TopBar() {
           ) : (
             <>
               <a className={styles.breadcrumbLink} href="#" onClick={e => e.preventDefault()}>Population</a>
-              <span className={styles.sep}>/</span>
-              <a className={styles.breadcrumbLink} href="#" onClick={e => e.preventDefault()}>Worklists</a>
               <span className={styles.sep}>/</span>
               <span className={styles.breadcrumbCurrent}>{activeSubnavList || 'TOC'}</span>
             </>
