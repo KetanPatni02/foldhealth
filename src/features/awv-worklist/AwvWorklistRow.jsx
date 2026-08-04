@@ -6,6 +6,8 @@ import { DownChevronIcon } from '../../components/Icon/DownChevronIcon';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
+import { Tooltip } from '../../components/Tooltip/Tooltip';
+import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
 import { useAppStore } from '../../store/useAppStore';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import styles from './AwvWorklistRow.module.css';
@@ -88,7 +90,14 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
               >
                 {member.name}
               </button>{' '}
-              <span className={styles.patientDemo}>({member.g}•{member.age})</span>
+              {(() => {
+                const dobLabel = formatDobDisplay(member.dob) || deriveDob(member.age, member.name);
+                return (
+                  <Tooltip label={dobLabel ? `DOB: ${dobLabel}` : ''} placement="bottom">
+                    <span className={styles.patientDemo}>({member.g}•{member.age})</span>
+                  </Tooltip>
+                );
+              })()}
             </div>
             <div className={styles.patientMeta}>
               <FoldIdTag id={member.memberId} className={styles.foldId} showToast={showToast} />{' '}•{' '}

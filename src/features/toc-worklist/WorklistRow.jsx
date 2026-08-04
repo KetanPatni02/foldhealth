@@ -4,6 +4,8 @@ import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
+import { Tooltip } from '../../components/Tooltip/Tooltip';
+import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { OutreachPopover } from '../../components/OutreachPopover/OutreachPopover';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
@@ -173,7 +175,7 @@ export function WorklistRow({ patient, isSelected, onSelect }) {
           <div className={styles.patientCell}>
             <Avatar variant="patient" initials={p.initials} />
             <div>
-              <div className={styles.patientName}><button className={styles.patientNameLink} onClick={e => { e.stopPropagation(); useAppStore.getState().openQuickView({ id: p.id, name: p.name, initials: p.initials, gender: p.gender, age: p.age, memberId: p.memberId, language: p.language, lace: p.lace }); }}>{p.name}</button> <span className={styles.patientDemo}>({p.gender}•{p.age})</span></div>
+              <div className={styles.patientName}><button className={styles.patientNameLink} onClick={e => { e.stopPropagation(); useAppStore.getState().openQuickView({ id: p.id, name: p.name, initials: p.initials, gender: p.gender, age: p.age, memberId: p.memberId, language: p.language, lace: p.lace }); }}>{p.name}</button> {(() => { const dobLabel = formatDobDisplay(p.dob) || deriveDob(p.age, p.name); return (<Tooltip label={dobLabel ? `DOB: ${dobLabel}` : ''} placement="bottom"><span className={styles.patientDemo}>({p.gender}•{p.age})</span></Tooltip>); })()}</div>
               <div className={styles.patientMeta}>
                 <FoldIdTag id={p.memberId} className={styles.foldId} showToast={showToast} />{' '}•{' '}
                 <button

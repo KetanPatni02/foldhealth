@@ -5,6 +5,8 @@ import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { useAppStore } from '../../store/useAppStore';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
+import { Tooltip } from '../../components/Tooltip/Tooltip';
+import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
 import styles from './HedisWorklistRow.module.css';
 
 const LANG_MAP = {
@@ -130,7 +132,14 @@ export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
               >
                 {member.name}
               </button>{' '}
-              <span className={styles.patientDemo}>({member.gender}&bull;{member.age})</span>
+              {(() => {
+                const dobLabel = formatDobDisplay(member.dob) || deriveDob(member.age, member.name);
+                return (
+                  <Tooltip label={dobLabel ? `DOB: ${dobLabel}` : ''} placement="bottom">
+                    <span className={styles.patientDemo}>({member.gender}&bull;{member.age})</span>
+                  </Tooltip>
+                );
+              })()}
             </div>
             <div className={styles.patientMeta}>
               <FoldIdTag id={member.memberId} className={styles.foldId} showToast={showToast} />{' '}&bull;{' '}

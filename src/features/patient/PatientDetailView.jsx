@@ -25,12 +25,16 @@ function TabPlaceholder({ tabName }) {
 // row into that shape before the profile view consumes it.
 function worklistMemberToPatient(m) {
   if (!m) return null;
+  // Field naming diverges across slices: HCC/AWV use short `in`/`g`,
+  // CCM/SNP/HEDIS use full `initials`/`gender`. Read both so a slice with
+  // either shape flows through to the banner.
+  const rawG = m.g ?? m.gender;
   return {
     id: m.id,
     memberId: m.memberId,
     name: m.name,
-    initials: m.in || (m.name || '').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase(),
-    gender: m.g === 'M' ? 'Male' : m.g === 'F' ? 'Female' : (m.g || ''),
+    initials: m.in || m.initials || (m.name || '').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase(),
+    gender: rawG === 'M' ? 'Male' : rawG === 'F' ? 'Female' : (rawG || ''),
     age: m.age,
     dob: m.dob,
     pcp: m.pcp,

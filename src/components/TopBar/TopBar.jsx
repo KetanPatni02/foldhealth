@@ -350,6 +350,12 @@ export function TopBar() {
               <a className={styles.breadcrumbLink} href="#" onClick={e => { e.preventDefault(); navigateBackToWorklist(); }}>Population</a>
               <span className={styles.sep}>/</span>
               <a className={styles.breadcrumbLink} href="#" onClick={e => { e.preventDefault(); navigateBackToWorklist(); }}>Worklists</a>
+              {activeSubnavList && !activeSubnavList.startsWith('pg:') && (
+                <>
+                  <span className={styles.sep}>/</span>
+                  <a className={styles.breadcrumbLink} href="#" onClick={e => { e.preventDefault(); navigateBackToWorklist(); }}>{activeSubnavList}</a>
+                </>
+              )}
               <span className={styles.sep}>/</span>
               <span className={styles.breadcrumbCurrent}>{patientName}</span>
             </>

@@ -4,6 +4,8 @@ import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { Tooltip } from '../../components/Tooltip/Tooltip';
+import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { buildPatientRowMenuItems } from '../../components/MenuPopover/patientRowMenuItems';
 import { useAppStore } from '../../store/useAppStore';
@@ -113,8 +115,15 @@ export function CcmWorklistRow({ member, isSelected, onSelect }) {
           <Avatar variant="patient" initials={m.initials} />
           <div>
             <div className={styles.patientName}>
-              <button className={styles.patientNameLink} onClick={handleNameClick}>{m.name}</button>
-              <span className={styles.patientDemo}>({m.gender}•{m.age})</span>
+              <button className={styles.patientNameLink} onClick={handleNameClick}>{m.name}</button>{' '}
+              {(() => {
+                const dobLabel = formatDobDisplay(m.dob) || deriveDob(m.age, m.name);
+                return (
+                  <Tooltip label={dobLabel ? `DOB: ${dobLabel}` : ''} placement="bottom">
+                    <span className={styles.patientDemo}>({m.gender}•{m.age})</span>
+                  </Tooltip>
+                );
+              })()}
             </div>
             <div className={styles.patientMeta}>
               <FoldIdTag id={m.memberId} className={styles.foldId} showToast={showToast} />{' '}•{' '}
