@@ -466,9 +466,10 @@ export function FilterBar({
       </div>
 
       {/* Hidden width mirror for auto-fit — measures every primary chip so
-          the greedy packer above knows how many fit. Only rendered when
-          auto-fit is engaged and the caller provided a renderChip. */}
-      {autoFit && renderChip && (
+          the greedy packer above knows how many fit. Uses `renderOne` so
+          callers can rely on the built-in filterDefs path (AWV) OR override
+          per-chip via `renderChip` (HCC/HEDIS/CCM). */}
+      {autoFit && (
         <div className={styles.measure} ref={measureRef} aria-hidden="true">
           {primaryKeys.map((k) => (
             <span
