@@ -104,7 +104,7 @@ function TagCell({ tags, tagsMore }) {
   return (
     <span className={styles.tagCell}>
       {tags.map(t => (
-        <Badge
+        <Badge size="M"
           key={t.label}
           variant={TAG_VARIANT_BY_TONE[t.tone] || 'ai-neutral'}
           label={t.label}
@@ -240,6 +240,7 @@ export function SnpWorklistRow({ member, isSelected, onSelect }) {
             aria-expanded={showStatusMenu}
           >
             <Badge
+              size="M"
               variant={PROGRAM_SUB_STATUS_VARIANT[m.programSubStatus] || 'snp-new'}
               label={m.programSubStatus}
               trailingIconElement={<DownChevronIcon size={13} color="currentColor" />}

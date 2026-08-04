@@ -149,7 +149,7 @@ export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
           {gaps.map(g => (
             <div key={g.code} className={styles.gapItem}>
               <span onClick={() => onOpenGap?.(member, g.code)} style={{ cursor: 'pointer' }}>
-                <Badge variant="compliance-na" label={g.code} />
+                <Badge size="M" variant="compliance-na" label={g.code} />
               </span>
             </div>
           ))}
@@ -161,7 +161,7 @@ export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
         <div className={styles.gapItems}>
           {gaps.map(g => (
             <div key={g.code} className={styles.gapItem}>
-              <Badge variant={STATUS_BADGE_VARIANT[g.status] || 'ai-neutral'} label={g.status} />
+              <Badge size="M" variant={STATUS_BADGE_VARIANT[g.status] || 'ai-neutral'} label={g.status} />
             </div>
           ))}
         </div>
@@ -220,10 +220,10 @@ export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
         <span className={styles.numText}>{member.frailty ?? 0}</span>
       </td>
 
-      {/* Risk Level — uses shared <Badge> with risk variants */}
+      {/* Risk Level — uses shared <Badge size="M"> with risk variants */}
       <td className={styles.td}>
         {member.riskLevel ? (
-          <Badge variant={RISK_BADGE_VARIANT[member.riskLevel]} label={member.riskLevel} />
+          <Badge size="M" variant={RISK_BADGE_VARIANT[member.riskLevel]} label={member.riskLevel} />
         ) : (
           <span className={styles.muted}>—</span>
         )}

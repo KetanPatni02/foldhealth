@@ -440,7 +440,7 @@ function OpenIcdsCell({ member, onOpenWithCode }) {
         onMouseEnter={gapCount ? onEnter : undefined}
         onMouseLeave={gapCount ? onLeave : undefined}
       >
-        <Badge variant="status-queued" label={String(count)} />
+        <Badge size="M" variant="status-queued" label={String(count)} />
       </div>
       {hovered && rect && gapCount > 0 && (
         <OpenIcdsHoverPopover

@@ -108,7 +108,11 @@
   flex-direction: column;
 }
 .dosStackItem {
-  min-height: 44px;
+  /* Bumped from 44px to 52px to accommodate the size="M" Badge (open-ICDs
+     count pill in the ICDs column) — the taller M badge was cramping the
+     row divider. Applied uniformly so every stacked DOS row stays aligned
+     across columns. */
+  min-height: 52px;
   padding: 12px 14px;
   display: flex;
   align-items: center;

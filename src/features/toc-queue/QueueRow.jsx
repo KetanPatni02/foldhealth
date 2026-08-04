@@ -33,14 +33,14 @@ const AI_VARIANT_MAP = {
 
 function TocStatusBadge({ status }) {
   const MAP = {
-    enrolled: { variant: 'toc-enrolled', label: 'Enrolled', icon: 'solar:check-circle-bold' },
-    engaged: { variant: 'toc-engaged', label: 'Engaged', icon: 'solar:link-round-bold' },
-    attempted: { variant: 'toc-attempted', label: 'Attempted', icon: 'solar:history-bold' },
-    new: { variant: 'toc-new', label: 'New', icon: 'solar:star-bold' },
-    oncall: { variant: 'toc-oncall', label: 'On Call', icon: 'solar:phone-calling-bold' },
+    enrolled: { variant: 'toc-enrolled', label: 'Enrolled', icon: 'solar:check-circle-linear' },
+    engaged: { variant: 'toc-engaged', label: 'Engaged', icon: 'solar:link-round-linear' },
+    attempted: { variant: 'toc-attempted', label: 'Attempted', icon: 'solar:history-linear' },
+    new: { variant: 'toc-new', label: 'New', icon: 'solar:star-linear' },
+    oncall: { variant: 'toc-oncall', label: 'On Call', icon: 'solar:phone-calling-linear' },
   };
   const cfg = MAP[status] || MAP.new;
-  return <Badge variant={cfg.variant} label={cfg.label} icon={cfg.icon} />;
+  return <Badge size="M" variant={cfg.variant} label={cfg.label} icon={cfg.icon} />;
 }
 
 function GoalsTooltipPortal({ goalsDetail, pillRef, visible }) {
@@ -78,7 +78,7 @@ function StatusCell({ patient: p, voicemailCalls, completedCall }) {
     const pct = goals ? Math.round((goals.met / goals.total) * 100) : 0;
     return (
       <div className={styles.statusCompact}>
-        <Badge variant="status-completed" label="Completed" icon="solar:check-circle-bold" />
+        <Badge size="M" variant="status-completed" label="Completed" icon="solar:check-circle-linear" />
         {goals && (
           <div
             className={styles.goalsPill}
@@ -103,10 +103,10 @@ function StatusCell({ patient: p, voicemailCalls, completedCall }) {
     const pct = total > 0 ? Math.round((done / total) * 100) : 0;
     return (
       <div className={styles.statusCompact}>
-        <Badge
+        <Badge size="M"
           variant="status-oncall"
           label={callDuration || '00:00'}
-          icon="solar:phone-calling-bold"
+          icon="solar:phone-calling-linear"
           dot={false}
         />
         {total > 0 && (
@@ -123,7 +123,7 @@ function StatusCell({ patient: p, voicemailCalls, completedCall }) {
   if (status === 'scheduled') {
     return (
       <div className={styles.statusCompact}>
-        <Badge variant="status-scheduled" label="Scheduled" icon="solar:calendar-bold" />
+        <Badge size="M" variant="status-scheduled" label="Scheduled" icon="solar:calendar-linear" />
         {scheduledTime && <div className={styles.scheduledSub}>{scheduledTime.split(' ')[0]}</div>}
       </div>
     );
@@ -131,14 +131,14 @@ function StatusCell({ patient: p, voicemailCalls, completedCall }) {
   if (status === 'queued') {
     return (
       <div className={styles.statusCompact}>
-        <Badge variant="status-queued" label="Queued" icon="solar:clock-circle-bold" />
+        <Badge size="M" variant="status-queued" label="Queued" icon="solar:clock-circle-linear" />
       </div>
     );
   }
   if (status === 'failed') {
     return (
       <div className={styles.statusCompact}>
-        <Badge variant="status-failed" label="Failed" icon="solar:close-circle-bold" />
+        <Badge size="M" variant="status-failed" label="Failed" icon="solar:close-circle-linear" />
         {attempts?.length > 0 && (
           <div className={styles.attemptsWrapper}>
             <span className={styles.attemptsBadge}>
@@ -164,7 +164,7 @@ function StatusCell({ patient: p, voicemailCalls, completedCall }) {
     );
   }
   if (status === 'review') {
-    return <Badge variant="status-review" label="Review" icon="solar:danger-triangle-bold" />;
+    return <Badge size="M" variant="status-review" label="Review" icon="solar:danger-triangle-linear" />;
   }
   return <span style={{ fontSize: 13, color: 'var(--neutral-200)' }}>—</span>;
 }
@@ -221,14 +221,14 @@ function AiInsightsCell({ insights }) {
   return (
     <div className={styles.aiCell}>
       {visible.map((t, i) => (
-        <Badge key={i} variant={AI_VARIANT_MAP[t.cls] || 'ai-neutral'} label={t.label} icon={t.icon} />
+        <Badge key={i} size="M" variant={AI_VARIANT_MAP[t.cls] || 'ai-neutral'} label={t.label} icon={t.icon?.replace('-bold', '-linear')} />
       ))}
       {overflow.length > 0 && (
         <div className={styles.aiOverflowWrap}>
           <span className={styles.aiOverflowBadge}>+{overflow.length}</span>
           <div className={styles.aiOverflowTooltip}>
             {overflow.map((t, i) => (
-              <Badge key={i} variant={AI_VARIANT_MAP[t.cls] || 'ai-neutral'} label={t.label} icon={t.icon} />
+              <Badge key={i} size="M" variant={AI_VARIANT_MAP[t.cls] || 'ai-neutral'} label={t.label} icon={t.icon?.replace('-bold', '-linear')} />
             ))}
           </div>
         </div>
@@ -311,22 +311,22 @@ export function QueueRow({ patient }) {
         </div>
       </td>
       <td style={tdBase}>
-        <Badge
+        <Badge size="M"
           variant={`priority-${p.priority <= 1 ? 'critical' : p.priority <= 2 ? 'high' : p.priority <= 3 ? 'medium' : 'low'}`}
           label={p.priority <= 1 ? 'Critical' : p.priority <= 2 ? 'High' : p.priority <= 3 ? 'Medium' : 'Low'}
-          icon={p.priority <= 1 ? 'solar:danger-triangle-bold' : p.priority <= 2 ? 'solar:arrow-up-bold' : p.priority <= 3 ? 'solar:minus-circle-bold' : 'solar:arrow-down-bold'}
+          icon={p.priority <= 1 ? 'solar:danger-triangle-linear' : p.priority <= 2 ? 'solar:arrow-up-linear' : p.priority <= 3 ? 'solar:minus-circle-linear' : 'solar:arrow-down-linear'}
         />
       </td>
       <td style={tdBase}>
-        <Badge
+        <Badge size="M"
           variant={`outreach-${p.outreachCategory || 'post-visit'}`}
           label={(p.outreachCategory || 'post-visit').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
         />
       </td>
-      <td style={tdBase}><Badge variant={`lace-${p.lace.toLowerCase()}`} label={p.lace} /></td>
+      <td style={tdBase}><Badge size="M" variant={`lace-${p.lace.toLowerCase()}`} label={p.lace} /></td>
       <td style={tdBase}>
         <div className={rowStyles.outreachCell}>
-          <Badge variant={outreachBadgeVariant} label={`TOC ${p.outreachType}`} />
+          <Badge size="M" variant={outreachBadgeVariant} label={`TOC ${p.outreachType}`} />
           {p.onCall ? (
             <span className={rowStyles.outreachOncall}>
               <Icon name="solar:phone-calling-bold" size={14} />
@@ -372,7 +372,7 @@ export function QueueRow({ patient }) {
           <span style={{ fontSize: 13 }}>{p.assignee}</span>
         </div>
       </td>
-      <td style={tdBase}>{p.readmission === 'Yes' ? <Badge variant="yes" label="Yes" /> : <Badge variant="no" label="No" />}</td>
+      <td style={tdBase}>{p.readmission === 'Yes' ? <Badge size="M" variant="yes" label="Yes" /> : <Badge size="M" variant="no" label="No" />}</td>
       <td style={tdBase}>
         <div className={rowStyles.tasksCell}>
           {p.tasks > 0 ? <span className={rowStyles.taskBadge}>{p.tasks}</span> : <span className={rowStyles.dateDash}>—</span>}
@@ -380,11 +380,11 @@ export function QueueRow({ patient }) {
       </td>
       <td style={tdBase}>
         {p.carePlanStatus === 'updated' ? (
-          <Badge variant="care-plan-updated" label="Updated" icon="solar:check-circle-bold" />
+          <Badge size="M" variant="care-plan-updated" label="Updated" icon="solar:check-circle-linear" />
         ) : p.carePlanStatus === 'pending' ? (
-          <Badge variant="care-plan-pending" label="Pending" icon="solar:clock-circle-bold" />
+          <Badge size="M" variant="care-plan-pending" label="Pending" icon="solar:clock-circle-linear" />
         ) : (
-          <Badge variant="care-plan-none" label="No Care Plan" />
+          <Badge size="M" variant="care-plan-none" label="No Care Plan" />
         )}
       </td>
       <td style={{ ...tdBase, position: 'sticky', right: 0, background: 'var(--neutral-0)', borderLeft: '1px solid var(--neutral-150)', boxShadow: '-4px 0 8px rgba(0,0,0,.04)' }}

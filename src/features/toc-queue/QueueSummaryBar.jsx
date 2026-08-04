@@ -60,7 +60,7 @@ export function QueueSummaryBar() {
   }, [patients, callDetails]);
 
   return (
-    <div style={{ display: 'flex', gap: 10, padding: '12px 16px 4px', flexWrap: 'wrap' }}>
+    <div style={{ display: 'flex', gap: 10, padding: '12px 16px', flexWrap: 'wrap' }}>
       <StatCard
         icon="solar:phone-calling-bold" iconColor="#059669"
         label="Active Calls" value={stats.activeCalls}

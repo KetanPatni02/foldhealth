@@ -701,7 +701,7 @@ function RecordsList({ encounters, onAdd, onAddManually }) {
               <div className={styles.recordTitleRow}>
                 <div className={styles.recordName}>{enc.patient?.name || 'Unknown patient'}</div>
                 {enc._ocrTier && (
-                  <Badge
+                  <Badge size="M"
                     variant={enc._ocrTier === 'clean' ? 'success' : enc._ocrTier === 'degraded' ? 'warning' : 'error'}
                     label={`OCR · ${enc._ocrTier[0].toUpperCase()}${enc._ocrTier.slice(1)}`}
                   />

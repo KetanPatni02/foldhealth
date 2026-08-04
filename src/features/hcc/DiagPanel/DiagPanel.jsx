@@ -1722,12 +1722,12 @@ export function DiagPanel() {
                         title={`Open claim for DOS ${d.date}`}
                       >
                         <span className={styles.dosPanelDate}>{d.date}</span>
-                        <Badge variant={srcMeta.variant} label={srcMeta.label} />
+                        <Badge size="M" variant={srcMeta.variant} label={srcMeta.label} />
                       </button>
                     ) : (
                       <div className={styles.dosPanelDateRow}>
                         <span className={styles.dosPanelDate}>{d.date}</span>
-                        <Badge variant={srcMeta.variant} label={srcMeta.label} />
+                        <Badge size="M" variant={srcMeta.variant} label={srcMeta.label} />
                       </div>
                     )}
                     <div className={styles.dosPanelMeta}>

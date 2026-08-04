@@ -24,7 +24,7 @@ const STATUS_VARIANT = {
 
 function StatusBadge({ status }) {
   const cfg = STATUS_VARIANT[status] || STATUS_VARIANT['New'];
-  return <Badge variant={cfg.variant} label={cfg.label} icon={cfg.icon} />;
+  return <Badge size="M" variant={cfg.variant} label={cfg.label} icon={cfg.icon} />;
 }
 
 const formatMins = (seconds) => {
@@ -178,7 +178,7 @@ export function CcmWorklistRow({ member, isSelected, onSelect }) {
 
       <td className={styles.td}>
         {m.riskLevel
-          ? <Badge variant={`lace-${m.riskLevel.toLowerCase()}`} label={m.riskLevel} />
+          ? <Badge size="M" variant={`lace-${m.riskLevel.toLowerCase()}`} label={m.riskLevel} />
           : <span className={styles.mutedDash}>—</span>}
       </td>
 

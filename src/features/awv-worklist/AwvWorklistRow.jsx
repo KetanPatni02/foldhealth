@@ -107,6 +107,7 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
           }}
         >
           <Badge
+            size="M"
             variant={statusVariant}
             label={member.progSubStatus}
             trailingIconElement={<DownChevronIcon size={12} color="currentColor" />}
@@ -178,7 +179,7 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
 
       {/* Risk IQ — shared Badge with lace-* variant (Low/Medium/High). */}
       <td className={styles.td}>
-        <Badge variant={riskVariant} label={member.ri} />
+        <Badge size="M" variant={riskVariant} label={member.ri} />
       </td>
 
       {/* Decile */}

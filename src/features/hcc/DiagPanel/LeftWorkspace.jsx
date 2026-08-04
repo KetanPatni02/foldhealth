@@ -1442,7 +1442,7 @@ function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId, 
                   </div>
                 </div>
               </div>
-              <Badge variant={status.variant} label={status.label} />
+              <Badge size="M" variant={status.variant} label={status.label} />
               <div className={styles.dataTableActions} onClick={(e) => e.stopPropagation()}>
                 <ActionButton
                   icon="solar:trash-bin-trash-linear"
@@ -1774,7 +1774,7 @@ function NotesTab({ filters }) {
                 {n.author}({n.role})
               </div>
             </div>
-            <Badge
+            <Badge size="M"
               variant="status-completed"
               icon="solar:pen-new-square-linear"
               label={n.signed ? 'Signed' : 'Draft'}
@@ -1872,7 +1872,7 @@ function ClaimsTab({ member, filters, claims }) {
               {c.number || c.id}
             </button>
             <span className={styles.claimDate}>{c.dos}</span>
-            <Badge variant={CLAIM_STATUS_BADGE[c.status] || 'toc-new'} label={c.status} />
+            <Badge size="M" variant={CLAIM_STATUS_BADGE[c.status] || 'toc-new'} label={c.status} />
             <span className={styles.claimAmount}>{c.amount}</span>
           </div>
         ))}
@@ -1926,7 +1926,7 @@ function ClaimDetail({ member, claim, onBack }) {
       <section className={styles.claimSection}>
         <div className={styles.claimSectionHead}>
           <span className={styles.claimSectionTitle}>Claim Information</span>
-          <Badge variant={CLAIM_STATUS_BADGE[claim.status] || 'toc-new'} label={claim.status} />
+          <Badge size="M" variant={CLAIM_STATUS_BADGE[claim.status] || 'toc-new'} label={claim.status} />
         </div>
         <div className={styles.claimInfoGrid}>
           <ClaimField label="Claims Number" value={claim.number} />

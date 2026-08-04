@@ -291,8 +291,8 @@ function DosBlock({ block, providerOptions, onChange, onRemove }) {
           <Icon name="solar:alt-arrow-right-linear" size={16} color="var(--neutral-400)" />
           <span className={styles.dosBlockTitle}>DOS: {block.dos || '-'}</span>
           {complete
-            ? <Badge variant="status-ready" icon="solar:check-circle-linear" label="Ready" />
-            : <Badge variant="status-review" icon="solar:hourglass-line-linear" label="Not Ready" />}
+            ? <Badge size="M" variant="status-ready" icon="solar:check-circle-linear" label="Ready" />
+            : <Badge size="M" variant="status-review" icon="solar:hourglass-line-linear" label="Not Ready" />}
         </div>
         <button type="button" className={styles.trashBtn} onClick={onRemove} aria-label="Remove DOS">
           <Icon name="solar:trash-bin-trash-linear" size={16} color="var(--neutral-300)" />

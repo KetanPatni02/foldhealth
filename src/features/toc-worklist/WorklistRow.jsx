@@ -23,7 +23,7 @@ function TocStatusBadge({ status }) {
     oncall: { variant: 'toc-oncall', label: 'On Call', icon: 'solar:phone-calling-bold' },
   };
   const cfg = MAP[status] || MAP.new;
-  return <Badge variant={cfg.variant} label={cfg.label} icon={cfg.icon} />;
+  return <Badge size="M" variant={cfg.variant} label={cfg.label} icon={cfg.icon} />;
 }
 
 function OutreachCell({ patient }) {
@@ -189,11 +189,11 @@ export function WorklistRow({ patient, isSelected, onSelect }) {
           </div>
         </td>
         <td className={styles.td}>
-          <Badge variant={`lace-${p.lace.toLowerCase()}`} label={p.lace} />
+          <Badge size="M" variant={`lace-${p.lace.toLowerCase()}`} label={p.lace} />
         </td>
         <td className={styles.td}>
           <div className={styles.outreachCell}>
-            <Badge variant={outreachBadgeVariant} label={`TOC ${p.outreachType}`} />
+            <Badge size="M" variant={outreachBadgeVariant} label={`TOC ${p.outreachType}`} />
             {p.onCall ? (
               <span className={styles.outreachOncall}>
                 <Icon name="solar:phone-calling-bold" size={14} />

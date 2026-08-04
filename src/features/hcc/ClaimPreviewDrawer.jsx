@@ -99,7 +99,7 @@ export function ClaimPreviewDrawer() {
 
         <Section title="Status">
           <div className={styles.statusRow}>
-            <Badge variant={claim.statusVariant} label={claim.status} />
+            <Badge size="M" variant={claim.statusVariant} label={claim.status} />
             <span className={styles.statusMeta}>
               {claim.statusMeta}
             </span>
