@@ -1,13 +1,35 @@
 import { useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Avatar } from '../../components/Avatar/Avatar';
+import { Badge } from '../../components/Badge/Badge';
+import { DownChevronIcon } from '../../components/Icon/DownChevronIcon';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { useAppStore } from '../../store/useAppStore';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
-import { AWV_STATUS, RISK_COLOR } from './data/mock';
 import styles from './AwvWorklistRow.module.css';
+
+/**
+ * Map AWV Program Sub Status → shared Badge variant. Uses the awv-*
+ * palette declared in Badge.module.css (blue for info, grey for
+ * unreachable, green for engaged, amber for attempted / follow-up).
+ */
+const STATUS_VARIANT = {
+  Open: 'awv-open',
+  New: 'awv-new',
+  'Unable to Reach': 'awv-unable',
+  Engaged: 'awv-engaged',
+  Attempted: 'awv-attempted',
+  'Engaged - Requires Follow Up': 'awv-engaged-followup',
+};
+
+/** Risk IQ → shared Badge lace-* variant (Low / Medium / High). */
+const RISK_VARIANT = {
+  Low: 'lace-low',
+  Medium: 'lace-medium',
+  High: 'lace-high',
+};
 
 const LANG_MAP = {
   en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese',
@@ -26,8 +48,8 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
   const updateAwvMemberStatus = useAppStore(s => s.updateAwvMemberStatus);
   const [statusAnchor, setStatusAnchor] = useState(null);
 
-  const statusCfg = AWV_STATUS[member.progSubStatus] || AWV_STATUS.New;
-  const riskCfg = RISK_COLOR[member.ri] || RISK_COLOR.Low;
+  const statusVariant = STATUS_VARIANT[member.progSubStatus] || 'awv-new';
+  const riskVariant = RISK_VARIANT[member.ri] || 'lace-low';
   const language = member.language || 'en';
 
   return (
@@ -71,25 +93,24 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
         </div>
       </td>
 
-      {/* Program Sub Status — clickable pill w/ dropdown */}
+      {/* Program Sub Status — clickable Badge with DownChevron. Wrapping
+          Badge in a bare <button> keeps the pill visuals fully owned by
+          the shared Badge component (color, radius, border, padding) while
+          the surrounding button handles the click-to-open-menu affordance. */}
       <td className={styles.td}>
         <button
           type="button"
-          className={styles.pill}
-          style={{
-            color: statusCfg.color,
-            background: statusCfg.bg,
-            borderColor: statusCfg.color,
-            cursor: 'pointer',
-            gap: 4,
-          }}
+          className={styles.statusBtn}
           onClick={(e) => {
             e.stopPropagation();
             setStatusAnchor(e.currentTarget);
           }}
         >
-          {member.progSubStatus}
-          <Icon name="solar:alt-arrow-down-linear" size={12} color={statusCfg.color} />
+          <Badge
+            variant={statusVariant}
+            label={member.progSubStatus}
+            trailingIconElement={<DownChevronIcon size={12} color="currentColor" />}
+          />
         </button>
         {statusAnchor && (
           <MenuPopover
@@ -155,14 +176,9 @@ export function AwvWorklistRow({ member, selected, onToggle, onView, onCall, sho
       {/* Frailty */}
       <td className={styles.td} style={{ textAlign: 'center' }}>{member.fr}</td>
 
-      {/* Risk IQ */}
+      {/* Risk IQ — shared Badge with lace-* variant (Low/Medium/High). */}
       <td className={styles.td}>
-        <span
-          className={styles.pill}
-          style={{ color: riskCfg.color, background: riskCfg.bg, borderColor: riskCfg.color }}
-        >
-          {member.ri}
-        </span>
+        <Badge variant={riskVariant} label={member.ri} />
       </td>
 
       {/* Decile */}

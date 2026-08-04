@@ -88,6 +88,16 @@
 .care-plan-updated { background: var(--status-success-light); color: var(--status-success); border-color: rgba(0,155,83,0.2); }
 .care-plan-pending { background: var(--status-warning-light); color: var(--status-warning); border-color: rgba(217,165,11,0.2); }
 
+/* AWV Program Sub Status — mirrors the TOC status palette. `open` / `new`
+   are informational (blue), `unable` is neutral, `engaged` is success,
+   `attempted` + `engaged-followup` are warning. */
+.awv-open              { background: var(--status-info-light);    color: var(--status-info);    border-color: color-mix(in srgb, var(--status-info) 20%, transparent); }
+.awv-new               { background: var(--status-info-light);    color: var(--status-info);    border-color: color-mix(in srgb, var(--status-info) 20%, transparent); }
+.awv-unable            { background: var(--neutral-50);           color: var(--neutral-300);    border-color: color-mix(in srgb, var(--neutral-300) 20%, transparent); }
+.awv-engaged           { background: var(--status-success-light); color: var(--status-success); border-color: color-mix(in srgb, var(--status-success) 20%, transparent); }
+.awv-attempted         { background: var(--status-warning-light); color: var(--status-warning); border-color: color-mix(in srgb, var(--status-warning) 20%, transparent); }
+.awv-engaged-followup  { background: var(--status-warning-light); color: var(--status-warning); border-color: color-mix(in srgb, var(--status-warning) 20%, transparent); }
+
 /* No new SNP-specific or tag-specific variants are declared here — SNP Program
    Sub Status pills and worklist row Tags cells map their values to the
    existing status/tone variants above (toc-* / lace-* / priority-* /
