@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
+import { DownChevronIcon } from '../../components/Icon/DownChevronIcon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
@@ -241,7 +242,7 @@ export function SnpWorklistRow({ member, isSelected, onSelect }) {
             <Badge
               variant={PROGRAM_SUB_STATUS_VARIANT[m.programSubStatus] || 'snp-new'}
               label={m.programSubStatus}
-              trailingIcon="solar:alt-arrow-down-linear"
+              trailingIconElement={<DownChevronIcon size={13} color="currentColor" />}
             />
           </button>
           {showStatusMenu && (
@@ -264,7 +265,7 @@ export function SnpWorklistRow({ member, isSelected, onSelect }) {
       <td className={styles.td} onClick={e => e.stopPropagation()}>
         <button type="button" className={styles.statusDropdown}>
           {m.carePlanStatus}
-          <Icon name="solar:alt-arrow-down-linear" size={14} color="var(--neutral-300)" />
+          <DownChevronIcon size={14} />
         </button>
       </td>
 

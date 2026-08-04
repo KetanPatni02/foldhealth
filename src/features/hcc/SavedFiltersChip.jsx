@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
+import { DownChevronIcon } from '../../components/Icon/DownChevronIcon';
 import { Button } from '../../components/Button/Button';
 import { useAppStore } from '../../store/useAppStore';
 import { FilterNameDialog } from './FilterNameDialog';
@@ -60,11 +61,7 @@ export function SavedFiltersChip({ list = 'HCC' }) {
         ref={triggerRef}
         variant="secondary"
         size="L"
-        trailingIconElement={
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M12 6L8.00001 10L4 6" stroke="var(--neutral-300)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        }
+        trailingIconElement={<DownChevronIcon />}
         onClick={pos ? close : open}
       >
         {active ? active.name : 'Saved Filters'}

@@ -704,6 +704,7 @@ const LIST_FILTER_KEY = {
   HCC:   'hccFilters',
   HEDIS: 'hedisFilters',
   SNP:   'snpFilters',
+  AWV:   'awvFilters',
 };
 
 // Remove a list's active saved-filter selection and persist the change.
