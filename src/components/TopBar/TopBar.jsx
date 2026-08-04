@@ -401,7 +401,7 @@ export function TopBar() {
             <Icon name="solar:magnifer-linear" size={18} color="var(--neutral-200)" />
             <input
               type="text"
-              placeholder="Search Patients or Members"
+              placeholder="Search Members"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               onFocus={() => setSearchFocused(true)}
