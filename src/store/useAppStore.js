@@ -1485,9 +1485,15 @@ export const useAppStore = create((set, get) => ({
   // ── Per-user worklist ordering (SubNav drag-and-drop) ──
   // Array of worklist labels in the user's preferred display order. Loaded
   // from user_worklist_prefs on Population mount; SubNav renders in this
-  // order and the user initially lands on the first entry. Null until the
-  // fetch resolves so SubNav can fall back to the canonical default order.
-  worklistOrder: null,
+  // order and the user initially lands on the first entry. Seeded from
+  // localStorage so the first paint already shows the saved order instead
+  // of flashing the default and re-sorting when the DB fetch resolves.
+  worklistOrder: (() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem('worklistOrder') || 'null');
+      return Array.isArray(cached) && cached.length > 0 ? cached : null;
+    } catch { return null; }
+  })(),
   worklistOrderLoaded: false,
   // Set once the user manually picks a list this session — fetchWorklistOrder
   // only auto-lands on the top worklist while this is still false.
@@ -1528,6 +1534,7 @@ export const useAppStore = create((set, get) => ({
     const merged = [...saved, ...known.filter(l => !saved.includes(l))];
 
     set({ worklistOrder: merged, worklistOrderLoaded: true });
+    try { localStorage.setItem('worklistOrder', JSON.stringify(merged)); } catch { /* */ }
 
     // Land the user on the top worklist — but never override a list they've
     // already picked this session.
@@ -1539,6 +1546,7 @@ export const useAppStore = create((set, get) => ({
 
   saveWorklistOrder: async (order) => {
     set({ worklistOrder: order }); // optimistic
+    try { localStorage.setItem('worklistOrder', JSON.stringify(order)); } catch { /* */ }
     try {
       const userId = await get()._resolveWorklistUser();
       const { error } = await supabase

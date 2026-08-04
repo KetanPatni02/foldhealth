@@ -27,6 +27,28 @@
   white-space: nowrap;
 }
 
+/* Sliding highlight for the active row. One absolutely-positioned element
+   translated to the active item (measured in JS), so switching lists reads
+   as a single pill gliding between rows instead of a hard background swap.
+   Items sit above it via z-index so text and counts stay crisp. */
+.activeIndicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background: var(--primary-50);
+  border-left: 3px solid var(--primary-300);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.activeIndicatorAnimated {
+  transition:
+    transform 280ms cubic-bezier(0.32, 0.72, 0, 1),
+    height 280ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 160ms ease-out;
+}
+
 .item {
   padding: 10px 16px;
   font-size: 14px;
@@ -36,11 +58,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  transition: background .1s;
+  transition: background .1s, color .15s;
   white-space: nowrap;
+  position: relative;
+  z-index: 1;
 }
 
-.item:hover { background: var(--neutral-50); }
+.item:hover:not(.active) { background: var(--neutral-50); }
 
 /* Row being dragged — lift above siblings and dim slightly so the drop
    position reads clearly. dnd-kit moves the element via transform. */
@@ -48,16 +72,14 @@
   opacity: 0.85;
   background: var(--neutral-0);
   box-shadow: var(--shadow-card);
-  position: relative;
   z-index: 2;
 }
 
+/* Background + left border live on .activeIndicator; the row itself only
+   changes text tone, so padding stays constant and labels never shift. */
 .item.active {
-  background: var(--primary-50);
   color: var(--primary-300);
   font-weight: 500;
-  border-left: 3px solid var(--primary-300);
-  padding-left: 13px;
 }
 
 .count {

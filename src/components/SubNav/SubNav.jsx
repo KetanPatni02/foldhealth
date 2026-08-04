@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -32,8 +32,9 @@ const WORKLIST_LABELS = WORKLISTS.map(w => w.label);
 const WORKLIST_BY_LABEL = Object.fromEntries(WORKLISTS.map(w => [w.label, w]));
 
 // One draggable worklist row. Drag activates after an 8px pointer move so
-// plain clicks still select the list without jitter.
-function SortableWorklistItem({ item, active, count, onClick }) {
+// plain clicks still select the list without jitter. registerRef feeds the
+// parent's sliding active-indicator measurement alongside dnd-kit's node ref.
+function SortableWorklistItem({ item, active, count, onClick, registerRef }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.label });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -41,7 +42,7 @@ function SortableWorklistItem({ item, active, count, onClick }) {
   };
   return (
     <div
-      ref={setNodeRef}
+      ref={(el) => { setNodeRef(el); registerRef(item.label, el); }}
       style={style}
       className={[
         styles.item,
@@ -81,6 +82,19 @@ export function SubNav({ collapsed }) {
   // still select the worklist.
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
+  // Sliding active indicator — one highlight element translated to the
+  // active row so switching lists reads as motion, not a hard swap.
+  // `ready` gates the first paint so it doesn't fly in from the top.
+  const itemRefs = useRef(new Map());
+  const registerRef = (key, el) => {
+    if (el) itemRefs.current.set(key, el);
+    else itemRefs.current.delete(key);
+  };
+  const [indicator, setIndicator] = useState({ top: 0, height: 0, ready: false });
+  // Transitions switch on one frame after the first placement so the
+  // indicator appears in position instead of sliding in from the top.
+  const [animated, setAnimated] = useState(false);
+
   // Prefetch HCC, AWV, CCM, and SNP worklists on mount so counts show up
   // right away; the order fetch also lands the user on their top worklist.
   useEffect(() => {
@@ -91,12 +105,28 @@ export function SubNav({ collapsed }) {
     fetchWorklistOrder(WORKLIST_LABELS);
   }, []);
 
-  // User-ordered worklists — store order (already reconciled against the
-  // canonical set) or the default until the fetch resolves.
+  // User-ordered worklists — store order or the default until the fetch
+  // resolves. Reconciled here as well (not just in the store) because the
+  // localStorage-cached order may predate a newly added worklist.
   const orderedWorklists = useMemo(() => {
-    const order = worklistOrder && worklistOrder.length > 0 ? worklistOrder : WORKLIST_LABELS;
-    return order.map(l => WORKLIST_BY_LABEL[l]).filter(Boolean);
+    const saved = (worklistOrder || []).filter(l => WORKLIST_BY_LABEL[l]);
+    const order = saved.length > 0
+      ? [...saved, ...WORKLIST_LABELS.filter(l => !saved.includes(l))]
+      : WORKLIST_LABELS;
+    return order.map(l => WORKLIST_BY_LABEL[l]);
   }, [worklistOrder]);
+
+  // Move the indicator to the active row after layout, before paint. Re-runs
+  // when the order changes so a drop re-anchors the highlight.
+  useLayoutEffect(() => {
+    const el = itemRefs.current.get(activeSubnavList);
+    if (!el) {
+      setIndicator(i => ({ ...i, ready: false }));
+      return;
+    }
+    setIndicator({ top: el.offsetTop, height: el.offsetHeight, ready: true });
+    if (!animated) requestAnimationFrame(() => setAnimated(true));
+  }, [activeSubnavList, orderedWorklists]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Lists with a backing worklist (TOC, HCC, HEDIS, CCM, SNP, Annual Visit)
   // show real row counts; the rest have no data source yet and show 0.
@@ -156,6 +186,17 @@ export function SubNav({ collapsed }) {
 
   return (
     <aside className={[styles.subnav, collapsed ? styles.collapsed : ''].filter(Boolean).join(' ')}>
+      {/* Sliding highlight — one element translated to the active row so
+          switching lists animates instead of hard-swapping backgrounds. */}
+      <span
+        className={[styles.activeIndicator, animated ? styles.activeIndicatorAnimated : ''].filter(Boolean).join(' ')}
+        aria-hidden
+        style={{
+          transform: `translateY(${indicator.top}px)`,
+          height: indicator.height,
+          opacity: indicator.ready ? 1 : 0,
+        }}
+      />
       <div className={styles.sectionLabel}>Worklists</div>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={orderedWorklists.map(w => w.label)} strategy={verticalListSortingStrategy}>
@@ -166,12 +207,14 @@ export function SubNav({ collapsed }) {
               active={activeSubnavList === item.label}
               count={getCounts[item.label] || 0}
               onClick={() => handleListClick(item)}
+              registerRef={registerRef}
             />
           ))}
         </SortableContext>
       </DndContext>
       <div className={styles.sectionLabel} style={{ marginTop: 8 }}>Patients</div>
       <div
+        ref={(el) => registerRef('My Patients', el)}
         className={[styles.item, activeSubnavList === 'My Patients' ? styles.active : ''].filter(Boolean).join(' ')}
         onClick={() => { setActiveSubnavList('My Patients'); clearSelected(); clearHccSelected(); setActiveFilters({}); }}
       >
@@ -179,6 +222,7 @@ export function SubNav({ collapsed }) {
         <span className={styles.count}>0</span>
       </div>
       <div
+        ref={(el) => registerRef('All Patients', el)}
         className={[styles.item, activeSubnavList === 'All Patients' ? styles.active : ''].filter(Boolean).join(' ')}
         onClick={() => { setActiveSubnavList('All Patients'); clearSelected(); clearHccSelected(); setActiveFilters({}); }}
       >
@@ -186,6 +230,7 @@ export function SubNav({ collapsed }) {
         <span className={styles.count}>{allPatientsCount || 0}</span>
       </div>
       <div
+        ref={(el) => registerRef('Scheduling List', el)}
         className={[styles.item, activeSubnavList === 'Scheduling List' ? styles.active : ''].filter(Boolean).join(' ')}
         onClick={() => { setActiveSubnavList('Scheduling List'); clearSelected(); clearHccSelected(); setActiveFilters({}); }}
       >
@@ -200,6 +245,7 @@ export function SubNav({ collapsed }) {
       ].map(item => (
         <div
           key={item.value}
+          ref={(el) => registerRef(item.value, el)}
           className={[styles.item, activeSubnavList === item.value ? styles.active : ''].filter(Boolean).join(' ')}
           onClick={() => { setActiveSubnavList(item.value); clearSelected(); clearHccSelected(); setActiveFilters({}); }}
         >
@@ -212,6 +258,7 @@ export function SubNav({ collapsed }) {
           the live versions so upstream changes never alter them. */}
       <div className={styles.sectionLabel} style={{ marginTop: 8 }}>Archived Worklist</div>
       <div
+        ref={(el) => registerRef('HCC (Archived)', el)}
         className={[styles.item, activeSubnavList === 'HCC (Archived)' ? styles.active : ''].filter(Boolean).join(' ')}
         onClick={() => { setActiveSubnavList('HCC (Archived)'); clearSelected(); clearHccSelected(); setActiveFilters({}); }}
       >
