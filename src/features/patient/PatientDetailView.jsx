@@ -88,20 +88,29 @@ export function PatientDetailView() {
 
   // Fall back through every worklist slice when the id isn't in the main
   // patients list — those rows live in separate slices and shouldn't 404.
-  const patient = patients.find(p => p.id === selectedPatientId)
-    || worklistMemberToPatient(hccMembers.find(m => m.id === selectedPatientId))
-    || worklistMemberToPatient(awvMembers?.find(m => m.id === selectedPatientId))
-    || worklistMemberToPatient(ccmWorklistMembers?.find(m => m.id === selectedPatientId))
-    || worklistMemberToPatient(snpWorklistMembers?.find(m => m.id === selectedPatientId))
-    || worklistMemberToPatient(hedisMembers?.find(m => m.id === selectedPatientId));
+  // Also match by memberId so a deep-link URL with the fold id (from
+  // #/population/<list>/patient/<memberId>) resolves before the router's
+  // reverse lookup has store data to work with.
+  const matchesId = m => m && (m.id === selectedPatientId || String(m.memberId) === String(selectedPatientId));
+  const patient = patients.find(matchesId)
+    || worklistMemberToPatient(hccMembers.find(matchesId))
+    || worklistMemberToPatient(awvMembers?.find(matchesId))
+    || worklistMemberToPatient(ccmWorklistMembers?.find(matchesId))
+    || worklistMemberToPatient(snpWorklistMembers?.find(matchesId))
+    || worklistMemberToPatient(hedisMembers?.find(matchesId));
 
   // The app assumes we're always inside a real patient's record — if the id
   // doesn't resolve to a patient (e.g. a stale hash from a deleted row, or a
   // worklist row wired to a placeholder id), bounce straight back to the
   // worklist instead of showing an orphan "Patient not found" screen.
+  // Skip while every slice is empty — that means initial load hasn't
+  // finished yet and a deep-link URL is still waiting for its data.
+  const anySliceLoaded = patients.length > 0 || hccMembers.length > 0 || (awvMembers?.length || 0) > 0
+    || (ccmWorklistMembers?.length || 0) > 0 || (snpWorklistMembers?.length || 0) > 0
+    || (hedisMembers?.length || 0) > 0;
   useEffect(() => {
-    if (selectedPatientId && !patient) navigateBackToWorklist();
-  }, [selectedPatientId, patient, navigateBackToWorklist]);
+    if (selectedPatientId && !patient && anySliceLoaded) navigateBackToWorklist();
+  }, [selectedPatientId, patient, anySliceLoaded, navigateBackToWorklist]);
 
   if (!patient) return null;
 

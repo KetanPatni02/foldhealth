@@ -25,6 +25,34 @@ export function buildHash(...parts) {
   return '#/' + clean.join('/');
 }
 
+// Every store slice that can back a patient profile view. Order doesn't
+// matter — memberId is unique across the whole set post-unification.
+const PATIENT_SLICES = ['patients', 'hccMembers', 'awvMembers', 'ccmWorklistMembers', 'snpWorklistMembers', 'hedisMembers', 'allPatients'];
+
+// Given a store row id, look up its memberId (Fold ID) across every slice.
+// Returns null when no row matches — the caller falls back to the raw id.
+function findPatientMemberId(state, id) {
+  if (!id) return null;
+  for (const key of PATIENT_SLICES) {
+    const row = state[key]?.find?.(m => m?.id === id);
+    if (row?.memberId) return String(row.memberId);
+  }
+  return null;
+}
+
+// Reverse of the above: given a memberId (from the URL), find the store
+// row id we should set as selectedPatientId. Returns null if unknown so
+// the caller can pass the raw URL value through unchanged.
+function findPatientIdByMemberId(state, memberId) {
+  if (!memberId) return null;
+  const s = String(memberId);
+  for (const key of PATIENT_SLICES) {
+    const row = state[key]?.find?.(m => String(m?.memberId) === s);
+    if (row?.id) return row.id;
+  }
+  return null;
+}
+
 // ── Derive hash from store state ──
 export function stateToHash(state) {
   const { activePage, activeTab, settingsNavItem, settingsTab, messageTab,
@@ -108,11 +136,6 @@ export function stateToHash(state) {
     return buildHash('settings', 'agents');
   }
 
-  // Patient detail view
-  if (state.selectedPatientId) {
-    return buildHash('population', 'patient', state.selectedPatientId);
-  }
-
   const LIST_TO_URL = {
     'Day Optimizer': 'day-optimizer',
     'Review HRA': 'review-hra',
@@ -134,6 +157,24 @@ export function stateToHash(state) {
     'pg:Dynamic': 'population-groups-dynamic'
   };
 
+  // Patient detail view
+  if (state.selectedPatientId) {
+    // Prefer the fold/member id in the URL — it survives worklist ids
+    // being renamed and matches what the user sees in the UI.
+    const memberId = findPatientMemberId(state, state.selectedPatientId);
+    const listSlug = LIST_TO_URL[state.activeSubnavList];
+    const patientKey = memberId || state.selectedPatientId;
+    // HEDIS keeps its own top-level path (`#/hedis`) — mirror that for the
+    // patient URL so it's not double-prefixed with `population`.
+    if (state.activeSubnavList === 'HEDIS') {
+      return buildHash('hedis', 'patient', patientKey);
+    }
+    if (listSlug) {
+      return buildHash('population', listSlug, 'patient', patientKey);
+    }
+    return buildHash('population', 'patient', patientKey);
+  }
+
   if (state.activeSubnavList && state.activeSubnavList !== 'TOC') {
     // HEDIS has its own top-level path
     if (state.activeSubnavList === 'HEDIS') {
@@ -149,7 +190,7 @@ export function stateToHash(state) {
 }
 
 // ── Map parsed route → store state updates ──
-export function hashToState(route) {
+export function hashToState(route, state = null) {
   // Always clear all drawer/overlay states on any navigation
   const updates = {
     goalDetailId: null, goalWizardOpen: false, goalWizardEditId: null,
@@ -178,6 +219,11 @@ export function hashToState(route) {
     updates.activePage = 'population';
     updates.activeSubnavList = 'HEDIS';
     updates.activeTab = 'toc-worklist';
+    updates._subnavNavigated = true;
+    // #/hedis/patient/<memberId> — patient detail from HEDIS
+    if (route.section === 'patient' && route.tab) {
+      updates.selectedPatientId = findPatientIdByMemberId(state, route.tab) || route.tab;
+    }
     return updates;
   }
   if (route.page === 'email' && route.section) {
@@ -298,11 +344,6 @@ export function hashToState(route) {
 
   // Population — patient detail or worklist/queue/hcc
   updates.activePage = 'population';
-  if (route.section === 'patient' && route.tab) {
-    updates.selectedPatientId = route.tab;
-    return updates;
-  }
-  updates.selectedPatientId = null;
 
   const URL_TO_LIST = {
     'day-optimizer': 'Day Optimizer',
@@ -324,6 +365,21 @@ export function hashToState(route) {
     'population-groups-static': 'pg:Static',
     'population-groups-dynamic': 'pg:Dynamic'
   };
+
+  // Legacy patient URL: #/population/patient/<id>
+  if (route.section === 'patient' && route.tab) {
+    updates.selectedPatientId = findPatientIdByMemberId(state, route.tab) || route.tab;
+    return updates;
+  }
+  // New patient URL: #/population/<listSlug>/patient/<memberId>
+  if (route.section && URL_TO_LIST[route.section] && route.tab === 'patient' && route.id) {
+    updates.activeSubnavList = URL_TO_LIST[route.section];
+    updates.activeTab = 'toc-worklist';
+    updates._subnavNavigated = true;
+    updates.selectedPatientId = findPatientIdByMemberId(state, route.id) || route.id;
+    return updates;
+  }
+  updates.selectedPatientId = null;
 
   if (route.section && URL_TO_LIST[route.section]) {
     updates.activeSubnavList = URL_TO_LIST[route.section];
@@ -367,7 +423,8 @@ export function syncFromHash(setState, getState) {
   _syncing = true;
   try {
     const route = parseHash();
-    const updates = hashToState(route);
+    const currentState = typeof getState === 'function' ? getState() : null;
+    const updates = hashToState(route, currentState);
     if (Object.keys(updates).length > 0) {
       if (updates.activePage) sessionStorage.setItem('activePage', updates.activePage);
       if (updates.activeTab) sessionStorage.setItem('activeTab', updates.activeTab);
