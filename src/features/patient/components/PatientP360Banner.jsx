@@ -7,6 +7,7 @@ import { ConsentPopover } from '../../../components/ConsentPopover/ConsentPopove
 import { ScheduleDrawer } from '../../../components/ScheduleDrawer/ScheduleDrawer';
 import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
 import { useAppStore } from '../../../store/useAppStore';
+import { formatDobDisplay } from '../../../lib/patientDob';
 import { FALLBACK_P360 } from '../data/p360Mock';
 import styles from './PatientP360Banner.module.css';
 
@@ -498,7 +499,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
               <Icon name="solar:pen-2-linear" size={16} color="var(--neutral-200)" />
             </div>
             <div className={styles.meta}>
-              {patient.gender} • {patient.dob || '9/14/1968'} ({patient.age})
+              {patient.gender} • {formatDobDisplay(patient.dob) || '9/14/1968'} ({patient.age})
               {bannerSize !== 'wide' && (
                 <>
                   <span className={styles.metaDot}>•</span>
