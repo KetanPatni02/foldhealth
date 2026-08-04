@@ -65,25 +65,11 @@
   flex-shrink: 0;
 }
 
-.closeBtn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--neutral-200);
-  padding: 4px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  transition:
-    background 0.15s,
-    color 0.15s;
-}
-
-/* Vertical divider between primary action and close — only renders when
-   closeBtn has a sibling (i.e. headerRight has an action), so drawers
-   without a headerRight action stay unaffected. */
+/* Visuals (padding, radius, hover) come from the shared CloseButton; this
+   module only contributes the drawer-specific concern: a vertical divider
+   between headerRight's primary action and the close button. The
+   `styles.closeBtn` class is passed to <CloseButton> via `className`.
+   Sibling-only divider — no border when close is the only child. */
 .headerRight > .closeBtn:not(:only-child) {
   border-left: 1px solid var(--neutral-100);
   padding-left: 12px;
@@ -94,10 +80,6 @@
   border-left: none;
   padding-left: 4px;
   margin-left: 0;
-}
-.closeBtn:hover {
-  background: var(--neutral-100);
-  color: var(--neutral-400);
 }
 
 /* Full-bleed slot between header and body. Callers pass their own

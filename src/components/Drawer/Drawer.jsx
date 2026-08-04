@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../Icon/Icon';
-import { CloseIcon } from '../Icon/CloseIcon';
+import { CloseButton } from '../CloseButton/CloseButton';
 import styles from './Drawer.module.css';
 
 // Matches the slideOut / overlayOut animation duration in Drawer.module.css.
@@ -62,13 +62,12 @@ export function Drawer({ title, onClose, headerRight, banner, footer, children, 
           <h2 className={styles.headerTitle} style={titleStyle}>{title}</h2>
           <div className={styles.headerRight}>
             {headerRight}
-            <button
+            <CloseButton
               className={`${styles.closeBtn}${noCloseDivider ? ` ${styles.closeBtnNoDivider}` : ''}`}
               onClick={requestClose}
-              aria-label="Close drawer"
-            >
-              <CloseIcon size={20} />
-            </button>
+              size={20}
+              label="Close drawer"
+            />
           </div>
         </div>
         {banner && <div className={styles.banner}>{banner}</div>}

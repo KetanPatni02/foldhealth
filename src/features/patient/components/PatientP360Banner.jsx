@@ -5,6 +5,7 @@ import { Icon } from '../../../components/Icon/Icon';
 import { PhoneVerifiedIcon } from '../../../components/Icon/PhoneVerifiedIcon';
 import { ConsentPopover } from '../../../components/ConsentPopover/ConsentPopover';
 import { ScheduleDrawer } from '../../../components/ScheduleDrawer/ScheduleDrawer';
+import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
 import { useAppStore } from '../../../store/useAppStore';
 import { FALLBACK_P360 } from '../data/p360Mock';
 import styles from './PatientP360Banner.module.css';
@@ -182,6 +183,8 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
 
   const [showScheduleDrawer, setShowScheduleDrawer] = useState(false);
   const callBtnRef = useRef(null);
+  const [moreMenuRect, setMoreMenuRect] = useState(null);
+  const updatePatient = useAppStore(s => s.updatePatient);
 
   // Responsive behavior keys off a fixed 1200px banner-width breakpoint:
   //   wide (≥1200)  → Consent/Acuity/RAF/Next Appt stay inline in row 1; only
@@ -354,8 +357,79 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
             </div>
           </div>
           <span className={styles.drawerActionDivider} />
-          <ActionButton icon="solar:menu-dots-linear" size="L" tooltip="More" onClick={noop('More')} />
+          <ActionButton
+            icon="solar:menu-dots-linear"
+            size="L"
+            tooltip="More"
+            onClick={(e) => setMoreMenuRect(e.currentTarget.getBoundingClientRect())}
+          />
         </div>
+
+        {moreMenuRect && (
+          <MenuPopover
+            anchorRect={moreMenuRect}
+            width={220}
+            align="right"
+            items={[
+              { key: 'assessment',   icon: 'solar:clipboard-check-linear', label: 'Assessment' },
+              { key: 'education',    icon: 'solar:book-linear',            label: 'Education' },
+              { key: 'add-task',     icon: 'solar:checklist-linear',       label: 'Add Task' },
+              { key: 'referral',     icon: 'solar:arrow-right-up-linear',  label: 'Create Referral' },
+              { key: 'automation',   icon: 'solar:bolt-linear',            label: 'Run Automation' },
+              { key: 'relatives',    icon: 'solar:users-group-two-rounded-linear', label: 'Add Relatives' },
+              { key: 'print',        icon: 'solar:printer-linear',         label: 'Print Clinical Profile' },
+              { key: 'edit',         icon: 'solar:pen-linear',             label: 'Edit Details' },
+              { key: 'reset-pw',     icon: 'solar:refresh-linear',         label: 'Reset Password' },
+              { key: 'inactive',     icon: 'solar:user-cross-linear',      label: patient.status === 'inactive' ? 'Set Active' : 'Set Inactive' },
+              { divider: true },
+              { key: 'block',        icon: 'solar:forbidden-circle-linear', label: 'Block Number', danger: true },
+            ]}
+            onClose={() => setMoreMenuRect(null)}
+            onSelect={(key) => {
+              setMoreMenuRect(null);
+              if (key === 'print') {
+                showToast('Printing clinical profile…');
+                window.print();
+                return;
+              }
+              if (key === 'edit') {
+                setDrawerExpanded(true);
+                showToast('Expanded details for editing');
+                return;
+              }
+              if (key === 'inactive') {
+                const nextStatus = patient.status === 'inactive' ? 'active' : 'inactive';
+                updatePatient(patient.id, { status: nextStatus });
+                showToast(nextStatus === 'inactive'
+                  ? `${patient.name} set to Inactive`
+                  : `${patient.name} set to Active`);
+                return;
+              }
+              if (key === 'block') {
+                const existing = Array.isArray(p.opted_out_comms) ? p.opted_out_comms : [];
+                const primary = patient.phone || p.plan_numbers_primary?.[0] || '';
+                const label = primary ? `${primary} (Call, SMS)` : 'Primary phone (Call, SMS)';
+                if (existing.some(e => e.includes(primary))) {
+                  showToast('Number is already blocked');
+                  return;
+                }
+                updatePatient(patient.id, { opted_out_comms: [...existing, label] });
+                showToast(`Blocked ${primary || 'primary number'} for calls and SMS`);
+                return;
+              }
+              const LABELS = {
+                assessment: 'Assessment',
+                education: 'Education',
+                'add-task': 'Add Task',
+                referral: 'Create Referral',
+                automation: 'Run Automation',
+                relatives: 'Add Relatives',
+                'reset-pw': 'Reset Password',
+              };
+              noop(LABELS[key] || 'Action')();
+            }}
+          />
+        )}
 
         {showScheduleDrawer && (
           <ScheduleDrawer

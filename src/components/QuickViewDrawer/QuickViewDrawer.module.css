@@ -18,8 +18,7 @@
 .profileLink:hover { background: var(--primary-50); }
 
 .headerDivider {
-  display: block;
-  width: 0.5px;
+  width: 1px;
   height: 16px;
   background: var(--neutral-150);
   flex-shrink: 0;
