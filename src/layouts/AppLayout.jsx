@@ -23,7 +23,6 @@ import { SchedulingListTable } from '../features/scheduling-list/SchedulingListT
 import { Icon } from '../components/Icon/Icon';
 import { useAppStore } from '../store/useAppStore';
 import { Toaster } from '../components/Toast/Toast';
-import { DevRoleSwitcher } from '../components/DevRoleSwitcher/DevRoleSwitcher';
 import { supabase } from '../lib/supabase';
 import styles from './AppLayout.module.css';
 
@@ -480,7 +479,6 @@ export function AppLayout() {
         <PgProcessingHost />
       </Suspense>
       <Toaster />
-      <DevRoleSwitcher />
     </div>
   );
 }
