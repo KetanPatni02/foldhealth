@@ -1,6 +1,6 @@
 /* ── Row shell — white cells, 71px row height ── */
 .row {
-  border-bottom: 1px solid var(--neutral-150);
+  border-bottom: 0.5px solid var(--neutral-150);
   transition: background var(--duration-instant) var(--ease-hover);
   cursor: pointer;
   background: var(--neutral-0);
@@ -137,11 +137,11 @@
   position: sticky;
   right: 0;
   background: var(--neutral-0);
-  border-left: 1px solid var(--neutral-150);
+  border-left: 0.5px solid var(--neutral-150);
   z-index: 3;
 }
 .stickyCheck  { left: 0; padding: 8px 10px !important; }
-.stickyMember { left: 36px; padding: 8px 12px !important; border-right: 1px solid var(--neutral-150); }
+.stickyMember { left: 36px; padding: 8px 12px !important; border-right: 0.5px solid var(--neutral-150); }
 
 /* ── DOS-level group (Figma 4680:138476 / 4672:131830). The DOS · Open
    ICDs · Visit Type · Provider · POS columns read as ONE bordered group
@@ -156,7 +156,7 @@
 }
 /* Right bracket of the DOS group — full-height vertical divider after
    POS (the left bracket is the Member column's own border-right). */
-.dosTdLast { border-right: 1px solid var(--neutral-150); }
+.dosTdLast { border-right: 0.5px solid var(--neutral-150); }
 .dosStack {
   display: flex;
   flex-direction: column;
@@ -174,7 +174,7 @@
 /* Horizontal divider between stacked visits — spans the group because
    every DOS-level column carries the same divider on adjacent tds. */
 .dosStackItem + .dosStackItem {
-  border-top: 1px solid var(--neutral-150);
+  border-top: 0.5px solid var(--neutral-150);
 }
 
 /* DOS date + source badge on one line. */
@@ -243,7 +243,7 @@
   min-height: 32px;
   display: flex;
   align-items: center;
-  border-top: 1px solid var(--neutral-150);
+  border-top: 0.5px solid var(--neutral-150);
 }
 /* "View More N ⌄" / "View Less ⌃" — lives in the DOS column's footer.
    Neutral slate grey, matching the design (NOT purple). */

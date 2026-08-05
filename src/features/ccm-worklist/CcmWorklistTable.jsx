@@ -257,7 +257,7 @@ export function CcmWorklistTable() {
     fontSize: 12,
     fontWeight: 500,
     color: 'var(--neutral-300)',
-    borderBottom: '1px solid var(--neutral-150)',
+    borderBottom: '0.5px solid var(--neutral-150)',
     background: 'var(--neutral-0)',
     position: 'sticky',
     top: 0,
@@ -381,7 +381,7 @@ export function CcmWorklistTable() {
                 <th style={{ ...thStyle, width: 36, padding: '8px 10px', position: 'sticky', top: 0, left: 0, zIndex: 4 }}>
                   <Checkbox checked={someSelected ? 'indeterminate' : allSelected} onCheckedChange={handleSelectAll} />
                 </th>
-                <th style={{ ...thStyle, padding: '8px 12px', position: 'sticky', top: 0, left: 36, zIndex: 4, borderRight: '1px solid var(--neutral-150)' }}>
+                <th style={{ ...thStyle, padding: '8px 12px', position: 'sticky', top: 0, left: 36, zIndex: 4, borderRight: '0.5px solid var(--neutral-150)' }}>
                   Members
                 </th>
                 <th style={thStyle}>Status</th>

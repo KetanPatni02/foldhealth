@@ -15,7 +15,7 @@
 /* ── Row + sticky wrappers ── */
 
 .row {
-  border-bottom: 1px solid var(--neutral-150);
+  border-bottom: 0.5px solid var(--neutral-150);
   transition: background .1s;
 }
 .row:hover { background: var(--primary-25); }
@@ -43,7 +43,7 @@
   position: sticky;
   right: 0;
   background: var(--neutral-0);
-  border-left: 1px solid var(--neutral-150);
+  border-left: 0.5px solid var(--neutral-150);
   box-shadow: var(--shadow-card);
   z-index: 3;
 }
@@ -51,7 +51,7 @@
 /* ── Cell base ── */
 
 .td {
-  padding: 8px 14px;
+  padding: 8px 12px;
   font-size: 14px;
   font-weight: 400;
   color: var(--neutral-400);
@@ -66,7 +66,7 @@
 
 .membersTd {
   padding: 8px 12px;
-  border-right: 1px solid var(--neutral-150);
+  border-right: 0.5px solid var(--neutral-150);
   vertical-align: middle;
 }
 

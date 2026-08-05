@@ -506,12 +506,6 @@ function formatDuration(secs) {
   return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
 }
 
-function nextDate(lace) {
-  const d = new Date();
-  d.setDate(d.getDate() + (lace === 'High' ? 7 : lace === 'Medium' ? 14 : 30));
-  return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
-}
-
 // Restore navigation state from sessionStorage on reload
 const _savedPage = sessionStorage.getItem('activePage') || 'population';
 const _savedTab = sessionStorage.getItem('activeTab') || 'toc-worklist';
@@ -1688,9 +1682,6 @@ export const useAppStore = create((set, get) => ({
   builderConfigLoading: false,
 
   // UI state
-  workflowPatient: null,
-  workflowStep: 0,
-  stepStates: {},
   callPopoverPatient: null,
   callPopoverBtnRef: null,
   outreachPopoverPatient: null,
@@ -7143,23 +7134,6 @@ export const useAppStore = create((set, get) => ({
   openQuickView: (patient) => set({ quickViewPatient: patient }),
   closeQuickView: () => set({ quickViewPatient: null }),
 
-  openWorkflow: (patientId) => {
-    const p = get().patients.find(x => x.id === patientId);
-    if (!p) return;
-    const stepStates = {
-      s1: p.status === 'completed' ? 'done' : (p.status === 'oncall' ? 'active' : 'pending'),
-      s2: (p.tocStatus === 'enrolled' || p.tocStatus === 'engaged') ? 'active' : 'pending',
-      s3: 'pending',
-      s4: (p.status === 'scheduled' || p.status === 'queued') ? 'active' : 'pending'
-    };
-    set({ workflowPatient: p, workflowStep: 0, stepStates });
-  },
-  closeWorkflow: () => set({ workflowPatient: null }),
-
-  setStepState: (stepId, state) => set(s => ({
-    stepStates: { ...s.stepStates, [stepId]: state }
-  })),
-
   updatePatient: (id, updates) => {
     // Optimistic local update
     set(s => ({
@@ -7167,32 +7141,6 @@ export const useAppStore = create((set, get) => ({
     }));
     // Persist to Supabase in background
     get().persistPatient(id, updates);
-  },
-
-  saveWorkflow: () => {
-    const { workflowPatient, stepStates } = get();
-    if (!workflowPatient) return;
-    const allDone = ['s1','s2','s3','s4'].every(s => stepStates[s] === 'done');
-    let updates = {};
-    if (allDone) {
-      updates = { status: 'completed', goals: workflowPatient.goals || { met: 3, total: 4 }, nextAction: '__MED_REVIEW__' };
-    } else if (stepStates.s4 === 'done') {
-      updates = { status: 'scheduled', nextAction: 'Follow-up appointment confirmed' };
-    } else if (stepStates.s3 === 'done') {
-      updates = { status: 'scheduled', nextAction: 'Schedule follow-up appointment' };
-    } else if (stepStates.s2 === 'done') {
-      updates = { nextAction: 'Complete medication reconciliation' };
-    }
-    // Optimistic local update
-    set(s => ({
-      patients: s.patients.map(p => p.id === workflowPatient.id ? { ...p, ...updates } : p),
-      workflowPatient: null,
-      toast: 'Workflow saved successfully'
-    }));
-    // Persist to Supabase
-    if (Object.keys(updates).length > 0) {
-      get().persistPatient(workflowPatient.id, updates);
-    }
   },
 
   invokeAgent: (patientIds, agentName, agentRole) => {
@@ -7374,8 +7322,6 @@ export const useAppStore = create((set, get) => ({
   setShowCreateNew: (v) => set({ showCreateNew: v }),
   setShowFilterBar: (v) => set({ showFilterBar: v }),
   clearQueueTabDot: () => set({ queueTabDot: false }),
-
-  nextDate,
 
   // ─── Analytics Data Layer ───
   analyticsCache: {},

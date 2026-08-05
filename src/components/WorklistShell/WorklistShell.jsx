@@ -208,7 +208,10 @@ export function WorklistShell({
                     <th
                       key={col.key || idx}
                       className={styles.th}
-                      style={{ ...stickyStyle, width: col.width, textAlign: col.align || 'left' }}
+                      // `thStyle` lets a caller give a column band its own header
+                      // treatment (e.g. the TOC queue's agent columns) without a
+                      // shell fork.
+                      style={{ ...stickyStyle, width: col.width, textAlign: col.align || 'left', ...col.thStyle }}
                     >
                       {col.label}
                     </th>

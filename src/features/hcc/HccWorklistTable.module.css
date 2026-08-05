@@ -171,7 +171,7 @@
 }
 .memberTh {
   padding: 8px 12px !important;
-  border-right: 1px solid var(--neutral-150);
+  border-right: 0.5px solid var(--neutral-150);
 }
 
 /* ── Sortable header cells (opens SortPopover on click) ── */
@@ -182,7 +182,7 @@
    POS-column border-right so the group's vertical divider runs full
    height (Figma 4672:131830). The left bracket is the Member column's
    own border-right. */
-.headerCell[data-col="pos"] { border-right: 1px solid var(--neutral-150); }
+.headerCell[data-col="pos"] { border-right: 0.5px solid var(--neutral-150); }
 .headerCellSortable {
   cursor: pointer;
   user-select: none;
@@ -290,8 +290,8 @@
 }
 .sectionDividerRow > td {
   padding: 0;
-  border-top: 1px solid var(--neutral-150);
-  border-bottom: 1px solid var(--neutral-150);
+  border-top: 0.5px solid var(--neutral-150);
+  border-bottom: 0.5px solid var(--neutral-150);
   background: var(--neutral-25);
 }
 .sectionDividerCell {

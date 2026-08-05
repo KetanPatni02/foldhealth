@@ -1,13 +1,13 @@
 .agentColTd {
   background: rgba(140,90,226,0.025);
-  padding: 10px 14px;
+  padding: 8px 12px;
   vertical-align: middle;
 }
 
 .agentColTd:first-of-type { border-left: 2px solid var(--primary-200); }
 .agentColTd:last-of-type { border-right: 2px solid var(--primary-200); }
 
-.statusCompact { display: flex; flex-direction: column; gap: 3px; }
+.statusCompact { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 
 .oncallPulse {
   width: 8px;
@@ -29,7 +29,6 @@
   color: var(--neutral-300);
   position: relative;
   cursor: default;
-  margin-top: 2px;
 }
 
 .goalsFill {
@@ -68,7 +67,7 @@
 .medLink { display: inline-flex; align-items: center; gap: 3px; color: var(--primary-300); font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; }
 .medLink:hover { text-decoration: underline; }
 
-.aiCell { display: flex; flex-wrap: wrap; gap: 4px; }
+.aiCell { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; white-space: nowrap; }
 .aiOverflowBadge {
   display: inline-flex;
   align-items: center;
@@ -200,7 +199,6 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  margin-top: 2px;
 }
 
 /* Live transcript snippet */

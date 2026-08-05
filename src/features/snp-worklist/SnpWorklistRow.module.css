@@ -3,7 +3,7 @@
    column, sticky-right Actions column, row hover in primary-25. */
 
 .row {
-  border-bottom: 1px solid var(--neutral-150);
+  border-bottom: 0.5px solid var(--neutral-150);
   transition: background 0.1s;
   cursor: pointer;
 }
@@ -20,7 +20,7 @@
   position: sticky;
   right: 0;
   background: var(--neutral-0);
-  border-left: 1px solid var(--neutral-150);
+  border-left: 0.5px solid var(--neutral-150);
   box-shadow: var(--shadow-card);
   z-index: 3;
 }
@@ -35,7 +35,7 @@
 .checkTd { padding: 8px 10px; vertical-align: middle; }
 .membersTd {
   padding: 8px 12px;
-  border-right: 1px solid var(--neutral-150);
+  border-right: 0.5px solid var(--neutral-150);
   vertical-align: middle;
 }
 

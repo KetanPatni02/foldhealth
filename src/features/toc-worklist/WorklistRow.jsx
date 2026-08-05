@@ -105,7 +105,7 @@ function OutreachCell({ patient }) {
 }
 
 export function WorklistRow({ patient, isSelected, onSelect }) {
-  const openWorkflow = useAppStore(s => s.openWorkflow);
+  const openQuickView = useAppStore(s => s.openQuickView);
   const openCallPopover = useAppStore(s => s.openCallPopover);
   const openDetail = useAppStore(s => s.openDetail);
   const openLiveDrawer = useAppStore(s => s.openLiveDrawer);
@@ -126,7 +126,7 @@ export function WorklistRow({ patient, isSelected, onSelect }) {
       openLiveDrawer(patient.id);
       return;
     }
-    openWorkflow(patient.id);
+    openQuickView({ id: patient.id, name: patient.name, initials: patient.initials, gender: patient.gender, age: patient.age, memberId: patient.memberId, language: patient.language, lace: patient.lace });
   };
 
   const handleCallClick = (e) => {
@@ -147,7 +147,6 @@ export function WorklistRow({ patient, isSelected, onSelect }) {
   const outreachBadgeVariant = p.outreachType === '48h' ? 'outreach-48h' : 'outreach-7d';
 
   const menuItems = buildPatientRowMenuItems([
-    { key: 'Open Workflow', icon: 'solar:clipboard-list-linear', label: 'Open Workflow' },
     ...(p.status === 'scheduled' || p.status === 'queued'
       ? [{
           key: 'Cancel Call',
@@ -160,7 +159,6 @@ export function WorklistRow({ patient, isSelected, onSelect }) {
 
   const handleMenuSelect = (key) => {
     if (key === 'Add Task') { requestAddTask({ member: p.name }); return; }
-    if (key === 'Open Workflow') { openWorkflow(p.id); return; }
     if (key === 'Cancel Call') { showToast('Cancelled call'); return; }
     showToast(`${key} – coming soon`);
   };

@@ -237,8 +237,8 @@ function AiInsightsCell({ insights }) {
   );
 }
 
-export function QueueRow({ patient }) {
-  const openWorkflow = useAppStore(s => s.openWorkflow);
+export function QueueRow({ patient, isSelected, onSelect }) {
+  const openQuickView = useAppStore(s => s.openQuickView);
   const openCallPopover = useAppStore(s => s.openCallPopover);
   const openLiveDrawer = useAppStore(s => s.openLiveDrawer);
   const showToast = useAppStore(s => s.showToast);
@@ -262,7 +262,7 @@ export function QueueRow({ patient }) {
       openLiveDrawer(p.id);
       return;
     }
-    openWorkflow(p.id);
+    openQuickView({ id: p.id, name: p.name, initials: p.initials, gender: p.gender, age: p.age, memberId: p.memberId, language: p.language, lace: p.lace });
   };
   const handleCallClick = (e) => {
     e.stopPropagation();
@@ -273,29 +273,36 @@ export function QueueRow({ patient }) {
     openCallPopover(p.id, callBtnRef);
   };
 
-  const tdBase = {
-    padding: '10px 14px',
-    fontSize: 14,
-    fontWeight: 400,
-    color: 'var(--neutral-400)',
-    verticalAlign: 'middle',
-  };
-
   return (
-    <tr style={{ borderBottom: '1px solid var(--neutral-150)', transition: 'background .1s', cursor: 'pointer' }}
+    <tr
+      className={[rowStyles.row, isSelected ? rowStyles.rowSelected : ''].filter(Boolean).join(' ')}
       onClick={handleRowClick}
-      onMouseOver={e => e.currentTarget.style.background = 'var(--primary-25)'}
-      onMouseOut={e => e.currentTarget.style.background = ''}
     >
-      <td style={{ ...tdBase, width: 36, padding: '8px 10px', position: 'sticky', left: 0, zIndex: 3, background: 'var(--neutral-0)' }}
+      <td className={`${rowStyles.checkTd} ${rowStyles.stickyLeft}`} style={{ left: 0 }}
         onClick={e => e.stopPropagation()}>
-        <Checkbox />
+        <Checkbox
+          checked={isSelected}
+          onCheckedChange={() => onSelect?.(p.id)}
+          aria-label={`Select ${p.name}`}
+        />
       </td>
-      <td style={{ ...tdBase, padding: '8px 12px', position: 'sticky', left: 36, zIndex: 3, background: 'var(--neutral-0)', borderRight: '1px solid var(--neutral-150)' }}>
+      <td className={`${rowStyles.membersTd} ${rowStyles.stickyLeft}`} style={{ left: 36 }}>
         <div className={rowStyles.patientCell}>
           <Avatar variant="patient" initials={p.initials} />
           <div>
-            <div className={rowStyles.patientName}>{p.name} <span className={rowStyles.patientDemo}>({p.gender}•{p.age})</span></div>
+            <div className={rowStyles.patientName}>
+              <button
+                type="button"
+                className={rowStyles.patientNameLink}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openQuickView({ id: p.id, name: p.name, initials: p.initials, gender: p.gender, age: p.age, memberId: p.memberId, language: p.language, lace: p.lace });
+                }}
+              >
+                {p.name}
+              </button>{' '}
+              <span className={rowStyles.patientDemo}>({p.gender}•{p.age})</span>
+            </div>
             <div className={rowStyles.patientMeta}>
               <FoldIdTag id={p.memberId} className={rowStyles.foldId} showToast={showToast} />{' '}•{' '}
               <button
@@ -310,21 +317,21 @@ export function QueueRow({ patient }) {
           </div>
         </div>
       </td>
-      <td style={tdBase}>
+      <td className={rowStyles.td}>
         <Badge size="M"
           variant={`priority-${p.priority <= 1 ? 'critical' : p.priority <= 2 ? 'high' : p.priority <= 3 ? 'medium' : 'low'}`}
           label={p.priority <= 1 ? 'Critical' : p.priority <= 2 ? 'High' : p.priority <= 3 ? 'Medium' : 'Low'}
           icon={p.priority <= 1 ? 'solar:danger-triangle-linear' : p.priority <= 2 ? 'solar:arrow-up-linear' : p.priority <= 3 ? 'solar:minus-circle-linear' : 'solar:arrow-down-linear'}
         />
       </td>
-      <td style={tdBase}>
+      <td className={rowStyles.td}>
         <Badge size="M"
           variant={`outreach-${p.outreachCategory || 'post-visit'}`}
           label={(p.outreachCategory || 'post-visit').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
         />
       </td>
-      <td style={tdBase}><Badge size="M" variant={`lace-${p.lace.toLowerCase()}`} label={p.lace} /></td>
-      <td style={tdBase}>
+      <td className={rowStyles.td}><Badge size="M" variant={`lace-${p.lace.toLowerCase()}`} label={p.lace} /></td>
+      <td className={rowStyles.td}>
         <div className={rowStyles.outreachCell}>
           <Badge size="M" variant={outreachBadgeVariant} label={`TOC ${p.outreachType}`} />
           {p.onCall ? (
@@ -361,24 +368,24 @@ export function QueueRow({ patient }) {
       <td className={styles.agentColTd} style={{ background: 'var(--agent-col-bg)', borderRight: '2px solid var(--primary-200)' }}>
         <AiInsightsCell insights={p.aiInsights} />
       </td>
-      <td style={tdBase}><TocStatusBadge status={p.tocStatus} /></td>
-      <td style={tdBase}><span style={{ fontSize: 14, color: 'var(--neutral-400)', whiteSpace: 'nowrap' }}>{p.dueOn || '—'}</span></td>
-      <td style={tdBase}><span style={{ fontSize: 14, color: 'var(--neutral-400)', whiteSpace: 'nowrap' }}>{p.nextOutreach || '—'}</span></td>
-      <td style={tdBase}><span style={{ fontSize: 14, color: 'var(--neutral-400)', whiteSpace: 'nowrap' }}>{p.startDate || '—'}</span></td>
-      <td style={tdBase}><span style={{ fontSize: 14, color: 'var(--neutral-400)', whiteSpace: 'nowrap' }}>{p.lastAdmission || '—'}</span></td>
-      <td style={tdBase}>
+      <td className={rowStyles.td}><TocStatusBadge status={p.tocStatus} /></td>
+      <td className={rowStyles.td}>{p.dueOn || '—'}</td>
+      <td className={rowStyles.td}>{p.nextOutreach || '—'}</td>
+      <td className={rowStyles.td}>{p.startDate || '—'}</td>
+      <td className={rowStyles.td}>{p.lastAdmission || '—'}</td>
+      <td className={rowStyles.td}>
         <div className={rowStyles.assigneeCell}>
           <Avatar variant="assignee" initials={p.assigneeInitials} />
           <span style={{ fontSize: 13 }}>{p.assignee}</span>
         </div>
       </td>
-      <td style={tdBase}>{p.readmission === 'Yes' ? <Badge size="M" variant="yes" label="Yes" /> : <Badge size="M" variant="no" label="No" />}</td>
-      <td style={tdBase}>
+      <td className={rowStyles.td}>{p.readmission === 'Yes' ? <Badge size="M" variant="yes" label="Yes" /> : <Badge size="M" variant="no" label="No" />}</td>
+      <td className={rowStyles.td}>
         <div className={rowStyles.tasksCell}>
           {p.tasks > 0 ? <span className={rowStyles.taskBadge}>{p.tasks}</span> : <span className={rowStyles.dateDash}>—</span>}
         </div>
       </td>
-      <td style={tdBase}>
+      <td className={rowStyles.td}>
         {p.carePlanStatus === 'updated' ? (
           <Badge size="M" variant="care-plan-updated" label="Updated" icon="solar:check-circle-linear" />
         ) : p.carePlanStatus === 'pending' ? (
@@ -387,7 +394,7 @@ export function QueueRow({ patient }) {
           <Badge size="M" variant="care-plan-none" label="No Care Plan" />
         )}
       </td>
-      <td style={{ ...tdBase, position: 'sticky', right: 0, background: 'var(--neutral-0)', borderLeft: '1px solid var(--neutral-150)', boxShadow: '-4px 0 8px rgba(0,0,0,.04)' }}
+      <td className={`${rowStyles.td} ${rowStyles.stickyRight}`}
         onClick={e => e.stopPropagation()}>
         <div className={rowStyles.actionsCell}>
           <ActionButton
@@ -397,7 +404,7 @@ export function QueueRow({ patient }) {
             onClick={() => {
               if (p.status === 'oncall') openLiveDrawer(p.id);
               else if (p.status === 'completed') openDetail(p.id);
-              else openWorkflow(p.id);
+              else openQuickView({ id: p.id, name: p.name, initials: p.initials, gender: p.gender, age: p.age, memberId: p.memberId, language: p.language, lace: p.lace });
             }}
           />
           <span className={rowStyles.actionDivider} />

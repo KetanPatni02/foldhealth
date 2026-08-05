@@ -48,7 +48,6 @@ const FormView          = lz(() => import('../features/forms/view/FormView'),   
 
 // Drawers and overlays — only mounted when their state is truthy, so lazy here
 // keeps them out of the entry chunk entirely.
-const WorkflowPanel        = lz(() => import('../components/WorkflowPanel/WorkflowPanel'),                 'WorkflowPanel');
 const CallPopover          = lz(() => import('../components/CallPopover/CallPopover'),                     'CallPopover');
 const DetailDrawer         = lz(() => import('../components/DetailDrawer/DetailDrawer'),                   'DetailDrawer');
 const LiveDrawer           = lz(() => import('../components/LiveDrawer/LiveDrawer'),                       'LiveDrawer');
@@ -348,7 +347,6 @@ export function AppLayout() {
   }, []);
 
   const showCreateAgent = useAppStore(s => s.showCreateAgent);
-  const workflowPatient = useAppStore(s => s.workflowPatient);
   const callPopoverPatient = useAppStore(s => s.callPopoverPatient);
   const detailPatient = useAppStore(s => s.detailPatient);
   const liveDrawerPatient = useAppStore(s => s.liveDrawerPatient);
@@ -455,7 +453,6 @@ export function AppLayout() {
 
       <Suspense fallback={null}>
         {showCreateAgent && <CreateAgentDrawer />}
-        {workflowPatient && <WorkflowPanel />}
         {callPopoverPatient && <CallPopover />}
         <ActiveCallCard />
         <InvokeAgentModal />

@@ -16,6 +16,7 @@
   composes: rowClickable from '../../components/WorklistShell/WorklistRow.module.css';
 }
 
+.rowSelected { composes: rowSelected from '../../components/WorklistShell/WorklistRow.module.css'; }
 .stickyLeft  { composes: stickyLeft  from '../../components/WorklistShell/WorklistRow.module.css'; }
 .stickyRight { composes: stickyRight from '../../components/WorklistShell/WorklistRow.module.css'; }
 .td          { composes: td          from '../../components/WorklistShell/WorklistRow.module.css'; }

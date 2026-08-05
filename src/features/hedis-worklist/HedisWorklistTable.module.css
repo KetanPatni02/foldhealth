@@ -43,7 +43,7 @@
 .table thead th[class*="stickyRight"] { z-index: 4; }
 
 .checkTh { padding: 8px 10px !important; width: 36px; }
-.memberTh { padding: 8px 12px !important; border-right: 1px solid var(--neutral-150); }
+.memberTh { padding: 8px 12px !important; border-right: 0.5px solid var(--neutral-150); }
 
 /* ── Pagination bar ── */
 .paginationBar {
