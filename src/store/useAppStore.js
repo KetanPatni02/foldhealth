@@ -1410,6 +1410,11 @@ export const useAppStore = create((set, get) => ({
       pcp:          r.pcp || '—',
       progress:     Number(r.progress) || 0,
     }));
+    // `trigger` is derived (not stored): the 1-based position among same-code
+    // enrollments in created_at order. SNP can be enrolled repeatedly, so its
+    // rows number 1, 2, 3…; single-instance programs are always 1.
+    const seen = {};
+    rows.forEach(r => { seen[r.code] = (seen[r.code] || 0) + 1; r.trigger = seen[r.code]; });
     set(s => ({
       careProgramsByPatient: { ...s.careProgramsByPatient, [patientId]: rows },
       careProgramsLoadedFor: { ...s.careProgramsLoadedFor, [patientId]: true },
@@ -1421,9 +1426,13 @@ export const useAppStore = create((set, get) => ({
     let program;
     set((state) => {
       const existing = state.careProgramsByPatient[patientId] || [];
-      if (existing.some((p) => p.code === entry.code)) return {};
+      // SNP is "triggerable" — it can be enrolled repeatedly, each enrollment a
+      // new trigger (1, 2, 3…). Every other program stays single-instance.
+      const isTriggerable = entry.code === 'SNP';
+      if (!isTriggerable && existing.some((p) => p.code === entry.code)) return {};
+      const trigger = existing.filter((p) => p.code === entry.code).length + 1;
       program = {
-        id: `pcp-${patientId}-${entry.code}`,
+        id: isTriggerable ? `pcp-${patientId}-${entry.code}-${trigger}` : `pcp-${patientId}-${entry.code}`,
         code: entry.code,
         name: `${entry.name} (${entry.code})`,
         acuity: null,
@@ -1435,6 +1444,7 @@ export const useAppStore = create((set, get) => ({
         assignee: 'Unassigned',
         pcp: '—',
         progress: 0,
+        trigger,
       };
       track('care_program.added', { patientId, code: entry.code });
       return {
@@ -1466,6 +1476,60 @@ export const useAppStore = create((set, get) => ({
       });
     }
   },
+
+  // Patch an enrolled program (status, assignee, dates …) and re-persist.
+  // Always stamps `lastUpdated` to today so the Last Updated column reflects
+  // the most recent modification. Optimistic local update + fire-and-forget
+  // Supabase upsert, mirroring addCareProgram.
+  updateCareProgram: (patientId, programId, patch) => {
+    if (!patientId || !programId) return;
+    const now = new Date();
+    const stamp = `${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${now.getFullYear()}`;
+    let updated;
+    set((state) => {
+      const list = state.careProgramsByPatient[patientId] || [];
+      const next = list.map((p) => {
+        if (p.id !== programId) return p;
+        updated = { ...p, ...patch, lastUpdated: stamp };
+        return updated;
+      });
+      return {
+        careProgramsByPatient: { ...state.careProgramsByPatient, [patientId]: next },
+      };
+    });
+    if (updated) {
+      supabase.from('patient_care_programs').upsert({
+        id:            updated.id,
+        patient_id:    patientId,
+        code:          updated.code,
+        name:          updated.name,
+        acuity:        updated.acuity,
+        status:        updated.status,
+        status_color:  updated.statusColor,
+        start_date:    updated.startDate,
+        end_date:      updated.endDate,
+        last_updated:  updated.lastUpdated,
+        assignee:      updated.assignee,
+        pcp:           updated.pcp,
+        progress:      updated.progress,
+      }, { onConflict: 'id' }).then(({ error }) => {
+        if (error) console.warn('updateCareProgram — update failed:', error.message);
+      });
+    }
+  },
+
+  // Session-only items created from a program's Outreach quick-actions (the
+  // "Add Task" / "Schedule Appointment" icons). Keyed by program code so each
+  // program's Related Tasks / Appointments lists merge only their own additions
+  // on top of the mock data — no DB, cleared on reload.
+  programAddedTasks: {},        // { [code]: task[] }  (mock task shape)
+  programAddedAppointments: {}, // { [code]: appt[] }  (mock appointment shape)
+  addProgramTask: (code, task) => set(s => ({
+    programAddedTasks: { ...s.programAddedTasks, [code]: [task, ...(s.programAddedTasks[code] || [])] },
+  })),
+  addProgramAppointment: (code, appt) => set(s => ({
+    programAddedAppointments: { ...s.programAddedAppointments, [code]: [appt, ...(s.programAddedAppointments[code] || [])] },
+  })),
 
   // Table
   patients: [],

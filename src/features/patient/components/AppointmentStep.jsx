@@ -5,6 +5,7 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { ScheduleDrawer } from '../../../components/ScheduleDrawer/ScheduleDrawer';
 import { toast } from '../../../components/Toast/Toast';
+import { useAppStore } from '../../../store/useAppStore';
 import { PATIENT_APPOINTMENTS_MOCK } from '../data/patientAppointmentsMock';
 import styles from './AppointmentStep.module.css';
 
@@ -59,8 +60,27 @@ export function AppointmentStep({ patientId, programCode }) {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [upcomingOpen, setUpcomingOpen] = useState(true);
 
-  const all = PATIENT_APPOINTMENTS_MOCK;
+  const addedForProgram = useAppStore(s => s.programAddedAppointments[programCode]);
+  const addProgramAppointment = useAppStore(s => s.addProgramAppointment);
+  const added = addedForProgram || [];
+
+  const all = [...added, ...PATIENT_APPOINTMENTS_MOCK];
   const programAppts = all.filter(a => a.type === 'Appointment' && a.programCode && a.programCode === programCode);
+
+  const handleScheduled = (row) => {
+    if (!row) return;
+    addProgramAppointment(programCode, {
+      id: `appt-${Date.now()}`,
+      title: row.appointment_type_name || 'Appointment',
+      subtitle: row.reason_for_visit || row.mode || '',
+      type: 'Appointment',
+      programCode,
+      date: row.date || '',
+      time: row.time_start || '',
+      assignee: row.primary_user || 'Unassigned',
+      recurring: !!row.recurring,
+    });
+  };
 
   return (
     <div className={styles.container}>
@@ -111,7 +131,7 @@ export function AppointmentStep({ patientId, programCode }) {
       </div>
 
       {scheduleOpen && (
-        <ScheduleDrawer initialPatientId={patientId} onClose={() => setScheduleOpen(false)} />
+        <ScheduleDrawer initialPatientId={patientId} onClose={() => setScheduleOpen(false)} onSave={handleScheduled} />
       )}
     </div>
   );

@@ -37,6 +37,17 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Care Programs table — editable Status & Assignee** — the program list
+  Status cell is now a dropdown (Engaged / Declined / Unable to Reach /
+  Enrolled / Attempted) with per-status colors (warning for in-program,
+  neutral for Declined, error for Unable to Reach). Enrolling stamps the
+  Start Date with today's date; any change bumps Last Updated. The Assignee
+  column reuses the HCC worklist's searchable assign picker
+  (`RoleAssigneePicker`, now generalized with an `onAssign` callback). A
+  hover three-dot row menu (Assign to / Print Summary / Close Program) and a
+  pie-fill completion indicator (`ProgramStatusRing`) round it out.
+  Persisted to the existing `patient_care_programs` table via
+  `updateCareProgram`.
 - **Component library consolidation** — one primitive per job. The three
   Radix duplicates (`ShadcnSelect`, `ShadcnTooltip`, `ShadcnRadioGroup`) were
   removed; every dropdown now uses the shared `Select` (new `style` prop for

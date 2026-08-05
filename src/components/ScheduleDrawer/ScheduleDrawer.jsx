@@ -501,7 +501,9 @@ export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointm
 
     const result = await createAppointment(row);
     if (result) {
-      if (onSave) onSave();
+      // Pass the created row so non-store surfaces (e.g. a program's
+      // appointments list) can mirror it into their own view.
+      if (onSave) onSave(row);
       setBookingSuccess(true);
       setTimeout(() => onClose(), 2000);
     } else {

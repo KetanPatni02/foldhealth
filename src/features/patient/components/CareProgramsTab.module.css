@@ -1,4 +1,6 @@
-.view { display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 12px; row-gap: 12px; }
+/* Left padding is 8px (not 12) so the search icon, checkbox, and the tab-bar
+   collapse button above all line up on the same vertical edge. */
+.view { display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 12px 12px 12px 8px; row-gap: 12px; }
 
 /* Sub-tab bar + filter bar sit flush together (0px gap between them). */
 .topArea { display: flex; flex-direction: column; flex-shrink: 0; }
@@ -8,10 +10,12 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 6px;
+  padding: 0;
   flex-shrink: 0;
 }
 .subTabs { display: flex; align-items: center; gap: 8px; flex: 1; }
+/* Expanded search field replaces the tabs and grows rightward toward New Program. */
+.searchWrap { display: flex; align-items: center; flex: 1; min-width: 0; }
 .subTab {
   display: inline-flex;
   align-items: center;
@@ -108,7 +112,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 8px 6px 0;
+  padding: 8px 0 0;
   flex-shrink: 0;
 }
 .clearAll {
@@ -157,7 +161,14 @@
   vertical-align: middle;
   white-space: nowrap;
 }
-.checkCell { width: 28px; padding-left: 6px !important; padding-right: 6px !important; }
+.checkCell { width: 28px; padding-left: 4px !important; padding-right: 6px !important; }
+
+/* Trailing three-dot cell — the button is revealed on row hover (or while its
+   menu is open) and sits flush to the right edge. */
+.actionsCell { width: 40px; text-align: right; }
+.rowMenuBtn { opacity: 0; transition: opacity 0.12s; }
+.clickableRow:hover .rowMenuBtn,
+.rowMenuBtnOpen { opacity: 1; }
 .programCell { min-width: 280px; }
 .clickableRow { cursor: pointer; }
 .programName { display: flex; align-items: center; gap: 8px; }
@@ -178,3 +189,34 @@
 .dateCell { width: 130px; }
 .assigneeCell { width: 170px; }
 .pcpCell { width: 180px; }
+
+/* Assignee cell — mirrors the HCC worklist "Assign" pill / reassign trigger. */
+.assignPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  font-size: 14px;
+  color: var(--neutral-200);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.12s, color 0.12s;
+}
+.assignPill:hover {
+  background: var(--primary-25);
+  color: var(--primary-300);
+}
+.assignName {
+  font-size: 14px;
+  color: var(--neutral-300);
+  border: none;
+  background: none;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+}
+.assignName:hover { background: var(--neutral-50); }

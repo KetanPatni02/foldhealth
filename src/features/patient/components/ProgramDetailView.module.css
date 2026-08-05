@@ -50,17 +50,50 @@
   background: var(--neutral-150);
   flex-shrink: 0;
 }
-.assigneeLink {
+/* Assignee chip — mirrors the Care Gaps drawer chip (avatar when assigned,
+   dashed "add user" when unassigned). */
+.assigneeChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  height: 24px;
+  padding: 0 3px 0 0;
+  border: none;
+  border-radius: 4px;
+  background: var(--secondary-200);
+  cursor: pointer;
+  overflow: hidden;
+}
+.assigneeAvatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: var(--secondary-50);
+  border: 0.5px solid var(--secondary-200);
+  color: var(--secondary-300);
+  font-size: 10px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.assigneeChipEmpty {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-}
-.assigneeName {
-  font-size: 14px;
-  color: var(--status-success);
+  height: 24px;
+  padding: 0 8px;
+  border: 1px dashed var(--neutral-200);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--neutral-300);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
   white-space: nowrap;
 }
-.assigneeUnassigned { color: var(--neutral-300); }
+.assigneeChipEmpty:hover { border-color: var(--primary-300); color: var(--primary-300); }
 
 /* Trigger breadcrumb + expand chevron */
 .breadcrumb { display: inline-flex; align-items: center; gap: 2px; }
@@ -73,6 +106,7 @@
   padding: 0;
   cursor: pointer;
 }
+.breadcrumbArrow:disabled { cursor: default; }
 .breadcrumbLabel {
   font-size: 14px;
   color: var(--neutral-300);
@@ -520,4 +554,27 @@
   font-size: 12px;
   font-weight: 500;
   color: var(--primary-400);
+}
+
+/* Neutral fallback for steps whose content view isn't built yet. */
+.stepPlaceholder {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 64px 24px;
+}
+.stepPlaceholderTitle {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  margin: 0;
+}
+.stepPlaceholderText {
+  font-size: 14px;
+  color: var(--neutral-300);
+  margin: 0;
 }
