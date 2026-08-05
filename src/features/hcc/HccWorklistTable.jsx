@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { HccWorklistRow, resolveCurrentAssignee } from './HccWorklistRow';
+import { HccWorklistRow, HccEmptyPatientRow, resolveCurrentAssignee } from './HccWorklistRow';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Icon } from '../../components/Icon/Icon';
@@ -152,6 +152,10 @@ export function HccWorklistTable() {
   const hccMembers = useAppStore(s => s.hccMembers);
   const hccMembersLoading = useAppStore(s => s.hccMembersLoading);
   const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
+  // Patients slice — drives the "Patients Without Open Gaps" secondary section
+  // (every patient in the system that isn't already in hccMembers).
+  const patients = useAppStore(s => s.patients);
+  const fetchPatients = useAppStore(s => s.fetchPatients);
   const fetchHccAddedCharts = useAppStore(s => s.fetchHccAddedCharts);
   const fetchHccChartStatus = useAppStore(s => s.fetchHccChartStatus);
   const fetchHccRemovedCharts = useAppStore(s => s.fetchHccRemovedCharts);
@@ -209,6 +213,13 @@ export function HccWorklistTable() {
   useEffect(() => { fetchHccAddedCharts(); }, [fetchHccAddedCharts]);
   useEffect(() => { fetchHccChartStatus(); }, [fetchHccChartStatus]);
   useEffect(() => { fetchHccRemovedCharts(); }, [fetchHccRemovedCharts]);
+  // Populate the patients slice on mount if it's still empty — Population
+  // may not have landed on any patient-backed view yet in this session.
+  // fetchPatients is idempotent enough (a duplicate call just re-fetches);
+  // guarding on length avoids the second network round-trip.
+  useEffect(() => {
+    if (patients.length === 0) fetchPatients();
+  }, [patients.length, fetchPatients]);
 
   // If we landed on the HCC tab via the router (hash sync) rather than
   // through setActiveSubnavList, no default filter was applied. Seed the
@@ -282,14 +293,63 @@ export function HccWorklistTable() {
   // so records closest to breaching the 14-day window surface at the top.
   const { sorted, sortKey, sortDir, setSort, clearSort } = useTableSort(filtered, 'date', 'asc');
 
+  // "Patients Without Open Gaps" — every patient not represented in
+  // hccMembers gets a compact row. Linking key: the shared Fold ID that
+  // lives on both `patients.memberId` and `hccMembers.memberId` (post-
+  // unification, id === memberId on both slices — see
+  // supabase/patient_id_unification_migration.sql). Falls back to the
+  // row's `id` for any legacy row that hasn't been backfilled yet.
+  const normFoldId = (v) => (v == null ? '' : String(v).replace(/^#/, '').trim().toLowerCase());
+  const hccMemberIds = useMemo(() => {
+    const s = new Set();
+    for (const m of hccMembers) {
+      const k = normFoldId(m.memberId || m.id);
+      if (k) s.add(k);
+    }
+    return s;
+  }, [hccMembers]);
+
+  const patientsWithoutGaps = useMemo(() => {
+    const q = searchQuery?.trim().toLowerCase() || '';
+    const list = patients.filter(p => {
+      const k = normFoldId(p.memberId || p.id);
+      if (!k || hccMemberIds.has(k)) return false;
+      if (!q) return true;
+      return (
+        (p.name || '').toLowerCase().includes(q) ||
+        (p.memberId || '').toString().toLowerCase().includes(q) ||
+        (p.id || '').toString().toLowerCase().includes(q)
+      );
+    });
+    // Sort by patient name ascending — HCC-specific sort keys don't apply here.
+    list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    return list;
+  }, [patients, hccMemberIds, searchQuery]);
+
+  // Flat combined row list: primary records, then a section-header sentinel
+  // (only when there are secondary rows), then the empty-patient rows. The
+  // paginator slices this single array so the divider counts as one row.
+  const combinedRows = useMemo(() => {
+    const rows = sorted.map(m => ({ kind: 'primary', key: m.id, member: m }));
+    if (patientsWithoutGaps.length > 0) {
+      rows.push({ kind: 'sectionHeader', key: '__hcc_empty_section_header__' });
+      for (const p of patientsWithoutGaps) {
+        rows.push({ kind: 'empty', key: `empty-${p.id}`, patient: p });
+      }
+    }
+    return rows;
+  }, [sorted, patientsWithoutGaps]);
+
   // Flat table — one row per record (Figma 4680:138476). A record whose
   // dos_list bundles multiple visits shows a "View More N" expander in
   // its own row (handled inside HccWorklistRow); the table itself just
   // paginates the record list.
   const startIdx = (currentPage - 1) * perPage;
-  const paginated = sorted.slice(startIdx, startIdx + perPage);
+  const paginated = combinedRows.slice(startIdx, startIdx + perPage);
 
-  const visibleIds = paginated.map(m => m.id);
+  // Selection lives only on primary rows — empty-patient rows have no
+  // bulk actions, so header select-all should ignore them.
+  const visibleIds = paginated.filter(r => r.kind === 'primary').map(r => r.member.id);
   const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedHccIds.includes(id));
   const someSelected = selectedHccIds.length > 0 && !allSelected;
 
@@ -371,15 +431,19 @@ export function HccWorklistTable() {
       />
 
       <div className={styles.scrollWrap} ref={scrollWrapRef}>
-        {filtered.length === 0 && searchQuery?.trim() && (
+        {/* Empty states check the COMBINED list — if the secondary section
+            still has patients that match the search, don't tell the user
+            there are no results. */}
+        {combinedRows.length === 0 && searchQuery?.trim() && (
           <EmptyState
             title="No results found"
             message={`No members match "${searchQuery.trim()}". Try a different search term.`}
           />
         )}
-        {/* Filters (chips or Due Date) scoped everything out — prompt the
-            user to adjust them instead of implying the list is empty. */}
-        {filtered.length === 0 && !searchQuery?.trim() && filtersActive && !hccMembersLoading && (
+        {/* Filters (chips or Due Date) scoped primary rows out — prompt the
+            user to adjust them. Only shown when the secondary section is
+            also empty, otherwise the table still has meaningful content. */}
+        {filtered.length === 0 && patientsWithoutGaps.length === 0 && !searchQuery?.trim() && filtersActive && !hccMembersLoading && (
           <EmptyState
             title="No records match your filters"
             message="Try changing or removing some filters to see more records."
@@ -396,14 +460,14 @@ export function HccWorklistTable() {
             }
           />
         )}
-        {filtered.length === 0 && !searchQuery?.trim() && !filtersActive && !hccMembersLoading && (
+        {combinedRows.length === 0 && !searchQuery?.trim() && !filtersActive && !hccMembersLoading && (
           <EmptyState
             title="No HCC members yet"
             message="Members will appear here once assigned."
             icon="solar:ghost-smile-linear"
           />
         )}
-        <table className={styles.table} hidden={filtered.length === 0 && !hccMembersLoading}>
+        <table className={styles.table} hidden={combinedRows.length === 0 && !hccMembersLoading}>
           <thead>
             <tr>
               <th className={`${rowStyles.stickyLeft} ${rowStyles.stickyCheck} ${styles.checkTh}`}>
@@ -469,14 +533,51 @@ export function HccWorklistTable() {
             </tr>
           </thead>
           <tbody>
-            {paginated.map(m => (
-              <HccWorklistRow
-                key={m.id}
-                member={m}
-                hiddenCols={hiddenSet}
-                columns={orderedColumns}
-              />
-            ))}
+            {paginated.map(row => {
+              if (row.kind === 'primary') {
+                return (
+                  <HccWorklistRow
+                    key={row.key}
+                    member={row.member}
+                    hiddenCols={hiddenSet}
+                    columns={orderedColumns}
+                  />
+                );
+              }
+              if (row.kind === 'sectionHeader') {
+                // Span every rendered column: sticky-left checkbox +
+                // sticky-left Member + visible body columns + sticky-right
+                // Actions. Hidden columns aren't emitted, so subtract them.
+                const visibleBodyCount = orderedColumns.reduce(
+                  (n, c) => n + (hiddenSet.has(c.k) ? 0 : 1),
+                  0,
+                );
+                const span = 1 + 1 + visibleBodyCount + 1;
+                return (
+                  <tr key={row.key} className={styles.sectionDividerRow}>
+                    <td colSpan={span} className={styles.sectionDividerCell}>
+                      <div className={styles.sectionDividerInner}>
+                        <span className={styles.sectionDividerTitle}>
+                          Patients Without Open Gaps
+                        </span>
+                        <span className={styles.sectionDividerSubtitle}>
+                          These patients currently have no actionable HCC gaps or DOS.
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              }
+              // empty
+              return (
+                <HccEmptyPatientRow
+                  key={row.key}
+                  patient={row.patient}
+                  hiddenCols={hiddenSet}
+                  columns={orderedColumns}
+                />
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -484,7 +585,7 @@ export function HccWorklistTable() {
 
       <StatusLegend />
 
-      <Pagination totalItems={filtered.length} />
+      <Pagination totalItems={combinedRows.length} />
 
       <BulkBar
         selectedIds={selectedHccIds}

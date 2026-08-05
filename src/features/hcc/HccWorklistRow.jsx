@@ -1273,3 +1273,107 @@ export const HccWorklistRow = memo(HccWorklistRowImpl, (prev, next) => (
   && prev.hiddenCols === next.hiddenCols
   && prev.columns === next.columns
 ));
+
+/**
+ * Empty-patient row for the "Patients Without Open Gaps" section — a
+ * patient that exists in `s.patients` but has no HCC record (no open gaps
+ * or DOS). Renders the same column skeleton as HccWorklistRow so alignment
+ * stays exact: sticky-left Checkbox (disabled) + Members cell, every HCC
+ * column shown as `—`, sticky-right Actions cell with just a Record button
+ * that opens the Add DOS drawer for this patient. Saving a DOS moves the
+ * patient into hccMembers, which the parent already derives from — so no
+ * explicit remove is needed here.
+ */
+function HccEmptyPatientRowImpl({ patient, hiddenCols, columns }) {
+  const openAddDos = useAppStore(s => s.openHccAddDos);
+  const showToast = useAppStore(s => s.showToast);
+  const openQuickView = useAppStore(s => s.openQuickView);
+  const isHidden = (k) => hiddenCols?.has(k);
+  const dash = <span className={styles.muted}>—</span>;
+
+  const handleRecord = (e) => {
+    e.stopPropagation();
+    openAddDos({
+      id: patient.id,
+      name: patient.name,
+      in: patient.initials,
+      g: patient.gender,
+      age: patient.age,
+      memberId: patient.memberId || patient.id,
+      dob: patient.dob,
+    });
+  };
+
+  return (
+    <tr className={styles.row}>
+      <td
+        className={`${styles.checkTd} ${styles.stickyLeft} ${styles.stickyCheck}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className={styles.checkAlign}>
+          <Checkbox checked={false} disabled aria-label={`Select ${patient.name}`} />
+        </div>
+      </td>
+
+      <td className={`${styles.memberTd} ${styles.stickyLeft} ${styles.stickyMember} ${styles.colMember}`}>
+        <div className={styles.patientCell}>
+          <Avatar variant="patient" initials={patient.initials} />
+          <div>
+            <div className={styles.patientName}>
+              <button
+                className={styles.patientNameLink}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openQuickView({
+                    id: patient.id,
+                    name: patient.name,
+                    initials: patient.initials,
+                    gender: patient.gender,
+                    age: patient.age,
+                    memberId: patient.memberId,
+                    language: patient.language,
+                  });
+                }}
+              >{patient.name}</button>{' '}
+              <span className={styles.patientDemo}>({patient.gender}&bull;{patient.age})</span>
+            </div>
+            <div className={styles.patientMeta}>
+              <FoldIdTag id={patient.memberId || patient.id} className={styles.foldId} showToast={showToast} />{' '}&bull;{' '}
+              <button type="button" className={styles.langBadge} onClick={(e) => e.stopPropagation()}>
+                {(patient.language || 'en').toUpperCase()}
+                <span className={styles.langTooltip}>Preferred Language: English</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </td>
+
+      {(columns || []).map((col) => {
+        if (isHidden(col.k)) return null;
+        // Match the primary row's per-column classnames so widths and
+        // stickies (esp. the DOS-group right divider on POS) align.
+        const cls = [
+          DOS_LEVEL_COLS.has(col.k) ? styles.dosTd : '',
+          col.k === 'pos' ? styles.dosTdLast : '',
+        ].filter(Boolean).join(' ');
+        return (
+          <td key={col.k} data-col={col.k} className={cls}>
+            {dash}
+          </td>
+        );
+      })}
+
+      <td className={`${styles.actionsCell} ${styles.stickyRight} ${styles.colActions}`}>
+        <div className={styles.actionsRow}>
+          <Button variant="secondary" size="S" onClick={handleRecord}>Record</Button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+export const HccEmptyPatientRow = memo(HccEmptyPatientRowImpl, (prev, next) => (
+  prev.patient === next.patient
+  && prev.hiddenCols === next.hiddenCols
+  && prev.columns === next.columns
+));
