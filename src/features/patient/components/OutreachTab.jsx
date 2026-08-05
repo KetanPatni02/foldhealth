@@ -12,6 +12,8 @@ import { Input } from '../../../components/Input/Input';
 import { Switch } from '../../../components/Switch/Switch';
 import { RadioButton } from '../../../components/RadioButton/RadioButton';
 import { useAppStore } from '../../../store/useAppStore';
+import { ScheduleDrawer } from '../../../components/ScheduleDrawer/ScheduleDrawer';
+import { AddTaskDrawer } from './AddTaskDrawer';
 import { INITIAL_LOG_GROUPS } from '../data/outreachLogMock';
 import styles from './OutreachTab.module.css';
 
@@ -248,11 +250,17 @@ function OutreachDateTimePicker({ value, onChange }) {
     }, 0);
   };
 
-  const handleNow = () => {
-    const now = new Date();
-    setPickerHour(now.getHours());
-    setPickerMinute(now.getMinutes());
-    scrollToTime(now.getHours(), now.getMinutes());
+  // Reset — revert the picker back to the currently-committed value.
+  const handleReset = () => {
+    const p = parsePickerValue(value);
+    setSelectedDate(p.date);
+    setPickerHour(p.hour);
+    setPickerMinute(p.minute);
+    if (p.date) {
+      const [mm, dd, yyyy] = p.date.split('/');
+      setViewDate(new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd)));
+    }
+    scrollToTime(p.hour, p.minute);
   };
 
   const handleOk = () => {
@@ -341,13 +349,15 @@ function OutreachDateTimePicker({ value, onChange }) {
                     </div>
                   </div>
                 </div>
-                <div className={styles.timeColsFooter}>
-                  <button type="button" className={styles.nowBtn} onClick={handleNow}>Now</button>
-                  <button type="button"
-                    className={`${styles.okBtn} ${!selectedDate ? styles.okBtnDisabled : ''}`}
-                    onClick={handleOk} disabled={!selectedDate}>OK</button>
-                </div>
               </div>
+            </div>
+            {/* Footer spans the full width, under both the calendar and the
+                Hr/Min columns. */}
+            <div className={styles.pickerFooter}>
+              <button type="button" className={styles.nowBtn} onClick={handleReset}>Reset</button>
+              <button type="button"
+                className={`${styles.okBtn} ${!selectedDate ? styles.okBtnDisabled : ''}`}
+                onClick={handleOk} disabled={!selectedDate}>Save</button>
             </div>
           </div>
         </div>,
@@ -381,6 +391,8 @@ function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOpen, sho
             <button className={styles.selectOutcomeBtn} onClick={onToggleOutcomeOpen} type="button">
               <Icon name="solar:add-circle-linear" size={12} color="var(--neutral-300)" />
               <span>Select Outcome</span>
+              {/* Mandatory field — red dot until an outcome is chosen. */}
+              {outcomes.length === 0 && <span className={styles.mandatoryDot} aria-hidden="true" />}
             </button>
             {outcomeOpen && (
               <div className={styles.outcomeDropdown}>
@@ -628,13 +640,11 @@ function LogEntry({ log, isLast, onEdit, onDelete }) {
                   </div>
                 </>
               ) : (
-                /* Non-Call expanded view — Figma 3:52173. Bordered
-                   card with Date & Time + Duration meta and a plain
-                   "Note :" body. */
+                /* Non-Call expanded view — Figma 3:52173. Bordered card with
+                   just the Duration meta and a plain "Note :" body. */
                 <>
-                  <div className={styles.logExpandedLabel}>Date &amp; Time:</div>
                   <div className={styles.logExpandedCallMeta}>
-                    {log.date} <span className={styles.logExpandedMetaDot}>·</span> Duration: <strong>5mins</strong>
+                    Duration: <strong>5mins</strong>
                   </div>
                   {hasNote && (
                     <>
@@ -729,6 +739,12 @@ export function OutreachTab({
   const INITIAL_CALLED_TO = defaultCalledTo || CALLED_TO_OPTIONS[0];
 
   const currentUserProfile = useAppStore(s => s.currentUserProfile);
+  const patientId = useAppStore(s => s.selectedPatientId);
+  const addProgramTask = useAppStore(s => s.addProgramTask);
+  const addProgramAppointment = useAppStore(s => s.addProgramAppointment);
+  // Quick-action drawers (program scope only).
+  const [addTaskOpen, setAddTaskOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(defaultFormOpen);
   // Id of the row currently being edited (null = creating a new one).
   // When set, handleSave updates that row in place instead of pushing.
@@ -832,8 +848,10 @@ export function OutreachTab({
   const resetForm = () => {
     setLogFor(defaultLogFor);
     setType(defaultLogFor === 'hcc-gaps' ? 'Call' : 'General');
-    setDatetime('');
-    setSelectedProgs([]);
+    // In program scope the form stays open, so reset to a fresh, ready-to-fill
+    // state (current time + the scoped program pre-selected) rather than blank.
+    setDatetime(scopedProgram ? formatNow() : '');
+    setSelectedProgs(scopedProgram ? defaultPrograms : []);
     setOutcome(null);
     setSeparateNotes(false);
     setPanels({});
@@ -897,10 +915,10 @@ export function OutreachTab({
 
     setEditingId(null);
     resetForm();
-    setFormOpen(false);
+    if (!scopedProgram) setFormOpen(false);
   };
 
-  const handleDiscard = () => { resetForm(); setFormOpen(false); setEditingId(null); };
+  const handleDiscard = () => { resetForm(); if (!scopedProgram) setFormOpen(false); setEditingId(null); };
 
   /**
    * Edit an existing log entry — opens the inline form pre-filled
@@ -948,8 +966,9 @@ export function OutreachTab({
 
   return (
     <div className={styles.wrapper}>
-      {/* Form card or empty state */}
-      {!formOpen ? (
+      {/* Form card or empty state. Inside a care program the form is always
+          open — there's no "Log New Outreach" collapsed step. */}
+      {!formOpen && !scopedProgram ? (
         <div className={styles.emptyCard}>
           <Button
             variant="alt"
@@ -962,9 +981,10 @@ export function OutreachTab({
         </div>
       ) : (
         <div className={styles.formCard}>
-          {/* Log Outreach For selector — hidden when the host scope is fixed
-              (e.g., the HCC drawer where outreach is HCC-only by definition). */}
-          {!hideLogForRow && (
+          {/* Log Outreach For selector — hidden when the host scope is fixed:
+              the HCC drawer (HCC-only) or inside a care program (program-only,
+              so HCC Gaps isn't a valid target). */}
+          {!hideLogForRow && !scopedProgram && (
             <div className={styles.logForRow}>
               <span className={styles.logForLabel}>Log Outreach For:</span>
               {LOG_FOR_OPTIONS.map(opt => (
@@ -1204,10 +1224,10 @@ export function OutreachTab({
             <div className={styles.actionsRow}>
               <span className={styles.actionsLabel}>Actions:</span>
               <span className={styles.actionsDivider} />
-              <ActionButton size="S" tooltip="Add Task">
+              <ActionButton size="S" tooltip="Add Task" onClick={() => setAddTaskOpen(true)}>
                 <AddTaskIcon size={16} color="var(--neutral-300)" />
               </ActionButton>
-              <ActionButton size="S" icon="solar:calendar-add-linear" tooltip="Schedule Appointment" />
+              <ActionButton size="S" icon="solar:calendar-add-linear" tooltip="Schedule Appointment" onClick={() => setScheduleOpen(true)} />
               <ActionButton size="S" icon="solar:alarm-linear" tooltip="Set Reminder" />
             </div>
 
@@ -1276,6 +1296,35 @@ export function OutreachTab({
           onDelete={handleDelete}
         />
       ))}
+
+      {/* Quick-action drawers — created items drop into this program's
+          Related Tasks / Appointments lists (session state). */}
+      {addTaskOpen && (
+        <AddTaskDrawer
+          onClose={() => setAddTaskOpen(false)}
+          onSave={task => scopedProgram && addProgramTask(scopedProgram, task)}
+        />
+      )}
+      {scheduleOpen && (
+        <ScheduleDrawer
+          initialPatientId={patientId}
+          onClose={() => setScheduleOpen(false)}
+          onSave={row => {
+            if (!scopedProgram || !row) return;
+            addProgramAppointment(scopedProgram, {
+              id: `appt-${Date.now()}`,
+              title: row.appointment_type_name || 'Appointment',
+              subtitle: row.reason_for_visit || row.mode || '',
+              type: 'Appointment',
+              programCode: scopedProgram,
+              date: row.date || '',
+              time: row.time_start || '',
+              assignee: row.primary_user || 'Unassigned',
+              recurring: !!row.recurring,
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

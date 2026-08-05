@@ -3,11 +3,14 @@ import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Button } from '../../../components/Button/Button';
 import { SearchListPopover } from '../../../components/SearchListPopover/SearchListPopover';
+import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
 import { SearchBar } from '../../../components/SearchBar/SearchBar';
 import { FilterChip } from '../../../components/FilterChip/FilterChip';
 import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
-import { ProgressRing } from '../../hcc/DiagPanel/ReviewProgressPopover';
-import { CP_SUB_TABS, CP_FILTERS } from '../data/programActivityMock';
+import { RoleAssigneePicker } from '../../hcc/RoleAssigneePicker';
+import { ProgramStatusRing } from './ProgramStatusRing';
+import { CP_SUB_TABS, CP_FILTERS, PROGRAM_STEPS } from '../data/programActivityMock';
+import { PROGRAM_STATUS_OPTIONS, statusColorFor } from '../data/programStatus';
 import { CARE_PROGRAM_CATALOG } from '../data/careProgramCatalog';
 import { useAppStore } from '../../../store/useAppStore';
 import { ProgramDetailView } from './ProgramDetailView';
@@ -26,6 +29,46 @@ const SUB_STATUS_OPTIONS = ['Assigned', 'Unassigned'];
 const DATE_RANGE_OPTIONS = ['Last 7 days', 'Last 30 days', 'Last 90 days'];
 const EMPTY_FILTERS = { assignee: [], program: [], status: [], subStatus: [], startDate: [], endDate: [] };
 
+// Per-row overflow-menu actions (three-dot). Close Program is destructive.
+const ROW_MENU_ITEMS = [
+  { key: 'assign', icon: 'solar:user-plus-rounded-linear', label: 'Assign to' },
+  { key: 'print',  icon: 'solar:printer-linear',           label: 'Print Summary' },
+  { key: 'close',  icon: 'solar:close-circle-linear',      label: 'Close Program', danger: true },
+];
+
+// Program completion % from its step list — completed steps ÷ total steps.
+// Sections are flattened to their child steps.
+const stepProgress = (code) => {
+  const list = PROGRAM_STEPS[code] || [];
+  const flat = list.flatMap(s => (s.type === 'section' ? (s.children || []) : [s]));
+  if (!flat.length) return 0;
+  const done = flat.filter(s => s.status === 'completed').length;
+  return Math.round((done / flat.length) * 100);
+};
+
+// MM/DD/YYYY for "today" — used to stamp Start Date when a program starts.
+const todayStr = () => {
+  const d = new Date();
+  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
+};
+
+// Shown whenever the active tab has no matching programs. The "New Program"
+// entry point lives in the toolbar, so this card carries no button.
+function EmptyState() {
+  return (
+    <div className={styles.emptyWrap}>
+      <div className={styles.emptyCard}>
+        <div className={styles.emptyIcon}>
+          <span className={styles.iconInner}>
+            <Icon name="solar:hand-heart-linear" size={46} color="var(--neutral-200)" />
+          </span>
+        </div>
+        <p className={styles.emptyText}>No Active Programs</p>
+      </div>
+    </div>
+  );
+}
+
 export function CareProgramsTab() {
   const [activeSubTab, setActiveSubTab] = useState('All');
   const [selectedProgram, setSelectedProgram] = useState(null);
@@ -37,11 +80,15 @@ export function CareProgramsTab() {
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [selectedIds, setSelectedIds] = useState([]);
   const [npOpen, setNpOpen] = useState(false);
+  const [statusMenu, setStatusMenu] = useState(null); // { id, rect }
+  const [rowMenu, setRowMenu] = useState(null);       // { id, rect }
   const npBtnRef = useRef(null);
 
   const patientId = useAppStore(s => s.selectedPatientId);
   const careProgramsByPatient = useAppStore(s => s.careProgramsByPatient);
   const addCareProgram = useAppStore(s => s.addCareProgram);
+  const updateCareProgram = useAppStore(s => s.updateCareProgram);
+  const showToast = useAppStore(s => s.showToast);
   const fetchCareProgramsForPatient = useAppStore(s => s.fetchCareProgramsForPatient);
   const pendingCareProgramCode = useAppStore(s => s.pendingCareProgramCode);
   const clearPendingCareProgramCode = useAppStore(s => s.clearPendingCareProgramCode);
@@ -77,12 +124,13 @@ export function CareProgramsTab() {
   }, [pendingCareProgramCode, patientId]);
 
   // New Program picker options — short codes only, disabled once enrolled.
+  // SNP is triggerable (repeat-enrollable), so it never disables.
   const programOptions = useMemo(() => {
     const added = new Set(programs.map(p => p.code));
     return CARE_PROGRAM_CATALOG.map(entry => ({
       value: entry.code,
       label: entry.code,
-      disabled: added.has(entry.code),
+      disabled: entry.code === 'SNP' ? false : added.has(entry.code),
       searchText: `${entry.code} ${entry.name}`,
     }));
   }, [programs]);
@@ -117,11 +165,39 @@ export function CareProgramsTab() {
     const entry = CARE_PROGRAM_CATALOG.find(e => e.code === code);
     if (!entry) return;
     addCareProgram(patientId, entry);
-    const created = useAppStore.getState().careProgramsByPatient[patientId]?.find(p => p.code === code);
+    // Open the just-created instance — for triggerable SNP that's the newest
+    // trigger (last row of that code), not the first.
+    const list = useAppStore.getState().careProgramsByPatient[patientId] || [];
+    const created = [...list].reverse().find(p => p.code === code);
     if (created) setPendingProgram({ program: created, firstStep: true });
   };
 
   const openProgram = (program) => setPendingProgram({ program, firstStep: false });
+
+  // Change a program's status. Enrolling stamps the Start Date with today's
+  // date (when the program starts); updateCareProgram bumps Last Updated.
+  const changeStatus = (program, status) => {
+    const patch = { status, statusColor: statusColorFor(status) };
+    if (status === 'Enrolled' && (!program.startDate || program.startDate === '—')) {
+      patch.startDate = todayStr();
+    }
+    updateCareProgram(patientId, program.id, patch);
+  };
+
+  const assignOwner = (program, user) =>
+    updateCareProgram(patientId, program.id, { assignee: user.name });
+
+  // Three-dot row menu actions. "Assign to" reuses the row's inline assignee
+  // picker by triggering its button (deferred so the menu overlay is gone).
+  const handleRowAction = (key, program) => {
+    if (key === 'assign') {
+      setTimeout(() => document.querySelector(`[data-assign-row="${program.id}"]`)?.click(), 0);
+    } else if (key === 'print') {
+      showToast?.(`Preparing ${program.name} summary…`);
+    } else if (key === 'close') {
+      updateCareProgram(patientId, program.id, { status: 'Closed', statusColor: statusColorFor('Closed') });
+    }
+  };
 
   // Show the loading placeholder briefly, then commit to the detail view.
   useEffect(() => {
@@ -191,26 +267,8 @@ export function CareProgramsTab() {
         program={selectedProgram}
         startAtFirstStep={startAtFirstStep}
         onClose={() => setSelectedProgram(null)}
+        onSwitchProgram={setSelectedProgram}
       />
-    );
-  }
-
-  // ── Empty state — patient not yet enrolled in any program ──
-  if (programs.length === 0) {
-    return (
-      <div className={styles.view}>
-        <div className={styles.emptyWrap}>
-          <div className={styles.emptyCard}>
-            <div className={styles.emptyIcon}>
-              <span className={styles.iconInner}>
-                <Icon name="solar:hand-heart-linear" size={46} color="var(--neutral-200)" />
-              </span>
-            </div>
-            <p className={styles.emptyText}>No Active Programs</p>
-            {newProgramControl('left')}
-          </div>
-        </div>
-      </div>
     );
   }
 
@@ -221,12 +279,24 @@ export function CareProgramsTab() {
         {/* Sub-tab bar — transforms into a search bar when search is active */}
         {searchMode ? (
           <div className={styles.subTabBar}>
-            <SearchBar
-              fullWidth
-              placeholder="Search programs"
-              value={searchText}
-              onChange={e => setSearchText(e.target.value)}
-              onClose={() => { setSearchMode(false); setSearchText(''); }}
+            <div className={styles.searchWrap}>
+              <SearchBar
+                fullWidth
+                placeholder="Search programs"
+                value={searchText}
+                onChange={e => setSearchText(e.target.value)}
+                onClose={() => { setSearchMode(false); setSearchText(''); }}
+              />
+            </div>
+            {newProgramControl('right')}
+            <span style={{ width: 0.5, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
+            <ActionButton
+              icon="solar:filter-linear"
+              size="S"
+              tooltip="Filter"
+              tooltipLeft
+              iconColor={showFilters ? 'var(--primary-300)' : undefined}
+              onClick={() => setShowFilters(v => !v)}
             />
           </div>
         ) : (
@@ -258,7 +328,7 @@ export function CareProgramsTab() {
         )}
 
         {/* Filter bar — filter chips; only shown when toggled on */}
-        {showFilters && !searchMode && (
+        {showFilters && (
           <div className={styles.filterBar}>
             {CP_FILTERS.map(f => (
               <FilterChip
@@ -277,7 +347,10 @@ export function CareProgramsTab() {
         )}
       </div>
 
-      {/* Table */}
+      {/* Table — or an empty-state card when the active tab has no programs */}
+      {visible.length === 0 ? (
+        <EmptyState />
+      ) : (
       <div className={styles.tableWrap}>
         <table className={styles.table}>
           <thead>
@@ -296,6 +369,7 @@ export function CareProgramsTab() {
               <th className={styles.dateCell}>Last Updated</th>
               <th className={styles.assigneeCell}>Assignee</th>
               <th className={styles.pcpCell}>PCP</th>
+              <th className={styles.actionsCell} aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
@@ -310,15 +384,19 @@ export function CareProgramsTab() {
                 </td>
                 <td className={styles.programCell}>
                   <div className={styles.programName}>
-                    <ProgressRing progress={p.progress} size={16} stroke={2} />
+                    <ProgramStatusRing progress={stepProgress(p.code)} size={16} />
                     <div className={styles.nameBlock}>
                       <span className={styles.nameText}>{p.name}</span>
                       {p.acuity && <span className={styles.acuityText}>Acuity : {p.acuity}</span>}
                     </div>
                   </div>
                 </td>
-                <td className={styles.statusCell}>
-                  <button className={styles.statusBtn} style={{ color: p.statusColor }}>
+                <td className={styles.statusCell} onClick={e => e.stopPropagation()}>
+                  <button
+                    className={styles.statusBtn}
+                    style={{ color: p.statusColor }}
+                    onClick={e => setStatusMenu({ id: p.id, rect: e.currentTarget.getBoundingClientRect() })}
+                  >
                     {p.status}
                     <Icon name="solar:alt-arrow-down-linear" size={16} color={p.statusColor} />
                   </button>
@@ -326,13 +404,77 @@ export function CareProgramsTab() {
                 <td className={styles.dateCell}>{p.startDate}</td>
                 <td className={styles.dateCell}>{p.endDate}</td>
                 <td className={styles.dateCell}>{p.lastUpdated}</td>
-                <td className={styles.assigneeCell}>{p.assignee}</td>
+                <td className={styles.assigneeCell} onClick={e => e.stopPropagation()}>
+                  <RoleAssigneePicker
+                    role="care_program"
+                    memberId={p.id}
+                    dosDate="care-program"
+                    titleLabel=""
+                    currentName={p.assignee && p.assignee !== 'Unassigned' ? p.assignee : null}
+                    onAssign={user => assignOwner(p, user)}
+                    trigger={({ ref, onClick }) => (
+                      p.assignee && p.assignee !== 'Unassigned' ? (
+                        <button ref={ref} type="button" data-assign-row={p.id} className={styles.assignName} onClick={onClick}>
+                          {p.assignee}
+                        </button>
+                      ) : (
+                        <button ref={ref} type="button" data-assign-row={p.id} className={styles.assignPill} onClick={onClick}>
+                          <Icon name="solar:user-plus-rounded-linear" size={14} color="var(--neutral-200)" />
+                          <span>Assign</span>
+                        </button>
+                      )
+                    )}
+                  />
+                </td>
                 <td className={styles.pcpCell}>{p.pcp}</td>
+                <td className={styles.actionsCell} onClick={e => e.stopPropagation()}>
+                  <ActionButton
+                    icon="solar:menu-dots-linear"
+                    size="S"
+                    tooltip="More actions"
+                    className={`${styles.rowMenuBtn} ${rowMenu?.id === p.id ? styles.rowMenuBtnOpen : ''}`}
+                    onClick={e => setRowMenu({ id: p.id, rect: e.currentTarget.getBoundingClientRect() })}
+                  />
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      )}
+
+      {statusMenu && (
+        <MenuPopover
+          anchorRect={statusMenu.rect}
+          align="left"
+          width={180}
+          ariaLabel="Change status"
+          items={PROGRAM_STATUS_OPTIONS.map(s => ({
+            key: s,
+            label: <span style={{ color: 'var(--neutral-400)' }}>{s}</span>,
+          }))}
+          onSelect={(status) => {
+            const program = visible.find(p => p.id === statusMenu.id);
+            if (program) changeStatus(program, status);
+          }}
+          onClose={() => setStatusMenu(null)}
+        />
+      )}
+
+      {rowMenu && (
+        <MenuPopover
+          anchorRect={rowMenu.rect}
+          align="right"
+          width={180}
+          ariaLabel="Program actions"
+          items={ROW_MENU_ITEMS}
+          onSelect={(key) => {
+            const program = visible.find(p => p.id === rowMenu.id);
+            if (program) handleRowAction(key, program);
+          }}
+          onClose={() => setRowMenu(null)}
+        />
+      )}
     </div>
   );
 }

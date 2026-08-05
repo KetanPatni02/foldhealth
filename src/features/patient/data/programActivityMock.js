@@ -290,6 +290,165 @@ export const CCM_PROGRAM_STEPS = [
   { id: 'ccm-billing', name: 'Billing Review', kind: 'billing', status: 'pending', hasAlert: true },
 ];
 
+// ─── Per-program step lists ────────────────────────────────────────────────
+// Each care program (careProgramCatalog.js) has its own workflow. `mandatory`
+// renders the red dot. Steps are matched to their content view by NAME in
+// ProgramDetailView, so a step defined once (e.g. "Care Plan") renders the
+// same view in every program that lists it. Step names not yet built render a
+// neutral "coming soon" placeholder.
+const AWV_STEPS = [
+  { id: 'awv-docs', name: 'Program Documents' },
+  { id: 'awv-letters', name: 'Letters' },
+  { id: 'awv-outreach', name: 'Outreach', mandatory: true },
+  {
+    id: 'awv-directives', name: 'Program Directives', type: 'section', expanded: true,
+    children: [
+      { id: 'awv-previsit', name: 'Pre-Visit', mandatory: true },
+      { id: 'awv-hra', name: 'HRA', mandatory: true },
+      { id: 'awv-phq9', name: 'PHQ-9', mandatory: true },
+      { id: 'awv-postvisit', name: 'Post-Visit', mandatory: true },
+    ],
+  },
+  { id: 'awv-caregaps', name: 'Care Gaps' },
+  { id: 'awv-diaggaps', name: 'Diagnosis Gaps', mandatory: true },
+  { id: 'awv-appt', name: 'Appointment', mandatory: true },
+  { id: 'awv-referral', name: 'Referral Review' },
+  { id: 'awv-task', name: 'Program Related Task' },
+];
+
+const TOC_IP_STEPS = [
+  { id: 'tocip-outreach', name: 'Outreach' },
+  { id: 'tocip-docs', name: 'Program Documents' },
+  { id: 'tocip-letters', name: 'Letters' },
+  {
+    id: 'tocip-directives', name: 'Program Directives', type: 'section', expanded: true,
+    children: [
+      { id: 'tocip-snapshot', name: 'Snapshot', mandatory: true },
+      { id: 'tocip-postip', name: 'Post IP Assessment', mandatory: true },
+      { id: 'tocip-postvisit', name: 'Post-Visit', mandatory: true },
+    ],
+  },
+  { id: 'tocip-appt', name: 'Appointment', mandatory: true },
+  { id: 'tocip-caregaps', name: 'Open Care Gaps' },
+  { id: 'tocip-medreview', name: 'Medication Review' },
+  { id: 'tocip-task', name: 'Program Related Task' },
+  { id: 'tocip-referral', name: 'Referral Review' },
+];
+
+const TOC_ED_STEPS = [
+  { id: 'toced-snapshot', name: 'Snapshot', mandatory: true },
+  { id: 'toced-docs', name: 'Program Documents' },
+  { id: 'toced-letters', name: 'Letters' },
+  { id: 'toced-outreach', name: 'Outreach', mandatory: true },
+  {
+    id: 'toced-assess', name: 'Assessments', type: 'section', expanded: true,
+    children: [
+      { id: 'toced-posted', name: 'Post ED Assessment', mandatory: true },
+      { id: 'toced-postvisit', name: 'Post-Visit', mandatory: true },
+    ],
+  },
+  { id: 'toced-careplan', name: 'Care Plan' },
+  { id: 'toced-caregaps', name: 'Open Care Gaps' },
+  { id: 'toced-medreview', name: 'Medication Review' },
+  { id: 'toced-task', name: 'Program Related Task' },
+];
+
+const DM_STEPS = [
+  { id: 'dm-snapshot', name: 'Snapshot', mandatory: true },
+  { id: 'dm-docs', name: 'Program Documents' },
+  { id: 'dm-letters', name: 'Letters', mandatory: true },
+  { id: 'dm-outreach', name: 'Outreach', mandatory: true },
+  {
+    id: 'dm-assess', name: 'Assessments', type: 'section', expanded: true,
+    children: [
+      { id: 'dm-chf', name: 'CHF Assessment' },
+      { id: 'dm-copd', name: 'COPD Assessment' },
+      { id: 'dm-kidney', name: 'Kidney Assessment' },
+      { id: 'dm-postvisit', name: 'Post-Visit', mandatory: true },
+    ],
+  },
+  { id: 'dm-careplan', name: 'Care Plan' },
+  { id: 'dm-caregaps', name: 'Open Care Gaps' },
+  { id: 'dm-task', name: 'Program Related Task' },
+];
+
+const HICM_STEPS = [
+  { id: 'hicm-snapshot', name: 'Snapshot', mandatory: true },
+  { id: 'hicm-docs', name: 'Program Documents' },
+  { id: 'hicm-letters', name: 'Letters', mandatory: true },
+  { id: 'hicm-outreach', name: 'Outreach', mandatory: true },
+  {
+    id: 'hicm-assess', name: 'Assessments', type: 'section', expanded: true,
+    children: [
+      { id: 'hicm-assessment', name: 'HICM Assessment', mandatory: true },
+      { id: 'hicm-erutil', name: 'High ER Utilizer Assessment', mandatory: true },
+      { id: 'hicm-admitter', name: 'High Admitter Assessment', mandatory: true },
+      { id: 'hicm-followup', name: 'FollowUp Assessment', mandatory: true },
+      { id: 'hicm-grad', name: 'Graduation Checklist', mandatory: true },
+      { id: 'hicm-postvisit', name: 'Post-Visit', mandatory: true },
+    ],
+  },
+  { id: 'hicm-careplan', name: 'Care Plan' },
+  { id: 'hicm-caregaps', name: 'Open Care Gaps' },
+  { id: 'hicm-medreview', name: 'Medication Review' },
+  { id: 'hicm-task', name: 'Program Related Task' },
+];
+
+const WLCP_STEPS = [
+  { id: 'wlcp-outreach', name: 'Outreach', mandatory: true },
+  {
+    id: 'wlcp-assess', name: 'Assessment', type: 'section', expanded: true,
+    children: [
+      { id: 'wlcp-physcert', name: 'Physician Certification' },
+      { id: 'wlcp-partq', name: 'Participation Questionnaire' },
+      { id: 'wlcp-wlp', name: 'WLP Checklist', mandatory: true },
+    ],
+  },
+  { id: 'wlcp-appt', name: 'Appointment' },
+  { id: 'wlcp-medreview', name: 'Medication Review' },
+  { id: 'wlcp-referral', name: 'Referral Review' },
+  { id: 'wlcp-careplan', name: 'Care Plan', mandatory: true },
+  { id: 'wlcp-docs', name: 'Documents' },
+];
+
+const CMP_STEPS = [
+  { id: 'cmp-snapshot', name: 'Snapshot' },
+  { id: 'cmp-docs', name: 'Program Documents' },
+  { id: 'cmp-letters', name: 'Letters' },
+  { id: 'cmp-outreach', name: 'Outreach', mandatory: true },
+  { id: 'cmp-assess', name: 'Assessments', type: 'section', expanded: true, children: [] },
+  { id: 'cmp-careplan', name: 'Care Plan' },
+  { id: 'cmp-appt', name: 'ICT Appointment' },
+  { id: 'cmp-caregaps', name: 'Open Care Gaps' },
+  { id: 'cmp-medreview', name: 'Medication Review' },
+  { id: 'cmp-task', name: 'Program Related Task' },
+];
+
+// APE's Figma only showed the (completed) Outreach step; the rest is a
+// sensible annual-exam default until its full step list is provided.
+const APE_STEPS = [
+  { id: 'ape-outreach', name: 'Outreach', mandatory: true },
+  { id: 'ape-docs', name: 'Program Documents' },
+  { id: 'ape-letters', name: 'Letters' },
+  { id: 'ape-appt', name: 'Appointment', mandatory: true },
+  { id: 'ape-caregaps', name: 'Open Care Gaps' },
+  { id: 'ape-task', name: 'Program Related Task' },
+];
+
+// Program code → step list. SNP is the canonical PROGRAM_STEPS_MOCK.
+export const PROGRAM_STEPS = {
+  SNP: PROGRAM_STEPS_MOCK,
+  AWV: AWV_STEPS,
+  'TOC IP': TOC_IP_STEPS,
+  'TOC ED': TOC_ED_STEPS,
+  DM: DM_STEPS,
+  HICM: HICM_STEPS,
+  WLCP: WLCP_STEPS,
+  CMP: CMP_STEPS,
+  APE: APE_STEPS,
+  CCM: CCM_PROGRAM_STEPS,
+};
+
 // ─── Pre-visit step content, keyed by program type ─────────────────────────
 // The Pre-visit step renders different sections depending on the program:
 //   • SNP (default) → General Info (Trigger + Payer grid) + Care Team +

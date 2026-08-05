@@ -1,0 +1,43 @@
+.strip { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Program badge pill — ring + code (Figma 1837-16118). */
+.badge,
+.badgeMore {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 4px 8px;
+  border: 0.5px solid var(--primary-200);
+  border-radius: 8px;
+  background: var(--primary-100);
+  font-size: 13px;
+  color: var(--neutral-400);
+  cursor: default;
+  white-space: nowrap;
+}
+.badge:hover,
+.badgeMore:hover { border-color: var(--primary-300); }
+.badgeCode { font-size: 13px; color: var(--neutral-400); }
+.badgeMore { justify-content: center; }
+
+/* Hover card / list (Figma 1837-16264). */
+.popover {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  padding: 12px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+}
+.detail { display: flex; flex-direction: column; gap: 6px; }
+.detail + .detail { margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--neutral-100); }
+.detailHead { display: flex; align-items: center; gap: 6px; }
+.detailCode { font-size: 14px; font-weight: 500; color: var(--neutral-400); }
+.detailStatus { font-size: 13px; font-weight: 500; margin-left: 2px; white-space: nowrap; }
+.detailRow { font-size: 13px; color: var(--neutral-400); white-space: nowrap; }
+.detailLabel { color: var(--neutral-300); }

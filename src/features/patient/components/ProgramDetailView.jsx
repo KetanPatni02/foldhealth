@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
@@ -7,8 +7,12 @@ import { Button } from '../../../components/Button/Button';
 import { BannerExpandIcon } from '../../../components/Icon/BannerExpandIcon';
 import { ProgressRing } from '../../hcc/DiagPanel/ReviewProgressPopover';
 import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { ProgramStatusRing } from './ProgramStatusRing';
 import { toast } from '../../../components/Toast/Toast';
-import { PROGRAM_STEPS_MOCK, PROGRAM_LETTERS_MOCK, CCM_PROGRAM_STEPS } from '../data/programActivityMock';
+import { PROGRAM_STEPS, PROGRAM_LETTERS_MOCK } from '../data/programActivityMock';
+import { PROGRAM_STATUS_OPTIONS, statusColorFor } from '../data/programStatus';
+import { RoleAssigneePicker } from '../../hcc/RoleAssigneePicker';
+import { ProgramBadges } from './ProgramBadges';
 import { OutreachTab } from './OutreachTab';
 import { CcmBillingReview } from './CcmBillingReview';
 import { CcmTimerWidget } from './CcmTimerWidget';
@@ -21,17 +25,28 @@ import { PostVisitChecklist } from './PostVisitChecklist';
 import { OpenCareGaps } from './OpenCareGaps';
 import { MedicationReconciliation } from './MedicationReconciliation';
 import { ProgramRelatedTasks } from './ProgramRelatedTasks';
+import { ProgramRelatedFiles } from './ProgramRelatedFiles';
+import { ReferralReview } from './ReferralReview';
 import styles from './ProgramDetailView.module.css';
 
-// Programs with a custom step list — CCM's workflow is billing-centric, not
-// outreach + assessment like the default. Every other code falls back to
-// PROGRAM_STEPS_MOCK.
-const STEPS_BY_PROGRAM = {
-  CCM: CCM_PROGRAM_STEPS,
-};
+// Per-program step lists live in PROGRAM_STEPS (keyed by code). Unknown codes
+// fall back to the SNP list.
+const initialsOf = (name = '') =>
+  name.split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase() || '?';
 
-const stepsFor = (code) => STEPS_BY_PROGRAM[code] || PROGRAM_STEPS_MOCK;
+const stepsFor = (code) => PROGRAM_STEPS[code] || PROGRAM_STEPS.SNP;
 const flatSteps = (list) => list.flatMap(s => (s.type === 'section' ? s.children : [s]));
+
+// Neutral fallback for steps whose content view hasn't been built yet.
+function StepPlaceholder({ name }) {
+  return (
+    <div className={styles.stepPlaceholder}>
+      <Icon name="solar:documents-linear" size={36} color="var(--neutral-150)" />
+      <p className={styles.stepPlaceholderTitle}>{name}</p>
+      <p className={styles.stepPlaceholderText}>This step is coming soon.</p>
+    </div>
+  );
+}
 
 function DetailRow({ icon, label, value }) {
   return (
@@ -101,26 +116,26 @@ const ASSESSMENT_STEPS = {
   // Post Visit Checklist is a fixed checklist (not a saved form), so it shares
   // the review header but renders the PostVisitChecklist body.
   'Post Visit Checklist': { checklist: true, title: 'Post Visit Check List', filledBy: 'Robert Fox', filledDate: '10/11/24', reviewedBy: 'Robert Fox', reviewedDate: '10/11/24' },
+  // Programs other than SNP name this step "Post-Visit" — same checklist body.
+  'Post-Visit': { checklist: true, title: 'Post Visit Check List', filledBy: 'Robert Fox', filledDate: '10/11/24', reviewedBy: 'Robert Fox', reviewedDate: '10/11/24' },
 };
 
-export function ProgramDetailView({ program, onClose, startAtFirstStep = false }) {
+export function ProgramDetailView({ program, onClose, startAtFirstStep = false, onSwitchProgram }) {
   const isCcm = program.code === 'CCM';
+  const isSnp = program.code === 'SNP';
   const stepList = stepsFor(program.code);
   const ALL_STEPS = flatSteps(stepList);
   const firstStep = stepList[0];
-  const firstStepIsOutreach = firstStep?.name === 'Outreach';
-  // When the first step is Outreach, land on it so the Log New Outreach
-  // component is the default view; otherwise keep the prior default.
-  const [activeStep, setActiveStep] = useState(
-    startAtFirstStep || firstStepIsOutreach
-      ? firstStep?.id
-      : (isCcm ? 'ccm-billing' : 'step-2'),
-  );
-  const [expandedSections, setExpandedSections] = useState(
-    isCcm
-      ? { 'ccm-assess': true }
-      : { 'step-3': true, 'step-4': false },
-  );
+  // Completion % for the header status ring — completed steps ÷ total steps.
+  const programProgress = ALL_STEPS.length
+    ? Math.round((ALL_STEPS.filter(s => s.status === 'completed').length / ALL_STEPS.length) * 100)
+    : 0;
+  // Land on the first step by default (CCM keeps its billing step); step ids
+  // differ per program so we can't hardcode one.
+  const [activeStep, setActiveStep] = useState(isCcm ? 'ccm-billing' : firstStep?.id);
+  // Section open/closed is seeded from each section's own `expanded` flag
+  // (SectionHeader falls back to it), so an empty map works for every program.
+  const [expandedSections, setExpandedSections] = useState({});
   const [activeLetterTab, setActiveLetterTab] = useState('All');
   const [selectedLetters, setSelectedLetters] = useState(() => new Set());
   // Send-letter drawer target: null | { letterName, clearOnSent }. Opened from
@@ -131,6 +146,51 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
 
   // The member whose care program we're in — drives the send-letter prefill.
   const currentPatient = useAppStore(s => s.patients.find(p => p.id === s.selectedPatientId));
+
+  // Live program row from the store so the header status dropdown reflects
+  // (and persists) changes without relying on the stale `program` prop.
+  const patientId = useAppStore(s => s.selectedPatientId);
+  const updateCareProgram = useAppStore(s => s.updateCareProgram);
+  // Select the stable array reference only; derive everything else locally so
+  // no selector returns a fresh array/object (that trips useSyncExternalStore's
+  // "getSnapshot should be cached" guard).
+  const patientPrograms = useAppStore(s => s.careProgramsByPatient[s.selectedPatientId]);
+  const liveProgram = patientPrograms?.find(p => p.id === program.id);
+  const status = liveProgram?.status || program.status || 'New';
+  const assignee = liveProgram?.assignee || program.assignee;
+
+  // SNP trigger navigation — the patient's SNP enrollments, ordered by trigger.
+  // Prev/Next render the neighbouring trigger in this same detail window.
+  const orderedTriggers = useMemo(
+    () => (patientPrograms || []).filter(p => p.code === 'SNP').sort((a, b) => (a.trigger || 0) - (b.trigger || 0)),
+    [patientPrograms],
+  );
+  // Other active programs for this patient — shown as header badges. Excludes
+  // the program currently open and any that are Closed.
+  const otherPrograms = useMemo(
+    () => (patientPrograms || []).filter(p => p.id !== program.id && p.status !== 'Closed'),
+    [patientPrograms, program.id],
+  );
+  // Completion % for any program code (used by the badges' rings).
+  const progressForCode = (code) => {
+    const flat = flatSteps(PROGRAM_STEPS[code] || []);
+    return flat.length ? Math.round((flat.filter(s => s.status === 'completed').length / flat.length) * 100) : 0;
+  };
+
+  const triggerIdx = orderedTriggers.findIndex(p => p.id === program.id);
+  const prevTrigger = triggerIdx > 0 ? orderedTriggers[triggerIdx - 1] : null;
+  const nextTrigger = triggerIdx >= 0 && triggerIdx < orderedTriggers.length - 1 ? orderedTriggers[triggerIdx + 1] : null;
+  const triggerNum = (triggerIdx >= 0 ? orderedTriggers[triggerIdx].trigger : program.trigger) || 1;
+  const [statusMenu, setStatusMenu] = useState(null); // { rect } | null
+  const changeStatus = (newStatus) => {
+    const patch = { status: newStatus, statusColor: statusColorFor(newStatus) };
+    const cur = liveProgram || program;
+    if (newStatus === 'Enrolled' && (!cur.startDate || cur.startDate === '—')) {
+      const d = new Date();
+      patch.startDate = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
+    }
+    updateCareProgram(patientId, program.id, patch);
+  };
 
   const allLettersSelected = selectedLetters.size === PROGRAM_LETTERS_MOCK.length && PROGRAM_LETTERS_MOCK.length > 0;
   const someLettersSelected = selectedLetters.size > 0 && !allLettersSelected;
@@ -166,20 +226,26 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
   const downloadSelectedLetters = () => downloadLetters(PROGRAM_LETTERS_MOCK.filter(l => selectedLetters.has(l.id)));
 
   const activeStepObj = ALL_STEPS.find(s => s.id === activeStep);
-  const isOutreachStep = activeStepObj?.name === 'Outreach';
+  const stepName = activeStepObj?.name || '';
+  const isOutreachStep = stepName === 'Outreach';
   const isBillingStep = activeStepObj?.kind === 'billing';
-  const isPreVisitStep = activeStepObj?.name === 'Pre-visit';
-  const isCarePlanStep = activeStepObj?.name === 'Care Plan';
-  const isAppointmentStep = /appointment/i.test(activeStepObj?.name || '');
-  const isOpenCareGapsStep = activeStepObj?.name === 'Open Care Gaps';
-  const isMedReconStep = activeStepObj?.name === 'Medication Reconciliation';
-  const isProgramTasksStep = activeStepObj?.name === 'Program Related Task';
-  const assessmentCfg = ASSESSMENT_STEPS[activeStepObj?.name];
-  const isLettersPane = !isBillingStep && !isOutreachStep && !isPreVisitStep && !isCarePlanStep && !isAppointmentStep && !isOpenCareGapsStep && !isMedReconStep && !isProgramTasksStep && !assessmentCfg;
+  const isPreVisitStep = /^pre-?visit$/i.test(stepName);           // "Pre-visit" / "Pre-Visit"
+  const isCarePlanStep = stepName === 'Care Plan';
+  const isAppointmentStep = /appointment/i.test(stepName);          // "Appointment" / "ICT Appointment"
+  const isOpenCareGapsStep = stepName === 'Open Care Gaps' || stepName === 'Care Gaps';
+  const isMedReconStep = stepName === 'Medication Reconciliation' || stepName === 'Medication Review';
+  const isProgramTasksStep = stepName === 'Program Related Task';
+  const isProgramFilesStep = stepName === 'Program Related Files' || stepName === 'Program Documents' || stepName === 'Documents';
+  const isReferralStep = stepName === 'Referral Review';
+  const assessmentCfg = ASSESSMENT_STEPS[stepName];
+  const isLettersStep = stepName === 'Letters';
+  const isLettersPane = isLettersStep;
+  // Step names without a dedicated view yet (Snapshot, Diagnosis Gaps, PHQ-9,
+  // the various assessments/checklists, …) render a neutral placeholder.
 
   const [detailsExpanded, setDetailsExpanded] = useState(false);
 
-  const isUnassigned = !program.assignee || program.assignee === 'Unassigned';
+  const isUnassigned = !assignee || assignee === 'Unassigned';
 
   const toggleSection = (id) => {
     setExpandedSections(prev => ({ ...prev, [id]: !prev[id] }));
@@ -190,40 +256,64 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
       {/* Header */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <ProgressRing progress={program.progress} size={16} stroke={2} />
+          <ProgramStatusRing progress={programProgress} size={16} />
           <span className={styles.programTitle}>{program.name}</span>
-          <div className={styles.statusBadge}>
-            <span className={styles.statusIcon}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <circle cx="8" cy="8" r="6.5" stroke="#D9A50B" fill="#FFFCF5" />
-                <circle cx="8" cy="5" r="1" fill="#D9A50B" />
-                <rect x="7.25" y="7" width="1.5" height="4" rx="0.75" fill="#D9A50B" />
-              </svg>
-            </span>
-            <span className={styles.badgeDivider} />
-            <span className={styles.statusBadgeText}>Assigned to Nurse</span>
-            <Icon name="solar:alt-arrow-down-linear" size={16} color="var(--neutral-300)" />
-          </div>
-          <div className={styles.assigneeLink}>
-            <Icon
-              name={isUnassigned ? 'solar:user-rounded-linear' : 'solar:user-check-rounded-linear'}
-              size={16}
-              color={isUnassigned ? 'var(--neutral-300)' : 'var(--status-success)'}
-            />
-            <span className={`${styles.assigneeName} ${isUnassigned ? styles.assigneeUnassigned : ''}`}>
-              {program.assignee || 'Unassigned'}
-            </span>
-          </div>
-          <span className={styles.headerDivider} />
-          <div className={styles.breadcrumb}>
-            <button type="button" className={styles.breadcrumbArrow} aria-label="Previous trigger">
-              <Icon name="solar:alt-arrow-left-linear" size={16} color="var(--neutral-300)" />
-            </button>
-            <span className={styles.breadcrumbLabel}>Trigger 2</span>
-            <button type="button" className={styles.breadcrumbArrow} aria-label="Next trigger">
-              <Icon name="solar:alt-arrow-right-linear" size={16} color="var(--neutral-300)" />
-            </button>
-          </div>
+          <button
+            type="button"
+            className={styles.statusBadge}
+            onClick={e => setStatusMenu({ rect: e.currentTarget.getBoundingClientRect() })}
+          >
+            <span className={styles.statusBadgeText} style={{ color: statusColorFor(status) }}>{status}</span>
+            <Icon name="solar:alt-arrow-down-linear" size={16} color={statusColorFor(status)} />
+          </button>
+          <RoleAssigneePicker
+            role="care_program"
+            memberId={program.id}
+            dosDate="care-program"
+            titleLabel=""
+            currentName={isUnassigned ? null : assignee}
+            onAssign={user => updateCareProgram(patientId, program.id, { assignee: user.name })}
+            trigger={({ ref, onClick }) => (
+              isUnassigned ? (
+                <button ref={ref} type="button" className={styles.assigneeChipEmpty} onClick={onClick} title="Assign" aria-label="Assign">
+                  <Icon name="solar:user-plus-linear" size={14} color="var(--neutral-300)" />
+                  <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--neutral-300)" />
+                </button>
+              ) : (
+                <button ref={ref} type="button" className={styles.assigneeChip} onClick={onClick} title={`Assigned to ${assignee}`} aria-label={assignee}>
+                  <span className={styles.assigneeAvatar}>{initialsOf(assignee)}</span>
+                  <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--secondary-300)" />
+                </button>
+              )
+            )}
+          />
+          {/* Trigger navigation is SNP-only — other programs have a single track. */}
+          {isSnp && (
+            <>
+              <span className={styles.headerDivider} />
+              <div className={styles.breadcrumb}>
+                <button
+                  type="button"
+                  className={styles.breadcrumbArrow}
+                  aria-label="Previous trigger"
+                  disabled={!prevTrigger}
+                  onClick={() => prevTrigger && onSwitchProgram?.(prevTrigger)}
+                >
+                  <Icon name="solar:alt-arrow-left-linear" size={16} color={prevTrigger ? 'var(--neutral-300)' : 'var(--neutral-150)'} />
+                </button>
+                <span className={styles.breadcrumbLabel}>Trigger {triggerNum}</span>
+                <button
+                  type="button"
+                  className={styles.breadcrumbArrow}
+                  aria-label="Next trigger"
+                  disabled={!nextTrigger}
+                  onClick={() => nextTrigger && onSwitchProgram?.(nextTrigger)}
+                >
+                  <Icon name="solar:alt-arrow-right-linear" size={16} color={nextTrigger ? 'var(--neutral-300)' : 'var(--neutral-150)'} />
+                </button>
+              </div>
+            </>
+          )}
           <button
             type="button"
             className={styles.expandBtn}
@@ -248,9 +338,12 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
               <span className={styles.headerDivider} />
             </>
           )}
-          <ActionButton icon="solar:alt-arrow-left-linear" size="S" tooltip="Previous" />
-          <ActionButton icon="solar:alt-arrow-right-linear" size="S" tooltip="Next" />
-          <span className={styles.headerDivider} />
+          {otherPrograms.length > 0 && (
+            <>
+              <ProgramBadges programs={otherPrograms} progressFor={progressForCode} />
+              <span className={styles.headerDivider} />
+            </>
+          )}
           <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
           <span className={styles.headerDivider} />
           <ActionButton icon="solar:close-square-linear" size="S" tooltip="Close" onClick={onClose} />
@@ -400,6 +493,14 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
                   <span className={styles.assessmentMeta}>Last Reviewed by Robert Fox on 11/10/24</span>
                 </div>
               </div>
+            ) : isReferralStep ? (
+              <div className={styles.assessmentHeader}>
+                <Icon name="solar:clipboard-text-linear" size={18} color="var(--primary-300)" />
+                <div className={styles.assessmentHeaderText}>
+                  <span className={styles.assessmentTitle}>Referral Review</span>
+                  <span className={styles.assessmentMeta}>Reviewed by Jonathan Bush (NP) on 05/01/25</span>
+                </div>
+              </div>
             ) : isCarePlanStep ? (
               <div className={styles.assessmentHeader}>
                 <Icon name="solar:clipboard-text-linear" size={18} color="var(--primary-300)" />
@@ -416,7 +517,9 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
                   : isAppointmentStep ? 'Follow Up Appointments'
                   : isOpenCareGapsStep ? 'Open Care Gaps'
                   : isProgramTasksStep ? 'Program Related Tasks'
-                  : 'Program Related Letters'}
+                  : isProgramFilesStep ? 'Document Library'
+                  : isLettersStep ? 'Program Related Letters'
+                  : stepName}
               </span>
             )}
             <div className={styles.contentActions}>
@@ -504,12 +607,16 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
           ) : isMedReconStep ? (
             <MedicationReconciliation />
           ) : isProgramTasksStep ? (
-            <ProgramRelatedTasks />
+            <ProgramRelatedTasks programCode={program.code} />
+          ) : isProgramFilesStep ? (
+            <ProgramRelatedFiles />
+          ) : isReferralStep ? (
+            <ReferralReview />
           ) : assessmentCfg ? (
             assessmentCfg.checklist
               ? <PostVisitChecklist />
               : <AssessmentFormView formName={assessmentCfg.formName} />
-          ) : (
+          ) : isLettersStep ? (
           <div className={styles.contentInner}>
             <div className={styles.contentSubTabs}>
               <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" />
@@ -596,6 +703,8 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
               </table>
             </div>
           </div>
+          ) : (
+            <StepPlaceholder name={stepName} />
           )}
 
           {/* Floating bulk-action bar — appears when letters are selected. Figma 439:614595.
@@ -672,6 +781,21 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false }
             else if (key === 'preview') toast.success(`Previewing ${letter.fileName}`);
           }}
           onClose={() => setRowMenu(null)}
+        />
+      )}
+
+      {statusMenu && (
+        <MenuPopover
+          anchorRect={statusMenu.rect}
+          align="left"
+          width={180}
+          ariaLabel="Change status"
+          items={PROGRAM_STATUS_OPTIONS.map(s => ({
+            key: s,
+            label: <span style={{ color: 'var(--neutral-400)' }}>{s}</span>,
+          }))}
+          onSelect={(newStatus) => changeStatus(newStatus)}
+          onClose={() => setStatusMenu(null)}
         />
       )}
     </div>

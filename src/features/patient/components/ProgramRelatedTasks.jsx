@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
+import { useAppStore } from '../../../store/useAppStore';
 import { PROGRAM_TASKS_MOCK } from '../data/programTasksMock';
 import styles from './ProgramRelatedTasks.module.css';
 
@@ -94,12 +95,16 @@ function Section({ title, count, tasks, done, onToggle, footer }) {
   );
 }
 
-export function ProgramRelatedTasks() {
+export function ProgramRelatedTasks({ programCode }) {
   const data = PROGRAM_TASKS_MOCK;
+  // Session-added tasks (from the Outreach "Add Task" quick-action) sit atop
+  // the mock list. Stable array ref from the store; default handled outside.
+  const addedForProgram = useAppStore(s => s.programAddedTasks[programCode]);
+  const added = addedForProgram || [];
   const [completedIds, setCompletedIds] = useState(() => new Set());
   const toggle = (id) => setCompletedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
-  const open = data.open.filter(t => !completedIds.has(t.id));
+  const open = [...added, ...data.open].filter(t => !completedIds.has(t.id));
 
   return (
     <div className={styles.container}>
@@ -111,7 +116,7 @@ export function ProgramRelatedTasks() {
         onToggle={toggle}
         footer={(
           <div className={styles.pager}>
-            <span className={styles.pagerText}>1-{Math.min(5, data.openTotal)} of {data.openTotal}</span>
+            <span className={styles.pagerText}>1-{Math.min(5, data.openTotal + added.length)} of {data.openTotal + added.length}</span>
             <ActionButton icon="solar:alt-arrow-left-linear" size="S" tooltip="Previous" />
             <ActionButton icon="solar:alt-arrow-right-linear" size="S" tooltip="Next" />
           </div>

@@ -33,11 +33,18 @@ const ENGINE_TO_CLINICAL = {
  * @param {string} [p.currentName]        highlight the current assignee (reassign mode)
  * @param {'left'|'right'} [p.align]      popover edge to anchor to the trigger
  * @param {string} [p.reason]             audit reason recorded on (re)assign
+ * @param {(user)=>void} [p.onAssign]     when set, picking a user calls this
+ *                                         instead of the HCC reassign flow — lets
+ *                                         non-HCC surfaces (e.g. Care Programs)
+ *                                         reuse the picker with their own persistence.
+ * @param {string} [p.titleLabel]         override the "Assign <label>" heading
+ *                                         (defaults to the role's ROLE_LABEL).
  * @param {(args:{ref,isOpen:boolean,onClick:Function})=>React.ReactNode} p.trigger
  */
 export function RoleAssigneePicker({
   role, memberId, dosDate, currentName = null, trigger,
   align = 'left', reason = 'Assigned via worklist',
+  onAssign = null, titleLabel = null,
 }) {
   const btnRef = useRef(null);
   const searchRef = useRef(null);
@@ -100,6 +107,13 @@ export function RoleAssigneePicker({
   }, [pos]);
 
   const onPick = async (u) => {
+    // Caller-owned persistence (non-HCC surfaces) — skip the HCC reassign flow.
+    if (onAssign) {
+      close();
+      onAssign(u);
+      showToast?.(`${u.name} assigned.`);
+      return;
+    }
     if (!memberId || !dosDate) {
       showToast?.('Cannot assign — missing patient or DOS context.');
       close();
@@ -133,7 +147,10 @@ export function RoleAssigneePicker({
       {trigger({ ref: btnRef, isOpen: !!pos, onClick: (e) => { e.stopPropagation(); pos ? close() : open(); } })}
       {pos && createPortal(
         <div className={styles.menu} style={{ top: pos.top, left: pos.left }} onClick={(e) => e.stopPropagation()}>
-          <div className={styles.title}>{currentName ? 'Change' : 'Assign'} {ROLE_LABEL[role] || role}</div>
+          <div className={styles.title}>
+            {currentName ? 'Change' : 'Assign'}
+            {(() => { const l = titleLabel != null ? titleLabel : (ROLE_LABEL[role] || role); return l ? ` ${l}` : ''; })()}
+          </div>
           <div className={styles.search}>
             <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-300)" />
             <input

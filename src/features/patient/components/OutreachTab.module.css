@@ -274,6 +274,8 @@
 /* ── DateTimePicker dropdown ── */
 .dateTimeDropdown {
   position: fixed;
+  display: flex;
+  flex-direction: column;
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 12px;
@@ -370,6 +372,9 @@
   align-items: center;
   flex: 1;
   min-height: 0;
+  /* Anchor for the absolutely-positioned scroll list below, so the tall
+     time list can't inflate the dropdown past the calendar's height. */
+  position: relative;
 }
 
 .timeColLabel {
@@ -383,8 +388,13 @@
 }
 
 .timeCol {
-  flex: 1;
-  min-height: 0;
+  /* Out of flow so the calendar drives the dropdown height; this list then
+     fills from just below the Hr/Min label to the bottom and scrolls. */
+  position: absolute;
+  top: 20px;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
   width: 44px;
   overflow-y: auto;
   scrollbar-width: none;
@@ -424,11 +434,19 @@
   font-weight: 600;
 }
 
-.timeColsFooter {
+/* Footer spans the full dropdown width, under the calendar + time columns. */
+.pickerFooter {
   display: flex;
+  justify-content: flex-end;
   gap: 8px;
-  padding-top: 8px;
+  padding: 10px 12px;
   border-top: 0.5px solid var(--neutral-100);
+}
+.pickerFooter .nowBtn,
+.pickerFooter .okBtn {
+  flex: none;
+  min-width: 76px;
+  padding: 0 16px;
 }
 
 .nowBtn {
@@ -771,6 +789,14 @@
 }
 
 .selectOutcomeBtn:hover { background: var(--neutral-100); }
+/* Mandatory-field indicator on the Select Outcome badge. */
+.mandatoryDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--status-error);
+  flex-shrink: 0;
+}
 
 .outcomeDropdown {
   position: absolute;
