@@ -457,19 +457,20 @@ export function TopBar() {
           )}
         </div>
         <div className={styles.createNewWrap}>
-          <button
+          <Button
             ref={btnRef}
-            className={styles.btnPrimary}
+            variant="primary"
+            size="L"
+            leadingIcon="solar:add-circle-bold"
             onClick={() => setShowCreateNew(!showCreateNew)}
           >
-            <Icon name="solar:add-circle-bold" size={18} />
             Create New
-          </button>
+          </Button>
           {showCreateNew && (
             <CreateNewPopover onClose={() => setShowCreateNew(false)} anchorRef={btnRef} />
           )}
         </div>
-        <button className={styles.btnSecondary} onClick={() => setShowSchedule(true)}>Schedule</button>
+        <Button variant="tertiary" size="L" onClick={() => setShowSchedule(true)}>Schedule</Button>
         <div style={{ position: 'relative' }}>
           <button
             onClick={() => setShowProfile(v => !v)}
