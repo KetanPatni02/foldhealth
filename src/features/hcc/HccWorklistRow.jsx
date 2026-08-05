@@ -1320,29 +1320,23 @@ function synthesizeHccProfile(patient) {
 
 function HccEmptyPatientRowImpl({ patient, hiddenCols, columns }) {
   const openAddDos = useAppStore(s => s.openHccAddDos);
-  const openUpload = useAppStore(s => s.openHccUploadDrawer);
   const showToast = useAppStore(s => s.showToast);
   const openQuickView = useAppStore(s => s.openQuickView);
   const isHidden = (k) => hiddenCols?.has(k);
   const dash = <span className={styles.emptyDash} aria-hidden="true" />;
   const profile = useMemo(() => synthesizeHccProfile(patient), [patient]);
 
-  const asMember = {
-    id: patient.id,
-    name: patient.name,
-    in: patient.initials,
-    g: patient.gender,
-    age: patient.age,
-    memberId: patient.memberId || patient.id,
-    dob: patient.dob,
-  };
   const handleRecord = (e) => {
     e.stopPropagation();
-    openAddDos(asMember);
-  };
-  const handleUpload = (e) => {
-    e.stopPropagation();
-    openUpload(asMember);
+    openAddDos({
+      id: patient.id,
+      name: patient.name,
+      in: patient.initials,
+      g: patient.gender,
+      age: patient.age,
+      memberId: patient.memberId || patient.id,
+      dob: patient.dob,
+    });
   };
 
   return (
@@ -1397,23 +1391,6 @@ function HccEmptyPatientRowImpl({ patient, hiddenCols, columns }) {
         // We still keep the right divider on POS via `.dosTdLast` so the
         // DOS-group visual bracket matches the primary rows.
         const cls = col.k === 'pos' ? styles.dosTdLast : '';
-        // Documents column — render the same ghost Upload button the primary
-        // row uses when its `charts` array is empty. Keeps the "add docs"
-        // affordance in one place across both sections.
-        if (col.k === 'evidence') {
-          return (
-            <td key={col.k} data-col={col.k} className={cls}>
-              <Button
-                variant="ghost"
-                size="S"
-                leadingIcon="solar:upload-linear"
-                onClick={handleUpload}
-              >
-                Upload
-              </Button>
-            </td>
-          );
-        }
         // Six risk-profile columns render synthesized values so the empty
         // section still reads as populated patient records; everything else
         // (DOS, ICDs, RAF, roles, dates…) stays dashed since it's genuinely
@@ -1428,7 +1405,7 @@ function HccEmptyPatientRowImpl({ patient, hiddenCols, columns }) {
 
       <td className={`${styles.actionsCell} ${styles.stickyRight} ${styles.colActions}`}>
         <div className={styles.actionsRow}>
-          <Button variant="alt" size="S" leadingIcon="solar:add-circle-linear" onClick={handleRecord}>Record</Button>
+          <Button variant="alt" size="S" leadingIcon="solar:add-circle-linear" onClick={handleRecord}>Add DOS</Button>
         </div>
       </td>
     </tr>
