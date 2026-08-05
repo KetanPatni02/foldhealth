@@ -27,6 +27,7 @@ import { PdfPreviewOverlay } from '../../components/PdfPreviewOverlay/PdfPreview
 import { ClinicalNotePanel } from '../hedis-worklist/ClinicalNotePanel';
 import { Select } from '../../components/Select/Select';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
+import { FilterBar } from '../../components/FilterBar/FilterBar';
 import { useAppStore } from '../../store/useAppStore';
 import { toast } from '../../components/Toast/Toast';
 import styles from './TasksView.module.css';
@@ -52,38 +53,39 @@ const VIEW_TOGGLE_ITEMS = [
   { key: 'board', icon: <KanbanIcon size={16} /> },
 ];
 
+// `primary: true` → chip renders by default in the shared FilterBar.
 const TASK_FILTER_DEFS = [
-  { key: 'assigned_to', label: 'Assigned to', options: [
+  { key: 'assigned_to', label: 'Assigned to', primary: true, options: [
     { value: 'Dr. JeDee Potter', label: 'Dr. JeDee Potter' },
     { value: 'Deborah Hintz', label: 'Deborah Hintz' },
     { value: 'Dr. Robert Frost', label: 'Dr. Robert Frost' },
   ]},
-  { key: 'view_by', label: 'View By', options: [
+  { key: 'view_by', label: 'View By', primary: true, options: [
     { value: 'status', label: 'Status' },
     { value: 'priority', label: 'Priority' },
     { value: 'due_date', label: 'Due Date' },
   ]},
-  { key: 'sort_by', label: 'Sort By', options: [
+  { key: 'sort_by', label: 'Sort By', primary: true, options: [
     { value: 'due_date', label: 'Due Date' },
     { value: 'priority', label: 'Priority' },
     { value: 'name', label: 'Name' },
   ]},
-  { key: 'created_by', label: 'Created By', options: [
+  { key: 'created_by', label: 'Created By', primary: true, options: [
     { value: 'Dr. JeDee Potter', label: 'Dr. JeDee Potter' },
     { value: 'Deborah Hintz', label: 'Deborah Hintz' },
     { value: 'Dr. Robert Frost', label: 'Dr. Robert Frost' },
   ]},
-  { key: 'task_status', label: 'Task Status', options: [
+  { key: 'task_status', label: 'Task Status', primary: true, options: [
     { value: 'pending', label: 'Pending' },
     { value: 'missed', label: 'Missed' },
     { value: 'completed', label: 'Completed' },
   ]},
-  { key: 'priority', label: 'Priority', options: [
+  { key: 'priority', label: 'Priority', primary: true, options: [
     { value: 'high', label: 'High' },
     { value: 'medium', label: 'Medium' },
     { value: 'low', label: 'Low' },
   ]},
-  { key: 'labels', label: 'Labels', options: [
+  { key: 'labels', label: 'Labels', primary: true, options: [
     { value: 'Hypertension', label: 'Hypertension' },
     { value: 'Exercise', label: 'Exercise' },
     { value: 'Document Collection', label: 'Document Collection' },
@@ -572,107 +574,6 @@ function RowAssignDropdown({ task }) {
           </div>
         </div>,
         document.body
-      )}
-    </div>
-  );
-}
-
-/* ── Filter Chip (mirrors FilterBar's FilterChip) ── */
-function TaskFilterChip({ filterDef, value, onSet, onClear }) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState('');
-  const ref = useRef(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  // Show the search input + avatars when the filter is people-shaped
-  // (assigned_to / created_by / member). The other chips stay plain.
-  const isPeopleChip = filterDef.iconKind === 'assignee' || filterDef.iconKind === 'patient';
-
-  useEffect(() => {
-    if (!open) setSearch('');
-  }, [open]);
-
-  const selectedLabel = value ? filterDef.options.find(o => o.value === value)?.label || value : null;
-
-  const filteredOptions = isPeopleChip && search
-    ? filterDef.options.filter(o => (o.label || '').toLowerCase().includes(search.toLowerCase()))
-    : filterDef.options;
-
-  return (
-    <div className={styles.chipWrap} ref={ref}>
-      <button
-        className={[styles.filterChip, value ? styles.filterChipActive : ''].filter(Boolean).join(' ')}
-        onClick={() => setOpen(v => !v)}
-      >
-        {filterDef.label}
-        {selectedLabel && <>
-          <span style={{ color: 'var(--primary-200)' }}>:</span>
-          <span className={styles.filterValue}>{selectedLabel}</span>
-        </>}
-        {value ? (
-          <span
-            className={styles.chipClear}
-            onClick={(e) => { e.stopPropagation(); onClear(); setOpen(false); }}
-          >
-            ✕
-          </span>
-        ) : (
-          <Icon name="solar:alt-arrow-down-linear" size={14} />
-        )}
-      </button>
-      {open && (
-        <div className={styles.dropdown}>
-          {isPeopleChip && (
-            <div className={styles.dropdownSearch}>
-              <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-200)" />
-              <input
-                className={styles.dropdownSearchInput}
-                placeholder={`Search ${filterDef.label.toLowerCase()}...`}
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                autoFocus
-              />
-            </div>
-          )}
-          {filteredOptions.map(opt => {
-            const initials = isPeopleChip
-              ? (opt.label || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-              : '';
-            return (
-              <button
-                key={opt.value}
-                className={[styles.dropdownItem, value === opt.value ? styles.selected : ''].filter(Boolean).join(' ')}
-                onClick={() => {
-                  if (value === opt.value) onClear();
-                  else onSet(opt.value);
-                  setOpen(false);
-                }}
-              >
-                {isPeopleChip ? (
-                  <Avatar variant={filterDef.iconKind} initials={initials} className={styles.avatarXs} />
-                ) : (
-                  <span className={styles.dropdownCheck}>
-                    {value === opt.value ? '✓' : ''}
-                  </span>
-                )}
-                {opt.label}
-              </button>
-            );
-          })}
-          {isPeopleChip && filteredOptions.length === 0 && (
-            <div className={styles.dropdownItem} style={{ color: 'var(--neutral-200)', cursor: 'default' }}>
-              No matches
-            </div>
-          )}
-        </div>
       )}
     </div>
   );
@@ -2423,10 +2324,11 @@ export function TasksView() {
     const memberOpts = (allPatients || []).map(p => ({ value: p.name, label: p.name }));
     return TASK_FILTER_DEFS
       .map(fd => {
-        // iconKind switches the chip dropdown into people mode (search +
-        // avatars) — same shape as the row-level RowAssignDropdown.
-        if (fd.key === 'assigned_to') return profileOpts.length ? { ...fd, options: profileOpts, iconKind: 'assignee' } : fd;
-        if (fd.key === 'created_by')  return profileOpts.length ? { ...fd, options: profileOpts, iconKind: 'assignee' } : fd;
+        // People-shaped filters get the dynamic option list + in-popover
+        // search (long lists) — value is profile.id so the filter compares
+        // against the FK.
+        if (fd.key === 'assigned_to') return profileOpts.length ? { ...fd, options: profileOpts, searchable: true } : fd;
+        if (fd.key === 'created_by')  return profileOpts.length ? { ...fd, options: profileOpts, searchable: true } : fd;
         return fd;
       })
       // Insert a Member filter after Created By so it sits next to the
@@ -2434,7 +2336,7 @@ export function TasksView() {
       // so the chip doesn't render with an empty dropdown.
       .flatMap(fd => {
         if (fd.key === 'created_by' && memberOpts.length) {
-          return [fd, { key: 'member', label: 'Member', options: memberOpts, iconKind: 'patient' }];
+          return [fd, { key: 'member', label: 'Member', options: memberOpts, primary: true, searchable: true }];
         }
         return [fd];
       });
@@ -2509,7 +2411,6 @@ export function TasksView() {
     }));
   }, [sortedTasks, tasksFilters.view_by]);
 
-  const activeFilterCount = Object.keys(tasksFilters).length;
   const hideAssignedTo = !!tasksFilters.assigned_to;
 
   const handleTaskMove = async (taskId, targetGroupKey, sourceGroupKey) => {
@@ -2640,22 +2541,16 @@ export function TasksView() {
       />
 
       {showTasksFilterBar && (
-        <div className={styles.filterBar}>
-          {filterDefs.map(fd => (
-            <TaskFilterChip
-              key={fd.key}
-              filterDef={fd}
-              value={tasksFilters[fd.key] || null}
-              onSet={(val) => setTasksFilter(fd.key, val)}
-              onClear={() => setTasksFilter(fd.key, null)}
-            />
-          ))}
-          {activeFilterCount > 0 && (
-            <span className={styles.activeCount}>{activeFilterCount} active</span>
-          )}
-          <span className={styles.filterSpacer} />
-          <button className={styles.clearAll} onClick={clearTasksFilters}>Clear All</button>
-        </div>
+        <FilterBar
+          leading={null}
+          filterDefs={filterDefs}
+          filters={tasksFilters}
+          onFilterChange={setTasksFilter}
+          onClearAll={clearTasksFilters}
+          getOptions={(def) => def.options || []}
+          showMoreFilters={false}
+          showSaveFilter={false}
+        />
       )}
 
       {renderContent()}

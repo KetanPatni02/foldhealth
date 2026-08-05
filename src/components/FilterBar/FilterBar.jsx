@@ -128,7 +128,7 @@ function SingleSelectFilter({ label, def, options, current, onSet, onClear }) {
       options={stringOptions}
       selected={selected}
       onChange={handleChange}
-      searchable={!!def.optionsFromData}
+      searchable={!!def.optionsFromData || !!def.searchable}
     />
   );
 }

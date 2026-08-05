@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
+import { useState, useMemo, useEffect, Fragment } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Button } from '../../components/Button/Button';
 import { Badge } from '../../components/Badge/Badge';
@@ -6,6 +6,7 @@ import { Switch } from '../../components/Switch/Switch';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { TopBar } from '../../components/TopBar/TopBar';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
+import { FilterBar } from '../../components/FilterBar/FilterBar';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './CampaignView.module.css';
 
@@ -160,32 +161,33 @@ const HEALTH_VARIANT = {
   Poor:     'status-review',
 };
 
+// `primary: true` → chip renders by default in the shared FilterBar.
 const FILTER_DEFS = [
-  { key: 'section', label: 'Status', options: [
+  { key: 'section', label: 'Status', primary: true, options: [
     { value: 'running',   label: 'Currently Running' },
     { value: 'paused',    label: 'Paused' },
     { value: 'scheduled', label: 'Scheduled' },
   ]},
-  { key: 'channel', label: 'Channel', options: [
+  { key: 'channel', primary: true, label: 'Channel', options: [
     { value: 'email', label: 'Email' },
     { value: 'sms',   label: 'SMS' },
     { value: 'voice', label: 'Voice' },
   ]},
-  { key: 'health', label: 'Health', options: [
+  { key: 'health', primary: true, label: 'Health', options: [
     { value: 'Good',     label: 'Good' },
     { value: 'Moderate', label: 'Moderate' },
     { value: 'Poor',     label: 'Poor' },
   ]},
-  { key: 'audienceType', label: 'Audience Type', options: [
+  { key: 'audienceType', primary: true, label: 'Audience Type', options: [
     { value: 'dynamic', label: 'Dynamic' },
     { value: 'static',  label: 'Static' },
   ]},
-  { key: 'audienceSize', label: 'Audience Size', options: [
+  { key: 'audienceSize', primary: true, label: 'Audience Size', options: [
     { value: 'small',  label: 'Under 100' },
     { value: 'medium', label: '100 – 500' },
     { value: 'large',  label: '500+' },
   ]},
-  { key: 'duration', label: 'Duration', options: [
+  { key: 'duration', primary: true, label: 'Duration', options: [
     { value: 'short',  label: '< 7 Days' },
     { value: 'medium', label: '7 – 14 Days' },
     { value: 'long',   label: '> 14 Days' },
@@ -231,85 +233,6 @@ function SectionHeader({ sectionKey, count }) {
         </div>
       </td>
     </tr>
-  );
-}
-
-function FilterChip({ filterDef, value, onSet, onClear }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  const selectedLabel = value ? filterDef.options.find(o => o.value === value)?.label : null;
-
-  return (
-    <div className={styles.chipWrap} ref={ref}>
-      <button
-        className={[styles.chip, value ? styles.chipActive : ''].filter(Boolean).join(' ')}
-        onClick={() => setOpen(v => !v)}
-      >
-        {filterDef.label}
-        {selectedLabel && <>
-          <span className={styles.chipSep}>:</span>
-          <span className={styles.chipValue}>{selectedLabel}</span>
-        </>}
-        {value ? (
-          <span
-            className={styles.chipClear}
-            onClick={(e) => { e.stopPropagation(); onClear(); setOpen(false); }}
-          >✕</span>
-        ) : (
-          <Icon name="solar:alt-arrow-down-linear" size={12} />
-        )}
-      </button>
-      {open && (
-        <div className={styles.chipDropdown}>
-          {filterDef.options.map(opt => (
-            <button
-              key={opt.value}
-              className={[styles.chipDropdownItem, value === opt.value ? styles.chipDropdownItemSelected : ''].filter(Boolean).join(' ')}
-              onClick={() => {
-                if (value === opt.value) onClear(); else onSet(opt.value);
-                setOpen(false);
-              }}
-            >
-              <span className={styles.chipDropdownCheck}>{value === opt.value ? '✓' : ''}</span>
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function FilterBar({ filters, onChange, onClear }) {
-  const activeCount = Object.values(filters).filter(Boolean).length;
-  return (
-    <div className={styles.filterBar}>
-      <div className={styles.filterRow}>
-        {FILTER_DEFS.map(fd => (
-          <FilterChip
-            key={fd.key}
-            filterDef={fd}
-            value={filters[fd.key] || null}
-            onSet={(val) => onChange(fd.key, val)}
-            onClear={() => onChange(fd.key, '')}
-          />
-        ))}
-        {activeCount > 0 && (
-          <span className={styles.activeCount}>{activeCount} active</span>
-        )}
-        <button className={styles.clearAll} onClick={onClear}>Clear All</button>
-      </div>
-    </div>
   );
 }
 
@@ -554,9 +477,14 @@ export function CampaignView() {
       {/* Filter bar */}
       {showFilters && (
         <FilterBar
+          leading={null}
+          filterDefs={FILTER_DEFS}
           filters={filters}
-          onChange={handleFilterChange}
-          onClear={handleClearFilters}
+          onFilterChange={handleFilterChange}
+          onClearAll={handleClearFilters}
+          getOptions={(def) => def.options || []}
+          showMoreFilters={false}
+          showSaveFilter={false}
         />
       )}
 
