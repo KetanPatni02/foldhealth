@@ -365,15 +365,11 @@ export function HccWorklistTable() {
   }, [patients, hccMemberIds, searchQuery, gapOnlyFilterActive]);
 
   // Flat combined row list: primary records, then a section-header sentinel
-  // (only when there are secondary rows), then the empty-patient rows. The
-  // paginator slices this single array so the divider counts as one row.
+  // Empty-patient rows follow the primary rows directly — no section header.
   const combinedRows = useMemo(() => {
     const rows = sorted.map(m => ({ kind: 'primary', key: m.id, member: m }));
-    if (patientsWithoutGaps.length > 0) {
-      rows.push({ kind: 'sectionHeader', key: '__hcc_empty_section_header__' });
-      for (const p of patientsWithoutGaps) {
-        rows.push({ kind: 'empty', key: `empty-${p.id}`, patient: p });
-      }
+    for (const p of patientsWithoutGaps) {
+      rows.push({ kind: 'empty', key: `empty-${p.id}`, patient: p });
     }
     return rows;
   }, [sorted, patientsWithoutGaps]);
@@ -443,6 +439,7 @@ export function HccWorklistTable() {
               onUploadDocument={() => { startHccUpload(null); setHccUploadPhase('picker'); }}
               onAddManually={() => { startHccUpload(null); setHccUploadPhase('single'); }}
             />
+            <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
           </>
         }
       />
@@ -582,27 +579,6 @@ export function HccWorklistTable() {
                     hiddenCols={hiddenSet}
                     columns={orderedColumns}
                   />
-                );
-              }
-              if (row.kind === 'sectionHeader') {
-                // Span every rendered column: sticky-left checkbox +
-                // sticky-left Member + visible body columns + sticky-right
-                // Actions. Hidden columns aren't emitted, so subtract them.
-                const visibleBodyCount = orderedColumns.reduce(
-                  (n, c) => n + (hiddenSet.has(c.k) ? 0 : 1),
-                  0,
-                );
-                const span = 1 + 1 + visibleBodyCount + 1;
-                return (
-                  <tr key={row.key} className={styles.sectionDividerRow}>
-                    <td colSpan={span} className={styles.sectionDividerCell}>
-                      <div className={styles.sectionDividerInner}>
-                        <span className={styles.sectionDividerTitle}>
-                          Patients Without Open Gaps
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
                 );
               }
               // empty
