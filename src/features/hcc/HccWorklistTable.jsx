@@ -121,6 +121,28 @@ function HccHeaderCell({ column, className, sortKey, sortDir, onOpenSort }) {
   );
 }
 
+// Filters that only make sense against open gaps / DOS. Whenever any of
+// these has a value, the "Patients Without Open Gaps" secondary section
+// is hidden — those patients can't possibly match a gap-specific filter,
+// so surfacing them anyway would be misleading. Keys come from
+// `src/features/hcc/filters.js` MORE_FILTER_ITEMS.
+const GAP_ONLY_FILTER_KEYS = new Set([
+  'asgn',                             // Assignee
+  'supS', 'cdrS', 'r1s', 'r2s',       // Role Status (Support / Coder / QA / Compliance)
+  'my',                               // Measurement Year
+  'dos',                              // DOS
+  'dosSrc',                           // DOS Source
+  'cd',                               // Created Date
+  'vt',                               // Visit Type
+  'pos',                              // POS Code
+  'claims',                           // Claims
+  'rl',                               // Risk Level
+  'supAD', 'cdrAD', 'r1AD', 'r2AD',   // Roles Assigned Date
+  'supCD', 'cdrCD', 'r1CD', 'r2CD',   // Roles Completion Date
+  'supU', 'cdrU', 'r1u', 'r2u',       // Role-wise Assignee
+  'lgaD',                             // Last Gap Assessment Date
+]);
+
 // ── Class map per column (preserves existing sticky/width treatments) ─────
 const COL_CLASS = {
   dos:      rowStyles.colLastVisit,
@@ -309,7 +331,23 @@ export function HccWorklistTable() {
     return s;
   }, [hccMembers]);
 
+  // Any of these filters is gap-specific — a patient with no open gaps or
+  // DOS can't possibly match, so we hide the "Patients Without Open Gaps"
+  // section whenever any of them has a value. The primary section's own
+  // filter path handles the actual row filtering; this set exists only to
+  // decide whether the secondary section is meaningful.
+  const gapOnlyFilterActive = useMemo(() => {
+    if (hccDueDateFilter) return true;
+    for (const k of Object.keys(hccFilters)) {
+      if (!GAP_ONLY_FILTER_KEYS.has(k)) continue;
+      const v = hccFilters[k];
+      if (Array.isArray(v) ? v.length > 0 : v != null) return true;
+    }
+    return false;
+  }, [hccFilters, hccDueDateFilter]);
+
   const patientsWithoutGaps = useMemo(() => {
+    if (gapOnlyFilterActive) return [];
     const q = searchQuery?.trim().toLowerCase() || '';
     const list = patients.filter(p => {
       const k = normFoldId(p.memberId || p.id);
@@ -324,7 +362,7 @@ export function HccWorklistTable() {
     // Sort by patient name ascending — HCC-specific sort keys don't apply here.
     list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     return list;
-  }, [patients, hccMemberIds, searchQuery]);
+  }, [patients, hccMemberIds, searchQuery, gapOnlyFilterActive]);
 
   // Flat combined row list: primary records, then a section-header sentinel
   // (only when there are secondary rows), then the empty-patient rows. The
@@ -513,22 +551,24 @@ export function HccWorklistTable() {
                 ref={colCfgBtnRef}
                 className={`${rowStyles.stickyRight} ${rowStyles.colActions} ${styles.actionsTh}`}
               >
-                <span className={styles.actionsHeaderLabel}>Actions</span>
-                <button
-                  type="button"
-                  className={[styles.colCfgBtn, colCfgRect ? styles.colCfgBtnActive : ''].join(' ')}
-                  title="Show / hide columns"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (colCfgRect) { setColCfgRect(null); return; }
-                    setColCfgRect(e.currentTarget.getBoundingClientRect());
-                  }}
-                >
-                  <ColumnsIcon
-                    size={16}
-                    color={colCfgRect ? 'var(--primary-300)' : 'var(--neutral-300)'}
-                  />
-                </button>
+                <div className={styles.actionsHeaderInner}>
+                  <span className={styles.actionsHeaderLabel}>Actions</span>
+                  <button
+                    type="button"
+                    className={[styles.colCfgBtn, colCfgRect ? styles.colCfgBtnActive : ''].join(' ')}
+                    title="Show / hide columns"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (colCfgRect) { setColCfgRect(null); return; }
+                      setColCfgRect(e.currentTarget.getBoundingClientRect());
+                    }}
+                  >
+                    <ColumnsIcon
+                      size={16}
+                      color={colCfgRect ? 'var(--primary-300)' : 'var(--neutral-300)'}
+                    />
+                  </button>
+                </div>
               </th>
             </tr>
           </thead>
@@ -559,9 +599,6 @@ export function HccWorklistTable() {
                       <div className={styles.sectionDividerInner}>
                         <span className={styles.sectionDividerTitle}>
                           Patients Without Open Gaps
-                        </span>
-                        <span className={styles.sectionDividerSubtitle}>
-                          These patients currently have no actionable HCC gaps or DOS.
                         </span>
                       </div>
                     </td>
@@ -644,13 +681,13 @@ function ColumnsIcon({ size = 16, color = 'currentColor' }) {
     <svg
       width={size}
       height={size}
-      viewBox="0 0 24 24"
+      viewBox="0 0 16 16"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
       <path
-        d="M10.0007 5.37023L9.97576 4.87085L10.0007 5.37023ZM10.0007 18.6301L9.97576 19.1295L10.0007 18.6301ZM14.0007 5.37023L14.0255 4.87085L14.0007 5.37023ZM14.0007 18.6301L14.0255 19.1295L14.0007 18.6301ZM5.33398 12.0002H4.83398C4.83398 13.5574 4.83292 14.7756 4.96048 15.7244C5.08997 16.6875 5.3602 17.4475 5.95674 18.0441L6.3103 17.6905L6.66385 17.337C6.28408 16.9572 6.06615 16.4434 5.95156 15.5911C5.83505 14.7245 5.83398 13.5856 5.83398 12.0002H5.33398ZM18.6673 12.0002H18.1673C18.1673 13.5856 18.1663 14.7245 18.0497 15.5911C17.9352 16.4434 17.7172 16.9572 17.3375 17.337L17.691 17.6905L18.0446 18.0441C18.6411 17.4475 18.9113 16.6875 19.0408 15.7244C19.1684 14.7756 19.1673 13.5574 19.1673 12.0002H18.6673ZM18.6673 12.0002H19.1673C19.1673 10.4429 19.1684 9.22474 19.0408 8.27597C18.9113 7.31281 18.6411 6.55279 18.0446 5.95625L17.691 6.30981L17.3375 6.66336C17.7172 7.04313 17.9352 7.55694 18.0497 8.40921C18.1663 9.27587 18.1673 10.4147 18.1673 12.0002H18.6673ZM5.33398 12.0002H5.83398C5.83398 10.4147 5.83505 9.27587 5.95156 8.40921C6.06615 7.55694 6.28408 7.04313 6.66385 6.66336L6.3103 6.30981L5.95674 5.95625C5.3602 6.55279 5.08997 7.31281 4.96048 8.27597C4.83292 9.22474 4.83398 10.4429 4.83398 12.0002H5.33398ZM12.0007 5.3335V4.8335C10.9457 4.8335 10.7256 4.83347 9.97576 4.87085L10.0007 5.37023L10.0255 5.86961C10.7496 5.83352 10.9494 5.8335 12.0007 5.8335V5.3335ZM10.0007 5.37023L9.97576 4.87085C9.23298 4.90787 8.44121 4.9823 7.7433 5.13555C7.06562 5.28437 6.38768 5.52531 5.95674 5.95625L6.3103 6.30981L6.66385 6.66336C6.88207 6.44514 7.31816 6.25274 7.95779 6.11228C8.57719 5.97626 9.30602 5.90548 10.0255 5.86961L10.0007 5.37023ZM12.0007 18.6668V18.1668C10.9494 18.1668 10.7496 18.1668 10.0255 18.1307L10.0007 18.6301L9.97576 19.1295C10.7256 19.1669 10.9457 19.1668 12.0007 19.1668V18.6668ZM10.0007 18.6301L10.0255 18.1307C9.30602 18.0948 8.57719 18.0241 7.95779 17.888C7.31816 17.7476 6.88207 17.5552 6.66385 17.337L6.3103 17.6905L5.95674 18.0441C6.38768 18.475 7.06562 18.716 7.7433 18.8648C8.44121 19.018 9.23298 19.0924 9.97576 19.1295L10.0007 18.6301ZM10.0007 5.37023H9.50065V18.6301H10.0007H10.5007V5.37023H10.0007ZM12.0007 5.3335V5.8335C13.0519 5.8335 13.2517 5.83352 13.9758 5.86961L14.0007 5.37023L14.0255 4.87085C13.2757 4.83347 13.0556 4.8335 12.0007 4.8335V5.3335ZM14.0007 5.37023L13.9758 5.86961C14.6953 5.90548 15.4241 5.97626 16.0435 6.11228C16.6831 6.25274 17.1192 6.44514 17.3375 6.66336L17.691 6.30981L18.0446 5.95625C17.6136 5.52531 16.9357 5.28437 16.258 5.13555C15.5601 4.9823 14.7683 4.90787 14.0255 4.87085L14.0007 5.37023ZM12.0007 18.6668V19.1668C13.0556 19.1668 13.2757 19.1669 14.0255 19.1295L14.0007 18.6301L13.9758 18.1307C13.2517 18.1668 13.0519 18.1668 12.0007 18.1668V18.6668ZM14.0007 18.6301L14.0255 19.1295C14.7683 19.0924 15.5601 19.018 16.258 18.8648C16.9357 18.716 17.6136 18.475 18.0446 18.0441L17.691 17.6905L17.3375 17.337C17.1192 17.5552 16.6831 17.7476 16.0435 17.888C15.4241 18.0241 14.6953 18.0948 13.9758 18.1307L14.0007 18.6301ZM14.0007 5.37023L13.5007 5.37023L13.5007 18.6301H14.0007H14.5007L14.5007 5.37023L14.0007 5.37023Z"
+        d="M5.9987 1.37072L5.97381 0.871338L5.9987 1.37072ZM5.9987 14.6306L5.97381 15.13L5.9987 14.6306ZM9.9987 1.37072L10.0236 0.871338L9.9987 1.37072ZM9.9987 14.6306L10.0236 15.13L9.9987 14.6306ZM1.33203 8.00065H0.832031C0.832031 9.55786 0.830969 10.7761 0.958529 11.7248C1.08802 12.688 1.35825 13.448 1.95479 14.0446L2.30834 13.691L2.6619 13.3375C2.28212 12.9577 2.0642 12.4439 1.94961 11.5916C1.83309 10.7249 1.83203 9.58613 1.83203 8.00065H1.33203ZM14.6654 8.00065H14.1654C14.1654 9.58613 14.1643 10.7249 14.0478 11.5916C13.9332 12.4439 13.7153 12.9577 13.3355 13.3375L13.6891 13.691L14.0426 14.0446C14.6391 13.448 14.9094 12.688 15.0389 11.7248C15.1664 10.7761 15.1654 9.55786 15.1654 8.00065H14.6654ZM14.6654 8.00065H15.1654C15.1654 6.44344 15.1664 5.22523 15.0389 4.27645C14.9094 3.3133 14.6391 2.55328 14.0426 1.95674L13.6891 2.3103L13.3355 2.66385C13.7153 3.04362 13.9332 3.55743 14.0478 4.4097C14.1643 5.27635 14.1654 6.41517 14.1654 8.00065H14.6654ZM1.33203 8.00065H1.83203C1.83203 6.41517 1.83309 5.27635 1.94961 4.4097C2.0642 3.55743 2.28212 3.04362 2.6619 2.66385L2.30834 2.3103L1.95479 1.95674C1.35825 2.55328 1.08802 3.3133 0.958529 4.27645C0.830969 5.22523 0.832031 6.44344 0.832031 8.00065H1.33203ZM7.9987 1.33398V0.833984C6.94376 0.833984 6.72364 0.833962 5.97381 0.871338L5.9987 1.37072L6.02359 1.8701C6.74764 1.83401 6.94747 1.83398 7.9987 1.83398V1.33398ZM5.9987 1.37072L5.97381 0.871338C5.23103 0.908363 4.43926 0.982784 3.74135 1.13604C3.06366 1.28486 2.38573 1.5258 1.95479 1.95674L2.30834 2.3103L2.6619 2.66385C2.88012 2.44563 3.31621 2.25323 3.95584 2.11277C4.57524 1.97675 5.30407 1.90596 6.02359 1.8701L5.9987 1.37072ZM7.9987 14.6673V14.1673C6.94748 14.1673 6.74764 14.1673 6.02359 14.1312L5.9987 14.6306L5.97381 15.13C6.72364 15.1673 6.94376 15.1673 7.9987 15.1673V14.6673ZM5.9987 14.6306L6.02359 14.1312C5.30407 14.0953 4.57524 14.0245 3.95584 13.8885C3.31621 13.7481 2.88012 13.5557 2.6619 13.3375L2.30834 13.691L1.95479 14.0446C2.38573 14.4755 3.06366 14.7164 3.74135 14.8653C4.43926 15.0185 5.23103 15.0929 5.97381 15.13L5.9987 14.6306ZM5.9987 1.37072H5.4987V14.6306H5.9987H6.4987V1.37072H5.9987ZM7.9987 1.33398V1.83398C9.04992 1.83398 9.24975 1.83401 9.97381 1.8701L9.9987 1.37072L10.0236 0.871338C9.27376 0.833962 9.05364 0.833984 7.9987 0.833984V1.33398ZM9.9987 1.37072L9.97381 1.8701C10.6933 1.90596 11.4222 1.97675 12.0416 2.11277C12.6812 2.25323 13.1173 2.44563 13.3355 2.66385L13.6891 2.3103L14.0426 1.95674C13.6117 1.5258 12.9337 1.28486 12.256 1.13604C11.5581 0.982784 10.7664 0.908363 10.0236 0.871338L9.9987 1.37072ZM7.9987 14.6673V15.1673C9.05364 15.1673 9.27376 15.1673 10.0236 15.13L9.9987 14.6306L9.97381 14.1312C9.24976 14.1673 9.04992 14.1673 7.9987 14.1673V14.6673ZM9.9987 14.6306L10.0236 15.13C10.7664 15.0929 11.5581 15.0185 12.256 14.8653C12.9337 14.7164 13.6117 14.4755 14.0426 14.0446L13.6891 13.691L13.3355 13.3375C13.1173 13.5557 12.6812 13.7481 12.0416 13.8885C11.4222 14.0245 10.6933 14.0953 9.97381 14.1312L9.9987 14.6306ZM9.9987 1.37072L9.4987 1.37072L9.4987 14.6306H9.9987H10.4987L10.4987 1.37072L9.9987 1.37072Z"
         fill={color}
       />
     </svg>

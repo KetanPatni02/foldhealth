@@ -963,6 +963,8 @@ function HccWorklistRowImpl({ member, hiddenCols, columns }) {
   const openHccUploadDrawer = useAppStore(s => s.openHccUploadDrawer);
   const openAddDos = useAppStore(s => s.openHccAddDos);
   const openClaimPreview = useAppStore(s => s.openHccClaimPreview);
+  const justAddedHccMemberId = useAppStore(s => s.justAddedHccMemberId);
+  const justAdded = justAddedHccMemberId === member.id;
   const hccDosAssignments = useAppStore(s => s.hccDosAssignments);
   const platformUsers = useAppStore(s => s.platformUsers);
   const dosStateFor = (m) => (m?.id && m?.dos ? hccDosAssignments[dosKey(m.id, m.dos, m.rp, m.pos)] : null);
@@ -1083,6 +1085,7 @@ function HccWorklistRowImpl({ member, hiddenCols, columns }) {
         isOpenInDrawer ? styles.rowActive : '',
         expanded ? styles.rowExpanded : '',
         isRecordRejected ? styles.rowRejected : '',
+        justAdded ? styles.rowJustAdded : '',
       ].filter(Boolean).join(' ')}
       aria-disabled={isRecordRejected || undefined}
       title={rejectedTooltip}
@@ -1284,28 +1287,66 @@ export const HccWorklistRow = memo(HccWorklistRowImpl, (prev, next) => (
  * patient into hccMembers, which the parent already derives from — so no
  * explicit remove is needed here.
  */
+// Deterministic synthesis of the risk-profile fields (IPA / HP Code / Decile
+// / Cohort / Adv. Illness / Frailty) for patients that don't yet have an
+// hccMembers row. The `patients` table doesn't carry these columns, so we
+// hash a stable seed (memberId || id) into fixed lookup arrays. This keeps
+// the empty rows populated at demo/mock quality without pretending we have
+// real HCC-side data on these patients yet.
+const HCC_PROFILE_POOLS = {
+  ipa: ['ACP', 'IPA-1', 'IPA-2', 'IPA-3'],
+  hp:  ['Lab', 'Scan', 'X-Ray'],
+  dec: ['3', '4', '5', '6', '7', '8', '9', '10'],
+  coh: ['HCC', 'PCP'],
+  ad:  ['1', '2', '3', '4', '5'],
+  fr:  ['1', '2', '3', '4', '5'],
+};
+function seedHash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+function synthesizeHccProfile(patient) {
+  const seed = seedHash(String(patient.memberId || patient.id || patient.name || ''));
+  return {
+    ipa: HCC_PROFILE_POOLS.ipa[seed % HCC_PROFILE_POOLS.ipa.length],
+    hp:  HCC_PROFILE_POOLS.hp[(seed >> 3) % HCC_PROFILE_POOLS.hp.length],
+    dec: HCC_PROFILE_POOLS.dec[(seed >> 6) % HCC_PROFILE_POOLS.dec.length],
+    coh: HCC_PROFILE_POOLS.coh[(seed >> 9) % HCC_PROFILE_POOLS.coh.length],
+    ad:  HCC_PROFILE_POOLS.ad[(seed >> 12) % HCC_PROFILE_POOLS.ad.length],
+    fr:  HCC_PROFILE_POOLS.fr[(seed >> 15) % HCC_PROFILE_POOLS.fr.length],
+  };
+}
+
 function HccEmptyPatientRowImpl({ patient, hiddenCols, columns }) {
   const openAddDos = useAppStore(s => s.openHccAddDos);
+  const openUpload = useAppStore(s => s.openHccUploadDrawer);
   const showToast = useAppStore(s => s.showToast);
   const openQuickView = useAppStore(s => s.openQuickView);
   const isHidden = (k) => hiddenCols?.has(k);
-  const dash = <span className={styles.muted}>—</span>;
+  const dash = <span className={styles.emptyDash} aria-hidden="true" />;
+  const profile = useMemo(() => synthesizeHccProfile(patient), [patient]);
 
+  const asMember = {
+    id: patient.id,
+    name: patient.name,
+    in: patient.initials,
+    g: patient.gender,
+    age: patient.age,
+    memberId: patient.memberId || patient.id,
+    dob: patient.dob,
+  };
   const handleRecord = (e) => {
     e.stopPropagation();
-    openAddDos({
-      id: patient.id,
-      name: patient.name,
-      in: patient.initials,
-      g: patient.gender,
-      age: patient.age,
-      memberId: patient.memberId || patient.id,
-      dob: patient.dob,
-    });
+    openAddDos(asMember);
+  };
+  const handleUpload = (e) => {
+    e.stopPropagation();
+    openUpload(asMember);
   };
 
   return (
-    <tr className={styles.row}>
+    <tr className={`${styles.row} ${styles.emptyRow}`}>
       <td
         className={`${styles.checkTd} ${styles.stickyLeft} ${styles.stickyCheck}`}
         onClick={(e) => e.stopPropagation()}
@@ -1350,22 +1391,44 @@ function HccEmptyPatientRowImpl({ patient, hiddenCols, columns }) {
 
       {(columns || []).map((col) => {
         if (isHidden(col.k)) return null;
-        // Match the primary row's per-column classnames so widths and
-        // stickies (esp. the DOS-group right divider on POS) align.
-        const cls = [
-          DOS_LEVEL_COLS.has(col.k) ? styles.dosTd : '',
-          col.k === 'pos' ? styles.dosTdLast : '',
-        ].filter(Boolean).join(' ');
+        // Empty rows deliberately skip `.dosTd` — that class forces
+        // vertical-align:top + padding:0 !important for the primary row's
+        // multi-DOS stack, and we want compact center-aligned dashes here.
+        // We still keep the right divider on POS via `.dosTdLast` so the
+        // DOS-group visual bracket matches the primary rows.
+        const cls = col.k === 'pos' ? styles.dosTdLast : '';
+        // Documents column — render the same ghost Upload button the primary
+        // row uses when its `charts` array is empty. Keeps the "add docs"
+        // affordance in one place across both sections.
+        if (col.k === 'evidence') {
+          return (
+            <td key={col.k} data-col={col.k} className={cls}>
+              <Button
+                variant="ghost"
+                size="S"
+                leadingIcon="solar:upload-linear"
+                onClick={handleUpload}
+              >
+                Upload
+              </Button>
+            </td>
+          );
+        }
+        // Six risk-profile columns render synthesized values so the empty
+        // section still reads as populated patient records; everything else
+        // (DOS, ICDs, RAF, roles, dates…) stays dashed since it's genuinely
+        // absent for a patient with no open gaps.
+        const profileValue = profile[col.k];
         return (
           <td key={col.k} data-col={col.k} className={cls}>
-            {dash}
+            {profileValue != null ? profileValue : dash}
           </td>
         );
       })}
 
       <td className={`${styles.actionsCell} ${styles.stickyRight} ${styles.colActions}`}>
         <div className={styles.actionsRow}>
-          <Button variant="secondary" size="S" onClick={handleRecord}>Record</Button>
+          <Button variant="alt" size="S" leadingIcon="solar:add-circle-linear" onClick={handleRecord}>Record</Button>
         </div>
       </td>
     </tr>

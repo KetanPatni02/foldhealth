@@ -733,6 +733,43 @@
 .numText { font-variant-numeric: tabular-nums; }
 .muted { color: var(--neutral-200); }
 
+/* Empty (no-open-gaps) row — compact height, dashes centered.
+   Overrides the primary row's `vertical-align: top` + 64px min-height. */
+.emptyRow > td {
+  vertical-align: middle;
+  padding: 8px 14px;
+  height: auto;
+}
+.emptyDash {
+  display: inline-block;
+  width: 10px;
+  height: 1.5px;
+  background: var(--neutral-150);
+  border-radius: 1px;
+  vertical-align: middle;
+}
+
+/* Just-added row — the patient that was just recorded via the Add DOS
+   drawer. Slides down from -8px into place while flashing a soft primary
+   tint, then settles into the normal row look after ~700ms. Keyed off
+   `justAddedHccMemberId` in the store so exactly one row runs the animation
+   per save. */
+.rowJustAdded {
+  animation: rowJustAdded 720ms cubic-bezier(0.22, 0.61, 0.36, 1) 1;
+}
+.rowJustAdded > td {
+  animation: rowJustAddedTd 720ms cubic-bezier(0.22, 0.61, 0.36, 1) 1;
+}
+@keyframes rowJustAdded {
+  from { transform: translateY(-8px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes rowJustAddedTd {
+  0%   { background: var(--primary-50); }
+  60%  { background: var(--primary-25); }
+  100% { background: var(--neutral-0); }
+}
+
 /* ── Column widths (match Figma frame 11436:432705 — Table Middle List) ── */
 .colMember      { min-width: 240px; }
 .colLastVisit   { min-width: 100px; }
@@ -835,6 +872,14 @@
 .actionsCell {
   text-align: center;
   padding: 8px 10px !important;
+  /* Each ActionButton in here mounts an absolute-positioned .tooltip that's
+     wider than the cell (e.g. "View Diagnosis Gaps"). Even when hidden it
+     still counts toward the row's scrollWidth, which used to add ~24px of
+     dead horizontal scroll space past the sticky Actions column. Clip the
+     horizontal axis while leaving the vertical open so tooltips can still
+     float upward on hover. */
+  overflow-x: clip;
+  overflow-y: visible;
 }
 
 .actionsRow {
