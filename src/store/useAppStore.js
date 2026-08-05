@@ -6506,6 +6506,65 @@ export const useAppStore = create((set, get) => ({
   openHccAddDos: (member) => set({ hccAddDosMember: member }),
   closeHccAddDos: () => set({ hccAddDosMember: null }),
 
+  // ID of the hccMember most recently spawned via the Add DOS drawer. Read
+  // by HccWorklistRow to apply the slide-in animation for exactly one render
+  // pass; cleared automatically after ~800ms.
+  justAddedHccMemberId: null,
+  // Called by HccAddDosDrawer's Save. Turns the patient + DOS blocks into a
+  // minimum-viable hccMembers row, prepends it to the list (so it lands at
+  // the top of the primary section), and marks it for the slide-in animation.
+  spawnHccMemberFromDos: (patient, blocks) => {
+    if (!patient) return;
+    const first = blocks?.[0] || {};
+    const totalIcds = (blocks || []).reduce((n, b) => n + (b.icds?.length || 0), 0);
+    const dosList = (blocks || []).filter(b => b.dos).map(b => ({
+      date: b.dos,
+      label: 'Just Added',
+      labelColor: 'var(--neutral-200)',
+    }));
+    const today = new Date();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const yyyy = today.getFullYear();
+    const newMember = {
+      id: patient.id,
+      in: patient.in || patient.initials || '?',
+      name: patient.name,
+      g: patient.g || patient.gender,
+      age: patient.age,
+      memberId: patient.memberId || patient.id,
+      dob: patient.dob,
+      dos_list: dosList,
+      ch: 0,
+      docStatus: [],
+      open: totalIcds || 1,
+      date: `${mm}/${dd}/${yyyy}`,
+      due: 'Due in 30D',
+      dueCol: 'var(--neutral-300)',
+      sup: null,     supS: 'Assign',
+      cdr: null,     cdrS: 'Assign',
+      r1:  null,     r1s:  'Assign',
+      r2:  null,     r2s:  'Assign',
+      rp: first.provider || null,
+      vt: first.visitType || null,
+      pos: first.pos || null,
+      raf: null,
+      ri:  null,
+      ru: false,
+    };
+    set(s => ({
+      hccMembers: [newMember, ...s.hccMembers.filter(m => m.id !== newMember.id)],
+      justAddedHccMemberId: newMember.id,
+    }));
+    // Clear the animation flag after the animation finishes.
+    setTimeout(() => {
+      const st = useAppStore.getState();
+      if (st.justAddedHccMemberId === newMember.id) {
+        useAppStore.setState({ justAddedHccMemberId: null });
+      }
+    }, 800);
+  },
+
   // ─── HCC Document Upload + OCR Review (Individual Upload path) ──────
   // Session state for the multi-encounter PDF upload flow described in the
   // Jira ticket. Lives at app level — drawer is mounted once in AppLayout.

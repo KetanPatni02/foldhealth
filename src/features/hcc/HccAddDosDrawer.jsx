@@ -477,6 +477,10 @@ export function HccAddDosDrawer() {
 
   const doClose = () => { setBlocks([{ id: 1 }]); close(); };
   const doSave = () => {
+    // Spawns a new hccMembers row so a patient recorded from the
+    // "Patients Without Open Gaps" section immediately shows up in the
+    // primary list (with the just-added slide-in animation).
+    useAppStore.getState().spawnHccMemberFromDos(member, blocks);
     showToast?.(`DOS added to ${member.name}'s worklist`);
     doClose();
   };

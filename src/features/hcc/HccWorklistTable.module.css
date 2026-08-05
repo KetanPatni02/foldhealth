@@ -245,9 +245,18 @@
   padding: 8px 8px !important;
 }
 
+/* Inner flex wrapper — keeps the <th> a real table cell (so sticky-right
+   and vertical baseline stay intact) while pushing the col-visibility
+   button to the far right of the Actions header. */
+.actionsHeaderInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
 .actionsHeaderLabel {
   display: inline-block;
-  margin-right: 6px;
 }
 
 .colCfgBtn {
@@ -269,3 +278,47 @@
   background: var(--primary-50);
 }
 .colCfgBtnActive:hover { background: var(--primary-100); }
+
+/* ── Section divider row — sits between the primary HCC records and the
+   "Patients Without Open Gaps" secondary section. Non-interactive; renders
+   as a full-width band with subtle top/bottom borders so it reads as a
+   section header rather than another data row. Uses the sticky-left
+   positioning trick from `.empty` so the title stays anchored to the
+   viewport when the table overflows horizontally. */
+.sectionDividerRow {
+  background: var(--neutral-25);
+}
+.sectionDividerRow > td {
+  padding: 0;
+  border-top: 1px solid var(--neutral-150);
+  border-bottom: 1px solid var(--neutral-150);
+  background: var(--neutral-25);
+}
+.sectionDividerCell {
+  position: relative;
+}
+/* Sticky-left inner so the title stays anchored to the viewport-left
+   while the wide HCC table scrolls horizontally under it. `inline-flex`
+   is important — a block/full-width sticky element scrolls with its td
+   because its own leftmost edge is anchored to `left: 0` of the td, not
+   of the scroll container. Shrinking to content width lets `left: 0`
+   snap it against the scroll viewport instead. */
+.sectionDividerInner {
+  position: sticky;
+  left: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 16px;
+  z-index: 2;
+}
+.sectionDividerTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.sectionDividerSubtitle {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
