@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
+import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { Badge } from '../../components/Badge/Badge';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
@@ -110,6 +111,8 @@ export function WorklistRow({ patient, isSelected, onSelect }) {
   const openLiveDrawer = useAppStore(s => s.openLiveDrawer);
   const showToast = useAppStore(s => s.showToast);
   const requestAddTask = useAppStore(s => s.requestAddTask);
+  const platformUsers = useAppStore(s => s.platformUsers);
+  const updatePatient = useAppStore(s => s.updatePatient);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropBtnRef = useRef(null);
   const callBtnRef = useRef(null);
@@ -214,11 +217,45 @@ export function WorklistRow({ patient, isSelected, onSelect }) {
         <td className={styles.td}><span className={styles.dateText}>{p.nextOutreach || '—'}</span></td>
         <td className={styles.td}><span className={styles.dateText}>{p.startDate || '—'}</span></td>
         <td className={styles.td}><span className={styles.dateText}>{p.lastAdmission || '—'}</span></td>
-        <td className={styles.td}>
-          <div className={styles.assigneeCell}>
-            <Avatar variant="assignee" initials={p.assigneeInitials} />
-            <span style={{ fontSize: 13 }}>{p.assignee}</span>
-          </div>
+        <td className={styles.td} onClick={e => e.stopPropagation()}>
+          {p.assignee ? (
+            <AssigneeChange
+              name={p.assignee}
+              initials={p.assigneeInitials}
+              role={
+                p.assigneeRole ||
+                platformUsers.find(u => u.name === p.assignee)?.clinicalRoles?.[0]
+              }
+              users={platformUsers.map(u => ({
+                id: u.id,
+                name: u.name,
+                initials: u.initials,
+                role: u.clinicalRoles?.[0] || '',
+              }))}
+              onSelect={(u) => updatePatient(p.id, {
+                assignee: u.name,
+                assigneeInitials: u.initials,
+                assigneeRole: u.role,
+              })}
+              pickerTitle="Change assignee"
+            />
+          ) : (
+            <AssigneeChange
+              unassigned
+              users={platformUsers.map(u => ({
+                id: u.id,
+                name: u.name,
+                initials: u.initials,
+                role: u.clinicalRoles?.[0] || '',
+              }))}
+              onSelect={(u) => updatePatient(p.id, {
+                assignee: u.name,
+                assigneeInitials: u.initials,
+                assigneeRole: u.role,
+              })}
+              pickerTitle="Assign user"
+            />
+          )}
         </td>
         <td className={styles.td}>
           {p.agentAssigned ? (
