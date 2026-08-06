@@ -137,6 +137,7 @@ export function stateToHash(state) {
   }
 
   const LIST_TO_URL = {
+    'TOC': 'toc',
     'Day Optimizer': 'day-optimizer',
     'Review HRA': 'review-hra',
     'IP Visits': 'ip-visits',
@@ -346,6 +347,7 @@ export function hashToState(route, state = null) {
   updates.activePage = 'population';
 
   const URL_TO_LIST = {
+    'toc': 'TOC',
     'day-optimizer': 'Day Optimizer',
     'review-hra': 'Review HRA',
     'ip-visits': 'IP Visits',
