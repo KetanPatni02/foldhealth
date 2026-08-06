@@ -13,8 +13,8 @@ import { SimpleTableSkeleton } from '../../../components/SimpleTableSkeleton/Sim
 import { useAppStore } from '../../../store/useAppStore';
 import { DOMAIN_CATEGORIES, HIPAA_OPTIONS, COMPONENTS } from '../../../data/embeddedComponents';
 import { AuditLogDrawer } from './AuditLogDrawer';
-import { useTableSort } from '../../../components/SortableHeader/useTableSort';
-import { SortableHeader } from '../../../components/SortableHeader/SortableHeader';
+import { useTableSort } from '../../../components/HeaderCell/useTableSort';
+import { HeaderCell } from '../../../components/HeaderCell/HeaderCell';
 
 const thStyle = {
   textAlign: 'left', padding: '8px 16px', color: 'var(--neutral-300)', fontWeight: 500,
@@ -256,10 +256,10 @@ export function DomainRegistryPanel({ searchQuery = '' }) {
       <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'Inter', sans-serif" }}>
         <thead>
           <tr>
-            <SortableHeader label="Vendor / label" sortKey="vendor" currentKey={dSortKey} currentDir={dSortDir} onSort={dRequestSort} style={thStyle} />
-            <SortableHeader label="Domain" sortKey="domain" currentKey={dSortKey} currentDir={dSortDir} onSort={dRequestSort} style={thStyle} />
-            <SortableHeader label="Category" sortKey="category" currentKey={dSortKey} currentDir={dSortDir} onSort={dRequestSort} style={thStyle} />
-            <SortableHeader label="HIPAA" sortKey="hipaa" currentKey={dSortKey} currentDir={dSortDir} onSort={dRequestSort} style={thStyle} />
+            <HeaderCell label="Vendor / label" sortField="vendor" activeKey={dSortKey} activeDir={dSortDir} onSort={dRequestSort} style={thStyle} />
+            <HeaderCell label="Domain" sortField="domain" activeKey={dSortKey} activeDir={dSortDir} onSort={dRequestSort} style={thStyle} />
+            <HeaderCell label="Category" sortField="category" activeKey={dSortKey} activeDir={dSortDir} onSort={dRequestSort} style={thStyle} />
+            <HeaderCell label="HIPAA" sortField="hipaa" activeKey={dSortKey} activeDir={dSortDir} onSort={dRequestSort} style={thStyle} />
             <th style={thStyle}>Components</th>
             <th style={thStyle}>Enabled</th>
             <th style={thStyle}>Actions</th>

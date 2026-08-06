@@ -19,8 +19,8 @@ import { AuditLogDrawer } from './panels/AuditLogDrawer';
 import { CallQueueDrawer } from '../../components/CallQueueDrawer/CallQueueDrawer';
 import { ViewUserDrawer } from './account/AccountPanel';
 import { ProductTour } from '../../components/ProductTour/ProductTour';
-import { useTableSort } from '../../components/SortableHeader/useTableSort';
-import { SortableHeader } from '../../components/SortableHeader/SortableHeader';
+import { useTableSort } from '../../components/HeaderCell/useTableSort';
+import { HeaderCell } from '../../components/HeaderCell/HeaderCell';
 import { VoicePreviewPopover } from '../../components/VoicePreviewPopover/VoicePreviewPopover';
 import styles from './AgentsTable.module.css';
 
@@ -375,12 +375,12 @@ export function AgentsTable() {
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <SortableHeader label="Agent Name" sortKey="name" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} className={`${styles.stickyLeft} ${styles.colName}`} />
-                      <SortableHeader label="Use Case" sortKey="use_case" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} className={styles.colUseCase} />
-                      <SortableHeader label="Version" sortKey="version" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} className={styles.colVersion} />
+                      <HeaderCell label="Agent Name" sortField="name" activeKey={sortKey} activeDir={sortDir} onSort={requestSort} className={`${styles.stickyLeft} ${styles.colName}`} />
+                      <HeaderCell label="Use Case" sortField="use_case" activeKey={sortKey} activeDir={sortDir} onSort={requestSort} className={styles.colUseCase} />
+                      <HeaderCell label="Version" sortField="version" activeKey={sortKey} activeDir={sortDir} onSort={requestSort} className={styles.colVersion} />
                       <th className={styles.colVoice}>Voice</th>
-                      <SortableHeader label="Last Updated" sortKey="last_updated" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} className={styles.colUpdated} />
-                      <SortableHeader label="Last Updated By" sortKey="last_updated_by" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} className={styles.colUpdatedBy} />
+                      <HeaderCell label="Last Updated" sortField="last_updated" activeKey={sortKey} activeDir={sortDir} onSort={requestSort} className={styles.colUpdated} />
+                      <HeaderCell label="Last Updated By" sortField="last_updated_by" activeKey={sortKey} activeDir={sortDir} onSort={requestSort} className={styles.colUpdatedBy} />
                       <th className={`${styles.stickyStatus} ${styles.colStatus}`}>Status</th>
                       <th className={`${styles.stickyRight} ${styles.colActions}`}>Actions</th>
                     </tr>

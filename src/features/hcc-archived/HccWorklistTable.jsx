@@ -6,7 +6,7 @@ import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
-import { useTableSort } from '../../components/SortableHeader/useTableSort';
+import { useTableSort } from '../../components/HeaderCell/useTableSort';
 import { SortPopover } from '../../components/SortPopover/SortPopover';
 import { DUE_OPTIONS, getDueCategory } from './DueDateChip';
 import { FilterChipBar } from './FilterChipBar';

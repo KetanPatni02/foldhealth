@@ -20,8 +20,8 @@ import { Drawer } from '../../components/Drawer/Drawer';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
 import { Link } from '../../components/Link/Link';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
-import { SortableHeader } from '../../components/SortableHeader/SortableHeader';
-import { useTableSort } from '../../components/SortableHeader/useTableSort';
+import { HeaderCell } from '../../components/HeaderCell/HeaderCell';
+import { useTableSort } from '../../components/HeaderCell/useTableSort';
 
 import SectionAccordion   from './components/SectionAccordion.jsx';
 import FileChipCard        from './components/FileChipCard.jsx';
@@ -1574,12 +1574,12 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                 { label:'Updated Date', sortKey:'_updatedTs', w:160 },
                 { label:'Action' },
               ].map(col => (
-                <SortableHeader
+                <HeaderCell
                   key={col.label}
                   label={col.label}
                   sortKey={col.sortKey}
-                  currentKey={pgSortKey}
-                  currentDir={pgSortDir}
+                  activeKey={pgSortKey}
+                  activeDir={pgSortDir}
                   onSort={pgRequestSort}
                   style={{ ...thStyle, width: col.w ? col.w : undefined }}
                 />

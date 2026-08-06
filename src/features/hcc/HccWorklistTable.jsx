@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { HccWorklistRow, HccEmptyPatientRow, resolveCurrentAssignee } from './HccWorklistRow';
+import { HeaderCell } from '../../components/HeaderCell/HeaderCell';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Icon } from '../../components/Icon/Icon';
@@ -8,7 +9,7 @@ import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Button } from '../../components/Button/Button';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
-import { useTableSort } from '../../components/SortableHeader/useTableSort';
+import { useTableSort } from '../../components/HeaderCell/useTableSort';
 import { SortPopover } from '../../components/SortPopover/SortPopover';
 import { DUE_OPTIONS } from './DueDateChip';
 import { slaDueCategory } from './sla';
@@ -76,48 +77,6 @@ function EmptyState({ title, message, icon = 'solar:magnifer-linear', action = n
       <p className={styles.emptyMessage}>{message}</p>
       {action}
     </div>
-  );
-}
-
-// ── Header cell — opens a SortPopover on click for sortable columns. ──────
-function HccHeaderCell({ column, className, sortKey, sortDir, onOpenSort }) {
-  const ref = useRef(null);
-  const sortField = column.sortField || column.k;
-  const isActive = column.sortable && sortField === sortKey;
-  const handleClick = () => {
-    if (!column.sortable) return;
-    const rect = ref.current?.getBoundingClientRect();
-    if (rect) onOpenSort(column, rect);
-  };
-  return (
-    <th
-      ref={ref}
-      className={[
-        className || '',
-        styles.headerCell,
-        column.sortable ? styles.headerCellSortable : '',
-        isActive ? styles.headerCellActive : '',
-      ].filter(Boolean).join(' ')}
-      onClick={handleClick}
-      data-col={column.k}
-    >
-      <span className={styles.headerLabel}>
-        {column.lb}
-        {column.sortable && (
-          <span className={styles.sortIcon}>
-            {isActive ? (
-              <Icon
-                name={sortDir === 'asc' ? 'solar:arrow-up-linear' : 'solar:arrow-down-linear'}
-                size={12}
-                color="var(--primary-300)"
-              />
-            ) : (
-              <Icon name="solar:sort-vertical-linear" size={12} color="var(--neutral-200)" />
-            )}
-          </span>
-        )}
-      </span>
-    </th>
   );
 }
 
@@ -530,16 +489,18 @@ export function HccWorklistTable() {
 
               {orderedColumns.map((col) => (
                 hiddenSet.has(col.k) ? null : (
-                  <HccHeaderCell
+                  <HeaderCell
                     key={col.k}
-                    column={col}
-                    className={COL_CLASS[col.k]}
-                    sortKey={sortKey}
-                    sortDir={sortDir}
-                    onOpenSort={(c, rect) => setSortPop({
-                      items: [{ key: c.sortField || c.k, label: c.lb }],
+                    label={col.lb}
+                    sortField={col.sortable ? (col.sortField || col.k) : undefined}
+                    sortType={col.sortType}
+                    activeKey={sortKey}
+                    activeDir={sortDir}
+                    onSort={col.sortable ? ((field, rect) => setSortPop({
+                      items: [{ key: field, label: col.lb }],
                       rect,
-                    })}
+                    })) : undefined}
+                    className={COL_CLASS[col.k]}
                   />
                 )
               ))}
