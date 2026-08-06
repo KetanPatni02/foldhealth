@@ -17,7 +17,7 @@ import { KnowledgeBasePanel } from './panels/KnowledgeBasePanel';
 import { GoalsPanel } from './panels/GoalsPanel';
 import { AuditLogDrawer } from './panels/AuditLogDrawer';
 import { CallQueueDrawer } from '../../components/CallQueueDrawer/CallQueueDrawer';
-import { ViewUserDrawer } from './AccountPanel';
+import { ViewUserDrawer } from './account/AccountPanel';
 import { ProductTour } from '../../components/ProductTour/ProductTour';
 import { useTableSort } from '../../components/SortableHeader/useTableSort';
 import { SortableHeader } from '../../components/SortableHeader/SortableHeader';

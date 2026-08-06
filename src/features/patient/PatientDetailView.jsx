@@ -51,6 +51,12 @@ export function PatientDetailView() {
   const ccmWorklistMembers = useAppStore(s => s.ccmWorklistMembers);
   const snpWorklistMembers = useAppStore(s => s.snpWorklistMembers);
   const hedisMembers = useAppStore(s => s.hedisMembers);
+  const fetchPatients = useAppStore(s => s.fetchPatients);
+  const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
+  const fetchAwvMembers = useAppStore(s => s.fetchAwvMembers);
+  const fetchCcmWorklistMembers = useAppStore(s => s.fetchCcmWorklistMembers);
+  const fetchSnpWorklistMembers = useAppStore(s => s.fetchSnpWorklistMembers);
+  const fetchHedisMembers = useAppStore(s => s.fetchHedisMembers);
   const navigateBackToWorklist = useAppStore(s => s.navigateBackToWorklist);
   // Active profile tab is stored on the store so callers (e.g. the CCM
   // worklist's "View billing" button) can deep-link into a specific tab.
@@ -108,6 +114,24 @@ export function PatientDetailView() {
   const anySliceLoaded = patients.length > 0 || hccMembers.length > 0 || (awvMembers?.length || 0) > 0
     || (ccmWorklistMembers?.length || 0) > 0 || (snpWorklistMembers?.length || 0) > 0
     || (hedisMembers?.length || 0) > 0;
+
+  // Cold-refresh into a patient URL (e.g. #/population/toc/patient/10003)
+  // arrives with every worklist slice empty because no table has mounted
+  // to trigger a fetch. Kick off every empty slice so the patient lookup
+  // (matchesId across every slice) can resolve. Guarded by
+  // `selectedPatientId && !patient` so this only fires while we're
+  // actually stuck looking for a patient, not on normal profile mounts
+  // where the row is already in memory.
+  useEffect(() => {
+    if (!selectedPatientId || patient) return;
+    if (patients.length === 0) fetchPatients?.();
+    if (hccMembers.length === 0) fetchHccMembers?.();
+    if ((awvMembers?.length || 0) === 0) fetchAwvMembers?.();
+    if ((ccmWorklistMembers?.length || 0) === 0) fetchCcmWorklistMembers?.();
+    if ((snpWorklistMembers?.length || 0) === 0) fetchSnpWorklistMembers?.();
+    if ((hedisMembers?.length || 0) === 0) fetchHedisMembers?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPatientId, patient]);
   useEffect(() => {
     if (selectedPatientId && !patient && anySliceLoaded) navigateBackToWorklist();
   }, [selectedPatientId, patient, anySliceLoaded, navigateBackToWorklist]);

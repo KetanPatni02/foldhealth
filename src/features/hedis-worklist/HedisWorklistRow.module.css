@@ -1,11 +1,7 @@
 .row {
-  border-bottom: 0.5px solid var(--neutral-150);
-  transition: background .1s;
+  composes: row from '../../components/WorklistShell/WorklistRow.module.css';
   cursor: pointer;
 }
-.row:hover { background: var(--primary-25); }
-.row:hover .stickyRight { background: var(--primary-25); }
-.row:hover .stickyLeft { background: var(--primary-25) !important; }
 .rowChecked { background: var(--primary-50); }
 .rowChecked .stickyLeft { background: var(--primary-50) !important; }
 .rowChecked .stickyRight { background: var(--primary-50); }

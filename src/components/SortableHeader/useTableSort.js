@@ -48,6 +48,18 @@ export function useTableSort(data, defaultKey = null, defaultDir = 'asc') {
       if (bVal == null) return -1;
 
       // Detect type and compare
+      // ISO 8601 date strings — parseFloat would happily eat "2026-08-06"
+      // and return 2026, so every row in the same year would tie. Detect
+      // and use Date parsing before falling through to numbers.
+      const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}(T|$)/;
+      if (typeof aVal === 'string' && typeof bVal === 'string' && ISO_DATE_RE.test(aVal) && ISO_DATE_RE.test(bVal)) {
+        const at = Date.parse(aVal);
+        const bt = Date.parse(bVal);
+        if (!isNaN(at) && !isNaN(bt)) {
+          return sortDir === 'asc' ? at - bt : bt - at;
+        }
+      }
+
       // Numbers (including strings that look like numbers, percentages, currencies)
       const aNum = typeof aVal === 'number' ? aVal : parseFloat(String(aVal).replace(/[^0-9.\-]/g, ''));
       const bNum = typeof bVal === 'number' ? bVal : parseFloat(String(bVal).replace(/[^0-9.\-]/g, ''));

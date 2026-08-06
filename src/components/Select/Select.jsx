@@ -46,6 +46,9 @@ export function Select({
   const valueArray = multiple ? (Array.isArray(value) ? value : []) : null;
   const isSelected = (v) => multiple ? valueArray.includes(v) : v === value;
   const [open, setOpen] = useState(false);
+  // 'bottom' by default; flipped to 'top' when the trigger sits too close
+  // to the bottom of the viewport for the 240px menu to fit downward.
+  const [menuPlacement, setMenuPlacement] = useState('bottom');
   const [query, setQuery] = useState('');
   const wrapRef = useRef(null);
   const searchRef = useRef(null);
@@ -64,6 +67,19 @@ export function Select({
       document.removeEventListener('mousedown', handler);
       document.removeEventListener('keydown', keyHandler);
     };
+  }, [open]);
+
+  // Measure the trigger's position on every open — flip up when the
+  // 240px menu wouldn't fit below and there IS enough room above.
+  useEffect(() => {
+    if (!open) return;
+    const trigger = wrapRef.current?.querySelector('button');
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const MENU_MAX = 260; // .menu max-height (240) + a little buffer
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    setMenuPlacement(spaceBelow < MENU_MAX && spaceAbove > spaceBelow ? 'top' : 'bottom');
   }, [open]);
 
   // Reset the query each time the menu closes; focus the search on open.
@@ -125,7 +141,11 @@ export function Select({
       {open && (
         <ul
           role="listbox"
-          className={[styles.menu, menuAlign === 'right' ? styles.menuRight : ''].filter(Boolean).join(' ')}
+          className={[
+            styles.menu,
+            menuAlign === 'right' ? styles.menuRight : '',
+            menuPlacement === 'top' ? styles.menuTop : '',
+          ].filter(Boolean).join(' ')}
         >
           {searchable && (
             <li className={styles.searchRow}>

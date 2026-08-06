@@ -3001,6 +3001,55 @@ export const useAppStore = create((set, get) => ({
     });
   },
 
+  // ─── Practice Locations (Settings → Account → Locations) ──────────────
+  practiceLocations: [],
+  practiceLocationsLoading: false,
+  practiceLocationsFetched: false,
+  fetchPracticeLocations: async () => {
+    set({ practiceLocationsLoading: true });
+    const { data, error } = await supabase
+      .from('practice_locations')
+      .select('*')
+      .is('deleted_at', null)
+      .order('name', { ascending: true });
+    if (error || !data?.length) {
+      if (error) console.warn('fetchPracticeLocations — falling back to local mock:', error.message);
+      const { PRACTICE_LOCATIONS } = await import('../features/settings/account/locations/data/mock');
+      set({ practiceLocations: PRACTICE_LOCATIONS, practiceLocationsLoading: false, practiceLocationsFetched: true });
+      return;
+    }
+    set({
+      practiceLocations: data.map(r => ({
+        id:            r.id,
+        name:          r.name,
+        ehrInstance:   r.ehr_instance,
+        addressLine1:  r.address_line_1,
+        addressLine2:  r.address_line_2,
+        city:          r.city,
+        state:         r.state,
+        zipCode:       r.zip_code,
+        timezone:      r.timezone,
+        googleMapLink: r.google_map_link,
+        defaultPhone:  r.default_phone,
+        businessHours: typeof r.business_hours === 'string' ? JSON.parse(r.business_hours) : (r.business_hours || []),
+        createdAt:     r.created_at,
+        updatedAt:     r.updated_at,
+      })),
+      practiceLocationsLoading: false,
+      practiceLocationsFetched: true,
+    });
+  },
+  upsertPracticeLocation: (loc) => set(state => {
+    const idx = state.practiceLocations.findIndex(l => l.id === loc.id);
+    if (idx === -1) return { practiceLocations: [...state.practiceLocations, loc].sort((a, b) => a.name.localeCompare(b.name)) };
+    const next = [...state.practiceLocations];
+    next[idx] = loc;
+    return { practiceLocations: next };
+  }),
+  removePracticeLocation: (id) => set(state => ({
+    practiceLocations: state.practiceLocations.filter(l => l.id !== id),
+  })),
+
   apcmPatients: [],
   apcmPatientsLoading: false,
   fetchApcmPatients: async () => {

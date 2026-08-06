@@ -24,9 +24,27 @@ function readDrawerDurationMs(node) {
  * sit above any stacking contexts (e.g. sticky table columns with z-index).
  *
  * Props:
- *  - title        (ReactNode)  Header title text / element
- *  - onClose      (function)   Called when overlay or close button is clicked
- *  - headerRight  (ReactNode)  Extra elements rendered to the left of the close button
+ *  - title           (ReactNode)  Header title text / element
+ *  - onClose         (function)   Called when overlay or close button is clicked
+ *  - primaryAction   (ReactNode)  Optional CTA rendered just before the close button
+ *                                  (e.g. `<Button variant="primary" size="L">Save</Button>`).
+ *                                  The shell paints the vertical divider between the
+ *                                  actions and close as a real `<span>` — the close
+ *                                  button never carries a `border-left`.
+ *  - secondaryAction (ReactNode)  Optional secondary CTA rendered before `primaryAction`
+ *                                  (e.g. `<Button variant="secondary" size="L">Discard</Button>`).
+ *                                  Only shows when `primaryAction` is also set.
+ *  - headerRight     (ReactNode)  Free-form slot for chips / status content that sits
+ *                                  before the action buttons. Rendered order in the
+ *                                  header: [headerRight] [secondaryAction] [primaryAction]
+ *                                  [divider] [close]. Convention: CTA buttons here
+ *                                  render at `size="L"`.
+ *  - noCloseDivider  (boolean)    Escape hatch — suppress the auto-divider before the
+ *                                  close button. Only pass this when your `headerRight`
+ *                                  already contains its own divider element (legacy
+ *                                  callers). New callers should route buttons through
+ *                                  `primaryAction`/`secondaryAction` and let the shell
+ *                                  own the divider.
  *  - banner       (ReactNode)  Full-bleed slot rendered between header and body
  *                              (used for PatientBanner / hero rows that should
  *                              hug the drawer edges instead of sitting inside
@@ -49,7 +67,22 @@ function readDrawerDurationMs(node) {
  *  - Animation: transform 250ms var(--ease-drawer) — driven by
  *    Drawer.module.css @starting-style and [data-closing] transitions.
  */
-export function Drawer({ title, onClose, headerRight, banner, footer, children, className, bodyClassName, headerStyle, titleStyle, noCloseDivider, width }) {
+export function Drawer({
+  title,
+  onClose,
+  headerRight,
+  primaryAction,
+  secondaryAction,
+  banner,
+  footer,
+  children,
+  className,
+  bodyClassName,
+  headerStyle,
+  titleStyle,
+  width,
+  noCloseDivider = false,
+}) {
   const panelStyle = width !== undefined
     ? { width: typeof width === 'number' ? `${width}px` : width }
     : undefined;
@@ -74,8 +107,16 @@ export function Drawer({ title, onClose, headerRight, banner, footer, children, 
           <h2 className={styles.headerTitle} style={titleStyle}>{title}</h2>
           <div className={styles.headerRight}>
             {headerRight}
+            {primaryAction && secondaryAction}
+            {primaryAction}
+            {/* Real hairline element — the CloseButton NEVER paints its own
+                divider via border-left. Rendered whenever any content sits
+                to the left of the close button so callers don't need to
+                opt in with a prop. */}
+            {!noCloseDivider && (headerRight || primaryAction || secondaryAction) && (
+              <span className={styles.headerDivider} aria-hidden />
+            )}
             <CloseButton
-              className={`${styles.closeBtn}${noCloseDivider ? ` ${styles.closeBtnNoDivider}` : ''}`}
               onClick={requestClose}
               size={20}
               label="Close drawer"

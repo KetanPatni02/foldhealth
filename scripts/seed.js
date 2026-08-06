@@ -21,6 +21,7 @@ import { CCM_BILLING_PERIODS, CCM_BILLABLE_ACTIVITIES, CCM_BILLING_REPORTS } fro
 import { CCM_WORKLIST_MEMBERS } from '../src/features/ccm-worklist/data/mock.js';
 import { SNP_WORKLIST_MEMBERS } from '../src/features/snp-worklist/data/mock.js';
 import { CAREGAP_ACTIVITY_MOCK } from '../src/features/hedis-worklist/data/caregapActivityMock.js';
+import { PRACTICE_LOCATIONS } from '../src/features/settings/account/locations/data/mock.js';
 
 // Patients whose HCC diagnosis gaps have been modernized to V28 + 2025/26
 // dates (see docs/features/hcc-coding-workflow.md). Re-seeding rewrites just
@@ -284,6 +285,29 @@ DROP POLICY IF EXISTS "Allow all for ccm_billing_reports" ON ccm_billing_reports
 CREATE POLICY "Allow all for ccm_billing_reports" ON ccm_billing_reports FOR ALL USING (true);
 `;
 
+const PRACTICE_LOCATIONS_DDL = `
+CREATE TABLE IF NOT EXISTS practice_locations (
+  id                text PRIMARY KEY,
+  name              text NOT NULL,
+  ehr_instance      text,
+  address_line_1    text,
+  address_line_2    text,
+  city              text,
+  state             text,
+  zip_code          text,
+  timezone          text,
+  google_map_link   text,
+  default_phone     text,
+  business_hours    jsonb DEFAULT '[]',
+  created_at        timestamptz DEFAULT now(),
+  updated_at        timestamptz DEFAULT now(),
+  deleted_at        timestamptz
+);
+ALTER TABLE practice_locations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all for practice_locations" ON practice_locations;
+CREATE POLICY "Allow all for practice_locations" ON practice_locations FOR ALL USING (true);
+`;
+
 // ── Row mappers (JS shape → DB columns) ───────────────────────────────────────
 
 function hedisToRow(m) {
@@ -313,6 +337,23 @@ function hedisToRow(m) {
     zip:               m.zip ?? null,
     city:              m.city ?? null,
     state:             m.state ?? null,
+  };
+}
+
+function practiceLocationToRow(l) {
+  return {
+    id:              l.id,
+    name:            l.name,
+    ehr_instance:    l.ehrInstance ?? null,
+    address_line_1:  l.addressLine1 ?? null,
+    address_line_2:  l.addressLine2 ?? null,
+    city:            l.city ?? null,
+    state:           l.state ?? null,
+    zip_code:        l.zipCode ?? null,
+    timezone:        l.timezone ?? null,
+    google_map_link: l.googleMapLink ?? null,
+    default_phone:   l.defaultPhone ?? null,
+    business_hours:  l.businessHours ?? [],
   };
 }
 
@@ -538,6 +579,8 @@ async function main() {
     console.log('  ✓ snp_worklist_members — created / already exists');
     await db.query(CAREGAP_ACTIVITY_DDL);
     console.log('  ✓ caregap_activity — created / already exists');
+    await db.query(PRACTICE_LOCATIONS_DDL);
+    console.log('  ✓ practice_locations — created / already exists');
     await db.end();
   } catch (e) {
     console.warn(`  ⚠  Could not connect via pg (${e.message})`);
@@ -610,6 +653,13 @@ async function main() {
     .from('snp_worklist_members')
     .upsert(snpWorklistRows, { onConflict: 'id' });
   if (swe) { console.error('  ✗', swe.message); } else { console.log(`  ✓ ${snpWorklistRows.length} SNP worklist members`); }
+
+  console.log('Seeding practice_locations...');
+  const locationRows = PRACTICE_LOCATIONS.map(practiceLocationToRow);
+  const { error: ple } = await supabase
+    .from('practice_locations')
+    .upsert(locationRows, { onConflict: 'id' });
+  if (ple) { console.error('  ✗', ple.message); } else { console.log(`  ✓ ${locationRows.length} practice locations`); }
 
   console.log('Seeding caregap_activity...');
   const caregapRows = Object.entries(CAREGAP_ACTIVITY_MOCK).flatMap(

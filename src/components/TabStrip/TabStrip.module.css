@@ -1,5 +1,8 @@
 /* TabStrip — matches the pattern of the app's top-level TabBar (Worklist /
-   TOC Agent Queue). Reused by drawers that need the same tab affordance. */
+   TOC Agent Queue). Reused by drawers that need the same tab affordance.
+   Active state paints via a single sliding underline (see .tabUnderline)
+   so switching tabs reads as one line moving between them, matching
+   SectionTitleBar's motion. */
 
 .tabBar {
   background: var(--neutral-0);
@@ -9,6 +12,7 @@
   padding: 0 16px;
   gap: 12px;
   flex-shrink: 0;
+  position: relative;
 }
 
 /* Bleed to the container's edges when the parent (e.g. Drawer body) applies
@@ -25,17 +29,72 @@
   padding: 10px 4px;
   background: transparent;
   border: none;
-  border-bottom: 2px solid transparent;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 400;
+  white-space: nowrap;
   color: var(--neutral-300);
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.15s;
 }
 
 .tabItem:hover { color: var(--neutral-400); }
 
+/* Selected tab: bumps to medium and adopts brand purple. */
 .tabItem.active {
   color: var(--primary-300);
-  border-bottom-color: var(--primary-300);
+  font-weight: 500;
+}
+
+/* Shared sliding underline. One element translated + resized to the active
+   tab so the transition reads as a single line moving between tabs rather
+   than a cross-fade of two separate borders. Sits on top of the bar's
+   0.5px hairline. */
+.tabUnderline {
+  position: absolute;
+  bottom: -0.5px;
+  left: 0;
+  height: 2px;
+  background: var(--primary-300);
+  border-radius: 2px 2px 0 0;
+  pointer-events: none;
+  transition: transform 240ms cubic-bezier(0.4, 0, 0.2, 1),
+              width 240ms cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 160ms ease-out;
+}
+
+/* Trailing slot — action buttons pinned to the far right of the tab row.
+   The spacer flexes to push them past the last tab; the wrapper keeps its
+   own children together with a small gap for multi-button groups. */
+.trailingSpacer { flex: 1; }
+.trailing {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Notification dot — a small pulsing accent next to the label ("new
+   activity"). Consumers opt in per item via `notif: true`. */
+.notifDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--secondary-300);
+  animation: tabStripNotifPulse 1.4s infinite;
+}
+
+@keyframes tabStripNotifPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .5; transform: scale(.75); }
+}
+
+/* Embedded — strip the outer bar chrome so this row can drop inside another
+   header (SectionTitleBar). Tabs, underline, hover/active colors stay. */
+.embedded {
+  background: transparent;
+  border-bottom: none;
+  padding: 0;
+  gap: 12px;
+  margin-left: 0;
+  margin-right: 0;
 }

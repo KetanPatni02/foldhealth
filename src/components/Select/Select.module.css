@@ -86,6 +86,13 @@
   overflow-y: auto;
 }
 
+/* Flip-up variant — used when the trigger is near the bottom of the
+   viewport and opening downward would clip. Pinned above the trigger. */
+.menuTop {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
 .menuRight {
   left: auto;
   right: 0;

@@ -1,33 +1,29 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { supabase } from '../../lib/supabase';
-import { useAppStore } from '../../store/useAppStore';
-import { Icon } from '../../components/Icon/Icon';
-import { CloseButton } from '../../components/CloseButton/CloseButton';
-import { Badge } from '../../components/Badge/Badge';
-import { Button } from '../../components/Button/Button';
-import { ActionButton } from '../../components/ActionButton/ActionButton';
-import { Avatar } from '../../components/Avatar/Avatar';
-import { Drawer } from '../../components/Drawer/Drawer';
-import { Input } from '../../components/Input/Input';
-import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
-import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
-import { Select } from '../../components/Select/Select';
-import { RadioButton } from '../../components/RadioButton/RadioButton';
-import { useTableSort } from '../../components/SortableHeader/useTableSort';
-import { SortableHeader } from '../../components/SortableHeader/SortableHeader';
-import { Pagination } from '../../components/Pagination/Pagination';
-import { FilterChip } from '../../components/FilterChip/FilterChip';
-import { AuditLogContent } from './panels/AuditLogDrawer';
-import { IdIcon } from '../../components/Icon/IdIcon';
-import { AddIconMinimalist } from '../../components/Icon/AddIconMinimalist';
-import { CreateInsurancePlanDrawer } from './CreateInsurancePlanDrawer';
-import { InsurancePlanViewDrawer } from './InsurancePlanViewDrawer';
-import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
-import { OrgPanel } from './panels/OrgPanel';
-// FALLBACK_USERS lives in ./fallbackUsers.js so module-eval-time consumers
-// (hcc/systemUsers.js) don't import-cycle through this component file.
-import { FALLBACK_USERS } from './fallbackUsers';
+import { supabase } from '../../../lib/supabase';
+import { useAppStore } from '../../../store/useAppStore';
+import { Icon } from '../../../components/Icon/Icon';
+import { CloseButton } from '../../../components/CloseButton/CloseButton';
+import { Badge } from '../../../components/Badge/Badge';
+import { Button } from '../../../components/Button/Button';
+import { ActionButton } from '../../../components/ActionButton/ActionButton';
+import { Avatar } from '../../../components/Avatar/Avatar';
+import { Drawer } from '../../../components/Drawer/Drawer';
+import { TabStrip } from '../../../components/TabStrip/TabStrip';
+import { UserProfileBanner } from './users/UserProfileBanner';
+import { Input } from '../../../components/Input/Input';
+import { SectionTitleBar } from '../../../components/SectionTitleBar/SectionTitleBar';
+import { Select } from '../../../components/Select/Select';
+import { RadioButton } from '../../../components/RadioButton/RadioButton';
+import { AuditLogContent } from '../panels/AuditLogDrawer';
+import { IdIcon } from '../../../components/Icon/IdIcon';
+import { AddIconMinimalist } from '../../../components/Icon/AddIconMinimalist';
+import { CreateInsurancePlanDrawer } from '../CreateInsurancePlanDrawer';
+import { InsurancePlanViewDrawer } from '../InsurancePlanViewDrawer';
+import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
+import { OrgPanel } from '../panels/OrgPanel';
+import { UsersTab } from './users/UsersTab';
+import { LocationsTab } from './locations/LocationsTab';
 import styles from './AccountPanel.module.css';
 
 const ALL_TABS = ['Org', 'Users', 'Teams', 'Access Control', 'Locations', 'Insurance Plans', 'Holiday Configuration', 'Merged Or Delayed', 'Allowed Phone', 'Allowed Emails'];
@@ -37,7 +33,7 @@ const ALL_TABS = ['Org', 'Users', 'Teams', 'Access Control', 'Locations', 'Insur
 // the HCC review workflow's stage gating (Support → Coder → QA → Compliance).
 export const HCC_ROLES = ['Support', 'Coder', 'QA', 'Compliance'];
 
-const ROLE_COLORS = {
+export const ROLE_COLORS = {
   'Support':                       'toc-attempted',
   'Coder':                         'ai-care',
   'QA':                            'ai-med',
@@ -58,7 +54,7 @@ function isCapitalizedName(str) {
   return NAME_CAPITALIZED.test((str || '').trim());
 }
 
-function getInitials(name) {
+export function getInitials(name) {
   if (!name) return '??';
   const parts = name.trim().split(/\s+/);
   return (parts[0]?.[0] || '') + (parts[parts.length - 1]?.[0] || '');
@@ -66,30 +62,6 @@ function getInitials(name) {
 
 const MOCK_ROLES = Object.keys(ROLE_COLORS);
 const MOCK_LOCATIONS = ['Toms River', 'Montebello', 'Sparks', 'Chesapeake', 'Visalia', 'Lowell', 'Palm Bay', 'Lawton', 'Oceanside', 'Merced', 'Oakland Park'];
-
-/* ── Overflow Badge with hover dropdown ── */
-function OverflowBadge({ count, items }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  return (
-    <div
-      className={styles.overflowBadgeWrap}
-      ref={ref}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
-      <Badge variant="ai-neutral" label={`+${count}`} />
-      {open && items.length > 0 && (
-        <div className={styles.overflowDropdown}>
-          {items.map((item, i) => (
-            <div key={i} className={styles.overflowItem}>{item}</div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export function AccountPanel() {
   const storeTab = useAppStore(s => s.accountTab);
@@ -99,12 +71,6 @@ export function AccountPanel() {
   const tabNameToKey = (name) => name.toLowerCase().replace(/ /g, '-');
   const [activeTab, setActiveTabLocal] = useState(tabKeyToName(storeTab || 'org'));
   const setActiveTab = (tab) => { setActiveTabLocal(tab); setStoreTab(tabNameToKey(tab)); };
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchVal, setSearchVal] = useState('');
-  const [editingUser, setEditingUser] = useState(null);
-  const [viewingUser, setViewingUser] = useState(null);
-  const [showInvite, setShowInvite] = useState(false);
   const [showCreateInsurance, setShowCreateInsurance] = useState(false);
   const [plans, setPlans] = useState([]);
   const [planSavedToast, setPlanSavedToast] = useState(false);
@@ -112,19 +78,6 @@ export function AccountPanel() {
   const [editingPlan, setEditingPlan] = useState(null);
   const [deletingPlanId, setDeletingPlanId] = useState(null);
   const [planSearchVal, setPlanSearchVal] = useState('');
-  // Legacy single-status filter kept only to satisfy the old badge until the
-  // multi-chip row below replaces it fully. Reset on unmount so switching
-  // tabs doesn't leave a stale value.
-  const [statusFilter, setStatusFilter] = useState('all');
-  // Multi-chip filter row (Figma parity with HCC worklist). Each key holds
-  // an array of selected values; empty = no filter on that dimension.
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [userFilters, setUserFilters] = useState({ status: [], roles: [], location: [] });
-  const userFiltersActive =
-    userFilters.status.length + userFilters.roles.length + userFilters.location.length;
-  const [currentUserId, setCurrentUserId] = useState(null);
-  const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
-  const showToast = useAppStore(s => s.showToast);
 
   const handleSavePlan = (planData) => {
     if (planData.id) {
@@ -136,235 +89,9 @@ export function AccountPanel() {
     setTimeout(() => setPlanSavedToast(false), 3000);
   };
 
-  // Resolve current user + admin status once on mount.
-  // Used synchronously by UI (hide buttons) and handlers (guard actions).
-  useEffect(() => {
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        // Local/dev bypass — no session means running without auth
-        setIsCurrentUserAdmin(true);
-        return;
-      }
-      setCurrentUserId(session.user.id);
-      const { data } = await supabase
-        .from('profiles')
-        .select('role, clinical_roles, admin_role')
-        .eq('id', session.user.id)
-        .maybeSingle();
-      if (!data) { setIsCurrentUserAdmin(false); return; }
-      const isClinAdmin = data.role === 'Admin/Practice Manager'
-        || data.clinical_roles?.includes('Admin/Practice Manager');
-      const isSystemAdmin = data.admin_role === 'Business/Practice Owner';
-      setIsCurrentUserAdmin(isClinAdmin || isSystemAdmin);
-    })();
-  }, []);
-
-  // Fetch users from profiles table (synced with Supabase Auth)
-  const fetchUsers = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (!error && data?.length > 0) {
-        setUsers(data.map(u => ({
-          id: u.id,
-          name: u.full_name?.trim() || u.email?.split('@')[0] || 'Unknown',
-          email: u.email || '',
-          initials: getInitials(u.full_name?.trim() || u.email?.split('@')[0] || '').toUpperCase(),
-          status: u.status || 'Active',
-          role: u.clinical_roles?.length > 0 ? u.clinical_roles[0] : (u.role || 'Viewer'),
-          clinicalRoles: u.clinical_roles || [],
-          extraRoles: u.clinical_roles?.length > 1 ? u.clinical_roles.length - 1 : (u.extra_roles || 0),
-          location: u.locations?.length > 0 ? u.locations[0] : (u.practice_location || ''),
-          locations: u.locations || [],
-          extraLocations: u.locations?.length > 1 ? u.locations.length - 1 : (u.extra_locations || 0),
-          department: u.department || '',
-          phone: u.phone || u.mobile || '',
-          avatarUrl: u.avatar_url || '',
-          lastActiveAt: u.last_active_at,
-          createdAt: u.created_at,
-          _raw: u, // raw DB row for edit drawer
-        })));
-      } else {
-        // Fallback to mock data if profiles table doesn't exist yet
-        setUsers(FALLBACK_USERS);
-      }
-    } catch {
-      setUsers(FALLBACK_USERS);
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
-
-  // Toggle user status (Active/Inactive) — admin only
-  const toggleUserStatus = async (user) => {
-    if (!isCurrentUserAdmin) {
-      showToast('Only Admin/Practice Manager can change user status');
-      return;
-    }
-    const newStatus = user.status === 'Active' ? 'Inactive' : 'Active';
-    const { data, error } = await supabase
-      .from('profiles')
-      .update({ status: newStatus })
-      .eq('id', user.id)
-      .select();
-
-    if (!error && data && data.length > 0) {
-      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, status: newStatus } : u));
-      showToast(`${user.name} ${newStatus === 'Active' ? 'enabled' : 'disabled'}`);
-    } else {
-      showToast(error?.message || 'Failed to update user status (Check permissions)');
-    }
-  };
-
-  // Delete user (profiles + auth via Edge Function) — admin only
-  const deleteUser = async (user) => {
-    if (!isCurrentUserAdmin) {
-      showToast('Only Admin/Practice Manager can delete users');
-      return;
-    }
-    if (!confirm(`Delete ${user.name}? This will permanently remove them from the platform.`)) return;
-
-    const removeFromUI = () => setUsers(prev => prev.filter(u => u.id !== user.id));
-    const fail = (msg) => { showToast(msg); fetchUsers(); };
-
-    try {
-      // Try Edge Function first (deletes from both auth + profiles)
-      const { error: fnError } = await supabase.functions.invoke('delete-user', {
-        body: { userId: user.id },
-      });
-
-      if (!fnError) {
-        removeFromUI();
-        showToast(`${user.name} deleted`);
-        return;
-      }
-
-      // Fallback: delete from profiles — verify rows were actually removed.
-      // `.select()` returns the deleted rows; empty array means RLS blocked it.
-      const { data, error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', user.id)
-        .select();
-
-      if (error || !data || data.length === 0) {
-        fail(error?.message || 'Failed to delete user (Check permissions)');
-        return;
-      }
-
-      removeFromUI();
-      showToast(`${user.name} deleted`);
-    } catch (err) {
-      fail(err?.message || 'Failed to delete user');
-    }
-  };
-
-  // Reset password via Supabase Auth — admin only (users reset their own via forgot-password flow)
-  const resetPassword = async (user) => {
-    if (!isCurrentUserAdmin) {
-      showToast('Only Admin/Practice Manager can reset passwords');
-      return;
-    }
-    if (!user.email) { showToast('No email address for this user'); return; }
-    try {
-      // Bare-origin redirect — Supabase appends its own `#access_token=…`
-      // hash, and stacking our SPA route on top produces a double-hash URL
-      // supabase-js can't parse. App.jsx catches `type=recovery` in the
-      // fragment and routes to ResetPasswordPage.
-      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-        redirectTo: window.location.origin,
-      });
-      if (error) showToast(`Error: ${error.message}`);
-      else showToast(`Password reset email sent to ${user.email}`);
-    } catch {
-      showToast('Failed to send password reset email');
-    }
-  };
-
-  // Role-controlling columns — only admins may change these on any profile
-  const ROLE_FIELDS = ['admin_role', 'role', 'clinical_roles'];
-
-  // Save edited user profile to DB
-  const saveUserProfile = async (userId, updates) => {
-    const isSelf = userId === currentUserId;
-
-    // Non-admins: only self-edit, and role fields are stripped so they cannot promote themselves.
-    if (!isCurrentUserAdmin) {
-      if (!isSelf) {
-        showToast('Only Admin/Practice Manager can edit other users');
-        return;
-      }
-      const stripped = { ...updates };
-      for (const f of ROLE_FIELDS) delete stripped[f];
-      updates = stripped;
-    }
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', userId)
-      .select();
-
-    if (error || !data || data.length === 0) {
-      showToast(`Error: ${error?.message || 'Permission denied'}`);
-      return;
-    }
-
-    await fetchUsers();
-    showToast('Profile updated');
-    setEditingUser(null);
-  };
-
-  const filteredUsers = useMemo(() => {
-    let list = users;
-    // Legacy single-status filter (icon-cycle fallback) — kept while the
-    // multi-chip row is being rolled out.
-    if (statusFilter !== 'all') list = list.filter(u => u.status.toLowerCase() === statusFilter);
-    if (userFilters.status.length) list = list.filter(u => userFilters.status.includes(u.status));
-    if (userFilters.roles.length)  list = list.filter(u => userFilters.roles.includes(u.role));
-    if (userFilters.location.length) list = list.filter(u => userFilters.location.includes(u.location));
-    if (!searchVal.trim()) return list;
-    const q = searchVal.toLowerCase();
-    return list.filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || u.role.toLowerCase().includes(q) || u.location.toLowerCase().includes(q));
-  }, [users, searchVal, statusFilter, userFilters]);
-
-  // Options for the filter chips — derived from the loaded users so a chip
-  // never lists a value that matches zero rows.
-  const filterOptions = useMemo(() => {
-    const roles = new Set();
-    const locations = new Set();
-    for (const u of users) {
-      if (u.role) roles.add(u.role);
-      if (u.location) locations.add(u.location);
-    }
-    return {
-      status: ['Active', 'Invited', 'Inactive', 'Suspended'],
-      roles: [...roles].sort(),
-      location: [...locations].sort(),
-    };
-  }, [users]);
-
-  const { sorted: sortedUsers, sortKey: userSortKey, sortDir: userSortDir, requestSort: requestUserSort } = useTableSort(filteredUsers, 'name');
-
-  // Local pagination — matches the HCC/AWV worklist pattern (10/page default,
-  // Pagination component in controlled mode). Reset to page 1 whenever the
-  // filter, sort, or search changes so the user doesn't land on an empty page
-  // after the result set shrinks.
-  const [userPage, setUserPage] = useState(1);
-  const [userPerPage, setUserPerPage] = useState(10);
-  useEffect(() => { setUserPage(1); }, [searchVal, statusFilter, userFilters, userSortKey, userSortDir]);
-  const paginatedUsers = useMemo(
-    () => sortedUsers.slice((userPage - 1) * userPerPage, userPage * userPerPage),
-    [sortedUsers, userPage, userPerPage],
-  );
-
   const isInsurancePlans = activeTab === 'Insurance Plans';
+  const isUsers = activeTab === 'Users';
+  const isLocations = activeTab === 'Locations';
   const tabsForBar = ALL_TABS.map(t => ({ key: t, label: t }));
 
   return (
@@ -381,192 +108,43 @@ export function AccountPanel() {
           primaryActionLabel="New Insurance Plan"
           onPrimaryAction={() => setShowCreateInsurance(true)}
         />
-      ) : (
+      ) : !isUsers && !isLocations ? (
         <SectionTitleBar
           tabs={tabsForBar}
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          showSearch
-          searchPlaceholder="Search users…"
-          searchValue={searchVal}
-          onSearchChange={setSearchVal}
-          showFilter
-          filterActive={filterOpen}
-          filterBadgeCount={userFiltersActive}
-          onFilter={() => setFilterOpen(v => !v)}
-          primaryActionLabel="Invite User"
-          onPrimaryAction={() => setShowInvite(true)}
         />
-      )}
+      ) : null}
 
-      {activeTab === 'Users' && filterOpen && (
-        <div className={styles.filterBar}>
-          <FilterChip
-            label="Status"
-            options={filterOptions.status}
-            selected={userFilters.status}
-            onChange={(vals) => setUserFilters(f => ({ ...f, status: vals }))}
-          />
-          <FilterChip
-            label="Roles"
-            options={filterOptions.roles}
-            selected={userFilters.roles}
-            onChange={(vals) => setUserFilters(f => ({ ...f, roles: vals }))}
-          />
-          <FilterChip
-            label="Practice Location"
-            options={filterOptions.location}
-            selected={userFilters.location}
-            onChange={(vals) => setUserFilters(f => ({ ...f, location: vals }))}
-          />
-          {userFiltersActive > 0 && (
-            <button
-              type="button"
-              className={styles.clearFilters}
-              onClick={() => setUserFilters({ status: [], roles: [], location: [] })}
-            >
-              ⊗ Clear All
-            </button>
+      {isUsers ? (
+        // Users tab owns its own SectionTitleBar (with search / filter /
+        // Invite User), the filter chip row, the WorklistShell table, and
+        // its three drawers. See src/features/settings/account/users/.
+        <UsersTab tabsForBar={tabsForBar} activeTab={activeTab} setActiveTab={setActiveTab} />
+      ) : isLocations ? (
+        // Locations tab — same shell + drawers pattern as Users.
+        <LocationsTab tabsForBar={tabsForBar} activeTab={activeTab} setActiveTab={setActiveTab} />
+      ) : (
+        <div className={styles.tableWrap}>
+          {activeTab === 'Org' ? (
+            <OrgPanel />
+          ) : activeTab === 'Insurance Plans' ? (
+            <InsurancePlansTab
+              plans={plans}
+              onCreateNew={() => setShowCreateInsurance(true)}
+              onView={(plan) => setViewingPlan(plan)}
+              onEdit={(plan) => setEditingPlan(plan)}
+              onDeleteRequest={(id) => setDeletingPlanId(id)}
+              searchVal={planSearchVal}
+            />
+          ) : (
+            <div className={styles.emptyState}>
+              <Icon name="solar:widget-linear" size={40} color="var(--neutral-150)" />
+              <p className={styles.emptyTitle}>{activeTab}</p>
+              <p className={styles.emptyDesc}>This section is coming soon.</p>
+            </div>
           )}
         </div>
-      )}
-
-      <div className={styles.tableWrap}>
-        {activeTab === 'Org' ? (
-          <OrgPanel />
-        ) : activeTab === 'Users' ? (
-          loading ? <TableSkeleton rows={10} /> : (
-            <>
-              <div className={styles.scrollWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <SortableHeader label="User Name" sortKey="name" currentKey={userSortKey} currentDir={userSortDir} onSort={requestUserSort} />
-                    <SortableHeader label="Status" sortKey="status" currentKey={userSortKey} currentDir={userSortDir} onSort={requestUserSort} />
-                    <SortableHeader label="Roles" sortKey="role" currentKey={userSortKey} currentDir={userSortDir} onSort={requestUserSort} />
-                    <SortableHeader label="Practice Location" sortKey="location" currentKey={userSortKey} currentDir={userSortDir} onSort={requestUserSort} />
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedUsers.map(user => (
-                    <tr key={user.id}>
-                      <td>
-                        <div className={styles.userCell} onClick={() => setViewingUser(user)} style={{ cursor: 'pointer' }}>
-                          <Avatar variant="assignee" initials={user.initials} />
-                          <div className={styles.userInfo}>
-                            <span className={styles.userName}>{user.name}</span>
-                            <span className={styles.userEmail}>{user.email}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        {(() => {
-                          // Three-state pill: Active (green) · Invited (amber,
-                          // hourglass) · anything else (red X). Keeps the badge
-                          // aligned with the profiles.status vocabulary so an
-                          // Invited row never reads as an active teammate.
-                          const s = user.status;
-                          const isActive  = s === 'Active';
-                          const isInvited = s === 'Invited';
-                          return (
-                            <Badge
-                              variant={isActive ? 'status-completed' : (isInvited ? 'status-queued' : 'status-failed')}
-                              icon={isActive
-                                ? 'solar:check-circle-bold'
-                                : (isInvited ? 'solar:hourglass-line-bold' : 'solar:close-circle-bold')}
-                              label={s}
-                            />
-                          );
-                        })()}
-                      </td>
-                      <td>
-                        <div className={styles.rolesCell}>
-                          <Badge variant={ROLE_COLORS[user.role] || 'ai-neutral'} label={user.role} />
-                          {user.extraRoles > 0 && (
-                            <OverflowBadge count={user.extraRoles} items={user.clinicalRoles?.slice(1) || []} />
-                          )}
-                        </div>
-                      </td>
-                      <td>
-                        <div className={styles.locationCell}>
-                          <span>{user.location}</span>
-                          {user.extraLocations > 0 && (
-                            <OverflowBadge count={user.extraLocations} items={user.locations?.slice(1) || []} />
-                          )}
-                        </div>
-                      </td>
-                      <td>
-                        <UserActions
-                          user={user}
-                          isAdmin={isCurrentUserAdmin}
-                          onResetPassword={() => resetPassword(user)}
-                          onToggleStatus={() => toggleUserStatus(user)}
-                          onEdit={() => setEditingUser(user)}
-                          onDelete={() => deleteUser(user)}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {filteredUsers.length === 0 && (
-                <div className={styles.emptyState}>
-                  <Icon name="solar:magnifer-linear" size={40} color="var(--neutral-150)" />
-                  <p className={styles.emptyTitle}>No users found</p>
-                </div>
-              )}
-              </div>
-              {filteredUsers.length > 0 && (
-                <Pagination
-                  totalItems={filteredUsers.length}
-                  currentPage={userPage}
-                  perPage={userPerPage}
-                  onPageChange={setUserPage}
-                  onPerPageChange={(pp) => { setUserPerPage(pp); setUserPage(1); }}
-                />
-              )}
-            </>
-          )
-        ) : activeTab === 'Insurance Plans' ? (
-          <InsurancePlansTab
-            plans={plans}
-            onCreateNew={() => setShowCreateInsurance(true)}
-            onView={(plan) => setViewingPlan(plan)}
-            onEdit={(plan) => setEditingPlan(plan)}
-            onDeleteRequest={(id) => setDeletingPlanId(id)}
-            searchVal={planSearchVal}
-          />
-        ) : (
-          <div className={styles.emptyState}>
-            <Icon name="solar:widget-linear" size={40} color="var(--neutral-150)" />
-            <p className={styles.emptyTitle}>{activeTab}</p>
-            <p className={styles.emptyDesc}>This section is coming soon.</p>
-          </div>
-        )}
-      </div>
-
-      {/* View User Drawer (read-only) */}
-      {viewingUser && (
-        <ViewUserDrawer
-          user={viewingUser}
-          onClose={() => setViewingUser(null)}
-          onEdit={() => { setEditingUser(viewingUser); setViewingUser(null); }}
-        />
-      )}
-
-      {/* Edit User Drawer */}
-      {editingUser && (
-        <EditUserDrawer
-          user={editingUser}
-          onClose={() => setEditingUser(null)}
-          onSave={(updates) => saveUserProfile(editingUser.id, updates)}
-        />
-      )}
-
-      {/* Invite User Drawer */}
-      {showInvite && (
-        <InviteUserDrawer onClose={() => setShowInvite(false)} onInvited={() => { setShowInvite(false); fetchUsers(); }} />
       )}
 
       {/* Create / Edit Insurance Plan Drawer */}
@@ -616,59 +194,6 @@ export function AccountPanel() {
   );
 }
 
-/* ── User Row Actions: Reset Password, Disable, More (Edit/Delete) ── */
-
-function UserActions({ user, isAdmin, onResetPassword, onToggleStatus, onEdit, onDelete }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const close = (e) => { if (!menuRef.current?.contains(e.target)) setMenuOpen(false); };
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [menuOpen]);
-
-  // Non-admins see no row actions — disable/enable, password reset, edit, delete are all admin-only.
-  if (!isAdmin) {
-    return <span style={{ color: 'var(--neutral-200)', fontSize: 13 }}>—</span>;
-  }
-
-  return (
-    <div className={styles.actions}>
-      <ActionButton icon="solar:password-linear" size="L" tooltip="Reset Password" onClick={onResetPassword} />
-      <span className={styles.actionDivider} />
-      <ActionButton
-        icon={user.status === 'Active' ? 'solar:user-cross-linear' : 'solar:user-check-linear'}
-        size="L"
-        tooltip={user.status === 'Active' ? 'Disable User' : 'Enable User'}
-        onClick={onToggleStatus}
-      />
-      <span className={styles.actionDivider} />
-      <div style={{ position: 'relative' }} ref={menuRef}>
-        <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More Options" onClick={() => setMenuOpen(v => !v)} />
-        {menuOpen && createPortal(
-          <div className={styles.moreDropdown} style={{
-            position: 'fixed',
-            top: menuRef.current.getBoundingClientRect().bottom + 4,
-            right: window.innerWidth - menuRef.current.getBoundingClientRect().right,
-            zIndex: 9999,
-          }}>
-            <button className={styles.moreItem} onClick={() => { onEdit(); setMenuOpen(false); }}>
-              <Icon name="solar:pen-linear" size={16} color="var(--neutral-300)" /> Edit User
-            </button>
-            <div className={styles.moreDivider} />
-            <button className={`${styles.moreItem} ${styles.moreItemDanger}`} onClick={() => { onDelete(); setMenuOpen(false); }}>
-              <Icon name="solar:trash-bin-minimalistic-linear" size={16} color="var(--status-error)" /> Delete User
-            </button>
-          </div>,
-          document.body
-        )}
-      </div>
-    </div>
-  );
-}
-
 /* ── View User Drawer (Read-Only) ── */
 
 const VIEW_TABS = ['User Details', 'Business Hours', 'Assigned Patients', 'Audit Log'];
@@ -696,46 +221,14 @@ export function ViewUserDrawer({ user, onClose, onEdit }) {
 
   return (
     <Drawer title="User Profile" onClose={onClose} bodyClassName={styles.editDrawerBody} headerStyle={{ padding: '12px' }} titleStyle={{ fontSize: 14 }}>
-      {/* User header */}
-      <div className={styles.editHeader}>
-        <Avatar variant="assignee" initials={user.initials} className={styles.editAvatar} />
-        <div className={styles.editHeaderInfo}>
-          <div className={styles.editHeaderName}>
-            {user.name}
-            {user.status === 'Active' && <Icon name="solar:verified-check-bold" size={16} color="#009B53" />}
-          </div>
-          <span className={styles.editHeaderEmail}>{user.email}</span>
-        </div>
-        <div className={styles.editHeaderActions}>
-          <div className={styles.editHeaderActionItem}>
-            <ActionButton icon="solar:phone-calling-rounded-linear" size="L" tooltip="Call" />
-            <span className={styles.editHeaderActionLabel}>Call</span>
-          </div>
-          <span className={styles.editHeaderDivider} />
-          <div className={styles.editHeaderActionItem}>
-            <ActionButton icon="solar:chat-round-line-linear" size="L" tooltip="Chat" onClick={openChat} />
-            <span className={styles.editHeaderActionLabel}>Chat</span>
-          </div>
-          <span className={styles.editHeaderDivider} />
-          <div className={styles.editHeaderActionItem}>
-            <ActionButton icon="solar:videocamera-record-linear" size="L" tooltip="Meet" />
-            <span className={styles.editHeaderActionLabel}>Meet</span>
-          </div>
-          <span className={styles.editHeaderDivider} />
-          <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More" />
-        </div>
-      </div>
-
-      {/* Inner tabs */}
-      <div className={styles.drawerTabs}>
-        {VIEW_TABS.map(tab => (
-          <div key={tab} className={`${styles.drawerTab} ${viewTab === tab ? styles.drawerTabActive : ''}`} onClick={() => setViewTab(tab)}>
-            {tab}
-          </div>
-        ))}
-        <div style={{ flex: 1 }} />
-        <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit Profile" onClick={onEdit} />
-      </div>
+      <UserProfileBanner user={user} onChat={openChat} />
+      <TabStrip
+        items={VIEW_TABS.map(t => ({ key: t, label: t }))}
+        activeKey={viewTab}
+        onChange={setViewTab}
+        fullWidth={false}
+        trailing={<ActionButton icon="solar:pen-linear" size="S" tooltip="Edit Profile" onClick={onEdit} />}
+      />
 
       {viewTab === 'Audit Log' ? (
         <div className={styles.formScroll}>
@@ -898,7 +391,20 @@ const GENDER_OPTIONS = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
 const DRAWER_TABS = ['User Details', 'Business Hours', 'Assigned Patients'];
 const EHR_SYSTEMS = ['Athena Health', 'Epic', 'Cerner', 'eClinicalWorks', 'Allscripts', 'NextGen', 'Greenway Health', 'DrChrono'];
 const LANGUAGE_OPTIONS = ['English', 'Spanish', 'Cantonese', 'Mandarin', 'Vietnamese', 'Korean', 'Tagalog', 'Arabic', 'French', 'Hindi', 'Portuguese', 'Russian'];
-const LOCATION_OPTIONS = ['SEB Office', 'Downtown Clinic', 'AstranaCare Centennial Hills', 'Valley Medical Center', 'Sunrise Health', 'Palm Desert Office', 'Riverside Clinic', 'Carson City Center'];
+// Fallback list — used only before practice_locations has been fetched or
+// when the migration hasn't run yet. Kept in sync with the seed mock names.
+const LOCATION_OPTIONS_FALLBACK = ['SEB Office', 'Downtown Clinic', 'AstranaCare Centennial Hills', 'Valley Medical Center', 'Sunrise Health', 'Palm Desert Office', 'Riverside Clinic', 'Carson City Center'];
+
+// Hook the user drawers use to pull practice-location names from the store.
+// Fires the fetch on first mount so opening a drawer before the Locations
+// tab still hydrates the dropdown.
+function useLocationNames() {
+  const locations = useAppStore(s => s.practiceLocations);
+  const fetched   = useAppStore(s => s.practiceLocationsFetched);
+  const fetchLocations = useAppStore(s => s.fetchPracticeLocations);
+  useEffect(() => { if (!fetched) fetchLocations(); }, [fetched, fetchLocations]);
+  return locations.length ? locations.map(l => l.name) : LOCATION_OPTIONS_FALLBACK;
+}
 
 /* Tag input helper — renders removable badges inside an input-like container */
 function TagInput({ value = [], onChange, placeholder }) {
@@ -1030,11 +536,12 @@ function AddColumnDropdown({ available, labels, onAdd, onClose }) {
 
 /* ── Invite User Drawer ── */
 
-function InviteUserDrawer({ onClose, onInvited }) {
+export function InviteUserDrawer({ onClose, onInvited }) {
   const [step, setStep] = useState('choose'); // 'choose' | 'form' | 'bulk-upload' | 'bulk-review'
   const [showAdditional, setShowAdditional] = useState(false);
   const showToast = useAppStore(s => s.showToast);
   const logAudit = useAppStore(s => s.logAudit);
+  const locationNames = useLocationNames();
   // Bulk import state
   const [bulkFile, setBulkFile] = useState(null);
   const [bulkRows, setBulkRows] = useState([]);
@@ -1531,7 +1038,7 @@ function InviteUserDrawer({ onClose, onInvited }) {
             </div>
 
             <MultiSelectField label="Licence State" required options={['Nevada', 'New York', 'California', 'Texas', 'Florida']} value={form.licence_states} onChange={v => set('licence_states', v)} />
-            <MultiSelectField label="Location" required options={LOCATION_OPTIONS} value={form.locations} onChange={v => set('locations', v)} />
+            <MultiSelectField label="Location" required options={locationNames} value={form.locations} onChange={v => set('locations', v)} />
             <MultiSelectField label="Languages" required options={LANGUAGE_OPTIONS} value={form.languages} onChange={v => set('languages', v)} />
 
             {/* Contact Info */}
@@ -1675,7 +1182,8 @@ function InsurancePlansTab({ plans = [], onCreateNew, onView, onEdit, onDeleteRe
 
 /* CreateInsurancePlanDrawer is defined in ./CreateInsurancePlanDrawer.jsx */
 
-function EditUserDrawer({ user, onClose, onSave }) {
+export function EditUserDrawer({ user, onClose, onSave }) {
+  const locationNames = useLocationNames();
   const raw = user._raw || {};
   const logAudit = useAppStore(s => s.logAudit);
   const showToast = useAppStore(s => s.showToast);
@@ -1743,47 +1251,17 @@ function EditUserDrawer({ user, onClose, onSave }) {
 
   return (
     <Drawer title="User Profile" onClose={onClose} bodyClassName={styles.editDrawerBody} headerStyle={{ padding: '12px' }} titleStyle={{ fontSize: 14 }}>
-      {/* User header — warm gradient */}
-      <div className={styles.editHeader}>
-        <Avatar variant="assignee" initials={user.initials} className={styles.editAvatar} />
-        <div className={styles.editHeaderInfo}>
-          <div className={styles.editHeaderName}>
-            {user.name}
-            {user.status === 'Active' && <Icon name="solar:verified-check-bold" size={16} color="#009B53" />}
-          </div>
-          <span className={styles.editHeaderEmail}>{user.email}</span>
-        </div>
-        <div className={styles.editHeaderActions}>
-          <div className={styles.editHeaderActionItem}>
-            <ActionButton icon="solar:phone-calling-rounded-linear" size="L" tooltip="Call" />
-            <span className={styles.editHeaderActionLabel}>Call</span>
-          </div>
-          <span className={styles.editHeaderDivider} />
-          <div className={styles.editHeaderActionItem}>
-            <ActionButton icon="solar:chat-round-line-linear" size="L" tooltip="Chat" />
-            <span className={styles.editHeaderActionLabel}>Chat</span>
-          </div>
-          <span className={styles.editHeaderDivider} />
-          <div className={styles.editHeaderActionItem}>
-            <ActionButton icon="solar:videocamera-record-linear" size="L" tooltip="Meet" />
-            <span className={styles.editHeaderActionLabel}>Meet</span>
-          </div>
-          <span className={styles.editHeaderDivider} />
-          <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More" />
-        </div>
-      </div>
-
-      {/* Inner tabs */}
-      <div className={styles.drawerTabs}>
-        {DRAWER_TABS.map(tab => (
-          <div key={tab} className={`${styles.drawerTab} ${drawerTab === tab ? styles.drawerTabActive : ''}`} onClick={() => setDrawerTab(tab)}>
-            {tab}
-          </div>
-        ))}
-        <div style={{ flex: 1 }} />
-        <Button variant="ghost" size="S" onClick={handleDiscard}>Discard</Button>
-        <Button variant="primary" size="S" onClick={handleSave}>Save</Button>
-      </div>
+      <UserProfileBanner user={user} />
+      <TabStrip
+        items={DRAWER_TABS.map(t => ({ key: t, label: t }))}
+        activeKey={drawerTab}
+        onChange={setDrawerTab}
+        fullWidth={false}
+        trailing={<>
+          <Button variant="ghost" size="S" onClick={handleDiscard}>Discard</Button>
+          <Button variant="primary" size="S" onClick={handleSave}>Save</Button>
+        </>}
+      />
 
       {drawerTab === 'User Details' ? (
         <div className={styles.formScroll}>
@@ -1804,7 +1282,7 @@ function EditUserDrawer({ user, onClose, onSave }) {
           </div>
 
           {/* Location */}
-          <MultiSelectField label="Location" required options={LOCATION_OPTIONS} value={form.locations} onChange={v => set('locations', v)} />
+          <MultiSelectField label="Location" required options={locationNames} value={form.locations} onChange={v => set('locations', v)} />
 
           {/* Map User to EHR */}
           <div className={styles.formSection}>
