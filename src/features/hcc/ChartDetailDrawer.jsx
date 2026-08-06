@@ -750,7 +750,7 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
               )}
               <div className={styles.metaStripEnd}>
                 {isSupportAssigned ? (
-                  <RoleTooltip name={supportName} role="Support Team" initials={supportInitials} variant="provider">
+                  <RoleTooltip name={supportName} role="Support Team" initials={supportInitials} variant="staff">
                     {supportLocked ? (
                       <span
                         className={`${styles.dmBadge} ${styles.dmBadgeLocked}`}

@@ -25,7 +25,7 @@ export function RoleTooltip({
   name,
   role,
   initials,
-  variant = 'provider',
+  variant = 'staff',
   children,
   className,
 }) {

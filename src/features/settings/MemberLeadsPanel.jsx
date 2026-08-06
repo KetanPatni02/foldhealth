@@ -4,6 +4,8 @@ import { Icon } from '../../components/Icon/Icon';
 import { Button } from '../../components/Button/Button';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
+import { SearchBar } from '../../components/SearchBar/SearchBar';
+import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
 import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
@@ -53,6 +55,7 @@ export function MemberLeadsPanel() {
   const setActiveTab = useAppStore(s => s.setMemberLeadsTab);
   const fetchHccCareTeams = useAppStore(s => s.fetchHccCareTeams);
   const [searchVal, setSearchVal] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const createBtnRef = useRef(null);
   // drawer state: null when closed; otherwise { kind, editTeam? }
@@ -79,36 +82,52 @@ export function MemberLeadsPanel() {
         tabs={TABS}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        showSearch
-        searchPlaceholder="Search teams…"
-        searchValue={searchVal}
-        onSearchChange={setSearchVal}
         rightExtras={
-          <div className={styles.createWrap} ref={createBtnRef}>
-            <Button
-              variant="secondary"
-              size="L"
-              leadingIcon="solar:add-circle-linear"
-              onClick={() => setCreateOpen(o => !o)}
-            >
-              Create New
-            </Button>
-            {createOpen && (
-              <div className={styles.createMenu}>
-                <div className={styles.createMenuTitle}>Create New</div>
-                {CREATE_NEW_OPTIONS.map(opt => (
-                  <button
-                    key={opt.kind}
-                    type="button"
-                    className={styles.createMenuItem}
-                    onClick={() => { setCreateOpen(false); setDrawer({ kind: opt.kind }); }}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
+          <>
+            {/* Search icon renders BEFORE the Create New button per the
+                MemberLeads page layout. `showSearch` on SectionTitleBar
+                would render after rightExtras, so we inline it here. */}
+            {searchOpen ? (
+              <SearchBar
+                placeholder="Search teams…"
+                value={searchVal}
+                onChange={e => setSearchVal(e.target.value)}
+                onClose={() => { setSearchOpen(false); setSearchVal(''); }}
+              />
+            ) : (
+              <SearchIconButton
+                title="Search"
+                tooltipBelow
+                onClick={() => setSearchOpen(true)}
+              />
             )}
-          </div>
+            <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
+            <div className={styles.createWrap} ref={createBtnRef}>
+              <Button
+                variant="secondary"
+                size="L"
+                leadingIcon="solar:add-circle-linear"
+                onClick={() => setCreateOpen(o => !o)}
+              >
+                Create New
+              </Button>
+              {createOpen && (
+                <div className={styles.createMenu}>
+                  <div className={styles.createMenuTitle}>Create New</div>
+                  {CREATE_NEW_OPTIONS.map(opt => (
+                    <button
+                      key={opt.kind}
+                      type="button"
+                      className={styles.createMenuItem}
+                      onClick={() => { setCreateOpen(false); setDrawer({ kind: opt.kind }); }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
         }
       />
 

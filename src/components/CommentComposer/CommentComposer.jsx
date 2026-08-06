@@ -329,7 +329,7 @@ function MentionMenu({ anchor, matches, activeIdx, onPick }) {
           className={[styles.mentionItem, i === activeIdx ? styles.mentionItemActive : ''].join(' ')}
           onMouseDown={(e) => { e.preventDefault(); onPick(u.name); }}
         >
-          <Avatar variant="provider" size={24} initials={u.initials || (u.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2)} />
+          <Avatar variant="staff" size={24} initials={u.initials || (u.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2)} />
           <span className={styles.mentionName}>{u.name}</span>
         </button>
       ))}

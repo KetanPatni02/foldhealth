@@ -38,7 +38,7 @@
   border: 0.5px solid var(--primary-200);
   color: var(--primary-300);
 }
-.provider {
+.staff, .provider {
   background: var(--secondary-100);
   border: 0.5px solid var(--secondary-200);
   color: var(--secondary-300);
@@ -106,7 +106,7 @@
   border: 0.5px solid var(--primary-200);
   color: var(--primary-300);
 }
-.popoverInitials.provider {
+.popoverInitials.staff, .popoverInitials.provider {
   background: var(--secondary-100);
   border: 0.5px solid var(--secondary-200);
   color: var(--secondary-300);

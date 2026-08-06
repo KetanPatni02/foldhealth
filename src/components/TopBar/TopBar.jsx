@@ -125,19 +125,15 @@ function ProfilePopover({ user, onClose, onPreferences }) {
       <>
       {/* User info */}
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
-        <div style={{
-          width: 48, height: 48, borderRadius: 8, background: 'var(--secondary-100)',
-          border: '0.5px solid var(--secondary-200)', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', fontSize: 20, color: 'var(--secondary-300)',
-          fontFamily: "'Inter', sans-serif", flexShrink: 0, position: 'relative',
-        }}>
-          {initials}
-          <div style={{
+        <span style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+          <Avatar variant="staff" size="XL" initials={initials} />
+          {/* Online-status dot — sits on the avatar's top-right corner. */}
+          <span style={{
             position: 'absolute', top: -1, right: -3, width: 10, height: 10,
             borderRadius: '50%', background: 'var(--status-success-bright)',
             border: '2px solid var(--neutral-0)',
           }} />
-        </div>
+        </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 16, fontWeight: 500, color: 'var(--neutral-500)', lineHeight: 1.2 }}>{displayName}</div>
           <div style={{ fontSize: 13, color: 'var(--neutral-300)', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email}</div>
@@ -434,10 +430,9 @@ export function TopBar() {
             </div>
           )}
         </div>
-        <button className={styles.askUnity}>
-          <Icon name="solar:bolt-bold" size={18} />
+        <Button variant="alt" size="L" leadingIcon="solar:bolt-bold">
           Ask Unity
-        </button>
+        </Button>
       </div>
 
       <div className={styles.right}>
@@ -477,7 +472,7 @@ export function TopBar() {
             title="Profile"
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
           >
-            <Avatar variant="provider" initials={initials} />
+            <Avatar variant="staff" initials={initials} />
           </button>
           {showProfile && (
             <ProfilePopover user={user} onClose={() => setShowProfile(false)} onPreferences={() => setShowPreferences(true)} />

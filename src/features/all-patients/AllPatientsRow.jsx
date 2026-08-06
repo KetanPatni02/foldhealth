@@ -155,7 +155,7 @@ export function AllPatientsRow({ row, isSelected, onSelect }) {
       <td className={rowStyles.td}>
         {row.pcp ? (
           <div className={rowStyles.assigneeCell}>
-            <Avatar variant="provider" initials={row.pcpInitials || row.pcp.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()} />
+            <Avatar variant="staff" initials={row.pcpInitials || row.pcp.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()} />
             <span style={{ fontSize: 13 }}>{row.pcp}</span>
           </div>
         ) : (

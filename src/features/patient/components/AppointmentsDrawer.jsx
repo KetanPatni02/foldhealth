@@ -43,7 +43,7 @@ export function AppointmentsDrawer({ onClose }) {
           <div key={appt.id} className={styles.card}>
             <div className={styles.cardBody}>
               <div className={styles.cardTop}>
-                <Avatar variant="provider" initials={appt.initials} />
+                <Avatar variant="staff" initials={appt.initials} />
                 <span className={styles.providerName}>{appt.name}</span>
                 <span className={styles.roleBadge}>{appt.role}</span>
               </div>

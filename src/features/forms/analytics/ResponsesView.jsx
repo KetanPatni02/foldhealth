@@ -79,7 +79,7 @@ export function ResponsesView({ fields, scoring, formName, completed, pending })
               const isPending = r.status === 'in_progress';
               return (
                 <button key={r.id} className={`${styles.respItem} ${r.id === active?.id ? styles.respItemActive : ''}`} onClick={() => setActiveId(r.id)}>
-                  <Avatar variant="provider" initials={initials(name)} className={styles.avatar} />
+                  <Avatar variant="staff" initials={initials(name)} className={styles.avatar} />
                   <span className={styles.respItemBody}>
                     <span className={styles.respName}>{name}</span>
                     <span className={styles.respSub}>
@@ -111,7 +111,7 @@ export function ResponsesView({ fields, scoring, formName, completed, pending })
                 <>
                   <div className={styles.detailHead}>
                     <div className={styles.detailWho}>
-                      <Avatar variant="provider" size={40} initials={initials(name)} className={styles.avatar} />
+                      <Avatar variant="staff" size={40} initials={initials(name)} className={styles.avatar} />
                       <div>
                         <div className={styles.detailName}>{name}</div>
                         <div className={styles.detailMeta}>{formName} · {activeIsPending ? 'in progress' : 'response'}</div>

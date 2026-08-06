@@ -70,7 +70,7 @@ function InterventionRow({ item }) {
         <LinkChip count={item.links} />
       </span>
       <span className={styles.assigneeCell}>
-        <Avatar variant="provider" size={24} initials={item.assignee.initials} />
+        <Avatar variant="staff" size={24} initials={item.assignee.initials} />
         <span className={styles.assigneeName}>{item.assignee.name}</span>
       </span>
       <span className={styles.adherenceCell}><ProgressRing /></span>

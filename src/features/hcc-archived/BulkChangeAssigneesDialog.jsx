@@ -304,7 +304,7 @@ function CandidateRow({ id, initials, name, roles, checked, isUnassigned, onSele
           <Icon name="solar:user-rounded-linear" size={18} color="var(--neutral-300)" />
         </span>
       ) : (
-        <Avatar variant="provider" initials={initials} />
+        <Avatar variant="staff" initials={initials} />
       )}
       <div className={styles.rowText}>
         <span className={styles.rowName}>{name}</span>
