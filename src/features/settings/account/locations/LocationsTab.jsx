@@ -7,7 +7,7 @@ import { ActionButton } from '../../../../components/ActionButton/ActionButton';
 import { SectionTitleBar } from '../../../../components/SectionTitleBar/SectionTitleBar';
 import { WorklistShell } from '../../../../components/WorklistShell/WorklistShell';
 import { ConfirmDialog } from '../../../../components/ConfirmDialog/ConfirmDialog';
-import { useTableSort } from '../../../../components/SortableHeader/useTableSort';
+import { useTableSort } from '../../../../components/HeaderCell/useTableSort';
 import { EditLocationDrawer } from './EditLocationDrawer';
 import panelStyles from '../AccountPanel.module.css';
 import styles from './LocationRow.module.css';

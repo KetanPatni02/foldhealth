@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../Icon/Icon';
+import { DownChevronIcon } from '../Icon/DownChevronIcon';
 import styles from './Select.module.css';
 
 /**
@@ -131,10 +132,8 @@ export function Select({
             ? (selectedMulti.length > 0 ? multiSummary() : placeholder)
             : (selected ? (selected.triggerLabel ?? selected.label) : placeholder)}
         </span>
-        <Icon
-          name="solar:alt-arrow-down-linear"
+        <DownChevronIcon
           size={12}
-          color="var(--neutral-300)"
           className={open ? styles.chevronOpen : styles.chevron}
         />
       </button>

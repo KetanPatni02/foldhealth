@@ -1,0 +1,95 @@
+/* HeaderCell — canonical column-header primitive for every worklist /
+   data-table. Baseline typography matches the legacy SortableHeader
+   (12 / 500 / neutral-300) so mixing plain <th>s and HeaderCells in the
+   same row still lines up. */
+
+.headerCell {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  background: var(--neutral-0);
+  white-space: nowrap;
+  user-select: none;
+  vertical-align: middle;
+}
+
+.headerCellSortable {
+  cursor: pointer;
+  transition: color 0.12s;
+}
+.headerCellSortable:hover { color: var(--neutral-400); }
+
+.headerCellActive { color: var(--primary-300); }
+
+.headerLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  /* Right-align the sort icon per Figma spec — label on the left, arrow
+     flush to the cell's right edge. */
+  justify-content: space-between;
+}
+
+.sortIcon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+.sortIcon:hover { background: var(--neutral-50); }
+
+/* Single SVG holds three parts (top chevron, bottom chevron, tail); each
+   fades independently via opacity so idle ↔ active swaps read as one
+   motion instead of an unmount/mount cut. */
+.sortIconSvg {
+  color: var(--neutral-200);
+  transition: color 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.sortIconActive .sortIconSvg { color: var(--primary-300); }
+
+.sortIconPart {
+  opacity: 1;
+  transition: opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.sortIconPartHidden { opacity: 0; }
+
+/* Hover tooltip — dark bubble below the sort chip. Only revealed when
+   the arrow itself is hovered. */
+.sortTooltip {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--neutral-500);
+  color: var(--neutral-0);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  padding: 5px 10px;
+  border-radius: 6px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s, visibility 0.15s;
+  z-index: 2147483647;
+}
+.sortTooltip::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-bottom-color: var(--neutral-500);
+}
+.sortIcon:hover .sortTooltip {
+  opacity: 1;
+  visibility: visible;
+}

@@ -3,7 +3,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { WorklistShell } from '../../components/WorklistShell/WorklistShell';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { FilterBar } from '../../components/FilterBar/FilterBar';
-import { useTableSort } from '../../components/SortableHeader/useTableSort';
+import { useTableSort } from '../../components/HeaderCell/useTableSort';
 import { AwvWorklistRow } from './AwvWorklistRow';
 import { AWV_COLUMNS } from './data/mock';
 

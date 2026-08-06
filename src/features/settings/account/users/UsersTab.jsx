@@ -7,7 +7,7 @@ import { Badge } from '../../../../components/Badge/Badge';
 import { SectionTitleBar } from '../../../../components/SectionTitleBar/SectionTitleBar';
 import { FilterBar } from '../../../../components/FilterBar/FilterBar';
 import { WorklistShell } from '../../../../components/WorklistShell/WorklistShell';
-import { useTableSort } from '../../../../components/SortableHeader/useTableSort';
+import { useTableSort } from '../../../../components/HeaderCell/useTableSort';
 import { FALLBACK_USERS } from '../../fallbackUsers';
 import { ViewUserDrawer, EditUserDrawer, InviteUserDrawer, ROLE_COLORS, getInitials } from '../AccountPanel';
 import { UserActions } from './UserActions';
