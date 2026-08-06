@@ -1,0 +1,51 @@
+/* Settings → Account → Users row — composes from the shared row shell so
+   it reads exactly like every other worklist row (hover tint, sticky
+   columns, cell padding). Users-specific bits (user cell layout, roles
+   cell, overflow badge) live below. */
+
+.row          { composes: row          from '../../../../components/WorklistShell/WorklistRow.module.css'; }
+.stickyLeft   { composes: stickyLeft   from '../../../../components/WorklistShell/WorklistRow.module.css'; }
+.stickyRight  { composes: stickyRight  from '../../../../components/WorklistShell/WorklistRow.module.css'; }
+.td           { composes: td           from '../../../../components/WorklistShell/WorklistRow.module.css'; }
+.membersTd    { composes: membersTd    from '../../../../components/WorklistShell/WorklistRow.module.css'; }
+.actionsCell  { composes: actionsCell  from '../../../../components/WorklistShell/WorklistRow.module.css'; }
+.actionDivider { composes: actionDivider from '../../../../components/WorklistShell/WorklistRow.module.css'; }
+
+/* User cell — avatar + name/email stack. */
+.userCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.userName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.userEmail {
+  font-size: 12px;
+  color: var(--neutral-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Roles + location cells share the same badge + overflow layout. */
+.rolesCell,
+.locationCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}

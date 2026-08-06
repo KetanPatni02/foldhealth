@@ -116,7 +116,7 @@ export function Avatar({ type = 'initial', variant = 'patient', initials, iconNa
   if (variant === 'assignee') {
     return (
       <LockedWrapper locked={locked}>
-        <div className={[styles.assignee, lockedClass, className || ''].filter(Boolean).join(' ')}>{initials}</div>
+        <div className={[styles.assignee, scaleClass, lockedClass, className || ''].filter(Boolean).join(' ')}>{initials}</div>
       </LockedWrapper>
     );
   }
