@@ -821,7 +821,7 @@ function ActivityEntry({ item, isFirst, isLast, member }) {
 function AvatarPill({ initials, name }) {
   return (
     <span className={styles.avatarPill}>
-      <Avatar variant="provider" initials={initials} />
+      <Avatar variant="staff" initials={initials} />
       <span className={styles.avatarName}>{name}</span>
     </span>
   );

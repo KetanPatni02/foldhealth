@@ -73,7 +73,7 @@ function CareTeam({ rows, showAddRole }) {
         <div key={r.role} className={styles.careRow}>
           <span className={styles.careRole}>{r.role}</span>
           <span className={styles.careProvider}>
-            <Avatar variant="provider" size={24} initials={r.initials} />
+            <Avatar variant="staff" size={24} initials={r.initials} />
             <span className={styles.careName}>{r.name}</span>
           </span>
           <span className={styles.careActionCol}>

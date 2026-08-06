@@ -50,7 +50,7 @@ export const AllSizes = {
         <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <span style={{ width: 32, fontSize: 12, color: 'var(--neutral-300)' }}>{s}</span>
           <AvatarGroup people={FIVE} size={s} variant="patient" max={3} />
-          <AvatarGroup people={FIVE} size={s} variant="provider" max={3} />
+          <AvatarGroup people={FIVE} size={s} variant="staff" max={3} />
         </div>
       ))}
     </div>

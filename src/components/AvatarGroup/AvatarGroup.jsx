@@ -12,7 +12,7 @@ import styles from './AvatarGroup.module.css';
  *
  * @param {object}   props
  * @param {Array<{ id?: string, initials: string, name?: string }>} props.people
- * @param {'patient'|'provider'} [props.variant='patient']
+ * @param {'patient'|'staff'} [props.variant='patient']
  * @param {'XS'|'S'|'M'|'L'|'XL'} [props.size='M']
  * @param {number}  [props.max=3]   Max tiles rendered before overflow kicks in
  * @param {string}  [props.className]
@@ -55,7 +55,7 @@ export function AvatarGroup({
       className={[styles.group, className || ''].filter(Boolean).join(' ')}
       style={{ '--avatar-tile-size': `${tileSizePx}px` }}
       role="group"
-      aria-label={`${people.length} ${variant === 'provider' ? 'providers' : 'patients'}`}
+      aria-label={`${people.length} ${variant === 'staff' || variant === 'provider' ? 'staff' : 'patients'}`}
     >
       {visible.map((p, idx) => (
         <span

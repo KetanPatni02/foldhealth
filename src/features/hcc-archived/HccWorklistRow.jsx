@@ -499,7 +499,7 @@ function AssigneeCell({ member, dosState }) {
   // active
   return (
     <div className={styles.assigneeCell}>
-      <Avatar variant="provider" initials={a.initials} />
+      <Avatar variant="staff" initials={a.initials} />
       <div className={styles.assigneeText}>
         <span className={styles.assigneeName}>{a.name}</span>
         <span className={styles.assigneeRole}>{ROLE_LABEL[a.role] || a.role}</span>

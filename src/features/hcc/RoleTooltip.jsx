@@ -26,7 +26,7 @@ export function RoleTooltip({
   name,
   role,
   initials,
-  variant = 'provider',
+  variant = 'staff',
   children,
   className,
 }) {
@@ -93,7 +93,7 @@ function TooltipCard({ rect, name, role, initials, variant }) {
     <div className={styles.tooltip} style={style} role="tooltip">
       <div className={[styles.card, variant === 'patient' ? styles.cardPatient : styles.cardProvider].join(' ')}>
         <Avatar
-          variant={variant === 'patient' ? 'patient' : 'provider'}
+          variant={variant === 'patient' ? 'patient' : 'staff'}
           initials={initials}
           className={[styles.avatar, variant === 'patient' ? styles.avatarPatient : styles.avatarProvider].join(' ')}
         />

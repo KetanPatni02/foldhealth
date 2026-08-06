@@ -120,7 +120,7 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
       aria-haspopup={hasPicker ? 'menu' : undefined}
       aria-expanded={hasPicker ? !!pos : undefined}
     >
-      <Avatar variant="provider" initials={initials} size={24} />
+      <Avatar variant="staff" initials={initials} size={24} />
       <span className={styles.textBody}>
         <span className={styles.name} title={name}>{name}</span>
         {role && <span className={styles.role}>{role}</span>}
@@ -171,7 +171,7 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
                 className={[styles.userRow, u.name === name ? styles.userRowActive : ''].filter(Boolean).join(' ')}
                 onClick={() => { onSelect?.(u); close(); }}
               >
-                <Avatar variant="provider" initials={u.initials} size={24} />
+                <Avatar variant="staff" initials={u.initials} size={24} />
                 <span className={styles.userText}>
                   <span className={styles.userName}>{u.name}</span>
                   {u.role && <span className={styles.userRole}>{u.role}</span>}

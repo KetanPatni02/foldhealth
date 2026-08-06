@@ -74,7 +74,7 @@ function UnassignedAssignTrigger({ role, memberId, dosDate }) {
           name="Unassigned"
           role={`Awaiting ${ROLE_LABEL[role] || role} — click to assign`}
           initials="—"
-          variant="provider"
+          variant="staff"
         >
           <button
             type="button"
@@ -127,7 +127,7 @@ function AssigneeAvatar({ member, dosState, currentDos, locked = false }) {
   // Billing Ready — every stage completed. Green check chip, no person.
   if (a.kind === 'billing') {
     return (
-      <RoleTooltip name="Billing Ready" role="All reviews complete" initials="✓" variant="provider">
+      <RoleTooltip name="Billing Ready" role="All reviews complete" initials="✓" variant="staff">
         <span
           style={{
             width: 24, height: 24, borderRadius: 6,
@@ -156,7 +156,7 @@ function AssigneeAvatar({ member, dosState, currentDos, locked = false }) {
         name={a.name}
         role={ROLE_LABEL[a.role] || a.role}
         initials={a.initials}
-        variant="provider"
+        variant="staff"
       >
         <span
           title={`${a.name} — assignee locked (record Rejected)`}
@@ -186,7 +186,7 @@ function AssigneeAvatar({ member, dosState, currentDos, locked = false }) {
           name={a.name}
           role={ROLE_LABEL[a.role] || a.role}
           initials={a.initials}
-          variant="provider"
+          variant="staff"
         >
           <button
             type="button"
