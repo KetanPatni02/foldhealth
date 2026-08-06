@@ -96,19 +96,15 @@ export function EditLocationDrawer({ location, allLocations = [], onClose, onSub
     onSubmit({ ...form, updatedAt: new Date().toISOString() });
   };
 
-  // Drawer stories canonicalize header CTAs at size="L" with the
-  // secondary+primary variant pair — match that here so this drawer's
-  // header buttons read identically to every other drawer in the app.
+  // Cancel lives on the drawer's shared CloseButton (top-right X) — no need
+  // for a duplicate CTA. Step 1 only ships Next; step 2 ships Previous +
+  // Submit at the canonical size="L" variant pair.
   const drawerProps = step === 1
     ? {
-        secondaryAction: <Button variant="secondary" size="L" onClick={onClose}>Cancel</Button>,
-        primaryAction:   <Button variant="primary"   size="L" onClick={() => setStep(2)} disabled={!step1Valid}>Next</Button>,
+        primaryAction: <Button variant="primary" size="L" onClick={() => setStep(2)} disabled={!step1Valid}>Next</Button>,
       }
     : {
-        // Previous sits to the LEFT of Cancel/Submit via headerRight so the
-        // secondary/primary slots stay reserved for the two canonical CTAs.
-        headerRight:     <Button variant="secondary" size="L" onClick={() => setStep(1)}>Previous</Button>,
-        secondaryAction: <Button variant="secondary" size="L" onClick={onClose}>Cancel</Button>,
+        secondaryAction: <Button variant="secondary" size="L" onClick={() => setStep(1)}>Previous</Button>,
         primaryAction:   <Button variant="primary"   size="L" onClick={handleSubmit} disabled={!canSubmit}>Submit</Button>,
       };
 
