@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Select } from '../../components/Select/Select';
+import { FilterChip } from '../../components/FilterChip/FilterChip';
+import { Button } from '../../components/Button/Button';
 import { SideNav } from '../../components/SideNav/SideNav';
 import { useAppStore } from '../../store/useAppStore';
 import { PAGES, VIEW_TITLES, PERSONA_ACCESS, PERSONA_LABELS, PERSONA_DETAILS, ORGANIZATIONS, QUARTERS } from './analyticsData';
@@ -240,30 +242,53 @@ export function AnalyticsLayout() {
               <div className={s.viewSub}>{meta.sub}</div>
             </div>
             <div className={s.filterBar}>
-              <Select
-                className={s.filterSelect}
-                options={PRACTICES}
-                value={analyticsPractice}
-                onChange={setAnalyticsPractice}
+              {/* Practice — FilterChip singleSelect. The 'all' sentinel used
+                  by the underlying store maps to an empty chip selection so
+                  the chip reads "Practice ⌄" idle and
+                  "Practice : Patel Family Medicine ✕" once picked. Options
+                  are the label strings (all entries except the "All
+                  Practices" sentinel); we look up the value on change. */}
+              <FilterChip
+                label="Practice"
+                options={PRACTICES.filter(p => p.value !== 'all').map(p => p.label)}
+                selected={
+                  analyticsPractice === 'all'
+                    ? []
+                    : [PRACTICES.find(p => p.value === analyticsPractice)?.label].filter(Boolean)
+                }
+                onChange={(next) => {
+                  const picked = PRACTICES.find(p => p.label === next[0]);
+                  setAnalyticsPractice(picked ? picked.value : 'all');
+                }}
+                singleSelect
               />
-              <button className={s.filterBtn} onClick={() => showToast('Exporting report...')}>
-                <Icon name="solar:download-minimalistic-linear" size={14} />
+              <Button
+                variant="secondary"
+                size="L"
+                leadingIcon="solar:download-minimalistic-linear"
+                onClick={() => showToast('Exporting report...')}
+              >
                 Export
-              </button>
+              </Button>
               {isEditableView && editing && (
-                <button className={s.filterBtn} onClick={() => setResetTick(t => t + 1)}>
-                  <Icon name="solar:refresh-linear" size={14} />
+                <Button
+                  variant="secondary"
+                  size="L"
+                  leadingIcon="solar:refresh-linear"
+                  onClick={() => setResetTick(t => t + 1)}
+                >
                   Reset
-                </button>
+                </Button>
               )}
               {isEditableView && (
-                <button
-                  className={[s.filterBtn, editing ? s.filterBtnActive : ''].filter(Boolean).join(' ')}
+                <Button
+                  variant={editing ? 'tertiary' : 'secondary'}
+                  size="L"
+                  leadingIcon={editing ? 'solar:check-circle-linear' : 'solar:pen-linear'}
                   onClick={() => setEditingDashboard(v => !v)}
                 >
-                  <Icon name={editing ? 'solar:check-circle-linear' : 'solar:pen-linear'} size={14} />
                   {editing ? 'Done' : 'Customize'}
-                </button>
+                </Button>
               )}
             </div>
           </div>

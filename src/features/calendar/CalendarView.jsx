@@ -5,6 +5,7 @@ import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { ScheduleDrawer, FALLBACK_APPOINTMENT_TYPES } from '../../components/ScheduleDrawer/ScheduleDrawer';
 import { Select } from '../../components/Select/Select';
+import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { useAppStore } from '../../store/useAppStore';
 import { supabase } from '../../lib/supabase';
 import styles from './CalendarView.module.css';
@@ -295,10 +296,14 @@ export function CalendarView() {
   });
 
   // Filter state
-  const [filterUser, setFilterUser] = useState('all');
-  const [filterLocation, setFilterLocation] = useState('all');
-  const [filterType, setFilterType] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
+  // filterUser holds selected user *names* (FilterChip works on strings).
+  // We map names ↔ user IDs at the edges — the appointments payload uses
+  // `primary_user` names directly, so no id lookup is needed to filter.
+  const [filterUser, setFilterUser] = useState([]);
+  // Multi-select filters — empty array means "no filter" (chip reads "Label ⌄").
+  const [filterLocation, setFilterLocation] = useState([]);
+  const [filterType, setFilterType] = useState([]);
+  const [filterStatus, setFilterStatus] = useState([]);
 
   // Fetch appointments and appointment types from store
   const appointments = useAppStore(s => s.appointments);
@@ -334,12 +339,11 @@ export function CalendarView() {
   // Filter appointments by selected user and type
   const filteredAppointments = useMemo(() => {
     let filtered = appointments || [];
-    if (filterUser !== 'all') {
-      const userName = users.find(u => u.id === filterUser)?.name;
-      if (userName) filtered = filtered.filter(a => a.primary_user === userName);
+    if (filterUser.length > 0) {
+      filtered = filtered.filter(a => filterUser.includes(a.primary_user));
     }
-    if (filterType !== 'all') {
-      filtered = filtered.filter(a => a.appointment_type_name === filterType);
+    if (filterType.length > 0) {
+      filtered = filtered.filter(a => filterType.includes(a.appointment_type_name));
     }
     return filtered;
   }, [appointments, filterUser, filterType, users]);
@@ -644,60 +648,59 @@ export function CalendarView() {
           <ActionButton icon="solar:alt-arrow-right-linear" size="S" tooltip="Next" onClick={handleNext} />
         </div>
         <div className={styles.toolbarRight}>
-          {/* Users — fetched from Supabase profiles, with search + avatars */}
-          <UserPickerDropdown users={users} value={filterUser} onChange={setFilterUser} />
-
-          {/* Locations */}
-          <Select
-            style={{ width: 'auto', minWidth: 120, maxWidth: 160 }}
-            options={[
-              { value: 'all', label: 'All Locations' },
-              ...LOCATIONS.map(loc => ({ value: loc, label: loc })),
-            ]}
-            value={filterLocation}
-            onChange={setFilterLocation}
-            placeholder="All Locations"
+          {/* Users — multi-select FilterChip with an in-popover search box.
+              Options are user names; the appointments payload's
+              `primary_user` is a name too, so no id ↔ name mapping is
+              needed to filter. Trade-off vs. the old UserPickerDropdown:
+              per-user avatars in the option list are gone (FilterChip
+              options are strings). */}
+          <FilterChip
+            label="Users"
+            options={users.map(u => u.name)}
+            selected={filterUser}
+            onChange={setFilterUser}
+            searchable
           />
 
-          {/* Appointment Types — from DB or fallback */}
-          <Select
-            style={{ width: 'auto', minWidth: 140, maxWidth: 180 }}
-            options={[
-              { value: 'all', label: 'All Appointment Types' },
-              ...apptTypesForFilter.map(t => ({
-                value: t.name,
-                label: (
-                  <span className="flex items-center gap-1.5">
-                    <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />
-                    {t.name}
-                  </span>
-                ),
-                searchText: t.name,
-              })),
-            ]}
-            value={filterType}
+          {/* Locations */}
+          <FilterChip
+            label="Location"
+            options={LOCATIONS}
+            selected={filterLocation}
+            onChange={setFilterLocation}
+          />
+
+          {/* Appointment Types — pulled from DB with a fallback list. The
+              per-type color dot the old Select rendered isn't shown inside
+              the FilterChip popover options (strings only). */}
+          <FilterChip
+            label="Appointment Type"
+            options={apptTypesForFilter.map(t => t.name)}
+            selected={filterType}
             onChange={setFilterType}
-            placeholder="All Appointment Types"
+            searchable
           />
 
           {/* Status */}
-          <Select
-            style={{ width: 'auto', minWidth: 100, maxWidth: 140 }}
-            options={[
-              { value: 'all', label: 'All Status' },
-              ...STATUSES.map(s => ({ value: s, label: s })),
-            ]}
-            value={filterStatus}
+          <FilterChip
+            label="Status"
+            options={STATUSES}
+            selected={filterStatus}
             onChange={setFilterStatus}
-            placeholder="All Status"
           />
 
-          {/* Timezone */}
-          <Select
-            style={{ width: 'auto', minWidth: 100, maxWidth: 140 }}
-            options={TIMEZONE_OPTIONS}
-            value={timezone}
-            onChange={setTimezone}
+          {/* Timezone — FilterChip singleSelect. Options are the human-
+              readable labels ("IST (GMT+5:30)"); we map back to the IANA
+              zone id (Asia/Kolkata) on change and forward. */}
+          <FilterChip
+            label="Timezone"
+            options={TIMEZONE_OPTIONS.map(t => t.label)}
+            selected={[TIMEZONE_OPTIONS.find(t => t.value === timezone)?.label].filter(Boolean)}
+            onChange={(next) => {
+              const picked = TIMEZONE_OPTIONS.find(t => t.label === next[0]);
+              if (picked) setTimezone(picked.value);
+            }}
+            singleSelect
           />
 
           <label className={styles.availabilityToggle}>
