@@ -80,7 +80,7 @@ const USERS_COLUMNS = [
   { key: 'location',   label: 'Practice Location', sortKey: 'location',    width: 240 },
   { key: 'createdAt',  label: 'Created At',        sortKey: 'createdAt',   width: 140 },
   { key: 'lastSignIn', label: 'Last Sign-in At',   sortKey: 'lastActiveAt', width: 160 },
-  { key: 'actions',    label: 'Action',            sticky: 'right', width: 140, align: 'right' },
+  { key: 'actions',    label: 'Action',            sticky: 'right', width: 140 },
 ];
 
 /**
