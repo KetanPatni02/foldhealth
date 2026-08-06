@@ -29,12 +29,25 @@ function statusBadge(status) {
   };
 }
 
+// mm/dd/yyyy, or "—" for a null/invalid input. Kept in-file since it's
+// only ever used to render the Created At / Last Sign-in At columns.
+function formatDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${mm}/${dd}/${d.getFullYear()}`;
+}
+
 const USERS_COLUMNS = [
-  { key: 'name',     label: 'User Name',         sortKey: 'name',     sticky: 'left', left: 0,   width: 300 },
-  { key: 'status',   label: 'Status',            sortKey: 'status',   width: 140 },
-  { key: 'role',     label: 'Roles',             sortKey: 'role',     width: 220 },
-  { key: 'location', label: 'Practice Location', sortKey: 'location', width: 240 },
-  { key: 'actions',  label: 'Action',            sticky: 'right', width: 200 },
+  { key: 'name',       label: 'User Name',         sortKey: 'name',        sticky: 'left', left: 0,   width: 300 },
+  { key: 'status',     label: 'Status',            sortKey: 'status',      width: 140 },
+  { key: 'role',       label: 'Roles',             sortKey: 'role',        width: 220 },
+  { key: 'location',   label: 'Practice Location', sortKey: 'location',    width: 240 },
+  { key: 'createdAt',  label: 'Created At',        sortKey: 'createdAt',   width: 140 },
+  { key: 'lastSignIn', label: 'Last Sign-in At',   sortKey: 'lastActiveAt', width: 160 },
+  { key: 'actions',    label: 'Action',            sticky: 'right', width: 200 },
 ];
 
 /**
@@ -296,7 +309,7 @@ export function UsersTab({ tabsForBar, activeTab, setActiveTab }) {
       <tr key={user.id} className={styles.row}>
         <td className={`${styles.membersTd} ${styles.stickyLeft}`} style={{ left: 0 }}>
           <div className={styles.userCell} onClick={() => setViewingUser(user)}>
-            <Avatar variant="assignee" size="L" initials={user.initials} />
+            <Avatar variant="assignee" size="M" initials={user.initials} />
             <div className={styles.userInfo}>
               <span className={styles.userName}>{user.name}</span>
               <span className={styles.userEmail}>{user.email}</span>
@@ -322,6 +335,8 @@ export function UsersTab({ tabsForBar, activeTab, setActiveTab }) {
             )}
           </div>
         </td>
+        <td className={styles.td}>{formatDate(user.createdAt)}</td>
+        <td className={styles.td}>{formatDate(user.lastActiveAt)}</td>
         <td className={`${styles.td} ${styles.stickyRight}`}>
           <UserActions
             user={user}
@@ -410,7 +425,7 @@ export function UsersTab({ tabsForBar, activeTab, setActiveTab }) {
         totalItems={filteredUsers.length}
         onPageChange={setUserPage}
         onPageSizeChange={(pp) => { setUserPerPage(pp); setUserPage(1); }}
-        minTableWidth={1100}
+        minTableWidth={1400}
       />
 
       {viewingUser && (
