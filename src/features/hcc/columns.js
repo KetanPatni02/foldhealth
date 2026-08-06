@@ -15,31 +15,34 @@
 // record); the rest are record-level (render once). `progress` is a
 // synthetic stepper column derived from the four role statuses.
 export const HCC_COLUMNS = [
-  { k: 'dos',      lb: 'DOS',           sortable: true,  sortField: 'dos' },
-  { k: 'open',     lb: 'Open ICDs',     sortable: true,  sortField: 'open' },
+  // `sortType` drives the sort-tooltip copy on the header chip
+  // ("A to Z" / "oldest to newest" / "lowest to highest" / "ascending
+  // order"). Falls back to `alpha` when omitted.
+  { k: 'dos',      lb: 'DOS',           sortable: true,  sortField: 'dos',   sortType: 'date' },
+  { k: 'open',     lb: 'Open ICDs',     sortable: true,  sortField: 'open',  sortType: 'number' },
   { k: 'vt',       lb: 'Visit Type',    sortable: false },
   { k: 'rp',       lb: 'Rendering Provider', sortable: true,  sortField: 'rp' },
   { k: 'pos',      lb: 'POS',           sortable: false },
-  { k: 'date',     lb: 'Created Date',  sortable: true,  sortField: 'date' },
-  { k: 'evidence', lb: 'Documents',     sortable: true,  sortField: 'ch' },
-  { k: 'sup',      lb: 'Support Team',  sortable: true,  sortField: 'supS' },
-  { k: 'cdr',      lb: 'Coder',         sortable: true,  sortField: 'cdrS' },
-  { k: 'r1',       lb: 'QA',            sortable: true,  sortField: 'r1s' },
-  { k: 'r2',       lb: 'Compliance',    sortable: true,  sortField: 'r2s' },
+  { k: 'date',     lb: 'Created Date',  sortable: true,  sortField: 'date',  sortType: 'date' },
+  { k: 'evidence', lb: 'Documents',     sortable: true,  sortField: 'ch',    sortType: 'number' },
+  { k: 'sup',      lb: 'Support Team',  sortable: true,  sortField: 'supS',  sortType: 'generic' },
+  { k: 'cdr',      lb: 'Coder',         sortable: true,  sortField: 'cdrS',  sortType: 'generic' },
+  { k: 'r1',       lb: 'QA',            sortable: true,  sortField: 'r1s',   sortType: 'generic' },
+  { k: 'r2',       lb: 'Compliance',    sortable: true,  sortField: 'r2s',   sortType: 'generic' },
   { k: 'progress', lb: 'Progress',      sortable: false },
   // Current assignee — derived from the assignment engine (whoever is
   // actively working the record right now). Sorted by display name.
   { k: 'assignee', lb: 'Assignee',      sortable: true,  sortField: 'assigneeName' },
   { k: 'pcp',      lb: 'PCP',           sortable: true,  sortField: 'pcp' },
-  { k: 'raf',      lb: 'RAF Score',     sortable: true,  sortField: 'raf' },
-  { k: 'ri',       lb: 'RAF Impact',    sortable: true,  sortField: 'ri' },
+  { k: 'raf',      lb: 'RAF Score',     sortable: true,  sortField: 'raf',   sortType: 'number' },
+  { k: 'ri',       lb: 'RAF Impact',    sortable: true,  sortField: 'ri',    sortType: 'number' },
   { k: 'ipa',      lb: 'IPA',           sortable: false },
   { k: 'hp',       lb: 'HP Code',       sortable: false },
-  { k: 'dec',      lb: 'Decile',        sortable: true,  sortField: 'dec' },
+  { k: 'dec',      lb: 'Decile',        sortable: true,  sortField: 'dec',   sortType: 'number' },
   { k: 'coh',      lb: 'Cohort',        sortable: false },
-  { k: 'rl',       lb: 'Risk Level',    sortable: true,  sortField: 'rl' },
-  { k: 'ad',       lb: 'Adv. Illness',  sortable: true,  sortField: 'ad' },
-  { k: 'fr',       lb: 'Frailty',       sortable: true,  sortField: 'fr' },
+  { k: 'rl',       lb: 'Risk Level',    sortable: true,  sortField: 'rl',    sortType: 'priority' },
+  { k: 'ad',       lb: 'Adv. Illness',  sortable: true,  sortField: 'ad',    sortType: 'generic' },
+  { k: 'fr',       lb: 'Frailty',       sortable: true,  sortField: 'fr',    sortType: 'generic' },
 ];
 
 export const HCC_COL_MAP = Object.fromEntries(HCC_COLUMNS.map(c => [c.k, c]));

@@ -6,8 +6,8 @@ import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Icon } from '../../components/Icon/Icon';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
-import { SortableHeader } from '../../components/SortableHeader/SortableHeader';
-import { useTableSort } from '../../components/SortableHeader/useTableSort';
+import { HeaderCell } from '../../components/HeaderCell/HeaderCell';
+import { useTableSort } from '../../components/HeaderCell/useTableSort';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { FilterChipBar } from '../hcc/FilterChipBar';
 import { SavedFiltersChip } from '../hcc/SavedFiltersChip';
@@ -193,10 +193,10 @@ export function HedisWorklistTable() {
               <th style={{ padding: '8px 14px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', textAlign: 'left', whiteSpace: 'nowrap' }}>
                 Outreach
               </th>
-              <SortableHeader label="AdvIllness" sortKey="advIllness" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} />
-              <SortableHeader label="Frailty" sortKey="frailty" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} />
-              <SortableHeader label="Risk Level" sortKey="riskLevel" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} />
-              <SortableHeader label="Tasks" sortKey="tasks" currentKey={sortKey} currentDir={sortDir} onSort={requestSort} />
+              <HeaderCell label="AdvIllness" sortField="advIllness" activeKey={sortKey} activeDir={sortDir} onSort={requestSort} />
+              <HeaderCell label="Frailty" sortField="frailty" activeKey={sortKey} activeDir={sortDir} onSort={requestSort} />
+              <HeaderCell label="Risk Level" sortField="riskLevel" activeKey={sortKey} activeDir={sortDir} onSort={requestSort} />
+              <HeaderCell label="Tasks" sortField="tasks" activeKey={sortKey} activeDir={sortDir} onSort={requestSort} />
               <th className={rowStyles.stickyRight} style={{ padding: '8px 12px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', textAlign: 'left', whiteSpace: 'nowrap' }}>
                 Actions
               </th>

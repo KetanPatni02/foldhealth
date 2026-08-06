@@ -3,7 +3,7 @@ import { ActionButton } from '../ActionButton/ActionButton';
 import { SearchIconButton } from '../SearchIconButton/SearchIconButton';
 import { SearchBar } from '../SearchBar/SearchBar';
 import { Checkbox } from '../ShadcnCheckbox/ShadcnCheckbox';
-import { SortableHeader } from '../SortableHeader/SortableHeader';
+import { HeaderCell } from '../HeaderCell/HeaderCell';
 import { Pagination } from '../Pagination/Pagination';
 import { BulkBar } from '../BulkBar/BulkBar';
 import { TableSkeleton } from '../TableSkeleton/TableSkeleton';
@@ -18,7 +18,7 @@ import styles from './WorklistShell.module.css';
  *
  * Callers supply the columns, the row renderer, the filter chips, and
  * bulk / pagination state. The column definitions drive the sticky-left /
- * sticky-right positioning and any sortable headers (via SortableHeader).
+ * sticky-right positioning and any sortable headers (via HeaderCell).
  *
  * Props
  * -----
@@ -34,7 +34,7 @@ import styles from './WorklistShell.module.css';
  *                          The first column with `showCheckbox` gets a
  *                          select-all checkbox in the header.
  *  - sortKey / sortDir / onSort  Header sort state — passed through to
- *                          SortableHeader.
+ *                          HeaderCell.
  *  - rows / renderRow     Row data + render function. renderRow receives
  *                          (row, index) and should return a `<tr>`.
  *  - loading / emptyState Rendered instead of `rows` when appropriate.
@@ -189,13 +189,16 @@ export function WorklistShell({
                     return (
                       // Pass styles.th so the sortable header inherits the
                       // WorklistShell font weight / size / color and matches
-                      // the plain <th>s in the same row.
-                      <SortableHeader
+                      // the plain <th>s in the same row. `col.sortType`
+                      // drives the tooltip copy (alpha / date / number /
+                      // priority / generic); default is alpha.
+                      <HeaderCell
                         key={col.key || idx}
                         label={col.label}
-                        sortKey={col.sortKey}
-                        currentKey={sortKey}
-                        currentDir={sortDir}
+                        sortField={col.sortKey}
+                        sortType={col.sortType}
+                        activeKey={sortKey}
+                        activeDir={sortDir}
                         onSort={onSort}
                         align={col.align || 'left'}
                         className={styles.th}
