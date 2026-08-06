@@ -42,27 +42,28 @@ function formatDate(iso) {
 
 // Compact human-friendly "5 mins ago" / "2 days ago" / "3 months ago" for
 // the Last Sign-in At column. Returns null when the input is missing so
-// the caller can hide the second line.
+// the caller can hide the second line. `tone` classifies recency so the
+// caller can color the label — 'fresh' (<30 days) reads green, 'stale'
+// (>=30 days) reads warning-amber.
 function formatRelative(iso) {
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
   const diffMs = Date.now() - d.getTime();
-  if (diffMs < 0) return 'just now';
+  if (diffMs < 0) return { label: 'just now', tone: 'fresh' };
   const sec = Math.floor(diffMs / 1000);
-  if (sec < 60)   return 'just now';
   const min = Math.floor(sec / 60);
-  if (min < 60)   return `${min} min${min === 1 ? '' : 's'} ago`;
   const hr  = Math.floor(min / 60);
-  if (hr  < 24)   return `${hr} hour${hr === 1 ? '' : 's'} ago`;
   const day = Math.floor(hr / 24);
-  if (day < 7)    return `${day} day${day === 1 ? '' : 's'} ago`;
-  const wk  = Math.floor(day / 7);
-  if (day < 30)   return `${wk} week${wk === 1 ? '' : 's'} ago`;
-  const mo  = Math.floor(day / 30);
-  if (day < 365)  return `${mo} month${mo === 1 ? '' : 's'} ago`;
-  const yr  = Math.floor(day / 365);
-  return `${yr} year${yr === 1 ? '' : 's'} ago`;
+  const tone = day < 30 ? 'fresh' : 'stale';
+  if (sec < 60)   return { label: 'just now', tone };
+  if (min < 60)   return { label: `${min} min${min === 1 ? '' : 's'} ago`, tone };
+  if (hr  < 24)   return { label: `${hr} hour${hr === 1 ? '' : 's'} ago`, tone };
+  if (day < 7)    return { label: `${day} day${day === 1 ? '' : 's'} ago`, tone };
+  if (day < 30)   return { label: `${Math.floor(day / 7)} week${Math.floor(day / 7) === 1 ? '' : 's'} ago`, tone };
+  if (day < 365)  return { label: `${Math.floor(day / 30)} month${Math.floor(day / 30) === 1 ? '' : 's'} ago`, tone };
+  const yr = Math.floor(day / 365);
+  return { label: `${yr} year${yr === 1 ? '' : 's'} ago`, tone };
 }
 
 // FilterBar chip defs — all three primary so they always render.
@@ -373,12 +374,19 @@ export function UsersTab({ tabsForBar, activeTab, setActiveTab }) {
         </td>
         <td className={styles.td}>{formatDate(user.createdAt)}</td>
         <td className={styles.td}>
-          <div className={styles.dateStack}>
-            <span>{formatDate(user.lastActiveAt)}</span>
-            {formatRelative(user.lastActiveAt) && (
-              <span className={styles.dateRelative}>{formatRelative(user.lastActiveAt)}</span>
-            )}
-          </div>
+          {(() => {
+            const rel = formatRelative(user.lastActiveAt);
+            return (
+              <div className={styles.dateStack}>
+                <span>{formatDate(user.lastActiveAt)}</span>
+                {rel && (
+                  <span className={`${styles.dateRelative} ${rel.tone === 'fresh' ? styles.dateRelativeFresh : styles.dateRelativeStale}`}>
+                    {rel.label}
+                  </span>
+                )}
+              </div>
+            );
+          })()}
         </td>
         <td className={`${styles.td} ${styles.stickyRight}`}>
           <UserActions

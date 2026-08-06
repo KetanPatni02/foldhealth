@@ -57,6 +57,8 @@
   font-size: 12px;
   color: var(--neutral-300);
 }
+.dateRelativeFresh { color: var(--status-success); }
+.dateRelativeStale { color: var(--status-warning); }
 
 /* Roles + location cells share the same badge + overflow layout. */
 .rolesCell,
