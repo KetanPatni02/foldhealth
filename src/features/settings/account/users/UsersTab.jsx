@@ -40,6 +40,31 @@ function formatDate(iso) {
   return `${mm}/${dd}/${d.getFullYear()}`;
 }
 
+// Compact human-friendly "5 mins ago" / "2 days ago" / "3 months ago" for
+// the Last Sign-in At column. Returns null when the input is missing so
+// the caller can hide the second line.
+function formatRelative(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const diffMs = Date.now() - d.getTime();
+  if (diffMs < 0) return 'just now';
+  const sec = Math.floor(diffMs / 1000);
+  if (sec < 60)   return 'just now';
+  const min = Math.floor(sec / 60);
+  if (min < 60)   return `${min} min${min === 1 ? '' : 's'} ago`;
+  const hr  = Math.floor(min / 60);
+  if (hr  < 24)   return `${hr} hour${hr === 1 ? '' : 's'} ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 7)    return `${day} day${day === 1 ? '' : 's'} ago`;
+  const wk  = Math.floor(day / 7);
+  if (day < 30)   return `${wk} week${wk === 1 ? '' : 's'} ago`;
+  const mo  = Math.floor(day / 30);
+  if (day < 365)  return `${mo} month${mo === 1 ? '' : 's'} ago`;
+  const yr  = Math.floor(day / 365);
+  return `${yr} year${yr === 1 ? '' : 's'} ago`;
+}
+
 // FilterBar chip defs — all three primary so they always render.
 const USERS_FILTER_DEFS = [
   { key: 'status',   label: 'Status',            primary: true },
@@ -54,7 +79,7 @@ const USERS_COLUMNS = [
   { key: 'location',   label: 'Practice Location', sortKey: 'location',    width: 240 },
   { key: 'createdAt',  label: 'Created At',        sortKey: 'createdAt',   width: 140 },
   { key: 'lastSignIn', label: 'Last Sign-in At',   sortKey: 'lastActiveAt', width: 160 },
-  { key: 'actions',    label: 'Action',            sticky: 'right', width: 200 },
+  { key: 'actions',    label: 'Action',            sticky: 'right', width: 140, align: 'right' },
 ];
 
 /**
@@ -335,15 +360,26 @@ export function UsersTab({ tabsForBar, activeTab, setActiveTab }) {
           </div>
         </td>
         <td className={styles.td}>
-          <div className={styles.locationCell}>
-            <span>{user.location}</span>
-            {user.extraLocations > 0 && (
-              <OverflowBadge count={user.extraLocations} items={user.locations?.slice(1) || []} />
+          {user.location ? (
+            <div className={styles.locationCell}>
+              <span>{user.location}</span>
+              {user.extraLocations > 0 && (
+                <OverflowBadge count={user.extraLocations} items={user.locations?.slice(1) || []} />
+              )}
+            </div>
+          ) : (
+            <span className={styles.emptyDash}>—</span>
+          )}
+        </td>
+        <td className={styles.td}>{formatDate(user.createdAt)}</td>
+        <td className={styles.td}>
+          <div className={styles.dateStack}>
+            <span>{formatDate(user.lastActiveAt)}</span>
+            {formatRelative(user.lastActiveAt) && (
+              <span className={styles.dateRelative}>{formatRelative(user.lastActiveAt)}</span>
             )}
           </div>
         </td>
-        <td className={styles.td}>{formatDate(user.createdAt)}</td>
-        <td className={styles.td}>{formatDate(user.lastActiveAt)}</td>
         <td className={`${styles.td} ${styles.stickyRight}`}>
           <UserActions
             user={user}

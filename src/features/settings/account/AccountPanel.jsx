@@ -216,7 +216,7 @@ export function ViewUserDrawer({ user, onClose, onEdit }) {
     <Drawer title="User Profile" onClose={onClose} bodyClassName={styles.editDrawerBody} headerStyle={{ padding: '12px' }} titleStyle={{ fontSize: 14 }}>
       {/* User header */}
       <div className={styles.editHeader}>
-        <Avatar variant="assignee" initials={user.initials} className={styles.editAvatar} />
+        <Avatar variant="assignee" size="L" initials={user.initials} />
         <div className={styles.editHeaderInfo}>
           <div className={styles.editHeaderName}>
             {user.name}
@@ -1263,7 +1263,7 @@ export function EditUserDrawer({ user, onClose, onSave }) {
     <Drawer title="User Profile" onClose={onClose} bodyClassName={styles.editDrawerBody} headerStyle={{ padding: '12px' }} titleStyle={{ fontSize: 14 }}>
       {/* User header — warm gradient */}
       <div className={styles.editHeader}>
-        <Avatar variant="assignee" initials={user.initials} className={styles.editAvatar} />
+        <Avatar variant="assignee" size="L" initials={user.initials} />
         <div className={styles.editHeaderInfo}>
           <div className={styles.editHeaderName}>
             {user.name}

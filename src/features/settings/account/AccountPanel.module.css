@@ -172,6 +172,7 @@
 .actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
 }
 
@@ -478,16 +479,10 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 24px;
+  padding: 12px;
   background: linear-gradient(90deg, rgba(255, 237, 218, 0.2) 17%, rgba(255, 255, 255, 0.2) 100%);
   border-bottom: 0.5px solid var(--neutral-150);
   flex-shrink: 0;
-}
-
-.editAvatar {
-  width: 40px !important;
-  height: 40px !important;
-  font-size: 15px !important;
 }
 
 .editHeaderInfo {

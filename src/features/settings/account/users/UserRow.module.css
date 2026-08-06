@@ -40,6 +40,24 @@
   text-overflow: ellipsis;
 }
 
+/* Placeholder for empty cells (e.g. Practice Location with no value). */
+.emptyDash {
+  color: var(--neutral-200);
+}
+
+/* Last Sign-in At — mm/dd/yyyy on top with a smaller relative-time line
+   underneath ("2 days ago"). */
+.dateStack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.2;
+}
+.dateRelative {
+  font-size: 12px;
+  color: var(--neutral-300);
+}
+
 /* Roles + location cells share the same badge + overflow layout. */
 .rolesCell,
 .locationCell {
