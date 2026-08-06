@@ -1,3 +1,4 @@
+import { Icon } from '../Icon/Icon';
 import styles from './Avatar.module.css';
 
 // Wrap the rendered avatar in a locked container when a caller passes
@@ -23,9 +24,41 @@ function LockedWrapper({ locked, children, className }) {
   );
 }
 
-export function Avatar({ variant = 'patient', initials, agentName, size, icon, backgroundColor, borderColor, color, className, locked = false }) {
+// Design-token size scale (Figma Fold-Pixel-1.0 node 25:4262). When `size`
+// matches one of these keys, the tile picks up width/height/radius/font from
+// the matching CSS class. Anything else (`lg`, `md`, a raw number, undefined)
+// falls through to the legacy per-variant sizing so existing callers keep
+// rendering as before.
+const SIZE_CLASS_KEYS = new Set(['XS', 'S', 'M', 'L', 'XL', 'DXL']);
+const sizeScaleClass = (size, styles) => {
+  if (!SIZE_CLASS_KEYS.has(size)) return '';
+  return styles[`size${size}`] || '';
+};
+
+// Icon size per tile — ~55% of tile edge. Keeps the icon optically balanced
+// across every step in the token scale (Figma Fold-Pixel-1.0 node 25:4344).
+const ICON_SIZE_BY_TOKEN = { XS: 12, S: 14, M: 18, L: 22, XL: 28, DXL: 36 };
+
+// Foreground token per color variant — used for the icon fill so an Icon
+// Avatar reads with the same weight as the corresponding Initial Avatar.
+const ICON_COLOR_BY_VARIANT = {
+  patient: 'var(--primary-300)',
+  staff: 'var(--secondary-300)',
+  provider: 'var(--secondary-300)',
+  others: 'var(--neutral-300)',
+};
+
+export function Avatar({ type = 'initial', variant = 'patient', initials, iconName, size, agentName, icon, backgroundColor, borderColor, color, className, locked = false }) {
   const agentKey = agentName ? agentName.toLowerCase() : '';
   const lockedClass = locked ? styles.locked : '';
+  const scaleClass = sizeScaleClass(size, styles);
+  // Only patient / staff / provider / others honor `type="icon"`; the other
+  // legacy variants (agent, assignee, callCard, generic) keep their existing
+  // contract so callers don't break.
+  const isIcon = type === 'icon' && iconName && ['patient', 'staff', 'provider', 'others'].includes(variant);
+  const iconEl = isIcon
+    ? <Icon name={iconName} size={ICON_SIZE_BY_TOKEN[size] || 18} color={ICON_COLOR_BY_VARIANT[variant]} />
+    : null;
   
   if (variant === 'generic' || variant === 'icon') {
     return (
@@ -55,7 +88,7 @@ export function Avatar({ variant = 'patient', initials, agentName, size, icon, b
   if (variant === 'invokeAgent') {
     return <div className={[styles.invokeAgent, styles[agentKey], className || ''].filter(Boolean).join(' ')} />;
   }
-  if (variant === 'provider') {
+  if (variant === 'provider' || variant === 'staff') {
     // Honor a numeric `size` override so callers can render a compact
     // provider chip (e.g. 24×24) without duplicating the variant. Font
     // scales at ~44% of size (matches the default 14px / 32px ratio) with
@@ -65,8 +98,17 @@ export function Avatar({ variant = 'patient', initials, agentName, size, icon, b
       : undefined;
     return (
       <LockedWrapper locked={locked}>
-        <div className={[styles.provider, lockedClass, className || ''].filter(Boolean).join(' ')} style={style}>
-          {initials}
+        <div className={[styles.provider, scaleClass, lockedClass, className || ''].filter(Boolean).join(' ')} style={style}>
+          {iconEl || initials}
+        </div>
+      </LockedWrapper>
+    );
+  }
+  if (variant === 'others') {
+    return (
+      <LockedWrapper locked={locked}>
+        <div className={[styles.others, scaleClass, lockedClass, className || ''].filter(Boolean).join(' ')}>
+          {iconEl || initials}
         </div>
       </LockedWrapper>
     );
@@ -81,10 +123,9 @@ export function Avatar({ variant = 'patient', initials, agentName, size, icon, b
   if (variant === 'callCard') {
     return <div className={[styles.callCard, className || ''].filter(Boolean).join(' ')}>{initials}</div>;
   }
-  const sizeClass = size === 'lg' ? styles.lg : '';
   return (
     <LockedWrapper locked={locked}>
-      <div className={[styles.patient, sizeClass, lockedClass, className || ''].filter(Boolean).join(' ')}>{initials}</div>
+      <div className={[styles.patient, scaleClass, lockedClass, className || ''].filter(Boolean).join(' ')}>{iconEl || initials}</div>
     </LockedWrapper>
   );
 }

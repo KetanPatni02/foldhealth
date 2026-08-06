@@ -10,6 +10,7 @@ import '../src/index.css';
 const preview = {
   parameters: {
     controls: {
+      sort: 'none',
       matchers: {
         color: /(background|color)$/i,
         date: /Date$/i,

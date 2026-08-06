@@ -14,12 +14,6 @@
   font-family: 'Inter', sans-serif;
 }
 
-.patient.lg {
-  width: 42px;
-  height: 42px;
-  font-size: 15px;
-}
-
 .provider {
   width: 32px;
   height: 32px;
@@ -49,6 +43,34 @@
   justify-content: center;
   flex-shrink: 0;
 }
+
+/* "Others" variant — used for care team members outside patient/staff scope
+   (case managers, external contacts, etc.). Neutral grey palette so it reads
+   as distinct from the patient (primary) and staff (secondary) chips. */
+.others {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  color: var(--neutral-300);
+  font-size: 14px;
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Design-token size scale (Figma Fold-Pixel-1.0 node 25:4262). Applied on
+   top of a variant class (patient / provider / staff / others) so the
+   color tokens stay in one place and only the box dimensions change. */
+.sizeXS  { width: 20px; height: 20px; border-radius: 5px;  font-size: 9px;  }
+.sizeS   { width: 24px; height: 24px; border-radius: 6px;  font-size: 10px; }
+.sizeM   { width: 32px; height: 32px; border-radius: 8px;  font-size: 14px; }
+.sizeL   { width: 40px; height: 40px; border-radius: 10px; font-size: 16px; }
+.sizeXL  { width: 48px; height: 48px; border-radius: 12px; font-size: 18px; }
+.sizeDXL { width: 64px; height: 64px; border-radius: 16px; font-size: 24px; }
 
 .agent {
   width: 26px;
