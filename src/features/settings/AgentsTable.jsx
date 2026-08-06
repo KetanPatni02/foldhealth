@@ -123,11 +123,39 @@ function modelIcon(modelName) {
   return 'solar:cpu-bolt-linear';
 }
 
+// Resolves the current user's display name from Supabase — used to swap
+// the literal "Current User" placeholder that older duplicate-agent code
+// writes to `last_updated_by`, and to append "(You)" when the row's
+// updater matches the logged-in user. Cached at module scope so every
+// row shares one lookup.
+let currentUserNamePromise = null;
+function useCurrentUserName() {
+  const [name, setName] = useState(null);
+  useEffect(() => {
+    if (!currentUserNamePromise) {
+      currentUserNamePromise = (async () => {
+        const { data } = await supabase.auth.getSession();
+        const uid = data?.session?.user?.id;
+        if (!uid) return null;
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name, email')
+          .eq('id', uid)
+          .maybeSingle();
+        return profile?.full_name || profile?.email?.split('@')[0] || null;
+      })();
+    }
+    currentUserNamePromise.then(setName);
+  }, []);
+  return name;
+}
+
 function AgentRow({ agent, isFirst }) {
   const updateAgent = useAppStore(s => s.updateAgent);
   const openBuilder = useAppStore(s => s.openBuilder);
   const fetchAgents = useAppStore(s => s.fetchAgents);
   const showToast = useAppStore(s => s.showToast);
+  const currentUserName = useCurrentUserName();
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -198,29 +226,41 @@ function AgentRow({ agent, isFirst }) {
           <span>{model}</span>
         </div>
       </td>
-      <td className={rowStyles.td}>{agent.last_updated}</td>
       <td className={rowStyles.td}>
-        <span
-          className={rowStyles.userLink}
-          onClick={(e) => {
-            e.stopPropagation();
-            const name = agent.last_updated_by || 'Unknown';
-            const initials2 = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-            setViewingUser({
-              id: `user-${name}`,
-              name,
-              initials: initials2,
-              email: name.toLowerCase().replace(/\s+/g, '.') + '@fold.health',
-              status: 'Active',
-              role: 'Care Team Member',
-              _raw: {},
-            });
-          }}
-        >
-          {agent.last_updated_by}
-        </span>
+        {(() => {
+          const raw = agent.last_updated_by || 'Unknown';
+          // Swap the legacy "Current User" placeholder for the real name;
+          // also flag any row updated by the logged-in user with "(You)".
+          const isSelf = raw === 'Current User' || (currentUserName && raw === currentUserName);
+          const displayName = raw === 'Current User' && currentUserName ? currentUserName : raw;
+          return (
+            <div className={rowStyles.updatedStack}>
+              <span
+                className={rowStyles.userLink}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const name = displayName;
+                  const initials2 = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+                  setViewingUser({
+                    id: `user-${name}`,
+                    name,
+                    initials: initials2,
+                    email: name.toLowerCase().replace(/\s+/g, '.') + '@fold.health',
+                    status: 'Active',
+                    role: 'Care Team Member',
+                    _raw: {},
+                  });
+                }}
+              >
+                {displayName}
+                {isSelf && <span className={rowStyles.youTag}> (You)</span>}
+              </span>
+              {agent.last_updated && <span className={rowStyles.updatedDate}>{agent.last_updated}</span>}
+            </div>
+          );
+        })()}
       </td>
-      <td className={rowStyles.td} onClick={(e) => e.stopPropagation()}>
+      <td className={`${rowStyles.td} ${rowStyles.stickyRight}`} style={{ right: 128, borderLeft: 'none' }} onClick={(e) => e.stopPropagation()}>
         <Switch checked={agent.enabled} onChange={() => updateAgent(agent.id, { enabled: !agent.enabled })} />
       </td>
       <td className={`${rowStyles.td} ${rowStyles.stickyRight}`} onClick={(e) => e.stopPropagation()}>
@@ -276,14 +316,16 @@ function AgentRow({ agent, isFirst }) {
 // Column definitions for the Agents WorklistShell — order matches the
 // user-provided screenshot: Use Case (sticky-left), Agent Name (avatar +
 // role subtitle), Model, Last Updated, Last Updated By, Status, Actions.
+// Status pins to the right alongside Actions so it stays visible at every
+// scroll position (like the user tab). "Last Updated" collapses into
+// "Last Updated By" as a two-line cell — name on top, date underneath.
 const AGENT_COLUMNS = [
   { key: 'useCase',   label: 'Use Case',        sortKey: 'use_case',        sticky: 'left', left: 0, width: 260 },
   { key: 'name',      label: 'Agent Name',      sortKey: 'name',            width: 260 },
   { key: 'model',     label: 'Model',           sortKey: 'model',           width: 200 },
-  { key: 'updated',   label: 'Last Updated',    sortKey: 'last_updated',    width: 160 },
-  { key: 'updatedBy', label: 'Last Updated By', sortKey: 'last_updated_by', width: 180 },
-  { key: 'status',    label: 'Status',          width: 100 },
-  { key: 'actions',   label: 'Actions',         sticky: 'right',            width: 180 },
+  { key: 'updatedBy', label: 'Last Updated By', sortKey: 'last_updated_by', width: 220 },
+  { key: 'status',    label: 'Status',          sticky: 'right', right: 128, width: 80 },
+  { key: 'actions',   label: 'Actions',         sticky: 'right', width: 128 },
 ];
 
 export function AgentsTable() {

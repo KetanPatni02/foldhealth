@@ -63,6 +63,22 @@
   text-decoration: underline;
 }
 
+/* Last Updated By — name on top, date underneath in the secondary tone. */
+.updatedStack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.25;
+}
+.updatedDate {
+  font-size: 12px;
+  color: var(--neutral-300);
+}
+.youTag {
+  color: var(--neutral-300);
+  font-weight: 400;
+}
+
 /* Actions cell — mirrors the Users/Locations tabs so the trio reads as
    one visual system. */
 .actionsCell {

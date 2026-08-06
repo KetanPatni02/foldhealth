@@ -166,7 +166,11 @@ export function WorklistShell({
                   const stickyStyle = col.sticky === 'left'
                     ? { position: 'sticky', left: col.left || 0, background: 'var(--neutral-0)', zIndex: 4 }
                     : col.sticky === 'right'
-                    ? { position: 'sticky', right: 0, background: 'var(--neutral-0)', zIndex: 3 }
+                    // `col.right` lets a caller stack multiple sticky-right
+                    // cells (e.g. Status pinned next to Actions in the
+                    // Agents table). Defaults to 0 so single-column callers
+                    // keep working unchanged.
+                    ? { position: 'sticky', right: col.right || 0, background: 'var(--neutral-0)', zIndex: 3 }
                     : undefined;
 
                   if (col.showCheckbox) {
