@@ -96,26 +96,25 @@ export function EditLocationDrawer({ location, allLocations = [], onClose, onSub
     onSubmit({ ...form, updatedAt: new Date().toISOString() });
   };
 
-  const headerRight = step === 1 ? (
-    <>
-      <Button variant="ghost" size="S" onClick={onClose}>Cancel</Button>
-      <Button variant="primary" size="S" onClick={() => setStep(2)} disabled={!step1Valid}>Next</Button>
-    </>
-  ) : (
-    <>
-      <Button variant="ghost" size="S" onClick={() => setStep(1)}>Previous</Button>
-      <Button variant="ghost" size="S" onClick={onClose}>Cancel</Button>
-      <Button variant="primary" size="S" onClick={handleSubmit} disabled={!canSubmit}>Submit</Button>
-    </>
-  );
+  const drawerProps = step === 1
+    ? {
+        secondaryAction: <Button variant="ghost" size="S" onClick={onClose}>Cancel</Button>,
+        primaryAction:   <Button variant="primary" size="S" onClick={() => setStep(2)} disabled={!step1Valid}>Next</Button>,
+      }
+    : {
+        // Previous sits to the LEFT of Cancel/Submit via headerRight so the
+        // secondary/primary slots stay reserved for the two canonical CTAs.
+        headerRight:     <Button variant="ghost" size="S" onClick={() => setStep(1)}>Previous</Button>,
+        secondaryAction: <Button variant="ghost" size="S" onClick={onClose}>Cancel</Button>,
+        primaryAction:   <Button variant="primary" size="S" onClick={handleSubmit} disabled={!canSubmit}>Submit</Button>,
+      };
 
   return (
     <Drawer
       title={isEdit ? 'Edit Practice Location' : 'New Practice Location'}
       onClose={onClose}
-      headerRight={headerRight}
       bodyClassName={styles.drawerBody}
-      titleStyle={{ fontSize: 16, fontWeight: 600 }}
+      {...drawerProps}
     >
       {/* Stepper — reads active vs done off the current step. Step 1 flips to
           "done" (checkmark) as soon as the user advances past it. */}
@@ -236,18 +235,16 @@ export function EditLocationDrawer({ location, allLocations = [], onClose, onSub
                 <div className={styles.slotFooter}>
                   <div className={styles.slotFieldStack}>
                     <span className={styles.label}>From time</span>
-                    <input
+                    <Input
                       type="time"
-                      className={styles.timeInput}
                       value={slot.from}
                       onChange={e => updateSlot(idx, 'from', e.target.value)}
                     />
                   </div>
                   <div className={styles.slotFieldStack}>
                     <span className={styles.label}>To time</span>
-                    <input
+                    <Input
                       type="time"
-                      className={styles.timeInput}
                       value={slot.to}
                       onChange={e => updateSlot(idx, 'to', e.target.value)}
                     />

@@ -173,18 +173,3 @@
 .slotTrash {
   align-self: end;
 }
-.timeInput {
-  width: 100%;
-  height: 32px;
-  padding: 0 8px;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 6px;
-  background: var(--neutral-0);
-  font-size: 14px;
-  color: var(--neutral-400);
-  outline: none;
-}
-.timeInput:focus {
-  border-color: var(--primary-300);
-  box-shadow: 0 0 0 2px var(--primary-100);
-}
