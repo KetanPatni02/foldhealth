@@ -9,6 +9,8 @@ import { Button } from '../../../components/Button/Button';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Avatar } from '../../../components/Avatar/Avatar';
 import { Drawer } from '../../../components/Drawer/Drawer';
+import { TabStrip } from '../../../components/TabStrip/TabStrip';
+import { UserProfileBanner } from './users/UserProfileBanner';
 import { Input } from '../../../components/Input/Input';
 import { SectionTitleBar } from '../../../components/SectionTitleBar/SectionTitleBar';
 import { Select } from '../../../components/Select/Select';
@@ -214,46 +216,14 @@ export function ViewUserDrawer({ user, onClose, onEdit }) {
 
   return (
     <Drawer title="User Profile" onClose={onClose} bodyClassName={styles.editDrawerBody} headerStyle={{ padding: '12px' }} titleStyle={{ fontSize: 14 }}>
-      {/* User header */}
-      <div className={styles.editHeader}>
-        <Avatar variant="assignee" size="L" initials={user.initials} />
-        <div className={styles.editHeaderInfo}>
-          <div className={styles.editHeaderName}>
-            {user.name}
-            {user.status === 'Active' && <Icon name="solar:verified-check-bold" size={16} color="#009B53" />}
-          </div>
-          <span className={styles.editHeaderEmail}>{user.email}</span>
-        </div>
-        <div className={styles.editHeaderActions}>
-          <div className={styles.editHeaderActionItem}>
-            <ActionButton icon="solar:phone-calling-rounded-linear" size="L" tooltip="Call" />
-            <span className={styles.editHeaderActionLabel}>Call</span>
-          </div>
-          <span className={styles.editHeaderDivider} />
-          <div className={styles.editHeaderActionItem}>
-            <ActionButton icon="solar:chat-round-line-linear" size="L" tooltip="Chat" onClick={openChat} />
-            <span className={styles.editHeaderActionLabel}>Chat</span>
-          </div>
-          <span className={styles.editHeaderDivider} />
-          <div className={styles.editHeaderActionItem}>
-            <ActionButton icon="solar:videocamera-record-linear" size="L" tooltip="Meet" />
-            <span className={styles.editHeaderActionLabel}>Meet</span>
-          </div>
-          <span className={styles.editHeaderDivider} />
-          <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More" />
-        </div>
-      </div>
-
-      {/* Inner tabs */}
-      <div className={styles.drawerTabs}>
-        {VIEW_TABS.map(tab => (
-          <div key={tab} className={`${styles.drawerTab} ${viewTab === tab ? styles.drawerTabActive : ''}`} onClick={() => setViewTab(tab)}>
-            {tab}
-          </div>
-        ))}
-        <div style={{ flex: 1 }} />
-        <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit Profile" onClick={onEdit} />
-      </div>
+      <UserProfileBanner user={user} onChat={openChat} />
+      <TabStrip
+        items={VIEW_TABS.map(t => ({ key: t, label: t }))}
+        activeKey={viewTab}
+        onChange={setViewTab}
+        fullWidth={false}
+        trailing={<ActionButton icon="solar:pen-linear" size="S" tooltip="Edit Profile" onClick={onEdit} />}
+      />
 
       {viewTab === 'Audit Log' ? (
         <div className={styles.formScroll}>
@@ -1261,47 +1231,17 @@ export function EditUserDrawer({ user, onClose, onSave }) {
 
   return (
     <Drawer title="User Profile" onClose={onClose} bodyClassName={styles.editDrawerBody} headerStyle={{ padding: '12px' }} titleStyle={{ fontSize: 14 }}>
-      {/* User header — warm gradient */}
-      <div className={styles.editHeader}>
-        <Avatar variant="assignee" size="L" initials={user.initials} />
-        <div className={styles.editHeaderInfo}>
-          <div className={styles.editHeaderName}>
-            {user.name}
-            {user.status === 'Active' && <Icon name="solar:verified-check-bold" size={16} color="#009B53" />}
-          </div>
-          <span className={styles.editHeaderEmail}>{user.email}</span>
-        </div>
-        <div className={styles.editHeaderActions}>
-          <div className={styles.editHeaderActionItem}>
-            <ActionButton icon="solar:phone-calling-rounded-linear" size="L" tooltip="Call" />
-            <span className={styles.editHeaderActionLabel}>Call</span>
-          </div>
-          <span className={styles.editHeaderDivider} />
-          <div className={styles.editHeaderActionItem}>
-            <ActionButton icon="solar:chat-round-line-linear" size="L" tooltip="Chat" />
-            <span className={styles.editHeaderActionLabel}>Chat</span>
-          </div>
-          <span className={styles.editHeaderDivider} />
-          <div className={styles.editHeaderActionItem}>
-            <ActionButton icon="solar:videocamera-record-linear" size="L" tooltip="Meet" />
-            <span className={styles.editHeaderActionLabel}>Meet</span>
-          </div>
-          <span className={styles.editHeaderDivider} />
-          <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More" />
-        </div>
-      </div>
-
-      {/* Inner tabs */}
-      <div className={styles.drawerTabs}>
-        {DRAWER_TABS.map(tab => (
-          <div key={tab} className={`${styles.drawerTab} ${drawerTab === tab ? styles.drawerTabActive : ''}`} onClick={() => setDrawerTab(tab)}>
-            {tab}
-          </div>
-        ))}
-        <div style={{ flex: 1 }} />
-        <Button variant="ghost" size="S" onClick={handleDiscard}>Discard</Button>
-        <Button variant="primary" size="S" onClick={handleSave}>Save</Button>
-      </div>
+      <UserProfileBanner user={user} />
+      <TabStrip
+        items={DRAWER_TABS.map(t => ({ key: t, label: t }))}
+        activeKey={drawerTab}
+        onChange={setDrawerTab}
+        fullWidth={false}
+        trailing={<>
+          <Button variant="ghost" size="S" onClick={handleDiscard}>Discard</Button>
+          <Button variant="primary" size="S" onClick={handleSave}>Save</Button>
+        </>}
+      />
 
       {drawerTab === 'User Details' ? (
         <div className={styles.formScroll}>

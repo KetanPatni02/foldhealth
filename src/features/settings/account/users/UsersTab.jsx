@@ -342,7 +342,7 @@ export function UsersTab({ tabsForBar, activeTab, setActiveTab }) {
       <tr key={user.id} className={styles.row}>
         <td className={`${styles.membersTd} ${styles.stickyLeft}`} style={{ left: 0 }}>
           <div className={styles.userCell} onClick={() => setViewingUser(user)}>
-            <Avatar variant="assignee" size="M" initials={user.initials} />
+            <Avatar variant="staff" size="M" initials={user.initials} />
             <div className={styles.userInfo}>
               <span className={styles.userName}>{user.name}</span>
               <span className={styles.userEmail}>{user.email}</span>

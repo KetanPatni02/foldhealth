@@ -16,8 +16,12 @@ import styles from './TabStrip.module.css';
  *  - activeKey   string                 — currently-selected key.
  *  - onChange    (key) => void          — called when a tab is clicked.
  *  - fullWidth   boolean (default true) — bleed to the drawer/container edges.
+ *  - trailing    ReactNode              — optional content pinned to the far
+ *                                          right (edit button, action group).
+ *                                          Sits on the same row as the tabs
+ *                                          past a flex spacer.
  */
-export function TabStrip({ items, activeKey, onChange, fullWidth = true }) {
+export function TabStrip({ items, activeKey, onChange, fullWidth = true, trailing }) {
   const rowRef = useRef(null);
   const tabRefs = useRef(new Map());
   const [indicator, setIndicator] = useState({ x: 0, w: 0, ready: false });
@@ -69,6 +73,12 @@ export function TabStrip({ items, activeKey, onChange, fullWidth = true }) {
           opacity: indicator.ready ? 1 : 0,
         }}
       />
+      {trailing && (
+        <>
+          <span className={styles.trailingSpacer} aria-hidden />
+          <div className={styles.trailing}>{trailing}</div>
+        </>
+      )}
     </div>
   );
 }

@@ -1,0 +1,56 @@
+/* Warm-gradient banner rendered at the top of the View/Edit user drawers.
+   Avatar (staff variant, L) + name/email + Call/Chat/Meet/More action group. */
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: linear-gradient(90deg, var(--secondary-50) 17%, var(--neutral-0) 100%);
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--neutral-400);
+}
+
+.email {
+  font-size: 13px;
+  color: var(--neutral-300);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.actionItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.actionLabel {
+  font-size: 12px;
+  color: var(--neutral-200);
+}
+
+.divider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}

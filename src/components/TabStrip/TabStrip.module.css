@@ -61,3 +61,13 @@
               width 240ms cubic-bezier(0.4, 0, 0.2, 1),
               opacity 160ms ease-out;
 }
+
+/* Trailing slot — action buttons pinned to the far right of the tab row.
+   The spacer flexes to push them past the last tab; the wrapper keeps its
+   own children together with a small gap for multi-button groups. */
+.trailingSpacer { flex: 1; }
+.trailing {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

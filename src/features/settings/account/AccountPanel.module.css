@@ -475,96 +475,12 @@
   padding: 0 !important;
 }
 
-.editHeader {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: linear-gradient(90deg, rgba(255, 237, 218, 0.2) 17%, rgba(255, 255, 255, 0.2) 100%);
-  border-bottom: 0.5px solid var(--neutral-150);
-  flex-shrink: 0;
-}
-
-.editHeaderInfo {
-  flex: 1;
-  min-width: 0;
-}
-
-.editHeaderName {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--neutral-400);
-}
-
-.editHeaderEmail {
-  font-size: 13px;
-  color: var(--neutral-300);
-}
-
-.editHeaderActions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.editHeaderActionItem {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-.editHeaderActionLabel {
-  font-size: 12px;
-  color: var(--neutral-200);
-}
-
-.editHeaderDivider {
-  width: 0.5px;
-  height: 16px;
-  background: var(--neutral-150);
-  flex-shrink: 0;
-}
-
-/* Inner drawer tabs */
-.drawerTabs {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  padding: 0 12px;
-  border-bottom: 0.5px solid var(--neutral-150);
-  flex-shrink: 0;
-  background: var(--neutral-0, #fff);
-}
-
-.drawerTab {
-  padding: 10px 6px;
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--neutral-400);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  font-family: 'Inter', sans-serif;
-  white-space: nowrap;
-}
-
-.drawerTab:hover { color: var(--neutral-400); }
-
-.drawerTabActive {
-  color: var(--primary-300);
-  font-weight: 500;
-  border-bottom-color: var(--primary-300);
-}
-
 /* Scrollable form content — column layout with consistent 16px gap */
 .formScroll {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 12px 24px;
+  padding: 16px;
   overflow-y: auto;
   overflow-x: hidden;
   flex: 1;
