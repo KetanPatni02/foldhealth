@@ -79,14 +79,28 @@
   font-weight: 400;
 }
 
-/* Actions cell — mirrors the Users/Locations tabs so the trio reads as
-   one visual system. */
-.actionsCell {
-  display: inline-flex;
+/* Actions cell — the <td> IS the flex container. Dropping the wrapping
+   div lets the cell shrink to its content, so the sticky-right column
+   only takes up exactly what the ActionButtons + dividers need.
+   Right padding is 0 so the last icon (More) sits flush with the row's
+   right edge. */
+.actionsTd {
+  composes: td from '../../components/WorklistShell/WorklistRow.module.css';
+  display: flex;
   align-items: center;
   gap: 6px;
-  justify-content: flex-end;
-  width: 100%;
+  white-space: nowrap;
+  /* Zero right padding so the "More" icon sits flush with the row's
+     right edge — no dead space between the last button and the border. */
+  padding-right: 0;
+}
+
+/* Status cell — hugs the Switch (~32px) with tight 8px symmetric padding
+   so the column shrinks to just what the Switch needs. */
+.statusTd {
+  composes: td from '../../components/WorklistShell/WorklistRow.module.css';
+  padding-left: 8px;
+  padding-right: 8px;
 }
 .actionDivider {
   width: 0.5px;

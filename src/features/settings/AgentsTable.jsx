@@ -8,6 +8,7 @@ import { Button } from '../../components/Button/Button';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { WorklistShell } from '../../components/WorklistShell/WorklistShell';
+import { FilterBar } from '../../components/FilterBar/FilterBar';
 import { Switch } from '../../components/Switch/Switch';
 import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { supabase } from '../../lib/supabase';
@@ -260,21 +261,23 @@ function AgentRow({ agent, isFirst }) {
           );
         })()}
       </td>
-      <td className={`${rowStyles.td} ${rowStyles.stickyRight}`} style={{ right: 128, borderLeft: 'none' }} onClick={(e) => e.stopPropagation()}>
+      <td className={`${rowStyles.statusTd} ${rowStyles.stickyRight}`} style={{ right: 132, borderLeft: 'none' }} onClick={(e) => e.stopPropagation()}>
         <Switch checked={agent.enabled} onChange={() => updateAgent(agent.id, { enabled: !agent.enabled })} />
       </td>
-      <td className={`${rowStyles.td} ${rowStyles.stickyRight}`} onClick={(e) => e.stopPropagation()}>
-        <div className={rowStyles.actionsCell} {...(isFirst ? { 'data-tour': 'agent-actions' } : {})}>
-          <ActionButton size="L" tooltip="Call Queue" onClick={() => setShowCallQueue(true)} {...(isFirst ? { 'data-tour': 'call-queue-btn' } : {})}>
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M14.1333 4.18663V5.86663L15.1833 6.91663M11.7506 13.2226L12.1301 12.823C12.6548 12.2706 13.4727 12.1571 14.144 12.5435L15.7361 13.4599C16.7585 14.0484 16.9838 15.4907 16.1847 16.332L15.0009 17.5783C14.6999 17.8952 14.3264 18.1268 13.8969 18.1692C12.539 18.3032 9.21841 18.1551 5.67943 14.4292C2.34222 10.9158 1.74416 7.90447 1.66903 6.50487C1.63967 5.9578 1.88182 5.46464 2.24317 5.08421L3.55117 3.70713C4.27993 2.93988 5.50853 3.05868 6.14434 3.95794L7.19516 5.44418C7.70886 6.17073 7.65335 7.16596 7.06456 7.78586L6.82555 8.03749C6.82555 8.03749 5.92339 8.98729 8.3859 11.5798C10.8484 14.1724 11.7506 13.2226 11.7506 13.2226ZM18.3333 5.86663C18.3333 8.18622 16.4529 10.0666 14.1333 10.0666C11.8137 10.0666 9.93329 8.18622 9.93329 5.86663C9.93329 3.54703 11.8137 1.66663 14.1333 1.66663C16.4529 1.66663 18.3333 3.54703 18.3333 5.86663Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </ActionButton>
-          <span className={rowStyles.actionDivider} />
-          <ActionButton icon="solar:chart-linear" size="L" tooltip="Call Analytics" onClick={() => { setCallQueueInitTab('analytics'); setShowCallQueue(true); }} {...(isFirst ? { 'data-tour': 'call-analytics-btn' } : {})} />
-          <span className={rowStyles.actionDivider} />
-          <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More Options" ref={moreBtnRef} onClick={handleMoreClick} {...(isFirst ? { 'data-tour': 'more-options-btn' } : {})} />
-        </div>
+      <td
+        className={`${rowStyles.actionsTd} ${rowStyles.stickyRight}`}
+        onClick={(e) => e.stopPropagation()}
+        {...(isFirst ? { 'data-tour': 'agent-actions' } : {})}
+      >
+        <ActionButton size="L" tooltip="Call Queue" onClick={() => setShowCallQueue(true)} {...(isFirst ? { 'data-tour': 'call-queue-btn' } : {})}>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M14.1333 4.18663V5.86663L15.1833 6.91663M11.7506 13.2226L12.1301 12.823C12.6548 12.2706 13.4727 12.1571 14.144 12.5435L15.7361 13.4599C16.7585 14.0484 16.9838 15.4907 16.1847 16.332L15.0009 17.5783C14.6999 17.8952 14.3264 18.1268 13.8969 18.1692C12.539 18.3032 9.21841 18.1551 5.67943 14.4292C2.34222 10.9158 1.74416 7.90447 1.66903 6.50487C1.63967 5.9578 1.88182 5.46464 2.24317 5.08421L3.55117 3.70713C4.27993 2.93988 5.50853 3.05868 6.14434 3.95794L7.19516 5.44418C7.70886 6.17073 7.65335 7.16596 7.06456 7.78586L6.82555 8.03749C6.82555 8.03749 5.92339 8.98729 8.3859 11.5798C10.8484 14.1724 11.7506 13.2226 11.7506 13.2226ZM18.3333 5.86663C18.3333 8.18622 16.4529 10.0666 14.1333 10.0666C11.8137 10.0666 9.93329 8.18622 9.93329 5.86663C9.93329 3.54703 11.8137 1.66663 14.1333 1.66663C16.4529 1.66663 18.3333 3.54703 18.3333 5.86663Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </ActionButton>
+        <span className={rowStyles.actionDivider} />
+        <ActionButton icon="solar:chart-linear" size="L" tooltip="Call Analytics" onClick={() => { setCallQueueInitTab('analytics'); setShowCallQueue(true); }} {...(isFirst ? { 'data-tour': 'call-analytics-btn' } : {})} />
+        <span className={rowStyles.actionDivider} />
+        <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More Options" ref={moreBtnRef} onClick={handleMoreClick} {...(isFirst ? { 'data-tour': 'more-options-btn' } : {})} />
         {showMenu && (
           <MenuPopover
             anchorRef={moreBtnRef}
@@ -324,8 +327,11 @@ const AGENT_COLUMNS = [
   { key: 'name',      label: 'Agent Name',      sortKey: 'name',            width: 260 },
   { key: 'model',     label: 'Model',           sortKey: 'model',           width: 200 },
   { key: 'updatedBy', label: 'Last Updated By', sortKey: 'last_updated_by', width: 220 },
-  { key: 'status',    label: 'Status',          sticky: 'right', right: 128, width: 80 },
-  { key: 'actions',   label: 'Actions',         sticky: 'right', width: 128 },
+  { key: 'status',    label: 'Status',          sticky: 'right', right: 132, width: 1 },
+  // width: 1 is the CSS trick that tells `<table>` to shrink both sticky
+  // columns to their exact content. Status hugs the Switch, Actions hugs
+  // the three ActionButtons + dividers.
+  { key: 'actions',   label: 'Actions',         sticky: 'right', width: 1 },
 ];
 
 export function AgentsTable() {
@@ -342,6 +348,13 @@ export function AgentsTable() {
   const [goalsFilter, setGoalsFilter] = useState('all');
   const [goalsViewMode, setGoalsViewMode] = useState('table');
   const [goalsFilterOpen, setGoalsFilterOpen] = useState(false);
+
+  // Agents filter chips — Status / Model / Use Case are all primary so
+  // they always render in the FilterBar (no "More filters" overflow).
+  const [agentsFilterOpen, setAgentsFilterOpen] = useState(false);
+  const [agentFilters, setAgentFilters] = useState({ status: [], model: [], use_case: [] });
+  const agentFiltersActive =
+    agentFilters.status.length + agentFilters.model.length + agentFilters.use_case.length;
 
   const tabKey = settingsTab === 'agents' ? 'agents' : settingsTab;
   const tabsForBar = TABS.map(label => ({ key: label.toLowerCase(), label }));
@@ -372,14 +385,43 @@ export function AgentsTable() {
   const perPage = useAppStore(s => s.perPage);
 
   const filteredAgents = useMemo(() => {
-    if (!searchVal.trim()) return agents;
+    let list = agents;
+    if (agentFilters.status.length) {
+      list = list.filter(a => agentFilters.status.includes(a.enabled ? 'Enabled' : 'Disabled'));
+    }
+    if (agentFilters.model.length)    list = list.filter(a => agentFilters.model.includes(a.model || 'ChatGPT 4.5 Mini'));
+    if (agentFilters.use_case.length) list = list.filter(a => agentFilters.use_case.includes(a.use_case));
+    if (!searchVal.trim()) return list;
     const q = searchVal.toLowerCase().trim();
-    return agents.filter(a =>
+    return list.filter(a =>
       a.name?.toLowerCase().includes(q) ||
       a.use_case?.toLowerCase().includes(q) ||
       a.last_updated_by?.toLowerCase().includes(q)
     );
-  }, [agents, searchVal]);
+  }, [agents, searchVal, agentFilters]);
+
+  // Populate the chip dropdowns from what's actually in the data. Model
+  // + Use Case can grow over time; deriving from the fetched rows keeps
+  // the options in sync without another config file.
+  const agentFilterOptions = useMemo(() => {
+    const models = new Set();
+    const useCases = new Set();
+    for (const a of agents) {
+      if (a.model) models.add(a.model);
+      if (a.use_case) useCases.add(a.use_case);
+    }
+    return {
+      status:   ['Enabled', 'Disabled'],
+      model:    [...models].sort(),
+      use_case: [...useCases].sort(),
+    };
+  }, [agents]);
+
+  const AGENT_FILTER_DEFS = [
+    { key: 'status',   label: 'Status',   primary: true },
+    { key: 'model',    label: 'Model',    primary: true },
+    { key: 'use_case', label: 'Use Case', primary: true },
+  ];
 
   const { sorted: sortedAgents, sortKey, sortDir, requestSort } = useTableSort(filteredAgents, 'last_updated', 'desc');
   const startIdx = (currentPage - 1) * perPage;
@@ -395,9 +437,13 @@ export function AgentsTable() {
         searchPlaceholder={searchPlaceholder}
         searchValue={searchVal}
         onSearchChange={setSearchVal}
-        showFilter={settingsTab === 'goals'}
-        filterActive={goalsFilterOpen}
-        onFilter={() => setGoalsFilterOpen(v => !v)}
+        showFilter={settingsTab === 'goals' || settingsTab === 'agents'}
+        filterActive={settingsTab === 'agents' ? agentsFilterOpen : goalsFilterOpen}
+        filterBadgeCount={settingsTab === 'agents' ? agentFiltersActive : 0}
+        onFilter={() => {
+          if (settingsTab === 'agents') setAgentsFilterOpen(v => !v);
+          else setGoalsFilterOpen(v => !v);
+        }}
         primaryActionLabel={primaryActionLabel}
         onPrimaryAction={handlePrimaryAction}
       />
@@ -450,6 +496,20 @@ export function AgentsTable() {
           // strip + search + primary action stay identical to every other
           // Settings surface. Passing `null` keeps the shell headless.
           header={null}
+          showFilters={agentsFilterOpen}
+          filters={
+            <FilterBar
+              multiSelect
+              leading={null}
+              filterDefs={AGENT_FILTER_DEFS}
+              filters={agentFilters}
+              onFilterChange={(k, vals) => setAgentFilters(f => ({ ...f, [k]: vals }))}
+              onClearAll={() => setAgentFilters({ status: [], model: [], use_case: [] })}
+              getOptions={(def) => agentFilterOptions[def.key] || []}
+              showMoreFilters={false}
+              showSaveFilter={false}
+            />
+          }
           columns={AGENT_COLUMNS}
           sortKey={sortKey}
           sortDir={sortDir}

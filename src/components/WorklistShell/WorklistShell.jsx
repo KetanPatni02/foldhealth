@@ -96,11 +96,12 @@ export function WorklistShell({
 
   return (
     <div className={styles.shell}>
-      {header ?? (
+      {header !== undefined ? header : (
         /* Default header (mirrors src/layouts/TabBar): title as an active
            tab on the left, right-side action icons with dividers. Callers
            can pass a `header` prop (e.g. <SectionTitleBar>) to replace
-           this entire block with their own chrome. */
+           this entire block with their own chrome — pass `null` to skip
+           the header entirely (e.g. when the parent already renders one). */
         <div className={styles.header}>
           <div className={styles.left}>
             <div className={`${styles.tabItem} ${styles.tabActive}`}>{title}</div>
