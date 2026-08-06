@@ -5,7 +5,7 @@ import { Icon } from '../../../../components/Icon/Icon';
 import { Avatar } from '../../../../components/Avatar/Avatar';
 import { Badge } from '../../../../components/Badge/Badge';
 import { SectionTitleBar } from '../../../../components/SectionTitleBar/SectionTitleBar';
-import { FilterChip } from '../../../../components/FilterChip/FilterChip';
+import { FilterBar } from '../../../../components/FilterBar/FilterBar';
 import { WorklistShell } from '../../../../components/WorklistShell/WorklistShell';
 import { useTableSort } from '../../../../components/SortableHeader/useTableSort';
 import { FALLBACK_USERS } from '../../fallbackUsers';
@@ -39,6 +39,13 @@ function formatDate(iso) {
   const dd = String(d.getDate()).padStart(2, '0');
   return `${mm}/${dd}/${d.getFullYear()}`;
 }
+
+// FilterBar chip defs — all three primary so they always render.
+const USERS_FILTER_DEFS = [
+  { key: 'status',   label: 'Status',            primary: true },
+  { key: 'roles',    label: 'Roles',             primary: true },
+  { key: 'location', label: 'Practice Location', primary: true },
+];
 
 const USERS_COLUMNS = [
   { key: 'name',       label: 'User Name',         sortKey: 'name',        sticky: 'left', left: 0,   width: 300 },
@@ -370,35 +377,17 @@ export function UsersTab({ tabsForBar, activeTab, setActiveTab }) {
   );
 
   const filterNode = (
-    <div className={panelStyles.filterBar}>
-      <FilterChip
-        label="Status"
-        options={filterOptions.status}
-        selected={userFilters.status}
-        onChange={(vals) => setUserFilters(f => ({ ...f, status: vals }))}
-      />
-      <FilterChip
-        label="Roles"
-        options={filterOptions.roles}
-        selected={userFilters.roles}
-        onChange={(vals) => setUserFilters(f => ({ ...f, roles: vals }))}
-      />
-      <FilterChip
-        label="Practice Location"
-        options={filterOptions.location}
-        selected={userFilters.location}
-        onChange={(vals) => setUserFilters(f => ({ ...f, location: vals }))}
-      />
-      {userFiltersActive > 0 && (
-        <button
-          type="button"
-          className={panelStyles.clearFilters}
-          onClick={() => setUserFilters({ status: [], roles: [], location: [] })}
-        >
-          ⊗ Clear All
-        </button>
-      )}
-    </div>
+    <FilterBar
+      multiSelect
+      leading={null}
+      filterDefs={USERS_FILTER_DEFS}
+      filters={userFilters}
+      onFilterChange={(k, vals) => setUserFilters(f => ({ ...f, [k]: vals }))}
+      onClearAll={() => setUserFilters({ status: [], roles: [], location: [] })}
+      getOptions={(def) => filterOptions[def.key] || []}
+      showMoreFilters={false}
+      showSaveFilter={false}
+    />
   );
 
   return (
