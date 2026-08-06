@@ -23,6 +23,7 @@ import { InsurancePlanViewDrawer } from '../InsurancePlanViewDrawer';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { OrgPanel } from '../panels/OrgPanel';
 import { UsersTab } from './users/UsersTab';
+import { LocationsTab } from './locations/LocationsTab';
 import styles from './AccountPanel.module.css';
 
 const ALL_TABS = ['Org', 'Users', 'Teams', 'Access Control', 'Locations', 'Insurance Plans', 'Holiday Configuration', 'Merged Or Delayed', 'Allowed Phone', 'Allowed Emails'];
@@ -90,6 +91,7 @@ export function AccountPanel() {
 
   const isInsurancePlans = activeTab === 'Insurance Plans';
   const isUsers = activeTab === 'Users';
+  const isLocations = activeTab === 'Locations';
   const tabsForBar = ALL_TABS.map(t => ({ key: t, label: t }));
 
   return (
@@ -106,7 +108,7 @@ export function AccountPanel() {
           primaryActionLabel="New Insurance Plan"
           onPrimaryAction={() => setShowCreateInsurance(true)}
         />
-      ) : !isUsers ? (
+      ) : !isUsers && !isLocations ? (
         <SectionTitleBar
           tabs={tabsForBar}
           activeTab={activeTab}
@@ -119,6 +121,9 @@ export function AccountPanel() {
         // Invite User), the filter chip row, the WorklistShell table, and
         // its three drawers. See src/features/settings/account/users/.
         <UsersTab tabsForBar={tabsForBar} activeTab={activeTab} setActiveTab={setActiveTab} />
+      ) : isLocations ? (
+        // Locations tab — same shell + drawers pattern as Users.
+        <LocationsTab tabsForBar={tabsForBar} activeTab={activeTab} setActiveTab={setActiveTab} />
       ) : (
         <div className={styles.tableWrap}>
           {activeTab === 'Org' ? (
@@ -386,7 +391,20 @@ const GENDER_OPTIONS = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
 const DRAWER_TABS = ['User Details', 'Business Hours', 'Assigned Patients'];
 const EHR_SYSTEMS = ['Athena Health', 'Epic', 'Cerner', 'eClinicalWorks', 'Allscripts', 'NextGen', 'Greenway Health', 'DrChrono'];
 const LANGUAGE_OPTIONS = ['English', 'Spanish', 'Cantonese', 'Mandarin', 'Vietnamese', 'Korean', 'Tagalog', 'Arabic', 'French', 'Hindi', 'Portuguese', 'Russian'];
-const LOCATION_OPTIONS = ['SEB Office', 'Downtown Clinic', 'AstranaCare Centennial Hills', 'Valley Medical Center', 'Sunrise Health', 'Palm Desert Office', 'Riverside Clinic', 'Carson City Center'];
+// Fallback list — used only before practice_locations has been fetched or
+// when the migration hasn't run yet. Kept in sync with the seed mock names.
+const LOCATION_OPTIONS_FALLBACK = ['SEB Office', 'Downtown Clinic', 'AstranaCare Centennial Hills', 'Valley Medical Center', 'Sunrise Health', 'Palm Desert Office', 'Riverside Clinic', 'Carson City Center'];
+
+// Hook the user drawers use to pull practice-location names from the store.
+// Fires the fetch on first mount so opening a drawer before the Locations
+// tab still hydrates the dropdown.
+function useLocationNames() {
+  const locations = useAppStore(s => s.practiceLocations);
+  const fetched   = useAppStore(s => s.practiceLocationsFetched);
+  const fetchLocations = useAppStore(s => s.fetchPracticeLocations);
+  useEffect(() => { if (!fetched) fetchLocations(); }, [fetched, fetchLocations]);
+  return locations.length ? locations.map(l => l.name) : LOCATION_OPTIONS_FALLBACK;
+}
 
 /* Tag input helper — renders removable badges inside an input-like container */
 function TagInput({ value = [], onChange, placeholder }) {
@@ -523,6 +541,7 @@ export function InviteUserDrawer({ onClose, onInvited }) {
   const [showAdditional, setShowAdditional] = useState(false);
   const showToast = useAppStore(s => s.showToast);
   const logAudit = useAppStore(s => s.logAudit);
+  const locationNames = useLocationNames();
   // Bulk import state
   const [bulkFile, setBulkFile] = useState(null);
   const [bulkRows, setBulkRows] = useState([]);
@@ -1019,7 +1038,7 @@ export function InviteUserDrawer({ onClose, onInvited }) {
             </div>
 
             <MultiSelectField label="Licence State" required options={['Nevada', 'New York', 'California', 'Texas', 'Florida']} value={form.licence_states} onChange={v => set('licence_states', v)} />
-            <MultiSelectField label="Location" required options={LOCATION_OPTIONS} value={form.locations} onChange={v => set('locations', v)} />
+            <MultiSelectField label="Location" required options={locationNames} value={form.locations} onChange={v => set('locations', v)} />
             <MultiSelectField label="Languages" required options={LANGUAGE_OPTIONS} value={form.languages} onChange={v => set('languages', v)} />
 
             {/* Contact Info */}
@@ -1164,6 +1183,7 @@ function InsurancePlansTab({ plans = [], onCreateNew, onView, onEdit, onDeleteRe
 /* CreateInsurancePlanDrawer is defined in ./CreateInsurancePlanDrawer.jsx */
 
 export function EditUserDrawer({ user, onClose, onSave }) {
+  const locationNames = useLocationNames();
   const raw = user._raw || {};
   const logAudit = useAppStore(s => s.logAudit);
   const showToast = useAppStore(s => s.showToast);
@@ -1262,7 +1282,7 @@ export function EditUserDrawer({ user, onClose, onSave }) {
           </div>
 
           {/* Location */}
-          <MultiSelectField label="Location" required options={LOCATION_OPTIONS} value={form.locations} onChange={v => set('locations', v)} />
+          <MultiSelectField label="Location" required options={locationNames} value={form.locations} onChange={v => set('locations', v)} />
 
           {/* Map User to EHR */}
           <div className={styles.formSection}>
