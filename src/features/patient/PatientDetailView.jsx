@@ -7,6 +7,7 @@ import { ProfileTabBar } from './components/ProfileTabBar';
 import { CareManagementView } from './components/CareManagementView';
 import { CareProgramsTab } from './components/CareProgramsTab';
 import { OverviewTab } from './components/OverviewTab';
+import { CcmTimerWidget } from './components/CcmTimerWidget';
 import styles from './PatientDetailView.module.css';
 
 function TabPlaceholder({ tabName }) {
@@ -141,6 +142,7 @@ export function PatientDetailView() {
   return (
     <div className={styles.wrapper}>
       <PatientP360Banner patient={patient} />
+      <CcmTimerWidget />
       <div className={styles.body} ref={bodyRef}>
         {!leftCollapsed && (
           <>

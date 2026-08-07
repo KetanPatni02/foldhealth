@@ -3,9 +3,10 @@ import { Icon } from '../../../components/Icon/Icon';
 import { Button } from '../../../components/Button/Button';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { CardSkeleton } from '../../../components/CardSkeleton/CardSkeleton';
+import { TabStrip } from '../../../components/TabStrip/TabStrip';
 import { useAppStore } from '../../../store/useAppStore';
-import { CCM_UNLOGGED_SECONDS, secondsToTime } from '../data/ccmBillingMock';
-import { CcmUnloggedTable } from './CcmUnloggedTable';
+import { secondsToTime } from '../data/ccmBillingMock';
+import { CcmBillingLogTable } from './CcmBillingLogTable';
 import { CcmBillingReportDrawer } from './CcmBillingReportDrawer';
 import styles from './CcmBillingReview.module.css';
 
@@ -30,6 +31,48 @@ const YEAR_MONTH_LABEL = (ym) => {
   const [y, m] = ym.split('-').map(Number);
   const d = new Date(Date.UTC(y, (m || 1) - 1, 1));
   return d.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+};
+
+// Short-form month label for the ready-banner headline (e.g. "July").
+const MONTH_SHORT = (ym) => {
+  if (!ym) return '';
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(Date.UTC(y, (m || 1) - 1, 1))
+    .toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+};
+
+// Auto-claim submission is the 5th of the *next* month. Rendered as e.g.
+// "Aug 5" in the ready-banner.
+const AUTO_CLAIM_DATE = (ym) => {
+  if (!ym) return '';
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(Date.UTC(y, m || 0, 5))
+    .toLocaleString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+};
+
+// Full auto-claim date for the summary alert — e.g. "Aug 5, 2026".
+const AUTO_CLAIM_DATE_FULL = (ym) => {
+  if (!ym) return '';
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(Date.UTC(y, m || 0, 5))
+    .toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+};
+
+// Compact duration for the summary card — e.g. "28m 30s".
+const secondsToCompactDuration = (sec) => {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}m ${s}s`;
+};
+
+const BILLED_UNDER_LABEL = { high: 'Complex', moderate: 'Moderate' };
+
+// Whether a `YYYY-MM` string matches the current wall-clock month. Drives
+// the "Current" pill in the month pager.
+const isCurrentMonth = (ym) => {
+  if (!ym) return false;
+  const now = new Date();
+  return ym === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 };
 
 // Formats an ISO timestamp as "MM/DD/YYYY, HH:MM AM/PM" to match the Figma.
@@ -121,7 +164,6 @@ export function CcmBillingReview({ program, patientId: patientIdProp }) {
 
   const [activeTab, setActiveTab] = useState('Billable');
   const [complexity, setComplexity] = useState('high');
-  const [unloggedExpanded, setUnloggedExpanded] = useState(false);
   const [openReport, setOpenReport] = useState(null);
 
   useEffect(() => {
@@ -155,95 +197,112 @@ export function CcmBillingReview({ program, patientId: patientIdProp }) {
   if (loading && periodActivities.length === 0) {
     return (
       <div className={styles.wrap}>
-        <div className={styles.cardSkeleton}><CardSkeleton /></div>
-        <div className={styles.cardSkeleton}><CardSkeleton /></div>
+        <div className={styles.body}>
+          <div className={styles.cardSkeleton}><CardSkeleton /></div>
+          <div className={styles.cardSkeleton}><CardSkeleton /></div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className={styles.wrap}>
-      {/* Sub-tabs */}
-      <div className={styles.tabs}>
-        {TABS.map(tab => (
-          <button
-            key={tab}
-            type="button"
-            className={`${styles.tab} ${activeTab === tab ? styles.tabActive : ''}`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+      {/* Sub-tabs — shared TabStrip so the Billable/Billing History switch
+          reads identically to every other tab surface (sliding underline,
+          hairline divider, same typography). */}
+      <TabStrip
+        items={TABS.map(t => ({ key: t, label: t }))}
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        fullWidth={false}
+      />
 
+      {/* Info banner — surfaces the auto-claim date when the month is ready
+          to bill. Only shows on the Billable tab, on the current period,
+          when the threshold is met. */}
+      {activeTab === 'Billable' && currentPeriod && isReady && (
+        <button type="button" className={styles.readyBanner}>
+          <Icon name="solar:lightbulb-minimalistic-linear" size={16} color="var(--primary-300)" />
+          <span className={styles.readyBannerText}>
+            <strong>{MONTH_SHORT(currentPeriod.yearMonth)}</strong>
+            {' billable time is ready for review. Claims will be auto-generated on '}
+            <strong>{AUTO_CLAIM_DATE(currentPeriod.yearMonth)}</strong>.
+          </span>
+          <Icon name="solar:alt-arrow-right-linear" size={14} color="var(--neutral-300)" />
+        </button>
+      )}
+
+      <div className={styles.body}>
       {activeTab === 'Billable' ? (
         <>
-          {/* Month card */}
-          <div className={styles.monthCard}>
-            <div className={styles.monthHead}>
-              <span className={styles.monthTitle}>{YEAR_MONTH_LABEL(currentPeriod?.yearMonth) || 'This Month'}</span>
-              <ComplexityDropdown value={complexity} onChange={setComplexity} />
+          {/* Toolbar — month pager on the left, complexity pill on the right.
+              Prev/Next are placeholders in stage 2; the pager becomes
+              functional once server-side month scoping lands (stage 3+). */}
+          <div className={styles.toolbar}>
+            <div className={styles.monthPager}>
+              <button
+                type="button"
+                className={styles.pagerBtn}
+                aria-label="Previous month"
+                onClick={() => {/* stage 3+ */}}
+              >
+                <Icon name="solar:alt-arrow-left-linear" size={12} color="var(--neutral-300)" />
+              </button>
+              <span className={styles.pagerMonth}>{YEAR_MONTH_LABEL(currentPeriod?.yearMonth) || 'This Month'}</span>
+              {currentPeriod && isCurrentMonth(currentPeriod.yearMonth) && (
+                <span className={styles.pagerCurrent}>Current</span>
+              )}
+              <button
+                type="button"
+                className={styles.pagerBtn}
+                aria-label="Next month"
+                onClick={() => {/* stage 3+ */}}
+              >
+                <Icon name="solar:alt-arrow-right-linear" size={12} color="var(--neutral-300)" />
+              </button>
             </div>
-            <div className={styles.monthBody}>
-              <div className={styles.monthLeft}>
-                <span className={styles.monthTotal}>{secondsToTime(totalSeconds)} mins</span>
-                <span className={styles.monthTotalLabel}>Total Billable Time</span>
-                <span className={`${styles.readyRow} ${isReady ? styles.readyRowOk : styles.readyRowShort}`}>
-                  <Icon
-                    name={isReady ? 'solar:check-circle-linear' : 'solar:info-circle-linear'}
-                    size={14}
-                    color={isReady ? 'var(--status-success)' : 'var(--status-warning)'}
-                  />
-                  {isReady ? 'Ready to Bill' : 'Not Ready'}
-                  <span className={styles.readyDot}>•</span>
-                  <span className={styles.readyReq}>Required: {requiredMinutes} mins</span>
-                  <span className={styles.readyDelta}>
-                    ({overshoot >= 0 ? '+' : '−'}{secondsToTime(Math.abs(overshoot))})
+            <ComplexityDropdown value={complexity} onChange={setComplexity} />
+          </div>
+
+          {/* Summary card — billable time + billed-under row, with an inline
+              alert when the month is ready (Figma 583:38719). */}
+          <div className={styles.summaryCard}>
+            <div className={styles.summaryBody}>
+              <div className={styles.summaryLeft}>
+                <span className={styles.summaryLabel}>Billable Time:</span>
+                <span className={styles.summaryValue}>{secondsToCompactDuration(totalSeconds)}</span>
+                {isReady ? (
+                  <span className={styles.summaryStatusOk}>
+                    ✓ Requirement met (+{secondsToCompactDuration(overshoot)})
                   </span>
+                ) : (
+                  <span className={styles.summaryStatusShort}>
+                    Requirement not met (−{secondsToCompactDuration(Math.abs(overshoot))})
+                  </span>
+                )}
+              </div>
+              <div className={styles.summaryRight}>
+                <span className={styles.summaryLabel}>Billed Under:</span>
+                <span className={styles.summaryValue}>
+                  {BILLED_UNDER_LABEL[complexity] || 'Moderate'}
                 </span>
               </div>
-              <div className={styles.monthActions}>
-                <Button variant="tertiary" size="S" leadingIcon="solar:document-add-linear">
-                  Generate Bill
-                </Button>
-                <Button variant="primary" size="S" disabled={!isReady}>
-                  Send Claim
-                </Button>
-              </div>
             </div>
-          </div>
-
-          {/* Unlogged time — collapsible inline table (Figma 450:19899).
-              Click the header to expand into a per-session grid where the
-              user classifies + logs each chunk into billable activities. */}
-          <CcmUnloggedTable
-            patientId={patientId}
-            periodId={currentPeriod?.id}
-            expanded={unloggedExpanded}
-            onToggleExpanded={() => setUnloggedExpanded(v => !v)}
-            initialSeconds={CCM_UNLOGGED_SECONDS}
-          />
-
-          {/* Activities section */}
-          <div className={styles.activitiesHead}>
-            <span className={styles.activitiesTitle}>Billable Activities</span>
-            <div className={styles.activitiesHeadRight}>
-              <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add activity" />
-              <span className={styles.activitiesTotal}>{secondsToTime(totalSeconds)} mins</span>
-            </div>
-          </div>
-
-          <div className={styles.activityList}>
-            {periodActivities.length === 0 ? (
-              <div className={styles.empty}>
-                <Icon name="solar:clipboard-list-linear" size={36} color="var(--neutral-200)" />
-                <span>No billable activities yet. Start the timer to log time.</span>
+            {isReady && currentPeriod && (
+              <div className={styles.summaryAlert}>
+                <Icon name="solar:info-circle-linear" size={16} color="var(--neutral-300)" />
+                <span>
+                  Scheduled to be sent for billing on {AUTO_CLAIM_DATE_FULL(currentPeriod.yearMonth)}.
+                </span>
               </div>
-            ) : (
-              periodActivities.map(a => <ActivityRow key={a.id} activity={a} />)
             )}
           </div>
+
+          <CcmBillingLogTable
+            patientId={patientId}
+            periodId={currentPeriod?.id}
+            activities={periodActivities}
+          />
         </>
       ) : (
         <div className={styles.historyTableWrap}>
@@ -302,6 +361,7 @@ export function CcmBillingReview({ program, patientId: patientIdProp }) {
           )}
         </div>
       )}
+      </div>
 
       {openReport && (
         <CcmBillingReportDrawer report={openReport} onClose={() => setOpenReport(null)} />

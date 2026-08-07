@@ -18,7 +18,6 @@ import { RoleAssigneePicker } from '../../hcc/RoleAssigneePicker';
 import { ProgramBadges } from './ProgramBadges';
 import { OutreachTab } from './OutreachTab';
 import { CcmBillingReview } from './CcmBillingReview';
-import { CcmTimerWidget } from './CcmTimerWidget';
 import { SendLetterDrawer } from './SendLetterDrawer';
 import { PreVisitStep } from './PreVisitStep';
 import { AssessmentFormView } from './AssessmentFormView';
@@ -557,6 +556,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
 
         {/* Right content */}
         <div className={styles.content}>
+          {!isBillingStep && (
           <div className={styles.contentHeader}>
             {assessmentCfg ? (
               <div className={styles.assessmentHeader}>
@@ -671,6 +671,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
               )}
             </div>
           </div>
+          )}
 
           {isBillingStep ? (
             <CcmBillingReview program={program} />
@@ -885,11 +886,6 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
           )}
         </div>
       </div>
-
-      {/* CCM-only persistent time tracker — floats bottom-right; a Stop
-          from any step logs the elapsed time as a billable activity. */}
-      {isCcm && <CcmTimerWidget program={program} />}
-
       {sendTarget && (
         <SendLetterDrawer
           letterName={sendTarget.letterName}

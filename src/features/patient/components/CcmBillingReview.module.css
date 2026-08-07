@@ -1,37 +1,249 @@
 .wrap {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 16px 24px 24px;
   overflow-y: auto;
   flex: 1;
   min-height: 0;
 }
 
-.tabs {
+.body {
   display: flex;
-  gap: 4px;
-  border-bottom: 0.5px solid var(--neutral-150);
-  margin-bottom: 4px;
-}
-.tab {
-  background: none;
-  border: none;
-  padding: 8px 12px 10px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--neutral-300);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-}
-.tab:hover { color: var(--neutral-400); }
-.tabActive {
-  color: var(--primary-300);
-  border-bottom-color: var(--primary-300);
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
 }
 
-/* ── Month card ────────────────────────────────────────────────── */
+/* Ready banner — soft purple gradient with a lightbulb icon and a trailing
+   chevron. Sits under the tab strip and only renders when the current
+   month has crossed the required-minutes threshold. */
+.readyBanner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-bottom: 0.5px solid var(--primary-300);
+  background: linear-gradient(6deg, var(--primary-100) 1.5%, var(--primary-50) 80%, var(--neutral-0) 99%);
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--neutral-400);
+  text-align: left;
+}
+.readyBannerText {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.2;
+}
+.readyBannerText strong {
+  color: var(--neutral-500);
+  font-weight: 600;
+}
+
+/* ── Toolbar (month pager + complexity pill) ─────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.monthPager {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 2px 6px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 4px;
+  background: var(--neutral-0);
+}
+.pagerBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--neutral-300);
+  cursor: pointer;
+}
+.pagerMonth {
+  font-size: 14px;
+  color: var(--neutral-300);
+  line-height: 1.2;
+  padding: 0 4px;
+}
+.pagerCurrent {
+  display: inline-flex;
+  align-items: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 4px;
+  border: 0.5px solid color-mix(in srgb, var(--primary-300) 20%, transparent);
+  border-radius: 4px;
+  background: var(--primary-50);
+  color: var(--primary-300);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+/* ── Segmented filter row (All / Billable · time / Unlogged · time) ── */
+.filterRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.segments {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 4px;
+  background: var(--neutral-50);
+}
+.segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--neutral-200);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1.2;
+  transition: background .12s, color .12s;
+}
+.segment:hover { color: var(--neutral-400); }
+.segmentActive {
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  color: var(--neutral-400);
+  box-shadow: var(--shadow-card);
+}
+.segmentCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 4px;
+  background: var(--neutral-0);
+  color: var(--neutral-200);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.segmentCountWarning {
+  color: var(--status-warning);
+  background: var(--status-warning-light);
+  border-color: var(--status-warning);
+}
+.filterActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.filterDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+}
+.logTimeLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--primary-300);
+  font-size: 14px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+/* ── Summary card (Figma 583:38719) ───────────────────────────── */
+.summaryCard {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  overflow: hidden;
+}
+
+.summaryBody {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px;
+}
+
+.summaryLeft,
+.summaryRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.summaryRight {
+  flex-shrink: 0;
+}
+
+.summaryLabel {
+  font-size: 14px;
+  color: var(--neutral-200);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.summaryValue {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--neutral-400);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.summaryStatusOk {
+  font-size: 14px;
+  color: var(--status-success);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.summaryStatusShort {
+  font-size: 14px;
+  color: var(--status-warning);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.summaryAlert {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  background: var(--neutral-50);
+  border-top: 0.5px solid var(--neutral-150);
+  font-size: 12px;
+  color: var(--neutral-300);
+  line-height: 1.2;
+}
+
+.summaryAlert span {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Legacy month card tokens — kept for any downstream references. */
 .monthCard {
   border: 0.5px solid var(--neutral-150);
   border-radius: 12px;
