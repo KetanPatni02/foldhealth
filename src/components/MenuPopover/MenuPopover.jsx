@@ -66,8 +66,15 @@ export function MenuPopover({
   const estHeight = items.reduce(
     (h, it) => h + (it.divider ? 5 : it.section ? 25 : 34), 16,
   );
-  const top = Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - estHeight - 8));
-  const style = { top, width };
+  // Anchor in the bottom half of the viewport → open upward so the menu grows
+  // toward the top instead of getting clamped/clipped at the bottom edge.
+  const openAbove = (rect.top + rect.bottom) / 2 > window.innerHeight / 2;
+  const style = { width };
+  if (openAbove) {
+    style.bottom = Math.max(8, window.innerHeight - rect.top + 4);
+  } else {
+    style.top = Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - estHeight - 8));
+  }
   if (align === 'right') {
     style.right = Math.max(8, window.innerWidth - rect.right);
   } else {

@@ -1531,6 +1531,36 @@ export const useAppStore = create((set, get) => ({
     programAddedAppointments: { ...s.programAddedAppointments, [code]: [appt, ...(s.programAddedAppointments[code] || [])] },
   })),
 
+  // Care-program letters library (Supabase `letters`). Each row carries the
+  // PDF base64 for preview/download. One-shot fetch; the Letters step falls
+  // back to PROGRAM_LETTERS_MOCK when the table is empty/unreachable.
+  letters: [],
+  lettersDidFetch: false,
+  fetchLetters: async () => {
+    if (get().lettersDidFetch) return;
+    try {
+      const { data, error } = await supabase
+        .from('letters')
+        .select('*')
+        .order('sort_order', { ascending: true });
+      if (error) throw error;
+      const rows = (data || []).map(r => ({
+        id:            r.id,
+        fileName:      r.file_name,
+        fileType:      r.file_type,
+        sentVia:       r.sent_via || [],
+        lastSent:      r.last_sent,
+        sentBy:        r.sent_by,
+        contentBase64: r.content_base64 || null,
+        sourceFile:    r.source_file,
+      }));
+      set({ letters: rows, lettersDidFetch: true });
+    } catch (e) {
+      console.warn('fetchLetters — falling back to PROGRAM_LETTERS_MOCK:', e?.message || e);
+      set({ lettersDidFetch: true });
+    }
+  },
+
   // Table
   patients: [],
   patientsLoading: true,

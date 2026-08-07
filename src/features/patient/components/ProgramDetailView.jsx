@@ -1,7 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
+import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
+import { SearchBar } from '../../../components/SearchBar/SearchBar';
+import { FilterChip } from '../../../components/FilterChip/FilterChip';
 import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
 import { Button } from '../../../components/Button/Button';
 import { BannerExpandIcon } from '../../../components/Icon/BannerExpandIcon';
@@ -25,8 +28,13 @@ import { PostVisitChecklist } from './PostVisitChecklist';
 import { OpenCareGaps } from './OpenCareGaps';
 import { MedicationReconciliation } from './MedicationReconciliation';
 import { ProgramRelatedTasks } from './ProgramRelatedTasks';
+import { AddTaskDrawer } from '../../tasks/TasksView';
 import { ProgramRelatedFiles } from './ProgramRelatedFiles';
 import { ReferralReview } from './ReferralReview';
+import { AddLetterDrawer } from './AddLetterDrawer';
+import { LetterHistoryDrawer } from './LetterHistoryDrawer';
+import { LetterPreviewDrawer } from './LetterPreviewDrawer';
+import { RingEmptyState } from '../../../components/RingEmptyState/RingEmptyState';
 import styles from './ProgramDetailView.module.css';
 
 // Per-program step lists live in PROGRAM_STEPS (keyed by code). Unknown codes
@@ -36,6 +44,7 @@ const initialsOf = (name = '') =>
 
 const stepsFor = (code) => PROGRAM_STEPS[code] || PROGRAM_STEPS.SNP;
 const flatSteps = (list) => list.flatMap(s => (s.type === 'section' ? s.children : [s]));
+
 
 // Neutral fallback for steps whose content view hasn't been built yet.
 function StepPlaceholder({ name }) {
@@ -95,10 +104,10 @@ function StepItem({ step, isActive, onClick, isChild }) {
 function SectionHeader({ name, expanded, onToggle }) {
   return (
     <button className={styles.sectionHeader} onClick={onToggle}>
-      <Icon
-        name={expanded ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'}
+      <DownChevronIcon
         size={16}
         color="var(--neutral-300)"
+        style={expanded ? undefined : { transform: 'rotate(-90deg)' }}
       />
       <span className={styles.sectionName}>{name}</span>
     </button>
@@ -137,12 +146,26 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
   // (SectionHeader falls back to it), so an empty map works for every program.
   const [expandedSections, setExpandedSections] = useState({});
   const [activeLetterTab, setActiveLetterTab] = useState('All');
+  const [letterSearchOpen, setLetterSearchOpen] = useState(false);
+  const [letterSearchText, setLetterSearchText] = useState('');
+  const [letterFiltersOpen, setLetterFiltersOpen] = useState(false);
+  const EMPTY_LETTER_FILTERS = { fileType: [], sentVia: [], lastSent: [], sentBy: [] };
+  const [letterFilters, setLetterFilters] = useState(EMPTY_LETTER_FILTERS);
   const [selectedLetters, setSelectedLetters] = useState(() => new Set());
   // Send-letter drawer target: null | { letterName, clearOnSent }. Opened from
   // the bulk bar (all/selected) or a single row's send icon.
   const [sendTarget, setSendTarget] = useState(null);
   // Per-row "more" menu (Preview / Download): { id, rect } | null.
   const [rowMenu, setRowMenu] = useState(null);
+  // Letter whose PDF is open in the Preview Letter drawer.
+  const [previewTarget, setPreviewTarget] = useState(null);
+  // Add Task drawer (Program Related Tasks step).
+  const [addTaskOpen, setAddTaskOpen] = useState(false);
+  const addProgramTask = useAppStore(s => s.addProgramTask);
+  // Letters pane drawers.
+  const [addLetterOpen, setAddLetterOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [addedLetterIds, setAddedLetterIds] = useState(() => new Set());
 
   // The member whose care program we're in — drives the send-letter prefill.
   const currentPatient = useAppStore(s => s.patients.find(p => p.id === s.selectedPatientId));
@@ -151,6 +174,42 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
   // (and persists) changes without relying on the stale `program` prop.
   const patientId = useAppStore(s => s.selectedPatientId);
   const updateCareProgram = useAppStore(s => s.updateCareProgram);
+  // Letters library from Supabase (PDFs); falls back to the mock when empty.
+  const storeLetters = useAppStore(s => s.letters);
+  const fetchLetters = useAppStore(s => s.fetchLetters);
+  useEffect(() => { fetchLetters(); }, [fetchLetters]);
+  const letters = storeLetters.length ? storeLetters : PROGRAM_LETTERS_MOCK;
+  // The table shows a small default set; the rest are opt-in via Add Letter.
+  const DEFAULT_LETTER_NAMES = ['Intro or Welcome Letter - Patient', 'UTR Letter', 'Member Flyers'];
+  const visibleLetters = useMemo(
+    () => letters.filter(l => DEFAULT_LETTER_NAMES.includes(l.fileName) || addedLetterIds.has(l.id)),
+    [letters, addedLetterIds],
+  );
+  // Letters filter bar — one chip per column (except File Name); options are
+  // the distinct values present in the shown letters.
+  const letterFilterMeta = useMemo(() => ([
+    { key: 'fileType', label: 'File Type', options: [...new Set(visibleLetters.map(l => l.fileType).filter(Boolean))] },
+    { key: 'sentVia', label: 'Sent Via', options: [...new Set(visibleLetters.flatMap(l => l.sentVia || []))] },
+    { key: 'lastSent', label: 'Last Sent', options: [...new Set(visibleLetters.map(l => l.lastSent).filter(Boolean))] },
+    { key: 'sentBy', label: 'Sent By', options: [...new Set(visibleLetters.map(l => l.sentBy).filter(Boolean))] },
+  ]), [visibleLetters]);
+  const setLetterFilter = (key, vals) => setLetterFilters(f => ({ ...f, [key]: vals }));
+  const clearLetterFilters = () => setLetterFilters(EMPTY_LETTER_FILTERS);
+  const letterFiltersActive = Object.values(letterFilters).some(v => v.length > 0);
+  const matchesLetterFilters = (l) =>
+    (!letterFilters.fileType.length || letterFilters.fileType.includes(l.fileType))
+    && (!letterFilters.sentVia.length || (l.sentVia || []).some(v => letterFilters.sentVia.includes(v)))
+    && (!letterFilters.lastSent.length || letterFilters.lastSent.includes(l.lastSent))
+    && (!letterFilters.sentBy.length || letterFilters.sentBy.includes(l.sentBy));
+  // All / Sent / Not Sent — a letter counts as "sent" once it has a channel.
+  const matchesLetterTab = (l) => {
+    const sent = (l.sentVia || []).length > 0;
+    return activeLetterTab === 'Sent' ? sent : activeLetterTab === 'Not Sent' ? !sent : true;
+  };
+  const shownLetters = visibleLetters
+    .filter(matchesLetterTab)
+    .filter(l => !letterSearchText.trim() || l.fileName.toLowerCase().includes(letterSearchText.trim().toLowerCase()))
+    .filter(matchesLetterFilters);
   // Select the stable array reference only; derive everything else locally so
   // no selector returns a fresh array/object (that trips useSyncExternalStore's
   // "getSnapshot should be cached" guard).
@@ -192,28 +251,36 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
     updateCareProgram(patientId, program.id, patch);
   };
 
-  const allLettersSelected = selectedLetters.size === PROGRAM_LETTERS_MOCK.length && PROGRAM_LETTERS_MOCK.length > 0;
+  const allLettersSelected = selectedLetters.size === visibleLetters.length && visibleLetters.length > 0;
   const someLettersSelected = selectedLetters.size > 0 && !allLettersSelected;
   const toggleAllLetters = () =>
-    setSelectedLetters(prev => (prev.size === PROGRAM_LETTERS_MOCK.length ? new Set() : new Set(PROGRAM_LETTERS_MOCK.map(l => l.id))));
+    setSelectedLetters(prev => (prev.size === visibleLetters.length ? new Set() : new Set(visibleLetters.map(l => l.id))));
   const toggleLetter = (id) =>
     setSelectedLetters(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   // Download the given letters as files, then confirm with a success toast.
   // Defaults to the current bulk selection.
+  // Decode a stored base64 PDF into a Blob (or null for mock letters that
+  // have no attached file).
+  const letterPdfBlob = (letter) => {
+    if (!letter?.contentBase64) return null;
+    const bin = atob(letter.contentBase64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: 'application/pdf' });
+  };
+
   const downloadLetters = (chosen) => {
     if (!chosen || chosen.length === 0) return;
     chosen.forEach(letter => {
-      const body =
-        `${letter.fileName}\n\n` +
-        `File Type: ${letter.fileType}\n` +
-        `Sent Via: ${letter.sentVia.join(', ')}\n` +
-        `Last Sent: ${letter.lastSent}\n` +
-        `Sent By: ${letter.sentBy}\n`;
-      const url = URL.createObjectURL(new Blob([body], { type: 'text/plain' }));
+      const pdf = letterPdfBlob(letter);
+      const blob = pdf || new Blob([
+        `${letter.fileName}\n\nFile Type: ${letter.fileType}\nSent Via: ${(letter.sentVia || []).join(', ')}\nLast Sent: ${letter.lastSent}\nSent By: ${letter.sentBy}\n`,
+      ], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${letter.fileName}.txt`;
+      a.download = pdf ? (letter.sourceFile || `${letter.fileName}.pdf`) : `${letter.fileName}.txt`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -223,10 +290,14 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
       chosen.length === 1 ? 'File downloaded successfully' : `${chosen.length} files downloaded successfully`,
     );
   };
-  const downloadSelectedLetters = () => downloadLetters(PROGRAM_LETTERS_MOCK.filter(l => selectedLetters.has(l.id)));
+
+  const previewLetter = (letter) => setPreviewTarget(letter);
+  const downloadSelectedLetters = () => downloadLetters(letters.filter(l => selectedLetters.has(l.id)));
 
   const activeStepObj = ALL_STEPS.find(s => s.id === activeStep);
   const stepName = activeStepObj?.name || '';
+  // Mandatory steps can't be skipped — the Skip action is hidden for them.
+  const isMandatoryStep = !!activeStepObj?.mandatory;
   const isOutreachStep = stepName === 'Outreach';
   const isBillingStep = activeStepObj?.kind === 'billing';
   const isPreVisitStep = /^pre-?visit$/i.test(stepName);           // "Pre-visit" / "Pre-Visit"
@@ -247,6 +318,38 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
 
   const isUnassigned = !assignee || assignee === 'Unassigned';
 
+  // Program assignee picker (Care Gaps chip). Reused in the header and in the
+  // Outreach step's content actions so both edit the same program assignee.
+  const assigneePicker = (
+    <RoleAssigneePicker
+      role="care_program"
+      memberId={program.id}
+      dosDate="care-program"
+      titleLabel=""
+      currentName={isUnassigned ? null : assignee}
+      onAssign={user => updateCareProgram(patientId, program.id, { assignee: user.name })}
+      trigger={({ ref, onClick }) => (
+        isUnassigned ? (
+          <button ref={ref} type="button" className={styles.assigneeChipEmpty} onClick={onClick} title="Assign" aria-label="Assign">
+            <Icon name="solar:user-plus-linear" size={14} color="var(--neutral-300)" />
+            <DownChevronIcon size={11} color="var(--neutral-300)" />
+          </button>
+        ) : (
+          <button ref={ref} type="button" className={styles.assigneeChip} onClick={onClick} title={`Assigned to ${assignee}`} aria-label={assignee}>
+            <span className={styles.assigneeAvatar}>{initialsOf(assignee)}</span>
+            <DownChevronIcon size={11} color="var(--secondary-300)" />
+          </button>
+        )
+      )}
+    />
+  );
+
+  // Next step in the flattened step list — drives the Outreach header's Next.
+  const activeStepIdx = ALL_STEPS.findIndex(s => s.id === activeStep);
+  const nextStep = activeStepIdx >= 0 && activeStepIdx < ALL_STEPS.length - 1
+    ? ALL_STEPS[activeStepIdx + 1] : null;
+  const goNextStep = () => { if (nextStep) setActiveStep(nextStep.id); };
+
   const toggleSection = (id) => {
     setExpandedSections(prev => ({ ...prev, [id]: !prev[id] }));
   };
@@ -264,29 +367,9 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
             onClick={e => setStatusMenu({ rect: e.currentTarget.getBoundingClientRect() })}
           >
             <span className={styles.statusBadgeText} style={{ color: statusColorFor(status) }}>{status}</span>
-            <Icon name="solar:alt-arrow-down-linear" size={16} color={statusColorFor(status)} />
+            <DownChevronIcon size={16} color={statusColorFor(status)} />
           </button>
-          <RoleAssigneePicker
-            role="care_program"
-            memberId={program.id}
-            dosDate="care-program"
-            titleLabel=""
-            currentName={isUnassigned ? null : assignee}
-            onAssign={user => updateCareProgram(patientId, program.id, { assignee: user.name })}
-            trigger={({ ref, onClick }) => (
-              isUnassigned ? (
-                <button ref={ref} type="button" className={styles.assigneeChipEmpty} onClick={onClick} title="Assign" aria-label="Assign">
-                  <Icon name="solar:user-plus-linear" size={14} color="var(--neutral-300)" />
-                  <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--neutral-300)" />
-                </button>
-              ) : (
-                <button ref={ref} type="button" className={styles.assigneeChip} onClick={onClick} title={`Assigned to ${assignee}`} aria-label={assignee}>
-                  <span className={styles.assigneeAvatar}>{initialsOf(assignee)}</span>
-                  <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--secondary-300)" />
-                </button>
-              )
-            )}
-          />
+          {assigneePicker}
           {/* Trigger navigation is SNP-only — other programs have a single track. */}
           {isSnp && (
             <>
@@ -370,7 +453,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
           <span className={styles.ccmInfoDivider} />
           <span className={styles.ccmInfoItem}>
             <span className={styles.ccmInfoLabel}>Chronic Condition:</span> 3 Active
-            <Icon name="solar:alt-arrow-down-linear" size={14} color="var(--neutral-300)" />
+            <DownChevronIcon size={14} color="var(--neutral-300)" />
           </span>
           <span className={styles.ccmInfoDivider} />
           <span className={styles.ccmInfoItem}>
@@ -379,7 +462,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
           <span className={styles.ccmInfoDivider} />
           <span className={styles.ccmInfoItem}>
             <span className={styles.ccmInfoLabel}>Next Cadence:</span> 09/13/2024
-            <Icon name="solar:alt-arrow-down-linear" size={14} color="var(--neutral-300)" />
+            <DownChevronIcon size={14} color="var(--neutral-300)" />
           </span>
         </div>
       )}
@@ -477,7 +560,6 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
           <div className={styles.contentHeader}>
             {assessmentCfg ? (
               <div className={styles.assessmentHeader}>
-                <Icon name="solar:clipboard-text-linear" size={18} color="var(--primary-300)" />
                 <div className={styles.assessmentHeaderText}>
                   <span className={styles.assessmentTitle}>{assessmentCfg.title}</span>
                   <span className={styles.assessmentMeta}>
@@ -487,7 +569,6 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
               </div>
             ) : isMedReconStep ? (
               <div className={styles.assessmentHeader}>
-                <Icon name="solar:clipboard-text-linear" size={18} color="var(--primary-300)" />
                 <div className={styles.assessmentHeaderText}>
                   <span className={styles.assessmentTitle}>Medication Reconciliation</span>
                   <span className={styles.assessmentMeta}>Last Reviewed by Robert Fox on 11/10/24</span>
@@ -495,7 +576,6 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
               </div>
             ) : isReferralStep ? (
               <div className={styles.assessmentHeader}>
-                <Icon name="solar:clipboard-text-linear" size={18} color="var(--primary-300)" />
                 <div className={styles.assessmentHeaderText}>
                   <span className={styles.assessmentTitle}>Referral Review</span>
                   <span className={styles.assessmentMeta}>Reviewed by Jonathan Bush (NP) on 05/01/25</span>
@@ -503,7 +583,6 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
               </div>
             ) : isCarePlanStep ? (
               <div className={styles.assessmentHeader}>
-                <Icon name="solar:clipboard-text-linear" size={18} color="var(--primary-300)" />
                 <div className={styles.assessmentHeaderText}>
                   <span className={styles.assessmentTitle}>Care Plan</span>
                   <span className={styles.assessmentMeta}>Created by Ivy Ralph on 09/11/24</span>
@@ -542,11 +621,9 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
                 </>
               ) : isMedReconStep ? (
                 <>
-                  <Button variant="ghost" size="S" trailingIcon="solar:alt-arrow-down-linear" className={styles.actionBtn}>
-                    Assign
-                  </Button>
-                  <Button variant="ghost" size="S" className={styles.actionBtn}>Skip</Button>
-                  <Button variant="ghost" size="S" trailingIcon="solar:alt-arrow-down-linear" className={styles.reviewedBtn}>
+                  {assigneePicker}
+                  {!isMandatoryStep && <Button variant="ghost" size="S" className={styles.actionBtn}>Skip</Button>}
+                  <Button variant="ghost" size="S" trailingIconElement={<DownChevronIcon size={14} color="var(--primary-300)" />} className={styles.reviewedBtn}>
                     Sign
                   </Button>
                   <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
@@ -555,11 +632,24 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
                 <>
                   <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" />
                   <span className={styles.headerDivider} />
-                  <Button variant="ghost" size="S" leadingIcon="solar:add-circle-linear" className={styles.reviewedBtn}>
+                  <Button variant="ghost" size="S" leadingIcon="solar:add-circle-linear" className={styles.reviewedBtn} onClick={() => setAddTaskOpen(true)}>
                     Add Task
                   </Button>
                   <span className={styles.headerDivider} />
                   <ActionButton icon="solar:filter-linear" size="S" tooltip="Filter" />
+                </>
+              ) : isOutreachStep ? (
+                <>
+                  {assigneePicker}
+                  <span className={styles.headerDivider} />
+                  <Button
+                    variant="tertiary"
+                    size="L"
+                    onClick={goNextStep}
+                    disabled={!nextStep}
+                  >
+                    Next
+                  </Button>
                 </>
               ) : (
                 <>
@@ -567,15 +657,12 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
                       so the caller's .actionBtn / .reviewedBtn class fully defines the
                       color state (neutral border for Assign/Skip, green border for
                       Reviewed) without Button's variant tokens overriding. */}
-                  <Button variant="ghost" size="S" trailingIcon="solar:alt-arrow-down-linear" className={styles.actionBtn}>
-                    Assign
-                  </Button>
-                  <Button variant="ghost" size="S" className={styles.actionBtn}>Skip</Button>
+                  {assigneePicker}
+                  {!isMandatoryStep && <Button variant="ghost" size="S" className={styles.actionBtn}>Skip</Button>}
                   <Button
-                    variant="ghost"
-                    size="S"
-                    leadingIconElement={<Icon name="solar:check-circle-linear" size={14} color="var(--primary-300)" />}
-                    className={styles.reviewedBtn}
+                    variant="tertiary"
+                    size="L"
+                    leadingIcon="solar:check-circle-linear"
                   >
                     Reviewed
                   </Button>
@@ -607,7 +694,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
           ) : isMedReconStep ? (
             <MedicationReconciliation />
           ) : isProgramTasksStep ? (
-            <ProgramRelatedTasks programCode={program.code} />
+            <ProgramRelatedTasks programCode={program.code} onAddTask={() => setAddTaskOpen(true)} />
           ) : isProgramFilesStep ? (
             <ProgramRelatedFiles />
           ) : isReferralStep ? (
@@ -619,22 +706,63 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
           ) : isLettersStep ? (
           <div className={styles.contentInner}>
             <div className={styles.contentSubTabs}>
-              <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" />
-              <span className={styles.tabDivider} />
-              {LETTER_SUB_TABS.map(tab => (
-                <button
-                  key={tab}
-                  className={`${styles.contentTab} ${activeLetterTab === tab ? styles.contentTabActive : ''}`}
-                  onClick={() => setActiveLetterTab(tab)}
-                >
-                  {tab}
-                </button>
-              ))}
-              <div style={{ flex: 1 }} />
-              <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add" />
-              <ActionButton icon="solar:filter-linear" size="S" tooltip="Filter" />
-              <ActionButton icon="solar:history-linear" size="S" tooltip="History" />
+              {letterSearchOpen ? (
+                <div className={styles.letterSearchWrap}>
+                  <SearchBar
+                    fullWidth
+                    placeholder="Search letters"
+                    value={letterSearchText}
+                    onChange={e => setLetterSearchText(e.target.value)}
+                    onClose={() => { setLetterSearchOpen(false); setLetterSearchText(''); }}
+                  />
+                </div>
+              ) : (
+                <>
+                  <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" onClick={() => setLetterSearchOpen(true)} />
+                  <span className={styles.tabDivider} />
+                  {LETTER_SUB_TABS.map(tab => (
+                    <button
+                      key={tab}
+                      className={`${styles.contentTab} ${activeLetterTab === tab ? styles.contentTabActive : ''}`}
+                      onClick={() => setActiveLetterTab(tab)}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                  <div style={{ flex: 1 }} />
+                </>
+              )}
+              <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add" onClick={() => setAddLetterOpen(true)} />
+              <ActionButton
+                icon="solar:filter-linear"
+                size="S"
+                tooltip="Filter"
+                active={letterFiltersOpen}
+                iconColor={letterFiltersOpen ? 'var(--primary-300)' : undefined}
+                onClick={() => setLetterFiltersOpen(v => !v)}
+              />
+              <ActionButton icon="solar:history-linear" size="S" tooltip="History" onClick={() => setHistoryOpen(true)} />
             </div>
+
+            {letterFiltersOpen && (
+              <div className={styles.letterFilterBar}>
+                {letterFilterMeta.map(f => (
+                  <FilterChip
+                    key={f.key}
+                    label={f.label}
+                    options={f.options}
+                    selected={letterFilters[f.key]}
+                    onChange={vals => setLetterFilter(f.key, vals)}
+                  />
+                ))}
+                {letterFiltersActive && (
+                  <button className={styles.letterClearAll} onClick={clearLetterFilters}>
+                    <Icon name="solar:backspace-linear" size={16} color="var(--primary-300)" />
+                    Clear All
+                  </button>
+                )}
+              </div>
+            )}
 
             <div className={styles.tableWrap}>
               <table className={styles.table}>
@@ -656,7 +784,14 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
                   </tr>
                 </thead>
                 <tbody>
-                  {PROGRAM_LETTERS_MOCK.map(letter => (
+                  {shownLetters.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className={styles.lettersEmptyCell}>
+                        <RingEmptyState icon="solar:letter-linear" label="No Letters" />
+                      </td>
+                    </tr>
+                  )}
+                  {shownLetters.map(letter => (
                     <tr
                       key={letter.id}
                       className={selectedLetters.has(letter.id) ? styles.rowSelected : undefined}
@@ -732,7 +867,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
                 leadingIcon="solar:plain-linear"
                 onClick={() => setSendTarget({
                   letterName: selectedLetters.size === 1
-                    ? PROGRAM_LETTERS_MOCK.find(l => selectedLetters.has(l.id))?.fileName || 'Letter'
+                    ? letters.find(l => selectedLetters.has(l.id))?.fileName || 'Letter'
                     : 'Letters',
                   clearOnSent: true,
                 })}
@@ -775,12 +910,49 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
             { key: 'download', icon: 'solar:download-minimalistic-linear', label: 'Download' },
           ]}
           onSelect={(key) => {
-            const letter = PROGRAM_LETTERS_MOCK.find(l => l.id === rowMenu.id);
+            const letter = letters.find(l => l.id === rowMenu.id);
             if (!letter) return;
             if (key === 'download') downloadLetters([letter]);
-            else if (key === 'preview') toast.success(`Previewing ${letter.fileName}`);
+            else if (key === 'preview') previewLetter(letter);
           }}
           onClose={() => setRowMenu(null)}
+        />
+      )}
+
+      {addLetterOpen && (
+        <AddLetterDrawer
+          letters={letters}
+          addedIds={addedLetterIds}
+          onAdd={(letter) => {
+            setAddedLetterIds(prev => new Set(prev).add(letter.id));
+            toast.success(`${letter.fileName} added`);
+          }}
+          onPreview={previewLetter}
+          onDownload={(letter) => downloadLetters([letter])}
+          onClose={() => setAddLetterOpen(false)}
+        />
+      )}
+
+      {historyOpen && (
+        <LetterHistoryDrawer
+          letters={letters}
+          onOpen={previewLetter}
+          onClose={() => setHistoryOpen(false)}
+        />
+      )}
+
+      {previewTarget && (
+        <LetterPreviewDrawer letter={previewTarget} onClose={() => setPreviewTarget(null)} />
+      )}
+
+      {addTaskOpen && (
+        <AddTaskDrawer
+          onClose={() => setAddTaskOpen(false)}
+          initialMember={currentPatient?.name}
+          onTaskCreated={(t) => {
+            setAddTaskOpen(false);
+            if (program.code && t) addProgramTask(program.code, t);
+          }}
         />
       )}
 
