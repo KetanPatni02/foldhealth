@@ -2,27 +2,55 @@
 .body { display: flex; flex: 1; min-height: 0; overflow: hidden; }
 .rightPanel { display: flex; flex-direction: column; flex: 1; min-width: 0; overflow: hidden; }
 
-/* Drag handle between panels — 1px visible divider with a ±4px invisible
-   hit area (::before) so the neighboring panes sit flush against the line.
-   Same recipe as DiagPanel and the shared Drawer split-panes story. */
+/* Drag handle between panels — 0.5px neutral divider; 1px primary on hover.
+   ::before widens the invisible hit area so neighboring panes stay flush. */
 .dragHandle {
-  flex: 0 0 1px; align-self: stretch; cursor: col-resize;
-  background: var(--neutral-150); position: relative; z-index: 2;
-  transition: background 0.12s ease;
+  flex: 0 0 1px;
+  align-self: stretch;
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+  z-index: 2;
 }
 .dragHandle::before {
-  content: ''; position: absolute; top: 0; bottom: 0; left: -4px; right: -4px;
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  right: -4px;
 }
-.dragHandle:hover { background: var(--primary-300); }
-.dragHandle:hover .dragHandleLine { opacity: 1; background: var(--primary-300); }
-.dragHandle:active { background: var(--primary-400); }
-.dragHandle:active .dragHandleLine { opacity: 1; background: var(--primary-400); }
+.dragHandle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0.5px;
+  background: var(--neutral-150);
+  transition: width 0.12s ease, background 0.12s ease;
+  pointer-events: none;
+}
+.dragHandle:hover::after {
+  width: 1px;
+  background: var(--primary-300);
+}
+.dragHandle:hover .dragHandleLine {
+  opacity: 1;
+  background: var(--neutral-0);
+}
 .dragHandleLine {
-  position: absolute; top: 50%; left: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
   transform: translate(-50%, -50%);
-  width: 4px; height: 32px; border-radius: 2px;
+  width: 4px;
+  height: 32px;
+  border-radius: 2px;
   background: var(--neutral-300);
-  opacity: 0; transition: opacity 0.12s ease, background 0.12s ease;
+  opacity: 0;
+  transition: opacity 0.12s ease, background 0.12s ease;
   pointer-events: none;
 }
 .tabContent { flex: 1; display: flex; flex-direction: column; overflow: hidden; }

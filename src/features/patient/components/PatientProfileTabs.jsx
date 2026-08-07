@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
+import { OverflowTabStrip } from '../../../components/TabStrip/OverflowTabStrip';
 import { StickyNote } from '../../../components/StickyNote/StickyNote';
 import { StickyNoteAuditDrawer } from '../../../components/StickyNoteAuditDrawer/StickyNoteAuditDrawer';
 import { useAppStore } from '../../../store/useAppStore';
@@ -16,8 +17,10 @@ import { TasksTab } from './TasksTab';
 import { CARE_GAP_SECTIONS_EXTENDED, CARE_GAP_TABS } from '../data/careGapsMock';
 import styles from './PatientProfileTabs.module.css';
 
+const TAB_ITEMS = CARE_GAP_TABS.map(tab => ({ key: tab, label: tab }));
+
 export function PatientProfileTabs({ patientId }) {
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(CARE_GAP_TABS[0]);
   const [selectedGaps, setSelectedGaps] = useState([]);
   const [gapsCollapsed, setGapsCollapsed] = useState(false);
   const [diagnosisCollapsed, setDiagnosisCollapsed] = useState(false);
@@ -52,6 +55,8 @@ export function PatientProfileTabs({ patientId }) {
       : section.items,
   }));
 
+  const activeIdx = useMemo(() => CARE_GAP_TABS.indexOf(activeTab), [activeTab]);
+
   return (
     <div className={styles.panel}>
       {/* Sticky tab bar OR search input */}
@@ -71,29 +76,27 @@ export function PatientProfileTabs({ patientId }) {
         </div>
       ) : (
         <div className={styles.tabRow}>
-          <div className={styles.tabsScroll}>
-            {CARE_GAP_TABS.map((tab, i) => (
-              <button
-                key={tab}
-                className={`${styles.tab} ${activeTab === i ? styles.tabActive : ''}`}
-                onClick={(e) => {
-                  setActiveTab(i);
-                  e.currentTarget.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
-                }}
-              >
-                {tab}
-              </button>
-            ))}
+          <div className={styles.tabsArea}>
+            <OverflowTabStrip
+              items={TAB_ITEMS}
+              activeKey={activeTab}
+              onChange={setActiveTab}
+            />
           </div>
-          <button className={styles.searchIcon} onClick={() => setSearching(true)} aria-label="Search">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--neutral-300)" strokeWidth="1.5"><circle cx="11.5" cy="11.5" r="9.5" /><path strokeLinecap="round" d="M18.5 18.5L22 22" /></svg>
-          </button>
+          <ActionButton
+            icon="solar:magnifer-linear"
+            size="S"
+            tooltip="Search gaps"
+            className={styles.searchBtn}
+            onClick={() => setSearching(true)}
+          />
         </div>
       )}
 
       {/* Scrollable content */}
-      <div className={styles.scrollContent}>
+      <div className={`${styles.scrollContent} ${styles.flushContent}`}>
         {/* Sticky Note */}
+        <div className={styles.stickyNoteWrap}>
         <StickyNote
           notes={stickyNotes}
           onSave={(id, text) => updateStickyNote(id, { text, author_name: 'You' }, patientId)}
@@ -101,6 +104,7 @@ export function PatientProfileTabs({ patientId }) {
           onDelete={(id) => deleteStickyNote(id, patientId)}
           onAuditLog={() => setShowAuditDrawer(true)}
         />
+        </div>
 
         {/* Audit Log Drawer */}
         {showAuditDrawer && (
@@ -112,7 +116,7 @@ export function PatientProfileTabs({ patientId }) {
           />
         )}
 
-        {activeTab === 0 && (
+        {activeIdx === 0 && (
           <div className={styles.gapsWrapper}>
             {/* Care Gaps header */}
             <div className={styles.sectionHeader}>
@@ -203,19 +207,19 @@ export function PatientProfileTabs({ patientId }) {
           </div>
         )}
 
-        {activeTab === 1 && <PAMIHxTab />}
+        {activeIdx === 1 && <PAMIHxTab />}
 
-        {activeTab === 2 && <VitalsLabsTab />}
+        {activeIdx === 2 && <VitalsLabsTab />}
 
-        {activeTab === 3 && <CommsTab />}
+        {activeIdx === 3 && <CommsTab />}
 
-        {activeTab === 4 && <OutreachTab />}
+        {activeIdx === 4 && <OutreachTab />}
 
-        {activeTab === 5 && <SummaryTab />}
+        {activeIdx === 5 && <SummaryTab />}
 
-        {activeTab === 6 && <TasksTab />}
+        {activeIdx === 6 && <TasksTab />}
 
-        {activeTab > 6 && (
+        {activeIdx > 6 && (
           <div className={styles.placeholder}>
             <Icon name="solar:document-text-linear" size={32} color="var(--neutral-150)" />
             <span>Coming soon</span>
