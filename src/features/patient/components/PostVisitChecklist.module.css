@@ -38,18 +38,8 @@
   padding-left: 24px;
 }
 
-.dateField {
-  position: relative;
-  width: 320px;
+/* Widen the shared date-time picker to the checklist field width. */
+.datePicker {
+  width: 320px !important;
   max-width: 100%;
-}
-.dateField input {
-  padding-right: 30px;
-}
-.dateIcon {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
 }

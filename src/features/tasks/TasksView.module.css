@@ -36,6 +36,40 @@
   background: var(--neutral-0);
 }
 
+/* Member column hidden (e.g. inside a member's care program): drop its 160px. */
+.tableNoMember { --tasks-table-min-width: 1092px; }
+
+/* ── Embedded Open/Completed sections (care program) ── */
+.progSection { display: flex; flex-direction: column; margin-bottom: 16px; }
+.progSectionHead { display: flex; align-items: center; gap: 8px; padding: 8px 12px 6px; }
+.progSectionTitle { font-size: 14px; font-weight: 500; color: var(--neutral-400); }
+.progEmpty { display: flex; flex-direction: column; }
+/* Grows with its rows; scrolls horizontally when the columns overflow. The
+   header sticks to the top and the pinned columns stick to the sides. */
+.progScroll {
+  --tasks-table-min-width: 1192px;
+  overflow-x: auto;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.progScroll.tableNoMember { --tasks-table-min-width: 1032px; }
+/* Narrower Labels column here (-60px) so the row fits without horizontal scroll. */
+.progScroll .colLabels,
+.progScroll .cellLabels { width: 160px; }
+.progHeader { position: sticky; top: 0; z-index: 3; background: var(--neutral-0); }
+
+/* Pin Task Title (+ its check) to the left and the action column to the right
+   while the middle columns scroll horizontally. */
+/* Sticky cells paint over the header/row bottom border, so carry a matching
+   one to keep the divider continuous under the pinned columns. */
+.pinLeft0 { position: sticky; left: 0; z-index: 2; background: var(--neutral-0); border-bottom: 0.5px solid var(--neutral-150); }
+.pinLeftCheck { position: sticky; left: 48px; z-index: 2; background: var(--neutral-0); min-width: 300px; border-bottom: 0.5px solid var(--neutral-150); }
+.pinRight0 { position: sticky; right: 0; z-index: 2; background: var(--neutral-0); border-bottom: 0.5px solid var(--neutral-150); }
+.progHeader .pinLeft0,
+.progHeader .pinLeftCheck,
+.progHeader .pinRight0 { z-index: 4; }
+
 /* ── Table Header ── */
 .tableHeader {
   display: flex;

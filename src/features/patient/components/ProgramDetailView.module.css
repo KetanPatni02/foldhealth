@@ -414,6 +414,33 @@
   padding: 0;
   flex-shrink: 0;
 }
+/* Expanded letters search fills the row, keeping the trailing action icons. */
+.letterSearchWrap { flex: 1; min-width: 0; display: flex; align-items: center; }
+
+/* Letters filter bar — chips shown when the filter icon is toggled on. */
+.letterFilterBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 0 0;
+  flex-shrink: 0;
+}
+.letterClearAll {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 8px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  color: var(--primary-300);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.letterClearAll:hover { text-decoration: underline; }
+.lettersEmptyCell { padding: 24px 0; border-bottom: none; }
 .tabDivider {
   width: 0.5px;
   height: 16px;
@@ -461,7 +488,7 @@
   z-index: 2;
 }
 .table tbody tr { border-bottom: 0.5px solid var(--neutral-100); }
-.table tbody tr:hover { background: rgba(22,24,29,0.02); }
+.table tbody tr:hover { background: var(--primary-25); }
 .table tbody td {
   padding: 10px 12px;
   font-size: 14px;

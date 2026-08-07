@@ -930,6 +930,8 @@
   align-items: center;
   gap: 8px;
 }
+/* Search field width when the activity bar switches to search mode. */
+.activitySearchBar { width: 350px !important; }
 
 .activityFilterTabs {
   display: flex;

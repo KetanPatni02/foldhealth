@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Icon } from '../../../components/Icon/Icon';
-import { Input } from '../../../components/Input/Input';
 import { RadioButton } from '../../../components/RadioButton/RadioButton';
+import { OutreachDateTimePicker } from './OutreachTab';
 import styles from './PostVisitChecklist.module.css';
 
 // Fixed checklist for the Post Visit Checklist step (Figma 482:339172).
@@ -35,10 +34,11 @@ export function PostVisitChecklist() {
           </div>
           {q.type === 'date' ? (
             <div className={styles.answer}>
-              <div className={styles.dateField}>
-                <Input value={answers[q.id] || ''} onChange={e => setDate(q.id, e.target.value)} aria-label={q.text} />
-                <Icon name="solar:calendar-minimalistic-linear" size={16} color="var(--neutral-300)" className={styles.dateIcon} />
-              </div>
+              <OutreachDateTimePicker
+                className={styles.datePicker}
+                value={answers[q.id] || ''}
+                onChange={v => setDate(q.id, v)}
+              />
             </div>
           ) : (
             <div className={styles.answer}>

@@ -135,7 +135,7 @@ export function AssessmentFormView({ formName, interpretation = 'High Risk' }) {
         <span className={styles.stripItem}>
           Questions Answered :
           <span className={styles.progressTrack}><span className={styles.progressFill} style={{ width: `${pct}%` }} /></span>
-          <span className={styles.stripValue}>{String(answered).padStart(2, '0')}/{total}</span>
+          <span className={styles.stripValue}>{answered}/{total}</span>
         </span>
         <span className={styles.stripDot} />
         <span className={styles.stripItem}>Assessment Score: <span className={styles.stripValue}>{score}</span></span>

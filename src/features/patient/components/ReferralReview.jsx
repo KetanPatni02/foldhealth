@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
+import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
 import { Button } from '../../../components/Button/Button';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
@@ -42,7 +43,7 @@ export function ReferralReview() {
           </button>
         ))}
         <div className={styles.spacer} />
-        <Button variant="tertiary" size="S" leadingIcon="solar:add-circle-linear" trailingIcon="solar:alt-arrow-down-linear">
+        <Button variant="tertiary" size="S" leadingIcon="solar:add-circle-linear" trailingIconElement={<DownChevronIcon size={14} color="var(--primary-300)" />}>
           New Order
         </Button>
         <span className={styles.tabDivider} />

@@ -73,32 +73,6 @@
   font-weight: 500;
   color: var(--neutral-500);
 }
-.sectionActions {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.viewBy {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--neutral-400);
-}
-.viewAll {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--primary-300);
-}
 .sectionEmpty {
   font-size: 14px;
   color: var(--neutral-300);
