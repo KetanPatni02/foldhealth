@@ -12,6 +12,7 @@ import styles from './CcmTimerWidget.module.css';
 //   idle     → grey chip, Start + Log
 //   running  → green chip + pulse dot, Pause + Log (disabled)
 //   paused   → green chip, Resume + Reset + Log
+//   reset    → idle at 00:00, Start + Log
 //   logged   → brief confirmation after save, then auto-restart
 //   classifying → log form (app extension — opened via Log)
 //
@@ -89,6 +90,13 @@ export function CcmTimerWidget() {
     setMode('running');
   }, [startTick, stopTick]);
 
+  const resetTimer = useCallback(() => {
+    stopTick();
+    accumulatedRef.current = 0;
+    setElapsed(0);
+    setMode('idle');
+  }, [stopTick]);
+
   // Auto-start whenever the patient profile (or billing period) opens.
   useEffect(() => {
     if (!patientId || !currentPeriod) return;
@@ -116,7 +124,7 @@ export function CcmTimerWidget() {
   };
 
   const onReset = () => {
-    restartTimer();
+    resetTimer();
   };
 
   const onLog = () => {
@@ -129,13 +137,13 @@ export function CcmTimerWidget() {
     if (elapsed > 0) {
       setMode('paused');
     } else {
-      restartTimer();
+      resetTimer();
     }
   };
 
   const persist = async () => {
     if (!currentPeriod || elapsed <= 0) {
-      restartTimer();
+      resetTimer();
       return;
     }
     setSaving(true);
