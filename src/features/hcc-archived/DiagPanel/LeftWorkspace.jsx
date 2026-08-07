@@ -8,7 +8,7 @@ import { Badge } from '../../../components/Badge/Badge';
 import { COMMENTS, DOCUMENTS, NOTES, CLAIMS, HISTORY } from '../data/ancillary';
 import { ACTIVITY } from '../data/activity';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
-import { OutreachTab as PatientOutreachTab } from '../../patient/components/OutreachTab';
+import { OutreachTab as PatientOutreachTab } from '../../patient/left-panel/tabs/outreach/OutreachTab/OutreachTab';
 import styles from './LeftWorkspace.module.css';
 
 // Two tab sets depending on scope:

@@ -20,7 +20,7 @@ import { dosKey } from '../assignment/dosState';
 import { staffById } from '../assignment/astranaStaff';
 import { normalizeRole } from '../reviewedBy';
 import { SYSTEM_USERS } from '../systemUsers';
-import { OutreachTab as PatientOutreachTab } from '../../patient/components/OutreachTab';
+import { OutreachTab as PatientOutreachTab } from '../../patient/left-panel/tabs/outreach/OutreachTab/OutreachTab';
 import { DocEvidenceViewer } from './DocEvidenceViewer';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { CommentComposer } from '../../../components/CommentComposer/CommentComposer';

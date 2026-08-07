@@ -10,7 +10,7 @@ import { Avatar } from '../../components/Avatar/Avatar';
 import { Icon } from '../../components/Icon/Icon';
 import { ActivityLog } from '../../components/ActivityLog/ActivityLog';
 import { CardSkeleton } from '../../components/CardSkeleton/CardSkeleton';
-import { OutreachTab } from '../patient/components/OutreachTab';
+import { OutreachTab } from '../patient/left-panel/tabs/outreach/OutreachTab/OutreachTab';
 import { OUTREACH_LOG_COUNT } from '../patient/data/outreachLogMock';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './CareGapDetailDrawer.module.css';
