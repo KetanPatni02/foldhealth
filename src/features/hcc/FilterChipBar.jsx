@@ -84,7 +84,10 @@ export function FilterChipBar({
     .map(u => u.name);
   const distinct = (key) => [...new Set(hccMembers.map(m => m[key]).filter(Boolean))].sort();
   const hccDynamicOpts = useMemo(() => ({
-    vt:   [...new Set(hccMembers.map(m => m.visitType || m.vt).filter(Boolean))].sort(),
+    vt:   [
+            ...[...new Set(hccMembers.map(m => m.visitType || m.vt).filter(Boolean))].sort(),
+            'No Visit Type',
+          ],
     asgn: platformUsers.map(u => u.name),
     supU: byRole('Support'),
     cdrU: byRole('Coder'),
