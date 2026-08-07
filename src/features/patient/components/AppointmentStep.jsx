@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
+import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
 import { Button } from '../../../components/Button/Button';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { ScheduleDrawer } from '../../../components/ScheduleDrawer/ScheduleDrawer';
 import { toast } from '../../../components/Toast/Toast';
 import { useAppStore } from '../../../store/useAppStore';
-import { PATIENT_APPOINTMENTS_MOCK } from '../data/patientAppointmentsMock';
 import styles from './AppointmentStep.module.css';
 
 // One appointment/reminder row of the Upcoming / Program-related tables.
@@ -64,7 +64,7 @@ export function AppointmentStep({ patientId, programCode }) {
   const addProgramAppointment = useAppStore(s => s.addProgramAppointment);
   const added = addedForProgram || [];
 
-  const all = [...added, ...PATIENT_APPOINTMENTS_MOCK];
+  const all = [...added];
   const programAppts = all.filter(a => a.type === 'Appointment' && a.programCode && a.programCode === programCode);
 
   const handleScheduled = (row) => {
@@ -112,15 +112,11 @@ export function AppointmentStep({ patientId, programCode }) {
       <div className={styles.section}>
         <div className={styles.sectionHead}>
           <button type="button" className={styles.collapseToggle} onClick={() => setUpcomingOpen(o => !o)} aria-expanded={upcomingOpen}>
-            <Icon name={upcomingOpen ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'} size={16} color="var(--neutral-300)" />
+            <DownChevronIcon size={16} color="var(--neutral-300)" style={upcomingOpen ? undefined : { transform: 'rotate(-90deg)' }} />
             <span className={styles.sectionTitle}>Upcoming Appointments &amp; Reminders</span>
           </button>
           {upcomingOpen && (
-            <div className={styles.sectionActions}>
-              <button type="button" className={styles.viewBy}>View By: Upcoming <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" /></button>
-              <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add" onClick={() => setScheduleOpen(true)} />
-              <button type="button" className={styles.viewAll}>View All <Icon name="solar:alt-arrow-right-linear" size={12} color="var(--primary-300)" /></button>
-            </div>
+            <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add" onClick={() => setScheduleOpen(true)} />
           )}
         </div>
         {upcomingOpen && (

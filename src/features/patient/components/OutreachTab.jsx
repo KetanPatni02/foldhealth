@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../components/Icon/Icon';
+import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
 import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
 import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { SmsIcon } from '../../../components/Icon/SmsIcon';
@@ -12,6 +13,9 @@ import { Input } from '../../../components/Input/Input';
 import { Switch } from '../../../components/Switch/Switch';
 import { RadioButton } from '../../../components/RadioButton/RadioButton';
 import { useAppStore } from '../../../store/useAppStore';
+import { SearchBar } from '../../../components/SearchBar/SearchBar';
+import { Tooltip } from '../../../components/Tooltip/Tooltip';
+import { toast } from '../../../components/Toast/Toast';
 import { ScheduleDrawer } from '../../../components/ScheduleDrawer/ScheduleDrawer';
 import { AddTaskDrawer } from './AddTaskDrawer';
 import { INITIAL_LOG_GROUPS } from '../data/outreachLogMock';
@@ -61,6 +65,25 @@ const OUTCOME_COLOR = {
   'Note':         'var(--status-warning)',
 };
 
+// Bucket a log into an Outreach Activity filter tab by its outcome color:
+// green → Successful, red → Unsuccessful, anything else → Note.
+const logActivityCategory = (log) => {
+  const c = log.outcomeColor || '';
+  if (c.includes('success')) return 'Successful';
+  if (c.includes('error')) return 'Unsuccessful';
+  return 'Note';
+};
+
+// Does a log match the selected outreach scope? Scope is 'All', a program
+// code (matches log.programs), 'HCC Gaps' (external/HCC-sourced outreach), or
+// 'Care Gaps' (care-program/gap outreach).
+const matchesOutreachScope = (log, scope) => {
+  if (!scope || scope === 'All') return true;
+  if (scope === 'HCC Gaps') return !!log.outreachSource || log.logFor === 'hcc-gaps';
+  if (scope === 'Care Gaps') return (log.programs || []).length > 0 || log.logFor === 'care-program';
+  return (log.programs || []).includes(scope);
+};
+
 function formatNow() {
   const d = new Date();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -107,7 +130,7 @@ function FieldDropdown({ value, onChange, options, placeholder }) {
         onClick={() => setOpen(v => !v)}
       >
         <span className={styles.fieldDropdownValue}>{value || placeholder}</span>
-        <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" />
+        <DownChevronIcon size={12} color="var(--neutral-300)" />
       </button>
 
       {open && createPortal(
@@ -156,7 +179,7 @@ function TypeDropdown({ value, onChange, disabled = false }) {
               style={selected.flip ? { transform: 'scaleX(-1)' } : undefined} />
         }
         <span className={styles.typeDropdownValue}>{selected.label}</span>
-        <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" />
+        <DownChevronIcon size={12} color="var(--neutral-300)" />
       </button>
 
       {open && createPortal(
@@ -215,7 +238,7 @@ function parsePickerValue(v) {
   return { date: datePart, hour: 0, minute: 0 };
 }
 
-function OutreachDateTimePicker({ value, onChange }) {
+export function OutreachDateTimePicker({ value, onChange, className }) {
   const parsed = parsePickerValue(value);
   const [open, setOpen] = useState(false);
   const [viewDate, setViewDate] = useState(() => {
@@ -274,7 +297,7 @@ function OutreachDateTimePicker({ value, onChange }) {
   const rect = triggerRef.current?.getBoundingClientRect();
 
   return (
-    <div ref={triggerRef} className={styles.dateInputWrap}>
+    <div ref={triggerRef} className={`${styles.dateInputWrap}${className ? ` ${className}` : ''}`}>
       <button
         className={styles.datePickerTrigger}
         onClick={() => setOpen(v => !v)}
@@ -381,9 +404,9 @@ function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOpen, sho
       <div className={styles.notePanelHeader}>
         <button className={styles.notePanelTitle} onClick={onToggleExpand} type="button">
           <span className={styles.notePanelName}>{title}</span>
-          <Icon
-            name={expanded ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'}
+          <DownChevronIcon
             size={14} color="var(--neutral-400)"
+            style={expanded ? undefined : { transform: 'rotate(-90deg)' }}
           />
         </button>
         <div className={styles.notePanelActions}>
@@ -566,10 +589,10 @@ function LogEntry({ log, isLast, onEdit, onDelete }) {
               >
                 <span className={styles.logViewNoteDot}>·</span>
                 View Note
-                <Icon
-                  name={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
+                <DownChevronIcon
                   size={11}
                   color="var(--neutral-400)"
+                  style={expanded ? { transform: 'rotate(180deg)' } : undefined}
                 />
               </button>
             )}
@@ -614,7 +637,7 @@ function LogEntry({ log, isLast, onEdit, onDelete }) {
                       {log.callDetails.transcript.length > 2 && (
                         <button type="button" className={styles.logTranscriptMore}>
                           Show More
-                          <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--primary-300)" />
+                          <DownChevronIcon size={11} color="var(--primary-300)" />
                         </button>
                       )}
                     </div>
@@ -673,8 +696,7 @@ function LogGroup({ label, logs, onEdit, onDelete }) {
         onClick={() => setCollapsed(v => !v)}
       >
         <span className={styles.logGroupTitle}>{label}</span>
-        <Icon
-          name="solar:alt-arrow-down-linear"
+        <DownChevronIcon
           size={13}
           color="var(--neutral-400)"
           style={collapsed ? { transform: 'rotate(-90deg)' } : undefined}
@@ -752,6 +774,10 @@ export function OutreachTab({
   const [logFor, setLogFor] = useState(defaultLogFor);
   const isHccGaps = logFor === 'hcc-gaps';
   const [activityFilter, setActivityFilter] = useState('All');
+  const [activitySearchOpen, setActivitySearchOpen] = useState(false);
+  const [activitySearchText, setActivitySearchText] = useState('');
+  const [outreachScope, setOutreachScope] = useState('All'); // 'All' | code | 'Care Gaps' | 'HCC Gaps'
+  const [filterMenu, setFilterMenu] = useState(null);         // { rect } | null
   const [logGroups, setLogGroups] = useState(INITIAL_LOG_GROUPS);
   const [type, setType] = useState(defaultLogFor === 'hcc-gaps' ? 'Call' : 'General');
   const [datetime, setDatetime] = useState(defaultFormOpen ? formatNow() : '');
@@ -916,6 +942,7 @@ export function OutreachTab({
     setEditingId(null);
     resetForm();
     if (!scopedProgram) setFormOpen(false);
+    toast.success('Outreach logged successfully');
   };
 
   const handleDiscard = () => { resetForm(); if (!scopedProgram) setFormOpen(false); setEditingId(null); };
@@ -1121,7 +1148,9 @@ export function OutreachTab({
             <div className={styles.section}>
               <div className={styles.sectionLabelRow}>
                 <span className={styles.sectionLabel}>{programsLabel}</span>
-                <Icon name="solar:info-circle-linear" size={15} color="var(--neutral-300)" />
+                <Tooltip label="Select from programs or gaps below to log outreach.">
+                  <Icon name="solar:info-circle-linear" size={15} color="var(--neutral-300)" />
+                </Tooltip>
               </div>
               <div className={styles.programs}>
                 {PROGRAM_OPTIONS.map(prog => (
@@ -1258,7 +1287,8 @@ export function OutreachTab({
         <span className={styles.activityLabel}>Outreach Activity</span>
       </div>
 
-      {/* Activity filter bar */}
+      {/* Activity filter bar — the Search icon expands into a search field in
+          place; the tabs and filter stay put. */}
       <div className={styles.activityFilterBar}>
         <div className={styles.activityFilterTabs}>
           {ACTIVITY_FILTERS.map(({ key, dot }) => (
@@ -1274,20 +1304,41 @@ export function OutreachTab({
           ))}
         </div>
         <div className={styles.activityFilterActions}>
-          <ActionButton size="S" icon="solar:magnifer-linear" tooltip="Search" />
+          {activitySearchOpen ? (
+            <SearchBar
+              className={styles.activitySearchBar}
+              placeholder="Search activity"
+              value={activitySearchText}
+              onChange={e => setActivitySearchText(e.target.value)}
+              onClose={() => { setActivitySearchOpen(false); setActivitySearchText(''); }}
+            />
+          ) : (
+            <ActionButton size="S" icon="solar:magnifer-linear" tooltip="Search" onClick={() => setActivitySearchOpen(true)} />
+          )}
           <span className={styles.activityFilterDivider} />
-          <ActionButton size="S" icon="custom:filter" tooltip="Filter" />
+          <ActionButton
+            size="S"
+            icon="custom:filter"
+            tooltip="Filter"
+            iconColor={outreachScope !== 'All' ? 'var(--primary-300)' : undefined}
+            onClick={e => setFilterMenu({ rect: e.currentTarget.getBoundingClientRect() })}
+          />
         </div>
       </div>
 
-      {/* Activity log — scoped to the current program when opened from a
-          program's Outreach step (only that program's entries show). */}
-      {(scopedProgram
-        ? logGroups
-            .map(g => ({ ...g, logs: g.logs.filter(l => (l.programs || []).includes(scopedProgram)) }))
-            .filter(g => g.logs.length > 0)
-        : logGroups
-      ).map(group => (
+      {/* Activity log — the patient's full outreach history, narrowed by the
+          scope filter (program / Care Gaps / HCC Gaps), the outcome filter tab,
+          and the search text. */}
+      {(() => {
+        const q = activitySearchText.trim().toLowerCase();
+        const keep = (l) =>
+          matchesOutreachScope(l, outreachScope)
+          && (activityFilter === 'All' || logActivityCategory(l) === activityFilter)
+          && (!q || `${l.title || ''} ${l.author || ''} ${l.outcome || ''} ${l.note || ''}`.toLowerCase().includes(q));
+        return logGroups
+          .map(g => ({ ...g, logs: g.logs.filter(keep) }))
+          .filter(g => g.logs.length > 0);
+      })().map(group => (
         <LogGroup
           key={group.id}
           label={group.label}
@@ -1296,6 +1347,32 @@ export function OutreachTab({
           onDelete={handleDelete}
         />
       ))}
+
+      {/* Scope filter — patient's programs (from the log history) plus Care
+          Gaps and HCC Gaps. */}
+      {filterMenu && (() => {
+        const codes = [...new Set(logGroups.flatMap(g => g.logs.flatMap(l => l.programs || [])))];
+        const opt = (key, text) => ({
+          key,
+          label: <span style={{ color: outreachScope === key ? 'var(--primary-300)' : undefined }}>{text}</span>,
+        });
+        return (
+          <MenuPopover
+            anchorRect={filterMenu.rect}
+            align="right"
+            width={200}
+            ariaLabel="Filter outreach by"
+            items={[
+              opt('All', 'All Outreach'),
+              ...codes.map(c => opt(c, c)),
+              opt('Care Gaps', 'Care Gaps'),
+              opt('HCC Gaps', 'HCC Gaps'),
+            ]}
+            onSelect={key => setOutreachScope(key)}
+            onClose={() => setFilterMenu(null)}
+          />
+        );
+      })()}
 
       {/* Quick-action drawers — created items drop into this program's
           Related Tasks / Appointments lists (session state). */}

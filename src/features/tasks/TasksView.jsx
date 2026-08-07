@@ -28,6 +28,7 @@ import { ClinicalNotePanel } from '../hedis-worklist/ClinicalNotePanel';
 import { Select } from '../../components/Select/Select';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { FilterBar } from '../../components/FilterBar/FilterBar';
+import { RingEmptyState } from '../../components/RingEmptyState/RingEmptyState';
 import { useAppStore } from '../../store/useAppStore';
 import { toast } from '../../components/Toast/Toast';
 import styles from './TasksView.module.css';
@@ -612,7 +613,7 @@ function SkeletonRow() {
 }
 
 /* ── List View: Task Row ── */
-function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo }) {
+function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo, hideMember, pinnedEnds }) {
   const isCompleted = task.status === 'completed';
   const labels = Array.isArray(task.labels) ? task.labels : [];
   const updateTask = useAppStore(s => s.updateTask);
@@ -620,7 +621,7 @@ function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo }) {
 
   return (
     <div className={styles.taskRow} onClick={() => onTaskClick?.(task)}>
-      <div className={styles.cellCheck}>
+      <div className={`${styles.cellCheck} ${pinnedEnds ? styles.pinLeft0 : ''}`}>
         <button
           className={`${styles.taskCheckbox} ${isCompleted ? styles.taskCheckboxChecked : ''}`}
           onClick={e => { e.stopPropagation(); onToggle(task); }}
@@ -632,7 +633,7 @@ function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo }) {
         </button>
       </div>
 
-      <div className={styles.cellTask}>
+      <div className={`${styles.cellTask} ${pinnedEnds ? styles.pinLeftCheck : ''}`}>
         <div className={styles.taskInfo}>
           {task.parent_task && (
             <span className={styles.parentLabel}>Parent Task : {task.parent_task}</span>
@@ -683,21 +684,23 @@ function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo }) {
         </div>
       )}
 
-      <div className={styles.cellMember}>
-        <Icon name="solar:user-linear" size={14} color="var(--neutral-300)" />
-        <span
-          className={styles.memberLink}
-          onClick={(e) => {
-            e.stopPropagation();
-            const state = useAppStore.getState();
-            const match = state.patients.find(p => p.name === task.member)
-              || (state.allPatients || []).find(p => p.name === task.member);
-            if (match) state.openQuickView(match);
-          }}
-        >
-          {task.member}
-        </span>
-      </div>
+      {!hideMember && (
+        <div className={styles.cellMember}>
+          <Icon name="solar:user-linear" size={14} color="var(--neutral-300)" />
+          <span
+            className={styles.memberLink}
+            onClick={(e) => {
+              e.stopPropagation();
+              const state = useAppStore.getState();
+              const match = state.patients.find(p => p.name === task.member)
+                || (state.allPatients || []).find(p => p.name === task.member);
+              if (match) state.openQuickView(match);
+            }}
+          >
+            {task.member}
+          </span>
+        </div>
+      )}
 
       <div className={styles.cellLabels} onClick={e => e.stopPropagation()}>
         <RowLabelDropdown task={task}>
@@ -719,7 +722,7 @@ function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo }) {
         </RowLabelDropdown>
       </div>
 
-      <div className={styles.cellActions} onClick={e => e.stopPropagation()}>
+      <div className={`${styles.cellActions} ${pinnedEnds ? styles.pinRight0 : ''}`} onClick={e => e.stopPropagation()}>
         <RowActionMenu task={task} />
       </div>
     </div>
@@ -729,7 +732,7 @@ function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo }) {
 /* ── List View: Status Group ── */
 const PAGE_SIZE = 5;
 
-function StatusGroup({ status, label: labelProp, tasks, onToggle, onTaskClick, hideAssignedTo, onAddTask }) {
+function StatusGroup({ status, label: labelProp, tasks, onToggle, onTaskClick, hideAssignedTo, hideMember, onAddTask }) {
   const [collapsed, setCollapsed] = useState(false);
   const [page, setPage] = useState(0);
   const label = labelProp || STATUS_LABELS[status];
@@ -770,7 +773,7 @@ function StatusGroup({ status, label: labelProp, tasks, onToggle, onTaskClick, h
       </div>
       {!collapsed && (
         <>
-          {paginated.map(t => <TaskRow key={t.id} task={t} onToggle={onToggle} onTaskClick={onTaskClick} hideAssignedTo={hideAssignedTo} />)}
+          {paginated.map(t => <TaskRow key={t.id} task={t} onToggle={onToggle} onTaskClick={onTaskClick} hideAssignedTo={hideAssignedTo} hideMember={hideMember} />)}
           {totalPages > 1 && (
             <div className={styles.pagination}>
               <button className={styles.pageBtn} disabled={page === 0} onClick={() => setPage(p => p - 1)}>
@@ -785,6 +788,97 @@ function StatusGroup({ status, label: labelProp, tasks, onToggle, onTaskClick, h
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * ProgramTaskSection — one "Open"/"Completed" section: a title, then the shared
+ * Tasks table header + TaskRows in a fixed ~5-row scroll box, with the Task
+ * Title (+ check) pinned left and the action column pinned right. Reuses the
+ * standard TaskRow so rows look exactly like the Tasks module. When the section
+ * has no tasks it shows the ring empty state instead of the table.
+ */
+function ProgramTaskSection({ title, tasks, onToggle, onTaskClick, hideAssignedTo, hideMember, onAddTask, emptyLabel }) {
+  return (
+    <div className={styles.progSection}>
+      <div className={styles.progSectionHead}>
+        <span className={styles.progSectionTitle}>{title}</span>
+        <Badge variant="overflow" label={`${tasks.length} ${tasks.length === 1 ? 'task' : 'tasks'}`} />
+      </div>
+      {tasks.length === 0 ? (
+        <div className={styles.progEmpty}>
+          <RingEmptyState icon="solar:checklist-minimalistic-linear" label={emptyLabel || 'No Tasks Added'} />
+        </div>
+      ) : (
+        <div className={`${styles.progScroll} ${hideMember ? styles.tableNoMember : ''}`}>
+          <div className={`${styles.tableHeader} ${styles.progHeader}`}>
+            <div className={`${styles.thCell} ${styles.colCheck} ${styles.pinLeft0}`} />
+            <div className={`${styles.thCell} ${styles.colTask} ${styles.pinLeftCheck}`}>Tasks</div>
+            <div className={`${styles.thCell} ${styles.colP}`}>P</div>
+            <div className={`${styles.thCell} ${styles.colStatus}`}>Status</div>
+            <div className={`${styles.thCell} ${styles.colDue}`}>Due Date</div>
+            {!hideAssignedTo && <div className={`${styles.thCell} ${styles.colAssigned}`}>Assigned To</div>}
+            {!hideMember && <div className={`${styles.thCell} ${styles.colMember}`}>Member</div>}
+            <div className={`${styles.thCell} ${styles.colLabels}`}>Labels</div>
+            <div className={`${styles.thCell} ${styles.colActions} ${styles.pinRight0}`} />
+          </div>
+          {tasks.map(t => (
+            <TaskRow
+              key={t.id}
+              task={t}
+              onToggle={onToggle}
+              onTaskClick={onTaskClick}
+              hideAssignedTo={hideAssignedTo}
+              hideMember={hideMember}
+              pinnedEnds
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * TaskListSection — Open / Completed sections built from the shared Tasks
+ * TaskRow, for embedding outside the full Tasks page (e.g. a care program).
+ * "Open" = anything not completed; "Completed" only renders when non-empty.
+ * Toggling completion updates the shared task store. Pass `hideMember` when
+ * already in a member context.
+ */
+export function TaskListSection({ tasks = [], onTaskClick, hideAssignedTo = false, hideMember = false, onAddTask }) {
+  const updateTask = useAppStore(s => s.updateTask);
+  const handleToggle = useCallback((task) => {
+    updateTask(task.id, { status: task.status === 'completed' ? 'pending' : 'completed' });
+  }, [updateTask]);
+
+  const open = tasks.filter(t => t.status !== 'completed');
+  const completed = tasks.filter(t => t.status === 'completed');
+
+  return (
+    <>
+      <ProgramTaskSection
+        title="Open"
+        tasks={open}
+        onToggle={handleToggle}
+        onTaskClick={onTaskClick}
+        hideAssignedTo={hideAssignedTo}
+        hideMember={hideMember}
+        onAddTask={onAddTask}
+        emptyLabel="No Tasks Added"
+      />
+      {completed.length > 0 && (
+        <ProgramTaskSection
+          title="Completed"
+          tasks={completed}
+          onToggle={handleToggle}
+          onTaskClick={onTaskClick}
+          hideAssignedTo={hideAssignedTo}
+          hideMember={hideMember}
+          onAddTask={onAddTask}
+        />
+      )}
+    </>
   );
 }
 
@@ -1110,7 +1204,7 @@ function EmptyState({ title, description, icon }) {
 }
 
 /* ── Add Task Drawer ── */
-function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCreated }) {
+export function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCreated }) {
   const initialStatus = defaultStatus || 'pending';
   const [name, setName] = useState('');
   const [priority, setPriority] = useState('medium');

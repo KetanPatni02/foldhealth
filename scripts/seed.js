@@ -10,6 +10,7 @@
  */
 
 import pg from 'pg';
+import { readFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 import { HEDIS_MEMBERS } from '../src/features/hedis-worklist/data/mock.js';
 import { APCM_PATIENTS } from '../src/features/apcm-billing/data/mock.js';
@@ -22,6 +23,27 @@ import { CCM_WORKLIST_MEMBERS } from '../src/features/ccm-worklist/data/mock.js'
 import { SNP_WORKLIST_MEMBERS } from '../src/features/snp-worklist/data/mock.js';
 import { CAREGAP_ACTIVITY_MOCK } from '../src/features/hedis-worklist/data/caregapActivityMock.js';
 import { PRACTICE_LOCATIONS } from '../src/features/settings/account/locations/data/mock.js';
+
+// Care-program letters library. Metadata mirrors PROGRAM_LETTERS_MOCK; the PDF
+// bytes are read from supabase/seed-assets/letters and stored base64 in the
+// `letters` table (see supabase/letters_migration.sql).
+const LETTERS = [
+  { id: 'l-1',  file_name: 'Intro or Welcome Letter - Patient', file_type: 'Letter', sent_via: ['Email', 'SMS'], last_sent: '07/02/2025', sent_by: 'Mark Emard',          source_file: '01_Welcome_Letter_Patient.pdf' },
+  { id: 'l-2',  file_name: 'Consent letter - Patient',          file_type: 'Letter', sent_via: ['Email'],        last_sent: '07/01/2025', sent_by: 'Faye Romaguera',      source_file: '02_Consent_Letter_Patient.pdf' },
+  { id: 'l-3',  file_name: 'ICT Invite - Member',               file_type: 'Form',   sent_via: ['Email'],        last_sent: '06/29/2025', sent_by: 'Melinda Effertz',     source_file: '03_ICT_Invite_Member.pdf' },
+  { id: 'l-4',  file_name: 'ICT Invite - PCP',                  file_type: 'Letter', sent_via: ['SMS'],          last_sent: '06/15/2025', sent_by: 'Rachael Jast',        source_file: '04_ICT_Invite_PCP.pdf' },
+  { id: 'l-5',  file_name: 'ICP Letter - Member',               file_type: 'Letter', sent_via: ['Email'],        last_sent: '06/14/2025', sent_by: 'Lewis Bogisich',      source_file: '05_ICP_Letter_Member.pdf' },
+  { id: 'l-6',  file_name: 'ICP Letter - Provider',             file_type: 'Letter', sent_via: ['Mailroom'],     last_sent: '05/30/2025', sent_by: 'Domingo Toy',         source_file: '06_ICP_Letter_Provider.pdf' },
+  { id: 'l-7',  file_name: 'UTR Letter',                        file_type: 'Letter', sent_via: ['Email'],        last_sent: '05/23/2025', sent_by: 'Ernestine Leffler',   source_file: '07_UTR_Letter.pdf' },
+  { id: 'l-8',  file_name: 'Member Flyers',                     file_type: 'Flyer',  sent_via: ['Email'],        last_sent: '05/18/2025', sent_by: 'Priscilla Romaguera', source_file: '08_Member_Flyer.pdf' },
+  { id: 'l-9',  file_name: 'Enrollment Confirmation - Patient', file_type: 'Letter', sent_via: ['Email'],        last_sent: '05/12/2025', sent_by: 'Damaris Kunze',       source_file: '09_Enrollment_Confirmation_Patient.pdf' },
+  { id: 'l-10', file_name: 'Enrollment Confirmation - PCP',     file_type: 'Letter', sent_via: ['Mailroom'],     last_sent: '05/08/2025', sent_by: 'Otho Hyatt',          source_file: '10_Enrollment_Confirmation_PCP.pdf' },
+];
+
+function letterToRow(l, i) {
+  const bytes = readFileSync(new URL(`../supabase/seed-assets/letters/${l.source_file}`, import.meta.url));
+  return { ...l, content_base64: bytes.toString('base64'), sort_order: i };
+}
 
 // Patients whose HCC diagnosis gaps have been modernized to V28 + 2025/26
 // dates (see docs/features/hcc-coding-workflow.md). Re-seeding rewrites just
@@ -742,6 +764,15 @@ async function main() {
     }
     console.log(`  ✓ seeded gaps for ${seeded} members`);
   }
+
+  // ── Letters library (PDFs stored base64 in the `letters` table) ──
+  const letterRows = LETTERS.map(letterToRow);
+  const { error: lettersErr } = await supabase
+    .from('letters')
+    .upsert(letterRows, { onConflict: 'id' });
+  console.log(lettersErr
+    ? `  ✗ letters: ${lettersErr.message}`
+    : `  ✓ letters (${letterRows.length})`);
 
   console.log('\n✅  Seed complete. Run `bun run dev` to verify.\n');
 }

@@ -1,0 +1,46 @@
+.body { display: flex; flex-direction: column; gap: 16px; padding: 16px 24px 24px; }
+
+/* Matches the Add Letter drawer / TopBar "Search Members" field. */
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+.searchBox input {
+  border: none;
+  outline: none;
+  font-size: 14px;
+  color: var(--neutral-400);
+  width: 100%;
+  min-width: 0;
+}
+.searchBox input::placeholder { color: var(--neutral-200); }
+
+.timeline { display: flex; flex-direction: column; }
+.entry { display: flex; gap: 12px; }
+
+.rail { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+.line { flex: 1; width: 1px; background: var(--neutral-150); margin: 4px 0; }
+
+.entryBody { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; padding-bottom: 16px; }
+.meta { font-size: 13px; color: var(--neutral-300); }
+.channels { font-size: 14px; font-weight: 500; color: var(--neutral-500); }
+
+.card {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border: 0.5px solid var(--neutral-150); border-radius: 8px;
+  background: var(--neutral-0); cursor: pointer; text-align: left;
+  transition: border-color 0.12s;
+}
+.card:hover { border-color: var(--primary-300); }
+.cardText { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.name { font-size: 14px; color: var(--neutral-500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.subtype { font-size: 13px; color: var(--neutral-300); }
+
+.empty { padding: 32px; text-align: center; font-size: 14px; color: var(--neutral-300); }

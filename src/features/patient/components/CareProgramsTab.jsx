@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
+import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Button } from '../../../components/Button/Button';
 import { SearchListPopover } from '../../../components/SearchListPopover/SearchListPopover';
@@ -7,6 +8,7 @@ import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
 import { SearchBar } from '../../../components/SearchBar/SearchBar';
 import { FilterChip } from '../../../components/FilterChip/FilterChip';
 import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { RingEmptyState } from '../../../components/RingEmptyState/RingEmptyState';
 import { RoleAssigneePicker } from '../../hcc/RoleAssigneePicker';
 import { ProgramStatusRing } from './ProgramStatusRing';
 import { CP_SUB_TABS, CP_FILTERS, PROGRAM_STEPS } from '../data/programActivityMock';
@@ -55,18 +57,7 @@ const todayStr = () => {
 // Shown whenever the active tab has no matching programs. The "New Program"
 // entry point lives in the toolbar, so this card carries no button.
 function EmptyState() {
-  return (
-    <div className={styles.emptyWrap}>
-      <div className={styles.emptyCard}>
-        <div className={styles.emptyIcon}>
-          <span className={styles.iconInner}>
-            <Icon name="solar:hand-heart-linear" size={46} color="var(--neutral-200)" />
-          </span>
-        </div>
-        <p className={styles.emptyText}>No Active Programs</p>
-      </div>
-    </div>
-  );
+  return <RingEmptyState icon="solar:hand-heart-linear" label="No Active Programs" />;
 }
 
 export function CareProgramsTab() {
@@ -238,7 +229,7 @@ export function CareProgramsTab() {
         variant="tertiary"
         size="L"
         leadingIcon="solar:add-circle-linear"
-        trailingIcon="solar:alt-arrow-down-linear"
+        trailingIconElement={<DownChevronIcon size={16} color="var(--primary-300)" />}
         onClick={() => setNpOpen(o => !o)}
       >
         New Program
@@ -281,7 +272,7 @@ export function CareProgramsTab() {
           <div className={styles.subTabBar}>
             <div className={styles.searchWrap}>
               <SearchBar
-                fullWidth
+                className={styles.searchBox350}
                 placeholder="Search programs"
                 value={searchText}
                 onChange={e => setSearchText(e.target.value)}
@@ -398,7 +389,7 @@ export function CareProgramsTab() {
                     onClick={e => setStatusMenu({ id: p.id, rect: e.currentTarget.getBoundingClientRect() })}
                   >
                     {p.status}
-                    <Icon name="solar:alt-arrow-down-linear" size={16} color={p.statusColor} />
+                    <DownChevronIcon size={16} color={p.statusColor} />
                   </button>
                 </td>
                 <td className={styles.dateCell}>{p.startDate}</td>
