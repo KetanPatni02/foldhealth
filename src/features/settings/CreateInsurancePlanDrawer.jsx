@@ -387,11 +387,9 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {}, initialP
     isDirty.current = true;
   };
   const deleteTier = (id) => {
-    setTiers(ts => {
-      const next = ts.filter(t => t.id !== id);
-      if (id === activeTierId) setActiveTierId(next[next.length - 1]?.id ?? null);
-      return next;
-    });
+    const next = tiers.filter(t => t.id !== id);
+    if (id === activeTierId) setActiveTierId(next[next.length - 1]?.id ?? null);
+    setTiers(next);
     setExpandedTiers(prev => { const s = new Set(prev); s.delete(id); return s; });
     isDirty.current = true;
   };

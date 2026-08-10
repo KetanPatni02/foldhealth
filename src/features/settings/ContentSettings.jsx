@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { Badge } from '../../components/Badge/Badge';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { Button } from '../../components/Button/Button';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
@@ -698,8 +699,12 @@ export function ContentSettings() {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
-    const ok = isForms ? await deleteForm(deleteTarget.id) : await deleteCampaign(deleteTarget.id);
-    setDeleting(false);
+    let ok = false;
+    try {
+      ok = isForms ? await deleteForm(deleteTarget.id) : await deleteCampaign(deleteTarget.id);
+    } finally {
+      setDeleting(false);
+    }
     if (ok) {
       setDeleteTarget(null);
       // Refresh the current page so totals are accurate.
@@ -728,8 +733,12 @@ export function ContentSettings() {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) { setBulkDeleteOpen(false); return; }
     setDeleting(true);
-    const ok = isForms ? await deleteFormsBulk(ids) : await deleteCampaignsBulk(ids);
-    setDeleting(false);
+    let ok = false;
+    try {
+      ok = isForms ? await deleteFormsBulk(ids) : await deleteCampaignsBulk(ids);
+    } finally {
+      setDeleting(false);
+    }
     if (ok) {
       setBulkDeleteOpen(false);
       clearSelection();

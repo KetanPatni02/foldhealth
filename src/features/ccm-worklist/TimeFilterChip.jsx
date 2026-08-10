@@ -65,8 +65,8 @@ export function TimeFilterPopover({
     const onClick = (e) => {
       if (popRef.current && !popRef.current.contains(e.target)) onClose();
     };
-    setTimeout(() => document.addEventListener('mousedown', onClick), 0);
-    return () => document.removeEventListener('mousedown', onClick);
+    const t = setTimeout(() => document.addEventListener('mousedown', onClick), 0);
+    return () => { clearTimeout(t); document.removeEventListener('mousedown', onClick); };
   }, [onClose]);
 
   const setUser = (user) => onChange({ ...filter, user });

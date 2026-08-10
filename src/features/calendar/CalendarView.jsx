@@ -120,8 +120,10 @@ function CalendarContent({ onSlotClick, onEventClick, calendarRef, eventsPluginR
   // Use refs for callbacks so the calendar always calls the latest handlers
   const slotClickRef = useRef(onSlotClick);
   const eventClickRef = useRef(onEventClick);
-  slotClickRef.current = onSlotClick;
-  eventClickRef.current = onEventClick;
+  useEffect(() => {
+    slotClickRef.current = onSlotClick;
+    eventClickRef.current = onEventClick;
+  });
 
   // Initialize calendar ONCE
   useEffect(() => {

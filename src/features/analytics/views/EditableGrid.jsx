@@ -57,11 +57,10 @@ function rowsForContent(contentPx) {
  * fitting (Reset clears all pins).
  */
 export function EditableGrid({ storageKey, defaultLayout, renderers, editing = false, resetTick = 0 }) {
-  const initial = useRef(null);
-  if (initial.current === null) initial.current = loadState(storageKey, defaultLayout);
+  const [initial] = useState(() => loadState(storageKey, defaultLayout));
 
-  const [layout, setLayout] = useState(initial.current.layout);
-  const [manual, setManual] = useState(initial.current.manual);
+  const [layout, setLayout] = useState(initial.layout);
+  const [manual, setManual] = useState(initial.manual);
 
   const containerRef = useRef(null);
   const [width, setWidth] = useState(1200);
@@ -70,8 +69,10 @@ export function EditableGrid({ storageKey, defaultLayout, renderers, editing = f
   // Latest values for the ResizeObserver callback, which closes over them.
   const layoutRef = useRef(layout);
   const manualRef = useRef(manual);
-  layoutRef.current = layout;
-  manualRef.current = manual;
+  useEffect(() => {
+    layoutRef.current = layout;
+    manualRef.current = manual;
+  });
 
   // Track container width so GridLayout can compute column widths.
   useEffect(() => {
