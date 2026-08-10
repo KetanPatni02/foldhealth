@@ -802,18 +802,16 @@ export function OutreachTab({
   const patchShared = (patch) => setSharedPanel(p => ({ ...p, ...patch }));
 
   const toggleProgram = (prog) => {
-    setSelectedProgs(prev => {
-      const alreadySelected = prev.includes(prog);
-      const next = alreadySelected ? prev.filter(p => p !== prog) : [...prev, prog];
-      if (next.length < 2) setSeparateNotes(false);
-      if (!alreadySelected) {
-        setPanels(p => ({
-          ...p,
-          [prog]: p[prog] || { expanded: true, outcomes: [], note: '', syncText: false, outcomeOpen: false },
-        }));
-      }
-      return next;
-    });
+    const alreadySelected = selectedProgs.includes(prog);
+    const next = alreadySelected ? selectedProgs.filter(p => p !== prog) : [...selectedProgs, prog];
+    if (next.length < 2) setSeparateNotes(false);
+    if (!alreadySelected) {
+      setPanels(p => ({
+        ...p,
+        [prog]: p[prog] || { expanded: true, outcomes: [], note: '', syncText: false, outcomeOpen: false },
+      }));
+    }
+    setSelectedProgs(next);
   };
 
   const useSeparate = separateNotes && selectedProgs.length >= 2;

@@ -2588,6 +2588,17 @@ function CellInput({ value, onChange, error, placeholder, narrow }) {
  * (same action) so the citation is reachable in one tap.
  */
 function FieldConfidence({ score, sourcePage, sourceFileName, onOpenSource }) {
+  const triggerRef = useRef(null);
+  const [hover, setHover] = useState(false);
+  const [pos, setPos] = useState({ left: 0, top: 0 });
+  // Compute popover position on hover so it floats above the trigger
+  // and is anchored to the screen (escapes the table's overflow-clip).
+  useEffect(() => {
+    if (!hover || !triggerRef.current) return;
+    const r = triggerRef.current.getBoundingClientRect();
+    setPos({ left: r.left, top: r.top });
+  }, [hover]);
+
   if (typeof score !== 'number') return null;
   if (score === 0) {
     return (
@@ -2609,16 +2620,6 @@ function FieldConfidence({ score, sourcePage, sourceFileName, onOpenSource }) {
     helpText = "Between 60-84%. Review recommended before accepting.";
   }
   const canCite = typeof onOpenSource === 'function' && sourcePage;
-  const triggerRef = useRef(null);
-  const [hover, setHover] = useState(false);
-  const [pos, setPos] = useState({ left: 0, top: 0 });
-  // Compute popover position on hover so it floats above the trigger
-  // and is anchored to the screen (escapes the table's overflow-clip).
-  useEffect(() => {
-    if (!hover || !triggerRef.current) return;
-    const r = triggerRef.current.getBoundingClientRect();
-    setPos({ left: r.left, top: r.top });
-  }, [hover]);
   return (
     <span
       ref={triggerRef}

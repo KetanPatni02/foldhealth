@@ -96,6 +96,10 @@ export function AgentCanvas() {
   // Undo/redo history (local — applied via setNodes/setEdges).
   // `past` holds previous flow snapshots; `future` holds states unwound by undo.
   const [history, setHistory] = useState({ past: [], future: [] });
+  // Mirror of `history` so undo/redo can read the latest value without a
+  // functional updater — keeps the updater pure (no side effects inside).
+  const historyRef = useRef(history);
+  useEffect(() => { historyRef.current = history; });
   const skipHistory = useRef(false);
   const HISTORY_LIMIT = 50;
 
@@ -110,6 +114,7 @@ export function AgentCanvas() {
   // Auto-save status indicator
   const [autoSaveStatus, setAutoSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved'
   const autoSaveTimer = useRef(null);
+  const idleTimer = useRef(null);
   const lastSavedSnapshot = useRef('');
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -238,7 +243,10 @@ export function AgentCanvas() {
     e.preventDefault();
     const raw = e.dataTransfer.getData('application/reactflow');
     if (!raw) return;
-    const { nodeType, label } = JSON.parse(raw);
+    let nodeType, label;
+    try {
+      ({ nodeType, label } = JSON.parse(raw));
+    } catch { return; } // malformed drag payload — ignore the drop
     const instance = reactFlowInstance.current;
     if (!instance) return;
 
@@ -350,10 +358,14 @@ export function AgentCanvas() {
       return;
     }
     setSaving(true);
-    const viewport = reactFlowInstance.current?.getViewport() || { x: 0, y: 0, zoom: 1 };
-    const newVersion = await createFlowVersion(nodes, edges, viewport);
-    hasUnsavedChanges.current = false;
-    setSaving(false);
+    let newVersion;
+    try {
+      const viewport = reactFlowInstance.current?.getViewport() || { x: 0, y: 0, zoom: 1 };
+      newVersion = await createFlowVersion(nodes, edges, viewport);
+      hasUnsavedChanges.current = false;
+    } finally {
+      setSaving(false);
+    }
     if (newVersion) showToast(`Saved as v${newVersion}`);
   };
 
@@ -373,40 +385,38 @@ export function AgentCanvas() {
       await saveFlow(nodes, edges, viewport);
       lastSavedSnapshot.current = snapshot;
       setAutoSaveStatus('saved');
-      setTimeout(() => setAutoSaveStatus('idle'), 1500);
+      idleTimer.current = setTimeout(() => setAutoSaveStatus('idle'), 1500);
     }, 1500);
-    return () => clearTimeout(autoSaveTimer.current);
+    return () => { clearTimeout(autoSaveTimer.current); clearTimeout(idleTimer.current); };
   }, [nodes, edges, builderFlow, saving, saveFlow]);
 
   // Undo / Redo — pop from past/future and apply via setNodes/setEdges.
   // skipHistory prevents the resulting state change from re-recording.
   const handleUndo = useCallback(() => {
-    setHistory(h => {
-      if (h.past.length === 0) return h;
-      const prev = h.past[h.past.length - 1];
-      skipHistory.current = true;
-      setNodes(prev.nodes);
-      setEdges(prev.edges);
-      requestAnimationFrame(() => { skipHistory.current = false; });
-      return {
-        past: h.past.slice(0, -1),
-        future: [...h.future, { nodes, edges }],
-      };
+    const h = historyRef.current;
+    if (h.past.length === 0) return;
+    const prev = h.past[h.past.length - 1];
+    skipHistory.current = true;
+    setNodes(prev.nodes);
+    setEdges(prev.edges);
+    requestAnimationFrame(() => { skipHistory.current = false; });
+    setHistory({
+      past: h.past.slice(0, -1),
+      future: [...h.future, { nodes, edges }],
     });
   }, [nodes, edges, setNodes, setEdges]);
 
   const handleRedo = useCallback(() => {
-    setHistory(h => {
-      if (h.future.length === 0) return h;
-      const next = h.future[h.future.length - 1];
-      skipHistory.current = true;
-      setNodes(next.nodes);
-      setEdges(next.edges);
-      requestAnimationFrame(() => { skipHistory.current = false; });
-      return {
-        past: [...h.past, { nodes, edges }],
-        future: h.future.slice(0, -1),
-      };
+    const h = historyRef.current;
+    if (h.future.length === 0) return;
+    const next = h.future[h.future.length - 1];
+    skipHistory.current = true;
+    setNodes(next.nodes);
+    setEdges(next.edges);
+    requestAnimationFrame(() => { skipHistory.current = false; });
+    setHistory({
+      past: [...h.past, { nodes, edges }],
+      future: h.future.slice(0, -1),
     });
   }, [nodes, edges, setNodes, setEdges]);
 
@@ -449,9 +459,13 @@ export function AgentCanvas() {
   // Save as new version
   const handleSaveVersion = async () => {
     setSaving(true);
-    const viewport = reactFlowInstance.current?.getViewport() || { x: 0, y: 0, zoom: 1 };
-    const ver = await createFlowVersion(nodes, edges, viewport);
-    setSaving(false);
+    let ver;
+    try {
+      const viewport = reactFlowInstance.current?.getViewport() || { x: 0, y: 0, zoom: 1 };
+      ver = await createFlowVersion(nodes, edges, viewport);
+    } finally {
+      setSaving(false);
+    }
     showToast(`Version ${ver} created`);
     setShowVersions(false);
   };

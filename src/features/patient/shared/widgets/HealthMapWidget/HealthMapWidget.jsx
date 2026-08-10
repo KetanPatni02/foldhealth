@@ -102,21 +102,25 @@ function LoadingState({ onComplete }) {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
+    const timeouts = new Set();
     const cycle = setInterval(() => {
       setVisible(false);
-      setTimeout(() => {
-        setStepIdx(i => {
-          const next = i + 1;
-          if (next >= LOADING_STEPS.length) {
-            setTimeout(() => onComplete?.(), 600);
-          }
-          return next < LOADING_STEPS.length ? next : i;
-        });
+      const t = setTimeout(() => {
+        setStepIdx(i => (i + 1 < LOADING_STEPS.length ? i + 1 : i));
         setVisible(true);
       }, 250);
+      timeouts.add(t);
     }, 1400);
-    return () => clearInterval(cycle);
-  }, [onComplete]);
+    return () => { clearInterval(cycle); timeouts.forEach(clearTimeout); };
+  }, []);
+
+  // Fire onComplete once the final step is reached (kept out of the state
+  // updater above so it never runs twice under StrictMode/replayed renders).
+  useEffect(() => {
+    if (stepIdx < LOADING_STEPS.length - 1) return undefined;
+    const t = setTimeout(() => onComplete?.(), 600);
+    return () => clearTimeout(t);
+  }, [stepIdx, onComplete]);
 
   return (
     <div className={styles.loadingArea}>

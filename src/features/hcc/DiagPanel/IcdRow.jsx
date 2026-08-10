@@ -385,10 +385,8 @@ export function IcdRow({ icd }) {
               type="button"
               className={styles.expandHeaderLeft}
               onClick={() => {
-                setMeatOpen(o => {
-                  if (!o && !meatText) setMeatText(getMeatNoteFromDb(gapConfMap, icd.code, icd.desc));
-                  return !o;
-                });
+                if (!meatOpen && !meatText) setMeatText(getMeatNoteFromDb(gapConfMap, icd.code, icd.desc));
+                setMeatOpen(o => !o);
               }}
             >
               <Icon

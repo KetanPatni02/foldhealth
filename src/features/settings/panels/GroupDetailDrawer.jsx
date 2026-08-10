@@ -55,11 +55,6 @@ export function GroupDetailDrawer() {
   const [searchTab, setSearchTab] = useState('users');
   const [searchOpen, setSearchOpen] = useState(false);
 
-  if (!group && !isNew) return null;
-
-  const selectedUsers = availableUsers.filter(u => selectedUserIds.includes(u.id));
-  const selectedRoles = availableRoles.filter(r => selectedRoleIds.includes(r.id));
-
   const filteredSearchUsers = useMemo(() => {
     if (!searchQuery.trim()) return availableUsers;
     const q = searchQuery.toLowerCase();
@@ -71,6 +66,11 @@ export function GroupDetailDrawer() {
     const q = searchQuery.toLowerCase();
     return availableRoles.filter(r => r.name.toLowerCase().includes(q));
   }, [searchQuery]);
+
+  if (!group && !isNew) return null;
+
+  const selectedUsers = availableUsers.filter(u => selectedUserIds.includes(u.id));
+  const selectedRoles = availableRoles.filter(r => selectedRoleIds.includes(r.id));
 
   const toggleUser = (userId) => {
     setSelectedUserIds(prev => prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]);

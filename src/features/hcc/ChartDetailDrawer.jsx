@@ -170,11 +170,15 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     onClose?.();
   };
 
+  // Keep the Escape handler pointed at the latest handleClose without
+  // re-subscribing every render (handleClose is recreated each render).
+  const handleCloseRef = useRef(handleClose);
+  useEffect(() => { handleCloseRef.current = handleClose; });
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') handleClose(); };
+    const onKey = (e) => { if (e.key === 'Escape') handleCloseRef.current(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [handleClose]);
+  }, []);
 
   // "Assign Support Team" dropdown anchored on the team badge.
   const dmRef = useRef(null);
@@ -305,6 +309,26 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
   }, [actionPos]);
+
+  // Store selectors + the pinned-team-pill dismiss effect are declared here,
+  // before the early return below, so hook order stays stable across renders.
+  const hccDiagCommentsAll = useAppStore(s => s.hccDiagComments);
+  const hccDosAssignmentsMap = useAppStore(s => s.hccDosAssignments);
+  useEffect(() => {
+    if (!teamPillPinned) return undefined;
+    const onDoc = (e) => {
+      if (teamBadgeRef.current?.contains(e.target)) return;
+      if (e.target.closest?.('[role="tooltip"][aria-label="Review progress"]')) return;
+      setTeamPillPinned(false); setTeamPillRect(null);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') { setTeamPillPinned(false); setTeamPillRect(null); } };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [teamPillPinned]);
 
   // Nothing to show only when the drawer opened empty. If the user unlinked
   // down to zero, stay open and render the Upload section (handled below).
@@ -472,12 +496,10 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
   // show a numeric badge on the header Comment action so support can see at
   // a glance how much discussion is on the record without opening the panel.
   // Same slice DiagPanel's Comments tab reads, so the two counts agree.
-  const hccDiagCommentsAll = useAppStore(s => s.hccDiagComments);
   const commentsCountForMember = hccDiagCommentsAll.length;
 
   // Build the four-stage review timeline for the popover. Reads the same
   // dosState + member the ReviewProgressPopover already understands.
-  const hccDosAssignmentsMap = useAppStore(s => s.hccDosAssignments);
   const dosStateForBadge = (member?.id && dosDate)
     ? hccDosAssignmentsMap[dosKey(member.id, dosDate, dosRp, dosPos)]
     : null;
@@ -537,21 +559,6 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
     if (teamPillPinned) return;
     teamCloseTimer.current = setTimeout(() => setTeamPillRect(null), 200);
   };
-  useEffect(() => {
-    if (!teamPillPinned) return undefined;
-    const onDoc = (e) => {
-      if (teamBadgeRef.current?.contains(e.target)) return;
-      if (e.target.closest?.('[role="tooltip"][aria-label="Review progress"]')) return;
-      setTeamPillPinned(false); setTeamPillRect(null);
-    };
-    const onKey = (e) => { if (e.key === 'Escape') { setTeamPillPinned(false); setTeamPillRect(null); } };
-    document.addEventListener('mousedown', onDoc);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDoc);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [teamPillPinned]);
 
   // Unlink a document from this Created-date record. Removes it from the
   // member's chart list (store) + clears its local review state. When it was

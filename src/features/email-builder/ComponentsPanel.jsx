@@ -342,11 +342,15 @@ function LayerIcon({ block, size = 14, color = 'currentColor' }) {
 const STRUCTURAL_ROLES = new Set(['header', 'body', 'footer']);
 
 function LayerList({ doc, selectedId, selectedColumnIdx, onSelect, selectColumn, onRemove, renamingId, setRenamingId }) {
-  if (!doc) return null;
   const moveBlock = useAppStore(s => s.moveBlock);
   const updateBlock = useAppStore(s => s.updateBlock);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
   const [layerDropIndicator, setLayerDropIndicator] = useState(null);
+  const handleDragOver = useCallback((event) => {
+    setLayerDropIndicator(computeDropPosition(event, doc, String(event.active.id)));
+  }, [doc]);
+
+  if (!doc) return null;
 
   const allSortableIds = [];
   const collectIds = (childrenIds) => {
@@ -360,10 +364,6 @@ function LayerList({ doc, selectedId, selectedColumnIdx, onSelect, selectColumn,
     });
   };
   collectIds(doc.root.data.childrenIds || []);
-
-  const handleDragOver = useCallback((event) => {
-    setLayerDropIndicator(computeDropPosition(event, doc, String(event.active.id)));
-  }, [doc]);
 
   const handleDragEnd = (event) => {
     const target = layerDropIndicator;

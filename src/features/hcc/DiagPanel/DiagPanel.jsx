@@ -267,13 +267,10 @@ export function DiagPanel() {
   // the bulk-action bar the moment something is selected.
   const [bulkMode, setBulkMode] = useState(false);
   const toggleBulkMode = () => {
-    setBulkMode(v => {
-      const next = !v;
-      // Clear any prior selection when leaving bulk mode so re-entering
-      // starts fresh (matches Content Settings).
-      if (!next) setSelectedKeys(new Set());
-      return next;
-    });
+    // Clear any prior selection when leaving bulk mode so re-entering
+    // starts fresh (matches Content Settings).
+    if (bulkMode) setSelectedKeys(new Set());
+    setBulkMode(v => !v);
   };
   // Inline + ICD flow (right-side toolbar). Clicking + ICD flips the
   // toolbar into search mode — the `Search by code…` input is swapped for

@@ -981,19 +981,20 @@ function DocumentsUploader() {
 
   // Simulated upload — progress 0→100 in ~1.2s, then phase='ready'.
   useEffect(() => {
-    if (phase !== 'uploading') return;
+    if (phase !== 'uploading') return undefined;
     let p = 0;
+    let readyTimer = null;
     const id = setInterval(() => {
       p += 8 + Math.random() * 14;
       if (p >= 100) {
         setProgress(100);
         clearInterval(id);
-        setTimeout(() => setPhase('ready'), 120);
+        readyTimer = setTimeout(() => setPhase('ready'), 120);
       } else {
         setProgress(p);
       }
     }, 80);
-    return () => clearInterval(id);
+    return () => { clearInterval(id); clearTimeout(readyTimer); };
   }, [phase]);
 
   const reset = () => {
