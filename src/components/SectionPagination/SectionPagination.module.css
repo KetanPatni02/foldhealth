@@ -1,0 +1,14 @@
+.root {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 4px 12px;
+  box-sizing: border-box;
+}
+
+.range {
+  font-size: 14px;
+  color: var(--neutral-300);
+  white-space: nowrap;
+}

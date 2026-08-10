@@ -37,6 +37,19 @@ import { LetterPreviewDrawer } from './LetterPreviewDrawer';
 import { RingEmptyState } from '../../../components/RingEmptyState/RingEmptyState';
 import styles from './ProgramDetailView.module.css';
 
+// Program Related Tasks filter helpers — chip options/matching derive from the
+// task's own fields (status/priority/due_date/completed_at).
+const TASK_STATUS_LABEL = { pending: 'Pending', missed: 'Missed', completed: 'Completed' };
+const capFirst = (s = '') => s.charAt(0).toUpperCase() + s.slice(1);
+const fmtCompletedDate = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? iso
+    : `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
+};
+const EMPTY_TASK_FILTERS = { status: [], priority: [], dueDate: [], completedDate: [] };
+
 // Per-program step lists live in PROGRAM_STEPS (keyed by code). Unknown codes
 // fall back to the SNP list.
 const initialsOf = (name = '') =>
@@ -161,6 +174,27 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
   const [previewTarget, setPreviewTarget] = useState(null);
   // Add Task drawer (Program Related Tasks step).
   const [addTaskOpen, setAddTaskOpen] = useState(false);
+  // Program Related Tasks filter bar (toggled by the header filter icon). The
+  // chips live in the section header; filter values are passed down to the
+  // list. Options derive from this program's tasks.
+  const [taskFiltersOpen, setTaskFiltersOpen] = useState(false);
+  const [taskSearchOpen, setTaskSearchOpen] = useState(false);
+  const [taskSearchText, setTaskSearchText] = useState('');
+  const [taskFilters, setTaskFilters] = useState(EMPTY_TASK_FILTERS);
+  const setTaskFilter = (key, vals) => setTaskFilters(f => ({ ...f, [key]: vals }));
+  const taskFiltersActive = Object.values(taskFilters).some(v => v.length > 0);
+  const programAddedTasks = useAppStore(s => s.programAddedTasks[program.code]);
+  const allStoreTasks = useAppStore(s => s.tasks);
+  const programTasks = useMemo(
+    () => (programAddedTasks || []).map(a => allStoreTasks.find(g => g.id === a.id) || a),
+    [programAddedTasks, allStoreTasks],
+  );
+  const taskFilterMeta = useMemo(() => ([
+    { key: 'status', label: 'Status', options: [...new Set(programTasks.map(t => TASK_STATUS_LABEL[t.status]).filter(Boolean))] },
+    { key: 'priority', label: 'Priority', options: [...new Set(programTasks.map(t => capFirst(t.priority)).filter(Boolean))] },
+    { key: 'dueDate', label: 'Due Date', options: [...new Set(programTasks.map(t => t.due_date).filter(Boolean))] },
+    { key: 'completedDate', label: 'Completed Date', options: [...new Set(programTasks.map(t => fmtCompletedDate(t.completed_at)).filter(Boolean))] },
+  ]), [programTasks]);
   const addProgramTask = useAppStore(s => s.addProgramTask);
   // Letters pane drawers.
   const [addLetterOpen, setAddLetterOpen] = useState(false);
@@ -558,6 +592,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
         {/* Right content */}
         <div className={styles.content}>
           <div className={styles.contentHeader}>
+            <div className={styles.contentHeaderRow}>
             {assessmentCfg ? (
               <div className={styles.assessmentHeader}>
                 <div className={styles.assessmentHeaderText}>
@@ -630,13 +665,30 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
                 </>
               ) : isProgramTasksStep ? (
                 <>
-                  <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" />
+                  {taskSearchOpen ? (
+                    <SearchBar
+                      className={styles.taskSearch}
+                      placeholder="Search tasks"
+                      value={taskSearchText}
+                      onChange={e => setTaskSearchText(e.target.value)}
+                      onClose={() => { setTaskSearchOpen(false); setTaskSearchText(''); }}
+                    />
+                  ) : (
+                    <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" onClick={() => setTaskSearchOpen(true)} />
+                  )}
                   <span className={styles.headerDivider} />
-                  <Button variant="ghost" size="S" leadingIcon="solar:add-circle-linear" className={styles.reviewedBtn} onClick={() => setAddTaskOpen(true)}>
+                  <Button variant="tertiary" size="L" leadingIcon="solar:add-circle-linear" onClick={() => setAddTaskOpen(true)}>
                     Add Task
                   </Button>
                   <span className={styles.headerDivider} />
-                  <ActionButton icon="solar:filter-linear" size="S" tooltip="Filter" />
+                  <ActionButton
+                    icon="solar:filter-linear"
+                    size="S"
+                    tooltip="Filter"
+                    active={taskFiltersOpen}
+                    iconColor={taskFiltersOpen ? 'var(--primary-300)' : undefined}
+                    onClick={() => setTaskFiltersOpen(v => !v)}
+                  />
                 </>
               ) : isOutreachStep ? (
                 <>
@@ -670,6 +722,26 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
                 </>
               )}
             </div>
+            </div>
+            {isProgramTasksStep && taskFiltersOpen && (
+              <div className={styles.headerFilterBar}>
+                {taskFilterMeta.map(f => (
+                  <FilterChip
+                    key={f.key}
+                    label={f.label}
+                    options={f.options}
+                    selected={taskFilters[f.key]}
+                    onChange={vals => setTaskFilter(f.key, vals)}
+                  />
+                ))}
+                {taskFiltersActive && (
+                  <button className={styles.headerClearAll} onClick={() => setTaskFilters(EMPTY_TASK_FILTERS)}>
+                    <Icon name="solar:backspace-linear" size={16} color="var(--primary-300)" />
+                    Clear All
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {isBillingStep ? (
@@ -694,7 +766,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
           ) : isMedReconStep ? (
             <MedicationReconciliation />
           ) : isProgramTasksStep ? (
-            <ProgramRelatedTasks programCode={program.code} onAddTask={() => setAddTaskOpen(true)} />
+            <ProgramRelatedTasks programCode={program.code} onAddTask={() => setAddTaskOpen(true)} filters={taskFilters} search={taskSearchText} />
           ) : isProgramFilesStep ? (
             <ProgramRelatedFiles />
           ) : isReferralStep ? (

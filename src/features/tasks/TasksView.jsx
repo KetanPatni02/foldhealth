@@ -26,6 +26,7 @@ import { CommentComposer } from '../../components/CommentComposer/CommentCompose
 import { PdfPreviewOverlay } from '../../components/PdfPreviewOverlay/PdfPreviewOverlay';
 import { ClinicalNotePanel } from '../hedis-worklist/ClinicalNotePanel';
 import { Select } from '../../components/Select/Select';
+import { SectionPagination } from '../../components/SectionPagination/SectionPagination';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { FilterBar } from '../../components/FilterBar/FilterBar';
 import { RingEmptyState } from '../../components/RingEmptyState/RingEmptyState';
@@ -798,7 +799,16 @@ function StatusGroup({ status, label: labelProp, tasks, onToggle, onTaskClick, h
  * standard TaskRow so rows look exactly like the Tasks module. When the section
  * has no tasks it shows the ring empty state instead of the table.
  */
+const PROG_TASKS_PER_PAGE = 5;
+
 function ProgramTaskSection({ title, tasks, onToggle, onTaskClick, hideAssignedTo, hideMember, onAddTask, emptyLabel }) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(tasks.length / PROG_TASKS_PER_PAGE));
+  // Clamp if the list shrank (e.g. a task moved sections) so we never land on
+  // an empty page.
+  const safePage = Math.min(page, totalPages);
+  const pageTasks = tasks.slice((safePage - 1) * PROG_TASKS_PER_PAGE, safePage * PROG_TASKS_PER_PAGE);
+
   return (
     <div className={styles.progSection}>
       <div className={styles.progSectionHead}>
@@ -810,30 +820,40 @@ function ProgramTaskSection({ title, tasks, onToggle, onTaskClick, hideAssignedT
           <RingEmptyState icon="solar:checklist-minimalistic-linear" label={emptyLabel || 'No Tasks Added'} />
         </div>
       ) : (
-        <div className={`${styles.progScroll} ${hideMember ? styles.tableNoMember : ''}`}>
-          <div className={`${styles.tableHeader} ${styles.progHeader}`}>
-            <div className={`${styles.thCell} ${styles.colCheck} ${styles.pinLeft0}`} />
-            <div className={`${styles.thCell} ${styles.colTask} ${styles.pinLeftCheck}`}>Tasks</div>
-            <div className={`${styles.thCell} ${styles.colP}`}>P</div>
-            <div className={`${styles.thCell} ${styles.colStatus}`}>Status</div>
-            <div className={`${styles.thCell} ${styles.colDue}`}>Due Date</div>
-            {!hideAssignedTo && <div className={`${styles.thCell} ${styles.colAssigned}`}>Assigned To</div>}
-            {!hideMember && <div className={`${styles.thCell} ${styles.colMember}`}>Member</div>}
-            <div className={`${styles.thCell} ${styles.colLabels}`}>Labels</div>
-            <div className={`${styles.thCell} ${styles.colActions} ${styles.pinRight0}`} />
+        <>
+          <div className={`${styles.progScroll} ${hideMember ? styles.tableNoMember : ''}`}>
+            <div className={`${styles.tableHeader} ${styles.progHeader}`}>
+              <div className={`${styles.thCell} ${styles.colCheck} ${styles.pinLeft0}`} />
+              <div className={`${styles.thCell} ${styles.colTask} ${styles.pinLeftCheck}`}>Tasks</div>
+              <div className={`${styles.thCell} ${styles.colP}`}>P</div>
+              <div className={`${styles.thCell} ${styles.colStatus}`}>Status</div>
+              <div className={`${styles.thCell} ${styles.colDue}`}>Due Date</div>
+              {!hideAssignedTo && <div className={`${styles.thCell} ${styles.colAssigned}`}>Assigned To</div>}
+              {!hideMember && <div className={`${styles.thCell} ${styles.colMember}`}>Member</div>}
+              <div className={`${styles.thCell} ${styles.colLabels}`}>Labels</div>
+              <div className={`${styles.thCell} ${styles.colActions} ${styles.pinRight0}`} />
+            </div>
+            {pageTasks.map(t => (
+              <TaskRow
+                key={t.id}
+                task={t}
+                onToggle={onToggle}
+                onTaskClick={onTaskClick}
+                hideAssignedTo={hideAssignedTo}
+                hideMember={hideMember}
+                pinnedEnds
+              />
+            ))}
           </div>
-          {tasks.map(t => (
-            <TaskRow
-              key={t.id}
-              task={t}
-              onToggle={onToggle}
-              onTaskClick={onTaskClick}
-              hideAssignedTo={hideAssignedTo}
-              hideMember={hideMember}
-              pinnedEnds
+          {tasks.length > PROG_TASKS_PER_PAGE && (
+            <SectionPagination
+              page={safePage}
+              perPage={PROG_TASKS_PER_PAGE}
+              total={tasks.length}
+              onPageChange={setPage}
             />
-          ))}
-        </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -1216,7 +1236,21 @@ export function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCre
   const [description, setDescription] = useState('');
   const [selectedLabels, setSelectedLabels] = useState([]);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  // Subtasks are staged locally (the parent task has no id yet) and created
+  // once the task is saved.
+  const [showAddSubtask, setShowAddSubtask] = useState(false);
+  const [subtaskName, setSubtaskName] = useState('');
+  const [stagedSubtasks, setStagedSubtasks] = useState([]);
   const editorRef = useRef(null);
+
+  const addStagedSubtask = () => {
+    const trimmed = subtaskName.trim();
+    if (!trimmed) return;
+    setStagedSubtasks(prev => [...prev, trimmed.slice(0, TITLE_MAX)]);
+    setSubtaskName('');
+    setShowAddSubtask(false);
+  };
+  const removeStagedSubtask = (idx) => setStagedSubtasks(prev => prev.filter((_, i) => i !== idx));
 
   const createTask = useAppStore(s => s.createTask);
   const showToast = useAppStore(s => s.showToast);
@@ -1255,7 +1289,8 @@ export function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCre
     description.replace(/<[^>]*>/g, '').trim() !== '' ||
     selectedLabels.length > 0 ||
     priority !== 'medium' ||
-    status !== initialStatus;
+    status !== initialStatus ||
+    stagedSubtasks.length > 0;
 
   const canSave = name.trim() !== '' && isDirty && name.length <= TITLE_MAX;
 
@@ -1295,6 +1330,30 @@ export function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCre
     };
     const result = await createTask(task);
     if (result) {
+      // Persist the staged subtasks now that we have the parent id.
+      for (const subName of stagedSubtasks) {
+        await createTask({
+          name: subName.slice(0, TITLE_MAX),
+          status: 'pending',
+          priority: 'medium',
+          due_date: task.due_date,
+          assigned_to: finalAssigneeName,
+          assigned_to_id: finalAssigneeId,
+          member: task.member,
+          labels: [],
+          parent_task: task.name,
+          parent_task_id: result.id,
+          is_subtask: true,
+          attachments: 0,
+          comments: 0,
+          meta: '',
+          description: '',
+          pool: null,
+          mentions: [],
+          created_by: me,
+          created_by_id: meId,
+        });
+      }
       showToast('Task created');
       onTaskCreated?.(result);
     }
@@ -1321,6 +1380,26 @@ export function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCre
         }
       >
         <div className={styles.drawerContent}>
+          {/* Toolbar — Status + task actions (parity with Task Details). The
+              id-dependent actions are disabled until the task is saved. */}
+          <div className={styles.drawerToolbar}>
+            <Select
+              style={{ width: 120 }}
+              options={STATUS_ORDER.map(s => ({ value: s, label: STATUS_LABELS[s] }))}
+              value={status}
+              onChange={setStatus}
+            />
+            <div className={styles.drawerToolbarRight}>
+              <ActionButton icon="solar:paperclip-linear" size="L" tooltip="Attachments" />
+              <span className={styles.iconDivider} />
+              <ActionButton icon="solar:link-minimalistic-linear" size="L" tooltip="Copy link" state="disabled" />
+              <span className={styles.iconDivider} />
+              <ActionButton icon="solar:clipboard-text-linear" size="L" tooltip="Copy ID" state="disabled" />
+              <span className={styles.iconDivider} />
+              <ActionButton icon="solar:trash-bin-trash-linear" size="L" tooltip="Delete" state="disabled" />
+            </div>
+          </div>
+
           {/* Task Name */}
           <div className={styles.drawerSection}>
             <span className={styles.drawerSectionLabel}>Task Name</span>
@@ -1344,15 +1423,6 @@ export function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCre
 
           {/* Detail rows */}
           <div className={styles.drawerDetails}>
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>Status</span>
-              <Select
-                style={{ width: 140 }}
-                options={STATUS_ORDER.map(s => ({ value: s, label: STATUS_LABELS[s] }))}
-                value={status}
-                onChange={setStatus}
-              />
-            </div>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Task Pool</span>
               <DetailDropdown
@@ -1474,6 +1544,48 @@ export function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCre
                 <ActionButton icon="solar:list-linear" size="S" tooltip="List" onClick={() => document.execCommand('insertUnorderedList')} />
               </div>
             </div>
+          </div>
+
+          {/* Subtasks — staged locally, created once the task is saved. */}
+          <div className={styles.drawerSection}>
+            <div className={styles.subtaskHeader}>
+              <h4 className={styles.drawerSectionTitle}>
+                Subtasks {stagedSubtasks.length > 0 && <span className={styles.subtaskCount}>{stagedSubtasks.length}</span>}
+              </h4>
+              <button className={styles.subtaskAddBtn} onClick={() => setShowAddSubtask(v => !v)}>
+                <Icon name="solar:add-circle-linear" size={14} color="var(--primary-300)" />
+                Add Subtask
+              </button>
+            </div>
+            {showAddSubtask && (
+              <div className={styles.subtaskAddRow}>
+                <input
+                  className={styles.subtaskAddInput}
+                  placeholder="Enter subtask name..."
+                  maxLength={TITLE_MAX}
+                  value={subtaskName}
+                  onChange={e => setSubtaskName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addStagedSubtask(); if (e.key === 'Escape') { setShowAddSubtask(false); setSubtaskName(''); } }}
+                  autoFocus
+                />
+                <Button variant="primary" size="S" onClick={addStagedSubtask} disabled={!subtaskName.trim()}>Add</Button>
+                <Button variant="secondary" size="S" onClick={() => { setShowAddSubtask(false); setSubtaskName(''); }}>Cancel</Button>
+              </div>
+            )}
+            {stagedSubtasks.map((sub, i) => (
+              <div key={i} className={styles.subtaskCard}>
+                <div className={styles.subtaskCardBody}>
+                  <div className={styles.subtaskCardRow}>
+                    <PriorityIcon priority="medium" size={16} />
+                    <span className={styles.subtaskCardName}>{sub}</span>
+                  </div>
+                </div>
+                <ActionButton icon="solar:close-circle-linear" size="S" tooltip="Remove" onClick={() => removeStagedSubtask(i)} />
+              </div>
+            ))}
+            {stagedSubtasks.length === 0 && !showAddSubtask && (
+              <div className={styles.subtaskEmpty}>No subtasks yet. Break this task down into smaller steps.</div>
+            )}
           </div>
         </div>
       </Drawer>
@@ -1630,7 +1742,7 @@ const ACTIVITY_LOGS = [
 
 const TITLE_MAX = 200;
 
-function TaskDetailDrawer({ task, onClose, onSelectTask }) {
+export function TaskDetailDrawer({ task, onClose, onSelectTask }) {
   const [activityTab, setActivityTab] = useState('All');
   const [activityToggle, setActivityToggle] = useState('Activity');
   const [editingDesc, setEditingDesc] = useState(false);

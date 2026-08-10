@@ -61,14 +61,17 @@
 
 /* Pin Task Title (+ its check) to the left and the action column to the right
    while the middle columns scroll horizontally. */
-/* Sticky cells paint over the header/row bottom border, so carry a matching
-   one to keep the divider continuous under the pinned columns. */
-.pinLeft0 { position: sticky; left: 0; z-index: 2; background: var(--neutral-0); border-bottom: 0.5px solid var(--neutral-150); }
-.pinLeftCheck { position: sticky; left: 48px; z-index: 2; background: var(--neutral-0); min-width: 300px; border-bottom: 0.5px solid var(--neutral-150); }
-.pinRight0 { position: sticky; right: 0; z-index: 2; background: var(--neutral-0); border-bottom: 0.5px solid var(--neutral-150); }
+.pinLeft0 { position: sticky; left: 0; z-index: 2; background: var(--neutral-0); }
+.pinLeftCheck { position: sticky; left: 48px; z-index: 2; background: var(--neutral-0); min-width: 300px; }
+.pinRight0 { position: sticky; right: 0; z-index: 2; background: var(--neutral-0); }
 .progHeader .pinLeft0,
 .progHeader .pinLeftCheck,
 .progHeader .pinRight0 { z-index: 4; }
+/* Draw the divider on each header cell (not the container) so the opaque
+   pinned cells don't paint over it, and every cell's hairline lands on the
+   same line — no doubling. */
+.progHeader.tableHeader { border-bottom: none; }
+.progHeader .thCell { box-sizing: border-box; border-bottom: 0.5px solid var(--neutral-150); }
 
 /* ── Table Header ── */
 .tableHeader {
