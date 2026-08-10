@@ -14,12 +14,13 @@ import { CommsTab } from '../tabs/comms/CommsTab/CommsTab.jsx';
 import { OutreachTab } from '../tabs/outreach/OutreachTab/OutreachTab.jsx';
 import { SummaryTab } from '../tabs/summary/SummaryTab/SummaryTab.jsx';
 import { TasksTab } from '../tabs/tasks/TasksTab/TasksTab.jsx';
+import { ProfileTab } from '../tabs/profile/ProfileTab/ProfileTab.jsx';
 import { CARE_GAP_SECTIONS_EXTENDED, CARE_GAP_TABS } from '../../data/careGapsMock';
 import styles from './PatientProfileTabs.module.css';
 
 const TAB_ITEMS = CARE_GAP_TABS.map(tab => ({ key: tab, label: tab }));
 
-export function PatientProfileTabs({ patientId }) {
+export function PatientProfileTabs({ patientId, patient }) {
   const [activeTab, setActiveTab] = useState(CARE_GAP_TABS[0]);
   const [selectedGaps, setSelectedGaps] = useState([]);
   const [gapsCollapsed, setGapsCollapsed] = useState(false);
@@ -219,7 +220,9 @@ export function PatientProfileTabs({ patientId }) {
 
         {activeIdx === 6 && <TasksTab />}
 
-        {activeIdx > 6 && (
+        {activeIdx === 8 && <ProfileTab patient={patient || { id: patientId }} />}
+
+        {activeIdx === 7 && (
           <div className={styles.placeholder}>
             <Icon name="solar:document-text-linear" size={32} color="var(--neutral-150)" />
             <span>Coming soon</span>

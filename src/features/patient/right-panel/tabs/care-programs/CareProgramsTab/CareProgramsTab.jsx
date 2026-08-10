@@ -3,7 +3,6 @@ import { Icon } from '../../../../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../../../../components/Icon/DownChevronIcon';
 import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
 import { Button } from '../../../../../../components/Button/Button';
-import { SearchListPopover } from '../../../../../../components/SearchListPopover/SearchListPopover';
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { SearchBar } from '../../../../../../components/SearchBar/SearchBar';
 import { FilterChip } from '../../../../../../components/FilterChip/FilterChip';
@@ -70,7 +69,6 @@ export function CareProgramsTab() {
   const [pendingProgram, setPendingProgram] = useState(null);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [selectedIds, setSelectedIds] = useState([]);
-  const [npOpen, setNpOpen] = useState(false);
   const [statusMenu, setStatusMenu] = useState(null); // { id, rect }
   const [rowMenu, setRowMenu] = useState(null);       // { id, rect }
   const npBtnRef = useRef(null);
@@ -227,31 +225,36 @@ export function CareProgramsTab() {
   const toggleOne = (id) =>
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
-  const newProgramControl = (align = 'left') => (
-    <div className={styles.npWrap}>
-      <Button
-        ref={npBtnRef}
-        variant="tertiary"
-        size="L"
-        leadingIcon="solar:add-circle-linear"
-        trailingIconElement={<DownChevronIcon size={16} color="var(--primary-300)" />}
-        onClick={() => setNpOpen(o => !o)}
-      >
-        New Program
-      </Button>
-      {npOpen && (
-        <SearchListPopover
-          anchorRect={npBtnRef.current?.getBoundingClientRect()}
-          align={align}
-          options={programOptions}
-          onSelect={handleAddProgram}
-          onClose={() => setNpOpen(false)}
-          searchPlaceholder="Search programs"
-          emptyText="No programs found"
-        />
-      )}
-    </div>
-  );
+  const newProgramControl = (align = 'left') => {
+    // Map the picker options into MenuPopover items — the catalog is small
+    // enough (~9 entries) that a search box isn't earning its keep once we
+    // adopt the split-button dropdown.
+    const menuItems = programOptions.map((opt) => {
+      const entry = CARE_PROGRAM_CATALOG.find((e) => e.code === opt.value);
+      return {
+        key: opt.value,
+        label: entry ? `${entry.code} — ${entry.name}` : opt.label,
+        disabled: opt.disabled,
+      };
+    });
+    return (
+      <div className={styles.npWrap}>
+        <Button
+          ref={npBtnRef}
+          variant="tertiary"
+          size="L"
+          leadingIcon="solar:add-circle-linear"
+          menuItems={menuItems}
+          onMenuSelect={(key) => handleAddProgram(key)}
+          menuAlign={align === 'right' ? 'right' : 'left'}
+          menuWidth={260}
+          menuAriaLabel="Add a care program"
+        >
+          New Program
+        </Button>
+      </div>
+    );
+  };
 
   if (pendingProgram) {
     return <ProgramDetailSkeleton />;

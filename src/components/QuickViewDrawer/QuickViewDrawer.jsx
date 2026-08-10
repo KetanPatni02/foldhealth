@@ -42,7 +42,7 @@ export function QuickViewDrawer() {
       </div>
 
       <div className={styles.tabsPanel}>
-        <PatientProfileTabs patientId={patient.id} />
+        <PatientProfileTabs patientId={patient.id} patient={patient} />
       </div>
     </Drawer>
   );
