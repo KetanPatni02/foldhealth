@@ -398,10 +398,10 @@ function computeFilterOptions(entries, member, extras = {}) {
   }
   const cmp = (a, b) => a.localeCompare(b);
   return {
-    dos:  dos.toSorted(cmp),
-    hcc:  hcc.toSorted(cmp),
-    icd:  icd.toSorted(cmp),
-    by:   byPool.toSorted(cmp),
+    dos:  [...dos].toSorted(cmp),
+    hcc:  [...hcc].toSorted(cmp),
+    icd:  [...icd].toSorted(cmp),
+    by:   [...byPool].toSorted(cmp),
     date: DATE_PRESETS,
   };
 }

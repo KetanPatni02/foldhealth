@@ -248,7 +248,7 @@ export function CcmWorklistTable() {
     for (const m of members) {
       if (m.assigneeName) names.add(m.assigneeName);
     }
-    return names.toSorted();
+    return [...names].toSorted();
   }, [members]);
 
   const paginated = useMemo(() => {

@@ -112,19 +112,19 @@ export function FilterChipBar({
       if (roles.includes('Compliance')) r2u.push(u.name);
     }
     return {
-      vt:   vt.toSorted().concat('No Visit Type'),
+      vt:   [...vt].toSorted().concat('No Visit Type'),
       asgn: platformUsers.map(u => u.name),
       supU,
       cdrU,
       r1u,
       r2u,
-      rp:    rp.toSorted(),
-      pcp:   pcp.toSorted(),
-      ipa:   ipa.toSorted(),
-      hp:    hp.toSorted(),
-      city:  city.toSorted(),
-      state: state.toSorted(),
-      tin:   tin.toSorted(),
+      rp:    [...rp].toSorted(),
+      pcp:   [...pcp].toSorted(),
+      ipa:   [...ipa].toSorted(),
+      hp:    [...hp].toSorted(),
+      city:  [...city].toSorted(),
+      state: [...state].toSorted(),
+      tin:   [...tin].toSorted(),
     };
   }, [hccMembers, platformUsers]);
   const dynamicOpts = dynamicOptsProp || (list === 'HCC' ? hccDynamicOpts : {});

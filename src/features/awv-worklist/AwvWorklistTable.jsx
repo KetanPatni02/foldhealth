@@ -111,11 +111,11 @@ export function AwvWorklistTable() {
     return {
       progSubStatus: [...progSubStatus],
       progName:      [...progName],
-      ri:            ri.toSorted(),
-      dec:           dec.toSorted((a, b) => Number(a) - Number(b)),
-      ad:            ad.toSorted(),
-      fr:            fr.toSorted(),
-      assignee:      assignee.toSorted(),
+      ri:            [...ri].toSorted(),
+      dec:           [...dec].toSorted((a, b) => Number(a) - Number(b)),
+      ad:            [...ad].toSorted(),
+      fr:            [...fr].toSorted(),
+      assignee:      [...assignee].toSorted(),
     };
   }, [members]);
 

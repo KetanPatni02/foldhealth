@@ -100,11 +100,11 @@ export function HedisWorklistTable() {
       if (m.assignee) assignee.add(m.assignee);
     }
     return {
-      assignee: platformUsers?.length ? platformUsers.map(u => u.name) : assignee.toSorted(),
-      state:    state.toSorted(),
-      city:     city.toSorted(),
-      ipa:      ipa.toSorted(),
-      hpCode:   hpCode.toSorted(),
+      assignee: platformUsers?.length ? platformUsers.map(u => u.name) : [...assignee].toSorted(),
+      state:    [...state].toSorted(),
+      city:     [...city].toSorted(),
+      ipa:      [...ipa].toSorted(),
+      hpCode:   [...hpCode].toSorted(),
     };
   }, [hedisMembers, platformUsers]);
 
