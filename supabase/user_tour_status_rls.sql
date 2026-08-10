@@ -1,33 +1,38 @@
 -- Lock user_tour_status to its owner.
 --
--- Why: ProductTour reads and writes this table from the browser, passing
--- `user_id` from the client session. With a permissive policy the anon key can
--- read or overwrite any user's tour state. The client filter is not a security
--- boundary — the database has to be. This replaces the blanket
--- "Allow all" policy with owner-scoped access driven by auth.uid().
+-- Verified against production before writing (2026-08-10):
+--   • RLS is already enabled on the table.
+--   • Four correct owner-scoped policies already exist for PUBLIC, all keyed
+--     on `auth.uid() = user_id`.
+--   • Four permissive `anon` policies also exist — SELECT/INSERT/UPDATE/DELETE
+--     with `true` — which let anyone holding the public anon key read, alter
+--     or delete every user's tour state. Policies are OR'd, so these four are
+--     the entire hole.
 --
--- Safe to run: ProductTour already falls back to localStorage when the DB call
--- fails (see getLocalSeenTours / markLocalTourSeen), so worst case tour state
--- becomes per-browser instead of per-account.
+-- The fix is therefore to drop the four anon policies, not to add new ones.
+-- Afterwards the surviving PUBLIC policies still apply to anon, but
+-- `auth.uid()` is NULL for an anonymous session so `auth.uid() = user_id`
+-- is never true and anon gets nothing.
+--
+-- Impact: unauthenticated sessions (the "Continue without login" dev path)
+-- stop persisting tour state to the database. ProductTour already falls back
+-- to localStorage when the DB call fails, so tours degrade to per-browser
+-- rather than breaking.
 
-alter table public.user_tour_status enable row level security;
+begin;
 
--- Default the owner column server-side so the client never has to assert it.
+drop policy if exists "Anon can read all tour status" on public.user_tour_status;
+drop policy if exists "Anon can insert tour status"   on public.user_tour_status;
+drop policy if exists "Anon can upsert tour status"   on public.user_tour_status;
+drop policy if exists "Anon can delete tour status"   on public.user_tour_status;
+
+-- Let the database assert the owner so the client never has to send it.
 alter table public.user_tour_status
   alter column user_id set default auth.uid();
 
-drop policy if exists "Allow all for user_tour_status" on public.user_tour_status;
-drop policy if exists "Allow all for anon" on public.user_tour_status;
-drop policy if exists "own tour status" on public.user_tour_status;
-
-create policy "own tour status"
-  on public.user_tour_status
-  for all
-  to authenticated
-  using (user_id = auth.uid())
-  with check (user_id = auth.uid());
+commit;
 
 -- Verify:
---   select policyname, cmd, roles from pg_policies
---   where tablename = 'user_tour_status';
--- Expected: a single 'own tour status' policy scoped to {authenticated}.
+--   select policyname, cmd, roles::text, qual from pg_policies
+--   where tablename = 'user_tour_status' order by policyname;
+-- Expected: only the four "Users can … own tour status" policies remain.
