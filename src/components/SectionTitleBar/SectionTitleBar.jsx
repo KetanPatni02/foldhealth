@@ -27,10 +27,10 @@ import styles from './SectionTitleBar.module.css';
  *   • variant="titleWithToggle"   — Static title + segmented toggle
  *                                    (e.g. `SNP List  Enrolled | Eligible`).
  *
- * Right-side actions are opt-in via `show*` flags so each page picks the
- * exact icon set it needs (Search, Filter, History, Upload, Download,
- * Saved Filters). `rightExtras` renders custom content before the icon
- * cluster for page-specific controls.
+ * Right-side actions are opt-in via the `actions` array so each page picks
+ * the exact icon set it needs (`'search'`, `'filter'`, `'history'`,
+ * `'upload'`, `'download'`, `'savedFilters'`). `rightExtras` renders
+ * custom content before the icon cluster for page-specific controls.
  */
 export function SectionTitleBar({
   variant = 'tabs',
@@ -56,13 +56,8 @@ export function SectionTitleBar({
   toggleActive,
   onToggleChange,
 
-  // Right side action flags
-  showSearch = false,
-  showFilter = false,
-  showHistory = false,
-  showUpload = false,
-  showDownload = false,
-  showSavedFilters = false,
+  // Right side actions — e.g. ['search', 'filter', 'history']
+  actions = [],
 
   // Right side handlers
   onSearch,
@@ -99,6 +94,7 @@ export function SectionTitleBar({
   const [searchOpen, setSearchOpen] = useState(false);
   const barRef = useRef(null);
   const rightRef = useRef(null);
+  const hasAction = (key) => actions.includes(key);
 
   const cls = [styles.tabBar, className || ''].filter(Boolean).join(' ');
 
@@ -142,7 +138,7 @@ export function SectionTitleBar({
       <div className={styles.right} ref={rightRef}>
         {rightExtras}
 
-        {showSavedFilters && (
+        {hasAction('savedFilters') && (
           <>
             <Button
               variant="secondary"
@@ -157,7 +153,7 @@ export function SectionTitleBar({
           </>
         )}
 
-        {showSearch && (
+        {hasAction('search') && (
           <>
             <div className={styles.searchWrap}>
               {searchOpen ? (
@@ -185,7 +181,7 @@ export function SectionTitleBar({
           </>
         )}
 
-        {showFilter && (
+        {hasAction('filter') && (
           <>
             <ActionButton
               icon="custom:filter"
@@ -201,7 +197,7 @@ export function SectionTitleBar({
           </>
         )}
 
-        {showDownload && (
+        {hasAction('download') && (
           <>
             <ActionButton
               icon="solar:download-minimalistic-linear"
@@ -214,7 +210,7 @@ export function SectionTitleBar({
           </>
         )}
 
-        {showUpload && (
+        {hasAction('upload') && (
           <>
             <Button
               variant="primary"
@@ -229,7 +225,7 @@ export function SectionTitleBar({
           </>
         )}
 
-        {showHistory && (
+        {hasAction('history') && (
           <ActionButton
             icon="solar:history-linear"
             size="L"

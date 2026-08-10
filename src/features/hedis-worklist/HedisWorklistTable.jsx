@@ -143,17 +143,14 @@ export function HedisWorklistTable() {
         dropdownOptions={YEARS.map(String)}
         dropdownValue={String(year)}
         onDropdownChange={(v) => setYear(Number(v) || 2026)}
-        showSearch
+        actions={['search', 'filter', 'download', 'history']}
         searchPlaceholder="Search by member name…"
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
-        showFilter
         filterActive={filterBarOpen}
         filterBadgeCount={activeFilterCount}
         onFilter={() => setFilterBarOpen(v => !v)}
-        showDownload
         onDownload={() => showToast('Export — coming soon')}
-        showHistory
         onHistory={() => showToast('History — coming soon')}
         rightExtras={
           <>

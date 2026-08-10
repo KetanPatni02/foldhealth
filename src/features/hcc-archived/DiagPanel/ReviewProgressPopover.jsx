@@ -1,6 +1,5 @@
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../components/Icon/Icon';
-import { ROLES, ROLE_LABEL, staffById } from '../assignment/astranaStaff';
 import styles from './ReviewProgressPopover.module.css';
 
 /**
@@ -20,46 +19,6 @@ import styles from './ReviewProgressPopover.module.css';
  * the engine hasn't been seeded yet we fall back to the legacy
  * `member.sup/cdr/r1/r2` fields so the popover still renders.
  */
-const TERMINAL_STATUSES = new Set(['Completed', 'Billing Ready', 'Reject', 'Rejected']);
-
-export function buildReviewStages(member, dosState) {
-  // Five sequential stages per the HCC workflow:
-  //   Support → Coder → R1 → R2 → R3 → Billing
-  // Each must complete before the next is reached.
-  const visibleRoles = ['support', 'coder', 'r1', 'r2', 'r3'];
-  return visibleRoles.map((role) => {
-    const rs = dosState?.[role];
-    const legacyMap = {
-      support: { name: member?.sup, status: member?.supS },
-      coder:   { name: member?.cdr, status: member?.cdrS },
-      r1:      { name: member?.r1,  status: member?.r1s },
-      r2:      { name: member?.r2,  status: member?.r2s },
-      r3:      { name: member?.r3,  status: member?.r3s },
-    };
-    const assigneeId = rs?.assignee || null;
-    const staff = assigneeId ? staffById(assigneeId) : null;
-    const name = staff?.name || legacyMap[role].name || null;
-    const status = rs?.status || legacyMap[role].status || null;
-
-    let state = 'pending';
-    if (status && TERMINAL_STATUSES.has(status)) state = 'done';
-    else if (status && status !== 'Assign') state = 'active';
-
-    const at = rs?.history?.[rs.history.length - 1]?.at;
-    const date = at ? new Date(at).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : null;
-
-    return { role, label: ROLE_LABEL[role], name, status, date, state };
-  });
-}
-
-// 0..1 fraction of the workflow that's complete.
-export function computeReviewProgress(stages) {
-  if (!stages?.length) return 0;
-  const N = stages.length;
-  const done = stages.filter(s => s.state === 'done').length;
-  const active = stages.filter(s => s.state === 'active').length;
-  return Math.min(1, (done + active * 0.5) / N);
-}
 
 // ── Component ─────────────────────────────────────────────────────────
 

@@ -768,7 +768,7 @@ export function ContentSettings() {
         tabs={CONTENT_TABS}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        showSearch={isListTab}
+        actions={isListTab ? ['search'] : []}
         searchPlaceholder={isForms ? 'Search forms…' : 'Search emails…'}
         searchValue={searchInputVal}
         onSearchChange={setSearchInputVal}

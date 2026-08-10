@@ -1,160 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Icon } from '../../components/Icon/Icon';
+import {
+  AVERGENT_THEME,
+  PROMINENCE_THEME,
+  NO_THEME,
+  PRESET_THEMES,
+  DEFAULT_CARD_THEME,
+} from './CardThemePicker.constants';
 import styles from './CardThemePicker.module.css';
-
-/* ── Logo-linked brand themes ── */
-export const AVERGENT_THEME = {
-  name: 'Avergent',
-  bg: 'linear-gradient(143.06deg, #FFFFFF 0%, #FFEEDE 121.47%, #EDAC6C 178.57%)',
-  border: '0.5px solid #FBDDBF',
-  badgeBg: '#FFF6EC',
-  badgeBorderColor: 'rgba(244,122,62,0.2)',
-  badgeText: '#F47A3E',
-  textPrimary: '#16181D',
-  textSecondary: '#6F7A90',
-  dividerColor: '#D0D6E1',
-  footerBg: '#FFA449',
-  footerText: '#FFFFFF',
-  noteBg: '#FFEDDB',
-};
-
-export const PROMINENCE_THEME = {
-  name: 'Prominence',
-  bg: 'linear-gradient(143.06deg, #FFFFFF 0%, #E4FCFF 121.47%, #DFFBFF 178.57%)',
-  border: '0.5px solid #BFE8FB',
-  badgeBg: '#E5F8FB',
-  badgeBorderColor: 'rgba(16,156,174,0.2)',
-  badgeText: '#109CAE',
-  textPrimary: '#16181D',
-  textSecondary: '#6F7A90',
-  dividerColor: '#D0D6E1',
-  footerBg: null,
-  footerText: null,
-  noteBg: '#E4FBFF',
-};
-
-export const NO_THEME = {
-  name: 'None',
-  bg: '#FFFFFF',
-  border: '0.5px solid #D0D6E1',
-  badgeBg: '#F6F7F8',
-  badgeBorderColor: '#D0D6E1',
-  badgeText: '#6F7A90',
-  textPrimary: '#16181D',
-  textSecondary: '#6F7A90',
-  dividerColor: '#D0D6E1',
-  footerBg: '#F6F7F8',
-  footerText: '#3A485F',
-  noteBg: '#F6F7F8',
-};
-
-/* ── Preset themes — exact Figma values, row1: light pastels, row2: dark/vivid ── */
-export const PRESET_THEMES = [
-  {
-    name: 'Water',
-    bg: 'linear-gradient(147.77deg, #EEF4FF 0%, #F3F7FF 38%, #B8D0FF 100%)',
-    dot: '#b8d0ff',
-    textPrimary: '#3a485f',
-    textSecondary: '#717885',
-    dividerColor: '#bcd2ff',
-    badgeTextColor: '#036939',
-    isLight: true,
-  },
-  {
-    name: 'Blossom',
-    bg: 'linear-gradient(147.77deg, #FFFFFF 0%, #FACEFE 100%)',
-    dot: '#facefe',
-    textPrimary: '#3a485f',
-    textSecondary: '#717885',
-    dividerColor: '#fcc8ff',
-    badgeTextColor: '#036939',
-    isLight: true,
-  },
-  {
-    name: 'Gold',
-    bg: 'linear-gradient(147.77deg, #FFFBEC 0%, #FFE4A5 100%)',
-    dot: '#ffe4a5',
-    textPrimary: '#3a485f',
-    textSecondary: '#717885',
-    dividerColor: '#ffe1a8',
-    badgeTextColor: '#036939',
-    isLight: true,
-  },
-  {
-    name: 'Aqua',
-    bg: 'linear-gradient(147.77deg, #FFFFFF 0%, #B2FEFB 100%)',
-    dot: '#b2fefb',
-    textPrimary: '#3a485f',
-    textSecondary: '#717885',
-    dividerColor: '#b9eced',
-    badgeTextColor: '#036939',
-    isLight: true,
-  },
-  {
-    name: 'Lavender',
-    bg: 'linear-gradient(147.77deg, #FFFFFF 0%, #D8C3FF 100%)',
-    dot: '#d8c3ff',
-    textPrimary: '#3a485f',
-    textSecondary: '#717885',
-    dividerColor: '#e8c8ff',
-    badgeTextColor: '#036939',
-    isLight: true,
-  },
-  {
-    name: 'Dark Purple',
-    bg: 'linear-gradient(147.77deg, #A441FA 0%, #5E09AD 38%, #250372 100%)',
-    dot: '#7c3aed',
-    textPrimary: '#ffffff',
-    textSecondary: '#f6f7f8',
-    dividerColor: '#8e42d9',
-    badgeTextColor: '#b4fcda',
-    isLight: false,
-  },
-  {
-    name: 'Dark Teal',
-    bg: 'linear-gradient(147.77deg, #355C76 0%, #73BCB8 100%)',
-    dot: '#355c76',
-    textPrimary: '#ffffff',
-    textSecondary: '#f6f7f8',
-    dividerColor: '#7db9c3',
-    badgeTextColor: '#d7ffec',
-    isLight: false,
-  },
-  {
-    name: 'Dark Blue',
-    bg: 'linear-gradient(147.77deg, #1199F4 0%, #04177A 100%)',
-    dot: '#1199f4',
-    textPrimary: '#ffffff',
-    textSecondary: '#f6f7f8',
-    dividerColor: '#5188d8',
-    badgeTextColor: '#d7ffec',
-    isLight: false,
-  },
-  {
-    name: 'Pink Purple',
-    bg: 'linear-gradient(148.21deg, #CA11F4 0%, #1F1D85 89.33%)',
-    dot: '#ca11f4',
-    textPrimary: '#ffffff',
-    textSecondary: '#f6f7f8',
-    dividerColor: '#b144ff',
-    badgeTextColor: '#d7ffec',
-    isLight: false,
-  },
-  {
-    name: 'Dark Green',
-    bg: 'linear-gradient(147.77deg, #069265 0%, #023902 100%)',
-    dot: '#069265',
-    textPrimary: '#ffffff',
-    textSecondary: '#f6f7f8',
-    dividerColor: '#609773',
-    badgeTextColor: '#d7ffec',
-    isLight: false,
-  },
-];
-
-export const DEFAULT_CARD_THEME = PRESET_THEMES[0];
-
-/* ── Color math ── */
 function hsbToRgb(h, s, b) {
   s /= 100; b /= 100;
   const c = b * s;
@@ -187,7 +40,7 @@ function hexToRgb(hex) {
   return (isNaN(r) || isNaN(g) || isNaN(b)) ? null : [r, g, b];
 }
 
-/* ── WCAG relative luminance → auto-contrast for custom colors ── */
+/* ── WCAG relative luminance → auto-contrast for custom colours ── */
 function wcagLuminance(r, g, b) {
   const lin = (c) => { const s = c / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
   return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
@@ -252,7 +105,7 @@ export function CardThemePicker({ theme, onThemeChange }) {
   const cursorX = (sat / 100) * CANVAS_W;
   const cursorY = (1 - bri / 100) * CANVAS_H;
 
-  /* Pick color from canvas event */
+  /* Pick colour from canvas event */
   const pickFromCanvas = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -311,13 +164,13 @@ export function CardThemePicker({ theme, onThemeChange }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  /* Trigger dot — show current preset gradient or custom color */
+  /* Trigger dot — show current preset gradient or custom colour */
   const presetMatch = PRESET_THEMES.find(t => t.bg === theme?.bg);
   const dotBg = presetMatch ? presetMatch.bg : (theme?.bg || currentHex);
 
   return (
     <div className={styles.wrap} ref={wrapRef}>
-      {/* Trigger: color circle + chevron */}
+      {/* Trigger: colour circle + chevron */}
       <button className={styles.trigger} aria-label="Choose card theme color" onClick={() => setOpen(v => !v)}>
         <span className={styles.dot} style={{ background: dotBg }} />
         <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" />
@@ -342,7 +195,7 @@ export function CardThemePicker({ theme, onThemeChange }) {
             </div>
           </div>
 
-          {/* ── Custom color picker ── */}
+          {/* ── Custom colour picker ── */}
           <div className={styles.section}>
             <span className={styles.sectionLabel}>or select a color below:</span>
 

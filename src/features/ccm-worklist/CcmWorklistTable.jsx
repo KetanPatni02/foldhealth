@@ -10,11 +10,13 @@ import { BulkBar } from '../../components/BulkBar/BulkBar';
 import { CcmWorklistRow } from './CcmWorklistRow';
 import {
   TimeFilterPopover,
+} from './TimeFilterChip';
+import {
   matchTimeFilter,
   summarizeTimeFilter,
   isTimeFilterActive,
   ALL_USERS,
-} from './TimeFilterChip';
+} from './TimeFilterChip.utils';
 import styles from './CcmWorklistTable.module.css';
 
 // Threshold radio lists for the two time filters. Order matches the Figma.

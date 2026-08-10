@@ -4,7 +4,7 @@ import { Button } from '../../../../../../../../components/Button/Button';
 import { Input } from '../../../../../../../../components/Input/Input';
 import { Icon } from '../../../../../../../../components/Icon/Icon';
 import { Checkbox } from '../../../../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
-import { toast } from '../../../../../../../../components/Toast/Toast';
+import { toast } from '../../../../../../../../components/Toast/sonnerToast';
 import styles from './SendLetterDrawer.module.css';
 
 function Field({ label, required, filled, children }) {

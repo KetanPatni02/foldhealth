@@ -2,16 +2,10 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import GridLayout from 'react-grid-layout/legacy';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
+import { GRID_COLS, GRID_ROW_HEIGHT, GRID_MARGIN } from './EditableGrid.constants';
 import s from '../AnalyticsLayout.module.css';
 
 // Shared grid geometry for every editable analytics dashboard.
-// ROW_HEIGHT is intentionally tiny so (a) auto-fit can snap a cell to its
-// content within a few px, and (b) manual resize steps are granular
-// (step = ROW_HEIGHT + vertical margin). With these values the vertical
-// resize increment is ~6px instead of the ~52px you get at ROW_HEIGHT 40.
-export const GRID_COLS = 12;
-export const GRID_ROW_HEIGHT = 2;
-export const GRID_MARGIN = [12, 4];
 
 // Persisted shape is { layout, manual }. `manual` holds the keys of items
 // the user has explicitly resized — those opt out of auto-fit so their

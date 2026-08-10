@@ -443,11 +443,13 @@ export function AgentsTable() {
         tabs={tabsForBar}
         activeTab={tabKey}
         onTabChange={setSettingsTab}
-        showSearch
+        actions={[
+          'search',
+          ...(settingsTab === 'goals' || settingsTab === 'agents' ? ['filter'] : []),
+        ]}
         searchPlaceholder={searchPlaceholder}
         searchValue={searchVal}
         onSearchChange={setSearchVal}
-        showFilter={settingsTab === 'goals' || settingsTab === 'agents'}
         filterActive={settingsTab === 'agents' ? agentsFilterOpen : goalsFilterOpen}
         filterBadgeCount={settingsTab === 'agents' ? agentFiltersActive : 0}
         onFilter={() => {

@@ -82,6 +82,8 @@
 .patientCardInfo { flex: 1; min-width: 0; }
 .patientCardName { font-size: 16px; font-weight: 600; color: var(--neutral-400); }
 .patientCardMeta { font-size: 13px; color: var(--neutral-300); }
+.rafScore { color: var(--status-error); font-weight: 500; }
+.rafDelta { color: var(--status-success-bright); display: inline-flex; align-items: center; gap: 2px; }
 
 .reasonField {
   padding: 8px 12px; background: var(--neutral-50);

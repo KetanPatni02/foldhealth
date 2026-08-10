@@ -85,7 +85,7 @@ export function MemberLeadsPanel() {
         rightExtras={
           <>
             {/* Search icon renders BEFORE the Create New button per the
-                MemberLeads page layout. `showSearch` on SectionTitleBar
+                MemberLeads page layout. The `search` action on SectionTitleBar
                 would render after rightExtras, so we inline it here. */}
             {searchOpen ? (
               <SearchBar

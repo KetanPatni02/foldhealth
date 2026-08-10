@@ -20,6 +20,7 @@ import { StatusIcon } from './StatusIcon';
 import { staffById, staffForRole, ROLE_LABEL, ROLES } from './assignment/astranaStaff';
 import { createPortal } from 'react-dom';
 import { dosKey } from './assignment/dosState';
+import { resolveCurrentAssignee } from './HccWorklistRow.utils';
 import styles from './HccWorklistRow.module.css';
 
 const RISK_VARIANT = { High: 'lace-high', Medium: 'lace-medium', Low: 'lace-low' };
@@ -357,108 +358,6 @@ function Cell({ colKey, hidden, children, ...rest }) {
       {children}
     </td>
   );
-}
-
-// Statuses that count as "this role is done with the DOS" — they hand the
-// work off downstream. The DOS must complete the current stage before it
-// can be picked up by the next role; we never skip backward to a prior
-// completed assignee even if the next stage hasn't been assigned yet.
-const TERMINAL_STATUSES = new Set(['Completed', 'Reject', 'Rejected', 'Billing Ready']);
-
-// Sequential workflow order. The first role whose status is NOT terminal
-// is where the DOS currently sits (HCC reality: Support → Coder → R1 →
-// R2 → R3 → Billing). If a stage has no status / 'Assign' placeholder
-// that means it's waiting for someone to pick it up — that's the
-// current bucket but with no assignee yet.
-const STAGES_LOW_TO_HIGH = ['support', 'coder', 'r1', 'r2', 'r3'];
-
-/**
- * Resolves who currently holds a DOS based on real HCC workflow rules.
- * Returns one of three shapes:
- *
- *   { kind: 'active',     name, initials, role }   // a real person owns it
- *   { kind: 'unassigned', role }                   // current bucket, no pick yet
- *   { kind: 'billing' }                            // every stage completed
- *
- * Walks LOW→HIGH and stops at the first non-terminal stage. Engine state
- * wins; legacy `member.sup/cdr/r1/r2/r3` + status fields are the fallback.
- */
-export function resolveCurrentAssignee(member, dosState) {
-  // ── Engine path ────────────────────────────────────────────────────
-  if (dosState) {
-    for (const role of STAGES_LOW_TO_HIGH) {
-      const rs = dosState[role];
-      const status = rs?.status;
-      const hasReachedStage = !!(status || rs?.assignee);
-      // If this stage hasn't started AND a prior stage was active, the
-      // DOS is sitting at the previous stage — the outer loop already
-      // returned. So reaching here means we're at the next bucket
-      // that's awaiting handoff.
-      if (!hasReachedStage || !status || status === 'Assign') {
-        // Bucket waiting for assignment. If there's an assignee but no
-        // status, treat as active (just-assigned, no work logged yet).
-        if (rs?.assignee && status && status !== 'Assign') {
-          return makeActive(rs.assignee, role, status);
-        }
-        return { kind: 'unassigned', role };
-      }
-      // Stage has a non-terminal status → DOS lives here right now.
-      if (!TERMINAL_STATUSES.has(status)) {
-        return makeActive(rs?.assignee, role, status);
-      }
-      // Otherwise terminal → continue down the chain.
-    }
-    // All five stages terminal → Billing Ready.
-    return { kind: 'billing' };
-  }
-
-  // ── Legacy fallback (no engine state yet) ──────────────────────────
-  const legacy = [
-    { role: 'support', name: member.sup, status: member.supS },
-    { role: 'coder',   name: member.cdr, status: member.cdrS },
-    { role: 'r1',      name: member.r1,  status: member.r1s },
-    { role: 'r2',      name: member.r2,  status: member.r2s },
-    { role: 'r3',      name: member.r3,  status: member.r3s },
-  ];
-  for (const r of legacy) {
-    if (!r.name && (!r.status || r.status === 'Assign')) {
-      return { kind: 'unassigned', role: r.role };
-    }
-    if (!r.status || r.status === 'Assign') {
-      return makeActiveLegacy(r.name, r.role, r.status);
-    }
-    if (!TERMINAL_STATUSES.has(r.status)) {
-      return makeActiveLegacy(r.name, r.role, r.status);
-    }
-  }
-  return { kind: 'billing' };
-}
-
-function makeActive(staffId, role, status) {
-  const staff = staffById(staffId);
-  return {
-    kind: 'active',
-    name: staff?.name || staffId || null,
-    initials: staff?.initials || (staffId || '').slice(0, 2),
-    role,
-    status,
-  };
-}
-function makeActiveLegacy(name, role, status) {
-  return {
-    kind: 'active',
-    name: name || null,
-    initials: nameToInitials(name || ''),
-    role,
-    status,
-  };
-}
-
-function nameToInitials(name) {
-  if (!name) return '';
-  const parts = String(name).trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 /**

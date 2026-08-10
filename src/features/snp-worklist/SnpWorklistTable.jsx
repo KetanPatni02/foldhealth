@@ -233,14 +233,12 @@ export function SnpWorklistTable() {
         variant="titleWithToggle"
         title="SNP"
         toggleItems={[]}
-        showSearch
+        actions={['search', 'filter', 'history']}
         searchPlaceholder="Search patients or members"
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
-        showFilter
         filterActive={filterBarOpen}
         onFilter={() => setFilterBarOpen(v => !v)}
-        showHistory
         onHistory={() => showToast('History – coming soon')}
         rightExtras={
           <>

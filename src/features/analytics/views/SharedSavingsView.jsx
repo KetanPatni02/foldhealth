@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { KpiCard, InsightBanner, Card, ProgressBar, safeBarItems, safeTableRows, KpiSkeleton } from './shared';
+import { KpiCard, InsightBanner, Card, ProgressBar, KpiSkeleton } from './shared';
+import { safeBarItems, safeTableRows } from './shared.utils';
 import { SavingsAreaChart } from './charts';
 import { EditableGrid } from './EditableGrid';
 import s from '../AnalyticsLayout.module.css';

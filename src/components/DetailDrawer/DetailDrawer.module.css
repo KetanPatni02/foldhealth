@@ -556,6 +556,7 @@
 .sparkle {
   animation: sparkle-pulse 3s ease-in-out infinite;
   display: inline-flex;
+  color: var(--accent-pink);
 }
 
 .summaryCard {

@@ -1,37 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
+import { DUE_OPTIONS } from './DueDateChip.utils';
 import styles from './DueDateChip.module.css';
-
-export const DUE_OPTIONS = [
-  'Overdue',
-  'Due Today',
-  'Due This Week',
-  'Due Next Week',
-  'Due More Than 2 Weeks',
-];
-
-/**
- * Convert a member's `due` string ("Overdue: 1w", "Due Today", "Due in 5D")
- * to a Due Date category that matches the DueDateChip dropdown options.
- *
- * Ported from /Users/ketanp/Downloads/HCC/hcc_worklist_v2.tsx :: getDueCat
- */
-export function getDueCategory(due) {
-  if (!due) return null;
-  if (/^overdue/i.test(due)) return 'Overdue';
-  if (due === 'Due Today') return 'Due Today';
-  const m = due.match(/due in (\d+)\s*d/i) || due.match(/due in (\d+)\s*days?/i);
-  if (m) {
-    const days = parseInt(m[1], 10);
-    if (days <= 7) return 'Due This Week';
-    if (days <= 14) return 'Due Next Week';
-    return 'Due More Than 2 Weeks';
-  }
-  return null;
-}
-
-// ── The trigger chip + portaled popover ──────────────────────────────────
 export function DueDateChip({ value, onChange }) {
   const triggerRef = useRef(null);
   const [pos, setPos] = useState(null);

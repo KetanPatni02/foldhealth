@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
-import { Card, safeConfigData } from './shared';
+import { Card } from './shared';
+import { safeConfigData } from './shared.utils';
 import { SavingsAreaChart } from './charts';
 import { Slider } from '../../../components/ShadcnSlider/ShadcnSlider';
 import { EditableGrid } from './EditableGrid';

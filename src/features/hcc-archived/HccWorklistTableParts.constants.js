@@ -1,0 +1,26 @@
+import rowStyles from './HccWorklistRow.module.css';
+
+export const COL_CLASS = {
+  dos:      rowStyles.colLastVisit,
+  open:     rowStyles.colOpen,
+  date:     rowStyles.colDate,
+  evidence: rowStyles.colEvidence,
+  sup:      rowStyles.colRole,
+  cdr:      rowStyles.colRole,
+  r1:       rowStyles.colRole,
+  r2:       rowStyles.colRole,
+  r3:       rowStyles.colRole,
+  rp:       rowStyles.colProvider,
+  pos:      rowStyles.colPos,
+  posDesc:  rowStyles.colPosDesc,
+  raf:      rowStyles.colRaf,
+  ri:       rowStyles.colRi,
+  ipa:      rowStyles.colIpa,
+  hp:       rowStyles.colHp,
+  pcp:      rowStyles.colPcp,
+  dec:      rowStyles.colDec,
+  coh:      rowStyles.colCoh,
+  rl:       rowStyles.colRl,
+  ad:       rowStyles.colAd,
+  fr:       rowStyles.colFr,
+};

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Icon } from '../../components/Icon/Icon';
-import { AVERGENT_THEME, PROMINENCE_THEME, NO_THEME } from './CardThemePicker';
+import { AVERGENT_THEME, PROMINENCE_THEME, NO_THEME } from './CardThemePicker.constants';
 import { sanitizeRichText } from '../../lib/sanitizeHtml';
 import styles from './InsuranceCardPreview.module.css';
 

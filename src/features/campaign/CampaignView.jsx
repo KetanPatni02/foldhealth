@@ -465,7 +465,7 @@ export function CampaignView() {
         ]}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        showFilter
+        actions={['filter']}
         filterActive={showFilters}
         filterBadgeCount={activeFilterCount}
         onFilter={() => setShowFilters(v => !v)}

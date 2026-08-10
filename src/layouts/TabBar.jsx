@@ -136,16 +136,13 @@ export function TabBar() {
             aria-label="Agent Queue has new activity"
           />
         )}
-        showSearch
+        actions={['search', 'filter', 'history', 'download']}
         searchPlaceholder="Search by member name…"
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
-        showFilter
         filterActive={showFilterBar}
         onFilter={() => setShowFilterBar(!showFilterBar)}
-        showHistory
         onHistory={() => showToast('History – coming soon')}
-        showDownload
         onDownload={() => showToast('Export – coming soon')}
         rightExtras={
           <>

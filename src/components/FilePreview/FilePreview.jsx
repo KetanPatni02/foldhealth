@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Icon } from '../Icon/Icon';
 import { Button } from '../Button/Button';
 import { sanitizeRichText } from '../../lib/sanitizeHtml';
+import { resolveFileKind } from './FilePreview.utils';
 import styles from './FilePreview.module.css';
 
 /**
@@ -20,23 +21,6 @@ import styles from './FilePreview.module.css';
  * Storage URLs (which embed the original filename) type correctly even
  * when the doc record predates the `ext` field.
  */
-const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg']);
-
-function extOf(str) {
-  if (!str) return '';
-  const clean = String(str).split(/[?#]/)[0];
-  const m = clean.match(/\.([a-z0-9]+)$/i);
-  return m ? m[1].toLowerCase() : '';
-}
-
-export function resolveFileKind({ src, name, ext }) {
-  const e = (ext || '').toLowerCase() || extOf(name) || (src && !src.startsWith('blob:') ? extOf(src) : '');
-  if (IMAGE_EXTS.has(e)) return 'image';
-  if (e === 'docx') return 'docx';
-  if (e === 'pdf' || e === '') return 'pdf'; // blob: URLs from jsPDF/PDF uploads carry no ext
-  return 'other';
-}
-
 export function FilePreview({ src, file, name, ext, className }) {
   const [blobUrl, setBlobUrl] = useState(null);
   const kind = resolveFileKind({ src: src || blobUrl, name, ext });

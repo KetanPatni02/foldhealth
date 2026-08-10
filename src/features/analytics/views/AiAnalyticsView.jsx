@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { KpiCard, InsightBanner, Card, safeTableRows, safeConfigData, EmptyState, KpiSkeleton, TableSkeleton } from './shared';
+import { KpiCard, InsightBanner, Card, EmptyState, KpiSkeleton, TableSkeleton } from './shared';
+import { safeTableRows, safeConfigData } from './shared.utils';
 import { EditableGrid } from './EditableGrid';
 import s from '../AnalyticsLayout.module.css';
 

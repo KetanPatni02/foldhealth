@@ -169,16 +169,13 @@ export function AwvWorklistTable() {
     <SectionTitleBar
       variant="titleOnly"
       title="Annual Visit"
-      showSearch
+      actions={['search', 'filter', 'history', 'download']}
       searchPlaceholder="Search by name or member ID…"
       searchValue={searchQuery}
       onSearchChange={setSearchQuery}
-      showFilter
       filterActive={filterBarOpen}
       onFilter={() => setFilterBarOpen(v => !v)}
-      showHistory
       onHistory={openHistoryDrawer}
-      showDownload
       onDownload={() => showToast('Export — coming soon')}
     />
   );

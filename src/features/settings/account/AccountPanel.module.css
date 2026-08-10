@@ -292,6 +292,13 @@
   margin: 0 0 16px;
 }
 
+.inviteCardBulk {
+  background: var(--secondary-50);
+  border-color: color-mix(in srgb, var(--secondary-300) 20%, transparent);
+}
+.inviteCardBulkIcon { color: var(--secondary-300); }
+.inviteCardBulkButton { color: var(--secondary-300); border-color: var(--secondary-300); }
+
 .inviteCard {
   display: flex;
   flex-direction: column;

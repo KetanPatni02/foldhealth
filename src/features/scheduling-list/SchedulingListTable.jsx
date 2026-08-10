@@ -198,16 +198,13 @@ export function SchedulingListTable() {
         variant="titleWithToggle"
         title="Scheduling List"
         toggleItems={[]}
-        showSearch
+        actions={['search', 'filter', 'history', 'download']}
         searchPlaceholder="Search by name, provider, location…"
         searchValue={search}
         onSearchChange={setSearch}
-        showFilter
         filterActive={showFilters}
         onFilter={() => setShowFilters(v => !v)}
-        showHistory
         onHistory={() => showToast('History – coming soon')}
-        showDownload
         onDownload={() => showToast('Export – coming soon')}
       />
 

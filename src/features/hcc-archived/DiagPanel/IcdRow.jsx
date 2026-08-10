@@ -4,18 +4,9 @@ import { Icon } from '../../../components/Icon/Icon';
 import { Button } from '../../../components/Button/Button';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { getConfidence, getScoreStyle, getMeatNote, MEAT_NOTE_DATA } from '../data/confidence';
+import { IcdRowExpansionPanel } from './IcdRowExpansionPanel';
+import { TYPE_BADGE, isAISuggested } from './IcdRow.utils';
 import styles from './IcdRow.module.css';
-
-// Type-badge color spec — Suspect blue, Recapture purple, Manual blue,
-// Added-in-EHR amber. Mirrors the prototype's TYPE_BADGE map (line 1401).
-const TYPE_BADGE = {
-  Suspect:        { className: 'typeSuspect',     label: 'Suspect' },
-  Recapture:      { className: 'typeRecapture',   label: 'Recapture' },
-  Manual:         { className: 'typeManual',      label: 'Manual' },
-  'Added In EHR': { className: 'typeAddedInEhr',  label: 'Added In EHR' },
-};
-
-const isAISuggested = (icd) => ['Suspect', 'Recapture'].includes(icd.type || '');
 
 /**
  * IcdRow v2 — vertical card layout for a single ICD inside an HCC group.
@@ -288,135 +279,22 @@ export function IcdRow({ icd }) {
         </div>
       </div>
 
-      {/* ── Unified expansion panel (Confidence Score + MEAT Note) ─────────
-          Opens when user clicks the confidence-score badge (confidence) or
-          clicks Accept on an AI-suggested ICD (meat). Both sections live in
-          the same panel; each can be collapsed independently. Mirrors
-          prototype lines 1619–1743. */}
-      {panel !== 'none' && !isClosed && (
-        <div className={styles.expansionPanel}>
-          {/* Confidence Score section */}
-          <div className={styles.expandSection}>
-            <div className={styles.expandHeader}>
-              <button
-                type="button"
-                className={styles.expandHeaderLeft}
-                onClick={() => setConfOpen(o => !o)}
-              >
-                <Icon
-                  name={confOpen ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'}
-                  size={12}
-                  color="var(--neutral-300)"
-                />
-                <span className={styles.expandTitle}>Confidence Score</span>
-                <span
-                  className={styles.scorePill}
-                  style={{ background: scoreStyle.bg }}
-                >
-                  <span className={styles.scoreValue}>{conf.score}/100</span>
-                  <span className={styles.scoreLabel}>&bull; {scoreStyle.label}</span>
-                </span>
-              </button>
-              <button
-                type="button"
-                className={styles.expandClose}
-                onClick={() => setPanel('none')}
-              >
-                <Icon name="solar:close-linear" size={12} color="var(--neutral-300)" />
-                <span>Close</span>
-              </button>
-            </div>
-            {confOpen && (
-              <div className={styles.evidenceWrap}>
-                <div className={styles.evidenceHeader}>
-                  <Icon name="solar:bolt-linear" size={14} color="var(--primary-300)" />
-                  <span>Clinical Evidence</span>
-                </div>
-                {conf.evidence.map((ev, i) => (
-                  <div key={i} className={styles.evidenceRow}>
-                    <span className={styles.evidenceBullet} aria-hidden="true" />
-                    <span className={styles.evidenceText}>{ev.text}</span>
-                    <button
-                      type="button"
-                      className={styles.evidenceLink}
-                      title="Open source document"
-                      aria-label="Open source document"
-                    >
-                      <Icon name="solar:link-linear" size={12} color="var(--primary-300)" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* MEAT Note section */}
-          <div className={styles.expandSection}>
-            <button
-              type="button"
-              className={styles.expandHeaderLeft}
-              onClick={() => {
-                if (!meatOpen && !meatText) setMeatText(getMeatNote(icd.code, icd.desc));
-                setMeatOpen(o => !o);
-              }}
-            >
-              <Icon
-                name={meatOpen ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'}
-                size={12}
-                color="var(--neutral-400)"
-              />
-              <span className={styles.expandTitleLg}>MEAT Note</span>
-              <span className={styles.readyBadge}>
-                <Icon name="solar:star-bold" size={9} color="var(--primary-300)" />
-                <span>Ready</span>
-              </span>
-            </button>
-            {meatOpen && (
-              <div className={styles.meatBody}>
-                <div className={styles.meatInfoBanner}>
-                  <Icon name="solar:info-circle-linear" size={12} color="var(--status-info)" />
-                  <span>Review this auto-generated MEAT note before accepting.</span>
-                </div>
-                <textarea
-                  className={styles.meatTextarea}
-                  value={meatText}
-                  onChange={(e) => setMeatText(e.target.value)}
-                />
-                <div className={styles.meatActions}>
-                  <button
-                    type="button"
-                    className={[styles.meatBtn, styles.meatSignBtn].join(' ')}
-                    onClick={handleSignAccept}
-                    disabled={!meatText.trim()}
-                  >
-                    <Icon name="solar:pen-linear" size={12} color="var(--neutral-0)" />
-                    <span>Sign &amp; Accept</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.meatBtn}
-                    onClick={() => showToast('Saved as draft — wiring in a follow-up.')}
-                  >
-                    <Icon name="solar:notes-linear" size={12} color="var(--neutral-300)" />
-                    <span>Save as Draft</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.meatBtn}
-                    onClick={() => {
-                      navigator.clipboard?.writeText?.(meatText);
-                      showToast('MEAT note copied to clipboard');
-                    }}
-                  >
-                    <Icon name="solar:copy-linear" size={12} color="var(--neutral-300)" />
-                    <span>Copy</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <IcdRowExpansionPanel
+        panel={panel}
+        isClosed={isClosed}
+        confOpen={confOpen}
+        setConfOpen={setConfOpen}
+        setPanel={setPanel}
+        conf={conf}
+        scoreStyle={scoreStyle}
+        meatOpen={meatOpen}
+        setMeatOpen={setMeatOpen}
+        meatText={meatText}
+        setMeatText={setMeatText}
+        icd={icd}
+        onSignAccept={handleSignAccept}
+        showToast={showToast}
+      />
     </div>
   );
 }

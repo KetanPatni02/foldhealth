@@ -1,92 +1,13 @@
 import { useRef, useState } from 'react';
-import Signature from '@uiw/react-signature';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Icon } from '../../components/Icon/Icon';
-import { Input } from '../../components/Input/Input';
-import { Toggle } from '../../components/Toggle/Toggle';
 import { Button } from '../../components/Button/Button';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
+import { AttestationResultView } from './AttestationResultView';
+import { AttestationSignatoryForm } from './AttestationSignatoryForm';
+import { AttestationConsentOptions } from './AttestationConsentOptions';
+import { ATTESTATION_TEXT, loadSavedSignatures, now, toBannerProps } from './attestationModalUtils';
 import styles from './AttestationModal.module.css';
-
-// perfect-freehand stroke options — mirrors the controls shown in the
-// @uiw/react-signature demo (Size / Smoothing / Thinning / Streamline).
-const SIGNATURE_OPTIONS = {
-  size: 4,
-  smoothing: 0.46,
-  thinning: 0.73,
-  streamline: 0.5,
-};
-
-// Persist drawn signatures to localStorage so users can reuse a signature
-// across attestation sessions. Stored per browser, capped at 5 entries to
-// keep the panel scannable.
-const SAVED_SIGNATURES_KEY = 'apcm-saved-signatures';
-const MAX_SAVED_SIGNATURES = 5;
-
-function loadSavedSignatures() {
-  try {
-    const raw = localStorage.getItem(SAVED_SIGNATURES_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
-}
-
-function persistSavedSignatures(list) {
-  try { localStorage.setItem(SAVED_SIGNATURES_KEY, JSON.stringify(list)); }
-  catch { /* quota or private mode — silent */ }
-}
-
-function serializeSignatureSvg(svgEl) {
-  if (!svgEl) return null;
-  const clone = svgEl.cloneNode(true);
-  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-  // Ensure a viewBox is set so the SVG scales correctly in thumbnails.
-  if (!clone.getAttribute('viewBox')) {
-    const w = clone.getAttribute('width') || svgEl.clientWidth;
-    const h = clone.getAttribute('height') || svgEl.clientHeight;
-    clone.setAttribute('viewBox', `0 0 ${w} ${h}`);
-  }
-  return new XMLSerializer().serializeToString(clone);
-}
-
-const SIGNATURE_MODES = [
-  { key: 'type', label: 'Type', icon: 'solar:keyboard-linear' },
-  { key: 'draw', label: 'Draw', icon: 'solar:pen-linear' },
-];
-
-const SIGNATURE_HINT = {
-  type: 'By typing your name above you are applying your digital signature and agree this constitutes a legally binding signature.',
-  draw: 'By drawing your signature above you are applying your digital signature and agree this constitutes a legally binding signature.',
-};
-
-const ATTESTATION_TEXT =
-  'I attest that this medical record entry accurately reflects the history, examination, ' +
-  'assessments, diagnoses, and procedures/services that I personally performed or directly ' +
-  'supervised on the date(s) of service indicated. I further attest that all services documented ' +
-  'were medically necessary, appropriate to the patient\'s condition, and provided in accordance ' +
-  'with applicable standards of care and payer requirements. To the best of my knowledge, the ' +
-  'information recorded in this note is complete and accurate.';
-
-// Builds the props shape expected by the shared PatientBanner component
-// from an APCM patient record (which lacks gender/age — those fields are
-// optional in the banner and will simply not render).
-function toBannerProps(patient) {
-  if (!patient) return null;
-  const initials = patient.renderingProviderInitials
-    || (patient.name || '?').split(' ').map(s => s[0]).slice(0, 2).join('');
-  return {
-    initials,
-    name: patient.name,
-    memberId: patient.memberId,
-  };
-}
-
-function now() {
-  return new Date().toLocaleString('en-US', {
-    month: '2-digit', day: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit', second: '2-digit',
-    hour12: true,
-  });
-}
 
 export function AttestationModal({ patients = [], onClose, onSubmit }) {
   const selectedCount = patients.length;
@@ -166,33 +87,19 @@ export function AttestationModal({ patients = [], onClose, onSubmit }) {
     onSubmit(consent);
   };
 
+  const handleConsentChange = (value) => {
+    setConsent(value);
+    setErrors(p => ({ ...p, consent: null }));
+  };
+
   // ── Result view (shown inside Drawer after submit) ──
   if (resultType) {
-    const isAccept = resultType === 'accept';
     return (
-      <Drawer
-        title="APCM Billing Attestation"
-        onClose={handleDone}
-      >
-        <div className={styles.resultBody}>
-          <div className={`${styles.resultIcon} ${isAccept ? styles.resultIconSuccess : styles.resultIconDecline}`}>
-            <Icon
-              name={isAccept ? 'solar:check-circle-linear' : 'solar:close-circle-linear'}
-              size={32}
-              color={isAccept ? 'var(--status-success)' : 'var(--status-error)'}
-            />
-          </div>
-          <p className={styles.resultTitle}>
-            {isAccept ? 'Claim Generation In Progress' : 'Billing Not Generated'}
-          </p>
-          <p className={styles.resultMsg}>
-            {isAccept
-              ? `Patient claim generation is in progress for ${selectedCount} patient${selectedCount !== 1 ? 's' : ''}. You will be notified once the claims have been processed.`
-              : `Billing has not been generated as the consent to bill has been declined for ${selectedCount} patient${selectedCount !== 1 ? 's' : ''}.`}
-          </p>
-          <Button variant="primary" onClick={handleDone}>Done</Button>
-        </div>
-      </Drawer>
+      <AttestationResultView
+        isAccept={resultType === 'accept'}
+        selectedCount={selectedCount}
+        onDone={handleDone}
+      />
     );
   }
 
@@ -246,157 +153,31 @@ export function AttestationModal({ patients = [], onClose, onSubmit }) {
           <p className={styles.attestationText}>{ATTESTATION_TEXT}</p>
         </div>
 
-        {/* Signatory information */}
-        <div className={styles.section}>
-          <div className={styles.sectionTitle}>Signatory Information</div>
-          <div className={styles.formGrid}>
-            <div className={styles.field}>
-              <label className={styles.label}>
-                Provider Name <span className={styles.required}>*</span>
-              </label>
-              <input
-                className={`${styles.input} ${errors.providerName ? styles.inputError : ''}`}
-                placeholder="Full name"
-                value={providerName}
-                onChange={e => { setProviderName(e.target.value); setErrors(p => ({ ...p, providerName: null })); }}
-              />
-              {errors.providerName && <span className={styles.errorMsg}>{errors.providerName}</span>}
-            </div>
+        <AttestationSignatoryForm
+          providerName={providerName}
+          onProviderNameChange={e => { setProviderName(e.target.value); setErrors(p => ({ ...p, providerName: null })); }}
+          credentials={credentials}
+          onCredentialsChange={e => { setCredentials(e.target.value); setErrors(p => ({ ...p, credentials: null })); }}
+          npi={npi}
+          onNpiChange={e => { setNpi(e.target.value.replace(/\D/g, '')); setErrors(p => ({ ...p, npi: null })); }}
+          signatureDate={signatureDate}
+          signatureMode={signatureMode}
+          onSignatureModeChange={(mode) => { setSignatureMode(mode); setErrors(p => ({ ...p, signature: null })); }}
+          signature={signature}
+          onSignatureChange={e => { setSignature(e.target.value); setErrors(p => ({ ...p, signature: null })); }}
+          signaturePadRef={signaturePadRef}
+          onPointer={handlePointer}
+          onClearSignature={handleClearSignature}
+          onDownloadSignature={handleDownloadSignature}
+          drawnSignature={drawnSignature}
+          errors={errors}
+        />
 
-            <div className={styles.field}>
-              <label className={styles.label}>
-                Credentials <span className={styles.required}>*</span>
-              </label>
-              <input
-                className={`${styles.input} ${errors.credentials ? styles.inputError : ''}`}
-                placeholder="e.g. MD, DO, NP"
-                value={credentials}
-                onChange={e => { setCredentials(e.target.value); setErrors(p => ({ ...p, credentials: null })); }}
-              />
-              {errors.credentials && <span className={styles.errorMsg}>{errors.credentials}</span>}
-            </div>
-
-            <div className={styles.field}>
-              <label className={styles.label}>
-                NPI <span className={styles.required}>*</span>
-              </label>
-              <input
-                className={`${styles.input} ${errors.npi ? styles.inputError : ''}`}
-                placeholder="10-digit NPI"
-                value={npi}
-                maxLength={10}
-                onChange={e => { setNpi(e.target.value.replace(/\D/g, '')); setErrors(p => ({ ...p, npi: null })); }}
-              />
-              {errors.npi && <span className={styles.errorMsg}>{errors.npi}</span>}
-            </div>
-
-            <div className={styles.field}>
-              <label className={styles.label}>Date &amp; Time of Signature</label>
-              <input
-                className={`${styles.input} ${styles.inputReadonly}`}
-                value={signatureDate}
-                readOnly
-              />
-            </div>
-
-            <div className={`${styles.field} ${styles.formGridFull}`}>
-              <div className={styles.signatureHeader}>
-                <label className={styles.label}>
-                  Digital Signature <span className={styles.required}>*</span>
-                </label>
-                <Toggle
-                  items={SIGNATURE_MODES}
-                  active={signatureMode}
-                  onChange={(mode) => { setSignatureMode(mode); setErrors(p => ({ ...p, signature: null })); }}
-                  size="S"
-                />
-              </div>
-
-              {signatureMode === 'type' ? (
-                <Input
-                  variant={errors.signature ? 'error' : 'default'}
-                  placeholder="Type your full name as your digital signature"
-                  value={signature}
-                  onChange={e => { setSignature(e.target.value); setErrors(p => ({ ...p, signature: null })); }}
-                />
-              ) : (
-                <div className={`${styles.signaturePad} ${errors.signature ? styles.signaturePadError : ''}`}>
-                  <Signature
-                    ref={signaturePadRef}
-                    options={SIGNATURE_OPTIONS}
-                    onPointer={handlePointer}
-                    className={styles.signatureCanvas}
-                  />
-                  <div className={styles.signatureActions}>
-                    <button
-                      type="button"
-                      className={styles.signatureActionBtn}
-                      onClick={handleClearSignature}
-                      aria-label="Clear signature"
-                    >
-                      <Icon name="solar:eraser-linear" size={14} color="var(--neutral-300)" />
-                      Clear
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.signatureActionBtn}
-                      onClick={handleDownloadSignature}
-                      disabled={!drawnSignature}
-                      aria-label="Download signature as SVG"
-                    >
-                      <Icon name="solar:download-minimalistic-linear" size={14} color="var(--neutral-300)" />
-                      Download SVG
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <span className={styles.signatureHint}>
-                {SIGNATURE_HINT[signatureMode]}
-              </span>
-              {errors.signature && <span className={styles.errorMsg}>{errors.signature}</span>}
-            </div>
-          </div>
-        </div>
-
-        {/* Accept / Decline */}
-        <div className={styles.section}>
-          <div className={styles.sectionTitle}>Consent to Bill</div>
-          <div className={styles.consentOptions}>
-            {/* Accept */}
-            <div
-              className={[
-                styles.consentOption,
-                consent === 'accept' ? `${styles.consentOptionSelected} ${styles.accept}` : '',
-              ].join(' ')}
-              onClick={() => { setConsent('accept'); setErrors(p => ({ ...p, consent: null })); }}
-            >
-              <div className={`${styles.radioOuter} ${styles.radioOuterAccept} ${consent === 'accept' ? styles.selected : ''}`}>
-                {consent === 'accept' && <div className={`${styles.radioDot} ${styles.radioDotAccept}`} />}
-              </div>
-              <span className={styles.consentLabel}>
-                <span className={styles.consentLabelAccept}>I accept</span> the consent to bill for the selected patient/s
-              </span>
-            </div>
-
-            {/* Decline */}
-            <div
-              className={[
-                styles.consentOption,
-                consent === 'decline' ? `${styles.consentOptionSelected} ${styles.decline}` : '',
-              ].join(' ')}
-              onClick={() => { setConsent('decline'); setErrors(p => ({ ...p, consent: null })); }}
-            >
-              <div className={`${styles.radioOuter} ${styles.radioOuterDecline} ${consent === 'decline' ? styles.selected : ''}`}>
-                {consent === 'decline' && <div className={`${styles.radioDot} ${styles.radioDotDecline}`} />}
-              </div>
-              <span className={styles.consentLabel}>
-                <span className={styles.consentLabelDecline}>I decline</span> the consent to bill for the selected patient/s
-              </span>
-            </div>
-          </div>
-          {errors.consent && <span className={styles.errorMsg}>{errors.consent}</span>}
-        </div>
+        <AttestationConsentOptions
+          consent={consent}
+          onConsentChange={handleConsentChange}
+          errors={errors}
+        />
 
       </div>
     </Drawer>

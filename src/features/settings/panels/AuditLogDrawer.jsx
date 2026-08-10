@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { Badge } from '../../../components/Badge/Badge';
 import { Drawer } from '../../../components/Drawer/Drawer';
-import { TimelineEntry, groupByMonth } from '../../../components/Timeline/Timeline';
+import { TimelineEntry } from '../../../components/Timeline/Timeline';
+import { groupByMonth } from '../../../components/Timeline/Timeline.utils';
 import { useAppStore } from '../../../store/useAppStore';
 import { supabase } from '../../../lib/supabase';
 

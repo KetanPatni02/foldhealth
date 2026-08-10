@@ -1,6 +1,5 @@
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../components/Icon/Icon';
-import { ROLES, ROLE_LABEL, staffById } from '../assignment/astranaStaff';
 import { getStatusSpec, statusDisplayLabel } from '../statusSpec';
 import styles from './ReviewProgressPopover.module.css';
 
@@ -21,55 +20,6 @@ import styles from './ReviewProgressPopover.module.css';
  * the engine hasn't been seeded yet we fall back to the legacy
  * `member.sup/cdr/r1/r2` fields so the popover still renders.
  */
-// "Done" here means the stage's work is finished successfully and progression
-// continues downstream. Reject / Rejected / Insufficient are terminal for the
-// stage but they stop the pipeline — they get a distinct 'rejected' state so
-// the popover shows them in red instead of green (and the pillLabel logic
-// stops advancing past them).
-const TERMINAL_STATUSES = new Set(['Completed', 'Billing Ready']);
-const REJECTED_STATUSES = new Set(['Reject', 'Rejected', 'Insufficient']);
-
-export function buildReviewStages(member, dosState) {
-  // Four sequential stages per the HCC workflow:
-  //   Support → Coder → Reviewer → Reviewer 2 → Billing
-  // Each must complete before the next is reached. "Reviewer 3" does not
-  // exist — Reviewer 2 is always the terminal review stage.
-  const visibleRoles = ['support', 'coder', 'reviewer', 'reviewer2'];
-  return visibleRoles.map((role) => {
-    const rs = dosState?.[role];
-    const legacyMap = {
-      support:   { name: member?.sup, status: member?.supS },
-      coder:     { name: member?.cdr, status: member?.cdrS },
-      reviewer:  { name: member?.r1,  status: member?.r1s },
-      reviewer2: { name: member?.r2,  status: member?.r2s },
-    };
-    const assigneeId = rs?.assignee || null;
-    const staff = assigneeId ? staffById(assigneeId) : null;
-    const name = staff?.name || legacyMap[role].name || null;
-    const status = rs?.status || legacyMap[role].status || null;
-
-    let state = 'pending';
-    if (status === 'Skipped') state = 'skipped';
-    else if (status && REJECTED_STATUSES.has(status)) state = 'rejected';
-    else if (status && TERMINAL_STATUSES.has(status)) state = 'done';
-    else if (status && status !== 'Assign') state = 'active';
-
-    const at = rs?.history?.[rs.history.length - 1]?.at;
-    const date = at ? new Date(at).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : null;
-
-    return { role, label: ROLE_LABEL[role], name, status, date, state };
-  });
-}
-
-// 0..1 fraction of the workflow that's complete.
-export function computeReviewProgress(stages) {
-  if (!stages?.length) return 0;
-  const N = stages.length;
-  // Skipped stages are resolved (bypassed) — count them like done.
-  const done = stages.filter(s => s.state === 'done' || s.state === 'skipped').length;
-  const active = stages.filter(s => s.state === 'active').length;
-  return Math.min(1, (done + active * 0.5) / N);
-}
 
 // ── Component ─────────────────────────────────────────────────────────
 
@@ -234,5 +184,3 @@ export function ProgressRing({ progress = 0, size = 16, stroke = 2 }) {
     </svg>
   );
 }
-
-export { ROLES };

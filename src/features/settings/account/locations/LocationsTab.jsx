@@ -153,7 +153,7 @@ export function LocationsTab({ tabsForBar, activeTab, setActiveTab }) {
       tabs={tabsForBar}
       activeTab={activeTab}
       onTabChange={setActiveTab}
-      showSearch
+      actions={['search']}
       searchPlaceholder="Search locations…"
       searchValue={searchVal}
       onSearchChange={setSearchVal}
