@@ -83,8 +83,11 @@ function GoalsTable({ goals, onOpen, onEdit, onDelete }) {
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
-    await onDelete(deleteTarget.id);
-    setDeleting(false);
+    try {
+      await onDelete(deleteTarget.id);
+    } finally {
+      setDeleting(false);
+    }
     setDeleteTarget(null);
   };
 

@@ -504,8 +504,12 @@ export function EmailBuilder() {
             disabled={saving}
             onClick={async () => {
               setSaving(true);
-              const ok = await saveEmailTemplate();
-              setSaving(false);
+              let ok = false;
+              try {
+                ok = await saveEmailTemplate();
+              } finally {
+                setSaving(false);
+              }
               if (ok) {
                 setLastSavedAt(new Date());
                 setSavedSnapshot(structuredClone(useAppStore.getState().emailDocument));

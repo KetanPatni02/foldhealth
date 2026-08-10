@@ -49,7 +49,9 @@ export function FilePreview({ src, name, ext, className }) {
     (async () => {
       try {
         const { default: mammoth } = await import('mammoth/mammoth.browser');
-        const buf = await (await fetch(src)).arrayBuffer();
+        const res = await fetch(src);
+        if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
+        const buf = await res.arrayBuffer();
         const { value } = await mammoth.convertToHtml({ arrayBuffer: buf });
         if (!cancelled) setDocxHtml(value);
       } catch (e) {

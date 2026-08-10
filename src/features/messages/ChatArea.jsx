@@ -80,17 +80,21 @@ export function ChatArea({ currentUser, otherUser, onConversationUpdate }) {
   // ── Fetch conversation ──
   const fetchMessages = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('direct_messages')
-      .select('*')
-      .or(
-        `and(sender_id.eq.${currentUser.id},recipient_id.eq.${otherUser.id}),` +
-        `and(sender_id.eq.${otherUser.id},recipient_id.eq.${currentUser.id})`
-      )
-      .order('created_at', { ascending: true });
-    const msgs = data || [];
-    setMessages(msgs);
-    setLoading(false);
+    let msgs = [];
+    try {
+      const { data } = await supabase
+        .from('direct_messages')
+        .select('*')
+        .or(
+          `and(sender_id.eq.${currentUser.id},recipient_id.eq.${otherUser.id}),` +
+          `and(sender_id.eq.${otherUser.id},recipient_id.eq.${currentUser.id})`
+        )
+        .order('created_at', { ascending: true });
+      msgs = data || [];
+      setMessages(msgs);
+    } finally {
+      setLoading(false);
+    }
     markRead(msgs);
     requestAnimationFrame(() => scrollToBottom(true));
   }, [currentUser.id, otherUser.id, markRead, scrollToBottom]);
@@ -151,8 +155,12 @@ export function ChatArea({ currentUser, otherUser, onConversationUpdate }) {
     setUploading(true);
     const ext  = file.name.split('.').pop();
     const path = `${currentUser.id}/${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from('chat-media').upload(path, file, { upsert: true });
-    setUploading(false);
+    let error;
+    try {
+      ({ error } = await supabase.storage.from('chat-media').upload(path, file, { upsert: true }));
+    } finally {
+      setUploading(false);
+    }
     if (error) return null;
     const { data: { publicUrl } } = supabase.storage.from('chat-media').getPublicUrl(path);
     return { url: publicUrl, type: file.type.startsWith('image/') ? 'image' : 'file', name: file.name };
@@ -185,12 +193,15 @@ export function ChatArea({ currentUser, otherUser, onConversationUpdate }) {
     if (savedReply?.id)  payload.reply_to_id = savedReply.id;
     if (mediaInfo?.url) { payload.media_url = mediaInfo.url; payload.media_type = mediaInfo.type; payload.media_name = mediaInfo.name; }
 
-    const { data } = await supabase.from('direct_messages').insert(payload).select().single();
-    if (data) {
-      setMessages(prev => prev.map(m => m.id === optId ? data : m));
-      onUpdateRef.current?.();
+    try {
+      const { data } = await supabase.from('direct_messages').insert(payload).select().single();
+      if (data) {
+        setMessages(prev => prev.map(m => m.id === optId ? data : m));
+        onUpdateRef.current?.();
+      }
+    } finally {
+      setSending(false);
     }
-    setSending(false);
     textareaRef.current?.focus();
   }, [inputValue, sending, currentUser.id, otherUser.id, replyTo, broadcastTyping, scrollToBottom]);
 

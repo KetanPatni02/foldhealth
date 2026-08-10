@@ -300,10 +300,13 @@ function AgentRow({ agent, isFirst }) {
             onCancel={() => setShowDeleteConfirm(false)}
             onConfirm={async () => {
               setDeleting(true);
-              await supabase.from('agents').delete().eq('id', agent.id);
-              await fetchAgents();
-              showToast(`"${agent.name}" deleted`);
-              setDeleting(false);
+              try {
+                await supabase.from('agents').delete().eq('id', agent.id);
+                await fetchAgents();
+                showToast(`"${agent.name}" deleted`);
+              } finally {
+                setDeleting(false);
+              }
               setShowDeleteConfirm(false);
             }}
           />

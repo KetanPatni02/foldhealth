@@ -247,7 +247,7 @@ function DesignTab({ block, updateBlock, id }) {
                 if (typeof v === 'string' && /\.svg(\?|#|$)/i.test(v)) {
                   try {
                     const res = await fetch(v);
-                    const text = await res.text();
+                    const text = res.ok ? await res.text() : '';
                     if (text.includes('<svg')) {
                       update(['data', 'props', 'svgRaw'], text);
                     }
@@ -815,7 +815,7 @@ function DesignTab({ block, updateBlock, id }) {
                 if (typeof v === 'string' && /\.svg(\?|#|$)/i.test(v)) {
                   try {
                     const res = await fetch(v);
-                    const text = await res.text();
+                    const text = res.ok ? await res.text() : '';
                     if (text.includes('<svg')) {
                       update(['data', 'style', 'bgSvgRaw'], text);
                     }
@@ -1635,7 +1635,7 @@ function CodeTab({ doc }) {
           if (!cancelled) setText(next);
         } catch { /* keep the unformatted seed */ }
       }
-      setError(null);
+      if (!cancelled) setError(null);
     })();
     return () => { cancelled = true; };
   }, [mode, doc, htmlPreviewOverride]);
@@ -2011,8 +2011,12 @@ function TemplateTab({ block }) {
 
   const handleSave = async () => {
     setSaving(true);
-    const result = await saveCurrentAsPreset(role, { name: saveName, description: saveDesc });
-    setSaving(false);
+    let result;
+    try {
+      result = await saveCurrentAsPreset(role, { name: saveName, description: saveDesc });
+    } finally {
+      setSaving(false);
+    }
     if (result) {
       setSaveOpen(false);
       setSaveName('');
@@ -2993,7 +2997,11 @@ function TextStyleChips({ block, updateBlock, id }) {
 // no link is set, expands to an Input that captures the href and a checkbox
 // to toggle target="_blank" (defaults to true to match prior behaviour).
 function LinkInput({ value, openInNewTab = true, onChange, onChangeOpenInNewTab }) {
-  const [open, setOpen] = useState(!!value);
+  // Derived open state: a set value always shows the row; `manualOpen` only
+  // covers the empty-value "+ Add link" case. Keeps the row in sync when the
+  // value changes externally (e.g. selecting a different block).
+  const [manualOpen, setManualOpen] = useState(false);
+  const open = manualOpen || !!value;
   return (
     <div className={styles.fieldCol}>
       <div className={styles.linkHeader}>
@@ -3003,7 +3011,7 @@ function LinkInput({ value, openInNewTab = true, onChange, onChangeOpenInNewTab 
           className={styles.linkToggle}
           onClick={() => {
             if (open && value) { onChange(''); }
-            setOpen(o => !o);
+            setManualOpen(!open);
           }}
           aria-label={open ? 'Remove link' : 'Add link'}
         >

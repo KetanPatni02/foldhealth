@@ -400,8 +400,12 @@ export function ConfigurePanel({ agent, onSave }) {
   const handleSave = async () => {
     if (!agent?.id) return;
     setSaving(true);
-    const ok = await saveAgentConfig(agent.id, form);
-    setSaving(false);
+    let ok = false;
+    try {
+      ok = await saveAgentConfig(agent.id, form);
+    } finally {
+      setSaving(false);
+    }
     if (ok) showToast('Configuration saved');
     else showToast('Failed to save configuration');
     if (onSave) onSave();

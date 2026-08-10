@@ -34,10 +34,11 @@ export function OrgPanel() {
   const showToast = useAppStore(s => s.showToast);
 
   useEffect(() => {
+    let cancelled = false;
     const loadOrgData = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) { setLoading(false); return; }
+        if (!session || cancelled) return;
 
         const { data, error } = await supabase
           .from('org_settings')
@@ -45,6 +46,7 @@ export function OrgPanel() {
           .eq('user_id', session.user.id)
           .maybeSingle();
 
+        if (cancelled) return;
         if (error) throw error;
         if (data) {
           setName(data.name || '');
@@ -61,13 +63,15 @@ export function OrgPanel() {
           });
         }
       } catch (err) {
+        if (cancelled) return;
         console.error('Failed to load org settings:', err);
         showToast('Failed to load organization settings');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     loadOrgData();
+    return () => { cancelled = true; };
   }, [showToast]);
 
   // Read an image file into a data URL — no storage bucket needed, and SVGs

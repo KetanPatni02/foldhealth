@@ -594,7 +594,7 @@ export function InviteUserDrawer({ onClose, onInvited }) {
           emailRedirectTo: window.location.origin,
         },
       });
-      if (authError) { showToast(`Invite failed: ${authError.message}`); setSending(false); return; }
+      if (authError) { showToast(`Invite failed: ${authError.message}`); return; }
 
       // Fill in the profile extras (roles, contact, locations, …). The
       // handle_new_user() trigger has already inserted the base row with
@@ -622,8 +622,9 @@ export function InviteUserDrawer({ onClose, onInvited }) {
       onInvited();
     } catch (e) {
       showToast(`Error: ${e.message}`);
+    } finally {
+      setSending(false);
     }
-    setSending(false);
   };
 
   if (step === 'choose') {

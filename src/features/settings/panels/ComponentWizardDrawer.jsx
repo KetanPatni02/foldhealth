@@ -998,15 +998,14 @@ export function ComponentWizardDrawer() {
           showToast(`"${data.name}" created (disabled)`);
         } else {
           showToast('Failed to save component. Check console for details.');
-          setSaving(false);
           return;
         }
       }
-      setSaving(false);
       close();
     } catch (err) {
       console.error('[ComponentWizard] Save failed:', err);
       showToast(`Save failed: ${err.message || 'Unknown error'}`);
+    } finally {
       setSaving(false);
     }
   };
