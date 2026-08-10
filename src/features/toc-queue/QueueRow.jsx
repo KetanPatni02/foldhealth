@@ -205,9 +205,9 @@ function NextActionCell({ patient: p, ongoingCall }) {
         <div className={styles.medDone}>
           <Icon name="solar:check-circle-bold" size={13} /> Agent tasks done
         </div>
-        <a className={styles.medLink} onClick={() => showToast('Opening Medication Reconciliation…')}>
+        <button type="button" className={styles.medLink} onClick={() => showToast('Opening Medication Reconciliation…')}>
           <Icon name="solar:pill-bold" size={12} /> Review Med. Reconciliation →
-        </a>
+        </button>
       </div>
     );
   }

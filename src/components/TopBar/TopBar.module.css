@@ -38,6 +38,12 @@
   text-decoration: none;
   font-weight: 400;
   white-space: nowrap;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
 }
 
 .breadcrumbLink:hover { color: var(--primary-300); }

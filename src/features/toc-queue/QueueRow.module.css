@@ -64,7 +64,19 @@
 
 .nextAction { font-size: 13px; color: var(--neutral-400); max-width: 240px; line-height: 1.5; }
 .medDone { display: inline-flex; align-items: center; gap: 3px; color: var(--status-success); font-size: 12px; font-weight: 500; }
-.medLink { display: inline-flex; align-items: center; gap: 3px; color: var(--primary-300); font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.medLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--primary-300);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  padding: 0;
+}
 .medLink:hover { text-decoration: underline; }
 
 .aiCell { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; white-space: nowrap; }

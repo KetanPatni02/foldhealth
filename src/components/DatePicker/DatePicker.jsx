@@ -21,9 +21,13 @@ export const DatePicker = forwardRef(function DatePicker({
   min,
   max,
   hidden = false,
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
+  label,
 }, ref) {
   const autoId = useId();
   const fieldId = id || autoId;
+  const accessibleName = ariaLabel || label || (ariaLabelledBy ? undefined : 'Date');
 
   return (
     <input
@@ -38,6 +42,8 @@ export const DatePicker = forwardRef(function DatePicker({
       max={max}
       className={`${hidden ? styles.hidden : styles.input} ${hasError ? styles.error : ''}`}
       aria-invalid={hasError || undefined}
+      aria-label={accessibleName}
+      aria-labelledby={ariaLabelledBy}
     />
   );
 });

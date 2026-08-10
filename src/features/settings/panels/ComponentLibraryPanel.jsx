@@ -336,10 +336,22 @@ export function ComponentLibraryPanel({ searchQuery = '' }) {
           <div style={{ flex: 1 }}>
             <strong>{removedDomains.length} domain{removedDomains.length !== 1 ? 's were' : ' was'} removed.</strong>{' '}
             {affectedComponents.length} component{affectedComponents.length !== 1 ? 's have' : ' has'} been disabled.{' '}
-            <a style={{ color: 'var(--status-warning)', textDecoration: 'underline', cursor: 'pointer', fontWeight: 500 }}
-              onClick={() => showToast('Navigate to Domain Registry to re-register')}>
+            <button
+              type="button"
+              style={{
+                color: 'var(--status-warning)',
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                fontWeight: 500,
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                font: inherit,
+              }}
+              onClick={() => showToast('Navigate to Domain Registry to re-register')}
+            >
               Re-register domain
-            </a>
+            </button>
           </div>
           <CloseButton size={16} onClick={() => setWarningDismissed(true)} label="Dismiss warning" />
         </div>

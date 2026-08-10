@@ -403,12 +403,17 @@ export function GroupDetailDrawer() {
 
       {/* Business Hours Link */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <a href="#" onClick={handleBusinessHours} style={{
-          fontSize: 13, color: 'var(--primary-300)', fontWeight: 500, textDecoration: 'none',
-          display: 'inline-flex', alignItems: 'center', gap: 3,
-        }}>
+        <button
+          type="button"
+          onClick={handleBusinessHours}
+          style={{
+            fontSize: 13, color: 'var(--primary-300)', fontWeight: 500, textDecoration: 'none',
+            display: 'inline-flex', alignItems: 'center', gap: 3,
+            background: 'none', border: 'none', padding: 0, font: inherit, cursor: 'pointer',
+          }}
+        >
           See Business Hours <Icon name="solar:arrow-right-up-linear" size={12} color="var(--primary-300)" />
-        </a>
+        </button>
       </div>
     </Drawer>
   );

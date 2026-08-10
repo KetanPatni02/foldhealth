@@ -41,7 +41,9 @@ export function OutreachPopover({ patient, pos, onMouseEnter, onMouseLeave }) {
     >
       <div className={styles.header}>Outreach Activity</div>
       {items}
-      <div className={styles.footer}><a>View All →</a></div>
+      <div className={styles.footer}>
+        <button type="button" className={styles.footerLink}>View All →</button>
+      </div>
     </div>
   );
 }
