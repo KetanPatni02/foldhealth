@@ -17,19 +17,24 @@
   overflow-x: hidden;
 }
 
-/* Flush layout — scroll content touches the panel edges. */
-.flushContent .gapsWrapper { padding: 0; }
+/* Flush layout — scroll content touches the panel edges for the sticky
+ * note strip, but the Gaps tab body sits inside a 12px horizontal gutter
+ * so it lines up with the other tabs (PAMI/Hx, Vitals/Labs, Comms…). */
+.flushContent .gapsWrapper { padding: 0 12px; }
 .flushContent .sections { padding: 0; }
 .flushContent .sectionHeader { padding: 0; }
 .flushContent .diagnosisHeader { margin-top: 0; }
 
+/* Sticky note strip stays edge-to-edge (yellow background spans the
+ * panel), but its inner rows get 16px horizontal padding so the note
+ * content lines up with the Gaps body below. */
 .flushContent .stickyNoteWrap > :global(div[class*="collapsed"]),
 .flushContent .stickyNoteWrap > :global(div[class*="expanded"]) :global([class*="header"]),
 .flushContent .stickyNoteWrap > :global(div[class*="expanded"]) :global([class*="body"]),
 .flushContent .stickyNoteWrap > :global(div[class*="expanded"]) :global([class*="authorRow"]),
 .flushContent .stickyNoteWrap > :global(div[class*="expanded"]) :global([class*="footer"]) {
-  padding-left: 0;
-  padding-right: 0;
+  padding-left: 16px;
+  padding-right: 16px;
 }
 
 .flushContent .gapsWrapper :global([class*="sectionLabel"]) {

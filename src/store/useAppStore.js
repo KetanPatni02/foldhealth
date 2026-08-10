@@ -1137,6 +1137,13 @@ export const useAppStore = create((set, get) => ({
   },
   clearPendingCareProgramCode: () => set({ pendingCareProgramCode: null }),
 
+  // EditPatientDrawer — one drawer shared by every "Edit …" entry-point
+  // on the Profile tab and the P360 banner overflow menu. Setting the
+  // section name mounts the drawer scrolled to that section; null tears it down.
+  patientEditSection: null, // 'basic' | 'contact' | 'address' | 'other' | null
+  openPatientEdit:  (section = 'basic') => set({ patientEditSection: section }),
+  closePatientEdit: () => set({ patientEditSection: null }),
+
   // HCC chart documents manually added via "Upload New Chart" (per member id).
   // System (default) docs come from chartDocs.generateDefaultCharts; these are
   // the extra ones the user uploads, kept so the count/list stay in sync.

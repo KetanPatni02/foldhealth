@@ -1,0 +1,101 @@
+/* Profile tab — Figma Fold-Pixel 1.0 node 6820:269258.
+ * A stack of collapsible sections (Contact Info, Basic Info, Address,
+ * Other Info) each rendering label/value cells in a wrap-flow grid so
+ * they collapse from 2 columns → 1 column on narrow layouts. */
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 12px;
+}
+
+/* ── Section ──────────────────────────────────────────────────── */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 6px;
+  min-height: 24px;
+}
+
+.sectionTitleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: var(--neutral-500);
+  flex: 1;
+  min-width: 0;
+}
+
+.sectionTitle {
+  font-size: 14px;
+  color: var(--neutral-500);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Grid of cells (label / value pairs) ──────────────────────── */
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  /* Column gap breaks the border-bottom into per-cell segments so
+   * adjacent fields on the same row don't paint one continuous line
+   * across the whole panel width. */
+  column-gap: 16px;
+  row-gap: 0;
+  background: var(--neutral-0);
+  width: 100%;
+}
+
+/* Every field is a flex row inside .grid — flex-basis via min-width
+ * makes them fall from 2 columns to 1 as the panel narrows. */
+.field {
+  flex: 1 0 0;
+  min-width: 250px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 8px 8px 6px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.fieldLabel {
+  font-size: 14px;
+  color: var(--neutral-300);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fieldValue {
+  font-size: 14px;
+  color: var(--neutral-500);
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+/* ── Contact card head (name + relation + role badge) ─────────── */
+.contactHead {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.hours {
+  color: var(--neutral-300);
+}

@@ -147,7 +147,7 @@ export function PatientDetailView() {
         {!leftCollapsed && (
           <>
             <div style={{ width: leftWidth, minWidth: 300, maxWidth: 700, flexShrink: 0 }}>
-              <PatientProfileTabs patientId={selectedPatientId} />
+              <PatientProfileTabs patientId={selectedPatientId} patient={patient} />
             </div>
             {/* Drag handle */}
             <div className={styles.dragHandle} onMouseDown={handleMouseDown}>

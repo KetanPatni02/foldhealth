@@ -177,6 +177,12 @@ const SplitButtonBody = forwardRef(function SplitButtonBody(
     .filter(Boolean).join(' ');
 
   const { onClick, ...restNoClick } = rest || {};
+  // If the caller didn't supply a primary onClick, clicking the main half
+  // opens the menu too — matching the intent of "the whole pill is one
+  // picker trigger" (used by pickers that have no default action). When
+  // they DO supply an onClick, classic split-button semantics apply:
+  // main runs the primary action, chevron opens the menu.
+  const handleMainClick = onClick || (() => setMenuOpen((v) => !v));
 
   return (
     <span className={wrapperCls}>
@@ -185,7 +191,7 @@ const SplitButtonBody = forwardRef(function SplitButtonBody(
         type={type}
         className={mainCls}
         disabled={disabled}
-        onClick={onClick}
+        onClick={handleMainClick}
         {...restNoClick}
       >
         {leadingIconElement && leadingIconElement}

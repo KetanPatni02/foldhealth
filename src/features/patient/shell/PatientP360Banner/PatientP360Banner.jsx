@@ -394,8 +394,11 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
                 return;
               }
               if (key === 'edit') {
-                setDrawerExpanded(true);
-                showToast('Expanded details for editing');
+                // Opens the shared EditPatientDrawer (rendered by ProfileTab)
+                // and jumps the P360 profile tab to that surface so the
+                // banner-menu entry-point matches the section-edit ones.
+                useAppStore.getState().setPatientProfileTab('Profile');
+                useAppStore.getState().openPatientEdit('basic');
                 return;
               }
               if (key === 'inactive') {
