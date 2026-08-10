@@ -1,33 +1,33 @@
--- Narrow every wide-open PUBLIC policy to authenticated.
+-- Narrow the remaining wide-open PUBLIC policies to authenticated.
 --
--- 79 policies across 70 tables currently grant
--- USING (true) / WITH CHECK (true) to PUBLIC. In Postgres, PUBLIC means every
--- role — including `anon`, whose key ships in the browser bundle. So these
--- tables (patient_registry, hcc_diagnosis_gaps, all_patients, audit_logs,
--- tasks, call_details, …) are readable and writable by anyone with the
--- published anon key. RLS is enabled on all of them, but it is not gating
--- anything.
+-- 68 policies across 59 tables still grant USING (true) /
+-- WITH CHECK (true) to PUBLIC. In Postgres PUBLIC means every role, including
+-- `anon` — whose key ships in the browser bundle. Demonstrated with that key:
+-- all_patients and hcc_members return patient names, member ids, demographics
+-- and emails. RLS is enabled on these tables but is not gating anything.
 --
--- IMPORTANT — this is a role swap, not a removal. 69 of the 70 tables have NO
--- authenticated policy of their own: the PUBLIC policy is the only one they
--- have. Dropping it would leave RLS on with zero policies, which denies
--- everything and takes the app down. ALTER POLICY ... TO authenticated keeps
--- each policy's USING / WITH CHECK expression exactly as-is and only removes
--- `anon` from the role list.
+-- THIS IS A ROLE SWAP, NOT A REMOVAL. These tables have no authenticated
+-- policy of their own, so dropping the PUBLIC policy would leave RLS enabled
+-- with zero policies — which denies everything and takes the app down.
+-- ALTER POLICY ... TO authenticated keeps each USING / WITH CHECK expression
+-- and only removes `anon` from the role list.
 --
--- Effect for a logged-in user: none. Every one of these policies still applies
--- to them, unchanged. Effect for an unauthenticated caller: no access.
+-- ⚠ DELIBERATELY EXCLUDED — do not add these to any batch:
+--     form_responses.Allow all access to form_responses (ALL)
+--     forms.Allow all access to forms (ALL)
+--   App.jsx renders PublicFormView for #/f/{id} WITHOUT auth, so a patient
+--   filling a shared form is genuinely anonymous. Narrowing these two tables
+--   breaks patient form-filling. Verified still reachable by anon after the
+--   batches applied so far.
 --
--- Verified: production always authenticates. The dev bypass renders only when
--- window.location.hostname === 'localhost' (LoginPage.jsx:426); App.jsx:40
--- notes those sessions stay anonymous. Local dev-bypass sessions will see
--- empty data until they log in, which is the correct behaviour.
+-- Already applied and excluded from this file:
+--   • profiles, user_tour_status, call_lines, call_nav_items, call_sessions,
+--     hcc_activity_log — anon access fully removed.
+--   • Batch 1 (reference data) — see narrow_public_batch1_reference.sql.
 --
--- Generated from pg_policies on 2026-08-10 — regenerate rather than
--- hand-editing if the policy set has drifted.
---
--- Suggested rollout: run in batches by feature area, exercising the app
--- between batches, rather than all 79 at once.
+-- Roll out in batches by feature area, exercising the app between them,
+-- rather than running all 68 at once. Regenerate rather than
+-- hand-editing if the policy set drifts.
 
 begin;
 
@@ -48,11 +48,9 @@ alter policy "analytics_tables_write" on public.analytics_tables to authenticate
 alter policy "analytics_ts_read" on public.analytics_time_series to authenticated;
 alter policy "analytics_ts_write" on public.analytics_time_series to authenticated;
 alter policy "Allow all" on public.apcm_patients to authenticated;
-alter policy "Allow all for anon" on public.appointment_types to authenticated;
 alter policy "Allow all for anon" on public.appointments to authenticated;
 alter policy "Allow all for audit_logs" on public.audit_logs to authenticated;
 alter policy "Allow all" on public.awv_members to authenticated;
-alter policy "Allow all for anon" on public.business_hours to authenticated;
 alter policy "Allow all for anon" on public.call_details to authenticated;
 alter policy "Allow all access to campaigns" on public.campaigns to authenticated;
 alter policy "Allow all for care_teams" on public.care_teams to authenticated;
@@ -61,15 +59,10 @@ alter policy "Allow all for ccm_billable_activities" on public.ccm_billable_acti
 alter policy "Allow all for ccm_billing_periods" on public.ccm_billing_periods to authenticated;
 alter policy "Allow all for ccm_billing_reports" on public.ccm_billing_reports to authenticated;
 alter policy "Allow all for ccm_worklist_members" on public.ccm_worklist_members to authenticated;
-alter policy "Enable read access for all users" on public.changelog_entries to authenticated;
 alter policy "Allow all for anon" on public.chat_groups to authenticated;
 alter policy "Allow all for anon" on public.chat_participants to authenticated;
-alter policy "Allow all access to header/footer presets" on public.email_header_footer_presets to authenticated;
 alter policy "Allow all for embed_components" on public.embed_components to authenticated;
 alter policy "Allow all for embed_domains" on public.embed_domains to authenticated;
-alter policy "Allow all for anon" on public.faqs to authenticated;
-alter policy "Allow all access to form_responses" on public.form_responses to authenticated;
-alter policy "Allow all access to forms" on public.forms to authenticated;
 alter policy "Allow all for anon" on public.goals to authenticated;
 alter policy "Allow all for hcc_added_charts" on public.hcc_added_charts to authenticated;
 alter policy "Allow all for hcc_chart_status" on public.hcc_chart_status to authenticated;
@@ -91,8 +84,6 @@ alter policy "Allow all for hcc_members" on public.hcc_members to authenticated;
 alter policy "Enable read access for all users" on public.hcc_members to authenticated;
 alter policy "Allow all for hcc_removed_charts" on public.hcc_removed_charts to authenticated;
 alter policy "Allow all" on public.hedis_members to authenticated;
-alter policy "Allow all for anon" on public.holidays to authenticated;
-alter policy "Read icd_codes" on public.icd_codes to authenticated;
 alter policy "Allow all letters" on public.letters to authenticated;
 alter policy "Allow all for anon" on public.p360_profiles to authenticated;
 alter policy "Allow all for patient_care_programs" on public.patient_care_programs to authenticated;
@@ -100,30 +91,29 @@ alter policy "Allow all" on public.patient_registry to authenticated;
 alter policy "Allow all access" on public.patients to authenticated;
 alter policy "population_groups_read" on public.population_groups to authenticated;
 alter policy "population_groups_write" on public.population_groups to authenticated;
-alter policy "Read pos_codes" on public.pos_codes to authenticated;
 alter policy "Allow all for practice_locations" on public.practice_locations to authenticated;
 alter policy "Allow all for snp_worklist_members" on public.snp_worklist_members to authenticated;
 alter policy "Allow all for anon" on public.sticky_note_history to authenticated;
 alter policy "Allow all for anon" on public.sticky_notes to authenticated;
 alter policy "Allow all for task_audit_log" on public.task_audit_log to authenticated;
-alter policy "Allow all for task_labels" on public.task_labels to authenticated;
 alter policy "Allow all for task_pools" on public.task_pools to authenticated;
 alter policy "Allow all for tasks" on public.tasks to authenticated;
 alter policy "Allow all" on public.user_worklist_prefs to authenticated;
+
 commit;
 
 -- ── Verify ────────────────────────────────────────────────────────────────
--- select count(*) from pg_policies
---  where schemaname='public' and roles::text='{public}'
---    and (qual='true' or with_check='true');
--- Expected: 0
+-- select count(*) from pg_policies where schemaname='public'
+--   and roles::text='{public}' and (qual='true' or with_check='true');
+-- Expected: 2 (the form tables above, intentionally left public).
 --
--- Confirm nothing was left uncovered (every table still has >= 1 policy):
+-- No table may be left policy-less:
 -- select c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace
 --  where n.nspname='public' and c.relkind='r' and c.relrowsecurity
---    and not exists (select 1 from pg_policies p where p.tablename=c.relname)
---  order by 1;
--- Expected: 0 rows.
+--    and not exists (select 1 from pg_policies p where p.tablename=c.relname);
+--
+-- With the ANON key, patient form filling must still work:
+--   /rest/v1/forms?select=id,name&limit=1   -> rows
 --
 -- ── Rollback ──────────────────────────────────────────────────────────────
--- Re-run with `to public` instead of `to authenticated`.
+-- Re-run the same statements with `to public`.
