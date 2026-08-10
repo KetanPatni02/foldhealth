@@ -45,6 +45,29 @@ export default {
     // a read/derive of `role` for display, and an HCC worklist column
     // selector also named `role` (not an auth role).
     overrides: [
+      // unused-file cannot see platform entry points. Serverless functions are
+      // invoked over HTTP, never imported, so the rule reports every one of
+      // them as dead code. They are emphatically not: vercel.json rewrites
+      // `/s/:section` -> `/api/share?s=:section`, and the supabase/ functions
+      // are deployed separately with `supabase functions deploy`. Deleting any
+      // of these breaks production, so the rule is scoped off these paths
+      // rather than left to mislead the next person reading the report.
+      //
+      // Note this suppresses ONLY unused-file — every other rule still applies
+      // here, which matters because api/share.js has had real security
+      // findings (see the jsonForScript escape).
+      {
+        files: [
+          'api/**',
+          'netlify/functions/**',
+          'supabase/functions/**',
+        ],
+        // Note the `deslop/` prefix — dead-code analysis comes from deslop-js,
+        // not the react-doctor oxlint plugin, so `react-doctor/unused-file`
+        // silently matches nothing.
+        rules: ['deslop/unused-file'],
+      },
+
       { files: ['src/features/messages/ChatArea.jsx'], rules: ['react-doctor/supabase-client-owned-authz-field'] },
       { files: ['src/features/settings/account/AccountPanel.jsx'], rules: ['react-doctor/supabase-client-owned-authz-field'] },
       { files: ['src/store/useAppStore.js'], rules: ['react-doctor/supabase-client-owned-authz-field'] },
