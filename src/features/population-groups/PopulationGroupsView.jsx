@@ -1138,9 +1138,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
   const [segmentName,   setSegmentName]   = useState('');
   const [description,   setDescription]   = useState('');
   const [chosenFilter,  setChosenFilter]  = useState('');
-  const [filterDDOpen,  setFilterDDOpen]  = useState(false);
   const [memberStatus,  setMemberStatus]  = useState('All Status');
-  const [memDDOpen,     setMemDDOpen]     = useState(false);
 
   /* ── CSV upload state ── */
   const [dragOver,           setDragOver]           = useState(false);
@@ -1148,14 +1146,15 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
   const [showCloseConfirm,   setShowCloseConfirm]   = useState(false);
   const [uploadState,   setUploadState]   = useState('idle'); // idle|uploading|loading|complete
   const [uploadPct,     setUploadPct]     = useState(0);
-  const [procStep,      setProcStep]      = useState(0);       // 0-3 steps completed
+  const procStepRef = useRef(0);
+  const manualSelRef = useRef({});
+  const patSearchRef = useRef('');
 
   /* ── summary / resolution ── */
   const [matchSummary,  setMatchSummary]  = useState({ matched:[], notFound:[], duplicates:[] });
   const [matchedExp,    setMatchedExp]    = useState(false);
   const [notFoundExp,   setNotFoundExp]   = useState(true);
   const [dupExp,        setDupExp]        = useState(true);
-  const [manualSel,     setManualSel]     = useState({});
 
   /* Auto-expand Matched Members once all incorrect/duplicate entries are resolved */
   useEffect(() => {
@@ -1166,7 +1165,6 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
   const [patDDOpen,     setPatDDOpen]     = useState(null);
   const [patDDRect,     setPatDDRect]     = useState(null); // position for fixed portal dropdown
   const [showPreview,   setShowPreview]   = useState(false); // final preview before save
-  const [patSearch,     setPatSearch]     = useState('');
 
   /* ── dynamic criteria ── */
   const [criteria,      setCriteria]      = useState([{ attr:'Age', op:'≥', val:'' }]);
@@ -1194,16 +1192,12 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
   const [editingGroup, setEditingGroup] = useState(null);
 
   const fileInputRef  = useRef(null);
-  const filterDDRef   = useRef(null);
-  const memDDRef      = useRef(null);
   const parsedRef        = useRef(null); // stores parsed match results while loading timer runs
   const loadingStartRef  = useRef(null); // timestamp when loading began (for mini-bar hand-off)
 
   /* ── close dropdowns on outside click ── */
   useEffect(() => {
     const handler = e => {
-      if (filterDDRef.current && !filterDDRef.current.contains(e.target)) setFilterDDOpen(false);
-      if (memDDRef.current   && !memDDRef.current.contains(e.target))    setMemDDOpen(false);
       if (!e.target.closest?.('[data-patdd]')) setPatDDOpen(null);
     };
     document.addEventListener('mousedown', handler);
@@ -1212,18 +1206,18 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
 
   /* ── loading → sequential steps → complete ── */
   useEffect(() => {
-    if (uploadState !== 'loading') { setProcStep(0); return; }
+    if (uploadState !== 'loading') { procStepRef.current = 0; return; }
     loadingStartRef.current = Date.now();
-    setProcStep(0);
+    procStepRef.current = 0;
     if (parsedRef.current) {
       setMatchSummary(parsedRef.current);
       parsedRef.current = null;
     }
     /* tableRowsRef removed */
     // Advance each step sequentially; complete after 30 s
-    const t1 = setTimeout(() => setProcStep(1),  8000);
-    const t2 = setTimeout(() => setProcStep(2), 18000);
-    const t3 = setTimeout(() => setProcStep(3), 28000);
+    const t1 = setTimeout(() => { procStepRef.current = 1; },  8000);
+    const t2 = setTimeout(() => { procStepRef.current = 2; }, 18000);
+    const t3 = setTimeout(() => { procStepRef.current = 3; }, 28000);
     const t4 = setTimeout(() => setUploadState('complete'), 30000);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
   }, [uploadState]);
@@ -1259,8 +1253,8 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
     setCriteria([{ attr:'Age', op:'≥', val:'' }]);
     setMatchedExp(false);
     setNotFoundExp(true); setDupExp(true);
-    setManualSel({}); setPatDDOpen(null); setShowPreview(false);
-    setMatchSummary({ matched:[], notFound:[], duplicates:[] }); setPatSearch('');
+    manualSelRef.current = {}; setPatDDOpen(null); setShowPreview(false);
+    setMatchSummary({ matched:[], notFound:[], duplicates:[] }); patSearchRef.current = '';
     parsedRef.current = null;
   };
   const openModal = () => { resetModalState(); setModalOpen(true); };
@@ -1328,7 +1322,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
     }
     setUploadFile(file); setUploadState('uploading'); setUploadPct(0);
     setMatchSummary({ matched:[], notFound:[], duplicates:[] });
-    setManualSel({}); setShowPreview(false); parsedRef.current = null;
+    manualSelRef.current = {}; setShowPreview(false); parsedRef.current = null;
 
     /* ── Animate progress over ~5 s (≈2–4 % per 200 ms tick) ── */
     const startTime = Date.now();
@@ -1437,7 +1431,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
     if (!patDDOpen) return;
     const handler = e => {
       if (!e.target.closest('[data-patdd]') && !e.target.closest('[data-patdd-portal]')) {
-        setPatDDOpen(null); setPatSearch('');
+        setPatDDOpen(null); patSearchRef.current = '';
       }
     };
     document.addEventListener('mousedown', handler);
@@ -1491,7 +1485,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
 
   /* Header / cell styling — matches the Settings → Account → Users table (AccountPanel.module.css) */
   const unmatchedAll     = [...matchSummary.notFound]; /* duplicates don't block preview */
-  const allResolved      = unmatchedAll.length > 0 && unmatchedAll.every(e => manualSel[e.entryId]);
+  const allResolved      = unmatchedAll.length > 0 && unmatchedAll.every(e => manualSelRef.current[e.entryId]);
   /* For the grey default CSV flow: Create is only enabled once all incorrect + duplicate entries are dealt with */
   const csvAllClear  = matchSummary.notFound.length === 0 && matchSummary.duplicates.length === 0;
   const canCreatePrimary = canCreate && (
@@ -1502,7 +1496,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
   );
   const previewPatients = [
     ...matchSummary.matched.map(p  => ({ ...p, source:'Matched' })),
-    ...Object.values(manualSel).map(p => ({ ...p, mrn: p.id || '—', source:'Manual' })),
+    ...Object.values(manualSelRef.current).map(p => ({ ...p, mrn: p.id || '—', source:'Manual' })),
   ];
 
   /* ══════════════════════════════════════════════════════════════════════════ */
@@ -1770,7 +1764,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                         <FilePreviewCard
                           fileName={uploadFile.name}
                           sizeMB={(uploadFile.size/1048576).toFixed(1)}
-                          onReplace={() => { setUploadFile(null); setUploadState('idle'); setUploadPct(0); setMatchSummary({ matched:[], notFound:[], duplicates:[] }); setManualSel({}); parsedRef.current = null; }}
+                          onReplace={() => { setUploadFile(null); setUploadState('idle'); setUploadPct(0); setMatchSummary({ matched:[], notFound:[], duplicates:[] }); manualSelRef.current = {}; parsedRef.current = null; }}
                         />
                       </div>
                     )}
@@ -1800,7 +1794,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                             fileSize: uploadFile?.size || 0,
                             segName: segmentName,
                             status: 'loading',
-                            procStep,
+                            procStep: procStepRef.current,
                             startedAt: loadingStartRef.current || Date.now(),
                             result: parsedRef.current || matchSummary,
                           });
@@ -1820,7 +1814,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                         uploadFile={uploadFile}
                         csvAllClear={csvAllClear}
                         matchedHeading={editGroupId ? 'Extracted Patients' : undefined}
-                        onReupload={editGroupId ? undefined : (() => { setUploadFile(null); setUploadState('idle'); setUploadPct(0); setMatchSummary({ matched:[], notFound:[], duplicates:[] }); setManualSel({}); parsedRef.current = null; })}
+                        onReupload={editGroupId ? undefined : (() => { setUploadFile(null); setUploadState('idle'); setUploadPct(0); setMatchSummary({ matched:[], notFound:[], duplicates:[] }); manualSelRef.current = {}; parsedRef.current = null; })}
                         onRemoveMember={(p) => setMatchSummary(prev => ({ ...prev, matched: prev.matched.filter(m => m.id !== p.id) }))}
                         onAddMember={(p) => setMatchSummary(prev => prev.matched.some(m => String(m.id) === String(p.id))
                           ? prev
@@ -1851,7 +1845,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                         {!showPreview && (
                           <FileChipCard
                             uploadFile={uploadFile}
-                            onReupload={() => { setUploadFile(null); setUploadState('idle'); setUploadPct(0); setMatchSummary({ matched:[], notFound:[], duplicates:[] }); setManualSel({}); parsedRef.current = null; }}
+                            onReupload={() => { setUploadFile(null); setUploadState('idle'); setUploadPct(0); setMatchSummary({ matched:[], notFound:[], duplicates:[] }); manualSelRef.current = {}; parsedRef.current = null; }}
                           />
                         )}
 
@@ -1907,7 +1901,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                               onClick={() => {
                                 setUploadFile(null); setUploadState('idle'); setUploadPct(0);
                                 setMatchSummary({ matched:[], notFound:[], duplicates:[] });
-                                setManualSel({}); setShowPreview(false); parsedRef.current = null;
+                                manualSelRef.current = {}; setShowPreview(false); parsedRef.current = null;
                               }}
                               style={{ flex:1, height:34, background:'var(--neutral-0)', color:'var(--neutral-300)', border:'0.5px solid var(--neutral-150)', borderRadius:6, fontSize:14, fontWeight:500, cursor:'pointer', fontFamily:'Inter, sans-serif', transition:'background 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}
                               onMouseEnter={e => e.currentTarget.style.background='var(--neutral-50)'}
@@ -2027,7 +2021,7 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
                               onDragLeave={() => setDragOver(false)}
                               onDrop={e => { e.preventDefault(); setDragOver(false); const f=e.dataTransfer.files[0]; if(f) handleFile(f); }}
                               onClick={() => fileInputRef.current?.click()}
-                              style={{ border:`1.5px dashed ${dragOver ? 'var(--primary-300)' : 'var(--neutral-150)'}`, borderRadius:8, padding:'28px 16px', textAlign:'center', cursor:'pointer', background: dragOver ? 'var(--primary-50)' : 'var(--neutral-0)', transition:'all 0.2s', marginBottom:8 }}>
+                              style={{ border:`1.5px dashed ${dragOver ? 'var(--primary-300)' : 'var(--neutral-150)'}`, borderRadius:8, padding:'28px 16px', textAlign:'center', cursor:'pointer', background: dragOver ? 'var(--primary-50)' : 'var(--neutral-0)', transition:'border-color 0.2s, background 0.2s', marginBottom:8 }}>
                               <input ref={fileInputRef} type="file" accept=".csv,.xls,.xlsx" style={{ display:'none' }} onChange={e => { const f=e.target.files?.[0]; if(f) handleFile(f); }} />
                               <svg width={28} height={28} viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round" style={{ display:'block', margin:'0 auto' }}>
                                 <path d="M3 15c0 2.828 0 4.243.879 5.121C4.757 21 6.172 21 9 21h6c2.828 0 4.243 0 5.121-.879C21 19.243 21 17.828 21 15M12 16V3m0 0 4 4.375M12 3 8 7.375" stroke={dragOver ? 'var(--primary-300)' : 'var(--neutral-300)'} strokeWidth="1"/>

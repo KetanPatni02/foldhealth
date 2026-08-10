@@ -93,12 +93,12 @@ export function LeftWorkspace({
   // table always agree (both derive from the same member.dos_list).
   const memberClaims = useMemo(
     () => {
-      // A record with no document on file can't have any 'D'-sourced DOSs;
-      // pass hasDoc so those dates re-bucket to Claim/Manual consistently.
       const hasDoc = member?.ch != null;
-      return (member?.dos_list || [])
-        .filter(d => dosSourceLetter(d.date, hasDoc) === 'C')
-        .map(d => claimForDos(d.date));
+      const claims = [];
+      for (const d of member?.dos_list || []) {
+        if (dosSourceLetter(d.date, hasDoc) === 'C') claims.push(claimForDos(d.date));
+      }
+      return claims;
     },
     [member?.dos_list, member?.ch],
   );
@@ -256,7 +256,8 @@ export function LeftWorkspace({
     if (dosCustomizedRef.current) return;
     setFilters(f => {
       const opts = filterOptions.dos || [];
-      const same = f.dos.length === opts.length && opts.every(d => f.dos.includes(d));
+      const dosSet = new Set(f.dos);
+      const same = f.dos.length === opts.length && opts.every(d => dosSet.has(d));
       return same ? f : { ...f, dos: opts };
     });
   }, [filterOptions.dos]);
@@ -416,7 +417,10 @@ function entryMatchesFilters(e, filters) {
   if (e.t === 'group') return true;
   if (filters.dos?.length && !filters.dos.includes(e.dos)) return false;
   if (filters.by?.length  && !filters.by.includes(e.by))   return false;
-  if (filters.icd?.length && !(Array.isArray(e.icds) && filters.icd.some(c => e.icds.includes(c)))) return false;
+  if (filters.icd?.length) {
+    const icdSet = Array.isArray(e.icds) ? new Set(e.icds) : null;
+    if (!icdSet || !filters.icd.some(c => icdSet.has(c))) return false;
+  }
   if (filters.hcc?.length) {
     const ok = filters.hcc.some(h => {
       const num = String(h).replace(/^HCC\s*/, '');
@@ -1233,8 +1237,9 @@ const DOC_STATUS_BADGE = {
   pending: { variant: 'status-queued',    label: 'Pending' },
   failed:  { variant: 'status-failed',    label: 'Failed'  },
 };
+const EMPTY_CHARTS = [];
 
-function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId, filters }) {
+function DocumentsTab({ member, icdScope, charts = EMPTY_CHARTS, openDocId, setOpenDocId, filters }) {
   const showToast = useAppStore(s => s.showToast);
   const uploaderOpen = useAppStore(s => s.hccDocsUploaderOpen);
   const removeChartDoc = useAppStore(s => s.removeChartDoc);
@@ -2107,13 +2112,21 @@ function WorklogTab({ member, filters = {} }) {
           : i.type === 'Suspect'   ? 'Suspect'
           : 'Associated',
     }));
-    const addressedSuspects = notLinkedMock
-      .filter((icd) => {
-        if (!icd?.code) return false;
-        const prefix = `${icd.code}|`;
-        return Object.keys(gapDosActions).some((k) => k.startsWith(prefix));
-      })
-      .map((i) => ({ ...i, kind: i.type === 'Recapture' ? 'Recapture' : 'Suspect' }));
+    const addressedSuspects = [];
+    for (const icd of notLinkedMock) {
+      if (!icd?.code) continue;
+      const prefix = `${icd.code}|`;
+      let matched = false;
+      for (const k of Object.keys(gapDosActions)) {
+        if (k.startsWith(prefix)) { matched = true; break; }
+      }
+      if (matched) {
+        addressedSuspects.push({
+          ...icd,
+          kind: icd.type === 'Recapture' ? 'Recapture' : 'Suspect',
+        });
+      }
+    }
     const PRIORITY = { Manual: 4, Recapture: 3, Suspect: 2, Associated: 1 };
     const byCode = new Map();
     for (const icd of [...linkedWithKind, ...addressedSuspects]) {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { supabase } from '../../../../lib/supabase';
 import { useAppStore } from '../../../../store/useAppStore';
 import { Icon } from '../../../../components/Icon/Icon';
@@ -83,6 +83,8 @@ const USERS_COLUMNS = [
   { key: 'actions',    label: 'Action',            sticky: 'right', width: 140 },
 ];
 
+const ROLE_FIELDS = ['admin_role', 'role', 'clinical_roles'];
+
 /**
  * Users tab of Settings → Account. Owns the profiles fetch, filter chips,
  * pagination, sort, and all three user drawers (View / Edit / Invite).
@@ -115,7 +117,7 @@ export function UsersTab({ tabsForBar, activeTab, setActiveTab }) {
   const userFiltersActive =
     userFilters.status.length + userFilters.roles.length + userFilters.location.length;
 
-  const [currentUserId, setCurrentUserId] = useState(null);
+  const currentUserIdRef = useRef(null);
   const [isCurrentUserAdmin, setIsCurrentUserAdmin] = useState(false);
 
   // Resolve current user + admin status once on mount. Used synchronously
@@ -129,7 +131,7 @@ export function UsersTab({ tabsForBar, activeTab, setActiveTab }) {
         setIsCurrentUserAdmin(true);
         return;
       }
-      setCurrentUserId(session.user.id);
+      currentUserIdRef.current = session.user.id;
       const { data } = await supabase
         .from('profiles')
         .select('role, clinical_roles, admin_role')
@@ -265,11 +267,8 @@ export function UsersTab({ tabsForBar, activeTab, setActiveTab }) {
     }
   };
 
-  // Role-controlling columns — only admins may change these on any profile.
-  const ROLE_FIELDS = ['admin_role', 'role', 'clinical_roles'];
-
   const saveUserProfile = async (userId, updates) => {
-    const isSelf = userId === currentUserId;
+    const isSelf = userId === currentUserIdRef.current;
 
     if (!isCurrentUserAdmin) {
       if (!isSelf) {
@@ -299,9 +298,18 @@ export function UsersTab({ tabsForBar, activeTab, setActiveTab }) {
 
   const filteredUsers = useMemo(() => {
     let list = users;
-    if (userFilters.status.length) list = list.filter(u => userFilters.status.includes(u.status));
-    if (userFilters.roles.length)  list = list.filter(u => userFilters.roles.includes(u.role));
-    if (userFilters.location.length) list = list.filter(u => userFilters.location.includes(u.location));
+    if (userFilters.status.length) {
+      const statusSet = new Set(userFilters.status);
+      list = list.filter(u => statusSet.has(u.status));
+    }
+    if (userFilters.roles.length) {
+      const rolesSet = new Set(userFilters.roles);
+      list = list.filter(u => rolesSet.has(u.role));
+    }
+    if (userFilters.location.length) {
+      const locationSet = new Set(userFilters.location);
+      list = list.filter(u => locationSet.has(u.location));
+    }
     if (!searchVal.trim()) return list;
     const q = searchVal.toLowerCase();
     return list.filter(u =>

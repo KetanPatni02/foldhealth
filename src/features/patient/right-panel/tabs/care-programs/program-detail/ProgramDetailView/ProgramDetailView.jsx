@@ -127,6 +127,41 @@ function SectionHeader({ name, expanded, onToggle }) {
 }
 
 const LETTER_SUB_TABS = ['All', 'Sent', 'Not Sent'];
+const EMPTY_LETTER_FILTERS = { fileType: [], sentVia: [], lastSent: [], sentBy: [] };
+
+function progressForCode(code) {
+  const flat = flatSteps(PROGRAM_STEPS[code] || []);
+  return flat.length ? Math.round((flat.filter(s => s.status === 'completed').length / flat.length) * 100) : 0;
+}
+
+function letterPdfBlob(letter) {
+  if (!letter?.contentBase64) return null;
+  const bin = atob(letter.contentBase64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: 'application/pdf' });
+}
+
+function downloadLetters(chosen) {
+  if (!chosen || chosen.length === 0) return;
+  chosen.forEach(letter => {
+    const pdf = letterPdfBlob(letter);
+    const blob = pdf || new Blob([
+      `${letter.fileName}\n\nFile Type: ${letter.fileType}\nSent Via: ${(letter.sentVia || []).join(', ')}\nLast Sent: ${letter.lastSent}\nSent By: ${letter.sentBy}\n`,
+    ], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = pdf ? (letter.sourceFile || `${letter.fileName}.pdf`) : `${letter.fileName}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+  toast.success(
+    chosen.length === 1 ? 'File downloaded successfully' : `${chosen.length} files downloaded successfully`,
+  );
+}
 
 // Steps that render a saved form (from Settings → Content → Forms) in the
 // Review layout. Keyed by step name → the form to load + review-header meta.
@@ -161,7 +196,6 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
   const [letterSearchOpen, setLetterSearchOpen] = useState(false);
   const [letterSearchText, setLetterSearchText] = useState('');
   const [letterFiltersOpen, setLetterFiltersOpen] = useState(false);
-  const EMPTY_LETTER_FILTERS = { fileType: [], sentVia: [], lastSent: [], sentBy: [] };
   const [letterFilters, setLetterFilters] = useState(EMPTY_LETTER_FILTERS);
   const [selectedLetters, setSelectedLetters] = useState(() => new Set());
   // Send-letter drawer target: null | { letterName, clearOnSent }. Opened from
@@ -229,20 +263,25 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
   const setLetterFilter = (key, vals) => setLetterFilters(f => ({ ...f, [key]: vals }));
   const clearLetterFilters = () => setLetterFilters(EMPTY_LETTER_FILTERS);
   const letterFiltersActive = Object.values(letterFilters).some(v => v.length > 0);
-  const matchesLetterFilters = (l) =>
-    (!letterFilters.fileType.length || letterFilters.fileType.includes(l.fileType))
-    && (!letterFilters.sentVia.length || (l.sentVia || []).some(v => letterFilters.sentVia.includes(v)))
-    && (!letterFilters.lastSent.length || letterFilters.lastSent.includes(l.lastSent))
-    && (!letterFilters.sentBy.length || letterFilters.sentBy.includes(l.sentBy));
+  const matchesLetterFilters = (l) => {
+    const sentVia = l.sentVia || [];
+    const sentViaSet = letterFilters.sentVia.length ? new Set(letterFilters.sentVia) : null;
+    return (!letterFilters.fileType.length || letterFilters.fileType.includes(l.fileType))
+      && (!sentViaSet || sentVia.some(v => sentViaSet.has(v)))
+      && (!letterFilters.lastSent.length || letterFilters.lastSent.includes(l.lastSent))
+      && (!letterFilters.sentBy.length || letterFilters.sentBy.includes(l.sentBy));
+  };
   // All / Sent / Not Sent — a letter counts as "sent" once it has a channel.
   const matchesLetterTab = (l) => {
     const sent = (l.sentVia || []).length > 0;
     return activeLetterTab === 'Sent' ? sent : activeLetterTab === 'Not Sent' ? !sent : true;
   };
-  const shownLetters = visibleLetters
-    .filter(matchesLetterTab)
-    .filter(l => !letterSearchText.trim() || l.fileName.toLowerCase().includes(letterSearchText.trim().toLowerCase()))
-    .filter(matchesLetterFilters);
+  const letterSearch = letterSearchText.trim().toLowerCase();
+  const shownLetters = visibleLetters.filter(l =>
+    matchesLetterTab(l)
+    && (!letterSearch || l.fileName.toLowerCase().includes(letterSearch))
+    && matchesLetterFilters(l)
+  );
   // Select the stable array reference only; derive everything else locally so
   // no selector returns a fresh array/object (that trips useSyncExternalStore's
   // "getSnapshot should be cached" guard).
@@ -264,10 +303,6 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
     [patientPrograms, program.id],
   );
   // Completion % for any program code (used by the badges' rings).
-  const progressForCode = (code) => {
-    const flat = flatSteps(PROGRAM_STEPS[code] || []);
-    return flat.length ? Math.round((flat.filter(s => s.status === 'completed').length / flat.length) * 100) : 0;
-  };
 
   const triggerIdx = orderedTriggers.findIndex(p => p.id === program.id);
   const prevTrigger = triggerIdx > 0 ? orderedTriggers[triggerIdx - 1] : null;
@@ -293,36 +328,6 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
 
   // Download the given letters as files, then confirm with a success toast.
   // Defaults to the current bulk selection.
-  // Decode a stored base64 PDF into a Blob (or null for mock letters that
-  // have no attached file).
-  const letterPdfBlob = (letter) => {
-    if (!letter?.contentBase64) return null;
-    const bin = atob(letter.contentBase64);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return new Blob([bytes], { type: 'application/pdf' });
-  };
-
-  const downloadLetters = (chosen) => {
-    if (!chosen || chosen.length === 0) return;
-    chosen.forEach(letter => {
-      const pdf = letterPdfBlob(letter);
-      const blob = pdf || new Blob([
-        `${letter.fileName}\n\nFile Type: ${letter.fileType}\nSent Via: ${(letter.sentVia || []).join(', ')}\nLast Sent: ${letter.lastSent}\nSent By: ${letter.sentBy}\n`,
-      ], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = pdf ? (letter.sourceFile || `${letter.fileName}.pdf`) : `${letter.fileName}.txt`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    });
-    toast.success(
-      chosen.length === 1 ? 'File downloaded successfully' : `${chosen.length} files downloaded successfully`,
-    );
-  };
 
   const previewLetter = (letter) => setPreviewTarget(letter);
   const downloadSelectedLetters = () => downloadLetters(letters.filter(l => selectedLetters.has(l.id)));

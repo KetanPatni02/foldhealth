@@ -76,6 +76,27 @@ for (const f of FILTER_KEYS) {
 }
 const KEY_ORDER = Object.fromEntries(FILTER_KEYS.map((f, i) => [f.key, i]));
 
+function orderKeys(keys) {
+  return [...new Set(keys)].toSorted(
+    (a, b) => (KEY_ORDER[a] ?? 99) - (KEY_ORDER[b] ?? 99),
+  );
+}
+
+const thStyle = {
+  padding: '8px 14px',
+  fontSize: 12,
+  fontWeight: 500,
+  color: 'var(--neutral-300)',
+  borderBottom: '1px solid var(--neutral-150)',
+  background: 'var(--neutral-0)',
+  position: 'sticky',
+  top: 0,
+  zIndex: 2,
+  textAlign: 'left',
+  whiteSpace: 'nowrap',
+  userSelect: 'none',
+};
+
 function EmptySearch() {
   return (
     <div className={styles.emptySearch}>
@@ -133,7 +154,7 @@ export function SnpWorklistTable() {
     }
     const opts = {};
     for (const { key } of FILTER_KEYS) {
-      opts[key] = sets[key] ? [...sets[key]].sort() : [];
+      opts[key] = sets[key] ? [...sets[key]].toSorted() : [];
     }
     return opts;
   }, [members]);
@@ -152,7 +173,8 @@ export function SnpWorklistTable() {
       const vals = filters[key];
       const bucket = BUCKET_FN[key];
       if (!bucket || !vals || !vals.length) continue;
-      rows = rows.filter(m => vals.includes(bucket(m)));
+      const valSet = new Set(vals);
+      rows = rows.filter(m => valSet.has(bucket(m)));
     }
     return rows;
   }, [members, searchQuery, filters]);
@@ -167,9 +189,6 @@ export function SnpWorklistTable() {
     }
     return keys;
   }, [filters]);
-  const orderKeys = (keys) => [...new Set(keys)].toSorted(
-    (a, b) => (KEY_ORDER[a] ?? 99) - (KEY_ORDER[b] ?? 99),
-  );
   const visibleKeys = useMemo(() => {
     const base = storedVisible ?? PRIMARY_FILTER_KEYS;
     return orderKeys([...base, ...activeKeys]);
@@ -203,21 +222,6 @@ export function SnpWorklistTable() {
     return next;
   });
 
-  // Inline header style mirrors the CCM / TOC worklists for identical chrome.
-  const thStyle = {
-    padding: '8px 14px',
-    fontSize: 12,
-    fontWeight: 500,
-    color: 'var(--neutral-300)',
-    borderBottom: '1px solid var(--neutral-150)',
-    background: 'var(--neutral-0)',
-    position: 'sticky',
-    top: 0,
-    zIndex: 2,
-    textAlign: 'left',
-    whiteSpace: 'nowrap',
-    userSelect: 'none',
-  };
   const colCount = 14;
 
   return (

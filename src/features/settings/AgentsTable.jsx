@@ -32,6 +32,12 @@ const VOICE_COLORS = { Erica: '#E74C8B', Ricardo: '#7C5CFC', Jia: '#F59E0B' };
 const POPOVER_W = 280;
 const POPOVER_H = 200;
 
+const AGENT_FILTER_DEFS = [
+  { key: 'status',   label: 'Status',   primary: true },
+  { key: 'model',    label: 'Model',    primary: true },
+  { key: 'use_case', label: 'Use Case', primary: true },
+];
+
 function VoiceBadge({ voice }) {
   const badgeRef = useRef(null);
   const openTimer = useRef(null);
@@ -390,10 +396,17 @@ export function AgentsTable() {
   const filteredAgents = useMemo(() => {
     let list = agents;
     if (agentFilters.status.length) {
-      list = list.filter(a => agentFilters.status.includes(a.enabled ? 'Enabled' : 'Disabled'));
+      const statusSet = new Set(agentFilters.status);
+      list = list.filter(a => statusSet.has(a.enabled ? 'Enabled' : 'Disabled'));
     }
-    if (agentFilters.model.length)    list = list.filter(a => agentFilters.model.includes(a.model || 'ChatGPT 4.5 Mini'));
-    if (agentFilters.use_case.length) list = list.filter(a => agentFilters.use_case.includes(a.use_case));
+    if (agentFilters.model.length) {
+      const modelSet = new Set(agentFilters.model);
+      list = list.filter(a => modelSet.has(a.model || 'ChatGPT 4.5 Mini'));
+    }
+    if (agentFilters.use_case.length) {
+      const useCaseSet = new Set(agentFilters.use_case);
+      list = list.filter(a => useCaseSet.has(a.use_case));
+    }
     if (!searchVal.trim()) return list;
     const q = searchVal.toLowerCase().trim();
     return list.filter(a =>
@@ -419,12 +432,6 @@ export function AgentsTable() {
       use_case: [...useCases].sort(),
     };
   }, [agents]);
-
-  const AGENT_FILTER_DEFS = [
-    { key: 'status',   label: 'Status',   primary: true },
-    { key: 'model',    label: 'Model',    primary: true },
-    { key: 'use_case', label: 'Use Case', primary: true },
-  ];
 
   const { sorted: sortedAgents, sortKey, sortDir, requestSort } = useTableSort(filteredAgents, 'last_updated', 'desc');
   const startIdx = (currentPage - 1) * perPage;

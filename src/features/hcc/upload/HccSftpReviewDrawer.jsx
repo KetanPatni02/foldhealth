@@ -16,6 +16,20 @@ import { getFieldConfidence } from '../data/confidence';
 import { POS_LABEL } from './mockOcr';
 import styles from './HccSftpReviewDrawer.module.css';
 
+function encStatus(enc) {
+  if (!enc?.patient?.matchedMemberId) return 'mismatch';
+  if (Array.isArray(enc?.errors) && enc.errors.length > 0) return 'error';
+  return 'ready';
+}
+
+function flaggedCount(batch) {
+  let count = 0;
+  for (const e of batch.encounters || []) {
+    if (!e.patient?.matchedMemberId || (e.errors && e.errors.length > 0)) count += 1;
+  }
+  return count;
+}
+
 /**
  * HccSftpReviewDrawer — multi-document SFTP review surface.
  *
@@ -65,7 +79,7 @@ export function HccSftpReviewDrawer() {
 
   // Per-batch selection state — when the user switches tabs we reset
   // the set so bulk actions only ever apply to the visible batch.
-  const [selectedIdxs, setSelectedIdxs] = useState(() => new Set());
+  const selectedIdxsRef = useRef(new Set());
   // Doc-switcher popover open state (filename click).
   const [switcherOpen, setSwitcherOpen] = useState(false);
   // Ref to the left-pane preview scroll container. Used by the per-field
@@ -73,18 +87,18 @@ export function HccSftpReviewDrawer() {
   // highlight on the cited encounter when the user clicks them.
   const previewBodyRef = useRef(null);
   const setEncounterStatus = useAppStore(s => s.setHccSftpEncounterStatus);
-  useEffect(() => { setSelectedIdxs(new Set()); }, [activeBatch?.id]);
-  const toggleSelected = (idx) => setSelectedIdxs(prev => {
-    const next = new Set(prev);
+  useEffect(() => { selectedIdxsRef.current = new Set(); }, [activeBatch?.id]);
+  const toggleSelected = (idx) => {
+    const next = new Set(selectedIdxsRef.current);
     if (next.has(idx)) next.delete(idx); else next.add(idx);
-    return next;
-  });
-  const setSelectedAll = (idxs, all) => setSelectedIdxs(prev => {
-    const next = new Set(prev);
+    selectedIdxsRef.current = next;
+  };
+  const setSelectedAll = (idxs, all) => {
+    const next = new Set(selectedIdxsRef.current);
     if (all) idxs.forEach(i => next.add(i));
     else     idxs.forEach(i => next.delete(i));
-    return next;
-  });
+    selectedIdxsRef.current = next;
+  };
 
   // Scroll the left-pane preview to the cited page and pulse a brief
   // highlight on the matching encounter's field row so the reviewer
@@ -130,12 +144,12 @@ export function HccSftpReviewDrawer() {
   const handleAddSelectedToWorklist = () => {
     if (!activeBatch) return;
     const encs = activeBatch.encounters || [];
-    const useSelection = selectedIdxs.size > 0;
+    const useSelection = selectedIdxsRef.current.size > 0;
     let created = 0, updated = 0, skipped = 0;
     const appliedIdxs = [];
     encs.forEach((enc, idx) => {
       const valid = enc.patient?.matchedMemberId && (!enc.errors || enc.errors.length === 0);
-      const include = useSelection ? selectedIdxs.has(idx) : true;
+      const include = useSelection ? selectedIdxsRef.current.has(idx) : true;
       if (!include || !valid) { skipped += 1; return; }
       const r = createFromEncounter?.({ ...enc, _docName: activeBatch.fileName, _batchId: activeBatch.id });
       if (r?.kind === 'created') { created += 1; appliedIdxs.push(idx); }
@@ -147,7 +161,7 @@ export function HccSftpReviewDrawer() {
     if (updated) parts.push(`${updated} updated`);
     if (skipped) parts.push(`${skipped} skipped`);
     showToast?.(parts.length ? parts.join(', ') : 'No changes applied');
-    setSelectedIdxs(new Set());
+    selectedIdxsRef.current = new Set();
     // Trim applied rows out of the batch so the table no longer shows
     // them. Sort descending so removing by index doesn't shift later
     // targets.
@@ -163,12 +177,12 @@ export function HccSftpReviewDrawer() {
   // No worklist write; just trims the queue so the reviewer can sweep
   // rejects.
   const handleDeleteSelected = () => {
-    if (!activeBatch || selectedIdxs.size === 0) return;
+    if (!activeBatch || selectedIdxsRef.current.size === 0) return;
     // Sort descending so removing by index doesn't shift later targets.
-    const idxs = Array.from(selectedIdxs).sort((a, b) => b - a);
+    const idxs = [...selectedIdxsRef.current].sort((a, b) => b - a);
     idxs.forEach(idx => removeEnc?.(activeBatch.id, idx));
     showToast?.(`${idxs.length} encounter${idxs.length === 1 ? '' : 's'} removed`);
-    setSelectedIdxs(new Set());
+    selectedIdxsRef.current = new Set();
   };
 
   // Per-batch encounter buckets driven by the new _docStatus field.
@@ -176,11 +190,6 @@ export function HccSftpReviewDrawer() {
   const bucket = (status) => activeEncs.filter(e => (e._docStatus || 'pending') === status);
   const pendingEncs = bucket('pending');
 
-  const encStatus = (enc) => {
-    if (!enc?.patient?.matchedMemberId) return 'mismatch';
-    if (Array.isArray(enc?.errors) && enc.errors.length > 0) return 'error';
-    return 'ready';
-  };
   // No tabs / status filter — the card stack shows every pending record for
   // this document, grouped by patient.
   const visibleEncs = pendingEncs;
@@ -392,14 +401,15 @@ function DocToolbar({ batch, setSelectedAll, showToast }) {
   ).length;
   const ready = encs.length - flagged;
   const acceptAllHigh = () => {
-    const highIdxs = encs
-      .map((e, i) => ({ e, i }))
-      .filter(({ e }) =>
-        (e.patient?.matchConfidence ?? 0) >= 85
-        && e.patient?.matchedMemberId
-        && (!e.errors || e.errors.length === 0)
-      )
-      .map(({ i }) => i);
+    const highIdxs = [];
+    for (let i = 0; i < encs.length; i++) {
+      const e = encs[i];
+      if ((e.patient?.matchConfidence ?? 0) >= 85
+          && e.patient?.matchedMemberId
+          && (!e.errors || e.errors.length === 0)) {
+        highIdxs.push(i);
+      }
+    }
     setSelectedAll?.(highIdxs, true);
     showToast?.(`${highIdxs.length} high-confidence encounter${highIdxs.length === 1 ? '' : 's'} selected`);
   };
@@ -480,9 +490,6 @@ function DocSwitcher({ activeBatch, batches, onSelect }) {
     return () => document.removeEventListener('mousedown', onDoc);
   }, [open]);
 
-  const flaggedCount = (b) => (b.encounters || []).filter(e =>
-    !e.patient?.matchedMemberId || (e.errors && e.errors.length > 0)
-  ).length;
   const activeFlagged = activeBatch ? flaggedCount(activeBatch) : 0;
   const multi = batches.length > 1;
 

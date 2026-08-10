@@ -72,7 +72,7 @@ function seededRandom(seed) {
 function generateDateGroup(date, idx) {
   const rng = seededRandom(idx * 7919 + 31);
   const callCount = 12 + Math.floor(rng() * 8); // 12-19 calls per day
-  const shuffled = [...ALL_PATIENTS].sort(() => rng() - 0.5);
+  const shuffled = ALL_PATIENTS.toSorted(() => rng() - 0.5);
   const patients = [];
   while (patients.length < callCount) {
     patients.push(...shuffled);
@@ -439,10 +439,15 @@ export function CallLogTab({ onSelectCall, selectedCallId, searchQuery }) {
   const filteredGroups = useMemo(() => {
     if (!searchQuery.trim()) return CALL_LOG_GROUPS;
     const q = searchQuery.toLowerCase();
-    return CALL_LOG_GROUPS.map(g => ({
-      ...g,
-      calls: g.calls.filter(c => c.name.toLowerCase().includes(q)),
-    })).filter(g => g.calls.length > 0);
+    const groups = [];
+    for (const g of CALL_LOG_GROUPS) {
+      const calls = [];
+      for (const c of g.calls) {
+        if (c.name.toLowerCase().includes(q)) calls.push(c);
+      }
+      if (calls.length > 0) groups.push({ ...g, calls });
+    }
+    return groups;
   }, [searchQuery]);
 
   const totalCalls = CALL_LOG_GROUPS.reduce((sum, g) => sum + g.calls.length, 0);
