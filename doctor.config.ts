@@ -74,10 +74,39 @@ export default {
 
       // ProductTour reads/writes its own row keyed by a `user_id` taken from
       // supabase.auth.getUser() — there is no client-side change that makes a
-      // client filter into a security boundary. Enforcement now lives in the
-      // database: supabase/user_tour_status_rls.sql scopes the table to
-      // auth.uid() and defaults the owner column server-side.
-      { files: ['src/components/ProductTour/ProductTour.jsx'], rules: ['react-doctor/supabase-client-owned-authz-field'] },
+      // client filter into a security boundary. Enforcement lives in the
+      // database: user_tour_status is scoped to auth.uid() and defaults the
+      // owner column server-side (applied; 0 anon policies remain on it).
+      // Covers ProductTour.utils.js too — the helpers were extracted there and
+      // a path-scoped suppression does not follow a refactor.
+      {
+        files: [
+          'src/components/ProductTour/ProductTour.jsx',
+          'src/components/ProductTour/ProductTour.utils.js',
+        ],
+        rules: ['react-doctor/supabase-client-owned-authz-field'],
+      },
+
+      // InviteUserDrawer assigns admin_role / role / clinical_roles when an
+      // administrator invites someone. That is the intended behaviour of the
+      // user-management flow, and it IS enforced server-side: profiles carries
+      // "Admins can update any profile" (UPDATE, to authenticated) gated on
+      //   EXISTS (SELECT 1 FROM profiles admin_p
+      //           WHERE admin_p.id = auth.uid() AND (admin_p.admin_role IN
+      //                 ('Admin/Practice Manager','Business/Practice Owner')
+      //             OR 'Admin/Practice Manager' = ANY(admin_p.clinical_roles)))
+      // so a non-admin calling the same code is denied by RLS. Verified against
+      // production, alongside the self-update and service_role policies.
+      //
+      // Recording a correction: the AccountPanel entry above was justified as
+      // "a read/derive of role for display", which was true of the site that
+      // triggered it but incomplete — AccountPanel also contained these invite
+      // writes. Splitting them into this file surfaced that, so the write now
+      // carries its own reasoning instead of inheriting a partial one.
+      {
+        files: ['src/features/settings/account/InviteUserDrawer.jsx'],
+        rules: ['react-doctor/supabase-client-owned-authz-field'],
+      },
 
       // no-impure-state-updater false positives: `onTriggerEnter(recordRect)`
       // is a custom hover-delay helper, not a React state setter — the rule
