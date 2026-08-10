@@ -55,6 +55,26 @@ const VIEW_TOGGLE_ITEMS = [
   { key: 'board', icon: <KanbanIcon size={16} /> },
 ];
 
+function getInitials(name) {
+  return name ? name.split(' ').map(w => w[0]).join('').slice(0, 2) : '';
+}
+
+const AUDIT_LOG_VERB_MAP = {
+  created: 'created the task.',
+  status_changed: 'changed the Status',
+  priority_changed: 'changed the Priority',
+  due_date_changed: 'changed the Due Date',
+  assignee_changed: 'changed the Assignee',
+  label_added: 'added a Label',
+  label_removed: 'removed a Label',
+  description_changed: 'updated the Description',
+  renamed: 'renamed the task',
+  comment_added: 'added a Comment',
+  subtask_added: 'added a Subtask',
+  claimed: 'claimed the task',
+  deleted: 'deleted the task',
+};
+
 // `primary: true` → chip renders by default in the shared FilterBar.
 const TASK_FILTER_DEFS = [
   { key: 'assigned_to', label: 'Assigned to', primary: true, options: [
@@ -283,6 +303,7 @@ function RowLabelDropdown({ task, children }) {
   const taskLabels = useAppStore(s => s.taskLabels);
   const createTaskLabel = useAppStore(s => s.createTaskLabel);
   const labels = Array.isArray(task.labels) ? task.labels : [];
+  const labelSet = useMemo(() => new Set(labels), [labels]);
   const filtered = taskLabels.filter(l => !search || l.toLowerCase().includes(search.toLowerCase()));
   const exact = taskLabels.find(l => l.toLowerCase() === search.trim().toLowerCase());
   const canCreate = search.trim() && !exact;
@@ -331,7 +352,7 @@ function RowLabelDropdown({ task, children }) {
             </div>
             {filtered.map(l => (
               <button key={l} className={styles.simpleDropItem} onClick={() => toggle(l)}>
-                <input type="checkbox" checked={labels.includes(l)} readOnly style={{ accentColor: 'var(--primary-300)', width: 15, height: 15, flexShrink: 0 }} />
+                <input type="checkbox" checked={labelSet.has(l)} readOnly style={{ accentColor: 'var(--primary-300)', width: 15, height: 15, flexShrink: 0 }} />
                 {l}
               </button>
             ))}
@@ -1117,7 +1138,6 @@ function DroppableKanbanColumn({ groupKey, label, tasks, onToggle, onTaskClick }
 /* ── Kanban Board with DnD ── */
 function KanbanBoard({ kanbanGroups, onToggle, onTaskMove, onTaskClick }) {
   const [activeTask, setActiveTask] = useState(null);
-  const [overColumn, setOverColumn] = useState(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -1144,14 +1164,9 @@ function KanbanBoard({ kanbanGroups, onToggle, onTaskMove, onTaskClick }) {
     return null;
   }, []);
 
-  const handleDragOver = useCallback((event) => {
-    setOverColumn(resolveGroupKey(event.over));
-  }, [resolveGroupKey]);
-
   const handleDragEnd = useCallback((event) => {
     const { active, over } = event;
     setActiveTask(null);
-    setOverColumn(null);
 
     if (!over || !active) {
       toast.error('Drag failed: missing over or active');
@@ -1186,7 +1201,6 @@ function KanbanBoard({ kanbanGroups, onToggle, onTaskMove, onTaskClick }) {
       sensors={sensors}
       collisionDetection={customCollisionDetection}
       onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
       <div className={styles.kanbanWrap}>
@@ -1625,6 +1639,7 @@ function CreatableLabelDropdown({ selectedLabels, onToggle, children }) {
   const filtered = taskLabels.filter(l => !search || l.toLowerCase().includes(search.toLowerCase()));
   const exact = taskLabels.find(l => l.toLowerCase() === search.trim().toLowerCase());
   const canCreate = search.trim() && !exact;
+  const selectedLabelSet = useMemo(() => new Set(selectedLabels), [selectedLabels]);
 
   const handleCreate = async () => {
     const created = await createTaskLabel(search.trim());
@@ -1660,7 +1675,7 @@ function CreatableLabelDropdown({ selectedLabels, onToggle, children }) {
             </div>
             {filtered.map(l => (
               <button key={l} className={styles.simpleDropItem} onClick={() => onToggle(l)}>
-                <input type="checkbox" checked={selectedLabels.includes(l)} readOnly style={{ accentColor: 'var(--primary-300)', width: 15, height: 15, flexShrink: 0 }} />
+                <input type="checkbox" checked={selectedLabelSet.has(l)} readOnly style={{ accentColor: 'var(--primary-300)', width: 15, height: 15, flexShrink: 0 }} />
                 {l}
               </button>
             ))}
@@ -1681,10 +1696,11 @@ function CreatableLabelDropdown({ selectedLabels, onToggle, children }) {
   );
 }
 
-function DetailDropdown({ value, options, onSelect, icon, renderOption, children, searchable = true, multiSelect, selected = [] }) {
+function DetailDropdown({ value, options, onSelect, icon, renderOption, children, searchable = true, multiSelect, selected }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const btnRef = useRef(null);
+  const selectedSet = useMemo(() => new Set(selected || []), [selected]);
 
   const filtered = options.filter(opt => {
     if (!search) return true;
@@ -1713,7 +1729,7 @@ function DetailDropdown({ value, options, onSelect, icon, renderOption, children
             {filtered.map(opt => {
               const label = typeof opt === 'string' ? opt : opt.label;
               const val = typeof opt === 'string' ? opt : opt.value;
-              const isChecked = multiSelect && selected.includes(val);
+              const isChecked = multiSelect && selectedSet.has(val);
               return (
                 <button key={val} className={styles.simpleDropItem} onClick={() => {
                   onSelect(val);
@@ -1775,6 +1791,63 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask }) {
 
   useEffect(() => { if (task?.id) fetchTaskAuditLog(task.id); }, [task?.id]);
 
+  const auditLog = task ? (taskAuditLogs[task.id] || []) : [];
+
+  const activityLogItems = useMemo(() => {
+    const items = [];
+    for (const log of auditLog) {
+      const visible = activityTab === 'All'
+        || (activityTab === 'Comments' && log.action_type === 'comment_added')
+        || (activityTab === 'History' && log.action_type !== 'comment_added');
+      if (!visible) continue;
+      const initials = (log.user_name || '?').split(' ').map(w => w[0]).join('').slice(0, 2);
+      items.push(
+        <div key={log.id} className={styles.logEntry}>
+          <Avatar variant="patient" initials={initials} className={styles.avatarXs} />
+          <div className={styles.logBody}>
+            <div className={styles.logAction}>
+              <span className={styles.logUser}>{log.user_name}</span>
+              <span>{AUDIT_LOG_VERB_MAP[log.action_type] || log.action_type}</span>
+            </div>
+            {log.action_type === 'comment_added' && log.to_value && (
+              <div className={styles.logComment}>
+                <p>{log.to_value}</p>
+              </div>
+            )}
+            {log.action_type === 'status_changed' && log.from_value && log.to_value && (
+              <div className={styles.logChange}>
+                <Badge variant={STATUS_BADGE_VARIANTS[log.from_value] || 'overflow'} label={STATUS_LABELS[log.from_value] || log.from_value} />
+                <Icon name="solar:arrow-right-linear" size={16} color="var(--neutral-200)" />
+                <Badge variant={STATUS_BADGE_VARIANTS[log.to_value] || 'overflow'} label={STATUS_LABELS[log.to_value] || log.to_value} />
+              </div>
+            )}
+            {log.action_type === 'priority_changed' && (
+              <div className={styles.logChange}>
+                <div className={styles.logChangeItem}>
+                  <PriorityIcon priority={log.from_value} size={16} />
+                  <span style={{ textTransform: 'capitalize' }}>{log.from_value}</span>
+                </div>
+                <Icon name="solar:arrow-right-linear" size={16} color="var(--neutral-200)" />
+                <div className={styles.logChangeItem}>
+                  <PriorityIcon priority={log.to_value} size={16} />
+                  <span style={{ textTransform: 'capitalize' }}>{log.to_value}</span>
+                </div>
+              </div>
+            )}
+            {(log.action_type === 'due_date_changed' || log.action_type === 'assignee_changed' || log.action_type === 'renamed' || log.action_type === 'label_added' || log.action_type === 'label_removed' || log.action_type === 'subtask_added' || log.action_type === 'claimed') && (
+              <div className={styles.logChange}>
+                {log.from_value && <span className={styles.logChangeText}>{log.from_value}</span>}
+                {log.from_value && log.to_value && <Icon name="solar:arrow-right-linear" size={16} color="var(--neutral-200)" />}
+                {log.to_value && <span className={styles.logChangeText}>{log.to_value}</span>}
+              </div>
+            )}
+          </div>
+        </div>,
+      );
+    }
+    return items;
+  }, [auditLog, activityTab]);
+
   if (!task) return null;
 
   const labels = Array.isArray(task.labels) ? task.labels : [];
@@ -1782,7 +1855,6 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask }) {
   const assigneeInitials = task.assigned_to ? task.assigned_to.split(' ').map(w => w[0]).join('').slice(0, 2) : '';
   const subtasks = allTasks.filter(t => t.parent_task_id === task.id || (t.is_subtask && t.parent_task === task.name));
   const completedSubs = subtasks.filter(t => t.status === 'completed').length;
-  const auditLog = taskAuditLogs[task.id] || [];
 
   // Dynamic dropdown sources — same shape as the AddTaskDrawer.
   const assigneeNames = (() => {
@@ -1879,8 +1951,6 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask }) {
     if (e.key === 'Enter') { e.preventDefault(); handleTitleSave(); }
     if (e.key === 'Escape') setEditingTitle(false);
   };
-
-  const getInitials = (name) => name ? name.split(' ').map(w => w[0]).join('').slice(0, 2) : '';
 
   return (
     <Drawer title="Task Details" onClose={onClose}>
@@ -2248,71 +2318,7 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask }) {
 
           {/* Activity log — real audit entries */}
           <div className={styles.activityLog}>
-            {auditLog
-              .filter(l => activityTab === 'All'
-                || (activityTab === 'Comments' && l.action_type === 'comment_added')
-                || (activityTab === 'History' && l.action_type !== 'comment_added'))
-              .map((log) => {
-                const initials = (log.user_name || '?').split(' ').map(w => w[0]).join('').slice(0, 2);
-                const verbMap = {
-                  created: 'created the task.',
-                  status_changed: 'changed the Status',
-                  priority_changed: 'changed the Priority',
-                  due_date_changed: 'changed the Due Date',
-                  assignee_changed: 'changed the Assignee',
-                  label_added: 'added a Label',
-                  label_removed: 'removed a Label',
-                  description_changed: 'updated the Description',
-                  renamed: 'renamed the task',
-                  comment_added: 'added a Comment',
-                  subtask_added: 'added a Subtask',
-                  claimed: 'claimed the task',
-                  deleted: 'deleted the task',
-                };
-                return (
-                  <div key={log.id} className={styles.logEntry}>
-                    <Avatar variant="patient" initials={initials} className={styles.avatarXs} />
-                    <div className={styles.logBody}>
-                      <div className={styles.logAction}>
-                        <span className={styles.logUser}>{log.user_name}</span>
-                        <span>{verbMap[log.action_type] || log.action_type}</span>
-                      </div>
-                      {log.action_type === 'comment_added' && log.to_value && (
-                        <div className={styles.logComment}>
-                          <p>{log.to_value}</p>
-                        </div>
-                      )}
-                      {log.action_type === 'status_changed' && log.from_value && log.to_value && (
-                        <div className={styles.logChange}>
-                          <Badge variant={STATUS_BADGE_VARIANTS[log.from_value] || 'overflow'} label={STATUS_LABELS[log.from_value] || log.from_value} />
-                          <Icon name="solar:arrow-right-linear" size={16} color="var(--neutral-200)" />
-                          <Badge variant={STATUS_BADGE_VARIANTS[log.to_value] || 'overflow'} label={STATUS_LABELS[log.to_value] || log.to_value} />
-                        </div>
-                      )}
-                      {log.action_type === 'priority_changed' && (
-                        <div className={styles.logChange}>
-                          <div className={styles.logChangeItem}>
-                            <PriorityIcon priority={log.from_value} size={16} />
-                            <span style={{ textTransform: 'capitalize' }}>{log.from_value}</span>
-                          </div>
-                          <Icon name="solar:arrow-right-linear" size={16} color="var(--neutral-200)" />
-                          <div className={styles.logChangeItem}>
-                            <PriorityIcon priority={log.to_value} size={16} />
-                            <span style={{ textTransform: 'capitalize' }}>{log.to_value}</span>
-                          </div>
-                        </div>
-                      )}
-                      {(log.action_type === 'due_date_changed' || log.action_type === 'assignee_changed' || log.action_type === 'renamed' || log.action_type === 'label_added' || log.action_type === 'label_removed' || log.action_type === 'subtask_added' || log.action_type === 'claimed') && (
-                        <div className={styles.logChange}>
-                          {log.from_value && <span className={styles.logChangeText}>{log.from_value}</span>}
-                          {log.from_value && log.to_value && <Icon name="solar:arrow-right-linear" size={16} color="var(--neutral-200)" />}
-                          {log.to_value && <span className={styles.logChangeText}>{log.to_value}</span>}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+            {activityLogItems}
             {auditLog.length === 0 && (
               <div className={styles.subtaskEmpty}>No activity yet.</div>
             )}

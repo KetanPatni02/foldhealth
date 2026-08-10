@@ -29,6 +29,8 @@ import { HorizontalScrollbar } from '../../components/HorizontalScrollbar/Horizo
 import styles from './HccWorklistTable.module.css';
 import rowStyles from './HccWorklistRow.module.css';
 
+const normFoldId = (v) => (v == null ? '' : String(v).replace(/^#/, '').trim().toLowerCase());
+
 /**
  * Upload toolbar button — clicking it opens a menu with two ways to
  * add a record: upload a PDF (routes through the OCR / Add Records
@@ -280,7 +282,6 @@ export function HccWorklistTable() {
   // unification, id === memberId on both slices — see
   // supabase/patient_id_unification_migration.sql). Falls back to the
   // row's `id` for any legacy row that hasn't been backfilled yet.
-  const normFoldId = (v) => (v == null ? '' : String(v).replace(/^#/, '').trim().toLowerCase());
   const hccMemberIds = useMemo(() => {
     const s = new Set();
     for (const m of hccMembers) {
@@ -342,8 +343,15 @@ export function HccWorklistTable() {
 
   // Selection lives only on primary rows — empty-patient rows have no
   // bulk actions, so header select-all should ignore them.
-  const visibleIds = paginated.filter(r => r.kind === 'primary').map(r => r.member.id);
-  const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedHccIds.includes(id));
+  const visibleIds = useMemo(() => {
+    const ids = [];
+    for (const r of paginated) {
+      if (r.kind === 'primary') ids.push(r.member.id);
+    }
+    return ids;
+  }, [paginated]);
+  const selectedIdSet = useMemo(() => new Set(selectedHccIds), [selectedHccIds]);
+  const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedIdSet.has(id));
   const someSelected = selectedHccIds.length > 0 && !allSelected;
 
   const handleSelectAll = (checked) => {

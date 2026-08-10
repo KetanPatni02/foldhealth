@@ -1837,20 +1837,21 @@ export const useAppStore = create((set, get) => ({
       for (const ep of existing) {
         if (ep.agentAssigned) overrides[ep.id] = ep;
       }
-      const patients = data.map(dbToJs).map(p => {
-        const isPeter = p.name === 'Peter Kim' || p.id === 'p11';
-        const mem = overrides[p.id];
+      const patients = data.map(p => {
+        const base = dbToJs(p);
+        const isPeter = base.name === 'Peter Kim' || base.id === 'p11';
+        const mem = overrides[base.id];
         return {
-          ...p,
-          name: isPeter ? 'Clara Mitchell' : p.name,
-          initials: isPeter ? 'CM' : p.initials,
+          ...base,
+          name: isPeter ? 'Clara Mitchell' : base.name,
+          initials: isPeter ? 'CM' : base.initials,
           // Priority: in-memory invoke state > DB state
-          agentAssigned: mem?.agentAssigned || p.agentAssigned || '',
-          agentRole: mem?.agentRole || p.agentRole || '',
-          onCall: mem ? mem.onCall : (p.onCall || false),
-          status: mem ? mem.status : p.status,
-          callDuration: mem ? mem.callDuration : p.callDuration,
-          nextAction: mem?.nextAction || p.nextAction,
+          agentAssigned: mem?.agentAssigned || base.agentAssigned || '',
+          agentRole: mem?.agentRole || base.agentRole || '',
+          onCall: mem ? mem.onCall : (base.onCall || false),
+          status: mem ? mem.status : base.status,
+          callDuration: mem ? mem.callDuration : base.callDuration,
+          nextAction: mem?.nextAction || base.nextAction,
         };
       });
       // Sort by numeric part of id (p1, p2, ... p10, p11, ...)
@@ -5417,23 +5418,23 @@ export const useAppStore = create((set, get) => ({
     // AND log it to the activity feed. Direct manual reassigns from
     // hccReassignRole log there themselves — skip the log here for kind ===
     // 'reassignRole' so the History drawer doesn't show duplicate entries.
-    assigneeChanges
-      .filter(a => !statusChanges.some(sc => sc.role === a.role))
-      .forEach(({ role, name, fromName }) => {
-        persistHccMemberRoleStatus(patientId, role, undefined, name);
-        if (kind === 'reassignRole') return;
-        useAppStore.getState().logHccActivity({
-          eventName: 'assignee.changed',
-          scope:     { patientId, dos: dosDate, source: 'cascade' },
-          payload:   {
-            actor: payload.actor || 'You',
-            roleLabel: ROLE_LABEL_T[role] || role,
-            fromName, toName: name,
-            patientName: patient?.name,
-            transitionKind: kind,
-          },
-        });
+    const statusRoles = new Set(statusChanges.map(sc => sc.role));
+    for (const { role, name, fromName } of assigneeChanges) {
+      if (statusRoles.has(role)) continue;
+      persistHccMemberRoleStatus(patientId, role, undefined, name);
+      if (kind === 'reassignRole') continue;
+      useAppStore.getState().logHccActivity({
+        eventName: 'assignee.changed',
+        scope:     { patientId, dos: dosDate, source: 'cascade' },
+        payload:   {
+          actor: payload.actor || 'You',
+          roleLabel: ROLE_LABEL_T[role] || role,
+          fromName, toName: name,
+          patientName: patient?.name,
+          transitionKind: kind,
+        },
       });
+    }
     return { nextMap: useAppStore.getState().hccDosAssignments };
   },
 
@@ -6653,11 +6654,11 @@ export const useAppStore = create((set, get) => ({
     if (!patient) return;
     const first = blocks?.[0] || {};
     const totalIcds = (blocks || []).reduce((n, b) => n + (b.icds?.length || 0), 0);
-    const dosList = (blocks || []).filter(b => b.dos).map(b => ({
-      date: b.dos,
-      label: 'Just Added',
-      labelColor: 'var(--neutral-200)',
-    }));
+    const dosList = [];
+    for (const b of (blocks || [])) {
+      if (!b.dos) continue;
+      dosList.push({ date: b.dos, label: 'Just Added', labelColor: 'var(--neutral-200)' });
+    }
     const today = new Date();
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dd = String(today.getDate()).padStart(2, '0');
@@ -6957,7 +6958,10 @@ export const useAppStore = create((set, get) => ({
     if (!member) return { kind: 'skipped' };
     const docName = enc._docName || 'Uploaded Document.pdf';
     const docType = enc._docType || 'Progress Note';
-    const icdCodes = (enc.icds || []).filter(i => i.valid !== false).map(i => i.code);
+    const icdCodes = [];
+    for (const i of (enc.icds || [])) {
+      if (i.valid !== false) icdCodes.push(i.code);
+    }
     const now = new Date();
     // WS1/WS8 — every upload-sourced row belongs to a mini-sweep. Stamp
     // the batch id onto `sourceDocumentIds` and force `arrivalOrder` to
@@ -9065,9 +9069,11 @@ export const useAppStore = create((set, get) => ({
       }
       return t;
     });
-    const overdueIds = (data || [])
-      .filter((t, i) => now[i] !== t && now[i].status === 'missed')
-      .map(t => t.id);
+    const overdueIds = [];
+    for (let i = 0; i < (data || []).length; i++) {
+      const t = data[i];
+      if (now[i] !== t && now[i].status === 'missed') overdueIds.push(t.id);
+    }
     if (overdueIds.length > 0) {
       await supabase.from('tasks')
         .update({ status: 'missed', due_missed: true, updated_at: new Date().toISOString() })

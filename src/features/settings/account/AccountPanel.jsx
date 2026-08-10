@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../../lib/supabase';
 import { useAppStore } from '../../../store/useAppStore';
@@ -58,6 +58,29 @@ export function getInitials(name) {
   if (!name) return '??';
   const parts = name.trim().split(/\s+/);
   return (parts[0]?.[0] || '') + (parts[parts.length - 1]?.[0] || '');
+}
+
+const EMPTY_STRING_ARRAY = [];
+const BULK_EXTRA_COLUMNS = ['credentials', 'gender', 'profile', 'licence_state', 'location', 'languages', 'mobile', 'fax', 'zip_code'];
+const BULK_COL_LABELS = {
+  first_name: 'First Name', middle_name: 'Middle Name', last_name: 'Last Name', email: 'Email', admin_role: 'Administrative Role',
+  credentials: 'Credentials', gender: 'Gender', profile: 'Profile', licence_state: 'Licence State', location: 'Location',
+  languages: 'Languages', mobile: 'Mobile Number', fax: 'Fax Number', zip_code: 'Zip Code',
+};
+
+function preventDefaultDrag(e) {
+  e.preventDefault();
+}
+
+function downloadUserImportTemplate() {
+  const csv = 'First Name,Middle Name,Last Name,Email,Admin Role\nAmy,,Brenneman,amy@fold.health,Employer\n';
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'user_import_template.csv';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 const MOCK_ROLES = Object.keys(ROLE_COLORS);
@@ -434,7 +457,7 @@ function TagInput({ value = [], onChange, placeholder }) {
 }
 
 /* ── Multi-select helper (checkbox list inside a select-like container) ── */
-function MultiSelectField({ label, required, options, value = [], onChange }) {
+function MultiSelectField({ label, required, options, value = EMPTY_STRING_ARRAY, onChange }) {
   const [open, setOpen] = useState(false);
   // Anchor rect drives the portalled dropdown's position. Recomputed on
   // open + on scroll/resize so it tracks the trigger correctly when the
@@ -469,6 +492,7 @@ function MultiSelectField({ label, required, options, value = [], onChange }) {
   const toggle = (opt) => {
     onChange(value.includes(opt) ? value.filter(v => v !== opt) : [...value, opt]);
   };
+  const valueSet = useMemo(() => new Set(value), [value]);
   return (
     <div className={styles.formField}>
       <label className={styles.formLabel}>{label} {required && <span className={styles.required}>*</span>}</label>
@@ -499,7 +523,7 @@ function MultiSelectField({ label, required, options, value = [], onChange }) {
         >
           {options.map(opt => (
             <label key={opt} className={styles.multiSelectOption}>
-              <input type="checkbox" checked={value.includes(opt)} onChange={() => toggle(opt)} />
+              <input type="checkbox" checked={valueSet.has(opt)} onChange={() => toggle(opt)} />
               <span>{opt}</span>
             </label>
           ))}
@@ -514,13 +538,14 @@ function MultiSelectField({ label, required, options, value = [], onChange }) {
 /* ── Add Column Dropdown for Bulk Import ── */
 function AddColumnDropdown({ available, labels, onAdd, onClose }) {
   const [selected, setSelected] = useState([]);
+  const selectedSet = useMemo(() => new Set(selected), [selected]);
   return (
     <>
       <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={onClose} />
       <div className={styles.addColDropdown}>
         {available.map(col => (
           <label key={col} className={styles.addColOption}>
-            <input type="checkbox" checked={selected.includes(col)} onChange={() => setSelected(prev => prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col])} />
+            <input type="checkbox" checked={selectedSet.has(col)} onChange={() => setSelected(prev => prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col])} />
             <span>{labels[col] || col}</span>
           </label>
         ))}
@@ -682,7 +707,6 @@ export function InviteUserDrawer({ onClose, onInvited }) {
     };
 
     const handleDrop = (e) => { e.preventDefault(); handleFileSelect(e.dataTransfer.files[0]); };
-    const handleDragOver = (e) => { e.preventDefault(); };
 
     return (
       <Drawer title={<div><div style={{ fontSize: 16, fontWeight: 600 }}>Bulk Import Users</div><div style={{ fontSize: 13, color: 'var(--neutral-300)', fontWeight: 400 }}>Import the users in bulk by uploading a spreadsheet.</div></div>} onClose={onClose} bodyClassName={styles.inviteDrawerBody} headerRight={
@@ -714,7 +738,7 @@ export function InviteUserDrawer({ onClose, onInvited }) {
 
           {/* Upload area */}
           {!bulkFile ? (
-            <div className={styles.bulkDropZone} onDrop={handleDrop} onDragOver={handleDragOver} onClick={() => fileInputRef.current?.click()}>
+            <div className={styles.bulkDropZone} onDrop={handleDrop} onDragOver={preventDefaultDrag} onClick={() => fileInputRef.current?.click()}>
               <Icon name="solar:upload-linear" size={24} color="var(--neutral-200)" />
               <p>Drag and drop file here or <span className={styles.bulkChooseFile}>Choose file</span></p>
               <input ref={fileInputRef} type="file" accept=".csv,.xls,.xlsx" style={{ display: 'none' }} onChange={e => handleFileSelect(e.target.files[0])} />
@@ -742,12 +766,7 @@ export function InviteUserDrawer({ onClose, onInvited }) {
                 <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--neutral-400)' }}>User Details Import Template</div>
                 <div style={{ fontSize: 13, color: 'var(--neutral-300)' }}>You can download the attached example and use it as a template to add users</div>
               </div>
-              <button className={styles.bulkChooseFile} onClick={() => {
-                const csv = 'First Name,Middle Name,Last Name,Email,Admin Role\nAmy,,Brenneman,amy@fold.health,Employer\n';
-                const blob = new Blob([csv], { type: 'text/csv' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a'); a.href = url; a.download = 'user_import_template.csv'; a.click();
-              }}>Download sample</button>
+              <button className={styles.bulkChooseFile} onClick={downloadUserImportTemplate}>Download sample</button>
             </div>
           )}
 
@@ -763,9 +782,6 @@ export function InviteUserDrawer({ onClose, onInvited }) {
 
   // ── Bulk Review Step ──
   if (step === 'bulk-review') {
-    const EXTRA_COLUMNS = ['credentials', 'gender', 'profile', 'licence_state', 'location', 'languages', 'mobile', 'fax', 'zip_code'];
-    const COL_LABELS = { first_name: 'First Name', middle_name: 'Middle Name', last_name: 'Last Name', email: 'Email', admin_role: 'Administrative Role', credentials: 'Credentials', gender: 'Gender', profile: 'Profile', licence_state: 'Licence State', location: 'Location', languages: 'Languages', mobile: 'Mobile Number', fax: 'Fax Number', zip_code: 'Zip Code' };
-
     const addRow = () => {
       const newId = Date.now();
       setBulkRows(prev => [...prev, { _id: newId, first_name: '', middle_name: '', last_name: '', email: '', admin_role: '' }]);
@@ -784,7 +800,11 @@ export function InviteUserDrawer({ onClose, onInvited }) {
       setBulkRows(prev => prev.map(r => r._id === id ? { ...r, [field]: value } : r));
     };
     const addColumns = (cols) => {
-      setBulkColumns(prev => [...prev, ...cols.filter(c => !prev.includes(c))]);
+      setBulkColumns(prev => {
+        const prevSet = new Set(prev);
+        const next = cols.filter(c => !prevSet.has(c));
+        return next.length ? [...prev, ...next] : prev;
+      });
       setAddColOpen(false);
       if (cols.length > 0) {
         setHighlightCol(cols[0]);
@@ -871,8 +891,8 @@ export function InviteUserDrawer({ onClose, onInvited }) {
               <Button variant="ghost" size="S" leadingIcon="solar:add-circle-linear" onClick={() => setAddColOpen(v => !v)}>Add Column</Button>
               {addColOpen && (
                 <AddColumnDropdown
-                  available={EXTRA_COLUMNS.filter(c => !bulkColumns.includes(c))}
-                  labels={COL_LABELS}
+                  available={BULK_EXTRA_COLUMNS.filter(c => !bulkColumns.includes(c))}
+                  labels={BULK_COL_LABELS}
                   onAdd={addColumns}
                   onClose={() => setAddColOpen(false)}
                 />
@@ -887,7 +907,7 @@ export function InviteUserDrawer({ onClose, onInvited }) {
                 <tr>
                   <th className={styles.stickyLeft}>Users</th>
                   {bulkColumns.map(col => (
-                    <th key={col} style={{ minWidth: 140, background: highlightCol === col ? 'var(--primary-50)' : undefined, transition: 'background .5s' }}>{COL_LABELS[col] || col} {['first_name', 'last_name', 'email'].includes(col) && <span style={{ color: 'var(--status-error)' }}>*</span>}</th>
+                    <th key={col} style={{ minWidth: 140, background: highlightCol === col ? 'var(--primary-50)' : undefined, transition: 'background .5s' }}>{BULK_COL_LABELS[col] || col} {['first_name', 'last_name', 'email'].includes(col) && <span style={{ color: 'var(--status-error)' }}>*</span>}</th>
                   ))}
                   <th className={styles.stickyRight}>Action</th>
                 </tr>
@@ -930,7 +950,7 @@ export function InviteUserDrawer({ onClose, onInvited }) {
                             placeholder="Select..."
                           />
                         ) : (
-                          <input className={styles.bulkInput} value={row[col] || ''} onChange={e => updateRow(row._id, col, e.target.value)} placeholder={COL_LABELS[col] || ''} />
+                          <input className={styles.bulkInput} value={row[col] || ''} onChange={e => updateRow(row._id, col, e.target.value)} placeholder={BULK_COL_LABELS[col] || ''} />
                         )}
                       </td>
                     ))}

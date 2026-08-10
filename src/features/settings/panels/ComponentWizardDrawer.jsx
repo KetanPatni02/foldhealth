@@ -264,17 +264,17 @@ function WidgetOrderList({ tab, newWidgetName, order, onChange }) {
 }
 
 /* ── Step 2: Surfaces & Placement ── */
+const WIZARD_SURFACES = [
+  { key: 'web', icon: 'solar:monitor-linear', name: 'Fold Web', desc: 'Patient 360, side-drawer, worklists' },
+  { key: 'sidecar', icon: 'solar:link-round-linear', name: 'Sidecar', desc: 'EHR overlay - patient + global views' },
+  { key: 'mobile', icon: 'solar:smartphone-linear', name: 'Mobile app', desc: 'iOS / Android provider app' },
+];
+
 function StepSurfaces({ data, onChange }) {
   const toggleSurface = (key) => {
     const surfaces = data.surfaces.includes(key) ? data.surfaces.filter(s2 => s2 !== key) : [...data.surfaces, key];
     onChange({ surfaces });
   };
-
-  const SURFACES = [
-    { key: 'web', icon: 'solar:monitor-linear', name: 'Fold Web', desc: 'Patient 360, side-drawer, worklists' },
-    { key: 'sidecar', icon: 'solar:link-round-linear', name: 'Sidecar', desc: 'EHR overlay - patient + global views' },
-    { key: 'mobile', icon: 'solar:smartphone-linear', name: 'Mobile app', desc: 'iOS / Android provider app' },
-  ];
 
   return (
     <div>
@@ -282,7 +282,7 @@ function StepSurfaces({ data, onChange }) {
         Select surfaces <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--neutral-300)' }}>(multi-select)</span>
       </div>
       <div className={s.surfaceGrid}>
-        {SURFACES.map(sf => {
+        {WIZARD_SURFACES.map(sf => {
           const active = data.surfaces.includes(sf.key);
           return (
             <div key={sf.key} className={active ? s.surfaceCardActive : s.surfaceCard} onClick={() => toggleSurface(sf.key)}>

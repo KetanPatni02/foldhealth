@@ -1,9 +1,7 @@
 import React from 'react';
 import styles from './EngagementCard.module.css';
 
-export function EngagementCard({ engagementScore = 92, sentimentScore = 78, sentimentLabel = 'positive' }) {
-  // --- Engagement State Logic ---
-  const getEngState = (v) => {
+function getEngState(v) {
     if (v >= 85) return {
       label: 'Excellent', color: '#009B53', light: '#4FD19A',
       halo: 'rgba(0,155,83,0.22)',
@@ -34,18 +32,18 @@ export function EngagementCard({ engagementScore = 92, sentimentScore = 78, sent
       chips: ['Disengaged', 'Outcome missed', 'Compliance risk'],
       haloA: 'rgba(215,40,37,0.10)', haloB: 'rgba(215,40,37,0.05)'
     };
-  };
+}
 
-  // --- Sentiment State Logic ---
-  const getSentState = (v) => {
+function getSentState(v) {
     if (v >= 80) return { emoji: '🤩', tag: 'Very positive', lbl: 'positive', color: '#009B53', light: '#4FD19A', bg: '#F5FFFA', border: 'rgba(0,155,83,0.22)' };
     if (v >= 60) return { emoji: '😄', tag: 'Positive', lbl: 'positive', color: '#009B53', light: '#4FD19A', bg: '#F5FFFA', border: 'rgba(0,155,83,0.22)' };
     if (v >= 45) return { emoji: '🙂', tag: 'Mostly positive', lbl: 'positive', color: '#009B53', light: '#4FD19A', bg: '#F5FFFA', border: 'rgba(0,155,83,0.18)' };
     if (v >= 30) return { emoji: '😐', tag: 'Neutral', lbl: 'neutral', color: '#D9A50B', light: '#F1C94A', bg: '#FFFCF5', border: 'rgba(217,165,11,0.24)' };
     if (v >= 15) return { emoji: '😕', tag: 'Negative', lbl: 'negative', color: '#D72825', light: '#F47A7A', bg: '#FFF5F5', border: 'rgba(215,40,37,0.22)' };
     return { emoji: '😞', tag: 'Very negative', lbl: 'negative', color: '#D72825', light: '#F47A7A', bg: '#FFF5F5', border: 'rgba(215,40,37,0.25)' };
-  };
+}
 
+export function EngagementCard({ engagementScore = 92, sentimentScore = 78, sentimentLabel = 'positive' }) {
   const eng = getEngState(engagementScore);
   const sent = getSentState(sentimentScore);
 

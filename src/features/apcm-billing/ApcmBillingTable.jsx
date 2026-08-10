@@ -25,6 +25,13 @@ const thStyle = {
   whiteSpace: 'nowrap',
 };
 
+function isCannotAttest(p) {
+  const ambiguous = p.reasons?.some(r => r.startsWith('Ambiguous ICD-10 from EMR Mapping'));
+  const chronic = p.reasons?.some(r => r.startsWith('Chronic Condition Not Selected'));
+  if (!(ambiguous && chronic)) return false;
+  return (p.icdCodes || []).every(c => c.documentedInLast36Months === false);
+}
+
 // Fee schedule rendered inside the column-header (i) popover.
 const CPT_RULES = [
   { label: '<2 chronic (any QMB)',   code: 'G0556', fee: 15  },
@@ -181,20 +188,16 @@ export function ApcmBillingTable({ searchQuery = '', filtersOpen = false }) {
   // outside the 36-month documentation window. Unresolved-mapping patients
   // (code === null) remain attestable — provider has already committed via
   // the "Marked Chronic by Provider" flag; Fold surfaces the warning inline.
-  const isCannotAttest = (p) => {
-    const ambiguous = p.reasons?.some(r => r.startsWith('Ambiguous ICD-10 from EMR Mapping'));
-    const chronic = p.reasons?.some(r => r.startsWith('Chronic Condition Not Selected'));
-    if (!(ambiguous && chronic)) return false;
-    return (p.icdCodes || []).every(c => c.documentedInLast36Months === false);
-  };
-
   const anyFilterActive = Boolean(icdFilter || providerFilter);
   // IDs of currently-filtered rows that can be attested (excludes Case C
   // blocked patients). Used by the filter-bar Trigger Attestation button.
-  const attestableFilteredIds = useMemo(
-    () => rows.filter(p => !isCannotAttest(p)).map(p => p.id),
-    [rows]
-  );
+  const attestableFilteredIds = useMemo(() => {
+    const ids = [];
+    for (const p of rows) {
+      if (!isCannotAttest(p)) ids.push(p.id);
+    }
+    return ids;
+  }, [rows]);
 
   // If the ICD filter has narrowed the visible rows to a single distinct code,
   // expose it as a bulk-mark target + a count of patients who still have it
@@ -204,10 +207,11 @@ export function ApcmBillingTable({ searchQuery = '', filtersOpen = false }) {
   // E11.8/E11.65 candidates are hidden on Case A rows anyway).
   const bulkTarget = useMemo(() => {
     if (!icdFilter) return null;
-    const code = icdFilter; // exact code from the Select
-    const actionable = rows.filter(p =>
-      visibleIcdsOf(p).some(c => c.code === code && c.status === 'acute')
-    ).length;
+    const code = icdFilter;
+    let actionable = 0;
+    for (const p of rows) {
+      if (visibleIcdsOf(p).some(c => c.code === code && c.status === 'acute')) actionable++;
+    }
     return { code, actionable };
   }, [rows, icdFilter]);
 
@@ -230,7 +234,13 @@ export function ApcmBillingTable({ searchQuery = '', filtersOpen = false }) {
 
   // Bulk selection (scoped to current page) — Case C patients can't be
   // selected; "select all" therefore only ranges over attestable rows.
-  const allIds = paginated.filter(p => !isCannotAttest(p)).map(p => p.id);
+  const allIds = useMemo(() => {
+    const ids = [];
+    for (const p of paginated) {
+      if (!isCannotAttest(p)) ids.push(p.id);
+    }
+    return ids;
+  }, [paginated]);
   const allIdSet = useMemo(() => new Set(allIds), [allIds]);
   const allSelected = allIds.length > 0 && allIds.every(id => selectedIdSet.has(id));
   const someSelected = selectedIds.some(id => allIdSet.has(id)) && !allSelected;
@@ -269,10 +279,12 @@ export function ApcmBillingTable({ searchQuery = '', filtersOpen = false }) {
   const handleBulkMarkChronic = () => {
     if (!bulkTarget) return;
     const { code } = bulkTarget;
-    const targetIds = new Set(
-      rows.filter(p => visibleIcdsOf(p).some(c => c.code === code && c.status === 'acute'))
-          .map(p => p.id)
-    );
+    const targetIds = new Set();
+    for (const p of rows) {
+      if (visibleIcdsOf(p).some(c => c.code === code && c.status === 'acute')) {
+        targetIds.add(p.id);
+      }
+    }
     if (targetIds.size === 0) return;
     setPatients(prev => prev.map(p => {
       if (!targetIds.has(p.id)) return p;

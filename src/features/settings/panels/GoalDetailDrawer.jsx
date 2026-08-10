@@ -37,7 +37,7 @@ export function GoalDetailDrawer() {
 
   const handleDuplicate = () => {
     const newGoal = {
-      ...JSON.parse(JSON.stringify(goal)),
+      ...structuredClone(goal),
       id: Date.now(),
       name: goal.name + ' (Copy)',
       status: 'draft',

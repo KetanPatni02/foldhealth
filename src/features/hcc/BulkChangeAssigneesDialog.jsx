@@ -100,27 +100,27 @@ export function BulkChangeAssigneesDialog({ open, selectedIds, onClose, onApplie
     if (!requiredRole) return [];
 
     // 1. Care Team members for this role — collect names → team name.
-    const teamMemberMap = new Map(); // userId → teamName
-    (hccCareTeams || [])
-      .filter(t => t.kind === 'hcc' && t.teamType === teamType)
-      .forEach(t => (t.members || []).forEach(m => {
+    const teamMemberMap = new Map();
+    for (const t of hccCareTeams || []) {
+      if (t.kind !== 'hcc' || t.teamType !== teamType) continue;
+      for (const m of t.members || []) {
         if (!teamMemberMap.has(m.userId)) teamMemberMap.set(m.userId, t.name);
-      }));
+      }
+    }
 
-    // 2. Filter platform users to role-matched, then order Care-Team members first.
-    const ranked = (platformUsers || [])
-      .filter(u => u.clinicalRoles?.includes(requiredRole))
-      .map(u => {
-        const teamName = teamMemberMap.get(u.id) || teamMemberMap.get(u.name);
-        return {
-          id: u.id,
-          name: u.name,
-          initials: u.initials,
-          rolesLabel: requiredRole,
-          teamName,
-          rank: teamName ? 1 : 2,
-        };
+    const ranked = [];
+    for (const u of platformUsers || []) {
+      if (!u.clinicalRoles?.includes(requiredRole)) continue;
+      const teamName = teamMemberMap.get(u.id) || teamMemberMap.get(u.name);
+      ranked.push({
+        id: u.id,
+        name: u.name,
+        initials: u.initials,
+        rolesLabel: requiredRole,
+        teamName,
+        rank: teamName ? 1 : 2,
       });
+    }
     ranked.sort((a, b) => a.rank - b.rank);
     return ranked;
   }, [hccCareTeams, platformUsers, role]);

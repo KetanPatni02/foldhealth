@@ -18,6 +18,12 @@ const DEFAULT_LAYOUT = [
   { i: 'detail',    x: 0, y: 26, w: 12, h: 8, minW: 6, minH: 5, maxW: 12, maxH: 20 },
 ];
 
+const POPULATION_BOOKMARKS = [
+  { icon: 'solar:calendar-search-linear', label: 'Missing AWV', count: 847, toast: 'Opening AWV drill-down' },
+  { icon: 'solar:hospital-linear', label: 'Recent IP Discharges', count: 124, toast: 'Opening TCM drill-down' },
+  { icon: 'solar:danger-triangle-linear', label: 'High ED Utilizers', count: 221, toast: 'Opening ED drill-down' },
+];
+
 export function PopulationView({ showToast, editing = false, resetTick = 0 }) {
   const fetchViewKpis = useAppStore(st => st.fetchViewKpis);
   const fetchProgressBars = useAppStore(st => st.fetchProgressBars);
@@ -45,11 +51,7 @@ export function PopulationView({ showToast, editing = false, resetTick = 0 }) {
   const chronicItems = safeBarItems(chronicConditions);
   const sdohItems = safeBarItems(sdohScreening);
 
-  const bookmarks = [
-    { icon: 'solar:calendar-search-linear', label: 'Missing AWV', count: 847, toast: 'Opening AWV drill-down' },
-    { icon: 'solar:hospital-linear', label: 'Recent IP Discharges', count: 124, toast: 'Opening TCM drill-down' },
-    { icon: 'solar:danger-triangle-linear', label: 'High ED Utilizers', count: 221, toast: 'Opening ED drill-down' },
-  ];
+  const bookmarks = POPULATION_BOOKMARKS;
 
   const renderInsight = () => insight ? (
     <InsightBanner

@@ -112,6 +112,80 @@ const ACCEPT_MIME = new Set([
   'image/tiff',
 ]);
 const ACCEPT_LABEL = 'Supported formats: PDF, DOC, JPG, PNG, TIFF';
+
+const WHAT_HAPPENS_NEXT_STEPS = [
+  {
+    n: 1,
+    title: 'We extract key information',
+    body: 'patient demographics, date of service, provider, place of service, and ICD codes.',
+  },
+  {
+    n: 2,
+    title: 'You review and confirm',
+    body: 'Review each record and fix any flagged fields.',
+  },
+  {
+    n: 3,
+    title: 'Add or merge',
+    body: 'Confirm to add a new worklist entry or merge into an existing one.',
+  },
+];
+
+const CHOOSER_OPTIONS = [
+  {
+    key: 'single', tone: 'primary',
+    icon: 'solar:user-rounded-linear',
+    title: 'Add a Single Encounter',
+    desc: 'Manually add one encounter for a patient — pick the patient, add ICDs, attach the document.',
+    cta: 'Add Encounter',
+  },
+  {
+    key: 'picker', tone: 'secondary',
+    icon: 'solar:users-group-rounded-linear',
+    title: 'Upload Single Document',
+    desc: 'Upload one PDF that contains encounters for one or more patients — AI extracts and groups them for review.',
+    cta: 'Upload PDF',
+  },
+  {
+    key: 'sftp', tone: 'neutral',
+    icon: 'solar:server-2-linear',
+    title: 'Upload Multiple Documents (SFTP)',
+    desc: 'Drop multiple documents on the secure SFTP server — they\'ll be ingested automatically and queued for AI review.',
+    cta: 'Open SFTP Details',
+  },
+];
+
+function recalcEncounterErrors(enc) {
+  const errors = [];
+  if (!enc.patient?.name) errors.push('patientName');
+  if (!enc.patient?.dob) errors.push('dob');
+  if (!enc.dos) errors.push('dos');
+  if (!enc.provider) errors.push('provider');
+  if (!enc.pos) errors.push('pos');
+  return errors;
+}
+
+function filterGroupsByEncounterStatus(groups, filter) {
+  if (filter === 'all') return groups;
+  const out = [];
+  for (const g of groups) {
+    const encounters = g.encounters.filter(e => encounterStatus(e) === filter);
+    if (encounters.length > 0) out.push({ ...g, encounters });
+  }
+  return out;
+}
+
+function highConfidenceEncounterIdxs(encounters) {
+  const idxs = [];
+  for (let i = 0; i < encounters.length; i++) {
+    const e = encounters[i];
+    if ((e.patient?.matchConfidence ?? 0) >= 85 && (!e.errors || e.errors.length === 0)) {
+      idxs.push(i);
+    }
+  }
+  return idxs;
+}
+
 const isAcceptedFile = (file) => {
   if (!file) return false;
   if (ACCEPT_MIME.has(file.type)) return true;
@@ -310,10 +384,13 @@ function PickerPhase({ showToast, cancel }) {
   // Match our queued staged rows to the live SFTP batches by fileName.
   // Newest matching batch wins (in case the user queued duplicates).
   const queuedBatches = useMemo(() => {
-    return queuedBatchIds.map(q => {
+    const out = [];
+    for (const q of queuedBatchIds) {
       const matches = sftpBatches.filter(b => b.fileName === q.fileName);
-      return matches[matches.length - 1] || null;
-    }).filter(Boolean);
+      const batch = matches[matches.length - 1];
+      if (batch) out.push(batch);
+    }
+    return out;
   }, [queuedBatchIds, sftpBatches]);
 
   const hasQueue = queuedBatches.length > 0;
@@ -565,23 +642,6 @@ function StagedFileRow({ file, onRemove, onPreview }) {
  */
 function WhatHappensNext() {
   const [open, setOpen] = useState(false);
-  const STEPS = [
-    {
-      n: 1,
-      title: 'We extract key information',
-      body: 'patient demographics, date of service, provider, place of service, and ICD codes.',
-    },
-    {
-      n: 2,
-      title: 'You review and confirm',
-      body: 'Review each record and fix any flagged fields.',
-    },
-    {
-      n: 3,
-      title: 'Add or merge',
-      body: 'Confirm to add a new worklist entry or merge into an existing one.',
-    },
-  ];
   return (
     <div className={[styles.whatNext, open ? styles.whatNextOpen : ''].join(' ')}>
       <button type="button" className={styles.whatNextHead} onClick={() => setOpen(v => !v)}>
@@ -595,7 +655,7 @@ function WhatHappensNext() {
       </button>
       {open && (
         <div className={styles.whatNextSteps}>
-          {STEPS.map(s => (
+          {WHAT_HAPPENS_NEXT_STEPS.map(s => (
             <div key={s.n} className={styles.whatNextCard}>
               <span className={styles.whatNextNum}>{s.n}</span>
               <div className={styles.whatNextTitle}>{s.title}</div>
@@ -998,34 +1058,11 @@ function encounterStatus(enc) {
 // you'd like to add team members" layout — first option primary-tinted,
 // the other two secondary-tinted (matches Fold's purple/orange split).
 function ChooserPhase({ onPick }) {
-  const options = [
-    {
-      key: 'single', tone: 'primary',
-      icon: 'solar:user-rounded-linear',
-      title: 'Add a Single Encounter',
-      desc: 'Manually add one encounter for a patient — pick the patient, add ICDs, attach the document.',
-      cta: 'Add Encounter',
-    },
-    {
-      key: 'picker', tone: 'secondary',
-      icon: 'solar:users-group-rounded-linear',
-      title: 'Upload Single Document',
-      desc: 'Upload one PDF that contains encounters for one or more patients — AI extracts and groups them for review.',
-      cta: 'Upload PDF',
-    },
-    {
-      key: 'sftp', tone: 'neutral',
-      icon: 'solar:server-2-linear',
-      title: 'Upload Multiple Documents (SFTP)',
-      desc: 'Drop multiple documents on the secure SFTP server — they\'ll be ingested automatically and queued for AI review.',
-      cta: 'Open SFTP Details',
-    },
-  ];
   return (
     <div className={styles.chooserPhase}>
       <h3 className={styles.chooserHeading}>Choose how you'd like to add encounters</h3>
       <div className={styles.chooserCards}>
-        {options.map(opt => (
+        {CHOOSER_OPTIONS.map(opt => (
           <button
             key={opt.key}
             type="button"
@@ -1498,12 +1535,10 @@ function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, addE
 
   // Filter the master list. Filter keys must match encounterStatus()
   // return values for the predicate to match.
-  const visibleGroups = useMemo(() => {
-    if (filter === 'all') return groups;
-    return groups
-      .map(g => ({ ...g, encounters: g.encounters.filter(e => encounterStatus(e) === filter) }))
-      .filter(g => g.encounters.length > 0);
-  }, [groups, filter]);
+  const visibleGroups = useMemo(
+    () => filterGroupsByEncounterStatus(groups, filter),
+    [groups, filter],
+  );
 
   // If selected encounter is filtered out, jump to first visible one.
   useEffect(() => {
@@ -1572,10 +1607,7 @@ function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, addE
             type="button"
             className={styles.bulkBtnPrimary}
             onClick={() => {
-              const highConf = encounters
-                .map((e, i) => ({ e, i }))
-                .filter(({ e }) => (e.patient?.matchConfidence ?? 0) >= 85 && (!e.errors || e.errors.length === 0))
-                .map(({ i }) => i);
+              const highConf = highConfidenceEncounterIdxs(encounters);
               setSelectedAll?.(highConf, true);
               showToast?.(`${highConf.length} high-confidence encounter${highConf.length === 1 ? '' : 's'} selected`);
             }}
@@ -1748,16 +1780,6 @@ function TableLayout({ visibleGroups, encounters, hccMembers, patchEnc, handleRe
     [visibleGroups],
   );
 
-  const recalcErrors = (enc) => {
-    const errors = [];
-    if (!enc.patient?.name) errors.push('patientName');
-    if (!enc.patient?.dob) errors.push('dob');
-    if (!enc.dos) errors.push('dos');
-    if (!enc.provider) errors.push('provider');
-    if (!enc.pos) errors.push('pos');
-    return errors;
-  };
-
   const patchField = (idx, patch) => {
     const cur = encounters[idx];
     const next = {
@@ -1765,7 +1787,7 @@ function TableLayout({ visibleGroups, encounters, hccMembers, patchEnc, handleRe
       ...patch,
       patient: { ...cur.patient, ...(patch.patient || {}) },
     };
-    patchEnc(idx, { ...patch, errors: recalcErrors(next) });
+    patchEnc(idx, { ...patch, errors: recalcEncounterErrors(next) });
   };
 
   if (rows.length === 0) {
@@ -2228,6 +2250,8 @@ function IcdPicker({ existingCodes, editingCode, onPick, onClose }) {
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [onClose]);
 
+  const existingCodeSet = useMemo(() => new Set(existingCodes), [existingCodes]);
+
   const all = useMemo(() => {
     const map = new Map();
     Object.values(ICDS_BY_MEMBER).forEach(list => {
@@ -2265,7 +2289,7 @@ function IcdPicker({ existingCodes, editingCode, onPick, onClose }) {
         {matches.length === 0 ? (
           <div className={styles.icdPickerEmpty}>No matches</div>
         ) : matches.map(item => {
-          const alreadyAdded = existingCodes.includes(item.code) && item.code !== editingCode;
+          const alreadyAdded = existingCodeSet.has(item.code) && item.code !== editingCode;
           return (
             <button
               key={item.code}

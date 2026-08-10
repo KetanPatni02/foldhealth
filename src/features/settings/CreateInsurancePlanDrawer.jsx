@@ -21,6 +21,15 @@ import {
 } from '../../components/ShadcnDialog/ShadcnDialog';
 import styles from './CreateInsurancePlanDrawer.module.css';
 
+function replaceBlobUrl(prev, file) {
+  if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev);
+  return URL.createObjectURL(file);
+}
+
+function preventDefaultDrag(e) {
+  e.preventDefault();
+}
+
 /* ── Option lists ── */
 const MEDICAL_BENEFITS_OPTIONS = [
   'HMO', 'PPO', 'EPO', 'POS', 'HDHP', 'HSA-Qualified HDHP',
@@ -256,11 +265,9 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {}, initialP
   };
   const [cardTheme,         setCardTheme]        = useState(initTheme);
 
-  const [tpaLogoFile,       setTpaLogoFile]      = useState(null);
   const [tpaLogoPreviewUrl, setTpaLogoPreviewUrl] = useState(initialPlan?.tpaLogoPreviewUrl || null);
 
   /* Custom logo state (only for logoChoice === 'custom') */
-  const [customLogoFile,    setCustomLogoFile]    = useState(null);
   const [customLogoUrl,     setCustomLogoUrl]     = useState(initialPlan?.logoPreviewUrl && initLogoChoice() === 'custom' ? initialPlan.logoPreviewUrl : null);
 
   const [tiers,             setTiers]            = useState(() => {
@@ -269,7 +276,7 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {}, initialP
   });
   const [expandedTiers,     setExpandedTiers]    = useState(() => new Set([tiers[0]?.id ?? 1]));
   const [activeTierId,      setActiveTierId]     = useState(() => tiers[0]?.id ?? 1);
-  const [scrollTierId,      setScrollTierId]     = useState(null);
+  const pendingScrollTierRef = useRef(null);
 
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   const [showSaveDialog,    setShowSaveDialog]   = useState(false);
@@ -283,10 +290,19 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {}, initialP
 
   /* Scroll a newly-added tier into view once it has rendered */
   useEffect(() => {
-    if (scrollTierId == null) return;
-    tierRefs.current[scrollTierId]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    setScrollTierId(null);
-  }, [scrollTierId]);
+    const id = pendingScrollTierRef.current;
+    if (id == null) return;
+    pendingScrollTierRef.current = null;
+    tierRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [tiers]);
+
+  useEffect(() => () => {
+    if (customLogoUrl?.startsWith('blob:')) URL.revokeObjectURL(customLogoUrl);
+  }, [customLogoUrl]);
+
+  useEffect(() => () => {
+    if (tpaLogoPreviewUrl?.startsWith('blob:')) URL.revokeObjectURL(tpaLogoPreviewUrl);
+  }, [tpaLogoPreviewUrl]);
 
   const [form, setForm] = useState(initialPlan ? { ...EMPTY_FORM, ...initialPlan } : EMPTY_FORM);
 
@@ -359,16 +375,14 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {}, initialP
     const file = e.dataTransfer.files[0];
     if (file) {
       isDirty.current = true;
-      setCustomLogoFile(file.name);
-      setCustomLogoUrl(URL.createObjectURL(file));
+      setCustomLogoUrl(prev => replaceBlobUrl(prev, file));
     }
   };
   const handleCustomLogoPick = (e) => {
     const file = e.target.files[0];
     if (file) {
       isDirty.current = true;
-      setCustomLogoFile(file.name);
-      setCustomLogoUrl(URL.createObjectURL(file));
+      setCustomLogoUrl(prev => replaceBlobUrl(prev, file));
     }
   };
 
@@ -383,7 +397,7 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {}, initialP
     setTiers(ts => [...ts, newTier]);
     setExpandedTiers(prev => new Set([...prev, newId]));
     setActiveTierId(newId);
-    setScrollTierId(newId);
+    pendingScrollTierRef.current = newId;
     isDirty.current = true;
   };
   const deleteTier = (id) => {
@@ -671,7 +685,7 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {}, initialP
                           </button>
                           <button
                             className={`${styles.logoActionBtn} ${styles.logoDeleteBtn}`}
-                            onClick={() => { setCustomLogoFile(null); setCustomLogoUrl(null); isDirty.current = true; }}
+                            onClick={() => { setCustomLogoUrl(prev => { if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev); return null; }); isDirty.current = true; }}
                           >
                             <Icon name="solar:trash-bin-2-linear" size={12} color="#D72825" />
                             <span>Delete</span>
@@ -716,21 +730,21 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {}, initialP
                         </button>
                         <button
                           className={`${styles.logoActionBtn} ${styles.logoDeleteBtn}`}
-                          onClick={() => { setTpaLogoFile(null); setTpaLogoPreviewUrl(null); isDirty.current = true; }}
+                          onClick={() => { setTpaLogoPreviewUrl(prev => { if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev); return null; }); isDirty.current = true; }}
                         >
                           <Icon name="solar:trash-bin-2-linear" size={12} color="#D72825" />
                           <span>Delete</span>
                         </button>
                       </div>
                       <input ref={tpaFileInputRef} type="file" accept=".svg,image/*" style={{ display: 'none' }}
-                        onChange={e => { const f = e.target.files[0]; if (f) { isDirty.current = true; setTpaLogoFile(f.name); setTpaLogoPreviewUrl(URL.createObjectURL(f)); } }} />
+                        onChange={e => { const f = e.target.files[0]; if (f) { isDirty.current = true; setTpaLogoPreviewUrl(prev => replaceBlobUrl(prev, f)); } }} />
                     </div>
                   ) : (
                     <>
                       <div
                         className={styles.dropZone}
-                        onDragOver={e => e.preventDefault()}
-                        onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) { isDirty.current = true; setTpaLogoFile(f.name); setTpaLogoPreviewUrl(URL.createObjectURL(f)); } }}
+                        onDragOver={preventDefaultDrag}
+                        onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) { isDirty.current = true; setTpaLogoPreviewUrl(prev => replaceBlobUrl(prev, f)); } }}
                         onClick={() => tpaFileInputRef.current?.click()}
                       >
                         <Icon name="solar:upload-minimalistic-linear" size={24} color="var(--neutral-200)" />
@@ -738,7 +752,7 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {}, initialP
                           Drag and drop file here or <span className={styles.dropZoneLink}>Choose file</span>
                         </div>
                         <input ref={tpaFileInputRef} type="file" accept=".svg,image/*" style={{ display: 'none' }}
-                          onChange={e => { const f = e.target.files[0]; if (f) { isDirty.current = true; setTpaLogoFile(f.name); setTpaLogoPreviewUrl(URL.createObjectURL(f)); } }} />
+                          onChange={e => { const f = e.target.files[0]; if (f) { isDirty.current = true; setTpaLogoPreviewUrl(prev => replaceBlobUrl(prev, f)); } }} />
                       </div>
                       <div className={styles.dropZoneMeta}>
                         <span className={styles.dropZoneMetaText}>Supported formats: SVG</span>

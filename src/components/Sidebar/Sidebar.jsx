@@ -22,6 +22,15 @@ const BOTTOM_ITEMS = [
   { icon: 'solar:question-circle-linear', filledIcon: 'solar:question-circle-bold', label: 'Help', action: 'help' },
 ];
 
+function openFeedbackPortal() {
+  const portal = 'https://foldhealth.featurebase.app/';
+  const jwt = useAppStore.getState().featurebaseJwt;
+  const url = jwt
+    ? `https://foldhealth.featurebase.app/api/v1/auth/access/jwt?jwt=${encodeURIComponent(jwt)}&return_to=${encodeURIComponent(portal)}`
+    : portal;
+  window.open(url, '_blank', 'noopener');
+}
+
 export function Sidebar() {
   const activePage = useAppStore(s => s.activePage);
   const theme = useAppStore(s => s.theme);
@@ -32,20 +41,6 @@ export function Sidebar() {
   const setMemberLeadsTab = useAppStore(s => s.setMemberLeadsTab);
   const [helpOpen, setHelpOpen] = useState(false);
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
-
-  // "Give Feedback" opens the hosted Featurebase portal in a new tab —
-  // every in-app widget variant (embed + floating panel) is paid-plan-only,
-  // but the portal is free. When the featurebase-jwt Edge Function has
-  // minted a JWT for the logged-in user, route through Featurebase's SSO
-  // endpoint so they land on the portal already signed in.
-  const openFeedbackPortal = () => {
-    const portal = 'https://foldhealth.featurebase.app/';
-    const jwt = useAppStore.getState().featurebaseJwt;
-    const url = jwt
-      ? `https://foldhealth.featurebase.app/api/v1/auth/access/jwt?jwt=${encodeURIComponent(jwt)}&return_to=${encodeURIComponent(portal)}`
-      : portal;
-    window.open(url, '_blank', 'noopener');
-  };
 
   // In-house changelog (Supabase-backed) — prefetch so the Help popover's
   // unread badge is accurate before the drawer is ever opened.

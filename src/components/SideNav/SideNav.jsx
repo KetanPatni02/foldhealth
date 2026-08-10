@@ -16,6 +16,24 @@ import { CSS } from '@dnd-kit/utilities';
 import { Icon } from '../Icon/Icon';
 import styles from './SideNav.module.css';
 
+const EMPTY_SECTIONS = [];
+
+function renderItemBody(item) {
+  return (
+    <>
+      {item.iconElement
+        ? <span className={styles.itemIcon}>{item.iconElement}</span>
+        : item.locked
+          ? <Icon name="solar:lock-linear" size={16} color="var(--neutral-200)" />
+          : item.icon
+            ? <Icon name={item.icon} size={16} color="currentColor" />
+            : null}
+      <span className={styles.itemLabel}>{item.label}</span>
+      {item.count != null && <span className={styles.count}>{item.count}</span>}
+    </>
+  );
+}
+
 /**
  * Fold Health SideNav — the shared second-level navigation rail. One root
  * component behind every section sub-nav in the app (Population worklists,
@@ -48,7 +66,7 @@ import styles from './SideNav.module.css';
  * @param {string}   [props.className]
  */
 export function SideNav({
-  sections = [],
+  sections = EMPTY_SECTIONS,
   activeKey,
   onSelect,
   header,
@@ -86,20 +104,6 @@ export function SideNav({
     styles.sectionLabel,
     sectionLabelVariant === 'uppercase' ? styles.sectionLabelUppercase : '',
   ].filter(Boolean).join(' ');
-
-  const renderItemBody = (item) => (
-    <>
-      {item.iconElement
-        ? <span className={styles.itemIcon}>{item.iconElement}</span>
-        : item.locked
-          ? <Icon name="solar:lock-linear" size={16} color="var(--neutral-200)" />
-          : item.icon
-            ? <Icon name={item.icon} size={16} color="currentColor" />
-            : null}
-      <span className={styles.itemLabel}>{item.label}</span>
-      {item.count != null && <span className={styles.count}>{item.count}</span>}
-    </>
-  );
 
   const itemCls = (item) => [
     styles.item,

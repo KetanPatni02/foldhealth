@@ -105,7 +105,11 @@ const mode = (counts) => {
  */
 export function questionStats(field, responses) {
   const total = responses.length;
-  const raw = responses.map((r) => r.answers?.[field.linkId]).filter(present);
+  const raw = [];
+  for (const r of responses) {
+    const v = r.answers?.[field.linkId];
+    if (present(v)) raw.push(v);
+  }
   const answeredCount = raw.length;
   const kind = questionKind(field);
 
@@ -119,7 +123,11 @@ export function questionStats(field, responses) {
   }
 
   if (kind === 'numeric') {
-    const nums = raw.map(Number).filter((n) => Number.isFinite(n));
+    const nums = [];
+    for (const v of raw) {
+      const n = Number(v);
+      if (Number.isFinite(n)) nums.push(n);
+    }
     const byVal = new Map();
     nums.forEach((n) => byVal.set(n, (byVal.get(n) || 0) + 1));
     const distribution = [...byVal.entries()]
@@ -136,9 +144,11 @@ export function questionStats(field, responses) {
 export function scoreGroupStats(scoring, responses) {
   const defs = scoring?.scores || [];
   return defs.map((def) => {
-    const vals = responses
-      .map((r) => (r.scores?.scores || []).find((s) => s.id === def.id)?.value)
-      .filter((v) => typeof v === 'number' && Number.isFinite(v));
+    const vals = [];
+    for (const r of responses) {
+      const v = (r.scores?.scores || []).find((s) => s.id === def.id)?.value;
+      if (typeof v === 'number' && Number.isFinite(v)) vals.push(v);
+    }
     const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
     const band = avg == null ? null
       : (def.interpretations || []).find((b) => avg >= b.min && avg <= b.max) || null;

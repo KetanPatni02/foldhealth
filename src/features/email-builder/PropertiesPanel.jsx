@@ -132,7 +132,7 @@ function DesignTab({ block, updateBlock, id }) {
 
   const update = (path, value) => {
     updateBlock(id, prev => {
-      const next = JSON.parse(JSON.stringify(prev));
+      const next = structuredClone(prev);
       let target = next;
       for (let i = 0; i < path.length - 1; i++) {
         target[path[i]] = target[path[i]] ?? {};
@@ -524,7 +524,7 @@ function DesignTab({ block, updateBlock, id }) {
                 onChange={v => {
                   const num = Math.max(1, Math.min(6, parseFloat(v) || 2));
                   updateBlock(id, prev => {
-                    const next = JSON.parse(JSON.stringify(prev));
+                    const next = structuredClone(prev);
                     next.data = next.data || {};
                     next.data.props = next.data.props || {};
                     next.data.props.columnsCount = num;
@@ -1000,7 +1000,7 @@ function ColumnDesignTab({ block, updateBlock, id, columnIdx }) {
 
   const updateCol = (key, value) => {
     updateBlock(id, prev => {
-      const next = JSON.parse(JSON.stringify(prev));
+      const next = structuredClone(prev);
       next.data = next.data || {};
       next.data.props = next.data.props || {};
       next.data.props.columns = next.data.props.columns || [];
@@ -1098,7 +1098,7 @@ function BulkDesignTab({ doc, bulkIds, updateBlock }) {
   const bulkUpdate = (pathFn, value) => {
     bulkIds.forEach(id => {
       updateBlock(id, prev => {
-        const next = JSON.parse(JSON.stringify(prev));
+        const next = structuredClone(prev);
         let target = next;
         const path = typeof pathFn === 'function' ? pathFn(prev) : pathFn;
         for (let i = 0; i < path.length - 1; i++) {
@@ -1174,7 +1174,7 @@ function BulkDesignTab({ doc, bulkIds, updateBlock }) {
                   const blk = doc[id];
                   const path = blk?.type === 'Button' ? ['data', 'props', 'buttonTextColor'] : ['data', 'style', 'color'];
                   updateBlock(id, prev => {
-                    const next = JSON.parse(JSON.stringify(prev));
+                    const next = structuredClone(prev);
                     let target = next;
                     for (let i = 0; i < path.length - 1; i++) { target[path[i]] = target[path[i]] ?? {}; target = target[path[i]]; }
                     target[path[path.length - 1]] = v;
@@ -1192,7 +1192,7 @@ function BulkDesignTab({ doc, bulkIds, updateBlock }) {
                 const blk = doc[id];
                 const path = blk?.type === 'Button' ? ['data', 'props', 'buttonBackgroundColor'] : ['data', 'style', 'backgroundColor'];
                 updateBlock(id, prev => {
-                  const next = JSON.parse(JSON.stringify(prev));
+                  const next = structuredClone(prev);
                   let target = next;
                   for (let i = 0; i < path.length - 1; i++) { target[path[i]] = target[path[i]] ?? {}; target = target[path[i]]; }
                   target[path[path.length - 1]] = v;
@@ -2965,7 +2965,7 @@ function TextStyleChips({ block, updateBlock, id }) {
   const props = block.data?.props || {};
   const apply = (preset) => {
     updateBlock(id, prev => {
-      const next = JSON.parse(JSON.stringify(prev));
+      const next = structuredClone(prev);
       next.data = next.data || {};
       next.data.style = next.data.style || {};
       next.data.style.fontSize = preset.fontSize;

@@ -161,7 +161,7 @@ export function SelectionToolbar() {
     const id = editableElRef.current?.dataset?.ebBlockId;
     if (!id) return;
     updateBlock(id, prev => {
-      const next = JSON.parse(JSON.stringify(prev));
+      const next = structuredClone(prev);
       next.data = next.data || {};
       next.data.style = next.data.style || {};
       next.data.style.fontSize = preset.fontSize;

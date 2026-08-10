@@ -288,7 +288,10 @@ export function AgentCanvas() {
     // Don't trigger when typing in an input
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
 
-    const multiSelectedIds = nodes.filter(n => n.selected && n.type !== 'startNode').map(n => n.id);
+    const multiSelectedIds = [];
+    for (const n of nodes) {
+      if (n.selected && n.type !== 'startNode') multiSelectedIds.push(n.id);
+    }
     const ids = multiSelectedIds.length > 0
       ? multiSelectedIds
       : (builderSelectedNode && nodes.find(n => n.id === builderSelectedNode)?.type !== 'startNode'
@@ -504,7 +507,10 @@ export function AgentCanvas() {
       if (layer.length) layers.push(layer);
     }
     // Add any unvisited nodes to last layer
-    const unvisited = nodes.filter(n => !visited.has(n.id)).map(n => n.id);
+    const unvisited = [];
+    for (const n of nodes) {
+      if (!visited.has(n.id)) unvisited.push(n.id);
+    }
     if (unvisited.length) layers.push(unvisited);
 
     // Position: horizontal layers, vertical spread within each layer

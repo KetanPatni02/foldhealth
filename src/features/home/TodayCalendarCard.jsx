@@ -60,7 +60,7 @@ export function TodayCalendarCard({ dragHandleClassName }) {
   const [viewDate, setViewDate] = useState(() => new Date());
   const [now, setNow] = useState(() => new Date());
   const [drawerSlot, setDrawerSlot] = useState(null);
-  const [temporalReady, setTemporalReady] = useState(!!globalThis.Temporal);
+  const temporalReadyRef = useRef(!!globalThis.Temporal);
   const bodyRef = useRef(null);
   const scrolledRef = useRef(false);
 
@@ -72,10 +72,10 @@ export function TodayCalendarCard({ dragHandleClassName }) {
   }, [fetchAppointments]);
 
   useEffect(() => {
-    if (globalThis.Temporal) { setTemporalReady(true); return; }
+    if (globalThis.Temporal) { temporalReadyRef.current = true; return; }
     import('temporal-polyfill').then(mod => {
       if (typeof globalThis.Temporal === 'undefined') globalThis.Temporal = mod.Temporal;
-      setTemporalReady(true);
+      temporalReadyRef.current = true;
     }).catch(err => {
       console.warn('[TodayCalendarCard] temporal-polyfill failed to load:', err);
     });
@@ -109,26 +109,24 @@ export function TodayCalendarCard({ dragHandleClassName }) {
     [appointments, dateKey]
   );
 
-  const eventBlocks = useMemo(() => {
-    return todaysAppointments.map(a => {
-      const startMin = parseTimeToMinutes(a.timeStart || a.time_start);
-      const endMin = parseTimeToMinutes(a.timeEnd || a.time_end);
-      if (startMin == null) return null;
-      const top = (startMin / 60) * HOUR_HEIGHT;
-      const height = endMin != null ? Math.max(20, ((endMin - startMin) / 60) * HOUR_HEIGHT) : 24;
-      return {
-        id: a.id,
-        top,
-        height,
-        title: a.patientName || a.patient_name || 'Appointment',
-        meta: [a.appointmentTypeName || a.appointment_type_name, a.reasonForVisit || a.reason_for_visit]
-          .filter(Boolean).join(' · '),
-      };
-    }).filter(Boolean);
-  }, [todaysAppointments]);
+  const eventBlocks = useMemo(() => todaysAppointments.flatMap(a => {
+    const startMin = parseTimeToMinutes(a.timeStart || a.time_start);
+    const endMin = parseTimeToMinutes(a.timeEnd || a.time_end);
+    if (startMin == null) return [];
+    const top = (startMin / 60) * HOUR_HEIGHT;
+    const height = endMin != null ? Math.max(20, ((endMin - startMin) / 60) * HOUR_HEIGHT) : 24;
+    return [{
+      id: a.id,
+      top,
+      height,
+      title: a.patientName || a.patient_name || 'Appointment',
+      meta: [a.appointmentTypeName || a.appointment_type_name, a.reasonForVisit || a.reason_for_visit]
+        .filter(Boolean).join(' · '),
+    }];
+  }), [todaysAppointments]);
 
   const handleSlotClick = (hour, minute) => {
-    if (!temporalReady) return;
+    if (!temporalReadyRef.current) return;
     const slot = makeSlotTemporal(viewDate, hour, minute);
     if (slot) setDrawerSlot(slot);
   };

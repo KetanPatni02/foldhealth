@@ -4,6 +4,8 @@ import { CheckboxListPopover } from '../CheckboxListPopover/CheckboxListPopover'
 import { RadioListPopover } from '../RadioListPopover/RadioListPopover';
 import styles from './FilterChip.module.css';
 
+const EMPTY_SELECTED = [];
+
 /**
  * FilterChip — a labelled filter chip that opens a multi-select popover, the
  * same pattern used by the worklist filter bar. Idle it shows "Label ⌄"; once
@@ -30,7 +32,7 @@ export function FilterChip({
   label,
   popoverLabel,
   options,
-  selected = [],
+  selected = EMPTY_SELECTED,
   onChange,
   singleSelect = false,
   size = 'M',

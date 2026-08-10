@@ -335,7 +335,7 @@ export function cloneBlockTree(doc, sourceId, genId) {
     const src = doc[id];
     if (!src) return null;
     const newId = genId();
-    const clone = JSON.parse(JSON.stringify(src));
+      const clone = structuredClone(src);
     const data = clone.data || {};
     const props = data.props || {};
     if (Array.isArray(props.childrenIds)) {
@@ -362,7 +362,7 @@ export function extractSubtree(doc, rootId) {
   const ids = collectBlockTree(doc, rootId);
   const blocks = {};
   ids.forEach(id => {
-    if (doc[id]) blocks[id] = JSON.parse(JSON.stringify(doc[id]));
+    if (doc[id]) blocks[id] = structuredClone(doc[id]);
   });
   return { rootId, blocks };
 }
@@ -393,7 +393,7 @@ export function fingerprintTree(tree) {
   const idMap = {};
   order.forEach((id, i) => { idMap[id] = `n${i}`; });
   const normalized = order.map(oldId => {
-    const block = JSON.parse(JSON.stringify(tree.blocks[oldId]));
+    const block = structuredClone(tree.blocks[oldId]);
     const props = block.data?.props;
     if (props) {
       if (Array.isArray(props.childrenIds)) {
@@ -420,7 +420,7 @@ export function cloneStoredTree(stored, genId) {
   for (const oldId of Object.keys(stored.blocks)) idMap[oldId] = genId();
   const blocks = {};
   for (const [oldId, block] of Object.entries(stored.blocks)) {
-    const cloned = JSON.parse(JSON.stringify(block));
+    const cloned = structuredClone(block);
     const props = cloned.data?.props;
     if (props) {
       if (Array.isArray(props.childrenIds)) {

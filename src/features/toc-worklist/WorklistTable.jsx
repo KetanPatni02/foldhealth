@@ -58,6 +58,13 @@ function getStatusSection(patient) {
 
 const DEFAULT_VISIBLE = 3;
 
+const HEADER_STICKY_STYLE = {
+  borderBottom: '1px solid var(--neutral-150)',
+  position: 'sticky',
+  top: 0,
+  zIndex: 2,
+};
+
 function SectionHeader({ section, count, colSpan, isExpanded, onToggle, hasMore }) {
   return (
     <tr>
@@ -148,9 +155,9 @@ export function WorklistTable() {
     }
 
     if (viewBy === 'window') {
-      result = [...result].sort((a, b) => parseTimeLeft(a.outreachLeft) - parseTimeLeft(b.outreachLeft));
+      result = result.toSorted((a, b) => parseTimeLeft(a.outreachLeft) - parseTimeLeft(b.outreachLeft));
     } else {
-      result = [...result].sort((a, b) => {
+      result = result.toSorted((a, b) => {
         const sa = SECTION_ORDER[getStatusSection(a)] ?? 5;
         const sb = SECTION_ORDER[getStatusSection(b)] ?? 5;
         if (sa !== sb) return sa - sb;
@@ -165,9 +172,10 @@ export function WorklistTable() {
   const startIdx = (currentPage - 1) * perPage;
   const paginatedPatients = filteredPatients.slice(startIdx, startIdx + perPage);
 
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const visiblePatients = viewBy === 'status' ? filteredPatients : paginatedPatients;
   const allIds = visiblePatients.map(p => p.id);
-  const allSelected = allIds.length > 0 && allIds.every(id => selectedIds.includes(id));
+  const allSelected = allIds.length > 0 && allIds.every(id => selectedIdSet.has(id));
   const someSelected = selectedIds.length > 0 && !allSelected;
 
   const handleSelectAll = (checked) => {
@@ -178,13 +186,6 @@ export function WorklistTable() {
   // Shared sticky-top styling merged into each HeaderCell so the header
   // row stays pinned when the table body scrolls. HeaderCell already
   // handles background / padding / typography.
-  const headerStickyStyle = {
-    borderBottom: '1px solid var(--neutral-150)',
-    position: 'sticky',
-    top: 0,
-    zIndex: 2,
-  };
-
   const colCount = 12;
 
   if (patientsLoading) return <TableSkeleton rows={perPage} />;
@@ -221,7 +222,7 @@ export function WorklistTable() {
 
       for (const p of visible) {
         rows.push(
-          <WorklistRow key={p.id} patient={p} isSelected={selectedIds.includes(p.id)} onSelect={selectPatient} />
+          <WorklistRow key={p.id} patient={p} isSelected={selectedIdSet.has(p.id)} onSelect={selectPatient} />
         );
       }
     }
@@ -241,24 +242,24 @@ export function WorklistTable() {
             }}>
               <Checkbox checked={someSelected ? 'indeterminate' : allSelected} onCheckedChange={handleSelectAll} />
             </th>
-            <HeaderCell label="Members" style={{ ...headerStickyStyle, left: 36, zIndex: 4, borderRight: '1px solid var(--neutral-150)' }} />
-            <HeaderCell label="LACE Acuity" style={headerStickyStyle} />
-            <HeaderCell label="Outreach Window" style={headerStickyStyle} />
-            <HeaderCell label="TOC Status" style={headerStickyStyle} />
-            <HeaderCell label="Outreach" style={headerStickyStyle} />
-            <HeaderCell label="Next Outreach" style={headerStickyStyle} />
-            <HeaderCell label="Start Date" style={headerStickyStyle} />
-            <HeaderCell label="Last Admission" style={headerStickyStyle} />
-            <HeaderCell label="Assignee" style={headerStickyStyle} />
-            <HeaderCell label="Agent Assigned" style={headerStickyStyle} />
-            <HeaderCell label="Actions" style={{ ...headerStickyStyle, width: 100, right: 0, zIndex: 3 }} />
+            <HeaderCell label="Members" style={{ ...HEADER_STICKY_STYLE, left: 36, zIndex: 4, borderRight: '1px solid var(--neutral-150)' }} />
+            <HeaderCell label="LACE Acuity" style={HEADER_STICKY_STYLE} />
+            <HeaderCell label="Outreach Window" style={HEADER_STICKY_STYLE} />
+            <HeaderCell label="TOC Status" style={HEADER_STICKY_STYLE} />
+            <HeaderCell label="Outreach" style={HEADER_STICKY_STYLE} />
+            <HeaderCell label="Next Outreach" style={HEADER_STICKY_STYLE} />
+            <HeaderCell label="Start Date" style={HEADER_STICKY_STYLE} />
+            <HeaderCell label="Last Admission" style={HEADER_STICKY_STYLE} />
+            <HeaderCell label="Assignee" style={HEADER_STICKY_STYLE} />
+            <HeaderCell label="Agent Assigned" style={HEADER_STICKY_STYLE} />
+            <HeaderCell label="Actions" style={{ ...HEADER_STICKY_STYLE, width: 100, right: 0, zIndex: 3 }} />
           </tr>
         </thead>
         <tbody>
           {viewBy === 'status'
             ? buildStatusGroupedRows()
             : paginatedPatients.map(p => (
-                <WorklistRow key={p.id} patient={p} isSelected={selectedIds.includes(p.id)} onSelect={selectPatient} />
+                <WorklistRow key={p.id} patient={p} isSelected={selectedIdSet.has(p.id)} onSelect={selectPatient} />
               ))
           }
         </tbody>

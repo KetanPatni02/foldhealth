@@ -116,7 +116,11 @@ export function ChatPanel({ nodes, edges, onApplyFlow, agentName }) {
           onApplyFlow(newNodes, newEdges);
           response = `Removed "${found.data.label}" node and its connections from the flow.`;
         } else {
-          response = `I couldn't find a node matching "${searchName}". Available nodes: ${nodes.filter(n => n.type === 'conversationNode').map(n => n.data.label).join(', ')}.`;
+          const labels = [];
+          for (const n of nodes) {
+            if (n.type === 'conversationNode') labels.push(n.data.label);
+          }
+          response = `I couldn't find a node matching "${searchName}". Available nodes: ${labels.join(', ')}.`;
         }
       }
       // ─── Modify/Update a node ───
@@ -141,11 +145,14 @@ export function ChatPanel({ nodes, edges, onApplyFlow, agentName }) {
       }
       // ─── List nodes ───
       else if (lower.includes('list') || lower.includes('show') || lower.includes('what nodes')) {
-        const nodeList = nodes
-          .filter(n => n.type === 'conversationNode')
-          .map((n, i) => `${i + 1}. **${n.data.label}** (${n.data.nodeType})`)
-          .join('\n');
-        response = `Current nodes in the flow:\n\n${nodeList}`;
+        const lines = [];
+        let i = 0;
+        for (const n of nodes) {
+          if (n.type !== 'conversationNode') continue;
+          i += 1;
+          lines.push(`${i}. **${n.data.label}** (${n.data.nodeType})`);
+        }
+        response = `Current nodes in the flow:\n\n${lines.join('\n')}`;
       }
       // ─── Help ───
       else {

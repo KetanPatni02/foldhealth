@@ -12,6 +12,7 @@ import { supabase } from '../../lib/supabase';
 import styles from './ScheduleDrawer.module.css';
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const EMPTY_PROFILE_USERS = [];
 
 export const FALLBACK_APPOINTMENT_TYPES = [
   { name: 'Annual Wellness Visit', code: 'AWV', mode: 'In-person', duration: '60 min', color: '#D9A50B' },
@@ -215,7 +216,7 @@ function DetailDropdown({ value, placeholder, icon, options, onSelect, renderIte
 }
 
 /* ── Provider Picker (searchable with avatar + slots) ── */
-function ProviderPicker({ value, onSelect, profileUsers = [], onAddSecondary }) {
+function ProviderPicker({ value, onSelect, profileUsers = EMPTY_PROFILE_USERS, onAddSecondary }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const btnRef = useRef(null);
@@ -275,7 +276,8 @@ function SecondaryUserPicker({ selected, onChange, profileUsers, primary }) {
   }, [profileUsers, primary]);
 
   const filtered = allProviders.filter(n => !search || n.toLowerCase().includes(search.toLowerCase()));
-  const toggle = (name) => onChange(selected.includes(name) ? selected.filter(n => n !== name) : [...selected, name]);
+  const selectedSet = useMemo(() => new Set(selected), [selected]);
+  const toggle = (name) => onChange(selectedSet.has(name) ? selected.filter(n => n !== name) : [...selected, name]);
 
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, flex: 1 }}>
@@ -296,8 +298,8 @@ function SecondaryUserPicker({ selected, onChange, profileUsers, primary }) {
             <div className={styles.providerDropdown} style={{ position: 'fixed', top: btnRef.current?.getBoundingClientRect().bottom + 4, left: btnRef.current?.getBoundingClientRect().left, zIndex: 9999 }} onClick={e => e.stopPropagation()}>
               <div className={styles.apptSearchWrap}><Icon name="solar:magnifer-linear" size={14} color="var(--neutral-200)" /><input className={styles.apptSearchInput} placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} autoFocus /></div>
               {filtered.map(name => (
-                <button key={name} className={styles.providerItem} onClick={() => toggle(name)} style={{ background: selected.includes(name) ? 'var(--primary-25)' : undefined }}>
-                  <input type="checkbox" checked={selected.includes(name)} readOnly style={{ accentColor: 'var(--primary-300)', width: 15, height: 15 }} />
+                <button key={name} className={styles.providerItem} onClick={() => toggle(name)} style={{ background: selectedSet.has(name) ? 'var(--primary-25)' : undefined }}>
+                  <input type="checkbox" checked={selectedSet.has(name)} readOnly style={{ accentColor: 'var(--primary-300)', width: 15, height: 15 }} />
                   <Avatar variant="assignee" initials={getInitials(name).toUpperCase()} />
                   <span style={{ fontSize: 14, color: 'var(--neutral-400)' }}>{name}</span>
                 </button>
@@ -434,9 +436,9 @@ export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointm
   const [showSecondary, setShowSecondary] = useState(false);
   const [secondaryUsers, setSecondaryUsers] = useState([]);
   const [profileUsers, setProfileUsers] = useState([]);
-  const [memberInstruction, setMemberInstruction] = useState('');
+  const memberInstructionRef = useRef('');
   const [showStaffInstructions, setShowStaffInstructions] = useState(false);
-  const [staffInstruction, setStaffInstruction] = useState('');
+  const staffInstructionRef = useRef('');
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const rawStatus = existingAppointment?.status;
   const [apptStatus, setApptStatus] = useState(rawStatus === 'Scheduled' ? 'Booked' : (rawStatus || 'Booked'));
@@ -452,10 +454,16 @@ export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointm
   // Fetch staff users from profiles DB
   useEffect(() => {
     supabase.from('profiles').select('id, full_name, first_name, last_name, email, status').order('full_name').then(({ data }) => {
-      if (data) setProfileUsers(data.filter(u => u.status === 'Active').map(u => ({
-        name: u.full_name?.trim() || `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email,
-        email: u.email,
-      })));
+      if (!data) return;
+      const users = [];
+      for (const u of data) {
+        if (u.status !== 'Active') continue;
+        users.push({
+          name: u.full_name?.trim() || `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email,
+          email: u.email,
+        });
+      }
+      setProfileUsers(users);
     });
   }, []);
 
@@ -498,8 +506,8 @@ export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointm
       time_start: time,
       time_end: time ? computeEndTime(time) : '',
       reason_for_visit: reasonForVisit,
-      member_instruction: memberInstruction,
-      staff_instruction: staffInstruction,
+      member_instruction: memberInstructionRef.current,
+      staff_instruction: staffInstructionRef.current,
       require_rsvp: requireRsvp,
       recurring,
       recurring_config: recurring ? JSON.stringify({ frequency: recurFrequency, unit: recurUnit, days: recurDays, endDate: recurEndDate }) : null,
@@ -998,7 +1006,7 @@ export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointm
               contentEditable
               suppressContentEditableWarning
               data-placeholder="Add Instructions for Member"
-              onInput={e => setMemberInstruction(e.currentTarget.innerHTML)}
+              onInput={e => { memberInstructionRef.current = e.currentTarget.innerHTML; }}
             />
             <div className={styles.instructionToolbar}>
               <ActionButton icon="solar:paperclip-linear" size="S" tooltip="Attach" />
@@ -1028,7 +1036,7 @@ export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointm
                 contentEditable
                 suppressContentEditableWarning
                 data-placeholder="Add Instructions for Staff"
-                onInput={e => setStaffInstruction(e.currentTarget.innerHTML)}
+                onInput={e => { staffInstructionRef.current = e.currentTarget.innerHTML; }}
               />
               <div className={styles.instructionToolbar}>
                 <ActionButton icon="solar:paperclip-linear" size="S" tooltip="Attach" />
@@ -1040,7 +1048,7 @@ export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointm
                 <ActionButton icon="solar:text-field-linear" size="S" tooltip="Heading" onClick={() => document.execCommand('formatBlock', false, 'h3')} />
                 <ActionButton icon="solar:list-linear" size="S" tooltip="List" onClick={() => document.execCommand('insertUnorderedList')} />
                 <div style={{ flex: 1 }} />
-                <ActionButton icon="solar:trash-bin-minimalistic-linear" size="S" tooltip="Remove" state="error" onClick={() => { setShowStaffInstructions(false); setStaffInstruction(''); }} />
+                <ActionButton icon="solar:trash-bin-minimalistic-linear" size="S" tooltip="Remove" state="error" onClick={() => { setShowStaffInstructions(false); staffInstructionRef.current = ''; }} />
               </div>
             </div>
           </div>

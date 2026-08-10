@@ -210,6 +210,7 @@ function AssigneeAvatar({ member, dosState, currentDos, locked = false }) {
 }
 
 const isAISuggested = (icd) => ['Suspect', 'Recapture'].includes(icd.type || '');
+const CLOSED_ICD_STATUSES = new Set(['Accepted', 'Dismissed']);
 
 // The status pill acts on the LOGGED-IN role's stage (Support/Coder/QA/
 // Compliance), so each role completes their own step — completing while an
@@ -446,13 +447,11 @@ export function DiagPanel() {
     ...notLinkedRaw,
   ].filter(matchesFilters), [icdsRaw, notLinkedRaw, matchesFilters]);
   const overriddenICDs = useMemo(
-    () => [...icdsRaw, ...notLinkedRaw].filter(i => i.dismissReason).filter(matchesFilters),
+    () => [...icdsRaw, ...notLinkedRaw].filter(i => i.dismissReason && matchesFilters(i)),
     [icdsRaw, notLinkedRaw, matchesFilters],
   );
   const closedICDs = useMemo(
-    () => [...icdsRaw, ...notLinkedRaw]
-      .filter(i => ['Accepted', 'Dismissed'].includes(i.status))
-      .filter(matchesFilters),
+    () => [...icdsRaw, ...notLinkedRaw].filter(i => CLOSED_ICD_STATUSES.has(i.status) && matchesFilters(i)),
     [icdsRaw, notLinkedRaw, matchesFilters],
   );
 
@@ -465,10 +464,13 @@ export function DiagPanel() {
 
   // Enabled DOS dates = all except the ones toggled off. Cards show only
   // entries whose DOS is enabled.
-  const enabledDates = useMemo(
-    () => dosList.map(d => d.date).filter(date => !disabledDos.has(date)),
-    [dosList, disabledDos],
-  );
+  const enabledDates = useMemo(() => {
+    const out = [];
+    for (const d of dosList) {
+      if (d.date && !disabledDos.has(d.date)) out.push(d.date);
+    }
+    return out;
+  }, [dosList, disabledDos]);
   const currentDos = dosList[0]?.date || null;
 
   // Reset the per-DOS toggles when the member changes.
@@ -574,11 +576,12 @@ export function DiagPanel() {
     // The form's Provider/POS/VT/DocType are shared across all DOSs on
     // this card (the user picked them once); each save call gets them.
     for (const entry of c.dosList) {
+      const { code, title, hcc } = c.pick;
       if (entry.mode === 'existing') {
         addHccGap({
-          code: c.pick.code,
-          desc: c.pick.title,
-          hcc: c.pick.hcc || '',
+          code,
+          desc: title,
+          hcc: hcc || '',
           dos: entry.dosDate,
           provider: c.provider,
           pos: c.pos,
@@ -590,9 +593,9 @@ export function DiagPanel() {
         addHccGapToRow({
           sourceMemberId: member?.id,
           targetMemberId: entry.memberId,
-          code: c.pick.code,
-          desc: c.pick.title,
-          hcc: c.pick.hcc || '',
+          code,
+          desc: title,
+          hcc: hcc || '',
           dos: entry.dosDate,
           provider: c.provider,
           pos: c.pos,
@@ -602,9 +605,9 @@ export function DiagPanel() {
       } else {
         const newId = addHccGapNewRow({
           sourceMemberId: member?.id,
-          code: c.pick.code,
-          desc: c.pick.title,
-          hcc: c.pick.hcc || '',
+          code,
+          desc: title,
+          hcc: hcc || '',
           dos: entry.dosDate,
           provider: c.provider,
           pos: c.pos,
@@ -969,6 +972,8 @@ export function DiagPanel() {
     return m;
   }, [member?.name, sweepFromDb]);
 
+  const dosDeletedSet = useMemo(() => new Set(dosDeleted), [dosDeleted]);
+
   // Each ICD card lists a row per DOS the code appears on. Grouping mirrors
   // the worklist: a DOS = one document/encounter (member.dos_list), each
   // yielding several ICDs. When a member has an explicit sweep mapping
@@ -977,32 +982,30 @@ export function DiagPanel() {
   // drawer's grouping always stays coherent with the worklist.
   const cardIcds = useMemo(() => {
     const dates = dosList.flatMap(d => d.date ? [d.date] : []);
-    return assocICDs
-      .filter(matchQ)
-      .map((icd, idx) => {
-        const sweep = sweepByCode.get(icd.code);
-        let base;
-        if (sweep?.dos_entries?.length) {
-          base = sweep.dos_entries.map(e => ({ dos: e.dos, claimed: !!e.claimed }));
-        } else if (dates.length) {
-          // Chronic conditions (earlier codes) recur across more encounters;
-          // later codes appear on fewer. Deterministic — stable per render.
-          const count = Math.max(1, dates.length - (idx % dates.length));
-          base = dates.slice(0, count).map((d, i) => ({
-            dos: d,
-            claimed: idx === 0 && i === 0,
-            manual: icd.type === 'Manual',
-          }));
-        } else {
-          base = [{ dos: member?.dos || '—', claimed: false, manual: icd.type === 'Manual' }];
-        }
-        const entries = base
-          .filter(e => !disabledDos.has(e.dos))
-          .filter(e => !dosDeleted.includes(`${icd.code}|${e.dos}`));
-        return { ...icd, entries };
-      })
-      .filter(c => c.entries.length > 0);
-  }, [assocICDs, sweepByCode, dosList, disabledDos, dosDeleted, q]); // eslint-disable-line react-hooks/exhaustive-deps
+    const out = [];
+    for (let idx = 0; idx < assocICDs.length; idx++) {
+      const icd = assocICDs[idx];
+      if (!matchQ(icd)) continue;
+      const sweep = sweepByCode.get(icd.code);
+      let base;
+      if (sweep?.dos_entries?.length) {
+        base = sweep.dos_entries.map(e => ({ dos: e.dos, claimed: !!e.claimed }));
+      } else if (dates.length) {
+        const count = Math.max(1, dates.length - (idx % dates.length));
+        base = dates.slice(0, count).map((d, i) => ({
+          dos: d,
+          claimed: idx === 0 && i === 0,
+          manual: icd.type === 'Manual',
+        }));
+      } else {
+        base = [{ dos: member?.dos || '—', claimed: false, manual: icd.type === 'Manual' }];
+      }
+      const entries = base.filter(e =>
+        !disabledDos.has(e.dos) && !dosDeletedSet.has(`${icd.code}|${e.dos}`));
+      if (entries.length > 0) out.push({ ...icd, entries });
+    }
+    return out;
+  }, [assocICDs, sweepByCode, dosList, disabledDos, dosDeletedSet, q]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const suspectGroups = useMemo(() => {
     const m = new Map();
@@ -1019,12 +1022,15 @@ export function DiagPanel() {
   // ICD card (with a Suspected/Recaptured badge) whose entries are the acted
   // DOS. Un-acted suspects stay below in the Suspects & Recaptures section.
   const suspectIcds = useMemo(() => suspectGroups.flatMap(g => g.icds), [suspectGroups]);
-  const actedSuspects = useMemo(() =>
-    suspectIcds
-      .map(icd => ({ icd, keys: Object.keys(hccGapDosActions).filter(k => k.startsWith(`${icd.code}|`)) }))
-      .filter(x => x.keys.length > 0)
-      .map(({ icd, keys }) => ({ ...icd, entries: keys.map(k => ({ dos: k.split('|')[1] })) })),
-    [suspectIcds, hccGapDosActions]);
+  const actedSuspects = useMemo(() => {
+    const out = [];
+    for (const icd of suspectIcds) {
+      const keys = Object.keys(hccGapDosActions).filter(k => k.startsWith(`${icd.code}|`));
+      if (keys.length === 0) continue;
+      out.push({ ...icd, entries: keys.map(k => ({ dos: k.split('|')[1] })) });
+    }
+    return out;
+  }, [suspectIcds, hccGapDosActions]);
   const pendingSuspects = useMemo(() =>
     suspectIcds.filter(icd => !Object.keys(hccGapDosActions).some(k => k.startsWith(`${icd.code}|`))),
     [suspectIcds, hccGapDosActions]);

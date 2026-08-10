@@ -13,6 +13,17 @@ import s from './GoalsPanel.module.css';
 const PROGRAM_VARIANT = { purple: 'ai-care', blue: 'outreach-appointment', amber: 'outreach-care-gap' };
 const STATUS_VARIANT = { active: 'status-completed', draft: 'status-queued' };
 
+const GOALS_TH_STYLE = {
+  padding: '8px 16px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)',
+  textAlign: 'left', whiteSpace: 'nowrap', borderBottom: '0.5px solid var(--neutral-150)',
+  background: 'var(--neutral-0)', position: 'sticky', top: 0,
+};
+const GOALS_TD_STYLE = { padding: '12px 16px', fontSize: 14, fontWeight: 400, color: 'var(--neutral-300)', verticalAlign: 'middle' };
+
+function openGoalWizard(id) {
+  useAppStore.setState({ goalDetailId: null, goalWizardOpen: true, goalWizardEditId: id });
+}
+
 function GoalCard({ goal, onOpen, onEdit }) {
   const totalScore = goal.steps.reduce((a, st) => a + (st.score || 0), 0);
 
@@ -73,12 +84,8 @@ function GoalsTable({ goals, onOpen, onEdit, onDelete }) {
   const [deleting, setDeleting] = useState(false);
   const [auditDrawerEntity, setAuditDrawerEntity] = useState(null);
 
-  const thStyle = {
-    padding: '8px 16px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)',
-    textAlign: 'left', whiteSpace: 'nowrap', borderBottom: '0.5px solid var(--neutral-150)',
-    background: 'var(--neutral-0)', position: 'sticky', top: 0,
-  };
-  const tdStyle = { padding: '12px 16px', fontSize: 14, fontWeight: 400, color: 'var(--neutral-300)', verticalAlign: 'middle' };
+  const thStyle = GOALS_TH_STYLE;
+  const tdStyle = GOALS_TD_STYLE;
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
@@ -193,10 +200,6 @@ export function GoalsPanel({ searchQuery = '', filter = 'all', viewMode = 'grid'
   const deleteGoal = useAppStore(st => st.deleteGoal);
   const showToast = useAppStore(st => st.showToast);
 
-  const openWizard = (id) => {
-    useAppStore.setState({ goalDetailId: null, goalWizardOpen: true, goalWizardEditId: id });
-  };
-
   const handleDelete = async (id) => {
     await deleteGoal(id);
     showToast('Goal deleted');
@@ -229,13 +232,13 @@ export function GoalsPanel({ searchQuery = '', filter = 'all', viewMode = 'grid'
   }
 
   if (viewMode === 'table') {
-    return <GoalsTable goals={filtered} onOpen={setGoalDetailId} onEdit={(id) => openWizard(id)} onDelete={handleDelete} />;
+    return <GoalsTable goals={filtered} onOpen={setGoalDetailId} onEdit={openGoalWizard} onDelete={handleDelete} />;
   }
 
   return (
     <div className={s.grid}>
       {filtered.map(g => (
-        <GoalCard key={g.id} goal={g} onOpen={setGoalDetailId} onEdit={(id) => openWizard(id)} />
+        <GoalCard key={g.id} goal={g} onOpen={setGoalDetailId} onEdit={openGoalWizard} />
       ))}
     </div>
   );

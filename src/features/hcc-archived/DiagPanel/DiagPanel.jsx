@@ -50,23 +50,10 @@ function UnassignedAssignTrigger({ role, memberId, dosDate }) {
   const reassign = useAppStore(s => s.hccReassignRole);
   const showToast = useAppStore(s => s.showToast);
 
-  const candidates = (() => {
-    const teamType = ROLE_LABEL[role];
-    const fromTeams = (teams || [])
-      .filter(t => t.kind === 'hcc' && t.teamType === teamType)
-      .flatMap(t => (t.members || []).map(m => ({
-        id: m.userId, name: m.name, initials: m.initials,
-        roles: m.roles, source: 'team', teamName: t.name,
-      })));
-    const seen = new Set(fromTeams.map(c => c.id));
-    const fromAstrana = staffForRole(role)
-      .filter(s => !seen.has(s.id))
-      .map(s => ({
-        id: s.id, name: s.name, initials: s.initials,
-        roles: ROLE_LABEL[s.role], source: 'astrana',
-      }));
-    return [...fromTeams, ...fromAstrana];
-  })();
+  const candidates = useMemo(
+    () => buildAssignCandidates(teams, role),
+    [teams, role],
+  );
 
   useEffect(() => {
     if (!pos) return;
@@ -235,6 +222,33 @@ function AssigneeAvatar({ member, dosState, currentDos }) {
 
 const isAISuggested = (icd) => ['Suspect', 'Recapture'].includes(icd.type || '');
 
+const groupAllIcds = (g) => [...g.assoc, ...g.unlinked];
+const isGroupIcdOpen = (i) => !['Dismissed', 'Accepted'].includes(i.status);
+
+function buildAssignCandidates(teams, role) {
+  const teamType = ROLE_LABEL[role];
+  const fromTeams = [];
+  for (const t of teams || []) {
+    if (t.kind !== 'hcc' || t.teamType !== teamType) continue;
+    for (const m of t.members || []) {
+      fromTeams.push({
+        id: m.userId, name: m.name, initials: m.initials,
+        roles: m.roles, source: 'team', teamName: t.name,
+      });
+    }
+  }
+  const seen = new Set(fromTeams.map(c => c.id));
+  const fromAstrana = [];
+  for (const s of staffForRole(role)) {
+    if (seen.has(s.id)) continue;
+    fromAstrana.push({
+      id: s.id, name: s.name, initials: s.initials,
+      roles: ROLE_LABEL[s.role], source: 'astrana',
+    });
+  }
+  return [...fromTeams, ...fromAstrana];
+}
+
 /**
  * Group ICDs by HCC into rich `{ hcc, assoc, unlinked }` records.
  *
@@ -354,13 +368,12 @@ export function DiagPanel() {
   //    unlinked rows.
   //  - overriddenICDs: any ICD with the `overrides` flag (dismissed-with-reason).
   //  - closedICDs: Accepted or Dismissed status.
-  const isAI = (i) => ['Suspect', 'Recapture'].includes(i.type || '');
   const assocICDs = useMemo(
-    () => icds.filter(i => !isAI(i) || i.status === 'Accepted'),
+    () => icds.filter(i => !isAISuggested(i) || i.status === 'Accepted'),
     [icds],
   );
   const allNotAssoc = useMemo(() => [
-    ...icds.filter(i => isAI(i) && i.status !== 'Accepted'),
+    ...icds.filter(i => isAISuggested(i) && i.status !== 'Accepted'),
     ...notLinked,
   ], [icds, notLinked]);
   const overriddenICDs = useMemo(
@@ -425,11 +438,16 @@ export function DiagPanel() {
   const hccSftpBatches = useAppStore(s => s.hccSftpBatches) || [];
   const complianceGates = useMemo(() => {
     if (!member?.id || !currentDos) return undefined;
-    const docsForDos = hccSftpBatches
-      .filter(b => b.compliance && (b.encounters || []).some(e =>
+    const docsForDos = [];
+    for (const b of hccSftpBatches) {
+      if (!b.compliance) continue;
+      const hasMatch = (b.encounters || []).some(e =>
         e.patient?.matchedMemberId === member.id && e.dos === currentDos
-      ))
-      .map(b => ({ fileName: b.fileName, ocrTier: b.ocrTier, compliance: b.compliance }));
+      );
+      if (hasMatch) {
+        docsForDos.push({ fileName: b.fileName, ocrTier: b.ocrTier, compliance: b.compliance });
+      }
+    }
     if (docsForDos.length === 0) return undefined;
     const { ok, reason } = canCompleteDos(docsForDos);
     return ok ? undefined : { Completed: { enabled: false, reason } };
@@ -562,14 +580,11 @@ export function DiagPanel() {
   // any ICD in either bucket is still open. "Overridden" surfaces groups that
   // have at least one dismissed-with-reason row but are no longer active.
   // "Closed" — everything fully resolved.
-  const all = (g) => [...g.assoc, ...g.unlinked];
-  const isOpen = (i) => !['Dismissed', 'Accepted'].includes(i.status);
-
-  const activeGroups = hccGroups.filter(g => all(g).some(isOpen));
+  const activeGroups = hccGroups.filter(g => groupAllIcds(g).some(isGroupIcdOpen));
   const overriddenGroups = hccGroups.filter(g =>
-    all(g).some(i => i.dismissReason) && !activeGroups.some(ag => ag.hcc === g.hcc),
+    groupAllIcds(g).some(i => i.dismissReason) && !activeGroups.some(ag => ag.hcc === g.hcc),
   );
-  const closedGroups = hccGroups.filter(g => all(g).every(i => !isOpen(i)));
+  const closedGroups = hccGroups.filter(g => groupAllIcds(g).every(i => !isGroupIcdOpen(i)));
 
   const rafImpact = (Number(member.ri) || 0).toFixed(3);
   const noop = (label) => () => showToast(`${label} — coming soon`);

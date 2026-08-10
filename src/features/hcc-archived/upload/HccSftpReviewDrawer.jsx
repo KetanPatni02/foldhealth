@@ -30,6 +30,33 @@ function groupEncountersByPatient(encounters) {
   return Array.from(groups.values());
 }
 
+function sftpEncStatus(enc) {
+  if (!enc?.patient?.matchedMemberId || enc?.patient?.idMismatch) return 'mismatch';
+  if (Array.isArray(enc?.errors) && enc.errors.length > 0) return 'error';
+  return 'ready';
+}
+
+function countFlaggedEncounters(encounters) {
+  let count = 0;
+  for (const e of encounters || []) {
+    if (!e.patient?.matchedMemberId || (e.errors && e.errors.length > 0)) count += 1;
+  }
+  return count;
+}
+
+function highConfidenceSftpIdxs(encs) {
+  const idxs = [];
+  for (let i = 0; i < encs.length; i++) {
+    const e = encs[i];
+    if ((e.patient?.matchConfidence ?? 0) >= 85
+        && e.patient?.matchedMemberId
+        && (!e.errors || e.errors.length === 0)) {
+      idxs.push(i);
+    }
+  }
+  return idxs;
+}
+
 // Flat ICD lookup — memoized once at module load so the read-only card can
 // resolve `E11.22` → `{ desc, hcc }` without walking every member every render.
 const ICD_LOOKUP = (() => {
@@ -104,9 +131,13 @@ export function HccSftpReviewDrawer({ inline = false, onExit }) {
   // preview + handlers can follow the focused patient back to its document.
   const review = useMemo(() => {
     const done = batches.filter(b => b.status === 'done');
-    const src = (sourceBatchIds && sourceBatchIds.length)
-      ? sourceBatchIds.map(id => batches.find(b => b.id === id)).filter(Boolean)
-      : [];
+    const src = [];
+    if (sourceBatchIds && sourceBatchIds.length) {
+      for (const id of sourceBatchIds) {
+        const b = batches.find(x => x.id === id);
+        if (b) src.push(b);
+      }
+    }
     const reviewBatches = src.length
       ? src
       : [batches.find(b => b.id === activeId) || done[0] || batches[0]].filter(Boolean);
@@ -200,15 +231,6 @@ export function HccSftpReviewDrawer({ inline = false, onExit }) {
   const addedEncs   = bucket('added');
   const deletedEncs = bucket('deleted');
 
-  const encStatus = (enc) => {
-    // An ID mismatch is a needs-review state even when a member was matched —
-    // keeps this in lockstep with the ICD Creation "ready" test so mismatch
-    // records open expanded for the reviewer to resolve.
-    if (!enc?.patient?.matchedMemberId || enc?.patient?.idMismatch) return 'mismatch';
-    if (Array.isArray(enc?.errors) && enc.errors.length > 0) return 'error';
-    return 'ready';
-  };
-
   // Per Figma 1:3574 we review ONE PATIENT at a time. `review.slots`
   // (computed above) is the ordered patient list — across all source
   // documents in aggregate mode. focusIdx points at the current patient.
@@ -234,7 +256,7 @@ export function HccSftpReviewDrawer({ inline = false, onExit }) {
     let added = 0;
     visibleEncs.forEach(enc => {
       const idx = activeEncs.indexOf(enc);
-      if (idx < 0 || encStatus(enc) !== 'ready') return;
+      if (idx < 0 || sftpEncStatus(enc) !== 'ready') return;
       const r = createFromEncounter?.({ ...enc, _docName: activeBatch.fileName });
       if (r?.kind === 'skipped') return;
       setEncounterStatus?.(activeBatch.id, idx, 'added');
@@ -247,12 +269,17 @@ export function HccSftpReviewDrawer({ inline = false, onExit }) {
   };
   const handleDeletePatientRecords = () => {
     if (!activeBatch || !focusedGroup) return;
-    const idxs = visibleEncs.map(enc => activeEncs.indexOf(enc)).filter(i => i >= 0).sort((a, b) => b - a);
+    const idxs = [];
+    for (const enc of visibleEncs) {
+      const idx = activeEncs.indexOf(enc);
+      if (idx >= 0) idxs.push(idx);
+    }
+    idxs.sort((a, b) => b - a);
     idxs.forEach(idx => setEncounterStatus?.(activeBatch.id, idx, 'deleted'));
     showToast?.(`Deleted ${idxs.length} record${idxs.length === 1 ? '' : 's'}`);
   };
 
-  const readyCount = visibleEncs.filter(e => encStatus(e) === 'ready').length;
+  const readyCount = visibleEncs.filter(e => sftpEncStatus(e) === 'ready').length;
 
   // Top nav — Previous · "Reviewing X of N Patients" · Next Patient.
   const navBar = patientSlots.length > 0 ? (
@@ -435,7 +462,7 @@ export function HccSftpReviewDrawer({ inline = false, onExit }) {
                   <EncounterCard
                     key={enc.tempId || idx}
                     enc={enc}
-                    status={encStatus(enc)}
+                    status={sftpEncStatus(enc)}
                     hccMembers={hccMembers}
                     docTab={docTab}
                     cardIdx={visibleI}
@@ -524,14 +551,7 @@ function DocToolbar({ batch, setSelectedAll, showToast }) {
   ).length;
   const ready = encs.length - flagged;
   const acceptAllHigh = () => {
-    const highIdxs = encs
-      .map((e, i) => ({ e, i }))
-      .filter(({ e }) =>
-        (e.patient?.matchConfidence ?? 0) >= 85
-        && e.patient?.matchedMemberId
-        && (!e.errors || e.errors.length === 0)
-      )
-      .map(({ i }) => i);
+    const highIdxs = highConfidenceSftpIdxs(encs);
     setSelectedAll?.(highIdxs, true);
     showToast?.(`${highIdxs.length} high-confidence encounter${highIdxs.length === 1 ? '' : 's'} selected`);
   };
@@ -665,10 +685,7 @@ function DocSwitcher({ activeBatch, batches, onSelect }) {
     return () => document.removeEventListener('mousedown', onDoc);
   }, [open]);
 
-  const flaggedCount = (b) => (b.encounters || []).filter(e =>
-    !e.patient?.matchedMemberId || (e.errors && e.errors.length > 0)
-  ).length;
-  const activeFlagged = activeBatch ? flaggedCount(activeBatch) : 0;
+  const activeFlagged = activeBatch ? countFlaggedEncounters(activeBatch.encounters) : 0;
   const multi = batches.length > 1;
 
   return (
@@ -712,7 +729,7 @@ function DocSwitcher({ activeBatch, batches, onSelect }) {
           {batches.map(b => {
             const isActive = b.id === activeBatch?.id;
             const isPending = b.status === 'pending';
-            const flagged = flaggedCount(b);
+            const flagged = countFlaggedEncounters(b.encounters);
             const ready = (b.encounters || []).length - flagged;
             return (
               <button

@@ -1450,16 +1450,16 @@ function PopulationGroupsView({ activeFilter, onToggleSidebar, onMiniBarOpen, mi
 
   /* ── filtered list ── */
   const activeType = activeFilter === 'Static' || activeFilter === 'Dynamic' ? activeFilter : null;
-  const displayedGroups = [...popGroups, ...POP_GROUPS].filter(g => {
-    if (activeType && g.type !== activeType) return false;
-    if (searchQuery && !g.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
-  }).map(g => ({
-    ...g,
-    /* numeric keys so date columns sort chronologically (display stays formatted) */
-    _createdTs: Date.parse(g.created) || 0,
-    _updatedTs: Date.parse(g.updated) || 0,
-  }));
+  const displayedGroups = [...popGroups, ...POP_GROUPS].flatMap(g => {
+    if (activeType && g.type !== activeType) return [];
+    if (searchQuery && !g.name.toLowerCase().includes(searchQuery.toLowerCase())) return [];
+    return [{
+      ...g,
+      /* numeric keys so date columns sort chronologically (display stays formatted) */
+      _createdTs: Date.parse(g.created) || 0,
+      _updatedTs: Date.parse(g.updated) || 0,
+    }];
+  });
 
   /* Client-side sorting for member counts + dates — same hook TOC/HCC use */
   const { sorted: sortedGroups, sortKey: pgSortKey, sortDir: pgSortDir, requestSort: pgRequestSort } = useTableSort(displayedGroups);

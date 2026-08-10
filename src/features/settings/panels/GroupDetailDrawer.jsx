@@ -67,10 +67,13 @@ export function GroupDetailDrawer() {
     return availableRoles.filter(r => r.name.toLowerCase().includes(q));
   }, [searchQuery]);
 
+  const selectedUserIdSet = useMemo(() => new Set(selectedUserIds), [selectedUserIds]);
+  const selectedRoleIdSet = useMemo(() => new Set(selectedRoleIds), [selectedRoleIds]);
+
   if (!group && !isNew) return null;
 
-  const selectedUsers = availableUsers.filter(u => selectedUserIds.includes(u.id));
-  const selectedRoles = availableRoles.filter(r => selectedRoleIds.includes(r.id));
+  const selectedUsers = availableUsers.filter(u => selectedUserIdSet.has(u.id));
+  const selectedRoles = availableRoles.filter(r => selectedRoleIdSet.has(r.id));
 
   const toggleUser = (userId) => {
     setSelectedUserIds(prev => prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]);
@@ -87,7 +90,9 @@ export function GroupDetailDrawer() {
   const handleEnableAll = (val) => {
     setEnableAll(val);
     const newMap = {};
-    selectedUsers.filter(u => !u.isAgent).forEach(u => { newMap[u.id] = val; });
+    for (const u of selectedUsers) {
+      if (!u.isAgent) newMap[u.id] = val;
+    }
     setChatEnabled(newMap);
   };
   const clearAll = () => { setSelectedUserIds([]); setSelectedRoleIds([]); setChatEnabled({}); };
@@ -109,9 +114,13 @@ export function GroupDetailDrawer() {
   const headerRight = (
     <Button variant="primary" size="L" onClick={async () => {
       if (!groupName.trim()) { showToast('Group name is required'); return; }
+      const userNames = [];
+      for (const u of selectedUsers) {
+        if (!u.isAgent) userNames.push(u.name);
+      }
       const groupData = {
         name: groupName.trim(),
-        users: selectedUsers.filter(u => !u.isAgent).map(u => u.name),
+        users: userNames,
         roles: selectedRoles.map(r => r.name),
         location: scope === 'location' ? (location || 'Global Template') : 'Global Template',
         hasAgent: selectedUsers.some(u => u.isAgent),
@@ -242,7 +251,7 @@ export function GroupDetailDrawer() {
                 {/* List */}
                 <div style={{ maxHeight: 220, overflowY: 'auto' }}>
                   {searchTab === 'users' ? filteredSearchUsers.map(u => {
-                    const isSelected = selectedUserIds.includes(u.id);
+                    const isSelected = selectedUserIdSet.has(u.id);
                     const initials = u.name.split(' ').map(n => n[0]).join('').slice(0, 2);
                     return (
                       <div key={u.id} onClick={() => toggleUser(u.id)} style={{
@@ -258,7 +267,7 @@ export function GroupDetailDrawer() {
                       </div>
                     );
                   }) : filteredSearchRoles.map(r => {
-                    const isSelected = selectedRoleIds.includes(r.id);
+                    const isSelected = selectedRoleIdSet.has(r.id);
                     return (
                       <div key={r.id} onClick={() => toggleRole(r.id)} style={{
                         display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',

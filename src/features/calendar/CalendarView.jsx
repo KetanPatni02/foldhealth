@@ -194,9 +194,10 @@ function CalendarContent({ onSlotClick, onEventClick, calendarRef, eventsPluginR
 
     // Use UTC for event positioning — times are stored as wall-clock strings
     // and should always appear at the literal time position on the calendar
-    const newEvents = (dbAppointments || [])
-      .map(a => apptToEvent(a, appointmentTypes, T, 'UTC'))
-      .filter(Boolean);
+    const newEvents = (dbAppointments || []).flatMap(a => {
+      const ev = apptToEvent(a, appointmentTypes, T, 'UTC');
+      return ev ? [ev] : [];
+    });
 
     // Replace all events (except __selection__) with fresh DB events
     try {
@@ -210,7 +211,10 @@ function CalendarContent({ onSlotClick, onEventClick, calendarRef, eventsPluginR
     }
 
     // Mark cancelled events in the DOM with a CSS class (retry to catch late renders)
-    const cancelledIds = (dbAppointments || []).filter(a => a.status === 'Cancelled').map(a => a.id);
+    const cancelledIds = [];
+    for (const a of (dbAppointments || [])) {
+      if (a.status === 'Cancelled') cancelledIds.push(a.id);
+    }
     const applyCancelledClass = () => {
       cancelledIds.forEach(id => {
         const el = document.querySelector(`[data-event-id="${id}"]`);
@@ -342,10 +346,12 @@ export function CalendarView() {
   const filteredAppointments = useMemo(() => {
     let filtered = appointments || [];
     if (filterUser.length > 0) {
-      filtered = filtered.filter(a => filterUser.includes(a.primary_user));
+      const userSet = new Set(filterUser);
+      filtered = filtered.filter(a => userSet.has(a.primary_user));
     }
     if (filterType.length > 0) {
-      filtered = filtered.filter(a => filterType.includes(a.appointment_type_name));
+      const typeSet = new Set(filterType);
+      filtered = filtered.filter(a => typeSet.has(a.appointment_type_name));
     }
     return filtered;
   }, [appointments, filterUser, filterType, users]);
@@ -471,10 +477,11 @@ export function CalendarView() {
     // Re-apply cancelled styles after drawer closes (data may have changed via fetchAppointments)
     const applyCancelled = () => {
       const store = useAppStore.getState();
-      (store.appointments || []).filter(a => a.status === 'Cancelled').forEach(a => {
+      for (const a of (store.appointments || [])) {
+        if (a.status !== 'Cancelled') continue;
         const el = document.querySelector(`[data-event-id="${a.id}"]`);
         if (el && !el.classList.contains('is-cancelled')) el.classList.add('is-cancelled');
-      });
+      }
     };
     setTimeout(applyCancelled, 300);
     setTimeout(applyCancelled, 800);

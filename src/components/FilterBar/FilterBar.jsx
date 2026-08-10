@@ -117,7 +117,8 @@ function SingleSelectFilter({ label, def, options, current, onSet, onClear }) {
       return;
     }
     // Single-select semantics — keep only the most-recently added label.
-    const pick = nextLabels.find(l => !selected.includes(l)) || nextLabels[nextLabels.length - 1];
+    const selectedSet = new Set(selected);
+    const pick = nextLabels.find(l => !selectedSet.has(l)) || nextLabels[nextLabels.length - 1];
     const nextValue = valueByLabel.get(pick);
     if (nextValue == null) return;
     onSet(nextValue);
@@ -268,10 +269,14 @@ export function FilterBar({
     () => Object.fromEntries(effectiveDefs.map(fd => [fd.key, fd])),
     [effectiveDefs],
   );
-  const primaryKeys = useMemo(
-    () => primaryKeysProp ?? effectiveDefs.filter(fd => fd.primary).map(fd => fd.key),
-    [effectiveDefs, primaryKeysProp],
-  );
+  const primaryKeys = useMemo(() => {
+    if (primaryKeysProp) return primaryKeysProp;
+    const keys = [];
+    for (const fd of effectiveDefs) {
+      if (fd.primary) keys.push(fd.key);
+    }
+    return keys;
+  }, [effectiveDefs, primaryKeysProp]);
 
   // Any chip that has a value must remain visible even if it's not in the
   // primary set — otherwise applying a saved filter could hide its own chip.
@@ -289,9 +294,10 @@ export function FilterBar({
   // Auto-fit measurement — which inactive primary chips fit on one row.
   const [autoInactive, setAutoInactive] = useState(null);
   const customized = customVisible !== null;
+  const activeKeySet = useMemo(() => new Set(activeKeys), [activeKeys]);
   const inactivePrimary = useMemo(
-    () => primaryKeys.filter(k => !activeKeys.includes(k)),
-    [primaryKeys, activeKeys],
+    () => primaryKeys.filter(k => !activeKeySet.has(k)),
+    [primaryKeys, activeKeySet],
   );
 
   useLayoutEffect(() => {

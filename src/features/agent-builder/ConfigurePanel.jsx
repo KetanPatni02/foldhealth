@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { useAppStore } from '../../store/useAppStore';
@@ -91,6 +91,18 @@ const DEFAULT_FORM = {
   email: '',
   officeHours: '',
 };
+
+function goalProgramBadgeClass(program) {
+  if (program === 'TCM') return styles.programBadgePurple;
+  if (program === 'Outreach') return styles.programBadgeBlue;
+  return styles.programBadgeAmber;
+}
+
+function getBadgeText(val) {
+  if (val >= 80) return 'High';
+  if (val >= 40) return 'Medium';
+  return 'Low';
+}
 
 /* ─────────────── SectionCard ─────────────── */
 function SectionCard({ id, icon, title, isComplete, expanded, onToggle, children }) {
@@ -247,12 +259,8 @@ function GoalSelector({ selectedIds, onToggle, onPreview }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const selectedGoals = goalsData.filter(g => selectedIds.includes(g.id));
-  const badgeColor = (program) => {
-    if (program === 'TCM') return styles.programBadgePurple;
-    if (program === 'Outreach') return styles.programBadgeBlue;
-    return styles.programBadgeAmber;
-  };
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const selectedGoals = goalsData.filter(g => selectedIdSet.has(g.id));
 
   return (
     <div className={styles.goalSelector} ref={ref}>
@@ -268,7 +276,7 @@ function GoalSelector({ selectedIds, onToggle, onPreview }) {
           {goalsData.length === 0 ? (
             <div className={styles.goalEmpty}>No goals found. Create goals in Settings.</div>
           ) : goalsData.map(g => {
-            const isSelected = selectedIds.includes(g.id);
+            const isSelected = selectedIdSet.has(g.id);
             return (
               <div key={g.id} className={styles.goalOption} onClick={() => onToggle(g.id)}>
                 <span className={`${styles.goalOptionCheck} ${isSelected ? styles.goalOptionCheckSelected : ''}`}>
@@ -278,7 +286,7 @@ function GoalSelector({ selectedIds, onToggle, onPreview }) {
                   <div className={styles.goalOptionName}>{g.name}</div>
                   <div className={styles.goalOptionMeta}>{g.steps?.length || 0} steps &middot; {g.status}</div>
                 </div>
-                <span className={`${styles.programBadge} ${badgeColor(g.program)}`}>{g.program}</span>
+                <span className={`${styles.programBadge} ${goalProgramBadgeClass(g.program)}`}>{g.program}</span>
               </div>
             );
           })}
@@ -306,7 +314,9 @@ function GoalSelector({ selectedIds, onToggle, onPreview }) {
 export function ConfigurePanel({ agent, onSave }) {
   const scrollRef = useRef(null);
   const [activeSection, setActiveSection] = useState('agent-use-case');
-  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const formLoadedRef = useRef(false);
+  const fetchAgentIdRef = useRef(null);
 
   // Store
   const builderConfig = useAppStore(s => s.builderConfig);
@@ -329,21 +339,20 @@ export function ConfigurePanel({ agent, onSave }) {
 
   // Form state
   const [form, setForm] = useState({ ...DEFAULT_FORM, agentName: agent?.name || '' });
-  const [formLoaded, setFormLoaded] = useState(false);
-  const [fetchTriggered, setFetchTriggered] = useState(false);
 
   // Fetch config on mount
   useEffect(() => {
-    if (agent?.id) {
-      setFetchTriggered(true);
-      setFormLoaded(false);
-      fetchAgentConfig(agent.id);
-    }
-  }, [agent?.id]);
+    if (!agent?.id) return;
+    if (fetchAgentIdRef.current === agent.id && formLoadedRef.current) return;
+    fetchAgentIdRef.current = agent.id;
+    formLoadedRef.current = false;
+    fetchAgentConfig(agent.id);
+  }, [agent?.id, fetchAgentConfig]);
 
   // Populate form from DB config once loaded
   useEffect(() => {
-    if (!fetchTriggered || builderConfigLoading || formLoaded) return;
+    if (!agent?.id || builderConfigLoading || formLoadedRef.current) return;
+    formLoadedRef.current = true;
     if (builderConfig) {
       setForm({
         agentName: agent?.name || '',
@@ -366,13 +375,11 @@ export function ConfigurePanel({ agent, onSave }) {
         email: builderConfig.email || '',
         officeHours: builderConfig.office_hours || '',
       });
-      setFormLoaded(true);
-    } else if (!builderConfigLoading) {
+    } else {
       // No saved config — use defaults with agent name
       setForm(prev => ({ ...prev, agentName: agent?.name || '', useCaseName: agent?.use_case || '' }));
-      setFormLoaded(true);
     }
-  }, [builderConfig, builderConfigLoading, formLoaded, agent]);
+  }, [builderConfig, builderConfigLoading, agent?.id, agent?.name, agent?.use_case]);
 
   const updateField = useCallback((field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -398,13 +405,13 @@ export function ConfigurePanel({ agent, onSave }) {
 
   // Save handler
   const handleSave = async () => {
-    if (!agent?.id) return;
-    setSaving(true);
+    if (!agent?.id || savingRef.current) return;
+    savingRef.current = true;
     let ok = false;
     try {
       ok = await saveAgentConfig(agent.id, form);
     } finally {
-      setSaving(false);
+      savingRef.current = false;
     }
     if (ok) showToast('Configuration saved');
     else showToast('Failed to save configuration');
@@ -464,12 +471,6 @@ export function ConfigurePanel({ agent, onSave }) {
         setExpanded(prev => ({ ...prev, [id]: true }));
       }
     }
-  };
-
-  const getBadgeText = (val) => {
-    if (val >= 80) return 'High';
-    if (val >= 40) return 'Medium';
-    return 'Low';
   };
 
   return (

@@ -4,6 +4,12 @@ import { ActionButton } from '../ActionButton/ActionButton';
 import { StickyNoteIcon } from '../Icon/StickyNoteIcon';
 import styles from './StickyNote.module.css';
 
+function formatStickyNoteDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()} • ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
+}
+
 /**
  * StickyNote — Reusable sticky note component with multiple states.
  *
@@ -60,11 +66,7 @@ export function StickyNote({ notes = [], onSave, onCreate, onDelete, onAuditLog,
   const prevNote = () => setCurrentIndex(i => Math.max(0, i - 1));
   const nextNote = () => setCurrentIndex(i => Math.min(totalPages - 1, i + 1));
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()} • ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
-  };
+  const formatDate = formatStickyNoteDate;
 
   // ── Collapsed: single-line ──
   if (!expanded || collapsedOnly) {
