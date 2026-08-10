@@ -56,12 +56,12 @@ export function DiagPanelFilterBar({
       (member?.dos_list || []).flatMap(d => d?.vt ? [d.vt] : []),
     );
     return {
-      years:   years.toSorted().reverse(),
-      hcc:     hccs.toSorted(),
-      by:      byList.toSorted(),
-      lastRec: lastRec.toSorted().reverse(),
+      years:   [...years].toSorted().reverse(),
+      hcc:     [...hccs].toSorted(),
+      by:      [...byList].toSorted(),
+      lastRec: [...lastRec].toSorted().reverse(),
       created: member?.date ? [member.date] : [],
-      vt:      vt.toSorted(),
+      vt:      [...vt].toSorted(),
     };
   }, [icds, member?.date, member?.dos_list]);
 
