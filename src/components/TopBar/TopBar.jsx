@@ -107,10 +107,13 @@ function ProfilePopover({ user, onClose, onPreferences }) {
   const handleSaveName = async () => {
     if (!firstName.trim() || !lastName.trim()) return;
     setSaving(true);
-    await supabase.auth.updateUser({
-      data: { first_name: firstName.trim(), last_name: lastName.trim(), full_name: `${firstName.trim()} ${lastName.trim()}` },
-    });
-    setSaving(false);
+    try {
+      await supabase.auth.updateUser({
+        data: { first_name: firstName.trim(), last_name: lastName.trim(), full_name: `${firstName.trim()} ${lastName.trim()}` },
+      });
+    } finally {
+      setSaving(false);
+    }
     setEditing(false);
   };
 
@@ -365,7 +368,7 @@ export function TopBar() {
             <span className={styles.breadcrumbCurrent}>Calendar</span>
           ) : isAnalytics ? (
             <>
-              <a className={styles.breadcrumbLink} href="#" onClick={e => e.preventDefault()}>Analytics</a>
+              <span className={styles.breadcrumbLink}>Analytics</span>
               <span className={styles.sep}>/</span>
               <span className={styles.breadcrumbCurrent}>Fold Insights</span>
             </>
@@ -373,19 +376,19 @@ export function TopBar() {
             <span className={styles.breadcrumbCurrent}>Campaign</span>
           ) : isSettings ? (
             <>
-              <a className={styles.breadcrumbLink} href="#" onClick={e => e.preventDefault()}>Settings</a>
+              <span className={styles.breadcrumbLink}>Settings</span>
               <span className={styles.sep}>/</span>
               <span className={styles.breadcrumbCurrent}>{SETTINGS_BREADCRUMB[settingsNavItem] || 'Automation'}</span>
             </>
           ) : activeSubnavList?.startsWith('pg:') ? (
             <>
-              <a className={styles.breadcrumbLink} href="#" onClick={e => e.preventDefault()}>Population</a>
+              <span className={styles.breadcrumbLink}>Population</span>
               <span className={styles.sep}>/</span>
               <span className={styles.breadcrumbCurrent}>Pop groups</span>
             </>
           ) : (
             <>
-              <a className={styles.breadcrumbLink} href="#" onClick={e => e.preventDefault()}>Population</a>
+              <span className={styles.breadcrumbLink}>Population</span>
               <span className={styles.sep}>/</span>
               <span className={styles.breadcrumbCurrent}>{activeSubnavList || 'TOC'}</span>
             </>

@@ -24,6 +24,73 @@ function formatTime(secs) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+// Hoisted out of DetailDrawer so React doesn't remount them (and lose their
+// state) on every parent render.
+const ShimmerSummary = () => (
+  <div style={{ padding: "14px 16px 16px" }}>
+    <div className={styles.shimmerLine} style={{ width: "42%", marginBottom: 12 }} />
+    <div className={styles.shimmerLine} style={{ width: "94%", marginBottom: 8 }} />
+    <div className={styles.shimmerLine} style={{ width: "86%", marginBottom: 8 }} />
+    <div className={styles.shimmerLine} style={{ width: "72%", marginBottom: 16 }} />
+    <div className={styles.shimmerLine} style={{ width: "32%", marginBottom: 12 }} />
+    <div className={styles.shimmerLine} style={{ width: "80%", marginBottom: 8 }} />
+    <div className={styles.shimmerLine} style={{ width: "64%" }} />
+  </div>
+);
+
+const Typewriter = ({ text, speed = 10, onDone }) => {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (n >= text.length) { onDone?.(); return; }
+    const id = setTimeout(() => setN(n + 1), speed);
+    return () => clearTimeout(id);
+  }, [n, text, speed]);
+  return <>{text.slice(0, n)}{n < text.length && <span className={styles.typeCursor} />}</>;
+};
+
+const SummaryContent = ({ data, animate }) => {
+  const [phase, setPhase] = useState(animate ? 0 : 99);
+  useEffect(() => { if (animate) setPhase(0); else setPhase(99); }, [animate]);
+
+  const lines = [];
+  lines.push({ kind: "heading", text: "Key Points Discussed:" });
+  data.keyPoints.forEach(it => lines.push({ kind: "item", text: it }));
+  lines.push({ kind: "heading", text: "Action Items:" });
+  data.actionItems.forEach(it => lines.push({ kind: "item", text: it }));
+
+  return (
+    <div style={{ padding: "14px 16px 14px" }}>
+      {lines.map((l, i) => {
+        const visible = !animate || i <= phase;
+        const active = animate && i === phase;
+        if (!visible) return <div key={i} style={{ height: l.kind === "heading" ? 22 : 20 }} />;
+        return (
+          <div key={i} style={{
+            margin: l.kind === "heading" ? (i === 0 ? "0 0 6px" : "12px 0 6px") : "3px 0",
+            paddingLeft: l.kind === "item" ? 16 : 0,
+            position: "relative",
+            fontSize: 13.5,
+            fontWeight: l.kind === "heading" ? 600 : 400,
+            color: "var(--neutral-400)",
+            lineHeight: 1.5,
+            opacity: animate && i > phase ? 0 : 1,
+            transition: "opacity 260ms ease",
+          }}>
+            {l.kind === "item" && (
+              <span style={{
+                position: "absolute", left: 2, top: "0.65em",
+                width: 3, height: 3, borderRadius: "50%",
+                background: "var(--primary-300)",
+              }} />
+            )}
+            {active ? <Typewriter text={l.text} onDone={() => setPhase(p => p + 1)} /> : l.text}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 export function DetailDrawer() {
   const detailPatient = useAppStore(s => s.detailPatient);
   const detailPatientCalls = useAppStore(s => s.detailPatientCalls);
@@ -130,71 +197,6 @@ export function DetailDrawer() {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
-  };
-
-  const ShimmerSummary = () => (
-    <div style={{ padding: "14px 16px 16px" }}>
-      <div className={styles.shimmerLine} style={{ width: "42%", marginBottom: 12 }} />
-      <div className={styles.shimmerLine} style={{ width: "94%", marginBottom: 8 }} />
-      <div className={styles.shimmerLine} style={{ width: "86%", marginBottom: 8 }} />
-      <div className={styles.shimmerLine} style={{ width: "72%", marginBottom: 16 }} />
-      <div className={styles.shimmerLine} style={{ width: "32%", marginBottom: 12 }} />
-      <div className={styles.shimmerLine} style={{ width: "80%", marginBottom: 8 }} />
-      <div className={styles.shimmerLine} style={{ width: "64%" }} />
-    </div>
-  );
-
-  const Typewriter = ({ text, speed = 10, onDone }) => {
-    const [n, setN] = useState(0);
-    useEffect(() => {
-      if (n >= text.length) { onDone?.(); return; }
-      const id = setTimeout(() => setN(n + 1), speed);
-      return () => clearTimeout(id);
-    }, [n, text, speed]);
-    return <>{text.slice(0, n)}{n < text.length && <span className={styles.typeCursor} />}</>;
-  };
-
-  const SummaryContent = ({ data, animate }) => {
-    const [phase, setPhase] = useState(animate ? 0 : 99);
-    useEffect(() => { if (animate) setPhase(0); else setPhase(99); }, [animate]);
-
-    const lines = [];
-    lines.push({ kind: "heading", text: "Key Points Discussed:" });
-    data.keyPoints.forEach(it => lines.push({ kind: "item", text: it }));
-    lines.push({ kind: "heading", text: "Action Items:" });
-    data.actionItems.forEach(it => lines.push({ kind: "item", text: it }));
-
-    return (
-      <div style={{ padding: "14px 16px 14px" }}>
-        {lines.map((l, i) => {
-          const visible = !animate || i <= phase;
-          const active = animate && i === phase;
-          if (!visible) return <div key={i} style={{ height: l.kind === "heading" ? 22 : 20 }} />;
-          return (
-            <div key={i} style={{
-              margin: l.kind === "heading" ? (i === 0 ? "0 0 6px" : "12px 0 6px") : "3px 0",
-              paddingLeft: l.kind === "item" ? 16 : 0,
-              position: "relative",
-              fontSize: 13.5,
-              fontWeight: l.kind === "heading" ? 600 : 400,
-              color: "var(--neutral-400)",
-              lineHeight: 1.5,
-              opacity: animate && i > phase ? 0 : 1,
-              transition: "opacity 260ms ease",
-            }}>
-              {l.kind === "item" && (
-                <span style={{
-                  position: "absolute", left: 2, top: "0.65em",
-                  width: 3, height: 3, borderRadius: "50%",
-                  background: "var(--primary-300)",
-                }} />
-              )}
-              {active ? <Typewriter text={l.text} onDone={() => setPhase(p => p + 1)} /> : l.text}
-            </div>
-          );
-        })}
-      </div>
-    );
   };
 
   if (!detailPatient) return null;

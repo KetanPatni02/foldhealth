@@ -174,18 +174,21 @@ export function KnowledgeBasePanel({ searchQuery = '' }) {
 
   const handleDrawerSave = async (form) => {
     setSaving(true);
-    if (drawerMode === 'edit' && editTarget) {
-      await updateFaq(editTarget.id, {
-        question: form.question,
-        answer: form.answer,
-        category: form.category,
-      });
-      showToast('FAQ updated');
-    } else {
-      await addFaq(form);
-      showToast('FAQ added');
+    try {
+      if (drawerMode === 'edit' && editTarget) {
+        await updateFaq(editTarget.id, {
+          question: form.question,
+          answer: form.answer,
+          category: form.category,
+        });
+        showToast('FAQ updated');
+      } else {
+        await addFaq(form);
+        showToast('FAQ added');
+      }
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
     setDrawerMode(null);
     setEditTarget(null);
   };
@@ -198,9 +201,12 @@ export function KnowledgeBasePanel({ searchQuery = '' }) {
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
-    await deleteFaq(deleteTarget.id);
-    showToast('FAQ deleted');
-    setDeleting(false);
+    try {
+      await deleteFaq(deleteTarget.id);
+      showToast('FAQ deleted');
+    } finally {
+      setDeleting(false);
+    }
     setDeleteTarget(null);
   };
 

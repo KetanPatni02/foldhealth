@@ -309,9 +309,12 @@ export function ComponentLibraryPanel({ searchQuery = '' }) {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
-    await deleteEmbedComponent(deleteTarget.id);
-    showToast(`"${deleteTarget.name}" deleted`);
-    setDeleting(false);
+    try {
+      await deleteEmbedComponent(deleteTarget.id);
+      showToast(`"${deleteTarget.name}" deleted`);
+    } finally {
+      setDeleting(false);
+    }
     setDeleteTarget(null);
   };
 

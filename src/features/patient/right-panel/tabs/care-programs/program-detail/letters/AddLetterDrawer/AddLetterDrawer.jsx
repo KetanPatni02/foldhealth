@@ -34,6 +34,12 @@ function LetterThumb() {
  * Add Letter drawer — browse the letters library and add templates to the
  * program. Figma 2334-319071. Built on the shared Drawer.
  */
+const AddButton = ({ letter, added, onAdd }) => (
+  added
+    ? <Button variant="tertiary" size="S" className={styles.addBtn} disabled>Added</Button>
+    : <Button variant="tertiary" size="S" className={styles.addBtn} onClick={() => onAdd(letter)}>Add</Button>
+);
+
 export function AddLetterDrawer({ letters = [], addedIds, onAdd, onPreview, onDownload, onClose }) {
   const [search, setSearch] = useState('');
   const [typeSel, setTypeSel] = useState([]);
@@ -64,12 +70,6 @@ export function AddLetterDrawer({ letters = [], addedIds, onAdd, onPreview, onDo
   });
 
   const isAdded = (id) => addedIds?.has(id);
-
-  const AddButton = ({ letter }) => (
-    isAdded(letter.id)
-      ? <Button variant="tertiary" size="S" className={styles.addBtn} disabled>Added</Button>
-      : <Button variant="tertiary" size="S" className={styles.addBtn} onClick={() => onAdd(letter)}>Add</Button>
-  );
 
   return (
     <Drawer title="Add Letter" onClose={onClose} bodyClassName={styles.body}>
@@ -108,7 +108,7 @@ export function AddLetterDrawer({ letters = [], addedIds, onAdd, onPreview, onDo
               <span className={styles.dateCol}>{l.lastSent || '—'}</span>
               <span className={styles.actionsCol}>
                 <span className={styles.actions}>
-                  <AddButton letter={l} />
+                  <AddButton letter={l} added={isAdded(l.id)} onAdd={onAdd} />
                   <span className={styles.actionDivider} />
                   <ActionButton icon="solar:eye-linear" size="S" tooltip="Preview" onClick={() => onPreview(l)} />
                   <span className={styles.actionDivider} />

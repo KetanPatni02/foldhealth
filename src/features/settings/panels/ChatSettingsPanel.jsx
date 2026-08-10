@@ -157,9 +157,12 @@ function ChatGroupRow({ g, onOpen }) {
             onCancel={() => setShowDeleteConfirm(false)}
             onConfirm={async () => {
               setDeleting(true);
-              await deleteChatGroup(g.id);
-              showToast(`"${g.name}" deleted`);
-              setDeleting(false);
+              try {
+                await deleteChatGroup(g.id);
+                showToast(`"${g.name}" deleted`);
+              } finally {
+                setDeleting(false);
+              }
               setShowDeleteConfirm(false);
             }}
           />

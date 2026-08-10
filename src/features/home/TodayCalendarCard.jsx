@@ -76,6 +76,8 @@ export function TodayCalendarCard({ dragHandleClassName }) {
     import('temporal-polyfill').then(mod => {
       if (typeof globalThis.Temporal === 'undefined') globalThis.Temporal = mod.Temporal;
       setTemporalReady(true);
+    }).catch(err => {
+      console.warn('[TodayCalendarCard] temporal-polyfill failed to load:', err);
     });
   }, []);
 

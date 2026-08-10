@@ -46,24 +46,27 @@ export function LoginPage({ onBypass }) {
     setLoading(true);
     setError('');
     setUnverifiedEmail('');
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
-    if (authError) {
-      track('auth.login_failed', { method: 'password', reason: authError.message || 'unknown' });
-      // Supabase returns "Email not confirmed" when the account exists but
-      // the user hasn't clicked their verification link yet. Surface a
-      // dedicated "Resend verification email" affordance instead of the
-      // generic error so they can recover without contacting support.
-      const isUnverified = /email not confirmed/i.test(authError.message || '');
-      if (isUnverified) {
-        setUnverifiedEmail(email.trim());
-        setError('');
+    try {
+      const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      if (authError) {
+        track('auth.login_failed', { method: 'password', reason: authError.message || 'unknown' });
+        // Supabase returns "Email not confirmed" when the account exists but
+        // the user hasn't clicked their verification link yet. Surface a
+        // dedicated "Resend verification email" affordance instead of the
+        // generic error so they can recover without contacting support.
+        const isUnverified = /email not confirmed/i.test(authError.message || '');
+        if (isUnverified) {
+          setUnverifiedEmail(email.trim());
+          setError('');
+        } else {
+          setError(authError.message === 'Invalid login credentials' ? 'Invalid email or password' : authError.message);
+        }
       } else {
-        setError(authError.message === 'Invalid login credentials' ? 'Invalid email or password' : authError.message);
+        track('auth.login_succeeded', { method: 'password' });
       }
-    } else {
-      track('auth.login_succeeded', { method: 'password' });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleForgotPassword = async (e) => {
@@ -79,18 +82,21 @@ export function LoginPage({ onBypass }) {
     // We land on the bare origin; App.jsx's PASSWORD_RECOVERY listener
     // routes the user to ResetPasswordPage once supabase-js processes
     // the URL.
-    const { error: authError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: window.location.origin,
-    });
-    if (authError) {
-      track('auth.password_reset_failed', { reason: authError.message || 'unknown' });
-      setError(authError.message);
-    } else {
-      track('auth.password_reset_email_sent');
-      setSuccess(`Reset link sent to ${email.trim()}. Check your inbox.`);
-      setCooldown(RESEND_COOLDOWN_SECONDS);
+    try {
+      const { error: authError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: window.location.origin,
+      });
+      if (authError) {
+        track('auth.password_reset_failed', { reason: authError.message || 'unknown' });
+        setError(authError.message);
+      } else {
+        track('auth.password_reset_email_sent');
+        setSuccess(`Reset link sent to ${email.trim()}. Check your inbox.`);
+        setCooldown(RESEND_COOLDOWN_SECONDS);
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleResendVerification = async () => {
@@ -99,16 +105,19 @@ export function LoginPage({ onBypass }) {
     setLoading(true);
     setError('');
     setSuccess('');
-    const { error: authError } = await supabase.auth.resend({ type: 'signup', email: target });
-    if (authError) {
-      track('auth.verification_email_failed', { reason: authError.message || 'unknown' });
-      setError(authError.message);
-    } else {
-      track('auth.verification_email_sent');
-      setSuccess(`Verification email sent to ${target}. Check your inbox.`);
-      setCooldown(RESEND_COOLDOWN_SECONDS);
+    try {
+      const { error: authError } = await supabase.auth.resend({ type: 'signup', email: target });
+      if (authError) {
+        track('auth.verification_email_failed', { reason: authError.message || 'unknown' });
+        setError(authError.message);
+      } else {
+        track('auth.verification_email_sent');
+        setSuccess(`Verification email sent to ${target}. Check your inbox.`);
+        setCooldown(RESEND_COOLDOWN_SECONDS);
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const enterForgotMode = () => {
@@ -134,41 +143,47 @@ export function LoginPage({ onBypass }) {
     setLoading(true);
     setError('');
     setSuccess('');
-    const { error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: window.location.origin,
-        data: { first_name: firstName.trim(), last_name: lastName.trim(), full_name: `${firstName.trim()} ${lastName.trim()}` },
-      },
-    });
-    if (authError) {
-      track('auth.signup_failed', { reason: authError.message || 'unknown' });
-      setError(authError.message);
-    } else {
-      track('auth.signup_succeeded');
-      setSuccess('Account created! Check your email to confirm, or sign in directly.');
-      setIsSignUp(false);
-      setConfirmPassword('');
+    try {
+      const { error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: window.location.origin,
+          data: { first_name: firstName.trim(), last_name: lastName.trim(), full_name: `${firstName.trim()} ${lastName.trim()}` },
+        },
+      });
+      if (authError) {
+        track('auth.signup_failed', { reason: authError.message || 'unknown' });
+        setError(authError.message);
+      } else {
+        track('auth.signup_succeeded');
+        setSuccess('Account created! Check your email to confirm, or sign in directly.');
+        setIsSignUp(false);
+        setConfirmPassword('');
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleOAuthLogin = async (provider) => {
     setLoading(true);
     setError('');
     track('auth.oauth_initiated', { provider });
-    const { error: authError } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: window.location.origin,
-      },
-    });
-    if (authError) {
-      track('auth.login_failed', { method: provider, reason: authError.message || 'unknown' });
-      setError(authError.message);
+    try {
+      const { error: authError } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: window.location.origin,
+        },
+      });
+      if (authError) {
+        track('auth.login_failed', { method: provider, reason: authError.message || 'unknown' });
+        setError(authError.message);
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleSubmit = forgotMode ? handleForgotPassword : isSignUp ? handleSignUp : handleLogin;

@@ -147,19 +147,22 @@ export function CcmTimerWidget() {
       return;
     }
     setSaving(true);
-    await addCcmBillableActivity({
-      id: activityId(),
-      periodId: currentPeriod.id,
-      patientId,
-      activityType,
-      description: description.trim(),
-      durationSeconds: elapsed,
-      loggedBy: 'You',
-      loggedByInitials: 'Y',
-      occurredAt: new Date().toISOString(),
-      isUnlogged: false,
-    });
-    setSaving(false);
+    try {
+      await addCcmBillableActivity({
+        id: activityId(),
+        periodId: currentPeriod.id,
+        patientId,
+        activityType,
+        description: description.trim(),
+        durationSeconds: elapsed,
+        loggedBy: 'You',
+        loggedByInitials: 'Y',
+        occurredAt: new Date().toISOString(),
+        isUnlogged: false,
+      });
+    } finally {
+      setSaving(false);
+    }
     stopTick();
     setMode('logged');
     clearTimeout(loggedTimeoutRef.current);

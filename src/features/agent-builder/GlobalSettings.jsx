@@ -176,7 +176,14 @@ function NumberUnit({ value, onChange, unit, min = 0, max = 9999 }) {
         value={value}
         min={min}
         max={max}
-        onChange={e => onChange(Number(e.target.value))}
+        onChange={e => {
+          // Ignore empty/partial input ("", "-", "1e") instead of storing
+          // Number('')===0 or NaN — both would flow into settings state.
+          const raw = e.target.value.trim();
+          if (raw === '') return;
+          const n = Number(raw);
+          if (Number.isFinite(n)) onChange(n);
+        }}
       />
       <span className={styles.numberUnitLabel}>{unit}</span>
     </div>

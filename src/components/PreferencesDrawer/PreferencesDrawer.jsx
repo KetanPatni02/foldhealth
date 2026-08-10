@@ -72,31 +72,34 @@ export function PreferencesDrawer({ onClose }) {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setLoading(false); return; }
-      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-      if (data) {
-        setProfile(data);
-        setForm({
-          first_name: data.first_name || user.user_metadata?.first_name || '',
-          last_name: data.last_name || user.user_metadata?.last_name || '',
-          middle_name: data.middle_name || '',
-          date_of_birth: data.date_of_birth || '',
-          gender: data.gender || '',
-          admin_role: data.admin_role || 'Business/Practice Owner',
-          bio: data.bio || '',
-          mobile: data.mobile || data.phone || '',
-          email: data.email || user.email || '',
-          fax: data.fax || '',
-          zip_code: data.zip_code || '',
-          address_line1: data.address_line1 || '',
-          address_line2: data.address_line2 || '',
-          state: data.state || '',
-          city: data.city || '',
-          languages: data.languages || [],
-        });
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+        if (data) {
+          setProfile(data);
+          setForm({
+            first_name: data.first_name || user.user_metadata?.first_name || '',
+            last_name: data.last_name || user.user_metadata?.last_name || '',
+            middle_name: data.middle_name || '',
+            date_of_birth: data.date_of_birth || '',
+            gender: data.gender || '',
+            admin_role: data.admin_role || 'Business/Practice Owner',
+            bio: data.bio || '',
+            mobile: data.mobile || data.phone || '',
+            email: data.email || user.email || '',
+            fax: data.fax || '',
+            zip_code: data.zip_code || '',
+            address_line1: data.address_line1 || '',
+            address_line2: data.address_line2 || '',
+            state: data.state || '',
+            city: data.city || '',
+            languages: data.languages || [],
+          });
+        }
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     })();
   }, []);
 

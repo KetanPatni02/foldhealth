@@ -47,25 +47,28 @@ export function CcmUnloggedDrawer({ patientId, periodId, onClose }) {
   const save = async () => {
     if (!periodId || totalSelected === 0) return;
     setSaving(true);
-    for (const session of sessions.filter(s => selected.has(s.id))) {
-      // Every unlogged block becomes its own billable activity, marked so
-      // downstream reports can distinguish tracker-classified time from
-      // real-time timer sessions.
-      // eslint-disable-next-line no-await-in-loop
-      await addCcmBillableActivity({
-        id: `act-ul-${session.id}-${Date.now()}`,
-        periodId,
-        patientId,
-        activityType,
-        description: description.trim() || `Classified from unlogged time (${session.label})`,
-        durationSeconds: session.durationSeconds,
-        loggedBy: 'You',
-        loggedByInitials: 'Y',
-        occurredAt: new Date().toISOString(),
-        isUnlogged: true,
-      });
+    try {
+      for (const session of sessions.filter(s => selected.has(s.id))) {
+        // Every unlogged block becomes its own billable activity, marked so
+        // downstream reports can distinguish tracker-classified time from
+        // real-time timer sessions.
+        // eslint-disable-next-line no-await-in-loop
+        await addCcmBillableActivity({
+          id: `act-ul-${session.id}-${Date.now()}`,
+          periodId,
+          patientId,
+          activityType,
+          description: description.trim() || `Classified from unlogged time (${session.label})`,
+          durationSeconds: session.durationSeconds,
+          loggedBy: 'You',
+          loggedByInitials: 'Y',
+          occurredAt: new Date().toISOString(),
+          isUnlogged: true,
+        });
+      }
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
     onClose?.();
   };
 

@@ -307,6 +307,41 @@ const TEAM_DEFAULT_LAYOUT = [
   { i: 'needsSupport',  x: 6, y: 0, w: 6, h: 12, minW: 4, minH: 6, maxW: 12, maxH: 20 },
 ];
 
+// Hoisted out of TeamTab so it isn't redefined (and remounted) every render.
+const StaffCard = ({ staff, isBottom, showToast }) => {
+  const bg = isBottom ? 'var(--status-warning-light)' : 'var(--status-success-light)';
+  const rkColor = isBottom ? 'var(--status-warning)' : 'var(--status-success)';
+  const trendColor = staff.trend === '↑' ? 'var(--status-success)' : staff.trend === '↓' ? 'var(--status-error)' : 'var(--neutral-200)';
+  return (
+    <div style={{ padding: '10px 12px', background: bg, borderRadius: 8, marginBottom: 6, cursor: 'pointer' }}
+      onClick={() => showToast?.(`Viewing ${staff.name} detail`)}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+        <div style={{ width: 28, height: 28, borderRadius: '50%', background: rkColor, color: 'var(--neutral-0)', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>#{staff.rank}</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 500, fontSize: 14 }}>{staff.name}</div>
+          <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{staff.role}</div>
+        </div>
+        <span style={{ fontSize: 16, color: trendColor }}>{staff.trend}</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, textAlign: 'center' }}>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 500, color: staff.engage > 70 ? 'var(--status-success)' : staff.engage > 55 ? 'var(--status-warning)' : 'var(--status-error)' }}>{staff.engage}%</div>
+          <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>Engage</div>
+        </div>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 500, color: staff.tcm > 80 ? 'var(--status-success)' : staff.tcm > 65 ? 'var(--status-warning)' : 'var(--status-error)' }}>{staff.tcm}%</div>
+          <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>TCM Adh.</div>
+        </div>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 500 }}>{staff.caseload}</div>
+          <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>Caseload</div>
+        </div>
+      </div>
+      {isBottom && <div style={{ fontSize: 12, color: 'var(--status-warning)', marginTop: 6 }}>Low contact rate &middot; TCM gaps &middot; High-risk challenges</div>}
+    </div>
+  );
+};
+
 function TeamTab({ showToast, editing = false, resetTick = 0 }) {
   const topPerformers = [
     { name: 'Sarah Chen', role: 'Senior Care Manager', rank: 1, engage: 78, tcm: 91, caseload: 48, trend: '↑' },
@@ -322,49 +357,15 @@ function TeamTab({ showToast, editing = false, resetTick = 0 }) {
     { name: 'Robert Chang', role: 'Care Coordinator', rank: 18, engage: 45, tcm: 58, caseload: 35, trend: '↓' },
   ];
 
-  const StaffCard = ({ staff, isBottom }) => {
-    const bg = isBottom ? 'var(--status-warning-light)' : 'var(--status-success-light)';
-    const rkColor = isBottom ? 'var(--status-warning)' : 'var(--status-success)';
-    const trendColor = staff.trend === '↑' ? 'var(--status-success)' : staff.trend === '↓' ? 'var(--status-error)' : 'var(--neutral-200)';
-    return (
-      <div style={{ padding: '10px 12px', background: bg, borderRadius: 8, marginBottom: 6, cursor: 'pointer' }}
-        onClick={() => showToast?.(`Viewing ${staff.name} detail`)}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-          <div style={{ width: 28, height: 28, borderRadius: '50%', background: rkColor, color: 'var(--neutral-0)', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>#{staff.rank}</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 500, fontSize: 14 }}>{staff.name}</div>
-            <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{staff.role}</div>
-          </div>
-          <span style={{ fontSize: 16, color: trendColor }}>{staff.trend}</span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, textAlign: 'center' }}>
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 500, color: staff.engage > 70 ? 'var(--status-success)' : staff.engage > 55 ? 'var(--status-warning)' : 'var(--status-error)' }}>{staff.engage}%</div>
-            <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>Engage</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 500, color: staff.tcm > 80 ? 'var(--status-success)' : staff.tcm > 65 ? 'var(--status-warning)' : 'var(--status-error)' }}>{staff.tcm}%</div>
-            <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>TCM Adh.</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 500 }}>{staff.caseload}</div>
-            <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>Caseload</div>
-          </div>
-        </div>
-        {isBottom && <div style={{ fontSize: 12, color: 'var(--status-warning)', marginTop: 6 }}>Low contact rate &middot; TCM gaps &middot; High-risk challenges</div>}
-      </div>
-    );
-  };
-
   const renderTopPerformers = () => (
     <Card title={<span>&#x1F3C6; Top Performers</span>}>
-      {topPerformers.map(st => <StaffCard key={st.name} staff={st} isBottom={false} />)}
+      {topPerformers.map(st => <StaffCard key={st.name} staff={st} isBottom={false} showToast={showToast} />)}
     </Card>
   );
 
   const renderNeedsSupport = () => (
     <Card title={<span>&#x26A0; Needs Support</span>} style={{ border: '1px solid var(--status-warning-light)' }}>
-      {needsSupport.map(st => <StaffCard key={st.name} staff={st} isBottom={true} />)}
+      {needsSupport.map(st => <StaffCard key={st.name} staff={st} isBottom={true} showToast={showToast} />)}
       <Button variant="primary" size="S" style={{ marginTop: 10, width: '100%', justifyContent: 'center' }} onClick={() => showToast?.('Scheduling coaching sessions for 3 staff')}>
         Schedule Support Sessions (3)
       </Button>

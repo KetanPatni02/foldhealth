@@ -117,24 +117,27 @@ export function CcmUnloggedTable({ patientId, periodId, expanded, onToggleExpand
     const invalid = selRows.filter(r => !r.serviceCategory);
     if (invalid.length) return;
     setSaving(true);
-    for (const r of selRows) {
-      // eslint-disable-next-line no-await-in-loop
-      await addCcmBillableActivity({
-        id: randomId(),
-        periodId,
-        patientId,
-        activityType: r.serviceCategory,
-        description: `Classified from unlogged time (${r.date})`,
-        durationSeconds: parseDuration(r.durationInput),
-        loggedBy: 'You',
-        loggedByInitials: 'Y',
-        occurredAt: new Date().toISOString(),
-        isUnlogged: true,
-      });
+    try {
+      for (const r of selRows) {
+        // eslint-disable-next-line no-await-in-loop
+        await addCcmBillableActivity({
+          id: randomId(),
+          periodId,
+          patientId,
+          activityType: r.serviceCategory,
+          description: `Classified from unlogged time (${r.date})`,
+          durationSeconds: parseDuration(r.durationInput),
+          loggedBy: 'You',
+          loggedByInitials: 'Y',
+          occurredAt: new Date().toISOString(),
+          isUnlogged: true,
+        });
+      }
+      setRows(prev => prev.filter(r => !selected.has(r.id)));
+      setSelected(new Set());
+    } finally {
+      setSaving(false);
     }
-    setRows(prev => prev.filter(r => !selected.has(r.id)));
-    setSelected(new Set());
-    setSaving(false);
   };
 
   const canAdd = anySelected && rows.filter(r => selected.has(r.id)).every(r => r.serviceCategory);

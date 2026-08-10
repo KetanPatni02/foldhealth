@@ -128,11 +128,15 @@ export function FormView({ id: propId, isPublic = false }) {
       );
       scoreSnapshot = { scores: result.scores, criticalsTriggered: result.criticalsTriggered };
     } catch { /* submit answers even if scoring fails */ }
-    const ok = await submitFormResponse(form.id, answers, scoreSnapshot, {
-      sessionId: sessionIdRef.current,
-      answeredCount: countAnswered(answers),
-    });
-    setSubmitting(false);
+    let ok = false;
+    try {
+      ok = await submitFormResponse(form.id, answers, scoreSnapshot, {
+        sessionId: sessionIdRef.current,
+        answeredCount: countAnswered(answers),
+      });
+    } finally {
+      setSubmitting(false);
+    }
     if (ok) {
       try { sessionStorage.removeItem(`formSession:${formViewId}`); } catch { /* ignore */ }
     } else {
