@@ -154,7 +154,7 @@ export const PRESET_THEMES = [
 
 export const DEFAULT_CARD_THEME = PRESET_THEMES[0];
 
-/* ── Colour math ── */
+/* ── Color math ── */
 function hsbToRgb(h, s, b) {
   s /= 100; b /= 100;
   const c = b * s;
@@ -187,7 +187,7 @@ function hexToRgb(hex) {
   return (isNaN(r) || isNaN(g) || isNaN(b)) ? null : [r, g, b];
 }
 
-/* ── WCAG relative luminance → auto-contrast for custom colours ── */
+/* ── WCAG relative luminance → auto-contrast for custom colors ── */
 function wcagLuminance(r, g, b) {
   const lin = (c) => { const s = c / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
   return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
@@ -252,7 +252,7 @@ export function CardThemePicker({ theme, onThemeChange }) {
   const cursorX = (sat / 100) * CANVAS_W;
   const cursorY = (1 - bri / 100) * CANVAS_H;
 
-  /* Pick colour from canvas event */
+  /* Pick color from canvas event */
   const pickFromCanvas = useCallback((e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -311,14 +311,14 @@ export function CardThemePicker({ theme, onThemeChange }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  /* Trigger dot — show current preset gradient or custom colour */
+  /* Trigger dot — show current preset gradient or custom color */
   const presetMatch = PRESET_THEMES.find(t => t.bg === theme?.bg);
   const dotBg = presetMatch ? presetMatch.bg : (theme?.bg || currentHex);
 
   return (
     <div className={styles.wrap} ref={wrapRef}>
-      {/* Trigger: colour circle + chevron */}
-      <button className={styles.trigger} onClick={() => setOpen(v => !v)}>
+      {/* Trigger: color circle + chevron */}
+      <button className={styles.trigger} aria-label="Choose card theme color" onClick={() => setOpen(v => !v)}>
         <span className={styles.dot} style={{ background: dotBg }} />
         <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" />
       </button>
@@ -342,7 +342,7 @@ export function CardThemePicker({ theme, onThemeChange }) {
             </div>
           </div>
 
-          {/* ── Custom colour picker ── */}
+          {/* ── Custom color picker ── */}
           <div className={styles.section}>
             <span className={styles.sectionLabel}>or select a color below:</span>
 
@@ -360,14 +360,14 @@ export function CardThemePicker({ theme, onThemeChange }) {
 
             {/* Hue rainbow slider */}
             <input
-              type="range" min="0" max="360" step="1" value={hue}
+              type="range" aria-label="Hue" min="0" max="360" step="1" value={hue}
               onChange={handleHueChange}
               className={`${styles.slider} ${styles.hueSlider}`}
             />
 
             {/* Opacity slider (display only) */}
             <input
-              type="range" min="0" max="100" step="1" value={100}
+              type="range" aria-label="Opacity" min="0" max="100" step="1" value={100}
               readOnly
               className={`${styles.slider} ${styles.opacitySlider}`}
               style={{ '--oc': currentHex }}
@@ -378,6 +378,7 @@ export function CardThemePicker({ theme, onThemeChange }) {
               <div className={styles.colorInputGroup} style={{ flex: 1.6 }}>
                 <input
                   className={styles.colorInput}
+                  aria-label="Hex color"
                   value={hexInput}
                   onChange={handleHexChange}
                   maxLength={7}
@@ -387,7 +388,7 @@ export function CardThemePicker({ theme, onThemeChange }) {
               </div>
               {[['R', cR], ['G', cG], ['B', cB]].map(([label, val]) => (
                 <div key={label} className={styles.colorInputGroup}>
-                  <input className={styles.colorInput} value={val} readOnly />
+                  <input className={styles.colorInput} aria-label={label === 'R' ? 'Red channel' : label === 'G' ? 'Green channel' : 'Blue channel'} value={val} readOnly />
                   <span className={styles.colorInputLabel}>{label}</span>
                 </div>
               ))}
