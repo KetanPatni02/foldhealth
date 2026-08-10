@@ -101,12 +101,16 @@ export function IcdCreationScreen() {
   const [queue, setQueue] = useState([]);
   const [extracting, setExtracting] = useState(false);
 
+  // Declared above the early return below so hook order stays stable across
+  // renders — a hook after the guard gets skipped whenever `open` is false,
+  // which lets React attach state to the wrong hook.
+  const sessionIdSet = useMemo(() => new Set(sessionIds), [sessionIds]);
+
   if (!open) return null;
 
   // Encounters extracted in this session — the right panel's records list.
   // We pull them from the batches the store knows about, then filter to
   // only the ones added during this Upload Document session.
-  const sessionIdSet = useMemo(() => new Set(sessionIds), [sessionIds]);
   const sessionBatches = batches.filter(b => sessionIdSet.has(b.id));
   const sessionEncounters = sessionBatches.flatMap(b =>
     (b.encounters || []).map(e => ({ ...e, _batchId: b.id, _fileName: b.fileName, _ocrTier: b.ocrTier }))
