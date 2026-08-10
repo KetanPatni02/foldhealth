@@ -150,6 +150,7 @@ function SolidPicker({ value, onChange, variables, recentlyUsed }) {
         <div className={styles.hexField}>
           <input
             type="text"
+            aria-label="Hex color"
             className={styles.hexInput}
             value={hexDraft}
             onChange={(e) => commitHex(e.target.value)}
@@ -158,9 +159,9 @@ function SolidPicker({ value, onChange, variables, recentlyUsed }) {
           />
         </div>
         <div className={styles.rgbField}>
-          <input className={styles.rgbInput} type="text" value={rgb.r} onChange={(e) => commitRgb('r', e.target.value)} />
-          <input className={styles.rgbInput} type="text" value={rgb.g} onChange={(e) => commitRgb('g', e.target.value)} />
-          <input className={styles.rgbInput} type="text" value={rgb.b} onChange={(e) => commitRgb('b', e.target.value)} />
+          <input className={styles.rgbInput} type="text" aria-label="Red channel" value={rgb.r} onChange={(e) => commitRgb('r', e.target.value)} />
+          <input className={styles.rgbInput} type="text" aria-label="Green channel" value={rgb.g} onChange={(e) => commitRgb('g', e.target.value)} />
+          <input className={styles.rgbInput} type="text" aria-label="Blue channel" value={rgb.b} onChange={(e) => commitRgb('b', e.target.value)} />
         </div>
       </div>
 
@@ -291,6 +292,7 @@ function GradientPicker({ value, onChange, variables }) {
           <span className={styles.fieldLabel}>Angle</span>
           <input
             type="range"
+            aria-label="Gradient angle in degrees"
             min={0}
             max={360}
             value={grad.angle}
@@ -316,6 +318,7 @@ function GradientPicker({ value, onChange, variables }) {
             <input
               className={styles.stopPosInput}
               type="text"
+              aria-label="Gradient stop position, percent"
               value={Math.round(s.position)}
               onChange={(e) => updateStop(idx, { position: Math.max(0, Math.min(100, Number(e.target.value) || 0)) })}
               onClick={(e) => e.stopPropagation()}
@@ -325,6 +328,7 @@ function GradientPicker({ value, onChange, variables }) {
             <input
               className={styles.stopHexInput}
               type="text"
+              aria-label="Gradient stop hex color"
               value={s.color.replace('#', '').toUpperCase()}
               onChange={(e) => updateStop(idx, { color: normalizeHex(e.target.value) })}
               onClick={(e) => e.stopPropagation()}
