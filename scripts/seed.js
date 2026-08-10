@@ -332,14 +332,51 @@ CREATE POLICY "Allow all for practice_locations" ON practice_locations FOR ALL U
 
 // ── Row mappers (JS shape → DB columns) ───────────────────────────────────────
 
-function hedisToRow(m) {
+// Fold ID resolution — every worklist row's `member_id` column is written as
+// the bare-number Fold ID from patient_registry (e.g. "10014"), not the raw
+// payer id from the mock (e.g. "#2468029990001"). Mocks predate the Fold-ID
+// scheme; we bridge at seed time so the DB always matches what the app shows.
+// See supabase/patient_registry_migration.sql and patient_id_unification_migration.sql.
+const normalizeMemberId = (raw) => String(raw || '').replace(/^#/, '').trim().toLowerCase();
+
+async function resolveFoldIdMap(supabase, rawIds) {
+  const normalized = [...new Set(rawIds.map(normalizeMemberId).filter(Boolean))];
+  if (!normalized.length) return new Map();
+
+  // Insert any missing normalized ids — patient_registry auto-mints fold_id
+  // via nextval('patient_fold_id_seq'). onConflict/ignoreDuplicates keeps
+  // existing assignments stable.
+  await supabase
+    .from('patient_registry')
+    .upsert(normalized.map((m) => ({ member_id: m })), { onConflict: 'member_id', ignoreDuplicates: true });
+
+  const { data, error } = await supabase
+    .from('patient_registry')
+    .select('member_id, fold_id')
+    .in('member_id', normalized);
+  if (error) throw new Error(`patient_registry read failed: ${error.message}`);
+
+  return new Map(data.map((r) => [r.member_id, String(r.fold_id)]));
+}
+
+function resolveMemberId(rawId, foldIdMap) {
+  const key = normalizeMemberId(rawId);
+  const foldId = foldIdMap.get(key);
+  if (!foldId) {
+    console.warn(`  ⚠  No Fold ID for member_id="${rawId}" — falling back to raw`);
+    return rawId ?? null;
+  }
+  return foldId;
+}
+
+function hedisToRow(m, foldIdMap) {
   return {
     id:                m.id,
     initials:          m.in,
     name:              m.name,
     gender:            m.gender,
     age:               m.age,
-    member_id:         m.memberId,
+    member_id:         resolveMemberId(m.memberId, foldIdMap),
     language:          m.language || 'en',
     gaps:              m.gaps ?? [],
     assignee:          m.assignee ?? null,
@@ -443,14 +480,14 @@ function ccmActivityToRow(a) {
   };
 }
 
-function ccmWorklistToRow(m) {
+function ccmWorklistToRow(m, foldIdMap) {
   return {
     id:                   m.id,
     initials:             m.initials ?? null,
     name:                 m.name,
     gender:               m.gender ?? null,
     age:                  m.age ?? null,
-    member_id:            m.memberId ?? null,
+    member_id:            resolveMemberId(m.memberId, foldIdMap),
     language:             m.language || 'en',
     status:               m.status,
     next_action_due:      m.nextActionDue ?? null,
@@ -480,14 +517,14 @@ function ccmWorklistToRow(m) {
   };
 }
 
-function snpWorklistToRow(m) {
+function snpWorklistToRow(m, foldIdMap) {
   return {
     id:                 m.id,
     initials:           m.initials ?? null,
     name:               m.name,
     gender:             m.gender ?? null,
     age:                m.age ?? null,
-    member_id:          m.memberId ?? null,
+    member_id:          resolveMemberId(m.memberId, foldIdMap),
     language:           m.language || 'en',
     program_sub_status: m.programSubStatus ?? null,
     care_plan_status:   m.carePlanStatus ?? null,
@@ -614,8 +651,19 @@ async function main() {
     auth: { persistSession: false },
   });
 
+  // Bridge raw payer ids → Fold IDs from patient_registry so worklist rows
+  // land with the same identifier the app displays via <FoldIdTag>. Mints
+  // fold_ids for any mock member missing from the registry.
+  console.log('\nResolving Fold IDs for HEDIS / CCM / SNP members...');
+  const foldIdMap = await resolveFoldIdMap(supabase, [
+    ...HEDIS_MEMBERS.map((m) => m.memberId),
+    ...CCM_WORKLIST_MEMBERS.map((m) => m.memberId),
+    ...SNP_WORKLIST_MEMBERS.map((m) => m.memberId),
+  ]);
+  console.log(`  ✓ ${foldIdMap.size} Fold IDs available in patient_registry`);
+
   console.log('\nSeeding hedis_members...');
-  const hedisRows = HEDIS_MEMBERS.map(hedisToRow);
+  const hedisRows = HEDIS_MEMBERS.map((m) => hedisToRow(m, foldIdMap));
   const { error: he } = await supabase
     .from('hedis_members')
     .upsert(hedisRows, { onConflict: 'id' });
@@ -663,14 +711,14 @@ async function main() {
   if (cre) { console.error('  ✗', cre.message); } else { console.log(`  ✓ ${reportRows.length} reports`); }
 
   console.log('Seeding ccm_worklist_members...');
-  const worklistRows = CCM_WORKLIST_MEMBERS.map(ccmWorklistToRow);
+  const worklistRows = CCM_WORKLIST_MEMBERS.map((m) => ccmWorklistToRow(m, foldIdMap));
   const { error: cwe } = await supabase
     .from('ccm_worklist_members')
     .upsert(worklistRows, { onConflict: 'id' });
   if (cwe) { console.error('  ✗', cwe.message); } else { console.log(`  ✓ ${worklistRows.length} worklist members`); }
 
   console.log('Seeding snp_worklist_members...');
-  const snpWorklistRows = SNP_WORKLIST_MEMBERS.map(snpWorklistToRow);
+  const snpWorklistRows = SNP_WORKLIST_MEMBERS.map((m) => snpWorklistToRow(m, foldIdMap));
   const { error: swe } = await supabase
     .from('snp_worklist_members')
     .upsert(snpWorklistRows, { onConflict: 'id' });

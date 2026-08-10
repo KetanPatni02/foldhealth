@@ -97,4 +97,14 @@
   gap: 12px;
   margin-left: 0;
   margin-right: 0;
+  align-self: stretch;
+  height: 100%;
+  align-items: stretch;
+}
+
+.tabBar.embedded .tabItem {
+  height: 100%;
+  padding-top: 0;
+  padding-bottom: 0;
+  align-items: center;
 }

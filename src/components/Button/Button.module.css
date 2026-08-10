@@ -187,3 +187,123 @@
 .fullWidth {
   width: 100%;
 }
+
+/* ── Split-button (dropdown) mode ──
+ * Rendered when Button is called with `menuItems`. The WRAPPER owns
+ * every visual — background, border, border-radius, color — so the
+ * pill reads as one cohesive shape. The two inner <button>s are
+ * transparent click regions that only paint a hover tint on the
+ * hovered half, and a 1px divider lives between them. */
+
+.splitWrapper {
+  display: inline-flex;
+  align-items: stretch;
+  position: relative;
+  line-height: 1;
+  border-radius: 4px;
+  transition:
+    background var(--duration-fast) var(--ease-hover),
+    border-color var(--duration-fast) var(--ease-hover);
+}
+/* XL variant lives on the halves; derive the wrapper's larger radius
+ * from the presence of a `.sizeXL` child so the wrapper itself never
+ * has to carry a size class (which would double-paint padding/height). */
+.splitWrapper:has(.sizeXL) { border-radius: 8px; }
+
+/* Halves are transparent inside the wrapper — no bg / no border / no
+ * radius of their own. Higher specificity (.splitWrapper .splitMain =
+ * 2 classes) beats the base `.btn` variant rules. */
+.splitWrapper .splitMain,
+.splitWrapper .splitChevron {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: inherit;
+}
+/* Restore rounded outer corners so hover tints stay clipped inside the
+ * pill's silhouette on both ends. */
+.splitWrapper .splitMain {
+  border-top-left-radius: inherit;
+  border-bottom-left-radius: inherit;
+}
+.splitWrapper .splitChevron {
+  border-top-right-radius: inherit;
+  border-bottom-right-radius: inherit;
+}
+
+/* Hover tint on the individual half — currentColor mix lets one rule
+ * work on every variant (light overlay on filled bgs, subtle darken on
+ * outlined ones). */
+.splitWrapper .splitMain:hover:not(:disabled),
+.splitWrapper .splitChevron:hover:not(:disabled) {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+/* ── Per-variant wrapper chrome ──
+ * Same background / border / color as the equivalent `.btn` variant,
+ * just applied to the wrapper so both halves live inside one pill. */
+.splitWrapper.primary {
+  background: var(--primary-300);
+  color: var(--neutral-0);
+}
+.splitWrapper.secondary {
+  background: var(--neutral-0);
+  color: var(--neutral-300);
+  border: 0.5px solid var(--neutral-200);
+}
+.splitWrapper.tertiary {
+  background: var(--primary-100);
+  color: var(--primary-300);
+  border: 0.5px solid var(--primary-200);
+}
+.splitWrapper.ghost {
+  background: transparent;
+  color: var(--neutral-300);
+}
+.splitWrapper.alt {
+  background: transparent;
+  color: var(--primary-300);
+  border: 0.5px solid var(--primary-300);
+}
+.splitWrapper.success {
+  background: var(--status-success-light);
+  color: var(--status-success);
+  border: 0.5px solid color-mix(in srgb, var(--status-success) 50%, transparent);
+}
+.splitWrapper.danger {
+  background: var(--status-error-light);
+  color: var(--status-error);
+  border: 0.5px solid color-mix(in srgb, var(--status-error) 50%, transparent);
+}
+.splitWrapper.dangerFilled {
+  background: var(--status-error);
+  color: var(--neutral-0);
+}
+.splitWrapper.info {
+  background: var(--status-info);
+  color: var(--neutral-0);
+}
+
+/* Divider — the ONE interior seam. Uses currentColor at low alpha so
+ * it automatically tints per variant (white-ish on filled bgs, purple
+ * on tertiary, green on success, etc.) with no per-variant override. */
+.splitDivider {
+  width: 1px;
+  align-self: stretch;
+  flex-shrink: 0;
+  pointer-events: none;
+  background: color-mix(in srgb, currentColor 25%, transparent);
+}
+
+/* Disabled — the wrapper flattens to the same neutral surface the
+ * base `.btn:disabled` uses, and inner halves inherit through
+ * `color: inherit` without needing their own :disabled rule. */
+.splitWrapper:has(:disabled) {
+  background: var(--neutral-50);
+  color: var(--neutral-150);
+  border-color: transparent;
+  cursor: not-allowed;
+}
+.splitWrapper:has(:disabled) .splitDivider {
+  background: var(--neutral-150);
+}

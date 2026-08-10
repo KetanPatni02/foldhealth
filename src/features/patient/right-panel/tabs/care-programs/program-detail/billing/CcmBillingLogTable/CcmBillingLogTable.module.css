@@ -1,0 +1,206 @@
+.tableCard {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.tableGrid {
+  display: grid;
+  grid-template-columns: 94px minmax(0, 1fr) 126px 120px 56px 64px 64px;
+  align-items: center;
+}
+
+.headerRow {
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.headerCell {
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-200);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dataRow {
+  min-height: 56px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.dataRow:last-child {
+  border-bottom: none;
+}
+
+.dataRowWarning {
+  background: linear-gradient(90deg, var(--status-warning-light) 0%, var(--neutral-0) 63%);
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  padding: 12px 8px;
+  min-width: 0;
+}
+
+.cellProgramWarning {
+  border-left: 3px solid var(--status-warning);
+  padding-left: 5px;
+}
+
+.badgeTrigger {
+  display: inline-flex;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+}
+
+.userPicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  background: var(--secondary-200);
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+}
+
+.userPickerChevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 11px;
+  height: 8px;
+  padding-right: 2px;
+}
+
+.durationField {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  height: 32px;
+  border: 0.5px solid var(--neutral-200);
+  border-radius: 4px;
+  background: var(--neutral-0);
+  overflow: hidden;
+}
+
+.durationInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 0 8px;
+  font-size: 14px;
+  color: var(--neutral-400);
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+
+.durationSuffix {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  background: var(--neutral-50);
+  border-left: 0.5px solid var(--neutral-200);
+  font-size: 12px;
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+
+.inclusionToggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 999px;
+  background: var(--neutral-0);
+}
+
+.inclusionSeg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 4px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--neutral-300);
+  cursor: pointer;
+}
+
+.inclusionSegExcluded {
+  background: var(--neutral-150);
+  color: var(--neutral-400);
+}
+
+.inclusionSegPending {
+  background: var(--neutral-150);
+  color: var(--neutral-400);
+}
+
+.inclusionSegIncluded {
+  background: var(--status-success);
+  color: var(--neutral-0);
+}
+
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.actionDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+.notePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--neutral-50);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.noteActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.selectCompact {
+  width: 100%;
+}
+
+.selectCompact :global(button) {
+  min-height: 28px;
+  font-size: 12px;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 24px;
+  color: var(--neutral-300);
+  font-size: 13px;
+  text-align: center;
+}

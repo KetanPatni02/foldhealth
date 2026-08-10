@@ -6,6 +6,7 @@ import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { ErrorState } from '../../components/ErrorState/ErrorState';
 import { Icon } from '../../components/Icon/Icon';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { HeaderCell } from '../../components/HeaderCell/HeaderCell';
 
 function EmptySearch() {
   return (
@@ -174,11 +175,14 @@ export function WorklistTable() {
     else clearSelected();
   };
 
-  const thStyle = {
-    padding: '8px 14px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)',
-    borderBottom: '1px solid var(--neutral-150)', background: 'var(--neutral-0)',
-    position: 'sticky', top: 0, zIndex: 2, textAlign: 'left',
-    whiteSpace: 'nowrap', userSelect: 'none',
+  // Shared sticky-top styling merged into each HeaderCell so the header
+  // row stays pinned when the table body scrolls. HeaderCell already
+  // handles background / padding / typography.
+  const headerStickyStyle = {
+    borderBottom: '1px solid var(--neutral-150)',
+    position: 'sticky',
+    top: 0,
+    zIndex: 2,
   };
 
   const colCount = 12;
@@ -229,20 +233,25 @@ export function WorklistTable() {
       <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'Inter', sans-serif", minWidth: 900 }}>
         <thead>
           <tr>
-            <th style={{ ...thStyle, width: 36, padding: '8px 10px', position: 'sticky', top: 0, left: 0, zIndex: 4 }}>
+            <th style={{
+              padding: '8px 10px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)',
+              borderBottom: '1px solid var(--neutral-150)', background: 'var(--neutral-0)',
+              width: 36, position: 'sticky', top: 0, left: 0, zIndex: 4,
+              textAlign: 'left', whiteSpace: 'nowrap', userSelect: 'none',
+            }}>
               <Checkbox checked={someSelected ? 'indeterminate' : allSelected} onCheckedChange={handleSelectAll} />
             </th>
-            <th style={{ ...thStyle, padding: '8px 12px', position: 'sticky', top: 0, left: 36, zIndex: 4, borderRight: '1px solid var(--neutral-150)' }}>Members</th>
-            <th style={thStyle}>LACE Acuity</th>
-            <th style={thStyle}>Outreach Window</th>
-            <th style={thStyle}>TOC Status</th>
-            <th style={thStyle}>Outreach</th>
-            <th style={thStyle}>Next Outreach</th>
-            <th style={thStyle}>Start Date</th>
-            <th style={thStyle}>Last Admission</th>
-            <th style={thStyle}>Assignee</th>
-            <th style={thStyle}>Agent Assigned</th>
-            <th style={{ ...thStyle, width: 100, position: 'sticky', top: 0, right: 0, zIndex: 3 }}>Actions</th>
+            <HeaderCell label="Members" style={{ ...headerStickyStyle, left: 36, zIndex: 4, borderRight: '1px solid var(--neutral-150)' }} />
+            <HeaderCell label="LACE Acuity" style={headerStickyStyle} />
+            <HeaderCell label="Outreach Window" style={headerStickyStyle} />
+            <HeaderCell label="TOC Status" style={headerStickyStyle} />
+            <HeaderCell label="Outreach" style={headerStickyStyle} />
+            <HeaderCell label="Next Outreach" style={headerStickyStyle} />
+            <HeaderCell label="Start Date" style={headerStickyStyle} />
+            <HeaderCell label="Last Admission" style={headerStickyStyle} />
+            <HeaderCell label="Assignee" style={headerStickyStyle} />
+            <HeaderCell label="Agent Assigned" style={headerStickyStyle} />
+            <HeaderCell label="Actions" style={{ ...headerStickyStyle, width: 100, right: 0, zIndex: 3 }} />
           </tr>
         </thead>
         <tbody>
