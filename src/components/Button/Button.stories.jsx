@@ -29,17 +29,32 @@ export default {
       control: 'text',
       description: 'Button label text',
     },
+    showLeadingIcon: {
+      control: 'boolean',
+      description: 'Toggle the leading icon on/off (uses `leadingIcon` for the glyph)',
+      table: { defaultValue: { summary: 'false' } },
+    },
     leadingIcon: {
       control: 'text',
-      description: 'Solar icon name for leading icon (e.g. solar:add-circle-linear)',
+      description: 'Solar icon name used when `showLeadingIcon` is on (or when `iconOnly` is on)',
+    },
+    showTrailingIcon: {
+      control: 'boolean',
+      description: 'Toggle the trailing icon on/off (uses `trailingIcon` for the glyph)',
+      table: { defaultValue: { summary: 'false' } },
     },
     trailingIcon: {
       control: 'text',
-      description: 'Solar icon name for trailing icon',
+      description: 'Solar icon name used when `showTrailingIcon` is on',
     },
     iconOnly: {
       control: 'boolean',
       description: 'Square icon-only button (hides text)',
+      table: { defaultValue: { summary: 'false' } },
+    },
+    dropdown: {
+      control: 'boolean',
+      description: 'Split-button mode — appends a chevron with a MenuPopover of secondary actions',
       table: { defaultValue: { summary: 'false' } },
     },
     fullWidth: {
@@ -58,16 +73,41 @@ export default {
 /**
  * The default playground — tweak every prop in the Controls panel.
  * This single story replaces all the individual variant stories.
+ *
+ * Leading / trailing icons live behind their own boolean toggles so the
+ * default preview stays label-only; flip `showLeadingIcon` (or set
+ * `iconOnly`) to bring the glyph in.
  */
+const DROPDOWN_MENU = [
+  { key: 'draft',     icon: 'solar:document-linear',        label: 'Save as draft' },
+  { key: 'template',  icon: 'solar:copy-linear',            label: 'Save as template' },
+  { key: 'duplicate', icon: 'solar:documents-linear',       label: 'Duplicate' },
+  { divider: true },
+  { key: 'delete',    icon: 'solar:trash-bin-trash-linear', label: 'Delete', danger: true },
+];
+
 export const Playground = {
   args: {
     variant: 'primary',
     size: 'L',
     children: 'Button Text',
-    leadingIcon: '',
-    trailingIcon: '',
+    showLeadingIcon: false,
+    leadingIcon: 'solar:add-circle-linear',
+    showTrailingIcon: false,
+    trailingIcon: 'solar:alt-arrow-right-linear',
     iconOnly: false,
+    dropdown: false,
     fullWidth: false,
     disabled: false,
   },
+  render: ({ showLeadingIcon, leadingIcon, showTrailingIcon, trailingIcon, iconOnly, dropdown, ...rest }) => (
+    <Button
+      {...rest}
+      iconOnly={iconOnly}
+      leadingIcon={(showLeadingIcon || iconOnly) ? leadingIcon : ''}
+      trailingIcon={showTrailingIcon ? trailingIcon : ''}
+      menuItems={dropdown ? DROPDOWN_MENU : undefined}
+      onMenuSelect={dropdown ? (key) => alert(`Menu action: ${key}`) : undefined}
+    />
+  ),
 };
