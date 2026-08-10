@@ -104,9 +104,10 @@ export function IcdCard({
   // The `+ Custom Date` action stays at the end and is marked as a
   // singleAction so clicks trigger its own handler rather than toggling.
   const effectiveDosOptions = useMemo(() => {
-    const customEntries = card.dosList
-      .filter(d => d.mode === 'custom')
-      .map(d => ({ value: d.value, label: d.value }));
+    const customEntries = [];
+    for (const d of card.dosList) {
+      if (d.mode === 'custom') customEntries.push({ value: d.value, label: d.value });
+    }
     const rest = dosOptions.filter(o => o.value !== DOS_CUSTOM);
     const customAction = dosOptions.find(o => o.value === DOS_CUSTOM);
     return [

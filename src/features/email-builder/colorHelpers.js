@@ -31,7 +31,12 @@ function splitTopLevel(str, delim) {
     }
   }
   if (buf.length) out.push(buf);
-  return out.map(s => s.trim()).filter(Boolean);
+  const trimmed = [];
+  for (const s of out) {
+    const t = s.trim();
+    if (t) trimmed.push(t);
+  }
+  return trimmed;
 }
 
 // Parse "linear-gradient(90deg, #FFF 0%, #000 100%)" into a structured object.

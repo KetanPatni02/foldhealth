@@ -12,7 +12,10 @@ import { tintSvgMarkup } from './svgTint';
 import { sanitizeSvg, sanitizeEmailHtml } from '../../lib/sanitizeHtml';
 import styles from './EmailBuilder.module.css';
 
-// Turns a (solid OR gradient) value into the right pair of style props.
+const CONTAINER_V_ALIGN = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };
+const CONTAINER_H_ALIGN = { left: 'flex-start', center: 'center', right: 'flex-end' };
+
+// Turns a solid OR gradient value into the right pair of style props.
 // Gradients can't use `backgroundColor` — they go on `backgroundImage`.
 // Returns an object you can spread onto a style prop.
 function bgProps(value) {
@@ -844,10 +847,8 @@ function BlockBody({ id, block, ctx, dragAttributes, dragListeners }) {
       containerStyle.display = 'flex';
       containerStyle.flexDirection = 'column';
       containerStyle.minWidth = 0;
-      const vMap = { top: 'flex-start', middle: 'center', bottom: 'flex-end' };
-      const hMap = { left: 'flex-start', center: 'center', right: 'flex-end' };
-      containerStyle.justifyContent = vMap[props.contentAlign] || 'flex-start';
-      containerStyle.alignItems = hMap[props.contentAlignH] || 'stretch';
+      containerStyle.justifyContent = CONTAINER_V_ALIGN[props.contentAlign] || 'flex-start';
+      containerStyle.alignItems = CONTAINER_H_ALIGN[props.contentAlignH] || 'stretch';
     }
     const isNestTarget = ctx.dropIndicator?.isNest && ctx.dropIndicator?.parentId === id;
     return (

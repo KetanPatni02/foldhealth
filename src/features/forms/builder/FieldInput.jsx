@@ -91,10 +91,11 @@ export function FieldInput({ field, value, onChange, interactive = false, idPref
       }
       const multi = field.control === 'checkbox';
       const arr = Array.isArray(value) ? value : [];
+      const selected = new Set(arr);
       return (
         <div className={styles.fiOptions}>
           {opts.map((o, i) => {
-            const checked = multi ? arr.includes(o.value) : value === o.value;
+            const checked = multi ? selected.has(o.value) : value === o.value;
             if (multi) {
               return (
                 <label key={i} className={styles.fiOptionRow}>

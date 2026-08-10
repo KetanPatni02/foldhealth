@@ -30,6 +30,13 @@ const LOCATION_OPTIONS = [
   ...new Set(CITIES.map(([city, state]) => `${city}, ${state}`))
 ].map(loc => ({ value: loc, label: loc }));
 
+const TH_STYLE = {
+  padding: '8px 14px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)',
+  borderBottom: '1px solid var(--neutral-150)', background: 'var(--neutral-0)',
+  position: 'sticky', top: 0, zIndex: 2, textAlign: 'left',
+  whiteSpace: 'nowrap', userSelect: 'none',
+};
+
 function hash(str) {
   let h = 0;
   for (let i = 0; i < str.length; i++) {
@@ -165,8 +172,9 @@ export function SchedulingListTable() {
   const startIdx = (currentPage - 1) * perPage;
   const paginated = filtered.slice(startIdx, startIdx + perPage);
 
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const allIds = paginated.map(p => p.id);
-  const allSelected = allIds.length > 0 && allIds.every(id => selectedIds.includes(id));
+  const allSelected = allIds.length > 0 && allIds.every(id => selectedIdSet.has(id));
   const someSelected = selectedIds.length > 0 && !allSelected;
 
   const handleSelectAll = (checked) => {
@@ -179,13 +187,6 @@ export function SchedulingListTable() {
   const handleClearAll = () => {
     setProviderFilter('');
     setLocationFilter('');
-  };
-
-  const thStyle = {
-    padding: '8px 14px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)',
-    borderBottom: '1px solid var(--neutral-150)', background: 'var(--neutral-0)',
-    position: 'sticky', top: 0, zIndex: 2, textAlign: 'left',
-    whiteSpace: 'nowrap', userSelect: 'none',
   };
 
   if (patientsLoading) return <TableSkeleton rows={perPage} />;
@@ -240,25 +241,25 @@ export function SchedulingListTable() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'Inter', sans-serif", minWidth: 900 }}>
           <thead>
             <tr>
-              <th style={{ ...thStyle, width: 36, padding: '8px 10px', position: 'sticky', top: 0, left: 0, zIndex: 4 }}>
+              <th style={{ ...TH_STYLE, width: 36, padding: '8px 10px', position: 'sticky', top: 0, left: 0, zIndex: 4 }}>
                 <Checkbox checked={someSelected ? 'indeterminate' : allSelected} onCheckedChange={handleSelectAll} />
               </th>
-              <th style={{ ...thStyle, padding: '8px 12px', position: 'sticky', top: 0, left: 36, zIndex: 4, borderRight: '1px solid var(--neutral-150)' }}>Members</th>
-              <th style={thStyle}>LACE Acuity</th>
-              <th style={thStyle}>Outreach Window</th>
-              <th style={thStyle}>TOC Status</th>
-              <th style={thStyle}>Outreach</th>
-              <th style={thStyle}>Next Outreach</th>
-              <th style={thStyle}>Start Date</th>
-              <th style={thStyle}>Last Admission</th>
-              <th style={thStyle}>Assignee</th>
-              <th style={thStyle}>Agent Assigned</th>
-              <th style={{ ...thStyle, width: 100, position: 'sticky', top: 0, right: 0, zIndex: 3 }}>Actions</th>
+              <th style={{ ...TH_STYLE, padding: '8px 12px', position: 'sticky', top: 0, left: 36, zIndex: 4, borderRight: '1px solid var(--neutral-150)' }}>Members</th>
+              <th style={TH_STYLE}>LACE Acuity</th>
+              <th style={TH_STYLE}>Outreach Window</th>
+              <th style={TH_STYLE}>TOC Status</th>
+              <th style={TH_STYLE}>Outreach</th>
+              <th style={TH_STYLE}>Next Outreach</th>
+              <th style={TH_STYLE}>Start Date</th>
+              <th style={TH_STYLE}>Last Admission</th>
+              <th style={TH_STYLE}>Assignee</th>
+              <th style={TH_STYLE}>Agent Assigned</th>
+              <th style={{ ...TH_STYLE, width: 100, position: 'sticky', top: 0, right: 0, zIndex: 3 }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {paginated.map(p => (
-              <WorklistRow key={p.id} patient={p} isSelected={selectedIds.includes(p.id)} onSelect={selectPatient} />
+              <WorklistRow key={p.id} patient={p} isSelected={selectedIdSet.has(p.id)} onSelect={selectPatient} />
             ))}
           </tbody>
         </table>

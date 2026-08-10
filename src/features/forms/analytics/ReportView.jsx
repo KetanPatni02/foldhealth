@@ -59,7 +59,9 @@ function TextBreakdown({ stats }) {
   );
 }
 
-export function ReportView({ fields, responses, pending = [] }) {
+const EMPTY_PENDING = [];
+
+export function ReportView({ fields, responses, pending = EMPTY_PENDING }) {
   const leaves = leafFields(fields);
   const dropMap = useMemo(() => {
     const m = {};

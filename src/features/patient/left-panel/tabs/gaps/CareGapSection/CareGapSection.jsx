@@ -1,7 +1,9 @@
+import { useMemo } from 'react';
 import { CareGapItem } from '../CareGapItem/CareGapItem.jsx';
 import styles from './CareGapSection.module.css';
 
 export function CareGapSection({ section, selectedGaps, onToggleGap }) {
+  const selectedSet = useMemo(() => new Set(selectedGaps), [selectedGaps]);
   if (!section.items.length) return null;
 
   return (
@@ -19,7 +21,7 @@ export function CareGapSection({ section, selectedGaps, onToggleGap }) {
           <CareGapItem
             key={item.id}
             item={item}
-            selected={selectedGaps.includes(item.id)}
+            selected={selectedSet.has(item.id)}
             onSelect={onToggleGap}
           />
         ))}

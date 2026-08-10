@@ -25,6 +25,7 @@ const VIEW_ITEMS = [
   { key: 'grid', icon: 'solar:widget-4-linear' },
   { key: 'list', icon: 'solar:list-linear' },
 ];
+const EMPTY_LETTERS = [];
 
 function LetterThumb() {
   return <Avatar type="icon" variant="others" iconName="solar:document-text-linear" size="M" />;
@@ -40,7 +41,7 @@ const AddButton = ({ letter, added, onAdd }) => (
     : <Button variant="tertiary" size="S" className={styles.addBtn} onClick={() => onAdd(letter)}>Add</Button>
 );
 
-export function AddLetterDrawer({ letters = [], addedIds, onAdd, onPreview, onDownload, onClose }) {
+export function AddLetterDrawer({ letters = EMPTY_LETTERS, addedIds, onAdd, onPreview, onDownload, onClose }) {
   const [search, setSearch] = useState('');
   const [typeSel, setTypeSel] = useState([]);
   const [catSel, setCatSel] = useState([]);
@@ -55,12 +56,14 @@ export function AddLetterDrawer({ letters = [], addedIds, onAdd, onPreview, onDo
 
   const typeOptions = useMemo(() => [...new Set(letters.flatMap(l => l.fileType ? [l.fileType] : []))], [letters]);
   const catOptions = useMemo(() => [...new Set(letters.map(l => letterCategory(l.fileName)))], [letters]);
+  const typeSelSet = useMemo(() => new Set(typeSel), [typeSel]);
+  const catSelSet = useMemo(() => new Set(catSel), [catSel]);
 
   const q = search.trim().toLowerCase();
   const filtered = letters.filter(l =>
     (!q || l.fileName.toLowerCase().includes(q))
-    && (!typeSel.length || typeSel.includes(l.fileType))
-    && (!catSel.length || catSel.includes(letterCategory(l.fileName))));
+    && (!typeSel.length || typeSelSet.has(l.fileType))
+    && (!catSel.length || catSelSet.has(letterCategory(l.fileName))));
   const rows = sortKey === 'lastSent'
     ? filtered.toSorted((a, b) => (sortDir === 'asc' ? 1 : -1) * (toTime(a.lastSent) - toTime(b.lastSent)))
     : filtered;

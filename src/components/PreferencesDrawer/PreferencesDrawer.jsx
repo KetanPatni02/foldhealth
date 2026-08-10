@@ -31,7 +31,8 @@ function getInitials(name) {
 /* ── Multi-select (reused from AccountPanel pattern) ── */
 function MultiSelect({ options, value = [], onChange, placeholder }) {
   const [open, setOpen] = useState(false);
-  const toggle = (opt) => onChange(value.includes(opt) ? value.filter(v => v !== opt) : [...value, opt]);
+  const valueSet = new Set(value);
+  const toggle = (opt) => onChange(valueSet.has(opt) ? value.filter(v => v !== opt) : [...value, opt]);
   return (
     <div style={{ position: 'relative' }}>
       <div className={styles.tagInput} onClick={() => setOpen(v => !v)} style={{ cursor: 'pointer' }}>
@@ -49,7 +50,7 @@ function MultiSelect({ options, value = [], onChange, placeholder }) {
         <div className={styles.multiSelectDropdown}>
           {options.map(opt => (
             <label key={opt} className={styles.multiSelectOption}>
-              <input type="checkbox" checked={value.includes(opt)} onChange={() => toggle(opt)} />
+              <input type="checkbox" checked={valueSet.has(opt)} onChange={() => toggle(opt)} />
               <span>{opt}</span>
             </label>
           ))}

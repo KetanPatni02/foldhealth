@@ -9,6 +9,8 @@ import { BulkBar } from '../BulkBar/BulkBar';
 import { TableSkeleton } from '../TableSkeleton/TableSkeleton';
 import styles from './WorklistShell.module.css';
 
+const EMPTY_SELECTED_IDS = [];
+
 /**
  * WorklistShell — the reusable outer chrome for every worklist in the app
  * (TOC, HCC, CCM, HEDIS, AWV, …). Composes the header (title as an active
@@ -75,7 +77,7 @@ export function WorklistShell({
   renderRow,
   loading,
   emptyState,
-  selectedIds = [],
+  selectedIds = EMPTY_SELECTED_IDS,
   onSelectAll,
   onClearSelection,
   bulkActions,
@@ -89,7 +91,8 @@ export function WorklistShell({
   const [searchOpen, setSearchOpen] = useState(false);
 
   const allIds = rows.map((r) => r.id);
-  const allSelected = allIds.length > 0 && allIds.every((id) => selectedIds.includes(id));
+  const selectedIdSet = new Set(selectedIds);
+  const allSelected = allIds.length > 0 && allIds.every((id) => selectedIdSet.has(id));
   const someSelected = selectedIds.length > 0 && !allSelected;
 
   const checkboxCol = columns.find((c) => c.showCheckbox);

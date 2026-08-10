@@ -30,6 +30,8 @@ function blankSlot() {
   return { days: ['M', 'T', 'W', 'Th', 'F'], from: '', to: '', timezone: 'America/New_York', locationId: '' };
 }
 
+const EMPTY_ALL_LOCATIONS = [];
+
 /**
  * EditLocationDrawer — used for both "New Location" and "Edit Practice
  * Location". Two-step wizard:
@@ -39,7 +41,7 @@ function blankSlot() {
  * Callers supply the initial `location` (null for New) and `onSubmit`; the
  * drawer builds the merged object and hands it back for persistence.
  */
-export function EditLocationDrawer({ location, allLocations = [], onClose, onSubmit }) {
+export function EditLocationDrawer({ location, allLocations = EMPTY_ALL_LOCATIONS, onClose, onSubmit }) {
   const isEdit = !!location;
   const [step, setStep] = useState(1);
 

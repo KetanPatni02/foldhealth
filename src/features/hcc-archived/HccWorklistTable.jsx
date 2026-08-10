@@ -206,7 +206,8 @@ export function HccWorklistTable() {
   const paginated = sorted.slice(startIdx, startIdx + perPage);
 
   const visibleIds = paginated.map(m => m.id);
-  const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedHccIds.includes(id));
+  const selectedSet = useMemo(() => new Set(selectedHccIds), [selectedHccIds]);
+  const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedSet.has(id));
   const someSelected = selectedHccIds.length > 0 && !allSelected;
 
   const handleSelectAll = (checked) => {

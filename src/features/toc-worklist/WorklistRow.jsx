@@ -17,15 +17,16 @@ import styles from './WorklistRow.module.css';
 
 const LANG_MAP = { en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese', ko: 'Korean', vi: 'Vietnamese', hi: 'Hindi', pa: 'Punjabi' };
 
+const TOC_STATUS_MAP = {
+  enrolled: { variant: 'toc-enrolled', label: 'Enrolled', icon: 'solar:check-circle-bold' },
+  engaged: { variant: 'toc-engaged', label: 'Engaged', icon: 'solar:link-round-bold' },
+  attempted: { variant: 'toc-attempted', label: 'Attempted', icon: 'solar:history-bold' },
+  new: { variant: 'toc-new', label: 'New', icon: 'solar:star-bold' },
+  oncall: { variant: 'toc-oncall', label: 'On Call', icon: 'solar:phone-calling-bold' },
+};
+
 function TocStatusBadge({ status }) {
-  const MAP = {
-    enrolled: { variant: 'toc-enrolled', label: 'Enrolled', icon: 'solar:check-circle-bold' },
-    engaged: { variant: 'toc-engaged', label: 'Engaged', icon: 'solar:link-round-bold' },
-    attempted: { variant: 'toc-attempted', label: 'Attempted', icon: 'solar:history-bold' },
-    new: { variant: 'toc-new', label: 'New', icon: 'solar:star-bold' },
-    oncall: { variant: 'toc-oncall', label: 'On Call', icon: 'solar:phone-calling-bold' },
-  };
-  const cfg = MAP[status] || MAP.new;
+  const cfg = TOC_STATUS_MAP[status] || TOC_STATUS_MAP.new;
   return <Badge size="M" variant={cfg.variant} label={cfg.label} icon={cfg.icon} />;
 }
 

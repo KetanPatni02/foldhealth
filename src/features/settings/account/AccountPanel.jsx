@@ -545,7 +545,12 @@ function AddColumnDropdown({ available, labels, onAdd, onClose }) {
       <div className={styles.addColDropdown}>
         {available.map(col => (
           <label key={col} className={styles.addColOption}>
-            <input type="checkbox" checked={selectedSet.has(col)} onChange={() => setSelected(prev => prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col])} />
+            <input type="checkbox" checked={selectedSet.has(col)} onChange={() => setSelected(prev => {
+              const next = new Set(prev);
+              if (next.has(col)) next.delete(col);
+              else next.add(col);
+              return [...next];
+            })} />
             <span>{labels[col] || col}</span>
           </label>
         ))}

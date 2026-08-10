@@ -16,6 +16,8 @@ const parseDate = (mmddyyyy) => {
   return { y, m, d, key: `${y}-${m}-${d}` };
 };
 
+const EMPTY_ICDS = [];
+
 /**
  * DiagPanelFilterBar — filter row shown under the DiagPanel toolbar when the
  * Filter icon is active (Figma 9810:158181). Six FilterChips + Clear All.
@@ -26,7 +28,7 @@ const parseDate = (mmddyyyy) => {
  */
 export function DiagPanelFilterBar({
   filters,
-  icds = [],
+  icds = EMPTY_ICDS,
   member,
   onChange,
   onClearAll,

@@ -103,8 +103,9 @@ export function EditableGrid({ storageKey, defaultLayout, renderers, editing = f
   // rather than the cell avoids a feedback loop.
   const measureAndFit = useCallback(() => {
     let changed = false;
+    const manual = new Set(manualRef.current);
     const next = layoutRef.current.map(l => {
-      if (manualRef.current.includes(l.i)) return l;
+      if (manual.has(l.i)) return l;
       const el = itemEls.current[l.i];
       if (!el) return l;
       const contentPx = el.offsetHeight;

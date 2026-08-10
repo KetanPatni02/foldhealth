@@ -324,6 +324,14 @@ export function ActionsMenuPopover({ anchorRect, onClose, onAction }) {
 
 // ── OpenIcdsHoverPopover — list ICDs, click to open DiagPanel ─────────────
 
+function isAISuggestedIcd(i) {
+  return ['Suspect', 'Recapture'].includes(i.type || '');
+}
+
+function hccShortLabel(h) {
+  return h?.split(' - ')[0]?.trim() || h;
+}
+
 export function OpenIcdsHoverPopover({
   anchorRect,
   member,
@@ -334,11 +342,10 @@ export function OpenIcdsHoverPopover({
   onLeave,
 }) {
   if (!anchorRect) return null;
-  const isAISuggested = (i) => ['Suspect', 'Recapture'].includes(i.type || '');
   const open = (icds || []).filter(i => i.status !== 'Dismissed' && i.status !== 'Accepted');
-  const linked = open.filter(i => !isAISuggested(i));
+  const linked = open.filter(i => !isAISuggestedIcd(i));
   const notLinkedClean = [
-    ...open.filter(i => isAISuggested(i)),
+    ...open.filter(i => isAISuggestedIcd(i)),
     ...(notLinked || []).filter(i => i.status !== 'Dismissed' && i.status !== 'Accepted'),
   ];
   const all = [...linked, ...notLinkedClean];
@@ -347,8 +354,6 @@ export function OpenIcdsHoverPopover({
   const W = 296;
   const left = Math.min(anchorRect.left, window.innerWidth - W - 8);
   const top = anchorRect.bottom + 8;
-
-  const hccShort = (h) => h?.split(' - ')[0]?.trim() || h;
 
   return createPortal(
     <>
@@ -371,7 +376,7 @@ export function OpenIcdsHoverPopover({
               <span>Open ICD's (DOS: {dos || '—'}):</span>
             </div>
             {linked.map((icd, i) => (
-              <IcdHoverRow key={`l${i}`} icd={icd} hccShort={hccShort} onClick={() => onIcdClick?.(icd.code)} />
+              <IcdHoverRow key={`l${i}`} icd={icd} hccShort={hccShortLabel} onClick={() => onIcdClick?.(icd.code)} />
             ))}
           </>
         )}
@@ -381,7 +386,7 @@ export function OpenIcdsHoverPopover({
               <span>Open ICD's (No DOS Linked):</span>
             </div>
             {notLinkedClean.map((icd, i) => (
-              <IcdHoverRow key={`n${i}`} icd={icd} hccShort={hccShort} onClick={() => onIcdClick?.(icd.code)} />
+              <IcdHoverRow key={`n${i}`} icd={icd} hccShort={hccShortLabel} onClick={() => onIcdClick?.(icd.code)} />
             ))}
           </>
         )}

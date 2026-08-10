@@ -94,8 +94,8 @@ export const DOC_TYPES = [
 
 /**
  * Build the doc record for a user-uploaded chart. Shared by both upload entry
- * points so the shape stays identical. `pdf` is an object URL for an instant
- * in-session preview; once persisted, the Supabase Storage URL replaces it.
+ * points so the shape stays identical. Pass the raw `file` for in-session
+ * preview via FilePreview; once persisted, the Supabase Storage URL replaces it.
  */
 export function makeUploadedChartDoc(member, { file, caption, docType, status = 'Pending' }) {
   const uploadedOn = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
@@ -109,10 +109,7 @@ export function makeUploadedChartDoc(member, { file, caption, docType, status = 
     n: displayName,
     caption: displayName,
     t: docType,
-    // Object URL for EVERY file type (not just PDF) so images / DOCX
-    // preview in-session too — FilePreview routes by `ext`/`fname`.
-    // Once persisted, the Supabase Storage URL replaces it.
-    pdf: file ? URL.createObjectURL(file) : undefined,
+    file,
     fname: file?.name || '',
     ext: ((file?.name || '').match(/\.([a-z0-9]+)$/i)?.[1] || '').toLowerCase(),
     dateAdded: uploadedOn,

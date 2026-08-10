@@ -68,9 +68,12 @@ function updateField(items, id, patch) {
   });
 }
 function removeField(items, id) {
-  return items
-    .filter((it) => it.linkId !== id)
-    .map((it) => (it.items ? { ...it, items: removeField(it.items, id) } : it));
+  const out = [];
+  for (const it of items) {
+    if (it.linkId === id) continue;
+    out.push(it.items ? { ...it, items: removeField(it.items, id) } : it);
+  }
+  return out;
 }
 
 // ── Palette ─────────────────────────────────────────────────────────────────

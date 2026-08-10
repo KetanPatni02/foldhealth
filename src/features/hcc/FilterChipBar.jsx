@@ -136,19 +136,24 @@ export function FilterChipBar({
 
   // FilterDefs for the shared bar — moreFilterItems shape ({k,label}) plus a
   // `primary` flag driven by PRIMARY_FILTER_KEYS, and matching `key` prop.
+  const primaryKeySet = useMemo(() => new Set(primaryFilterKeys), [primaryFilterKeys]);
+
   const filterDefs = useMemo(
     () => moreFilterItems.map(item => ({
       key: item.k,
       label: item.label,
-      primary: primaryFilterKeys.includes(item.k),
+      primary: primaryKeySet.has(item.k),
     })),
-    [moreFilterItems, primaryFilterKeys],
+    [moreFilterItems, primaryKeySet],
   );
 
-  const activeKeys = useMemo(
-    () => moreFilterItems.map(x => x.k).filter(k => (filters[k] || []).length > 0),
-    [filters, moreFilterItems],
-  );
+  const activeKeys = useMemo(() => {
+    const keys = [];
+    for (const x of moreFilterItems) {
+      if ((filters[x.k] || []).length > 0) keys.push(x.k);
+    }
+    return keys;
+  }, [filters, moreFilterItems]);
 
   // Toggle a chip's visibility from the More Filters popover. Base = the
   // caller-persisted set if present; otherwise primary set (auto-fit's seed).

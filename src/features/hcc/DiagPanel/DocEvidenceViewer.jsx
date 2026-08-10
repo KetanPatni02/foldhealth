@@ -21,8 +21,9 @@ import styles from './DocEvidenceViewer.module.css';
 export function DocEvidenceViewer({ member, icdScope, openDoc = null }) {
   const [url, setUrl] = useState(null);
   const docPdf = openDoc?.pdf || null;
+  const docFile = openDoc?.file || null;
   const docExt = (openDoc?.ext || '').toLowerCase();
-  const useDirect = !!docPdf; // real uploaded file — render as-is
+  const useDirect = !!(docPdf || docFile); // real uploaded file — render as-is
 
   // Build a synthesized note (blob URL) only when we DON'T have a real doc
   // file. Each mount — including StrictMode's double-mount — gets a fresh
@@ -41,8 +42,9 @@ export function DocEvidenceViewer({ member, icdScope, openDoc = null }) {
     // surprise download from an <iframe> the browser can't render).
     return (
       <FilePreview
-        key={docPdf}
+        key={docPdf || docFile?.name || openDoc?.id}
         src={docPdf}
+        file={docFile}
         name={openDoc.name || 'Source document'}
         ext={docExt}
         className={styles.frame}

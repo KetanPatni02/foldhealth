@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { Checkbox } from '../ShadcnCheckbox/ShadcnCheckbox';
 import styles from './CheckboxListPopover.module.css';
 
+const EMPTY_SELECTED = [];
+
 /**
  * Fold Health CheckboxListPopover — anchored, portaled multi-select.
  *
@@ -26,7 +28,7 @@ export function CheckboxListPopover({
   anchorRect,
   label,
   options,
-  selected = [],
+  selected = EMPTY_SELECTED,
   onChange,
   onClose,
   width = 240,
@@ -46,8 +48,9 @@ export function CheckboxListPopover({
 
   const toggle = (v) => {
     const next = sel.has(v) ? selected.filter(x => x !== v) : [...selected, v];
+    const nextSet = new Set(next);
     // Keep the option-order stable
-    onChange?.(options.filter(o => next.includes(o)));
+    onChange?.(options.filter(o => nextSet.has(o)));
   };
 
   // With an active search query, the Select All / Clear All controls and the
@@ -63,7 +66,10 @@ export function CheckboxListPopover({
     const next = new Set([...selected, ...visible]);
     onChange?.(options.filter(o => next.has(o)));
   };
-  const clearVisible = () => onChange?.(selected.filter(x => !visible.includes(x)));
+  const clearVisible = () => {
+    const visibleSet = new Set(visible);
+    onChange?.(selected.filter(x => !visibleSet.has(x)));
+  };
   const toggleAll = () => (allSelected ? clearVisible() : selectVisible());
 
   if (!anchorRect) return null;

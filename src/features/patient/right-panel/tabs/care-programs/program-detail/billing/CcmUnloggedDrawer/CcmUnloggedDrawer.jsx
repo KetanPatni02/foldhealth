@@ -48,8 +48,10 @@ export function CcmUnloggedDrawer({ patientId, periodId, onClose }) {
     if (!periodId || totalSelected === 0) return;
     setSaving(true);
     try {
-      await Promise.all(sessions.filter(s => selected.has(s.id)).map(session =>
-        addCcmBillableActivity({
+      const promises = [];
+      for (const session of sessions) {
+        if (!selected.has(session.id)) continue;
+        promises.push(addCcmBillableActivity({
           id: `act-ul-${session.id}-${Date.now()}`,
           periodId,
           patientId,
@@ -60,8 +62,9 @@ export function CcmUnloggedDrawer({ patientId, periodId, onClose }) {
           loggedByInitials: 'Y',
           occurredAt: new Date().toISOString(),
           isUnlogged: true,
-        }),
-      ));
+        }));
+      }
+      await Promise.all(promises);
     } finally {
       setSaving(false);
     }

@@ -700,8 +700,8 @@ export function ChartDetailDrawer({ charts, initialId, member, onClose }) {
             <div className={styles.leftPane}>
               <div className={styles.paneHeader}>{selected.n}</div>
               <div className={styles.pdfWrap}>
-                {selected.pdf ? (
-                  <FilePreview src={selected.pdf} name={selected.n} ext={selected.ext} />
+                {(selected.pdf || selected.file) ? (
+                  <FilePreview src={selected.pdf} file={selected.file} name={selected.n} ext={selected.ext} />
                 ) : (
                   <DocEvidenceViewer member={member} />
                 )}

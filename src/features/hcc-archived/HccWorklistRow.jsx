@@ -161,26 +161,32 @@ function RoleAssignTrigger({ role, memberId, dosDate }) {
   // staff in the same role bucket. Deduped by id; configured teams win.
   const candidates = (() => {
     const teamType = ROLE_LABEL[role];
-    const fromTeams = (teams || [])
-      .filter(t => t.kind === 'hcc' && t.teamType === teamType)
-      .flatMap(t => (t.members || []).map(m => ({
-        id: m.userId,
-        name: m.name,
-        initials: m.initials,
-        roles: m.roles,
-        source: 'team',
-        teamName: t.name,
-      })));
+    const fromTeams = [];
+    for (const t of teams || []) {
+      if (t.kind !== 'hcc' || t.teamType !== teamType) continue;
+      for (const m of t.members || []) {
+        fromTeams.push({
+          id: m.userId,
+          name: m.name,
+          initials: m.initials,
+          roles: m.roles,
+          source: 'team',
+          teamName: t.name,
+        });
+      }
+    }
     const seen = new Set(fromTeams.map(c => c.id));
-    const fromAstrana = staffForRole(role)
-      .filter(s => !seen.has(s.id))
-      .map(s => ({
+    const fromAstrana = [];
+    for (const s of staffForRole(role)) {
+      if (seen.has(s.id)) continue;
+      fromAstrana.push({
         id: s.id,
         name: s.name,
         initials: s.initials,
         roles: ROLE_LABEL[s.role],
         source: 'astrana',
-      }));
+      });
+    }
     return [...fromTeams, ...fromAstrana];
   })();
 

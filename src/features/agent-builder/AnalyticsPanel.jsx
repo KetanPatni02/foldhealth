@@ -188,7 +188,11 @@ function SnapshotContent({ agent, showBanner, setShowBanner }) {
   const goalsData = useAppStore(s => s.goalsData) || [];
   const c = builderConfig || {};
 
-  const selectedGoals = (c.goal_ids || []).map(id => goalsData.find(g => String(g.id) === String(id))).filter(Boolean);
+  const selectedGoals = [];
+  for (const id of c.goal_ids || []) {
+    const goal = goalsData.find(g => String(g.id) === String(id));
+    if (goal) selectedGoals.push(goal);
+  }
   const languages = (c.languages || ['english']).map(l => l.charAt(0).toUpperCase() + l.slice(1));
 
   return (

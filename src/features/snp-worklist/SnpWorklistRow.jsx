@@ -150,14 +150,16 @@ export function SnpWorklistRow({ member, isSelected, onSelect }) {
   // SNP-eligible users: platform users who do NOT carry any of the HCC-only
   // clinical roles (Coder / Support / QA / Compliance). Shape matches
   // AssigneeChange's picker contract — { id, name, initials, role? }.
-  const eligibleUsers = platformUsers
-    .filter(u => !u.clinicalRoles?.some(r => HCC_ONLY_ROLES.has(r)))
-    .map(u => ({
+  const eligibleUsers = [];
+  for (const u of platformUsers) {
+    if (u.clinicalRoles?.some(r => HCC_ONLY_ROLES.has(r))) continue;
+    eligibleUsers.push({
       id: u.id,
       name: u.name,
       initials: u.initials,
       role: u.clinicalRoles?.[0] || '',
-    }));
+    });
+  }
 
   // Derive the role sub-line dynamically. Fallback chain:
   //   1. explicit `m.assigneeRole` (set by the picker or the mock file)

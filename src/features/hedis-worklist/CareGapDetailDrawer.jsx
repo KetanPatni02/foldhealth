@@ -134,7 +134,7 @@ function toActivityLogEntries(rawEntries) {
   const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const out = [];
   let currentGroup = '';
-  const sorted = [...(rawEntries || [])].sort((a, b) =>
+  const sorted = (rawEntries || []).toSorted((a, b) =>
     new Date(b.when ?? b.at) - new Date(a.when ?? a.at)
   );
   for (const e of sorted) {

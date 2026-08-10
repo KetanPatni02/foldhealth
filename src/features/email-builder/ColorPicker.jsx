@@ -231,7 +231,7 @@ function GradientPicker({ value, onChange, variables }) {
   };
 
   const addStop = () => {
-    const sorted = [...grad.stops].sort((a, b) => a.position - b.position);
+    const sorted = grad.stops.toSorted((a, b) => a.position - b.position);
     let pos = 50;
     if (sorted.length >= 2) {
       // Insert in the largest gap so stops spread out naturally.

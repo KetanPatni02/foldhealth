@@ -40,7 +40,11 @@ export function fmtDate(iso) {
 
 /** "Mar 16, 2023 – Aug 16, 2023" from the response timestamps, or "All time". */
 export function dateRangeLabel(responses) {
-  const times = responses.map((r) => new Date(r.createdAt).getTime()).filter((t) => !Number.isNaN(t));
+  const times = [];
+  for (const r of responses) {
+    const t = new Date(r.createdAt).getTime();
+    if (!Number.isNaN(t)) times.push(t);
+  }
   if (!times.length) return 'All time';
   const opt = { month: 'short', day: 'numeric', year: 'numeric' };
   const lo = new Date(Math.min(...times)).toLocaleDateString('en-US', opt);

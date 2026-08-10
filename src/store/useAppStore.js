@@ -1143,14 +1143,15 @@ export const useAppStore = create((set, get) => ({
   hccAddedCharts: {},
   addChartDoc: (memberId, doc, file) => {
     if (!memberId || !doc) return;
+    const nextDoc = file ? { ...doc, file } : doc;
     set((state) => ({
       hccAddedCharts: {
         ...state.hccAddedCharts,
-        [memberId]: [...(state.hccAddedCharts[memberId] || []), doc],
+        [memberId]: [...(state.hccAddedCharts[memberId] || []), nextDoc],
       },
     }));
     // Durability: upload the file + persist the record to Supabase.
-    persistHccAddedChart(memberId, doc, file);
+    persistHccAddedChart(memberId, nextDoc, file);
     // Always drop a timeline entry so uploads land on the Activity tab
     // regardless of which surface triggered the add (Chart Review drawer,
     // Diag Panel Documents tab, quick Upload popover). The 1500ms dedup

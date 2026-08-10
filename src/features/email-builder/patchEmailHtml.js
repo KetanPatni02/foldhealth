@@ -210,10 +210,12 @@ function styleStr(obj) {
   // attribute, so values that contain literal `"` (e.g. font stacks like
   // 'Inter', "Segoe UI', sans-serif) would prematurely close the attribute.
   // Swap any `"` for `'` — equivalent in CSS and safe inside attributes.
-  return Object.entries(obj)
-    .filter(([, v]) => v != null && v !== '')
-    .map(([k, v]) => `${k.replace(/([A-Z])/g, '-$1').toLowerCase()}:${String(v).replace(/"/g, "'")}`)
-    .join(';');
+  const parts = [];
+  for (const [k, v] of Object.entries(obj)) {
+    if (v == null || v === '') continue;
+    parts.push(`${k.replace(/([A-Z])/g, '-$1').toLowerCase()}:${String(v).replace(/"/g, "'")}`);
+  }
+  return parts.join(';');
 }
 
 function renderBlock(doc, id) {
@@ -706,11 +708,16 @@ export function renderEmailHtml(doc, { wrapperPadding = '24px 0', theme = 'auto'
   // actually references — keeps the email payload small and avoids loading
   // 30+ fonts every recipient doesn't need.
   const usedFontValues = collectUsedFontFamilies(effectiveDoc);
-  const usedFamilies = [...usedFontValues]
-    .map(v => resolveFont(v))
-    .filter(f => f && f.googleFamily)
-    .map(f => `family=${f.googleFamily}`)
-    .filter((v, i, a) => a.indexOf(v) === i);
+  const usedFamilies = [];
+  const seenFamilies = new Set();
+  for (const v of usedFontValues) {
+    const f = resolveFont(v);
+    if (!f?.googleFamily) continue;
+    const family = `family=${f.googleFamily}`;
+    if (seenFamilies.has(family)) continue;
+    seenFamilies.add(family);
+    usedFamilies.push(family);
+  }
   const googleFontsLink = usedFamilies.length
     ? `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?${usedFamilies.join('&')}&display=swap"/>`
     : '';

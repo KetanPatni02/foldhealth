@@ -36,6 +36,22 @@ const QUAL_COMPOSITE_FALLBACK = [
   { label: 'Preventive Screening', value: '63% / target 70%', pct: 63, color: 'amber', sub: '7pp gap — colorectal gap' },
 ];
 
+function renderSharedSavingsTrajectory() {
+  return (
+    <Card title="Savings Trajectory" sub="MSSP">
+      <SavingsAreaChart data={SAVINGS_DATA} targetLabel="MSR $2.8M" targetValue={2.8} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--neutral-100)' }}>
+        {SAVINGS_METADATA.map(m => (
+          <div key={m.label}>
+            <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{m.label}</div>
+            <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-500)', marginTop: 2 }}>{m.value}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 export function SharedSavingsView({ showToast, editing = false, resetTick = 0 }) {
   const fetchViewKpis = useAppStore(st => st.fetchViewKpis);
   const fetchViewTable = useAppStore(st => st.fetchViewTable);
@@ -79,20 +95,6 @@ export function SharedSavingsView({ showToast, editing = false, resetTick = 0 })
       </div>
     );
   };
-
-  const renderTrajectory = () => (
-    <Card title="Savings Trajectory" sub="MSSP">
-      <SavingsAreaChart data={SAVINGS_DATA} targetLabel="MSR $2.8M" targetValue={2.8} />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--neutral-100)' }}>
-        {SAVINGS_METADATA.map(m => (
-          <div key={m.label}>
-            <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{m.label}</div>
-            <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-500)', marginTop: 2 }}>{m.value}</div>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
 
   const renderLevers = () => (
     <Card title="Key Savings Levers — Current Status">
@@ -158,7 +160,7 @@ export function SharedSavingsView({ showToast, editing = false, resetTick = 0 })
   const RENDERERS = {
     insight: renderInsight,
     kpis: renderKpis,
-    trajectory: renderTrajectory,
+    trajectory: renderSharedSavingsTrajectory,
     levers: renderLevers,
     composite: renderComposite,
   };

@@ -49,7 +49,10 @@ export const MORE_FILTER_ITEMS = [
   { k: 'frailty',                     label: 'Frailty',                      primary: false },
 ];
 
-export const PRIMARY_FILTER_KEYS = MORE_FILTER_ITEMS.filter(x => x.primary).map(x => x.k);
+export const PRIMARY_FILTER_KEYS = MORE_FILTER_ITEMS.reduce((keys, x) => {
+  if (x.primary) keys.push(x.k);
+  return keys;
+}, []);
 
 // Language display labels; the DB stores ISO 639-1 codes (en, es, …) so the
 // predicate translates each member's code before comparing.

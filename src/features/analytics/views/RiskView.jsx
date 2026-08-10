@@ -36,6 +36,17 @@ const HCC_LOW = [
   { code: 'HCC 21', label: 'Protein-Calorie Malnutrition', rate: '58%', pct: 58, color: 'var(--status-warning)' },
 ];
 
+function renderRiskMethodology() {
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '10px 14px', background: 'var(--neutral-0)', border: '1px solid var(--neutral-150)', borderRadius: 8, fontSize: 14, color: 'var(--neutral-400)', lineHeight: 1.6 }}>
+      <span style={{ fontSize: 14, marginTop: 1 }}>{'ℹ️'}</span>
+      <span>
+        <strong>CMS HCC Model V28</strong> &mdash; RAF displayed to 3 decimal places. Potential RAF is derived from all open HCC suspects in the suspect worklist below.
+      </span>
+    </div>
+  );
+}
+
 export function RiskView({ showToast, editing = false, resetTick = 0 }) {
   const fetchViewKpis = useAppStore(st => st.fetchViewKpis);
   const fetchViewTable = useAppStore(st => st.fetchViewTable);
@@ -73,15 +84,6 @@ export function RiskView({ showToast, editing = false, resetTick = 0 }) {
       showToast={showToast}
     />
   ) : null;
-
-  const renderMethodology = () => (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '10px 14px', background: 'var(--neutral-0)', border: '1px solid var(--neutral-150)', borderRadius: 8, fontSize: 14, color: 'var(--neutral-400)', lineHeight: 1.6 }}>
-      <span style={{ fontSize: 14, marginTop: 1 }}>{'ℹ️'}</span>
-      <span>
-        <strong>CMS HCC Model V28</strong> &mdash; RAF displayed to 3 decimal places. Potential RAF is derived from all open HCC suspects in the suspect worklist below.
-      </span>
-    </div>
-  );
 
   const renderKpis = () => {
     if (kpiData === null) return <KpiSkeleton count={4} />;
@@ -233,7 +235,7 @@ export function RiskView({ showToast, editing = false, resetTick = 0 }) {
 
   const RENDERERS = {
     insight: renderInsight,
-    methodology: renderMethodology,
+    methodology: renderRiskMethodology,
     kpis: renderKpis,
     rafTrend: renderRafTrend,
     rafPractice: renderRafPractice,

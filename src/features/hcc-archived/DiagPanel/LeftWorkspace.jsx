@@ -1405,16 +1405,8 @@ function reachedRole(icd) {
   return roleIndexFromBy(icd.by);
 }
 
-function WorklogTab({ member }) {
-  const icds = getIcdsForMember(member?.name);
-  const open = icds.filter((i) => i.status !== 'Accepted' && i.status !== 'Dismissed');
-  const closed = icds.filter((i) => i.status === 'Accepted' || i.status === 'Dismissed');
-
-  if (!icds.length) {
-    return <Empty label="No ICDs recorded for this DOS." />;
-  }
-
-  const renderRows = (rows) => rows.map((icd) => {
+function renderWorklogRows(rows) {
+  return rows.map((icd) => {
     const reached = reachedRole(icd);
     const actorIdx = roleIndexFromBy(icd.by);
     return (
@@ -1457,6 +1449,16 @@ function WorklogTab({ member }) {
       </tr>
     );
   });
+}
+
+function WorklogTab({ member }) {
+  const icds = getIcdsForMember(member?.name);
+  const open = icds.filter((i) => i.status !== 'Accepted' && i.status !== 'Dismissed');
+  const closed = icds.filter((i) => i.status === 'Accepted' || i.status === 'Dismissed');
+
+  if (!icds.length) {
+    return <Empty label="No ICDs recorded for this DOS." />;
+  }
 
   return (
     <div className={styles.scroll}>
@@ -1472,13 +1474,13 @@ function WorklogTab({ member }) {
             {open.length > 0 && (
               <>
                 <tr className={styles.wlGroupRow}><td colSpan={WORKLOG_ROLES.length + 1}>Open ICDs</td></tr>
-                {renderRows(open)}
+                {renderWorklogRows(open)}
               </>
             )}
             {closed.length > 0 && (
               <>
                 <tr className={styles.wlGroupRow}><td colSpan={WORKLOG_ROLES.length + 1}>Closed ICDs</td></tr>
-                {renderRows(closed)}
+                {renderWorklogRows(closed)}
               </>
             )}
           </tbody>

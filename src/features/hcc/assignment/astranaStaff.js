@@ -52,6 +52,11 @@ export const ASTRANA_STAFF = [
 // Map role → array of staff in that pool. Inactive members are kept here for
 // `staffById` lookups (used by the Activity Log) but filtered out by the
 // engine via `activeStaffForRole`.
+for (const s of ASTRANA_STAFF) {
+  s._tinSet = new Set(s.tins || []);
+  s._vendorSet = new Set(s.vendors || []);
+}
+
 const _byRole = ASTRANA_STAFF.reduce((acc, s) => {
   (acc[s.role] = acc[s.role] || []).push(s);
   return acc;
@@ -77,11 +82,11 @@ export function activeStaffForRole(role) { return (_byRole[role] || []).filter(s
 // Multiple matches are allowed; the caller (engine) workload-balances among them.
 export function staffForTin(role, tin) {
   if (!tin) return [];
-  return activeStaffForRole(role).filter(s => (s.tins || []).includes(tin));
+  return activeStaffForRole(role).filter(s => s._tinSet.has(tin));
 }
 
 // Vendor mapping — same shape as `staffForTin`.
 export function staffForVendor(role, vendor) {
   if (!vendor) return [];
-  return activeStaffForRole(role).filter(s => (s.vendors || []).includes(vendor));
+  return activeStaffForRole(role).filter(s => s._vendorSet.has(vendor));
 }

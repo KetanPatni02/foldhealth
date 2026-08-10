@@ -567,6 +567,19 @@ const PROGRAMS_SUMMARY_STRIP = [
   ['Blended ROI', '3.7x', 'var(--status-success)'],
 ];
 
+function renderProgramsSummaryStrip() {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, padding: '12px 16px', background: 'var(--neutral-0)', border: '1px solid var(--neutral-150)', borderRadius: 8 }}>
+      {PROGRAMS_SUMMARY_STRIP.map(([label, val, c], i) => (
+        <div key={i} style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 20, fontWeight: 500, color: c }}>{val}</div>
+          <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ProgramsTab({ showToast, programsDetail, programsLoading, editing = false, resetTick = 0 }) {
   const pdRows = safeTableRows(programsDetail);
   const programs = PROGRAMS_DATA;
@@ -606,17 +619,6 @@ function ProgramsTab({ showToast, programsDetail, programsLoading, editing = fal
         </table>
       </div>
     </Card>
-  );
-
-  const renderSummaryStrip = () => (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, padding: '12px 16px', background: 'var(--neutral-0)', border: '1px solid var(--neutral-150)', borderRadius: 8 }}>
-      {PROGRAMS_SUMMARY_STRIP.map(([label, val, c], i) => (
-        <div key={i} style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 20, fontWeight: 500, color: c }}>{val}</div>
-          <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{label}</div>
-        </div>
-      ))}
-    </div>
   );
 
   const renderProgramCards = () => (
@@ -661,7 +663,7 @@ function ProgramsTab({ showToast, programsDetail, programsLoading, editing = fal
 
   const RENDERERS = {
     programsTable: renderProgramsTable,
-    summaryStrip: renderSummaryStrip,
+    summaryStrip: renderProgramsSummaryStrip,
     programCards: renderProgramCards,
   };
 

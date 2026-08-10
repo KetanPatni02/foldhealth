@@ -116,7 +116,7 @@ export function HccSftpReviewDrawer({ inline = false, onExit }) {
   const applyComplianceDecision = useAppStore(s => s.applyHccComplianceDecision);
   const hccMembers = useAppStore(s => s.hccMembers) || [];
   const showToast = useAppStore(s => s.showToast);
-  const [selectedIdxs, setSelectedIdxs] = useState(() => new Set());
+  const selectedIdxsRef = useRef(new Set());
   const [switcherOpen, setSwitcherOpen] = useState(false);
   // Patient pagination index — one step per PATIENT across the review set
   // (Figma 1:3574). Reset when the review set changes.
@@ -130,11 +130,12 @@ export function HccSftpReviewDrawer({ inline = false, onExit }) {
   // (SFTP bell-notification flow). Each slot = { batch, group } so the left
   // preview + handlers can follow the focused patient back to its document.
   const review = useMemo(() => {
+    const batchById = new Map(batches.map(b => [b.id, b]));
     const done = batches.filter(b => b.status === 'done');
     const src = [];
     if (sourceBatchIds && sourceBatchIds.length) {
       for (const id of sourceBatchIds) {
-        const b = batches.find(x => x.id === id);
+        const b = batchById.get(id);
         if (b) src.push(b);
       }
     }
@@ -158,18 +159,18 @@ export function HccSftpReviewDrawer({ inline = false, onExit }) {
 
   useEffect(() => { setFocusIdx(0); }, [activeId, (sourceBatchIds || []).join(',')]);
   const setEncounterStatus = useAppStore(s => s.setHccSftpEncounterStatus);
-  useEffect(() => { setSelectedIdxs(new Set()); }, [activeBatch?.id]);
-  const toggleSelected = (idx) => setSelectedIdxs(prev => {
-    const next = new Set(prev);
+  useEffect(() => { selectedIdxsRef.current = new Set(); }, [activeBatch?.id]);
+  const toggleSelected = (idx) => {
+    const next = new Set(selectedIdxsRef.current);
     if (next.has(idx)) next.delete(idx); else next.add(idx);
-    return next;
-  });
-  const setSelectedAll = (idxs, all) => setSelectedIdxs(prev => {
-    const next = new Set(prev);
+    selectedIdxsRef.current = next;
+  };
+  const setSelectedAll = (idxs, all) => {
+    const next = new Set(selectedIdxsRef.current);
     if (all) idxs.forEach(i => next.add(i));
-    else     idxs.forEach(i => next.delete(i));
-    return next;
-  });
+    else idxs.forEach(i => next.delete(i));
+    selectedIdxsRef.current = next;
+  };
 
   if (!open) return null;
 
@@ -183,12 +184,12 @@ export function HccSftpReviewDrawer({ inline = false, onExit }) {
   const handleAddSelectedToWorklist = () => {
     if (!activeBatch) return;
     const encs = activeBatch.encounters || [];
-    const useSelection = selectedIdxs.size > 0;
+    const useSelection = selectedIdxsRef.current.size > 0;
     let created = 0, updated = 0, skipped = 0;
     const appliedIdxs = [];
     encs.forEach((enc, idx) => {
       const valid = enc.patient?.matchedMemberId && (!enc.errors || enc.errors.length === 0);
-      const include = useSelection ? selectedIdxs.has(idx) : true;
+      const include = useSelection ? selectedIdxsRef.current.has(idx) : true;
       if (!include || !valid) { skipped += 1; return; }
       const r = createFromEncounter?.({ ...enc, _docName: activeBatch.fileName });
       if (r?.kind === 'created') { created += 1; appliedIdxs.push(idx); }
@@ -200,7 +201,7 @@ export function HccSftpReviewDrawer({ inline = false, onExit }) {
     if (updated) parts.push(`${updated} updated`);
     if (skipped) parts.push(`${skipped} skipped`);
     showToast?.(parts.length ? parts.join(', ') : 'No changes applied');
-    setSelectedIdxs(new Set());
+    selectedIdxsRef.current = new Set();
     // Trim applied rows out of the batch so the table no longer shows
     // them. Sort descending so removing by index doesn't shift later
     // targets.
@@ -216,12 +217,12 @@ export function HccSftpReviewDrawer({ inline = false, onExit }) {
   // No worklist write; just trims the queue so the reviewer can sweep
   // rejects.
   const handleDeleteSelected = () => {
-    if (!activeBatch || selectedIdxs.size === 0) return;
+    if (!activeBatch || selectedIdxsRef.current.size === 0) return;
     // Sort descending so removing by index doesn't shift later targets.
-    const idxs = Array.from(selectedIdxs).sort((a, b) => b - a);
+    const idxs = Array.from(selectedIdxsRef.current).sort((a, b) => b - a);
     idxs.forEach(idx => removeEnc?.(activeBatch.id, idx));
     showToast?.(`${idxs.length} encounter${idxs.length === 1 ? '' : 's'} removed`);
-    setSelectedIdxs(new Set());
+    selectedIdxsRef.current = new Set();
   };
 
   // Per-batch encounter buckets driven by the new _docStatus field.

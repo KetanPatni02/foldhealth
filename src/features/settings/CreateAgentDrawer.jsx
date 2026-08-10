@@ -141,7 +141,10 @@ function StepPrompt({ agentName, setAgentName, onBack, prompt, setPrompt }) {
   // Keep promptRef in sync
   useEffect(() => { promptRef.current = prompt; }, [prompt]);
 
-  const utilityKeys = utilityRows.filter(r => r.key.trim()).map(r => r.key);
+  const utilityKeys = [];
+  for (const r of utilityRows) {
+    if (r.key.trim()) utilityKeys.push(r.key);
+  }
 
   const addRow = () => setUtilityRows(r => [...r, { type: '', key: '', defaultVal: '' }]);
   const removeRow = (i) => setUtilityRows(r => r.filter((_, idx) => idx !== i));

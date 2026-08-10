@@ -135,8 +135,13 @@ export function ClinicalNotePanel({ member, gapCode, year, onClose, editingTaskI
   };
 
   // Helper: read codes of currently-ready gaps. Used by Path A + B.
-  const collectReadyCodes = () =>
-    orderedGaps.filter(g => isReadyForReview(g.code)).map(g => g.code);
+  const collectReadyCodes = () => {
+    const codes = [];
+    for (const g of orderedGaps) {
+      if (isReadyForReview(g.code)) codes.push(g.code);
+    }
+    return codes;
+  };
 
   // Build the consolidated PDF for the gaps currently being submitted/signed.
   const buildPdf = (readyCodes, signedBy) => generateClinicalNotePdf({

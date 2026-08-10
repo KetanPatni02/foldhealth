@@ -187,7 +187,9 @@ function LogTableRow({
   );
 }
 
-export function CcmBillingLogTable({ patientId, periodId, activities = [] }) {
+const EMPTY_ACTIVITIES = [];
+
+export function CcmBillingLogTable({ patientId, periodId, activities = EMPTY_ACTIVITIES }) {
   const addCcmBillableActivity = useAppStore(s => s.addCcmBillableActivity);
 
   const [unloggedRows, setUnloggedRows] = useState(DEFAULT_UNLOGGED_ROWS);

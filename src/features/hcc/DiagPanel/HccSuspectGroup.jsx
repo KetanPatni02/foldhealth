@@ -10,6 +10,8 @@ import { DismissReasonForm } from './DismissReasonForm';
 import { reviewedByLabel } from '../reviewedBy';
 import styles from './HccSuspectGroup.module.css';
 
+const EMPTY_DOS_LIST = [];
+
 /**
  * SuspectCard — one card per AI suspect / recapture ICD (Paper 1WXT; RA coder
  * workflow §B3; Figma ICD-Import 4278-67296; see docs/features/hcc-coding-
@@ -24,7 +26,7 @@ import styles from './HccSuspectGroup.module.css';
  * ⋯ menu. State uses the same per-(code × DOS) store the confirmed ICD card
  * uses, so both behave identically.
  */
-export function SuspectCard({ icd, dosList = [], member, reviewLocked = false, lockReason = null, bulkDisabled = false }) {
+export function SuspectCard({ icd, dosList = EMPTY_DOS_LIST, member, reviewLocked = false, lockReason = null, bulkDisabled = false }) {
   const openIcdPanel = useAppStore(s => s.openIcdPanel);
   const openIcdActivityLog = useAppStore(s => s.openIcdActivityLog);
   const diagActivityIcd = useAppStore(s => s.diagActivityIcd);

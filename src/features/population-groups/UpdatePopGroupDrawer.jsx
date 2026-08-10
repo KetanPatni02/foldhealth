@@ -109,10 +109,10 @@ export function UpdatePopGroupDrawer({ group, onClose, onSubmit }) {
   const [name, setName]               = useState(group.name || '');
   const [description, setDescription] = useState(group.description || '');
   const [members, setMembers]         = useState(
-    () => (group.memberIds || [])
-      .map(id => FOLD_DB_MAP[String(id).toUpperCase()])
-      .filter(Boolean)
-      .map(p => ({ id: p.id, name: p.name, dob: p.dob })),
+    () => (group.memberIds || []).flatMap(id => {
+      const p = FOLD_DB_MAP[String(id).toUpperCase()];
+      return p ? [{ id: p.id, name: p.name, dob: p.dob }] : [];
+    }),
   );
   const [patOpen, setPatOpen] = useState(false);
   const [patQuery, setPatQuery] = useState('');

@@ -37,20 +37,33 @@ export function resolveFileKind({ src, name, ext }) {
   return 'other';
 }
 
-export function FilePreview({ src, name, ext, className }) {
-  const kind = resolveFileKind({ src, name, ext });
+export function FilePreview({ src, file, name, ext, className }) {
+  const [blobUrl, setBlobUrl] = useState(null);
+  const kind = resolveFileKind({ src: src || blobUrl, name, ext });
   const [docxHtml, setDocxHtml] = useState(null);
   const [docxError, setDocxError] = useState(false);
 
   useEffect(() => {
-    if (kind !== 'docx' || !src) return undefined;
+    if (!file) {
+      setBlobUrl(null);
+      return undefined;
+    }
+    const objectUrl = URL.createObjectURL(file);
+    setBlobUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  const resolvedSrc = src || blobUrl;
+
+  useEffect(() => {
+    if (kind !== 'docx' || !resolvedSrc) return undefined;
     let cancelled = false;
     setDocxHtml(null);
     setDocxError(false);
     (async () => {
       try {
         const { default: mammoth } = await import('mammoth/mammoth.browser');
-        const res = await fetch(src);
+        const res = await fetch(resolvedSrc);
         if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
         const buf = await res.arrayBuffer();
         const { value } = await mammoth.convertToHtml({ arrayBuffer: buf });
@@ -61,22 +74,22 @@ export function FilePreview({ src, name, ext, className }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [kind, src]);
+  }, [kind, resolvedSrc]);
 
   const wrapClass = [styles.wrap, className || ''].filter(Boolean).join(' ');
 
-  if (!src) return null;
+  if (!resolvedSrc) return null;
 
   if (kind === 'image') {
     return (
       <div className={wrapClass}>
-        <img src={src} alt={name || 'Document'} className={styles.image} />
+        <img src={resolvedSrc} alt={name || 'Document'} className={styles.image} />
       </div>
     );
   }
 
   if (kind === 'pdf') {
-    return <iframe src={src} title={name || 'Document'} className={wrapClass} />;
+    return <iframe src={resolvedSrc} title={name || 'Document'} className={wrapClass} />;
   }
 
   if (kind === 'docx' && !docxError) {
@@ -109,7 +122,7 @@ export function FilePreview({ src, name, ext, className }) {
           variant="secondary"
           size="S"
           leadingIcon="solar:square-top-down-linear"
-          onClick={() => window.open(src, '_blank', 'noopener')}
+          onClick={() => window.open(resolvedSrc, '_blank', 'noopener')}
         >
           Open in new tab
         </Button>

@@ -208,7 +208,10 @@ function computeRange(field) {
   let max = 0;
   for (const it of field.items) {
     if (!it.code || !it.options) continue;
-    const scores = it.options.map((o) => o.score).filter((n) => typeof n === 'number');
+    const scores = [];
+    for (const o of it.options) {
+      if (typeof o.score === 'number') scores.push(o.score);
+    }
     if (scores.length) { min += Math.min(...scores); max += Math.max(...scores); }
   }
   return { min, max };

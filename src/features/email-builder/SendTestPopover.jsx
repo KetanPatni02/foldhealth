@@ -5,6 +5,9 @@ import { Button } from '../../components/Button/Button';
 import { renderEmailHtml } from './patchEmailHtml';
 import styles from './EmailBuilder.module.css';
 
+const parseEmails = (str) =>
+  str.split(',').map(s => s.trim()).filter(s => s.includes('@'));
+
 // Shared lookup tables for sender name / send-from selection. Kept in sync
 // with the CampaignBuilder's options; if these grow they should live in a
 // shared data module.
@@ -65,9 +68,6 @@ export function SendTestPopover({ onClose, campaignId }) {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [onClose]);
-
-  const parseEmails = (str) =>
-    str.split(',').map(s => s.trim()).filter(s => s.includes('@'));
 
   const handleSend = async () => {
     const addresses = parseEmails(email);

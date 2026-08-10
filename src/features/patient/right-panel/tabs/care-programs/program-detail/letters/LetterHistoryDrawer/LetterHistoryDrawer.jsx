@@ -14,11 +14,11 @@ export function LetterHistoryDrawer({ letters = [], onOpen, onClose }) {
 
   const q = search.trim().toLowerCase();
   // A "sent" event = any letter that has been delivered (sentVia set).
-  const entries = letters
-    .filter(l => (l.sentVia || []).length > 0)
-    .filter(l => !q
-      || l.fileName.toLowerCase().includes(q)
-      || (l.sentBy || '').toLowerCase().includes(q));
+  const entries = letters.filter(l => {
+    if (!(l.sentVia || []).length) return false;
+    if (!q) return true;
+    return l.fileName.toLowerCase().includes(q) || (l.sentBy || '').toLowerCase().includes(q);
+  });
 
   return (
     <Drawer title="Letter Sent Log" onClose={onClose} bodyClassName={styles.body}>

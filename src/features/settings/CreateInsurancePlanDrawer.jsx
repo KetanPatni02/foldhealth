@@ -21,9 +21,10 @@ import {
 } from '../../components/ShadcnDialog/ShadcnDialog';
 import styles from './CreateInsurancePlanDrawer.module.css';
 
-function replaceBlobUrl(prev, file) {
-  if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev);
-  return URL.createObjectURL(file);
+function readImagePreviewUrl(file, onReady) {
+  const reader = new FileReader();
+  reader.onload = () => onReady(reader.result);
+  reader.readAsDataURL(file);
 }
 
 function preventDefaultDrag(e) {
@@ -375,14 +376,24 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {}, initialP
     const file = e.dataTransfer.files[0];
     if (file) {
       isDirty.current = true;
-      setCustomLogoUrl(prev => replaceBlobUrl(prev, file));
+      readImagePreviewUrl(file, (dataUrl) => {
+        setCustomLogoUrl(prev => {
+          if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev);
+          return dataUrl;
+        });
+      });
     }
   };
   const handleCustomLogoPick = (e) => {
     const file = e.target.files[0];
     if (file) {
       isDirty.current = true;
-      setCustomLogoUrl(prev => replaceBlobUrl(prev, file));
+      readImagePreviewUrl(file, (dataUrl) => {
+        setCustomLogoUrl(prev => {
+          if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev);
+          return dataUrl;
+        });
+      });
     }
   };
 
@@ -737,14 +748,20 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {}, initialP
                         </button>
                       </div>
                       <input ref={tpaFileInputRef} type="file" accept=".svg,image/*" style={{ display: 'none' }}
-                        onChange={e => { const f = e.target.files[0]; if (f) { isDirty.current = true; setTpaLogoPreviewUrl(prev => replaceBlobUrl(prev, f)); } }} />
+                        onChange={e => { const f = e.target.files[0]; if (f) { isDirty.current = true; readImagePreviewUrl(f, (dataUrl) => setTpaLogoPreviewUrl(prev => {
+                          if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev);
+                          return dataUrl;
+                        })); } }} />
                     </div>
                   ) : (
                     <>
                       <div
                         className={styles.dropZone}
                         onDragOver={preventDefaultDrag}
-                        onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) { isDirty.current = true; setTpaLogoPreviewUrl(prev => replaceBlobUrl(prev, f)); } }}
+                        onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) { isDirty.current = true; readImagePreviewUrl(f, (dataUrl) => setTpaLogoPreviewUrl(prev => {
+                          if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev);
+                          return dataUrl;
+                        })); } }}
                         onClick={() => tpaFileInputRef.current?.click()}
                       >
                         <Icon name="solar:upload-minimalistic-linear" size={24} color="var(--neutral-200)" />
@@ -752,7 +769,10 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {}, initialP
                           Drag and drop file here or <span className={styles.dropZoneLink}>Choose file</span>
                         </div>
                         <input ref={tpaFileInputRef} type="file" accept=".svg,image/*" style={{ display: 'none' }}
-                          onChange={e => { const f = e.target.files[0]; if (f) { isDirty.current = true; setTpaLogoPreviewUrl(prev => replaceBlobUrl(prev, f)); } }} />
+                          onChange={e => { const f = e.target.files[0]; if (f) { isDirty.current = true; readImagePreviewUrl(f, (dataUrl) => setTpaLogoPreviewUrl(prev => {
+                          if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev);
+                          return dataUrl;
+                        })); } }} />
                       </div>
                       <div className={styles.dropZoneMeta}>
                         <span className={styles.dropZoneMetaText}>Supported formats: SVG</span>

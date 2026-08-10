@@ -3,6 +3,8 @@ import { ActionButton } from '../../../../../../components/ActionButton/ActionBu
 import { Icon } from '../../../../../../components/Icon/Icon';
 import styles from './PAMIHxTab.module.css';
 
+const NOOP = () => {};
+
 // — Mock data —
 
 const CLINICAL_EVENTS = [
@@ -129,7 +131,6 @@ function AddBtn({ onClick }) {
 // — Row components —
 
 function ClinicalEventRow({ event }) {
-  const noop = () => {};
   return (
     <DataRow key={event.id}>
       <div className={styles.nameCell}>
@@ -140,7 +141,7 @@ function ClinicalEventRow({ event }) {
         </div>
       </div>
       <div className={styles.eventAction}>
-        <button className={styles.actionLink} onClick={noop}>
+        <button className={styles.actionLink} onClick={NOOP}>
           <Icon
             name={event.action === 'Reconcile' ? 'solar:refresh-linear' : 'solar:eye-linear'}
             size={12}
@@ -427,13 +428,12 @@ function ImagingReportsSection() {
 
 function HistorySection() {
   const [collapsed, setCollapsed] = useState(false);
-  const noop = () => {};
   return (
     <div className={styles.section}>
       <SectionHeader title="History" collapsed={collapsed} onToggle={() => setCollapsed(v => !v)} />
       <CollapseWrapper collapsed={collapsed}>
       <div className={styles.historyWrapper}>
-        <HistorySubCard title="Medical History" actions={<AddBtn onClick={noop} />}>
+        <HistorySubCard title="Medical History" actions={<AddBtn onClick={NOOP} />}>
           {MEDICAL_HISTORY.map(item => <MedicalHistoryRow key={item.id} item={item} />)}
         </HistorySubCard>
 
@@ -467,12 +467,12 @@ function HistorySection() {
           title="Social History"
           actions={
             <>
-              <button className={styles.profileLink} onClick={noop}>
+              <button className={styles.profileLink} onClick={NOOP}>
                 Central Profile
                 <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" />
               </button>
               <span className={styles.subHeaderDivider} />
-              <AddBtn onClick={noop} />
+              <AddBtn onClick={NOOP} />
             </>
           }
           footer={<FooterLink label="Not Synced (2)" />}

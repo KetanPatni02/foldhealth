@@ -79,7 +79,7 @@ export function InvokeAgentModal() {
                   border: isSelected ? '0.5px solid var(--primary-200)' : '0.5px solid transparent',
                   background: isSelected ? 'var(--primary-50)' : 'transparent',
                   fontFamily: "'Inter', sans-serif", textAlign: 'left',
-                  width: '100%', transition: 'all .12s',
+                  width: '100%', transition: 'background .12s, border-color .12s',
                 }}
                 onMouseOver={e => { if (!isSelected) e.currentTarget.style.background = 'var(--neutral-50)'; }}
                 onMouseOut={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}

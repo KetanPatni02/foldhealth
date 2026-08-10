@@ -17,7 +17,8 @@ export function GoalProgress({ goalsDetail, goals }) {
 
   if (goals) {
     const all = [...(goals.mandatory || []), ...(goals.optional || [])];
-    items    = all.map(g => ({ ...g, section: goals.mandatory?.includes(g) ? 'Mandatory' : 'Optional' }));
+    const mandatorySet = new Set(goals.mandatory || []);
+    items    = all.map(g => ({ ...g, section: mandatorySet.has(g) ? 'Mandatory' : 'Optional' }));
     passed   = goals.passed;
     total    = goals.total;
     progress = goals.progress;

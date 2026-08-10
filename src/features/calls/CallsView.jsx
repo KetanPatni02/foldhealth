@@ -259,25 +259,25 @@ export function CallsView() {
   const channelItems = callNavItems.filter(i => i.section === 'channel');
 
   // Derive table rows from call_details — exclude live/ongoing records
-  const callsRows = callDetails
-    .filter(c => c.callType !== 'ongoing')
-    .map(c => {
-      const dir = c.direction || (c.callType === 'voicemail' ? 'missed' : c.callType === 'declined' ? 'declined' : 'outgoing');
-      const hasCall = dir === 'outgoing' || dir === 'incoming' || dir === 'answered';
-      return {
-        id: c.id,
-        dir,
-        agent: c.agentName || 'Anna',
-        isBot: c.isBot ?? (c.agentName === 'Anna' || c.agentName === 'Automation'),
-        date: formatCallDate(c.startedAt),
-        startedAt: c.startedAt,
-        duration: hasCall ? (c.duration || '-') : null,
-        ooh: computeOOH(c.startedAt),
-        goalStatus: hasCall ? computeGoalStatus(c.goalsDetail) : null,
-        engagementScore: hasCall ? (c.qualityScore?.overall ?? null) : null,
-        patientId: c.patientId,
-      };
+  const callsRows = [];
+  for (const c of callDetails) {
+    if (c.callType === 'ongoing') continue;
+    const dir = c.direction || (c.callType === 'voicemail' ? 'missed' : c.callType === 'declined' ? 'declined' : 'outgoing');
+    const hasCall = dir === 'outgoing' || dir === 'incoming' || dir === 'answered';
+    callsRows.push({
+      id: c.id,
+      dir,
+      agent: c.agentName || 'Anna',
+      isBot: c.isBot ?? (c.agentName === 'Anna' || c.agentName === 'Automation'),
+      date: formatCallDate(c.startedAt),
+      startedAt: c.startedAt,
+      duration: hasCall ? (c.duration || '-') : null,
+      ooh: computeOOH(c.startedAt),
+      goalStatus: hasCall ? computeGoalStatus(c.goalsDetail) : null,
+      engagementScore: hasCall ? (c.qualityScore?.overall ?? null) : null,
+      patientId: c.patientId,
     });
+  }
 
   const filteredList = callSessions.filter(c => {
     if (listFilter === 'incoming') {

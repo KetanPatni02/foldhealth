@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../../../../components/Icon/DownChevronIcon';
@@ -770,7 +770,7 @@ export function OutreachTab({
   const [formOpen, setFormOpen] = useState(defaultFormOpen);
   // Id of the row currently being edited (null = creating a new one).
   // When set, handleSave updates that row in place instead of pushing.
-  const [editingId, setEditingId] = useState(null);
+  const editingIdRef = useRef(null);
   const [logFor, setLogFor] = useState(defaultLogFor);
   const isHccGaps = logFor === 'hcc-gaps';
   const [activityFilter, setActivityFilter] = useState('All');
@@ -916,6 +916,7 @@ export function OutreachTab({
     });
 
     setLogGroups(prev => {
+      const editingId = editingIdRef.current;
       // EDIT path — replace the row in place. We keep the row's
       // original month group so the visual position doesn't shift; the
       // editor only mutates fields, not date/time-derived grouping.
@@ -937,13 +938,13 @@ export function OutreachTab({
       return [{ id: monthKey, label: monthLabel, logs: newEntries }, ...prev];
     });
 
-    setEditingId(null);
+    editingIdRef.current = null;
     resetForm();
     if (!scopedProgram) setFormOpen(false);
     toast.success('Outreach logged successfully');
   };
 
-  const handleDiscard = () => { resetForm(); if (!scopedProgram) setFormOpen(false); setEditingId(null); };
+  const handleDiscard = () => { resetForm(); if (!scopedProgram) setFormOpen(false); editingIdRef.current = null; };
 
   /**
    * Edit an existing log entry — opens the inline form pre-filled
@@ -952,7 +953,7 @@ export function OutreachTab({
    * PUT /api/v2/outreach/{outreachId} surface.
    */
   const handleEdit = (log) => {
-    setEditingId(log.id);
+    editingIdRef.current = log.id;
     setFormOpen(true);
     setType(log.type || 'General');
     setSelectedProgs(Array.isArray(log.programs) ? log.programs : []);
@@ -984,10 +985,29 @@ export function OutreachTab({
       const ok = window.confirm(`Delete this ${log.type.toLowerCase()} outreach from ${log.date}?`);
       if (!ok) return;
     }
-    setLogGroups(prev => prev
-      .map(g => ({ ...g, logs: g.logs.filter(l => l.id !== log.id) }))
-      .filter(g => g.logs.length > 0));
+    setLogGroups(prev => {
+      const next = [];
+      for (const g of prev) {
+        const logs = g.logs.filter(l => l.id !== log.id);
+        if (logs.length > 0) next.push({ ...g, logs });
+      }
+      return next;
+    });
   };
+
+  const filteredLogGroups = useMemo(() => {
+    const q = activitySearchText.trim().toLowerCase();
+    const keep = (l) =>
+      matchesOutreachScope(l, outreachScope)
+      && (activityFilter === 'All' || logActivityCategory(l) === activityFilter)
+      && (!q || `${l.title || ''} ${l.author || ''} ${l.outcome || ''} ${l.note || ''}`.toLowerCase().includes(q));
+    const next = [];
+    for (const g of logGroups) {
+      const logs = g.logs.filter(keep);
+      if (logs.length > 0) next.push({ ...g, logs });
+    }
+    return next;
+  }, [logGroups, outreachScope, activityFilter, activitySearchText]);
 
   return (
     <div className={styles.wrapper}>
@@ -1327,16 +1347,7 @@ export function OutreachTab({
       {/* Activity log — the patient's full outreach history, narrowed by the
           scope filter (program / Care Gaps / HCC Gaps), the outcome filter tab,
           and the search text. */}
-      {(() => {
-        const q = activitySearchText.trim().toLowerCase();
-        const keep = (l) =>
-          matchesOutreachScope(l, outreachScope)
-          && (activityFilter === 'All' || logActivityCategory(l) === activityFilter)
-          && (!q || `${l.title || ''} ${l.author || ''} ${l.outcome || ''} ${l.note || ''}`.toLowerCase().includes(q));
-        return logGroups
-          .map(g => ({ ...g, logs: g.logs.filter(keep) }))
-          .filter(g => g.logs.length > 0);
-      })().map(group => (
+      {filteredLogGroups.map(group => (
         <LogGroup
           key={group.id}
           label={group.label}

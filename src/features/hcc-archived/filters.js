@@ -54,7 +54,10 @@ export const MORE_FILTER_ITEMS = [
   { k: 'vt',    label: 'Visit Type',           primary: false },
 ];
 
-export const PRIMARY_FILTER_KEYS = MORE_FILTER_ITEMS.filter(x => x.primary).map(x => x.k);
+export const PRIMARY_FILTER_KEYS = MORE_FILTER_ITEMS.reduce((keys, x) => {
+  if (x.primary) keys.push(x.k);
+  return keys;
+}, []);
 
 export const FILTER_DEFS = [
   { k: 'my',    label: 'Measurement Year',    type: 'multi', opts: ['2021', '2022', '2023', '2024', '2025'] },

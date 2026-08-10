@@ -31,15 +31,16 @@ const AI_VARIANT_MAP = {
   'ai-tag-neutral': 'ai-neutral',
 };
 
+const TOC_STATUS_MAP = {
+  enrolled: { variant: 'toc-enrolled', label: 'Enrolled', icon: 'solar:check-circle-linear' },
+  engaged: { variant: 'toc-engaged', label: 'Engaged', icon: 'solar:link-round-linear' },
+  attempted: { variant: 'toc-attempted', label: 'Attempted', icon: 'solar:history-linear' },
+  new: { variant: 'toc-new', label: 'New', icon: 'solar:star-linear' },
+  oncall: { variant: 'toc-oncall', label: 'On Call', icon: 'solar:phone-calling-linear' },
+};
+
 function TocStatusBadge({ status }) {
-  const MAP = {
-    enrolled: { variant: 'toc-enrolled', label: 'Enrolled', icon: 'solar:check-circle-linear' },
-    engaged: { variant: 'toc-engaged', label: 'Engaged', icon: 'solar:link-round-linear' },
-    attempted: { variant: 'toc-attempted', label: 'Attempted', icon: 'solar:history-linear' },
-    new: { variant: 'toc-new', label: 'New', icon: 'solar:star-linear' },
-    oncall: { variant: 'toc-oncall', label: 'On Call', icon: 'solar:phone-calling-linear' },
-  };
-  const cfg = MAP[status] || MAP.new;
+  const cfg = TOC_STATUS_MAP[status] || TOC_STATUS_MAP.new;
   return <Badge size="M" variant={cfg.variant} label={cfg.label} icon={cfg.icon} />;
 }
 

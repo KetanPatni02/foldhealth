@@ -39,7 +39,7 @@ export function AgentRulesDrawer() {
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px',
         borderRadius: 20, border: '0.5px solid', cursor: 'pointer', fontSize: 12, fontWeight: 500,
-        fontFamily: "'Inter', sans-serif", transition: 'all .15s',
+        fontFamily: "'Inter', sans-serif", transition: 'background .15s, color .15s, border-color .15s',
         background: agentEnabled ? '#E3FCEF' : 'var(--neutral-50)',
         color: agentEnabled ? '#16A34A' : 'var(--neutral-300)',
         borderColor: agentEnabled ? 'rgba(22,163,74,.2)' : 'var(--neutral-150)',

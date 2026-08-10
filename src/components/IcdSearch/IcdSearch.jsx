@@ -5,6 +5,8 @@ import { Icon } from '../Icon/Icon';
 import { useIcdSearch } from '../../lib/icd/useIcdSearch';
 import styles from './IcdSearch.module.css';
 
+const EMPTY_EXCLUDE_CODES = [];
+
 /**
  * Fold Health ICD search — shared autocomplete for looking up ICD codes from
  * the live WHO ICD-11 API (via the `/api/icd-search` proxy), with a Supabase
@@ -28,7 +30,7 @@ import styles from './IcdSearch.module.css';
 export function IcdSearch({
   onSelect,
   placeholder = 'Search and Add ICD Code & Description, HCC Code & Description',
-  excludeCodes = [],
+  excludeCodes = EMPTY_EXCLUDE_CODES,
   autoFocus = false,
   variant = 'default',
   minChars = 2,

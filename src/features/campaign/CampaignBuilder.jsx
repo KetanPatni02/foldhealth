@@ -404,7 +404,8 @@ function ChipMultiSelect({ options, value, onChange, placeholder }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  const available = options.filter(o => !selectedIds.includes(o.id) && o.label.toLowerCase().includes(query.toLowerCase()));
+  const selectedSet = new Set(selectedIds);
+  const available = options.filter(o => !selectedSet.has(o.id) && o.label.toLowerCase().includes(query.toLowerCase()));
   const labelFor = id => options.find(o => o.id === id)?.label || id;
 
   const toggle = (id) => {
