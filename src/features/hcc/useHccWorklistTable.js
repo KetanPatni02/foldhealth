@@ -13,10 +13,22 @@ export function useHccWorklistTable() {
   const hccMembers = useAppStore(s => s.hccMembers);
   const hccMembersLoading = useAppStore(s => s.hccMembersLoading);
   const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
-  // Patients slice — drives the "Patients Without Open Gaps" secondary section
-  // (every patient in the system that isn't already in hccMembers).
+  // Patient slices — drive the "Patients Without Open Gaps" secondary section
+  // (every patient in the system that isn't already in hccMembers). We union
+  // every worklist's patient list because the standalone `patients` /
+  // `all_patients` Supabase tables can be empty in some environments — SubNav
+  // already unions these same slices for its "All Patients" count, so the HCC
+  // empty-rows source has to match to stay in sync.
   const patients = useAppStore(s => s.patients);
+  const awvMembers = useAppStore(s => s.awvMembers);
+  const ccmWorklistMembers = useAppStore(s => s.ccmWorklistMembers);
+  const snpWorklistMembers = useAppStore(s => s.snpWorklistMembers);
+  const allPatients = useAppStore(s => s.allPatients);
   const fetchPatients = useAppStore(s => s.fetchPatients);
+  const fetchAwvMembers = useAppStore(s => s.fetchAwvMembers);
+  const fetchCcmWorklistMembers = useAppStore(s => s.fetchCcmWorklistMembers);
+  const fetchSnpWorklistMembers = useAppStore(s => s.fetchSnpWorklistMembers);
+  const fetchAllPatients = useAppStore(s => s.fetchAllPatients);
   const fetchHccAddedCharts = useAppStore(s => s.fetchHccAddedCharts);
   const fetchHccChartStatus = useAppStore(s => s.fetchHccChartStatus);
   const fetchHccRemovedCharts = useAppStore(s => s.fetchHccRemovedCharts);
@@ -81,6 +93,11 @@ export function useHccWorklistTable() {
   useEffect(() => {
     if (patients.length === 0) fetchPatients();
   }, [patients.length, fetchPatients]);
+  // Prime the other worklist slices we source empty-patient rows from.
+  useEffect(() => { if ((awvMembers?.length || 0) === 0) fetchAwvMembers?.(); }, [awvMembers?.length, fetchAwvMembers]);
+  useEffect(() => { if ((ccmWorklistMembers?.length || 0) === 0) fetchCcmWorklistMembers?.(); }, [ccmWorklistMembers?.length, fetchCcmWorklistMembers]);
+  useEffect(() => { if ((snpWorklistMembers?.length || 0) === 0) fetchSnpWorklistMembers?.(); }, [snpWorklistMembers?.length, fetchSnpWorklistMembers]);
+  useEffect(() => { if ((allPatients?.length || 0) === 0) fetchAllPatients?.(); }, [allPatients?.length, fetchAllPatients]);
 
   // If we landed on the HCC tab via the router (hash sync) rather than
   // through setActiveSubnavList, no default filter was applied. Seed the
@@ -106,11 +123,42 @@ export function useHccWorklistTable() {
   // the store setters (setHccFilter / clearHccFilters / setHccDueDateFilter /
   // setSearchQuery), so no effect is needed here.
 
+  // Deduplicate hccMembers by patient (fold ID) BEFORE enrichment. The local
+  // data model has one row per coding record — a patient with multiple
+  // records shows up multiple times (e.g. Annette Brave appears 4x, once per
+  // record). Prod's worklist is one row per patient with all DOS entries
+  // nested inside a single dos_list, so we mirror that by keeping the first
+  // occurrence for each fold ID and merging every other record's dos_list
+  // into it. Downstream sort/filter/pagination all operate on the deduped
+  // list — the count in SubNav matches this same rule.
+  const dedupedMembers = useMemo(() => {
+    const byKey = new Map();
+    for (const m of hccMembers) {
+      const k = normFoldId(m.memberId || m.id);
+      if (!k) continue;
+      const existing = byKey.get(k);
+      if (!existing) {
+        byKey.set(k, { ...m, dos_list: [...(m.dos_list || [])] });
+        continue;
+      }
+      // Merge this record's DOS entries onto the first row we saw for the
+      // patient, deduped on (date, pos) so overlapping visits don't repeat.
+      const seenDos = new Set(existing.dos_list.map(d => `${d.date || ''}|${d.pos || ''}`));
+      for (const d of (m.dos_list || [])) {
+        const key = `${d.date || ''}|${d.pos || ''}`;
+        if (seenDos.has(key)) continue;
+        seenDos.add(key);
+        existing.dos_list.push(d);
+      }
+    }
+    return [...byKey.values()];
+  }, [hccMembers]);
+
   // Decorate members with derived sort fields so the Member-column sort axes
   // (First Name / Last Name / Gender / DOB Year) and a few special table sorts
   // work with the generic useTableSort comparator.
   const hccDosAssignments = useAppStore(s => s.hccDosAssignments);
-  const enriched = useMemo(() => hccMembers.map(m => {
+  const enriched = useMemo(() => dedupedMembers.map(m => {
     const parts = (m.name || '').trim().split(/\s+/);
     const ageNum = parseInt(String(m.age || '').match(/(\d+)/)?.[1] || '0', 10);
     // assigneeName drives sort on the Assignee column. Reuse the same
@@ -130,7 +178,7 @@ export function useHccWorklistTable() {
       dob: ageNum, // proxy: older age = earlier DOB; matches prototype sort semantics
       assigneeName,
     };
-  }), [hccMembers, hccDosAssignments]);
+  }), [dedupedMembers, hccDosAssignments]);
 
   const filtered = useMemo(() => {
     let rows = enriched;
@@ -187,10 +235,33 @@ export function useHccWorklistTable() {
   const patientsWithoutGaps = useMemo(() => {
     if (gapOnlyFilterActive) return [];
     const q = searchQuery?.trim().toLowerCase() || '';
-    const list = patients.filter(p => {
+    // Only surface the "Patients Without Open Gaps" section while the user is
+    // actively searching. Without a query the primary HCC rows filled the
+    // paginated list; mixing empty "Add DOS" rows in with the last primary
+    // page (3 primary + 7 empty on page 6) reads as broken — the empty rows
+    // are a search-scoped "did you mean this patient? add DOS for them"
+    // affordance, not part of the default HCC worklist. Prod behaves this
+    // way too.
+    if (!q) return [];
+    // Union every known patient source, deduped on the shared Fold ID key.
+    // First-source-wins on collisions so the richer `patients` / `allPatients`
+    // rows beat the worklist-scoped rows when both exist.
+    const combined = [];
+    const seen = new Set();
+    const push = (row) => {
+      const k = normFoldId(row?.memberId || row?.id);
+      if (!k || seen.has(k)) return;
+      seen.add(k);
+      combined.push(row);
+    };
+    (patients || []).forEach(push);
+    (allPatients || []).forEach(push);
+    (awvMembers || []).forEach(push);
+    (ccmWorklistMembers || []).forEach(push);
+    (snpWorklistMembers || []).forEach(push);
+    const list = combined.filter(p => {
       const k = normFoldId(p.memberId || p.id);
       if (!k || hccMemberIds.has(k)) return false;
-      if (!q) return true;
       return (
         (p.name || '').toLowerCase().includes(q) ||
         (p.memberId || '').toString().toLowerCase().includes(q) ||
@@ -200,7 +271,7 @@ export function useHccWorklistTable() {
     // Sort by patient name ascending — HCC-specific sort keys don't apply here.
     list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     return list;
-  }, [patients, hccMemberIds, searchQuery, gapOnlyFilterActive]);
+  }, [patients, allPatients, awvMembers, ccmWorklistMembers, snpWorklistMembers, hccMemberIds, searchQuery, gapOnlyFilterActive]);
 
   // Flat combined row list: primary records, then a section-header sentinel
   // Empty-patient rows follow the primary rows directly — no section header.

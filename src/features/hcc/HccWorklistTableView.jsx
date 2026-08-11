@@ -30,7 +30,7 @@ export function HccWorklistTableView({
   startHccUpload, setHccUploadPhase, saveDialogOpen, setSaveDialogOpen, renameTarget, setRenameTarget,
   saveHccFilter, renameHccSavedFilter, combinedRows, filtered, patientsWithoutGaps, filtersActive,
   hccMembersLoading, clearHccFilters, scrollWrapRef, someSelected, allSelected, handleSelectAll,
-  memberThRef, setMemberSortPop, orderedColumns, hiddenSet, sortKey, sortDir, setSortPop,
+  setMemberSortPop, orderedColumns, hiddenSet, sortKey, sortDir, setSortPop,
   colCfgBtnRef, colCfgRect, setColCfgRect, paginated, selectedHccIds, clearHccSelected,
   bulkAssigneeOpen, setBulkAssigneeOpen, sortPop, setSort, clearSort, memberSortPop,
   toggleHccColumn, reorderHccColumns, clearHccColumnOrder, clearHccHiddenCols,
@@ -148,21 +148,14 @@ export function HccWorklistTableView({
                   aria-label="Select all members"
                 />
               </th>
-              <th
-                ref={memberThRef}
-                className={`${rowStyles.stickyLeft} ${rowStyles.stickyMember} ${rowStyles.colMember} ${styles.memberTh} ${styles.headerCellSortable}`}
-                onClick={() => {
-                  const rect = memberThRef.current?.getBoundingClientRect();
-                  if (rect) setMemberSortPop(rect);
-                }}
-              >
-                <span className={styles.headerLabel}>
-                  Member
-                  <span className={styles.sortIcon}>
-                    <Icon name="solar:sort-vertical-linear" size={12} color="var(--neutral-200)" />
-                  </span>
-                </span>
-              </th>
+              <HeaderCell
+                label="Member"
+                sortField="member"
+                activeKey={sortKey}
+                activeDir={sortDir}
+                onSort={(_field, rect) => setMemberSortPop(rect)}
+                className={`${rowStyles.stickyLeft} ${rowStyles.stickyMember} ${rowStyles.colMember} ${styles.memberTh}`}
+              />
 
               {orderedColumns.map((col) => (
                 hiddenSet.has(col.k) ? null : (
@@ -173,10 +166,19 @@ export function HccWorklistTableView({
                     sortType={col.sortType}
                     activeKey={sortKey}
                     activeDir={sortDir}
-                    onSort={col.sortable ? ((field, rect) => setSortPop({
-                      items: [{ key: field, label: col.lb }],
-                      rect,
-                    })) : undefined}
+                    onSort={col.sortable ? ((field) => {
+                      // Cycle asc → desc → cleared on the active column, or
+                      // start fresh at asc when switching to a new column.
+                      // No popover — the header morphs its own icon to show
+                      // the current direction.
+                      if (sortKey === field) {
+                        if (sortDir === 'asc') setSort(field, 'desc');
+                        else if (sortDir === 'desc') clearSort();
+                        else setSort(field, 'asc');
+                      } else {
+                        setSort(field, 'asc');
+                      }
+                    }) : undefined}
                     className={COL_CLASS[col.k]}
                   />
                 )
@@ -251,17 +253,6 @@ export function HccWorklistTableView({
       />
       <HccHistoryDrawer />
 
-      {sortPop && (
-        <SortPopover
-          anchorRect={sortPop.rect}
-          items={sortPop.items}
-          currentKey={sortKey}
-          currentDir={sortDir}
-          onSort={(k, dir) => setSort(k, dir)}
-          onClear={clearSort}
-          onClose={() => setSortPop(null)}
-        />
-      )}
       {memberSortPop && (
         <SortPopover
           anchorRect={memberSortPop}
