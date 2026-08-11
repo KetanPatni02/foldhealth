@@ -12,11 +12,17 @@ import styles from './UploadDropField.module.css';
  * the (simulated) upload completes and `onChange(null)` while uploading or
  * when the file is cleared. Remount with a new `key` to reset it.
  *
+ * When `onPreview` is provided, the uploaded card renders an eye button
+ * (and a hairline divider) BEFORE the delete action so callers can open
+ * an inline preview of the freshly uploaded file.
+ *
  * @param {object}   props
  * @param {(file: File|null) => void} props.onChange
+ * @param {(file: File) => void} [props.onPreview]
  */
 export function UploadDropField({
   onChange,
+  onPreview,
   accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png',
   helperText = 'Supported formats: PDF, DOC, JPG, or PNG',
   secondaryText = 'Max size: 100 MB',
@@ -94,6 +100,19 @@ export function UploadDropField({
             </span>
           </div>
         </div>
+        {onPreview && (
+          <>
+            <button
+              type="button"
+              className={styles.uplAction}
+              onClick={() => onPreview(file)}
+              aria-label="Preview file"
+            >
+              <Icon name="solar:eye-linear" size={15} color="var(--neutral-400)" />
+            </button>
+            <span className={styles.uplActionDivider} aria-hidden="true" />
+          </>
+        )}
         <button type="button" className={styles.uplAction} onClick={clear} aria-label="Remove file">
           <Icon name="solar:trash-bin-trash-linear" size={15} color="var(--neutral-400)" />
         </button>
