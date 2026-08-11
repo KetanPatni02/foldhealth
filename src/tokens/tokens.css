@@ -70,6 +70,15 @@
 
   /* Modal / dialog backdrop tint */
   --surface-overlay: rgba(0, 0, 0, 0.40);
+  /* Heavier scrim for full-bleed media viewers (image/PDF preview) */
+  --surface-overlay-heavy: rgba(0, 0, 0, 0.80);
+  /* Media viewer chrome — deliberately NOT theme-relative (unlike --neutral-*,
+     which inverts under dark theme). A lightbox-style toolbar stays dark
+     regardless of app theme, the way it does in most media viewers. Not
+     redeclared under [data-theme="dark"] below, so the value holds there too. */
+  --media-viewer-chrome:       #1B1B1D;
+  --media-viewer-chrome-hover: #2A2A2D;
+  --media-viewer-chrome-fg:    #FFFFFF;
 
   /* Sidebar — default chrome (dark purple). Per-theme variants below
      retint via Blue/Plum blocks. The light-nav opt-in toggle (set via
@@ -254,6 +263,8 @@
 
   /* Modal backdrop a touch denser on dark */
   --surface-overlay: rgba(0, 0, 0, 0.60);
+  /* Heavier scrim for full-bleed media viewers (image/PDF preview) */
+  --surface-overlay-heavy: rgba(0, 0, 0, 0.85);
 
   /* Sidebar tokens inherit from :root (always-dark chrome). */
 

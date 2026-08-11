@@ -1,1 +1,6 @@
+# GUI git clients (GitHub Desktop, Xcode, etc.) invoke hooks with a minimal
+# PATH that doesn't include bun's install dir, so `bunx` isn't found even
+# though a terminal shell has it. Prepend the common bun locations.
+export PATH="$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+
 bunx lint-staged
