@@ -5,7 +5,7 @@ import { Badge } from '../../components/Badge/Badge';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Button } from '../../components/Button/Button';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
-import { Pagination } from '../../components/Pagination/Pagination';
+import { WorklistShell } from '../../components/WorklistShell/WorklistShell';
 import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { CloseIcon } from '../../components/Icon/CloseIcon';
@@ -190,8 +190,19 @@ function RowMenu({ onPreview, onDuplicate, onDelete }) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Emails tab
+// Emails tab — column defs for WorklistShell. Sort headers are omitted for
+// now because the store fetches server-side and doesn't yet accept a sort
+// param; the shell falls back to plain `<th>`s when `sortKey` is unset.
 // ────────────────────────────────────────────────────────────────────────────
+const EMAIL_COLUMNS = [
+  { key: 'name',      label: 'Name',            sticky: 'left', left: 0, width: 320 },
+  { key: 'category',  label: 'Category',        width: 160 },
+  { key: 'subject',   label: 'Subject',         width: 280 },
+  { key: 'updated',   label: 'Last Updated',    width: 140 },
+  { key: 'updatedBy', label: 'Last Updated By', width: 180 },
+  { key: 'action',    label: 'Action',          sticky: 'right', width: 120 },
+];
+
 function EmailsTab({
   searchVal,
   statusFilter,
@@ -224,181 +235,141 @@ function EmailsTab({
     fetchContentEmails?.({ page, perPage, search: searchVal, status: statusFilter });
   }, [fetchContentEmails, page, perPage, searchVal, statusFilter]);
 
+  const renderRow = (campaign) => {
+    const isSelected = bulkMode && selectedIds.has(campaign.id);
+    const handleNameClick = () => {
+      if (bulkMode) onToggleId(campaign.id);
+      else onPreview(campaign);
+    };
+    return (
+      <tr key={campaign.id} className={`${styles.row} ${isSelected ? styles.rowSelected : ''}`}>
+        <td className={styles.tdName}>
+          <div
+            className={styles.nameLink}
+            role="button"
+            tabIndex={0}
+            onClick={handleNameClick}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNameClick(); }
+            }}
+          >
+            {/* Leading slot — icon + checkbox stacked, cross-fading on
+                bulk-mode toggle so the row never jumps. */}
+            <div className={styles.nameLeading}>
+              <span
+                className={`${styles.leadingLayer} ${bulkMode ? styles.leadingHidden : styles.leadingVisible}`}
+                aria-hidden={bulkMode}
+              >
+                <Icon name="solar:letter-linear" size={16} color="var(--neutral-300)" />
+              </span>
+              <span
+                className={`${styles.leadingLayer} ${bulkMode ? styles.leadingVisible : styles.leadingHidden}`}
+                aria-hidden={!bulkMode}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Checkbox
+                  checked={selectedIds.has(campaign.id)}
+                  onCheckedChange={() => onToggleId(campaign.id)}
+                />
+              </span>
+            </div>
+            <div className={styles.nameStack}>
+              <span className={styles.nameText}>{campaign.name}</span>
+              {campaign.description ? (
+                <span className={styles.nameDesc}>{campaign.description}</span>
+              ) : null}
+            </div>
+          </div>
+        </td>
+        <td className={styles.tdCategory}>
+          {campaign.category ? (
+            <Badge variant="ai-neutral" label={campaign.category} />
+          ) : (
+            <span className={styles.cellMuted}>—</span>
+          )}
+        </td>
+        <td className={styles.tdSubject}>
+          {campaign.subjectLine ? (
+            <span className={styles.subjectText} title={campaign.subjectLine}>
+              {campaign.subjectLine}
+            </span>
+          ) : (
+            <span className={styles.cellMuted}>—</span>
+          )}
+        </td>
+        <td className={styles.tdDate}>
+          <span className={styles.cellText}>{formatRelative(campaign.updatedAt)}</span>
+        </td>
+        <td className={styles.tdUpdatedBy}>
+          <span className={styles.cellText}>
+            {campaign.updatedByName || <span className={styles.cellMuted}>—</span>}
+          </span>
+        </td>
+        <td className={styles.tdAction}>
+          <div className={styles.actionCell}>
+            <ActionButton
+              icon="solar:pen-linear"
+              size="S"
+              tooltip="Edit template"
+              onClick={() => openContentEmailBuilder(campaign)}
+            />
+            <div className={styles.vDivider} />
+            <ActionButton
+              icon="solar:chart-linear"
+              size="S"
+              tooltip="Analytics"
+              onClick={() => showToast('Analytics – coming soon')}
+            />
+            <div className={styles.vDivider} />
+            <RowMenu
+              onPreview={() => onPreview(campaign)}
+              onDuplicate={() => onDuplicate(campaign)}
+              onDelete={() => onDelete(campaign)}
+            />
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
   return (
     <>
-      <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <colgroup>
-            <col className={styles.colName} />
-            <col className={styles.colCategory} />
-            <col className={styles.colSubject} />
-            <col className={styles.colDate} />
-            <col className={styles.colUpdatedBy} />
-            <col className={styles.colAction} />
-          </colgroup>
-          <thead>
-            <tr className={styles.headerRow}>
-              <th>
-                <div className={styles.nameHeader}>
-                  {/* Animated leading slot: collapses to 0 width when off,
-                      checkbox fades + scales in on bulk-mode enter. */}
-                  <span
-                    className={`${styles.headerLeading} ${bulkMode ? styles.headerLeadingOpen : ''}`}
-                    aria-hidden={!bulkMode}
-                  >
-                    <Checkbox
-                      checked={
-                        emails.length > 0 && emails.every(e => selectedIds.has(e.id))
-                          ? true
-                          : selectedIds.size > 0
-                            ? 'indeterminate'
-                            : false
-                      }
-                      onCheckedChange={() => onToggleAll(emails)}
-                    />
-                  </span>
-                  <span>Name</span>
-                </div>
-              </th>
-              <th>Category</th>
-              <th>Subject</th>
-              <th>Last Updated</th>
-              <th>Last Updated By</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              Array.from({ length: Math.max(1, perPage > 5 ? 5 : perPage) }).map((_, i) => (
-                <EmailRowSkeleton key={`skel-${i}`} />
-              ))
-            ) : emails.length === 0 ? (
-              <tr>
-                <td colSpan={6} className={styles.emptyState}>
-                  <Icon name="solar:letter-linear" size={32} color="var(--neutral-150)" />
-                  <p>No emails match the current filters.</p>
-                </td>
-              </tr>
-            ) : (
-              emails.map(campaign => {
-                const isSelected = bulkMode && selectedIds.has(campaign.id);
-                const handleNameClick = () => {
-                  if (bulkMode) onToggleId(campaign.id);
-                  else onPreview(campaign);
-                };
-                return (
-                <tr key={campaign.id} className={`${styles.row} ${isSelected ? styles.rowSelected : ''}`}>
-                  <td className={styles.tdName}>
-                    <div
-                      className={styles.nameLink}
-                      role="button"
-                      tabIndex={0}
-                      onClick={handleNameClick}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNameClick(); }
-                      }}
-                    >
-                      {/* Leading slot — both icon and checkbox always render,
-                          stacked. They cross-fade on bulk-mode toggle so the
-                          row never jumps. `pointer-events: none` on the
-                          inactive layer keeps clicks routed correctly. */}
-                      <div className={styles.nameLeading}>
-                        <span
-                          className={`${styles.leadingLayer} ${bulkMode ? styles.leadingHidden : styles.leadingVisible}`}
-                          aria-hidden={bulkMode}
-                        >
-                          <Icon name="solar:letter-linear" size={16} color="var(--neutral-300)" />
-                        </span>
-                        <span
-                          className={`${styles.leadingLayer} ${bulkMode ? styles.leadingVisible : styles.leadingHidden}`}
-                          aria-hidden={!bulkMode}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Checkbox
-                            checked={selectedIds.has(campaign.id)}
-                            onCheckedChange={() => onToggleId(campaign.id)}
-                          />
-                        </span>
-                      </div>
-                      <div className={styles.nameStack}>
-                        <span className={styles.nameText}>{campaign.name}</span>
-                        {campaign.description ? (
-                          <span className={styles.nameDesc}>{campaign.description}</span>
-                        ) : null}
-                      </div>
-                    </div>
-                  </td>
-                  <td className={styles.tdCategory}>
-                    {campaign.category ? (
-                      <Badge variant="ai-neutral" label={campaign.category} />
-                    ) : (
-                      <span className={styles.cellMuted}>—</span>
-                    )}
-                  </td>
-                  <td className={styles.tdSubject}>
-                    {campaign.subjectLine ? (
-                      <span className={styles.subjectText} title={campaign.subjectLine}>
-                        {campaign.subjectLine}
-                      </span>
-                    ) : (
-                      <span className={styles.cellMuted}>—</span>
-                    )}
-                  </td>
-                  <td className={styles.tdDate}>
-                    <span className={styles.cellText}>{formatRelative(campaign.updatedAt)}</span>
-                  </td>
-                  <td className={styles.tdUpdatedBy}>
-                    <span className={styles.cellText}>
-                      {campaign.updatedByName || <span className={styles.cellMuted}>—</span>}
-                    </span>
-                  </td>
-                  <td className={styles.tdAction}>
-                    <div className={styles.actionCell}>
-                      <ActionButton
-                        icon="solar:pen-linear"
-                        size="S"
-                        tooltip="Edit template"
-                        onClick={() => openContentEmailBuilder(campaign)}
-                      />
-                      <div className={styles.vDivider} />
-                      <ActionButton
-                        icon="solar:chart-linear"
-                        size="S"
-                        tooltip="Analytics"
-                        onClick={() => showToast('Analytics – coming soon')}
-                      />
-                      <div className={styles.vDivider} />
-                      <RowMenu
-                        onPreview={() => onPreview(campaign)}
-                        onDuplicate={() => onDuplicate(campaign)}
-                        onDelete={() => onDelete(campaign)}
-                      />
-                    </div>
-                  </td>
-                </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {total > 0 ? (
-        <Pagination
-          totalItems={total}
-          currentPage={page}
-          perPage={perPage}
-          onPageChange={setPage}
-          onPerPageChange={(n) => { setPerPage(n); setPage(1); }}
-        />
-      ) : null}
+      <WorklistShell
+        header={null}
+        columns={EMAIL_COLUMNS}
+        rows={emails}
+        renderRow={renderRow}
+        loading={loading}
+        emptyState={
+          <div className={styles.emptyState}>
+            <Icon name="solar:letter-linear" size={32} color="var(--neutral-150)" />
+            <p>No emails match the current filters.</p>
+          </div>
+        }
+        page={page}
+        perPage={perPage}
+        totalItems={total}
+        onPageChange={setPage}
+        onPageSizeChange={(n) => { setPerPage(n); setPage(1); }}
+        minTableWidth={1200}
+      />
     </>
   );
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Forms tab
+// Forms tab — same shape as EMAIL_COLUMNS; "Subject" swaps for "Responses"
+// (a numeric count of form submissions).
 // ────────────────────────────────────────────────────────────────────────────
+const FORM_COLUMNS = [
+  { key: 'name',      label: 'Name',            sticky: 'left', left: 0, width: 320 },
+  { key: 'category',  label: 'Category',        width: 160 },
+  { key: 'responses', label: 'Responses',       width: 140 },
+  { key: 'updated',   label: 'Last Updated',    width: 140 },
+  { key: 'updatedBy', label: 'Last Updated By', width: 180 },
+  { key: 'action',    label: 'Action',          sticky: 'right', width: 100 },
+];
+
 function FormRowMenu({ onCopyLink, onDuplicate, onDelete }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
@@ -488,126 +459,83 @@ function FormsTab({ searchVal, onDuplicate, onDelete, bulkMode, selectedIds, onT
     fetchContentForms?.({ page, perPage, search: searchVal });
   }, [fetchContentForms, page, perPage, searchVal]);
 
-  return (
-    <>
-      <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <colgroup>
-            <col className={styles.colName} />
-            <col className={styles.colCategory} />
-            <col className={styles.colSubject} />
-            <col className={styles.colDate} />
-            <col className={styles.colUpdatedBy} />
-            <col className={styles.colAction} />
-          </colgroup>
-          <thead>
-            <tr className={styles.headerRow}>
-              <th>
-                <div className={styles.nameHeader}>
-                  <span className={`${styles.headerLeading} ${bulkMode ? styles.headerLeadingOpen : ''}`} aria-hidden={!bulkMode}>
-                    <Checkbox
-                      checked={
-                        forms.length > 0 && forms.every(f => selectedIds.has(f.id))
-                          ? true
-                          : selectedIds.size > 0 ? 'indeterminate' : false
-                      }
-                      onCheckedChange={() => onToggleAll(forms)}
-                    />
-                  </span>
-                  <span>Name</span>
-                </div>
-              </th>
-              <th>Category</th>
-              <th>Responses</th>
-              <th>Last Updated</th>
-              <th>Last Updated By</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              Array.from({ length: Math.max(1, perPage > 5 ? 5 : perPage) }).map((_, i) => (
-                <FormRowSkeleton key={`fskel-${i}`} />
-              ))
-            ) : forms.length === 0 ? (
-              <tr>
-                <td colSpan={6} className={styles.emptyState}>
-                  <Icon name="solar:document-text-linear" size={32} color="var(--neutral-150)" />
-                  <p>No forms yet. Click “New Form” to build one.</p>
-                </td>
-              </tr>
-            ) : (
-              forms.map(form => {
-                const isSelected = bulkMode && selectedIds.has(form.id);
-                const handleNameClick = () => {
-                  if (bulkMode) onToggleId(form.id);
-                  else openFormBuilder(form);
-                };
-                return (
-                  <tr key={form.id} className={`${styles.row} ${isSelected ? styles.rowSelected : ''}`}>
-                    <td className={styles.tdName}>
-                      <div
-                        className={styles.nameLink}
-                        role="button"
-                        tabIndex={0}
-                        onClick={handleNameClick}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNameClick(); } }}
-                      >
-                        <div className={styles.nameLeading}>
-                          <span className={`${styles.leadingLayer} ${bulkMode ? styles.leadingHidden : styles.leadingVisible}`} aria-hidden={bulkMode}>
-                            <Icon name="solar:document-text-linear" size={16} color="var(--neutral-300)" />
-                          </span>
-                          <span
-                            className={`${styles.leadingLayer} ${bulkMode ? styles.leadingVisible : styles.leadingHidden}`}
-                            aria-hidden={!bulkMode}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Checkbox checked={selectedIds.has(form.id)} onCheckedChange={() => onToggleId(form.id)} />
-                          </span>
-                        </div>
-                        <div className={styles.nameStack}>
-                          <span className={styles.nameText}>{form.name}</span>
-                          {form.description ? <span className={styles.nameDesc}>{form.description}</span> : null}
-                        </div>
-                      </div>
-                    </td>
-                    <td className={styles.tdCategory}>
-                      {form.category ? <Badge variant="ai-neutral" label={form.category} /> : <span className={styles.cellMuted}>—</span>}
-                    </td>
-                    <td className={styles.tdSubject}>
-                      <span className={styles.cellText}>{form.responseCount ?? 0}</span>
-                    </td>
-                    <td className={styles.tdDate}>
-                      <span className={styles.cellText}>{formatRelative(form.updatedAt)}</span>
-                    </td>
-                    <td className={styles.tdUpdatedBy}>
-                      <span className={styles.cellText}>{form.updatedByName || <span className={styles.cellMuted}>—</span>}</span>
-                    </td>
-                    <td className={styles.tdAction}>
-                      <div className={styles.actionCell}>
-                        <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit form" onClick={() => openFormBuilder(form)} />
-                        <div className={styles.vDivider} />
-                        <FormRowMenu onCopyLink={() => copyLink(form)} onDuplicate={() => onDuplicate(form)} onDelete={() => onDelete(form)} />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+  const renderRow = (form) => {
+    const isSelected = bulkMode && selectedIds.has(form.id);
+    const handleNameClick = () => {
+      if (bulkMode) onToggleId(form.id);
+      else openFormBuilder(form);
+    };
+    return (
+      <tr key={form.id} className={`${styles.row} ${isSelected ? styles.rowSelected : ''}`}>
+        <td className={styles.tdName}>
+          <div
+            className={styles.nameLink}
+            role="button"
+            tabIndex={0}
+            onClick={handleNameClick}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNameClick(); } }}
+          >
+            <div className={styles.nameLeading}>
+              <span className={`${styles.leadingLayer} ${bulkMode ? styles.leadingHidden : styles.leadingVisible}`} aria-hidden={bulkMode}>
+                <Icon name="solar:document-text-linear" size={16} color="var(--neutral-300)" />
+              </span>
+              <span
+                className={`${styles.leadingLayer} ${bulkMode ? styles.leadingVisible : styles.leadingHidden}`}
+                aria-hidden={!bulkMode}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Checkbox checked={selectedIds.has(form.id)} onCheckedChange={() => onToggleId(form.id)} />
+              </span>
+            </div>
+            <div className={styles.nameStack}>
+              <span className={styles.nameText}>{form.name}</span>
+              {form.description ? <span className={styles.nameDesc}>{form.description}</span> : null}
+            </div>
+          </div>
+        </td>
+        <td className={styles.tdCategory}>
+          {form.category ? <Badge variant="ai-neutral" label={form.category} /> : <span className={styles.cellMuted}>—</span>}
+        </td>
+        <td className={styles.tdSubject}>
+          <span className={styles.cellText}>{form.responseCount ?? 0}</span>
+        </td>
+        <td className={styles.tdDate}>
+          <span className={styles.cellText}>{formatRelative(form.updatedAt)}</span>
+        </td>
+        <td className={styles.tdUpdatedBy}>
+          <span className={styles.cellText}>{form.updatedByName || <span className={styles.cellMuted}>—</span>}</span>
+        </td>
+        <td className={styles.tdAction}>
+          <div className={styles.actionCell}>
+            <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit form" onClick={() => openFormBuilder(form)} />
+            <div className={styles.vDivider} />
+            <FormRowMenu onCopyLink={() => copyLink(form)} onDuplicate={() => onDuplicate(form)} onDelete={() => onDelete(form)} />
+          </div>
+        </td>
+      </tr>
+    );
+  };
 
-      {total > 0 ? (
-        <Pagination
-          totalItems={total}
-          currentPage={page}
-          perPage={perPage}
-          onPageChange={setPage}
-          onPerPageChange={(n) => { setPerPage(n); setPage(1); }}
-        />
-      ) : null}
-    </>
+  return (
+    <WorklistShell
+      header={null}
+      columns={FORM_COLUMNS}
+      rows={forms}
+      renderRow={renderRow}
+      loading={loading}
+      emptyState={
+        <div className={styles.emptyState}>
+          <Icon name="solar:document-text-linear" size={32} color="var(--neutral-150)" />
+          <p>No forms yet. Click "New Form" to build one.</p>
+        </div>
+      }
+      page={page}
+      perPage={perPage}
+      totalItems={total}
+      onPageChange={setPage}
+      onPageSizeChange={(n) => { setPerPage(n); setPage(1); }}
+      minTableWidth={1200}
+    />
   );
 }
 

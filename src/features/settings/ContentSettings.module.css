@@ -87,8 +87,18 @@
 
 .row:hover { background: var(--primary-25, #FDFDFF); }
 
-/* Name cell */
-.tdName { padding: 10px 16px; }
+/* Name cell — sticky-left so the primary identity column stays visible
+   when the table scrolls horizontally, mirroring .tdAction on the right. */
+.tdName {
+  padding: 10px 16px;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--neutral-0);
+}
+.row:hover .tdName { background: var(--primary-25); }
+.rowSelected .tdName { background: var(--primary-25); }
+.rowSelected:hover .tdName { background: var(--primary-50); }
 
 .nameLink {
   display: flex;
