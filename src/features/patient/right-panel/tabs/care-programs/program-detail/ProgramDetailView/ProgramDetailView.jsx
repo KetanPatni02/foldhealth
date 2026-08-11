@@ -72,9 +72,9 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
     if (stepFlags.isOpenCareGapsStep) return <OpenCareGaps />;
     if (stepFlags.isMedReconStep) return <MedicationReconciliation />;
     if (stepFlags.isProgramTasksStep) {
-      return <ProgramRelatedTasks programCode={program.code} onAddTask={() => v.setAddTaskOpen(true)} filters={v.taskFilters} search={v.taskSearchText} />;
+      return <ProgramRelatedTasks programCode={program.code} patientId={v.patientId} onAddTask={() => v.setAddTaskOpen(true)} filters={v.taskFilters} search={v.taskSearchText} />;
     }
-    if (stepFlags.isProgramFilesStep) return <ProgramRelatedFiles />;
+    if (stepFlags.isProgramFilesStep) return <ProgramRelatedFiles programCode={program.code} patientId={v.patientId} />;
     if (stepFlags.isReferralStep) return <ReferralReview />;
     if (v.assessmentCfg) {
       return v.assessmentCfg.checklist
@@ -240,6 +240,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
         <AddTaskDrawer
           onClose={() => v.setAddTaskOpen(false)}
           initialMember={v.currentPatient?.name}
+          extraFields={{ program_code: program.code, patient_id: v.patientId != null ? String(v.patientId) : null }}
           onTaskCreated={(t) => {
             v.setAddTaskOpen(false);
             if (program.code && t) v.addProgramTask(program.code, t);

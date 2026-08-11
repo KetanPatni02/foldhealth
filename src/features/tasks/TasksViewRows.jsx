@@ -12,7 +12,7 @@ import {
   STATUS_ORDER, STATUS_LABELS, STATUS_BADGE_VARIANTS, PRIORITY_ORDER, PRIORITY_LABELS,
   getInitials, isOverdue, formatDateFriendly, PAGE_SIZE,
 } from './TasksView.utils';
-import { SubtaskIcon, PriorityIcon } from './TasksViewIcons';
+import { SubtaskIcon, PriorityIcon, CheckIcon } from './TasksViewIcons';
 import { TaskDatePicker } from './TasksViewDropdowns';
 import styles from './TasksView.module.css';
 
@@ -144,7 +144,7 @@ export function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo, hideMembe
           aria-label={isCompleted ? 'Mark incomplete' : 'Mark complete'}
         >
           <span className={styles.taskCheckIcon}>
-            <Icon name="solar:check-read-linear" size={13} color="var(--neutral-0)" />
+            <CheckIcon size={13} />
           </span>
         </button>
       </div>

@@ -74,18 +74,20 @@
 
 /* Sticky-column background must follow row state — otherwise the underlying
    row colour would show through whatever's already scrolled under it. */
-.row:hover .tdAction { background: var(--primary-25, #FDFDFF); }
-.rowSelected .tdAction { background: var(--primary-25, #FDFDFF); }
+.row:hover .tdAction { background: var(--primary-25); }
+.rowSelected .tdAction { background: var(--primary-25); }
 .rowSelected:hover .tdAction { background: var(--primary-50); }
 
+/* Compose from the shared WorklistRow so the Emails + Forms tables pick
+   up the same load-in fade + stagger as every other worklist. The extra
+   background-color transition is kept for the selected-state highlight
+   which uses a slightly longer ease than the shared hover. */
 .row {
-  border-bottom: 0.5px solid var(--neutral-100);
-  /* Slightly longer ease so the selected-state highlight settles in instead
-     of snapping when a checkbox flips. */
+  composes: row from '../../components/WorklistShell/WorklistRow.module.css';
   transition: background-color 0.18s cubic-bezier(.4, 0, .2, 1);
 }
 
-.row:hover { background: var(--primary-25, #FDFDFF); }
+.row:hover { background: var(--primary-25); }
 
 /* Name cell — sticky-left so the primary identity column stays visible
    when the table scrolls horizontally, mirroring .tdAction on the right. */

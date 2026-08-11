@@ -120,7 +120,6 @@ export function SubNav({ collapsed }) {
       items: [
         { key: 'My Patients', label: 'My Patients', count: 0 },
         { key: 'All Patients', label: 'All Patients', count: allPatientsCount || 0 },
-        { key: 'Scheduling List', label: 'Scheduling List', count: patients.length || 0 },
       ],
     },
     {

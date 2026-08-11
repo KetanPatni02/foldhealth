@@ -43,7 +43,16 @@
 .progSection { display: flex; flex-direction: column; margin-bottom: 16px; }
 .progSectionHead { display: flex; align-items: center; gap: 8px; padding: 8px 12px 6px; }
 .progSectionTitle { font-size: 14px; font-weight: 500; color: var(--neutral-400); }
-.progEmpty { display: flex; flex-direction: column; }
+.progEmpty {
+  display: flex;
+  flex-direction: column;
+  /* Inset 12px so the box's left edge lines up with the section heading
+     ("Open"/"Completed"), which sits 12px in via .progSectionHead. */
+  margin: 0 12px;
+  padding: 12px;
+  border: 1px dashed var(--neutral-150);
+  border-radius: 8px;
+}
 /* Grows with its rows; scrolls horizontally when the columns overflow. The
    header sticks to the top and the pinned columns stick to the sides. */
 .progScroll {
