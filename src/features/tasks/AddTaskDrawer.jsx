@@ -4,14 +4,15 @@ import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { useAddTaskDrawer } from './useAddTaskDrawer';
 import { AddTaskDrawerBody } from './AddTaskDrawerBody';
 
-export function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCreated }) {
-  const drawer = useAddTaskDrawer({ defaultStatus, initialMember, onClose, onTaskCreated });
+export function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCreated, extraFields }) {
+  const drawer = useAddTaskDrawer({ defaultStatus, initialMember, onClose, onTaskCreated, extraFields });
 
   return (
     <>
       <Drawer
         title="Add Task"
-        onClose={drawer.handleClose}
+        onClose={onClose}
+        beforeClose={drawer.guardClose}
         headerRight={
           <Button variant="primary" size="L" disabled={!drawer.canSave} onClick={drawer.handleSave}>
             Save Task

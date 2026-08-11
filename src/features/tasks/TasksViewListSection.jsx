@@ -75,7 +75,8 @@ export function ProgramTaskSection({ title, tasks, onToggle, onTaskClick, hideAs
 /**
  * TaskListSection — Open / Completed sections built from the shared Tasks
  * TaskRow, for embedding outside the full Tasks page (e.g. a care program).
- * "Open" = anything not completed; "Completed" only renders when non-empty.
+ * "Open" = anything not completed. Both sections always render (each shows its
+ * own empty state when it has no tasks).
  * Toggling completion updates the shared task store. Pass `hideMember` when
  * already in a member context.
  */
@@ -98,19 +99,18 @@ export function TaskListSection({ tasks = [], onTaskClick, hideAssignedTo = fals
         hideAssignedTo={hideAssignedTo}
         hideMember={hideMember}
         onAddTask={onAddTask}
-        emptyLabel="No Tasks Added"
+        emptyLabel="No Open Tasks"
       />
-      {completed.length > 0 && (
-        <ProgramTaskSection
-          title="Completed"
-          tasks={completed}
-          onToggle={handleToggle}
-          onTaskClick={onTaskClick}
-          hideAssignedTo={hideAssignedTo}
-          hideMember={hideMember}
-          onAddTask={onAddTask}
-        />
-      )}
+      <ProgramTaskSection
+        title="Completed"
+        tasks={completed}
+        onToggle={handleToggle}
+        onTaskClick={onTaskClick}
+        hideAssignedTo={hideAssignedTo}
+        hideMember={hideMember}
+        onAddTask={onAddTask}
+        emptyLabel="No Completed Tasks"
+      />
     </>
   );
 }

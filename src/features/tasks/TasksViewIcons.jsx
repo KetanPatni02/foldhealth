@@ -14,6 +14,16 @@ export function SubtaskIcon({ size = 16, color = 'var(--primary-300)' }) {
   );
 }
 
+// Single checkmark for the completed-task checkbox (Solar only ships a
+// double-tick `check-read`, so this is a custom 1px-stroke glyph).
+export function CheckIcon({ size = 13, color = 'var(--neutral-0)' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+      <path d="M3.5 8.5 6.5 11.5 12.5 5" stroke={color} strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
 export function PriorityIcon({ priority, size = 24 }) {
   const s = size;
   if (priority === 'high') {

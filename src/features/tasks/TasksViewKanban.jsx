@@ -18,7 +18,7 @@ import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { toast } from '../../components/Toast/sonnerToast';
 import { useAppStore } from '../../store/useAppStore';
 import { STATUS_LABELS, STATUS_BADGE_VARIANTS, PRIORITY_COLORS, isOverdue, formatDateFriendly } from './TasksView.utils';
-import { PriorityIcon, SubtaskIcon } from './TasksViewIcons';
+import { PriorityIcon, SubtaskIcon, CheckIcon } from './TasksViewIcons';
 import { RowActionMenu } from './TasksViewRowDropdowns';
 import styles from './TasksView.module.css';
 
@@ -54,7 +54,7 @@ export function KanbanCardContent({ task }) {
             aria-label={isCompleted ? 'Mark incomplete' : 'Mark complete'}
           >
             <span className={styles.taskCheckIcon}>
-            <Icon name="solar:check-read-linear" size={13} color="var(--neutral-0)" />
+            <CheckIcon size={13} />
           </span>
           </button>
         </div>

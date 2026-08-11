@@ -7,7 +7,7 @@ import { CommentComposer } from '../../components/CommentComposer/CommentCompose
 import { Toggle } from '../../components/Toggle/Toggle';
 import { Select } from '../../components/Select/Select';
 import { LABEL_OPTIONS, TITLE_MAX, getInitials, isOverdue, formatDateFriendly, STATUS_LABELS, STATUS_BADGE_VARIANTS } from './TasksView.utils';
-import { PriorityIcon } from './TasksViewIcons';
+import { PriorityIcon, CheckIcon } from './TasksViewIcons';
 import { TaskDatePicker, DetailDropdown } from './TasksViewDropdowns';
 import styles from './TasksView.module.css';
 
@@ -59,7 +59,7 @@ export function TaskDetailDrawerSubtasks({
                     updateTask(sub.id, { status: sub.status === 'completed' ? 'pending' : 'completed' });
                   }}
                 >
-                  {sub.status === 'completed' && <Icon name="solar:check-read-linear" size={13} color="var(--neutral-0)" />}
+                  {sub.status === 'completed' && <CheckIcon size={13} />}
                 </button>
                 <div className={styles.subtaskCardBody}>
                   <div className={styles.subtaskCardRow}>

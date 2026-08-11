@@ -4,7 +4,7 @@ import {
   STATUS_ORDER, STATUS_LABELS, PRIORITY_OPTIONS, ASSIGNEE_OPTIONS, MEMBER_OPTIONS, TITLE_MAX, todayMMDDYYYY,
 } from './TasksView.utils';
 
-export function useAddTaskDrawer({ defaultStatus, initialMember, onClose, onTaskCreated }) {
+export function useAddTaskDrawer({ defaultStatus, initialMember, onClose, onTaskCreated, extraFields }) {
   const initialStatus = defaultStatus || 'pending';
   const [name, setName] = useState('');
   const [priority, setPriority] = useState('medium');
@@ -103,6 +103,7 @@ export function useAddTaskDrawer({ defaultStatus, initialMember, onClose, onTask
       parent_task_id: null,
       created_by: me,
       created_by_id: meId,
+      ...extraFields,
     };
     const result = await createTask(task);
     if (result) {
@@ -126,15 +127,18 @@ export function useAddTaskDrawer({ defaultStatus, initialMember, onClose, onTask
         mentions: [],
         created_by: me,
         created_by_id: meId,
+        ...extraFields,
       })));
       showToast('Task created');
       onTaskCreated?.(result);
     }
   };
 
-  const handleClose = () => {
-    if (isDirty) setShowCloseConfirm(true);
-    else onClose();
+  // Veto the drawer close when there are unsaved changes — the confirm opens
+  // over the still-open drawer; "Keep editing" just dismisses the confirm.
+  const guardClose = () => {
+    if (isDirty) { setShowCloseConfirm(true); return false; }
+    return true;
   };
 
   const toggleLabel = (l) => {
@@ -162,7 +166,7 @@ export function useAddTaskDrawer({ defaultStatus, initialMember, onClose, onTask
     currentUserProfile,
     canSave,
     handleSave,
-    handleClose,
+    guardClose,
     toggleLabel,
     addStagedSubtask,
     removeStagedSubtask,
