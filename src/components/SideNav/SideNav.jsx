@@ -200,12 +200,21 @@ export function SideNav({
 // indicator-measurement ref.
 function SortableNavItem({ item, className, registerRef, onClick, children }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.key });
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick?.(e);
+    }
+  };
   return (
     <div
       ref={(el) => { setNodeRef(el); registerRef(item.key, el); }}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={[className, isDragging ? styles.dragging : ''].filter(Boolean).join(' ')}
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={handleKeyDown}
       {...attributes}
       {...listeners}
     >

@@ -94,3 +94,9 @@
   flex-shrink: 0;
 }
 .uplAction:hover { background: var(--neutral-50); }
+.uplActionDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}

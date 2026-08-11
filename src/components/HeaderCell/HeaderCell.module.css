@@ -14,6 +14,17 @@
   vertical-align: middle;
 }
 
+/* Lift the hovered header above its neighbours so the sort tooltip
+ * (which lives inside this <th>'s stacking context) can paint over
+ * adjacent columns. Sticky-positioned <th>s each open their own
+ * stacking context, and without this every sibling with an equal or
+ * higher z-index would occlude the tooltip regardless of how large
+ * the tooltip's own z-index is. */
+.headerCell:hover,
+.headerCell:focus-within {
+  z-index: 50;
+}
+
 .headerCellSortable {
   cursor: pointer;
   transition: color 0.12s;

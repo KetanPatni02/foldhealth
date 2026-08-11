@@ -4,8 +4,11 @@ import { Drawer } from '../../components/Drawer/Drawer';
 import { Button } from '../../components/Button/Button';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { UploadDropField } from '../../components/UploadDropField/UploadDropField';
+import { FilePreview } from '../../components/FilePreview/FilePreview';
+import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { DemoPhiStrip } from '../../components/DemoPhiStrip/DemoPhiStrip';
 import { Select } from '../../components/Select/Select';
+import { FailReasonInline } from './ChartDetailDrawerParts';
 import { DOC_TYPES, makeUploadedChartDoc } from './data/chartDocs';
 import styles from './UploadChartDrawer.module.css';
 
@@ -44,6 +47,9 @@ export function UploadChartDrawer() {
   const [captionTouched, setCaptionTouched] = useState(false);
   const [docType, setDocType] = useState('');
   const [initialStatus, setInitialStatus] = useState(null);
+  const [failInline, setFailInline] = useState(false);
+  const [failDetails, setFailDetails] = useState(null); // { reasons, note } | null
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [uploadKey, setUploadKey] = useState(0); // remount UploadDropField to reset it
 
   // Prefill when opening in edit mode: caption + docType come from the row,
@@ -60,8 +66,17 @@ export function UploadChartDrawer() {
     }
     setFile(null);
     setInitialStatus(null);
+    setFailInline(false);
+    setFailDetails(null);
+    setPreviewOpen(false);
     setUploadKey(k => k + 1);
   }, [editDoc, isEdit]);
+
+  // Collapse the preview pane when the file is cleared so the drawer
+  // doesn't linger in its widened state with nothing to show.
+  useEffect(() => {
+    if (!file) setPreviewOpen(false);
+  }, [file]);
 
   // Pre-populate the Caption field with the file name (extension stripped)
   // when a file is picked and the user hasn't already typed their own caption.
@@ -105,12 +120,30 @@ export function UploadChartDrawer() {
       fileType: docType,
       docId: doc.id,
     });
+    if (initialStatus === 'Failed' && failDetails) {
+      const reasonText = (failDetails.reasons || []).join(', ');
+      addActivityEntry({
+        t: 'doc-status', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
+        headline: `Marked "${doc.n}" as Failed`,
+        details: [{ note: failDetails.note ? `${reasonText} — ${failDetails.note}` : reasonText }],
+        docId: doc.id,
+      });
+    } else if (initialStatus === 'Passed') {
+      addActivityEntry({
+        t: 'doc-status', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
+        headline: `Marked "${doc.n}" as Passed`,
+        docId: doc.id,
+      });
+    }
     showToast(`Uploaded ${doc.n} to ${member.name}'s documents.`);
     setFile(null);
     setCaption('');
     setCaptionTouched(false);
     setDocType('');
     setInitialStatus(null);
+    setFailInline(false);
+    setFailDetails(null);
+    setPreviewOpen(false);
     setUploadKey(k => k + 1);
     close();
   };
@@ -121,15 +154,35 @@ export function UploadChartDrawer() {
     setCaptionTouched(false);
     setDocType('');
     setInitialStatus(null);
+    setFailInline(false);
+    setFailDetails(null);
+    setPreviewOpen(false);
     setUploadKey(k => k + 1);
     close();
+  };
+
+  const handlePassClick = () => {
+    setFailInline(false);
+    setFailDetails(null);
+    setInitialStatus(v => v === 'Passed' ? null : 'Passed');
+  };
+  const handleFailClick = () => {
+    if (initialStatus === 'Failed') {
+      // Toggle Failed off — clear both the status and any captured reasons.
+      setInitialStatus(null);
+      setFailDetails(null);
+      setFailInline(false);
+      return;
+    }
+    // Open the inline reason picker; status flips to Failed on Confirm.
+    setFailInline(true);
   };
 
   return (
     <Drawer
       title={<span className={styles.title}>{isEdit ? 'Edit Document' : 'Upload Document'}</span>}
       onClose={handleClose}
-      className={styles.drawer}
+      className={`${styles.drawer} ${previewOpen ? styles.drawerWide : ''}`}
       bodyClassName={styles.body}
       headerRight={
         <Button variant="primary" size="M" disabled={!ok} onClick={handleUpload}>
@@ -137,81 +190,127 @@ export function UploadChartDrawer() {
         </Button>
       }
     >
-      {/* Shared patient banner — matches Diagnosis Gaps Details. */}
-      <PatientBanner
-        initials={member.in || member.name?.split(' ').map(p => p[0]).slice(0, 2).join('')}
-        name={member.name}
-        gender={member.g === 'M' ? 'Male' : member.g === 'F' ? 'Female' : member.g}
-        age={member.age || ''}
-        dob={member.dob}
-        memberId={member.memberId || `#${member.id}`}
-        raf={member.raf}
-        rafChange={member.ri}
-        rafUp={member.ru !== false}
-      />
-
-      {/* Form */}
-      <div className={styles.form}>
-        {/* Drop zone → uploading → uploaded states (shared with the Document
-            Available details drawer). */}
-        <DemoPhiStrip />
-        <UploadDropField key={uploadKey} onChange={setFile} />
-
-        {/* Caption */}
-        <div className={styles.field}>
-          <span className={styles.fieldLabel}>
-            Caption
-            <span className={styles.required} aria-hidden="true" />
-          </span>
-          <input
-            type="text"
-            value={caption}
-            placeholder="Add caption"
-            onChange={(e) => { setCaption(e.target.value); setCaptionTouched(true); }}
-            className={styles.input}
-          />
-        </div>
-
-        {/* Document Type */}
-        <div className={styles.field}>
-          <span className={styles.fieldLabel}>
-            Document Type
-            <span className={styles.required} aria-hidden="true" />
-          </span>
-          <Select
-            className={styles.select}
-            options={DOC_TYPES.map((t) => ({ value: t, label: t }))}
-            value={docType}
-            onChange={setDocType}
-            placeholder="Select Type"
-          />
-        </div>
-
-        {/* Review Status — reviewer roles can Pass/Fail on upload so a
-            single-step flow lands the doc in a decided state. */}
-        {canSetStatus && (
-          <div className={styles.field}>
-            <span className={styles.fieldLabel}>
-              Review Status <span className={styles.optional}>(optional)</span>
-            </span>
-            <div className={styles.statusRow}>
-              <button
-                type="button"
-                className={[styles.statusPill, initialStatus === 'Passed' ? styles.statusPass : ''].filter(Boolean).join(' ')}
-                onClick={() => setInitialStatus(v => v === 'Passed' ? null : 'Passed')}
-              >
-                Pass
-              </button>
-              <button
-                type="button"
-                className={[styles.statusPill, initialStatus === 'Failed' ? styles.statusFail : ''].filter(Boolean).join(' ')}
-                onClick={() => setInitialStatus(v => v === 'Failed' ? null : 'Failed')}
-              >
-                Fail
-              </button>
+      <div className={`${styles.layout} ${previewOpen ? styles.layoutSplit : ''}`}>
+        {/* Left — inline file preview. Opens when the user clicks the eye
+            icon on the uploaded-file card; drawer widens to make room. */}
+        {previewOpen && file && (
+          <div className={styles.leftPane}>
+            <div className={styles.paneHeader}>
+              <span className={styles.paneTitle}>{file.name}</span>
+              <CloseButton size={16} onClick={() => setPreviewOpen(false)} label="Close preview" />
+            </div>
+            <div className={styles.previewWrap}>
+              <FilePreview file={file} name={file.name} />
             </div>
           </div>
         )}
+
+        <div className={styles.rightPane}>
+          {/* Shared patient banner — matches Diagnosis Gaps Details. */}
+          <PatientBanner
+            initials={member.in || member.name?.split(' ').map(p => p[0]).slice(0, 2).join('')}
+            name={member.name}
+            gender={member.g === 'M' ? 'Male' : member.g === 'F' ? 'Female' : member.g}
+            age={member.age || ''}
+            dob={member.dob}
+            memberId={member.memberId || `#${member.id}`}
+            raf={member.raf}
+            rafChange={member.ri}
+            rafUp={member.ru !== false}
+          />
+
+          {/* Form */}
+          <div className={styles.form}>
+            {/* Drop zone → uploading → uploaded states (shared with the
+                Document Available details drawer). */}
+            <DemoPhiStrip />
+            <UploadDropField
+              key={uploadKey}
+              onChange={setFile}
+              onPreview={(f) => { if (f) setPreviewOpen(true); }}
+            />
+
+            {/* Caption */}
+            <div className={styles.field}>
+              <span className={styles.fieldLabel}>
+                Caption
+                <span className={styles.required} aria-hidden="true" />
+              </span>
+              <input
+                type="text"
+                value={caption}
+                placeholder="Add caption"
+                onChange={(e) => { setCaption(e.target.value); setCaptionTouched(true); }}
+                className={styles.input}
+              />
+            </div>
+
+            {/* Document Type */}
+            <div className={styles.field}>
+              <span className={styles.fieldLabel}>
+                Document Type
+                <span className={styles.required} aria-hidden="true" />
+              </span>
+              <Select
+                className={styles.select}
+                options={DOC_TYPES.map((t) => ({ value: t, label: t }))}
+                value={docType}
+                onChange={setDocType}
+                placeholder="Select Type"
+              />
+            </div>
+
+            {/* Review Status — reviewer roles can Pass/Fail on upload so a
+                single-step flow lands the doc in a decided state. Fail opens
+                the shared reason picker so the reviewer records WHY. */}
+            {canSetStatus && (
+              <div className={styles.field}>
+                <span className={styles.fieldLabel}>
+                  Review Status <span className={styles.optional}>(optional)</span>
+                </span>
+                <div className={styles.statusRow}>
+                  <button
+                    type="button"
+                    className={[styles.statusPill, initialStatus === 'Passed' ? styles.statusPass : ''].filter(Boolean).join(' ')}
+                    onClick={handlePassClick}
+                  >
+                    Pass
+                  </button>
+                  <button
+                    type="button"
+                    className={[styles.statusPill, initialStatus === 'Failed' ? styles.statusFail : ''].filter(Boolean).join(' ')}
+                    onClick={handleFailClick}
+                  >
+                    Fail
+                  </button>
+                </div>
+                {failInline && (
+                  <div className={styles.failInlineWrap}>
+                    <FailReasonInline
+                      onCancel={() => setFailInline(false)}
+                      onConfirm={({ reasons, note }) => {
+                        setInitialStatus('Failed');
+                        setFailDetails({ reasons: reasons || [], note: note || '' });
+                        setFailInline(false);
+                      }}
+                    />
+                  </div>
+                )}
+                {initialStatus === 'Failed' && !failInline && failDetails?.reasons?.length > 0 && (
+                  <div className={styles.failSummary}>
+                    <div className={styles.failSummaryHeading}>Failed Due to:</div>
+                    <ul className={styles.failSummaryList}>
+                      {failDetails.reasons.map(r => <li key={r}>{r}</li>)}
+                    </ul>
+                    {failDetails.note && (
+                      <div className={styles.failSummaryNote}>Comment: {failDetails.note}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </Drawer>
   );

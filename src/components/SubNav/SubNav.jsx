@@ -58,12 +58,26 @@ export function SubNav({ collapsed }) {
     return order.map(l => WORKLIST_BY_LABEL[l]);
   }, [worklistOrder]);
 
+  // HCC's data model has one row per coding record — a patient with multiple
+  // records repeats in `hccMembers` (Annette Brave = 4 rows, one per record).
+  // The badge and worklist table both show unique patients, so we count fold
+  // IDs the same way the table dedupes (see `dedupedMembers` in
+  // useHccWorklistTable). Every other list is already one-row-per-patient.
+  const hccUniquePatientCount = useMemo(() => {
+    const seen = new Set();
+    for (const m of hccMembers) {
+      const k = (m?.memberId || m?.id || '').toString().replace(/^#/, '').trim().toLowerCase();
+      if (k) seen.add(k);
+    }
+    return seen.size;
+  }, [hccMembers]);
+
   // Lists with a backing worklist (TOC, HCC, HEDIS, CCM, SNP, Annual Visit)
   // show real row counts; the rest have no data source yet and show 0.
   const getCounts = useMemo(() => {
     const counts = {};
     for (const list of WORKLISTS) {
-      if (list.view === 'hcc') counts[list.label] = hccMembers.length;
+      if (list.view === 'hcc') counts[list.label] = hccUniquePatientCount;
       else if (list.view === 'hedis') counts[list.label] = HEDIS_MEMBERS.length;
       else if (list.view === 'ccm') counts[list.label] = ccmWorklistMembers.length;
       else if (list.view === 'snp') counts[list.label] = snpWorklistMembers.length;
@@ -72,7 +86,7 @@ export function SubNav({ collapsed }) {
       else counts[list.label] = 0;
     }
     return counts;
-  }, [patients, hccMembers, awvMembers, ccmWorklistMembers, snpWorklistMembers]);
+  }, [patients, hccUniquePatientCount, awvMembers, ccmWorklistMembers, snpWorklistMembers]);
 
   // Unique patient count across every worklist. Different worklists use
   // different id spaces (p1, hcc-42, ccmw-001), so we key the union on a
@@ -123,9 +137,9 @@ export function SubNav({ collapsed }) {
     {
       key: 'archived',
       label: 'Archived Worklist',
-      items: [{ key: 'HCC (Archived)', label: 'HCC', count: hccMembers.length || 0 }],
+      items: [{ key: 'HCC (Archived)', label: 'HCC', count: hccUniquePatientCount || 0 }],
     },
-  ], [orderedWorklists, getCounts, allPatientsCount, hccMembers.length]);
+  ], [orderedWorklists, getCounts, allPatientsCount, patients.length, hccUniquePatientCount]);
 
   const handleSelect = (key) => {
     setActiveSubnavList(key);

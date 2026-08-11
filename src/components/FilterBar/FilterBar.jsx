@@ -221,6 +221,7 @@ export function FilterBar({
         ))}
         <FilterBarTail
           tailRef={setTailRef}
+          moreBtnRef={moreBtnRef}
           actions={tailActions}
           moreRect={moreRect}
           onOpenMore={openMore}

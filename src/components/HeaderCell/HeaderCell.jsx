@@ -62,6 +62,14 @@ export function HeaderCell({
     onSort(sortField, ref.current?.getBoundingClientRect());
   };
 
+  const handleKeyDown = (e) => {
+    if (!isSortable) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onSort(sortField, ref.current?.getBoundingClientRect());
+    }
+  };
+
   const cls = [
     styles.headerCell,
     isSortable ? styles.headerCellSortable : '',
@@ -86,6 +94,10 @@ export function HeaderCell({
       className={cls}
       style={{ textAlign: align, ...style }}
       onClick={isSortable ? handleClick : undefined}
+      onKeyDown={isSortable ? handleKeyDown : undefined}
+      role={isSortable ? 'button' : undefined}
+      tabIndex={isSortable ? 0 : undefined}
+      aria-sort={isActive ? (activeDir === 'desc' ? 'descending' : 'ascending') : undefined}
       data-sort-field={sortField}
     >
       <span className={styles.headerLabel}>
