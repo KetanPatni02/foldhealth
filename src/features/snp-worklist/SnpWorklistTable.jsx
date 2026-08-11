@@ -7,9 +7,35 @@ import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBa
 import { FilterBar } from '../../components/FilterBar/FilterBar';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
+import { HeaderCell } from '../../components/HeaderCell/HeaderCell';
+import { useTableSort } from '../../components/HeaderCell/useTableSort';
 import { SavedFiltersChip } from '../hcc/SavedFiltersChip';
 import { SnpWorklistRow } from './SnpWorklistRow';
 import styles from './SnpWorklistTable.module.css';
+
+// Sortable columns — each maps to a field on the enriched row. Tags and
+// Outreach are intentionally omitted (visual composite cells with no natural
+// ordering). Dates surface as `<field>Sort` timestamps computed in enrichment
+// so MM/DD/YYYY strings sort chronologically instead of lexicographically.
+const SORTABLE_COLS = {
+  name:              { field: 'name',            type: 'alpha' },
+  programSubStatus:  { field: 'programSubStatus', type: 'generic' },
+  carePlanStatus:    { field: 'carePlanStatus',  type: 'generic' },
+  nextActionDue:     { field: 'nextActionDueSort', type: 'date' },
+  assigneeName:      { field: 'assigneeName',    type: 'alpha' },
+  triggerDate:       { field: 'triggerDateSort', type: 'date' },
+  lastAdmission:     { field: 'lastAdmissionSort', type: 'date' },
+  trigger:           { field: 'trigger',         type: 'generic' },
+  riskIq:            { field: 'riskIq',          type: 'generic' },
+  taskCount:         { field: 'taskCount',       type: 'number' },
+};
+
+const parseMdy = (s) => {
+  if (!s) return null;
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(s);
+  if (!m) return null;
+  return Date.UTC(+m[3], +m[1] - 1, +m[2]);
+};
 
 // Filter chips — each is a multi-select of string buckets derived per row.
 // `primary: true` chips render by default; extended chips are opt-in via the
@@ -159,8 +185,19 @@ export function SnpWorklistTable() {
     return opts;
   }, [members]);
 
+  // Enrich rows with parsed date timestamps so the shared useTableSort
+  // comparator can order MM/DD/YYYY strings chronologically. Undated rows
+  // land at 0 which the null-handling path in useTableSort would push last;
+  // we sub in a null instead so sorted asc places them at the end.
+  const enriched = useMemo(() => members.map(m => ({
+    ...m,
+    nextActionDueSort: parseMdy(m.nextActionDue),
+    triggerDateSort:   parseMdy(m.triggerDate),
+    lastAdmissionSort: parseMdy(m.lastAdmission),
+  })), [members]);
+
   const filtered = useMemo(() => {
-    let rows = members;
+    let rows = enriched;
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       rows = rows.filter(m =>
@@ -177,7 +214,19 @@ export function SnpWorklistTable() {
       rows = rows.filter(m => valSet.has(bucket(m)));
     }
     return rows;
-  }, [members, searchQuery, filters]);
+  }, [enriched, searchQuery, filters]);
+
+  // Shared sort hook — click cycles asc → desc → cleared, same as HCC.
+  const { sorted, sortKey, sortDir, setSort, clearSort } = useTableSort(filtered);
+  const handleSort = (field) => {
+    if (sortKey === field) {
+      if (sortDir === 'asc') setSort(field, 'desc');
+      else if (sortDir === 'desc') clearSort();
+      else setSort(field, 'asc');
+    } else {
+      setSort(field, 'asc');
+    }
+  };
 
   // Visible chips = primary set (or user-customised set) plus any chip that
   // has an active value — otherwise applying a saved filter could hide the
@@ -203,8 +252,8 @@ export function SnpWorklistTable() {
 
   const paginated = useMemo(() => {
     const start = (page - 1) * perPage;
-    return filtered.slice(start, start + perPage);
-  }, [filtered, page, perPage]);
+    return sorted.slice(start, start + perPage);
+  }, [sorted, page, perPage]);
 
   const allIds = paginated.map(r => r.id);
   const allSelected = allIds.length > 0 && allIds.every(id => selectedIds.has(id));
@@ -283,20 +332,101 @@ export function SnpWorklistTable() {
                 <th style={{ ...thStyle, width: 36, padding: '8px 10px', left: 0, zIndex: 4 }}>
                   <Checkbox checked={someSelected ? 'indeterminate' : allSelected} onCheckedChange={handleSelectAll} />
                 </th>
-                <th style={{ ...thStyle, padding: '8px 12px', left: 36, zIndex: 4, borderRight: '1px solid var(--neutral-150)' }}>
-                  Members
-                </th>
-                <th style={thStyle}>Program Sub Status</th>
-                <th style={thStyle}>Care Plan Status</th>
-                <th style={thStyle}>Next Action Due</th>
-                <th style={thStyle}>Outreach</th>
-                <th style={thStyle}>Assignee</th>
-                <th style={thStyle}>Trigger Date</th>
-                <th style={thStyle}>Last Admission</th>
-                <th style={thStyle}>Trigger</th>
-                <th style={thStyle}>Risk IQ</th>
-                <th style={thStyle}>Tags</th>
-                <th style={thStyle}>Tasks</th>
+                <HeaderCell
+                  label="Members"
+                  sortField={SORTABLE_COLS.name.field}
+                  sortType={SORTABLE_COLS.name.type}
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={handleSort}
+                  style={{ ...thStyle, padding: '8px 12px', left: 36, zIndex: 4, borderRight: '1px solid var(--neutral-150)' }}
+                />
+                <HeaderCell
+                  label="Program Sub Status"
+                  sortField={SORTABLE_COLS.programSubStatus.field}
+                  sortType={SORTABLE_COLS.programSubStatus.type}
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={handleSort}
+                  style={thStyle}
+                />
+                <HeaderCell
+                  label="Care Plan Status"
+                  sortField={SORTABLE_COLS.carePlanStatus.field}
+                  sortType={SORTABLE_COLS.carePlanStatus.type}
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={handleSort}
+                  style={thStyle}
+                />
+                <HeaderCell
+                  label="Next Action Due"
+                  sortField={SORTABLE_COLS.nextActionDue.field}
+                  sortType={SORTABLE_COLS.nextActionDue.type}
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={handleSort}
+                  style={thStyle}
+                />
+                {/* Outreach — composite cell (icon + status + attempt dots),
+                    no natural ordering, per requirement not sortable. */}
+                <HeaderCell label="Outreach" style={thStyle} />
+                <HeaderCell
+                  label="Assignee"
+                  sortField={SORTABLE_COLS.assigneeName.field}
+                  sortType={SORTABLE_COLS.assigneeName.type}
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={handleSort}
+                  style={thStyle}
+                />
+                <HeaderCell
+                  label="Trigger Date"
+                  sortField={SORTABLE_COLS.triggerDate.field}
+                  sortType={SORTABLE_COLS.triggerDate.type}
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={handleSort}
+                  style={thStyle}
+                />
+                <HeaderCell
+                  label="Last Admission"
+                  sortField={SORTABLE_COLS.lastAdmission.field}
+                  sortType={SORTABLE_COLS.lastAdmission.type}
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={handleSort}
+                  style={thStyle}
+                />
+                <HeaderCell
+                  label="Trigger"
+                  sortField={SORTABLE_COLS.trigger.field}
+                  sortType={SORTABLE_COLS.trigger.type}
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={handleSort}
+                  style={thStyle}
+                />
+                <HeaderCell
+                  label="Risk IQ"
+                  sortField={SORTABLE_COLS.riskIq.field}
+                  sortType={SORTABLE_COLS.riskIq.type}
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={handleSort}
+                  style={thStyle}
+                />
+                {/* Tags — visual chip set, no natural ordering, not sortable. */}
+                <HeaderCell label="Tags" style={thStyle} />
+                <HeaderCell
+                  label="Tasks"
+                  sortField={SORTABLE_COLS.taskCount.field}
+                  sortType={SORTABLE_COLS.taskCount.type}
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={handleSort}
+                  style={thStyle}
+                />
                 <th style={{ ...thStyle, width: 80, right: 0, zIndex: 3, textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
