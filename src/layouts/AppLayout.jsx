@@ -67,6 +67,7 @@ const HccSftpReviewDrawer  = lz(() => import('../features/hcc/upload/HccSftpRevi
 const HccAddDosDrawer      = lz(() => import('../features/hcc/HccAddDosDrawer'),                           'HccAddDosDrawer');
 const IcdCreationScreen    = lz(() => import('../features/hcc/upload/IcdCreationScreen'),                  'IcdCreationScreen');
 const ClaimPreviewDrawer   = lz(() => import('../features/hcc/ClaimPreviewDrawer'),                        'ClaimPreviewDrawer');
+const EditPatientDrawer    = lz(() => import('../features/patient/left-panel/tabs/profile/EditPatientDrawer/EditPatientDrawer'), 'EditPatientDrawer');
 // Archived HCC worklist — a frozen fork of the HCC feature (src/features/
 // hcc-archived) so upstream HCC changes never alter it. Lazy so it stays out
 // of the entry chunk.
@@ -358,6 +359,8 @@ export function AppLayout() {
   const businessHoursOpen = useAppStore(s => s.businessHoursOpen);
   const componentWizardOpen = useAppStore(s => s.componentWizardOpen);
   const diagPanelOpen = useAppStore(s => s.diagPanelOpen);
+  const invitePatientOpen = useAppStore(s => s.invitePatientOpen);
+  const closeInvitePatient = useAppStore(s => s.closeInvitePatient);
   const quickViewPatient = useAppStore(s => s.quickViewPatient);
   const editingCampaignId = useAppStore(s => s.editingCampaignId);
   const campaignBuilderId = useAppStore(s => s.campaignBuilderId);
@@ -473,6 +476,9 @@ export function AppLayout() {
         <HccAddDosDrawer />{/* mounts itself only when hccAddDosMember is set */}
         <IcdCreationScreen />{/* mounts itself only when icdCreationOpen is true */}
         <ClaimPreviewDrawer />{/* mounts itself only when hccClaimPreview.open is true */}
+        {invitePatientOpen && (
+          <EditPatientDrawer mode="invite" onClose={closeInvitePatient} />
+        )}
         {quickViewPatient && <QuickViewDrawer />}
         <PgProcessingHost />
       </Suspense>
