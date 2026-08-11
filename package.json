@@ -23,10 +23,10 @@
     "doctor": "bunx react-doctor@latest"
   },
   "lint-staged": {
-    "*.{js,jsx,css}": "node scripts/ds-guardrails.mjs --staged",
+    "*.{js,jsx,css}": "bun scripts/ds-guardrails.mjs --staged",
     "*.{js,jsx}": [
-      "node scripts/receiver-audit.mjs --staged",
-      "node scripts/check-no-undef.mjs"
+      "bun scripts/receiver-audit.mjs --staged",
+      "bun scripts/check-no-undef.mjs"
     ]
   },
   "dependencies": {

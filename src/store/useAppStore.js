@@ -479,6 +479,53 @@ async function persistHccAddedChart(memberId, doc, file) {
   }
 }
 
+function extOf(filename) {
+  const m = /\.([a-z0-9]+)$/i.exec(filename || '');
+  return m ? m[1].toLowerCase() : null;
+}
+
+// Persist a Program Documents upload: push the file bytes to the
+// `program-documents` Storage bucket, then insert the metadata row.
+// Fire-and-forget (the store already updated optimistically) — a missing
+// bucket/table just warns so the doc still works for the session via the
+// in-memory `file` kept on the row.
+async function persistProgramDocument(doc, file) {
+  if (!doc?.id) return;
+  let fileUrl = null;
+  let storagePath = null;
+  try {
+    if (file) {
+      const path = `${doc.programCode || 'unscoped'}/${doc.patientId || 'unscoped'}/${doc.id}-${file.name}`;
+      const { error: upErr } = await supabase.storage
+        .from('program-documents')
+        .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: true });
+      if (upErr) {
+        reportPersistFailure(`persistProgramDocument.upload(${doc.id})`, upErr);
+      } else {
+        storagePath = path;
+        fileUrl = supabase.storage.from('program-documents').getPublicUrl(path).data.publicUrl;
+      }
+    }
+    const { error } = await supabase.from('program_documents').insert({
+      id:           doc.id,
+      program_code: doc.programCode,
+      patient_id:   doc.patientId,
+      name:         doc.name,
+      type:         doc.type,
+      status:       doc.status,
+      size_bytes:   doc.sizeBytes,
+      updated_by:   doc.updatedBy,
+      updated_date: doc.updatedDate,
+      file_url:     fileUrl,
+      storage_path: storagePath,
+      ext:          extOf(file?.name || doc.name),
+    });
+    if (error) reportPersistFailure(`persistProgramDocument.insert(${doc.id})`, error);
+  } catch (e) {
+    reportPersistFailure(`persistProgramDocument(${doc.id})`, e || { message: 'unknown' });
+  }
+}
+
 function parseTaskDateStr(str) {
   if (!str || typeof str !== 'string') return null;
   const parts = str.split('-').map(Number);
@@ -1595,6 +1642,9 @@ export const useAppStore = create((set, get) => ({
         sizeBytes:   r.size_bytes,
         updatedBy:   r.updated_by,
         updatedDate: r.updated_date,
+        createdAt:   r.created_at,
+        fileUrl:     r.file_url,
+        ext:         r.ext,
       }));
       set({ programDocuments: rows, programDocumentsDidFetch: true });
     } catch (e) {
@@ -1602,22 +1652,14 @@ export const useAppStore = create((set, get) => ({
       set({ programDocumentsDidFetch: true });
     }
   },
-  addProgramDocument: (doc) => {
+  // `file` (when present) is kept on the in-memory row so FilePreview can show
+  // it immediately via a session-local blob URL, while persistProgramDocument
+  // uploads the bytes to Storage in the background for durability across reloads.
+  addProgramDocument: (doc, file) => {
+    const nextDoc = file ? { ...doc, file } : doc;
     // Optimistic local append — dedup by id so a later fetch can't double it.
-    set(s => ({ programDocuments: [doc, ...s.programDocuments.filter(d => d.id !== doc.id)] }));
-    supabase.from('program_documents').insert({
-      id:           doc.id,
-      program_code: doc.programCode,
-      patient_id:   doc.patientId,
-      name:         doc.name,
-      type:         doc.type,
-      status:       doc.status,
-      size_bytes:   doc.sizeBytes,
-      updated_by:   doc.updatedBy,
-      updated_date: doc.updatedDate,
-    }).then(({ error }) => {
-      if (error) console.warn('addProgramDocument — insert failed (kept locally):', error.message);
-    });
+    set(s => ({ programDocuments: [nextDoc, ...s.programDocuments.filter(d => d.id !== doc.id)] }));
+    persistProgramDocument(nextDoc, file);
   },
 
   // Table

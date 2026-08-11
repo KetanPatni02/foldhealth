@@ -1,0 +1,101 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--surface-overlay-heavy);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 120ms ease-out;
+}
+
+.header {
+  flex-shrink: 0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+  background: var(--media-viewer-chrome);
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--media-viewer-chrome-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.divider {
+  width: 0.5px;
+  height: 20px;
+  background: var(--media-viewer-chrome-fg);
+  opacity: 0.24;
+  flex-shrink: 0;
+}
+
+.iconBtn,
+.closeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 120ms ease;
+}
+.iconBtn:hover,
+.closeBtn:hover { background: var(--media-viewer-chrome-hover); }
+.iconBtn:disabled { opacity: 0.35; cursor: default; }
+.iconBtn:disabled:hover { background: none; }
+
+.body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  overflow: auto;
+}
+
+.mediaWrap {
+  width: 100%;
+  height: 100%;
+  max-width: 1100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 150ms ease;
+  transform-origin: center center;
+}
+
+.media {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* Descendant selector outranks FilePreview's own `.wrap` (equal specificity,
+   different stylesheet) so the dark viewer shows through instead of
+   FilePreview's default light canvas. */
+.mediaWrap .media {
+  background: transparent;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
