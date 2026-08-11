@@ -19,7 +19,6 @@ import { SnpWorklistTable } from '../features/snp-worklist/SnpWorklistTable';
 import { AllPatientsTable } from '../features/all-patients/AllPatientsTable';
 import { PopulationGroupsView } from '../features/population-groups/PopulationGroupsView';
 import { PgProcessingHost } from '../features/population-groups/PgProcessingHost';
-import { SchedulingListTable } from '../features/scheduling-list/SchedulingListTable';
 import { Icon } from '../components/Icon/Icon';
 import { useAppStore } from '../store/useAppStore';
 import { Toaster } from '../components/Toast/Toast';
@@ -127,13 +126,12 @@ function PopulationView() {
   const isSnp = activeSubnavList === 'SNP';
   const isAllPatients = activeSubnavList === 'All Patients';
   const isPopulationGroup = activeSubnavList.startsWith('pg:');
-  const isSchedulingList = activeSubnavList === 'Scheduling List';
   const TOC_LISTS = ['TOC'];
-  const isToc = TOC_LISTS.includes(activeSubnavList) || (!isHcc && !isHccArchived && !isHedis && !isCcm && !isAwv && !isAllPatients && !isSchedulingList && !isPopulationGroup && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
+  const isToc = TOC_LISTS.includes(activeSubnavList) || (!isHcc && !isHccArchived && !isHedis && !isCcm && !isAwv && !isAllPatients && !isPopulationGroup && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
   const isComingSoon = ['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList);
   const pgFilter = activeSubnavList === 'pg:Static' ? 'Static' : activeSubnavList === 'pg:Dynamic' ? 'Dynamic' : 'All';
 
-  const chromeless = isHcc || isHccArchived || isHedis || isCcm || isSnp || isAwv || isComingSoon || isPopulationGroup || isSchedulingList;
+  const chromeless = isHcc || isHccArchived || isHedis || isCcm || isSnp || isAwv || isComingSoon || isPopulationGroup;
 
   return (
     <div className={styles.main}>
@@ -147,10 +145,8 @@ function PopulationView() {
               worklists share one visual pattern. */}
           {(!chromeless || isCcm) && <TabBar />}
           {!chromeless && showFilterBar && <FilterBar />}
-          {!isHcc && !isHccArchived && !isHedis && !isCcm && !isSnp && !isAwv && !isAllPatients && !isComingSoon && !isSchedulingList && !isPopulationGroup && activeTab === 'toc-queue' && <QueueSummaryBar />}
-          {isSchedulingList
-            ? <SchedulingListTable />
-            : isHccArchived
+          {!isHcc && !isHccArchived && !isHedis && !isCcm && !isSnp && !isAwv && !isAllPatients && !isComingSoon && !isPopulationGroup && activeTab === 'toc-queue' && <QueueSummaryBar />}
+          {isHccArchived
               ? <HccArchivedWorklistTable />
               : isHcc
               ? <HccWorklistTable />
