@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { KpiCard, InsightBanner, Card, ProgressBar, safeBarItems, safeTableRows, EmptyState, KpiSkeleton, TableSkeleton, ProgressBarSkeleton } from './shared';
+import { KpiCard, InsightBanner, Card, ProgressBar, EmptyState, KpiSkeleton, TableSkeleton, ProgressBarSkeleton } from './shared';
+import { safeBarItems, safeTableRows } from './shared.utils';
 import { Icon } from '../../../components/Icon/Icon';
 import { EditableGrid } from './EditableGrid';
 import s from '../AnalyticsLayout.module.css';
@@ -16,6 +17,12 @@ const DEFAULT_LAYOUT = [
   { i: 'bookmarks', x: 0, y: 14, w: 12, h: 6, minW: 6, minH: 4, maxW: 12, maxH: 12 },
   { i: 'sdoh',      x: 0, y: 20, w: 12, h: 6, minW: 6, minH: 4, maxW: 12, maxH: 14 },
   { i: 'detail',    x: 0, y: 26, w: 12, h: 8, minW: 6, minH: 5, maxW: 12, maxH: 20 },
+];
+
+const POPULATION_BOOKMARKS = [
+  { icon: 'solar:calendar-search-linear', label: 'Missing AWV', count: 847, toast: 'Opening AWV drill-down' },
+  { icon: 'solar:hospital-linear', label: 'Recent IP Discharges', count: 124, toast: 'Opening TCM drill-down' },
+  { icon: 'solar:danger-triangle-linear', label: 'High ED Utilizers', count: 221, toast: 'Opening ED drill-down' },
 ];
 
 export function PopulationView({ showToast, editing = false, resetTick = 0 }) {
@@ -45,11 +52,7 @@ export function PopulationView({ showToast, editing = false, resetTick = 0 }) {
   const chronicItems = safeBarItems(chronicConditions);
   const sdohItems = safeBarItems(sdohScreening);
 
-  const bookmarks = [
-    { icon: 'solar:calendar-search-linear', label: 'Missing AWV', count: 847, toast: 'Opening AWV drill-down' },
-    { icon: 'solar:hospital-linear', label: 'Recent IP Discharges', count: 124, toast: 'Opening TCM drill-down' },
-    { icon: 'solar:danger-triangle-linear', label: 'High ED Utilizers', count: 221, toast: 'Opening ED drill-down' },
-  ];
+  const bookmarks = POPULATION_BOOKMARKS;
 
   const renderInsight = () => insight ? (
     <InsightBanner

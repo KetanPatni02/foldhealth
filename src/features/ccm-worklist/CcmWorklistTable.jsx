@@ -10,11 +10,13 @@ import { BulkBar } from '../../components/BulkBar/BulkBar';
 import { CcmWorklistRow } from './CcmWorklistRow';
 import {
   TimeFilterPopover,
+} from './TimeFilterChip';
+import {
   matchTimeFilter,
   summarizeTimeFilter,
   isTimeFilterActive,
   ALL_USERS,
-} from './TimeFilterChip';
+} from './TimeFilterChip.utils';
 import styles from './CcmWorklistTable.module.css';
 
 // Threshold radio lists for the two time filters. Order matches the Figma.
@@ -130,20 +132,39 @@ const CCM_PRIMARY_KEYS = new Set([
   'dob', 'gender', 'language', 'utrFlag',
   'utrAge', 'assignee', 'status', 'programDueDate',
 ]);
-const CCM_FILTER_DEFS = [
-  ...FILTER_KEYS.filter(f => f.key !== 'unloggedUser').map(f => ({
-    ...f,
-    primary: CCM_PRIMARY_KEYS.has(f.key),
-  })),
-  { key: 'billableMins', label: 'Billable Mins', primary: false },
-  { key: 'unloggedMins', label: 'Unlogged Mins', primary: false },
-  { key: 'unloggedUser', label: 'Unlogged User', primary: false },
-];
+const CCM_FILTER_DEFS = (() => {
+  const defs = [];
+  for (const f of FILTER_KEYS) {
+    if (f.key === 'unloggedUser') continue;
+    defs.push({ ...f, primary: CCM_PRIMARY_KEYS.has(f.key) });
+  }
+  defs.push(
+    { key: 'billableMins', label: 'Billable Mins', primary: false },
+    { key: 'unloggedMins', label: 'Unlogged Mins', primary: false },
+    { key: 'unloggedUser', label: 'Unlogged User', primary: false },
+  );
+  return defs;
+})();
 const CCM_MORE_FILTER_ITEMS = CCM_FILTER_DEFS.map(fd => ({
   k: fd.key,
   label: fd.label,
   primary: fd.primary,
 }));
+
+const thStyle = {
+  padding: '8px 14px',
+  fontSize: 12,
+  fontWeight: 500,
+  color: 'var(--neutral-300)',
+  borderBottom: '0.5px solid var(--neutral-150)',
+  background: 'var(--neutral-0)',
+  position: 'sticky',
+  top: 0,
+  zIndex: 2,
+  textAlign: 'left',
+  whiteSpace: 'nowrap',
+  userSelect: 'none',
+};
 
 function EmptySearch() {
   return (
@@ -185,9 +206,16 @@ export function CcmWorklistTable() {
   // each row through BUCKET_FN and deduping. Empty buckets (e.g. 'Unknown'
   // when no member has that field) drop out via the Set.
   const filterOptions = useMemo(() => {
+    const sets = Object.fromEntries(FILTER_KEYS.map(({ key }) => [key, new Set()]));
+    for (const m of members) {
+      for (const { key } of FILTER_KEYS) {
+        const val = BUCKET_FN[key](m);
+        if (val) sets[key].add(val);
+      }
+    }
     const opts = {};
     for (const { key } of FILTER_KEYS) {
-      opts[key] = [...new Set(members.map(m => BUCKET_FN[key](m)).filter(Boolean))].sort();
+      opts[key] = [...sets[key]].toSorted();
     }
     return opts;
   }, [members]);
@@ -203,7 +231,10 @@ export function CcmWorklistTable() {
     }
     for (const { key } of FILTER_KEYS) {
       const vals = filters[key];
-      if (vals && vals.length) rows = rows.filter(m => vals.includes(BUCKET_FN[key](m)));
+      if (vals && vals.length) {
+        const valSet = new Set(vals);
+        rows = rows.filter(m => valSet.has(BUCKET_FN[key](m)));
+      }
     }
     // Billable + Unlogged filters compose user + threshold so we can't
     // fold them into the bucket-based FILTER_KEYS loop.
@@ -212,10 +243,13 @@ export function CcmWorklistTable() {
     return rows;
   }, [members, searchQuery, filters, billableFilter, unloggedFilter]);
 
-  const userOptions = useMemo(
-    () => [...new Set(members.map(m => m.assigneeName).filter(Boolean))].sort(),
-    [members],
-  );
+  const userOptions = useMemo(() => {
+    const names = new Set();
+    for (const m of members) {
+      if (m.assigneeName) names.add(m.assigneeName);
+    }
+    return [...names].toSorted();
+  }, [members]);
 
   const paginated = useMemo(() => {
     const start = (page - 1) * perPage;
@@ -248,24 +282,6 @@ export function CcmWorklistTable() {
     Object.values(filters).some(v => v.length > 0) ||
     isTimeFilterActive(billableFilter) ||
     isTimeFilterActive(unloggedFilter);
-
-  // Inline table header style mirrors src/features/toc-worklist/WorklistTable.jsx
-  // so the two tables render with identical typography, padding, and sticky
-  // behavior.
-  const thStyle = {
-    padding: '8px 14px',
-    fontSize: 12,
-    fontWeight: 500,
-    color: 'var(--neutral-300)',
-    borderBottom: '0.5px solid var(--neutral-150)',
-    background: 'var(--neutral-0)',
-    position: 'sticky',
-    top: 0,
-    zIndex: 2,
-    textAlign: 'left',
-    whiteSpace: 'nowrap',
-    userSelect: 'none',
-  };
 
   const colCount = 14;
 
@@ -301,8 +317,10 @@ export function CcmWorklistTable() {
           visibleKeys={visibleKeys ?? undefined}
           onToggleVisible={(k) => {
             setVisibleKeys(prev => {
-              const seed = prev
-                ?? CCM_FILTER_DEFS.filter(fd => fd.primary).map(fd => fd.key);
+              const seed = prev ?? CCM_FILTER_DEFS.reduce((keys, fd) => {
+                if (fd.primary) keys.push(fd.key);
+                return keys;
+              }, []);
               const next = new Set(seed);
               if (next.has(k)) next.delete(k); else next.add(k);
               return [...next];

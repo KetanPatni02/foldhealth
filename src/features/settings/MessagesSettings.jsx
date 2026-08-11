@@ -32,7 +32,7 @@ export function MessagesSettings() {
         tabs={TABS}
         activeTab={messageTab}
         onTabChange={setMessageTab}
-        showSearch={isChatSettings}
+        actions={isChatSettings ? ['search'] : []}
         searchPlaceholder="Search groups…"
         searchValue={chatSearchQuery}
         onSearchChange={setChatSearchQuery}

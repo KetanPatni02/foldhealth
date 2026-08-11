@@ -75,9 +75,11 @@ export function contribution(item, answer, multiSelectMode = 'sum') {
   let base;
 
   if (Array.isArray(answer)) {
-    const pts = answer
-      .map((v) => optionPoints(options, v))
-      .filter((n) => typeof n === 'number');
+    const pts = [];
+    for (const v of answer) {
+      const p = optionPoints(options, v);
+      if (typeof p === 'number') pts.push(p);
+    }
     if (pts.length === 0) base = 0;
     else base = multiSelectMode === 'max' ? Math.max(...pts) : pts.reduce((s, n) => s + n, 0);
   } else {

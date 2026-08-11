@@ -69,14 +69,18 @@
   color: var(--neutral-400);
 }
 
-.patientName a {
+.openPatientBtn {
   color: var(--primary-300);
-  text-decoration: none;
-  font-size: 13px;
+  background: none;
+  border: none;
+  padding: 0;
   margin-left: 4px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
 }
 
-.patientName a:hover { text-decoration: underline; }
+.openPatientBtn:hover { text-decoration: underline; }
 
 .patientMeta {
   font-size: 12px;

@@ -1,8 +1,8 @@
 import { useAppStore } from '../../store/useAppStore';
 import { Drawer } from '../Drawer/Drawer';
 import { Icon } from '../Icon/Icon';
-import { PatientP360Banner } from '../../features/patient/components/PatientP360Banner';
-import { PatientProfileTabs } from '../../features/patient/components/PatientProfileTabs';
+import { PatientP360Banner } from '../../features/patient/shell/PatientP360Banner/PatientP360Banner';
+import { PatientProfileTabs } from '../../features/patient/left-panel/PatientProfileTabs/PatientProfileTabs';
 import styles from './QuickViewDrawer.module.css';
 
 export function QuickViewDrawer() {
@@ -42,7 +42,7 @@ export function QuickViewDrawer() {
       </div>
 
       <div className={styles.tabsPanel}>
-        <PatientProfileTabs patientId={patient.id} />
+        <PatientProfileTabs patientId={patient.id} patient={patient} />
       </div>
     </Drawer>
   );

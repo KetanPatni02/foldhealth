@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useId } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
@@ -21,6 +21,7 @@ const SOCIAL_FIELDS = [
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 
 export function OrgPanel() {
+  const uid = useId();
   const [logo, setLogo] = useState(null);
   const [name, setName] = useState('');
   const [showName, setShowName] = useState(false);
@@ -34,10 +35,11 @@ export function OrgPanel() {
   const showToast = useAppStore(s => s.showToast);
 
   useEffect(() => {
+    let cancelled = false;
     const loadOrgData = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) { setLoading(false); return; }
+        if (!session || cancelled) return;
 
         const { data, error } = await supabase
           .from('org_settings')
@@ -45,6 +47,7 @@ export function OrgPanel() {
           .eq('user_id', session.user.id)
           .maybeSingle();
 
+        if (cancelled) return;
         if (error) throw error;
         if (data) {
           setName(data.name || '');
@@ -61,13 +64,15 @@ export function OrgPanel() {
           });
         }
       } catch (err) {
+        if (cancelled) return;
         console.error('Failed to load org settings:', err);
         showToast('Failed to load organization settings');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     loadOrgData();
+    return () => { cancelled = true; };
   }, [showToast]);
 
   // Read an image file into a data URL — no storage bucket needed, and SVGs
@@ -141,8 +146,9 @@ export function OrgPanel() {
     <div className={styles.container}>
       {/* Logo */}
       <div className={styles.formGroup}>
-        <label className={styles.label}>Logo<span className={styles.required}>*</span></label>
+        <label className={styles.label} htmlFor={`${uid}-logo`}>Logo<span className={styles.required}>*</span></label>
         <input
+          id={`${uid}-logo`}
           ref={fileInputRef}
           type="file"
           accept="image/png,image/jpeg,image/svg+xml,image/*"
@@ -184,8 +190,9 @@ export function OrgPanel() {
 
       {/* Name */}
       <div className={styles.formGroup}>
-        <label className={styles.label}>Name<span className={styles.required}>*</span></label>
+        <label className={styles.label} htmlFor={`${uid}-org-name`}>Name<span className={styles.required}>*</span></label>
         <Input
+          id={`${uid}-org-name`}
           value={name}
           onChange={e => setName(e.target.value)}
           placeholder="Enter the Org Name"
@@ -210,7 +217,7 @@ export function OrgPanel() {
       {/* Preview — only once a logo exists */}
       {logo && (
         <div className={styles.formGroup}>
-          <label className={styles.label}>Preview</label>
+          <span className={styles.label}>Preview</span>
           <div className={styles.previewBox}>
             <div className={styles.previewLockup}>
               <img src={logo} alt="" className={styles.previewLogo} />
@@ -230,8 +237,9 @@ export function OrgPanel() {
 
       {/* About */}
       <div className={styles.formGroup}>
-        <label className={styles.label}>About</label>
+        <label className={styles.label} htmlFor={`${uid}-about`}>About</label>
         <Textarea
+          id={`${uid}-about`}
           value={about}
           onChange={e => setAbout(e.target.value)}
           placeholder="Enter Details about your Org"

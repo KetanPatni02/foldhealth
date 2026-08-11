@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Icon } from '../Icon/Icon';
 import { Button } from '../Button/Button';
+import { sanitizeRichText } from '../../lib/sanitizeHtml';
+import { resolveFileKind } from './FilePreview.utils';
 import styles from './FilePreview.module.css';
 
 /**
@@ -19,37 +21,35 @@ import styles from './FilePreview.module.css';
  * Storage URLs (which embed the original filename) type correctly even
  * when the doc record predates the `ext` field.
  */
-const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg']);
-
-function extOf(str) {
-  if (!str) return '';
-  const clean = String(str).split(/[?#]/)[0];
-  const m = clean.match(/\.([a-z0-9]+)$/i);
-  return m ? m[1].toLowerCase() : '';
-}
-
-export function resolveFileKind({ src, name, ext }) {
-  const e = (ext || '').toLowerCase() || extOf(name) || (src && !src.startsWith('blob:') ? extOf(src) : '');
-  if (IMAGE_EXTS.has(e)) return 'image';
-  if (e === 'docx') return 'docx';
-  if (e === 'pdf' || e === '') return 'pdf'; // blob: URLs from jsPDF/PDF uploads carry no ext
-  return 'other';
-}
-
-export function FilePreview({ src, name, ext, className }) {
-  const kind = resolveFileKind({ src, name, ext });
+export function FilePreview({ src, file, name, ext, className }) {
+  const [blobUrl, setBlobUrl] = useState(null);
+  const kind = resolveFileKind({ src: src || blobUrl, name, ext });
   const [docxHtml, setDocxHtml] = useState(null);
   const [docxError, setDocxError] = useState(false);
 
   useEffect(() => {
-    if (kind !== 'docx' || !src) return undefined;
+    if (!file) {
+      setBlobUrl(null);
+      return undefined;
+    }
+    const objectUrl = URL.createObjectURL(file);
+    setBlobUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
+  const resolvedSrc = src || blobUrl;
+
+  useEffect(() => {
+    if (kind !== 'docx' || !resolvedSrc) return undefined;
     let cancelled = false;
     setDocxHtml(null);
     setDocxError(false);
     (async () => {
       try {
         const { default: mammoth } = await import('mammoth/mammoth.browser');
-        const buf = await (await fetch(src)).arrayBuffer();
+        const res = await fetch(resolvedSrc);
+        if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
+        const buf = await res.arrayBuffer();
         const { value } = await mammoth.convertToHtml({ arrayBuffer: buf });
         if (!cancelled) setDocxHtml(value);
       } catch (e) {
@@ -58,22 +58,22 @@ export function FilePreview({ src, name, ext, className }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [kind, src]);
+  }, [kind, resolvedSrc]);
 
   const wrapClass = [styles.wrap, className || ''].filter(Boolean).join(' ');
 
-  if (!src) return null;
+  if (!resolvedSrc) return null;
 
   if (kind === 'image') {
     return (
       <div className={wrapClass}>
-        <img src={src} alt={name || 'Document'} className={styles.image} />
+        <img src={resolvedSrc} alt={name || 'Document'} className={styles.image} />
       </div>
     );
   }
 
   if (kind === 'pdf') {
-    return <iframe src={src} title={name || 'Document'} className={wrapClass} />;
+    return <iframe src={resolvedSrc} title={name || 'Document'} className={wrapClass} />;
   }
 
   if (kind === 'docx' && !docxError) {
@@ -86,8 +86,9 @@ export function FilePreview({ src, name, ext, className }) {
     }
     return (
       <div className={wrapClass}>
-        {/* mammoth output is plain semantic HTML from the docx body */}
-        <div className={styles.docxPage} dangerouslySetInnerHTML={{ __html: docxHtml }} />
+        {/* mammoth output is HTML derived from a user-uploaded .docx, so it is
+            untrusted input and gets sanitized before it reaches the DOM. */}
+        <div className={styles.docxPage} dangerouslySetInnerHTML={{ __html: sanitizeRichText(docxHtml) }} />
       </div>
     );
   }
@@ -105,7 +106,7 @@ export function FilePreview({ src, name, ext, className }) {
           variant="secondary"
           size="S"
           leadingIcon="solar:square-top-down-linear"
-          onClick={() => window.open(src, '_blank', 'noopener')}
+          onClick={() => window.open(resolvedSrc, '_blank', 'noopener')}
         >
           Open in new tab
         </Button>

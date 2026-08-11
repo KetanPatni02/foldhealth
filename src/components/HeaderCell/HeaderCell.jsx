@@ -102,21 +102,21 @@ export function HeaderCell({
               className={styles.sortIconSvg}
             >
               <path
-                d="M12.6673 6.66675L8.00065 2.66675L3.33398 6.66675"
+                d="M12.67 6.67L8 2.67L3.33 6.67"
                 stroke="currentColor"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 className={[styles.sortIconPart, hideTop ? styles.sortIconPartHidden : ''].filter(Boolean).join(' ')}
               />
               <path
-                d="M12.6673 9.33325L8.00065 13.3333L3.33398 9.33325"
+                d="M12.67 9.33L8 13.33L3.33 9.33"
                 stroke="currentColor"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 className={[styles.sortIconPart, hideBottom ? styles.sortIconPartHidden : ''].filter(Boolean).join(' ')}
               />
               <path
-                d="M8 2.66675L8 13.3333"
+                d="M8 2.67L8 13.33"
                 stroke="currentColor"
                 strokeLinecap="round"
                 strokeLinejoin="round"

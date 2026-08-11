@@ -37,7 +37,7 @@ export function GoalDetailDrawer() {
 
   const handleDuplicate = () => {
     const newGoal = {
-      ...JSON.parse(JSON.stringify(goal)),
+      ...structuredClone(goal),
       id: Date.now(),
       name: goal.name + ' (Copy)',
       status: 'draft',
@@ -52,8 +52,11 @@ export function GoalDetailDrawer() {
 
   const handleConfirmDelete = async () => {
     setDeleting(true);
-    await deleteGoal(goal.id);
-    setDeleting(false);
+    try {
+      await deleteGoal(goal.id);
+    } finally {
+      setDeleting(false);
+    }
     setShowDeleteConfirm(false);
     setGoalDetailId(null);
     showToast('Goal deleted');

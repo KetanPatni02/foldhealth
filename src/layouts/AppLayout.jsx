@@ -250,12 +250,13 @@ export function AppLayout() {
       if (existing) {
         await supabase.from('profiles').update(identity).eq('id', user.id);
       } else {
+        // Identity fields only. `role` / `admin_role` / `clinical_roles` are
+        // authorization fields and must be owned by the database (the
+        // handle_new_user() trigger and column defaults), never chosen by the
+        // client — otherwise a forged request could self-assign privileges.
         await supabase.from('profiles').insert({
           ...identity,
           status: 'Active',
-          role: 'Viewer',
-          clinical_roles: [],
-          admin_role: 'Employer',
         });
       }
     });
@@ -264,28 +265,28 @@ export function AppLayout() {
   // Re-open agent builder on page refresh when URL has agent edit path
   useEffect(() => {
     const pendingId = useAppStore.getState()._pendingAgentId;
-    if (pendingId && !builderAgent) {
-      // Try to find the agent in the already-loaded agents list
-      const agents = useAppStore.getState().agents || [];
-      const agent = agents.find(a => String(a.id) === String(pendingId));
-      if (agent) {
-        useAppStore.getState().openBuilder(agent);
-      } else {
-        // Agent list may not be loaded yet — wait for it
-        const unsub = useAppStore.subscribe((state) => {
-          if (state.agents?.length && state._pendingAgentId) {
-            const a = state.agents.find(ag => String(ag.id) === String(state._pendingAgentId));
-            if (a) {
-              useAppStore.getState().openBuilder(a);
-              useAppStore.setState({ _pendingAgentId: null });
-            }
-            unsub();
-          }
-        });
-        // Clear after 5s timeout to avoid lingering
-        setTimeout(() => { unsub(); useAppStore.setState({ _pendingAgentId: null }); }, 5000);
-      }
+    if (!pendingId || builderAgent) return undefined;
+    // Try to find the agent in the already-loaded agents list
+    const agents = useAppStore.getState().agents || [];
+    const agent = agents.find(a => String(a.id) === String(pendingId));
+    if (agent) {
+      useAppStore.getState().openBuilder(agent);
+      return undefined;
     }
+    // Agent list may not be loaded yet — wait for it
+    const unsub = useAppStore.subscribe((state) => {
+      if (state.agents?.length && state._pendingAgentId) {
+        const a = state.agents.find(ag => String(ag.id) === String(state._pendingAgentId));
+        if (a) {
+          useAppStore.getState().openBuilder(a);
+          useAppStore.setState({ _pendingAgentId: null });
+        }
+        unsub();
+      }
+    });
+    // Clear after 5s timeout to avoid lingering
+    const timer = setTimeout(() => { unsub(); useAppStore.setState({ _pendingAgentId: null }); }, 5000);
+    return () => { clearTimeout(timer); unsub(); };
   }, []);
 
   // Re-open campaign builder or email builder on page refresh

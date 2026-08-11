@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { KpiCard, InsightBanner, Card, ProgressBar, safeBarItems, safeTableRows, KpiSkeleton } from './shared';
+import { KpiCard, InsightBanner, Card, ProgressBar, KpiSkeleton } from './shared';
+import { safeBarItems, safeTableRows } from './shared.utils';
 import { SavingsAreaChart } from './charts';
 import { EditableGrid } from './EditableGrid';
 import s from '../AnalyticsLayout.module.css';
@@ -15,6 +16,42 @@ const DEFAULT_LAYOUT = [
   { i: 'levers',     x: 6, y: 6,  w: 6,  h: 10, minW: 4, minH: 6, maxW: 12, maxH: 20 },
   { i: 'composite',  x: 0, y: 16, w: 12, h: 8, minW: 6, minH: 5, maxW: 12, maxH: 16 },
 ];
+
+const SAVINGS_DATA = [0, 0.1, 0.2, 0.35, 0.5, 0.62, 0.75, 0.9, 1.0, 1.1, 1.2, 1.32];
+const SAVINGS_METADATA = [
+  { label: 'Benchmark PMPM', value: '$910' },
+  { label: 'Actual PMPM', value: '$890' },
+  { label: 'Savings/Member/Mo', value: '$20' },
+  { label: 'Full-Year Proj.', value: '$3.2M' },
+  { label: 'Min. Savings Rate', value: '$2.8M' },
+  { label: 'Quality Withhold', value: '$320K' },
+];
+const QUAL_COMPOSITE_FALLBACK = [
+  { label: 'AWV / Care Coordination', value: '61% / target 80%', pct: 61, color: 'amber', sub: 'Pulling composite down — 847 open AWVs' },
+  { label: 'Diabetes HbA1c Control', value: '72% / target 70%', pct: 72, color: 'teal', sub: '✓ On target' },
+  { label: 'BP Control', value: '64% / target 70%', pct: 64, color: 'purple', sub: '6pp gap — 504 members' },
+  { label: 'Colorectal Screening', value: '58% / target 65%', pct: 58, color: 'red', sub: '7pp gap — 588 members' },
+  { label: 'Depression Screening PHQ-9', value: '83% / target 80%', pct: 83, color: 'green', sub: '✓ Above target' },
+  { label: 'Statin Therapy — Diabetes', value: '71% / target 75%', pct: 71, color: 'amber', sub: '4pp gap — 336 members' },
+  { label: 'Patient Experience CAHPS', value: '4.3 / 5.0', pct: 86, color: 'green', sub: '✓ Strong' },
+  { label: 'Preventive Screening', value: '63% / target 70%', pct: 63, color: 'amber', sub: '7pp gap — colorectal gap' },
+];
+
+function renderSharedSavingsTrajectory() {
+  return (
+    <Card title="Savings Trajectory" sub="MSSP">
+      <SavingsAreaChart data={SAVINGS_DATA} targetLabel="MSR $2.8M" targetValue={2.8} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--neutral-100)' }}>
+        {SAVINGS_METADATA.map(m => (
+          <div key={m.label}>
+            <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{m.label}</div>
+            <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-500)', marginTop: 2 }}>{m.value}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
 
 export function SharedSavingsView({ showToast, editing = false, resetTick = 0 }) {
   const fetchViewKpis = useAppStore(st => st.fetchViewKpis);
@@ -36,28 +73,7 @@ export function SharedSavingsView({ showToast, editing = false, resetTick = 0 })
   const insight = kpiData?.insight || null;
   const leverRows = safeTableRows(keyLevers);
   const compositeItems = safeBarItems(qualityComposite);
-
-  const savingsData = [0, 0.1, 0.2, 0.35, 0.5, 0.62, 0.75, 0.9, 1.0, 1.1, 1.2, 1.32];
-
-  const savingsMetadata = [
-    { label: 'Benchmark PMPM', value: '$910' },
-    { label: 'Actual PMPM', value: '$890' },
-    { label: 'Savings/Member/Mo', value: '$20' },
-    { label: 'Full-Year Proj.', value: '$3.2M' },
-    { label: 'Min. Savings Rate', value: '$2.8M' },
-    { label: 'Quality Withhold', value: '$320K' },
-  ];
-
-  const qualFallback = compositeItems.length > 0 ? compositeItems : [
-    { label: 'AWV / Care Coordination', value: '61% / target 80%', pct: 61, color: 'amber', sub: 'Pulling composite down — 847 open AWVs' },
-    { label: 'Diabetes HbA1c Control', value: '72% / target 70%', pct: 72, color: 'teal', sub: '✓ On target' },
-    { label: 'BP Control', value: '64% / target 70%', pct: 64, color: 'purple', sub: '6pp gap — 504 members' },
-    { label: 'Colorectal Screening', value: '58% / target 65%', pct: 58, color: 'red', sub: '7pp gap — 588 members' },
-    { label: 'Depression Screening PHQ-9', value: '83% / target 80%', pct: 83, color: 'green', sub: '✓ Above target' },
-    { label: 'Statin Therapy — Diabetes', value: '71% / target 75%', pct: 71, color: 'amber', sub: '4pp gap — 336 members' },
-    { label: 'Patient Experience CAHPS', value: '4.3 / 5.0', pct: 86, color: 'green', sub: '✓ Strong' },
-    { label: 'Preventive Screening', value: '63% / target 70%', pct: 63, color: 'amber', sub: '7pp gap — colorectal gap' },
-  ];
+  const qualFallback = compositeItems.length > 0 ? compositeItems : QUAL_COMPOSITE_FALLBACK;
 
   const renderInsight = () => insight ? (
     <InsightBanner
@@ -80,20 +96,6 @@ export function SharedSavingsView({ showToast, editing = false, resetTick = 0 })
       </div>
     );
   };
-
-  const renderTrajectory = () => (
-    <Card title="Savings Trajectory" sub="MSSP">
-      <SavingsAreaChart data={savingsData} targetLabel="MSR $2.8M" targetValue={2.8} />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--neutral-100)' }}>
-        {savingsMetadata.map(m => (
-          <div key={m.label}>
-            <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{m.label}</div>
-            <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-500)', marginTop: 2 }}>{m.value}</div>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
 
   const renderLevers = () => (
     <Card title="Key Savings Levers — Current Status">
@@ -159,7 +161,7 @@ export function SharedSavingsView({ showToast, editing = false, resetTick = 0 })
   const RENDERERS = {
     insight: renderInsight,
     kpis: renderKpis,
-    trajectory: renderTrajectory,
+    trajectory: renderSharedSavingsTrajectory,
     levers: renderLevers,
     composite: renderComposite,
   };

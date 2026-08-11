@@ -2,7 +2,7 @@ import { Drawer } from '../../components/Drawer/Drawer';
 import { Button } from '../../components/Button/Button';
 import { Icon } from '../../components/Icon/Icon';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
-import { CcmBillingReview } from '../patient/components/CcmBillingReview';
+import { CcmBillingReview } from '../patient/right-panel/tabs/care-programs/program-detail/billing/CcmBillingReview/CcmBillingReview';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './CcmBillingReviewDrawer.module.css';
 

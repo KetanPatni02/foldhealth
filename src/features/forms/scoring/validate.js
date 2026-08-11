@@ -95,7 +95,7 @@ export function validateForm(form) {
       );
     }
     const range = s.range || computed;
-    const bands = [...(s.interpretations || [])].sort((a, b) => a.min - b.min);
+    const bands = (s.interpretations || []).toSorted((a, b) => a.min - b.min);
     if (bands.length) {
       if (bands[0].min > range.min) {
         err(DIAGNOSTIC_CODE.BAND_GAP, `Score "${s.id}" leaves ${range.min}..${bands[0].min - 1} uncovered.`);

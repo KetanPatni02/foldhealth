@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useId } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { Badge } from '../../../components/Badge/Badge';
 import { Button } from '../../../components/Button/Button';
@@ -43,6 +43,7 @@ const fieldSelect = {
 const fieldGroup = { marginBottom: 20 };
 
 function FaqDrawer({ mode, faq, onClose, onSave, saving }) {
+  const uid = useId();
   const isEdit = mode === 'edit';
   const [form, setForm] = useState({
     question: faq?.question || '',
@@ -73,21 +74,22 @@ function FaqDrawer({ mode, faq, onClose, onSave, saving }) {
       headerRight={headerRight}
     >
       <div style={fieldGroup}>
-        <label style={fieldLabel}>Question</label>
+        <label style={fieldLabel} htmlFor={`${uid}-question`}>Question</label>
         <input
+          id={`${uid}-question`}
           style={fieldInput}
           placeholder="e.g. What is Transitional Care Management?"
           value={form.question}
           onChange={e => setForm(f => ({ ...f, question: e.target.value }))}
-          autoFocus
           onFocus={e => e.target.style.borderColor = 'var(--primary-200)'}
           onBlur={e => e.target.style.borderColor = 'var(--neutral-150)'}
         />
       </div>
 
       <div style={fieldGroup}>
-        <label style={fieldLabel}>Answer</label>
+        <label style={fieldLabel} htmlFor={`${uid}-answer`}>Answer</label>
         <textarea
+          id={`${uid}-answer`}
           style={fieldTextarea}
           placeholder="Provide a clear, helpful answer…"
           value={form.answer}
@@ -98,8 +100,9 @@ function FaqDrawer({ mode, faq, onClose, onSave, saving }) {
       </div>
 
       <div style={fieldGroup}>
-        <label style={fieldLabel}>Category</label>
+        <label style={fieldLabel} htmlFor={`${uid}-category`}>Category</label>
         <select
+          id={`${uid}-category`}
           style={fieldSelect}
           value={form.category}
           onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
@@ -174,18 +177,21 @@ export function KnowledgeBasePanel({ searchQuery = '' }) {
 
   const handleDrawerSave = async (form) => {
     setSaving(true);
-    if (drawerMode === 'edit' && editTarget) {
-      await updateFaq(editTarget.id, {
-        question: form.question,
-        answer: form.answer,
-        category: form.category,
-      });
-      showToast('FAQ updated');
-    } else {
-      await addFaq(form);
-      showToast('FAQ added');
+    try {
+      if (drawerMode === 'edit' && editTarget) {
+        await updateFaq(editTarget.id, {
+          question: form.question,
+          answer: form.answer,
+          category: form.category,
+        });
+        showToast('FAQ updated');
+      } else {
+        await addFaq(form);
+        showToast('FAQ added');
+      }
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
     setDrawerMode(null);
     setEditTarget(null);
   };
@@ -198,9 +204,12 @@ export function KnowledgeBasePanel({ searchQuery = '' }) {
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
-    await deleteFaq(deleteTarget.id);
-    showToast('FAQ deleted');
-    setDeleting(false);
+    try {
+      await deleteFaq(deleteTarget.id);
+      showToast('FAQ deleted');
+    } finally {
+      setDeleting(false);
+    }
     setDeleteTarget(null);
   };
 

@@ -7,6 +7,12 @@ import badgeStyles from '../Badge/Badge.module.css';
 import { SYSTEM_USERS } from '../../features/hcc/systemUsers';
 import styles from './CommentComposer.module.css';
 
+function handlePastePlainText(e) {
+  e.preventDefault();
+  const plain = e.clipboardData?.getData('text/plain') ?? '';
+  document.execCommand('insertText', false, plain);
+}
+
 /**
  * CommentComposer — shared comment field + Comment/Cancel actions used by
  * the TaskDetailDrawer and the DiagPanel Comments tab. Starts as a
@@ -125,10 +131,7 @@ export function CommentComposer({
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
   useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
   // Fall back to the mock so the picker still renders before the fetch lands.
-  const users = useMemo(
-    () => (platformUsers?.length ? platformUsers : SYSTEM_USERS),
-    [platformUsers],
-  );
+  const users = platformUsers?.length ? platformUsers : SYSTEM_USERS;
   const matches = useMemo(() => {
     if (!mention) return [];
     const q = mention.query.toLowerCase();
@@ -224,15 +227,7 @@ export function CommentComposer({
     }
   };
 
-  // Paste: strip HTML so text stays visually clean and doesn't smuggle in
-  // arbitrary styled markup. Insert as plain text at the caret.
-  const handlePaste = (e) => {
-    e.preventDefault();
-    const plain = e.clipboardData?.getData('text/plain') ?? '';
-    // insertText via execCommand is the widely-supported way to paste plain
-    // text into a contenteditable without pulling in a full editing lib.
-    document.execCommand('insertText', false, plain);
-  };
+  const handlePaste = handlePastePlainText;
 
   const effectivePlaceholder = inStatusMode
     ? 'Add a comment explaining what records you need…'

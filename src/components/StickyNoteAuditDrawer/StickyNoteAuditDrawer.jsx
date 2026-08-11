@@ -12,6 +12,12 @@ function getInitials(name) {
   return (parts[0]?.[0] || '') + (parts[parts.length - 1]?.[0] || '');
 }
 
+function formatStickyNoteDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()} • ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
+}
+
 export function StickyNoteAuditDrawer({ patientId, note, profileOptions, onClose }) {
   const stickyNoteHistory = useAppStore(s => s.stickyNoteHistory);
   const fetchStickyNoteHistory = useAppStore(s => s.fetchStickyNoteHistory);
@@ -30,11 +36,7 @@ export function StickyNoteAuditDrawer({ patientId, note, profileOptions, onClose
 
   const handleDiscard = () => { setEditText(note?.text || ''); };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()} • ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
-  };
+  const formatDate = formatStickyNoteDate;
 
   const profiles = profileOptions || ['Central Profile', 'APC', 'JADE Health'];
 
@@ -43,8 +45,9 @@ export function StickyNoteAuditDrawer({ patientId, note, profileOptions, onClose
       {/* Top form section */}
       <div className={styles.formSection}>
         <div className={styles.field}>
-          <label className={styles.fieldLabel}>Member Profile</label>
+          <label className={styles.fieldLabel} htmlFor="sticky-note-profile">Member Profile</label>
           <Select
+            id="sticky-note-profile"
             options={profiles.map(p => ({ value: p, label: p }))}
             value={selectedProfile}
             onChange={setSelectedProfile}

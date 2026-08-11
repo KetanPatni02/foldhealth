@@ -48,6 +48,20 @@ export function ResponsesView({ fields, scoring, formName, completed, pending })
   const active = all.find((r) => r.id === activeId) || detailList[0] || null;
   const activeIsPending = active?.status === 'in_progress';
   const scoreDefs = scoring?.scores || [];
+  const leavesById = useMemo(() => {
+    const m = new Map();
+    for (const f of leaves) m.set(f.linkId, f);
+    return m;
+  }, [leaves]);
+  const visibleLeaves = useMemo(() => {
+    if (!activeIsPending) return leaves;
+    const out = [];
+    for (const f of leaves) {
+      const v = active?.answers?.[f.linkId];
+      if (v != null && v !== '') out.push(f);
+    }
+    return out;
+  }, [leaves, activeIsPending, active]);
 
   // Cross-response averages are computed over completed submissions only.
   const avgSource = completed;
@@ -136,9 +150,7 @@ export function ResponsesView({ fields, scoring, formName, completed, pending })
                   </div>
 
                   {/* Questions — for an in-progress fill, only the answered ones. */}
-                  {leaves
-                    .filter((f) => !activeIsPending || (active.answers?.[f.linkId] != null && active.answers[f.linkId] !== ''))
-                    .map((f) => (
+                  {visibleLeaves.map((f) => (
                       <QaRow key={f.linkId} field={f} response={active} avg={answerAverage(f, avgSource)} />
                     ))}
 
@@ -156,7 +168,11 @@ export function ResponsesView({ fields, scoring, formName, completed, pending })
                     /* Score group sections (completed responses only) */
                     scoreDefs.map((def) => {
                       const snap = (active.scores?.scores || []).find((s) => s.id === def.id);
-                      const members = (def.sources || []).map((s) => leaves.find((f) => f.linkId === s.linkId)).filter(Boolean);
+                      const members = [];
+                      for (const s of def.sources || []) {
+                        const f = leavesById.get(s.linkId);
+                        if (f) members.push(f);
+                      }
                       return (
                         <div key={def.id}>
                           <div className={styles.sgSectionHead}>

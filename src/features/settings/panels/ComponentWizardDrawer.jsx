@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useId, cloneElement, isValidElement } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { Badge } from '../../../components/Badge/Badge';
 import { Button } from '../../../components/Button/Button';
@@ -106,10 +106,18 @@ function Stepper({ step, onStepClick }) {
 
 /* ── Reusable form field wrapper ── */
 function FormField({ label, hint, children, style }) {
+  const controlId = useId();
+  const single = isValidElement(children);
+  const control = single && !children.props.id
+    ? cloneElement(children, { id: controlId })
+    : children;
+  const labelFor = single ? (children.props.id || controlId) : undefined;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, ...style }}>
-      <label className={s.label}>{label}</label>
-      {children}
+      {labelFor
+        ? <label className={s.label} htmlFor={labelFor}>{label}</label>
+        : <span className={s.label}>{label}</span>}
+      {control}
       {hint && <span className={s.hint}>{hint}</span>}
     </div>
   );
@@ -264,17 +272,17 @@ function WidgetOrderList({ tab, newWidgetName, order, onChange }) {
 }
 
 /* ── Step 2: Surfaces & Placement ── */
+const WIZARD_SURFACES = [
+  { key: 'web', icon: 'solar:monitor-linear', name: 'Fold Web', desc: 'Patient 360, side-drawer, worklists' },
+  { key: 'sidecar', icon: 'solar:link-round-linear', name: 'Sidecar', desc: 'EHR overlay - patient + global views' },
+  { key: 'mobile', icon: 'solar:smartphone-linear', name: 'Mobile app', desc: 'iOS / Android provider app' },
+];
+
 function StepSurfaces({ data, onChange }) {
   const toggleSurface = (key) => {
     const surfaces = data.surfaces.includes(key) ? data.surfaces.filter(s2 => s2 !== key) : [...data.surfaces, key];
     onChange({ surfaces });
   };
-
-  const SURFACES = [
-    { key: 'web', icon: 'solar:monitor-linear', name: 'Fold Web', desc: 'Patient 360, side-drawer, worklists' },
-    { key: 'sidecar', icon: 'solar:link-round-linear', name: 'Sidecar', desc: 'EHR overlay - patient + global views' },
-    { key: 'mobile', icon: 'solar:smartphone-linear', name: 'Mobile app', desc: 'iOS / Android provider app' },
-  ];
 
   return (
     <div>
@@ -282,7 +290,7 @@ function StepSurfaces({ data, onChange }) {
         Select surfaces <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--neutral-300)' }}>(multi-select)</span>
       </div>
       <div className={s.surfaceGrid}>
-        {SURFACES.map(sf => {
+        {WIZARD_SURFACES.map(sf => {
           const active = data.surfaces.includes(sf.key);
           return (
             <div key={sf.key} className={active ? s.surfaceCardActive : s.surfaceCard} onClick={() => toggleSurface(sf.key)}>
@@ -322,9 +330,9 @@ function StepSurfaces({ data, onChange }) {
             {data.webPlacement === 'side-drawer' && (
               <div className={s.modalGrid} style={{ gap: 12 }}>
                 <div className={s.formGroup}>
-                  <label className={s.label}>Drawer width</label>
+                  <label className={s.label} htmlFor="cw-drawer-width">Drawer width</label>
                   <div className={s.sliderRow}>
-                    <input type="range" min={300} max={800} step={10} value={data.drawerWidth}
+                    <input id="cw-drawer-width" type="range" min={300} max={800} step={10} value={data.drawerWidth}
                       className={s.sliderRange}
                       onChange={e => onChange({ drawerWidth: Number(e.target.value) })} />
                     <span className={s.sliderValue}>{data.drawerWidth}px</span>
@@ -363,8 +371,8 @@ function StepSurfaces({ data, onChange }) {
             {/* P360 tab config */}
             {data.webPlacement === 'p360-tab' && (
               <div className={s.formGroup}>
-                <label className={s.label}>Tab label</label>
-                <Input style={{ maxWidth: 220 }} value={data.webTabLabel} onChange={e => onChange({ webTabLabel: e.target.value })} />
+                <label className={s.label} htmlFor="cw-web-tab-label">Tab label</label>
+                <Input id="cw-web-tab-label" style={{ maxWidth: 220 }} value={data.webTabLabel} onChange={e => onChange({ webTabLabel: e.target.value })} />
               </div>
             )}
             {/* Widget card config */}
@@ -475,8 +483,8 @@ function StepSurfaces({ data, onChange }) {
                 </div>
                 {data.sidecarPlacement === 'tab' && (
                   <div className={s.formGroup}>
-                    <label className={s.label}>Tab label in Sidecar</label>
-                    <Input style={{ maxWidth: 200 }} value={data.sidecarTabLabel} onChange={e => onChange({ sidecarTabLabel: e.target.value })} />
+                    <label className={s.label} htmlFor="cw-sidecar-tab-label">Tab label in Sidecar</label>
+                    <Input id="cw-sidecar-tab-label" style={{ maxWidth: 200 }} value={data.sidecarTabLabel} onChange={e => onChange({ sidecarTabLabel: e.target.value })} />
                   </div>
                 )}
                 {data.sidecarPlacement === 'widget' && (
@@ -528,8 +536,8 @@ function StepSurfaces({ data, onChange }) {
             </div>
             {data.mobilePlacement === 'profile-tab' && (
               <div className={s.formGroup}>
-                <label className={s.label}>Tab label on mobile</label>
-                <Input style={{ maxWidth: 200 }} value={data.mobileTabLabel} onChange={e => onChange({ mobileTabLabel: e.target.value })} />
+                <label className={s.label} htmlFor="cw-mobile-tab-label">Tab label on mobile</label>
+                <Input id="cw-mobile-tab-label" style={{ maxWidth: 200 }} value={data.mobileTabLabel} onChange={e => onChange({ mobileTabLabel: e.target.value })} />
               </div>
             )}
             {data.mobilePlacement === 'home-card' && (
@@ -836,6 +844,7 @@ function StepPreview({ data, onChange, embedDomains }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
         <span style={{ fontSize: 12, fontWeight: 500, color: '#6F7A90', whiteSpace: 'nowrap' }}>Widget height</span>
         <input
+          aria-label="Widget height"
           type="range" min={150} max={600} step={10} value={previewHeight}
           onChange={e => onChange({ previewHeight: Number(e.target.value) })}
           style={{ width: '100%', height: 8, accentColor: 'var(--primary-300)', cursor: 'pointer', background: 'var(--neutral-100)', borderRadius: 4, border: 'none', outline: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
@@ -998,15 +1007,14 @@ export function ComponentWizardDrawer() {
           showToast(`"${data.name}" created (disabled)`);
         } else {
           showToast('Failed to save component. Check console for details.');
-          setSaving(false);
           return;
         }
       }
-      setSaving(false);
       close();
     } catch (err) {
       console.error('[ComponentWizard] Save failed:', err);
       showToast(`Save failed: ${err.message || 'Unknown error'}`);
+    } finally {
       setSaving(false);
     }
   };

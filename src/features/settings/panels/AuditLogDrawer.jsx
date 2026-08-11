@@ -2,9 +2,13 @@ import { useState, useMemo, useEffect } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { Badge } from '../../../components/Badge/Badge';
 import { Drawer } from '../../../components/Drawer/Drawer';
-import { TimelineEntry, groupByMonth } from '../../../components/Timeline/Timeline';
+import { TimelineEntry } from '../../../components/Timeline/Timeline';
+import { groupByMonth } from '../../../components/Timeline/Timeline.utils';
 import { useAppStore } from '../../../store/useAppStore';
 import { supabase } from '../../../lib/supabase';
+
+const AUDIT_LOG_FILTERS = ['all', 'created', 'updated', 'enabled', 'disabled', 'deleted'];
+const AUDIT_LOG_FILTERS_EXTENDED = [...AUDIT_LOG_FILTERS, 'previewed'];
 
 // TimelineEntry's `details` falls back from the explicit field to a
 // composed string. Audit-log entries set `details` already; the inline
@@ -47,14 +51,13 @@ export function AuditLogContent({ entityType, entityId }) {
   }, [entries, filter]);
 
   const monthGroups = useMemo(() => groupByMonth(filteredEntries), [filteredEntries]);
-  const FILTERS = ['all', 'created', 'updated', 'enabled', 'disabled', 'deleted'];
 
   return (
     <div style={{ padding: '12px 0' }}>
       {/* Filter pills */}
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
         <Icon name="custom:filter" size={16} color="var(--neutral-300)" />
-        {FILTERS.map(f => {
+        {AUDIT_LOG_FILTERS.map(f => {
           const active = filter === f;
           return (
             <button key={f} onClick={() => setFilter(f)} style={{
@@ -151,8 +154,6 @@ export function AuditLogDrawer({ entity, onClose }) {
 
   const monthGroups = useMemo(() => groupByMonth(filteredEntries), [filteredEntries]);
 
-  const FILTERS = ['all', 'created', 'updated', 'enabled', 'disabled', 'deleted', 'previewed'];
-
   const title = entity?.type === 'Domain'
     ? `Audit Log — ${entity.domain || entity.name}`
     : `Audit Log — ${entity?.name}`;
@@ -162,7 +163,7 @@ export function AuditLogDrawer({ entity, onClose }) {
       {/* Filter pills */}
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
         <Icon name="custom:filter" size={16} color="var(--neutral-300)" />
-        {FILTERS.map(f => {
+        {AUDIT_LOG_FILTERS_EXTENDED.map(f => {
           const active = filter === f;
           return (
             <button

@@ -11,6 +11,8 @@ const MONTH_NAMES = [
 
 const DOW = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
+const sameDay = (a, b) => a && b && a.toDateString() === b.toDateString();
+
 /**
  * Fold Health DateRangePopover — dual-month calendar with click-and-click
  * range selection (no drag). First click sets `start`; second click sets
@@ -57,7 +59,6 @@ export function DateRangePopover({
 
   if (!anchorRect) return null;
 
-  const sameDay = (a, b) => a && b && a.toDateString() === b.toDateString();
   const isStart = (d) => sameDay(d, start);
   const isEnd   = (d) => sameDay(d, end);
 
@@ -102,7 +103,9 @@ export function DateRangePopover({
 
   return createPortal(
     <>
-      <div className={styles.overlay} onClick={onClose} />
+      {/* Decorative click-catcher: the keyboard path to dismiss is the Escape
+          handler above, so this must not become a full-viewport tab stop. */}
+      <div className={styles.overlay} onClick={onClose} aria-hidden="true" />
       <div
         className={styles.popover}
         style={{ top, left: Math.max(12, left), width }}

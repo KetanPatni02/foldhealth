@@ -1,0 +1,126 @@
+/* Panel layout: header strip (tab row + sticky note) is pinned, only
+   the .scrollContent area scrolls vertically. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: var(--neutral-0);
+  overflow: hidden;
+}
+
+.scrollContent {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Flush layout — scroll content touches the panel edges for the sticky
+ * note strip, but the Gaps tab body sits inside a 12px horizontal gutter
+ * so it lines up with the other tabs (PAMI/Hx, Vitals/Labs, Comms…). */
+.flushContent .gapsWrapper { padding: 0 12px; }
+.flushContent .sections { padding: 0; }
+.flushContent .sectionHeader { padding: 0; }
+.flushContent .diagnosisHeader { margin-top: 0; }
+
+/* Sticky note strip stays edge-to-edge (yellow background spans the
+ * panel), but its inner rows get 16px horizontal padding so the note
+ * content lines up with the Gaps body below. */
+.flushContent .stickyNoteWrap > :global(div[class*="collapsed"]),
+.flushContent .stickyNoteWrap > :global(div[class*="expanded"]) :global([class*="header"]),
+.flushContent .stickyNoteWrap > :global(div[class*="expanded"]) :global([class*="body"]),
+.flushContent .stickyNoteWrap > :global(div[class*="expanded"]) :global([class*="authorRow"]),
+.flushContent .stickyNoteWrap > :global(div[class*="expanded"]) :global([class*="footer"]) {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.flushContent .gapsWrapper :global([class*="sectionLabel"]) {
+  padding-left: 0;
+}
+
+.flushContent .gapsWrapper :global([class*="colHeader"]) {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.flushContent .gapsWrapper :global([class*="colHeader"]) :global([class*="colStatus"]) {
+  padding-left: 0;
+}
+
+.flushContent .gapsWrapper :global([class*="row"]) {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Tab row: OverflowTabStrip fills height; search pinned on the right. */
+.tabRow {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 0.5px solid var(--neutral-150);
+  padding: 0 4px 0 8px;
+  flex-shrink: 0;
+  height: 40px;
+  gap: 0;
+  background: var(--neutral-0);
+}
+
+.tabsArea {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+
+.searchBtn {
+  align-self: center;
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+
+/* Search bar (replaces tabs when active) */
+.searchBar {
+  display: flex;
+  align-items: center;
+  border-bottom: 2px solid var(--primary-300);
+  padding: 0 8px;
+  flex-shrink: 0;
+  height: 40px;
+  background: var(--neutral-0);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.searchInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  color: var(--neutral-400);
+  background: transparent;
+  padding: 8px 4px;
+}
+.searchInput::placeholder { color: var(--neutral-200); }
+.searchClose { background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; flex-shrink: 0; }
+.alertHeader { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--status-warning-light); font-size: 12px; color: var(--neutral-400); font-family: 'Inter', sans-serif; flex-shrink: 0; border-bottom: 0.5px solid var(--neutral-100); }
+.gapsWrapper { padding: 0; }
+.sections { padding: 0; }
+.sectionHeader { display: flex; align-items: center; gap: 0; padding: 0; height: 32px; flex-shrink: 0; }
+.collapseToggle { background: none; border: none; cursor: pointer; padding: 0; margin-left: 4px; display: flex; align-items: center; }
+.sectionActions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.sectionTitle { font-size: 14px; font-weight: 500; color: var(--neutral-400); font-family: 'Inter', sans-serif; }
+.viewBy { font-size: 12px; color: var(--neutral-300); font-family: 'Inter', sans-serif; }
+.dosLabel { font-size: 12px; color: var(--neutral-400); font-family: 'Inter', sans-serif; }
+.dosValue { font-size: 12px; color: var(--neutral-300); font-family: 'Inter', sans-serif; }
+.filterDivider { width: 0.5px; height: 12px; background: var(--neutral-150); }
+.diagnosisHeader { margin-top: 0; }
+.placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 48px; color: var(--neutral-200); font-size: 13px; font-family: 'Inter', sans-serif; }
+
+/* Smooth collapse transition (grid-template-rows trick) */
+.collapseOuter { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 0.22s ease; overflow: hidden; }
+.collapseOuter.collapsedSection { grid-template-rows: 0fr; }
+.collapseInner { overflow: hidden; min-height: 0; }

@@ -1,0 +1,175 @@
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import { Avatar } from '../../../../components/Avatar/Avatar';
+import { ActionButton } from '../../../../components/ActionButton/ActionButton';
+import { Icon } from '../../../../components/Icon/Icon';
+import { useAppStore } from '../../../../store/useAppStore';
+import { formatDobDisplay } from '../../../../lib/patientDob';
+import { FALLBACK_P360 } from '../../data/p360Mock';
+import { ExpandedDemographics, ExpandedHealthStatus, ExpandedAppointments, ExpandedFamily, QuickViewExpanded } from './PatientP360BannerExpanded';
+import { PatientP360BannerDrawer } from './PatientP360BannerDrawer';
+import styles from './PatientP360Banner.module.css';
+
+export function PatientP360Banner({ patient, variant = 'full' }) {
+  const [expanded, setExpanded] = useState(false);
+  const [tags, setTags] = useState([]);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [selectedProfileId, setSelectedProfileId] = useState('central');
+  const bannerRef = useRef(null);
+  const [bannerSize, setBannerSize] = useState('wide');
+
+  const measureBanner = useCallback(() => {
+    const el = bannerRef.current;
+    if (!el) return;
+    setBannerSize(el.getBoundingClientRect().width < 1200 ? 'narrow' : 'wide');
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = bannerRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(() => measureBanner());
+    ro.observe(el);
+    measureBanner();
+    return () => ro.disconnect();
+  }, [measureBanner]);
+
+  const p360Profile = useAppStore(s => s.p360Profile);
+  const fetchP360Profile = useAppStore(s => s.fetchP360Profile);
+  useEffect(() => { if (patient?.id) fetchP360Profile(patient.id); }, [patient?.id, fetchP360Profile]);
+
+  const p = p360Profile || FALLBACK_P360;
+  useEffect(() => { setTags(p.condition_tags || FALLBACK_P360.condition_tags); }, [p.condition_tags]);
+
+  if (!patient) return null;
+  if (variant === 'drawer') return <PatientP360BannerDrawer patient={patient} p={p} />;
+
+
+  return (
+    <div className={styles.banner} ref={bannerRef}>
+      <div className={styles.row1}>
+        <div className={styles.userInfo}>
+          <Avatar variant="patient" initials={patient.initials || '??'} />
+          <div className={styles.nameBlock}>
+            <div className={styles.nameRow}>
+              <span className={styles.name}>{patient.name}</span>
+              <Icon name="solar:pen-2-linear" size={16} color="var(--neutral-200)" />
+            </div>
+            <div className={styles.meta}>
+              {patient.gender} • {formatDobDisplay(patient.dob) || '9/14/1968'} ({patient.age})
+              {bannerSize !== 'wide' && (
+                <>
+                  <span className={styles.metaDot}>•</span>
+                  <button type="button" className={styles.metaConsent}>
+                    Consent: {p.consent_given}/{p.consent_total}
+                    <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--status-warning)" />
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <span className={styles.vDivider} />
+
+        <div className={styles.mainInfo}>
+          <div style={{ position: 'relative' }}>
+            <div className={styles.profileCard} onClick={() => setShowProfileDropdown(v => !v)} style={{ cursor: 'pointer' }}>
+              <div className={styles.profileCardTop}>
+                <Icon name="solar:hospital-linear" size={14} color="var(--neutral-300)" />
+                <span className={styles.profileLink}>{(p.insurance_profiles || FALLBACK_P360.insurance_profiles).find(pr => pr.id === selectedProfileId)?.name || p.profile_type} <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" /></span>
+              </div>
+              <div className={styles.profileCardBottom}>
+                <strong>{selectedProfileId === 'central' ? p.health_plan_name : (p.insurance_profiles || FALLBACK_P360.insurance_profiles).find(pr => pr.id === selectedProfileId)?.name}</strong> <span>({p.health_plan_id})</span>
+                <span className={`${styles.badge} ${styles.badgeGrey}`} style={{ height: 18, fontSize: 12, padding: '0 4px', marginLeft: 4 }}>+{((p.insurance_profiles || FALLBACK_P360.insurance_profiles).length - 1)}</span>
+              </div>
+            </div>
+            {showProfileDropdown && (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setShowProfileDropdown(false)} />
+                <div className={styles.profileDropdown}>
+                  <div className={styles.profileDropdownTitle}>Member Insurance Profiles</div>
+                  {(p.insurance_profiles || FALLBACK_P360.insurance_profiles).map(prof => (
+                    <div key={prof.id} className={`${styles.profileOption} ${selectedProfileId === prof.id ? styles.profileOptionSelected : ''}`} onClick={() => { setSelectedProfileId(prof.id); setShowProfileDropdown(false); }}>
+                      <div className={styles.profileOptionHeader}>
+                        <div><div className={styles.profileOptionName}>{prof.name}</div><div className={styles.profileOptionSub}>{prof.subtitle}</div></div>
+                        {selectedProfileId === prof.id ? <Icon name="solar:check-circle-bold" size={20} color="var(--status-success)" /> : <span className={styles.profileOptionRadio} />}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {bannerSize === 'wide' && (
+            <>
+              <div className={styles.metricCol}>
+                <span className={styles.metricLabel}>Consent</span>
+                <div className={styles.metricValueRow}>
+                  <span className={`${styles.badge} ${styles.badgeWarning}`}>{p.consent_given}/{p.consent_total} <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--status-warning)" /></span>
+                </div>
+              </div>
+              <div className={styles.metricCol}>
+                <span className={styles.metricLabel}>Acuity</span>
+                <div className={styles.metricValueRow}><span className={`${styles.badge} ${styles.badgeError}`}>{p.acuity}</span></div>
+              </div>
+              <div className={styles.metricCol}>
+                <span className={styles.metricLabel}>RAF</span>
+                <div className={styles.metricValueRow}>
+                  <span className={styles.rafValue}>{p.raf_score}</span>
+                  {p.raf_change > 0 && <span className={styles.rafChangeBadge}>+{p.raf_change} <Icon name="solar:arrow-up-linear" size={12} color="var(--status-error)" /></span>}
+                </div>
+              </div>
+              <div className={styles.metricCol}>
+                <span className={styles.metricLabel}>Next Appt.</span>
+                <div className={styles.metricValueRow}><span className={styles.nextApptValue}>{p.next_appointment_date || '—'}</span></div>
+              </div>
+            </>
+          )}
+
+          <button className={styles.expandArrow} onClick={() => setExpanded(v => !v)} aria-expanded={expanded} aria-label={expanded ? 'Collapse patient summary' : 'Expand patient summary'}>
+            <span className={`${styles.drawerExpandIconInner} ${expanded ? styles.drawerExpandIconRotated : ''}`}>
+              <Icon name="custom:expand-drawer" size={16} />
+            </span>
+          </button>
+        </div>
+
+        <div className={styles.actionsGroup}>
+          <div className={styles.actionCol}><ActionButton icon="solar:square-top-down-linear" size="L" tooltip="EHR" /><span className={styles.actionLabel}>EHR</span></div>
+          <span className={styles.hDivider} />
+          <div className={styles.actionCol}><ActionButton icon="solar:phone-linear" size="L" tooltip="Call" /><span className={styles.actionLabel}>Call</span></div>
+          <span className={styles.hDivider} />
+          <div className={styles.actionCol}><ActionButton icon="solar:letter-linear" size="L" tooltip="Email" /><span className={styles.actionLabel}>Email</span></div>
+          <span className={styles.hDivider} />
+          <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More" />
+        </div>
+      </div>
+
+      <div className={styles.row2}>
+        <button className={styles.patientTypeBadge}>{p.patient_type} <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" /></button>
+        <span className={styles.tagDivider} />
+        {tags.map((tag, i) => (
+          <span key={i} className={tag === 'Needs Transportation' ? styles.tagBlue : styles.tagCyan}>
+            {tag}
+            <button className={styles.tagClose} onClick={() => setTags(prev => prev.filter((_, j) => j !== i))} aria-label={`Remove ${tag} tag`}>
+              <Icon name="solar:close-linear" size={12} color={tag === 'Needs Transportation' ? 'var(--status-info)' : 'var(--accent-cyan)'} />
+            </button>
+          </span>
+        ))}
+        <button className={styles.addTagBtn} aria-label="Add tag"><Icon name="solar:add-circle-linear" size={12} color="var(--neutral-300)" /></button>
+      </div>
+
+      {expanded && (
+        bannerSize === 'wide' ? (
+          <div className={styles.expandedGrid}>
+            <ExpandedDemographics p={p} />
+            <ExpandedHealthStatus p={p} movedMetrics />
+            <ExpandedAppointments p={p} />
+            <ExpandedFamily p={p} />
+          </div>
+        ) : (
+          <QuickViewExpanded p={p} />
+        )
+      )}
+    </div>
+  );
+}

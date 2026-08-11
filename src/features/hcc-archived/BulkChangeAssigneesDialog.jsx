@@ -26,16 +26,18 @@ const SYSTEM_USERS = (() => {
     source: 'astrana',
   }));
   const astranaIds = new Set(astrana.map(u => u.id));
-  const account = FALLBACK_USERS
-    .filter(u => !astranaIds.has(u.id))
-    .map(u => ({
+  const account = [];
+  for (const u of FALLBACK_USERS) {
+    if (astranaIds.has(u.id)) continue;
+    account.push({
       id: u.id,
       name: u.name,
       initials: u.initials,
       rolesLabel: u.role || '',
       engineRole: null, // Account users aren't pinned to an engine role
       source: 'account',
-    }));
+    });
+  }
   return [...astrana, ...account];
 })();
 
@@ -115,11 +117,12 @@ export function BulkChangeAssigneesDialog({ open, selectedIds, onClose, onApplie
     const teamType = ROLE_LABEL[role];
     // 1. Care Team members for this role — collect their userIds + team names.
     const teamMemberMap = new Map(); // userId → teamName
-    (hccCareTeams || [])
-      .filter(t => t.kind === 'hcc' && t.teamType === teamType)
-      .forEach(t => (t.members || []).forEach(m => {
+    for (const t of hccCareTeams || []) {
+      if (t.kind !== 'hcc' || t.teamType !== teamType) continue;
+      for (const m of t.members || []) {
         if (!teamMemberMap.has(m.userId)) teamMemberMap.set(m.userId, t.name);
-      }));
+      }
+    }
 
     // 2. Order all system users: Care-Team members → role-matched Astrana →
     //    everyone else. Stable sort preserves seed order within groups.

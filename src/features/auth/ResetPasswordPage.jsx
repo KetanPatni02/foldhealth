@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { track } from '../../lib/tracking';
 import { Input } from '../../components/Input/Input';
@@ -43,6 +43,7 @@ function readTokenFromUrl() {
 }
 
 export function ResetPasswordPage({ onDone }) {
+  const uid = useId();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -85,53 +86,60 @@ export function ResetPasswordPage({ onDone }) {
     setLoading(true);
     setError('');
 
-    // Token-hash flow: redeem the one-time token NOW, at submit time.
-    // Deferring redemption to a human interaction is what makes the links
-    // immune to mail-security prefetchers — a GET of the page burns nothing.
-    let invited = isInvited;
-    if (tokenParams) {
-      const { data: otpData, error: otpError } = await supabase.auth.verifyOtp({
-        type: tokenParams.type,
-        token_hash: tokenParams.tokenHash,
-      });
-      if (otpError) {
-        // The token may already be redeemed (e.g. an earlier submit failed
-        // after verifyOtp) — if a session exists we can still proceed.
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          track('auth.password_reset_failed', { reason: otpError.message || 'unknown', stage: 'verify' });
-          setError('This link has expired or was already used. Ask your admin to resend the invite or request a new reset link from the login page.');
-          setLoading(false);
-          return;
+    // On success we deliberately KEEP loading=true while the redirect
+    // timeout runs; every failure path (early return or thrown network
+    // error) must reset it, hence the flag + finally.
+    let redirecting = false;
+    try {
+      // Token-hash flow: redeem the one-time token NOW, at submit time.
+      // Deferring redemption to a human interaction is what makes the links
+      // immune to mail-security prefetchers — a GET of the page burns nothing.
+      let invited = isInvited;
+      if (tokenParams) {
+        const { data: otpData, error: otpError } = await supabase.auth.verifyOtp({
+          type: tokenParams.type,
+          token_hash: tokenParams.tokenHash,
+        });
+        if (otpError) {
+          // The token may already be redeemed (e.g. an earlier submit failed
+          // after verifyOtp) — if a session exists we can still proceed.
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) {
+            track('auth.password_reset_failed', { reason: otpError.message || 'unknown', stage: 'verify' });
+            setError('This link has expired or was already used. Ask your admin to resend the invite or request a new reset link from the login page.');
+            return;
+          }
         }
+        if (otpData?.user?.user_metadata?.invited === 'true') invited = true;
       }
-      if (otpData?.user?.user_metadata?.invited === 'true') invited = true;
-    }
 
-    // Update the password and, for invited users, flip the metadata flag
-    // in the same call so App.jsx doesn't loop them back here on refresh.
-    const updates = invited
-      ? { password, data: { invited: 'false' } }
-      : { password };
-    const { error: authError } = await supabase.auth.updateUser(updates);
-    if (authError) {
-      track('auth.password_reset_failed', { reason: authError.message || 'unknown', stage: 'update' });
-      const friendly = /Auth session missing/i.test(authError.message || '')
-        ? 'Your link has expired. Ask your admin to resend the invite or use "Forgot password" from the login page.'
-        : authError.message;
-      setError(friendly);
-      setLoading(false);
-      return;
-    }
-    track(invited ? 'auth.invite_accepted' : 'auth.password_reset_completed');
-    if (invited || setupFlow) {
-      // Session is already valid — send them into the app.
-      setSuccess('Password set. Welcome to Foldhealth!');
-      setTimeout(() => { onDone?.({ enterApp: true }); }, 900);
-    } else {
-      setSuccess('Password updated. Redirecting to login...');
-      await supabase.auth.signOut();
-      setTimeout(() => { onDone?.(); }, 1200);
+      // Update the password and, for invited users, flip the metadata flag
+      // in the same call so App.jsx doesn't loop them back here on refresh.
+      const updates = invited
+        ? { password, data: { invited: 'false' } }
+        : { password };
+      const { error: authError } = await supabase.auth.updateUser(updates);
+      if (authError) {
+        track('auth.password_reset_failed', { reason: authError.message || 'unknown', stage: 'update' });
+        const friendly = /Auth session missing/i.test(authError.message || '')
+          ? 'Your link has expired. Ask your admin to resend the invite or use "Forgot password" from the login page.'
+          : authError.message;
+        setError(friendly);
+        return;
+      }
+      track(invited ? 'auth.invite_accepted' : 'auth.password_reset_completed');
+      redirecting = true;
+      if (invited || setupFlow) {
+        // Session is already valid — send them into the app.
+        setSuccess('Password set. Welcome to Foldhealth!');
+        setTimeout(() => { onDone?.({ enterApp: true }); }, 900);
+      } else {
+        setSuccess('Password updated. Redirecting to login...');
+        await supabase.auth.signOut();
+        setTimeout(() => { onDone?.(); }, 1200);
+      }
+    } finally {
+      if (!redirecting) setLoading(false);
     }
   };
 
@@ -197,9 +205,10 @@ export function ResetPasswordPage({ onDone }) {
           ) : (
           <form className={styles.form} onSubmit={handleSubmit}>
             <div className={styles.field}>
-              <label className={styles.label}>New Password</label>
+              <label className={styles.label} htmlFor={`${uid}-new-password`}>New Password</label>
               <div className={styles.passwordWrap}>
                 <Input
+                  id={`${uid}-new-password`}
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
@@ -219,8 +228,9 @@ export function ResetPasswordPage({ onDone }) {
             </div>
 
             <div className={styles.field}>
-              <label className={styles.label}>Confirm New Password</label>
+              <label className={styles.label} htmlFor={`${uid}-confirm-password`}>Confirm New Password</label>
               <Input
+                id={`${uid}-confirm-password`}
                 type="password"
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}

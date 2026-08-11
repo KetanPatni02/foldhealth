@@ -5,6 +5,12 @@ import { StickyNoteAuditDrawer } from '../../components/StickyNoteAuditDrawer/St
 import { useAppStore } from '../../store/useAppStore';
 import styles from './HomeView.module.css';
 
+function formatStickyNoteDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()} • ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
+}
+
 function QuickNoteItem({ note, onSave, onDelete, onAuditLog }) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -38,11 +44,7 @@ function QuickNoteItem({ note, onSave, onDelete, onAuditLog }) {
     setConfirmDelete(false);
   };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()} • ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
-  };
+  const formatDate = formatStickyNoteDate;
 
   if (confirmDelete) {
     return (
@@ -92,7 +94,7 @@ function QuickNoteItem({ note, onSave, onDelete, onAuditLog }) {
               <button className={styles.quickNoteActionBtn} onClick={(e) => { e.stopPropagation(); onAuditLog(); }} aria-label="Audit Log">
                 <Icon name="solar:clock-circle-linear" size={13} color="var(--neutral-300)" />
               </button>
-              <button className={styles.quickNoteCollapseBtn} onClick={() => setExpanded(false)}>
+              <button className={styles.quickNoteCollapseBtn} onClick={() => setExpanded(false)} aria-label="Collapse quick notes">
                 <Icon name="solar:alt-arrow-up-linear" size={12} color="var(--neutral-300)" />
               </button>
             </div>

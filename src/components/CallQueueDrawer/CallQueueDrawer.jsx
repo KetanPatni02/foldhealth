@@ -72,7 +72,7 @@ function seededRandom(seed) {
 function generateDateGroup(date, idx) {
   const rng = seededRandom(idx * 7919 + 31);
   const callCount = 12 + Math.floor(rng() * 8); // 12-19 calls per day
-  const shuffled = [...ALL_PATIENTS].sort(() => rng() - 0.5);
+  const shuffled = ALL_PATIENTS.toSorted(() => rng() - 0.5);
   const patients = [];
   while (patients.length < callCount) {
     patients.push(...shuffled);
@@ -106,9 +106,10 @@ const TABS = ['Ongoing Call', 'In Queue', 'Call Log'];
 
 /* ── Shared components ── */
 
-function MemberCell({ initials, name, subtitle, onClick, selected }) {
+// Presentational only — the enclosing <tr> owns the row's click behaviour.
+function MemberCell({ initials, name, subtitle, selected }) {
   return (
-    <div className={`${styles.memberCell} ${onClick ? styles.memberCellClickable : ''} ${selected ? styles.memberCellSelected : ''}`} onClick={onClick}>
+    <div className={`${styles.memberCell} ${selected ? styles.memberCellSelected : ''}`}>
       <div className={styles.memberAvatar}>{initials}</div>
       <div className={styles.memberInfo}>
         <span className={styles.memberName}>{name}</span>
@@ -126,7 +127,8 @@ function SearchBar({ value, onChange, onClose }) {
       <input
         autoFocus
         type="text"
-        placeholder="Search\u2026"
+        placeholder="Search…"
+        aria-label="Search calls"
         value={value}
         onChange={e => onChange(e.target.value)}
         className={styles.searchInput}
@@ -439,10 +441,15 @@ export function CallLogTab({ onSelectCall, selectedCallId, searchQuery }) {
   const filteredGroups = useMemo(() => {
     if (!searchQuery.trim()) return CALL_LOG_GROUPS;
     const q = searchQuery.toLowerCase();
-    return CALL_LOG_GROUPS.map(g => ({
-      ...g,
-      calls: g.calls.filter(c => c.name.toLowerCase().includes(q)),
-    })).filter(g => g.calls.length > 0);
+    const groups = [];
+    for (const g of CALL_LOG_GROUPS) {
+      const calls = [];
+      for (const c of g.calls) {
+        if (c.name.toLowerCase().includes(q)) calls.push(c);
+      }
+      if (calls.length > 0) groups.push({ ...g, calls });
+    }
+    return groups;
   }, [searchQuery]);
 
   const totalCalls = CALL_LOG_GROUPS.reduce((sum, g) => sum + g.calls.length, 0);
@@ -476,15 +483,22 @@ export function CallLogTab({ onSelectCall, selectedCallId, searchQuery }) {
             <div className={styles.timelineLine} />
             <div className={styles.timelineIcon}>
               <svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M14.1333 4.18663V5.86663L15.1833 6.91663M11.7506 13.2226L12.1301 12.823C12.6548 12.2706 13.4727 12.1571 14.144 12.5435L15.7361 13.4599C16.7585 14.0484 16.9838 15.4907 16.1847 16.332L15.0009 17.5783C14.6999 17.8952 14.3264 18.1268 13.8969 18.1692C12.539 18.3032 9.21841 18.1551 5.67943 14.4292C2.34222 10.9158 1.74416 7.90447 1.66903 6.50487C1.63967 5.9578 1.88182 5.46464 2.24317 5.08421L3.55117 3.70713C4.27993 2.93988 5.50853 3.05868 6.14434 3.95794L7.19516 5.44418C7.70886 6.17073 7.65335 7.16596 7.06456 7.78586L6.82555 8.03749C6.82555 8.03749 5.92339 8.98729 8.3859 11.5798C10.8484 14.1724 11.7506 13.2226 11.7506 13.2226ZM18.3333 5.86663C18.3333 8.18622 16.4529 10.0666 14.1333 10.0666C11.8137 10.0666 9.93329 8.18622 9.93329 5.86663C9.93329 3.54703 11.8137 1.66663 14.1333 1.66663C16.4529 1.66663 18.3333 3.54703 18.3333 5.86663Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.2"/>
+                <path d="M14.13 4.19V5.87L15.18 6.92M11.75 13.22L12.13 12.823C12.65 12.27 13.47 12.16 14.144 12.54L15.74 13.46C16.76 14.05 16.98 15.49 16.18 16.332L15 17.58C14.7 17.9 14.33 18.13 13.9 18.17C12.539 18.3 9.22 18.16 5.68 14.43C2.34 10.92 1.74 7.9 1.67 6.5C1.64 5.96 1.88 5.46 2.24 5.08L3.55 3.71C4.28 2.94 5.51 3.06 6.14 3.96L7.2 5.44C7.71 6.17 7.65 7.17 7.06 7.79L6.83 8.04C6.83 8.04 5.92 8.99 8.39 11.58C10.85 14.17 11.75 13.22 11.75 13.22ZM18.33 5.87C18.33 8.19 16.45 10.07 14.13 10.07C11.81 10.07 9.93 8.19 9.93 5.87C9.93 3.55 11.81 1.67 14.13 1.67C16.45 1.67 18.33 3.55 18.33 5.87Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.2"/>
               </svg>
             </div>
             <div className={styles.timelineLine} style={{ flex: 1 }} />
           </div>
 
           <div className={styles.dateGroupContent}>
-            <div className={styles.dateGroupHeader} onClick={() => toggleGroup(gi)}>
-              <div className={styles.dateGroupInfo}>
+            {/* The expander is the inner button, not the header row — the row
+                also holds an ActionButton, and nesting controls is invalid. */}
+            <div className={styles.dateGroupHeader}>
+              <button
+                type="button"
+                className={styles.dateGroupInfo}
+                onClick={() => toggleGroup(gi)}
+                aria-expanded={!collapsedGroups[gi]}
+              >
                 <div className={styles.dateGroupLine1}>
                   <span className={styles.dateGroupDate}>{group.date}</span>
                   <span className={styles.dateGroupAgent}>&bull; {group.agentInfo.split(' \u2022 ')[0]} (v1.3)</span>
@@ -498,8 +512,8 @@ export function CallLogTab({ onSelectCall, selectedCallId, searchQuery }) {
                     className={collapsedGroups[gi] ? styles.chevronCollapsed : ''}
                   />
                 </div>
-              </div>
-              <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More Options" onClick={e => e.stopPropagation()} />
+              </button>
+              <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More Options" />
             </div>
 
             {!collapsedGroups[gi] && (

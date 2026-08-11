@@ -169,10 +169,13 @@ function RuleEditor({ field, fields, endings, onApply }) {
   const ew = field.enableWhen || [];
   const conditional = ew.length > 0;
   const behavior = field.enableBehavior || 'all';
-  const triggers = useMemo(
-    () => flatten(fields).map((e) => e.field).filter((f) => isAnswerable(f) && f.linkId !== field.linkId),
-    [fields, field.linkId],
-  );
+  const triggers = useMemo(() => {
+    const out = [];
+    for (const { field: f } of flatten(fields)) {
+      if (isAnswerable(f) && f.linkId !== field.linkId) out.push(f);
+    }
+    return out;
+  }, [fields, field.linkId]);
 
   const apply = (nextEw, nextBehavior = behavior) => onApply(field.linkId, {
     enableWhen: nextEw.length ? nextEw : undefined,

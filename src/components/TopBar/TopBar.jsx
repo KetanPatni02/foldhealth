@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback, useId } from 'react';
 import { Icon } from '../Icon/Icon';
 import { ActionButton } from '../ActionButton/ActionButton';
 import { Avatar } from '../Avatar/Avatar';
@@ -40,6 +40,7 @@ function getUserDisplayName(user) {
 const ALL_HCC_ROLES = ['Support', 'Coder', 'QA', 'Compliance'];
 
 function ProfilePopover({ user, onClose, onPreferences }) {
+  const uid = useId();
   const popoverRef = useRef(null);
   const [editing, setEditing] = useState(false);
   const [firstName, setFirstName] = useState(user?.user_metadata?.first_name || '');
@@ -107,10 +108,13 @@ function ProfilePopover({ user, onClose, onPreferences }) {
   const handleSaveName = async () => {
     if (!firstName.trim() || !lastName.trim()) return;
     setSaving(true);
-    await supabase.auth.updateUser({
-      data: { first_name: firstName.trim(), last_name: lastName.trim(), full_name: `${firstName.trim()} ${lastName.trim()}` },
-    });
-    setSaving(false);
+    try {
+      await supabase.auth.updateUser({
+        data: { first_name: firstName.trim(), last_name: lastName.trim(), full_name: `${firstName.trim()} ${lastName.trim()}` },
+      });
+    } finally {
+      setSaving(false);
+    }
     setEditing(false);
   };
 
@@ -145,12 +149,12 @@ function ProfilePopover({ user, onClose, onPreferences }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12, padding: '8px 0', borderTop: '0.5px solid var(--neutral-100)', borderBottom: '0.5px solid var(--neutral-100)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 2, display: 'block' }}>First Name</label>
-              <Input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="First" autoFocus />
+              <label htmlFor={`${uid}-first-name`} style={{ fontSize: 11, fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 2, display: 'block' }}>First Name</label>
+              <Input id={`${uid}-first-name`} value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="First" autoFocus />
             </div>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 2, display: 'block' }}>Last Name</label>
-              <Input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last" />
+              <label htmlFor={`${uid}-last-name`} style={{ fontSize: 11, fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 2, display: 'block' }}>Last Name</label>
+              <Input id={`${uid}-last-name`} value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last" />
             </div>
           </div>
           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
@@ -343,11 +347,11 @@ export function TopBar() {
         <nav className={styles.breadcrumb}>
           {isPatientView ? (
             <>
-              <a className={styles.breadcrumbLink} href="#" onClick={e => { e.preventDefault(); navigateBackToWorklist(); }}>Population</a>
+              <button type="button" className={styles.breadcrumbLink} onClick={() => navigateBackToWorklist()}>Population</button>
               {activeSubnavList && !activeSubnavList.startsWith('pg:') && (
                 <>
                   <span className={styles.sep}>/</span>
-                  <a className={styles.breadcrumbLink} href="#" onClick={e => { e.preventDefault(); navigateBackToWorklist(); }}>{activeSubnavList}</a>
+                  <button type="button" className={styles.breadcrumbLink} onClick={() => navigateBackToWorklist()}>{activeSubnavList}</button>
                 </>
               )}
               <span className={styles.sep}>/</span>
@@ -365,7 +369,7 @@ export function TopBar() {
             <span className={styles.breadcrumbCurrent}>Calendar</span>
           ) : isAnalytics ? (
             <>
-              <a className={styles.breadcrumbLink} href="#" onClick={e => e.preventDefault()}>Analytics</a>
+              <span className={styles.breadcrumbLink}>Analytics</span>
               <span className={styles.sep}>/</span>
               <span className={styles.breadcrumbCurrent}>Fold Insights</span>
             </>
@@ -373,19 +377,19 @@ export function TopBar() {
             <span className={styles.breadcrumbCurrent}>Campaign</span>
           ) : isSettings ? (
             <>
-              <a className={styles.breadcrumbLink} href="#" onClick={e => e.preventDefault()}>Settings</a>
+              <span className={styles.breadcrumbLink}>Settings</span>
               <span className={styles.sep}>/</span>
               <span className={styles.breadcrumbCurrent}>{SETTINGS_BREADCRUMB[settingsNavItem] || 'Automation'}</span>
             </>
           ) : activeSubnavList?.startsWith('pg:') ? (
             <>
-              <a className={styles.breadcrumbLink} href="#" onClick={e => e.preventDefault()}>Population</a>
+              <span className={styles.breadcrumbLink}>Population</span>
               <span className={styles.sep}>/</span>
               <span className={styles.breadcrumbCurrent}>Pop groups</span>
             </>
           ) : (
             <>
-              <a className={styles.breadcrumbLink} href="#" onClick={e => e.preventDefault()}>Population</a>
+              <span className={styles.breadcrumbLink}>Population</span>
               <span className={styles.sep}>/</span>
               <span className={styles.breadcrumbCurrent}>{activeSubnavList || 'TOC'}</span>
             </>

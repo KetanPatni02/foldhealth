@@ -9,7 +9,7 @@ import { kpiRowToJs, tsRowToJs, tableRowToJs, barRowToJs, configRowToJs, groupTi
 import { domainDbToJs, domainJsToDb, componentDbToJs, componentJsToDb, auditLogDbToJs } from '../lib/embedMapper';
 import { popGroupRowToJs, popGroupJsToDb } from '../lib/popGroupMapper';
 import { hccDocumentRowToJs, hccDocumentJsToDb } from '../lib/hccDocumentMapper';
-import { toast } from '../components/Toast/Toast';
+import { toast } from '../components/Toast/sonnerToast';
 // Fallback datasets (~220KB raw across all of these) are imported lazily
 // inside the fetch actions that consume them, so they don't bloat the entry
 // chunk. They're only needed when Supabase returns empty or errors.
@@ -1137,20 +1137,28 @@ export const useAppStore = create((set, get) => ({
   },
   clearPendingCareProgramCode: () => set({ pendingCareProgramCode: null }),
 
+  // EditPatientDrawer — one drawer shared by every "Edit …" entry-point
+  // on the Profile tab and the P360 banner overflow menu. Setting the
+  // section name mounts the drawer scrolled to that section; null tears it down.
+  patientEditSection: null, // 'basic' | 'contact' | 'address' | 'other' | null
+  openPatientEdit:  (section = 'basic') => set({ patientEditSection: section }),
+  closePatientEdit: () => set({ patientEditSection: null }),
+
   // HCC chart documents manually added via "Upload New Chart" (per member id).
   // System (default) docs come from chartDocs.generateDefaultCharts; these are
   // the extra ones the user uploads, kept so the count/list stay in sync.
   hccAddedCharts: {},
   addChartDoc: (memberId, doc, file) => {
     if (!memberId || !doc) return;
+    const nextDoc = file ? { ...doc, file } : doc;
     set((state) => ({
       hccAddedCharts: {
         ...state.hccAddedCharts,
-        [memberId]: [...(state.hccAddedCharts[memberId] || []), doc],
+        [memberId]: [...(state.hccAddedCharts[memberId] || []), nextDoc],
       },
     }));
     // Durability: upload the file + persist the record to Supabase.
-    persistHccAddedChart(memberId, doc, file);
+    persistHccAddedChart(memberId, nextDoc, file);
     // Always drop a timeline entry so uploads land on the Activity tab
     // regardless of which surface triggered the add (Chart Review drawer,
     // Diag Panel Documents tab, quick Upload popover). The 1500ms dedup
@@ -1673,8 +1681,10 @@ export const useAppStore = create((set, get) => ({
     // Reconcile the saved order with the current worklist set: drop labels
     // that no longer exist, append any new worklists at the end.
     const known = defaultLabels || [];
-    const saved = (order || []).filter(l => known.includes(l));
-    const merged = [...saved, ...known.filter(l => !saved.includes(l))];
+    const knownSet = new Set(known);
+    const saved = (order || []).filter(l => knownSet.has(l));
+    const savedSet = new Set(saved);
+    const merged = [...saved, ...known.filter(l => !savedSet.has(l))];
 
     set({ worklistOrder: merged, worklistOrderLoaded: true });
     try { localStorage.setItem('worklistOrder', JSON.stringify(merged)); } catch { /* */ }
@@ -1886,20 +1896,21 @@ export const useAppStore = create((set, get) => ({
       for (const ep of existing) {
         if (ep.agentAssigned) overrides[ep.id] = ep;
       }
-      const patients = data.map(dbToJs).map(p => {
-        const isPeter = p.name === 'Peter Kim' || p.id === 'p11';
-        const mem = overrides[p.id];
+      const patients = data.map(p => {
+        const base = dbToJs(p);
+        const isPeter = base.name === 'Peter Kim' || base.id === 'p11';
+        const mem = overrides[base.id];
         return {
-          ...p,
-          name: isPeter ? 'Clara Mitchell' : p.name,
-          initials: isPeter ? 'CM' : p.initials,
+          ...base,
+          name: isPeter ? 'Clara Mitchell' : base.name,
+          initials: isPeter ? 'CM' : base.initials,
           // Priority: in-memory invoke state > DB state
-          agentAssigned: mem?.agentAssigned || p.agentAssigned || '',
-          agentRole: mem?.agentRole || p.agentRole || '',
-          onCall: mem ? mem.onCall : (p.onCall || false),
-          status: mem ? mem.status : p.status,
-          callDuration: mem ? mem.callDuration : p.callDuration,
-          nextAction: mem?.nextAction || p.nextAction,
+          agentAssigned: mem?.agentAssigned || base.agentAssigned || '',
+          agentRole: mem?.agentRole || base.agentRole || '',
+          onCall: mem ? mem.onCall : (base.onCall || false),
+          status: mem ? mem.status : base.status,
+          callDuration: mem ? mem.callDuration : base.callDuration,
+          nextAction: mem?.nextAction || base.nextAction,
         };
       });
       // Sort by numeric part of id (p1, p2, ... p10, p11, ...)
@@ -5466,23 +5477,23 @@ export const useAppStore = create((set, get) => ({
     // AND log it to the activity feed. Direct manual reassigns from
     // hccReassignRole log there themselves — skip the log here for kind ===
     // 'reassignRole' so the History drawer doesn't show duplicate entries.
-    assigneeChanges
-      .filter(a => !statusChanges.some(sc => sc.role === a.role))
-      .forEach(({ role, name, fromName }) => {
-        persistHccMemberRoleStatus(patientId, role, undefined, name);
-        if (kind === 'reassignRole') return;
-        useAppStore.getState().logHccActivity({
-          eventName: 'assignee.changed',
-          scope:     { patientId, dos: dosDate, source: 'cascade' },
-          payload:   {
-            actor: payload.actor || 'You',
-            roleLabel: ROLE_LABEL_T[role] || role,
-            fromName, toName: name,
-            patientName: patient?.name,
-            transitionKind: kind,
-          },
-        });
+    const statusRoles = new Set(statusChanges.map(sc => sc.role));
+    for (const { role, name, fromName } of assigneeChanges) {
+      if (statusRoles.has(role)) continue;
+      persistHccMemberRoleStatus(patientId, role, undefined, name);
+      if (kind === 'reassignRole') continue;
+      useAppStore.getState().logHccActivity({
+        eventName: 'assignee.changed',
+        scope:     { patientId, dos: dosDate, source: 'cascade' },
+        payload:   {
+          actor: payload.actor || 'You',
+          roleLabel: ROLE_LABEL_T[role] || role,
+          fromName, toName: name,
+          patientName: patient?.name,
+          transitionKind: kind,
+        },
       });
+    }
     return { nextMap: useAppStore.getState().hccDosAssignments };
   },
 
@@ -6702,11 +6713,11 @@ export const useAppStore = create((set, get) => ({
     if (!patient) return;
     const first = blocks?.[0] || {};
     const totalIcds = (blocks || []).reduce((n, b) => n + (b.icds?.length || 0), 0);
-    const dosList = (blocks || []).filter(b => b.dos).map(b => ({
-      date: b.dos,
-      label: 'Just Added',
-      labelColor: 'var(--neutral-200)',
-    }));
+    const dosList = [];
+    for (const b of (blocks || [])) {
+      if (!b.dos) continue;
+      dosList.push({ date: b.dos, label: 'Just Added', labelColor: 'var(--neutral-200)' });
+    }
     const today = new Date();
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dd = String(today.getDate()).padStart(2, '0');
@@ -7006,7 +7017,10 @@ export const useAppStore = create((set, get) => ({
     if (!member) return { kind: 'skipped' };
     const docName = enc._docName || 'Uploaded Document.pdf';
     const docType = enc._docType || 'Progress Note';
-    const icdCodes = (enc.icds || []).filter(i => i.valid !== false).map(i => i.code);
+    const icdCodes = [];
+    for (const i of (enc.icds || [])) {
+      if (i.valid !== false) icdCodes.push(i.code);
+    }
     const now = new Date();
     // WS1/WS8 — every upload-sourced row belongs to a mini-sweep. Stamp
     // the batch id onto `sourceDocumentIds` and force `arrivalOrder` to
@@ -7340,9 +7354,10 @@ export const useAppStore = create((set, get) => ({
   invokeAgent: (patientIds, agentName, agentRole) => {
     const MAX_CONCURRENT = 3;
     const state = get();
+    const patientIdSet = new Set(patientIds);
     let activeCount = state.patients.filter(p => p.status === 'oncall' && p.onCall).length;
     const updated = state.patients.map(p => {
-      if (!patientIds.includes(p.id)) return p;
+      if (!patientIdSet.has(p.id)) return p;
       const newP = { ...p, agentAssigned: agentName, agentRole };
       if (p.status !== 'completed' && p.status !== 'failed') {
         if (activeCount < MAX_CONCURRENT) {
@@ -7368,7 +7383,7 @@ export const useAppStore = create((set, get) => ({
 
     // Create call records for invoked patients and persist to Supabase
     for (const p of updated) {
-      if (patientIds.includes(p.id)) {
+      if (patientIdSet.has(p.id)) {
         get().persistPatient(p.id, {
           agentAssigned: p.agentAssigned,
           agentRole: p.agentRole,
@@ -9113,9 +9128,11 @@ export const useAppStore = create((set, get) => ({
       }
       return t;
     });
-    const overdueIds = (data || [])
-      .filter((t, i) => now[i] !== t && now[i].status === 'missed')
-      .map(t => t.id);
+    const overdueIds = [];
+    for (let i = 0; i < (data || []).length; i++) {
+      const t = data[i];
+      if (now[i] !== t && now[i].status === 'missed') overdueIds.push(t.id);
+    }
     if (overdueIds.length > 0) {
       await supabase.from('tasks')
         .update({ status: 'missed', due_missed: true, updated_at: new Date().toISOString() })
@@ -9224,8 +9241,10 @@ export const useAppStore = create((set, get) => ({
           get().logTaskAudit(id, 'assignee_changed', { field: 'assigned_to', from: prev.assigned_to || '(unassigned)', to: val || '(unassigned)' });
         } else if (key === 'labels') {
           const oldL = prev.labels || []; const newL = val || [];
-          const added = newL.filter(l => !oldL.includes(l));
-          const removed = oldL.filter(l => !newL.includes(l));
+          const oldSet = new Set(oldL);
+          const newSet = new Set(newL);
+          const added = newL.filter(l => !oldSet.has(l));
+          const removed = oldL.filter(l => !newSet.has(l));
           added.forEach(l => get().logTaskAudit(id, 'label_added', { field: 'labels', to: l }));
           removed.forEach(l => get().logTaskAudit(id, 'label_removed', { field: 'labels', from: l }));
         } else if (key === 'description' || key === 'meta') {

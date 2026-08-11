@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { Icon } from '../Icon/Icon';
 import styles from './SearchListPopover.module.css';
 
+const EMPTY_OPTIONS = [];
+
 /**
  * SearchListPopover — an anchored, portaled search + single-select list. Same
  * chrome as the app's other filter popovers (bordered search field on top, a
@@ -20,7 +22,7 @@ import styles from './SearchListPopover.module.css';
  */
 export function SearchListPopover({
   anchorRect,
-  options = [],
+  options = EMPTY_OPTIONS,
   onSelect,
   onClose,
   searchPlaceholder = 'Search…',

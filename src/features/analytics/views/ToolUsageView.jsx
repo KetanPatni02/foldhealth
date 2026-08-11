@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { KpiCard, InsightBanner, Card, ProgressBar, StatusPill, safeTableRows, EmptyState, KpiSkeleton, TableSkeleton } from './shared';
+import { KpiCard, InsightBanner, Card, ProgressBar, StatusPill, EmptyState, KpiSkeleton, TableSkeleton } from './shared';
+import { safeTableRows } from './shared.utils';
 import { EditableGrid } from './EditableGrid';
 import s from '../AnalyticsLayout.module.css';
 
@@ -15,6 +16,19 @@ const DEFAULT_LAYOUT = [
   { i: 'adoption',    x: 0, y: 14, w: 12, h: 8, minW: 6, minH: 5, maxW: 12, maxH: 20 },
   { i: 'nonAdopters', x: 0, y: 22, w: 12, h: 6, minW: 6, minH: 4, maxW: 12, maxH: 16 },
 ];
+
+const EMPTY_TABLE_ROWS = [];
+
+function renderToolAutomation() {
+  return (
+    <Card title="Automation Engine Performance">
+      <ProgressBar label="SMS Outreach Sent" value="1,840 msgs" pct={73} color="teal" sub="61% engagement rate" />
+      <ProgressBar label="Auto-Scheduled AWVs" value="312 appts" pct={62} color="amber" sub="Via engaged members" />
+      <ProgressBar label="TCM Auto-Assigned" value="184 tasks" pct={74} color="teal" sub="Post-discharge" />
+      <ProgressBar label="HCC Suspect Alerts Pushed" value="412 alerts" pct={83} color="green" sub="To Sidecar EMR" />
+    </Card>
+  );
+}
 
 export function ToolUsageView({ showToast, editing = false, resetTick = 0 }) {
   const fetchViewKpis = useAppStore(st => st.fetchViewKpis);
@@ -32,7 +46,7 @@ export function ToolUsageView({ showToast, editing = false, resetTick = 0 }) {
   const kpis = kpiData?.kpis || [];
   const insight = kpiData?.insight || null;
   const adoptionRows = safeTableRows(adoptionData);
-  const nonAdopterRows = [];
+  const nonAdopterRows = EMPTY_TABLE_ROWS;
 
   const renderInsight = () => insight ? (
     <InsightBanner
@@ -68,14 +82,7 @@ export function ToolUsageView({ showToast, editing = false, resetTick = 0 }) {
     </Card>
   );
 
-  const renderAutomation = () => (
-    <Card title="Automation Engine Performance">
-      <ProgressBar label="SMS Outreach Sent" value="1,840 msgs" pct={73} color="teal" sub="61% engagement rate" />
-      <ProgressBar label="Auto-Scheduled AWVs" value="312 appts" pct={62} color="amber" sub="Via engaged members" />
-      <ProgressBar label="TCM Auto-Assigned" value="184 tasks" pct={74} color="teal" sub="Post-discharge" />
-      <ProgressBar label="HCC Suspect Alerts Pushed" value="412 alerts" pct={83} color="green" sub="To Sidecar EMR" />
-    </Card>
-  );
+  const renderAutomation = renderToolAutomation;
 
   const renderAdoption = () => (
     <Card title="Adoption by Provider" flush>

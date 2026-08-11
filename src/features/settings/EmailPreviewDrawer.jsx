@@ -34,22 +34,19 @@ export function EmailPreviewDrawer({ campaign, onClose, onEdit }) {
   // JSONB to keep the table fast. When that row is passed in, fetch the
   // full record now so we render the actual saved email instead of the
   // generic initial document.
-  const [fullCampaign, setFullCampaign] = useState(
-    campaign?.emailTemplate !== undefined ? campaign : null
-  );
+  // Only the async fetch result lives in state; when the prop already carries
+  // the template we derive directly so a changed prop never renders stale.
+  const [fetchedCampaign, setFetchedCampaign] = useState(null);
   useEffect(() => {
-    if (!campaign?.id) return;
-    if (campaign.emailTemplate !== undefined) {
-      setFullCampaign(campaign);
-      return;
-    }
+    if (!campaign?.id || campaign.emailTemplate !== undefined) return undefined;
     let cancelled = false;
     (async () => {
       const full = await fetchCampaignById(campaign.id);
-      if (!cancelled) setFullCampaign(full || campaign);
+      if (!cancelled) setFetchedCampaign(full || campaign);
     })();
     return () => { cancelled = true; };
   }, [campaign, fetchCampaignById]);
+  const fullCampaign = campaign?.emailTemplate !== undefined ? campaign : fetchedCampaign;
 
   const html = useMemo(() => {
     const source = fullCampaign || campaign;

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
@@ -100,12 +100,17 @@ export function IcdCreationScreen() {
   const [queue, setQueue] = useState([]);
   const [extracting, setExtracting] = useState(false);
 
+  // Declared above the early return below so hook order stays stable across
+  // renders — a hook after the guard gets skipped whenever `open` is false,
+  // which lets React attach state to the wrong hook.
+  const sessionIdSet = useMemo(() => new Set(sessionIds), [sessionIds]);
+
   if (!open) return null;
 
   // Encounters extracted in this session — the right panel's records list.
   // We pull them from the batches the store knows about, then filter to
   // only the ones added during this Upload Document session.
-  const sessionBatches = batches.filter(b => sessionIds.includes(b.id));
+  const sessionBatches = batches.filter(b => sessionIdSet.has(b.id));
   const sessionEncounters = sessionBatches.flatMap(b =>
     (b.encounters || []).map(e => ({ ...e, _batchId: b.id, _fileName: b.fileName, _ocrTier: b.ocrTier }))
   );
@@ -530,6 +535,12 @@ function RightColumn({ inResults, sessionEncounters, onAdd, onAddManually }) {
 
 // ─── TabbedRecords — Pending Review / Added / Deleted (results mode) ─────
 
+function isEncounterReady(enc) {
+  return !!enc.patient?.matchedMemberId
+    && (!Array.isArray(enc.errors) || enc.errors.length === 0)
+    && !enc.patient?.idMismatch;
+}
+
 function TabbedRecords({ encounters, onAdd, onAddManually }) {
   const [tab, setTab] = useState('pending');
 
@@ -538,9 +549,7 @@ function TabbedRecords({ encounters, onAdd, onAddManually }) {
   const addedEncs   = bucket('added');
   const deletedEncs = bucket('deleted');
 
-  const isReady = (enc) => !!enc.patient?.matchedMemberId
-    && (!Array.isArray(enc.errors) || enc.errors.length === 0)
-    && !enc.patient?.idMismatch;
+  const isReady = isEncounterReady;
   const readyEncs = pendingEncs.filter(isReady);
   const needsReviewEncs = pendingEncs.filter(e => !isReady(e));
 

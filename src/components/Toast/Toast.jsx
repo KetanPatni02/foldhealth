@@ -1,4 +1,4 @@
-import { Toaster as SonnerToaster, toast as sonnerToast } from 'sonner';
+import { Toaster as SonnerToaster } from 'sonner';
 import styles from './Toast.module.css';
 
 export function Toaster() {
@@ -23,5 +23,3 @@ export function Toaster() {
     />
   );
 }
-
-export const toast = sonnerToast;

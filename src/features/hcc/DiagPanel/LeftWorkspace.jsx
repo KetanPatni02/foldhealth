@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useId } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
 import { CloseButton } from '../../../components/CloseButton/CloseButton';
@@ -20,7 +20,7 @@ import { dosKey } from '../assignment/dosState';
 import { staffById } from '../assignment/astranaStaff';
 import { normalizeRole } from '../reviewedBy';
 import { SYSTEM_USERS } from '../systemUsers';
-import { OutreachTab as PatientOutreachTab } from '../../patient/components/OutreachTab';
+import { OutreachTab as PatientOutreachTab } from '../../patient/left-panel/tabs/outreach/OutreachTab/OutreachTab';
 import { DocEvidenceViewer } from './DocEvidenceViewer';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { CommentComposer } from '../../../components/CommentComposer/CommentComposer';
@@ -93,12 +93,12 @@ export function LeftWorkspace({
   // table always agree (both derive from the same member.dos_list).
   const memberClaims = useMemo(
     () => {
-      // A record with no document on file can't have any 'D'-sourced DOSs;
-      // pass hasDoc so those dates re-bucket to Claim/Manual consistently.
       const hasDoc = member?.ch != null;
-      return (member?.dos_list || [])
-        .filter(d => dosSourceLetter(d.date, hasDoc) === 'C')
-        .map(d => claimForDos(d.date));
+      const claims = [];
+      for (const d of member?.dos_list || []) {
+        if (dosSourceLetter(d.date, hasDoc) === 'C') claims.push(claimForDos(d.date));
+      }
+      return claims;
     },
     [member?.dos_list, member?.ch],
   );
@@ -177,7 +177,7 @@ export function LeftWorkspace({
   const activityIcd = useAppStore(s => s.diagActivityIcd);
   const clearDiagActivityIcd = useAppStore(s => s.clearDiagActivityIcd);
   const memberDosList = useMemo(
-    () => (member?.dos_list || []).map(d => d.date).filter(Boolean),
+    () => (member?.dos_list || []).flatMap(d => d.date ? [d.date] : []),
     [member?.dos_list],
   );
   const [filters, setFilters] = useState(() => ({
@@ -256,7 +256,8 @@ export function LeftWorkspace({
     if (dosCustomizedRef.current) return;
     setFilters(f => {
       const opts = filterOptions.dos || [];
-      const same = f.dos.length === opts.length && opts.every(d => f.dos.includes(d));
+      const dosSet = new Set(f.dos);
+      const same = f.dos.length === opts.length && opts.every(d => dosSet.has(d));
       return same ? f : { ...f, dos: opts };
     });
   }, [filterOptions.dos]);
@@ -357,7 +358,7 @@ const DATE_PRESETS = ['Today', 'Last 7 days', 'Last 30 days', 'This month'];
  * entries (plus member.dos_list for the DOS filter).
  */
 function computeFilterOptions(entries, member, extras = {}) {
-  const dos = new Set((member?.dos_list || []).map(d => d.date).filter(Boolean));
+  const dos = new Set((member?.dos_list || []).flatMap(d => d.date ? [d.date] : []));
   const hcc = new Set();
   const icd = new Set();
   const HCC_RE = /HCC\s*\d+/g;
@@ -397,10 +398,10 @@ function computeFilterOptions(entries, member, extras = {}) {
   }
   const cmp = (a, b) => a.localeCompare(b);
   return {
-    dos:  [...dos].sort(cmp),
-    hcc:  [...hcc].sort(cmp),
-    icd:  [...icd].sort(cmp),
-    by:   [...byPool].sort(cmp),
+    dos:  [...dos].toSorted(cmp),
+    hcc:  [...hcc].toSorted(cmp),
+    icd:  [...icd].toSorted(cmp),
+    by:   [...byPool].toSorted(cmp),
     date: DATE_PRESETS,
   };
 }
@@ -416,7 +417,10 @@ function entryMatchesFilters(e, filters) {
   if (e.t === 'group') return true;
   if (filters.dos?.length && !filters.dos.includes(e.dos)) return false;
   if (filters.by?.length  && !filters.by.includes(e.by))   return false;
-  if (filters.icd?.length && !(Array.isArray(e.icds) && filters.icd.some(c => e.icds.includes(c)))) return false;
+  if (filters.icd?.length) {
+    const icdSet = Array.isArray(e.icds) ? new Set(e.icds) : null;
+    if (!icdSet || !filters.icd.some(c => icdSet.has(c))) return false;
+  }
   if (filters.hcc?.length) {
     const ok = filters.hcc.some(h => {
       const num = String(h).replace(/^HCC\s*/, '');
@@ -994,7 +998,7 @@ function groupByMonth(items) {
 // so full-name mentions (e.g. "@Abhay Pratap Chaudhary") remain intact.
 function renderCommentBody(body, users) {
   if (!body) return null;
-  const names = (users?.length ? users : []).map(u => u.name).filter(Boolean);
+  const names = (users?.length ? users : []).flatMap(u => u.name ? [u.name] : []);
   // Longest-first so a full-name match wins over a first-name-only prefix.
   const sortedNames = names.slice().sort((a, b) => b.length - a.length);
   if (!sortedNames.length) return body;
@@ -1078,6 +1082,7 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
               autoFocus
               type="text"
               className={styles.commentComposer}
+              aria-label="Edit comment"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
@@ -1233,8 +1238,9 @@ const DOC_STATUS_BADGE = {
   pending: { variant: 'status-queued',    label: 'Pending' },
   failed:  { variant: 'status-failed',    label: 'Failed'  },
 };
+const EMPTY_CHARTS = [];
 
-function DocumentsTab({ member, icdScope, charts = [], openDocId, setOpenDocId, filters }) {
+function DocumentsTab({ member, icdScope, charts = EMPTY_CHARTS, openDocId, setOpenDocId, filters }) {
   const showToast = useAppStore(s => s.showToast);
   const uploaderOpen = useAppStore(s => s.hccDocsUploaderOpen);
   const removeChartDoc = useAppStore(s => s.removeChartDoc);
@@ -1526,19 +1532,20 @@ function DocumentsUploader() {
 
   // Simulated upload — progress 0→100 in ~1.2s, then phase='ready'.
   useEffect(() => {
-    if (phase !== 'uploading') return;
+    if (phase !== 'uploading') return undefined;
     let p = 0;
+    let readyTimer = null;
     const id = setInterval(() => {
       p += 8 + Math.random() * 14;
       if (p >= 100) {
         setProgress(100);
         clearInterval(id);
-        setTimeout(() => setPhase('ready'), 120);
+        readyTimer = setTimeout(() => setPhase('ready'), 120);
       } else {
         setProgress(p);
       }
     }, 80);
-    return () => clearInterval(id);
+    return () => { clearInterval(id); clearTimeout(readyTimer); };
   }, [phase]);
 
   const reset = () => {
@@ -1554,6 +1561,7 @@ function DocumentsUploader() {
     setCaption(prev => (!prev.trim() || prev === file?.name) ? f.name : prev);
     setError(''); setFile(f); setProgress(0); setPhase('uploading');
   };
+  const fileInputId = useId();
   const pick = () => inputRef.current?.click();
   const onPicked = (e) => { startUpload(e.target.files?.[0]); e.target.value = ''; };
   const onDrop = (e) => { e.preventDefault(); setDrag(false); startUpload(e.dataTransfer.files?.[0]); };
@@ -1604,6 +1612,7 @@ function DocumentsUploader() {
   // Hidden file input (always mounted so picker works across phases).
   const hiddenInput = (
     <input
+      id={fileInputId}
       ref={inputRef}
       type="file"
       accept={DOC_ACCEPT}
@@ -1620,12 +1629,12 @@ function DocumentsUploader() {
       {phase === 'empty' && (
         <>
           <label
+            htmlFor={fileInputId}
             className={[styles.docDropZone, drag ? styles.docDropZoneActive : ''].join(' ')}
             onDragEnter={(e) => { e.preventDefault(); setDrag(true); }}
             onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
             onDragLeave={() => setDrag(false)}
             onDrop={onDrop}
-            onClick={pick}
           >
             <Icon name="solar:upload-minimalistic-linear" size={20} color="var(--neutral-300)" />
             <span className={styles.docDropText}>
@@ -2106,13 +2115,21 @@ function WorklogTab({ member, filters = {} }) {
           : i.type === 'Suspect'   ? 'Suspect'
           : 'Associated',
     }));
-    const addressedSuspects = notLinkedMock
-      .filter((icd) => {
-        if (!icd?.code) return false;
-        const prefix = `${icd.code}|`;
-        return Object.keys(gapDosActions).some((k) => k.startsWith(prefix));
-      })
-      .map((i) => ({ ...i, kind: i.type === 'Recapture' ? 'Recapture' : 'Suspect' }));
+    const addressedSuspects = [];
+    for (const icd of notLinkedMock) {
+      if (!icd?.code) continue;
+      const prefix = `${icd.code}|`;
+      let matched = false;
+      for (const k of Object.keys(gapDosActions)) {
+        if (k.startsWith(prefix)) { matched = true; break; }
+      }
+      if (matched) {
+        addressedSuspects.push({
+          ...icd,
+          kind: icd.type === 'Recapture' ? 'Recapture' : 'Suspect',
+        });
+      }
+    }
     const PRIORITY = { Manual: 4, Recapture: 3, Suspect: 2, Associated: 1 };
     const byCode = new Map();
     for (const icd of [...linkedWithKind, ...addressedSuspects]) {

@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { ACCEPT_EXT, ACCEPT_MIME, CHOOSER_OPTIONS } from './UploadDocumentDrawerPicker.utils';
 import { Drawer } from '../../../components/Drawer/Drawer';
 import { Button } from '../../../components/Button/Button';
 import { Icon } from '../../../components/Icon/Icon';
@@ -41,86 +42,51 @@ import styles from './UploadDocumentDrawer.module.css';
  * parent's useEffect — this view is purely the "please wait" canvas
  * the user can step away from.
  */
-function ProcessingPhase({ fileName, onMinimize, onDiscard }) {
-  return (
-    <div className={styles.processingPhase}>
-      <div className={styles.processingHero}>
-        <div className={styles.processingHeroRing} />
-        <div className={styles.processingHeroInner}>
-          <Icon name="solar:document-medicine-linear" size={32} color="var(--primary-300)" />
-        </div>
-      </div>
-      <div className={styles.processingTitle}>Processing Document…</div>
-      <div className={styles.processingSubtitle}>
-        Running AI extraction on your file <strong>{fileName || 'uploaded file'}</strong>
-      </div>
-      <div className={styles.processingDividerLine} />
-      <div className={styles.processingHint}>
-        You can minimize this window and continue working while it processes.
-      </div>
-      <div className={styles.processingActions}>
-        <Button variant="primary" size="s" onClick={onMinimize}>
-          <Icon name="solar:minimize-square-2-linear" size={14} color="#fff" />
-          Minimize
-        </Button>
-        <Button variant="alt" size="s" onClick={onDiscard}>
-          <Icon name="solar:trash-bin-2-linear" size={14} color="var(--neutral-300)" />
-          Discard
-        </Button>
-      </div>
-      {fileName && (
-        <div className={styles.processingFileCard}>
-          <div className={styles.processingFileIcon}>
-            <Icon name="solar:document-text-linear" size={16} color="var(--neutral-300)" />
-          </div>
-          <div className={styles.processingFileName}>{fileName}</div>
-          <button
-            type="button"
-            className={styles.processingFileEye}
-            title="Preview file"
-          >
-            <Icon name="solar:eye-linear" size={16} color="var(--neutral-300)" />
-          </button>
-        </div>
-      )}
-      <div className={styles.processingInfoBanner}>
-        <Icon name="solar:info-circle-linear" size={16} color="var(--neutral-300)" />
-        <span>
-          Once extraction is complete, you'll review each record before it's added
-          to the HCC worklist. All uploads are saved in the document history on
-          worklist.
-        </span>
-      </div>
-    </div>
-  );
+import { ProcessingPhase, StepIndicator } from './UploadDocumentDrawer.helpers';
+import { PickerPhase } from './UploadDocumentDrawerPicker';
+function createNewDosBlock() {
+  return {
+    id: `nd-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+    dos: '',
+    provider: '',
+    pos: '',
+    docType: '',
+    file: null,
+    icds: [],
+  };
 }
 
-function StepIndicator({ activeStep = 1 }) {
-  return (
-    <div className={styles.steps}>
-      <div className={styles.step}>
-        <span className={`${styles.stepBadge}${activeStep >= 1 ? '' : ` ${styles.stepBadgeIdle}`}`}>1</span>
-        <span className={`${styles.stepLabel}${activeStep >= 1 ? '' : ` ${styles.stepLabelIdle}`}`}>Upload File</span>
-      </div>
-      <span className={styles.stepDivider} />
-      <div className={styles.step}>
-        <span className={`${styles.stepBadge}${activeStep >= 2 ? '' : ` ${styles.stepBadgeIdle}`}`}>2</span>
-        <span className={`${styles.stepLabel}${activeStep >= 2 ? '' : ` ${styles.stepLabelIdle}`}`}>AI Review</span>
-      </div>
-    </div>
-  );
+function recalcEncounterErrors(enc) {
+  const errors = [];
+  if (!enc.patient?.name) errors.push('patientName');
+  if (!enc.patient?.dob) errors.push('dob');
+  if (!enc.dos) errors.push('dos');
+  if (!enc.provider) errors.push('provider');
+  if (!enc.pos) errors.push('pos');
+  return errors;
 }
 
-const ACCEPT_EXT  = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.tif,.tiff';
-const ACCEPT_MIME = new Set([
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'image/jpeg',
-  'image/png',
-  'image/tiff',
-]);
-const ACCEPT_LABEL = 'Supported formats: PDF, DOC, JPG, PNG, TIFF';
+function filterGroupsByEncounterStatus(groups, filter) {
+  if (filter === 'all') return groups;
+  const out = [];
+  for (const g of groups) {
+    const encounters = g.encounters.filter(e => encounterStatus(e) === filter);
+    if (encounters.length > 0) out.push({ ...g, encounters });
+  }
+  return out;
+}
+
+function highConfidenceEncounterIdxs(encounters) {
+  const idxs = [];
+  for (let i = 0; i < encounters.length; i++) {
+    const e = encounters[i];
+    if ((e.patient?.matchConfidence ?? 0) >= 85 && (!e.errors || e.errors.length === 0)) {
+      idxs.push(i);
+    }
+  }
+  return idxs;
+}
+
 const isAcceptedFile = (file) => {
   if (!file) return false;
   if (ACCEPT_MIME.has(file.type)) return true;
@@ -216,868 +182,6 @@ export function UploadDocumentDrawer() {
  *
  * "What happens next?" collapsible accordion sits between the
  * dropzone and the staged list, default collapsed.
- */
-function PickerPhase({ showToast, cancel }) {
-  const queueHccDocumentForOcr = useAppStore(s => s.queueHccDocumentForOcr);
-  const createFromEncounter = useAppStore(s => s.hccCreateOrMergeFromEncounter);
-  const openReviewForBatches = useAppStore(s => s.openHccReviewForBatches);
-  const removeHccSftpBatch = useAppStore(s => s.removeHccSftpBatch);
-  const fetchHccDocuments = useAppStore(s => s.fetchHccDocuments);
-  // Persistent list of every extracted document (this session + past ones
-  // loaded from Supabase). This — not local state — backs the Extracted
-  // Records view, so past documents pending review / added / unreadable are
-  // always visible when the picker reopens.
-  const sftpBatches = useAppStore(s => s.hccSftpBatches) || [];
-  // Each entry: { id, file, name, size, progress: 0-100,
-  //   status: 'uploading' | 'extracting' } — a row lives here only while it
-  //   uploads then extracts; once done its batch surfaces in `records`.
-  const [staged, setStaged] = useState([]);
-  const [activeBucket, setActiveBucket] = useState('review');
-  // Guards so each staged row is only sent through extraction once.
-  const startedRef = useRef(new Set());
-  // Load past documents once on open (only when none are in memory, so we
-  // never clobber an in-flight extraction from this session).
-  const didFetchRef = useRef(false);
-  useEffect(() => {
-    if (didFetchRef.current) return;
-    didFetchRef.current = true;
-    if ((useAppStore.getState().hccSftpBatches || []).length === 0) fetchHccDocuments?.();
-  }, [fetchHccDocuments]);
-
-  // Derive one Extracted Record per finished document (a document = one
-  // patient with one-or-more DOS). Bucketed Added / Needs Review / Unreadable.
-  const records = useMemo(
-    () => sftpBatches.filter(b => b.status === 'done').map(documentToRecord),
-    [sftpBatches],
-  );
-
-  // Drive the per-file upload progress animations.
-  useEffect(() => {
-    const uploading = staged.filter(s => s.status === 'uploading' && s.progress < 100);
-    if (uploading.length === 0) return;
-    const t = setTimeout(() => {
-      setStaged(prev => prev.map(s => {
-        if (s.status !== 'uploading') return s;
-        const next = Math.min(100, s.progress + (10 + Math.random() * 15));
-        return { ...s, progress: next, status: next >= 100 ? 'extracting' : 'uploading' };
-      }));
-    }, 120);
-    return () => clearTimeout(t);
-  }, [staged]);
-
-  // Auto-extract: the moment a file finishes uploading it flips to
-  // 'extracting' and OCR runs immediately — no "Start Extraction" button.
-  // autoApply:false so we classify + apply here per the upload rules.
-  useEffect(() => {
-    const ready = staged.filter(s => s.status === 'extracting' && !startedRef.current.has(s.id));
-    ready.forEach((row) => {
-      startedRef.current.add(row.id);
-      void extractOne(row);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [staged]);
-
-  const extractOne = async (row) => {
-    const name = row.name;
-    try {
-      const batchId = await queueHccDocumentForOcr?.(row.file, { autoApply: false });
-      const batch = useAppStore.getState().hccSftpBatches.find(b => b.id === batchId);
-      // A fully-confident document ("Added") is committed to the worklist
-      // straight away; the batch itself surfaces in `records` via the derive.
-      if (documentToRecord(batch).bucket === 'added') {
-        (batch?.encounters || []).forEach((enc) => {
-          try { createFromEncounter?.({ ...enc, _docName: name, _batchId: batchId }); }
-          catch (err) { console.error('Auto-add failed for extracted record', err); }
-        });
-      }
-    } finally {
-      setStaged(prev => prev.filter(s => s.id !== row.id));
-    }
-  };
-
-  // Keep the active bucket on a non-empty category as records land.
-  useEffect(() => {
-    const count = (k) => records.filter(r => r.bucket === k).length;
-    if (records.length && count(activeBucket) === 0) {
-      const next = EXTRACT_BUCKETS.find(b => count(b.key) > 0);
-      if (next) setActiveBucket(next.key);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [records]);
-
-  // Spec H — manual UI uploads cap at 15 files OR 100 MB cumulative,
-  // whichever is hit first. SFTP path is unrestricted (handled
-  // server-side, not in the picker).
-  const MAX_FILES = 15;
-  const MAX_BATCH_BYTES = 100 * 1024 * 1024;
-  // `bypassLimit` lets the demo "N Documents" chips stage more than the UI cap
-  // (e.g. 20) without tripping the per-batch limit shown to real uploads.
-  const handlePick = (filesOrFile, opts = {}) => {
-    const arr = Array.isArray(filesOrFile) ? filesOrFile : [filesOrFile];
-    const accepted = arr.filter(Boolean).filter(isAcceptedFile);
-    if (accepted.length === 0) {
-      showToast?.('Please upload a PDF, DOC, JPG, PNG, or TIFF file');
-      return;
-    }
-    const capFiles = opts.bypassLimit ? Infinity : MAX_FILES;
-    const capBytes = opts.bypassLimit ? Infinity : MAX_BATCH_BYTES;
-    setStaged(prev => {
-      const currentBytes = prev.reduce((s, x) => s + (x.size || 0), 0);
-      const candidateRows = accepted.map((file) => ({
-        id: `stg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        file,
-        name: file.name,
-        // Default to ~2.5MB for demo chips (no real file.size) so the
-        // row matches Figma's "2.5MB / 30 MB" copy.
-        size: file.size && file.size > 1024 ? file.size : (2.5 * 1024 * 1024),
-        progress: 0,
-        status: 'uploading',
-      }));
-      // Enforce the per-batch cap: count + cumulative bytes.
-      const accepted2 = [];
-      let runningCount = prev.length;
-      let runningBytes = currentBytes;
-      let droppedForCount = 0;
-      let droppedForBytes = 0;
-      for (const row of candidateRows) {
-        if (runningCount >= capFiles) { droppedForCount += 1; continue; }
-        if (runningBytes + row.size > capBytes) { droppedForBytes += 1; continue; }
-        accepted2.push(row);
-        runningCount += 1;
-        runningBytes += row.size;
-      }
-      if (droppedForCount > 0 || droppedForBytes > 0) {
-        showToast?.('You can upload up to 15 files or 100 MB at a time via the app. For larger batches, please use SFTP.');
-      }
-      return [...prev, ...accepted2];
-    });
-  };
-
-  const removeStaged = (id) => setStaged(prev => prev.filter(s => s.id !== id));
-  const removeRecord = (rec) => removeHccSftpBatch?.(rec.batchId || rec.id);
-  // Review a flagged record — open the full-screen Document Review over every
-  // extracted document, landing on the one the user clicked (Figma
-  // 4999:156381). Previous/Next there steps through the rest.
-  const reviewRecord = (rec) => {
-    const batchIds = [...new Set(records.map(r => r.batchId).filter(Boolean))];
-    cancel?.();
-    openReviewForBatches?.(batchIds, rec?.batchId);
-  };
-
-  // Tab-driven view: Upload (dropzone), Review (needs-review + unreadable),
-  // Added (added-to-worklist), Deleted (empty state). Parked was removed —
-  // its rows are already visible under Review / Added / Deleted.
-  const [activeTab, setActiveTab] = useState('upload');
-  const reviewCount = records.filter(r => r.bucket === 'review' || r.bucket === 'unreadable').length;
-  const addedCount = records.filter(r => r.bucket === 'added').length;
-  const deletedCount = 0;
-  const tabItems = [
-    { key: 'upload',   label: 'Upload' },
-    { key: 'review',   label: `Review (${reviewCount})` },
-    { key: 'added',    label: `Added (${addedCount})` },
-    { key: 'deleted',  label: `Deleted (${deletedCount})` },
-  ];
-
-  // Filter chip row. Toggled by the Filter icon at the right edge of the
-  // tab bar. Chips use the shared FilterChip primitive so behaviour matches
-  // the worklist and DiagPanel filter rows exactly.
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [recordFilters, setRecordFilters] = useState({ by: [], date: [] });
-  const uploaderOptions = useMemo(() => (
-    [...new Set(records.map(r => r.actorName || 'You'))].sort()
-  ), [records]);
-  const dateOptions = useMemo(() => (
-    [...new Set(records.map(r => shortDate(r.dateISO)).filter(Boolean))]
-      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
-  ), [records]);
-  const filterActive = (recordFilters.by?.length || 0) + (recordFilters.date?.length || 0) > 0;
-  const applyRecordFilters = (list) => list.filter((r) => {
-    if (recordFilters.by?.length) {
-      const who = r.actorName || 'You';
-      if (!recordFilters.by.includes(who)) return false;
-    }
-    if (recordFilters.date?.length) {
-      const stamp = shortDate(r.dateISO);
-      if (!stamp || !recordFilters.date.includes(stamp)) return false;
-    }
-    return true;
-  });
-  const clearAllFilters = () => setRecordFilters({ by: [], date: [] });
-
-  // Cron-sync info strip — dismissible, reappears on next drawer open (state
-  // resets when PickerPhase mounts fresh). Content wired to the last SFTP
-  // sync summary; falls back to sample copy while no sync has run this session.
-  const lastSync = useAppStore.getState().hccLastCronSync || null;
-  const [cronDismissed, setCronDismissed] = useState(false);
-  const cronMsg = lastSync
-    ? `Last sync ${lastSync.agoLabel} • ${lastSync.imported} Imported • ${lastSync.added} Added • ${lastSync.pending} Pending Review`
-    : `Last sync 9h ago • ${records.length} Imported • ${addedCount} Added • ${reviewCount} Pending Review`;
-
-  return (
-    <div className={styles.pickerPhase2}>
-      <div className={styles.tabRow}>
-        <TabStrip
-          items={tabItems}
-          activeKey={activeTab}
-          onChange={setActiveTab}
-        />
-        {activeTab !== 'upload' && (
-          <button
-            type="button"
-            className={[styles.filterBtn, filterOpen || filterActive ? styles.filterBtnActive : ''].filter(Boolean).join(' ')}
-            aria-label="Filter records"
-            aria-pressed={filterOpen}
-            onClick={() => setFilterOpen(v => !v)}
-          >
-            <Icon
-              name="solar:filter-linear"
-              size={16}
-              color={filterOpen || filterActive ? 'var(--primary-300)' : 'var(--neutral-400)'}
-            />
-            {filterActive && !filterOpen && <span className={styles.filterBtnDot} aria-hidden="true" />}
-          </button>
-        )}
-      </div>
-
-      {!cronDismissed && (
-        <div className={styles.cronStrip} role="status">
-          <Icon name="solar:refresh-linear" size={14} color="var(--status-success)" />
-          <span className={styles.cronStripText}>{cronMsg}</span>
-          <button
-            type="button"
-            className={styles.cronStripAction}
-            onClick={() => setActiveTab('review')}
-          >
-            Review
-          </button>
-          <span className={styles.cronStripDivider} />
-          <CloseButton size={14} onClick={() => setCronDismissed(true)} className={styles.cronStripDismiss} label="Dismiss" />
-        </div>
-      )}
-
-      {filterOpen && activeTab !== 'upload' && (
-        <div className={styles.filterChipRow}>
-          <FilterChip
-            label="Uploaded By"
-            options={uploaderOptions}
-            selected={recordFilters.by}
-            onChange={(vals) => setRecordFilters(f => ({ ...f, by: vals }))}
-          />
-          <FilterChip
-            label="Uploaded Date"
-            options={dateOptions}
-            selected={recordFilters.date}
-            onChange={(vals) => setRecordFilters(f => ({ ...f, date: vals }))}
-          />
-          {filterActive && (
-            <Button
-              variant="ghost"
-              size="S"
-              leadingIcon="solar:close-circle-linear"
-              className={styles.filterChipClear}
-              onClick={clearAllFilters}
-            >
-              Clear All
-            </Button>
-          )}
-        </div>
-      )}
-
-      <div className={styles.tabContent}>
-      {activeTab === 'upload' ? (
-        <>
-          {/* Upload card — PHI notice sits INSIDE the same card as the
-              dropzone, sharing its border/radius so it reads as one surface
-              (per Communications Figma 1-23639, integrated banner). */}
-          <div className={styles.uploadCard}>
-            <DemoPhiStrip variant="card-top" />
-            <Dropzone
-              accept={ACCEPT_EXT}
-              acceptMime={ACCEPT_MIME}
-              multiple
-              icon="solar:upload-minimalistic-linear"
-              helperText="Supported formats: PDF, DOC, JPG, or PNG"
-              secondaryText="Max size: 100 MB"
-              onPick={handlePick}
-              onReject={() => showToast?.('Please upload a PDF, DOC, JPG, PNG, or TIFF file')}
-              className={styles.dropzoneEmbedded}
-            />
-          </div>
-
-          {staged.length > 0 && (
-            <div className={styles.stagedList}>
-              {staged.map(s => (
-                <StagedFileRow
-                  key={s.id}
-                  file={s}
-                  onRemove={() => removeStaged(s.id)}
-                  onPreview={() => showToast?.(`Preview ${s.name} — coming soon`)}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Demo helper — Upload tab only. */}
-          <div className={styles.demoStrip}>
-            <Icon name="solar:test-tube-linear" size={12} color="var(--neutral-300)" />
-            <span className={styles.demoStripLabel}>Try demo files:</span>
-            <button
-              type="button"
-              className={styles.demoChip}
-              onClick={() => {
-                const file = new File([new Blob(['%PDF-1.4 demo'])], 'demo-same-patient-multi-dos.pdf', { type: 'application/pdf' });
-                handlePick(file);
-              }}
-            >
-              1 Doc · Multi DOS
-            </button>
-            {[5, 10, 20].map(n => (
-              <button
-                key={n}
-                type="button"
-                className={styles.demoChip}
-                onClick={() => {
-                  const files = Array.from({ length: n }, (_, i) =>
-                    new File([new Blob(['%PDF-1.4 demo'])], `demo-patient-${i}.pdf`, { type: 'application/pdf' }));
-                  handlePick(files, { bypassLimit: true });
-                }}
-              >
-                {n} Documents
-              </button>
-            ))}
-          </div>
-        </>
-      ) : activeTab === 'review' ? (
-        <ExtractedRecords
-          records={applyRecordFilters(records.filter(r => r.bucket === 'review' || r.bucket === 'unreadable'))}
-          activeBucket={activeBucket}
-          setActiveBucket={setActiveBucket}
-          onReview={reviewRecord}
-          onDelete={removeRecord}
-          tabScope="review"
-        />
-      ) : activeTab === 'added' ? (
-        <ExtractedRecords
-          records={applyRecordFilters(records.filter(r => r.bucket === 'added'))}
-          activeBucket="added"
-          setActiveBucket={setActiveBucket}
-          onReview={reviewRecord}
-          onDelete={removeRecord}
-          tabScope="added"
-        />
-      ) : (
-        <div className={styles.tabEmpty}>
-          <div className={styles.tabEmptyIcon}>
-            <Icon name="solar:file-remove-linear" size={28} color="var(--neutral-300)" />
-          </div>
-          <div className={styles.tabEmptyTitle}>No Deleted Records</div>
-          <div className={styles.tabEmptyBody}>Records deleted during review will appear here.</div>
-        </div>
-      )}
-      </div>
-
-    </div>
-  );
-}
-
-// ── Extracted-records classification ──────────────────────────────────
-// The three buckets the "Extracted Records" view sorts into (Figma
-// 4967:199663). Order matches the badge row.
-const EXTRACT_BUCKETS = [
-  { key: 'review',     label: 'Needs Review',      icon: 'solar:danger-circle-linear',   tone: 'review' },
-  { key: 'unreadable', label: 'Unreadable',        icon: 'solar:danger-triangle-linear', tone: 'unreadable' },
-  { key: 'added',      label: 'Added to Worklist', icon: 'solar:check-circle-linear',    tone: 'added' },
-];
-
-// Classify one extracted encounter. The document's OCR tier is the
-// confidence signal: 'clean' means every field extracted at high (≥85%)
-// confidence, 'degraded' means at least one field fell below the bar.
-//  • 'added'  — clean extraction, patient matched, no mandatory field missing
-//               → 100% confident, added straight to the worklist.
-//  • 'review' — degraded extraction, a missing mandatory field, or the patient
-//               couldn't be matched → needs a human pass.
-function classifyEncounter(enc, tier) {
-  const matched = !!enc.patient?.matchedMemberId;
-  const noErrors = !enc.errors || enc.errors.length === 0;
-  return (tier === 'clean' && matched && noErrors) ? 'added' : 'review';
-}
-
-// Map one extracted document (a batch = one patient with one-or-more DOS) to
-// an Extracted Record. Unreadable → its own bucket; otherwise Added only when
-// every DOS is fully confident, else Needs Review.
-function documentToRecord(batch) {
-  const encs = batch?.encounters || [];
-  const dateISO = batch?.ingestedAt || null;
-  const source = batch?.source === 'sftp' ? 'SFTP Server' : 'Manual Upload';
-  const base = { id: batch?.id, batchId: batch?.id, fileName: batch?.fileName || 'Document', source, dateISO };
-  if (batch?.ocrTier === 'unreadable' || encs.length === 0) {
-    return {
-      ...base,
-      bucket: 'unreadable',
-      reason: batch?.ocrTier === 'unreadable'
-        ? 'Corrupted file'
-        : 'Blank / white page upload',
-    };
-  }
-  const bucket = encs.every(e => classifyEncounter(e, batch.ocrTier) === 'added') ? 'added' : 'review';
-  const firstEnc = encs[0];
-  return {
-    ...base,
-    bucket,
-    patientName: firstEnc?.patient?.name || '',
-    patientMemberId: firstEnc?.patient?.matchedMemberId || null,
-    dosCount: encs.length,
-  };
-}
-
-// "MM/DD/YYYY" for the record meta line ('' when the date is missing/invalid).
-function shortDate(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()}`;
-}
-
-// Relative day heading — "Today • Jul 29, 2026" / "Yesterday • …" / weekday.
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-function dayHeading(iso) {
-  const d = new Date(iso);
-  const now = new Date();
-  const startOfDay = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate());
-  const diff = Math.round((startOfDay(now) - startOfDay(d)) / 86400000);
-  const dateStr = `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
-  const prefix = diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : diff < 7 ? WEEKDAYS[d.getDay()] : null;
-  return prefix ? `${prefix} • ${dateStr}` : dateStr;
-}
-
-/**
- * ExtractedRecords — post-extraction results shown inside a tab
- * (Add Records drawer). Layout matches Paper 27A3-0:
- *   Section header ("Degraded Documents ⌄" + Review All)
- *     Day heading ("Today • …")
- *       Rounded card containing one row per record, dividers between rows
- * Legacy bucket-pill path retained for callers that pass no tabScope.
- */
-function ExtractedRecords({ records, activeBucket, setActiveBucket, onReview, onDelete, tabScope = null }) {
-  const count = (k) => records.filter(r => r.bucket === k).length;
-  // When wrapped by a tab, the tab is already the filter — show every record
-  // passed in; otherwise fall back to activeBucket.
-  const visible = tabScope ? records : records.filter(r => r.bucket === activeBucket);
-
-  // Split records into sections per Paper 27A3-0. Degraded = 'review' bucket
-  // (needs a coder pass); Unreadable = 'unreadable' bucket (retry-only).
-  // Added tab shows a single Added section.
-  const degraded = visible.filter(r => r.bucket === 'review');
-  const unreadable = visible.filter(r => r.bucket === 'unreadable');
-  const added = visible.filter(r => r.bucket === 'added');
-
-  // Nothing extracted yet (this session or in history) → friendly empty state.
-  if (records.length === 0) {
-    return (
-      <div className={styles.extracted}>
-        {!tabScope && <div className={styles.extractedTitle}>Extracted Records</div>}
-        <div className={styles.extractedEmptyState}>
-          <Icon name="solar:documents-linear" size={28} color="var(--neutral-200)" />
-          <div className={styles.extractedEmptyTitle}>No extracted documents yet</div>
-          <div className={styles.extractedEmptyBody}>
-            Upload a document above — extracted records pending review, added to the
-            worklist, or unreadable will appear here.
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Legacy path — no tabScope, use bucket-pill row and one flat list.
-  if (!tabScope) {
-    const legacyGroups = groupByDay(visible);
-    return (
-      <div className={styles.extracted}>
-        <div className={styles.extractedTitle}>Extracted Records</div>
-        <div className={styles.bucketRow}>
-          {EXTRACT_BUCKETS.map(b => {
-            const active = activeBucket === b.key;
-            return (
-              <button
-                key={b.key}
-                type="button"
-                className={[styles.bucketPill, active ? styles[`bucketPill_${b.tone}`] : ''].filter(Boolean).join(' ')}
-                onClick={() => setActiveBucket(b.key)}
-              >
-                <Icon
-                  name={b.icon}
-                  size={14}
-                  color={active ? 'currentColor' : 'var(--neutral-300)'}
-                />
-                {b.label}({count(b.key)})
-              </button>
-            );
-          })}
-        </div>
-        {visible.length === 0 ? (
-          <div className={styles.extractedEmpty}>No records in this category.</div>
-        ) : (
-          legacyGroups.map(([heading, rows]) => (
-            <div key={heading} className={styles.extractedGroup}>
-              <div className={styles.extractedGroupLabel}>{heading}</div>
-              <div className={styles.extractedList}>
-                {rows.map(r => (
-                  <ExtractedRow key={r.id} rec={r} onReview={onReview} onDelete={onDelete} />
-                ))}
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    );
-  }
-
-  // Tab-scoped path — render Paper 27A3-0 sections.
-  return (
-    <div className={styles.extracted}>
-      {visible.length === 0 && (
-        <div className={styles.extractedEmpty}>No records in this category.</div>
-      )}
-
-      {degraded.length > 0 && (
-        <RecordSection
-          title="Degraded Documents"
-          iconName="solar:info-circle-linear"
-          iconColor="var(--status-warning)"
-          rightAction={{ label: `Review All (${degraded.length})`, icon: 'solar:magic-stick-3-linear', onClick: () => onReview(degraded[0]) }}
-          rows={degraded}
-          onReview={onReview}
-          onDelete={onDelete}
-          variant="degraded"
-        />
-      )}
-
-      {unreadable.length > 0 && (
-        <RecordSection
-          title="Unreadable Documents"
-          iconName="solar:danger-triangle-linear"
-          iconColor="var(--status-error)"
-          rows={unreadable}
-          onReview={onReview}
-          onDelete={onDelete}
-          variant="unreadable"
-        />
-      )}
-
-      {added.length > 0 && (
-        <RecordSection
-          title="Added Documents"
-          iconName="solar:check-circle-linear"
-          iconColor="var(--status-success)"
-          rows={added}
-          onReview={onReview}
-          onDelete={onDelete}
-          variant="added"
-        />
-      )}
-    </div>
-  );
-}
-
-// Bundle rows by their dayHeading — used inside RecordSection to draw a
-// per-day heading above each group card.
-function groupByDay(rows) {
-  const map = new Map();
-  for (const r of rows) {
-    const h = dayHeading(r.dateISO);
-    if (!map.has(h)) map.set(h, []);
-    map.get(h).push(r);
-  }
-  return Array.from(map.entries());
-}
-
-/**
- * RecordSection — one section (Degraded / Unreadable / Added). Header row
- * with a tone-tinted icon + collapsible chevron + optional "Review All"
- * link. Body groups records by day into rounded cards with dividers.
- */
-function RecordSection({ title, iconName, iconColor, rightAction, rows, onReview, onDelete, variant = 'added' }) {
-  const [collapsed, setCollapsed] = useState(false);
-  const groups = groupByDay(rows);
-  const openDiagPanel = useAppStore(s => s.openDiagPanel);
-  const openPatient = (rec) => {
-    if (!rec?.patientMemberId) return;
-    openDiagPanel?.(rec.patientMemberId);
-  };
-  const cardClass = [
-    styles.recCard,
-    variant === 'degraded' ? styles.recCardDegraded : '',
-    variant === 'unreadable' ? styles.recCardUnreadable : '',
-  ].filter(Boolean).join(' ');
-  return (
-    <section className={styles.recSection}>
-      <header className={styles.recSectionHead}>
-        <button
-          type="button"
-          className={styles.recSectionTitle}
-          onClick={() => setCollapsed(v => !v)}
-        >
-          <Icon name={iconName} size={14} color={iconColor} />
-          <span>{title}</span>
-          <Icon
-            name={collapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'}
-            size={12}
-            color="var(--neutral-400)"
-          />
-        </button>
-        {rightAction && !collapsed && (
-          <button type="button" className={styles.recSectionAction} onClick={rightAction.onClick}>
-            <Icon name={rightAction.icon} size={14} color="var(--primary-300)" />
-            {rightAction.label}
-          </button>
-        )}
-      </header>
-      {!collapsed && groups.map(([heading, dayRows]) => (
-        <div key={heading} className={styles.recDay}>
-          <div className={styles.recDayLabel}>{heading}</div>
-          <div className={cardClass}>
-            {dayRows.map(r => (
-              <ExtractedRow
-                key={r.id}
-                rec={r}
-                onReview={onReview}
-                onDelete={onDelete}
-                onOpenPatient={openPatient}
-              />
-            ))}
-          </div>
-        </div>
-      ))}
-    </section>
-  );
-}
-
-/**
- * ExtractedRow — one row inside a section card (Paper 27A3-0). Layout:
- * [PDF icon] filename                                  [action] | [kebab]
- *            source-line (+ error tag for unreadable)
- * Degraded → purple Review pill. Unreadable → outline Retry pill.
- * Added → eye + download icons. Legacy/no-context rows fall back to a
- * trash affordance.
- */
-// Custom document-with-embedded-PDF-letters glyph — no Solar equivalent
-// carries the inline "PDF" wordmark, so a raw SVG is kept here. Uses
-// currentColor so a parent color rule tokens it (neutral-300 by default).
-function PdfDocIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M15.3929 4.05365L15.0585 4.42529V4.42529L15.3929 4.05365ZM19.3517 7.61654L19.0172 7.98819V7.98819L19.3517 7.61654ZM3.17157 20.8284L3.52513 20.4749H3.52513L3.17157 20.8284ZM20.8284 20.8284L20.4749 20.4749V20.4749L20.8284 20.8284ZM13 5L12.5 4.99831V5H13ZM5.16 13.68V13.18H4.66V13.68H5.16ZM10.32 13.68V13.18H9.82V13.68H10.32ZM10.32 18.96H9.82V19.46H10.32V18.96ZM15.96 13.68V13.18H15.46V13.68H15.96ZM14 22V21.5H10V22V22.5H14V22ZM2 14H2.5V10H2H1.5V14H2ZM22 13.5629H21.5V14H22H22.5V13.5629H22ZM15.3929 4.05365L15.0585 4.42529L19.0172 7.98819L19.3517 7.61654L19.6862 7.2449L15.7274 3.682L15.3929 4.05365ZM22 13.5629H22.5C22.5 11.8525 22.5101 10.8473 22.1107 9.95068L21.654 10.1541L21.1973 10.3575C21.4899 11.0146 21.5 11.7641 21.5 13.5629H22ZM19.3517 7.61654L19.0172 7.98819C20.3543 9.19151 20.9046 9.70039 21.1972 10.3575L21.654 10.1541L22.1108 9.95068C21.7114 9.05401 20.9576 8.38912 19.6862 7.2449L19.3517 7.61654ZM10.0298 2V2.5C11.5927 2.5 12.2448 2.50772 12.8301 2.73233L13.0092 2.26552L13.1884 1.79871C12.3898 1.49228 11.5169 1.5 10.0298 1.5V2ZM15.3929 4.05365L15.7274 3.682C14.6275 2.69205 13.9868 2.10511 13.1884 1.79871L13.0092 2.26552L12.8301 2.73233C13.4155 2.95697 13.9027 3.3851 15.0585 4.42529L15.3929 4.05365ZM10 22V21.5C8.10025 21.5 6.72573 21.4989 5.67754 21.358C4.64372 21.219 4.00253 20.9523 3.52513 20.4749L3.17157 20.8284L2.81802 21.182C3.51219 21.8762 4.39959 22.1952 5.54429 22.3491C6.6746 22.5011 8.12852 22.5 10 22.5V22ZM2 14H1.5C1.5 15.8715 1.49894 17.3254 1.65091 18.4557C1.80481 19.6004 2.12385 20.4878 2.81802 21.182L3.17157 20.8284L3.52513 20.4749C3.04772 19.9975 2.78098 19.3563 2.64199 18.3225C2.50106 17.2743 2.5 15.8998 2.5 14H2ZM14 22V22.5C15.8715 22.5 17.3254 22.5011 18.4557 22.3491C19.6004 22.1952 20.4878 21.8762 21.182 21.182L20.8284 20.8284L20.4749 20.4749C19.9975 20.9523 19.3563 21.219 18.3225 21.358C17.2743 21.4989 15.8998 21.5 14 21.5V22ZM22 14H21.5C21.5 15.8998 21.4989 17.2743 21.358 18.3225C21.219 19.3563 20.9523 19.9975 20.4749 20.4749L20.8284 20.8284L21.182 21.182C21.8762 20.4878 22.1952 19.6004 22.3491 18.4557C22.5011 17.3254 22.5 15.8715 22.5 14H22ZM2 10H2.5C2.5 8.10025 2.50106 6.72573 2.64199 5.67754C2.78098 4.64372 3.04772 4.00253 3.52513 3.52513L3.17157 3.17157L2.81802 2.81802C2.12385 3.51219 1.80481 4.39959 1.65091 5.54429C1.49894 6.6746 1.5 8.12852 1.5 10H2ZM10.0298 2V1.5C8.14833 1.5 6.68714 1.49895 5.55203 1.65087C4.40292 1.80466 3.51258 2.12346 2.81802 2.81802L3.17157 3.17157L3.52513 3.52513C4.00214 3.04811 4.64535 2.78113 5.68469 2.64203C6.73803 2.50105 8.12015 2.5 10.0298 2.5V2ZM13.0092 2.26552L12.5092 2.26383L12.5 4.99831L13 5L13.5 5.00169L13.5092 2.2672L13.0092 2.26552ZM18 10.1541V10.6541H21.654V10.1541V9.6541H18V10.1541ZM13 5H12.5C12.5 6.16438 12.4989 7.08796 12.596 7.8098C12.695 8.54603 12.9042 9.14682 13.3787 9.62132L13.7322 9.26777L14.0858 8.91421C13.8281 8.65648 13.6711 8.3019 13.5871 7.67656C13.5011 7.03683 13.5 6.19265 13.5 5H13ZM18 10.1541V9.6541C16.823 9.6541 15.9808 9.61478 15.3506 9.4944C14.7325 9.37631 14.3591 9.18749 14.0858 8.91421L13.7322 9.26777L13.3787 9.62132C13.8376 10.0803 14.4196 10.3346 15.163 10.4766C15.8944 10.6164 16.8199 10.6541 18 10.6541V10.1541ZM5.16 13.68V14.18H6.84V13.68V13.18H5.16V13.68ZM5.16 13.68H4.66V16.8H5.16H5.66V13.68H5.16ZM5.16 16.8H4.66V19.2H5.16H5.66V16.8H5.16ZM6.84 16.8V16.3H5.16V16.8V17.3H6.84V16.8ZM8.4 15.24H7.9C7.9 15.8254 7.42542 16.3 6.84 16.3V16.8V17.3C7.9777 17.3 8.9 16.3777 8.9 15.24H8.4ZM6.84 13.68V14.18C7.42542 14.18 7.9 14.6546 7.9 15.24H8.4H8.9C8.9 14.1023 7.9777 13.18 6.84 13.18V13.68ZM10.32 13.68H9.82V18.96H10.32H10.82V13.68H10.32ZM10.32 18.96V19.46H11.76V18.96V18.46H10.32V18.96ZM14.16 16.56H14.66V16.08H14.16H13.66V16.56H14.16ZM11.76 13.68V13.18H10.32V13.68V14.18H11.76V13.68ZM14.16 16.08H14.66C14.66 14.4784 13.3616 13.18 11.76 13.18V13.68V14.18C12.8093 14.18 13.66 15.0307 13.66 16.08H14.16ZM11.76 18.96V19.46C13.3616 19.46 14.66 18.1616 14.66 16.56H14.16H13.66C13.66 17.6094 12.8093 18.46 11.76 18.46V18.96ZM19.2 13.68V13.18H15.96V13.68V14.18H19.2V13.68ZM15.96 13.68H15.46V16.2H15.96H16.46V13.68H15.96ZM15.96 16.2H15.46V19.2H15.96H16.46V16.2H15.96ZM15.96 16.2V16.7H18.96V16.2V15.7H15.96V16.2Z" fill="currentColor"/>
-    </svg>
-  );
-}
-
-function ExtractedRow({ rec, onReview, onDelete, onOpenPatient }) {
-  const source = rec.source === 'SFTP Server' ? 'Imported via SFTP'
-    : rec.source === 'Manual Upload' ? `Uploaded by ${rec.actorName || 'You'}`
-    : rec.actorName ? `Uploaded by ${rec.actorName}`
-    : 'Uploaded';
-  const isDegraded = rec.bucket === 'review';
-  const isUnreadable = rec.bucket === 'unreadable';
-  const isAdded = rec.bucket === 'added';
-  const showToast = useAppStore(s => s.showToast);
-  const moreRef = useRef(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const handleDownload = () => {
-    showToast?.(`Downloading ${rec.fileName}…`);
-  };
-  return (
-    <div className={[styles.exRow, isDegraded ? styles.exRowDegraded : isUnreadable ? styles.exRowUnreadable : ''].filter(Boolean).join(' ')}>
-      <span className={styles.pdfBadge} aria-hidden="true">
-        <PdfDocIcon />
-      </span>
-      <div className={styles.exMain}>
-        <div className={styles.exName}>{rec.fileName}</div>
-        <div className={styles.exSubtitle}>
-          <span>{source}</span>
-          {isAdded && rec.patientName && (
-            <>
-              <span className={styles.exSubDot}>•</span>
-              {rec.patientMemberId ? (
-                <button
-                  type="button"
-                  className={styles.patientLink}
-                  onClick={() => onOpenPatient?.(rec)}
-                >
-                  <span>{rec.patientName}</span>
-                  <Icon name="solar:arrow-right-up-linear" size={12} color="var(--primary-300)" />
-                </button>
-              ) : (
-                <span className={styles.patientLinkText}>{rec.patientName}</span>
-              )}
-            </>
-          )}
-          {isUnreadable && rec.reason && (
-            <>
-              <span className={styles.exSubDot}>•</span>
-              <span className={styles.exError}>{rec.reason}</span>
-            </>
-          )}
-        </div>
-      </div>
-      {isDegraded && (
-        <button type="button" className={styles.exReviewBtn} onClick={() => onReview(rec)}>
-          <Icon name="solar:magic-stick-3-linear" size={14} color="var(--neutral-0)" />
-          Review
-        </button>
-      )}
-      {isUnreadable && (
-        <button type="button" className={styles.exRetryBtn} onClick={() => onReview(rec)}>
-          <Icon name="solar:eye-linear" size={14} color="var(--neutral-500)" />
-          Review
-        </button>
-      )}
-      {isAdded && (
-        <div className={styles.exAddedActions}>
-          <ActionButton icon="solar:eye-linear" size="S" tooltip="View" onClick={() => onReview(rec)} />
-          <ActionButton icon="solar:download-minimalistic-linear" size="S" tooltip="Download" onClick={handleDownload} />
-        </div>
-      )}
-      {(isDegraded || isUnreadable) && (
-        <>
-          <span className={styles.exDivider} />
-          <span ref={moreRef} className={styles.exMoreWrap}>
-            <ActionButton
-              icon="solar:menu-dots-linear"
-              size="S"
-              tooltip="More"
-              onClick={() => setMenuOpen(v => !v)}
-              aria-expanded={menuOpen}
-            />
-            {menuOpen && (
-              <MenuPopover
-                anchorRef={moreRef}
-                onClose={() => setMenuOpen(false)}
-                items={[
-                  { key: 'download', label: 'Download', icon: 'solar:download-minimalistic-linear' },
-                  { key: 'delete',   label: 'Delete',   icon: 'solar:trash-bin-trash-linear', danger: true },
-                ]}
-                onSelect={(key) => {
-                  if (key === 'download') handleDownload();
-                  else if (key === 'delete') onDelete(rec);
-                }}
-              />
-            )}
-          </span>
-        </>
-      )}
-    </div>
-  );
-}
-
-
-/**
- * StagedFileRow — single row in the staged-file list. While uploading
- * renders an animated progress bar + × remove. Once complete swaps to
- * a check + eye-preview + trash.
- */
-function StagedFileRow({ file, onRemove, onPreview }) {
-  const sizeLabel = formatBytes(file.size);
-  const isUploading = file.status === 'uploading';
-  const isExtracting = file.status === 'extracting';
-  const isBusy = isUploading || isExtracting;
-  return (
-    <div className={[styles.stagedRow, isBusy ? styles.stagedRowUploading : styles.stagedRowComplete].join(' ')}>
-      <span className={styles.stagedIcon}>
-        <Icon name="solar:file-text-linear" size={14} color="var(--neutral-300)" />
-      </span>
-      <div className={styles.stagedMain}>
-        <div className={styles.stagedName}>{file.name}</div>
-        <div className={styles.stagedMeta}>
-          <span>{sizeLabel} <span className={styles.stagedMetaSep}>/</span> 30 MB</span>
-          <span className={styles.stagedStatus}>
-            <span className={styles.stagedSpinner} />
-            {isUploading ? 'Uploading…' : 'Extracting…'}
-          </span>
-        </div>
-        {isUploading && (
-          <div className={styles.stagedProgressTrack}>
-            <span
-              className={styles.stagedProgressFill}
-              style={{ width: `${Math.round(file.progress)}%` }}
-            />
-          </div>
-        )}
-      </div>
-      <div className={styles.stagedActions}>
-        {isUploading && (
-          <CloseButton size={14} onClick={onRemove} className={styles.stagedActionBtn} label="Remove" />
-        )}
-      </div>
-    </div>
-  );
-}
-
-/**
- * WhatHappensNext — collapsible info accordion sitting under the
- * dropzone. Default collapsed (pill with bulb icon); expanded shows a
- * 3-step grid explaining the extract → review → confirm flow.
- */
-function WhatHappensNext() {
-  const [open, setOpen] = useState(false);
-  const STEPS = [
-    {
-      n: 1,
-      title: 'We extract key information',
-      body: 'patient demographics, date of service, provider, place of service, and ICD codes.',
-    },
-    {
-      n: 2,
-      title: 'You review and confirm',
-      body: 'Review each record and fix any flagged fields.',
-    },
-    {
-      n: 3,
-      title: 'Add or merge',
-      body: 'Confirm to add a new worklist entry or merge into an existing one.',
-    },
-  ];
-  return (
-    <div className={[styles.whatNext, open ? styles.whatNextOpen : ''].join(' ')}>
-      <button type="button" className={styles.whatNextHead} onClick={() => setOpen(v => !v)}>
-        <Icon name="solar:lightbulb-bolt-linear" size={14} color="var(--status-info, #145ECC)" />
-        <span className={styles.whatNextHeadLabel}>What happens next?</span>
-        <Icon
-          name={open ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'}
-          size={12}
-          color="var(--status-info, #145ECC)"
-        />
-      </button>
-      {open && (
-        <div className={styles.whatNextSteps}>
-          {STEPS.map(s => (
-            <div key={s.n} className={styles.whatNextCard}>
-              <span className={styles.whatNextNum}>{s.n}</span>
-              <div className={styles.whatNextTitle}>{s.title}</div>
-              <div className={styles.whatNextBody}>{s.body}</div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** Format a byte count as "X.X MB" / "X KB". */
-function formatBytes(bytes) {
-  if (!bytes || bytes < 0) return '0 MB';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-/**
- * PickerUploadQueue — inline list of documents the user has queued
- * from the picker. Each row shows filename + status (extracting /
- * ready). A "Review N" CTA opens the multi-doc review drawer once at
- * least one document has finished OCR. The picker itself stays open
- * so the user can drop additional files into the queue.
  */
 function PickerUploadQueue({ cancel }) {
   const batches = useAppStore(s => s.hccSftpBatches) || [];
@@ -1474,34 +578,11 @@ function encounterStatus(enc) {
 // you'd like to add team members" layout — first option primary-tinted,
 // the other two secondary-tinted (matches Fold's purple/orange split).
 function ChooserPhase({ onPick }) {
-  const options = [
-    {
-      key: 'single', tone: 'primary',
-      icon: 'solar:user-rounded-linear',
-      title: 'Add a Single Encounter',
-      desc: 'Manually add one encounter for a patient — pick the patient, add ICDs, attach the document.',
-      cta: 'Add Encounter',
-    },
-    {
-      key: 'picker', tone: 'secondary',
-      icon: 'solar:users-group-rounded-linear',
-      title: 'Upload Single Document',
-      desc: 'Upload one PDF that contains encounters for one or more patients — AI extracts and groups them for review.',
-      cta: 'Upload PDF',
-    },
-    {
-      key: 'sftp', tone: 'neutral',
-      icon: 'solar:server-2-linear',
-      title: 'Upload Multiple Documents (SFTP)',
-      desc: 'Drop multiple documents on the secure SFTP server — they\'ll be ingested automatically and queued for AI review.',
-      cta: 'Open SFTP Details',
-    },
-  ];
   return (
     <div className={styles.chooserPhase}>
       <h3 className={styles.chooserHeading}>Choose how you'd like to add encounters</h3>
       <div className={styles.chooserCards}>
-        {options.map(opt => (
+        {CHOOSER_OPTIONS.map(opt => (
           <button
             key={opt.key}
             type="button"
@@ -1644,6 +725,7 @@ function SftpPhase({ showToast }) {
 // context, attach a document, Confirm. Routes through the existing
 // hccCreateOrMergeFromEncounter so dedup + activity-log wiring all works.
 function SinglePhase({ hccMembers, batchId, showToast, createFromEncounter, onDone, onSaveApiChange }) {
+  const uid = useId();
   const [patient, setPatient] = useState(null);   // selected hccMember or null
   const [patientQuery, setPatientQuery] = useState('');
   const [patientPickerOpen, setPatientPickerOpen] = useState(false);
@@ -1677,18 +759,9 @@ function SinglePhase({ hccMembers, batchId, showToast, createFromEncounter, onDo
   // Multiple DOS blocks — each an independent record for the same
   // patient. New blocks default empty; user fills date/provider/pos +
   // document type, drops a file, adds ICDs.
-  const newDosBlock = () => ({
-    id: `nd-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-    dos: '',
-    provider: '',
-    pos: '',
-    docType: '',
-    file: null,
-    icds: [],
-  });
-  const [dosBlocks, setDosBlocks] = useState(() => [newDosBlock()]);
+  const [dosBlocks, setDosBlocks] = useState(() => [createNewDosBlock()]);
   const patchBlock = (id, patch) => setDosBlocks(prev => prev.map(b => b.id === id ? { ...b, ...patch } : b));
-  const addDosBlock = () => setDosBlocks(prev => [...prev, newDosBlock()]);
+  const addDosBlock = () => setDosBlocks(prev => [...prev, createNewDosBlock()]);
   const removeDosBlock = (id) => setDosBlocks(prev => prev.length > 1 ? prev.filter(b => b.id !== id) : prev);
 
   // Provider list is derived once from the reference pool — dedupe
@@ -1696,7 +769,7 @@ function SinglePhase({ hccMembers, batchId, showToast, createFromEncounter, onDo
   const providerOptions = useMemo(() => {
     const set = new Set();
     Object.values(PROVIDER_POOL_BY_VT).forEach(list => list.forEach(p => set.add(p)));
-    return Array.from(set).sort().map(p => ({ value: p, label: p }));
+    return Array.from(set).toSorted().map(p => ({ value: p, label: p }));
   }, []);
   const canSave = !!patient && dosBlocks.every(b => (
     b.dos && b.provider && b.pos && b.docType && b.file
@@ -1744,12 +817,13 @@ function SinglePhase({ hccMembers, batchId, showToast, createFromEncounter, onDo
           reveals the match list in an absolutely-positioned popover so
           the DOS card below never shifts. */}
       <div className={styles.singleSection} ref={patientPickerWrapRef}>
-        <label className={styles.singleLabel}>
+        <label className={styles.singleLabel} htmlFor={`${uid}-member`}>
           Member <span className={styles.singleReq}>•</span>
         </label>
         <div className={styles.singleMemberField}>
           {patient && !patientPickerOpen ? (
             <button
+              id={`${uid}-member`}
               type="button"
               className={styles.singleMemberSelected}
               onClick={() => {
@@ -1768,6 +842,7 @@ function SinglePhase({ hccMembers, batchId, showToast, createFromEncounter, onDo
             </button>
           ) : (
             <input
+              id={`${uid}-member`}
               ref={patientInputRef}
               type="text"
               className={styles.singleMemberInput}
@@ -1843,6 +918,7 @@ function SinglePhase({ hccMembers, batchId, showToast, createFromEncounter, onDo
  * and an ICD Codes section listing each pick as its own row.
  */
 function SingleDosCard({ block, providerOptions, patient, onPatch, onRemove, showToast }) {
+  const uid = useId();
   const [collapsed, setCollapsed] = useState(false);
   const onPickFile = (file) => {
     if (!file) return;
@@ -1912,19 +988,21 @@ function SingleDosCard({ block, providerOptions, patient, onPatch, onRemove, sho
 
         <div className={styles.singleGrid}>
           <div className={styles.singleField}>
-            <label className={styles.singleLabel}>
+            <label className={styles.singleLabel} htmlFor={`${uid}-dos`}>
               DOS <span className={styles.singleReq}>•</span>
             </label>
             <DatePicker
+              id={`${uid}-dos`}
               value={toIsoDate(block.dos)}
               onSelect={(iso) => onPatch({ dos: fromIsoDate(iso) })}
             />
           </div>
           <div className={styles.singleField}>
-            <label className={styles.singleLabel}>
+            <label className={styles.singleLabel} htmlFor={`${uid}-provider`}>
               Rendering Provider <span className={styles.singleReq}>•</span>
             </label>
             <Select
+              id={`${uid}-provider`}
               options={providerOptions}
               value={block.provider}
               placeholder="Select Rendering Provider"
@@ -1934,10 +1012,11 @@ function SingleDosCard({ block, providerOptions, patient, onPatch, onRemove, sho
             />
           </div>
           <div className={styles.singleField}>
-            <label className={styles.singleLabel}>
+            <label className={styles.singleLabel} htmlFor={`${uid}-pos`}>
               POS <span className={styles.singleReq}>•</span>
             </label>
             <Select
+              id={`${uid}-pos`}
               options={POS_SELECT_OPTIONS}
               value={block.pos}
               placeholder="Select Place of Service"
@@ -1947,10 +1026,11 @@ function SingleDosCard({ block, providerOptions, patient, onPatch, onRemove, sho
             />
           </div>
           <div className={styles.singleField}>
-            <label className={styles.singleLabel}>
+            <label className={styles.singleLabel} htmlFor={`${uid}-doc-type`}>
               Document Type <span className={styles.singleReq}>•</span>
             </label>
             <Select
+              id={`${uid}-doc-type`}
               options={DOC_TYPE_OPTIONS}
               value={block.docType}
               placeholder="Select Document Type"
@@ -1960,8 +1040,9 @@ function SingleDosCard({ block, providerOptions, patient, onPatch, onRemove, sho
         </div>
 
         <div className={styles.singleIcdSection}>
-          <label className={styles.singleLabel}>ICD Codes</label>
+          <label className={styles.singleLabel} htmlFor={`${uid}-icd-search`}>ICD Codes</label>
           <IcdSearch
+            id={`${uid}-icd-search`}
             placeholder="Search and Add ICD Code & Description, HCC Code & Description"
             excludeCodes={block.icds.map(i => i.code)}
             onSelect={(icd) => onPatch({
@@ -2023,12 +1104,10 @@ function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, addE
 
   // Filter the master list. Filter keys must match encounterStatus()
   // return values for the predicate to match.
-  const visibleGroups = useMemo(() => {
-    if (filter === 'all') return groups;
-    return groups
-      .map(g => ({ ...g, encounters: g.encounters.filter(e => encounterStatus(e) === filter) }))
-      .filter(g => g.encounters.length > 0);
-  }, [groups, filter]);
+  const visibleGroups = useMemo(
+    () => filterGroupsByEncounterStatus(groups, filter),
+    [groups, filter],
+  );
 
   // If selected encounter is filtered out, jump to first visible one.
   useEffect(() => {
@@ -2097,10 +1176,7 @@ function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, addE
             type="button"
             className={styles.bulkBtnPrimary}
             onClick={() => {
-              const highConf = encounters
-                .map((e, i) => ({ e, i }))
-                .filter(({ e }) => (e.patient?.matchConfidence ?? 0) >= 85 && (!e.errors || e.errors.length === 0))
-                .map(({ i }) => i);
+              const highConf = highConfidenceEncounterIdxs(encounters);
               setSelectedAll?.(highConf, true);
               showToast?.(`${highConf.length} high-confidence encounter${highConf.length === 1 ? '' : 's'} selected`);
             }}
@@ -2273,16 +1349,6 @@ function TableLayout({ visibleGroups, encounters, hccMembers, patchEnc, handleRe
     [visibleGroups],
   );
 
-  const recalcErrors = (enc) => {
-    const errors = [];
-    if (!enc.patient?.name) errors.push('patientName');
-    if (!enc.patient?.dob) errors.push('dob');
-    if (!enc.dos) errors.push('dos');
-    if (!enc.provider) errors.push('provider');
-    if (!enc.pos) errors.push('pos');
-    return errors;
-  };
-
   const patchField = (idx, patch) => {
     const cur = encounters[idx];
     const next = {
@@ -2290,7 +1356,7 @@ function TableLayout({ visibleGroups, encounters, hccMembers, patchEnc, handleRe
       ...patch,
       patient: { ...cur.patient, ...(patch.patient || {}) },
     };
-    patchEnc(idx, { ...patch, errors: recalcErrors(next) });
+    patchEnc(idx, { ...patch, errors: recalcEncounterErrors(next) });
   };
 
   if (rows.length === 0) {
@@ -2588,6 +1654,17 @@ function CellInput({ value, onChange, error, placeholder, narrow }) {
  * (same action) so the citation is reachable in one tap.
  */
 function FieldConfidence({ score, sourcePage, sourceFileName, onOpenSource }) {
+  const triggerRef = useRef(null);
+  const [hover, setHover] = useState(false);
+  const [pos, setPos] = useState({ left: 0, top: 0 });
+  // Compute popover position on hover so it floats above the trigger
+  // and is anchored to the screen (escapes the table's overflow-clip).
+  useEffect(() => {
+    if (!hover || !triggerRef.current) return;
+    const r = triggerRef.current.getBoundingClientRect();
+    setPos({ left: r.left, top: r.top });
+  }, [hover]);
+
   if (typeof score !== 'number') return null;
   if (score === 0) {
     return (
@@ -2609,16 +1686,6 @@ function FieldConfidence({ score, sourcePage, sourceFileName, onOpenSource }) {
     helpText = "Between 60-84%. Review recommended before accepting.";
   }
   const canCite = typeof onOpenSource === 'function' && sourcePage;
-  const triggerRef = useRef(null);
-  const [hover, setHover] = useState(false);
-  const [pos, setPos] = useState({ left: 0, top: 0 });
-  // Compute popover position on hover so it floats above the trigger
-  // and is anchored to the screen (escapes the table's overflow-clip).
-  useEffect(() => {
-    if (!hover || !triggerRef.current) return;
-    const r = triggerRef.current.getBoundingClientRect();
-    setPos({ left: r.left, top: r.top });
-  }, [hover]);
   return (
     <span
       ref={triggerRef}

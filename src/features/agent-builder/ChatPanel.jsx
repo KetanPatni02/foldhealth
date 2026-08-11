@@ -11,6 +11,22 @@ const INITIAL_MESSAGE = {
   time: formatTime(),
 };
 
+// Message text is user- and model-authored, so it must be HTML-escaped BEFORE
+// the tiny markdown pass adds its own tags — otherwise a message containing
+// markup (e.g. `<img onerror=…>`) executes when injected into the bubble.
+// Escaping first means the only tags that survive are the ones we add here.
+function renderMessageMarkup(content) {
+  const escaped = String(content ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+  return escaped
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br/>')
+    .replace(/• /g, '&bull; ');
+}
+
 function formatTime() {
   return new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
@@ -100,7 +116,11 @@ export function ChatPanel({ nodes, edges, onApplyFlow, agentName }) {
           onApplyFlow(newNodes, newEdges);
           response = `Removed "${found.data.label}" node and its connections from the flow.`;
         } else {
-          response = `I couldn't find a node matching "${searchName}". Available nodes: ${nodes.filter(n => n.type === 'conversationNode').map(n => n.data.label).join(', ')}.`;
+          const labels = [];
+          for (const n of nodes) {
+            if (n.type === 'conversationNode') labels.push(n.data.label);
+          }
+          response = `I couldn't find a node matching "${searchName}". Available nodes: ${labels.join(', ')}.`;
         }
       }
       // ─── Modify/Update a node ───
@@ -125,11 +145,14 @@ export function ChatPanel({ nodes, edges, onApplyFlow, agentName }) {
       }
       // ─── List nodes ───
       else if (lower.includes('list') || lower.includes('show') || lower.includes('what nodes')) {
-        const nodeList = nodes
-          .filter(n => n.type === 'conversationNode')
-          .map((n, i) => `${i + 1}. **${n.data.label}** (${n.data.nodeType})`)
-          .join('\n');
-        response = `Current nodes in the flow:\n\n${nodeList}`;
+        const lines = [];
+        let i = 0;
+        for (const n of nodes) {
+          if (n.type !== 'conversationNode') continue;
+          i += 1;
+          lines.push(`${i}. **${n.data.label}** (${n.data.nodeType})`);
+        }
+        response = `Current nodes in the flow:\n\n${lines.join('\n')}`;
       }
       // ─── Help ───
       else {
@@ -155,7 +178,7 @@ export function ChatPanel({ nodes, edges, onApplyFlow, agentName }) {
           </div>
           <span className={styles.headerName}>Workflow Assistant</span>
         </div>
-        <button className={styles.moreBtn}>
+        <button className={styles.moreBtn} aria-label="More options">
           <Icon name="solar:menu-dots-bold" size={16} color="var(--neutral-300)" />
         </button>
       </div>
@@ -171,10 +194,7 @@ export function ChatPanel({ nodes, edges, onApplyFlow, agentName }) {
             )}
             <div className={styles.msgBubble}>
               <div className={styles.msgContent} dangerouslySetInnerHTML={{
-                __html: msg.content
-                  .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                  .replace(/\n/g, '<br/>')
-                  .replace(/• /g, '&bull; ')
+                __html: renderMessageMarkup(msg.content)
               }} />
               <span className={styles.msgTime}>{msg.time}</span>
             </div>
@@ -198,7 +218,7 @@ export function ChatPanel({ nodes, edges, onApplyFlow, agentName }) {
       {/* Input */}
       <div className={styles.inputArea}>
         <div className={styles.inputWrap}>
-          <button className={styles.attachBtn}>
+          <button className={styles.attachBtn} aria-label="Attach file">
             <Icon name="solar:paperclip-linear" size={16} color="var(--neutral-300)" />
           </button>
           <input
@@ -214,6 +234,7 @@ export function ChatPanel({ nodes, edges, onApplyFlow, agentName }) {
             className={`${styles.sendBtn} ${input.trim() ? styles.sendBtnActive : ''}`}
             onClick={handleSend}
             disabled={!input.trim() || isProcessing}
+            aria-label="Send message"
           >
             <Icon name="solar:arrow-up-linear" size={16} color={input.trim() ? '#fff' : 'var(--neutral-200)'} />
           </button>

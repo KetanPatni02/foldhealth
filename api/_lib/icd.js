@@ -136,16 +136,18 @@ export async function searchIcd({ q, limit = 15, env }) {
 // cache hiccup never breaks search.
 async function cacheUpsert(c, results) {
   if (!c.supabaseUrl || !c.serviceKey) return;
-  const rows = results
-    .filter((r) => r.hasCode)
-    .map((r) => ({
+  const rows = [];
+  for (const r of results) {
+    if (!r.hasCode) continue;
+    rows.push({
       code: r.code,
       title: r.title,
       chapter: r.chapter || null,
       entity_id: r.id || null,
       source: 'who',
       updated_at: new Date().toISOString(),
-    }));
+    });
+  }
   if (!rows.length) return;
   await fetch(`${c.supabaseUrl}/rest/v1/icd_codes?on_conflict=code`, {
     method: 'POST',

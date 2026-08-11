@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback, useId } from 'react';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Icon } from '../../components/Icon/Icon';
 import { CloseButton } from '../../components/CloseButton/CloseButton';
@@ -47,11 +47,12 @@ const ACCEPTED_FILES = '.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx,.ppt,.p
 
 /* ── Step 1: Method Selection ── */
 function StepMethodSelect({ agentName, setAgentName, onSelect }) {
+  const uid = useId();
   return (
     <div className={styles.stepContent}>
       <div className={styles.field}>
-        <label className={styles.fieldLabel}>Agent Name <span className={styles.fieldRequired} /></label>
-        <Input type="text" placeholder="Enter agent name" value={agentName} onChange={e => setAgentName(e.target.value)} />
+        <label className={styles.fieldLabel} htmlFor={`${uid}-agent-name`}>Agent Name <span className={styles.fieldRequired} /></label>
+        <Input id={`${uid}-agent-name`} type="text" placeholder="Enter agent name" value={agentName} onChange={e => setAgentName(e.target.value)} />
       </div>
       <div className={styles.sectionHeading}>
         <div className={styles.sectionTitle}>Create Agent Workflow</div>
@@ -72,6 +73,7 @@ function StepMethodSelect({ agentName, setAgentName, onSelect }) {
 
 /* ── Step 2: Template Selection ── */
 function StepTemplateSelect({ agentName, setAgentName, selectedTemplate, setSelectedTemplate, onBack }) {
+  const uid = useId();
   const [search, setSearch] = useState('');
   const filtered = useMemo(() => {
     if (!search.trim()) return TEMPLATES;
@@ -82,8 +84,8 @@ function StepTemplateSelect({ agentName, setAgentName, selectedTemplate, setSele
   return (
     <div className={styles.stepContent}>
       <div className={styles.field}>
-        <label className={styles.fieldLabel}>Agent Name <span className={styles.fieldRequired} /></label>
-        <Input type="text" placeholder="Enter agent name" value={agentName} onChange={e => setAgentName(e.target.value)} />
+        <label className={styles.fieldLabel} htmlFor={`${uid}-agent-name`}>Agent Name <span className={styles.fieldRequired} /></label>
+        <Input id={`${uid}-agent-name`} type="text" placeholder="Enter agent name" value={agentName} onChange={e => setAgentName(e.target.value)} />
       </div>
       <div className={styles.sectionHeading}>
         <div className={styles.sectionTitle}>Create Agent Workflow</div>
@@ -95,7 +97,7 @@ function StepTemplateSelect({ agentName, setAgentName, selectedTemplate, setSele
           <div className={styles.bannerTitle}>Create From Templates</div>
           <div className={styles.bannerDesc}>Start from a pre-built agent for your care use case</div>
         </div>
-        <button className={styles.bannerClose} onClick={onBack}><CloseIcon size={18} color="var(--neutral-300)" /></button>
+        <button className={styles.bannerClose} onClick={onBack} aria-label="Back"><CloseIcon size={18} color="var(--neutral-300)" /></button>
       </div>
       <div className={styles.templateSection}>
         <div className={styles.sectionTitle}>Select from Agent Templates</div>
@@ -122,6 +124,7 @@ function StepTemplateSelect({ agentName, setAgentName, selectedTemplate, setSele
 
 /* ── Step 3: Create From Prompt ── */
 function StepPrompt({ agentName, setAgentName, onBack, prompt, setPrompt }) {
+  const uid = useId();
   const [utilityRows, setUtilityRows] = useState([
     { type: 'appointment_type', key: 'awv_appointment', defaultVal: 'Annual Wellness Visit' },
     { type: 'form', key: 'hra_form', defaultVal: 'HRA Form (SCAN)' },
@@ -141,7 +144,10 @@ function StepPrompt({ agentName, setAgentName, onBack, prompt, setPrompt }) {
   // Keep promptRef in sync
   useEffect(() => { promptRef.current = prompt; }, [prompt]);
 
-  const utilityKeys = utilityRows.filter(r => r.key.trim()).map(r => r.key);
+  const utilityKeys = [];
+  for (const r of utilityRows) {
+    if (r.key.trim()) utilityKeys.push(r.key);
+  }
 
   const addRow = () => setUtilityRows(r => [...r, { type: '', key: '', defaultVal: '' }]);
   const removeRow = (i) => setUtilityRows(r => r.filter((_, idx) => idx !== i));
@@ -286,8 +292,8 @@ function StepPrompt({ agentName, setAgentName, onBack, prompt, setPrompt }) {
   return (
     <div className={styles.stepContent}>
       <div className={styles.field}>
-        <label className={styles.fieldLabel}>Agent Name <span className={styles.fieldRequired} /></label>
-        <Input type="text" placeholder="Enter agent name" value={agentName} onChange={e => setAgentName(e.target.value)} />
+        <label className={styles.fieldLabel} htmlFor={`${uid}-agent-name`}>Agent Name <span className={styles.fieldRequired} /></label>
+        <Input id={`${uid}-agent-name`} type="text" placeholder="Enter agent name" value={agentName} onChange={e => setAgentName(e.target.value)} />
       </div>
 
       <div className={styles.sectionHeading}>
@@ -301,7 +307,7 @@ function StepPrompt({ agentName, setAgentName, onBack, prompt, setPrompt }) {
           <div className={styles.bannerTitle}>Create From Prompt</div>
           <div className={styles.bannerDesc}>Describe your agent in plain language and AI builds the workflow</div>
         </div>
-        <button className={styles.bannerClose} onClick={onBack}><CloseIcon size={18} color="var(--neutral-300)" /></button>
+        <button className={styles.bannerClose} onClick={onBack} aria-label="Back"><CloseIcon size={18} color="var(--neutral-300)" /></button>
       </div>
 
       {/* Utility Configuration */}
@@ -318,13 +324,13 @@ function StepPrompt({ agentName, setAgentName, onBack, prompt, setPrompt }) {
         </div>
         {utilityRows.map((row, i) => (
           <div key={i} className={styles.utilityRow}>
-            <select className={styles.utilitySelect} value={row.type} onChange={e => updateRow(i, 'type', e.target.value)}>
+            <select aria-label="Utility type" className={styles.utilitySelect} value={row.type} onChange={e => updateRow(i, 'type', e.target.value)}>
               <option value="">Select Type</option>
               {UTILITY_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
             <input className={styles.utilityInput} placeholder="Enter Key" value={row.key} onChange={e => updateRow(i, 'key', e.target.value)} />
             <input className={styles.utilityDefaultInput} placeholder="Select Default" value={row.defaultVal} onChange={e => updateRow(i, 'defaultVal', e.target.value)} />
-            <button className={styles.utilityDeleteBtn} onClick={() => removeRow(i)}>
+            <button className={styles.utilityDeleteBtn} onClick={() => removeRow(i)} aria-label="Remove utility">
               <Icon name="solar:trash-bin-minimalistic-linear" size={16} color="var(--neutral-300)" />
             </button>
           </div>

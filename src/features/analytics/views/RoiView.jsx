@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
-import { Card, safeConfigData } from './shared';
+import { Card } from './shared';
+import { safeConfigData } from './shared.utils';
 import { SavingsAreaChart } from './charts';
 import { Slider } from '../../../components/ShadcnSlider/ShadcnSlider';
 import { EditableGrid } from './EditableGrid';
@@ -13,6 +14,10 @@ const DEFAULT_LAYOUT = [
   { i: 'summary',    x: 5, y: 0,  w: 7, h: 14, minW: 5, minH: 8, maxW: 12, maxH: 24 },
   { i: 'projection', x: 0, y: 14, w: 12, h: 11, minW: 6, minH: 7, maxW: 12, maxH: 20 },
 ];
+
+function formatRoiCurrency(n) {
+  return n >= 1000000 ? `$${(n / 1000000).toFixed(1)}M` : n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${n}`;
+}
 
 export function RoiView({ showToast, editing = false, resetTick = 0 }) {
   const fetchConfig = useAppStore(st => st.fetchConfig);
@@ -45,7 +50,7 @@ export function RoiView({ showToast, editing = false, resetTick = 0 }) {
   const totalSavings = leverSavings.reduce((sum, l) => sum + l.savings, 0);
   const totalRoi = totalSavings > 0 ? (totalSavings / (baselines.investmentBase || 1200000)).toFixed(1) : '0.0';
 
-  const fmt = (n) => n >= 1000000 ? `$${(n / 1000000).toFixed(1)}M` : n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${n}`;
+  const fmt = formatRoiCurrency;
 
   const tcoc = sliders.tcoc || 0;
   const quality = sliders.quality || 0;

@@ -4,6 +4,12 @@ import { ActionButton } from '../ActionButton/ActionButton';
 import { StickyNoteIcon } from '../Icon/StickyNoteIcon';
 import styles from './StickyNote.module.css';
 
+function formatStickyNoteDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()} • ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
+}
+
 /**
  * StickyNote — Reusable sticky note component with multiple states.
  *
@@ -60,11 +66,7 @@ export function StickyNote({ notes = [], onSave, onCreate, onDelete, onAuditLog,
   const prevNote = () => setCurrentIndex(i => Math.max(0, i - 1));
   const nextNote = () => setCurrentIndex(i => Math.min(totalPages - 1, i + 1));
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()} • ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
-  };
+  const formatDate = formatStickyNoteDate;
 
   // ── Collapsed: single-line ──
   if (!expanded || collapsedOnly) {
@@ -102,10 +104,10 @@ export function StickyNote({ notes = [], onSave, onCreate, onDelete, onAuditLog,
           <ActionButton icon="solar:clock-circle-linear" size="S" tooltip="Audit Log" onClick={onAuditLog} />
           {editing ? (
             <>
-              <button className={styles.cancelBtn} onClick={handleCancelEdit}>
+              <button className={styles.cancelBtn} aria-label="Cancel edit" onClick={handleCancelEdit}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--neutral-300)" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
               </button>
-              <button className={styles.saveBtn} onClick={handleSaveEdit}>
+              <button className={styles.saveBtn} aria-label="Save note" onClick={handleSaveEdit}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary-300)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12.9l3.143 3.6L15 7.5" /></svg>
               </button>
             </>
@@ -148,16 +150,16 @@ export function StickyNote({ notes = [], onSave, onCreate, onDelete, onAuditLog,
         <span className={styles.ehrLabel}>EHR: {note?.ehr_profile || 'Central Profile'}</span>
         {totalPages > 1 && (
           <div className={styles.pagination}>
-            <button className={styles.pageBtn} disabled={currentIndex === 0} onClick={prevNote}>
+            <button className={styles.pageBtn} aria-label="Previous note" disabled={currentIndex === 0} onClick={prevNote}>
               <Icon name="solar:alt-arrow-left-linear" size={12} color="var(--neutral-300)" />
             </button>
             <span className={styles.pageInfo}>{currentIndex + 1}/{totalPages}</span>
-            <button className={styles.pageBtn} disabled={currentIndex === totalPages - 1} onClick={nextNote}>
+            <button className={styles.pageBtn} aria-label="Next note" disabled={currentIndex === totalPages - 1} onClick={nextNote}>
               <Icon name="solar:alt-arrow-right-linear" size={12} color="var(--neutral-300)" />
             </button>
           </div>
         )}
-        <button className={styles.collapseBtn} onClick={() => { setExpanded(false); setEditing(false); }}>
+        <button className={styles.collapseBtn} aria-label="Collapse note" onClick={() => { setExpanded(false); setEditing(false); }}>
           <Icon name="solar:alt-arrow-up-linear" size={12} color="var(--neutral-300)" />
         </button>
       </div>

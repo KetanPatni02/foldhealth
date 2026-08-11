@@ -19,11 +19,10 @@ export function BillingPanel() {
         tabs={TABS}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        showSearch
+        actions={['search', 'filter']}
         searchPlaceholder="Search member, ID, or EHR ID…"
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
-        showFilter
         filterActive={filtersOpen}
         onFilter={() => setFiltersOpen(o => !o)}
         rightExtras={

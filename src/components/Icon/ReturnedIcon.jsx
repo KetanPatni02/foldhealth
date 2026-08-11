@@ -23,12 +23,12 @@ export function ReturnedIcon({ size = 12, color = '#F47A3E', className, ...rest 
     >
       {/* Orange disc */}
       <path
-        d="M0 6C0 2.68629 2.68629 0 6 0C9.31371 0 12 2.68629 12 6C12 9.31371 9.31371 12 6 12C2.68629 12 0 9.31371 0 6Z"
+        d="M0 6C0 2.69 2.69 0 6 0C9.31 0 12 2.69 12 6C12 9.31 9.31 12 6 12C2.69 12 0 9.31 0 6Z"
         fill={color}
       />
       {/* White return-arrow */}
       <path
-        d="M3 4.125H7.125C8.16053 4.125 9 4.96447 9 6C9 7.03553 8.16054 7.875 7.125 7.875H4.5M4.125 5.25L3 4.125L4.125 3"
+        d="M3 4.125H7.125C8.16 4.125 9 4.96 9 6C9 7.04 8.16 7.875 7.125 7.875H4.5M4.125 5.25L3 4.125L4.125 3"
         stroke="white"
         strokeWidth="1"
         strokeLinecap="round"

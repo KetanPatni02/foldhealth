@@ -23,6 +23,8 @@ import { resolveRecall } from './recall';
 import { evalJump, findEnding } from './flow';
 import styles from './FormRenderer.module.css';
 
+const EMPTY_FIELDS = [];
+
 // ── Entire-page recursive renderer (group / display / leaf) ──
 function FieldNode({ field, answers, onAnswer, missing, visibility, pipe = (t) => t }) {
   if (!isVisible(field.linkId, visibility)) return null; // branching: hidden field/group
@@ -74,10 +76,11 @@ function EnterBadge() {
 function TypeformChoice({ field, value, onChange }) {
   const multi = field.control === 'checkbox';
   const arr = Array.isArray(value) ? value : [];
+  const selectedSet = multi ? new Set(arr) : null;
   return (
     <div className={styles.tfOptions}>
       {(field.options || []).map((o, i) => {
-        const checked = multi ? arr.includes(o.value) : value === o.value;
+        const checked = multi ? selectedSet.has(o.value) : value === o.value;
         const select = () => (multi ? onChange(checked ? arr.filter((v) => v !== o.value) : [...arr, o.value]) : onChange(o.value));
         return (
           <button key={i} type="button" className={`${styles.tfOption} ${checked ? styles.tfOptionSel : ''}`} onClick={select}>
@@ -166,7 +169,7 @@ function SectionStepper({ sections, current }) {
 }
 
 export function FormRenderer({
-  fields = [], settings, scoring, formName, formDescription,
+  fields = EMPTY_FIELDS, settings, scoring, formName, formDescription,
   answers, onAnswer, onSubmit, submitting, compact,
   scope = 'standalone', onValidationFail, // eslint-disable-line no-unused-vars
 }) {

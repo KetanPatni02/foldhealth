@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { KpiCard, InsightBanner, Card, ProgressBar, safeBarItems, safeTableRows, EmptyState, KpiSkeleton, TableSkeleton, ProgressBarSkeleton } from './shared';
+import { KpiCard, InsightBanner, Card, ProgressBar, EmptyState, KpiSkeleton, TableSkeleton, ProgressBarSkeleton } from './shared';
+import { safeBarItems, safeTableRows } from './shared.utils';
 import { RafTrendLineChart } from './charts';
 import { EditableGrid } from './EditableGrid';
 import s from '../AnalyticsLayout.module.css';
@@ -19,6 +20,33 @@ const DEFAULT_LAYOUT = [
   { i: 'hccCat',       x: 6, y: 25, w: 6,  h: 7, minW: 4, minH: 4, maxW: 12, maxH: 16 },
   { i: 'hccSuspects',  x: 0, y: 32, w: 12, h: 8, minW: 6, minH: 5, maxW: 12, maxH: 20 },
 ];
+
+const RAF_TREND = [1.010, 1.014, 1.018, 1.022, 1.025, 1.028, 1.031, 1.034, 1.037, 1.040, 1.041, 1.042];
+const HCC_HIGH = [
+  { code: 'HCC 19', label: 'Diabetes w/o complications', rate: '89%', pct: 89, color: 'var(--status-success)' },
+  { code: 'HCC 108', label: 'Vascular Disease', rate: '84%', pct: 84, color: 'var(--status-success)' },
+  { code: 'HCC 85', label: 'CHF', rate: '78%', pct: 78, color: 'var(--status-info)' },
+  { code: 'HCC 22', label: 'Morbid Obesity', rate: '76%', pct: 76, color: 'var(--status-info)' },
+  { code: 'HCC 18', label: 'Diabetes w/ chronic comp.', rate: '74%', pct: 74, color: 'var(--status-info)' },
+];
+const HCC_LOW = [
+  { code: 'HCC 111', label: 'COPD', rate: '42%', pct: 42, color: 'var(--status-error)' },
+  { code: 'HCC 138', label: 'Peripheral Artery Disease', rate: '47%', pct: 47, color: 'var(--status-error)' },
+  { code: 'HCC 40', label: 'Rheumatoid Arthritis', rate: '51%', pct: 51, color: 'var(--status-warning)' },
+  { code: 'HCC 10', label: 'Lymphatic Cancers', rate: '55%', pct: 55, color: 'var(--status-warning)' },
+  { code: 'HCC 21', label: 'Protein-Calorie Malnutrition', rate: '58%', pct: 58, color: 'var(--status-warning)' },
+];
+
+function renderRiskMethodology() {
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '10px 14px', background: 'var(--neutral-0)', border: '1px solid var(--neutral-150)', borderRadius: 8, fontSize: 14, color: 'var(--neutral-400)', lineHeight: 1.6 }}>
+      <span style={{ fontSize: 14, marginTop: 1 }}>{'ℹ️'}</span>
+      <span>
+        <strong>CMS HCC Model V28</strong> &mdash; RAF displayed to 3 decimal places. Potential RAF is derived from all open HCC suspects in the suspect worklist below.
+      </span>
+    </div>
+  );
+}
 
 export function RiskView({ showToast, editing = false, resetTick = 0 }) {
   const fetchViewKpis = useAppStore(st => st.fetchViewKpis);
@@ -45,23 +73,7 @@ export function RiskView({ showToast, editing = false, resetTick = 0 }) {
   const rafRows = safeTableRows(rafByPractice);
   const hccItems = safeBarItems(hccRecapture);
 
-  const rafTrend = [1.010, 1.014, 1.018, 1.022, 1.025, 1.028, 1.031, 1.034, 1.037, 1.040, 1.041, 1.042];
   const periodLabel = period === 'ytd' ? 'YTD 2025' : 'Rolling 12M';
-
-  const hccHigh = [
-    { code: 'HCC 19', label: 'Diabetes w/o complications', rate: '89%', pct: 89, color: 'var(--status-success)' },
-    { code: 'HCC 108', label: 'Vascular Disease', rate: '84%', pct: 84, color: 'var(--status-success)' },
-    { code: 'HCC 85', label: 'CHF', rate: '78%', pct: 78, color: 'var(--status-info)' },
-    { code: 'HCC 22', label: 'Morbid Obesity', rate: '76%', pct: 76, color: 'var(--status-info)' },
-    { code: 'HCC 18', label: 'Diabetes w/ chronic comp.', rate: '74%', pct: 74, color: 'var(--status-info)' },
-  ];
-  const hccLow = [
-    { code: 'HCC 111', label: 'COPD', rate: '42%', pct: 42, color: 'var(--status-error)' },
-    { code: 'HCC 138', label: 'Peripheral Artery Disease', rate: '47%', pct: 47, color: 'var(--status-error)' },
-    { code: 'HCC 40', label: 'Rheumatoid Arthritis', rate: '51%', pct: 51, color: 'var(--status-warning)' },
-    { code: 'HCC 10', label: 'Lymphatic Cancers', rate: '55%', pct: 55, color: 'var(--status-warning)' },
-    { code: 'HCC 21', label: 'Protein-Calorie Malnutrition', rate: '58%', pct: 58, color: 'var(--status-warning)' },
-  ];
 
   const renderInsight = () => insight ? (
     <InsightBanner
@@ -73,15 +85,6 @@ export function RiskView({ showToast, editing = false, resetTick = 0 }) {
       showToast={showToast}
     />
   ) : null;
-
-  const renderMethodology = () => (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '10px 14px', background: 'var(--neutral-0)', border: '1px solid var(--neutral-150)', borderRadius: 8, fontSize: 14, color: 'var(--neutral-400)', lineHeight: 1.6 }}>
-      <span style={{ fontSize: 14, marginTop: 1 }}>{'ℹ️'}</span>
-      <span>
-        <strong>CMS HCC Model V28</strong> &mdash; RAF displayed to 3 decimal places. Potential RAF is derived from all open HCC suspects in the suspect worklist below.
-      </span>
-    </div>
-  );
 
   const renderKpis = () => {
     if (kpiData === null) return <KpiSkeleton count={4} />;
@@ -96,7 +99,7 @@ export function RiskView({ showToast, editing = false, resetTick = 0 }) {
 
   const renderRafTrend = () => (
     <Card title="RAF Score Trend" sub={periodLabel}>
-      <RafTrendLineChart data={rafTrend} potential={1.120} />
+      <RafTrendLineChart data={RAF_TREND} potential={1.120} />
       <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--neutral-200)', marginTop: 6 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 12, height: 2, background: 'var(--status-warning)', display: 'inline-block', borderRadius: 2 }} />Actual RAF</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 14, height: 0, borderTop: '2px dashed var(--neutral-150)', display: 'inline-block' }} />Potential 1.120</span>
@@ -142,7 +145,7 @@ export function RiskView({ showToast, editing = false, resetTick = 0 }) {
       <div className={s.g2}>
         <div>
           <div style={{ fontSize: 12, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--neutral-200)', marginBottom: 8 }}>{'✓'} Highest Closure Rates</div>
-          {hccHigh.map(h => (
+          {HCC_HIGH.map(h => (
             <div key={h.code} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--neutral-50)' }}>
               <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--primary-300)', minWidth: 55 }}>{h.code}</span>
               <span style={{ flex: 1, fontSize: 12 }}>{h.label}</span>
@@ -155,7 +158,7 @@ export function RiskView({ showToast, editing = false, resetTick = 0 }) {
         </div>
         <div>
           <div style={{ fontSize: 12, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--neutral-200)', marginBottom: 8 }}>{'⚠'} Lowest Closure Rates &mdash; Biggest Opportunity</div>
-          {hccLow.map(h => (
+          {HCC_LOW.map(h => (
             <div key={h.code} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--neutral-50)' }}>
               <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--primary-300)', minWidth: 55 }}>{h.code}</span>
               <span style={{ flex: 1, fontSize: 12 }}>{h.label}</span>
@@ -233,7 +236,7 @@ export function RiskView({ showToast, editing = false, resetTick = 0 }) {
 
   const RENDERERS = {
     insight: renderInsight,
-    methodology: renderMethodology,
+    methodology: renderRiskMethodology,
     kpis: renderKpis,
     rafTrend: renderRafTrend,
     rafPractice: renderRafPractice,

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { Icon } from '../Icon/Icon';
 import { DownChevronIcon } from '../Icon/DownChevronIcon';
 import styles from './Select.module.css';
@@ -45,7 +45,11 @@ export function Select({
   multiple = false,
 }) {
   const valueArray = multiple ? (Array.isArray(value) ? value : []) : null;
-  const isSelected = (v) => multiple ? valueArray.includes(v) : v === value;
+  const valueSet = useMemo(
+    () => (multiple ? new Set(Array.isArray(value) ? value : []) : null),
+    [multiple, value],
+  );
+  const isSelected = (v) => multiple ? valueSet.has(v) : v === value;
   const [open, setOpen] = useState(false);
   // 'bottom' by default; flipped to 'top' when the trigger sits too close
   // to the bottom of the viewport for the 240px menu to fit downward.
@@ -91,7 +95,7 @@ export function Select({
 
   const selected = multiple ? null : options.find(o => o.value === value);
   const selectedMulti = multiple
-    ? options.filter(o => o.type !== 'header' && valueArray.includes(o.value))
+    ? options.filter(o => o.type !== 'header' && valueSet.has(o.value))
     : [];
   // Trigger label for multi mode — first pick's label + "+N" summary.
   const multiSummary = () => {
@@ -198,7 +202,7 @@ export function Select({
                   if (opt.disabled) return;
                   if (multiple && !isSingleAction) {
                     // Toggle this option in the value array; keep menu open.
-                    const next = valueArray.includes(opt.value)
+                    const next = valueSet.has(opt.value)
                       ? valueArray.filter(v => v !== opt.value)
                       : [...valueArray, opt.value];
                     onChange(next);

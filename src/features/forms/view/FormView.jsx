@@ -28,6 +28,11 @@ function readUrlParams() {
   return out;
 }
 
+function closeFormView() {
+  if (window.history.length > 1) window.history.back();
+  else window.location.hash = '#/home';
+}
+
 export function FormView({ id: propId, isPublic = false }) {
   const storeFormViewId = useAppStore((s) => s.formViewId);
   const formViewId = propId ?? storeFormViewId;
@@ -74,6 +79,7 @@ export function FormView({ id: propId, isPublic = false }) {
   // query after the hash). Seeded values live in `answers` so recall + enableWhen
   // + scoring can use them; they're excluded from the "started" count below.
   const hiddenNames = useMemo(() => form?.settings?.hidden || [], [form]);
+  const hiddenNameSet = useMemo(() => new Set(hiddenNames), [hiddenNames]);
   useEffect(() => {
     if (!form || !hiddenNames.length) return;
     const params = readUrlParams();
@@ -87,7 +93,7 @@ export function FormView({ id: propId, isPublic = false }) {
 
   // Count genuine answers (prefilled hidden fields don't count as "started").
   const countAnswered = (a) => Object.entries(a)
-    .filter(([k, v]) => !hiddenNames.includes(k) && v != null && v !== '' && !(Array.isArray(v) && v.length === 0))
+    .filter(([k, v]) => !hiddenNameSet.has(k) && v != null && v !== '' && !(Array.isArray(v) && v.length === 0))
     .length;
 
   // Auto-save partial progress (debounced) from the first answer onward, so an
@@ -108,11 +114,6 @@ export function FormView({ id: propId, isPublic = false }) {
   // entire-page layout falls back to this view's thank-you.
   const paged = normalizeLayout(settings?.layout) !== 'entire-page';
 
-  const close = () => {
-    if (window.history.length > 1) window.history.back();
-    else window.location.hash = '#/home';
-  };
-
   // FormRenderer validates (per step + full form) before calling this; here we
   // just score + persist.
   const handleSubmit = async () => {
@@ -128,11 +129,15 @@ export function FormView({ id: propId, isPublic = false }) {
       );
       scoreSnapshot = { scores: result.scores, criticalsTriggered: result.criticalsTriggered };
     } catch { /* submit answers even if scoring fails */ }
-    const ok = await submitFormResponse(form.id, answers, scoreSnapshot, {
-      sessionId: sessionIdRef.current,
-      answeredCount: countAnswered(answers),
-    });
-    setSubmitting(false);
+    let ok = false;
+    try {
+      ok = await submitFormResponse(form.id, answers, scoreSnapshot, {
+        sessionId: sessionIdRef.current,
+        answeredCount: countAnswered(answers),
+      });
+    } finally {
+      setSubmitting(false);
+    }
     if (ok) {
       try { sessionStorage.removeItem(`formSession:${formViewId}`); } catch { /* ignore */ }
     } else {
@@ -149,7 +154,7 @@ export function FormView({ id: propId, isPublic = false }) {
           <Icon name="solar:clipboard-text-linear" size={18} color="var(--primary-300)" />
           {form?.name || 'Form'}
         </span>
-        {!isPublic && <CloseButton onClick={close} />}
+        {!isPublic && <CloseButton onClick={closeFormView} />}
       </header>
 
       <div className={styles.scroll}>

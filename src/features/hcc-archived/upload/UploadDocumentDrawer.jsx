@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { ACCEPT_EXT, ACCEPT_MIME, WHAT_HAPPENS_NEXT_STEPS, CHOOSER_OPTIONS } from './UploadDocumentDrawerSingle.utils';
 import { Drawer } from '../../../components/Drawer/Drawer';
 import { Button } from '../../../components/Button/Button';
 import { Icon } from '../../../components/Icon/Icon';
@@ -15,6 +16,8 @@ import { useAppStore } from '../../../store/useAppStore';
 import { runMockOcr, mandatoryFields, POS_LABEL } from './mockOcr';
 import { ICDS as ICDS_BY_MEMBER } from '../data/icds';
 import styles from './UploadDocumentDrawer.module.css';
+import { StepIndicator } from './UploadDocumentDrawer.helpers';
+import { SinglePhase } from './UploadDocumentDrawerSingle';
 
 // Accepted file types for clinical document upload. PDFs are the canonical
 // source; Word docs cover dictated notes from EHRs that export to .docx;
@@ -86,32 +89,38 @@ function ProcessingPhase({ fileName, onMinimize, onDiscard }) {
   );
 }
 
-function StepIndicator({ activeStep = 1 }) {
-  return (
-    <div className={styles.steps}>
-      <div className={styles.step}>
-        <span className={`${styles.stepBadge}${activeStep >= 1 ? '' : ` ${styles.stepBadgeIdle}`}`}>1</span>
-        <span className={`${styles.stepLabel}${activeStep >= 1 ? '' : ` ${styles.stepLabelIdle}`}`}>Upload File</span>
-      </div>
-      <span className={styles.stepDivider} />
-      <div className={styles.step}>
-        <span className={`${styles.stepBadge}${activeStep >= 2 ? '' : ` ${styles.stepBadgeIdle}`}`}>2</span>
-        <span className={`${styles.stepLabel}${activeStep >= 2 ? '' : ` ${styles.stepLabelIdle}`}`}>AI Review</span>
-      </div>
-    </div>
-  );
+
+function recalcEncounterErrors(enc) {
+  const errors = [];
+  if (!enc.patient?.name) errors.push('patientName');
+  if (!enc.patient?.dob) errors.push('dob');
+  if (!enc.dos) errors.push('dos');
+  if (!enc.provider) errors.push('provider');
+  if (!enc.pos) errors.push('pos');
+  return errors;
 }
 
-const ACCEPT_EXT  = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.tif,.tiff';
-const ACCEPT_MIME = new Set([
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'image/jpeg',
-  'image/png',
-  'image/tiff',
-]);
-const ACCEPT_LABEL = 'Supported formats: PDF, DOC, JPG, PNG, TIFF';
+function filterGroupsByEncounterStatus(groups, filter) {
+  if (filter === 'all') return groups;
+  const out = [];
+  for (const g of groups) {
+    const encounters = g.encounters.filter(e => encounterStatus(e) === filter);
+    if (encounters.length > 0) out.push({ ...g, encounters });
+  }
+  return out;
+}
+
+function highConfidenceEncounterIdxs(encounters) {
+  const idxs = [];
+  for (let i = 0; i < encounters.length; i++) {
+    const e = encounters[i];
+    if ((e.patient?.matchConfidence ?? 0) >= 85 && (!e.errors || e.errors.length === 0)) {
+      idxs.push(i);
+    }
+  }
+  return idxs;
+}
+
 const isAcceptedFile = (file) => {
   if (!file) return false;
   if (ACCEPT_MIME.has(file.type)) return true;
@@ -310,10 +319,13 @@ function PickerPhase({ showToast, cancel }) {
   // Match our queued staged rows to the live SFTP batches by fileName.
   // Newest matching batch wins (in case the user queued duplicates).
   const queuedBatches = useMemo(() => {
-    return queuedBatchIds.map(q => {
+    const out = [];
+    for (const q of queuedBatchIds) {
       const matches = sftpBatches.filter(b => b.fileName === q.fileName);
-      return matches[matches.length - 1] || null;
-    }).filter(Boolean);
+      const batch = matches[matches.length - 1];
+      if (batch) out.push(batch);
+    }
+    return out;
   }, [queuedBatchIds, sftpBatches]);
 
   const hasQueue = queuedBatches.length > 0;
@@ -565,23 +577,6 @@ function StagedFileRow({ file, onRemove, onPreview }) {
  */
 function WhatHappensNext() {
   const [open, setOpen] = useState(false);
-  const STEPS = [
-    {
-      n: 1,
-      title: 'We extract key information',
-      body: 'patient demographics, date of service, provider, place of service, and ICD codes.',
-    },
-    {
-      n: 2,
-      title: 'You review and confirm',
-      body: 'Review each record and fix any flagged fields.',
-    },
-    {
-      n: 3,
-      title: 'Add or merge',
-      body: 'Confirm to add a new worklist entry or merge into an existing one.',
-    },
-  ];
   return (
     <div className={[styles.whatNext, open ? styles.whatNextOpen : ''].join(' ')}>
       <button type="button" className={styles.whatNextHead} onClick={() => setOpen(v => !v)}>
@@ -595,7 +590,7 @@ function WhatHappensNext() {
       </button>
       {open && (
         <div className={styles.whatNextSteps}>
-          {STEPS.map(s => (
+          {WHAT_HAPPENS_NEXT_STEPS.map(s => (
             <div key={s.n} className={styles.whatNextCard}>
               <span className={styles.whatNextNum}>{s.n}</span>
               <div className={styles.whatNextTitle}>{s.title}</div>
@@ -998,34 +993,11 @@ function encounterStatus(enc) {
 // you'd like to add team members" layout — first option primary-tinted,
 // the other two secondary-tinted (matches Fold's purple/orange split).
 function ChooserPhase({ onPick }) {
-  const options = [
-    {
-      key: 'single', tone: 'primary',
-      icon: 'solar:user-rounded-linear',
-      title: 'Add a Single Encounter',
-      desc: 'Manually add one encounter for a patient — pick the patient, add ICDs, attach the document.',
-      cta: 'Add Encounter',
-    },
-    {
-      key: 'picker', tone: 'secondary',
-      icon: 'solar:users-group-rounded-linear',
-      title: 'Upload Single Document',
-      desc: 'Upload one PDF that contains encounters for one or more patients — AI extracts and groups them for review.',
-      cta: 'Upload PDF',
-    },
-    {
-      key: 'sftp', tone: 'neutral',
-      icon: 'solar:server-2-linear',
-      title: 'Upload Multiple Documents (SFTP)',
-      desc: 'Drop multiple documents on the secure SFTP server — they\'ll be ingested automatically and queued for AI review.',
-      cta: 'Open SFTP Details',
-    },
-  ];
   return (
     <div className={styles.chooserPhase}>
       <h3 className={styles.chooserHeading}>Choose how you'd like to add encounters</h3>
       <div className={styles.chooserCards}>
-        {options.map(opt => (
+        {CHOOSER_OPTIONS.map(opt => (
           <button
             key={opt.key}
             type="button"
@@ -1167,324 +1139,6 @@ function SftpPhase({ showToast }) {
 // Manual entry path: pick a patient, add ICD chips, fill the encounter
 // context, attach a document, Confirm. Routes through the existing
 // hccCreateOrMergeFromEncounter so dedup + activity-log wiring all works.
-function SinglePhase({ hccMembers, batchId, showToast, createFromEncounter, onDone }) {
-  const [patient, setPatient] = useState(null);   // selected hccMember or null
-  const [patientQuery, setPatientQuery] = useState('');
-  const [icdQuery, setIcdQuery] = useState('');
-  const [icds, setIcds] = useState([]);             // [{ code, desc, hcc? }]
-  const [dosMode, setDosMode] = useState('existing'); // 'existing' | 'new'
-  const [dos, setDos] = useState('');
-  const [provider, setProvider] = useState('');
-  const [pos, setPos] = useState('11');
-  const [docType, setDocType] = useState('Progress Note');
-  const [condition, setCondition] = useState('');
-  const [file, setFile] = useState(null);
-  const fileInputRef = useRef(null);
-
-  // Patient search — typeahead over hccMembers by name.
-  const patientMatches = useMemo(() => {
-    const q = patientQuery.trim().toLowerCase();
-    if (!q) return hccMembers.slice(0, 6);
-    return hccMembers
-      .filter(m => (m.name || '').toLowerCase().includes(q))
-      .slice(0, 8);
-  }, [hccMembers, patientQuery]);
-
-  // ICD search — flatten all known ICDs across members, then dedup by
-  // code so the user gets a single entry per diagnosis even if it's
-  // attached to multiple patients in the mock.
-  const allIcds = useMemo(() => {
-    const map = new Map();
-    Object.values(ICDS_BY_MEMBER).forEach(list => {
-      (list || []).forEach(item => {
-        if (!map.has(item.code)) map.set(item.code, item);
-      });
-    });
-    return [...map.values()];
-  }, []);
-  const icdMatches = useMemo(() => {
-    const q = icdQuery.trim().toLowerCase();
-    if (!q) return [];
-    return allIcds
-      .filter(i =>
-        (i.code || '').toLowerCase().includes(q) ||
-        (i.desc || '').toLowerCase().includes(q),
-      )
-      .slice(0, 6);
-  }, [allIcds, icdQuery]);
-
-  const addIcd = (item) => {
-    if (icds.some(i => i.code === item.code)) return;
-    setIcds([...icds, item]);
-    setIcdQuery('');
-  };
-  const removeIcd = (code) => setIcds(icds.filter(i => i.code !== code));
-
-  const existingDosList = patient?.dos_list?.map(d => d.date) || [];
-
-  const canConfirm = patient && icds.length > 0 && dos && provider && pos;
-
-  const handleConfirm = () => {
-    if (!canConfirm) return;
-    // Reuse the same create/merge path used by the OCR flow.
-    const result = createFromEncounter({
-      tempId: `single-${Date.now()}`,
-      patient: {
-        name: patient.name,
-        dob: patient.dob,
-        matchedMemberId: patient.id,
-        matchConfidence: 100,
-      },
-      dos,
-      provider,
-      pos,
-      posDesc: POS_LABEL[pos] || '',
-      icds: icds.map(i => ({ code: i.code, valid: true })),
-      _docName: file?.name || `Manual entry — ${condition || 'encounter'}.pdf`,
-      _docType: docType,
-      errors: [],
-    });
-    if (result.kind === 'skipped') {
-      showToast('Could not save — patient not matched');
-      return;
-    }
-    const label = result.kind === 'created'
-      ? `Encounter added for ${patient.name}`
-      : result.kind === 'updated'
-        ? `ICDs merged into existing DOS for ${patient.name}`
-        : `Related DOS created for ${patient.name}`;
-    showToast(label);
-    onDone?.();
-  };
-
-  return (
-    <div className={styles.singlePhase}>
-      <p className={styles.pickerSubtitle}>
-        Add a single encounter manually — pick a patient, attach ICDs, and upload
-        the supporting document.
-      </p>
-
-      {/* Patient picker — same layout as the OCR review's link-patient UI. */}
-      <div className={styles.singleSection}>
-        <label className={styles.singleLabel}>Patient *</label>
-        {patient ? (
-          <div className={styles.singlePatientChip}>
-            <Avatar variant="patient" initials={patient.in} />
-            <div className={styles.singlePatientText}>
-              <div className={styles.singlePatientName}>{patient.name}</div>
-              <div className={styles.singlePatientMeta}>
-                {patient.memberId || patient.member_id || '—'} · DOB {patient.dob || '—'}
-              </div>
-            </div>
-            <button
-              type="button"
-              className={styles.singlePatientChange}
-              onClick={() => { setPatient(null); setPatientQuery(''); }}
-            >
-              Change
-            </button>
-          </div>
-        ) : (
-          <>
-            <Input
-              placeholder="Search Fold patients by name…"
-              value={patientQuery}
-              onChange={(e) => setPatientQuery(e.target.value)}
-              autoFocus
-            />
-            <div className={styles.memberPickerList}>
-              {patientMatches.map(m => (
-                <button
-                  key={m.id}
-                  type="button"
-                  className={styles.memberPickerItem}
-                  onClick={() => { setPatient(m); setPatientQuery(''); }}
-                >
-                  <Avatar variant="patient" initials={m.in} />
-                  <span>{m.name}</span>
-                  <span className={styles.memberPickerMeta}>{m.memberId || m.member_id || ''}</span>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* ICD typeahead + chip list. */}
-      <div className={styles.singleSection}>
-        <label className={styles.singleLabel}>ICD codes *</label>
-        <Input
-          placeholder="Search by code or description (e.g. E11.9, COPD)…"
-          value={icdQuery}
-          onChange={(e) => setIcdQuery(e.target.value)}
-        />
-        {icdMatches.length > 0 && (
-          <div className={styles.icdMatchList}>
-            {icdMatches.map(m => (
-              <button
-                key={m.code}
-                type="button"
-                className={styles.icdMatchItem}
-                onClick={() => addIcd(m)}
-              >
-                <code className={styles.icdMatchCode}>{m.code}</code>
-                <span className={styles.icdMatchDesc}>{m.desc}</span>
-                {m.hcc && <span className={styles.icdMatchHcc}>{m.hcc.replace(/ - .*$/, '')}</span>}
-              </button>
-            ))}
-          </div>
-        )}
-        {icds.length > 0 && (
-          <div className={styles.icdChosen}>
-            {icds.map(i => (
-              <span key={i.code} className={styles.icdChosenChip}>
-                <code>{i.code}</code>
-                <span className={styles.icdChosenDesc}>{i.desc}</span>
-                <button
-                  type="button"
-                  className={styles.icdChosenRemove}
-                  aria-label={`Remove ${i.code}`}
-                  onClick={() => removeIcd(i.code)}
-                >
-                  <Icon name="solar:close-circle-linear" size={12} color="var(--neutral-300)" />
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* DOS — existing on the patient OR new. Toggle matches the
-          segmented control used elsewhere in the drawer (Option 1/2). */}
-      <div className={styles.singleSection}>
-        <label className={styles.singleLabel}>Date of Service *</label>
-        <Toggle
-          size="S"
-          items={[
-            { key: 'existing', label: 'Use existing', disabled: !patient || existingDosList.length === 0 },
-            { key: 'new',      label: 'New DOS' },
-          ]}
-          active={dosMode}
-          onChange={setDosMode}
-        />
-        {dosMode === 'existing' && patient ? (
-          <Select
-            options={[
-              { value: '', label: 'Select a DOS…' },
-              ...existingDosList.map(d => ({ value: d, label: d })),
-            ]}
-            value={dos}
-            onChange={setDos}
-            placeholder="Select a DOS…"
-          />
-        ) : (
-          <Input
-            placeholder="MM/DD/YYYY"
-            value={dos}
-            onChange={(e) => setDos(e.target.value)}
-          />
-        )}
-      </div>
-
-      {/* Encounter context — provider · POS · doc type · condition. */}
-      <div className={styles.singleGrid}>
-        <div className={styles.singleField}>
-          <label className={styles.singleLabel}>Rendering Provider *</label>
-          <Input
-            placeholder="Dr. Sarah Connor"
-            value={provider}
-            onChange={(e) => setProvider(e.target.value)}
-          />
-        </div>
-        <div className={styles.singleField}>
-          <label className={styles.singleLabel}>POS *</label>
-          <Select
-            options={Object.entries(POS_LABEL).map(([code, label]) => ({
-              value: code,
-              label: `${code} — ${label}`,
-            }))}
-            value={pos}
-            onChange={setPos}
-          />
-        </div>
-        <div className={styles.singleField}>
-          <label className={styles.singleLabel}>Document Type</label>
-          <Select
-            options={['Progress Note', 'SOAP Note', 'Telehealth Note', 'Visit Summary', 'Lab Report', 'Imaging Report'].map(t => ({
-              value: t,
-              label: t,
-            }))}
-            value={docType}
-            onChange={setDocType}
-          />
-        </div>
-        <div className={styles.singleField}>
-          <label className={styles.singleLabel}>Condition / Notes</label>
-          <Input
-            placeholder="Short clinical note (optional)"
-            value={condition}
-            onChange={(e) => setCondition(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {/* Document attach. */}
-      <div className={styles.singleSection}>
-        <label className={styles.singleLabel}>Supporting document</label>
-        {file ? (
-          <div className={styles.singleFileChip}>
-            <Icon name="solar:file-text-linear" size={16} color="var(--neutral-400)" />
-            <span className={styles.singleFileName}>{file.name}</span>
-            <button
-              type="button"
-              className={styles.singleFileRemove}
-              onClick={() => { setFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-            >
-              Remove
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            className={styles.singleFileBtn}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Icon name="solar:upload-linear" size={14} color="var(--primary-300)" />
-            Attach document
-          </button>
-        )}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={ACCEPT_EXT}
-          style={{ display: 'none' }}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (!f) return;
-            if (!isAcceptedFile(f)) {
-              showToast('Please upload a PDF, DOC, JPG, PNG, or TIFF file');
-              return;
-            }
-            setFile(f);
-          }}
-        />
-      </div>
-
-      {/* Footer — Confirm. */}
-      <div className={styles.singleFooter}>
-        <Button
-          variant="primary"
-          size="M"
-          disabled={!canConfirm}
-          onClick={handleConfirm}
-        >
-          Add Encounter
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, addEnc, selectedIdx, setSelectedIdx, filter, setFilter, layout, selectedIdxs, toggleSelected, setSelectedAll, sourceFileName, showToast, openPagePreview }) {
   // Aggregate counts per status for the filter chips. The bucket keys
   // here must match what encounterStatus() returns ('error' singular,
@@ -1498,12 +1152,10 @@ function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, addE
 
   // Filter the master list. Filter keys must match encounterStatus()
   // return values for the predicate to match.
-  const visibleGroups = useMemo(() => {
-    if (filter === 'all') return groups;
-    return groups
-      .map(g => ({ ...g, encounters: g.encounters.filter(e => encounterStatus(e) === filter) }))
-      .filter(g => g.encounters.length > 0);
-  }, [groups, filter]);
+  const visibleGroups = useMemo(
+    () => filterGroupsByEncounterStatus(groups, filter),
+    [groups, filter],
+  );
 
   // If selected encounter is filtered out, jump to first visible one.
   useEffect(() => {
@@ -1572,10 +1224,7 @@ function ReviewPhase({ encounters, groups, hccMembers, patchEnc, removeEnc, addE
             type="button"
             className={styles.bulkBtnPrimary}
             onClick={() => {
-              const highConf = encounters
-                .map((e, i) => ({ e, i }))
-                .filter(({ e }) => (e.patient?.matchConfidence ?? 0) >= 85 && (!e.errors || e.errors.length === 0))
-                .map(({ i }) => i);
+              const highConf = highConfidenceEncounterIdxs(encounters);
               setSelectedAll?.(highConf, true);
               showToast?.(`${highConf.length} high-confidence encounter${highConf.length === 1 ? '' : 's'} selected`);
             }}
@@ -1748,16 +1397,6 @@ function TableLayout({ visibleGroups, encounters, hccMembers, patchEnc, handleRe
     [visibleGroups],
   );
 
-  const recalcErrors = (enc) => {
-    const errors = [];
-    if (!enc.patient?.name) errors.push('patientName');
-    if (!enc.patient?.dob) errors.push('dob');
-    if (!enc.dos) errors.push('dos');
-    if (!enc.provider) errors.push('provider');
-    if (!enc.pos) errors.push('pos');
-    return errors;
-  };
-
   const patchField = (idx, patch) => {
     const cur = encounters[idx];
     const next = {
@@ -1765,7 +1404,7 @@ function TableLayout({ visibleGroups, encounters, hccMembers, patchEnc, handleRe
       ...patch,
       patient: { ...cur.patient, ...(patch.patient || {}) },
     };
-    patchEnc(idx, { ...patch, errors: recalcErrors(next) });
+    patchEnc(idx, { ...patch, errors: recalcEncounterErrors(next) });
   };
 
   if (rows.length === 0) {
@@ -2063,6 +1702,17 @@ function CellInput({ value, onChange, error, placeholder, narrow }) {
  * (same action) so the citation is reachable in one tap.
  */
 function FieldConfidence({ score, sourcePage, sourceFileName, onOpenSource }) {
+  const triggerRef = useRef(null);
+  const [hover, setHover] = useState(false);
+  const [pos, setPos] = useState({ left: 0, top: 0 });
+  // Compute popover position on hover so it floats above the trigger
+  // and is anchored to the screen (escapes the table's overflow-clip).
+  useEffect(() => {
+    if (!hover || !triggerRef.current) return;
+    const r = triggerRef.current.getBoundingClientRect();
+    setPos({ left: r.left, top: r.top });
+  }, [hover]);
+
   if (typeof score !== 'number') return null;
   if (score === 0) {
     return (
@@ -2084,16 +1734,6 @@ function FieldConfidence({ score, sourcePage, sourceFileName, onOpenSource }) {
     helpText = "Between 60-84%. Review recommended before accepting.";
   }
   const canCite = typeof onOpenSource === 'function' && sourcePage;
-  const triggerRef = useRef(null);
-  const [hover, setHover] = useState(false);
-  const [pos, setPos] = useState({ left: 0, top: 0 });
-  // Compute popover position on hover so it floats above the trigger
-  // and is anchored to the screen (escapes the table's overflow-clip).
-  useEffect(() => {
-    if (!hover || !triggerRef.current) return;
-    const r = triggerRef.current.getBoundingClientRect();
-    setPos({ left: r.left, top: r.top });
-  }, [hover]);
   return (
     <span
       ref={triggerRef}
@@ -2227,6 +1867,8 @@ function IcdPicker({ existingCodes, editingCode, onPick, onClose }) {
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [onClose]);
 
+  const existingCodeSet = useMemo(() => new Set(existingCodes), [existingCodes]);
+
   const all = useMemo(() => {
     const map = new Map();
     Object.values(ICDS_BY_MEMBER).forEach(list => {
@@ -2264,7 +1906,7 @@ function IcdPicker({ existingCodes, editingCode, onPick, onClose }) {
         {matches.length === 0 ? (
           <div className={styles.icdPickerEmpty}>No matches</div>
         ) : matches.map(item => {
-          const alreadyAdded = existingCodes.includes(item.code) && item.code !== editingCode;
+          const alreadyAdded = existingCodeSet.has(item.code) && item.code !== editingCode;
           return (
             <button
               key={item.code}

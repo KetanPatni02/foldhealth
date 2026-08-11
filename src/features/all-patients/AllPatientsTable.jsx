@@ -35,6 +35,15 @@ function hash(str) {
 
 function pick(arr, seed) { return arr[seed % arr.length]; }
 
+const normMemberId = (v) => (v || '').toString().replace(/^#/, '').trim().toLowerCase();
+
+const TH_STYLE = {
+  padding: '8px 14px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)',
+  borderBottom: '1px solid var(--neutral-150)', background: 'var(--neutral-0)',
+  position: 'sticky', top: 0, zIndex: 2, textAlign: 'left',
+  whiteSpace: 'nowrap', userSelect: 'none',
+};
+
 function fillDummy(row, idx) {
   const seed = hash(row.id || String(idx));
   const [city, state] = pick(CITIES, seed);
@@ -51,9 +60,10 @@ function fillDummy(row, idx) {
   const email = `${firstName}${seed % 99}@fold.health`;
   const condCount = (seed % 3) + 1;
   const conditions = [];
+  const seenConditions = new Set();
   for (let i = 0; i < condCount; i++) {
     const c = CONDITIONS[(seed + i * 7) % CONDITIONS.length];
-    if (!conditions.includes(c)) conditions.push(c);
+    if (!seenConditions.has(c)) { seenConditions.add(c); conditions.push(c); }
   }
   const program = pick(PROGRAMS, seed >> 7);
   const lastVisit = new Date(2025, (seed % 12), (seed % 27) + 1).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
@@ -112,7 +122,6 @@ export function AllPatientsTable() {
   // this view — matching what SubNav's dedupe union already reports — we
   // supplement with any SNP member whose memberId isn't already present,
   // keyed on the normalized memberId used everywhere else in the app.
-  const normMemberId = (v) => (v || '').toString().replace(/^#/, '').trim().toLowerCase();
   const snpAsAllPatientRows = useMemo(() => snpWorklistMembers.map(m => ({
     id: `snp-${m.id}`,
     source: 'snp',
@@ -124,7 +133,7 @@ export function AllPatientsTable() {
     language: m.language,
     assignee: m.assigneeName,
     assigneeInitials: m.assigneeInitials,
-    tags: (m.tags || []).map(t => t.label).filter(Boolean),
+    tags: (m.tags || []).flatMap(t => t.label ? [t.label] : []),
   })), [snpWorklistMembers]);
 
   // If Supabase has data, use it and add SNP members not already covered
@@ -132,7 +141,11 @@ export function AllPatientsTable() {
   // TOC + HCC + SNP in memory.
   const baseRows = useMemo(() => {
     if (allPatients.length > 0) {
-      const seen = new Set(allPatients.map(r => normMemberId(r.memberId)).filter(Boolean));
+      const seen = new Set();
+      for (const r of allPatients) {
+        const k = normMemberId(r.memberId);
+        if (k) seen.add(k);
+      }
       const extra = snpAsAllPatientRows.filter(r => {
         const k = normMemberId(r.memberId);
         return k && !seen.has(k);
@@ -167,7 +180,15 @@ export function AllPatientsTable() {
       tags: m.rl ? [`Risk ${m.rl}`] : [],
     }));
 
-    const seen = new Set([...tocRows, ...hccRows].map(r => normMemberId(r.memberId)).filter(Boolean));
+    const seen = new Set();
+    for (const r of tocRows) {
+      const k = normMemberId(r.memberId);
+      if (k) seen.add(k);
+    }
+    for (const r of hccRows) {
+      const k = normMemberId(r.memberId);
+      if (k) seen.add(k);
+    }
     const snpRows = snpAsAllPatientRows.filter(r => {
       const k = normMemberId(r.memberId);
       return k && !seen.has(k);
@@ -192,20 +213,14 @@ export function AllPatientsTable() {
   const startIdx = (currentPage - 1) * perPage;
   const paginated = filtered.slice(startIdx, startIdx + perPage);
 
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const allIds = paginated.map(r => r.id);
-  const allSelected = allIds.length > 0 && allIds.every(id => selectedIds.includes(id));
+  const allSelected = allIds.length > 0 && allIds.every(id => selectedIdSet.has(id));
   const someSelected = selectedIds.length > 0 && !allSelected;
 
   const handleSelectAll = (checked) => {
     if (checked) selectAll(allIds);
     else clearSelected();
-  };
-
-  const thStyle = {
-    padding: '8px 14px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)',
-    borderBottom: '1px solid var(--neutral-150)', background: 'var(--neutral-0)',
-    position: 'sticky', top: 0, zIndex: 2, textAlign: 'left',
-    whiteSpace: 'nowrap', userSelect: 'none',
   };
 
   if (allPatientsLoading && baseRows.length === 0) return <TableSkeleton rows={perPage} />;
@@ -215,21 +230,21 @@ export function AllPatientsTable() {
       <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "'Inter', sans-serif", minWidth: 1400 }}>
         <thead>
           <tr>
-            <th style={{ ...thStyle, width: 36, padding: '8px 10px', position: 'sticky', top: 0, left: 0, zIndex: 4 }}>
+            <th style={{ ...TH_STYLE, width: 36, padding: '8px 10px', position: 'sticky', top: 0, left: 0, zIndex: 4 }}>
               <Checkbox checked={someSelected ? 'indeterminate' : allSelected} onCheckedChange={handleSelectAll} />
             </th>
-            <th style={{ ...thStyle, padding: '8px 12px', position: 'sticky', top: 0, left: 36, zIndex: 4, borderRight: '1px solid var(--neutral-150)' }}>Members</th>
-            <th style={thStyle}>Contact Info</th>
-            <th style={thStyle}>Location</th>
-            <th style={thStyle}>Tags</th>
-            <th style={thStyle}>Attributes</th>
-            <th style={thStyle}>Chronic Conditions</th>
-            <th style={thStyle}>PCP</th>
-            <th style={thStyle}>Last Visit</th>
-            <th style={thStyle}>Active Care Program</th>
-            <th style={thStyle}>CCM Consent</th>
-            <th style={thStyle}>APCM Consent</th>
-            <th style={{ ...thStyle, width: 140, position: 'sticky', top: 0, right: 0, zIndex: 3 }}>Actions</th>
+            <th style={{ ...TH_STYLE, padding: '8px 12px', position: 'sticky', top: 0, left: 36, zIndex: 4, borderRight: '1px solid var(--neutral-150)' }}>Members</th>
+            <th style={TH_STYLE}>Contact Info</th>
+            <th style={TH_STYLE}>Location</th>
+            <th style={TH_STYLE}>Tags</th>
+            <th style={TH_STYLE}>Attributes</th>
+            <th style={TH_STYLE}>Chronic Conditions</th>
+            <th style={TH_STYLE}>PCP</th>
+            <th style={TH_STYLE}>Last Visit</th>
+            <th style={TH_STYLE}>Active Care Program</th>
+            <th style={TH_STYLE}>CCM Consent</th>
+            <th style={TH_STYLE}>APCM Consent</th>
+            <th style={{ ...TH_STYLE, width: 140, position: 'sticky', top: 0, right: 0, zIndex: 3 }}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -237,7 +252,7 @@ export function AllPatientsTable() {
             <AllPatientsRow
               key={row.id}
               row={row}
-              isSelected={selectedIds.includes(row.id)}
+              isSelected={selectedIdSet.has(row.id)}
               onSelect={selectOne}
             />
           ))}

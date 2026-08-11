@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../components/Icon/Icon';
-import { toast } from '../../../components/Toast/Toast';
+import { toast } from '../../../components/Toast/sonnerToast';
 import { getStatusSpec, statusDisplayLabel, ROLE_STATUS_OPTIONS, ALL_STATUS_OPTIONS } from '../statusSpec';
 import { StatusIcon } from '../StatusIcon';
 import styles from './DosStatusMenu.module.css';

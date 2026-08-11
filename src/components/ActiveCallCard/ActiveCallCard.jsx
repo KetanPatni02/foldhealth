@@ -29,7 +29,7 @@ export function ActiveCallCard() {
           <Icon name="solar:smile-circle-linear" size={14} color="#059669" />
           <span>{p?.agentAssigned || 'TOC Agent'}</span>
         </div>
-        <button className={styles.expandBtn} title="Expand">
+        <button type="button" className={styles.expandBtn} aria-label="Expand call card">
           <Icon name="solar:maximize-square-2-linear" size={16} />
         </button>
       </div>
@@ -40,7 +40,14 @@ export function ActiveCallCard() {
           <div>
             <div className={styles.patientName}>
               {p.name}
-              <a href="#" onClick={e => e.preventDefault()}>↗</a>
+              <button
+                type="button"
+                className={styles.openPatientBtn}
+                aria-label={`Open ${p.name} profile`}
+                onClick={() => {}}
+              >
+                ↗
+              </button>
             </div>
             <div className={styles.patientMeta}>(125) 648-4230 ({p.gender} • {p.age})</div>
           </div>
@@ -50,31 +57,31 @@ export function ActiveCallCard() {
       <div className={styles.divider} />
 
       <div className={styles.actions}>
-        <button className={styles.actionBtn} title="Mute">
+        <button type="button" className={styles.actionBtn} aria-label="Mute">
           <Icon name="solar:muted-linear" size={18} />
         </button>
         <div className={styles.sep} />
-        <button className={styles.actionBtn} title="Hold">
+        <button type="button" className={styles.actionBtn} aria-label="Hold">
           <Icon name="solar:pause-linear" size={18} />
         </button>
         <div className={styles.sep} />
-        <button className={styles.actionBtn} title="Transfer">
+        <button type="button" className={styles.actionBtn} aria-label="Transfer">
           <Icon name="solar:phone-calling-rounded-linear" size={18} />
         </button>
         <div className={styles.sep} />
-        <button className={styles.actionBtn} title="Add Participant">
+        <button type="button" className={styles.actionBtn} aria-label="Add participant">
           <Icon name="solar:user-plus-linear" size={18} />
         </button>
         <div className={styles.sep} />
-        <button className={styles.actionBtn} title="Keypad">
+        <button type="button" className={styles.actionBtn} aria-label="Keypad">
           <Icon name="tabler:dialpad" size={18} />
         </button>
         <div className={styles.sep} />
-        <button className={styles.actionBtn} title="More">
+        <button type="button" className={styles.actionBtn} aria-label="More call actions">
           <Icon name="solar:menu-dots-linear" size={18} />
         </button>
         <div className={styles.sep} />
-        <button className={styles.endBtn} title="End Call" onClick={endActiveCall}>
+        <button type="button" className={styles.endBtn} aria-label="End call" onClick={endActiveCall}>
           <Icon name="solar:end-call-linear" size={18} />
         </button>
       </div>

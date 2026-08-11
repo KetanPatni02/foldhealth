@@ -55,7 +55,12 @@ export function CallPopover() {
           <TcpaIndicator patient={p} />
           <div className={styles.sub}>Speaks: {LANG_MAP[p.language] || 'English'}</div>
         </div>
-        <button className={styles.closeBtn} onClick={closeCallPopover}>
+        <button
+          type="button"
+          className={styles.closeBtn}
+          onClick={closeCallPopover}
+          aria-label="Close call popover"
+        >
           <CloseIcon size={18} />
         </button>
       </div>

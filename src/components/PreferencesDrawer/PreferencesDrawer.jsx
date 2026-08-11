@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useId } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../Icon/Icon';
@@ -31,14 +31,15 @@ function getInitials(name) {
 /* ── Multi-select (reused from AccountPanel pattern) ── */
 function MultiSelect({ options, value = [], onChange, placeholder }) {
   const [open, setOpen] = useState(false);
-  const toggle = (opt) => onChange(value.includes(opt) ? value.filter(v => v !== opt) : [...value, opt]);
+  const valueSet = new Set(value);
+  const toggle = (opt) => onChange(valueSet.has(opt) ? value.filter(v => v !== opt) : [...value, opt]);
   return (
     <div style={{ position: 'relative' }}>
       <div className={styles.tagInput} onClick={() => setOpen(v => !v)} style={{ cursor: 'pointer' }}>
         {value.length > 0 ? value.map(v => (
           <span key={v} className={styles.tag}>
             {v}
-            <button className={styles.tagClose} onClick={e => { e.stopPropagation(); toggle(v); }}>
+            <button className={styles.tagClose} onClick={e => { e.stopPropagation(); toggle(v); }} aria-label={`Remove ${v}`}>
               <Icon name="solar:close-linear" size={10} color="var(--neutral-300)" />
             </button>
           </span>
@@ -49,7 +50,7 @@ function MultiSelect({ options, value = [], onChange, placeholder }) {
         <div className={styles.multiSelectDropdown}>
           {options.map(opt => (
             <label key={opt} className={styles.multiSelectOption}>
-              <input type="checkbox" checked={value.includes(opt)} onChange={() => toggle(opt)} />
+              <input type="checkbox" checked={valueSet.has(opt)} onChange={() => toggle(opt)} />
               <span>{opt}</span>
             </label>
           ))}
@@ -60,6 +61,7 @@ function MultiSelect({ options, value = [], onChange, placeholder }) {
 }
 
 export function PreferencesDrawer({ onClose }) {
+  const uid = useId();
   const [activeTab, setActiveTab] = useState('account');
   const [inboxView, setInboxView] = useState('all');
   const [profile, setProfile] = useState(null);
@@ -72,31 +74,33 @@ export function PreferencesDrawer({ onClose }) {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setLoading(false); return; }
-      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-      if (data) {
-        setProfile(data);
-        setForm({
-          first_name: data.first_name || user.user_metadata?.first_name || '',
-          last_name: data.last_name || user.user_metadata?.last_name || '',
-          middle_name: data.middle_name || '',
-          date_of_birth: data.date_of_birth || '',
-          gender: data.gender || '',
-          admin_role: data.admin_role || 'Business/Practice Owner',
-          bio: data.bio || '',
-          mobile: data.mobile || data.phone || '',
-          email: data.email || user.email || '',
-          fax: data.fax || '',
-          zip_code: data.zip_code || '',
-          address_line1: data.address_line1 || '',
-          address_line2: data.address_line2 || '',
-          state: data.state || '',
-          city: data.city || '',
-          languages: data.languages || [],
-        });
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+        if (data) {
+          setProfile(data);
+          setForm({
+            first_name: data.first_name || user.user_metadata?.first_name || '',
+            last_name: data.last_name || user.user_metadata?.last_name || '',
+            middle_name: data.middle_name || '',
+            date_of_birth: data.date_of_birth || '',
+            gender: data.gender || '',
+            bio: data.bio || '',
+            mobile: data.mobile || data.phone || '',
+            email: data.email || user.email || '',
+            fax: data.fax || '',
+            zip_code: data.zip_code || '',
+            address_line1: data.address_line1 || '',
+            address_line2: data.address_line2 || '',
+            state: data.state || '',
+            city: data.city || '',
+            languages: data.languages || [],
+          });
+        }
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     })();
   }, []);
 
@@ -108,6 +112,12 @@ export function PreferencesDrawer({ onClose }) {
       full_name: `${form.first_name} ${form.last_name}`.trim(),
       ...form,
     };
+    // This is a self-update, so it must never carry authorization columns —
+    // the spread above would happily forward anything that lands in `form`.
+    // The database enforces this too; stripping here keeps the request honest.
+    delete updates.role;
+    delete updates.admin_role;
+    delete updates.clinical_roles;
     const { error } = await supabase.from('profiles').update(updates).eq('id', profile.id);
     if (!error) {
       // Also update auth metadata
@@ -201,16 +211,17 @@ export function PreferencesDrawer({ onClose }) {
                 <h4 className={styles.sectionTitle} style={{ marginTop: 0, borderTop: 'none', paddingTop: 0 }}>Basic Info</h4>
                 <div className={styles.formGrid}>
                   <div className={styles.formField}>
-                    <label className={styles.formLabel}>First Name *</label>
-                    <Input value={form.first_name} onChange={e => set('first_name', e.target.value)} placeholder="First name" />
+                    <label className={styles.formLabel} htmlFor={`${uid}-first-name`}>First Name *</label>
+                    <Input id={`${uid}-first-name`} value={form.first_name} onChange={e => set('first_name', e.target.value)} placeholder="First name" />
                   </div>
                   <div className={styles.formField}>
-                    <label className={styles.formLabel}>Last Name *</label>
-                    <Input value={form.last_name} onChange={e => set('last_name', e.target.value)} placeholder="Last name" />
+                    <label className={styles.formLabel} htmlFor={`${uid}-last-name`}>Last Name *</label>
+                    <Input id={`${uid}-last-name`} value={form.last_name} onChange={e => set('last_name', e.target.value)} placeholder="Last name" />
                   </div>
                   <div className={styles.formField}>
-                    <label className={styles.formLabel}>Gender</label>
+                    <label className={styles.formLabel} htmlFor={`${uid}-gender`}>Gender</label>
                     <Select
+                      id={`${uid}-gender`}
                       options={GENDER_OPTIONS.map(g => ({ value: g, label: g }))}
                       value={form.gender || undefined}
                       onChange={v => set('gender', v)}
@@ -218,53 +229,54 @@ export function PreferencesDrawer({ onClose }) {
                     />
                   </div>
                   <div className={styles.formField}>
-                    <label className={styles.formLabel}>Date of Birth</label>
+                    <label className={styles.formLabel} htmlFor={`${uid}-dob`}>Date of Birth</label>
                     <div className={styles.dateInputWrap}>
-                      <input type="date" className={styles.dateInput} value={form.date_of_birth || ''} onChange={e => set('date_of_birth', e.target.value)} />
+                      <input id={`${uid}-dob`} type="date" className={styles.dateInput} value={form.date_of_birth || ''} onChange={e => set('date_of_birth', e.target.value)} />
                     </div>
                   </div>
                   <div className={styles.formField}>
-                    <label className={styles.formLabel}>Mobile Number</label>
-                    <Input value={form.mobile} onChange={e => set('mobile', e.target.value)} placeholder="+1 234 567 890" />
+                    <label className={styles.formLabel} htmlFor={`${uid}-mobile`}>Mobile Number</label>
+                    <Input id={`${uid}-mobile`} value={form.mobile} onChange={e => set('mobile', e.target.value)} placeholder="+1 234 567 890" />
                   </div>
                   <div className={styles.formField}>
-                    <label className={styles.formLabel}>Email</label>
-                    <Input value={form.email} disabled />
+                    <label className={styles.formLabel} htmlFor={`${uid}-email`}>Email</label>
+                    <Input id={`${uid}-email`} value={form.email} disabled />
                   </div>
                 </div>
 
                 <div className={styles.formField} style={{ marginTop: 16 }}>
-                  <label className={styles.formLabel}>Languages</label>
+                  {/* Not a <label>: MultiSelect's trigger is a div, which htmlFor can't target. */}
+                  <span className={styles.formLabel}>Languages</span>
                   <MultiSelect options={LANGUAGE_OPTIONS} value={form.languages} onChange={v => set('languages', v)} placeholder="Select languages..." />
                 </div>
 
                 <div className={styles.formField} style={{ marginTop: 16 }}>
-                  <label className={styles.formLabel}>Bio</label>
-                  <textarea className={styles.formTextarea} rows={3} value={form.bio} onChange={e => set('bio', e.target.value)} placeholder="Brief bio..." />
+                  <label className={styles.formLabel} htmlFor={`${uid}-bio`}>Bio</label>
+                  <textarea id={`${uid}-bio`} className={styles.formTextarea} rows={3} value={form.bio} onChange={e => set('bio', e.target.value)} placeholder="Brief bio..." />
                 </div>
 
                 {/* Address */}
                 <h4 className={styles.sectionTitle}>Address</h4>
                 <div className={styles.formGrid}>
                   <div className={styles.formField}>
-                    <label className={styles.formLabel}>Address Line 1</label>
-                    <Input value={form.address_line1} onChange={e => set('address_line1', e.target.value)} placeholder="Street address" />
+                    <label className={styles.formLabel} htmlFor={`${uid}-address1`}>Address Line 1</label>
+                    <Input id={`${uid}-address1`} value={form.address_line1} onChange={e => set('address_line1', e.target.value)} placeholder="Street address" />
                   </div>
                   <div className={styles.formField}>
-                    <label className={styles.formLabel}>Address Line 2</label>
-                    <Input value={form.address_line2} onChange={e => set('address_line2', e.target.value)} placeholder="Apt, suite" />
+                    <label className={styles.formLabel} htmlFor={`${uid}-address2`}>Address Line 2</label>
+                    <Input id={`${uid}-address2`} value={form.address_line2} onChange={e => set('address_line2', e.target.value)} placeholder="Apt, suite" />
                   </div>
                   <div className={styles.formField}>
-                    <label className={styles.formLabel}>City</label>
-                    <Input value={form.city} onChange={e => set('city', e.target.value)} placeholder="City" />
+                    <label className={styles.formLabel} htmlFor={`${uid}-city`}>City</label>
+                    <Input id={`${uid}-city`} value={form.city} onChange={e => set('city', e.target.value)} placeholder="City" />
                   </div>
                   <div className={styles.formField}>
-                    <label className={styles.formLabel}>State</label>
-                    <Input value={form.state} onChange={e => set('state', e.target.value)} placeholder="State" />
+                    <label className={styles.formLabel} htmlFor={`${uid}-state`}>State</label>
+                    <Input id={`${uid}-state`} value={form.state} onChange={e => set('state', e.target.value)} placeholder="State" />
                   </div>
                   <div className={styles.formField}>
-                    <label className={styles.formLabel}>Zip Code</label>
-                    <Input value={form.zip_code} onChange={e => set('zip_code', e.target.value)} placeholder="12345" />
+                    <label className={styles.formLabel} htmlFor={`${uid}-zip`}>Zip Code</label>
+                    <Input id={`${uid}-zip`} value={form.zip_code} onChange={e => set('zip_code', e.target.value)} placeholder="12345" />
                   </div>
                 </div>
 

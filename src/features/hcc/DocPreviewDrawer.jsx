@@ -40,8 +40,8 @@ export function DocPreviewDrawer({ charts, initialId, member, onClose }) {
         </span>
       }
     >
-      {doc.pdf ? (
-        <FilePreview className={styles.pdf} src={doc.pdf} name={doc.n} ext={doc.ext} />
+      {(doc.pdf || doc.file) ? (
+        <FilePreview className={styles.pdf} src={doc.pdf} file={doc.file} name={doc.n} ext={doc.ext} />
       ) : (
         <DocEvidenceViewer member={member} />
       )}

@@ -4,6 +4,8 @@ import { CheckboxListPopover } from '../CheckboxListPopover/CheckboxListPopover'
 import { RadioListPopover } from '../RadioListPopover/RadioListPopover';
 import styles from './FilterChip.module.css';
 
+const EMPTY_SELECTED = [];
+
 /**
  * FilterChip — a labelled filter chip that opens a multi-select popover, the
  * same pattern used by the worklist filter bar. Idle it shows "Label ⌄"; once
@@ -30,7 +32,7 @@ export function FilterChip({
   label,
   popoverLabel,
   options,
-  selected = [],
+  selected = EMPTY_SELECTED,
   onChange,
   singleSelect = false,
   size = 'M',
@@ -88,7 +90,7 @@ export function FilterChip({
               onClick={handleClear}
             >
               <svg width={iconSize} height={iconSize} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M12.495 4.49501C12.7683 4.22164 12.7683 3.77842 12.495 3.50506C12.2216 3.23169 11.7784 3.23169 11.505 3.50506L12 4.00003L12.495 4.49501ZM3.50506 11.505C3.23169 11.7784 3.23169 12.2216 3.50506 12.495C3.77843 12.7683 4.22164 12.7683 4.49501 12.495L4.00003 12L3.50506 11.505ZM4.49497 3.50503C4.22161 3.23166 3.77839 3.23166 3.50503 3.50503C3.23166 3.77839 3.23166 4.22161 3.50503 4.49497L4 4L4.49497 3.50503ZM11.505 12.4949C11.7784 12.7683 12.2216 12.7683 12.4949 12.4949C12.7683 12.2216 12.7683 11.7784 12.4949 11.505L12 12L11.505 12.4949ZM12 4.00003L11.505 3.50506L7.50504 7.50504L8.00002 8.00002L8.49499 8.49499L12.495 4.49501L12 4.00003ZM8.00002 8.00002L7.50504 7.50504L3.50506 11.505L4.00003 12L4.49501 12.495L8.49499 8.49499L8.00002 8.00002ZM4 4L3.50503 4.49497L7.50504 8.49499L8.00002 8.00002L8.49499 7.50504L4.49497 3.50503L4 4ZM8.00002 8.00002L7.50504 8.49499L11.505 12.4949L12 12L12.4949 11.505L8.49499 7.50504L8.00002 8.00002Z" fill="var(--primary-300)" />
+                <path d="M12.495 4.5C12.77 4.22 12.77 3.78 12.495 3.51C12.22 3.23 11.78 3.23 11.505 3.51L12 4L12.495 4.5ZM3.51 11.505C3.23 11.78 3.23 12.22 3.51 12.495C3.78 12.77 4.22 12.77 4.5 12.495L4 12L3.51 11.505ZM4.49 3.51C4.22 3.23 3.78 3.23 3.51 3.51C3.23 3.78 3.23 4.22 3.51 4.49L4 4L4.49 3.51ZM11.505 12.49C11.78 12.77 12.22 12.77 12.49 12.49C12.77 12.22 12.77 11.78 12.49 11.505L12 12L11.505 12.49ZM12 4L11.505 3.51L7.51 7.51L8 8L8.49 8.49L12.495 4.5L12 4ZM8 8L7.51 7.51L3.51 11.505L4 12L4.5 12.495L8.49 8.49L8 8ZM4 4L3.51 4.49L7.51 8.49L8 8L8.49 7.51L4.49 3.51L4 4ZM8 8L7.51 8.49L11.505 12.49L12 12L12.49 11.505L8.49 7.51L8 8Z" fill="var(--primary-300)" />
               </svg>
             </span>
           </>

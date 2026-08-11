@@ -54,12 +54,15 @@
   border-top: 1px solid var(--neutral-150);
 }
 
-.footer a {
+.footerLink {
   font-size: 13px;
   color: var(--primary-300);
   text-decoration: none;
   font-weight: 500;
   cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
 }
 
-.footer a:hover { text-decoration: underline; }
+.footerLink:hover { text-decoration: underline; }

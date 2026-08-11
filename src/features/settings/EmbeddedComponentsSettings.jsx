@@ -29,7 +29,7 @@ export function EmbeddedComponentsSettings() {
         tabs={TABS}
         activeTab={embeddedComponentsTab}
         onTabChange={setEmbeddedComponentsTab}
-        showSearch
+        actions={['search']}
         searchPlaceholder={isComponentLibrary ? 'Search components…' : 'Search domains…'}
         searchValue={searchVal}
         onSearchChange={setSearchVal}

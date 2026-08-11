@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   ResponsiveContainer, AreaChart, Area,
   XAxis, YAxis, Tooltip,
-} from 'recharts';
+} from '../../components/LazyRecharts/LazyRecharts';
 import { Icon } from '../../components/Icon/Icon';
 import { CloseIcon } from '../../components/Icon/CloseIcon';
 import { CallLogTab, GoalDetailPanel, ResizeDragger } from '../../components/CallQueueDrawer/CallQueueDrawer';
@@ -188,14 +188,18 @@ function SnapshotContent({ agent, showBanner, setShowBanner }) {
   const goalsData = useAppStore(s => s.goalsData) || [];
   const c = builderConfig || {};
 
-  const selectedGoals = (c.goal_ids || []).map(id => goalsData.find(g => String(g.id) === String(id))).filter(Boolean);
+  const selectedGoals = [];
+  for (const id of c.goal_ids || []) {
+    const goal = goalsData.find(g => String(g.id) === String(id));
+    if (goal) selectedGoals.push(goal);
+  }
   const languages = (c.languages || ['english']).map(l => l.charAt(0).toUpperCase() + l.slice(1));
 
   return (
     <>
       {showBanner && (
         <div className={styles.banner}>
-          <button className={styles.bannerClose} onClick={() => setShowBanner(false)}>
+          <button className={styles.bannerClose} onClick={() => setShowBanner(false)} aria-label="Dismiss banner">
             <CloseIcon size={16} color="#fff" />
           </button>
           <div className={styles.bannerIcon}>
@@ -505,7 +509,7 @@ function CallLogContent() {
             <div className={styles.callLogRight}>
               <div className={styles.callLogRightHeader}>
                 <span className={styles.callLogRightTitle}>Goal Summary</span>
-                <button className={styles.callLogRightClose} onClick={() => setSelectedCall(null)}>
+                <button className={styles.callLogRightClose} onClick={() => setSelectedCall(null)} aria-label="Close call details">
                   <CloseIcon size={16} />
                 </button>
               </div>

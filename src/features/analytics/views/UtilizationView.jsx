@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { KpiCard, InsightBanner, Card, ProgressBar, safeBarItems, safeTableRows, EmptyState, KpiSkeleton, TableSkeleton } from './shared';
+import { KpiCard, InsightBanner, Card, ProgressBar, EmptyState, KpiSkeleton, TableSkeleton } from './shared';
+import { safeBarItems, safeTableRows } from './shared.utils';
 import { ReadmitTrendLineChart } from './charts';
 import { EditableGrid } from './EditableGrid';
 import s from '../AnalyticsLayout.module.css';
@@ -17,6 +18,36 @@ const DEFAULT_LAYOUT = [
   { i: 'drg',        x: 0, y: 17, w: 12, h: 8, minW: 6, minH: 5, maxW: 12, maxH: 20 },
   { i: 'deepDive',   x: 0, y: 25, w: 12, h: 8, minW: 6, minH: 5, maxW: 12, maxH: 16 },
 ];
+
+const TCM_FALLBACK_BARS = [
+  { label: 'Readmit w/ TCM Follow-Up', value: '11%', pct: 22, color: 'green', sub: '62% below threshold ✓' },
+  { label: 'Readmit w/o TCM Follow-Up', value: '31%', pct: 74, color: 'red', sub: '2.8x higher — urgent gap' },
+  { label: 'TCM Completion Rate', value: '72%', pct: 72, color: 'teal', sub: 'Target 80% — 8pp gap' },
+  { label: 'TCM Within 7 Days', value: '58%', pct: 58, color: 'amber', sub: 'Target 70%' },
+];
+
+const READMIT_TREND = [14.2, 14.8, 15.1, 15.8, 14.9, 15.3, 15.8, 16.2, 16.8, 17.1, 17.8, 18.4];
+
+function renderUtilizationDeepDive() {
+  return (
+    <Card title="Manager Deep Dive &mdash; Readmission Drivers">
+      <div className={s.g2}>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--neutral-200)', marginBottom: 8 }}>By DRG</div>
+          <ProgressBar label="DRG 291 — Heart Failure" value="8 readmits" pct={80} color="red" sub="18.7% readmit rate" />
+          <ProgressBar label="DRG 193 — COPD" value="5 readmits" pct={50} color="amber" sub="17.9%" />
+          <ProgressBar label="DRG 690 — UTI w/ MCC" value="4 readmits" pct={40} color="amber" sub="16.7%" />
+        </div>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--neutral-200)', marginBottom: 8 }}>By Avg LOS Before Readmit</div>
+          <ProgressBar label="0–7 days post-discharge" value="42%" pct={84} color="red" sub="Very early — TCM critical" />
+          <ProgressBar label="8–14 days" value="31%" pct={62} color="amber" sub="TCM + SNF coordination" />
+          <ProgressBar label="15–30 days" value="27%" pct={54} color="green" sub="Late readmit — SNF quality" />
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 export function UtilizationView({ showToast, editing = false, resetTick = 0 }) {
   const fetchViewKpis = useAppStore(st => st.fetchViewKpis);
@@ -39,14 +70,9 @@ export function UtilizationView({ showToast, editing = false, resetTick = 0 }) {
   const drgRows = safeTableRows(readmissionByDrg);
   const tcmItems = safeBarItems(tcmImpact);
 
-  const tcmFallback = tcmItems.length > 0 ? tcmItems : [
-    { label: 'Readmit w/ TCM Follow-Up', value: '11%', pct: 22, color: 'green', sub: '62% below threshold ✓' },
-    { label: 'Readmit w/o TCM Follow-Up', value: '31%', pct: 74, color: 'red', sub: '2.8x higher — urgent gap' },
-    { label: 'TCM Completion Rate', value: '72%', pct: 72, color: 'teal', sub: 'Target 80% — 8pp gap' },
-    { label: 'TCM Within 7 Days', value: '58%', pct: 58, color: 'amber', sub: 'Target 70%' },
-  ];
+  const tcmFallback = tcmItems.length > 0 ? tcmItems : TCM_FALLBACK_BARS;
 
-  const readmitTrend = [14.2, 14.8, 15.1, 15.8, 14.9, 15.3, 15.8, 16.2, 16.8, 17.1, 17.8, 18.4];
+  const readmitTrend = READMIT_TREND;
   const periodLabel = period === 'ytd' ? 'YTD' : 'Rolling 12M';
 
   const renderAdtAlert = () => (
@@ -144,24 +170,7 @@ export function UtilizationView({ showToast, editing = false, resetTick = 0 }) {
     </Card>
   );
 
-  const renderDeepDive = () => (
-    <Card title="Manager Deep Dive &mdash; Readmission Drivers">
-      <div className={s.g2}>
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--neutral-200)', marginBottom: 8 }}>By DRG</div>
-          <ProgressBar label="DRG 291 — Heart Failure" value="8 readmits" pct={80} color="red" sub="18.7% readmit rate" />
-          <ProgressBar label="DRG 193 — COPD" value="5 readmits" pct={50} color="amber" sub="17.9%" />
-          <ProgressBar label="DRG 690 — UTI w/ MCC" value="4 readmits" pct={40} color="amber" sub="16.7%" />
-        </div>
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--neutral-200)', marginBottom: 8 }}>By Avg LOS Before Readmit</div>
-          <ProgressBar label="0–7 days post-discharge" value="42%" pct={84} color="red" sub="Very early — TCM critical" />
-          <ProgressBar label="8–14 days" value="31%" pct={62} color="amber" sub="TCM + SNF coordination" />
-          <ProgressBar label="15–30 days" value="27%" pct={54} color="green" sub="Late readmit — SNF quality" />
-        </div>
-      </div>
-    </Card>
-  );
+  const renderDeepDive = renderUtilizationDeepDive;
 
   const RENDERERS = {
     adtAlert: renderAdtAlert,

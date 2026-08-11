@@ -2,16 +2,10 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import GridLayout from 'react-grid-layout/legacy';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
+import { GRID_COLS, GRID_ROW_HEIGHT, GRID_MARGIN } from './EditableGrid.constants';
 import s from '../AnalyticsLayout.module.css';
 
 // Shared grid geometry for every editable analytics dashboard.
-// ROW_HEIGHT is intentionally tiny so (a) auto-fit can snap a cell to its
-// content within a few px, and (b) manual resize steps are granular
-// (step = ROW_HEIGHT + vertical margin). With these values the vertical
-// resize increment is ~6px instead of the ~52px you get at ROW_HEIGHT 40.
-export const GRID_COLS = 12;
-export const GRID_ROW_HEIGHT = 2;
-export const GRID_MARGIN = [12, 4];
 
 // Persisted shape is { layout, manual }. `manual` holds the keys of items
 // the user has explicitly resized — those opt out of auto-fit so their
@@ -57,11 +51,10 @@ function rowsForContent(contentPx) {
  * fitting (Reset clears all pins).
  */
 export function EditableGrid({ storageKey, defaultLayout, renderers, editing = false, resetTick = 0 }) {
-  const initial = useRef(null);
-  if (initial.current === null) initial.current = loadState(storageKey, defaultLayout);
+  const [initial] = useState(() => loadState(storageKey, defaultLayout));
 
-  const [layout, setLayout] = useState(initial.current.layout);
-  const [manual, setManual] = useState(initial.current.manual);
+  const [layout, setLayout] = useState(initial.layout);
+  const [manual, setManual] = useState(initial.manual);
 
   const containerRef = useRef(null);
   const [width, setWidth] = useState(1200);
@@ -70,8 +63,10 @@ export function EditableGrid({ storageKey, defaultLayout, renderers, editing = f
   // Latest values for the ResizeObserver callback, which closes over them.
   const layoutRef = useRef(layout);
   const manualRef = useRef(manual);
-  layoutRef.current = layout;
-  manualRef.current = manual;
+  useEffect(() => {
+    layoutRef.current = layout;
+    manualRef.current = manual;
+  });
 
   // Track container width so GridLayout can compute column widths.
   useEffect(() => {
@@ -102,8 +97,9 @@ export function EditableGrid({ storageKey, defaultLayout, renderers, editing = f
   // rather than the cell avoids a feedback loop.
   const measureAndFit = useCallback(() => {
     let changed = false;
+    const manual = new Set(manualRef.current);
     const next = layoutRef.current.map(l => {
-      if (manualRef.current.includes(l.i)) return l;
+      if (manual.has(l.i)) return l;
       const el = itemEls.current[l.i];
       if (!el) return l;
       const contentPx = el.offsetHeight;

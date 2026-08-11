@@ -32,6 +32,12 @@ const VOICE_COLORS = { Erica: '#E74C8B', Ricardo: '#7C5CFC', Jia: '#F59E0B' };
 const POPOVER_W = 280;
 const POPOVER_H = 200;
 
+const AGENT_FILTER_DEFS = [
+  { key: 'status',   label: 'Status',   primary: true },
+  { key: 'model',    label: 'Model',    primary: true },
+  { key: 'use_case', label: 'Use Case', primary: true },
+];
+
 function VoiceBadge({ voice }) {
   const badgeRef = useRef(null);
   const openTimer = useRef(null);
@@ -271,7 +277,7 @@ function AgentRow({ agent, isFirst }) {
       >
         <ActionButton size="L" tooltip="Call Queue" onClick={() => setShowCallQueue(true)} {...(isFirst ? { 'data-tour': 'call-queue-btn' } : {})}>
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M14.1333 4.18663V5.86663L15.1833 6.91663M11.7506 13.2226L12.1301 12.823C12.6548 12.2706 13.4727 12.1571 14.144 12.5435L15.7361 13.4599C16.7585 14.0484 16.9838 15.4907 16.1847 16.332L15.0009 17.5783C14.6999 17.8952 14.3264 18.1268 13.8969 18.1692C12.539 18.3032 9.21841 18.1551 5.67943 14.4292C2.34222 10.9158 1.74416 7.90447 1.66903 6.50487C1.63967 5.9578 1.88182 5.46464 2.24317 5.08421L3.55117 3.70713C4.27993 2.93988 5.50853 3.05868 6.14434 3.95794L7.19516 5.44418C7.70886 6.17073 7.65335 7.16596 7.06456 7.78586L6.82555 8.03749C6.82555 8.03749 5.92339 8.98729 8.3859 11.5798C10.8484 14.1724 11.7506 13.2226 11.7506 13.2226ZM18.3333 5.86663C18.3333 8.18622 16.4529 10.0666 14.1333 10.0666C11.8137 10.0666 9.93329 8.18622 9.93329 5.86663C9.93329 3.54703 11.8137 1.66663 14.1333 1.66663C16.4529 1.66663 18.3333 3.54703 18.3333 5.86663Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M14.13 4.19V5.87L15.18 6.92M11.75 13.22L12.13 12.823C12.65 12.27 13.47 12.16 14.144 12.54L15.74 13.46C16.76 14.05 16.98 15.49 16.18 16.332L15 17.58C14.7 17.9 14.33 18.13 13.9 18.17C12.539 18.3 9.22 18.16 5.68 14.43C2.34 10.92 1.74 7.9 1.67 6.5C1.64 5.96 1.88 5.46 2.24 5.08L3.55 3.71C4.28 2.94 5.51 3.06 6.14 3.96L7.2 5.44C7.71 6.17 7.65 7.17 7.06 7.79L6.83 8.04C6.83 8.04 5.92 8.99 8.39 11.58C10.85 14.17 11.75 13.22 11.75 13.22ZM18.33 5.87C18.33 8.19 16.45 10.07 14.13 10.07C11.81 10.07 9.93 8.19 9.93 5.87C9.93 3.55 11.81 1.67 14.13 1.67C16.45 1.67 18.33 3.55 18.33 5.87Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </ActionButton>
         <span className={rowStyles.actionDivider} />
@@ -300,10 +306,13 @@ function AgentRow({ agent, isFirst }) {
             onCancel={() => setShowDeleteConfirm(false)}
             onConfirm={async () => {
               setDeleting(true);
-              await supabase.from('agents').delete().eq('id', agent.id);
-              await fetchAgents();
-              showToast(`"${agent.name}" deleted`);
-              setDeleting(false);
+              try {
+                await supabase.from('agents').delete().eq('id', agent.id);
+                await fetchAgents();
+                showToast(`"${agent.name}" deleted`);
+              } finally {
+                setDeleting(false);
+              }
               setShowDeleteConfirm(false);
             }}
           />
@@ -387,10 +396,17 @@ export function AgentsTable() {
   const filteredAgents = useMemo(() => {
     let list = agents;
     if (agentFilters.status.length) {
-      list = list.filter(a => agentFilters.status.includes(a.enabled ? 'Enabled' : 'Disabled'));
+      const statusSet = new Set(agentFilters.status);
+      list = list.filter(a => statusSet.has(a.enabled ? 'Enabled' : 'Disabled'));
     }
-    if (agentFilters.model.length)    list = list.filter(a => agentFilters.model.includes(a.model || 'ChatGPT 4.5 Mini'));
-    if (agentFilters.use_case.length) list = list.filter(a => agentFilters.use_case.includes(a.use_case));
+    if (agentFilters.model.length) {
+      const modelSet = new Set(agentFilters.model);
+      list = list.filter(a => modelSet.has(a.model || 'ChatGPT 4.5 Mini'));
+    }
+    if (agentFilters.use_case.length) {
+      const useCaseSet = new Set(agentFilters.use_case);
+      list = list.filter(a => useCaseSet.has(a.use_case));
+    }
     if (!searchVal.trim()) return list;
     const q = searchVal.toLowerCase().trim();
     return list.filter(a =>
@@ -417,12 +433,6 @@ export function AgentsTable() {
     };
   }, [agents]);
 
-  const AGENT_FILTER_DEFS = [
-    { key: 'status',   label: 'Status',   primary: true },
-    { key: 'model',    label: 'Model',    primary: true },
-    { key: 'use_case', label: 'Use Case', primary: true },
-  ];
-
   const { sorted: sortedAgents, sortKey, sortDir, requestSort } = useTableSort(filteredAgents, 'last_updated', 'desc');
   const startIdx = (currentPage - 1) * perPage;
   const paginatedAgents = sortedAgents.slice(startIdx, startIdx + perPage);
@@ -433,11 +443,13 @@ export function AgentsTable() {
         tabs={tabsForBar}
         activeTab={tabKey}
         onTabChange={setSettingsTab}
-        showSearch
+        actions={[
+          'search',
+          ...(settingsTab === 'goals' || settingsTab === 'agents' ? ['filter'] : []),
+        ]}
         searchPlaceholder={searchPlaceholder}
         searchValue={searchVal}
         onSearchChange={setSearchVal}
-        showFilter={settingsTab === 'goals' || settingsTab === 'agents'}
         filterActive={settingsTab === 'agents' ? agentsFilterOpen : goalsFilterOpen}
         filterBadgeCount={settingsTab === 'agents' ? agentFiltersActive : 0}
         onFilter={() => {

@@ -87,13 +87,24 @@ export function HedisWorklistTable() {
   // members actually carry — same pattern HCC's FilterChipBar uses.
   const platformUsers = useAppStore(s => s.platformUsers);
   const dynamicOpts = useMemo(() => {
-    const distinct = (fn) => [...new Set((hedisMembers || []).map(fn).filter(Boolean))].sort();
+    const state = new Set();
+    const city = new Set();
+    const ipa = new Set();
+    const hpCode = new Set();
+    const assignee = new Set();
+    for (const m of (hedisMembers || [])) {
+      if (m.state) state.add(m.state);
+      if (m.city) city.add(m.city);
+      if (m.ipa) ipa.add(m.ipa);
+      if (m.hpCode) hpCode.add(m.hpCode);
+      if (m.assignee) assignee.add(m.assignee);
+    }
     return {
-      assignee: platformUsers?.length ? platformUsers.map(u => u.name) : distinct(m => m.assignee),
-      state:    distinct(m => m.state),
-      city:     distinct(m => m.city),
-      ipa:      distinct(m => m.ipa),
-      hpCode:   distinct(m => m.hpCode),
+      assignee: platformUsers?.length ? platformUsers.map(u => u.name) : [...assignee].toSorted(),
+      state:    [...state].toSorted(),
+      city:     [...city].toSorted(),
+      ipa:      [...ipa].toSorted(),
+      hpCode:   [...hpCode].toSorted(),
     };
   }, [hedisMembers, platformUsers]);
 
@@ -108,7 +119,8 @@ export function HedisWorklistTable() {
   const paginated = sorted.slice(startIdx, startIdx + perPage);
 
   const allIds = paginated.map(m => m.id);
-  const allSelected = allIds.length > 0 && allIds.every(id => selectedIds.includes(id));
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const allSelected = allIds.length > 0 && allIds.every(id => selectedSet.has(id));
   const someSelected = selectedIds.length > 0 && !allSelected;
 
   const toggleSelect = (id) => {
@@ -131,17 +143,14 @@ export function HedisWorklistTable() {
         dropdownOptions={YEARS.map(String)}
         dropdownValue={String(year)}
         onDropdownChange={(v) => setYear(Number(v) || 2026)}
-        showSearch
+        actions={['search', 'filter', 'download', 'history']}
         searchPlaceholder="Search by member name…"
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
-        showFilter
         filterActive={filterBarOpen}
         filterBadgeCount={activeFilterCount}
         onFilter={() => setFilterBarOpen(v => !v)}
-        showDownload
         onDownload={() => showToast('Export — coming soon')}
-        showHistory
         onHistory={() => showToast('History — coming soon')}
         rightExtras={
           <>
@@ -218,7 +227,7 @@ export function HedisWorklistTable() {
                 <HedisWorklistRow
                   key={m.id}
                   member={m}
-                  isSelected={selectedIds.includes(m.id)}
+                  isSelected={selectedSet.has(m.id)}
                   onSelect={toggleSelect}
                   onOpenGap={openGapDrawer}
                 />

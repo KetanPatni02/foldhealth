@@ -1,0 +1,35 @@
+/* Sidebar toggle stays pinned left; tabs fill the remaining height. */
+.tabBar {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 0.5px solid var(--neutral-150);
+  padding: 0 4px 0 8px;
+  flex-shrink: 0;
+  gap: 0;
+  height: 40px;
+  background: var(--neutral-0);
+}
+
+.divider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+  margin: 0 4px;
+  align-self: center;
+}
+
+.sidebarToggle {
+  align-self: center;
+}
+
+/* Mirror the sidebar icon when the left panel is collapsed (points to expand). */
+.sidebarFlipped svg { transform: scaleX(-1); }
+
+.tabsArea {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}

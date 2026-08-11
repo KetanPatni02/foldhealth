@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { useAppStore } from '../../../store/useAppStore';
-import { KpiCard, InsightBanner, Card, ProgressBar, StatusPill, safeBarItems, safeTableRows, EmptyState, KpiSkeleton, TableSkeleton, ProgressBarSkeleton } from './shared';
+import { KpiCard, InsightBanner, Card, ProgressBar, StatusPill, EmptyState, KpiSkeleton, TableSkeleton, ProgressBarSkeleton } from './shared';
+import { safeBarItems, safeTableRows } from './shared.utils';
 import { EditableGrid } from './EditableGrid';
 import s from '../AnalyticsLayout.module.css';
 
@@ -236,12 +237,8 @@ const READMISSIONS_DEFAULT_LAYOUT = [
   { i: 'topFacilities', x: 6, y: 10, w: 6,  h: 8, minW: 4, minH: 5, maxW: 12, maxH: 20 },
 ];
 
-function ReadmissionsTab({ bars, topDrgs, topFacilities, showToast, editing = false, resetTick = 0 }) {
-  const items = safeBarItems(bars);
-  const drgRows = safeTableRows(topDrgs);
-  const facRows = safeTableRows(topFacilities);
-
-  const renderKpis = () => (
+function renderReadmissionsKpis() {
+  return (
     <div className={s.kpiGrid} style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
       <KpiCard value="18.4%" label="30-Day Readmit Rate" delta="+2.8pp vs Q3" deltaType="neg" sub="Benchmark: 15.2%" accentColor="var(--status-error)" />
       <KpiCard value="42" label="Avoidable Readmits" delta="This period" deltaType="neg" sub="62% of all readmits" accentColor="var(--status-warning)" />
@@ -249,6 +246,14 @@ function ReadmissionsTab({ bars, topDrgs, topFacilities, showToast, editing = fa
       <KpiCard value="72%" label="7-Day Follow-up Rate" delta="+4pp QoQ" deltaType="pos" sub="Target: 85%" accentColor="var(--primary-300)" />
     </div>
   );
+}
+
+function ReadmissionsTab({ bars, topDrgs, topFacilities, showToast, editing = false, resetTick = 0 }) {
+  const items = safeBarItems(bars);
+  const drgRows = safeTableRows(topDrgs);
+  const facRows = safeTableRows(topFacilities);
+
+  const renderKpis = renderReadmissionsKpis;
 
   const renderAnalysis = () => (
     <Card title="30-Day Readmission Analysis">

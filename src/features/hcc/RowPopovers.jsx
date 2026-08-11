@@ -7,6 +7,8 @@ import { getChartDocs } from './data/chartDocs';
 import { getOpenIcdsForMember } from './data/icds';
 import styles from './RowPopovers.module.css';
 
+const hccShort = (h) => h?.split(' - ')[0]?.trim() || h;
+
 // ── Generic hover-popup helpers ───────────────────────────────────────────
 //
 // Hover-driven popovers need a "bridge" between the trigger and the popover
@@ -365,8 +367,6 @@ export function OpenIcdsHoverPopover({
   const W = 296;
   const left = Math.min(anchorRect.left, window.innerWidth - W - 8);
   const top = anchorRect.bottom + 8;
-
-  const hccShort = (h) => h?.split(' - ')[0]?.trim() || h;
 
   return createPortal(
     <>

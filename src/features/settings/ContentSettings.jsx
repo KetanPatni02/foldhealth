@@ -3,8 +3,9 @@ import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { Badge } from '../../components/Badge/Badge';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { Button } from '../../components/Button/Button';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
-import { Pagination } from '../../components/Pagination/Pagination';
+import { WorklistShell } from '../../components/WorklistShell/WorklistShell';
 import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { CloseIcon } from '../../components/Icon/CloseIcon';
@@ -20,7 +21,7 @@ import styles from './ContentSettings.module.css';
 function BulkSelectIcon({ size = 20 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path d="M5.33333 19.2672C5.60948 19.2672 5.83333 19.0434 5.83333 18.7672C5.83333 18.4911 5.60948 18.2672 5.33333 18.2672V18.7672V19.2672ZM18.1667 5.23276C18.1667 5.5089 18.3905 5.73276 18.6667 5.73276C18.9428 5.73276 19.1667 5.5089 19.1667 5.23276H18.6667H18.1667ZM10.6378 12.9816C10.4528 12.7766 10.1367 12.7604 9.93166 12.9454C9.72667 13.1305 9.71047 13.4466 9.89549 13.6516L10.2667 13.3166L10.6378 12.9816ZM12.0199 15.2592L12.3911 14.9242V14.9242L12.0199 15.2592ZM13.6525 15.3008L14.0056 15.6548V15.6548L13.6525 15.3008ZM18.3531 11.3196C18.5486 11.1246 18.549 10.808 18.3541 10.6125C18.1591 10.4169 17.8425 10.4165 17.6469 10.6115L18 10.9655L18.3531 11.3196ZM12 5.23276V5.73276H15.3333V5.23276V4.73276H12V5.23276ZM22 11.6983H21.5V15.5345H22H22.5V11.6983H22ZM15.3333 22V21.5H12V22V22.5H15.3333V22ZM5.33333 15.5345H5.83333V11.6983H5.33333H4.83333V15.5345H5.33333ZM12 22V21.5C10.4149 21.5 9.27493 21.499 8.40708 21.3858C7.55207 21.2744 7.03698 21.062 6.65774 20.6942L6.30964 21.0531L5.96155 21.4121C6.55862 21.9911 7.31736 22.2522 8.27778 22.3774C9.22535 22.501 10.4424 22.5 12 22.5V22ZM5.33333 15.5345H4.83333C4.83333 17.0439 4.83221 18.2277 4.96011 19.1504C5.09023 20.089 5.36234 20.8309 5.96155 21.4121L6.30964 21.0531L6.65774 20.6942C6.28064 20.3285 6.06459 19.8351 5.95064 19.013C5.83446 18.175 5.83333 17.073 5.83333 15.5345H5.33333ZM22 15.5345H21.5C21.5 17.073 21.4989 18.175 21.3827 19.013C21.2687 19.8351 21.0527 20.3285 20.6756 20.6942L21.0237 21.0531L21.3718 21.4121C21.971 20.8309 22.2431 20.089 22.3732 19.1504C22.5011 18.2277 22.5 17.0439 22.5 15.5345H22ZM15.3333 22V22.5C16.891 22.5 18.108 22.501 19.0556 22.3774C20.016 22.2522 20.7747 21.9911 21.3718 21.4121L21.0237 21.0531L20.6756 20.6942C20.2964 21.062 19.7813 21.2744 18.9263 21.3858C18.0584 21.499 16.9184 21.5 15.3333 21.5V22ZM15.3333 5.23276V5.73276C16.9184 5.73276 18.0584 5.73376 18.9263 5.84692C19.7813 5.9584 20.2964 6.17074 20.6756 6.53854L21.0237 6.17961L21.3718 5.82068C20.7747 5.24163 20.016 4.98054 19.0556 4.85531C18.108 4.73176 16.891 4.73276 15.3333 4.73276V5.23276ZM22 11.6983H22.5C22.5 10.1889 22.5011 9.00503 22.3732 8.0824C22.2431 7.14378 21.971 6.40182 21.3718 5.82068L21.0237 6.17961L20.6756 6.53854C21.0527 6.90426 21.2687 7.39769 21.3827 8.21972C21.4989 9.05774 21.5 10.1598 21.5 11.6983H22ZM12 5.23276V4.73276C10.4424 4.73276 9.22535 4.73176 8.27778 4.85531C7.31736 4.98054 6.55862 5.24163 5.96155 5.82068L6.30964 6.17961L6.65774 6.53854C7.03698 6.17074 7.55207 5.9584 8.40708 5.84692C9.27493 5.73376 10.4149 5.73276 12 5.73276V5.23276ZM5.33333 11.6983H5.83333C5.83333 10.1598 5.83446 9.05774 5.95064 8.21972C6.06459 7.39769 6.28064 6.90426 6.65774 6.53854L6.30964 6.17961L5.96155 5.82068C5.36234 6.40182 5.09023 7.14378 4.96011 8.0824C4.83221 9.00503 4.83333 10.1889 4.83333 11.6983H5.33333ZM10.8889 2V2.5H15.3333V2V1.5H10.8889V2ZM2 15.5345H2.5V10.6207H2H1.5V15.5345H2ZM2 15.5345H1.5C1.5 17.6104 3.23079 19.2672 5.33333 19.2672V18.7672V18.2672C3.75398 18.2672 2.5 17.0294 2.5 15.5345H2ZM15.3333 2V2.5C16.9127 2.5 18.1667 3.73783 18.1667 5.23276H18.6667H19.1667C19.1667 3.15688 17.4359 1.5 15.3333 1.5V2ZM10.8889 2V1.5C8.80748 1.5 7.19762 1.499 5.94748 1.66201C4.68449 1.82669 3.71344 2.16668 2.95365 2.90354L3.30175 3.26247L3.64984 3.6214C4.1918 3.09579 4.9192 2.80455 6.07677 2.65361C7.2472 2.501 8.78004 2.5 10.8889 2.5V2ZM2 10.6207H2.5C2.5 8.57421 2.50113 7.09119 2.65798 5.95973C2.81262 4.84425 3.11003 4.14493 3.64984 3.6214L3.30175 3.26247L2.95365 2.90354C2.19172 3.64248 1.83825 4.59035 1.66745 5.82241C1.49887 7.03848 1.5 8.60333 1.5 10.6207H2ZM10.2667 13.3166L9.89549 13.6516L11.6488 15.5942L12.0199 15.2592L12.3911 14.9242L10.6378 12.9816L10.2667 13.3166ZM13.6525 15.3008L14.0056 15.6548L18.3531 11.3196L18 10.9655L17.6469 10.6115L13.2995 14.9467L13.6525 15.3008ZM12.0199 15.2592L11.6488 15.5942C12.2682 16.2805 13.3514 16.3072 14.0056 15.6548L13.6525 15.3008L13.2995 14.9467C13.049 15.1965 12.6263 15.1848 12.3911 14.9242L12.0199 15.2592Z" fill="currentColor"/>
+      <path d="M5.33 19.27C5.61 19.27 5.83 19.04 5.83 18.77C5.83 18.49 5.61 18.27 5.33 18.27V18.77V19.27ZM18.17 5.23C18.17 5.51 18.39 5.73 18.67 5.73C18.94 5.73 19.17 5.51 19.17 5.23H18.67H18.17ZM10.64 12.98C10.45 12.78 10.14 12.76 9.93 12.95C9.73 13.13 9.71 13.45 9.9 13.65L10.27 13.32L10.64 12.98ZM12.02 15.26L12.39 14.92V14.92L12.02 15.26ZM13.65 15.3L14.01 15.65V15.65L13.65 15.3ZM18.35 11.32C18.55 11.12 18.549 10.808 18.35 10.61C18.16 10.42 17.84 10.42 17.65 10.61L18 10.97L18.35 11.32ZM12 5.23V5.73H15.33V5.23V4.73H12V5.23ZM22 11.7H21.5V15.53H22H22.5V11.7H22ZM15.33 22V21.5H12V22V22.5H15.33V22ZM5.33 15.53H5.83V11.7H5.33H4.83V15.53H5.33ZM12 22V21.5C10.41 21.5 9.27 21.499 8.41 21.39C7.55 21.27 7.04 21.062 6.66 20.69L6.31 21.05L5.96 21.41C6.56 21.99 7.32 22.25 8.28 22.38C9.23 22.501 10.44 22.5 12 22.5V22ZM5.33 15.53H4.83C4.83 17.04 4.83 18.23 4.96 19.15C5.09 20.089 5.36 20.83 5.96 21.41L6.31 21.05L6.66 20.69C6.28 20.33 6.06 19.84 5.95 19.013C5.83 18.175 5.83 17.073 5.83 15.53H5.33ZM22 15.53H21.5C21.5 17.073 21.5 18.175 21.38 19.013C21.27 19.84 21.05 20.33 20.68 20.69L21.02 21.05L21.37 21.41C21.971 20.83 22.24 20.089 22.37 19.15C22.5 18.23 22.5 17.04 22.5 15.53H22ZM15.33 22V22.5C16.891 22.5 18.108 22.501 19.06 22.38C20.016 22.25 20.77 21.99 21.37 21.41L21.02 21.05L20.68 20.69C20.3 21.062 19.78 21.27 18.93 21.39C18.06 21.499 16.92 21.5 15.33 21.5V22ZM15.33 5.23V5.73C16.92 5.73 18.06 5.73 18.93 5.85C19.78 5.96 20.3 6.17 20.68 6.54L21.02 6.18L21.37 5.82C20.77 5.24 20.016 4.98 19.06 4.86C18.108 4.73 16.891 4.73 15.33 4.73V5.23ZM22 11.7H22.5C22.5 10.19 22.5 9.01 22.37 8.08C22.24 7.14 21.971 6.4 21.37 5.82L21.02 6.18L20.68 6.54C21.05 6.9 21.27 7.4 21.38 8.22C21.5 9.06 21.5 10.16 21.5 11.7H22ZM12 5.23V4.73C10.44 4.73 9.23 4.73 8.28 4.86C7.32 4.98 6.56 5.24 5.96 5.82L6.31 6.18L6.66 6.54C7.04 6.17 7.55 5.96 8.41 5.85C9.27 5.73 10.41 5.73 12 5.73V5.23ZM5.33 11.7H5.83C5.83 10.16 5.83 9.06 5.95 8.22C6.06 7.4 6.28 6.9 6.66 6.54L6.31 6.18L5.96 5.82C5.36 6.4 5.09 7.14 4.96 8.08C4.83 9.01 4.83 10.19 4.83 11.7H5.33ZM10.89 2V2.5H15.33V2V1.5H10.89V2ZM2 15.53H2.5V10.62H2H1.5V15.53H2ZM2 15.53H1.5C1.5 17.61 3.23 19.27 5.33 19.27V18.77V18.27C3.75 18.27 2.5 17.03 2.5 15.53H2ZM15.33 2V2.5C16.91 2.5 18.17 3.74 18.17 5.23H18.67H19.17C19.17 3.16 17.44 1.5 15.33 1.5V2ZM10.89 2V1.5C8.81 1.5 7.2 1.499 5.95 1.66C4.68 1.83 3.71 2.17 2.95 2.9L3.3 3.26L3.65 3.62C4.19 3.1 4.92 2.8 6.08 2.65C7.25 2.501 8.78 2.5 10.89 2.5V2ZM2 10.62H2.5C2.5 8.57 2.5 7.09 2.66 5.96C2.81 4.84 3.11 4.14 3.65 3.62L3.3 3.26L2.95 2.9C2.19 3.64 1.84 4.59 1.67 5.82C1.5 7.04 1.5 8.6 1.5 10.62H2ZM10.27 13.32L9.9 13.65L11.65 15.59L12.02 15.26L12.39 14.92L10.64 12.98L10.27 13.32ZM13.65 15.3L14.01 15.65L18.35 11.32L18 10.97L17.65 10.61L13.3 14.95L13.65 15.3ZM12.02 15.26L11.65 15.59C12.27 16.28 13.35 16.31 14.01 15.65L13.65 15.3L13.3 14.95C13.049 15.2 12.63 15.18 12.39 14.92L12.02 15.26Z" fill="currentColor"/>
     </svg>
   );
 }
@@ -28,7 +29,7 @@ function BulkSelectIcon({ size = 20 }) {
 function BulkSelectCloseIcon({ size = 20 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path d="M5.33333 19.2672C5.60948 19.2672 5.83333 19.0434 5.83333 18.7672C5.83333 18.4911 5.60948 18.2672 5.33333 18.2672V18.7672V19.2672ZM18.1667 5.23276C18.1667 5.5089 18.3905 5.73276 18.6667 5.73276C18.9428 5.73276 19.1667 5.5089 19.1667 5.23276H18.6667H18.1667ZM16.9215 17.1678C17.1197 17.3601 17.4363 17.3552 17.6285 17.157C17.8208 16.9588 17.8159 16.6422 17.6177 16.45L17.2696 16.8089L16.9215 17.1678ZM11.237 10.2618C11.0388 10.0695 10.7222 10.0744 10.53 10.2726C10.3377 10.4709 10.3426 10.7874 10.5408 10.9796L10.8889 10.6207L11.237 10.2618ZM17.6177 10.9796C17.8159 10.7874 17.8208 10.4708 17.6285 10.2726C17.4363 10.0744 17.1197 10.0695 16.9215 10.2618L17.2696 10.6207L17.6177 10.9796ZM10.5408 16.4499C10.3426 16.6422 10.3377 16.9587 10.53 17.157C10.7222 17.3552 11.0388 17.36 11.237 17.1678L10.8889 16.8089L10.5408 16.4499ZM12 5.23276V5.73276H15.3333V5.23276V4.73276H12V5.23276ZM22 11.6983H21.5V15.5345H22H22.5V11.6983H22ZM15.3333 22V21.5H12V22V22.5H15.3333V22ZM5.33333 15.5345H5.83333V11.6983H5.33333H4.83333V15.5345H5.33333ZM12 22V21.5C10.4149 21.5 9.27493 21.499 8.40708 21.3858C7.55207 21.2744 7.03698 21.062 6.65774 20.6942L6.30964 21.0531L5.96155 21.4121C6.55862 21.9911 7.31736 22.2522 8.27778 22.3774C9.22535 22.501 10.4424 22.5 12 22.5V22ZM5.33333 15.5345H4.83333C4.83333 17.0439 4.83221 18.2277 4.96011 19.1504C5.09023 20.089 5.36234 20.8309 5.96155 21.4121L6.30964 21.0531L6.65774 20.6942C6.28064 20.3285 6.06459 19.8351 5.95064 19.013C5.83446 18.175 5.83333 17.073 5.83333 15.5345H5.33333ZM22 15.5345H21.5C21.5 17.073 21.4989 18.175 21.3827 19.013C21.2687 19.8351 21.0527 20.3285 20.6756 20.6942L21.0237 21.0531L21.3718 21.4121C21.971 20.8309 22.2431 20.089 22.3732 19.1504C22.5011 18.2277 22.5 17.0439 22.5 15.5345H22ZM15.3333 22V22.5C16.891 22.5 18.108 22.501 19.0556 22.3774C20.016 22.2522 20.7747 21.9911 21.3718 21.4121L21.0237 21.0531L20.6756 20.6942C20.2964 21.062 19.7813 21.2744 18.9263 21.3858C18.0584 21.499 16.9184 21.5 15.3333 21.5V22ZM15.3333 5.23276V5.73276C16.9184 5.73276 18.0584 5.73376 18.9263 5.84692C19.7813 5.9584 20.2964 6.17074 20.6756 6.53854L21.0237 6.17961L21.3718 5.82068C20.7747 5.24163 20.016 4.98054 19.0556 4.85531C18.108 4.73176 16.891 4.73276 15.3333 4.73276V5.23276ZM22 11.6983H22.5C22.5 10.1889 22.5011 9.00503 22.3732 8.0824C22.2431 7.14378 21.971 6.40182 21.3718 5.82068L21.0237 6.17961L20.6756 6.53854C21.0527 6.90426 21.2687 7.39769 21.3827 8.21972C21.4989 9.05774 21.5 10.1598 21.5 11.6983H22ZM12 5.23276V4.73276C10.4424 4.73276 9.22535 4.73176 8.27778 4.85531C7.31736 4.98054 6.55862 5.24163 5.96155 5.82068L6.30964 6.17961L6.65774 6.53854C7.03698 6.17074 7.55207 5.9584 8.40708 5.84692C9.27493 5.73376 10.4149 5.73276 12 5.73276V5.23276ZM5.33333 11.6983H5.83333C5.83333 10.1598 5.83446 9.05774 5.95064 8.21972C6.06459 7.39769 6.28064 6.90426 6.65774 6.53854L6.30964 6.17961L5.96155 5.82068C5.36234 6.40182 5.09023 7.14378 4.96011 8.0824C4.83221 9.00503 4.83333 10.1889 4.83333 11.6983H5.33333ZM10.8889 2V2.5H15.3333V2V1.5H10.8889V2ZM2 15.5345H2.5V10.6207H2H1.5V15.5345H2ZM2 15.5345H1.5C1.5 17.6104 3.23079 19.2672 5.33333 19.2672V18.7672V18.2672C3.75398 18.2672 2.5 17.0294 2.5 15.5345H2ZM15.3333 2V2.5C16.9127 2.5 18.1667 3.73783 18.1667 5.23276H18.6667H19.1667C19.1667 3.15688 17.4359 1.5 15.3333 1.5V2ZM10.8889 2V1.5C8.80748 1.5 7.19762 1.499 5.94748 1.66201C4.68449 1.82669 3.71344 2.16668 2.95365 2.90354L3.30175 3.26247L3.64984 3.6214C4.1918 3.09579 4.9192 2.80455 6.07677 2.65361C7.2472 2.501 8.78004 2.5 10.8889 2.5V2ZM2 10.6207H2.5C2.5 8.57421 2.50113 7.09119 2.65798 5.95973C2.81262 4.84425 3.11003 4.14493 3.64984 3.6214L3.30175 3.26247L2.95365 2.90354C2.19172 3.64248 1.83825 4.59035 1.66745 5.82241C1.49887 7.03848 1.5 8.60333 1.5 10.6207H2ZM17.2696 16.8089L17.6177 16.45L14.4273 13.3559L14.0792 13.7148L13.7311 14.0737L16.9215 17.1678L17.2696 16.8089ZM14.0792 13.7148L14.4273 13.3559L11.237 10.2618L10.8889 10.6207L10.5408 10.9796L13.7311 14.0737L14.0792 13.7148ZM17.2696 10.6207L16.9215 10.2618L13.7311 13.3559L14.0792 13.7148L14.4273 14.0737L17.6177 10.9796L17.2696 10.6207ZM14.0792 13.7148L13.7311 13.3559L10.5408 16.4499L10.8889 16.8089L11.237 17.1678L14.4273 14.0737L14.0792 13.7148Z" fill="currentColor"/>
+      <path d="M5.33 19.27C5.61 19.27 5.83 19.04 5.83 18.77C5.83 18.49 5.61 18.27 5.33 18.27V18.77V19.27ZM18.17 5.23C18.17 5.51 18.39 5.73 18.67 5.73C18.94 5.73 19.17 5.51 19.17 5.23H18.67H18.17ZM16.92 17.17C17.12 17.36 17.44 17.36 17.63 17.157C17.82 16.96 17.82 16.64 17.62 16.45L17.27 16.81L16.92 17.17ZM11.237 10.26C11.04 10.07 10.72 10.07 10.53 10.27C10.34 10.47 10.34 10.79 10.54 10.98L10.89 10.62L11.237 10.26ZM17.62 10.98C17.82 10.79 17.82 10.47 17.63 10.27C17.44 10.07 17.12 10.07 16.92 10.26L17.27 10.62L17.62 10.98ZM10.54 16.45C10.34 16.64 10.34 16.96 10.53 17.157C10.72 17.36 11.04 17.36 11.237 17.17L10.89 16.81L10.54 16.45ZM12 5.23V5.73H15.33V5.23V4.73H12V5.23ZM22 11.7H21.5V15.53H22H22.5V11.7H22ZM15.33 22V21.5H12V22V22.5H15.33V22ZM5.33 15.53H5.83V11.7H5.33H4.83V15.53H5.33ZM12 22V21.5C10.41 21.5 9.27 21.499 8.41 21.39C7.55 21.27 7.04 21.062 6.66 20.69L6.31 21.05L5.96 21.41C6.56 21.99 7.32 22.25 8.28 22.38C9.23 22.501 10.44 22.5 12 22.5V22ZM5.33 15.53H4.83C4.83 17.04 4.83 18.23 4.96 19.15C5.09 20.089 5.36 20.83 5.96 21.41L6.31 21.05L6.66 20.69C6.28 20.33 6.06 19.84 5.95 19.013C5.83 18.175 5.83 17.073 5.83 15.53H5.33ZM22 15.53H21.5C21.5 17.073 21.5 18.175 21.38 19.013C21.27 19.84 21.05 20.33 20.68 20.69L21.02 21.05L21.37 21.41C21.971 20.83 22.24 20.089 22.37 19.15C22.5 18.23 22.5 17.04 22.5 15.53H22ZM15.33 22V22.5C16.891 22.5 18.108 22.501 19.06 22.38C20.016 22.25 20.77 21.99 21.37 21.41L21.02 21.05L20.68 20.69C20.3 21.062 19.78 21.27 18.93 21.39C18.06 21.499 16.92 21.5 15.33 21.5V22ZM15.33 5.23V5.73C16.92 5.73 18.06 5.73 18.93 5.85C19.78 5.96 20.3 6.17 20.68 6.54L21.02 6.18L21.37 5.82C20.77 5.24 20.016 4.98 19.06 4.86C18.108 4.73 16.891 4.73 15.33 4.73V5.23ZM22 11.7H22.5C22.5 10.19 22.5 9.01 22.37 8.08C22.24 7.14 21.971 6.4 21.37 5.82L21.02 6.18L20.68 6.54C21.05 6.9 21.27 7.4 21.38 8.22C21.5 9.06 21.5 10.16 21.5 11.7H22ZM12 5.23V4.73C10.44 4.73 9.23 4.73 8.28 4.86C7.32 4.98 6.56 5.24 5.96 5.82L6.31 6.18L6.66 6.54C7.04 6.17 7.55 5.96 8.41 5.85C9.27 5.73 10.41 5.73 12 5.73V5.23ZM5.33 11.7H5.83C5.83 10.16 5.83 9.06 5.95 8.22C6.06 7.4 6.28 6.9 6.66 6.54L6.31 6.18L5.96 5.82C5.36 6.4 5.09 7.14 4.96 8.08C4.83 9.01 4.83 10.19 4.83 11.7H5.33ZM10.89 2V2.5H15.33V2V1.5H10.89V2ZM2 15.53H2.5V10.62H2H1.5V15.53H2ZM2 15.53H1.5C1.5 17.61 3.23 19.27 5.33 19.27V18.77V18.27C3.75 18.27 2.5 17.03 2.5 15.53H2ZM15.33 2V2.5C16.91 2.5 18.17 3.74 18.17 5.23H18.67H19.17C19.17 3.16 17.44 1.5 15.33 1.5V2ZM10.89 2V1.5C8.81 1.5 7.2 1.499 5.95 1.66C4.68 1.83 3.71 2.17 2.95 2.9L3.3 3.26L3.65 3.62C4.19 3.1 4.92 2.8 6.08 2.65C7.25 2.501 8.78 2.5 10.89 2.5V2ZM2 10.62H2.5C2.5 8.57 2.5 7.09 2.66 5.96C2.81 4.84 3.11 4.14 3.65 3.62L3.3 3.26L2.95 2.9C2.19 3.64 1.84 4.59 1.67 5.82C1.5 7.04 1.5 8.6 1.5 10.62H2ZM17.27 16.81L17.62 16.45L14.43 13.36L14.08 13.71L13.73 14.07L16.92 17.17L17.27 16.81ZM14.08 13.71L14.43 13.36L11.237 10.26L10.89 10.62L10.54 10.98L13.73 14.07L14.08 13.71ZM17.27 10.62L16.92 10.26L13.73 13.36L14.08 13.71L14.43 14.07L17.62 10.98L17.27 10.62ZM14.08 13.71L13.73 13.36L10.54 16.45L10.89 16.81L11.237 17.17L14.43 14.07L14.08 13.71Z" fill="currentColor"/>
     </svg>
   );
 }
@@ -189,8 +190,19 @@ function RowMenu({ onPreview, onDuplicate, onDelete }) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Emails tab
+// Emails tab — column defs for WorklistShell. Sort headers are omitted for
+// now because the store fetches server-side and doesn't yet accept a sort
+// param; the shell falls back to plain `<th>`s when `sortKey` is unset.
 // ────────────────────────────────────────────────────────────────────────────
+const EMAIL_COLUMNS = [
+  { key: 'name',      label: 'Name',            sticky: 'left', left: 0, width: 320 },
+  { key: 'category',  label: 'Category',        width: 160 },
+  { key: 'subject',   label: 'Subject',         width: 280 },
+  { key: 'updated',   label: 'Last Updated',    width: 140 },
+  { key: 'updatedBy', label: 'Last Updated By', width: 180 },
+  { key: 'action',    label: 'Action',          sticky: 'right', width: 120 },
+];
+
 function EmailsTab({
   searchVal,
   statusFilter,
@@ -223,181 +235,141 @@ function EmailsTab({
     fetchContentEmails?.({ page, perPage, search: searchVal, status: statusFilter });
   }, [fetchContentEmails, page, perPage, searchVal, statusFilter]);
 
+  const renderRow = (campaign) => {
+    const isSelected = bulkMode && selectedIds.has(campaign.id);
+    const handleNameClick = () => {
+      if (bulkMode) onToggleId(campaign.id);
+      else onPreview(campaign);
+    };
+    return (
+      <tr key={campaign.id} className={`${styles.row} ${isSelected ? styles.rowSelected : ''}`}>
+        <td className={styles.tdName}>
+          <div
+            className={styles.nameLink}
+            role="button"
+            tabIndex={0}
+            onClick={handleNameClick}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNameClick(); }
+            }}
+          >
+            {/* Leading slot — icon + checkbox stacked, cross-fading on
+                bulk-mode toggle so the row never jumps. */}
+            <div className={styles.nameLeading}>
+              <span
+                className={`${styles.leadingLayer} ${bulkMode ? styles.leadingHidden : styles.leadingVisible}`}
+                aria-hidden={bulkMode}
+              >
+                <Icon name="solar:letter-linear" size={16} color="var(--neutral-300)" />
+              </span>
+              <span
+                className={`${styles.leadingLayer} ${bulkMode ? styles.leadingVisible : styles.leadingHidden}`}
+                aria-hidden={!bulkMode}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Checkbox
+                  checked={selectedIds.has(campaign.id)}
+                  onCheckedChange={() => onToggleId(campaign.id)}
+                />
+              </span>
+            </div>
+            <div className={styles.nameStack}>
+              <span className={styles.nameText}>{campaign.name}</span>
+              {campaign.description ? (
+                <span className={styles.nameDesc}>{campaign.description}</span>
+              ) : null}
+            </div>
+          </div>
+        </td>
+        <td className={styles.tdCategory}>
+          {campaign.category ? (
+            <Badge variant="ai-neutral" label={campaign.category} />
+          ) : (
+            <span className={styles.cellMuted}>—</span>
+          )}
+        </td>
+        <td className={styles.tdSubject}>
+          {campaign.subjectLine ? (
+            <span className={styles.subjectText} title={campaign.subjectLine}>
+              {campaign.subjectLine}
+            </span>
+          ) : (
+            <span className={styles.cellMuted}>—</span>
+          )}
+        </td>
+        <td className={styles.tdDate}>
+          <span className={styles.cellText}>{formatRelative(campaign.updatedAt)}</span>
+        </td>
+        <td className={styles.tdUpdatedBy}>
+          <span className={styles.cellText}>
+            {campaign.updatedByName || <span className={styles.cellMuted}>—</span>}
+          </span>
+        </td>
+        <td className={styles.tdAction}>
+          <div className={styles.actionCell}>
+            <ActionButton
+              icon="solar:pen-linear"
+              size="S"
+              tooltip="Edit template"
+              onClick={() => openContentEmailBuilder(campaign)}
+            />
+            <div className={styles.vDivider} />
+            <ActionButton
+              icon="solar:chart-linear"
+              size="S"
+              tooltip="Analytics"
+              onClick={() => showToast('Analytics – coming soon')}
+            />
+            <div className={styles.vDivider} />
+            <RowMenu
+              onPreview={() => onPreview(campaign)}
+              onDuplicate={() => onDuplicate(campaign)}
+              onDelete={() => onDelete(campaign)}
+            />
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
   return (
     <>
-      <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <colgroup>
-            <col className={styles.colName} />
-            <col className={styles.colCategory} />
-            <col className={styles.colSubject} />
-            <col className={styles.colDate} />
-            <col className={styles.colUpdatedBy} />
-            <col className={styles.colAction} />
-          </colgroup>
-          <thead>
-            <tr className={styles.headerRow}>
-              <th>
-                <div className={styles.nameHeader}>
-                  {/* Animated leading slot: collapses to 0 width when off,
-                      checkbox fades + scales in on bulk-mode enter. */}
-                  <span
-                    className={`${styles.headerLeading} ${bulkMode ? styles.headerLeadingOpen : ''}`}
-                    aria-hidden={!bulkMode}
-                  >
-                    <Checkbox
-                      checked={
-                        emails.length > 0 && emails.every(e => selectedIds.has(e.id))
-                          ? true
-                          : selectedIds.size > 0
-                            ? 'indeterminate'
-                            : false
-                      }
-                      onCheckedChange={() => onToggleAll(emails)}
-                    />
-                  </span>
-                  <span>Name</span>
-                </div>
-              </th>
-              <th>Category</th>
-              <th>Subject</th>
-              <th>Last Updated</th>
-              <th>Last Updated By</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              Array.from({ length: Math.max(1, perPage > 5 ? 5 : perPage) }).map((_, i) => (
-                <EmailRowSkeleton key={`skel-${i}`} />
-              ))
-            ) : emails.length === 0 ? (
-              <tr>
-                <td colSpan={6} className={styles.emptyState}>
-                  <Icon name="solar:letter-linear" size={32} color="var(--neutral-150)" />
-                  <p>No emails match the current filters.</p>
-                </td>
-              </tr>
-            ) : (
-              emails.map(campaign => {
-                const isSelected = bulkMode && selectedIds.has(campaign.id);
-                const handleNameClick = () => {
-                  if (bulkMode) onToggleId(campaign.id);
-                  else onPreview(campaign);
-                };
-                return (
-                <tr key={campaign.id} className={`${styles.row} ${isSelected ? styles.rowSelected : ''}`}>
-                  <td className={styles.tdName}>
-                    <div
-                      className={styles.nameLink}
-                      role="button"
-                      tabIndex={0}
-                      onClick={handleNameClick}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNameClick(); }
-                      }}
-                    >
-                      {/* Leading slot — both icon and checkbox always render,
-                          stacked. They cross-fade on bulk-mode toggle so the
-                          row never jumps. `pointer-events: none` on the
-                          inactive layer keeps clicks routed correctly. */}
-                      <div className={styles.nameLeading}>
-                        <span
-                          className={`${styles.leadingLayer} ${bulkMode ? styles.leadingHidden : styles.leadingVisible}`}
-                          aria-hidden={bulkMode}
-                        >
-                          <Icon name="solar:letter-linear" size={16} color="var(--neutral-300)" />
-                        </span>
-                        <span
-                          className={`${styles.leadingLayer} ${bulkMode ? styles.leadingVisible : styles.leadingHidden}`}
-                          aria-hidden={!bulkMode}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Checkbox
-                            checked={selectedIds.has(campaign.id)}
-                            onCheckedChange={() => onToggleId(campaign.id)}
-                          />
-                        </span>
-                      </div>
-                      <div className={styles.nameStack}>
-                        <span className={styles.nameText}>{campaign.name}</span>
-                        {campaign.description ? (
-                          <span className={styles.nameDesc}>{campaign.description}</span>
-                        ) : null}
-                      </div>
-                    </div>
-                  </td>
-                  <td className={styles.tdCategory}>
-                    {campaign.category ? (
-                      <Badge variant="ai-neutral" label={campaign.category} />
-                    ) : (
-                      <span className={styles.cellMuted}>—</span>
-                    )}
-                  </td>
-                  <td className={styles.tdSubject}>
-                    {campaign.subjectLine ? (
-                      <span className={styles.subjectText} title={campaign.subjectLine}>
-                        {campaign.subjectLine}
-                      </span>
-                    ) : (
-                      <span className={styles.cellMuted}>—</span>
-                    )}
-                  </td>
-                  <td className={styles.tdDate}>
-                    <span className={styles.cellText}>{formatRelative(campaign.updatedAt)}</span>
-                  </td>
-                  <td className={styles.tdUpdatedBy}>
-                    <span className={styles.cellText}>
-                      {campaign.updatedByName || <span className={styles.cellMuted}>—</span>}
-                    </span>
-                  </td>
-                  <td className={styles.tdAction}>
-                    <div className={styles.actionCell}>
-                      <ActionButton
-                        icon="solar:pen-linear"
-                        size="S"
-                        tooltip="Edit template"
-                        onClick={() => openContentEmailBuilder(campaign)}
-                      />
-                      <div className={styles.vDivider} />
-                      <ActionButton
-                        icon="solar:chart-linear"
-                        size="S"
-                        tooltip="Analytics"
-                        onClick={() => showToast('Analytics – coming soon')}
-                      />
-                      <div className={styles.vDivider} />
-                      <RowMenu
-                        onPreview={() => onPreview(campaign)}
-                        onDuplicate={() => onDuplicate(campaign)}
-                        onDelete={() => onDelete(campaign)}
-                      />
-                    </div>
-                  </td>
-                </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {total > 0 ? (
-        <Pagination
-          totalItems={total}
-          currentPage={page}
-          perPage={perPage}
-          onPageChange={setPage}
-          onPerPageChange={(n) => { setPerPage(n); setPage(1); }}
-        />
-      ) : null}
+      <WorklistShell
+        header={null}
+        columns={EMAIL_COLUMNS}
+        rows={emails}
+        renderRow={renderRow}
+        loading={loading}
+        emptyState={
+          <div className={styles.emptyState}>
+            <Icon name="solar:letter-linear" size={32} color="var(--neutral-150)" />
+            <p>No emails match the current filters.</p>
+          </div>
+        }
+        page={page}
+        perPage={perPage}
+        totalItems={total}
+        onPageChange={setPage}
+        onPageSizeChange={(n) => { setPerPage(n); setPage(1); }}
+        minTableWidth={1200}
+      />
     </>
   );
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Forms tab
+// Forms tab — same shape as EMAIL_COLUMNS; "Subject" swaps for "Responses"
+// (a numeric count of form submissions).
 // ────────────────────────────────────────────────────────────────────────────
+const FORM_COLUMNS = [
+  { key: 'name',      label: 'Name',            sticky: 'left', left: 0, width: 320 },
+  { key: 'category',  label: 'Category',        width: 160 },
+  { key: 'responses', label: 'Responses',       width: 140 },
+  { key: 'updated',   label: 'Last Updated',    width: 140 },
+  { key: 'updatedBy', label: 'Last Updated By', width: 180 },
+  { key: 'action',    label: 'Action',          sticky: 'right', width: 100 },
+];
+
 function FormRowMenu({ onCopyLink, onDuplicate, onDelete }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
@@ -487,126 +459,83 @@ function FormsTab({ searchVal, onDuplicate, onDelete, bulkMode, selectedIds, onT
     fetchContentForms?.({ page, perPage, search: searchVal });
   }, [fetchContentForms, page, perPage, searchVal]);
 
-  return (
-    <>
-      <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <colgroup>
-            <col className={styles.colName} />
-            <col className={styles.colCategory} />
-            <col className={styles.colSubject} />
-            <col className={styles.colDate} />
-            <col className={styles.colUpdatedBy} />
-            <col className={styles.colAction} />
-          </colgroup>
-          <thead>
-            <tr className={styles.headerRow}>
-              <th>
-                <div className={styles.nameHeader}>
-                  <span className={`${styles.headerLeading} ${bulkMode ? styles.headerLeadingOpen : ''}`} aria-hidden={!bulkMode}>
-                    <Checkbox
-                      checked={
-                        forms.length > 0 && forms.every(f => selectedIds.has(f.id))
-                          ? true
-                          : selectedIds.size > 0 ? 'indeterminate' : false
-                      }
-                      onCheckedChange={() => onToggleAll(forms)}
-                    />
-                  </span>
-                  <span>Name</span>
-                </div>
-              </th>
-              <th>Category</th>
-              <th>Responses</th>
-              <th>Last Updated</th>
-              <th>Last Updated By</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              Array.from({ length: Math.max(1, perPage > 5 ? 5 : perPage) }).map((_, i) => (
-                <FormRowSkeleton key={`fskel-${i}`} />
-              ))
-            ) : forms.length === 0 ? (
-              <tr>
-                <td colSpan={6} className={styles.emptyState}>
-                  <Icon name="solar:document-text-linear" size={32} color="var(--neutral-150)" />
-                  <p>No forms yet. Click “New Form” to build one.</p>
-                </td>
-              </tr>
-            ) : (
-              forms.map(form => {
-                const isSelected = bulkMode && selectedIds.has(form.id);
-                const handleNameClick = () => {
-                  if (bulkMode) onToggleId(form.id);
-                  else openFormBuilder(form);
-                };
-                return (
-                  <tr key={form.id} className={`${styles.row} ${isSelected ? styles.rowSelected : ''}`}>
-                    <td className={styles.tdName}>
-                      <div
-                        className={styles.nameLink}
-                        role="button"
-                        tabIndex={0}
-                        onClick={handleNameClick}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNameClick(); } }}
-                      >
-                        <div className={styles.nameLeading}>
-                          <span className={`${styles.leadingLayer} ${bulkMode ? styles.leadingHidden : styles.leadingVisible}`} aria-hidden={bulkMode}>
-                            <Icon name="solar:document-text-linear" size={16} color="var(--neutral-300)" />
-                          </span>
-                          <span
-                            className={`${styles.leadingLayer} ${bulkMode ? styles.leadingVisible : styles.leadingHidden}`}
-                            aria-hidden={!bulkMode}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Checkbox checked={selectedIds.has(form.id)} onCheckedChange={() => onToggleId(form.id)} />
-                          </span>
-                        </div>
-                        <div className={styles.nameStack}>
-                          <span className={styles.nameText}>{form.name}</span>
-                          {form.description ? <span className={styles.nameDesc}>{form.description}</span> : null}
-                        </div>
-                      </div>
-                    </td>
-                    <td className={styles.tdCategory}>
-                      {form.category ? <Badge variant="ai-neutral" label={form.category} /> : <span className={styles.cellMuted}>—</span>}
-                    </td>
-                    <td className={styles.tdSubject}>
-                      <span className={styles.cellText}>{form.responseCount ?? 0}</span>
-                    </td>
-                    <td className={styles.tdDate}>
-                      <span className={styles.cellText}>{formatRelative(form.updatedAt)}</span>
-                    </td>
-                    <td className={styles.tdUpdatedBy}>
-                      <span className={styles.cellText}>{form.updatedByName || <span className={styles.cellMuted}>—</span>}</span>
-                    </td>
-                    <td className={styles.tdAction}>
-                      <div className={styles.actionCell}>
-                        <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit form" onClick={() => openFormBuilder(form)} />
-                        <div className={styles.vDivider} />
-                        <FormRowMenu onCopyLink={() => copyLink(form)} onDuplicate={() => onDuplicate(form)} onDelete={() => onDelete(form)} />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+  const renderRow = (form) => {
+    const isSelected = bulkMode && selectedIds.has(form.id);
+    const handleNameClick = () => {
+      if (bulkMode) onToggleId(form.id);
+      else openFormBuilder(form);
+    };
+    return (
+      <tr key={form.id} className={`${styles.row} ${isSelected ? styles.rowSelected : ''}`}>
+        <td className={styles.tdName}>
+          <div
+            className={styles.nameLink}
+            role="button"
+            tabIndex={0}
+            onClick={handleNameClick}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNameClick(); } }}
+          >
+            <div className={styles.nameLeading}>
+              <span className={`${styles.leadingLayer} ${bulkMode ? styles.leadingHidden : styles.leadingVisible}`} aria-hidden={bulkMode}>
+                <Icon name="solar:document-text-linear" size={16} color="var(--neutral-300)" />
+              </span>
+              <span
+                className={`${styles.leadingLayer} ${bulkMode ? styles.leadingVisible : styles.leadingHidden}`}
+                aria-hidden={!bulkMode}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Checkbox checked={selectedIds.has(form.id)} onCheckedChange={() => onToggleId(form.id)} />
+              </span>
+            </div>
+            <div className={styles.nameStack}>
+              <span className={styles.nameText}>{form.name}</span>
+              {form.description ? <span className={styles.nameDesc}>{form.description}</span> : null}
+            </div>
+          </div>
+        </td>
+        <td className={styles.tdCategory}>
+          {form.category ? <Badge variant="ai-neutral" label={form.category} /> : <span className={styles.cellMuted}>—</span>}
+        </td>
+        <td className={styles.tdSubject}>
+          <span className={styles.cellText}>{form.responseCount ?? 0}</span>
+        </td>
+        <td className={styles.tdDate}>
+          <span className={styles.cellText}>{formatRelative(form.updatedAt)}</span>
+        </td>
+        <td className={styles.tdUpdatedBy}>
+          <span className={styles.cellText}>{form.updatedByName || <span className={styles.cellMuted}>—</span>}</span>
+        </td>
+        <td className={styles.tdAction}>
+          <div className={styles.actionCell}>
+            <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit form" onClick={() => openFormBuilder(form)} />
+            <div className={styles.vDivider} />
+            <FormRowMenu onCopyLink={() => copyLink(form)} onDuplicate={() => onDuplicate(form)} onDelete={() => onDelete(form)} />
+          </div>
+        </td>
+      </tr>
+    );
+  };
 
-      {total > 0 ? (
-        <Pagination
-          totalItems={total}
-          currentPage={page}
-          perPage={perPage}
-          onPageChange={setPage}
-          onPerPageChange={(n) => { setPerPage(n); setPage(1); }}
-        />
-      ) : null}
-    </>
+  return (
+    <WorklistShell
+      header={null}
+      columns={FORM_COLUMNS}
+      rows={forms}
+      renderRow={renderRow}
+      loading={loading}
+      emptyState={
+        <div className={styles.emptyState}>
+          <Icon name="solar:document-text-linear" size={32} color="var(--neutral-150)" />
+          <p>No forms yet. Click "New Form" to build one.</p>
+        </div>
+      }
+      page={page}
+      perPage={perPage}
+      totalItems={total}
+      onPageChange={setPage}
+      onPageSizeChange={(n) => { setPerPage(n); setPage(1); }}
+      minTableWidth={1200}
+    />
   );
 }
 
@@ -698,8 +627,12 @@ export function ContentSettings() {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
-    const ok = isForms ? await deleteForm(deleteTarget.id) : await deleteCampaign(deleteTarget.id);
-    setDeleting(false);
+    let ok = false;
+    try {
+      ok = isForms ? await deleteForm(deleteTarget.id) : await deleteCampaign(deleteTarget.id);
+    } finally {
+      setDeleting(false);
+    }
     if (ok) {
       setDeleteTarget(null);
       // Refresh the current page so totals are accurate.
@@ -728,8 +661,12 @@ export function ContentSettings() {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) { setBulkDeleteOpen(false); return; }
     setDeleting(true);
-    const ok = isForms ? await deleteFormsBulk(ids) : await deleteCampaignsBulk(ids);
-    setDeleting(false);
+    let ok = false;
+    try {
+      ok = isForms ? await deleteFormsBulk(ids) : await deleteCampaignsBulk(ids);
+    } finally {
+      setDeleting(false);
+    }
     if (ok) {
       setBulkDeleteOpen(false);
       clearSelection();
@@ -759,7 +696,7 @@ export function ContentSettings() {
         tabs={CONTENT_TABS}
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        showSearch={isListTab}
+        actions={isListTab ? ['search'] : []}
         searchPlaceholder={isForms ? 'Search forms…' : 'Search emails…'}
         searchValue={searchInputVal}
         onSearchChange={setSearchInputVal}

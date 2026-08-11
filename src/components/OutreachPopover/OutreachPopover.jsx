@@ -10,8 +10,8 @@ const ATTEMPT_DATA = [
 export function OutreachPopover({ patient, pos, onMouseEnter, onMouseLeave }) {
   if (!patient) return null;
   const dots = patient.outreachDots || ['pending','pending','pending'];
-  const items = dots.map((d, i) => {
-    if (d === 'pending') return null;
+  const items = dots.flatMap((d, i) => {
+    if (d === 'pending') return [];
     const a = ATTEMPT_DATA[i] || ATTEMPT_DATA[2];
     const isSuccess = d === 'success';
     return (
@@ -28,7 +28,7 @@ export function OutreachPopover({ patient, pos, onMouseEnter, onMouseLeave }) {
         </div>
       </div>
     );
-  }).filter(Boolean);
+  });
 
   if (!items.length) return null;
 
@@ -41,7 +41,9 @@ export function OutreachPopover({ patient, pos, onMouseEnter, onMouseLeave }) {
     >
       <div className={styles.header}>Outreach Activity</div>
       {items}
-      <div className={styles.footer}><a>View All →</a></div>
+      <div className={styles.footer}>
+        <button type="button" className={styles.footerLink}>View All →</button>
+      </div>
     </div>
   );
 }

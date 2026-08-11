@@ -615,6 +615,16 @@ function DocumentsTab({ feed, loading, onReopenReview }) {
     return merged;
   }, [feed, sftpBatches]);
 
+  // Spec D — uploader filter. Build the unique uploader list from
+  // the batches array so the dropdown only ever shows people who
+  // have actually uploaded something.
+  const uploaders = useMemo(() => {
+    const set = new Set();
+    batches.forEach(b => { if (b.actorName) set.add(b.actorName); });
+    return ['All uploaders', ...Array.from(set).sort()];
+  }, [batches]);
+  const [uploaderFilter, setUploaderFilter] = useState('All uploaders');
+
   if (loading && batches.length === 0) {
     return (
       <div style={{ padding: 48, textAlign: 'center', color: 'var(--neutral-300)' }}>
@@ -639,15 +649,6 @@ function DocumentsTab({ feed, loading, onReopenReview }) {
     return acc;
   }, { docs: 0, added: 0, skipped: 0 });
 
-  // Spec D — uploader filter. Build the unique uploader list from
-  // the batches array so the dropdown only ever shows people who
-  // have actually uploaded something.
-  const uploaders = useMemo(() => {
-    const set = new Set();
-    batches.forEach(b => { if (b.actorName) set.add(b.actorName); });
-    return ['All uploaders', ...Array.from(set).sort()];
-  }, [batches]);
-  const [uploaderFilter, setUploaderFilter] = useState('All uploaders');
   const visibleBatches = uploaderFilter === 'All uploaders'
     ? batches
     : batches.filter(b => b.actorName === uploaderFilter);

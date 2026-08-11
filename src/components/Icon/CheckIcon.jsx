@@ -19,7 +19,7 @@ export function CheckIcon({ size = 24, color = '#6F7A90', className, ...rest }) 
       {...rest}
     >
       <path
-        d="M5 12.0909L8.71308 16.2166C9.09635 16.6424 9.75836 16.6598 10.1635 16.2547L18.4182 8"
+        d="M5 12.09L8.71 16.22C9.1 16.64 9.76 16.66 10.16 16.25L18.42 8"
         stroke={color}
         strokeLinecap="round"
       />

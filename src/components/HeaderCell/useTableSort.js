@@ -38,7 +38,7 @@ export function useTableSort(data, defaultKey = null, defaultDir = 'asc') {
 
   const sorted = useMemo(() => {
     if (!sortKey || !data) return data || [];
-    return [...data].sort((a, b) => {
+    return data.toSorted((a, b) => {
       let aVal = a[sortKey];
       let bVal = b[sortKey];
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Toaster, toast } from './Toast';
+import { Toaster } from './Toast';
+import { toast } from './sonnerToast';
 import { Button } from '../Button/Button';
 import { Switch } from '../Switch/Switch';
 

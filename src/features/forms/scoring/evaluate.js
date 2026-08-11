@@ -323,7 +323,10 @@ export function evaluate(form, answers = {}) {
 
   return {
     visibility,
-    scores: scores.map((s) => results[s.id]).filter(Boolean),
+    scores: scores.flatMap((s) => {
+      const result = results[s.id];
+      return result ? [result] : [];
+    }),
     criticalsTriggered,
     actions,
     diagnostics,

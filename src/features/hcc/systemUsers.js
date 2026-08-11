@@ -19,16 +19,18 @@ export const SYSTEM_USERS = (() => {
     source: 'astrana',
   }));
   const astranaIds = new Set(astrana.map(u => u.id));
-  const account = FALLBACK_USERS
-    .filter(u => !astranaIds.has(u.id))
-    .map(u => ({
+  const account = [];
+  for (const u of FALLBACK_USERS) {
+    if (astranaIds.has(u.id)) continue;
+    account.push({
       id: u.id,
       name: u.name,
       initials: u.initials,
       rolesLabel: u.role || '',
       engineRole: null, // Account users aren't pinned to an engine role
       source: 'account',
-    }));
+    });
+  }
   return [...astrana, ...account];
 })();
 

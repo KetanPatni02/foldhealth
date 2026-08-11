@@ -1,9 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
 import { Icon } from '../../components/Icon/Icon';
-import { AVERGENT_THEME, PROMINENCE_THEME, NO_THEME } from './CardThemePicker';
+import { AVERGENT_THEME, PROMINENCE_THEME, NO_THEME } from './CardThemePicker.constants';
+import { sanitizeRichText } from '../../lib/sanitizeHtml';
 import styles from './InsuranceCardPreview.module.css';
 
 /* Theme selector — bordered field + dropdown (Figma 2005:76958 / 8:64414) */
+const Swatch = ({ size, theme }) => (
+  <span
+    className={styles.themeSwatch}
+    style={{ width: size, height: size, background: theme.bg, border: theme.border }}
+  />
+);
+const Forbidden = ({ size }) => (
+  <Icon name="solar:forbidden-circle-linear" size={size} color="var(--neutral-300)" />
+);
+
 function ThemeDropdown({ logoChoice, cardTheme, onThemeChange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -22,21 +33,11 @@ function ThemeDropdown({ logoChoice, cardTheme, onThemeChange }) {
   const brandTriggerLabel = logoChoice === 'avergent' ? 'Avergent Health Theme' : 'Prominence Health Theme';
   const isBrand = cardTheme?.name === brandTheme.name;
 
-  const Swatch = ({ size }) => (
-    <span
-      className={styles.themeSwatch}
-      style={{ width: size, height: size, background: brandTheme.bg, border: brandTheme.border }}
-    />
-  );
-  const Forbidden = ({ size }) => (
-    <Icon name="solar:forbidden-circle-linear" size={size} color="var(--neutral-300)" />
-  );
-
   return (
     <div className={styles.themeSelectWrap} ref={ref}>
       <button className={styles.themeSelectBtn} onClick={() => setOpen(v => !v)}>
         <span className={styles.themeSelectLeft}>
-          {isBrand ? <Swatch size={32} /> : <Forbidden size={24} />}
+          {isBrand ? <Swatch size={32} theme={brandTheme} /> : <Forbidden size={24} />}
           <span className={styles.themeSelectLabel}>{isBrand ? brandTriggerLabel : 'No Theme'}</span>
         </span>
         <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" />
@@ -48,7 +49,7 @@ function ThemeDropdown({ logoChoice, cardTheme, onThemeChange }) {
             className={`${styles.themeOption} ${isBrand ? styles.themeOptionActive : ''}`}
             onClick={() => { onThemeChange(brandTheme); setOpen(false); }}
           >
-            <Swatch size={24} />
+            <Swatch size={24} theme={brandTheme} />
             <span className={`${styles.themeOptionLabel} ${isBrand ? styles.themeOptionLabelActive : ''}`}>{brandOptionLabel}</span>
           </button>
           <button
@@ -272,7 +273,9 @@ export function InsuranceCardPreview({
             {/* Note bar — theme-tinted */}
             {noteText && (
               <div className={styles.backNoteBar} style={{ background: cardTheme?.noteBg || '#FFEDDB' }}>
-                <p className={styles.backNote} dangerouslySetInnerHTML={{ __html: data.additionalNote }} />
+                {/* Rich-text field authored in CreateInsurancePlanDrawer and
+                    read back for every viewer of the plan — sanitize. */}
+                <p className={styles.backNote} dangerouslySetInnerHTML={{ __html: sanitizeRichText(data.additionalNote) }} />
               </div>
             )}
           </div>

@@ -1,12 +1,13 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
-import { PatientP360Banner } from './components/PatientP360Banner';
-import { PatientProfileTabs } from './components/PatientProfileTabs';
-import { ProfileTabBar } from './components/ProfileTabBar';
-import { CareManagementView } from './components/CareManagementView';
-import { CareProgramsTab } from './components/CareProgramsTab';
-import { OverviewTab } from './components/OverviewTab';
+import { PatientP360Banner } from './shell/PatientP360Banner/PatientP360Banner';
+import { PatientProfileTabs } from './left-panel/PatientProfileTabs/PatientProfileTabs';
+import { ProfileTabBar } from './shell/ProfileTabBar/ProfileTabBar';
+import { CareManagementView } from './right-panel/tabs/care-management/CareManagementView/CareManagementView';
+import { CareProgramsTab } from './right-panel/tabs/care-programs/CareProgramsTab/CareProgramsTab';
+import { OverviewTab } from './right-panel/tabs/overview/OverviewTab/OverviewTab';
+import { CcmTimerWidget } from './shell/CcmTimerWidget/CcmTimerWidget';
 import styles from './PatientDetailView.module.css';
 
 function TabPlaceholder({ tabName }) {
@@ -141,11 +142,12 @@ export function PatientDetailView() {
   return (
     <div className={styles.wrapper}>
       <PatientP360Banner patient={patient} />
+      <CcmTimerWidget />
       <div className={styles.body} ref={bodyRef}>
         {!leftCollapsed && (
           <>
             <div style={{ width: leftWidth, minWidth: 300, maxWidth: 700, flexShrink: 0 }}>
-              <PatientProfileTabs patientId={selectedPatientId} />
+              <PatientProfileTabs patientId={selectedPatientId} patient={patient} />
             </div>
             {/* Drag handle */}
             <div className={styles.dragHandle} onMouseDown={handleMouseDown}>

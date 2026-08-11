@@ -15,8 +15,8 @@ export function CreateNewPopover({ onClose }) {
       if (ref.current && !ref.current.contains(e.target)) onClose();
     };
     // Delay to prevent immediate close on the click that opened it
-    setTimeout(() => document.addEventListener('click', handler), 0);
-    return () => document.removeEventListener('click', handler);
+    const t = setTimeout(() => document.addEventListener('click', handler), 0);
+    return () => { clearTimeout(t); document.removeEventListener('click', handler); };
   }, [onClose]);
 
   const item = (icon, label, key) => (

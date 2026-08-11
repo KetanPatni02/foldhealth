@@ -1,0 +1,240 @@
+/* CCM time tracker — horizontal control bar (Figma Time Tracker Control). */
+.wrap {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.control {
+  display: inline-flex;
+  align-items: stretch;
+  height: 40px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 10px;
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.dragHandle {
+  width: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  color: var(--neutral-150);
+  border: none;
+  border-right: 0.5px solid var(--neutral-100);
+  background: var(--neutral-25);
+  padding: 0;
+  flex-shrink: 0;
+}
+.dragHandle:hover { color: var(--neutral-200); }
+.dragHandle:active { cursor: grabbing; }
+
+.chipWrap {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border-right: 0.5px solid var(--neutral-100);
+  flex-shrink: 0;
+}
+
+.chipIdle,
+.chipActive {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 6px;
+}
+
+.chipIdle {
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+}
+
+.chipActive {
+  background: var(--status-success-light);
+  border: 0.5px solid color-mix(in srgb, var(--status-success) 25%, transparent);
+}
+
+.chipDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--status-success-bright);
+  animation: foldPulse 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes foldPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.5; transform: scale(0.75); }
+}
+
+.chipTime {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.chipTimeIdle { color: var(--neutral-300); }
+.chipTimeActive { color: var(--status-success); }
+
+.chipRec {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--status-success);
+  line-height: 1.2;
+}
+
+.segmentBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 14px;
+  border: none;
+  border-right: 0.5px solid var(--neutral-100);
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.segmentBtn:hover { background: var(--neutral-50); }
+
+.segmentLabel {
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.segmentStart  { color: var(--primary-300); }
+.segmentPause   { color: var(--neutral-400); }
+.segmentResume  { color: var(--status-success); }
+
+.resetBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  border: none;
+  border-right: 0.5px solid var(--neutral-100);
+  background: transparent;
+  cursor: pointer;
+  color: var(--neutral-300);
+  flex-shrink: 0;
+}
+.resetBtn:hover {
+  background: var(--neutral-50);
+  color: var(--neutral-400);
+}
+
+.loggedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 14px;
+  border-right: 0.5px solid var(--neutral-100);
+  color: var(--status-success);
+  flex-shrink: 0;
+}
+
+.loggedLabel {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.logBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 15px;
+  border: none;
+  background: var(--primary-300);
+  color: var(--neutral-0);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.logBtn:hover { background: var(--primary-400); }
+
+.logBtnDisabled {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 15px;
+  background: var(--neutral-50);
+  color: var(--neutral-200);
+  cursor: not-allowed;
+  flex-shrink: 0;
+}
+
+.logBtnLabel {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* Classification panel — opens above the control bar. */
+.formPanel {
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  padding: 12px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+  box-shadow: var(--shadow-popover);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.formHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.formTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--neutral-300);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding-top: 2px;
+}
+
+:global(body.ccm-timer-dragging) {
+  cursor: grabbing !important;
+  user-select: none;
+}

@@ -27,7 +27,7 @@ export function BannerExpandIcon({ size = 20, color = 'var(--primary-300)', clas
       {...rest}
     >
       <path
-        d="M10 17C13.8661 17 17 13.8661 17 10C17 6.1339 13.8661 3 10 3C6.1339 3 3 6.1339 3 10C3 13.8661 6.1339 17 10 17Z"
+        d="M10 17C13.87 17 17 13.87 17 10C17 6.13 13.87 3 10 3C6.13 3 3 6.13 3 10C3 13.87 6.13 17 10 17Z"
         fill={color}
       />
       <path
