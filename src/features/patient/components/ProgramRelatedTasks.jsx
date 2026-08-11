@@ -25,26 +25,33 @@ const EMPTY_FILTERS = { status: [], priority: [], dueDate: [], completedDate: []
  * `filters` (Status / Priority / Due Date / Completed Date) come from the
  * section-header filter bar in ProgramDetailView.
  */
-export function ProgramRelatedTasks({ programCode, onAddTask, filters = EMPTY_FILTERS, search = '' }) {
+export function ProgramRelatedTasks({ programCode, patientId, onAddTask, filters = EMPTY_FILTERS, search = '' }) {
   const added = useAppStore(s => s.programAddedTasks[programCode]);
   const globalTasks = useAppStore(s => s.tasks);
-  // Program tasks + their subtasks. Prefer the live store row (reflects
-  // status/edits) but fall back to the stored copy. Subtasks are separate
-  // store rows (parent_task_id → parent); include them so they show as rows
-  // with the "Parent Task : …" label, exactly like the Tasks module.
+  // Program tasks + their subtasks. The task↔program link is persisted via the
+  // `program_code` / `patient_id` columns (tasks_program_link_migration), so a
+  // program's tasks survive reload. The session `programAddedTasks` list is
+  // kept as a fallback (covers the moment before the migration is run, when
+  // those columns are stripped on insert). Subtasks are separate store rows
+  // (parent_task_id → parent); include them so they render as rows with the
+  // "Parent Task : …" label, exactly like the Tasks module.
   const tasks = useMemo(() => {
-    const parents = (added || []).map(a => globalTasks.find(g => g.id === a.id) || a);
+    const persisted = globalTasks.filter(g =>
+      !g.is_subtask
+      && g.program_code === programCode
+      && (patientId == null || String(g.patient_id) === String(patientId)));
+    const sessionAdded = (added || []).map(a => globalTasks.find(g => g.id === a.id) || a);
     const seen = new Set();
     const result = [];
     const push = (t) => { if (t && !seen.has(t.id)) { seen.add(t.id); result.push(t); } };
-    for (const p of parents) {
+    for (const p of [...persisted, ...sessionAdded]) {
       push(p);
       globalTasks
         .filter(g => g.parent_task_id === p.id || (g.is_subtask && g.parent_task === p.name))
         .forEach(push);
     }
     return result;
-  }, [added, globalTasks]);
+  }, [added, globalTasks, programCode, patientId]);
 
   const q = search.trim().toLowerCase();
   const shownTasks = useMemo(() => tasks.filter(t =>

@@ -163,6 +163,16 @@ function SubtaskIcon({ size = 16, color = 'var(--primary-300)' }) {
   );
 }
 
+// Single checkmark for the completed-task checkbox (Solar only ships a
+// double-tick `check-read`, so this is a custom 1px-stroke glyph).
+function CheckIcon({ size = 13, color = 'var(--neutral-0)' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+      <path d="M3.5 8.5 6.5 11.5 12.5 5" stroke={color} strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
 function PriorityIcon({ priority, size = 24 }) {
   const s = size;
   if (priority === 'high') {
@@ -629,7 +639,7 @@ function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo, hideMember, pinn
           aria-label={isCompleted ? 'Mark incomplete' : 'Mark complete'}
         >
           <span className={styles.taskCheckIcon}>
-            <Icon name="solar:check-read-linear" size={13} color="var(--neutral-0)" />
+            <CheckIcon size={13} />
           </span>
         </button>
       </div>
@@ -885,19 +895,18 @@ export function TaskListSection({ tasks = [], onTaskClick, hideAssignedTo = fals
         hideAssignedTo={hideAssignedTo}
         hideMember={hideMember}
         onAddTask={onAddTask}
-        emptyLabel="No Tasks Added"
+        emptyLabel="No Open Tasks"
       />
-      {completed.length > 0 && (
-        <ProgramTaskSection
-          title="Completed"
-          tasks={completed}
-          onToggle={handleToggle}
-          onTaskClick={onTaskClick}
-          hideAssignedTo={hideAssignedTo}
-          hideMember={hideMember}
-          onAddTask={onAddTask}
-        />
-      )}
+      <ProgramTaskSection
+        title="Completed"
+        tasks={completed}
+        onToggle={handleToggle}
+        onTaskClick={onTaskClick}
+        hideAssignedTo={hideAssignedTo}
+        hideMember={hideMember}
+        onAddTask={onAddTask}
+        emptyLabel="No Completed Tasks"
+      />
     </>
   );
 }
@@ -935,7 +944,7 @@ function KanbanCardContent({ task }) {
             aria-label={isCompleted ? 'Mark incomplete' : 'Mark complete'}
           >
             <span className={styles.taskCheckIcon}>
-            <Icon name="solar:check-read-linear" size={13} color="var(--neutral-0)" />
+            <CheckIcon size={13} />
           </span>
           </button>
         </div>
@@ -1224,7 +1233,7 @@ function EmptyState({ title, description, icon }) {
 }
 
 /* ── Add Task Drawer ── */
-export function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCreated }) {
+export function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCreated, extraFields }) {
   const initialStatus = defaultStatus || 'pending';
   const [name, setName] = useState('');
   const [priority, setPriority] = useState('medium');
@@ -1327,6 +1336,7 @@ export function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCre
       parent_task_id: null,
       created_by: me,
       created_by_id: meId,
+      ...extraFields,
     };
     const result = await createTask(task);
     if (result) {
@@ -1352,6 +1362,7 @@ export function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCre
           mentions: [],
           created_by: me,
           created_by_id: meId,
+          ...extraFields,
         });
       }
       showToast('Task created');
@@ -1359,9 +1370,11 @@ export function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCre
     }
   };
 
-  const handleClose = () => {
-    if (isDirty) setShowCloseConfirm(true);
-    else onClose();
+  // Veto the drawer close when there are unsaved changes — the confirm opens
+  // over the still-open drawer; "Keep editing" just dismisses the confirm.
+  const guardClose = () => {
+    if (isDirty) { setShowCloseConfirm(true); return false; }
+    return true;
   };
 
   const toggleLabel = (l) => {
@@ -1372,7 +1385,8 @@ export function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCre
     <>
       <Drawer
         title="Add Task"
-        onClose={handleClose}
+        onClose={onClose}
+        beforeClose={guardClose}
         headerRight={
           <Button variant="primary" size="L" disabled={!canSave} onClick={handleSave}>
             Save Task
@@ -2169,7 +2183,7 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask }) {
                     updateTask(sub.id, { status: sub.status === 'completed' ? 'pending' : 'completed' });
                   }}
                 >
-                  {sub.status === 'completed' && <Icon name="solar:check-read-linear" size={13} color="var(--neutral-0)" />}
+                  {sub.status === 'completed' && <CheckIcon size={13} />}
                 </button>
                 <div className={styles.subtaskCardBody}>
                   <div className={styles.subtaskCardRow}>

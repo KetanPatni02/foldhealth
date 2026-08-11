@@ -766,9 +766,9 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
           ) : isMedReconStep ? (
             <MedicationReconciliation />
           ) : isProgramTasksStep ? (
-            <ProgramRelatedTasks programCode={program.code} onAddTask={() => setAddTaskOpen(true)} filters={taskFilters} search={taskSearchText} />
+            <ProgramRelatedTasks programCode={program.code} patientId={patientId} onAddTask={() => setAddTaskOpen(true)} filters={taskFilters} search={taskSearchText} />
           ) : isProgramFilesStep ? (
-            <ProgramRelatedFiles />
+            <ProgramRelatedFiles programCode={program.code} patientId={patientId} />
           ) : isReferralStep ? (
             <ReferralReview />
           ) : assessmentCfg ? (
@@ -1021,6 +1021,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
         <AddTaskDrawer
           onClose={() => setAddTaskOpen(false)}
           initialMember={currentPatient?.name}
+          extraFields={{ program_code: program.code, patient_id: patientId != null ? String(patientId) : null }}
           onTaskCreated={(t) => {
             setAddTaskOpen(false);
             if (program.code && t) addProgramTask(program.code, t);

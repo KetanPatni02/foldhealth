@@ -1561,6 +1561,57 @@ export const useAppStore = create((set, get) => ({
     }
   },
 
+  // ── Care-program documents (Supabase `program_documents`) ──────────────
+  // A patient's Program Documents library, keyed by program_code + patient_id.
+  // Empty by default — the Documents step shows an empty state until the user
+  // uploads a file via the inline DocumentUploader. Uploads append optimistically
+  // to local state (so the row shows immediately and the widget works even
+  // before the migration is run) AND insert into the table for persistence.
+  programDocuments: [],
+  programDocumentsDidFetch: false,
+  fetchProgramDocuments: async () => {
+    if (get().programDocumentsDidFetch) return;
+    try {
+      const { data, error } = await supabase
+        .from('program_documents')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      const rows = (data || []).map(r => ({
+        id:          r.id,
+        programCode: r.program_code,
+        patientId:   r.patient_id,
+        name:        r.name,
+        type:        r.type,
+        status:      r.status,
+        sizeBytes:   r.size_bytes,
+        updatedBy:   r.updated_by,
+        updatedDate: r.updated_date,
+      }));
+      set({ programDocuments: rows, programDocumentsDidFetch: true });
+    } catch (e) {
+      console.warn('fetchProgramDocuments — starting empty:', e?.message || e);
+      set({ programDocumentsDidFetch: true });
+    }
+  },
+  addProgramDocument: (doc) => {
+    // Optimistic local append — dedup by id so a later fetch can't double it.
+    set(s => ({ programDocuments: [doc, ...s.programDocuments.filter(d => d.id !== doc.id)] }));
+    supabase.from('program_documents').insert({
+      id:           doc.id,
+      program_code: doc.programCode,
+      patient_id:   doc.patientId,
+      name:         doc.name,
+      type:         doc.type,
+      status:       doc.status,
+      size_bytes:   doc.sizeBytes,
+      updated_by:   doc.updatedBy,
+      updated_date: doc.updatedDate,
+    }).then(({ error }) => {
+      if (error) console.warn('addProgramDocument — insert failed (kept locally):', error.message);
+    });
+  },
+
   // Table
   patients: [],
   patientsLoading: true,
@@ -9097,7 +9148,7 @@ export const useAppStore = create((set, get) => ({
     // Try insert with full schema; if fails due to missing column, retry with reduced payload
     let { data, error } = await supabase.from('tasks').insert(normalized).select().single();
     if (error && /column .* does not exist|schema cache/.test(error.message || '')) {
-      const { parent_task_id, pool, mentions, completed_at, description, assigned_to_id, created_by_id, ...legacy } = normalized;
+      const { parent_task_id, pool, mentions, completed_at, description, assigned_to_id, created_by_id, program_code, patient_id, ...legacy } = normalized;
       ({ data, error } = await supabase.from('tasks').insert(legacy).select().single());
     }
     if (error) {
@@ -9152,7 +9203,7 @@ export const useAppStore = create((set, get) => ({
     // Try DB update; gracefully retry without unknown columns
     let { error } = await supabase.from('tasks').update({ ...final, updated_at: new Date().toISOString() }).eq('id', id);
     if (error && /column .* does not exist|schema cache/.test(error.message || '')) {
-      const { parent_task_id, pool, mentions, completed_at, description, assigned_to_id, created_by_id, ...legacy } = final;
+      const { parent_task_id, pool, mentions, completed_at, description, assigned_to_id, created_by_id, program_code, patient_id, ...legacy } = final;
       ({ error } = await supabase.from('tasks').update({ ...legacy, updated_at: new Date().toISOString() }).eq('id', id));
     }
     if (error) {

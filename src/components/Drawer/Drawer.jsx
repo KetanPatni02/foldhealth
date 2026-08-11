@@ -82,6 +82,11 @@ export function Drawer({
   titleStyle,
   width,
   noCloseDivider = false,
+  // Optional synchronous guard run when the user requests close (overlay,
+  // close button, or Escape). Return `false` to VETO the close — the drawer
+  // stays open and no animation runs, so the caller can show its own confirm
+  // (e.g. "Discard unsaved changes?") over the still-open drawer.
+  beforeClose,
 }) {
   const panelStyle = width !== undefined
     ? { width: typeof width === 'number' ? `${width}px` : width }
@@ -94,10 +99,13 @@ export function Drawer({
   const panelRef = useRef(null);
   const requestClose = useCallback(() => {
     if (closing) return;
+    // Let the caller veto the close (e.g. to show an unsaved-changes confirm
+    // while the drawer stays open). Only start the close animation if allowed.
+    if (beforeClose && beforeClose() === false) return;
     setClosing(true);
     const ms = readDrawerDurationMs(panelRef.current);
     setTimeout(() => onClose?.(), ms);
-  }, [closing, onClose]);
+  }, [closing, onClose, beforeClose]);
 
   return createPortal(
     <>

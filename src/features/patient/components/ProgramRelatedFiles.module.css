@@ -20,41 +20,46 @@
   background: var(--neutral-150);
   flex-shrink: 0;
 }
+/* Tabs — match the Letters step (.contentTab / .contentTabActive). */
 .tab {
-  padding: 4px 10px;
-  border: 0.5px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 4px 6px;
+  border: none;
   border-radius: 4px;
-  background: none;
+  background: transparent;
   font-size: 14px;
   color: var(--neutral-300);
   cursor: pointer;
   white-space: nowrap;
 }
+.tab:hover { background: var(--neutral-50); }
 .tabActive {
-  color: var(--neutral-500);
-  border-color: var(--neutral-150);
+  color: var(--neutral-400);
   background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
 }
 .spacer { flex: 1; }
 
-.viewToggle {
-  display: inline-flex;
-  align-items: center;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 6px;
-  overflow: hidden;
+/* Expanded search fills the row, keeping the trailing action icons. */
+.searchWrap { flex: 1; min-width: 0; display: flex; align-items: center; }
+
+/* Inline uploader — sits directly below the toolbar (its "Upload File"
+   touchpoint), above the table. */
+.uploaderWrap {
+  padding-bottom: 12px;
 }
-.viewBtn {
+
+/* Empty state — dashed neutral-150 container matching the tasks step. */
+.empty {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 26px;
-  background: none;
-  border: none;
-  cursor: pointer;
+  flex-direction: column;
+  padding: 12px;
+  border: 1px dashed var(--neutral-150);
+  border-radius: 8px;
 }
-.viewBtnActive { background: var(--primary-100); }
 
 /* ── Table ── */
 .table {
@@ -85,3 +90,27 @@
 .updatedCell { display: flex; flex-direction: column; gap: 2px; }
 .updatedBy { font-size: 14px; color: var(--neutral-400); }
 .updatedDate { font-size: 13px; color: var(--neutral-300); }
+
+/* ── Grid view — doc cards mirroring the Add Letter card layout ── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+.card {
+  display: flex;
+  flex-direction: column;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.cardThumb {
+  height: 180px;
+  background: var(--neutral-50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cardFooter { display: flex; flex-direction: column; gap: 2px; padding: 12px; }
+.cardName { font-size: 14px; color: var(--neutral-500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cardType { font-size: 13px; color: var(--neutral-300); }
