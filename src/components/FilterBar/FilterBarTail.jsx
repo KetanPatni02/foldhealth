@@ -3,6 +3,7 @@ import styles from './FilterBar.module.css';
 
 export function FilterBarTail({
   tailRef,
+  moreBtnRef,
   actions = [],
   moreRect,
   onOpenMore,
@@ -18,6 +19,7 @@ export function FilterBarTail({
     <div className={styles.tail} ref={tailRef}>
       {hasAction('moreFilters') && (
         <button
+          ref={moreBtnRef}
           type="button"
           className={[styles.moreBtn, moreRect ? styles.moreBtnActive : ''].join(' ')}
           onClick={moreRect ? onCloseMore : onOpenMore}
