@@ -1782,6 +1782,12 @@ export const useAppStore = create((set, get) => ({
   patients: [],
   patientsLoading: true,
   patientsError: null,
+  // Single-fire guard — several call sites (SubNav, WorklistTable, QueueTable,
+  // PatientDetailView) all trigger fetchPatients on mount, and hash-routing
+  // remounts each of them across tab switches. Without the guard every
+  // navigation re-runs a full `select('*')`; with it the first caller wins
+  // and the rest are no-ops. Same shape as `hccMembersDidFetch`.
+  patientsDidFetch: false,
   selectedIds: [],
   currentPage: 1,
   perPage: 10,
@@ -1931,6 +1937,10 @@ export const useAppStore = create((set, get) => ({
   callDetails: [],
   callDetailsLoading: true,
   callDetailsHasMore: false,
+  // Same single-fire guard as `patientsDidFetch` — the QueueTable effect used
+  // to re-fire fetchCallDetails on every dep change (patients.length flip on
+  // cold-load caused a second full pull immediately after the first).
+  callDetailsDidFetch: false,
 
   // Calls UI config (nav items, phone lines, session list) — loaded from Supabase
   callNavItems: [],       // inbox + channel nav items
@@ -2034,7 +2044,11 @@ export const useAppStore = create((set, get) => ({
 
   // ─── Supabase: Fetch patients ───
   fetchPatients: async () => {
-    set({ patientsLoading: true, patientsError: null });
+    // Idempotent per session. See `patientsDidFetch` init for rationale —
+    // callers don't need to coordinate; the first one wins and the rest
+    // return immediately.
+    if (useAppStore.getState().patientsDidFetch) return;
+    set({ patientsDidFetch: true, patientsLoading: true, patientsError: null });
     const { data, error } = await supabase
       .from('patients')
       .select('*')
@@ -2042,10 +2056,13 @@ export const useAppStore = create((set, get) => ({
 
     if (error) {
       console.warn('Supabase patients fetch failed:', error.message);
+      // Reset the guard so ErrorState's Retry (which re-calls fetchPatients)
+      // can actually retry — otherwise the second call short-circuits.
       set({
         patients: [],
         patientsLoading: false,
         patientsError: error.message,
+        patientsDidFetch: false,
       });
     } else {
       // Build maps for merging: in-memory state (from active invocations) + fallback seed data
@@ -2086,8 +2103,11 @@ export const useAppStore = create((set, get) => ({
 
   // ─── Supabase: Fetch call details — all records, client-side pagination ───
   fetchCallDetails: async () => {
+    // Idempotent per session — see `callDetailsDidFetch` init. Previously the
+    // QueueTable effect re-fired this on every dep change.
+    if (useAppStore.getState().callDetailsDidFetch) return;
     const PAGE_SIZE = 10;
-    set({ callDetailsLoading: true });
+    set({ callDetailsDidFetch: true, callDetailsLoading: true });
 
     const { data, error } = await supabase
       .from('call_details')
@@ -2095,7 +2115,12 @@ export const useAppStore = create((set, get) => ({
       .neq('call_type', 'ongoing')
       .order('started_at', { ascending: false });
 
-    if (error) console.warn('call_details fetch failed:', error.message);
+    if (error) {
+      console.warn('call_details fetch failed:', error.message);
+      // Reset the guard so the caller (or the user re-navigating) can retry.
+      set({ callDetailsLoading: false, callDetailsDidFetch: false });
+      return;
+    }
     const combined = (data || [])
       .map(c => enrichCallRecord(callDetailDbToJs(c)))
       .sort((a, b) => new Date(b.startedAt || 0) - new Date(a.startedAt || 0));

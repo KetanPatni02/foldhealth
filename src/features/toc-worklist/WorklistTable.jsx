@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { WorklistRow } from './WorklistRow';
 import { BulkBar } from '../../components/BulkBar/BulkBar';
@@ -131,9 +131,9 @@ export function WorklistTable() {
   const activeFilters = useAppStore(s => s.activeFilters);
   const [expandedSections, setExpandedSections] = useState({});
 
-  // Fetch patients when component mounts (lazy — only when this page is visible)
-  useEffect(() => { fetchPatients(); }, [fetchPatients]);
-
+  // Patients are fetched once by SubNav on mount — no per-tab fetch effect
+  // here (the store's `patientsDidFetch` guard would short-circuit anyway,
+  // but skipping the call avoids the effect-churn entirely).
   const toggleExpand = (key) => setExpandedSections(s => ({ ...s, [key]: !s[key] }));
 
   const filteredPatients = useMemo(() => {

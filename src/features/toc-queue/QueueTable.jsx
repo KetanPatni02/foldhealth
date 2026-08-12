@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { WorklistShell } from '../../components/WorklistShell/WorklistShell';
@@ -52,16 +52,17 @@ const QUEUE_COLUMNS = [
 export function QueueTable() {
   const patients = useAppStore(s => s.patients);
   const patientsLoading = useAppStore(s => s.patientsLoading);
-  const fetchPatients = useAppStore(s => s.fetchPatients);
-  const fetchCallDetails = useAppStore(s => s.fetchCallDetails);
+  const callDetails = useAppStore(s => s.callDetails);
   const searchQuery = useAppStore(s => s.searchQuery);
   const selectedIds = useAppStore(s => s.selectedIds);
   const selectPatient = useAppStore(s => s.selectPatient);
   const selectAll = useAppStore(s => s.selectAll);
   const clearSelected = useAppStore(s => s.clearSelected);
 
-  // Fetch patients + call details when queue mounts (lazy — skip if already loaded)
-  useEffect(() => { if (!patients.length && !patientsLoading) fetchPatients(); fetchCallDetails(); }, [patients.length, patientsLoading, fetchPatients, fetchCallDetails]);
+  // Both patients + call details are fetched once by SubNav on mount. The
+  // store's *DidFetch guards keep every subsequent call idempotent, so we
+  // don't need a QueueTable-local effect (which previously re-fired
+  // fetchCallDetails on every dep change).
   const activeFilters = useAppStore(s => s.activeFilters);
   const currentPage = useAppStore(s => s.currentPage);
   const perPage = useAppStore(s => s.perPage);
@@ -88,6 +89,29 @@ export function QueueTable() {
 
     return result;
   }, [patients, searchQuery, activeFilters]);
+
+  // Per-patient callDetails lookups. QueueRow used to run
+  // `callDetails.filter(...)` twice per row on every render — O(rows * calls)
+  // per pass. Now we build the three indexes once at the table level and
+  // hand each row the pre-computed values it needs.
+  const callsByPatient = useMemo(() => {
+    const voicemails = new Map();  // patientId -> array (attempt history)
+    const completed  = new Map();  // patientId -> first completed call
+    const ongoing    = new Map();  // patientId -> first ongoing call
+    for (const c of callDetails) {
+      if (!c.patientId) continue;
+      if (c.callType === 'voicemail') {
+        const list = voicemails.get(c.patientId);
+        if (list) list.push(c);
+        else voicemails.set(c.patientId, [c]);
+      } else if (c.callType === 'completed') {
+        if (!completed.has(c.patientId)) completed.set(c.patientId, c);
+      } else if (c.callType === 'ongoing') {
+        if (!ongoing.has(c.patientId)) ongoing.set(c.patientId, c);
+      }
+    }
+    return { voicemails, completed, ongoing };
+  }, [callDetails]);
 
   if (patientsLoading) return <TableSkeleton rows={6} />;
 
@@ -131,6 +155,9 @@ export function QueueTable() {
           patient={p}
           isSelected={selectedIds.includes(p.id)}
           onSelect={selectPatient}
+          voicemailCalls={callsByPatient.voicemails.get(p.id)}
+          completedCall={callsByPatient.completed.get(p.id)}
+          ongoingCall={callsByPatient.ongoing.get(p.id)}
         />
       )}
       selectedIds={selectedIds}

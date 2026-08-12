@@ -195,19 +195,19 @@ function StatusPill({ status, onOpen, ariaLabel }) {
   );
 }
 
-export function QueueRow({ patient, isSelected, onSelect }) {
+// `voicemailCalls`, `completedCall`, and `ongoingCall` are indexed at the
+// table level (see QueueTable's `callsByPatient` memo) and passed in so this
+// row doesn't have to scan the entire callDetails array on every render.
+export function QueueRow({ patient, isSelected, onSelect, voicemailCalls, completedCall, ongoingCall }) {
   const openQuickView = useAppStore(s => s.openQuickView);
   const openCallPopover = useAppStore(s => s.openCallPopover);
   const openLiveDrawer = useAppStore(s => s.openLiveDrawer);
   const openAssessmentDrawer = useAppStore(s => s.openAssessmentDrawer);
   const openOutreachStatusDrawer = useAppStore(s => s.openOutreachStatusDrawer);
   const showToast = useAppStore(s => s.showToast);
-  const callDetails = useAppStore(s => s.callDetails);
   const callBtnRef = useRef(null);
 
   const p = patient;
-  const voicemailCalls = callDetails.filter(c => c.patientId === p.id && c.callType === 'voicemail');
-  const completedCall = callDetails.find(c => c.patientId === p.id && c.callType === 'completed');
   const outreachBadgeVariant = p.outreachType === '48h' ? 'outreach-48h' : 'outreach-7d';
 
   const openDetail = useAppStore(s => s.openDetail);
