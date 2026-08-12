@@ -1696,6 +1696,11 @@ export const useAppStore = create((set, get) => ({
 
   addCareProgram: (patientId, entry) => {
     if (!patientId || !entry) return;
+    // Creation date — stamped at enroll time so the Start Date column shows
+    // when the program was actually added (not '—' until an Enrolled status
+    // change backfills it).
+    const now = new Date();
+    const createdStamp = `${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${now.getFullYear()}`;
     let program;
     set((state) => {
       const existing = state.careProgramsByPatient[patientId] || [];
@@ -1711,9 +1716,9 @@ export const useAppStore = create((set, get) => ({
         acuity: null,
         status: 'New',
         statusColor: 'var(--primary-300)',
-        startDate: '—',
+        startDate: createdStamp,
         endDate: '—',
-        lastUpdated: '—',
+        lastUpdated: createdStamp,
         assignee: 'Unassigned',
         pcp: '—',
         progress: 0,
@@ -1727,6 +1732,10 @@ export const useAppStore = create((set, get) => ({
         },
       };
     });
+    // SNP enrollment implies SNP-worklist membership — keep the two in sync.
+    if (program && entry.code === 'SNP') {
+      get().ensureSnpWorklistMembership(patientId);
+    }
     // Persist. Fire-and-forget — the optimistic local update already
     // rendered the row; a slow network shouldn't block the UI.
     if (program) {
@@ -3604,6 +3613,87 @@ export const useAppStore = create((set, get) => ({
       assignee_initials: user?.initials || null,
       assignee_role:     role,
     });
+  },
+
+  // Enrolling a patient in the SNP care program implies membership in the
+  // SNP worklist — this keeps the two in sync. Resolves the patient across
+  // every worklist slice (profiles can be opened from any of them, so
+  // selectedPatientId may be a patients.id, an hcc UUID, a member id, …),
+  // dedupes against existing SNP rows by id / patientId / normalized
+  // memberId, then inserts a new snp_worklist_members row optimistically.
+  // Called from addCareProgram; safe to call repeatedly.
+  ensureSnpWorklistMembership: async (patientId) => {
+    if (!patientId) return;
+    const s = get();
+    const matchesId = m => m && (m.id === patientId || String(m.memberId) === String(patientId));
+    const src =
+      s.patients.find(matchesId) ||
+      s.hccMembers.find(matchesId) ||
+      (s.awvMembers || []).find(matchesId) ||
+      (s.ccmWorklistMembers || []).find(matchesId) ||
+      (s.snpWorklistMembers || []).find(matchesId) ||
+      (s.hedisMembers || []).find(matchesId);
+    if (!src) return; // no slice loaded yet — nothing to mirror from
+
+    const norm = (v) => String(v || '').replace(/^#/, '').trim().toLowerCase();
+    const already = (s.snpWorklistMembers || []).some(m =>
+      m.id === patientId ||
+      m.patientId === patientId ||
+      (norm(m.memberId) && norm(m.memberId) === norm(src.memberId))
+    );
+    if (already) return;
+
+    const now = new Date();
+    const stamp = `${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${now.getFullYear()}`;
+    const row = {
+      id:               `snpw-${Date.now()}`,
+      initials:         src.initials || (src.name || '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase(),
+      name:             src.name,
+      gender:           src.gender || src.g || null,
+      age:              src.age || null,
+      memberId:         src.memberId || null,
+      language:         src.language || 'en',
+      programSubStatus: 'New',
+      carePlanStatus:   null,
+      nextActionDue:    null,
+      outreach:         null,
+      assigneeId:       null,
+      assigneeName:     null,
+      assigneeInitials: null,
+      assigneeRole:     null,
+      triggerDate:      stamp,
+      lastAdmission:    src.lastAdmission || null,
+      trigger:          'SNP Program Assigned',
+      riskIq:           'Undetermined',
+      tags:             [],
+      tagsMore:         0,
+      taskCount:        0,
+      patientId,
+    };
+    set(st => ({ snpWorklistMembers: [...(st.snpWorklistMembers || []), row] }));
+    const { error } = await supabase.from('snp_worklist_members').insert({
+      id:                 row.id,
+      initials:           row.initials,
+      name:               row.name,
+      gender:             row.gender,
+      age:                row.age,
+      member_id:          row.memberId,
+      language:           row.language,
+      program_sub_status: row.programSubStatus,
+      trigger_date:       row.triggerDate,
+      trigger:            row.trigger,
+      risk_iq:            row.riskIq,
+      tags:               row.tags,
+      tags_more:          row.tagsMore,
+      task_count:         row.taskCount,
+      patient_id:         row.patientId,
+    });
+    if (error) {
+      console.warn('ensureSnpWorklistMembership — insert failed:', error.message);
+      // Roll back the optimistic row so the worklist doesn't show a phantom
+      // member that won't survive a reload.
+      set(st => ({ snpWorklistMembers: (st.snpWorklistMembers || []).filter(m => m.id !== row.id) }));
+    }
   },
 
   // ─── SNP filter slice ──────────────────────────────────────────────────
