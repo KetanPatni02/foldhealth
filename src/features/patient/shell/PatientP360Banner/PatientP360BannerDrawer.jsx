@@ -7,6 +7,7 @@ import { ConsentPopover } from '../../../../components/ConsentPopover/ConsentPop
 import { ScheduleDrawer } from '../../../../components/ScheduleDrawer/ScheduleDrawer';
 import { MenuPopover } from '../../../../components/MenuPopover/MenuPopover';
 import { useAppStore } from '../../../../store/useAppStore';
+import { formatFoldId } from '../../../../lib/foldId';
 import { FALLBACK_P360 } from '../../data/p360Mock';
 import { QuickViewExpanded } from './PatientP360BannerExpanded';
 import { DRAWER_ACTIONS, MORE_MENU_LABELS } from './PatientP360Banner.utils';
@@ -83,7 +84,7 @@ export function PatientP360BannerDrawer({ patient, p, programCodes }) {
           </div>
           <div className={styles.drawerProfileIdRow}>
             <span className={styles.drawerProfileOrg}>{selectedProfileId === 'central' ? p.health_plan_name : activeProfileName}</span>
-            <span className={styles.drawerProfileIdText}>(#{p.health_plan_id || patient.memberId})</span>
+            <span className={styles.drawerProfileIdText}>({formatFoldId(patient.memberId) || p.health_plan_id})</span>
             <span className={styles.drawerPlusBadge}>+{(p.insurance_profiles || FALLBACK_P360.insurance_profiles).length - 1}</span>
           </div>
         </div>

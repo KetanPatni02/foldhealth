@@ -115,7 +115,7 @@ export function ExpandedFamily({ p, className }) {
         {(p.family_members || []).length > 0 && <button className={styles.viewAllBtn}>View All &gt;</button>}
       </div>
       <div className={styles.careTeamSection}>
-        <div className={styles.careTeamHeader}><span className={styles.expandLabel}>Care Team</span><Icon name="solar:pen-2-linear" size={12} color="var(--neutral-200)" /><div style={{ flex: 1 }} /><span className={styles.profileTypeLabel}>{p.care_team_profile_type} <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-200)" /></span></div>
+        <div className={styles.careTeamHeader}><span className={styles.careTeamTitle}>Care Team</span><Icon name="solar:pen-2-linear" size={12} color="var(--neutral-200)" /><div style={{ flex: 1 }} /><span className={styles.profileTypeLabel}>{p.care_team_profile_type} <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-200)" /></span></div>
         {(p.care_team || []).map((m, i) => <div key={i} className={styles.personRow}><Avatar variant="assignee" initials={m.initials} /><div><span className={styles.personName}>{m.name} {m.role && <span className={styles.roleTag}>{m.role}</span>}</span><span className={styles.personRole}>{m.title}</span></div></div>)}
         {(p.care_team || []).length > 0 && <button className={styles.viewAllBtn}>View All &gt;</button>}
       </div>

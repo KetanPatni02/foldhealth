@@ -116,7 +116,7 @@ export function PatientProfileTabs({ patientId, patient, variant = 'full' }) {
           <StickyNoteAuditDrawer
             patientId={patientId}
             note={stickyNotes[0]}
-            profileOptions={['Central Profile', 'APC', 'JADE Health']}
+            profileOptions={['Central Profile', 'APC', 'FoldHealth']}
             onClose={() => setShowAuditDrawer(false)}
           />
         )}
