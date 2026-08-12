@@ -19,7 +19,6 @@ const agentLabel = (icon, text) => (
 const QUEUE_COLUMNS = [
   { key: 'select', showCheckbox: true, sticky: 'left', left: 0, width: 36 },
   { key: 'members', label: 'Members', sticky: 'left', left: 36, width: 240, thStyle: { borderRight: '0.5px solid var(--neutral-150)' } },
-  { key: 'priority', label: 'Priority' },
   { key: 'outreachType', label: 'Outreach Type' },
   { key: 'lace', label: 'LACE Acuity' },
   { key: 'outreachWindow', label: 'Outreach Window' },
@@ -34,21 +33,10 @@ const QUEUE_COLUMNS = [
   {
     key: 'agentDueOn',
     label: agentLabel(<Icon name="solar:calendar-linear" size={14} />, 'Due On'),
-    thStyle: { ...agentTh, minWidth: 140 },
+    thStyle: { ...agentTh, minWidth: 140, borderRight: '2px solid var(--primary-200)' },
   },
-  {
-    key: 'agentNextAction',
-    label: agentLabel(
-      <svg width="14" height="14" viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="2" rx="1" fill="currentColor"/><rect x="2" y="6" width="7" height="2" rx="1" fill="currentColor"/><rect x="2" y="10" width="5" height="2" rx="1" fill="currentColor"/></svg>,
-      'Next Action',
-    ),
-    thStyle: { ...agentTh, minWidth: 260 },
-  },
-  {
-    key: 'agentAiInsights',
-    label: agentLabel(<Icon name="solar:magic-stick-3-linear" size={14} />, 'AI Insights'),
-    thStyle: { ...agentTh, minWidth: 400, borderRight: '2px solid var(--primary-200)' },
-  },
+  { key: 'assessment', label: 'Assessment', thStyle: { minWidth: 160 } },
+  { key: 'outreachStatus', label: 'Outreach Status', thStyle: { minWidth: 160 } },
   { key: 'tocStatus', label: 'TOC Status' },
   { key: 'dueOn', label: 'Due On' },
   { key: 'nextOutreach', label: 'Next Outreach' },
@@ -148,7 +136,7 @@ export function QueueTable() {
       selectedIds={selectedIds}
       onSelectAll={handleSelectAll}
       onClearSelection={clearSelected}
-      minTableWidth={2300}
+      minTableWidth={1900}
     />
   );
 }
