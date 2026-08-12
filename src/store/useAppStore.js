@@ -1333,31 +1333,68 @@ export const useAppStore = create((set, get) => ({
   // setHccRole: (role) => set({ hccRole: role }),
 
   hccChartStatus: {},
+  // Fail-picker state per doc: { [memberId]: { [docId]: { reasons: string[], note: string } } }.
+  // Separate from hccChartStatus (which stays a string map so every existing
+  // reader keeps its shape) — this slice only carries the extra fields the
+  // Fail picker needs to rehydrate on reload. Populated by fetchHccChartStatus
+  // from the same row and by setChartDocStatus when the caller passes
+  // opts.failReasons / opts.failNote.
+  hccChartFailDetails: {},
   hccChartStatusDidFetch: false,
   fetchHccChartStatus: async () => {
     if (get().hccChartStatusDidFetch) return;
     try {
       const { data, error } = await supabase.from('hcc_chart_status').select('*');
       if (error) throw error;
-      const map = {};
+      const statusMap = {};
+      const failMap = {};
       for (const row of (data || [])) {
-        (map[row.member_id] ||= {})[row.doc_id] = row.status;
+        (statusMap[row.member_id] ||= {})[row.doc_id] = row.status;
+        if (Array.isArray(row.fail_reasons) && row.fail_reasons.length > 0) {
+          (failMap[row.member_id] ||= {})[row.doc_id] = {
+            reasons: row.fail_reasons,
+            note: row.fail_note || '',
+          };
+        }
       }
-      set({ hccChartStatus: map, hccChartStatusDidFetch: true });
+      set({
+        hccChartStatus: statusMap,
+        hccChartFailDetails: failMap,
+        hccChartStatusDidFetch: true,
+      });
     } catch (err) {
       console.warn('fetchHccChartStatus:', err?.message || err);
       set({ hccChartStatusDidFetch: true });
     }
   },
+  // opts.failReasons / opts.failNote are only stored when status === 'Failed'.
+  // Passing or clearing status wipes any prior fail details so a doc that was
+  // marked Failed then flipped to Passed doesn't leave stale reasons behind.
   setChartDocStatus: (memberId, docId, status, opts) => {
     if (!memberId || !docId) return;
-    set((state) => ({
-      hccChartStatus: {
-        ...state.hccChartStatus,
-        [memberId]: { ...(state.hccChartStatus[memberId] || {}), [docId]: status },
-      },
-    }));
-    // Persist so the Pass/Fail mark survives reload.
+    const isFailed = status === 'Failed';
+    const failReasons = isFailed ? (opts?.failReasons || []) : [];
+    const failNote = isFailed ? (opts?.failNote || '') : '';
+    set((state) => {
+      const memberFail = { ...(state.hccChartFailDetails[memberId] || {}) };
+      if (isFailed && failReasons.length > 0) {
+        memberFail[docId] = { reasons: failReasons, note: failNote };
+      } else {
+        delete memberFail[docId];
+      }
+      return {
+        hccChartStatus: {
+          ...state.hccChartStatus,
+          [memberId]: { ...(state.hccChartStatus[memberId] || {}), [docId]: status },
+        },
+        hccChartFailDetails: {
+          ...state.hccChartFailDetails,
+          [memberId]: memberFail,
+        },
+      };
+    });
+    // Persist so the Pass/Fail mark AND (when Failed) the reason list + comment
+    // survive reload. Non-failed statuses clear the two fail columns.
     supabase
       .from('hcc_chart_status')
       .upsert({
@@ -1365,6 +1402,8 @@ export const useAppStore = create((set, get) => ({
         member_id: memberId,
         doc_id: docId,
         status,
+        fail_reasons: isFailed && failReasons.length > 0 ? failReasons : null,
+        fail_note: isFailed && failNote ? failNote : null,
         updated_at: new Date().toISOString(),
       })
       .then(({ error }) => {
