@@ -63,17 +63,38 @@ export function StatusIcon({ status, size = 16 }) {
 // other doc row and header action live so the reviewer can bail out
 // (three-dots, hover on the status pill, etc.) without an overlay
 // blocking the surface.
-export function FailReasonInline({ onCancel, onConfirm }) {
-  // Multi-select: the reviewer can flag more than one reason on a fail
-  // (e.g. "Illegible" AND "Missing Signature"). Stored as a Set for O(1)
-  // toggle; onConfirm hands out an array in the original option order.
-  const [reasons, setReasons] = useState(() => new Set());
-  const [comment, setComment] = useState('');
-  const toggleReason = (r) => setReasons((prev) => {
-    const next = new Set(prev);
+export function FailReasonInline({ onCancel, onConfirm, value, onChange, hideActions = false }) {
+  // Two modes:
+  //  1. Uncontrolled (default) — internal state + Confirm/Cancel actions.
+  //     Used by ChartDetailDrawer where the picker commits on Confirm.
+  //  2. Controlled — parent owns `value: { reasons: string[], note: string }`
+  //     and receives changes via `onChange`. Pair with `hideActions` when the
+  //     parent has its own outer submit (e.g. UploadChartDrawer's Upload
+  //     button already saves everything on click).
+  const controlled = value !== undefined;
+  const [reasonsInternal, setReasonsInternal] = useState(() => new Set());
+  const [commentInternal, setCommentInternal] = useState('');
+  const reasons = controlled
+    ? new Set(value?.reasons || [])
+    : reasonsInternal;
+  const comment = controlled ? (value?.note || '') : commentInternal;
+  const emit = (nextReasons, nextComment) => {
+    if (controlled) {
+      onChange?.({
+        reasons: FAIL_REASONS.filter(r => nextReasons.has(r)),
+        note: nextComment,
+      });
+    } else {
+      setReasonsInternal(nextReasons);
+      setCommentInternal(nextComment);
+    }
+  };
+  const toggleReason = (r) => {
+    const next = new Set(reasons);
     if (next.has(r)) next.delete(r); else next.add(r);
-    return next;
-  });
+    emit(next, comment);
+  };
+  const setComment = (c) => emit(reasons, c);
   // At least one reason is always required. The comment is optional — with
   // one exception: picking "Other" makes it mandatory, since the reviewer
   // owes a specific reason for the downstream reviewer to act on. When
@@ -122,17 +143,19 @@ export function FailReasonInline({ onCancel, onConfirm }) {
           onChange={(e) => setComment(e.target.value)}
         />
       </div>
-      <div className={styles.failActions}>
-        <Button
-          variant="danger"
-          size="S"
-          disabled={!canSubmit}
-          onClick={() => onConfirm({ reasons: FAIL_REASONS.filter(r => reasons.has(r)), note: comment })}
-        >
-          Confirm
-        </Button>
-        <Button variant="secondary" size="S" onClick={onCancel}>Cancel</Button>
-      </div>
+      {!hideActions && (
+        <div className={styles.failActions}>
+          <Button
+            variant="danger"
+            size="S"
+            disabled={!canSubmit}
+            onClick={() => onConfirm?.({ reasons: FAIL_REASONS.filter(r => reasons.has(r)), note: comment })}
+          >
+            Confirm
+          </Button>
+          <Button variant="secondary" size="S" onClick={onCancel}>Cancel</Button>
+        </div>
+      )}
     </div>
   );
 }

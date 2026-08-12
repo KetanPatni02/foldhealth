@@ -147,16 +147,19 @@
   gap: 4px;
   font-size: 14px;
   color: var(--neutral-200);
-  font-family: 'Inter', sans-serif;
 }
 
-.required::before {
-  content: '';
+/* 4×4 required dot — rendered directly on the .required span (not via a
+ * pseudo) so the inline-flex parent centers it vertically against the label
+ * text. Using a pseudo forced the span to baseline-align, which pushed the
+ * dot low on 14px labels. */
+.required {
   width: 4px;
   height: 4px;
   border-radius: 50%;
   background: var(--status-error);
   display: inline-block;
+  flex-shrink: 0;
 }
 
 .input {
@@ -187,12 +190,6 @@
 }
 
 /* ── Review Status ────────────────────────────────────────────────────── */
-
-.optional {
-  font-size: 12px;
-  color: var(--neutral-300);
-  font-weight: 400;
-}
 
 .statusRow {
   display: inline-flex;
@@ -244,33 +241,3 @@
   overflow: hidden;
 }
 
-/* Compact summary of the captured fail reasons — shown after the reviewer
-   confirms in the picker so they can see (and revisit) the recorded reason
-   before hitting Upload. */
-.failSummary {
-  margin-top: 8px;
-  padding: 10px 12px;
-  border: 0.5px solid var(--status-error);
-  border-radius: 8px;
-  background: var(--status-error-light);
-  color: var(--status-error);
-  font-size: 13px;
-}
-
-.failSummaryHeading {
-  font-weight: 500;
-  margin-bottom: 4px;
-}
-
-.failSummaryList {
-  margin: 0;
-  padding-left: 16px;
-  color: var(--neutral-500);
-  font-weight: 400;
-}
-
-.failSummaryNote {
-  margin-top: 6px;
-  color: var(--neutral-500);
-  font-weight: 400;
-}

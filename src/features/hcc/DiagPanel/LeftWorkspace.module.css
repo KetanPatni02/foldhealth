@@ -1680,6 +1680,51 @@
   padding-right: 28px;
 }
 
+/* ── Document Status pills (Pass / Fail) + inline reason picker ──────── */
+/* Mirrors the Review Status control in UploadChartDrawer so both upload
+ * surfaces read the same. */
+.docStatusRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.docStatusPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  height: 32px;
+  padding: 0 14px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: var(--neutral-0);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.docStatusPill:hover { background: var(--neutral-50); }
+.docStatusPass {
+  background: var(--status-success-light);
+  border-color: var(--status-success);
+  color: var(--status-success);
+}
+.docStatusFail {
+  background: var(--status-error-light);
+  border-color: var(--status-error);
+  color: var(--status-error);
+}
+/* Wraps the shared FailReasonInline picker below the pill row so the
+ * reason list + comment textarea sit inside the same form card. */
+.docFailInlineWrap {
+  margin-top: 8px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  overflow: hidden;
+}
+
 /* ── Shared list shell — used by Comments and Notes ──────────────────── */
 
 .list {
