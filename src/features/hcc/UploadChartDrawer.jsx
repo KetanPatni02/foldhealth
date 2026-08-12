@@ -116,7 +116,10 @@ export function UploadChartDrawer() {
     const doc = makeUploadedChartDoc(member, { file, caption, docType });
     addChartDoc(member.id, doc, file);
     if (initialStatus) {
-      setChartDocStatus(member.id, doc.id, initialStatus);
+      setChartDocStatus(member.id, doc.id, initialStatus, {
+        failReasons: initialStatus === 'Failed' ? (failDetails?.reasons || []) : undefined,
+        failNote: initialStatus === 'Failed' ? (failDetails?.note || '') : undefined,
+      });
     }
     addActivityEntry({
       t: 'upload', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',

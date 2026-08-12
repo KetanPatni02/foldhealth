@@ -1510,6 +1510,7 @@ function DocumentsUploader() {
   const showToast = useAppStore(s => s.showToast);
   const addActivityEntry = useAppStore(s => s.addActivityEntry);
   const addChartDoc = useAppStore(s => s.addChartDoc);
+  const setChartDocStatus = useAppStore(s => s.setChartDocStatus);
   const logHccActivity = useAppStore(s => s.logHccActivity);
   const diagPanelMemberId = useAppStore(s => s.diagPanelMemberId);
   const hccMembers = useAppStore(s => s.hccMembers);
@@ -1607,6 +1608,14 @@ function DocumentsUploader() {
       status: docStatus,
     });
     addChartDoc(diagPanelMemberId, doc, file);
+    // Mirror the UploadChartDrawer flow: doc's status also lands in
+    // hcc_chart_status with the fail reasons + comment so the doc is fully
+    // rehydratable across surfaces (worklist row, ChartDetailDrawer,
+    // DiagPanel). addChartDoc alone only persists status inside hcc_added_charts.
+    setChartDocStatus(diagPanelMemberId, doc.id, docStatus, {
+      failReasons: docStatus === 'Failed' ? (failDetails?.reasons || []) : undefined,
+      failNote:    docStatus === 'Failed' ? (failDetails?.note    || '') : undefined,
+    });
     const userRole = useAppStore.getState().hccUserRole || 'Coder';
     addActivityEntry({
       t: 'upload', by: 'You', role: userRole,
