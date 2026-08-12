@@ -16,7 +16,11 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS public.patient_medications (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  patient_id   TEXT NOT NULL REFERENCES public.patients(id) ON DELETE CASCADE,
+  -- Plain grouping key, not a FK. A patient can be sourced from any of the
+  -- worklist slices (hcc_members, awv_members, ccm_worklist_members, snp,
+  -- patients) — each with its own id shape — and Medication Reconciliation
+  -- needs to persist for all of them. See patient_medications_drop_fk_migration.sql.
+  patient_id   TEXT NOT NULL,
   name         TEXT NOT NULL,
   start_date   TEXT,                             -- MM/DD/YYYY to match the rest of the UI
   stop_date    TEXT,
