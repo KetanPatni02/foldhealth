@@ -2,11 +2,13 @@ import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react
 import { Avatar } from '../../../../components/Avatar/Avatar';
 import { ActionButton } from '../../../../components/ActionButton/ActionButton';
 import { Icon } from '../../../../components/Icon/Icon';
+import { MenuPopover } from '../../../../components/MenuPopover/MenuPopover';
 import { useAppStore } from '../../../../store/useAppStore';
 import { formatDobDisplay } from '../../../../lib/patientDob';
 import { FALLBACK_P360 } from '../../data/p360Mock';
 import { ExpandedDemographics, ExpandedHealthStatus, ExpandedAppointments, ExpandedFamily, QuickViewExpanded } from './PatientP360BannerExpanded';
 import { PatientP360BannerDrawer } from './PatientP360BannerDrawer';
+import { MORE_MENU_LABELS } from './PatientP360Banner.utils';
 import styles from './PatientP360Banner.module.css';
 
 export function PatientP360Banner({ patient, variant = 'full' }) {
@@ -14,8 +16,12 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
   const [tags, setTags] = useState([]);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [selectedProfileId, setSelectedProfileId] = useState('central');
+  const [moreMenuRect, setMoreMenuRect] = useState(null);
   const bannerRef = useRef(null);
   const [bannerSize, setBannerSize] = useState('wide');
+  const showToast = useAppStore(s => s.showToast);
+  const updatePatient = useAppStore(s => s.updatePatient);
+  const openPatientEdit = useAppStore(s => s.openPatientEdit);
 
   const measureBanner = useCallback(() => {
     const el = bannerRef.current;
@@ -140,9 +146,49 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
           <span className={styles.hDivider} />
           <div className={styles.actionCol}><ActionButton icon="solar:letter-linear" size="L" tooltip="Email" /><span className={styles.actionLabel}>Email</span></div>
           <span className={styles.hDivider} />
-          <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More" />
+          <ActionButton
+            icon="solar:menu-dots-bold"
+            size="L"
+            tooltip="More"
+            onClick={(e) => setMoreMenuRect(e.currentTarget.getBoundingClientRect())}
+          />
         </div>
       </div>
+
+      {moreMenuRect && (
+        <MenuPopover
+          anchorRect={moreMenuRect}
+          width={220}
+          align="right"
+          items={[
+            { key: 'assessment', icon: 'solar:clipboard-check-linear', label: 'Assessment' },
+            { key: 'education', icon: 'solar:book-linear', label: 'Education' },
+            { key: 'add-task', icon: 'solar:checklist-linear', label: 'Add Task' },
+            { key: 'referral', icon: 'solar:arrow-right-up-linear', label: 'Create Referral' },
+            { key: 'automation', icon: 'solar:bolt-linear', label: 'Run Automation' },
+            { key: 'relatives', icon: 'solar:users-group-two-rounded-linear', label: 'Add Relatives' },
+            { key: 'print', icon: 'solar:printer-linear', label: 'Print Clinical Profile' },
+            { key: 'edit', icon: 'solar:pen-linear', label: 'Edit Details' },
+            { key: 'reset-pw', icon: 'solar:refresh-linear', label: 'Reset Password' },
+            { key: 'inactive', icon: 'solar:user-cross-linear', label: patient.status === 'inactive' ? 'Set Active' : 'Set Inactive' },
+            { divider: true },
+            { key: 'block', icon: 'solar:forbidden-circle-linear', label: 'Block Number', danger: true },
+          ]}
+          onClose={() => setMoreMenuRect(null)}
+          onSelect={(key) => {
+            setMoreMenuRect(null);
+            if (key === 'edit') { openPatientEdit('basic', patient); return; }
+            if (key === 'print') { showToast('Printing clinical profile…'); window.print(); return; }
+            if (key === 'inactive') {
+              const nextStatus = patient.status === 'inactive' ? 'active' : 'inactive';
+              updatePatient(patient.id, { status: nextStatus });
+              showToast(nextStatus === 'inactive' ? `${patient.name} set to Inactive` : `${patient.name} set to Active`);
+              return;
+            }
+            showToast(`${MORE_MENU_LABELS[key] || 'Action'} — coming soon`);
+          }}
+        />
+      )}
 
       <div className={styles.row2}>
         <button className={styles.patientTypeBadge}>{p.patient_type} <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" /></button>

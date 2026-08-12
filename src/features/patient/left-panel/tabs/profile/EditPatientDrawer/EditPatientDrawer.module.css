@@ -2,87 +2,16 @@
  * entry-point on the Profile tab and the P360 banner overflow menu.
  * Figma: Fold-Pixel P360 Revamp node 6821:297875. */
 
-/* ── Tab bar (numbered pills + Switch on the right) ─────────────── */
-/* Sits directly on top of the drawer body's own 16px padding — no
- * extra side padding here, and no rule below it (the Drawer's own
- * header divider is enough). */
-.tabBar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0;
-  margin-bottom: 8px;
-  flex-shrink: 0;
-  background: var(--neutral-0);
-}
-
-.tabsGroup {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  flex: 1;
-}
-
-.tab {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: none;
-  border: none;
-  padding: 4px 8px 4px 4px;
-  cursor: pointer;
-  font-size: 14px;
-  color: var(--neutral-300);
-  transition: color 0.12s;
-}
-.tab:hover:not(.tabActive) { color: var(--neutral-400); }
-
-.tabActive { color: var(--primary-300); }
-.tabActive .tabDot {
-  background: var(--primary-100);
-  color: var(--primary-300);
-  border-color: var(--primary-200);
-}
-
-/* Numbered circle chip preceding each tab label. */
-.tabDot {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--neutral-50);
-  border: 0.5px solid var(--neutral-150);
-  color: var(--neutral-300);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-/* Line connecting adjacent tab chips. */
-.tabConnector {
-  display: inline-block;
-  width: 32px;
-  height: 1px;
-  background: var(--neutral-150);
-  margin: 0 4px 0 8px;
-}
-
-/* ── Body scroller ─────────────────────────────────────────────── */
-/* No side padding — the Drawer's own body already pads 16px, and
- * the tab bar above shares that gutter. A 12px top gap sits between
- * the tab bar and the first section title. */
+/* ── Form body ────────────────────────────────────────────────── */
+/* The Drawer's own body wraps this and owns the scroll + 16px gutter.
+ * The tab strip is pinned above in the Drawer's banner slot, so only
+ * the sections below scroll. A small top gap separates the first
+ * section title from the tab strip's underline. */
 .body {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  padding: 12px 0 0;
-  overflow-y: auto;
-  flex: 1;
-  min-height: 0;
+  padding-top: 12px;
 }
 
 .section {

@@ -41,6 +41,7 @@ export function CcmWorklistRow({ member, isSelected, onSelect }) {
   const navigateToPatient = useAppStore(s => s.navigateToPatient);
   const showToast = useAppStore(s => s.showToast);
   const requestAddTask = useAppStore(s => s.requestAddTask);
+  const openPatientEdit = useAppStore(s => s.openPatientEdit);
   const [billingOpen, setBillingOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuBtnRef = useRef(null);
@@ -60,6 +61,18 @@ export function CcmWorklistRow({ member, isSelected, onSelect }) {
     if (key === 'Add Task') { requestAddTask?.({ member: m.name }); return; }
     if (key === 'Open Care Program') {
       if (m.patientId) navigateToPatient(m.patientId, { profileTab: 'Care Programs', programCode: 'CCM' });
+      return;
+    }
+    if (key === 'Edit Details') {
+      openPatientEdit('basic', {
+        id: m.patientId || m.id,
+        name: m.name,
+        initials: m.initials,
+        gender: m.gender,
+        age: m.age,
+        memberId: m.memberId,
+        language: m.language,
+      });
       return;
     }
     showToast(`${key} – coming soon`);
