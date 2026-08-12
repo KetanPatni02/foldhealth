@@ -7738,6 +7738,90 @@ export const useAppStore = create((set, get) => ({
     get().persistPatient(id, updates);
   },
 
+  // Core-identity update — name / dob / gender / age / contact fields edited
+  // in the Update Member drawer. One patient can be mirrored across several
+  // slices (patients, hcc, awv, ccm, snp, all_patients), each backed by its
+  // own table, so a rename that only touched `patients` would leave every
+  // other worklist (and the P360 banner opened from them) stale. This action
+  // updates every slice row sharing the identity (id match or normalized
+  // memberId match) and persists per-table with each table's column shape.
+  // `core` fields: name, initials, gender ('M'/'F'), age ("Ny Mm"), dob
+  // (MM/DD/YYYY), language, email, phone, city, state — all optional.
+  updatePatientCore: (patientId, core) => {
+    if (!patientId || !core) return;
+    const norm = (v) => String(v || '').replace(/^#/, '').trim().toLowerCase();
+    const s = get();
+    const matches = (m) => m && (m.id === patientId || (m.memberId != null && String(m.memberId) === String(patientId)));
+
+    // Resolve the shared identity key from whichever slice knows this patient.
+    const src =
+      s.patients.find(matches) ||
+      (s.allPatients || []).find(matches) ||
+      s.hccMembers.find(matches) ||
+      (s.awvMembers || []).find(matches) ||
+      (s.ccmWorklistMembers || []).find(matches) ||
+      (s.snpWorklistMembers || []).find(matches);
+    const memberKey = norm(src?.memberId);
+    const rowMatches = (m) => m && (m.id === patientId || (memberKey && norm(m.memberId) === memberKey));
+
+    const defined = (obj) => Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
+    const ageYears = (() => {
+      const m = /^(\d+)/.exec(String(core.age || ''));
+      return m ? Number(m[1]) : undefined;
+    })();
+    const dobIso = (() => {
+      const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(core.dob || ''));
+      return m ? `${m[3]}-${m[1]}-${m[2]}` : undefined;
+    })();
+
+    // ── Local slices (optimistic) ──────────────────────────────────────
+    set(st => ({
+      patients: st.patients.map(p => rowMatches(p)
+        ? { ...p, ...defined({ name: core.name, initials: core.initials, gender: core.gender, age: core.age, dob: core.dob, language: core.language, email: core.email, phone: core.phone, city: core.city, state: core.state }) }
+        : p),
+      allPatients: (st.allPatients || []).map(p => rowMatches(p)
+        ? { ...p, ...defined({ name: core.name, initials: core.initials, gender: core.gender, age: core.age, email: core.email, phone: core.phone, city: core.city, state: core.state }) }
+        : p),
+      hccMembers: st.hccMembers.map(m => rowMatches(m)
+        ? { ...m, ...defined({ name: core.name, in: core.initials, g: core.gender, age: core.age, dob: core.dob }) }
+        : m),
+      awvMembers: (st.awvMembers || []).map(m => rowMatches(m)
+        ? { ...m, ...defined({ name: core.name, initials: core.initials, gender: core.gender, age: core.age }) }
+        : m),
+      ccmWorklistMembers: (st.ccmWorklistMembers || []).map(m => rowMatches(m)
+        ? { ...m, ...defined({ name: core.name, initials: core.initials, gender: core.gender, age: core.age, dob: core.dob }) }
+        : m),
+      snpWorklistMembers: (st.snpWorklistMembers || []).map(m => rowMatches(m)
+        ? { ...m, ...defined({ name: core.name, initials: core.initials, gender: core.gender, age: core.age }) }
+        : m),
+      // The QuickView drawer renders a snapshot — refresh it so an open
+      // drawer reflects the save immediately.
+      quickViewPatient: st.quickViewPatient && rowMatches(st.quickViewPatient)
+        ? { ...st.quickViewPatient, ...defined({ name: core.name, initials: core.initials, gender: core.gender, age: core.age, dob: core.dob, language: core.language, memberId: st.quickViewPatient.memberId }) }
+        : st.quickViewPatient,
+    }));
+
+    // ── Persistence (fire-and-forget, per-table column shapes) ─────────
+    // patients — via the shared persist path (mapper covers the new columns).
+    const patientRow = get().patients.find(rowMatches);
+    if (patientRow) {
+      get().persistPatient(patientRow.id, defined({ name: core.name, initials: core.initials, gender: core.gender, age: core.age, dob: core.dob, language: core.language, email: core.email, phone: core.phone, city: core.city, state: core.state }));
+    }
+    if (!memberKey) return;
+    const fire = (table, payload) => {
+      const clean = defined(payload);
+      if (!Object.keys(clean).length) return;
+      supabase.from(table).update(clean).eq('member_id', src.memberId).then(({ error }) => {
+        if (error) console.warn(`updatePatientCore — ${table} update failed:`, error.message);
+      });
+    };
+    fire('all_patients',         { name: core.name, initials: core.initials, gender: core.gender, age: ageYears, email: core.email, phone: core.phone, city: core.city, state: core.state });
+    fire('hcc_members',          { name: core.name, initials: core.initials, gender: core.gender, date_of_birth: dobIso });
+    fire('awv_members',          { name: core.name, initials: core.initials, gender: core.gender, age: core.age });
+    fire('ccm_worklist_members', { name: core.name, initials: core.initials, gender: core.gender, age: core.age, dob: core.dob });
+    fire('snp_worklist_members', { name: core.name, initials: core.initials, gender: core.gender, age: core.age });
+  },
+
   invokeAgent: (patientIds, agentName, agentRole) => {
     const MAX_CONCURRENT = 3;
     const state = get();

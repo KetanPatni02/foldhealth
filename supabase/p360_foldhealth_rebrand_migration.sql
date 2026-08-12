@@ -1,13 +1,12 @@
--- P360 profile card rebrand: the demo health plan reads "JADE Health" with a
--- made-up plan number ("##94949494WIWI"). Rename to FoldHealth and null the
--- fake plan ids — the banner now renders the patient's real Fold ID
--- (patient.memberId) in that slot, with health_plan_id only as a fallback.
+-- P360 profile card rebrand: the demo health plan reads "JADE Health" —
+-- rename to FoldHealth. Plan ids stay as sample data (only the name was
+-- wrong); the banner shows health_plan_id, falling back to the patient's
+-- Fold ID when a profile has none.
 
 BEGIN;
 
 UPDATE public.p360_profiles
-SET    health_plan_name = 'FoldHealth',
-       health_plan_id   = NULL
+SET    health_plan_name = 'FoldHealth'
 WHERE  health_plan_name = 'JADE Health';
 
 COMMIT;

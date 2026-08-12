@@ -84,7 +84,9 @@ export function PatientP360BannerDrawer({ patient, p, programCodes }) {
           </div>
           <div className={styles.drawerProfileIdRow}>
             <span className={styles.drawerProfileOrg}>{selectedProfileId === 'central' ? p.health_plan_name : activeProfileName}</span>
-            <span className={styles.drawerProfileIdText}>({formatFoldId(patient.memberId) || p.health_plan_id})</span>
+            {/* health_plan_id already carries its '#' — don't prepend another
+                (the old template rendered "##94949494WIWI"). */}
+            <span className={styles.drawerProfileIdText}>({p.health_plan_id || formatFoldId(patient.memberId)})</span>
             <span className={styles.drawerPlusBadge}>+{(p.insurance_profiles || FALLBACK_P360.insurance_profiles).length - 1}</span>
           </div>
         </div>
@@ -190,7 +192,9 @@ export function PatientP360BannerDrawer({ patient, p, programCodes }) {
               <div key={prof.id} className={`${styles.profileOption} ${selectedProfileId === prof.id ? styles.profileOptionSelected : ''}`}
                 onClick={() => { setSelectedProfileId(prof.id); setShowProfileDropdown(false); setDrawerDropdownStyle(null); }}>
                 <div className={styles.profileOptionHeader}>
-                  <div><div className={styles.profileOptionName}>{prof.name}</div><div className={styles.profileOptionSub}>{prof.subtitle}</div></div>
+                  {/* Central Profile IS the FoldHealth identity — show the real
+                      Fold ID; other insurer profiles keep their sample ids. */}
+                  <div><div className={styles.profileOptionName}>{prof.name}</div><div className={styles.profileOptionSub}>{prof.id === 'central' ? `Fold ID: ${formatFoldId(patient.memberId)}` : prof.subtitle}</div></div>
                   {selectedProfileId === prof.id ? <Icon name="solar:check-circle-bold" size={20} color="var(--status-success)" /> : <span className={styles.profileOptionRadio} />}
                 </div>
               </div>

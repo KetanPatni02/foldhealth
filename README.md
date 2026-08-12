@@ -37,6 +37,16 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **P360 banner — real data for every patient** — all 28 patients now have a
+  seeded `p360_profiles` row (acuity/RAF, consent, next appt, chronic
+  conditions, vitals, family, care team) generated deterministically per
+  patient by `scripts/seed_p360_banner.js`; re-runs only fill NULL/empty
+  fields so hand-crafted rows survive. New `upcoming_appointments` jsonb
+  column (`supabase/p360_upcoming_appointments_migration.sql`) persists the
+  expanded banner's Appointments column. Expanded-state typography was also
+  rebalanced (SemiBold section titles, proper Care Team sub-header, no more
+  stray 10/11/14px sizes).
+
 - **Care Programs table — editable Status & Assignee** — the program list
   Status cell is now a dropdown (Engaged / Declined / Unable to Reach /
   Enrolled / Attempted) with per-status colors (warning for in-program,

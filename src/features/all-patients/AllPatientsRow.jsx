@@ -89,6 +89,7 @@ export function AllPatientsRow({ row, isSelected, onSelect }) {
   const showToast = useAppStore(s => s.showToast);
   const startHccUpload = useAppStore(s => s.startHccUpload);
   const openPatientEdit = useAppStore(s => s.openPatientEdit);
+  const openQuickView = useAppStore(s => s.openQuickView);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropBtnRef = useRef(null);
 
@@ -128,14 +129,28 @@ export function AllPatientsRow({ row, isSelected, onSelect }) {
     showToast(`${key} – coming soon`);
   };
 
-  const handleRowClick = () => {
-    showToast(`${row.name} — details coming soon`);
-  };
-
   const location = row.city && row.state ? `${row.city}, ${row.state}` : (row.location || '—');
   const ccm = row.ccmConsent;
   const apcm = row.apcmConsent;
   const ageDisplay = ageDisplayOf(row);
+
+  // Same QuickView payload shape as WorklistRow (TOC) / HCC — age in the
+  // displayed "Ny Mm" form so the drawer banner matches the row.
+  const quickViewPayload = {
+    id: row.id,
+    name: row.name,
+    initials: row.initials,
+    gender: row.gender,
+    age: ageDisplay || row.age,
+    memberId: row.memberId,
+    language: row.language,
+    dob: row.dob,
+    lace: row.lace,
+  };
+
+  const handleRowClick = () => {
+    openQuickView(quickViewPayload);
+  };
 
   return (
     <tr className={rowStyles.row} onClick={handleRowClick}>
@@ -147,7 +162,12 @@ export function AllPatientsRow({ row, isSelected, onSelect }) {
           <Avatar variant="patient" initials={row.initials} />
           <div>
             <div className={rowStyles.patientName}>
-              {row.name}
+              <button
+                className={rowStyles.patientNameLink}
+                onClick={(e) => { e.stopPropagation(); openQuickView(quickViewPayload); }}
+              >
+                {row.name}
+              </button>
               {row.gender && ageDisplay && (() => {
                 // DOB tooltip mirrors WorklistRow: stored dob wins, else a
                 // deterministic derivation from the displayed age + name so

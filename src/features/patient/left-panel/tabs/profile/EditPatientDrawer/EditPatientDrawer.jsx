@@ -8,7 +8,45 @@ import { TabStrip } from '../../../../../../components/TabStrip/TabStrip';
 import { DatePicker } from '../../../../../../components/DatePicker/DatePicker';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { useAppStore } from '../../../../../../store/useAppStore';
+import { formatDobDisplay, deriveDob } from '../../../../../../lib/patientDob';
 import styles from './EditPatientDrawer.module.css';
+
+// patients rows store gender as 'M'/'F'; the form's Select speaks full labels.
+// Convert on both boundaries so the field pre-fills (previously an 'M' row
+// showed the "Select gender" placeholder) and saves back in row shape. Also
+// normalizes legacy free-text seed values ("Identified as Female") that
+// would otherwise match no option and render the placeholder.
+const genderLabelFrom = (g) => {
+  const s = String(g || '').toLowerCase();
+  if (!s) return '';
+  if (s === 'f' || s.includes('female')) return 'Female';
+  if (s === 'm' || s.includes('male')) return 'Male';
+  if (s.includes('non') && s.includes('binary')) return 'Non-binary';
+  return g;
+};
+const genderCodeFrom = (label) => (label === 'Male' ? 'M' : label === 'Female' ? 'F' : label || null);
+
+// "Ny Mm" age from a MM/DD/YYYY dob — keeps the Age field (and everything
+// the save fans out to) in lockstep when the user picks a new DOB.
+const ageFromDobMdy = (mdy) => {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(mdy || ''));
+  if (!m) return '';
+  const birth = new Date(+m[3], +m[1] - 1, +m[2]);
+  const now = new Date();
+  let years = now.getFullYear() - birth.getFullYear();
+  let months = now.getMonth() - birth.getMonth();
+  if (now.getDate() < birth.getDate()) months -= 1;
+  if (months < 0) { years -= 1; months += 12; }
+  return years >= 0 ? `${years}y ${months}m` : '';
+};
+
+// Form language options are display strings ("Es(US-Native)"); patients rows
+// carry ISO-ish codes. Best-effort map for the save fan-out.
+const LANGUAGE_CODE_MAP = {
+  'En(US-Native)': 'en', 'Es(US-Native)': 'es', 'Chinese (Yue-Basic)': 'yue',
+  'Chinese (Mandarin)': 'zh', 'French': 'fr', 'Vietnamese': 'vi',
+  'Tagalog': 'tl', 'Korean': 'ko', 'Arabic': 'ar',
+};
 
 /** MM/DD/YYYY ↔ YYYY-MM-DD helpers — the form stores DOB the way the
  * Profile tab renders it, but the native <input type="date"> only speaks
@@ -59,9 +97,17 @@ function initialForm(patient, p) {
     // Basic Info
     name:               patient?.name || '',
     chosen_name:        p?.chosen_name || '',
-    date_of_birth:      p?.date_of_birth || patient?.dob || '',
-    age:                p?.age || patient?.age || '',
-    gender_identity:    p?.gender_identity || patient?.gender || '',
+    // Core identity fields read PATIENT-ROW-FIRST — the P360 banner renders
+    // patient.gender / patient.dob / patient.age, so the drawer must pre-fill
+    // from the same source or the two disagree (legacy p360 seed rows carry a
+    // different persona). p360 fills gaps; DOB falls back to the same
+    // deterministic derivation the worklist DOB tooltips use.
+    // Mirrors the banner's exact chain (stored dob → derived-from-age) so the
+    // pre-filled date always equals the date the profile displays; the p360
+    // row's own date_of_birth is last resort for rows with no age to derive from.
+    date_of_birth:      formatDobDisplay(patient?.dob) || deriveDob(patient?.age, patient?.name) || formatDobDisplay(p?.date_of_birth) || '',
+    age:                patient?.age || p?.age || '',
+    gender_identity:    genderLabelFrom(patient?.gender || p?.gender_identity),
     pronoun:            p?.pronoun || '',
     sex_at_birth:       p?.sex_at_birth || '',
     sexual_orientation: p?.sexual_orientation || '',
@@ -174,6 +220,7 @@ export function EditPatientDrawer({
   const patientId = patient?.id;
   const p360Profile = useAppStore((s) => s.p360Profile);
   const updateP360Profile = useAppStore((s) => s.updateP360Profile);
+  const updatePatientCore = useAppStore((s) => s.updatePatientCore);
   const invitePatient = useAppStore((s) => s.invitePatient);
   const p = !isInvite && p360Profile && p360Profile.patient_id === patientId ? p360Profile : null;
 
@@ -257,6 +304,22 @@ export function EditPatientDrawer({
         additional_notes:   form.notes || null,
         profile_source:     form.profile_source || null,
         profile_created_on: form.profile_created_on || null,
+      });
+      // Fan the core identity fields out to the patient row itself (and its
+      // mirrors in every worklist slice/table) — the P360 banner, worklist
+      // rows, and QuickView drawer all render from those, not p360_profiles.
+      const name = form.name.trim();
+      updatePatientCore(patientId, {
+        name:     name || undefined,
+        initials: name ? name.split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() : undefined,
+        gender:   genderCodeFrom(form.gender_identity) || undefined,
+        age:      form.age || undefined,
+        dob:      form.date_of_birth || undefined,
+        language: LANGUAGE_CODE_MAP[form.primary_language],
+        email:    form.email || undefined,
+        phone:    form.phone || undefined,
+        city:     form.city || undefined,
+        state:    form.state || undefined,
       });
     } finally {
       setSaving(false);
@@ -504,7 +567,11 @@ export function EditPatientDrawer({
               <Field label="Date of Birth">
                 <DatePicker
                   value={isoFromMdy(form.date_of_birth)}
-                  onSelect={(iso) => set('date_of_birth', mdyFromIso(iso))}
+                  onSelect={(iso) => {
+                    const mdy = mdyFromIso(iso);
+                    // Age tracks the picked DOB so the two can't disagree.
+                    setForm(prev => ({ ...prev, date_of_birth: mdy, age: ageFromDobMdy(mdy) || prev.age }));
+                  }}
                   placeholder="MM/DD/YYYY"
                 />
               </Field>
