@@ -7461,6 +7461,18 @@ export const useAppStore = create((set, get) => ({
   openQuickView: (patient) => set({ quickViewPatient: patient }),
   closeQuickView: () => set({ quickViewPatient: null }),
 
+  // TOC Queue → Assessment drawer — opened by clicking the Assessment pill in a row.
+  // Holds the patient id (not the full object) so state stays in sync when the
+  // underlying patient row updates (e.g. status flips) while the drawer is open.
+  assessmentDrawerPatientId: null,
+  openAssessmentDrawer: (patientId) => set({ assessmentDrawerPatientId: patientId }),
+  closeAssessmentDrawer: () => set({ assessmentDrawerPatientId: null }),
+
+  // TOC Queue → Outreach Status drawer — same pattern as the assessment drawer.
+  outreachStatusDrawerPatientId: null,
+  openOutreachStatusDrawer: (patientId) => set({ outreachStatusDrawerPatientId: patientId }),
+  closeOutreachStatusDrawer: () => set({ outreachStatusDrawerPatientId: null }),
+
   updatePatient: (id, updates) => {
     // Optimistic local update
     set(s => ({
