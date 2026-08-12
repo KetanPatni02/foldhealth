@@ -104,7 +104,13 @@ export function useTasksView() {
     fetchTaskLabels();
     fetchTaskPools();
     if (!allPatients || allPatients.length === 0) fetchAllPatients();
-  }, [fetchTasks, fetchTaskProfiles, fetchTaskLabels, fetchTaskPools, fetchAllPatients, allPatients]);
+    // Intentionally excluding `allPatients` from deps — it's read inside a
+    // conditional guard as of-mount state, not a re-run trigger. Including it
+    // caused every fetchAllPatients resolution to change the reference and
+    // re-fire every task fetch, which flipped `tasksLoading` false→true→false
+    // and made the empty state flicker back to the loading skeleton.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchTasks, fetchTaskProfiles, fetchTaskLabels, fetchTaskPools, fetchAllPatients]);
 
   useEffect(() => {
     if (!pendingAddTask) return;

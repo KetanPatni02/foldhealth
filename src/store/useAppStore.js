@@ -1566,6 +1566,100 @@ export const useAppStore = create((set, get) => ({
   careProgramsByPatient: {},
   careProgramsLoadedFor: {},
 
+  // Patient medications — backs the Medication Reconciliation step.
+  // Keyed by patientId; the loaded-for map guards the fetch per-patient
+  // (same shape as careProgramsLoadedFor).
+  patientMedications: {},
+  patientMedicationsLoadedFor: {},
+
+  fetchPatientMedications: async (patientId) => {
+    if (!patientId) return;
+    if (get().patientMedicationsLoadedFor[patientId]) return;
+    // Optimistic guard flip before the query returns so re-entrancy from
+    // React StrictMode's double-invoke or two mounts of the panel don't
+    // race a second in-flight request.
+    set(s => ({ patientMedicationsLoadedFor: { ...s.patientMedicationsLoadedFor, [patientId]: true } }));
+    const { data, error } = await supabase
+      .from('patient_medications')
+      .select('*')
+      .eq('patient_id', patientId)
+      .order('created_at', { ascending: true });
+    if (error) {
+      console.warn('patient_medications fetch failed:', error.message);
+      set(s => ({ patientMedicationsLoadedFor: { ...s.patientMedicationsLoadedFor, [patientId]: false } }));
+      return;
+    }
+    const rows = (data || []).map(r => ({
+      id: r.id,
+      name: r.name,
+      start: r.start_date || '',
+      stop: r.stop_date || '',
+      sig: r.sig || '',
+      source: r.source,
+      openfdaMeta: r.openfda_meta || null,
+    }));
+    set(s => ({ patientMedications: { ...s.patientMedications, [patientId]: rows } }));
+  },
+
+  // Optimistic insert — the picker adds the row locally first, then persists.
+  // The DB row id (a UUID) replaces the temp id when the write returns so
+  // subsequent edits/deletes have the real id to work with. Rolls back the
+  // optimistic row on failure and surfaces a toast.
+  addPatientMedication: async (patientId, med) => {
+    if (!patientId || !med?.name) return null;
+    const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const optimistic = {
+      id: tempId,
+      name: med.name,
+      start: med.start || '',
+      stop: med.stop || '',
+      sig: med.sig || '',
+      source: med.source || 'manual',
+      openfdaMeta: med.openfdaMeta || null,
+    };
+    set(s => ({
+      patientMedications: {
+        ...s.patientMedications,
+        [patientId]: [...(s.patientMedications[patientId] || []), optimistic],
+      },
+    }));
+    const { data, error } = await supabase
+      .from('patient_medications')
+      .insert({
+        patient_id: patientId,
+        name: optimistic.name,
+        start_date: optimistic.start || null,
+        stop_date: optimistic.stop || null,
+        sig: optimistic.sig || null,
+        source: optimistic.source,
+        openfda_meta: optimistic.openfdaMeta,
+      })
+      .select()
+      .single();
+    if (error) {
+      console.error('patient_medications insert failed:', error.message);
+      // Roll back the optimistic row and let the caller show an error.
+      set(s => ({
+        patientMedications: {
+          ...s.patientMedications,
+          [patientId]: (s.patientMedications[patientId] || []).filter(m => m.id !== tempId),
+        },
+      }));
+      get().showToast?.(`Failed to save medication: ${error.message}`);
+      return null;
+    }
+    // Swap temp id for the real DB uuid.
+    set(s => ({
+      patientMedications: {
+        ...s.patientMedications,
+        [patientId]: (s.patientMedications[patientId] || []).map(m =>
+          m.id === tempId ? { ...m, id: data.id } : m
+        ),
+      },
+    }));
+    return data.id;
+  },
+
   fetchCareProgramsForPatient: async (patientId) => {
     if (!patientId) return;
     if (get().careProgramsLoadedFor[patientId]) return;
@@ -9291,6 +9385,9 @@ export const useAppStore = create((set, get) => ({
   // ── Tasks ──
   tasks: [],
   tasksLoading: true,
+  // Single-fire guard — same pattern as patientsDidFetch. Prevents refetch
+  // storms when a caller's effect re-runs on unrelated dependency churn.
+  tasksDidFetch: false,
   tasksTab: 'all',
   tasksFilters: {},
   showTasksFilterBar: true,
@@ -9308,7 +9405,9 @@ export const useAppStore = create((set, get) => ({
   clearTasksFilters: () => set({ tasksFilters: {} }),
 
   fetchTasks: async () => {
-    set({ tasksLoading: true });
+    // Idempotent per session — see `tasksDidFetch`.
+    if (useAppStore.getState().tasksDidFetch) return;
+    set({ tasksDidFetch: true, tasksLoading: true });
     const { data, error } = await supabase
       .from('tasks')
       .select('*')
@@ -9317,7 +9416,7 @@ export const useAppStore = create((set, get) => ({
     if (error) {
       console.error('Tasks fetch error:', error.message);
       const localHedisTasks = get().tasks.filter(t => t.hedisMemberId);
-      set({ tasks: [...localHedisTasks], tasksLoading: false });
+      set({ tasks: [...localHedisTasks], tasksLoading: false, tasksDidFetch: false });
       return;
     }
 
