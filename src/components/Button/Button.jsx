@@ -1,8 +1,19 @@
-import { forwardRef, useRef, useState } from 'react';
+import { cloneElement, forwardRef, isValidElement, useRef, useState } from 'react';
 import { Icon } from '../Icon/Icon';
 import { DownChevronIcon } from '../Icon/DownChevronIcon';
 import { MenuPopover } from '../MenuPopover/MenuPopover';
 import styles from './Button.module.css';
+
+// Custom icon elements (leadingIconElement / trailingIconElement) inherit the
+// button's text color unless the caller explicitly pinned one — the same
+// `currentColor` guarantee the name-based leadingIcon/trailingIcon path has.
+// Without this, a fixed-color glyph goes invisible when a hover state
+// repaints the button background in that same color (e.g. tertiary's
+// purple-on-purple on hover).
+const tintIconElement = (el) =>
+  isValidElement(el) && el.props.color === undefined
+    ? cloneElement(el, { color: 'currentColor' })
+    : el;
 
 /**
  * Fold Health Button — single source-of-truth button control.
@@ -105,12 +116,12 @@ export const Button = forwardRef(function Button(
 
   return (
     <button ref={ref} type={type} className={cls} disabled={disabled} {...rest}>
-      {leadingIconElement && leadingIconElement}
+      {leadingIconElement && tintIconElement(leadingIconElement)}
       {!leadingIconElement && leadingIcon && (
         <Icon name={leadingIcon} size={iconSize} color={iconColor} className={styles.icon} />
       )}
       {!iconOnly && children}
-      {trailingIconElement && trailingIconElement}
+      {trailingIconElement && tintIconElement(trailingIconElement)}
       {!trailingIconElement && trailingIcon && (
         <Icon name={trailingIcon} size={iconSize} color={iconColor} className={styles.icon} />
       )}
@@ -194,12 +205,12 @@ const SplitButtonBody = forwardRef(function SplitButtonBody(
         onClick={handleMainClick}
         {...restNoClick}
       >
-        {leadingIconElement && leadingIconElement}
+        {leadingIconElement && tintIconElement(leadingIconElement)}
         {!leadingIconElement && leadingIcon && (
           <Icon name={leadingIcon} size={iconSize} color={iconColor} className={styles.icon} />
         )}
         {children}
-        {trailingIconElement && trailingIconElement}
+        {trailingIconElement && tintIconElement(trailingIconElement)}
         {!trailingIconElement && trailingIcon && (
           <Icon name={trailingIcon} size={iconSize} color={iconColor} className={styles.icon} />
         )}

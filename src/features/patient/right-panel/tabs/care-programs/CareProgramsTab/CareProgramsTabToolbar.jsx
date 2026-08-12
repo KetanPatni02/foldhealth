@@ -24,7 +24,7 @@ export function CareProgramsTabToolbar({
         variant="tertiary"
         size="L"
         leadingIcon="solar:add-circle-linear"
-        trailingIconElement={<DownChevronIcon size={16} color="var(--primary-300)" />}
+        trailingIconElement={<DownChevronIcon size={16} />}
         onClick={() => setNpOpen(o => !o)}
       >
         New Program

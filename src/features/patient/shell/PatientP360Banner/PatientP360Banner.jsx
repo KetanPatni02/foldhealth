@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import { Avatar } from '../../../../components/Avatar/Avatar';
 import { ActionButton } from '../../../../components/ActionButton/ActionButton';
 import { Icon } from '../../../../components/Icon/Icon';
@@ -42,11 +42,25 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
   const fetchP360Profile = useAppStore(s => s.fetchP360Profile);
   useEffect(() => { if (patient?.id) fetchP360Profile(patient.id); }, [patient?.id, fetchP360Profile]);
 
+  // Real enrolled care programs (patient_care_programs) — the "Programs:"
+  // badges must reflect actual enrollment, not the static p360 mock field.
+  // The fetch is per-patient-guarded in the store, so this is a no-op when
+  // the Care Programs tab (or a previous banner mount) already hydrated it.
+  const carePrograms = useAppStore(s => (patient?.id ? s.careProgramsByPatient[patient.id] : undefined));
+  const fetchCareProgramsForPatient = useAppStore(s => s.fetchCareProgramsForPatient);
+  useEffect(() => { if (patient?.id) fetchCareProgramsForPatient(patient.id); }, [patient?.id, fetchCareProgramsForPatient]);
+  // Unique codes in enrollment order — SNP can be enrolled multiple times
+  // (one row per trigger) but reads as a single badge.
+  const programCodes = useMemo(
+    () => [...new Set((carePrograms || []).map(cp => cp.code))],
+    [carePrograms],
+  );
+
   const p = p360Profile || FALLBACK_P360;
   useEffect(() => { setTags(p.condition_tags || FALLBACK_P360.condition_tags); }, [p.condition_tags]);
 
   if (!patient) return null;
-  if (variant === 'drawer') return <PatientP360BannerDrawer patient={patient} p={p} />;
+  if (variant === 'drawer') return <PatientP360BannerDrawer patient={patient} p={p} programCodes={programCodes} />;
 
 
   return (
@@ -208,12 +222,12 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
         bannerSize === 'wide' ? (
           <div className={styles.expandedGrid}>
             <ExpandedDemographics p={p} />
-            <ExpandedHealthStatus p={p} movedMetrics />
+            <ExpandedHealthStatus p={p} movedMetrics programCodes={programCodes} />
             <ExpandedAppointments p={p} />
             <ExpandedFamily p={p} />
           </div>
         ) : (
-          <QuickViewExpanded p={p} />
+          <QuickViewExpanded p={p} programCodes={programCodes} />
         )
       )}
     </div>

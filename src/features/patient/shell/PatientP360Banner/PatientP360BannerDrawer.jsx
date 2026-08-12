@@ -12,7 +12,7 @@ import { QuickViewExpanded } from './PatientP360BannerExpanded';
 import { DRAWER_ACTIONS, MORE_MENU_LABELS } from './PatientP360Banner.utils';
 import styles from './PatientP360Banner.module.css';
 
-export function PatientP360BannerDrawer({ patient, p }) {
+export function PatientP360BannerDrawer({ patient, p, programCodes }) {
   const [drawerExpanded, setDrawerExpanded] = useState(false);
   const [consentPos, setConsentPos] = useState(null);
   const consentBadgeRef = useRef(null);
@@ -103,7 +103,7 @@ export function PatientP360BannerDrawer({ patient, p }) {
         </button>
       </div>
 
-      {drawerExpanded && <QuickViewExpanded p={p} />}
+      {drawerExpanded && <QuickViewExpanded p={p} programCodes={programCodes} />}
 
       <div className={styles.drawerActionsRow}>
         <div className={styles.drawerActionsList}>

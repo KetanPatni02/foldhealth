@@ -22,7 +22,7 @@ export function CreateNewPopover({ onClose }) {
 
   const item = (icon, label, key) => (
     <button key={key} className={styles.item} onClick={() => { showToast(`${label} – coming soon`); onClose(); }}>
-      <Icon name={icon} size={16} color="var(--neutral-300)" />
+      <Icon name={icon} size={16} className={styles.itemIcon} />
       {label}
     </button>
   );
@@ -32,11 +32,11 @@ export function CreateNewPopover({ onClose }) {
       <div className={styles.col}>
         <div className={styles.section}>Add New</div>
         <button key="p" className={styles.item} onClick={() => { openInvitePatient(); onClose(); }}>
-          <Icon name="solar:user-plus-linear" size={16} color="var(--neutral-300)" />
+          <Icon name="solar:user-plus-linear" size={16} className={styles.itemIcon} />
           Patient
         </button>
         <button key="t" className={styles.item} onClick={() => { requestAddTask(); onClose(); }}>
-          <Icon name="solar:checklist-minimalistic-linear" size={16} color="var(--neutral-300)" />
+          <Icon name="solar:checklist-minimalistic-linear" size={16} className={styles.itemIcon} />
           Task
         </button>
         {item('solar:target-linear', 'Campaign', 'c')}
@@ -47,7 +47,7 @@ export function CreateNewPopover({ onClose }) {
         {item('solar:videocamera-record-linear', 'Video Meeting', 'vm')}
         {item('solar:phone-calling-linear', 'Voice Call', 'vc')}
         <button key="ch" className={styles.item} onClick={() => { setActivePage('messages'); setCurrentPage(1); onClose(); }}>
-          <Icon name="solar:chat-dots-linear" size={16} color="var(--neutral-300)" />
+          <Icon name="solar:chat-dots-linear" size={16} className={styles.itemIcon} />
           Chat
         </button>
         {item('solar:chat-square-linear', 'SMS', 'sms')}
