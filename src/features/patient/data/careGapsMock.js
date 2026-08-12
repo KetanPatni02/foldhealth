@@ -53,6 +53,12 @@ export const DIAGNOSIS_GAP_ITEMS = [
   { id: 'dg2', title: 'HCC 48 - Coagulation Defects and Other Specified Hematological Disorders', status: 'Open', lastDocumented: '06/07/2025', icdCount: 1 },
 ];
 
-// Tasks and Profile intentionally live on the right panel only — the P360
-// screen was showing them on both panels which read as duplicate nav.
+// Tabs shown on the P360 (full page) left-panel gaps strip. Tasks and
+// Profile are intentionally excluded here — they live on the right-panel
+// tab bar in P360 so the same nav isn't duplicated on both sides.
 export const CARE_GAP_TABS = ['Gaps(11)', 'PAMI/Hx', 'Vitals/Labs', 'Comms', 'Outreach', 'Summary', 'CRM'];
+
+// Tabs shown inside the QuickView drawer, which is the *only* surface for
+// patient info on that entry point (no right panel). Tasks and Profile stay
+// here so a user can act on the patient without leaving the drawer.
+export const CARE_GAP_TABS_DRAWER = ['Gaps(11)', 'PAMI/Hx', 'Vitals/Labs', 'Comms', 'Outreach', 'Summary', 'Tasks', 'CRM', 'Profile'];

@@ -359,6 +359,9 @@ export function AppLayout() {
   const diagPanelOpen = useAppStore(s => s.diagPanelOpen);
   const invitePatientOpen = useAppStore(s => s.invitePatientOpen);
   const closeInvitePatient = useAppStore(s => s.closeInvitePatient);
+  const patientEditSection = useAppStore(s => s.patientEditSection);
+  const patientEditPatient = useAppStore(s => s.patientEditPatient);
+  const closePatientEdit = useAppStore(s => s.closePatientEdit);
   const quickViewPatient = useAppStore(s => s.quickViewPatient);
   const assessmentDrawerPatientId = useAppStore(s => s.assessmentDrawerPatientId);
   const outreachStatusDrawerPatientId = useAppStore(s => s.outreachStatusDrawerPatientId);
@@ -478,6 +481,13 @@ export function AppLayout() {
         <ClaimPreviewDrawer />{/* mounts itself only when hccClaimPreview.open is true */}
         {invitePatientOpen && (
           <EditPatientDrawer mode="invite" onClose={closeInvitePatient} />
+        )}
+        {patientEditSection && patientEditPatient && (
+          <EditPatientDrawer
+            patient={patientEditPatient}
+            initialSection={patientEditSection}
+            onClose={closePatientEdit}
+          />
         )}
         {quickViewPatient && <QuickViewDrawer />}
         {assessmentDrawerPatientId && <AssessmentDrawer />}

@@ -32,6 +32,7 @@ function HccWorklistRowImpl({ member, hiddenCols, columns }) {
   const openDiagPanel = useAppStore(s => s.openDiagPanel);
   const diagPanelMemberId = useAppStore(s => s.diagPanelMemberId);
   const openQuickView = useAppStore(s => s.openQuickView);
+  const openPatientEdit = useAppStore(s => s.openPatientEdit);
   const showToast = useAppStore(s => s.showToast);
   const openHccUploadDrawer = useAppStore(s => s.openHccUploadDrawer);
   const openAddDos = useAppStore(s => s.openHccAddDos);
@@ -294,7 +295,24 @@ function HccWorklistRowImpl({ member, hiddenCols, columns }) {
       <ActionsMenuPopover
         anchorRect={actionsRect}
         onClose={() => setActionsRect(null)}
-        onAction={(label) => showToast(`${label} — coming soon`)}
+        onAction={(label) => {
+          if (label === 'Edit Details') {
+            openPatientEdit('basic', {
+              id: member.id,
+              name: member.name,
+              initials: member.initials,
+              gender: member.gender,
+              age: member.age,
+              // The drawer's DOB helpers only accept a string — normalize
+              // any Date / ISO / mm-dd-yyyy shape to mm/dd/yyyy up front.
+              dob: formatDobDisplay(member.dob) || deriveDob(member.age, member.name),
+              email: member.email,
+              phone: member.phone,
+            });
+            return;
+          }
+          showToast(`${label} — coming soon`);
+        }}
       />
     )}
     </>

@@ -27,6 +27,7 @@ export function PatientP360BannerDrawer({ patient, p }) {
   const showToast = useAppStore(s => s.showToast);
   const updatePatient = useAppStore(s => s.updatePatient);
   const openCallPopover = useAppStore(s => s.openCallPopover);
+  const openPatientEdit = useAppStore(s => s.openPatientEdit);
 
   const noop = (label) => () => showToast(`${label} — coming soon`);
   const activeProfileName = (p.insurance_profiles || FALLBACK_P360.insurance_profiles).find(pr => pr.id === selectedProfileId)?.name || p.profile_type;
@@ -157,7 +158,7 @@ export function PatientP360BannerDrawer({ patient, p }) {
           onSelect={(key) => {
             setMoreMenuRect(null);
             if (key === 'print') { showToast('Printing clinical profile…'); window.print(); return; }
-            if (key === 'edit') { setDrawerExpanded(true); showToast('Expanded details for editing'); return; }
+            if (key === 'edit') { openPatientEdit('basic', patient); return; }
             if (key === 'inactive') {
               const nextStatus = patient.status === 'inactive' ? 'active' : 'inactive';
               updatePatient(patient.id, { status: nextStatus });

@@ -23,6 +23,7 @@ export function buildPatientRowMenuItems(admin = []) {
     { key: 'Run Automation', icon: 'solar:bolt-linear', label: 'Run Automation' },
     { divider: true },
     { section: 'Admin Actions' },
+    { key: 'Edit Details', icon: 'solar:pen-linear', label: 'Edit Details' },
     ...admin,
   ];
 }

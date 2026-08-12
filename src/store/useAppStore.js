@@ -1185,11 +1185,19 @@ export const useAppStore = create((set, get) => ({
   clearPendingCareProgramCode: () => set({ pendingCareProgramCode: null }),
 
   // EditPatientDrawer — one drawer shared by every "Edit …" entry-point
-  // on the Profile tab and the P360 banner overflow menu. Setting the
-  // section name mounts the drawer scrolled to that section; null tears it down.
-  patientEditSection: null, // 'basic' | 'contact' | 'address' | 'other' | null
-  openPatientEdit:  (section = 'basic') => set({ patientEditSection: section }),
-  closePatientEdit: () => set({ patientEditSection: null }),
+  // on the Profile tab, the P360 banner overflow menu, and every worklist
+  // row's 3-dot menu. Setting the section name mounts the drawer scrolled
+  // to that section; null tears it down. `patientEditPatient` is the row
+  // being edited — required when the drawer is opened from outside the
+  // Profile tab (worklist rows / QuickView / P360 banner), where there
+  // isn't a surrounding `patient` prop to pass through.
+  patientEditSection: null, // 'basic' | 'contact' | 'address' | 'other' | 'insurance' | null
+  patientEditPatient: null,
+  openPatientEdit:  (section = 'basic', patient = null) => set(s => ({
+    patientEditSection: section,
+    patientEditPatient: patient || s.patientEditPatient,
+  })),
+  closePatientEdit: () => set({ patientEditSection: null, patientEditPatient: null }),
 
   // Invite Patient — same drawer as Edit, but no patient prop and the Save
   // button creates a fresh row. Driven by CreateNewPopover → "Patient".

@@ -5,7 +5,6 @@ import { ActionButton } from '../../../../../../components/ActionButton/ActionBu
 import { Badge } from '../../../../../../components/Badge/Badge';
 import { CardSkeleton } from '../../../../../../components/CardSkeleton/CardSkeleton';
 import { Toggle } from '../../../../../../components/Toggle/Toggle';
-import { EditPatientDrawer } from '../EditPatientDrawer/EditPatientDrawer';
 import styles from './ProfileTab.module.css';
 
 const PROFILE_VIEWS = [
@@ -101,9 +100,7 @@ export function ProfileTab({ patient }) {
   const p360Profile = useAppStore((s) => s.p360Profile);
   const p360Loading = useAppStore((s) => s.p360Loading);
   const fetchP360Profile = useAppStore((s) => s.fetchP360Profile);
-  const editSection = useAppStore((s) => s.patientEditSection);
   const openEdit = useAppStore((s) => s.openPatientEdit);
-  const closeEdit = useAppStore((s) => s.closePatientEdit);
   // Two-view segmented control: Demographics (current sections) vs Insurance
   // (Primary Insurance + Plan Benefits). Local state — persistence isn't
   // needed since the tab-switch is transient viewing chrome.
@@ -204,7 +201,7 @@ export function ProfileTab({ patient }) {
           icon="solar:pen-linear"
           size="S"
           tooltip={view === 'insurance' ? 'Edit insurance' : 'Edit profile'}
-          onClick={() => openEdit(view === 'insurance' ? 'insurance' : 'basic')}
+          onClick={() => openEdit(view === 'insurance' ? 'insurance' : 'basic', patient)}
         />
       </div>
 
@@ -253,13 +250,6 @@ export function ProfileTab({ patient }) {
         </Section>
       )}
 
-      {editSection && (
-        <EditPatientDrawer
-          patient={patient}
-          initialSection={editSection}
-          onClose={closeEdit}
-        />
-      )}
     </div>
   );
 }

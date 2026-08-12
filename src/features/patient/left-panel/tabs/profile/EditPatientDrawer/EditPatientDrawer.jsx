@@ -4,7 +4,7 @@ import { Button } from '../../../../../../components/Button/Button';
 import { Input } from '../../../../../../components/Input/Input';
 import { Select } from '../../../../../../components/Select/Select';
 import { Textarea } from '../../../../../../components/Textarea/Textarea';
-import { Switch } from '../../../../../../components/Switch/Switch';
+import { TabStrip } from '../../../../../../components/TabStrip/TabStrip';
 import { DatePicker } from '../../../../../../components/DatePicker/DatePicker';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { useAppStore } from '../../../../../../store/useAppStore';
@@ -14,11 +14,13 @@ import styles from './EditPatientDrawer.module.css';
  * Profile tab renders it, but the native <input type="date"> only speaks
  * ISO. Convert on the boundary so both stay in their preferred format. */
 const isoFromMdy = (s) => {
-  const [m, d, y] = (s || '').split('/');
+  // Row-level entry points (worklist Edit Details) can hand in a Date
+  // object or an ISO string, not just mm/dd/yyyy — coerce before split.
+  const [m, d, y] = String(s || '').split('/');
   return (m && d && y) ? `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}` : '';
 };
 const mdyFromIso = (s) => {
-  const [y, m, d] = (s || '').split('-');
+  const [y, m, d] = String(s || '').split('-');
   return (y && m && d) ? `${m}/${d}/${y}` : '';
 };
 
@@ -179,7 +181,6 @@ export function EditPatientDrawer({
   // action on the Primary Insurance section), skip the Member Details tab
   // and land directly on Insurance Details.
   const [tab, setTab] = useState(initialSection === 'insurance' ? 'insurance' : 'member');
-  const [showEligibility, setShowEligibility] = useState(false);
   // Invite mode starts with a blank form; edit mode pre-fills from the row.
   const [form, setForm] = useState(() => (isInvite ? initialForm(null, null) : initialForm(patient, p)));
   const [saving, setSaving] = useState(false);
@@ -280,8 +281,8 @@ export function EditPatientDrawer({
   const removePhone    = (idx) => set('extra_phones', form.extra_phones.filter((_, i) => i !== idx));
 
   const tabs = useMemo(() => ([
-    { key: 'member',    label: 'Member Details',    step: 1 },
-    { key: 'insurance', label: 'Insurance Details', step: 2 },
+    { key: 'member',    label: 'Member Details' },
+    { key: 'insurance', label: 'Insurance Details' },
   ]), []);
 
   const linkBtn = (text, onClick) => (
@@ -300,30 +301,15 @@ export function EditPatientDrawer({
           {saving ? (isInvite ? 'Inviting…' : 'Saving…') : (isInvite ? 'Send Invite' : 'Save')}
         </Button>
       }
-    >
-      {/* ── Tab bar — numbered pills + connector + eligibility toggle ── */}
-      <div className={styles.tabBar}>
-        <div className={styles.tabsGroup}>
-          {tabs.map((t, i) => (
-            <button
-              key={t.key}
-              type="button"
-              className={`${styles.tab} ${tab === t.key ? styles.tabActive : ''}`}
-              onClick={() => setTab(t.key)}
-            >
-              <span className={styles.tabDot}>{t.step}</span>
-              <span>{t.label}</span>
-              {i < tabs.length - 1 && <span className={styles.tabConnector} aria-hidden="true" />}
-            </button>
-          ))}
-        </div>
-        <Switch
-          checked={showEligibility}
-          onChange={setShowEligibility}
-          label="View eligibility details"
+      banner={
+        <TabStrip
+          items={tabs}
+          activeKey={tab}
+          onChange={setTab}
+          fullWidth={false}
         />
-      </div>
-
+      }
+    >
       {tab === 'insurance' ? (
         <div className={styles.body}>
           {/* ── Primary Insurance ── */}

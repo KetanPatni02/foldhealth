@@ -69,6 +69,7 @@ function AttributesCell({ row }) {
 export function AllPatientsRow({ row, isSelected, onSelect }) {
   const showToast = useAppStore(s => s.showToast);
   const startHccUpload = useAppStore(s => s.startHccUpload);
+  const openPatientEdit = useAppStore(s => s.openPatientEdit);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropBtnRef = useRef(null);
 
@@ -86,6 +87,23 @@ export function AllPatientsRow({ row, isSelected, onSelect }) {
       // Pre-seed the upload session with this patient so ambiguous OCR
       // matches auto-link to them in the review panel (AC-1 + AC-9 helper).
       startHccUpload(row?.id || null);
+      return;
+    }
+    if (key === 'Edit Details') {
+      openPatientEdit('basic', {
+        id: row.id,
+        name: row.name,
+        initials: row.initials,
+        gender: row.gender,
+        age: row.age,
+        dob: row.dob,
+        email: row.email,
+        phone: row.phone,
+        city: row.city,
+        state: row.state,
+        memberId: row.memberId,
+        language: row.language,
+      });
       return;
     }
     showToast(`${key} – coming soon`);
