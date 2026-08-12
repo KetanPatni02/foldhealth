@@ -20,10 +20,14 @@
 /* Flush layout — scroll content touches the panel edges for the sticky
  * note strip, but the Gaps tab body sits inside a 12px horizontal gutter
  * so it lines up with the other tabs (PAMI/Hx, Vitals/Labs, Comms…). */
-.flushContent .gapsWrapper { padding: 0 12px; }
+.flushContent .gapsWrapper { padding: 12px 12px 0; }
 .flushContent .sections { padding: 0; }
 .flushContent .sectionHeader { padding: 0; }
-.flushContent .diagnosisHeader { margin-top: 0; }
+/* Was `margin-top: 0` — that zeroed out the shared 16px gap so the
+ * Diagnosis Gaps / Alerts headers merged flush with the previous
+ * section's last row. Keep the 16px so the QuickView reads with the
+ * same rhythm as the full patient detail view. */
+.flushContent .diagnosisHeader { margin-top: 20px; }
 
 /* Sticky note strip stays edge-to-edge (yellow background spans the
  * panel), but its inner rows get 16px horizontal padding so the note
@@ -107,17 +111,27 @@
 .searchInput::placeholder { color: var(--neutral-200); }
 .searchClose { background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; flex-shrink: 0; }
 .alertHeader { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--status-warning-light); font-size: 12px; color: var(--neutral-400); font-family: 'Inter', sans-serif; flex-shrink: 0; border-bottom: 0.5px solid var(--neutral-100); }
-.gapsWrapper { padding: 0; }
+/* Quick View / left-panel gaps surface — the tab body previously butted
+ * flush against the sticky-note strip; a 12px top gutter separates the
+ * first section header ("Care Gaps") from the strip. */
+.gapsWrapper { padding: 12px 0 0; }
 .sections { padding: 0; }
 .sectionHeader { display: flex; align-items: center; gap: 0; padding: 0; height: 32px; flex-shrink: 0; }
 .collapseToggle { background: none; border: none; cursor: pointer; padding: 0; margin-left: 4px; display: flex; align-items: center; }
 .sectionActions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
-.sectionTitle { font-size: 14px; font-weight: 500; color: var(--neutral-400); font-family: 'Inter', sans-serif; }
-.viewBy { font-size: 12px; color: var(--neutral-300); font-family: 'Inter', sans-serif; }
-.dosLabel { font-size: 12px; color: var(--neutral-400); font-family: 'Inter', sans-serif; }
-.dosValue { font-size: 12px; color: var(--neutral-300); font-family: 'Inter', sans-serif; }
+.sectionTitle { font-size: 14px; font-weight: 500; color: var(--neutral-400); }
+.viewBy { font-size: 12px; color: var(--neutral-300); }
+.dosLabel { font-size: 12px; color: var(--neutral-400); }
+.dosValue { font-size: 12px; color: var(--neutral-300); }
 .filterDivider { width: 0.5px; height: 12px; background: var(--neutral-150); }
-.diagnosisHeader { margin-top: 0; }
+/* Diagnosis Gaps / Alerts section headers sit directly under the previous
+ * section's table with no separator — the 16px margin gives each new
+ * section room to breathe so they don't read as one continuous block. */
+.diagnosisHeader { margin-top: 20px; }
+/* Shared DownChevronIcon rotated -90° to point right when a section is
+ * collapsed; the icon primitive stays the same for expanded (▼) and
+ * collapsed (▶) states. */
+.chevronCollapsed { transform: rotate(-90deg); transition: transform 0.12s ease; }
 .placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 48px; color: var(--neutral-200); font-size: 13px; font-family: 'Inter', sans-serif; }
 
 /* Smooth collapse transition (grid-template-rows trick) */

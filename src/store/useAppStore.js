@@ -1191,6 +1191,83 @@ export const useAppStore = create((set, get) => ({
   openPatientEdit:  (section = 'basic') => set({ patientEditSection: section }),
   closePatientEdit: () => set({ patientEditSection: null }),
 
+  // Invite Patient — same drawer as Edit, but no patient prop and the Save
+  // button creates a fresh row. Driven by CreateNewPopover → "Patient".
+  invitePatientOpen: false,
+  openInvitePatient:  () => set({ invitePatientOpen: true }),
+  closeInvitePatient: () => set({ invitePatientOpen: false }),
+  invitePatient: async (form) => {
+    // Generate a client-side id so the drawer can close synchronously and
+    // the local list updates immediately; Supabase persists in the
+    // background. Matches how other worklist rows are added.
+    const now = new Date();
+    const initialsFrom = (name) => (name || '')
+      .split(/\s+/).filter(Boolean).map(p => p[0]).slice(0, 2).join('').toUpperCase();
+    const id = `p-inv-${now.getTime().toString(36)}`;
+    const patientRow = {
+      id,
+      name:      form.name || 'New Patient',
+      initials:  initialsFrom(form.name),
+      gender:    form.gender_identity || null,
+      age:       form.age || null,
+      member_id: form.member_id || null,
+      language:  form.primary_language || null,
+      status:    'Invited',
+    };
+    const profileRow = {
+      patient_id:         id,
+      chosen_name:        form.chosen_name || null,
+      date_of_birth:      form.date_of_birth || null,
+      age:                form.age || null,
+      gender_identity:    form.gender_identity || null,
+      pronoun:            form.pronoun || null,
+      sex_at_birth:       form.sex_at_birth || null,
+      sexual_orientation: form.sexual_orientation || null,
+      primary_language:   form.primary_language || null,
+      secondary_language: form.secondary_language || null,
+      blood_group:        form.blood_group || null,
+      marital_status:     form.marital_status || null,
+      race:               form.race || null,
+      ethnicity:          form.ethnicity || null,
+      ipa:                form.ipa || null,
+      emails:             form.email ? [form.email] : [],
+      plan_numbers_primary: form.phone ? [form.phone] : [],
+      address_line1:      form.address_line1 || null,
+      address_line2:      form.address_line2 || null,
+      city:               form.city || null,
+      state:              form.state || null,
+      zipcode:            form.zipcode || null,
+      location_landmark:  form.location_landmark || null,
+      custom_fields:      form.custom_fields || [],
+      extra_languages:    form.extra_languages || [],
+      extra_phones:       form.extra_phones || [],
+      tags:               form.tags || [],
+      employer:           form.employer || null,
+      practice_location:  form.practice_location || null,
+      additional_notes:   form.notes || null,
+      profile_source:     'Invite',
+      profile_created_on: now.toISOString().slice(0, 10),
+    };
+    // Optimistic local insert — matches the "additive worklists" pattern the
+    // other slices use so the new patient shows up in All Patients / any
+    // search immediately without waiting on the round-trip.
+    set((s) => ({ patients: [{ ...dbToJs(patientRow), status: 'Invited' }, ...s.patients] }));
+    try {
+      const { error: pErr } = await supabase.from('patients').insert(patientRow);
+      if (pErr) throw pErr;
+      const { error: profErr } = await supabase.from('p360_profiles').insert(profileRow);
+      if (profErr) console.warn('p360_profile insert failed (patient row still created):', profErr.message);
+    } catch (err) {
+      console.warn('invitePatient persist failed:', err?.message || err);
+      // Roll the optimistic insert back if the patients insert itself failed.
+      set((s) => ({ patients: s.patients.filter(p => p.id !== id) }));
+      get().showToast?.('Could not send invite — please try again.');
+      return null;
+    }
+    get().showToast?.(`Invited ${patientRow.name}`);
+    return id;
+  },
+
   // HCC chart documents manually added via "Upload New Chart" (per member id).
   // System (default) docs come from chartDocs.generateDefaultCharts; these are
   // the extra ones the user uploads, kept so the count/list stay in sync.

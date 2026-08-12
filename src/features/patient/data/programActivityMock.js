@@ -76,9 +76,13 @@ export const PROGRAM_ACTIVITY_BY_MONTH = [
   },
 ];
 
+// 'Profile' (was 'Demographics') is the single patient-profile surface on
+// the right panel; it wraps the Demographics/Insurance Toggle inside the
+// ProfileTab component. Tasks is also owned by the right panel now — the
+// left panel dropped both to avoid duplicate nav on the P360 screen.
 export const PROFILE_TABS = [
   'Overview', 'Timeline', 'Notes', 'Assessments', 'Care Management',
-  'Care Programs', 'Tasks', 'Documents', 'Orders & Referrals', 'Demographics',
+  'Care Programs', 'Tasks', 'Documents', 'Orders & Referrals', 'Profile',
 ];
 
 export const CARE_PROGRAMS_MOCK = [

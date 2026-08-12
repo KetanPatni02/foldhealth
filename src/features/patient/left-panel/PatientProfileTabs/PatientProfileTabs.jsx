@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Icon } from '../../../../components/Icon/Icon';
+import { DownChevronIcon } from '../../../../components/Icon/DownChevronIcon';
 import { ActionButton } from '../../../../components/ActionButton/ActionButton';
 import { OverflowTabStrip } from '../../../../components/TabStrip/OverflowTabStrip';
 import { StickyNote } from '../../../../components/StickyNote/StickyNote';
@@ -13,8 +14,6 @@ import { VitalsLabsTab } from '../tabs/vitals-labs/VitalsLabsTab/VitalsLabsTab.j
 import { CommsTab } from '../tabs/comms/CommsTab/CommsTab.jsx';
 import { OutreachTab } from '../tabs/outreach/OutreachTab/OutreachTab.jsx';
 import { SummaryTab } from '../tabs/summary/SummaryTab/SummaryTab.jsx';
-import { TasksTab } from '../tabs/tasks/TasksTab/TasksTab.jsx';
-import { ProfileTab } from '../tabs/profile/ProfileTab/ProfileTab.jsx';
 import { CARE_GAP_SECTIONS_EXTENDED, CARE_GAP_TABS } from '../../data/careGapsMock';
 import styles from './PatientProfileTabs.module.css';
 
@@ -128,12 +127,16 @@ export function PatientProfileTabs({ patientId, patient }) {
                 aria-label={gapsCollapsed ? 'Expand Care Gaps' : 'Collapse Care Gaps'}
                 aria-expanded={!gapsCollapsed}
               >
-                <Icon name={gapsCollapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-200)" />
+                <DownChevronIcon
+                  size={12}
+                  color="var(--neutral-200)"
+                  className={gapsCollapsed ? styles.chevronCollapsed : undefined}
+                />
               </button>
               {!gapsCollapsed && (
                 <div className={styles.sectionActions}>
                   <span className={styles.viewBy}>View By: Action</span>
-                  <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" />
+                  <DownChevronIcon size={10} />
                   <span className={styles.filterDivider} />
                   <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
                 </div>
@@ -159,13 +162,17 @@ export function PatientProfileTabs({ patientId, patient }) {
                 aria-label={diagnosisCollapsed ? 'Expand Diagnosis Gaps' : 'Collapse Diagnosis Gaps'}
                 aria-expanded={!diagnosisCollapsed}
               >
-                <Icon name={diagnosisCollapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-200)" />
+                <DownChevronIcon
+                  size={12}
+                  color="var(--neutral-200)"
+                  className={diagnosisCollapsed ? styles.chevronCollapsed : undefined}
+                />
               </button>
               {!diagnosisCollapsed && (
                 <div className={styles.sectionActions}>
                   <span className={styles.dosLabel}>DOS:</span>
                   <span className={styles.dosValue}>03/04/2025</span>
-                  <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" />
+                  <DownChevronIcon size={10} />
                   <span className={styles.filterDivider} />
                   <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
                 </div>
@@ -189,7 +196,11 @@ export function PatientProfileTabs({ patientId, patient }) {
                 aria-label={alertsCollapsed ? 'Expand Alerts' : 'Collapse Alerts'}
                 aria-expanded={!alertsCollapsed}
               >
-                <Icon name={alertsCollapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-200)" />
+                <DownChevronIcon
+                  size={12}
+                  color="var(--neutral-200)"
+                  className={alertsCollapsed ? styles.chevronCollapsed : undefined}
+                />
               </button>
               {!alertsCollapsed && (
                 <div className={styles.sectionActions}>
@@ -218,11 +229,9 @@ export function PatientProfileTabs({ patientId, patient }) {
 
         {activeIdx === 5 && <SummaryTab />}
 
-        {activeIdx === 6 && <TasksTab />}
-
-        {activeIdx === 8 && <ProfileTab patient={patient || { id: patientId }} />}
-
-        {activeIdx === 7 && (
+        {/* CRM slot — Tasks (was idx 6) and Profile (was idx 8) moved to the
+            right panel; CRM is now the last left-panel tab. */}
+        {activeIdx === 6 && (
           <div className={styles.placeholder}>
             <Icon name="solar:document-text-linear" size={32} color="var(--neutral-150)" />
             <span>Coming soon</span>
