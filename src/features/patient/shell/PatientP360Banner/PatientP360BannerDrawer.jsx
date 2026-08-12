@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { Icon } from '../../../../components/Icon/Icon';
+import { DownChevronIcon } from '../../../../components/Icon/DownChevronIcon';
 import { PhoneVerifiedIcon } from '../../../../components/Icon/PhoneVerifiedIcon';
 import { ActionButton } from '../../../../components/ActionButton/ActionButton';
 import { ConsentPopover } from '../../../../components/ConsentPopover/ConsentPopover';
@@ -26,6 +27,7 @@ export function PatientP360BannerDrawer({ patient, p }) {
   const showToast = useAppStore(s => s.showToast);
   const updatePatient = useAppStore(s => s.updatePatient);
   const openCallPopover = useAppStore(s => s.openCallPopover);
+  const openPatientEdit = useAppStore(s => s.openPatientEdit);
 
   const noop = (label) => () => showToast(`${label} — coming soon`);
   const activeProfileName = (p.insurance_profiles || FALLBACK_P360.insurance_profiles).find(pr => pr.id === selectedProfileId)?.name || p.profile_type;
@@ -65,7 +67,7 @@ export function PatientP360BannerDrawer({ patient, p }) {
               <span className={styles.drawerMetaDot}>•</span>
               <button ref={consentBadgeRef} className={styles.drawerConsentBadge} onClick={handleConsentClick}>
                 Consent: 2/4
-                <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--status-warning)" />
+                <DownChevronIcon size={12} color="var(--status-warning)" />
               </button>
             </div>
           </div>
@@ -76,7 +78,7 @@ export function PatientP360BannerDrawer({ patient, p }) {
             <Icon name="solar:hospital-linear" size={14} color="var(--neutral-300)" />
             <button className={styles.drawerProfileSelector} tabIndex={-1}>
               {activeProfileName}
-              <Icon name="solar:alt-arrow-down-linear" size={14} color="var(--neutral-300)" />
+              <DownChevronIcon size={14} />
             </button>
           </div>
           <div className={styles.drawerProfileIdRow}>
@@ -88,7 +90,7 @@ export function PatientP360BannerDrawer({ patient, p }) {
       </div>
 
       <div className={styles.drawerTagsRow}>
-        <span className={styles.drawerTagBadge}>New Patient <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" /></span>
+        <span className={styles.drawerTagBadge}>New Patient <DownChevronIcon size={12} /></span>
         <span className={styles.drawerTagDivider} />
         <span className={styles.drawerCondBadge}>Diabetes</span>
         <span className={styles.drawerCondBadge}>Hypertension</span>
@@ -156,7 +158,7 @@ export function PatientP360BannerDrawer({ patient, p }) {
           onSelect={(key) => {
             setMoreMenuRect(null);
             if (key === 'print') { showToast('Printing clinical profile…'); window.print(); return; }
-            if (key === 'edit') { setDrawerExpanded(true); showToast('Expanded details for editing'); return; }
+            if (key === 'edit') { openPatientEdit('basic', patient); return; }
             if (key === 'inactive') {
               const nextStatus = patient.status === 'inactive' ? 'active' : 'inactive';
               updatePatient(patient.id, { status: nextStatus });

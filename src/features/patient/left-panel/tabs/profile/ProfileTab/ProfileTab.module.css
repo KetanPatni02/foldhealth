@@ -47,6 +47,14 @@
   white-space: nowrap;
 }
 
+/* When the section is collapsed, rotate the shared DownChevronIcon -90°
+ * so it reads as a right-pointing caret ▶ without swapping to a second
+ * icon primitive. */
+.chevronCollapsed {
+  transform: rotate(-90deg);
+  transition: transform 0.12s ease;
+}
+
 /* ── Grid of cells (label / value pairs) ──────────────────────── */
 .grid {
   display: flex;
@@ -98,4 +106,35 @@
 
 .hours {
   color: var(--neutral-300);
+}
+
+/* ── View row (segmented control + edit action) ──────────────── */
+/* Toggle sits on the left, the single Edit ActionButton is pinned to
+ * the far right. The per-section edit pencils used to live inside each
+ * Section header — those were removed so the profile surface has one
+ * canonical edit entry-point instead of five. */
+.viewRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-left: 6px;
+  margin-right: 6px;
+}
+
+.viewToggle {
+  flex-shrink: 0;
+}
+
+/* ── Plan Benefits sub-heading inside the Primary Insurance grid ─ */
+/* Insurance view (Figma P360 Revamp 526:334385) nests a "Plan Benefits"
+ * heading between the identity fields and the coverage-detail fields.
+ * flex-basis: 100% breaks it onto its own row of the wrapping grid so
+ * the two field groups stack cleanly. */
+.planBenefitsHeader {
+  flex: 1 0 100%;
+  padding: 12px 6px 4px 6px;
+  font-size: 14px;
+  color: var(--neutral-500);
+  line-height: 1.2;
 }

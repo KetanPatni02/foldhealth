@@ -4,7 +4,7 @@ import { Button } from '../../../../../../components/Button/Button';
 import { Input } from '../../../../../../components/Input/Input';
 import { Select } from '../../../../../../components/Select/Select';
 import { Textarea } from '../../../../../../components/Textarea/Textarea';
-import { Switch } from '../../../../../../components/Switch/Switch';
+import { TabStrip } from '../../../../../../components/TabStrip/TabStrip';
 import { DatePicker } from '../../../../../../components/DatePicker/DatePicker';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { useAppStore } from '../../../../../../store/useAppStore';
@@ -14,11 +14,13 @@ import styles from './EditPatientDrawer.module.css';
  * Profile tab renders it, but the native <input type="date"> only speaks
  * ISO. Convert on the boundary so both stay in their preferred format. */
 const isoFromMdy = (s) => {
-  const [m, d, y] = (s || '').split('/');
+  // Row-level entry points (worklist Edit Details) can hand in a Date
+  // object or an ISO string, not just mm/dd/yyyy — coerce before split.
+  const [m, d, y] = String(s || '').split('/');
   return (m && d && y) ? `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}` : '';
 };
 const mdyFromIso = (s) => {
-  const [y, m, d] = (s || '').split('-');
+  const [y, m, d] = String(s || '').split('-');
   return (y && m && d) ? `${m}/${d}/${y}` : '';
 };
 
@@ -42,6 +44,14 @@ const CITY_OPTIONS         = opt(['Los Angeles', 'New York', 'San Francisco', 'C
 const EMPLOYER_OPTIONS     = opt(['Fox Valley Tools & Die', 'Ramirez Landscaping Co.', 'Self-employed', 'Retired', 'Other']);
 const PRACTICE_OPTIONS     = opt(['Central Community Clinic', 'North Valley Clinic', 'West Side Clinic', 'Downtown Medical Center']);
 const TAGS_OPTIONS         = opt(['Diabetes', 'Hypertension', 'Needs Transportation', 'Language Barrier', 'Hearing Impaired', 'Bariatric']);
+
+// Insurance enum catalogs — mirror the Figma InsuranceDetails frame
+// (P360 Revamp node 6821:316529).
+const SNP_TYPE_OPTIONS         = opt(['D-SNP', 'C-SNP', 'I-SNP', 'None']);
+const LOB_OPTIONS              = opt(['Medicare Advantage (MA/MAPD)', 'Medicaid', 'Commercial', 'Marketplace']);
+const EMPLOYMENT_STATUS_OPTIONS = opt(['Salaried', 'Self-employed', 'Retired', 'Unemployed', 'Student']);
+const BENEFITS_TERMED_OPTIONS  = opt(['Active (Not Termed)', 'Termed']);
+const RELATIONSHIP_OPTIONS     = opt(['Self', 'Spouse', 'Child', 'Parent', 'Other']);
 
 /** Slim initial form state derived from the patient + p360 profile row. */
 function initialForm(patient, p) {
@@ -89,6 +99,29 @@ function initialForm(patient, p) {
     notes:              p?.additional_notes || '',
     profile_source:     p?.profile_source || patient?.source || '',
     profile_created_on: p?.profile_created_on || '',
+
+    // Insurance — primary + policyholder. Persisted on p360_profiles under
+    // insurance_* / policyholder_* JSONB-ish columns once the migration ships.
+    insurance_card_url:            p?.insurance_card_url || '',
+    insurance_carrier_name:        p?.insurance_carrier_name || '',
+    insurance_plan_name:           p?.insurance_plan_name || '',
+    insurance_member_id:           p?.insurance_member_id || '',
+    insurance_snp_type:            p?.insurance_snp_type || '',
+    insurance_lob:                 p?.insurance_lob || '',
+    insurance_employment_status:   p?.insurance_employment_status || '',
+    insurance_group_id:            p?.insurance_group_id || '',
+    insurance_eligibility_start:   p?.insurance_eligibility_start || '',
+    insurance_eligibility_end:     p?.insurance_eligibility_end || '',
+    insurance_benefits_effective:  p?.insurance_benefits_effective || '',
+    insurance_benefits_termed:     p?.insurance_benefits_termed || '',
+    insurance_deductible:          p?.insurance_deductible || '',
+    insurance_copay:               p?.insurance_copay || '',
+    ph_relationship:               p?.ph_relationship || 'Self',
+    ph_policy_id:                  p?.ph_policy_id || '',
+    ph_first_name:                 p?.ph_first_name || '',
+    ph_last_name:                  p?.ph_last_name || '',
+    ph_date_of_birth:              p?.ph_date_of_birth || '',
+    ph_sex_at_birth:               p?.ph_sex_at_birth || '',
   };
 }
 
@@ -134,22 +167,29 @@ function Field({ label, required, children, className }) {
 export function EditPatientDrawer({
   patient,
   initialSection = 'basic',   // 'basic' | 'contact' | 'address' | 'custom' | 'other'
+  mode = 'edit',              // 'edit' | 'invite'
   onClose,
 }) {
+  const isInvite = mode === 'invite';
   const patientId = patient?.id;
   const p360Profile = useAppStore((s) => s.p360Profile);
   const updateP360Profile = useAppStore((s) => s.updateP360Profile);
-  const p = p360Profile && p360Profile.patient_id === patientId ? p360Profile : null;
+  const invitePatient = useAppStore((s) => s.invitePatient);
+  const p = !isInvite && p360Profile && p360Profile.patient_id === patientId ? p360Profile : null;
 
-  const [tab, setTab] = useState('member');         // 'member' | 'insurance'
-  const [showEligibility, setShowEligibility] = useState(false);
-  const [form, setForm] = useState(() => initialForm(patient, p));
+  // When the drawer is opened from the Profile tab's Insurance view (Edit
+  // action on the Primary Insurance section), skip the Member Details tab
+  // and land directly on Insurance Details.
+  const [tab, setTab] = useState(initialSection === 'insurance' ? 'insurance' : 'member');
+  // Invite mode starts with a blank form; edit mode pre-fills from the row.
+  const [form, setForm] = useState(() => (isInvite ? initialForm(null, null) : initialForm(patient, p)));
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (isInvite) return;
     setForm(initialForm(patient, p));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patientId, p?.updated_at]);
+  }, [patientId, p?.updated_at, isInvite]);
 
   const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -171,8 +211,18 @@ export function EditPatientDrawer({
   }, [initialSection]);
 
   const handleSave = async () => {
-    if (!patientId) return;
     setSaving(true);
+    if (isInvite) {
+      let newId = null;
+      try {
+        newId = await invitePatient(form);
+      } finally {
+        setSaving(false);
+      }
+      if (newId) onClose?.();
+      return;
+    }
+    if (!patientId) { setSaving(false); return; }
     let ok = false;
     try {
       ok = await updateP360Profile(patientId, {
@@ -231,8 +281,8 @@ export function EditPatientDrawer({
   const removePhone    = (idx) => set('extra_phones', form.extra_phones.filter((_, i) => i !== idx));
 
   const tabs = useMemo(() => ([
-    { key: 'member',    label: 'Member Details',    step: 1 },
-    { key: 'insurance', label: 'Insurance Details', step: 2 },
+    { key: 'member',    label: 'Member Details' },
+    { key: 'insurance', label: 'Insurance Details' },
   ]), []);
 
   const linkBtn = (text, onClick) => (
@@ -244,41 +294,204 @@ export function EditPatientDrawer({
 
   return (
     <Drawer
-      title="Update Member"
+      title={isInvite ? 'Invite Patient' : 'Update Member'}
       onClose={onClose}
       primaryAction={
-        <Button variant="primary" size="L" onClick={handleSave} disabled={saving}>
-          {saving ? 'Saving…' : 'Save'}
+        <Button variant="primary" size="L" onClick={handleSave} disabled={saving || (isInvite && !form.name.trim())}>
+          {saving ? (isInvite ? 'Inviting…' : 'Saving…') : (isInvite ? 'Send Invite' : 'Save')}
         </Button>
       }
-    >
-      {/* ── Tab bar — numbered pills + connector + eligibility toggle ── */}
-      <div className={styles.tabBar}>
-        <div className={styles.tabsGroup}>
-          {tabs.map((t, i) => (
-            <button
-              key={t.key}
-              type="button"
-              className={`${styles.tab} ${tab === t.key ? styles.tabActive : ''}`}
-              onClick={() => setTab(t.key)}
-            >
-              <span className={styles.tabDot}>{t.step}</span>
-              <span>{t.label}</span>
-              {i < tabs.length - 1 && <span className={styles.tabConnector} aria-hidden="true" />}
-            </button>
-          ))}
-        </div>
-        <Switch
-          checked={showEligibility}
-          onChange={setShowEligibility}
-          label="View eligibility details"
+      banner={
+        <TabStrip
+          items={tabs}
+          activeKey={tab}
+          onChange={setTab}
+          fullWidth={false}
         />
-      </div>
-
+      }
+    >
       {tab === 'insurance' ? (
-        <div className={styles.placeholder}>
-          <Icon name="solar:shield-user-linear" size={32} color="var(--neutral-200)" />
-          <p>Insurance details editor — coming soon.</p>
+        <div className={styles.body}>
+          {/* ── Primary Insurance ── */}
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>Primary Insurance</h3>
+            {/* Insurance card upload — dashed drop area matching Figma. Empty
+                state prompts an upload; once uploaded, the card preview
+                replaces the empty state. */}
+            <div className={styles.insuranceCard}>
+              {form.insurance_card_url ? (
+                <img src={form.insurance_card_url} alt="Insurance card" className={styles.insuranceCardImg} />
+              ) : (
+                <label className={styles.insuranceCardEmpty}>
+                  <Icon name="solar:upload-minimalistic-linear" size={20} color="var(--neutral-300)" />
+                  <span className={styles.insuranceCardHint}>Drag & drop, or click to upload the insurance card</span>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    className={styles.insuranceCardFile}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      // Preview via object URL; a follow-up will push the
+                      // file to Supabase Storage and store the returned path.
+                      set('insurance_card_url', URL.createObjectURL(file));
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+            <div className={styles.gridFull}>
+              <Input
+                label="Insurance Carrier Name"
+                value={form.insurance_carrier_name}
+                onChange={(e) => set('insurance_carrier_name', e.target.value)}
+                placeholder="e.g. Blue Cross Blue Shield"
+              />
+            </div>
+            <div className={styles.grid}>
+              <Input
+                label="Plan Name"
+                value={form.insurance_plan_name}
+                onChange={(e) => set('insurance_plan_name', e.target.value)}
+                placeholder="e.g. Blue Cross Medicare Advantage"
+              />
+              <Input
+                label="Member ID"
+                value={form.insurance_member_id}
+                onChange={(e) => set('insurance_member_id', e.target.value)}
+                placeholder="e.g. MA98765432"
+              />
+              <Field label="SNP Type">
+                <Select
+                  options={SNP_TYPE_OPTIONS}
+                  value={form.insurance_snp_type}
+                  onChange={(v) => set('insurance_snp_type', v)}
+                  placeholder="Select SNP type"
+                />
+              </Field>
+              <Field label="LOB">
+                <Select
+                  options={LOB_OPTIONS}
+                  value={form.insurance_lob}
+                  onChange={(v) => set('insurance_lob', v)}
+                  placeholder="Select line of business"
+                  searchable
+                />
+              </Field>
+              <Field label="Employment Status">
+                <Select
+                  options={EMPLOYMENT_STATUS_OPTIONS}
+                  value={form.insurance_employment_status}
+                  onChange={(v) => set('insurance_employment_status', v)}
+                  placeholder="Select status"
+                />
+              </Field>
+              <Input
+                label="Group ID"
+                value={form.insurance_group_id}
+                onChange={(e) => set('insurance_group_id', e.target.value)}
+                placeholder="e.g. 00123456"
+              />
+              <Field label="Eligibility Start Date">
+                <DatePicker
+                  value={isoFromMdy(form.insurance_eligibility_start)}
+                  onSelect={(iso) => set('insurance_eligibility_start', mdyFromIso(iso))}
+                  placeholder="MM/DD/YYYY"
+                />
+              </Field>
+              <Field label="Eligibility End Date">
+                <DatePicker
+                  value={isoFromMdy(form.insurance_eligibility_end)}
+                  onSelect={(iso) => set('insurance_eligibility_end', mdyFromIso(iso))}
+                  placeholder="MM/DD/YYYY"
+                />
+              </Field>
+              <Field label="Benefits Effective Date">
+                <DatePicker
+                  value={isoFromMdy(form.insurance_benefits_effective)}
+                  onSelect={(iso) => set('insurance_benefits_effective', mdyFromIso(iso))}
+                  placeholder="MM/DD/YYYY"
+                />
+              </Field>
+              <Field label="Benefits Termed">
+                <Select
+                  options={BENEFITS_TERMED_OPTIONS}
+                  value={form.insurance_benefits_termed}
+                  onChange={(v) => set('insurance_benefits_termed', v)}
+                  placeholder="Select"
+                />
+              </Field>
+              <Input
+                label="Deductible"
+                value={form.insurance_deductible}
+                onChange={(e) => set('insurance_deductible', e.target.value)}
+                placeholder="$0"
+              />
+              <Input
+                label="Copay"
+                value={form.insurance_copay}
+                onChange={(e) => set('insurance_copay', e.target.value)}
+                placeholder="$0"
+              />
+            </div>
+          </section>
+
+          {/* ── Primary Insurance Policyholder ── */}
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>Primary Insurance Policyholder</h3>
+            <div className={styles.grid}>
+              <Field label="Patient's relationship to policy holder" required>
+                <Select
+                  options={RELATIONSHIP_OPTIONS}
+                  value={form.ph_relationship}
+                  onChange={(v) => set('ph_relationship', v)}
+                  placeholder="Select relationship"
+                />
+              </Field>
+              <Input
+                label="Policy ID"
+                value={form.ph_policy_id}
+                onChange={(e) => set('ph_policy_id', e.target.value)}
+                placeholder="Enter Policy Holder ID"
+              />
+              <Input
+                label="First Name"
+                required
+                value={form.ph_first_name}
+                onChange={(e) => set('ph_first_name', e.target.value)}
+                placeholder="First name"
+              />
+              <Input
+                label="Last Name"
+                required
+                value={form.ph_last_name}
+                onChange={(e) => set('ph_last_name', e.target.value)}
+                placeholder="Last name"
+              />
+              <Field label="Date of Birth">
+                <DatePicker
+                  value={isoFromMdy(form.ph_date_of_birth)}
+                  onSelect={(iso) => set('ph_date_of_birth', mdyFromIso(iso))}
+                  placeholder="Select Date"
+                />
+              </Field>
+              <Field label="Sex at Birth" required>
+                <Select
+                  options={SEX_AT_BIRTH_OPTIONS}
+                  value={form.ph_sex_at_birth}
+                  onChange={(v) => set('ph_sex_at_birth', v)}
+                  placeholder="Select"
+                />
+              </Field>
+            </div>
+            <div className={styles.linkRow}>{linkBtn('Add Additional Details', () => {})}</div>
+          </section>
+
+          {/* ── Add Secondary Insurance — dashed CTA container ── */}
+          <button type="button" className={styles.addSecondary} onClick={() => {}}>
+            <Icon name="solar:add-circle-linear" size={16} color="var(--primary-300)" />
+            <span>Add Secondary Insurance</span>
+          </button>
         </div>
       ) : (
         <div className={styles.body} ref={bodyRef}>

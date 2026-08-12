@@ -1185,11 +1185,96 @@ export const useAppStore = create((set, get) => ({
   clearPendingCareProgramCode: () => set({ pendingCareProgramCode: null }),
 
   // EditPatientDrawer — one drawer shared by every "Edit …" entry-point
-  // on the Profile tab and the P360 banner overflow menu. Setting the
-  // section name mounts the drawer scrolled to that section; null tears it down.
-  patientEditSection: null, // 'basic' | 'contact' | 'address' | 'other' | null
-  openPatientEdit:  (section = 'basic') => set({ patientEditSection: section }),
-  closePatientEdit: () => set({ patientEditSection: null }),
+  // on the Profile tab, the P360 banner overflow menu, and every worklist
+  // row's 3-dot menu. Setting the section name mounts the drawer scrolled
+  // to that section; null tears it down. `patientEditPatient` is the row
+  // being edited — required when the drawer is opened from outside the
+  // Profile tab (worklist rows / QuickView / P360 banner), where there
+  // isn't a surrounding `patient` prop to pass through.
+  patientEditSection: null, // 'basic' | 'contact' | 'address' | 'other' | 'insurance' | null
+  patientEditPatient: null,
+  openPatientEdit:  (section = 'basic', patient = null) => set(s => ({
+    patientEditSection: section,
+    patientEditPatient: patient || s.patientEditPatient,
+  })),
+  closePatientEdit: () => set({ patientEditSection: null, patientEditPatient: null }),
+
+  // Invite Patient — same drawer as Edit, but no patient prop and the Save
+  // button creates a fresh row. Driven by CreateNewPopover → "Patient".
+  invitePatientOpen: false,
+  openInvitePatient:  () => set({ invitePatientOpen: true }),
+  closeInvitePatient: () => set({ invitePatientOpen: false }),
+  invitePatient: async (form) => {
+    // Generate a client-side id so the drawer can close synchronously and
+    // the local list updates immediately; Supabase persists in the
+    // background. Matches how other worklist rows are added.
+    const now = new Date();
+    const initialsFrom = (name) => (name || '')
+      .split(/\s+/).filter(Boolean).map(p => p[0]).slice(0, 2).join('').toUpperCase();
+    const id = `p-inv-${now.getTime().toString(36)}`;
+    const patientRow = {
+      id,
+      name:      form.name || 'New Patient',
+      initials:  initialsFrom(form.name),
+      gender:    form.gender_identity || null,
+      age:       form.age || null,
+      member_id: form.member_id || null,
+      language:  form.primary_language || null,
+      status:    'Invited',
+    };
+    const profileRow = {
+      patient_id:         id,
+      chosen_name:        form.chosen_name || null,
+      date_of_birth:      form.date_of_birth || null,
+      age:                form.age || null,
+      gender_identity:    form.gender_identity || null,
+      pronoun:            form.pronoun || null,
+      sex_at_birth:       form.sex_at_birth || null,
+      sexual_orientation: form.sexual_orientation || null,
+      primary_language:   form.primary_language || null,
+      secondary_language: form.secondary_language || null,
+      blood_group:        form.blood_group || null,
+      marital_status:     form.marital_status || null,
+      race:               form.race || null,
+      ethnicity:          form.ethnicity || null,
+      ipa:                form.ipa || null,
+      emails:             form.email ? [form.email] : [],
+      plan_numbers_primary: form.phone ? [form.phone] : [],
+      address_line1:      form.address_line1 || null,
+      address_line2:      form.address_line2 || null,
+      city:               form.city || null,
+      state:              form.state || null,
+      zipcode:            form.zipcode || null,
+      location_landmark:  form.location_landmark || null,
+      custom_fields:      form.custom_fields || [],
+      extra_languages:    form.extra_languages || [],
+      extra_phones:       form.extra_phones || [],
+      tags:               form.tags || [],
+      employer:           form.employer || null,
+      practice_location:  form.practice_location || null,
+      additional_notes:   form.notes || null,
+      profile_source:     'Invite',
+      profile_created_on: now.toISOString().slice(0, 10),
+    };
+    // Optimistic local insert — matches the "additive worklists" pattern the
+    // other slices use so the new patient shows up in All Patients / any
+    // search immediately without waiting on the round-trip.
+    set((s) => ({ patients: [{ ...dbToJs(patientRow), status: 'Invited' }, ...s.patients] }));
+    try {
+      const { error: pErr } = await supabase.from('patients').insert(patientRow);
+      if (pErr) throw pErr;
+      const { error: profErr } = await supabase.from('p360_profiles').insert(profileRow);
+      if (profErr) console.warn('p360_profile insert failed (patient row still created):', profErr.message);
+    } catch (err) {
+      console.warn('invitePatient persist failed:', err?.message || err);
+      // Roll the optimistic insert back if the patients insert itself failed.
+      set((s) => ({ patients: s.patients.filter(p => p.id !== id) }));
+      get().showToast?.('Could not send invite — please try again.');
+      return null;
+    }
+    get().showToast?.(`Invited ${patientRow.name}`);
+    return id;
+  },
 
   // HCC chart documents manually added via "Upload New Chart" (per member id).
   // System (default) docs come from chartDocs.generateDefaultCharts; these are
@@ -1256,31 +1341,68 @@ export const useAppStore = create((set, get) => ({
   // setHccRole: (role) => set({ hccRole: role }),
 
   hccChartStatus: {},
+  // Fail-picker state per doc: { [memberId]: { [docId]: { reasons: string[], note: string } } }.
+  // Separate from hccChartStatus (which stays a string map so every existing
+  // reader keeps its shape) — this slice only carries the extra fields the
+  // Fail picker needs to rehydrate on reload. Populated by fetchHccChartStatus
+  // from the same row and by setChartDocStatus when the caller passes
+  // opts.failReasons / opts.failNote.
+  hccChartFailDetails: {},
   hccChartStatusDidFetch: false,
   fetchHccChartStatus: async () => {
     if (get().hccChartStatusDidFetch) return;
     try {
       const { data, error } = await supabase.from('hcc_chart_status').select('*');
       if (error) throw error;
-      const map = {};
+      const statusMap = {};
+      const failMap = {};
       for (const row of (data || [])) {
-        (map[row.member_id] ||= {})[row.doc_id] = row.status;
+        (statusMap[row.member_id] ||= {})[row.doc_id] = row.status;
+        if (Array.isArray(row.fail_reasons) && row.fail_reasons.length > 0) {
+          (failMap[row.member_id] ||= {})[row.doc_id] = {
+            reasons: row.fail_reasons,
+            note: row.fail_note || '',
+          };
+        }
       }
-      set({ hccChartStatus: map, hccChartStatusDidFetch: true });
+      set({
+        hccChartStatus: statusMap,
+        hccChartFailDetails: failMap,
+        hccChartStatusDidFetch: true,
+      });
     } catch (err) {
       console.warn('fetchHccChartStatus:', err?.message || err);
       set({ hccChartStatusDidFetch: true });
     }
   },
+  // opts.failReasons / opts.failNote are only stored when status === 'Failed'.
+  // Passing or clearing status wipes any prior fail details so a doc that was
+  // marked Failed then flipped to Passed doesn't leave stale reasons behind.
   setChartDocStatus: (memberId, docId, status, opts) => {
     if (!memberId || !docId) return;
-    set((state) => ({
-      hccChartStatus: {
-        ...state.hccChartStatus,
-        [memberId]: { ...(state.hccChartStatus[memberId] || {}), [docId]: status },
-      },
-    }));
-    // Persist so the Pass/Fail mark survives reload.
+    const isFailed = status === 'Failed';
+    const failReasons = isFailed ? (opts?.failReasons || []) : [];
+    const failNote = isFailed ? (opts?.failNote || '') : '';
+    set((state) => {
+      const memberFail = { ...(state.hccChartFailDetails[memberId] || {}) };
+      if (isFailed && failReasons.length > 0) {
+        memberFail[docId] = { reasons: failReasons, note: failNote };
+      } else {
+        delete memberFail[docId];
+      }
+      return {
+        hccChartStatus: {
+          ...state.hccChartStatus,
+          [memberId]: { ...(state.hccChartStatus[memberId] || {}), [docId]: status },
+        },
+        hccChartFailDetails: {
+          ...state.hccChartFailDetails,
+          [memberId]: memberFail,
+        },
+      };
+    });
+    // Persist so the Pass/Fail mark AND (when Failed) the reason list + comment
+    // survive reload. Non-failed statuses clear the two fail columns.
     supabase
       .from('hcc_chart_status')
       .upsert({
@@ -1288,6 +1410,8 @@ export const useAppStore = create((set, get) => ({
         member_id: memberId,
         doc_id: docId,
         status,
+        fail_reasons: isFailed && failReasons.length > 0 ? failReasons : null,
+        fail_note: isFailed && failNote ? failNote : null,
         updated_at: new Date().toISOString(),
       })
       .then(({ error }) => {
@@ -1441,6 +1565,100 @@ export const useAppStore = create((set, get) => ({
   // programsForPatient() when the row set is empty.
   careProgramsByPatient: {},
   careProgramsLoadedFor: {},
+
+  // Patient medications — backs the Medication Reconciliation step.
+  // Keyed by patientId; the loaded-for map guards the fetch per-patient
+  // (same shape as careProgramsLoadedFor).
+  patientMedications: {},
+  patientMedicationsLoadedFor: {},
+
+  fetchPatientMedications: async (patientId) => {
+    if (!patientId) return;
+    if (get().patientMedicationsLoadedFor[patientId]) return;
+    // Optimistic guard flip before the query returns so re-entrancy from
+    // React StrictMode's double-invoke or two mounts of the panel don't
+    // race a second in-flight request.
+    set(s => ({ patientMedicationsLoadedFor: { ...s.patientMedicationsLoadedFor, [patientId]: true } }));
+    const { data, error } = await supabase
+      .from('patient_medications')
+      .select('*')
+      .eq('patient_id', patientId)
+      .order('created_at', { ascending: true });
+    if (error) {
+      console.warn('patient_medications fetch failed:', error.message);
+      set(s => ({ patientMedicationsLoadedFor: { ...s.patientMedicationsLoadedFor, [patientId]: false } }));
+      return;
+    }
+    const rows = (data || []).map(r => ({
+      id: r.id,
+      name: r.name,
+      start: r.start_date || '',
+      stop: r.stop_date || '',
+      sig: r.sig || '',
+      source: r.source,
+      openfdaMeta: r.openfda_meta || null,
+    }));
+    set(s => ({ patientMedications: { ...s.patientMedications, [patientId]: rows } }));
+  },
+
+  // Optimistic insert — the picker adds the row locally first, then persists.
+  // The DB row id (a UUID) replaces the temp id when the write returns so
+  // subsequent edits/deletes have the real id to work with. Rolls back the
+  // optimistic row on failure and surfaces a toast.
+  addPatientMedication: async (patientId, med) => {
+    if (!patientId || !med?.name) return null;
+    const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const optimistic = {
+      id: tempId,
+      name: med.name,
+      start: med.start || '',
+      stop: med.stop || '',
+      sig: med.sig || '',
+      source: med.source || 'manual',
+      openfdaMeta: med.openfdaMeta || null,
+    };
+    set(s => ({
+      patientMedications: {
+        ...s.patientMedications,
+        [patientId]: [...(s.patientMedications[patientId] || []), optimistic],
+      },
+    }));
+    const { data, error } = await supabase
+      .from('patient_medications')
+      .insert({
+        patient_id: patientId,
+        name: optimistic.name,
+        start_date: optimistic.start || null,
+        stop_date: optimistic.stop || null,
+        sig: optimistic.sig || null,
+        source: optimistic.source,
+        openfda_meta: optimistic.openfdaMeta,
+      })
+      .select()
+      .single();
+    if (error) {
+      console.error('patient_medications insert failed:', error.message);
+      // Roll back the optimistic row and let the caller show an error.
+      set(s => ({
+        patientMedications: {
+          ...s.patientMedications,
+          [patientId]: (s.patientMedications[patientId] || []).filter(m => m.id !== tempId),
+        },
+      }));
+      get().showToast?.(`Failed to save medication: ${error.message}`);
+      return null;
+    }
+    // Swap temp id for the real DB uuid.
+    set(s => ({
+      patientMedications: {
+        ...s.patientMedications,
+        [patientId]: (s.patientMedications[patientId] || []).map(m =>
+          m.id === tempId ? { ...m, id: data.id } : m
+        ),
+      },
+    }));
+    return data.id;
+  },
 
   fetchCareProgramsForPatient: async (patientId) => {
     if (!patientId) return;
@@ -1666,6 +1884,12 @@ export const useAppStore = create((set, get) => ({
   patients: [],
   patientsLoading: true,
   patientsError: null,
+  // Single-fire guard — several call sites (SubNav, WorklistTable, QueueTable,
+  // PatientDetailView) all trigger fetchPatients on mount, and hash-routing
+  // remounts each of them across tab switches. Without the guard every
+  // navigation re-runs a full `select('*')`; with it the first caller wins
+  // and the rest are no-ops. Same shape as `hccMembersDidFetch`.
+  patientsDidFetch: false,
   selectedIds: [],
   currentPage: 1,
   perPage: 10,
@@ -1815,6 +2039,10 @@ export const useAppStore = create((set, get) => ({
   callDetails: [],
   callDetailsLoading: true,
   callDetailsHasMore: false,
+  // Same single-fire guard as `patientsDidFetch` — the QueueTable effect used
+  // to re-fire fetchCallDetails on every dep change (patients.length flip on
+  // cold-load caused a second full pull immediately after the first).
+  callDetailsDidFetch: false,
 
   // Calls UI config (nav items, phone lines, session list) — loaded from Supabase
   callNavItems: [],       // inbox + channel nav items
@@ -1918,7 +2146,11 @@ export const useAppStore = create((set, get) => ({
 
   // ─── Supabase: Fetch patients ───
   fetchPatients: async () => {
-    set({ patientsLoading: true, patientsError: null });
+    // Idempotent per session. See `patientsDidFetch` init for rationale —
+    // callers don't need to coordinate; the first one wins and the rest
+    // return immediately.
+    if (useAppStore.getState().patientsDidFetch) return;
+    set({ patientsDidFetch: true, patientsLoading: true, patientsError: null });
     const { data, error } = await supabase
       .from('patients')
       .select('*')
@@ -1926,10 +2158,13 @@ export const useAppStore = create((set, get) => ({
 
     if (error) {
       console.warn('Supabase patients fetch failed:', error.message);
+      // Reset the guard so ErrorState's Retry (which re-calls fetchPatients)
+      // can actually retry — otherwise the second call short-circuits.
       set({
         patients: [],
         patientsLoading: false,
         patientsError: error.message,
+        patientsDidFetch: false,
       });
     } else {
       // Build maps for merging: in-memory state (from active invocations) + fallback seed data
@@ -1970,8 +2205,11 @@ export const useAppStore = create((set, get) => ({
 
   // ─── Supabase: Fetch call details — all records, client-side pagination ───
   fetchCallDetails: async () => {
+    // Idempotent per session — see `callDetailsDidFetch` init. Previously the
+    // QueueTable effect re-fired this on every dep change.
+    if (useAppStore.getState().callDetailsDidFetch) return;
     const PAGE_SIZE = 10;
-    set({ callDetailsLoading: true });
+    set({ callDetailsDidFetch: true, callDetailsLoading: true });
 
     const { data, error } = await supabase
       .from('call_details')
@@ -1979,7 +2217,12 @@ export const useAppStore = create((set, get) => ({
       .neq('call_type', 'ongoing')
       .order('started_at', { ascending: false });
 
-    if (error) console.warn('call_details fetch failed:', error.message);
+    if (error) {
+      console.warn('call_details fetch failed:', error.message);
+      // Reset the guard so the caller (or the user re-navigating) can retry.
+      set({ callDetailsLoading: false, callDetailsDidFetch: false });
+      return;
+    }
     const combined = (data || [])
       .map(c => enrichCallRecord(callDetailDbToJs(c)))
       .sort((a, b) => new Date(b.startedAt || 0) - new Date(a.startedAt || 0));
@@ -7384,6 +7627,18 @@ export const useAppStore = create((set, get) => ({
   openQuickView: (patient) => set({ quickViewPatient: patient }),
   closeQuickView: () => set({ quickViewPatient: null }),
 
+  // TOC Queue → Assessment drawer — opened by clicking the Assessment pill in a row.
+  // Holds the patient id (not the full object) so state stays in sync when the
+  // underlying patient row updates (e.g. status flips) while the drawer is open.
+  assessmentDrawerPatientId: null,
+  openAssessmentDrawer: (patientId) => set({ assessmentDrawerPatientId: patientId }),
+  closeAssessmentDrawer: () => set({ assessmentDrawerPatientId: null }),
+
+  // TOC Queue → Outreach Status drawer — same pattern as the assessment drawer.
+  outreachStatusDrawerPatientId: null,
+  openOutreachStatusDrawer: (patientId) => set({ outreachStatusDrawerPatientId: patientId }),
+  closeOutreachStatusDrawer: () => set({ outreachStatusDrawerPatientId: null }),
+
   updatePatient: (id, updates) => {
     // Optimistic local update
     set(s => ({
@@ -9130,6 +9385,9 @@ export const useAppStore = create((set, get) => ({
   // ── Tasks ──
   tasks: [],
   tasksLoading: true,
+  // Single-fire guard — same pattern as patientsDidFetch. Prevents refetch
+  // storms when a caller's effect re-runs on unrelated dependency churn.
+  tasksDidFetch: false,
   tasksTab: 'all',
   tasksFilters: {},
   showTasksFilterBar: true,
@@ -9147,7 +9405,9 @@ export const useAppStore = create((set, get) => ({
   clearTasksFilters: () => set({ tasksFilters: {} }),
 
   fetchTasks: async () => {
-    set({ tasksLoading: true });
+    // Idempotent per session — see `tasksDidFetch`.
+    if (useAppStore.getState().tasksDidFetch) return;
+    set({ tasksDidFetch: true, tasksLoading: true });
     const { data, error } = await supabase
       .from('tasks')
       .select('*')
@@ -9156,7 +9416,7 @@ export const useAppStore = create((set, get) => ({
     if (error) {
       console.error('Tasks fetch error:', error.message);
       const localHedisTasks = get().tasks.filter(t => t.hedisMemberId);
-      set({ tasks: [...localHedisTasks], tasksLoading: false });
+      set({ tasks: [...localHedisTasks], tasksLoading: false, tasksDidFetch: false });
       return;
     }
 

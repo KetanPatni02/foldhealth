@@ -7,6 +7,8 @@ import { ProfileTabBar } from './shell/ProfileTabBar/ProfileTabBar';
 import { CareManagementView } from './right-panel/tabs/care-management/CareManagementView/CareManagementView';
 import { CareProgramsTab } from './right-panel/tabs/care-programs/CareProgramsTab/CareProgramsTab';
 import { OverviewTab } from './right-panel/tabs/overview/OverviewTab/OverviewTab';
+import { ProfileTab } from './left-panel/tabs/profile/ProfileTab/ProfileTab';
+import { TasksTab } from './left-panel/tabs/tasks/TasksTab/TasksTab';
 import { CcmTimerWidget } from './shell/CcmTimerWidget/CcmTimerWidget';
 import styles from './PatientDetailView.module.css';
 
@@ -169,6 +171,10 @@ export function PatientDetailView() {
               <CareManagementView />
             ) : activeTab === 'Care Programs' ? (
               <CareProgramsTab />
+            ) : activeTab === 'Profile' ? (
+              <ProfileTab patient={patient} />
+            ) : activeTab === 'Tasks' ? (
+              <TasksTab />
             ) : (
               <TabPlaceholder tabName={activeTab} />
             )}

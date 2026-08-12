@@ -47,6 +47,8 @@ export function dbToJs(row) {
     callTranscript: row.call_transcript || [],
     liveGoals: row.live_goals || [],
     liveTranscript: row.live_transcript || [],
+    assessmentStatus: row.assessment_status || null,
+    outreachStatus: row.outreach_status || null,
   };
 }
 
@@ -98,6 +100,8 @@ export function jsToDb(patient) {
     callTranscript: 'call_transcript',
     liveGoals: 'live_goals',
     liveTranscript: 'live_transcript',
+    assessmentStatus: 'assessment_status',
+    outreachStatus: 'outreach_status',
   };
 
   for (const [jsKey, dbKey] of Object.entries(map)) {

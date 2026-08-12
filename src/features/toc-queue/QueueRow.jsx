@@ -23,14 +23,6 @@ function computeAgentDueOn(dischargeDate, outreachType) {
   return `${pad(due.getMonth() + 1)}/${pad(due.getDate())}/${due.getFullYear()}`;
 }
 
-const AI_VARIANT_MAP = {
-  'ai-tag-risk': 'ai-risk',
-  'ai-tag-care': 'ai-care',
-  'ai-tag-social': 'ai-social',
-  'ai-tag-med': 'ai-med',
-  'ai-tag-neutral': 'ai-neutral',
-};
-
 const TOC_STATUS_MAP = {
   enrolled: { variant: 'toc-enrolled', label: 'Enrolled', icon: 'solar:check-circle-linear' },
   engaged: { variant: 'toc-engaged', label: 'Engaged', icon: 'solar:link-round-linear' },
@@ -170,86 +162,52 @@ function StatusCell({ patient: p, voicemailCalls, completedCall }) {
   return <span style={{ fontSize: 13, color: 'var(--neutral-200)' }}>—</span>;
 }
 
-function LiveTranscriptSnippet({ transcript }) {
-  if (!transcript?.length) return null;
-  const last = transcript[transcript.length - 1];
-  const prev = transcript.length > 1 ? transcript[transcript.length - 2] : null;
+// Shared status → badge-variant map for the Assessment and Outreach Status
+// pills. Values match the enum on public.patients (see
+// supabase/toc_queue_assessment_outreach_migration.sql). The Badge component
+// already ships DS variants for `pending`, `in-progress`, `completed`, and
+// `warning`, so we route each enum value to the closest existing token
+// instead of adding new one-off variants.
+const STATUS_BADGE = {
+  'Not Started': { variant: 'pending',     icon: 'solar:hourglass-linear' },
+  'In Progress': { variant: 'in-progress', icon: 'solar:refresh-linear' },
+  'Attempted':   { variant: 'warning',     icon: 'solar:phone-calling-linear' },
+  'Completed':   { variant: 'completed',   icon: 'solar:check-circle-linear' },
+  'Overdue':     { variant: 'error',       icon: 'solar:danger-triangle-linear' },
+};
+
+// Clickable status pill used by both Assessment and Outreach Status cells.
+// Renders a `—` when the row has no value yet (patients seed only sets
+// values for the 10 agent-assigned rows in the current backfill).
+function StatusPill({ status, onOpen, ariaLabel }) {
+  if (!status) return <span className={rowStyles.dateDash}>—</span>;
+  const cfg = STATUS_BADGE[status] || STATUS_BADGE['Not Started'];
   return (
-    <div className={styles.liveSnippet}>
-      {prev && (
-        <div className={styles.snippetLine}>
-          <span className={styles.snippetSender}>{prev.sender === 'agent' ? prev.name : prev.name?.split(' ')[0]}:</span>
-          <span className={styles.snippetText}>{prev.text.length > 60 ? prev.text.slice(0, 60) + '…' : prev.text}</span>
-        </div>
-      )}
-      <div className={`${styles.snippetLine} ${styles.snippetLatest}`}>
-        <span className={styles.snippetSender}>{last.sender === 'agent' ? last.name : last.name?.split(' ')[0]}:</span>
-        <span className={styles.snippetText}>{last.text.length > 60 ? last.text.slice(0, 60) + '…' : last.text}</span>
-      </div>
-    </div>
+    <button
+      type="button"
+      className={styles.statusPillBtn}
+      onClick={(e) => { e.stopPropagation(); onOpen(); }}
+      aria-label={ariaLabel}
+    >
+      <Badge size="M" variant={cfg.variant} label={status} icon={cfg.icon} />
+      <Icon name="solar:alt-arrow-right-linear" size={12} color="var(--neutral-300)" />
+    </button>
   );
 }
 
-function NextActionCell({ patient: p, ongoingCall }) {
-  const showToast = useAppStore(s => s.showToast);
-  if (p.status === 'oncall') {
-    const transcript = ongoingCall?.liveTranscript || p.liveTranscript || [];
-    if (transcript.length > 0) {
-      return <LiveTranscriptSnippet transcript={transcript} />;
-    }
-    return <div className={styles.nextAction}>{p.nextAction || 'Live outreach in progress'}</div>;
-  }
-  if (p.nextAction === '__MED_REVIEW__') {
-    return (
-      <div>
-        <div className={styles.medDone}>
-          <Icon name="solar:check-circle-bold" size={13} /> Agent tasks done
-        </div>
-        <button type="button" className={styles.medLink} onClick={() => showToast('Opening Medication Reconciliation…')}>
-          <Icon name="solar:pill-bold" size={12} /> Review Med. Reconciliation →
-        </button>
-      </div>
-    );
-  }
-  return <div className={styles.nextAction}>{p.nextAction || '—'}</div>;
-}
-
-function AiInsightsCell({ insights }) {
-  if (!insights?.length) return <span style={{ color: 'var(--neutral-200)' }}>—</span>;
-  const MAX_VISIBLE = 2;
-  const visible = insights.slice(0, MAX_VISIBLE);
-  const overflow = insights.slice(MAX_VISIBLE);
-  return (
-    <div className={styles.aiCell}>
-      {visible.map((t, i) => (
-        <Badge key={i} size="M" variant={AI_VARIANT_MAP[t.cls] || 'ai-neutral'} label={t.label} icon={t.icon?.replace('-bold', '-linear')} />
-      ))}
-      {overflow.length > 0 && (
-        <div className={styles.aiOverflowWrap}>
-          <span className={styles.aiOverflowBadge}>+{overflow.length}</span>
-          <div className={styles.aiOverflowTooltip}>
-            {overflow.map((t, i) => (
-              <Badge key={i} size="M" variant={AI_VARIANT_MAP[t.cls] || 'ai-neutral'} label={t.label} icon={t.icon?.replace('-bold', '-linear')} />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export function QueueRow({ patient, isSelected, onSelect }) {
+// `voicemailCalls`, `completedCall`, and `ongoingCall` are indexed at the
+// table level (see QueueTable's `callsByPatient` memo) and passed in so this
+// row doesn't have to scan the entire callDetails array on every render.
+export function QueueRow({ patient, isSelected, onSelect, voicemailCalls, completedCall, ongoingCall }) {
   const openQuickView = useAppStore(s => s.openQuickView);
   const openCallPopover = useAppStore(s => s.openCallPopover);
   const openLiveDrawer = useAppStore(s => s.openLiveDrawer);
+  const openAssessmentDrawer = useAppStore(s => s.openAssessmentDrawer);
+  const openOutreachStatusDrawer = useAppStore(s => s.openOutreachStatusDrawer);
   const showToast = useAppStore(s => s.showToast);
-  const callDetails = useAppStore(s => s.callDetails);
   const callBtnRef = useRef(null);
 
   const p = patient;
-  const voicemailCalls = callDetails.filter(c => c.patientId === p.id && c.callType === 'voicemail');
-  const completedCall = callDetails.find(c => c.patientId === p.id && c.callType === 'completed');
-  const ongoingCall = callDetails.find(c => c.patientId === p.id && c.callType === 'ongoing');
   const outreachBadgeVariant = p.outreachType === '48h' ? 'outreach-48h' : 'outreach-7d';
 
   const openDetail = useAppStore(s => s.openDetail);
@@ -320,13 +278,6 @@ export function QueueRow({ patient, isSelected, onSelect }) {
       </td>
       <td className={rowStyles.td}>
         <Badge size="M"
-          variant={`priority-${p.priority <= 1 ? 'critical' : p.priority <= 2 ? 'high' : p.priority <= 3 ? 'medium' : 'low'}`}
-          label={p.priority <= 1 ? 'Critical' : p.priority <= 2 ? 'High' : p.priority <= 3 ? 'Medium' : 'Low'}
-          icon={p.priority <= 1 ? 'solar:danger-triangle-linear' : p.priority <= 2 ? 'solar:arrow-up-linear' : p.priority <= 3 ? 'solar:minus-circle-linear' : 'solar:arrow-down-linear'}
-        />
-      </td>
-      <td className={rowStyles.td}>
-        <Badge size="M"
           variant={`outreach-${p.outreachCategory || 'post-visit'}`}
           label={(p.outreachCategory || 'post-visit').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
         />
@@ -352,7 +303,7 @@ export function QueueRow({ patient, isSelected, onSelect }) {
       <td className={styles.agentColTd} style={{ background: 'var(--agent-col-bg)', borderLeft: '2px solid var(--primary-200)' }}>
         <StatusCell patient={p} voicemailCalls={voicemailCalls} completedCall={completedCall} />
       </td>
-      <td className={styles.agentColTd} style={{ background: 'var(--agent-col-bg)' }}>
+      <td className={styles.agentColTd} style={{ background: 'var(--agent-col-bg)', borderRight: '2px solid var(--primary-200)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, whiteSpace: 'nowrap' }}>
           <span style={{ fontSize: 14, color: 'var(--neutral-400)' }}>
             {computeAgentDueOn(p.dischargeDate, p.outreachType) || '—'}
@@ -363,11 +314,19 @@ export function QueueRow({ patient, isSelected, onSelect }) {
           </span>
         </div>
       </td>
-      <td className={styles.agentColTd} style={{ background: 'var(--agent-col-bg)' }}>
-        <NextActionCell patient={p} ongoingCall={ongoingCall} />
+      <td className={rowStyles.td}>
+        <StatusPill
+          status={p.assessmentStatus}
+          onOpen={() => openAssessmentDrawer(p.id)}
+          ariaLabel={`Open assessment for ${p.name}`}
+        />
       </td>
-      <td className={styles.agentColTd} style={{ background: 'var(--agent-col-bg)', borderRight: '2px solid var(--primary-200)' }}>
-        <AiInsightsCell insights={p.aiInsights} />
+      <td className={rowStyles.td}>
+        <StatusPill
+          status={p.outreachStatus}
+          onOpen={() => openOutreachStatusDrawer(p.id)}
+          ariaLabel={`Open outreach status for ${p.name}`}
+        />
       </td>
       <td className={rowStyles.td}><TocStatusBadge status={p.tocStatus} /></td>
       <td className={rowStyles.td}>{p.dueOn || '—'}</td>

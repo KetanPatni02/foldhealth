@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Icon } from '../../../../components/Icon/Icon';
+import { DownChevronIcon } from '../../../../components/Icon/DownChevronIcon';
 import { ActionButton } from '../../../../components/ActionButton/ActionButton';
 import { OverflowTabStrip } from '../../../../components/TabStrip/OverflowTabStrip';
 import { StickyNote } from '../../../../components/StickyNote/StickyNote';
@@ -15,13 +16,16 @@ import { OutreachTab } from '../tabs/outreach/OutreachTab/OutreachTab.jsx';
 import { SummaryTab } from '../tabs/summary/SummaryTab/SummaryTab.jsx';
 import { TasksTab } from '../tabs/tasks/TasksTab/TasksTab.jsx';
 import { ProfileTab } from '../tabs/profile/ProfileTab/ProfileTab.jsx';
-import { CARE_GAP_SECTIONS_EXTENDED, CARE_GAP_TABS } from '../../data/careGapsMock';
+import { CARE_GAP_SECTIONS_EXTENDED, CARE_GAP_TABS, CARE_GAP_TABS_DRAWER } from '../../data/careGapsMock';
 import styles from './PatientProfileTabs.module.css';
 
-const TAB_ITEMS = CARE_GAP_TABS.map(tab => ({ key: tab, label: tab }));
-
-export function PatientProfileTabs({ patientId, patient }) {
-  const [activeTab, setActiveTab] = useState(CARE_GAP_TABS[0]);
+// In the P360 (full-page) surface the right panel already hosts Tasks and
+// Profile, so the left-panel tab strip drops them to avoid duplicate nav.
+// In the QuickView drawer there IS no right panel, so we keep the full set.
+export function PatientProfileTabs({ patientId, patient, variant = 'full' }) {
+  const tabs = variant === 'drawer' ? CARE_GAP_TABS_DRAWER : CARE_GAP_TABS;
+  const tabItems = useMemo(() => tabs.map(tab => ({ key: tab, label: tab })), [tabs]);
+  const [activeTab, setActiveTab] = useState(tabs[0]);
   const [selectedGaps, setSelectedGaps] = useState([]);
   const [gapsCollapsed, setGapsCollapsed] = useState(false);
   const [diagnosisCollapsed, setDiagnosisCollapsed] = useState(false);
@@ -56,7 +60,7 @@ export function PatientProfileTabs({ patientId, patient }) {
       : section.items,
   }));
 
-  const activeIdx = useMemo(() => CARE_GAP_TABS.indexOf(activeTab), [activeTab]);
+  const activeIdx = useMemo(() => tabs.indexOf(activeTab), [tabs, activeTab]);
 
   return (
     <div className={styles.panel}>
@@ -79,7 +83,7 @@ export function PatientProfileTabs({ patientId, patient }) {
         <div className={styles.tabRow}>
           <div className={styles.tabsArea}>
             <OverflowTabStrip
-              items={TAB_ITEMS}
+              items={tabItems}
               activeKey={activeTab}
               onChange={setActiveTab}
             />
@@ -128,12 +132,16 @@ export function PatientProfileTabs({ patientId, patient }) {
                 aria-label={gapsCollapsed ? 'Expand Care Gaps' : 'Collapse Care Gaps'}
                 aria-expanded={!gapsCollapsed}
               >
-                <Icon name={gapsCollapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-200)" />
+                <DownChevronIcon
+                  size={12}
+                  color="var(--neutral-200)"
+                  className={gapsCollapsed ? styles.chevronCollapsed : undefined}
+                />
               </button>
               {!gapsCollapsed && (
                 <div className={styles.sectionActions}>
                   <span className={styles.viewBy}>View By: Action</span>
-                  <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" />
+                  <DownChevronIcon size={10} />
                   <span className={styles.filterDivider} />
                   <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
                 </div>
@@ -159,13 +167,17 @@ export function PatientProfileTabs({ patientId, patient }) {
                 aria-label={diagnosisCollapsed ? 'Expand Diagnosis Gaps' : 'Collapse Diagnosis Gaps'}
                 aria-expanded={!diagnosisCollapsed}
               >
-                <Icon name={diagnosisCollapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-200)" />
+                <DownChevronIcon
+                  size={12}
+                  color="var(--neutral-200)"
+                  className={diagnosisCollapsed ? styles.chevronCollapsed : undefined}
+                />
               </button>
               {!diagnosisCollapsed && (
                 <div className={styles.sectionActions}>
                   <span className={styles.dosLabel}>DOS:</span>
                   <span className={styles.dosValue}>03/04/2025</span>
-                  <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" />
+                  <DownChevronIcon size={10} />
                   <span className={styles.filterDivider} />
                   <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
                 </div>
@@ -189,7 +201,11 @@ export function PatientProfileTabs({ patientId, patient }) {
                 aria-label={alertsCollapsed ? 'Expand Alerts' : 'Collapse Alerts'}
                 aria-expanded={!alertsCollapsed}
               >
-                <Icon name={alertsCollapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-200)" />
+                <DownChevronIcon
+                  size={12}
+                  color="var(--neutral-200)"
+                  className={alertsCollapsed ? styles.chevronCollapsed : undefined}
+                />
               </button>
               {!alertsCollapsed && (
                 <div className={styles.sectionActions}>
@@ -218,15 +234,22 @@ export function PatientProfileTabs({ patientId, patient }) {
 
         {activeIdx === 5 && <SummaryTab />}
 
-        {activeIdx === 6 && <TasksTab />}
+        {/* Tail tabs — index layout depends on variant:
+            - full  (P360 page):   [6] CRM
+            - drawer (QuickView):  [6] Tasks · [7] CRM · [8] Profile
+            Tasks/Profile live only on the right panel in P360, so they're
+            keyed off tabs[idx] rather than a hard-coded index. */}
+        {tabs[activeIdx] === 'Tasks' && <TasksTab />}
 
-        {activeIdx === 8 && <ProfileTab patient={patient || { id: patientId }} />}
-
-        {activeIdx === 7 && (
+        {tabs[activeIdx] === 'CRM' && (
           <div className={styles.placeholder}>
             <Icon name="solar:document-text-linear" size={32} color="var(--neutral-150)" />
             <span>Coming soon</span>
           </div>
+        )}
+
+        {tabs[activeIdx] === 'Profile' && (
+          <ProfileTab patient={patient || { id: patientId }} />
         )}
       </div>
     </div>

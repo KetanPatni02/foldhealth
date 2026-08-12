@@ -79,7 +79,12 @@ export function useChartDetailDrawer({ charts, initialId, member, onClose }) {
   // so the hover tooltip on each row's "Failed" badge can render the reasons
   // + comment. Doesn't clear on Undo — the entry is stale until the doc is
   // failed again, which overwrites it, so we drop it on `undoDoc`.
-  const [failDetails, setFailDetails] = useState({});
+  // Lazily seeded from the persisted hccChartFailDetails slice so reopening
+  // this drawer on a previously-failed doc restores the reason checkboxes
+  // + comment instead of showing an empty form.
+  const [failDetails, setFailDetails] = useState(
+    () => ({ ...(useAppStore.getState().hccChartFailDetails?.[member?.id] || {}) }),
+  );
   // Confirmation dialogs for the destructive actions on the per-doc menu.
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(null);
   // Inline edit — when set to a doc id, the doc card renders an inline
@@ -298,7 +303,10 @@ export function useChartDetailDrawer({ charts, initialId, member, onClose }) {
   // Pass/Fail writes the doc status through to the store (worklist evidence
   // cell) AND — because changing a document's status is a Support action —
   // assigns the acting user and syncs the derived Support status everywhere.
-  const applyDocAction = (id, action) => {
+  // failMeta { reasons, note } is only meaningful when action === 'fail'; on
+  // pass/undo the store clears any previously persisted fail_reasons + fail_note
+  // for this doc so a re-review with Pass wipes the stale reasons row too.
+  const applyDocAction = (id, action, failMeta) => {
     const next = action
       ? { ...docActions, [id]: action }
       : (() => { const n = { ...docActions }; delete n[id]; return n; })();
@@ -312,7 +320,11 @@ export function useChartDetailDrawer({ charts, initialId, member, onClose }) {
       member.id,
       id,
       action === 'pass' ? 'Passed' : action === 'fail' ? 'Failed' : 'Pending',
-      { deferSync: true },
+      {
+        deferSync: true,
+        failReasons: action === 'fail' ? (failMeta?.reasons || []) : undefined,
+        failNote: action === 'fail' ? (failMeta?.note || '') : undefined,
+      },
     );
     if (action) ensureSupportAssignee();
     // Defer the Support-member status sync to drawer close — flipping
@@ -357,7 +369,7 @@ export function useChartDetailDrawer({ charts, initialId, member, onClose }) {
   };
   const confirmFailDoc = ({ reasons, note }) => {
     if (!failPrompt) return;
-    applyDocAction(failPrompt.id, 'fail');
+    applyDocAction(failPrompt.id, 'fail', { reasons, note });
     setFailDetails(prev => ({ ...prev, [failPrompt.id]: { reasons: reasons || [], note: note || '' } }));
     const doc = docs.find(d => d.id === failPrompt.id);
     const reasonText = (reasons || []).join(', ');

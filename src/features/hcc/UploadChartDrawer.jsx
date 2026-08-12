@@ -90,9 +90,17 @@ export function UploadChartDrawer() {
   if (!member) return null;
 
   // In edit mode a file isn't required — the user is only changing metadata.
+  // Review Status is now mandatory (reviewer roles only): Pass, or Failed
+  // with at least one reason. If "Other" is checked, a comment is required
+  // too so the downstream reviewer has something to act on.
+  const failReasonsValid = failDetails?.reasons?.length > 0
+    && (!failDetails.reasons.includes('Other') || (failDetails.note || '').trim().length > 0);
+  const statusValid = !canSetStatus
+    || initialStatus === 'Passed'
+    || (initialStatus === 'Failed' && failReasonsValid);
   const ok = isEdit
     ? !!(caption.trim() && docType)
-    : !!(file && caption.trim() && docType);
+    : !!(file && caption.trim() && docType && statusValid);
 
   const handleUpload = () => {
     if (isEdit) {
@@ -108,7 +116,10 @@ export function UploadChartDrawer() {
     const doc = makeUploadedChartDoc(member, { file, caption, docType });
     addChartDoc(member.id, doc, file);
     if (initialStatus) {
-      setChartDocStatus(member.id, doc.id, initialStatus);
+      setChartDocStatus(member.id, doc.id, initialStatus, {
+        failReasons: initialStatus === 'Failed' ? (failDetails?.reasons || []) : undefined,
+        failNote: initialStatus === 'Failed' ? (failDetails?.note || '') : undefined,
+      });
     }
     addActivityEntry({
       t: 'upload', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
@@ -162,19 +173,25 @@ export function UploadChartDrawer() {
   };
 
   const handlePassClick = () => {
+    // Passing clears any Fail reasons that were partially picked; picker
+    // also collapses since it's Failed-only.
     setFailInline(false);
     setFailDetails(null);
-    setInitialStatus(v => v === 'Passed' ? null : 'Passed');
+    setInitialStatus('Passed');
   };
   const handleFailClick = () => {
     if (initialStatus === 'Failed') {
-      // Toggle Failed off — clear both the status and any captured reasons.
-      setInitialStatus(null);
-      setFailDetails(null);
-      setFailInline(false);
+      // Second Fail click collapses the picker without clearing details —
+      // the reviewer may want to keep their in-progress selection while
+      // adjusting other fields.
+      setFailInline(v => !v);
       return;
     }
-    // Open the inline reason picker; status flips to Failed on Confirm.
+    // Flip status to Failed immediately (red pill) and open the picker so
+    // the reviewer can enter reasons. Save happens on the top-right Upload
+    // button — no Confirm inside the picker.
+    setInitialStatus('Failed');
+    setFailDetails({ reasons: [], note: '' });
     setFailInline(true);
   };
 
@@ -260,13 +277,16 @@ export function UploadChartDrawer() {
               />
             </div>
 
-            {/* Review Status — reviewer roles can Pass/Fail on upload so a
-                single-step flow lands the doc in a decided state. Fail opens
-                the shared reason picker so the reviewer records WHY. */}
+            {/* Review Status — reviewer roles must pick Pass or Fail before
+                the doc can be uploaded (required field). Fail flips the pill
+                red and expands the shared reason picker in-place; there is
+                no Confirm/Cancel — the picker binds directly to state and
+                the outer Upload button saves everything on click. */}
             {canSetStatus && (
               <div className={styles.field}>
                 <span className={styles.fieldLabel}>
-                  Review Status <span className={styles.optional}>(optional)</span>
+                  Review Status
+                  <span className={styles.required} aria-hidden="true" />
                 </span>
                 <div className={styles.statusRow}>
                   <button
@@ -287,24 +307,10 @@ export function UploadChartDrawer() {
                 {failInline && (
                   <div className={styles.failInlineWrap}>
                     <FailReasonInline
-                      onCancel={() => setFailInline(false)}
-                      onConfirm={({ reasons, note }) => {
-                        setInitialStatus('Failed');
-                        setFailDetails({ reasons: reasons || [], note: note || '' });
-                        setFailInline(false);
-                      }}
+                      value={failDetails || { reasons: [], note: '' }}
+                      onChange={setFailDetails}
+                      hideActions
                     />
-                  </div>
-                )}
-                {initialStatus === 'Failed' && !failInline && failDetails?.reasons?.length > 0 && (
-                  <div className={styles.failSummary}>
-                    <div className={styles.failSummaryHeading}>Failed Due to:</div>
-                    <ul className={styles.failSummaryList}>
-                      {failDetails.reasons.map(r => <li key={r}>{r}</li>)}
-                    </ul>
-                    {failDetails.note && (
-                      <div className={styles.failSummaryNote}>Comment: {failDetails.note}</div>
-                    )}
                   </div>
                 )}
               </div>

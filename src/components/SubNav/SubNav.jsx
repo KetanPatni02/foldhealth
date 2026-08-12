@@ -31,19 +31,27 @@ export function SubNav({ collapsed }) {
   const fetchAwvMembers = useAppStore(s => s.fetchAwvMembers);
   const fetchCcmWorklistMembers = useAppStore(s => s.fetchCcmWorklistMembers);
   const fetchSnpWorklistMembers = useAppStore(s => s.fetchSnpWorklistMembers);
+  const fetchPatients = useAppStore(s => s.fetchPatients);
+  const fetchCallDetails = useAppStore(s => s.fetchCallDetails);
   const fetchWorklistOrder = useAppStore(s => s.fetchWorklistOrder);
   const saveWorklistOrder = useAppStore(s => s.saveWorklistOrder);
   const worklistOrder = useAppStore(s => s.worklistOrder);
   const clearSelected = useAppStore(s => s.clearSelected);
   const clearHccSelected = useAppStore(s => s.clearHccSelected);
 
-  // Prefetch HCC, AWV, CCM, and SNP worklists on mount so counts show up
-  // right away; the order fetch also lands the user on their top worklist.
+  // Prefetch every worklist on mount so counts show up right away. Also
+  // triggers `fetchPatients` + `fetchCallDetails` here (rather than inside
+  // WorklistTable / QueueTable) so the TOC queue works when the user lands
+  // there before ever visiting the worklist tab, and so tab switches don't
+  // remount those effects and re-fire the same requests. The fetch actions
+  // are idempotent (guarded by *DidFetch flags in the store).
   useEffect(() => {
     fetchHccMembers();
     fetchAwvMembers();
     fetchCcmWorklistMembers();
     fetchSnpWorklistMembers();
+    fetchPatients();
+    fetchCallDetails();
     fetchWorklistOrder(WORKLIST_LABELS);
   }, []);
 

@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { WorklistShell } from '../../components/WorklistShell/WorklistShell';
@@ -19,7 +19,6 @@ const agentLabel = (icon, text) => (
 const QUEUE_COLUMNS = [
   { key: 'select', showCheckbox: true, sticky: 'left', left: 0, width: 36 },
   { key: 'members', label: 'Members', sticky: 'left', left: 36, width: 240, thStyle: { borderRight: '0.5px solid var(--neutral-150)' } },
-  { key: 'priority', label: 'Priority' },
   { key: 'outreachType', label: 'Outreach Type' },
   { key: 'lace', label: 'LACE Acuity' },
   { key: 'outreachWindow', label: 'Outreach Window' },
@@ -34,21 +33,10 @@ const QUEUE_COLUMNS = [
   {
     key: 'agentDueOn',
     label: agentLabel(<Icon name="solar:calendar-linear" size={14} />, 'Due On'),
-    thStyle: { ...agentTh, minWidth: 140 },
+    thStyle: { ...agentTh, minWidth: 140, borderRight: '2px solid var(--primary-200)' },
   },
-  {
-    key: 'agentNextAction',
-    label: agentLabel(
-      <svg width="14" height="14" viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="2" rx="1" fill="currentColor"/><rect x="2" y="6" width="7" height="2" rx="1" fill="currentColor"/><rect x="2" y="10" width="5" height="2" rx="1" fill="currentColor"/></svg>,
-      'Next Action',
-    ),
-    thStyle: { ...agentTh, minWidth: 260 },
-  },
-  {
-    key: 'agentAiInsights',
-    label: agentLabel(<Icon name="solar:magic-stick-3-linear" size={14} />, 'AI Insights'),
-    thStyle: { ...agentTh, minWidth: 400, borderRight: '2px solid var(--primary-200)' },
-  },
+  { key: 'assessment', label: 'Assessment', thStyle: { minWidth: 160 } },
+  { key: 'outreachStatus', label: 'Outreach Status', thStyle: { minWidth: 160 } },
   { key: 'tocStatus', label: 'TOC Status' },
   { key: 'dueOn', label: 'Due On' },
   { key: 'nextOutreach', label: 'Next Outreach' },
@@ -64,16 +52,17 @@ const QUEUE_COLUMNS = [
 export function QueueTable() {
   const patients = useAppStore(s => s.patients);
   const patientsLoading = useAppStore(s => s.patientsLoading);
-  const fetchPatients = useAppStore(s => s.fetchPatients);
-  const fetchCallDetails = useAppStore(s => s.fetchCallDetails);
+  const callDetails = useAppStore(s => s.callDetails);
   const searchQuery = useAppStore(s => s.searchQuery);
   const selectedIds = useAppStore(s => s.selectedIds);
   const selectPatient = useAppStore(s => s.selectPatient);
   const selectAll = useAppStore(s => s.selectAll);
   const clearSelected = useAppStore(s => s.clearSelected);
 
-  // Fetch patients + call details when queue mounts (lazy — skip if already loaded)
-  useEffect(() => { if (!patients.length && !patientsLoading) fetchPatients(); fetchCallDetails(); }, [patients.length, patientsLoading, fetchPatients, fetchCallDetails]);
+  // Both patients + call details are fetched once by SubNav on mount. The
+  // store's *DidFetch guards keep every subsequent call idempotent, so we
+  // don't need a QueueTable-local effect (which previously re-fired
+  // fetchCallDetails on every dep change).
   const activeFilters = useAppStore(s => s.activeFilters);
   const currentPage = useAppStore(s => s.currentPage);
   const perPage = useAppStore(s => s.perPage);
@@ -100,6 +89,29 @@ export function QueueTable() {
 
     return result;
   }, [patients, searchQuery, activeFilters]);
+
+  // Per-patient callDetails lookups. QueueRow used to run
+  // `callDetails.filter(...)` twice per row on every render — O(rows * calls)
+  // per pass. Now we build the three indexes once at the table level and
+  // hand each row the pre-computed values it needs.
+  const callsByPatient = useMemo(() => {
+    const voicemails = new Map();  // patientId -> array (attempt history)
+    const completed  = new Map();  // patientId -> first completed call
+    const ongoing    = new Map();  // patientId -> first ongoing call
+    for (const c of callDetails) {
+      if (!c.patientId) continue;
+      if (c.callType === 'voicemail') {
+        const list = voicemails.get(c.patientId);
+        if (list) list.push(c);
+        else voicemails.set(c.patientId, [c]);
+      } else if (c.callType === 'completed') {
+        if (!completed.has(c.patientId)) completed.set(c.patientId, c);
+      } else if (c.callType === 'ongoing') {
+        if (!ongoing.has(c.patientId)) ongoing.set(c.patientId, c);
+      }
+    }
+    return { voicemails, completed, ongoing };
+  }, [callDetails]);
 
   if (patientsLoading) return <TableSkeleton rows={6} />;
 
@@ -143,12 +155,15 @@ export function QueueTable() {
           patient={p}
           isSelected={selectedIds.includes(p.id)}
           onSelect={selectPatient}
+          voicemailCalls={callsByPatient.voicemails.get(p.id)}
+          completedCall={callsByPatient.completed.get(p.id)}
+          ongoingCall={callsByPatient.ongoing.get(p.id)}
         />
       )}
       selectedIds={selectedIds}
       onSelectAll={handleSelectAll}
       onClearSelection={clearSelected}
-      minTableWidth={2300}
+      minTableWidth={1900}
     />
   );
 }

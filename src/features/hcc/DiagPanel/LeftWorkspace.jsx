@@ -25,6 +25,7 @@ import { DocEvidenceViewer } from './DocEvidenceViewer';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { CommentComposer } from '../../../components/CommentComposer/CommentComposer';
 import { Avatar } from '../../../components/Avatar/Avatar';
+import { FailReasonInline } from '../ChartDetailDrawerParts';
 import styles from './LeftWorkspace.module.css';
 
 // Two tab sets depending on scope. Counts flow in per-render since
@@ -1492,11 +1493,6 @@ function DocumentsTab({ member, icdScope, charts = EMPTY_CHARTS, openDocId, setO
 const DOC_ACCEPT = '.pdf,.doc,.docx,.png,.jpg,.csv,.xls,.xlsx';
 const DOC_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 const DOC_CATEGORIES = ['Discharge Summary', 'Consult Note', 'Lab Report', 'Imaging', 'Chart', 'Physical Therapy'];
-// Dropdown labels → stored doc.status values ('Passed' | 'Failed').
-const DOC_STATUSES = [
-  { label: 'Pass', value: 'Passed' },
-  { label: 'Fail', value: 'Failed' },
-];
 
 function formatBytes(n) {
   if (n < 1024) return `${n} B`;
@@ -1514,6 +1510,7 @@ function DocumentsUploader() {
   const showToast = useAppStore(s => s.showToast);
   const addActivityEntry = useAppStore(s => s.addActivityEntry);
   const addChartDoc = useAppStore(s => s.addChartDoc);
+  const setChartDocStatus = useAppStore(s => s.setChartDocStatus);
   const logHccActivity = useAppStore(s => s.logHccActivity);
   const diagPanelMemberId = useAppStore(s => s.diagPanelMemberId);
   const hccMembers = useAppStore(s => s.hccMembers);
@@ -1526,7 +1523,12 @@ function DocumentsUploader() {
   const [progress, setProgress] = useState(0);
   const [drag, setDrag] = useState(false);
   const [error, setError] = useState('');
-  const [docStatus, setDocStatus] = useState(DOC_STATUSES[0].value);
+  // Mandatory now — the reviewer must explicitly pick Pass or Fail before
+  // uploading. Starting at null so the pills read as un-selected and the
+  // Upload button stays disabled until a decision is recorded.
+  const [docStatus, setDocStatus] = useState(null);
+  const [failInline, setFailInline] = useState(false);
+  const [failDetails, setFailDetails] = useState(null); // { reasons, note } | null
   const [category, setCategory] = useState(DOC_CATEGORIES[0]);
   const [caption, setCaption] = useState('');
 
@@ -1550,8 +1552,25 @@ function DocumentsUploader() {
 
   const reset = () => {
     setFile(null); setProgress(0); setError(''); setCaption('');
-    setDocStatus(DOC_STATUSES[0].value); setCategory(DOC_CATEGORIES[0]);
+    setDocStatus(null); setFailInline(false); setFailDetails(null);
+    setCategory(DOC_CATEGORIES[0]);
     setPhase('empty');
+  };
+
+  const handlePassClick = () => {
+    setFailInline(false);
+    setFailDetails(null);
+    setDocStatus('Passed');
+  };
+  const handleFailClick = () => {
+    if (docStatus === 'Failed') {
+      // Second Fail click toggles the picker without wiping the reasons.
+      setFailInline(v => !v);
+      return;
+    }
+    setDocStatus('Failed');
+    setFailDetails({ reasons: [], note: '' });
+    setFailInline(true);
   };
   const startUpload = (f) => {
     if (!f) return;
@@ -1566,7 +1585,13 @@ function DocumentsUploader() {
   const onPicked = (e) => { startUpload(e.target.files?.[0]); e.target.value = ''; };
   const onDrop = (e) => { e.preventDefault(); setDrag(false); startUpload(e.dataTransfer.files?.[0]); };
 
-  const canSubmit = phase === 'ready' && file && caption.trim();
+  // Fail path additionally requires at least one reason (and a comment if
+  // 'Other' is checked — that's the shared FailReasonInline vocabulary).
+  const failReasonsValid = failDetails?.reasons?.length > 0
+    && (!failDetails.reasons.includes('Other') || (failDetails.note || '').trim().length > 0);
+  const statusValid = docStatus === 'Passed'
+    || (docStatus === 'Failed' && failReasonsValid);
+  const canSubmit = phase === 'ready' && file && caption.trim() && statusValid;
   const canSubmitAndMember = canSubmit && diagPanelMemberId;
   const onSubmit = () => {
     if (!canSubmitAndMember) return;
@@ -1583,6 +1608,14 @@ function DocumentsUploader() {
       status: docStatus,
     });
     addChartDoc(diagPanelMemberId, doc, file);
+    // Mirror the UploadChartDrawer flow: doc's status also lands in
+    // hcc_chart_status with the fail reasons + comment so the doc is fully
+    // rehydratable across surfaces (worklist row, ChartDetailDrawer,
+    // DiagPanel). addChartDoc alone only persists status inside hcc_added_charts.
+    setChartDocStatus(diagPanelMemberId, doc.id, docStatus, {
+      failReasons: docStatus === 'Failed' ? (failDetails?.reasons || []) : undefined,
+      failNote:    docStatus === 'Failed' ? (failDetails?.note    || '') : undefined,
+    });
     const userRole = useAppStore.getState().hccUserRole || 'Coder';
     addActivityEntry({
       t: 'upload', by: 'You', role: userRole,
@@ -1593,6 +1626,18 @@ function DocumentsUploader() {
       file: doc.n,
       fileType: category,
     });
+    // Fail path: also log the doc-status event with the reason list so the
+    // Timeline surface has the WHY of the failure, matching the shape the
+    // ChartDetailDrawer + UploadChartDrawer entries use.
+    if (docStatus === 'Failed' && failDetails) {
+      const reasonText = (failDetails.reasons || []).join(', ');
+      addActivityEntry({
+        t: 'doc-status', by: 'You', role: userRole,
+        headline: `Marked "${doc.n}" as Failed`,
+        details: [{ note: failDetails.note ? `${reasonText} — ${failDetails.note}` : reasonText }],
+        docId: doc.id,
+      });
+    }
     logHccActivity?.({
       eventName: 'document.uploaded_for_icd',
       scope:     { patientId: diagPanelMemberId, icd: activityIcd || null, source: 'manual' },
@@ -1686,17 +1731,41 @@ function DocumentsUploader() {
                 {DOC_CATEGORIES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </label>
-            <label className={styles.docUploaderField}>
-              <span className={styles.docUploaderFieldLabel}>Document Status</span>
-              <select
-                className={styles.docUploaderSelect}
-                value={docStatus}
-                onChange={(e) => setDocStatus(e.target.value)}
-              >
-                {DOC_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
-            </label>
+            {/* Document Status — required. Pass/Fail pills match the pattern
+                from UploadChartDrawer; Fail opens the shared reason picker
+                inline (controlled mode, no Confirm/Cancel — the outer Upload
+                button saves everything on click). */}
+            <div className={styles.docUploaderField}>
+              <span className={styles.docUploaderFieldLabel}>
+                Document Status <span className={styles.docUploaderRequired}>•</span>
+              </span>
+              <div className={styles.docStatusRow}>
+                <button
+                  type="button"
+                  className={[styles.docStatusPill, docStatus === 'Passed' ? styles.docStatusPass : ''].filter(Boolean).join(' ')}
+                  onClick={handlePassClick}
+                >
+                  Pass
+                </button>
+                <button
+                  type="button"
+                  className={[styles.docStatusPill, docStatus === 'Failed' ? styles.docStatusFail : ''].filter(Boolean).join(' ')}
+                  onClick={handleFailClick}
+                >
+                  Fail
+                </button>
+              </div>
+            </div>
           </div>
+          {failInline && (
+            <div className={styles.docFailInlineWrap}>
+              <FailReasonInline
+                value={failDetails || { reasons: [], note: '' }}
+                onChange={setFailDetails}
+                hideActions
+              />
+            </div>
+          )}
         </div>
       )}
 

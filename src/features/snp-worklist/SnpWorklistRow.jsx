@@ -145,6 +145,7 @@ export function SnpWorklistRow({ member, isSelected, onSelect }) {
   const setSnpAssignee = useAppStore(s => s.setSnpAssignee);
   const platformUsers = useAppStore(s => s.platformUsers);
   const showToast = useAppStore(s => s.showToast);
+  const openPatientEdit = useAppStore(s => s.openPatientEdit);
   const m = member;
 
   // SNP-eligible users: platform users who do NOT carry any of the HCC-only
@@ -202,6 +203,17 @@ export function SnpWorklistRow({ member, isSelected, onSelect }) {
   const handleMenuSelect = (key) => {
     if (key === 'View Program') { handleRowClick(); return; }
     if (key === 'Add Task') { requestAddTask?.({ member: m.name }); return; }
+    if (key === 'Edit Details') {
+      openPatientEdit('basic', {
+        id: m.patientId || m.id,
+        name: m.name,
+        initials: m.initials,
+        gender: m.gender,
+        age: m.age,
+        memberId: m.memberId,
+      });
+      return;
+    }
     showToast(`${key} – coming soon`);
   };
 
