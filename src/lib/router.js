@@ -31,7 +31,7 @@ export function buildHash(...parts) {
 
 // Every store slice that can back a patient profile view. Order doesn't
 // matter — memberId is unique across the whole set post-unification.
-const PATIENT_SLICES = ['patients', 'hccMembers', 'awvMembers', 'ccmWorklistMembers', 'snpWorklistMembers', 'hedisMembers', 'allPatients'];
+const PATIENT_SLICES = ['patients', 'hccMembers', 'awvMembers', 'jsaMembers', 'ccmWorklistMembers', 'snpWorklistMembers', 'hedisMembers', 'allPatients'];
 
 // ── Patient profile tab slugs ──
 // The right-panel tab, the open care program, and its active step each get a
@@ -184,6 +184,7 @@ export function stateToHash(state) {
     'HCC (Archived)': 'hcc-archived',
     'HEDIS': 'hedis',
     'CCM': 'ccm',
+    'JSA': 'jsa',
     'High Utilizers': 'high-utilizers',
     'DM': 'dm',
     'My Patients': 'my-patients',
@@ -396,6 +397,7 @@ export function hashToState(route, state = null) {
     'hcc-archived': 'HCC (Archived)',
     'hedis': 'HEDIS',
     'ccm': 'CCM',
+    'jsa': 'JSA',
     'high-utilizers': 'High Utilizers',
     'dm': 'DM',
     'my-patients': 'My Patients',

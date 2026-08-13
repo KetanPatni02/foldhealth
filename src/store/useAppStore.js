@@ -746,6 +746,7 @@ const LIST_FILTER_KEY = {
   HEDIS: 'hedisFilters',
   SNP:   'snpFilters',
   AWV:   'awvFilters',
+  JSA:   'jsaFilters',
 };
 
 // Remove a list's active saved-filter selection and persist the change.
@@ -5460,6 +5461,82 @@ export const useAppStore = create((set, get) => ({
     if (error) {
       console.warn('Failed to update AWV status:', error.message);
     }
+  },
+
+  // ── JSA (Joint Screening Assessment) — mirrors the AWV slice exactly:
+  // same shape, same column map, same filter/select/status flows. Its own
+  // slice (not an AWV filter view) so counts, saved filters, and bulk
+  // selection stay isolated from AWV. Backed by jsa_members in Supabase.
+  jsaMembers: [],
+  jsaMembersLoading: false,
+  fetchJsaMembers: async () => {
+    if (useAppStore.getState().jsaMembers.length > 0) return;
+    set({ jsaMembersLoading: true });
+
+    const { data, error } = await supabase
+      .from('jsa_members')
+      .select('*')
+      .order('create_date', { ascending: true });
+
+    if (error || !data || data.length === 0) {
+      console.warn('fetchJsaMembers error or empty — falling back to local mock:', error?.message);
+      const { JSA_MEMBERS } = await import('../features/jsa-worklist/data/mock');
+      set({ jsaMembers: JSA_MEMBERS, jsaMembersLoading: false });
+      return;
+    }
+
+    const mappedMembers = data.map(m => ({
+      id: m.id,
+      memberId: m.member_id,
+      name: m.name,
+      in: m.initials,
+      g: m.gender,
+      age: m.age,
+      outreach: m.outreach,
+      task: m.tasks,
+      due: m.create_date,
+      dueLabel: m.due_label,
+      dueCol: m.due_color,
+      assignee: m.support_name,
+      assigneeIn: m.support_name ? m.support_name.replace(/[^a-zA-Z ]/g, '').split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : null,
+      progSubStatus: m.support_status,
+      progName: m.cohort,
+      ri: m.risk_level,
+      dec: m.decile,
+      ad: String(m.advillness || 0),
+      fr: String(m.frailty || 0),
+    }));
+
+    set({ jsaMembers: mappedMembers, jsaMembersLoading: false });
+  },
+  jsaFilters: {},
+  setJsaFilter: (k, vals) => set(s => {
+    const next = { ...s.jsaFilters };
+    if (!vals || vals.length === 0) delete next[k];
+    else next[k] = vals;
+    return { jsaFilters: next };
+  }),
+  clearJsaFilters: () => set({ jsaFilters: {} }),
+  selectedJsaIds: [],
+  selectJsaMember: (id) => set(s => ({
+    selectedJsaIds: s.selectedJsaIds.includes(id)
+      ? s.selectedJsaIds.filter(x => x !== id)
+      : [...s.selectedJsaIds, id],
+  })),
+  selectAllJsa: (ids) => set({ selectedJsaIds: ids }),
+  clearJsaSelected: () => set({ selectedJsaIds: [] }),
+  updateJsaMemberStatus: async (id, newStatus) => {
+    set(s => {
+      const next = [...s.jsaMembers];
+      const i = next.findIndex(m => m.id === id);
+      if (i > -1) next[i] = { ...next[i], progSubStatus: newStatus };
+      return { jsaMembers: next };
+    });
+    const { error } = await supabase
+      .from('jsa_members')
+      .update({ support_status: newStatus })
+      .eq('id', id);
+    if (error) console.warn('Failed to update JSA status:', error.message);
   },
 
   selectedHccIds: [],
