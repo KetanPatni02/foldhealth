@@ -1,0 +1,46 @@
+---
+title: "JSA Worklist"
+description: "Joint Site Assessment worklist for on-site and in-home visits — mirrors the AWV worklist patterns."
+---
+
+The **JSA Worklist** manages **Joint Site Assessments** — the on-site and in-home visit queue for field teams. It shares the AWV worklist's shape: scheduling-first, provider/location aware, and outreach-batch friendly.
+
+Route: `#/population/jsa`.
+
+## Columns
+
+| Column | Description |
+| --- | --- |
+| **Members** | Name, gender, age, member ID, language |
+| **Assessment Status** | Not scheduled / Scheduled / Completed |
+| **Due** | JSA deadline; overdue rows chip red |
+| **Assessor** | The field clinician or team assigned |
+| **Location** | Home address or site |
+| **Insurance** | Plan (drives billing rules) |
+| **Assignee** | Scheduler |
+| **Actions** | Schedule, call, open profile |
+
+## Walkthrough — plan a field day
+
+<Steps>
+  <Step title="Open JSA">
+    Click **JSA** in the SubNav.
+  </Step>
+  <Step title="Filter by assessor and radius">
+    Pick your **Assessor** and use the **Location** filter to scope to a ZIP or region.
+  </Step>
+  <Step title="Select the day's visits">
+    Check the members you want to see in one route.
+  </Step>
+  <Step title="Batch-schedule">
+    BulkBar → **Schedule Batch** — the wizard fits selected members into available slots on the Calendar with drive-time estimates between locations.
+  </Step>
+  <Step title="Confirm and hand off">
+    Confirm the plan; the schedule commits to the Calendar and the field clinician sees it on their day view.
+  </Step>
+</Steps>
+
+## Tips
+
+- **JSA rows carry the home address**, not just clinic — useful for door-to-door routing.
+- **Completed assessments unlock billing** — mark complete from the Quick View or from the Calendar block after the visit.

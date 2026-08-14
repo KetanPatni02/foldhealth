@@ -1,46 +1,88 @@
 ---
 title: "Campaigns"
-description: "Campaign management and visual email template builder."
+description: "Multi-channel outreach campaigns with a full visual email builder — from single sends to multi-step sequences."
 ---
 
-## Campaigns
+The **Campaign** workspace is where you turn a filtered patient list into a coordinated outreach. It has two connected surfaces: a **Campaign Builder** for who/when/how, and an **Email Builder** for the actual message.
 
-The Campaign page lists all outreach campaigns with status, audience, and performance metrics.
+## When to use what
 
-### Campaign Builder
+<CardGroup cols={2}>
+  <Card title="One-Time campaign" icon="paper-plane">
+    A single send to a fixed audience — e.g. "Send annual wellness reminder to all Medicare Advantage members over 65 by Friday."
+  </Card>
+  <Card title="Sequence campaign" icon="list-timeline">
+    Multi-step, time-delayed automation — e.g. "Send welcome email on Day 0, SMS reminder on Day 3, follow-up email on Day 7."
+  </Card>
+</CardGroup>
 
-A full-screen builder for creating and managing campaigns:
+## Walkthrough — send a one-time email campaign
 
-- **Form pane** (500px) — Name, description, audience include/exclude, send method, scheduling, sender configuration, and subject line
-- **Preview pane** — Read-only email template preview
-- **Auto-save** — Every field edit persists to Supabase via a 600ms debounce
+<Steps>
+  <Step title="Open Campaigns">
+    Click **Campaign** in the sidebar. You land on the campaign list, tabbed **Active**, **Drafts**, **Ended**.
+  </Step>
+  <Step title="Create a new campaign">
+    Click **+ New Campaign** and pick **One-Time**. The full-screen builder opens with a form pane on the left (500px) and a preview pane on the right.
+  </Step>
+  <Step title="Define the audience">
+    In the **Audience** section, add **Include** filters (Population Group, worklist, saved filter, or ad-hoc filter chips). Add **Exclude** filters if you need to carve people out. The count updates live as you edit.
+  </Step>
+  <Step title="Pick the send method and schedule">
+    Choose **Email** (or SMS if configured). Set **Sender**, **Subject**, and a **Send at** time. Leave send-time blank to save as a draft.
+  </Step>
+  <Step title="Design the email">
+    Click **Edit Email**. The **Email Builder** opens full-screen. See the walkthrough below.
+  </Step>
+  <Step title="Preview and launch">
+    Back on the campaign form, use **Send Test** to email yourself a copy. Verify the preview pane matches. Click **Schedule** — the campaign moves to **Active** with a countdown to send time.
+  </Step>
+</Steps>
 
-### Campaign types
+<Note>
+Every field in the campaign form auto-saves to Supabase via a 600ms debounce. You can close the browser mid-edit without losing work.
+</Note>
 
-- **One-Time** — Single send to a defined audience
-- **Sequence** — Multi-step automated campaigns
+## Walkthrough — build an email with the Email Builder
 
-## Email Builder
+<Steps>
+  <Step title="Start from a template or blank">
+    The Email Builder opens with a **Header/Footer preset** picker. Pick a saved preset, or start blank.
+  </Step>
+  <Step title="Drag in blocks">
+    From the left **Components** panel, drag blocks into the preview: **Text**, **Heading**, **Image**, **Button**, **Divider**, **Spacer**, **Container**, **Columns**, **Raw HTML**.
+  </Step>
+  <Step title="Edit inline">
+    Click any block to select it. Edit text directly on the canvas. Use the right **Properties** panel to change fonts, colors, padding, alignment, and layout — every value uses design-system tokens.
+  </Step>
+  <Step title="Preview across devices">
+    Toggle **Desktop / Tablet / Mobile** in the top toolbar. The canvas re-flows to the target viewport so you catch mobile-only issues before sending.
+  </Step>
+  <Step title="Import existing HTML (optional)">
+    Click **Code View → Import HTML**, paste a design from another tool, and the builder parses it into editable blocks. Unknown fonts get mapped to Google Fonts via the substitution dialog.
+  </Step>
+  <Step title="Save and return">
+    Click **Save**. The email is stored on the campaign; the builder closes and the preview pane refreshes with the new content.
+  </Step>
+</Steps>
 
-A visual email template editor with a drag-and-drop block system.
+## Block reference
 
-### Block types
+| Block | Notes |
+| --- | --- |
+| **Text** | Rich text with inline formatting; supports variables like `{{first_name}}` |
+| **Heading** | Presets for Title, Subtitle, Heading, Body — each maps to a token size/weight |
+| **Image** | Upload to Supabase Storage or paste a URL; auto-inserts responsive width |
+| **Button** | Shape (rounded / pill / square), fill color, hover state, target URL |
+| **Divider** | Horizontal rule with configurable color and thickness |
+| **Spacer** | Vertical whitespace with pixel control |
+| **Container** | Wraps children in a background color + padding; useful for hero blocks |
+| **Columns** | 2- or 3-column layouts with independent block content per column |
+| **Raw HTML** | Escape hatch — paste custom HTML with variable interpolation |
 
-- **Text** — Rich text with formatting controls
-- **Heading** — H1-H3 with style presets (Title, Subtitle, Heading, Body)
-- **Image** — Upload or URL-based images
-- **Button** — CTA buttons with shape, color, and size options
-- **Divider** — Horizontal rule separator
-- **Spacer** — Vertical spacing block
-- **Container** — Grouping wrapper with background and padding
-- **Columns** — Multi-column layouts
-- **Raw HTML** — Escape hatch for custom markup
+## Tips
 
-### Key features
-
-- **Undo/Redo** — Full history stack with `Cmd+Z` / `Shift+Cmd+Z`
-- **HTML import** — Paste HTML and convert to editable blocks with CSS fidelity
-- **Font substitution** — Maps unknown fonts to Google Fonts on import
-- **Header/Footer presets** — Save and reuse across templates
-- **Device preview** — Desktop, tablet, and mobile viewport previews
-- **Code view** — Switch between visual editor and raw HTML/JSON
+- **Undo/Redo** — `Cmd+Z` / `Shift+Cmd+Z` covers every canvas action; the history stack is unbounded per session.
+- **Header/Footer presets** — build once, reuse everywhere. Save from the top-right menu; presets appear as a picker on new emails.
+- **Send test** — the top-right **Send Test** popover accepts any email address; useful for showing a draft to a stakeholder without publishing.
+- **Auto-save** — the builder writes to the campaign row every few seconds. You'll never lose more than a keystroke or two on a crash.

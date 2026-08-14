@@ -1,0 +1,57 @@
+---
+title: "All Patients"
+description: "The deduped roster across every worklist — the single source of truth for who's in your population."
+---
+
+**All Patients** is the union of every worklist (TOC, HCC, HEDIS, CCM, SNP, AWV, JSA…) deduped by normalized **member ID**. It's the answer to "does this person exist in our system, and what programs are they in?"
+
+Route: `#/population/all-patients`.
+
+## Why deduped
+
+Each worklist uses its own id space (`p1`, `hcc-42`, `ccmw-001`…). All Patients keys the union on a normalized member ID (`#` stripped, trimmed, lowercased). Patients missing a member ID fall back to their row id so they still count once.
+
+## Columns
+
+Broader than any individual worklist — designed for scanning across programs:
+
+| Column | Description |
+| --- | --- |
+| **Members** | Name, gender, age, member ID |
+| **DOB** | Date of birth (hidden by default; toggle via column config) |
+| **Contact** | Phone, email — click to call or compose |
+| **Address** | City, state |
+| **Insurance** | Plan name, LOB, effective date |
+| **Chronic Conditions** | ICD chip row |
+| **PCP** | Attributed provider |
+| **Programs** | Every worklist / program the member appears on (TOC, HCC, HEDIS, CCM, SNP, AWV, JSA) as chips |
+| **Consent** | Roll-up consent state |
+| **Assignee** | Primary care manager |
+| **Actions** | Quick View, call, message, ⋯ menu |
+
+## Walkthrough — is this patient in our system, and where?
+
+<Steps>
+  <Step title="Open All Patients">
+    In the SubNav, expand **Patients** and click **All Patients**.
+  </Step>
+  <Step title="Search">
+    Type name, member ID, or the last 4 digits of their phone in the search box.
+  </Step>
+  <Step title="Read the Programs chips">
+    The Programs column shows every list they're on today — e.g. `TOC · HCC · CCM`. Click any chip to jump straight to that worklist filtered to this member.
+  </Step>
+  <Step title="Open the Quick View">
+    Click the row. The Quick View drawer summarizes the member across programs; the Patient Profile deep-link opens the full [Patient Profile](/features/patient-profile).
+  </Step>
+</Steps>
+
+## Filters
+
+All Patients has the widest filter set because it spans programs: **Program**, **Consent**, **Chronic Condition**, **Insurance**, **State**, **Language**, **PCP**, **Assignee**, **Care Program**.
+
+## Tips
+
+- **Every column is toggleable.** Use the column-config popover to hide/show fields; layout persists per user.
+- **Program chips are the fastest way to jump between lists** for the same member.
+- **P360 banner enrichment.** Every patient here has a seeded `p360_profiles` row (acuity/RAF, consent, next appt, chronic conditions, vitals, family, care team) so the Quick View banner is populated even before real data lands.

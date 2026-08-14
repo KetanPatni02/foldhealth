@@ -1,70 +1,95 @@
 ---
-title: Settings
-description: Agent management, goals, embedded components, and platform configuration.
+title: "Settings"
+description: "One workspace for every platform control — agents, goals, knowledge base, escalations, embedded components, chat groups, forms, and audit logs."
 ---
 
-The Settings workspace contains all administrative configuration panels, organized into several sections.
+**Settings** is where administrators configure how the platform behaves. It's organized into top-level tabs, and every change is audit-logged.
+
+## Sections at a glance
+
+<CardGroup cols={2}>
+  <Card title="Agents" icon="bot">
+    AI agents, goals, knowledge base, compliance policies, feature toggles, and per-agent tools.
+  </Card>
+  <Card title="Content" icon="folder-open">
+    Emails and Forms — the shared library that campaigns and worklists draw from.
+  </Card>
+  <Card title="Embedded Components" icon="code">
+    iFrame allowlist, embeddable components (Prior Auth, Risk Dashboard, HEDIS Tracker), and JWT scoping.
+  </Card>
+  <Card title="Account" icon="users">
+    Users, roles, and access controls for your organization.
+  </Card>
+  <Card title="Billing" icon="credit-card">
+    Plan, invoices, and usage.
+  </Card>
+  <Card title="Messages" icon="messages">
+    Chat group config, agent routing rules, and business hours.
+  </Card>
+  <Card title="Member Leads" icon="user-plus">
+    Care team and lead-management config for pre-enrollment outreach.
+  </Card>
+</CardGroup>
 
 ## Agents
 
-### Agent management
+The Agents tab is a table of every AI agent in your org with: name, use case, version, voice configuration, last update, and status.
 
-A table listing all AI agents with their name, use case, version, voice configuration, last update, and status. Actions include:
+- **Row click** — opens the [Agent Builder](/features/agent-builder).
+- **Call Queue** — opens the Call Queue drawer for the agent (Ongoing / In Queue / Log).
+- **Call Analytics** — jumps to the agent's slice of the AI Analytics dashboard.
+- **⋯ menu** — Duplicate, Delete, Audit Log.
 
-- **Call Queue** — View the agent's active and queued calls
-- **Call Analytics** — Performance metrics for the agent
-- **More Options** — Duplicate, delete, audit log
+### Walkthrough — configure a new agent end-to-end
 
-Clicking an agent name opens the Agent Builder workflow editor.
+<Steps>
+  <Step title="Create the agent">
+    In Settings → Agents click **+ New Agent**. Name it, pick a use case template, and click **Create**. It opens straight into the Agent Builder.
+  </Step>
+  <Step title="Design the flow">
+    Follow the [Agent Builder walkthrough](/features/agent-builder). Save often, Publish when ready.
+  </Step>
+  <Step title="Attach goals">
+    Back in Settings, open **Goals**. Click **+ New Goal** and follow the 4-step **Goal Wizard**: choose category (TCM, Outreach, Onboarding, Preventive, Billing), set targets and weights, pick completion criteria, and attach it to your agent.
+  </Step>
+  <Step title="Fill the knowledge base">
+    Open **Knowledge Base**. Add question/answer pairs the agent should reference during conversations. Group them by topic for faster retrieval.
+  </Step>
+  <Step title="Set escalation rules">
+    Open **Compliance Policies**. Define what triggers a transfer to a live human — patient distress, explicit request, PHI concern, unresolved intent after N turns.
+  </Step>
+  <Step title="Assign to a worklist">
+    Go to the appropriate worklist (TOC, HEDIS, etc.). In the row's **Agent Assigned** column, pick your new agent. It's now live.
+  </Step>
+</Steps>
 
-### Goals
+## Content
 
-Multi-step care program goals with weighted scoring and completion tracking. Goal categories:
-
-- **TCM** — Transitional Care Management
-- **Outreach** — Patient contact and follow-up
-- **Onboarding** — New patient enrollment
-- **Preventive** — Preventive care measures
-- **Billing** — Billing and coding compliance
-
-The **Goal Wizard** is a 4-step creation flow for defining new goals with targets, weights, and completion criteria.
-
-### Knowledge Base
-
-FAQ management for agent training. Add question-answer pairs that agents reference during conversations.
-
-### Compliance Policies
-
-Escalation rules and policy configuration for handling agent failures, patient requests, and compliance triggers.
-
-### Feature Toggles
-
-QA and feature flag management for controlling platform capabilities.
+- **Emails** — the shared email library. Every campaign email lives here; edit inline or open the [Email Builder](/features/campaigns).
+- **Forms** — the shared form library. See the [Forms doc](/features/forms) for the full builder walkthrough.
 
 ## Embedded Components
 
-### Domain Registry
+For teams embedding Fold surfaces inside another EHR or portal.
 
-Whitelist domains for embedded iFrame components with:
-- HIPAA compliance tracking
-- Enable/disable toggle per domain
-- Per-domain audit log
-
-### Component Library
-
-Configure embedded UI components:
-- Prior Auth, Risk Dashboard, HEDIS Tracker, and more
-- Surface placement (Fold Web, Sidecar, Mobile)
-- JWT context scoping
-- 4-step creation wizard (Identity, Surfaces, Context, Preview)
-
-### Audit Log
-
-Timeline-based activity history with color-coded action types, month grouping, and filter pills. Available for all entity types (agents, goals, domains, components).
+- **Domain Registry** — whitelist domains that can iFrame Fold. Each row shows HIPAA-compliance status and a per-domain audit log.
+- **Component Library** — configure which components are embeddable (Prior Auth, Risk Dashboard, HEDIS Tracker, more). Each component has a 4-step wizard: **Identity → Surfaces → Context → Preview**. Surfaces pick where it renders (Fold Web, Sidecar, Mobile); Context defines the JWT payload the host must sign.
+- **Audit Log** — timeline of every allowlist / component change, grouped by month with color-coded action types.
 
 ## Messages
 
-Chat group configuration with:
-- Agent routing rules per group
-- Business hours management
-- Agent rules for conversation flow control
+Chat groups (patient ↔ care team threads) are configured here.
+
+- **Chat Groups** — each group has a routing rule (which agents can respond, on what intents) and optional business hours.
+- **Business Hours** — off-hours coverage: fallback message, escalation to on-call, or handoff to an agent.
+- **Agent Rules** — per-group conditional rules that override the default routing.
+
+## Account, Billing, Member Leads
+
+- **Account → Users** — the user table, invite flow (single-email confirmation), and role assignment.
+- **Billing** — plan, monthly usage, invoices.
+- **Member Leads → Care Team** — the roster used for pre-enrollment outreach and lead assignment.
+
+## Audit Log
+
+Every Settings change is audit-logged. Open the **Audit Log** on any tab (or the org-wide one from the ⋯ menu) to see a timeline of Create / Update / Delete events, filterable by user, entity type, and date range.

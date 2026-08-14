@@ -1,0 +1,50 @@
+---
+title: "Annual Visit (AWV) Worklist"
+description: "Members due for an Annual Wellness Visit — scheduling-first table with Provider and Location filter chips."
+---
+
+The **Annual Visit (AWV) Worklist** is the scheduling queue for Medicare Annual Wellness Visits. AWVs generate risk assessments and preventive plans (and are a Medicare-covered visit) — but only if scheduled. The worklist surfaces every member due, colored by how overdue they are.
+
+Route: `#/population/awv`.
+
+## Columns
+
+| Column | Description |
+| --- | --- |
+| **Members** | Name, gender, age, member ID, language |
+| **Last AWV** | Date of last completed AWV, or "Never" |
+| **Due** | Due date; overdue rows show a red chip |
+| **Provider** | Preferred/assigned provider for the visit |
+| **Location** | Preferred/assigned clinic |
+| **Chronic Conditions** | ICD chips — informs the visit prep |
+| **Insurance** | Plan (for eligibility confirmation) |
+| **Assignee** | Scheduler / care manager |
+| **Actions** | Schedule, place a call, open profile |
+
+## Walkthrough — book overdue AWVs for a provider
+
+<Steps>
+  <Step title="Open Annual Visit">
+    Click **Annual Visit** in the Population SubNav (URL: `#/population/awv`).
+  </Step>
+  <Step title="Filter by provider and status">
+    Open the **Provider** filter chip and pick your provider. Open **Status** and pick **Overdue** (or **Due within 30d** for gentler outreach).
+  </Step>
+  <Step title="Filter by location if needed">
+    If the provider works at multiple sites, add the **Location** chip too.
+  </Step>
+  <Step title="Bulk-select and reach out">
+    Check the header checkbox; the BulkBar surfaces **Add to Campaign**, **Assign**, and **Schedule Batch**.
+    - **Add to Campaign** — send an AWV outreach email/SMS to everyone selected.
+    - **Schedule Batch** — opens a wizard that walks through slots and drops appointments straight into the [Calendar](/features/calendar).
+  </Step>
+  <Step title="Per-row scheduling">
+    For high-touch members, open the row → **Schedule** from the Quick View header. The Schedule Drawer opens pre-filled with member, provider, and location.
+  </Step>
+</Steps>
+
+## Tips
+
+- **The Due column drives urgency.** Rows sort by Due ascending by default — the most overdue members are at the top.
+- **Provider and Location filters are searchable.** Type-ahead works on both, useful when a practice has 40+ providers.
+- **Not all AWVs are Medicare.** Some payers reimburse similar visits; the worklist includes those and shows the plan-specific requirements in Quick View.

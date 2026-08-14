@@ -1,0 +1,78 @@
+---
+title: "CCM Worklist"
+description: "Chronic Care Management — monthly time-tracked care coordination with a billing-review flow for month-close."
+---
+
+The **CCM Worklist** is where care teams manage chronically ill members month-to-month. CCM billing is time-based (CPT 99490, 99439, 99487, 99489), so the worklist doubles as a **time ledger** and a **billing-review** surface for month-close.
+
+Route: `#/population/ccm`.
+
+## What makes CCM different
+
+- **Time is the currency.** Every logged interaction (call, message, chart review, medication reconciliation) accrues minutes toward the month's CPT thresholds.
+- **Monthly rhythm.** Rows re-open each month; last month's totals lock and roll into the Billing Review drawer.
+- **Attestation and consent.** CCM requires documented consent — the worklist enforces it before you can bill.
+
+## Columns
+
+| Column | Description |
+| --- | --- |
+| **Members** | Name, gender, age, member ID, preferred language |
+| **Consent** | CCM consent status (Verbal / Written / Missing) with date |
+| **Time (this month)** | Total minutes accrued, colored by CPT tier |
+| **CPT Tier** | Which code the current minutes qualify for (99490, +99439, 99487, +99489) |
+| **Chronic Conditions** | ICD chip row (2+ required for CCM eligibility) |
+| **Last Interaction** | Most recent logged CCM activity + type |
+| **PCP** | Primary care provider |
+| **Assignee** | Care manager |
+| **Actions** | Log time, open Billing Review, ⋯ menu |
+
+## Walkthrough — log a CCM interaction
+
+<Steps>
+  <Step title="Open CCM">
+    Click **CCM** in the Population SubNav. The table shows every eligible member.
+  </Step>
+  <Step title="Find or filter">
+    Search by name/member ID, or use the **Consent = Verbal or Written** filter to hide members who need consent captured first.
+  </Step>
+  <Step title="Open the row">
+    Click the member. The Quick View drawer opens; from there, click **Log Time** in the header.
+  </Step>
+  <Step title="Log the activity">
+    Pick an activity type (Phone call, Chart review, Med rec, Care plan update), enter minutes, and add a note. Every entry is timestamped and attributed to your user.
+  </Step>
+  <Step title="Watch the tier tick up">
+    The **Time (this month)** column updates immediately. When minutes cross a CPT threshold (e.g. 20 min for 99490), the CPT Tier chip advances.
+  </Step>
+</Steps>
+
+## Walkthrough — month-close billing review
+
+<Steps>
+  <Step title="Open Billing Review">
+    From the top-right toolbar click **Billing Review**. The drawer opens with every member who accrued time this month.
+  </Step>
+  <Step title="Filter to billable">
+    The default filter shows only members with **≥ 20 minutes** logged (the 99490 threshold). Toggle **All** to see everyone.
+  </Step>
+  <Step title="Verify eligibility per row">
+    Each row shows: consent status, chronic-condition count (must be ≥ 2), total minutes, and computed CPT code(s). Rows missing consent or conditions surface a red badge and block billing.
+  </Step>
+  <Step title="Attest and lock">
+    Bulk-check the members you're ready to bill and click **Attest & Lock**. Their month rolls to Billed; the current month's counter resets on the first of next month.
+  </Step>
+  <Step title="Export the claim batch">
+    Click **Export → CSV** to hand the batch to your billing system.
+  </Step>
+</Steps>
+
+## Time filter chip
+
+The **Time FilterChip** (`TimeFilterChip.jsx`) is a CCM-only control for slicing by minute buckets: `< 20 min`, `20–39 min`, `40–59 min`, `60+ min`. Useful for finding members who are one interaction away from a higher CPT tier.
+
+## Tips
+
+- **Two chronic conditions minimum.** CCM eligibility is not just a filter — the Billing Review will block a row that has fewer than two active chronic conditions.
+- **Consent is loud.** Missing consent shows in red on the row, in the Quick View header, and in the Billing Review. Capture it before you log the first minute.
+- **Row menu → APCM.** Members on APCM (Advanced Primary Care Management) show in [APCM Billing](/features/apcm-billing) instead; the row's ⋯ menu can flip a member's program.
