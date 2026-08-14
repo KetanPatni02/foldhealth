@@ -129,14 +129,15 @@ const scoring = {
   scores: [
     {
       id: 'ob_mood_score',
-      name: 'Prenatal mood screening',
+      label: 'Prenatal mood screening',
       aggregation: 'SUM',
       missingPolicy: 'exclude',
-      contributors: [{ linkId: 'ob_mood' }],
+      sources: [{ linkId: 'ob_mood' }],
+      range: { min: 0, max: 10 },
       interpretations: [
-        { min: 0, max: 3, label: 'High concern — flag for outreach' },
-        { min: 4, max: 6, label: 'Mixed — offer perinatal support resources' },
-        { min: 7, max: 10, label: 'Positive' },
+        { min: 0, max: 3, label: 'High concern — flag for outreach', severity: 'high' },
+        { min: 4, max: 6, label: 'Mixed — offer perinatal support resources', severity: 'warning' },
+        { min: 7, max: 10, label: 'Positive', severity: 'info' },
       ],
     },
   ],
