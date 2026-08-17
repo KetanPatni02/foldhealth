@@ -36,6 +36,7 @@ export function ProgramDetailViewLetters({
   downloadSelectedLetters,
   letters,
   setSelectedLetters,
+  previewLetter,
 }) {
   return (
     <>
@@ -112,7 +113,8 @@ export function ProgramDetailViewLetters({
                       onCheckedChange={() => toggleLetter(letter.id)}
                       aria-label={`Select ${letter.fileName}`} />
                   </td>
-                  <td className={styles.fileNameCell}>{letter.fileName}</td>
+                  <td className={`${styles.fileNameCell} ${styles.clickable}`}
+                    onClick={() => previewLetter?.(letter)}>{letter.fileName}</td>
                   <td className={styles.colMuted}>{letter.fileType}</td>
                   <td>
                     <span className={styles.viaChips}>

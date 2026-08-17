@@ -110,14 +110,13 @@ export function ProgramRelatedFiles({ programCode, patientId }) {
   const toggleAll = () => setSelected(prev => (prev.size === rows.length ? new Set() : new Set(rows.map(r => r.id))));
   const toggleOne = (id) => setSelected(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
-  const handleUpload = ({ file, caption, category, status }) => {
+  const handleUpload = ({ file, caption, category }) => {
     addProgramDocument({
       id: `pd-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       programCode,
       patientId: patientId != null ? String(patientId) : null,
       name: caption || file.name,
       type: category,
-      status,
       sizeBytes: file.size,
       updatedBy: 'You',
       updatedDate: todayMMDDYYYY(),

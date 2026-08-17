@@ -75,7 +75,7 @@ export function ProgramDetailViewContentHeader({
               : isAppointmentStep ? 'Follow Up Appointments'
               : isOpenCareGapsStep ? 'Open Care Gaps'
               : isProgramTasksStep ? 'Program Related Tasks'
-              : isProgramFilesStep ? 'Program Related Files'
+              : isProgramFilesStep ? 'Document Library'
               : isLettersStep ? 'Program Related Letters'
               : stepName}
           </span>
@@ -123,7 +123,12 @@ export function ProgramDetailViewContentHeader({
           ) : isProgramFilesStep ? (
             <>
               {!isMandatoryStep && <Button variant="ghost" size="S" className={styles.actionBtn}>Skip</Button>}
-              <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
+            </>
+          ) : isAppointmentStep ? (
+            <>
+              {assigneePicker}
+              {!isMandatoryStep && <Button variant="ghost" size="S" className={styles.actionBtn}>Skip</Button>}
+              <Button variant="tertiary" size="L" onClick={goNextStep} disabled={!nextStep}>Next</Button>
             </>
           ) : (
             <>

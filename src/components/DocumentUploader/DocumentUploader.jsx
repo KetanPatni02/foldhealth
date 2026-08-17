@@ -12,28 +12,29 @@ import styles from './DocumentUploader.module.css';
  *   • empty     → dashed drop-zone with "Choose file"
  *   • uploading → file row with name + size + green progress bar + X cancel
  *   • ready     → file row with refresh/X + Caption (pre-filled with the file
- *                 name) + Document Category / Document Status dropdowns
+ *                 name) + Document Category, side by side
  *
  * The component owns only the pick/upload/form UI. On "Upload" it calls
- * `onSubmit({ file, caption, category, status })`; the caller decides how to
+ * `onSubmit({ file, caption, category })`; the caller decides how to
  * persist and list the document. "Cancel" (and the X in an empty state) calls
  * `onCancel`.
  *
  * Props:
- *  - onSubmit    (fn)        Called with { file, caption, category, status }
+ *  - onSubmit    (fn)        Called with { file, caption, category }
  *  - onCancel    (fn)        Called when the user cancels
  *  - categories  (string[])  Document Category options
- *  - statuses    ({label,value}[])  Document Status options (value is stored)
  *  - maxBytes    (number)    Reject files larger than this (default 5 MB)
  *  - accept      (string)    File input `accept` attribute
+ *  - readyContent (fn)       Escape hatch for callers whose "ready" phase
+ *                            isn't a caption/category form (e.g. an extract-
+ *                            from-document flow). When set, it fully replaces
+ *                            the ready-phase render — called with
+ *                            `{ file, onRemove }`. Empty/uploading phases are
+ *                            unaffected.
  */
 const DEFAULT_ACCEPT = '.pdf,.doc,.docx,.png,.jpg,.csv,.xls,.xlsx';
 const DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
 const DEFAULT_CATEGORIES = ['Discharge Summary', 'Consult Note', 'Lab Report', 'Imaging', 'Chart', 'Physical Therapy'];
-const DEFAULT_STATUSES = [
-  { label: 'Pass', value: 'Passed' },
-  { label: 'Fail', value: 'Failed' },
-];
 
 function formatBytes(n) {
   if (n < 1024) return `${n} B`;
@@ -50,9 +51,9 @@ export function DocumentUploader({
   onSubmit,
   onCancel,
   categories = DEFAULT_CATEGORIES,
-  statuses = DEFAULT_STATUSES,
   maxBytes = DEFAULT_MAX_BYTES,
   accept = DEFAULT_ACCEPT,
+  readyContent,
 }) {
   const inputRef = useRef(null);
 
@@ -62,7 +63,6 @@ export function DocumentUploader({
   const [progress, setProgress] = useState(0);
   const [drag, setDrag] = useState(false);
   const [error, setError] = useState('');
-  const [docStatus, setDocStatus] = useState(statuses[0]?.value);
   const [category, setCategory] = useState(categories[0]);
   const [caption, setCaption] = useState('');
 
@@ -89,7 +89,7 @@ export function DocumentUploader({
 
   const reset = () => {
     setFile(null); setProgress(0); setError(''); setCaption('');
-    setDocStatus(statuses[0]?.value); setCategory(categories[0]);
+    setCategory(categories[0]);
     setPhase('empty');
   };
   const startUpload = (f) => {
@@ -107,10 +107,14 @@ export function DocumentUploader({
   const canSubmit = phase === 'ready' && file && caption.trim();
   const handleSubmit = () => {
     if (!canSubmit) return;
-    onSubmit?.({ file, caption: caption.trim(), category, status: docStatus });
+    onSubmit?.({ file, caption: caption.trim(), category });
     reset();
   };
   const handleCancel = () => { reset(); onCancel?.(); };
+
+  if (readyContent && phase === 'ready' && file) {
+    return readyContent({ file, onRemove: reset });
+  }
 
   return (
     <div className={styles.uploader}>
@@ -160,19 +164,19 @@ export function DocumentUploader({
 
       {phase === 'ready' && (
         <div className={styles.form}>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>
-              Caption <span className={styles.required}>•</span>
-            </span>
-            <input
-              type="text"
-              className={styles.input}
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              placeholder="Document caption"
-            />
-          </label>
           <div className={styles.formRow}>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>
+                Caption <span className={styles.required}>•</span>
+              </span>
+              <input
+                type="text"
+                className={styles.input}
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                placeholder="Document caption"
+              />
+            </label>
             <label className={styles.field}>
               <span className={styles.fieldLabel}>Document Category</span>
               <select
@@ -181,16 +185,6 @@ export function DocumentUploader({
                 onChange={(e) => setCategory(e.target.value)}
               >
                 {categories.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </label>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>Document Status</span>
-              <select
-                className={styles.select}
-                value={docStatus}
-                onChange={(e) => setDocStatus(e.target.value)}
-              >
-                {statuses.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>
             </label>
           </div>
@@ -210,8 +204,11 @@ export function DocumentUploader({
 }
 
 // File-row sub-component used in both 'uploading' (with progress bar + X) and
-// 'ready' (with refresh + X) phases.
-function FileRow({ file, phase, progress, onRefresh, onRemove }) {
+// 'ready' (with refresh + X) phases. Exported so callers with a custom ready
+// phase (via DocumentUploader's `readyContent`) can reuse the same file
+// icon/name/size chrome — pass `actions` to replace the default refresh+close
+// pair with something else (e.g. an "Extract Meds" CTA).
+export function FileRow({ file, phase, progress, onRefresh, onRemove, actions }) {
   if (!file) return null;
   const ext = (extFromName(file.name) || 'doc').toUpperCase().slice(0, 4);
   return (
@@ -226,13 +223,17 @@ function FileRow({ file, phase, progress, onRefresh, onRemove }) {
           <div className={styles.fileRowSize}>{formatBytes(file.size)}</div>
         </div>
         <div className={styles.fileRowActions}>
-          {phase === 'ready' && (
-            <button type="button" className={styles.fileRowIconBtn} onClick={onRefresh} aria-label="Re-upload">
-              <Icon name="solar:refresh-circle-linear" size={16} color="var(--neutral-300)" />
-            </button>
+          {actions || (
+            <>
+              {phase === 'ready' && (
+                <button type="button" className={styles.fileRowIconBtn} onClick={onRefresh} aria-label="Re-upload">
+                  <Icon name="solar:refresh-circle-linear" size={16} color="var(--neutral-300)" />
+                </button>
+              )}
+              <span className={styles.fileRowDivider} />
+              <CloseButton size={14} onClick={onRemove} className={styles.fileRowIconBtn} label="Remove" />
+            </>
           )}
-          <span className={styles.fileRowDivider} />
-          <CloseButton size={14} onClick={onRemove} className={styles.fileRowIconBtn} label="Remove" />
         </div>
       </div>
       {phase === 'uploading' && (

@@ -3,13 +3,13 @@ import { createPortal } from 'react-dom';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../../../../components/Icon/DownChevronIcon';
 import { SmsIcon } from '../../../../../../components/Icon/SmsIcon';
+import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { TYPE_OPTIONS } from './OutreachTab.utils';
 import styles from './OutreachTab.module.css';
 
 export function FieldDropdown({ value, onChange, options, placeholder }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
-  const rect = triggerRef.current?.getBoundingClientRect();
 
   return (
     <div ref={triggerRef} className={styles.fieldDropdownWrap}>
@@ -22,31 +22,24 @@ export function FieldDropdown({ value, onChange, options, placeholder }) {
         <DownChevronIcon size={12} color="var(--neutral-300)" />
       </button>
 
-      {open && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setOpen(false)}>
-          <div
-            className={styles.fieldDropdownMenu}
-            style={{ top: rect ? rect.bottom + 4 : 0, left: rect ? rect.left : 0, minWidth: rect ? rect.width : 160 }}
-            onClick={e => e.stopPropagation()}
-          >
-            {options.map(opt => (
-              <button
-                key={opt}
-                type="button"
-                className={`${styles.fieldDropdownItem} ${value === opt ? styles.fieldDropdownItemSelected : ''}`}
-                onClick={() => { onChange(opt); setOpen(false); }}
-              >
-                {opt}
-              </button>
-            ))}
-          </div>
-        </div>,
-        document.body
+      {open && (
+        <MenuPopover
+          anchorRef={triggerRef}
+          align="left"
+          width={triggerRef.current?.getBoundingClientRect().width || 160}
+          items={options.map(opt => ({ key: opt, label: opt }))}
+          onSelect={onChange}
+          onClose={() => setOpen(false)}
+          ariaLabel={placeholder || 'Options'}
+        />
       )}
     </div>
   );
 }
 
+// Kept as a hand-rolled popover rather than MenuPopover: items need a
+// per-row custom icon component (SmsIcon) and a horizontal flip transform,
+// neither of which MenuPopover's string-only `icon` field supports.
 export function TypeDropdown({ value, onChange, disabled = false }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
