@@ -142,7 +142,7 @@ function StatusCell({ patient: p, voicemailCalls, completedCall }) {
               <div className={styles.attemptsTooltipHeader}>Attempt History</div>
               {attempts.map((a, i) => (
                 <div key={i} className={styles.attemptRow}>
-                  <Icon name="solar:phone-calling-bold" size={16} color="#DC2626" />
+                  <Icon name="solar:phone-calling-bold" size={16} color="var(--status-error)" />
                   <div className={styles.attemptDetail}>
                     <div className={styles.attemptOutcome}>{a.outcome}</div>
                     <div className={styles.attemptTime}>{a.time}</div>

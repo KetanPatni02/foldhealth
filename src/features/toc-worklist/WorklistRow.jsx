@@ -73,7 +73,7 @@ function OutreachCell({ patient }) {
       <div className={styles.outreachWlMain}>
         {hasSuccess ? (
           <>
-            <Icon name="solar:phone-calling-bold" size={15} color="#059669" />
+            <Icon name="solar:phone-calling-bold" size={15} color="var(--status-success)" />
             <div>
               <div className={styles.outreachWlText}>Attended</div>
               {patient.outreachDate && <div className={styles.outreachWlDate}>{patient.outreachDate}</div>}
@@ -81,7 +81,7 @@ function OutreachCell({ patient }) {
           </>
         ) : hasFailed ? (
           <>
-            <Icon name="solar:phone-bold" size={15} color="#DC2626" />
+            <Icon name="solar:phone-bold" size={15} color="var(--status-error)" />
             <div>
               <div className={styles.outreachWlFailed}>Failed</div>
               {patient.outreachDate && <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{patient.outreachDate}</div>}

@@ -28,6 +28,8 @@ export function ThemePicker() {
   const setTheme = useAppStore(s => s.setTheme);
   const navStyle = useAppStore(s => s.navStyle);
   const setNavStyle = useAppStore(s => s.setNavStyle);
+  const contrast = useAppStore(s => s.contrast);
+  const setContrast = useAppStore(s => s.setContrast);
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
 
@@ -102,6 +104,20 @@ export function ThemePicker() {
             checked={navStyle === 'light'}
             onChange={(next) => setNavStyle(next ? 'light' : 'default')}
             ariaLabel="Toggle light navigation"
+          />
+        </div>
+      </div>
+      <div className={styles.section}>
+        <div className={styles.label}>Accessibility</div>
+        <div className={styles.toggleRow}>
+          <span className={styles.toggleCopy}>
+            <span className={styles.toggleTitle}>High contrast</span>
+            <span className={styles.toggleHint}>Boosts text and border contrast for easier reading.</span>
+          </span>
+          <Switch
+            checked={contrast === 'high'}
+            onChange={(next) => setContrast(next ? 'high' : 'default')}
+            ariaLabel="Toggle high contrast"
           />
         </div>
       </div>

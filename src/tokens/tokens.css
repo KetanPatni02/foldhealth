@@ -360,6 +360,44 @@
    always a saturated brand color.
    ═══════════════════════════════════════════════════════════ */
 
+/* ═══════════════════════════════════════════════════════════
+   HIGH-CONTRAST MODE — [data-contrast="high"]
+   Independent of color theme. Boosts the low-contrast rungs of the
+   neutral scale (secondary/hint text, borders) toward the highest
+   rung so labels and dividers read at a glance for older users and
+   low-vision scenarios. Only the muted rungs shift; body text (400)
+   and highest-contrast text (500) stay put so the type hierarchy
+   isn't crushed.
+   ═══════════════════════════════════════════════════════════ */
+
+:root[data-contrast="high"] {
+  /* Light theme — collapse the muted text scale onto black; boost every
+     border/divider rung a large step darker so the whole surface reads
+     high-contrast, not just headings. */
+  --neutral-500: #000000;  /* was #16181D → true black for max text weight */
+  --neutral-400: #000000;  /* was #3A485F → body text goes fully black */
+  --neutral-300: #000000;  /* was #4F5A70 → muted labels match body */
+  --neutral-200: #111827;  /* was #5F6A7E → hint text near-black; one micro-step for hierarchy */
+  --neutral-150: #374151;  /* was #D0D6E1 → borders go from ghostly to obvious */
+  --neutral-100: #6B7280;  /* was #E9ECF1 → dividers read as real lines */
+  /* neutral-75 / -50 / -25 / -0 intentionally NOT overridden — those are
+     surface tokens (page bg, cards, hover backgrounds). Darkening them
+     turns hovers and letter previews into solid grey. */
+}
+
+:root[data-contrast="high"][data-theme="dark"],
+:root[data-contrast="high"].dark {
+  /* Dark theme — mirror image: collapse the muted warm scale onto the
+     brightest text token, and lift borders far off the surface. */
+  --neutral-500: #FFFFFF;  /* was #EDEAE3 → pure white text on dark */
+  --neutral-400: #FFFFFF;  /* was #D4D1CB → body goes full white */
+  --neutral-300: #FFFFFF;  /* was #ADA9A2 → muted matches body */
+  --neutral-200: #E5E1D8;  /* was #7E7B74 → hint one step down but still bright */
+  --neutral-150: #B8B2A7;  /* was #3D3A35 → borders lift clearly off surface */
+  --neutral-100: #8A857D;  /* was #322F2B */
+  /* neutral-75 / -50 / -25 / -0 intentionally NOT overridden — surface tokens. */
+}
+
 [data-nav-style="light"] {
   --sidebar-bg:                    var(--neutral-0);
   --sidebar-fg:                    var(--neutral-400);

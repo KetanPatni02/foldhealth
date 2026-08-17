@@ -15,7 +15,7 @@ import { toast } from '../components/Toast/sonnerToast';
 // chunk. They're only needed when Supabase returns empty or errors.
 import { updateHash } from '../lib/router';
 import { track } from '../lib/tracking';
-import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem, applyNavStyle, getStoredNavStyle } from '../lib/theme';
+import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem, applyNavStyle, getStoredNavStyle, applyContrast, getStoredContrast } from '../lib/theme';
 import { createBlock, createBlockTree, collectBlockTree, buildParentMap, cloneBlockTree, extractSubtree, cloneStoredTree } from '../features/email-builder/blockHelpers';
 import { extractEncountersSync } from '../features/hcc/upload/mockOcr';
 import { getChartDocs } from '../features/hcc/data/chartDocs';
@@ -563,9 +563,11 @@ const _savedSettingsTab = sessionStorage.getItem('settingsTab');
 const _initialThemeSetting = getStoredTheme();
 const _initialResolvedTheme = getResolvedTheme(_initialThemeSetting);
 const _initialNavStyle = getStoredNavStyle();
-// Apply nav style at module load so it lands before React mounts (the index.html
-// blocking script handles the color theme but not this one yet).
+const _initialContrast = getStoredContrast();
+// Apply nav style and contrast at module load so they land before React mounts
+// (the index.html blocking script handles the color theme but not these yet).
 applyNavStyle(_initialNavStyle);
+applyContrast(_initialContrast);
 
 // ── Settings → Content → Emails: SWR cache ────────────────────────────────
 // Keyed by `${page}|${perPage}|${searchLowercased}|${status}`. Lives at
@@ -986,6 +988,17 @@ export const useAppStore = create((set, get) => ({
     track('nav.style_changed', { from, to: next });
     const applied = applyNavStyle(next);
     set({ navStyle: applied });
+  },
+
+  // ─── Contrast ────────────────────────────────────────────────────────
+  // 'default' = normal neutral scale.
+  // 'high'    = boosts muted text + border tokens for easier reading.
+  contrast: _initialContrast,
+  setContrast: (next) => {
+    const from = get().contrast;
+    track('contrast.changed', { from, to: next });
+    const applied = applyContrast(next);
+    set({ contrast: applied });
   },
 
   // ─── Featurebase (Help → Give Feedback) ─────────────────────────────
@@ -2658,6 +2671,7 @@ export const useAppStore = create((set, get) => ({
     }
     const saved = popGroupRowToJs(data);
     set(s => ({ popGroups: [saved, ...s.popGroups] }));
+    get().logPopGroupActivity(saved.id, { action: 'create', title: 'Population Group Created', detail: `"${saved.name}" (${saved.type})` });
     return saved;
   },
   updatePopGroup: async (id, updates) => {
@@ -2674,8 +2688,37 @@ export const useAppStore = create((set, get) => ({
     }
     const saved = popGroupRowToJs(data);
     set(s => ({ popGroups: s.popGroups.map(g => g.id === id ? saved : g) }));
+    get().logPopGroupActivity(id, {
+      action: 'override',
+      title: 'rule' in updates && updates.rule != null ? 'Rule Updated' : 'Group Details Updated',
+      detail: `"${saved.name}" — ${saved.count} active member${saved.count === 1 ? '' : 's'}`,
+    });
     return saved;
   },
+  // ── Population group activity log (Supabase-backed, audit trail) ──
+  // Fire-and-forget writes from create/update/delete; the History drawer
+  // fetches per group. Failures only warn — activity must never block the
+  // action it records.
+  logPopGroupActivity: async (groupId, { action, title, detail }) => {
+    const actor = get().currentUserProfile?.name || 'Fold Demo';
+    const { error } = await supabase
+      .from('pop_group_activity')
+      .insert({ group_id: groupId, action, title, detail: detail || null, actor });
+    if (error) console.warn('[store] logPopGroupActivity failed — run supabase/pop_group_activity_migration.sql:', error.message);
+  },
+  fetchPopGroupActivity: async (groupId) => {
+    const { data, error } = await supabase
+      .from('pop_group_activity')
+      .select('*')
+      .eq('group_id', groupId)
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.warn('[store] fetchPopGroupActivity failed:', error.message);
+      return [];
+    }
+    return data || [];
+  },
+
   // ── Dynamic group rule builder (full-page takeover) ──
   // Non-null while the builder is open. { groupId } edits a saved Dynamic
   // group's rule; groupId:null is the create flow, carrying the metadata the
@@ -2685,6 +2728,7 @@ export const useAppStore = create((set, get) => ({
   closePgRuleBuilder: () => set({ pgRuleBuilder: null }),
 
   deletePopGroup: async (id) => {
+    const name = get().popGroups.find(g => g.id === id)?.name;
     const { error } = await supabase
       .from('population_groups')
       .delete()
@@ -2695,6 +2739,7 @@ export const useAppStore = create((set, get) => ({
       return false;
     }
     set(s => ({ popGroups: s.popGroups.filter(g => g.id !== id) }));
+    get().logPopGroupActivity(id, { action: 'delete', title: 'Population Group Deleted', detail: name ? `"${name}"` : undefined });
     return true;
   },
 

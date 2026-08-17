@@ -46,6 +46,12 @@
           if (resolved === 'dark') {
             document.documentElement.classList.add('dark');
           }
+          // High-contrast attribute, applied pre-paint too so muted rungs of
+          // the neutral scale don't flash their default values on refresh.
+          var contrast = localStorage.getItem('contrast');
+          if (contrast === 'high') {
+            document.documentElement.setAttribute('data-contrast', 'high');
+          }
         } catch (e) {
           // localStorage unavailable (private mode, etc.) — fall back to light.
           document.documentElement.setAttribute('data-theme', 'light');

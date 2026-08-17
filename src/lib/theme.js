@@ -68,6 +68,49 @@ export function initNavStyle() {
   return value;
 }
 
+/**
+ * Contrast setting — independent of color theme.
+ * 'default' keeps the standard neutral scale.
+ * 'high'    boosts text and border tokens for easier reading (older users,
+ *           low-vision scenarios) via [data-contrast="high"] in tokens.css.
+ */
+export const CONTRAST_STORAGE_KEY = 'contrast';
+export const CONTRAST_VALUES = ['default', 'high'];
+
+export function getStoredContrast() {
+  try {
+    const v = localStorage.getItem(CONTRAST_STORAGE_KEY);
+    return CONTRAST_VALUES.includes(v) ? v : 'default';
+  } catch {
+    return 'default';
+  }
+}
+
+export function persistContrast(value) {
+  try {
+    localStorage.setItem(CONTRAST_STORAGE_KEY, value);
+  } catch {
+    /* localStorage unavailable */
+  }
+}
+
+/** Apply contrast to <html>. 'default' removes the attribute entirely. */
+export function applyContrast(value) {
+  if (typeof document === 'undefined') return value;
+  const safe = CONTRAST_VALUES.includes(value) ? value : 'default';
+  const root = document.documentElement;
+  if (safe === 'default') root.removeAttribute('data-contrast');
+  else root.setAttribute('data-contrast', safe);
+  persistContrast(safe);
+  return safe;
+}
+
+export function initContrast() {
+  const value = getStoredContrast();
+  applyContrast(value);
+  return value;
+}
+
 /** Resolve a setting ('system') down to an actual rendered theme. */
 export function getResolvedTheme(setting) {
   if (setting === 'system') {
