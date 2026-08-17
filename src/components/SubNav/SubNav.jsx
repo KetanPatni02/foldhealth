@@ -12,6 +12,7 @@ const WORKLISTS = [
   { label: 'HCC', filter: null, view: 'hcc' },
   { label: 'HEDIS', filter: null, view: 'hedis' },
   { label: 'CCM', filter: null, view: 'ccm' },
+  { label: 'JSA', filter: null, view: 'jsa' },
   { label: 'High Utilizers', filter: { readmission: 'Yes' } },
   { label: 'DM', filter: null },
 ];
@@ -27,10 +28,12 @@ export function SubNav({ collapsed }) {
   const awvMembers = useAppStore(s => s.awvMembers || []);
   const ccmWorklistMembers = useAppStore(s => s.ccmWorklistMembers || []);
   const snpWorklistMembers = useAppStore(s => s.snpWorklistMembers || []);
+  const jsaMembers = useAppStore(s => s.jsaMembers || []);
   const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
   const fetchAwvMembers = useAppStore(s => s.fetchAwvMembers);
   const fetchCcmWorklistMembers = useAppStore(s => s.fetchCcmWorklistMembers);
   const fetchSnpWorklistMembers = useAppStore(s => s.fetchSnpWorklistMembers);
+  const fetchJsaMembers = useAppStore(s => s.fetchJsaMembers);
   const fetchPatients = useAppStore(s => s.fetchPatients);
   const fetchCallDetails = useAppStore(s => s.fetchCallDetails);
   const fetchWorklistOrder = useAppStore(s => s.fetchWorklistOrder);
@@ -50,6 +53,7 @@ export function SubNav({ collapsed }) {
     fetchAwvMembers();
     fetchCcmWorklistMembers();
     fetchSnpWorklistMembers();
+    fetchJsaMembers();
     fetchPatients();
     fetchCallDetails();
     fetchWorklistOrder(WORKLIST_LABELS);
@@ -89,12 +93,13 @@ export function SubNav({ collapsed }) {
       else if (list.view === 'hedis') counts[list.label] = HEDIS_MEMBERS.length;
       else if (list.view === 'ccm') counts[list.label] = ccmWorklistMembers.length;
       else if (list.view === 'snp') counts[list.label] = snpWorklistMembers.length;
+      else if (list.view === 'jsa') counts[list.label] = jsaMembers.length;
       else if (list.label === 'Annual Visit') counts[list.label] = awvMembers.length;
       else if (list.label === 'TOC') counts[list.label] = patients.length;
       else counts[list.label] = 0;
     }
     return counts;
-  }, [patients, hccUniquePatientCount, awvMembers, ccmWorklistMembers, snpWorklistMembers]);
+  }, [patients, hccUniquePatientCount, awvMembers, ccmWorklistMembers, snpWorklistMembers, jsaMembers]);
 
   // Unique patient count across every worklist. Different worklists use
   // different id spaces (p1, hcc-42, ccmw-001), so we key the union on a
@@ -113,8 +118,9 @@ export function SubNav({ collapsed }) {
     collect(HEDIS_MEMBERS);
     collect(ccmWorklistMembers);
     collect(snpWorklistMembers);
+    collect(jsaMembers);
     return seen.size;
-  }, [patients, hccMembers, awvMembers, ccmWorklistMembers, snpWorklistMembers]);
+  }, [patients, hccMembers, awvMembers, ccmWorklistMembers, snpWorklistMembers, jsaMembers]);
 
   const sections = useMemo(() => [
     {

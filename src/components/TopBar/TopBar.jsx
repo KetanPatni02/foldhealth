@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback, useId } from 'react';
+import { useRef, useState, useEffect, useCallback, useId, useMemo } from 'react';
 import { Icon } from '../Icon/Icon';
 import { ActionButton } from '../ActionButton/ActionButton';
 import { Avatar } from '../Avatar/Avatar';
@@ -310,16 +310,72 @@ export function TopBar() {
   const navigateBackToWorklist = useAppStore(s => s.navigateBackToWorklist);
   const navigateToPatient = useAppStore(s => s.navigateToPatient);
   const patients = useAppStore(s => s.patients);
+  const hccMembers = useAppStore(s => s.hccMembers);
+  const awvMembers = useAppStore(s => s.awvMembers) || [];
+  const ccmWorklistMembers = useAppStore(s => s.ccmWorklistMembers) || [];
+  const snpWorklistMembers = useAppStore(s => s.snpWorklistMembers) || [];
+  const allPatients = useAppStore(s => s.allPatients) || [];
+  const fetchPatients = useAppStore(s => s.fetchPatients);
+  const fetchAllPatients = useAppStore(s => s.fetchAllPatients);
+  const openQuickView = useAppStore(s => s.openQuickView);
   const activeSubnavList = useAppStore(s => s.activeSubnavList);
 
+  // Search must cover every patient the app knows about, not just the TOC
+  // slice — the worklist slices are prefetched by SubNav on Population, but
+  // the TopBar also renders on pages without a SubNav, so kick the two
+  // fetches it depends on here. fetchPatients is store-guarded (single-fire);
+  // fetchAllPatients is guarded by the length check.
+  useEffect(() => {
+    fetchPatients();
+    if (allPatients.length === 0) fetchAllPatients();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Unified search index. Priority order matters twice over: profile-backed
+  // slices come first so their rows win the dedupe (their ids resolve in
+  // PatientDetailView), and all_patients fills in everyone else (its rows
+  // have no profile view yet, so selecting one opens the QuickView drawer).
+  // Dedupe key: normalized memberId — the one identity field every slice
+  // shares. Same-name patients with different member ids are DIFFERENT
+  // people and must all appear.
+  const searchIndex = useMemo(() => {
+    const norm = (v) => String(v || '').replace(/^#/, '').trim().toLowerCase();
+    const seen = new Set();
+    const index = [];
+    const add = (rows, navigable) => {
+      for (const m of rows || []) {
+        const key = norm(m.memberId) || `id:${m.id}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        index.push({
+          id: m.id,
+          name: m.name,
+          initials: m.initials || m.in || '',
+          memberId: m.memberId,
+          gender: m.gender || m.g || '',
+          age: m.age || '',
+          language: m.language,
+          navigable,
+        });
+      }
+    };
+    add(patients, true);
+    add(hccMembers, true);
+    add(awvMembers, true);
+    add(ccmWorklistMembers, true);
+    add(snpWorklistMembers, true);
+    add(allPatients, false);
+    return index;
+  }, [patients, hccMembers, awvMembers, ccmWorklistMembers, snpWorklistMembers, allPatients]);
+
   const searchResults = searchQuery.trim().length >= 2
-    ? patients.filter(p => {
+    ? searchIndex.filter(p => {
         const q = searchQuery.toLowerCase().trim();
         return p.name?.toLowerCase().includes(q) ||
-          p.memberId?.toLowerCase().includes(q) ||
+          String(p.memberId || '').toLowerCase().includes(q) ||
           p.initials?.toLowerCase().includes(q) ||
           matchesFoldId(p.memberId, q);
-      }).slice(0, 8)
+      }).slice(0, 10)
     : [];
   const showResults = searchFocused && searchResults.length > 0;
 
@@ -332,8 +388,22 @@ export function TopBar() {
     return () => document.removeEventListener('mousedown', handler);
   }, [searchFocused]);
 
-  const handleSelectPatient = (id) => {
-    navigateToPatient(id);
+  const handleSelectPatient = (result) => {
+    if (result.navigable) {
+      navigateToPatient(result.id);
+    } else {
+      // all_patients-only rows have no profile view yet — QuickView shows
+      // their basics instead of navigating into a profile that would bounce.
+      openQuickView({
+        id: result.id,
+        name: result.name,
+        initials: result.initials,
+        gender: result.gender,
+        age: result.age,
+        memberId: result.memberId,
+        language: result.language,
+      });
+    }
     setSearchQuery('');
     setSearchFocused(false);
   };
@@ -401,7 +471,7 @@ export function TopBar() {
         <div className={styles.searchWrap} ref={searchRef}>
           <div className={styles.searchBox}>
             <Icon name="solar:magnifer-linear" size={18} color="var(--neutral-200)" />
-            <input
+            <input aria-label="Search members"
               type="text"
               placeholder="Search Members"
               value={searchQuery}
@@ -420,9 +490,9 @@ export function TopBar() {
                 <button
                   key={p.id}
                   className={styles.searchResultItem}
-                  onClick={() => handleSelectPatient(p.id)}
+                  onClick={() => handleSelectPatient(p)}
                 >
-                  <div className={styles.searchResultAvatar}>{p.initials}</div>
+                  <Avatar variant="patient" initials={p.initials || '??'} />
                   <div className={styles.searchResultInfo}>
                     <div className={styles.searchResultName}>{p.name}</div>
                     <div className={styles.searchResultMeta}>

@@ -141,7 +141,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
               <div className={styles.activityLog}>
                 <div className={styles.commentInput}>
                   {commentExpanded ? (
-                    <textarea autoFocus className={styles.commentTextarea} placeholder="Add a comment, use @ to mention someone" rows={3}
+                    <textarea aria-label="Add a comment" autoFocus className={styles.commentTextarea} placeholder="Add a comment, use @ to mention someone" rows={3}
                       value={commentText} onChange={e => setCommentText(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Escape') { setCommentExpanded(false); setCommentText(''); } }} />
                   ) : (
@@ -172,12 +172,12 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
 
       {assigneePos && createPortal(
         <>
-          <div className={styles.assigneeMenuOverlay} onClick={closeAssignee} />
+          <div aria-hidden="true" className={styles.assigneeMenuOverlay} onClick={closeAssignee} />
           <div className={styles.assigneeMenu} style={{ top: assigneePos.top, right: assigneePos.right }} role="menu">
             <div className={styles.assigneeMenuHeader}>{gap.assignee ? 'Change Assignee' : 'Assign to'}</div>
             <div className={styles.assigneeMenuSearch}>
               <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-300)" />
-              <input autoFocus type="text" className={styles.assigneeMenuInput} placeholder="Search users…"
+              <input aria-label="Search users" autoFocus type="text" className={styles.assigneeMenuInput} placeholder="Search users…"
                 value={assigneeQuery} onChange={(e) => setAssigneeQuery(e.target.value)} />
             </div>
             <div className={styles.assigneeMenuList}>
@@ -206,7 +206,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
 
       {moreMenuRect && createPortal(
         <>
-          <div className={styles.moreMenuOverlay} onClick={closeMoreMenu} />
+          <div aria-hidden="true" className={styles.moreMenuOverlay} onClick={closeMoreMenu} />
           <div className={styles.moreMenu} style={{ top: moreMenuRect.bottom + 6, left: Math.min(moreMenuRect.right - 220, window.innerWidth - 220 - 8) }}>
             {MORE_ACTIONS.map(a => (
               <button key={a.key} type="button" className={styles.moreMenuItem} onClick={() => runMoreAction(a)}>

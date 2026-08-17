@@ -1,10 +1,11 @@
-import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import { Avatar } from '../../../../components/Avatar/Avatar';
 import { ActionButton } from '../../../../components/ActionButton/ActionButton';
 import { Icon } from '../../../../components/Icon/Icon';
 import { MenuPopover } from '../../../../components/MenuPopover/MenuPopover';
 import { useAppStore } from '../../../../store/useAppStore';
-import { formatDobDisplay } from '../../../../lib/patientDob';
+import { formatDobDisplay, deriveDob } from '../../../../lib/patientDob';
+import { formatFoldId } from '../../../../lib/foldId';
 import { FALLBACK_P360 } from '../../data/p360Mock';
 import { ExpandedDemographics, ExpandedHealthStatus, ExpandedAppointments, ExpandedFamily, QuickViewExpanded } from './PatientP360BannerExpanded';
 import { PatientP360BannerDrawer } from './PatientP360BannerDrawer';
@@ -38,15 +39,29 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
     return () => ro.disconnect();
   }, [measureBanner]);
 
-  const p360Profile = useAppStore(s => s.p360Profile);
+  const p360Profile = useAppStore(s => (patient?.id ? s.p360ProfilesById[patient.id] : null));
   const fetchP360Profile = useAppStore(s => s.fetchP360Profile);
   useEffect(() => { if (patient?.id) fetchP360Profile(patient.id); }, [patient?.id, fetchP360Profile]);
+
+  // Real enrolled care programs (patient_care_programs) — the "Programs:"
+  // badges must reflect actual enrollment, not the static p360 mock field.
+  // The fetch is per-patient-guarded in the store, so this is a no-op when
+  // the Care Programs tab (or a previous banner mount) already hydrated it.
+  const carePrograms = useAppStore(s => (patient?.id ? s.careProgramsByPatient[patient.id] : undefined));
+  const fetchCareProgramsForPatient = useAppStore(s => s.fetchCareProgramsForPatient);
+  useEffect(() => { if (patient?.id) fetchCareProgramsForPatient(patient.id); }, [patient?.id, fetchCareProgramsForPatient]);
+  // Unique codes in enrollment order — SNP can be enrolled multiple times
+  // (one row per trigger) but reads as a single badge.
+  const programCodes = useMemo(
+    () => [...new Set((carePrograms || []).map(cp => cp.code))],
+    [carePrograms],
+  );
 
   const p = p360Profile || FALLBACK_P360;
   useEffect(() => { setTags(p.condition_tags || FALLBACK_P360.condition_tags); }, [p.condition_tags]);
 
   if (!patient) return null;
-  if (variant === 'drawer') return <PatientP360BannerDrawer patient={patient} p={p} />;
+  if (variant === 'drawer') return <PatientP360BannerDrawer patient={patient} p={p} programCodes={programCodes} />;
 
 
   return (
@@ -60,7 +75,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
               <Icon name="solar:pen-2-linear" size={16} color="var(--neutral-200)" />
             </div>
             <div className={styles.meta}>
-              {patient.gender} • {formatDobDisplay(patient.dob) || '9/14/1968'} ({patient.age})
+              {patient.gender} • {formatDobDisplay(patient.dob) || deriveDob(patient.age, patient.name) || '—'} ({patient.age})
               {bannerSize !== 'wide' && (
                 <>
                   <span className={styles.metaDot}>•</span>
@@ -84,7 +99,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
                 <span className={styles.profileLink}>{(p.insurance_profiles || FALLBACK_P360.insurance_profiles).find(pr => pr.id === selectedProfileId)?.name || p.profile_type} <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" /></span>
               </div>
               <div className={styles.profileCardBottom}>
-                <strong>{selectedProfileId === 'central' ? p.health_plan_name : (p.insurance_profiles || FALLBACK_P360.insurance_profiles).find(pr => pr.id === selectedProfileId)?.name}</strong> <span>({p.health_plan_id})</span>
+                <strong>{selectedProfileId === 'central' ? p.health_plan_name : (p.insurance_profiles || FALLBACK_P360.insurance_profiles).find(pr => pr.id === selectedProfileId)?.name}</strong> <span>({p.health_plan_id || formatFoldId(patient.memberId)})</span>
                 <span className={`${styles.badge} ${styles.badgeGrey}`} style={{ height: 18, fontSize: 12, padding: '0 4px', marginLeft: 4 }}>+{((p.insurance_profiles || FALLBACK_P360.insurance_profiles).length - 1)}</span>
               </div>
             </div>
@@ -96,7 +111,10 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
                   {(p.insurance_profiles || FALLBACK_P360.insurance_profiles).map(prof => (
                     <div key={prof.id} className={`${styles.profileOption} ${selectedProfileId === prof.id ? styles.profileOptionSelected : ''}`} onClick={() => { setSelectedProfileId(prof.id); setShowProfileDropdown(false); }}>
                       <div className={styles.profileOptionHeader}>
-                        <div><div className={styles.profileOptionName}>{prof.name}</div><div className={styles.profileOptionSub}>{prof.subtitle}</div></div>
+                        {/* Central Profile IS the FoldHealth identity — its id is the
+                            patient's real Fold ID, not the mock's sample Athena id.
+                            Other insurer profiles keep their sample member ids. */}
+                        <div><div className={styles.profileOptionName}>{prof.name}</div><div className={styles.profileOptionSub}>{prof.id === 'central' ? `Fold ID: ${formatFoldId(patient.memberId)}` : prof.subtitle}</div></div>
                         {selectedProfileId === prof.id ? <Icon name="solar:check-circle-bold" size={20} color="var(--status-success)" /> : <span className={styles.profileOptionRadio} />}
                       </div>
                     </div>
@@ -208,12 +226,12 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
         bannerSize === 'wide' ? (
           <div className={styles.expandedGrid}>
             <ExpandedDemographics p={p} />
-            <ExpandedHealthStatus p={p} movedMetrics />
+            <ExpandedHealthStatus p={p} movedMetrics programCodes={programCodes} />
             <ExpandedAppointments p={p} />
             <ExpandedFamily p={p} />
           </div>
         ) : (
-          <QuickViewExpanded p={p} />
+          <QuickViewExpanded p={p} programCodes={programCodes} />
         )
       )}
     </div>

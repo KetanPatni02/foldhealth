@@ -1,0 +1,118 @@
+/* AWV worklist row — composes shared row shell from WorklistShell's
+   WorklistRow.module.css (row divider, hover, sticky columns, .td,
+   patient cell, outreach status cell, actions divider). AWV-specific
+   pieces (program-status pill, due-date chip, task badge, assignee
+   assign-button) sit below.
+
+   Row is NOT clickable in AWV (unlike TOC — no row-click workflow open),
+   so we skip `rowClickable` and keep default cursor. */
+
+.row {
+  composes: row from '../../components/WorklistShell/WorklistRow.module.css';
+}
+
+.rowSelected {
+  composes: rowSelected from '../../components/WorklistShell/WorklistRow.module.css';
+}
+
+.stickyLeft  { composes: stickyLeft  from '../../components/WorklistShell/WorklistRow.module.css'; }
+.stickyRight { composes: stickyRight from '../../components/WorklistShell/WorklistRow.module.css'; }
+.td          { composes: td          from '../../components/WorklistShell/WorklistRow.module.css'; }
+.checkTd     { composes: checkTd     from '../../components/WorklistShell/WorklistRow.module.css'; }
+.membersTd   { composes: membersTd   from '../../components/WorklistShell/WorklistRow.module.css'; }
+
+.patientCell     { composes: patientCell     from '../../components/WorklistShell/WorklistRow.module.css'; }
+.patientName     { composes: patientName     from '../../components/WorklistShell/WorklistRow.module.css'; }
+.patientNameLink { composes: patientNameLink from '../../components/WorklistShell/WorklistRow.module.css'; }
+.patientDemo     { composes: patientDemo     from '../../components/WorklistShell/WorklistRow.module.css'; }
+.patientMeta     { composes: patientMeta     from '../../components/WorklistShell/WorklistRow.module.css'; }
+.foldId          { composes: foldId          from '../../components/WorklistShell/WorklistRow.module.css'; }
+.langBadge       { composes: langBadge       from '../../components/WorklistShell/WorklistRow.module.css'; }
+.langTooltip     { composes: langTooltip     from '../../components/WorklistShell/WorklistRow.module.css'; }
+
+.outreachWl       { composes: outreachWl       from '../../components/WorklistShell/WorklistRow.module.css'; }
+.outreachWlMain   { composes: outreachWlMain   from '../../components/WorklistShell/WorklistRow.module.css'; }
+.outreachWlText   { composes: outreachWlText   from '../../components/WorklistShell/WorklistRow.module.css'; }
+.outreachWlDate   { composes: outreachWlDate   from '../../components/WorklistShell/WorklistRow.module.css'; }
+.outreachWlNone   { composes: outreachWlNone   from '../../components/WorklistShell/WorklistRow.module.css'; }
+.outreachWlFailed { composes: outreachWlFailed from '../../components/WorklistShell/WorklistRow.module.css'; }
+.dotsRow          { composes: dotsRow          from '../../components/WorklistShell/WorklistRow.module.css'; }
+.dot              { composes: dot              from '../../components/WorklistShell/WorklistRow.module.css'; }
+.success          { composes: success          from '../../components/WorklistShell/WorklistRow.module.css'; }
+.failed           { composes: failed           from '../../components/WorklistShell/WorklistRow.module.css'; }
+.pending          { composes: pending          from '../../components/WorklistShell/WorklistRow.module.css'; }
+
+.actionsCell   { composes: actionsCell   from '../../components/WorklistShell/WorklistRow.module.css'; }
+.actionDivider { composes: actionDivider from '../../components/WorklistShell/WorklistRow.module.css'; }
+
+/* ── AWV-specific cells ── */
+
+/* Bare-button reset wrapping the shared <Badge> for the clickable Program
+   Sub Status pill. Badge owns its own padding / radius / border / color;
+   the button only adds the pointer + click hit target. */
+.statusBtn {
+  display: inline-flex;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.statusBtn:focus-visible {
+  outline: 2px solid var(--primary-300);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.dueCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dueDate {
+  font: 500 13px/1.3 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.dueLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 500 12px/1.3 'Inter', sans-serif;
+}
+
+.assigneeCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.assigneeName {
+  font: 400 13px/1.3 'Inter', sans-serif;
+  color: var(--neutral-400);
+}
+.assignBtn {
+  padding: 2px 8px;
+  font: 500 12px/1.3 'Inter', sans-serif;
+  color: var(--primary-300);
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.assignBtn:hover { background: var(--primary-100); }
+
+.taskBadge {
+  display: inline-block;
+  min-width: 20px;
+  padding: 1px 6px;
+  font: 500 12px/1.4 'Inter', sans-serif;
+  color: var(--primary-300);
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 999px;
+  text-align: center;
+}
+.taskBadgeMuted {
+  color: var(--neutral-300);
+  font: 400 13px/1.3 'Inter', sans-serif;
+}

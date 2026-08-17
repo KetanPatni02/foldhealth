@@ -1,69 +1,94 @@
 ---
-title: Analytics
-description: Fifteen dashboard views covering executive, financial, risk, quality, and operational metrics.
+title: "Analytics"
+description: "Fifteen dashboards spanning executive, financial, risk, quality, utilization, SDOH, and operations — all filterable by period and practice."
 ---
 
-The Analytics workspace provides 15 specialized dashboard views, each with period selection, practice filtering, and drill-down capabilities.
+The **Analytics** workspace is where leadership answers "how are we doing?" It ships with 15 opinionated dashboards, each tuned for a specific audience and question. Every view shares the same period selector, practice filter, and drill-down mechanics.
 
-## Dashboard views
+## Choosing a view
 
 <CardGroup cols={3}>
   <Card title="Executive" icon="chart-pie">
-    High-level KPIs, enrollment trends, and program performance summary.
+    High-level KPIs, enrollment trends, program mix.
   </Card>
   <Card title="Population" icon="users">
-    Demographic breakdowns, risk stratification, and cohort analysis.
+    Demographics, risk stratification, cohort mix.
   </Card>
   <Card title="Financial" icon="dollar-sign">
-    Revenue metrics, cost analysis, and financial forecasting.
+    Revenue, cost, and forecast.
   </Card>
   <Card title="Risk" icon="triangle-exclamation">
-    Risk score distributions, trending, and intervention effectiveness.
+    RAF distributions, trend, and intervention effect.
   </Card>
   <Card title="Quality" icon="star">
-    HEDIS measures, quality scores, and compliance tracking.
+    HEDIS measures and quality-score tracking.
   </Card>
   <Card title="Utilization" icon="hospital">
-    ED visits, admissions, readmissions, and utilization patterns.
+    ED, IP, readmission, and utilization patterns.
   </Card>
   <Card title="Care Coordination" icon="arrows-rotate">
-    Care transition metrics, follow-up completion, and handoff tracking.
+    Transition metrics, follow-up completion, hand-offs.
   </Card>
   <Card title="Network" icon="circle-nodes">
-    Provider network analysis and referral patterns.
+    Provider network and referral patterns.
   </Card>
   <Card title="Shared Savings" icon="piggy-bank">
-    Shared savings program performance and projections.
+    ACO/shared-savings performance and projections.
   </Card>
   <Card title="ROI Simulator" icon="calculator">
-    Model return on investment for different intervention strategies.
+    Model returns for different intervention mixes.
   </Card>
   <Card title="Tool Usage" icon="wrench">
-    Platform adoption metrics and feature utilization.
+    Feature adoption inside Fold Health.
   </Card>
   <Card title="Platform Ops" icon="server">
-    System performance, uptime, and operational metrics.
+    Uptime, latency, and job-run health.
   </Card>
   <Card title="AI Analytics" icon="robot">
-    Agent performance, conversation quality, and automation rates.
+    Agent performance, transfer rate, conversation quality.
   </Card>
   <Card title="SDOH" icon="house-medical">
-    Social determinants of health screening and intervention data.
+    Social determinants screening + intervention data.
   </Card>
   <Card title="Action Rules" icon="gears">
-    Automated rule trigger rates and outcome tracking.
+    Trigger and outcome tracking for automated rules.
   </Card>
 </CardGroup>
 
+## Walkthrough — investigate a dip
+
+<Steps>
+  <Step title="Start at the Executive view">
+    Open **Analytics** in the sidebar; the URL is `#/analytics/executive`. Scan the KPI row for anything unexpected — e.g. "TCM completion dropped from 74% to 61% this month."
+  </Step>
+  <Step title="Narrow the period">
+    Use the **Period selector** in the toolbar to switch from "Last 90 days" to just the month in question. Every chart re-queries and re-renders.
+  </Step>
+  <Step title="Scope to a practice">
+    Add a **Practice** filter to see whether one clinic drove the change. If yes, keep that filter as you dig deeper.
+  </Step>
+  <Step title="Drill down">
+    Click the dropping bar directly. If the chart supports drill-down (most Executive and Financial charts do), it opens a detail popover with the underlying cohort. Click **View patients** to send that cohort to the Population worklist as a filter.
+  </Step>
+  <Step title="Cross-reference">
+    Switch to a specialized view — **Utilization** if the dip is about follow-ups, **Care Coordination** if it's about hand-offs, **AI Analytics** if it's about agent outcomes. All filters carry over.
+  </Step>
+  <Step title="Export">
+    Use the toolbar **Export** button to download the current chart (PNG) or its underlying data (CSV) for a slide or a follow-up email.
+  </Step>
+</Steps>
+
 ## Common controls
 
-Every dashboard view includes:
+Every view has the same top toolbar:
 
-- **Period selector** — Choose date ranges for data analysis
-- **Practice filter** — Scope data to specific practices or providers
-- **Drill-down** — Click into chart elements for detailed breakdowns
-- **Export** — Download data and visualizations
+- **Period selector** — presets (Today, 7d, 30d, 90d, YTD, All) + custom range picker.
+- **Practice filter** — single-select or multi-select depending on the view; scoped to the practices your account can see.
+- **Drill-down** — click on chart marks (bars, segments, points) to open a cohort popover.
+- **Export** — download the current chart as PNG or its data as CSV.
 
-## Charts
+## Tips
 
-Built with [Recharts](https://recharts.org), the charting library provides responsive, composable chart components that follow the Fold design system tokens.
+- **URL is the state.** Every filter, period, and drill-down writes to the hash — share a link and the recipient lands on exactly what you're looking at.
+- **Charts are built with Recharts.** All colors come from `src/tokens/tokens.css` — the dashboards adapt automatically when tokens change.
+- **Simulator caveats.** The **ROI Simulator** is a "what if" tool: inputs never persist and don't affect real cohorts. It's a modeling scratchpad.

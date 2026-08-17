@@ -1,35 +1,64 @@
 ---
-title: Calls
-description: Call history, active call monitoring, and agent call queue management.
+title: "Calls"
+description: "Human + AI-agent call history, live monitoring, and queue management from one screen."
 ---
 
-The Calls page provides a complete view of all patient communication activity.
+The **Calls** workspace is a two-pane cockpit for every voice conversation — inbound, outbound, missed, and AI-agent-driven. Care managers use it to review yesterday's outreach; supervisors use it to monitor live agent calls.
 
 ## Layout
 
-- **Left panel** (350px) — Call history list with direction-coded avatars (outgoing, incoming, missed, answered, declined), search, and a dial pad
-- **Main panel** — Patient profile banner, quick actions, and a call log table
+- **Left panel** (350px) — Call history list with direction-coded avatars (outgoing / incoming / missed / answered / declined), a search bar, and a **Dial Pad** for placing outbound calls.
+- **Main panel** — When a call is selected: the patient's P360 profile banner, quick actions (Call back, Send message, Open chart), and the full call log for that patient.
 
 ## Call tabs
 
-| Tab | Description |
-|-----|-------------|
-| All | Complete call history |
-| Incoming | Received calls |
-| Outgoing | Placed calls |
-| Missed | Unanswered calls |
-| Calling Agents | AI agent call activity |
+| Tab | Shows |
+| --- | --- |
+| **All** | Every call the current user has access to |
+| **Incoming** | Received calls only |
+| **Outgoing** | Placed calls only |
+| **Missed** | Unanswered calls only |
+| **Calling Agents** | AI agent call activity across every agent |
 
-## Active call features
+## Walkthrough — review yesterday's outreach
 
-- Real-time call monitoring with live transcript
-- Call transfer flows between agents and care managers
-- Call duration tracking and recording
+<Steps>
+  <Step title="Open the Calls page">
+    Click **Calls** in the sidebar. The list defaults to **All**, sorted newest-first.
+  </Step>
+  <Step title="Scope with tabs and search">
+    Click **Missed** to see only unanswered calls, or type a patient name in the search box to jump to their history.
+  </Step>
+  <Step title="Inspect a call">
+    Click a row. The main panel loads the patient's banner and the full call log for that patient. Recordings and transcripts (when available) live inline on each row.
+  </Step>
+  <Step title="Follow up">
+    Use the quick-action row above the call log: **Call back** places an outbound call, **Send message** opens the Messages composer scoped to that patient, **Open chart** deep-links into their profile.
+  </Step>
+</Steps>
 
-## Call Queue Drawer
+## Walkthrough — monitor an AI agent live
 
-Accessed from the Agents table, the Call Queue Drawer shows three tabs:
+<Steps>
+  <Step title="Switch to the Calling Agents tab">
+    The list re-scopes to active agent calls, oldest-first (so the longest-running conversation is at the top).
+  </Step>
+  <Step title="Open the Call Queue Drawer">
+    Click any agent row, or open **Settings → Agents** and click the queue icon next to an agent. A 700px right-side drawer opens with three tabs: **Ongoing Call**, **In Queue**, **Call Log**.
+  </Step>
+  <Step title="Watch the live call">
+    The **Ongoing Call** tab shows member info, live call duration, and a streaming transcript. Supervisors can transfer to a human via the header actions.
+  </Step>
+  <Step title="Reorder the queue">
+    Drag rows in the **In Queue** tab to change priority. Changes commit to Supabase and the agent picks up the next call at the top when its current call ends.
+  </Step>
+  <Step title="Audit outcomes">
+    Switch to **Call Log** to review completed calls: outcome disposition, duration, and links to the recording and transcript.
+  </Step>
+</Steps>
 
-- **Ongoing Call** — Active calls with member info, live duration, and transcript access
-- **In Queue** — Queued members with priority ordering and reorder controls
-- **Call Log** — Historical call records with outcomes
+## Tips
+
+- **Live transcript scrolls automatically** — pinning it to the bottom keeps the newest utterance visible. Scroll up to review earlier turns; the pin releases while you're scrolled back.
+- **Transfer flows** — from a live call, the transfer button routes to either another agent (based on skill/goal match) or a specific care manager.
+- **Dial pad shortcuts** — the left-panel dial pad accepts pasted phone numbers and lets you save the current draft as a scheduled call.

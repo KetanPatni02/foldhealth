@@ -172,7 +172,7 @@
 /* Main info area — metrics strip */
 .mainInfo { display: flex; flex: 1; align-items: center; gap: 24px; min-width: 0; }
 
-/* Profile card (Central Profile + JADE Health) */
+/* Profile card (Central Profile + FoldHealth) */
 .profileCard {
   display: flex; flex-direction: column; gap: 4px; padding: 4px 8px;
   border: 0.5px solid color-mix(in srgb, var(--status-info) 25%, transparent); border-radius: 4px;
@@ -267,12 +267,14 @@
 .expandedGrid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 0; border-bottom: 0.5px solid var(--neutral-150); }
 .expandCol { padding: 12px 16px; border-right: 0.5px solid var(--neutral-100); display: flex; flex-direction: column; gap: 8px; }
 .expandCol:last-child { border-right: none; }
-.expandTitle { font-size: 13px; font-weight: 500; color: var(--neutral-500); font-family: 'Inter', sans-serif; margin: 0; }
+.expandTitle { font-size: 13px; font-weight: 600; color: var(--neutral-500); margin: 0; }
 .expandRows { display: flex; flex-direction: column; gap: 6px; }
 .expandRow { display: flex; align-items: flex-start; gap: 6px; font-size: 13px; color: var(--neutral-400); font-family: 'Inter', sans-serif; }
 .expandItem { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--neutral-400); font-family: 'Inter', sans-serif; }
 .expandLabel { font-size: 12px; color: var(--neutral-200); font-family: 'Inter', sans-serif; }
 .moreCount { font-size: 12px; color: var(--neutral-300); }
+/* Moved-in Last Contact inherits the 14px banner-row style; match sibling 13px values here */
+.expandRows .lastContactText { font-size: 13px; }
 
 /* Health expanded */
 .conditionBadges { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -292,9 +294,11 @@
 .personRow { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
 .personName { font-size: 13px; font-weight: 500; color: var(--neutral-400); font-family: 'Inter', sans-serif; display: flex; align-items: center; gap: 4px; }
 .personRole { font-size: 12px; color: var(--neutral-200); font-family: 'Inter', sans-serif; display: block; }
-.roleTag { font-size: 10px; font-weight: 500; color: var(--primary-300); background: var(--primary-50); padding: 0 4px; border-radius: 3px; }
+.roleTag { font-size: 11px; font-weight: 500; color: var(--primary-300); background: var(--primary-50); padding: 0 4px; border-radius: 3px; }
 .viewAllBtn { font-size: 12px; color: var(--primary-300); font-family: 'Inter', sans-serif; background: none; border: none; cursor: pointer; padding: 2px 0; text-align: left; }
 .viewAllBtn:hover { text-decoration: underline; }
 .careTeamSection { margin-top: 8px; padding-top: 8px; border-top: 0.5px solid var(--neutral-100); display: flex; flex-direction: column; gap: 6px; }
 .careTeamHeader { display: flex; align-items: center; gap: 6px; }
-.profileTypeLabel { font-size: 11px; color: var(--neutral-200); display: inline-flex; align-items: center; gap: 3px; }
+/* Sub-section header — must sit above .personName (13/500) but below .expandTitle (13/600) */
+.careTeamTitle { font-size: 12px; font-weight: 500; color: var(--neutral-300); }
+.profileTypeLabel { font-size: 12px; color: var(--neutral-200); display: inline-flex; align-items: center; gap: 3px; }

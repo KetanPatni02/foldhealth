@@ -26,7 +26,7 @@ export default {
     },
     profileOptions: {
       control: 'object',
-      description: 'EHR-profile options for the Select. Defaults to Central / APC / JADE Health.',
+      description: 'EHR-profile options for the Select. Defaults to Central / APC / FoldHealth.',
       table: { type: { summary: 'string[]' } },
     },
     onClose: {
@@ -47,6 +47,6 @@ export const Playground = {
       author_name: 'You',
       updated_at: new Date().toISOString(),
     },
-    profileOptions: ['Central Profile', 'APC', 'JADE Health'],
+    profileOptions: ['Central Profile', 'APC', 'FoldHealth'],
   },
 };

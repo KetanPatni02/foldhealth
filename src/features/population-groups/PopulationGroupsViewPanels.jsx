@@ -10,7 +10,6 @@ import { Badge } from '../../components/Badge/Badge';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { TableIcon, MiniCloseIcon, Spinner, ReplaceIcon, FileErrorIllustration } from './components/icons.jsx';
-import PaginationBar from './components/PaginationBar.jsx';
 import SectionAccordion from './components/SectionAccordion.jsx';
 import FileChipCard from './components/FileChipCard.jsx';
 import { FOLD_DB, FOLD_DB_MAP } from './data/fold-db.js';
@@ -310,13 +309,6 @@ const FIGMA_INCORRECT_INPUT_ST = {
 };
 const FIGMA_INCORRECT_HDR_COLS = ['Patient ID', 'First Name', 'Last Name', 'Date of Birth', 'Actions'];
 const DUPLICATE_COL_HDR = { fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', fontFamily: 'Inter,sans-serif' };
-export const TABLE_TH_STYLE = {
-  padding: '8px 16px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)',
-  borderBottom: '0.5px solid var(--neutral-150)', background: 'var(--neutral-0)',
-  position: 'sticky', top: 0, zIndex: 2, textAlign: 'left',
-  whiteSpace: 'nowrap', userSelect: 'none',
-};
-export const TABLE_TD_STYLE = { padding: '12px 16px', fontSize: 14, fontWeight: 400, color: 'var(--neutral-300)', verticalAlign: 'middle' };
 
 export function FigmaIncorrectRow({ row, onAdd, onRemove, isLast, onToast, matchedIds }) {
   const [foldId,    setFoldId]    = React.useState(row.rawId    || '');
@@ -836,7 +828,7 @@ export function AddPatientSearch({ matched, onAdd }) {
     <div ref={ref} style={{ position:'relative', flexShrink:0 }}>
       <div style={{ display:'flex', alignItems:'center', gap:8, height:36, padding:'0 10px', border:'0.5px solid var(--neutral-200)', borderRadius:6, background:'var(--neutral-0)' }}>
         <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
-        <input
+        <input aria-label="Search and add patients"
           value={q}
           onChange={e => { setQ(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}

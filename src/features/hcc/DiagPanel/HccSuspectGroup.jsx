@@ -423,7 +423,7 @@ function IcdComboPopover({ anchorRef, currentCode, currentDesc, onSelect, onClos
 
   return createPortal(
     <>
-      <div className={styles.comboOverlay} onClick={onClose} />
+      <div aria-hidden="true" className={styles.comboOverlay} onClick={onClose} />
       <div
         className={styles.comboMenu}
         style={{
@@ -437,7 +437,7 @@ function IcdComboPopover({ anchorRef, currentCode, currentDesc, onSelect, onClos
       >
         <div className={styles.comboSearch}>
           <Icon name="solar:magnifer-linear" size={13} color="var(--neutral-300)" />
-          <input
+          <input aria-label="Search ICD code or description"
             autoFocus
             type="text"
             placeholder="Search ICD code or description…"
@@ -514,7 +514,7 @@ function DosDropdown({ anchorRef, dosList, member, selected, onSelect, onClose }
 
   return createPortal(
     <>
-      <div className={styles.dosOverlay} onClick={onClose} />
+      <div aria-hidden="true" className={styles.dosOverlay} onClick={onClose} />
       <div className={styles.dosMenu} style={{ top: pos.top, left: pos.left, width: pos.width, maxHeight: pos.maxHeight, overflowY: 'auto' }}>
         <div className={styles.dosMenuHead}>Select DOS</div>
         {dosList.length === 0 && <div className={styles.dosEmpty}>No encounters available</div>}

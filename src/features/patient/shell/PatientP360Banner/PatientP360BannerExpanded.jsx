@@ -1,6 +1,32 @@
 import { Avatar } from '../../../../components/Avatar/Avatar';
 import { Icon } from '../../../../components/Icon/Icon';
+import { Tooltip } from '../../../../components/Tooltip/Tooltip';
 import styles from './PatientP360Banner.module.css';
+
+// Enrolled care-program badges — first MAX_VISIBLE codes, then a "+N"
+// overflow whose hover popover lists the rest (one program per line).
+// `codes` comes from the real patient_care_programs enrollment (deduped in
+// PatientP360Banner), so every patient shows their true programs; none
+// enrolled renders '—'.
+const MAX_VISIBLE_PROGRAMS = 2;
+export function ProgramBadgeList({ codes, badgeClass, overflowClass }) {
+  if (!codes?.length) return <span className={styles.expandLabel}>—</span>;
+  const visible = codes.slice(0, MAX_VISIBLE_PROGRAMS);
+  const overflow = codes.slice(MAX_VISIBLE_PROGRAMS);
+  return (
+    <>
+      {visible.map(code => <span key={code} className={badgeClass}>{code}</span>)}
+      {overflow.length > 0 && (
+        <Tooltip
+          placement="bottom"
+          label={overflow.map(code => <div key={code}>{code}</div>)}
+        >
+          <span className={overflowClass}>+{overflow.length}</span>
+        </Tooltip>
+      )}
+    </>
+  );
+}
 
 export function ExpandedDemographics({ p, className }) {
   return (
@@ -17,7 +43,7 @@ export function ExpandedDemographics({ p, className }) {
   );
 }
 
-export function ExpandedHealthStatus({ p, className, movedMetrics = false }) {
+export function ExpandedHealthStatus({ p, className, movedMetrics = false, programCodes }) {
   const v = p.recent_vitals || {};
   return (
     <div className={className ?? styles.expandCol}>
@@ -30,8 +56,11 @@ export function ExpandedHealthStatus({ p, className, movedMetrics = false }) {
             <div className={styles.expandItem}>
               <span className={styles.expandLabel}>Programs:</span>
               <div className={styles.conditionBadges}>
-                {(p.programs || []).map(pr => <span key={pr} className={styles.conditionBadge}>{pr}</span>)}
-                <span className={styles.conditionBadgeGrey}>+2</span>
+                <ProgramBadgeList
+                  codes={programCodes}
+                  badgeClass={styles.conditionBadge}
+                  overflowClass={styles.conditionBadgeGrey}
+                />
               </div>
             </div>
             <div className={styles.expandItem}>
@@ -86,7 +115,7 @@ export function ExpandedFamily({ p, className }) {
         {(p.family_members || []).length > 0 && <button className={styles.viewAllBtn}>View All &gt;</button>}
       </div>
       <div className={styles.careTeamSection}>
-        <div className={styles.careTeamHeader}><span className={styles.expandLabel}>Care Team</span><Icon name="solar:pen-2-linear" size={12} color="var(--neutral-200)" /><div style={{ flex: 1 }} /><span className={styles.profileTypeLabel}>{p.care_team_profile_type} <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-200)" /></span></div>
+        <div className={styles.careTeamHeader}><span className={styles.careTeamTitle}>Care Team</span><Icon name="solar:pen-2-linear" size={12} color="var(--neutral-200)" /><div style={{ flex: 1 }} /><span className={styles.profileTypeLabel}>{p.care_team_profile_type} <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-200)" /></span></div>
         {(p.care_team || []).map((m, i) => <div key={i} className={styles.personRow}><Avatar variant="assignee" initials={m.initials} /><div><span className={styles.personName}>{m.name} {m.role && <span className={styles.roleTag}>{m.role}</span>}</span><span className={styles.personRole}>{m.title}</span></div></div>)}
         {(p.care_team || []).length > 0 && <button className={styles.viewAllBtn}>View All &gt;</button>}
       </div>
@@ -97,7 +126,7 @@ export function ExpandedFamily({ p, className }) {
 /* Quick-view-style expanded panel — a metrics strip over a 2-column layout.
    Shared by the drawer variant AND the full banner's responsive expansion so
    both surface the same detail view. */
-export function QuickViewExpanded({ p }) {
+export function QuickViewExpanded({ p, programCodes }) {
   return (
     <div className={styles.drawerExpandedPanel}>
       <div className={styles.drawerMetricsStrip}>
@@ -130,8 +159,11 @@ export function QuickViewExpanded({ p }) {
         <div className={styles.drawerMetricItem}>
           <span className={styles.drawerMetricLabel}>Programs</span>
           <div className={styles.programBadges}>
-            {(p.programs || []).map(pr => <span key={pr} className={`${styles.badge} ${styles.badgeInfo}`}>{pr}</span>)}
-            <span className={`${styles.badge} ${styles.badgeGrey}`}>+2</span>
+            <ProgramBadgeList
+              codes={programCodes}
+              badgeClass={`${styles.badge} ${styles.badgeInfo}`}
+              overflowClass={`${styles.badge} ${styles.badgeGrey}`}
+            />
           </div>
         </div>
       </div>

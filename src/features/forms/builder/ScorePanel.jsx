@@ -125,7 +125,7 @@ export function ScorePanel({ fields, scoring, onChange }) {
             />
             <div className={styles.rangePill}>Possible range <strong>{range.min}–{range.max}</strong></div>
             <div className={styles.scoreSourcesRow}>
-              <span>{selected.sources.length} field{selected.sources.length === 1 ? '' : 's'} included</span>
+              <span>{(selected.sources?.length ?? 0)} field{(selected.sources?.length ?? 0) === 1 ? '' : 's'} included</span>
               {!locked ? <button className={styles.linkBtn} onClick={syncSources}>Sync to scorable fields</button> : null}
             </div>
           </div>

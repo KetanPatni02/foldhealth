@@ -98,7 +98,7 @@ UPDATE p360_profiles SET
   marital_status      = 'Married',
   race                = 'Hispanic',
   ethnicity           = 'Latino',
-  ipa                 = 'JADE Health',
+  ipa                 = 'FoldHealth',
   address_line1       = '482 Alameda Ave',
   address_line2       = 'Apt 3B',
   city                = 'Los Angeles',

@@ -183,10 +183,37 @@ function App() {
     );
   }
 
-  // Not authenticated — show login
+  // Not authenticated — show login. The dev-mode "Continue without login"
+  // button performs a REAL sign-in with the demo account when the
+  // VITE_DEV_LOGIN_* vars are present (dev builds only — the branch is
+  // dead-code-eliminated from production bundles via import.meta.env.DEV).
+  // Every table is RLS'd to `authenticated`, so a bare bypass session sees
+  // zero rows from Supabase; the demo sign-in gives dev sessions real data.
+  // Falls back to the legacy no-auth bypass if the sign-in fails (offline,
+  // creds missing) so local UI work is never blocked on the network.
   if (!isAuthenticated) {
     if (window.location.hash !== '#/login') window.location.hash = '#/login';
-    return <LoginPage onBypass={() => { track('auth.bypass_used'); sessionStorage.setItem('__auth_bypass', 'true'); setBypassed(true); window.location.hash = '#/home'; }} />;
+    const legacyBypass = () => {
+      track('auth.bypass_used');
+      sessionStorage.setItem('__auth_bypass', 'true');
+      setBypassed(true);
+      window.location.hash = '#/home';
+    };
+    const handleBypass = async () => {
+      const email = import.meta.env.DEV ? import.meta.env.VITE_DEV_LOGIN_EMAIL : null;
+      const password = import.meta.env.DEV ? import.meta.env.VITE_DEV_LOGIN_PASSWORD : null;
+      if (email && password) {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (!error) {
+          track('auth.dev_demo_login');
+          window.location.hash = '#/home';
+          return; // onAuthStateChange sets the session — normal auth flow takes over
+        }
+        console.warn('dev demo login failed — falling back to no-auth bypass:', error.message);
+      }
+      legacyBypass();
+    };
+    return <LoginPage onBypass={handleBypass} />;
   }
 
   // Authenticated — clear login hash if present

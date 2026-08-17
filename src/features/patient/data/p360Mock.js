@@ -1,8 +1,10 @@
 // Fallback P360 profile data used when DB hasn't loaded yet
 export const FALLBACK_P360 = {
   profile_type: 'Central Profile',
-  health_plan_name: 'JADE Health',
-  health_plan_id: '#94949494WIWI',
+  health_plan_name: 'FoldHealth',
+  // Intentionally null — the profile card falls back to the patient's real
+  // Fold ID (patient.memberId) instead of a made-up plan number.
+  health_plan_id: null,
   health_plan_desc: 'SCAN Insurance Handler',
   consent_given: 2,
   consent_total: 4,
@@ -45,7 +47,7 @@ export const FALLBACK_P360 = {
   // Insurance profiles for dropdown
   insurance_profiles: [
     { id: 'central', name: 'Central Profile', subtitle: 'Athena ID: 939393939393', selected: true },
-    { id: 'jade', name: 'JADE Health', subtitle: 'Member ID: 939393939393', enrolledOn: '02/01/2025', insurance: 'LOB008', hpCode: 'MOLS', hpDesc: 'SCAN Insurance Handler' },
+    { id: 'fold', name: 'FoldHealth', subtitle: 'Member ID: 939393939393', enrolledOn: '02/01/2025', insurance: 'LOB008', hpCode: 'MOLS', hpDesc: 'SCAN Insurance Handler' },
     { id: 'ccpp', name: 'CCPP Health', subtitle: 'Member ID: 939393939393', enrolledOn: '02/01/2025', insurance: 'LOB008', hpCode: 'MOLS', hpDesc: 'SCAN Insurance Handler' },
   ],
 

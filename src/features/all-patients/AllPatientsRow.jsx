@@ -8,10 +8,29 @@ import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { buildPatientRowMenuItems } from '../../components/MenuPopover/patientRowMenuItems';
 import { useAppStore } from '../../store/useAppStore';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
+import { Tooltip } from '../../components/Tooltip/Tooltip';
+import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
 import rowStyles from '../toc-worklist/WorklistRow.module.css';
 import styles from './AllPatientsRow.module.css';
 
 const LANG_MAP = { en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese', ko: 'Korean', vi: 'Vietnamese', hi: 'Hindi', pa: 'Punjabi' };
+
+// all_patients stores age as whole years; the other worklists render the
+// "Ny Mm" shape. Derive a stable month component from the patient name (same
+// stable-hash trick deriveDob uses for the day) so display and the derived
+// DOB tooltip stay consistent across reloads.
+const nameHash = (s) => {
+  let h = 0;
+  const str = String(s || '');
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) & 0xffffffff;
+  return Math.abs(h);
+};
+const ageDisplayOf = (row) => {
+  if (row.age == null || row.age === '') return null;
+  // Already "Ny Mm" (e.g. rows mirrored from TOC/HCC) — pass through.
+  if (/y/.test(String(row.age))) return String(row.age);
+  return `${row.age}y ${nameHash(row.name) % 12}m`;
+};
 
 function TagList({ tags, max = 2 }) {
   if (!tags?.length) return <span className={styles.dash}>—</span>;
@@ -70,6 +89,7 @@ export function AllPatientsRow({ row, isSelected, onSelect }) {
   const showToast = useAppStore(s => s.showToast);
   const startHccUpload = useAppStore(s => s.startHccUpload);
   const openPatientEdit = useAppStore(s => s.openPatientEdit);
+  const openQuickView = useAppStore(s => s.openQuickView);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropBtnRef = useRef(null);
 
@@ -109,13 +129,28 @@ export function AllPatientsRow({ row, isSelected, onSelect }) {
     showToast(`${key} – coming soon`);
   };
 
-  const handleRowClick = () => {
-    showToast(`${row.name} — details coming soon`);
-  };
-
   const location = row.city && row.state ? `${row.city}, ${row.state}` : (row.location || '—');
   const ccm = row.ccmConsent;
   const apcm = row.apcmConsent;
+  const ageDisplay = ageDisplayOf(row);
+
+  // Same QuickView payload shape as WorklistRow (TOC) / HCC — age in the
+  // displayed "Ny Mm" form so the drawer banner matches the row.
+  const quickViewPayload = {
+    id: row.id,
+    name: row.name,
+    initials: row.initials,
+    gender: row.gender,
+    age: ageDisplay || row.age,
+    memberId: row.memberId,
+    language: row.language,
+    dob: row.dob,
+    lace: row.lace,
+  };
+
+  const handleRowClick = () => {
+    openQuickView(quickViewPayload);
+  };
 
   return (
     <tr className={rowStyles.row} onClick={handleRowClick}>
@@ -127,10 +162,23 @@ export function AllPatientsRow({ row, isSelected, onSelect }) {
           <Avatar variant="patient" initials={row.initials} />
           <div>
             <div className={rowStyles.patientName}>
-              {row.name}
-              {row.gender && row.age != null && (
-                <span className={rowStyles.patientDemo}> ({row.gender}•{row.age})</span>
-              )}
+              <button
+                className={rowStyles.patientNameLink}
+                onClick={(e) => { e.stopPropagation(); openQuickView(quickViewPayload); }}
+              >
+                {row.name}
+              </button>
+              {row.gender && ageDisplay && (() => {
+                // DOB tooltip mirrors WorklistRow: stored dob wins, else a
+                // deterministic derivation from the displayed age + name so
+                // the tooltip always agrees with the "(g•Ny Mm)" string.
+                const dobLabel = formatDobDisplay(row.dob) || deriveDob(ageDisplay, row.name);
+                return (
+                  <Tooltip label={dobLabel ? `DOB: ${dobLabel}` : ''} placement="bottom">
+                    <span className={rowStyles.patientDemo}> ({row.gender}•{ageDisplay})</span>
+                  </Tooltip>
+                );
+              })()}
             </div>
             <div className={rowStyles.patientMeta}>
               <FoldIdTag id={row.memberId || row.id} className={rowStyles.foldId} showToast={showToast} />{' '}•{' '}

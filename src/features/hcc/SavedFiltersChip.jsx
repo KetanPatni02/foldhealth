@@ -115,7 +115,7 @@ function SavedFiltersPopover({ pos, savedFilters, activeId, onSelect, onClear, o
 
   return createPortal(
     <>
-      <div className={styles.overlay} onClick={onClose} />
+      <div aria-hidden="true" className={styles.overlay} onClick={onClose} />
       <div
         className={[styles.popover, styles.popoverWide].join(' ')}
         style={{ top: pos.top, left: pos.left }}
@@ -125,7 +125,7 @@ function SavedFiltersPopover({ pos, savedFilters, activeId, onSelect, onClear, o
           <span className={styles.searchIcon}>
             <Icon name="solar:magnifer-linear" size={14} />
           </span>
-          <input
+          <input aria-label="Search saved filters"
             type="text"
             className={styles.searchInput}
             placeholder="Search"
@@ -178,7 +178,7 @@ function SavedFiltersPopover({ pos, savedFilters, activeId, onSelect, onClear, o
 
       {rowMenu && menuTarget && createPortal(
         <>
-          <div
+          <div aria-hidden="true"
             className={styles.rowMenuOverlay}
             onClick={() => setRowMenu(null)}
           />

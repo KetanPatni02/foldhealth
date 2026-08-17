@@ -101,14 +101,14 @@ function StepTemplateSelect({ agentName, setAgentName, selectedTemplate, setSele
       </div>
       <div className={styles.templateSection}>
         <div className={styles.sectionTitle}>Select from Agent Templates</div>
-        <input className={styles.searchInput} type="text" placeholder="Search Templates" value={search} onChange={e => setSearch(e.target.value)} />
+        <input aria-label="Search templates" className={styles.searchInput} type="text" placeholder="Search Templates" value={search} onChange={e => setSearch(e.target.value)} />
         <div className={styles.templateGrid}>
           {filtered.map(t => (
-            <div key={t.id} className={[styles.templateCard, selectedTemplate === t.id ? styles.templateCardSelected : ''].filter(Boolean).join(' ')} onClick={() => setSelectedTemplate(t.id === selectedTemplate ? null : t.id)}>
+            <button type="button" key={t.id} aria-pressed={selectedTemplate === t.id} className={[styles.templateCard, selectedTemplate === t.id ? styles.templateCardSelected : ''].filter(Boolean).join(' ')} onClick={() => setSelectedTemplate(t.id === selectedTemplate ? null : t.id)}>
               <div className={styles.templateCardName}>{t.name}</div>
               <div className={styles.templateCardDesc}>{t.desc}</div>
               {selectedTemplate === t.id && <div className={styles.templateCheck}><Icon name="solar:check-read-linear" size={10} color="#fff" /></div>}
-            </div>
+            </button>
           ))}
           {filtered.length === 0 && (
             <div className={styles.emptyState}>
@@ -328,8 +328,8 @@ function StepPrompt({ agentName, setAgentName, onBack, prompt, setPrompt }) {
               <option value="">Select Type</option>
               {UTILITY_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
-            <input className={styles.utilityInput} placeholder="Enter Key" value={row.key} onChange={e => updateRow(i, 'key', e.target.value)} />
-            <input className={styles.utilityDefaultInput} placeholder="Select Default" value={row.defaultVal} onChange={e => updateRow(i, 'defaultVal', e.target.value)} />
+            <input aria-label="Variable key" className={styles.utilityInput} placeholder="Enter Key" value={row.key} onChange={e => updateRow(i, 'key', e.target.value)} />
+            <input aria-label="Variable default value" className={styles.utilityDefaultInput} placeholder="Select Default" value={row.defaultVal} onChange={e => updateRow(i, 'defaultVal', e.target.value)} />
             <button className={styles.utilityDeleteBtn} onClick={() => removeRow(i)} aria-label="Remove utility">
               <Icon name="solar:trash-bin-minimalistic-linear" size={16} color="var(--neutral-300)" />
             </button>
@@ -345,7 +345,7 @@ function StepPrompt({ agentName, setAgentName, onBack, prompt, setPrompt }) {
 
       <div className={styles.promptBox}>
         <div className={styles.promptTextareaWrap}>
-          <textarea
+          <textarea aria-label="Workflow prompt"
             ref={textareaRef}
             className={styles.promptTextarea}
             placeholder="Add Prompt to generate workflow"
@@ -399,9 +399,9 @@ function StepPrompt({ agentName, setAgentName, onBack, prompt, setPrompt }) {
               {showTzDropdown && (
                 <div className={styles.tzDropdown}>
                   {TIMEZONES.map(tz => (
-                    <div key={tz} className={[styles.tzDropdownItem, tz === timezone ? styles.tzDropdownItemActive : ''].filter(Boolean).join(' ')} onClick={() => { setTimezone(tz); setShowTzDropdown(false); }}>
+                    <button type="button" key={tz} aria-pressed={tz === timezone} className={[styles.tzDropdownItem, tz === timezone ? styles.tzDropdownItemActive : ''].filter(Boolean).join(' ')} onClick={() => { setTimezone(tz); setShowTzDropdown(false); }}>
                       {tz}
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}

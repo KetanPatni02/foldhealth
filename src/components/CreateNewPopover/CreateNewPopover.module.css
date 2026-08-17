@@ -48,6 +48,35 @@
   width: 100%;
   text-align: left;
   font-family: 'Inter', sans-serif;
+  transition:
+    background var(--duration-fast) var(--ease-hover),
+    color var(--duration-fast) var(--ease-hover);
 }
 
 .item:hover { background: var(--primary-50); color: var(--primary-300); }
+
+/* Item icon — rests one shade lighter than the label (matching the old
+   pinned neutral-300), then tints with the label on hover and pops with a
+   gentle back-out overshoot. Transform + color are split so the color snaps
+   in step with the text while the scale gets the springier curve. */
+.itemIcon {
+  color: var(--neutral-300);
+  transition:
+    color var(--duration-fast) var(--ease-hover),
+    transform var(--duration-base) cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.item:hover .itemIcon {
+  color: var(--primary-300);
+  transform: scale(1.18);
+}
+/* Press feedback — the icon dips under the cursor before the action fires. */
+.item:active .itemIcon {
+  transform: scale(0.92);
+  transition-duration: var(--duration-fast), var(--duration-instant);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .itemIcon { transition: color var(--duration-fast) var(--ease-hover); }
+  .item:hover .itemIcon,
+  .item:active .itemIcon { transform: none; }
+}

@@ -63,7 +63,7 @@ export function MoreFiltersPopover({ anchorRect, visibleKeys, onToggle, onClear,
 
   return createPortal(
     <>
-      <div className={styles.overlay} onClick={onClose} />
+      <div aria-hidden="true" className={styles.overlay} onClick={onClose} />
       <div
         className={styles.popover}
         style={{ top, right, width: W }}
@@ -74,7 +74,7 @@ export function MoreFiltersPopover({ anchorRect, visibleKeys, onToggle, onClear,
         {/* Search */}
         <div className={styles.searchRow}>
           <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-200)" />
-          <input
+          <input aria-label="Search filters"
             type="text"
             value={search}
             placeholder="Search more filter"

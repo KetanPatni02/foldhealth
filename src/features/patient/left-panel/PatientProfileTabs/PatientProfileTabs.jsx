@@ -67,7 +67,7 @@ export function PatientProfileTabs({ patientId, patient, variant = 'full' }) {
       {/* Sticky tab bar OR search input */}
       {searching ? (
         <div className={styles.searchBar}>
-          <input
+          <input aria-label="Search gaps"
             ref={searchRef}
             className={styles.searchInput}
             placeholder="Search gaps"
@@ -116,7 +116,7 @@ export function PatientProfileTabs({ patientId, patient, variant = 'full' }) {
           <StickyNoteAuditDrawer
             patientId={patientId}
             note={stickyNotes[0]}
-            profileOptions={['Central Profile', 'APC', 'JADE Health']}
+            profileOptions={['Central Profile', 'APC', 'FoldHealth']}
             onClose={() => setShowAuditDrawer(false)}
           />
         )}

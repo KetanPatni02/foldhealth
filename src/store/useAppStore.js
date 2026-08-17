@@ -746,6 +746,7 @@ const LIST_FILTER_KEY = {
   HEDIS: 'hedisFilters',
   SNP:   'snpFilters',
   AWV:   'awvFilters',
+  JSA:   'jsaFilters',
 };
 
 // Remove a list's active saved-filter selection and persist the change.
@@ -1120,8 +1121,12 @@ export const useAppStore = create((set, get) => ({
     get().fetchQuickNoteHistory();
   },
 
-  // P360 Profile data
+  // P360 Profile data. `p360Profile` is the last fetch (legacy singleton);
+  // `p360ProfilesById` is keyed per patient so two banners mounted at once
+  // (profile page + Quick View drawer over it) each show their own patient
+  // instead of whichever fetch resolved last.
   p360Profile: null,
+  p360ProfilesById: {},
   p360Loading: false,
   fetchP360Profile: async (patientId) => {
     set({ p360Loading: true });
@@ -1131,13 +1136,10 @@ export const useAppStore = create((set, get) => ({
         .select('*')
         .eq('patient_id', patientId)
         .maybeSingle();
-      if (!error && data) {
-        set({ p360Profile: data });
-      } else {
-        set({ p360Profile: null });
-      }
+      const profile = !error && data ? data : null;
+      set(s => ({ p360Profile: profile, p360ProfilesById: { ...s.p360ProfilesById, [patientId]: profile } }));
     } catch {
-      set({ p360Profile: null });
+      set(s => ({ p360Profile: null, p360ProfilesById: { ...s.p360ProfilesById, [patientId]: null } }));
     }
     set({ p360Loading: false });
   },
@@ -1156,6 +1158,14 @@ export const useAppStore = create((set, get) => ({
   // Patient detail view
   selectedPatientId: null,
   patientProfileTab: 'Overview',
+  // Care program open in the Care Programs tab, as its URL key — a slug of
+  // the program code plus the trigger ordinal past 1 ('awv', 'snp-2'). Kept
+  // as the key (not the program object or row id) so the hash router can
+  // write and restore it before the patient's programs have loaded.
+  selectedCareProgramKey: null,
+  // Active step id inside that program ('step-3a', 'ccm-billing'). null means
+  // the program's default step.
+  careProgramStep: null,
   // When set alongside a navigateToPatient({ programCode }) call, the Care
   // Programs tab picks this up, ensures the program is enrolled, and opens
   // its ProgramDetailView on mount. Cleared once consumed.
@@ -1163,7 +1173,7 @@ export const useAppStore = create((set, get) => ({
   navigateToPatient: (patientId, opts = {}) => {
     const from = get().activePage;
     track('nav.patient_opened', { patientId, from });
-    const updates = { selectedPatientId: patientId };
+    const updates = { selectedPatientId: patientId, selectedCareProgramKey: null, careProgramStep: null };
     if (opts.profileTab) updates.patientProfileTab = opts.profileTab;
     if (opts.programCode) updates.pendingCareProgramCode = opts.programCode;
     set(updates);
@@ -1174,13 +1184,29 @@ export const useAppStore = create((set, get) => ({
   navigateBackToWorklist: () => {
     const patientId = get().selectedPatientId;
     track('nav.patient_closed', { patientId });
-    set({ selectedPatientId: null, pendingCareProgramCode: null });
+    set({ selectedPatientId: null, pendingCareProgramCode: null, selectedCareProgramKey: null, careProgramStep: null });
     updateHash?.(get());
   },
   setPatientProfileTab: (tab) => {
     const from = get().patientProfileTab;
     track('nav.patient_tab_changed', { patientId: get().selectedPatientId, from, to: tab });
-    set({ patientProfileTab: tab });
+    // Leaving the tab closes any open program detail (matches the previous
+    // component-local behavior, where unmounting dropped the selection).
+    set({ patientProfileTab: tab, selectedCareProgramKey: null, careProgramStep: null });
+    updateHash?.(get());
+  },
+  openCareProgram: (programKey) => {
+    track('care_program.opened', { patientId: get().selectedPatientId, programKey });
+    set({ selectedCareProgramKey: programKey, careProgramStep: null });
+    updateHash?.(get());
+  },
+  closeCareProgram: () => {
+    set({ selectedCareProgramKey: null, careProgramStep: null });
+    updateHash?.(get());
+  },
+  setCareProgramStep: (stepId) => {
+    set({ careProgramStep: stepId });
+    updateHash?.(get());
   },
   clearPendingCareProgramCode: () => set({ pendingCareProgramCode: null }),
 
@@ -1696,6 +1722,11 @@ export const useAppStore = create((set, get) => ({
 
   addCareProgram: (patientId, entry) => {
     if (!patientId || !entry) return;
+    // Creation date — stamped at enroll time so the Start Date column shows
+    // when the program was actually added (not '—' until an Enrolled status
+    // change backfills it).
+    const now = new Date();
+    const createdStamp = `${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${now.getFullYear()}`;
     let program;
     set((state) => {
       const existing = state.careProgramsByPatient[patientId] || [];
@@ -1711,9 +1742,9 @@ export const useAppStore = create((set, get) => ({
         acuity: null,
         status: 'New',
         statusColor: 'var(--primary-300)',
-        startDate: '—',
+        startDate: createdStamp,
         endDate: '—',
-        lastUpdated: '—',
+        lastUpdated: createdStamp,
         assignee: 'Unassigned',
         pcp: '—',
         progress: 0,
@@ -1727,6 +1758,10 @@ export const useAppStore = create((set, get) => ({
         },
       };
     });
+    // SNP enrollment implies SNP-worklist membership — keep the two in sync.
+    if (program && entry.code === 'SNP') {
+      get().ensureSnpWorklistMembership(patientId);
+    }
     // Persist. Fire-and-forget — the optimistic local update already
     // rendered the row; a slow network shouldn't block the UI.
     if (program) {
@@ -1960,6 +1995,67 @@ export const useAppStore = create((set, get) => ({
     if (!get()._subnavNavigated && merged[0] && get().activeSubnavList !== merged[0]) {
       get().setActiveSubnavList(merged[0]);
       set({ _subnavNavigated: false }); // programmatic — keep the flag clear
+    }
+  },
+
+  // ── Table page-size preference (Supabase-backed) ──
+  // Shares the user_worklist_prefs row with worklistOrder. Seeded from
+  // localStorage so the first paint uses the right size instead of
+  // flashing the default and re-fitting once the fetch lands.
+  autoPageSize: (() => {
+    try { return localStorage.getItem('autoPageSize') !== 'false'; } catch { return true; }
+  })(),
+  manualPageSize: (() => {
+    try { return Number(localStorage.getItem('manualPageSize')) || 10; } catch { return 10; }
+  })(),
+  pageSizePrefLoaded: false,
+
+  fetchPageSizePref: async () => {
+    if (get().pageSizePrefLoaded) return;
+    try {
+      const userId = await get()._resolveWorklistUser();
+      const { data, error } = await supabase
+        .from('user_worklist_prefs')
+        .select('auto_page_size, per_page')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (!error && data) {
+        const auto = data.auto_page_size !== false;
+        const size = Number(data.per_page) || 10;
+        set({ autoPageSize: auto, manualPageSize: size });
+        try {
+          localStorage.setItem('autoPageSize', String(auto));
+          localStorage.setItem('manualPageSize', String(size));
+        } catch { /* private mode — DB stays the source of truth */ }
+      }
+    } catch { /* columns may not exist yet — keep the local defaults */ }
+    set({ pageSizePrefLoaded: true });
+  },
+
+  savePageSizePref: async ({ auto, size }) => {
+    const next = { autoPageSize: auto };
+    if (size != null) next.manualPageSize = size;
+    set(next); // optimistic
+    try {
+      localStorage.setItem('autoPageSize', String(auto));
+      if (size != null) localStorage.setItem('manualPageSize', String(size));
+    } catch { /* */ }
+    try {
+      const userId = await get()._resolveWorklistUser();
+      const { error } = await supabase
+        .from('user_worklist_prefs')
+        .upsert(
+          {
+            user_id: userId,
+            auto_page_size: auto,
+            per_page: size ?? get().manualPageSize,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id' },
+        );
+      if (error) console.warn('[store] savePageSizePref failed — run supabase/user_worklist_prefs_page_size_migration.sql:', error.message);
+    } catch (e) {
+      console.warn('[store] savePageSizePref failed:', e?.message);
     }
   },
 
@@ -2570,6 +2666,19 @@ export const useAppStore = create((set, get) => ({
     const saved = popGroupRowToJs(data);
     set(s => ({ popGroups: s.popGroups.map(g => g.id === id ? saved : g) }));
     return saved;
+  },
+  deletePopGroup: async (id) => {
+    const { error } = await supabase
+      .from('population_groups')
+      .delete()
+      .eq('id', id);
+    if (error) {
+      console.warn('[store] deletePopGroup failed:', error.message);
+      get().showToast(`Failed to delete group: ${error.message}`);
+      return false;
+    }
+    set(s => ({ popGroups: s.popGroups.filter(g => g.id !== id) }));
+    return true;
   },
 
   // ── Embed Domains (Supabase-backed) ──
@@ -3604,6 +3713,87 @@ export const useAppStore = create((set, get) => ({
       assignee_initials: user?.initials || null,
       assignee_role:     role,
     });
+  },
+
+  // Enrolling a patient in the SNP care program implies membership in the
+  // SNP worklist — this keeps the two in sync. Resolves the patient across
+  // every worklist slice (profiles can be opened from any of them, so
+  // selectedPatientId may be a patients.id, an hcc UUID, a member id, …),
+  // dedupes against existing SNP rows by id / patientId / normalized
+  // memberId, then inserts a new snp_worklist_members row optimistically.
+  // Called from addCareProgram; safe to call repeatedly.
+  ensureSnpWorklistMembership: async (patientId) => {
+    if (!patientId) return;
+    const s = get();
+    const matchesId = m => m && (m.id === patientId || String(m.memberId) === String(patientId));
+    const src =
+      s.patients.find(matchesId) ||
+      s.hccMembers.find(matchesId) ||
+      (s.awvMembers || []).find(matchesId) ||
+      (s.ccmWorklistMembers || []).find(matchesId) ||
+      (s.snpWorklistMembers || []).find(matchesId) ||
+      (s.hedisMembers || []).find(matchesId);
+    if (!src) return; // no slice loaded yet — nothing to mirror from
+
+    const norm = (v) => String(v || '').replace(/^#/, '').trim().toLowerCase();
+    const already = (s.snpWorklistMembers || []).some(m =>
+      m.id === patientId ||
+      m.patientId === patientId ||
+      (norm(m.memberId) && norm(m.memberId) === norm(src.memberId))
+    );
+    if (already) return;
+
+    const now = new Date();
+    const stamp = `${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${now.getFullYear()}`;
+    const row = {
+      id:               `snpw-${Date.now()}`,
+      initials:         src.initials || (src.name || '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase(),
+      name:             src.name,
+      gender:           src.gender || src.g || null,
+      age:              src.age || null,
+      memberId:         src.memberId || null,
+      language:         src.language || 'en',
+      programSubStatus: 'New',
+      carePlanStatus:   null,
+      nextActionDue:    null,
+      outreach:         null,
+      assigneeId:       null,
+      assigneeName:     null,
+      assigneeInitials: null,
+      assigneeRole:     null,
+      triggerDate:      stamp,
+      lastAdmission:    src.lastAdmission || null,
+      trigger:          'SNP Program Assigned',
+      riskIq:           'Undetermined',
+      tags:             [],
+      tagsMore:         0,
+      taskCount:        0,
+      patientId,
+    };
+    set(st => ({ snpWorklistMembers: [...(st.snpWorklistMembers || []), row] }));
+    const { error } = await supabase.from('snp_worklist_members').insert({
+      id:                 row.id,
+      initials:           row.initials,
+      name:               row.name,
+      gender:             row.gender,
+      age:                row.age,
+      member_id:          row.memberId,
+      language:           row.language,
+      program_sub_status: row.programSubStatus,
+      trigger_date:       row.triggerDate,
+      trigger:            row.trigger,
+      risk_iq:            row.riskIq,
+      tags:               row.tags,
+      tags_more:          row.tagsMore,
+      task_count:         row.taskCount,
+      patient_id:         row.patientId,
+    });
+    if (error) {
+      console.warn('ensureSnpWorklistMembership — insert failed:', error.message);
+      // Roll back the optimistic row so the worklist doesn't show a phantom
+      // member that won't survive a reload.
+      set(st => ({ snpWorklistMembers: (st.snpWorklistMembers || []).filter(m => m.id !== row.id) }));
+    }
   },
 
   // ─── SNP filter slice ──────────────────────────────────────────────────
@@ -5347,6 +5537,82 @@ export const useAppStore = create((set, get) => ({
     }
   },
 
+  // ── JSA (Joint Screening Assessment) — mirrors the AWV slice exactly:
+  // same shape, same column map, same filter/select/status flows. Its own
+  // slice (not an AWV filter view) so counts, saved filters, and bulk
+  // selection stay isolated from AWV. Backed by jsa_members in Supabase.
+  jsaMembers: [],
+  jsaMembersLoading: false,
+  fetchJsaMembers: async () => {
+    if (useAppStore.getState().jsaMembers.length > 0) return;
+    set({ jsaMembersLoading: true });
+
+    const { data, error } = await supabase
+      .from('jsa_members')
+      .select('*')
+      .order('create_date', { ascending: true });
+
+    if (error || !data || data.length === 0) {
+      console.warn('fetchJsaMembers error or empty — falling back to local mock:', error?.message);
+      const { JSA_MEMBERS } = await import('../features/jsa-worklist/data/mock');
+      set({ jsaMembers: JSA_MEMBERS, jsaMembersLoading: false });
+      return;
+    }
+
+    const mappedMembers = data.map(m => ({
+      id: m.id,
+      memberId: m.member_id,
+      name: m.name,
+      in: m.initials,
+      g: m.gender,
+      age: m.age,
+      outreach: m.outreach,
+      task: m.tasks,
+      due: m.create_date,
+      dueLabel: m.due_label,
+      dueCol: m.due_color,
+      assignee: m.support_name,
+      assigneeIn: m.support_name ? m.support_name.replace(/[^a-zA-Z ]/g, '').split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : null,
+      progSubStatus: m.support_status,
+      progName: m.cohort,
+      ri: m.risk_level,
+      dec: m.decile,
+      ad: String(m.advillness || 0),
+      fr: String(m.frailty || 0),
+    }));
+
+    set({ jsaMembers: mappedMembers, jsaMembersLoading: false });
+  },
+  jsaFilters: {},
+  setJsaFilter: (k, vals) => set(s => {
+    const next = { ...s.jsaFilters };
+    if (!vals || vals.length === 0) delete next[k];
+    else next[k] = vals;
+    return { jsaFilters: next };
+  }),
+  clearJsaFilters: () => set({ jsaFilters: {} }),
+  selectedJsaIds: [],
+  selectJsaMember: (id) => set(s => ({
+    selectedJsaIds: s.selectedJsaIds.includes(id)
+      ? s.selectedJsaIds.filter(x => x !== id)
+      : [...s.selectedJsaIds, id],
+  })),
+  selectAllJsa: (ids) => set({ selectedJsaIds: ids }),
+  clearJsaSelected: () => set({ selectedJsaIds: [] }),
+  updateJsaMemberStatus: async (id, newStatus) => {
+    set(s => {
+      const next = [...s.jsaMembers];
+      const i = next.findIndex(m => m.id === id);
+      if (i > -1) next[i] = { ...next[i], progSubStatus: newStatus };
+      return { jsaMembers: next };
+    });
+    const { error } = await supabase
+      .from('jsa_members')
+      .update({ support_status: newStatus })
+      .eq('id', id);
+    if (error) console.warn('Failed to update JSA status:', error.message);
+  },
+
   selectedHccIds: [],
   selectHccMember: (id) => {
     track('hcc.member_selected', { memberId: id });
@@ -6014,11 +6280,15 @@ export const useAppStore = create((set, get) => ({
       gender: r.gender,
       age: r.age,
       memberId: r.member_id,
+      dob: r.dob,
       email: r.email,
       phone: r.phone,
       language: r.language || 'en',
       city: r.city,
       state: r.state,
+      zip: r.zip,
+      ipa: r.ipa,
+      hpCode: r.hp_code,
       tags: r.tags || [],
       groupNumber: r.group_number,
       familyId: r.family_id,
@@ -7646,6 +7916,90 @@ export const useAppStore = create((set, get) => ({
     }));
     // Persist to Supabase in background
     get().persistPatient(id, updates);
+  },
+
+  // Core-identity update — name / dob / gender / age / contact fields edited
+  // in the Update Member drawer. One patient can be mirrored across several
+  // slices (patients, hcc, awv, ccm, snp, all_patients), each backed by its
+  // own table, so a rename that only touched `patients` would leave every
+  // other worklist (and the P360 banner opened from them) stale. This action
+  // updates every slice row sharing the identity (id match or normalized
+  // memberId match) and persists per-table with each table's column shape.
+  // `core` fields: name, initials, gender ('M'/'F'), age ("Ny Mm"), dob
+  // (MM/DD/YYYY), language, email, phone, city, state — all optional.
+  updatePatientCore: (patientId, core) => {
+    if (!patientId || !core) return;
+    const norm = (v) => String(v || '').replace(/^#/, '').trim().toLowerCase();
+    const s = get();
+    const matches = (m) => m && (m.id === patientId || (m.memberId != null && String(m.memberId) === String(patientId)));
+
+    // Resolve the shared identity key from whichever slice knows this patient.
+    const src =
+      s.patients.find(matches) ||
+      (s.allPatients || []).find(matches) ||
+      s.hccMembers.find(matches) ||
+      (s.awvMembers || []).find(matches) ||
+      (s.ccmWorklistMembers || []).find(matches) ||
+      (s.snpWorklistMembers || []).find(matches);
+    const memberKey = norm(src?.memberId);
+    const rowMatches = (m) => m && (m.id === patientId || (memberKey && norm(m.memberId) === memberKey));
+
+    const defined = (obj) => Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
+    const ageYears = (() => {
+      const m = /^(\d+)/.exec(String(core.age || ''));
+      return m ? Number(m[1]) : undefined;
+    })();
+    const dobIso = (() => {
+      const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(core.dob || ''));
+      return m ? `${m[3]}-${m[1]}-${m[2]}` : undefined;
+    })();
+
+    // ── Local slices (optimistic) ──────────────────────────────────────
+    set(st => ({
+      patients: st.patients.map(p => rowMatches(p)
+        ? { ...p, ...defined({ name: core.name, initials: core.initials, gender: core.gender, age: core.age, dob: core.dob, language: core.language, email: core.email, phone: core.phone, city: core.city, state: core.state }) }
+        : p),
+      allPatients: (st.allPatients || []).map(p => rowMatches(p)
+        ? { ...p, ...defined({ name: core.name, initials: core.initials, gender: core.gender, age: core.age, email: core.email, phone: core.phone, city: core.city, state: core.state }) }
+        : p),
+      hccMembers: st.hccMembers.map(m => rowMatches(m)
+        ? { ...m, ...defined({ name: core.name, in: core.initials, g: core.gender, age: core.age, dob: core.dob }) }
+        : m),
+      awvMembers: (st.awvMembers || []).map(m => rowMatches(m)
+        ? { ...m, ...defined({ name: core.name, initials: core.initials, gender: core.gender, age: core.age }) }
+        : m),
+      ccmWorklistMembers: (st.ccmWorklistMembers || []).map(m => rowMatches(m)
+        ? { ...m, ...defined({ name: core.name, initials: core.initials, gender: core.gender, age: core.age, dob: core.dob }) }
+        : m),
+      snpWorklistMembers: (st.snpWorklistMembers || []).map(m => rowMatches(m)
+        ? { ...m, ...defined({ name: core.name, initials: core.initials, gender: core.gender, age: core.age }) }
+        : m),
+      // The QuickView drawer renders a snapshot — refresh it so an open
+      // drawer reflects the save immediately.
+      quickViewPatient: st.quickViewPatient && rowMatches(st.quickViewPatient)
+        ? { ...st.quickViewPatient, ...defined({ name: core.name, initials: core.initials, gender: core.gender, age: core.age, dob: core.dob, language: core.language, memberId: st.quickViewPatient.memberId }) }
+        : st.quickViewPatient,
+    }));
+
+    // ── Persistence (fire-and-forget, per-table column shapes) ─────────
+    // patients — via the shared persist path (mapper covers the new columns).
+    const patientRow = get().patients.find(rowMatches);
+    if (patientRow) {
+      get().persistPatient(patientRow.id, defined({ name: core.name, initials: core.initials, gender: core.gender, age: core.age, dob: core.dob, language: core.language, email: core.email, phone: core.phone, city: core.city, state: core.state }));
+    }
+    if (!memberKey) return;
+    const fire = (table, payload) => {
+      const clean = defined(payload);
+      if (!Object.keys(clean).length) return;
+      supabase.from(table).update(clean).eq('member_id', src.memberId).then(({ error }) => {
+        if (error) console.warn(`updatePatientCore — ${table} update failed:`, error.message);
+      });
+    };
+    fire('all_patients',         { name: core.name, initials: core.initials, gender: core.gender, age: ageYears, email: core.email, phone: core.phone, city: core.city, state: core.state });
+    fire('hcc_members',          { name: core.name, initials: core.initials, gender: core.gender, date_of_birth: dobIso });
+    fire('awv_members',          { name: core.name, initials: core.initials, gender: core.gender, age: core.age });
+    fire('ccm_worklist_members', { name: core.name, initials: core.initials, gender: core.gender, age: core.age, dob: core.dob });
+    fire('snp_worklist_members', { name: core.name, initials: core.initials, gender: core.gender, age: core.age });
   },
 
   invokeAgent: (patientIds, agentName, agentRole) => {

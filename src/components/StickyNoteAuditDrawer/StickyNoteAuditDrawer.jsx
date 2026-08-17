@@ -38,7 +38,7 @@ export function StickyNoteAuditDrawer({ patientId, note, profileOptions, onClose
 
   const formatDate = formatStickyNoteDate;
 
-  const profiles = profileOptions || ['Central Profile', 'APC', 'JADE Health'];
+  const profiles = profileOptions || ['Central Profile', 'APC', 'FoldHealth'];
 
   return (
     <Drawer title="Sticky Note Activity" onClose={onClose} bodyClassName={styles.drawerBody}>

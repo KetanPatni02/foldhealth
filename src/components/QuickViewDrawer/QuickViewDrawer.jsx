@@ -6,11 +6,39 @@ import { PatientProfileTabs } from '../../features/patient/left-panel/PatientPro
 import styles from './QuickViewDrawer.module.css';
 
 export function QuickViewDrawer() {
-  const patient = useAppStore(s => s.quickViewPatient);
+  const snapshot = useAppStore(s => s.quickViewPatient);
   const closeQuickView = useAppStore(s => s.closeQuickView);
   const navigateToPatient = useAppStore(s => s.navigateToPatient);
 
-  if (!patient) return null;
+  // The snapshot is whatever the opening row passed at click time — it goes
+  // stale the moment the Update Member drawer saves. Merge the live slice
+  // row (matched by id, then by memberId) over it so the banner always
+  // shows current name / dob / gender / age.
+  const live = useAppStore(s => {
+    const snap = s.quickViewPatient;
+    if (!snap) return null;
+    const matches = (m) => m && (m.id === snap.id || (snap.memberId != null && String(m.memberId) === String(snap.memberId)));
+    return s.patients.find(matches)
+      || (s.allPatients || []).find(matches)
+      || s.hccMembers.find(matches)
+      || (s.awvMembers || []).find(matches)
+      || (s.ccmWorklistMembers || []).find(matches)
+      || (s.snpWorklistMembers || []).find(matches)
+      || null;
+  });
+
+  if (!snapshot) return null;
+  const patient = live
+    ? {
+        ...snapshot,
+        name: live.name ?? snapshot.name,
+        initials: live.initials ?? live.in ?? snapshot.initials,
+        gender: live.gender ?? live.g ?? snapshot.gender,
+        age: live.age ?? snapshot.age,
+        dob: live.dob ?? snapshot.dob,
+        language: live.language ?? snapshot.language,
+      }
+    : snapshot;
 
   function handleViewFullProfile() {
     closeQuickView();

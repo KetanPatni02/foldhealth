@@ -7,12 +7,13 @@ import { ConsentPopover } from '../../../../components/ConsentPopover/ConsentPop
 import { ScheduleDrawer } from '../../../../components/ScheduleDrawer/ScheduleDrawer';
 import { MenuPopover } from '../../../../components/MenuPopover/MenuPopover';
 import { useAppStore } from '../../../../store/useAppStore';
+import { formatFoldId } from '../../../../lib/foldId';
 import { FALLBACK_P360 } from '../../data/p360Mock';
 import { QuickViewExpanded } from './PatientP360BannerExpanded';
 import { DRAWER_ACTIONS, MORE_MENU_LABELS } from './PatientP360Banner.utils';
 import styles from './PatientP360Banner.module.css';
 
-export function PatientP360BannerDrawer({ patient, p }) {
+export function PatientP360BannerDrawer({ patient, p, programCodes }) {
   const [drawerExpanded, setDrawerExpanded] = useState(false);
   const [consentPos, setConsentPos] = useState(null);
   const consentBadgeRef = useRef(null);
@@ -83,7 +84,9 @@ export function PatientP360BannerDrawer({ patient, p }) {
           </div>
           <div className={styles.drawerProfileIdRow}>
             <span className={styles.drawerProfileOrg}>{selectedProfileId === 'central' ? p.health_plan_name : activeProfileName}</span>
-            <span className={styles.drawerProfileIdText}>(#{p.health_plan_id || patient.memberId})</span>
+            {/* health_plan_id already carries its '#' — don't prepend another
+                (the old template rendered "##94949494WIWI"). */}
+            <span className={styles.drawerProfileIdText}>({p.health_plan_id || formatFoldId(patient.memberId)})</span>
             <span className={styles.drawerPlusBadge}>+{(p.insurance_profiles || FALLBACK_P360.insurance_profiles).length - 1}</span>
           </div>
         </div>
@@ -103,7 +106,7 @@ export function PatientP360BannerDrawer({ patient, p }) {
         </button>
       </div>
 
-      {drawerExpanded && <QuickViewExpanded p={p} />}
+      {drawerExpanded && <QuickViewExpanded p={p} programCodes={programCodes} />}
 
       <div className={styles.drawerActionsRow}>
         <div className={styles.drawerActionsList}>
@@ -189,7 +192,9 @@ export function PatientP360BannerDrawer({ patient, p }) {
               <div key={prof.id} className={`${styles.profileOption} ${selectedProfileId === prof.id ? styles.profileOptionSelected : ''}`}
                 onClick={() => { setSelectedProfileId(prof.id); setShowProfileDropdown(false); setDrawerDropdownStyle(null); }}>
                 <div className={styles.profileOptionHeader}>
-                  <div><div className={styles.profileOptionName}>{prof.name}</div><div className={styles.profileOptionSub}>{prof.subtitle}</div></div>
+                  {/* Central Profile IS the FoldHealth identity — show the real
+                      Fold ID; other insurer profiles keep their sample ids. */}
+                  <div><div className={styles.profileOptionName}>{prof.name}</div><div className={styles.profileOptionSub}>{prof.id === 'central' ? `Fold ID: ${formatFoldId(patient.memberId)}` : prof.subtitle}</div></div>
                   {selectedProfileId === prof.id ? <Icon name="solar:check-circle-bold" size={20} color="var(--status-success)" /> : <span className={styles.profileOptionRadio} />}
                 </div>
               </div>

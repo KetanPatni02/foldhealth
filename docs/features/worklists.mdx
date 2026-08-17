@@ -1,0 +1,71 @@
+---
+title: "Worklists overview"
+description: "Nine specialized worklists share one table, one filter language, and one row-click Quick View — pick the one that matches your workflow."
+---
+
+Every worklist in Fold Health is a table over a slice of your population. They share the same building blocks — filter chips, Quick View drawer, bulk bar, search, deep-linkable URLs — so switching between them stays cheap.
+
+## The full list
+
+<CardGroup cols={2}>
+  <Card title="TOC — Transitional Care" icon="hospital-user" href="/features/toc-worklist">
+    Post-discharge patients within 48h or 7d outreach windows.
+  </Card>
+  <Card title="HCC — Risk-Adjustment Coding" icon="file-medical" href="/features/hcc-worklist">
+    Member-level queue for ICD-10 / HCC V28 coding with MEAT evidence, ASM output.
+  </Card>
+  <Card title="HEDIS — Quality Gaps" icon="star" href="/features/hedis-worklist">
+    Care gaps by measure (BCS, COL, CDC…) with clinical-note review.
+  </Card>
+  <Card title="CCM — Chronic Care Management" icon="heart-pulse" href="/features/ccm-worklist">
+    Monthly time-tracked care coordination with billing review.
+  </Card>
+  <Card title="Annual Visit (AWV)" icon="calendar-check" href="/features/awv-worklist">
+    Members due for an Annual Wellness Visit; scheduling-friendly filters.
+  </Card>
+  <Card title="SNP — Special Needs Plan" icon="user-shield" href="/features/snp-worklist">
+    D-SNP and C-SNP members with HRA and Care Plan status.
+  </Card>
+  <Card title="JSA — Joint Site Assessments" icon="clipboard-check" href="/features/jsa-worklist">
+    Field assessment worklist for on-site/home visits.
+  </Card>
+  <Card title="APCM — Billing" icon="receipt" href="/features/apcm-billing">
+    Advanced Primary Care Management billing with attestation.
+  </Card>
+  <Card title="All Patients (deduped)" icon="users" href="/features/all-patients">
+    Union of every worklist by normalized member ID.
+  </Card>
+</CardGroup>
+
+## Everything they share
+
+<Steps>
+  <Step title="Member cell — identical on every list">
+    Name (button → Quick View), `(gender • age)` + DOB tooltip, FoldID tag, preferred-language badge. Click anywhere on the row to open the Quick View.
+  </Step>
+  <Step title="FilterChip filter language">
+    Every filter is `Label ⌄` when empty, `Label : Value ✕` when active. Multi-select where the data allows. Never a plain `<select>`.
+  </Step>
+  <Step title="Bulk bar via checkbox column">
+    Select rows and the **BulkBar** appears with actions scoped to the worklist (assign, change status, add to campaign, export).
+  </Step>
+  <Step title="Deep-linkable state">
+    Filters, sort, page, and open drawer all serialize into the URL hash — send a link and the recipient lands where you are.
+  </Step>
+  <Step title="Live counts">
+    The count next to each worklist name in the SubNav updates as the underlying data changes.
+  </Step>
+</Steps>
+
+## Assignment and roles
+
+Every worklist has an **Assignee** column with a role-aware picker. The picker respects role scoping — HCC has multiple roles (Support, Coder, Reviewer 1, Reviewer 2/QA, Compliance); TOC/CCM/HEDIS use a single Care Manager role.
+
+Bulk **Change Assignee** on any list skips rows already completed for that role and prompts before overwriting an existing assignment.
+
+## Which list should I use?
+
+- Need a workflow **now**? Start on the list that names your task (TOC for a discharge, HCC for coding).
+- Need to see **all patients across programs**? Use [All Patients](/features/all-patients).
+- Need to build a **reusable cohort** and act on it? Use [Population Groups](/features/population-groups).
+- Need to see **historical snapshots**? Use the **Archived Worklists** section of the SubNav.

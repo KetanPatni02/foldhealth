@@ -87,7 +87,7 @@ export function ProgramDetailViewContentHeader({
               <ActionButton icon="solar:download-minimalistic-linear" size="S" tooltip="Download" />
               <Button variant="ghost" size="S" leadingIcon="solar:add-circle-linear" className={styles.actionBtn}>Add Care Plan</Button>
               <Button variant="ghost" size="S"
-                leadingIconElement={<Icon name="solar:pen-2-linear" size={14} color="var(--primary-300)" />}
+                leadingIconElement={<Icon name="solar:pen-2-linear" size={14} />}
                 className={styles.reviewedBtn}>Sign &amp; Share</Button>
               <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
             </>
@@ -95,7 +95,7 @@ export function ProgramDetailViewContentHeader({
             <>
               {assigneePicker}
               {!isMandatoryStep && <Button variant="ghost" size="S" className={styles.actionBtn}>Skip</Button>}
-              <Button variant="ghost" size="S" trailingIconElement={<DownChevronIcon size={14} color="var(--primary-300)" />} className={styles.reviewedBtn}>Sign</Button>
+              <Button variant="ghost" size="S" trailingIconElement={<DownChevronIcon size={14} />} className={styles.reviewedBtn}>Sign</Button>
               <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
             </>
           ) : isProgramTasksStep ? (

@@ -1,6 +1,7 @@
 import { Icon } from '../../../../../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../../../../../components/Icon/DownChevronIcon';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
+import { CloseButton } from '../../../../../../../components/CloseButton/CloseButton';
 import { BannerExpandIcon } from '../../../../../../../components/Icon/BannerExpandIcon';
 import { ProgressRing } from '../../../../../../hcc/DiagPanel/ReviewProgressPopover';
 import { ProgramStatusRing } from '../ProgramStatusRing/ProgramStatusRing.jsx';
@@ -80,7 +81,7 @@ export function ProgramDetailViewHeader({
           )}
           <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
           <span className={styles.headerDivider} />
-          <ActionButton icon="solar:close-square-linear" size="S" tooltip="Close" onClick={onClose} />
+          <CloseButton onClick={onClose} size={16} />
         </div>
       </div>
 

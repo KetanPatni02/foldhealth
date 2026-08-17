@@ -43,7 +43,7 @@ export function ReferralReview() {
           </button>
         ))}
         <div className={styles.spacer} />
-        <Button variant="tertiary" size="S" leadingIcon="solar:add-circle-linear" trailingIconElement={<DownChevronIcon size={14} color="var(--primary-300)" />}>
+        <Button variant="tertiary" size="S" leadingIcon="solar:add-circle-linear" trailingIconElement={<DownChevronIcon size={14} />}>
           New Order
         </Button>
         <span className={styles.tabDivider} />

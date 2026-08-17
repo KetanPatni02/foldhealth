@@ -89,7 +89,7 @@ export function ColumnConfigPopover({
 
   return createPortal(
     <>
-      <div className={styles.overlay} onClick={onClose} />
+      <div aria-hidden="true" className={styles.overlay} onClick={onClose} />
       <div
         className={styles.popover}
         style={{ top, right, width }}
@@ -107,7 +107,7 @@ export function ColumnConfigPopover({
 
           <div className={styles.searchRow}>
             <Icon name="solar:magnifer-linear" size={16} color="var(--neutral-200)" />
-            <input
+            <input aria-label="Search columns"
               type="text"
               value={search}
               placeholder="Search"
