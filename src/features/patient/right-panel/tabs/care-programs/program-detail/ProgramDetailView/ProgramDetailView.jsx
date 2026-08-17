@@ -107,6 +107,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
           setSendTarget={v.setSendTarget}
           setRowMenu={v.setRowMenu}
           setHistoryOpen={v.setHistoryOpen}
+          previewLetter={v.previewLetter}
           isLettersPane={stepFlags.isLettersStep}
           downloadSelectedLetters={v.downloadSelectedLetters}
           letters={v.letters}

@@ -550,6 +550,8 @@
 .table tbody tr:hover .rowActions { opacity: 1; }
 /* File Name — darkest; File Type — muted grey. */
 .fileNameCell { color: var(--neutral-500); }
+.clickable { cursor: pointer; }
+.clickable:hover { text-decoration: underline; }
 .colMuted { color: var(--neutral-300); }
 /* Sent Via chips (neutral-50 pill, neutral-300 text) — one per channel. */
 .viaChips { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }

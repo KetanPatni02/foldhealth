@@ -5,6 +5,10 @@ import { ActionButton } from '../../../../../../components/ActionButton/ActionBu
 import { MONTH_NAMES, parsePickerValue } from './OutreachTab.utils';
 import styles from './OutreachTab.module.css';
 
+// Bespoke rather than the shared DatePicker: DatePicker is a plain
+// `<input type="date">` with no time-of-day support, and this widget needs
+// date + hour/minute selection in one popover — a full swap would drop
+// time selection entirely rather than reuse an equivalent primitive.
 export function OutreachDateTimePicker({ value, onChange, className }) {
   const parsed = parsePickerValue(value);
   const [open, setOpen] = useState(false);

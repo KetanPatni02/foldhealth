@@ -1621,6 +1621,9 @@ export const useAppStore = create((set, get) => ({
       start: r.start_date || '',
       stop: r.stop_date || '',
       sig: r.sig || '',
+      status: r.status || 'Active',
+      note: r.note || '',
+      stopReason: r.stop_reason || '',
       source: r.source,
       openfdaMeta: r.openfda_meta || null,
     }));
@@ -1640,6 +1643,9 @@ export const useAppStore = create((set, get) => ({
       start: med.start || '',
       stop: med.stop || '',
       sig: med.sig || '',
+      status: med.status || 'Active',
+      note: med.note || '',
+      stopReason: med.stopReason || '',
       source: med.source || 'manual',
       openfdaMeta: med.openfdaMeta || null,
     };
@@ -1657,6 +1663,9 @@ export const useAppStore = create((set, get) => ({
         start_date: optimistic.start || null,
         stop_date: optimistic.stop || null,
         sig: optimistic.sig || null,
+        status: optimistic.status,
+        note: optimistic.note || null,
+        stop_reason: optimistic.stopReason || null,
         source: optimistic.source,
         openfda_meta: optimistic.openfdaMeta,
       })

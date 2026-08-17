@@ -6,6 +6,28 @@
   flex-direction: column;
   gap: 16px;
   padding: 16px;
+  /* Drives the .formGrid breakpoint below — width tracks whatever's actually
+     available, whether that's because the left gaps panel is open or the
+     drawer itself resized, not one specific toggle. */
+  container-type: inline-size;
+  container-name: medRecon;
+}
+
+/* Entrance for the "Add New" search/form panels and the discharge-upload
+   panel — a small fade + rise so opening one of those screens feels like a
+   deliberate transition, not a hard cut. */
+@keyframes panelEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.panelEnter {
+  animation: panelEnter var(--duration-medium) var(--ease-out);
 }
 
 /* ── Active Medications header ── */
@@ -73,6 +95,155 @@
   white-space: nowrap;
 }
 
+/* ── Expand/collapse for the extracted-medications card ──
+   grid-template-rows 0fr → 1fr animates height without knowing the
+   content's actual height up front (the row count is dynamic). */
+.extractedCollapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 280ms ease-out;
+}
+.extractedCollapseOpen {
+  grid-template-rows: 1fr;
+}
+.extractedCollapseInner {
+  overflow: hidden;
+  min-height: 0;
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+.extractedCollapseOpen .extractedCollapseInner {
+  opacity: 1;
+}
+
+/* ── Extracted medications (from "Extract Meds") ──
+   Figma 3616:401998 "New Added" — a purple-tinted card holding one row per
+   extracted medication. */
+.extractedList {
+  display: flex;
+  flex-direction: column;
+  border: 0.5px solid var(--primary-200);
+  border-radius: 8px;
+  background: var(--primary-50);
+  overflow: clip;
+}
+.extractedRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.extractedRow:last-child {
+  border-bottom: none;
+}
+/* Sits as its own card floating inside the purple-tinted extracted list,
+   matching the manual-add form card (white bg, purple-200 border) rather
+   than blending into the row stack around it. */
+.extractedEditRow {
+  margin: 8px;
+  padding: 12px;
+  background: var(--neutral-0);
+  border: 1px solid var(--primary-200);
+  border-radius: 8px;
+}
+.extractedText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.extractedName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.extractedMeta {
+  font-size: 14px;
+  color: var(--neutral-300);
+}
+.extractedDot {
+  color: var(--neutral-200);
+}
+
+/* "View Note" toggle on an extracted row — Figma 2556:46848. */
+.viewNoteLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+.viewNoteChevron,
+.viewNoteChevronOpen {
+  transition: transform 0.15s ease-out;
+}
+.viewNoteChevronOpen {
+  transform: rotate(180deg);
+}
+.noteLine {
+  font-size: 14px;
+  color: var(--neutral-300);
+  margin-top: 2px;
+}
+.noteLabel {
+  color: var(--neutral-400);
+}
+
+.extractedActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.extractedDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+}
+.extractedAdd {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--primary-300);
+  white-space: nowrap;
+}
+.extractedIconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.extractedIconBtn:hover {
+  background: var(--neutral-75);
+}
+.extractedIconBtn:active {
+  background: var(--neutral-100);
+}
+
+/* ── Empty state (no active medications) ── */
+.empty {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  border: 1px dashed var(--neutral-150);
+  border-radius: 8px;
+}
+
 /* ── Medications table ── */
 .table {
   display: flex;
@@ -81,7 +252,7 @@
 .headRow,
 .row {
   display: grid;
-  grid-template-columns: 32px minmax(200px, 1.4fr) 110px 110px minmax(200px, 1.6fr);
+  grid-template-columns: 32px minmax(200px, 1.4fr) 110px 110px minmax(200px, 1.6fr) minmax(160px, 1.2fr);
   align-items: center;
   column-gap: 8px;
 }
@@ -99,6 +270,7 @@
 .nameCell { font-size: 14px; color: var(--neutral-500); min-width: 0; }
 .dateCell { font-size: 14px; color: var(--neutral-300); white-space: nowrap; }
 .sigCell { font-size: 14px; color: var(--neutral-300); min-width: 0; }
+.noteCell { font-size: 14px; color: var(--neutral-300); min-width: 0; }
 
 /* ── Medication Checklist ── */
 .checklist {
@@ -127,18 +299,18 @@
   color: var(--neutral-400);
 }
 
-/* ── Add-New panel ─────────────────────────────────────────────
-   Slides in below the Active Medications header when the user
-   clicks "Add New". Two phases (search / form) share this shell so
-   the transition from picking → editing feels like one card. */
+/* ── Manual-add form card ──────────────────────────────────────
+   Figma 2086:24739 — white card, purple-200 border, 8px radius. Only
+   the form phase gets this treatment; the search phase (below) renders
+   without a wrapping card so the search bar sits flush in the panel. */
 .addPanel {
-  border: 1px solid var(--neutral-150);
-  border-radius: 10px;
-  background: var(--neutral-25);
+  border: 1px solid var(--primary-200);
+  border-radius: 8px;
+  background: var(--neutral-0);
   padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .searchRow {
@@ -146,10 +318,6 @@
   align-items: center;
   gap: 8px;
   padding-inline: 4px;
-}
-.searchInput {
-  flex: 1;
-  min-width: 0;
 }
 .searchHint {
   font-size: 12px;
@@ -167,60 +335,104 @@
   padding: 4px 6px 0;
 }
 
-.resultList {
-  list-style: none;
-  margin: 4px 0 0;
-  padding: 0;
-  max-height: 260px;
-  overflow-y: auto;
-  border-top: 1px solid var(--neutral-150);
-}
-.resultItem {
-  width: 100%;
+/* ── Form phase (a medication picked from search) ──────────────────
+   Sits inside .addPanel, which already supplies the card's border/
+   background — this is just the internal layout. */
+.formCard {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  padding: 8px 10px;
-  background: none;
-  border: 0;
-  border-radius: 6px;
-  cursor: pointer;
-  text-align: left;
-  transition: background var(--duration-fast) var(--ease-out);
-}
-.resultItem:hover,
-.resultItem:focus-visible {
-  background: var(--primary-25);
-  outline: none;
-}
-.resultName {
-  font-size: 14px;
-  color: var(--neutral-500);
-  font-weight: 500;
-}
-.resultMeta {
-  font-size: 12px;
-  color: var(--neutral-300);
-}
-
-/* Form-phase row — mirrors the .row grid so the inline draft aligns
-   with the columns of the table below. */
-.formRow {
-  display: grid;
-  /* Matches .headRow / .row exactly so the inline draft aligns column-for-
-     column with the table below. */
-  grid-template-columns: 32px minmax(200px, 1.4fr) 110px 110px minmax(200px, 1.6fr);
   gap: 12px;
-  align-items: center;
-  padding: 6px 0;
 }
-.formCell {
+.formMedName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.required { color: var(--status-error); margin-left: 2px; }
+
+/* Status + Start Date pair up by default; Sig spans the full width below
+   them. Once the container is wide enough (e.g. the left gaps panel is
+   closed), all three collapse onto one row. */
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+}
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   min-width: 0;
 }
+.formFieldLabel {
+  font-size: 13px;
+  color: var(--neutral-300);
+}
+.formFieldWide {
+  grid-column: 1 / -1;
+}
+@container medRecon (min-width: 640px) {
+  .formGrid { grid-template-columns: 1fr 1fr 1.4fr; }
+  .formFieldWide { grid-column: auto; }
+  /* Stopped adds Stop Date + Reason, pushing Sig to its own row with only
+     Reason ahead of it — span the rest of that row instead of one cell. */
+  .formFieldWideStopped { grid-column: 2 / -1; }
+}
+
+.formAddNoteLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-300);
+}
+.formNoteBox {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.formNoteHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.formNoteClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+}
+
 .formActions {
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
   padding-top: 4px;
+}
+.formDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+}
+.formCancel {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-300);
+}
+.formCancel:disabled {
+  cursor: default;
+  opacity: 0.5;
 }

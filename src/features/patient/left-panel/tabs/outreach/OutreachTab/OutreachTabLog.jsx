@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../../../../components/Icon/DownChevronIcon';
 import { SmsIcon } from '../../../../../../components/Icon/SmsIcon';
+import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { LOG_TYPE_ICON } from './OutreachTab.utils';
 import styles from './OutreachTab.module.css';
@@ -16,16 +17,13 @@ function LogRowMenu({ log, onEdit, onDelete }) {
   ];
   return (
     <span className={styles.logRowMenuWrap}>
-      <button
-        type="button"
+      <ActionButton
         ref={btnRef}
-        className={styles.logRowMenuTrigger}
+        icon="solar:menu-dots-linear"
+        size="S"
+        tooltip="More actions"
         onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
-        aria-label="More actions"
-        title="More actions"
-      >
-        <Icon name="solar:menu-dots-linear" size={14} color="var(--neutral-300)" />
-      </button>
+      />
       {open && (
         <MenuPopover
           anchorRef={btnRef}
