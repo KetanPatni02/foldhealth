@@ -136,7 +136,6 @@
   padding: 14px; position: relative; overflow: hidden; transition: border-color .15s;
 }
 .kpiCard:hover { border-color: var(--primary-200); }
-.kpiAccent { position: absolute; bottom: 0; left: 0; right: 0; height: 2px; }
 .kpiEyebrow {
   font-size: 10px; color: var(--neutral-300); font-weight: 500; margin-bottom: 4px;
   text-transform: uppercase; letter-spacing: .4px;
@@ -218,13 +217,10 @@
    ────────────────────────────────────────────── */
 .insight {
   background: var(--primary-50); border: 0.5px solid var(--neutral-150);
-  border-left: 3px solid var(--primary-300); border-radius: 8px;
+  border-radius: 8px;
   padding: 12px 14px; display: flex; align-items: flex-start; gap: 10px;
   margin-bottom: 14px;
 }
-.insight.amber { border-left-color: var(--status-warning); }
-.insight.red { border-left-color: var(--status-error); }
-.insight.green { border-left-color: var(--status-success); }
 .insightIcon {
   width: 28px; height: 28px; background: var(--primary-100); border-radius: 6px;
   display: grid; place-items: center; flex-shrink: 0; margin-top: 1px;
@@ -260,7 +256,7 @@
 .prLabel { font-size: 14px; font-weight: 400; color: var(--neutral-400); }
 .prValue { font-size: 14px; font-weight: 500; color: var(--neutral-500); }
 .prTrack { height: 4px; background: var(--neutral-75); border-radius: 10px; overflow: hidden; margin-bottom: 4px; }
-.prFill { height: 100%; border-radius: 10px; transition: width .7s cubic-bezier(.4,0,.2,1); }
+.prFill { height: 100%; width: 100%; border-radius: 10px; transform-origin: left; transition: transform .7s cubic-bezier(.4,0,.2,1); }
 .prFill.purple { background: var(--primary-300); }
 .prFill.green { background: var(--status-success); }
 .prFill.amber { background: var(--status-warning); }

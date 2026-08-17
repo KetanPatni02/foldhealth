@@ -94,7 +94,7 @@ export function AiAnalyticsView({ showToast, editing = false, resetTick = 0 }) {
   const renderAnomalies = () => (
     <Card title="Anomaly Detection" actions={<Button variant="ghost" size="S" onClick={() => showToast?.('Configuring alert thresholds')}>Configure Thresholds</Button>}>
       {anomalyList.map((a, i) => (
-        <div key={i} className={s.ruleCard} style={{ borderLeft: `3px solid ${a.severity === 'red' ? 'var(--status-error)' : 'var(--status-warning)'}` }}>
+        <div key={i} className={s.ruleCard}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className={`${s.stPill} ${a.severity === 'red' ? s.stRed : s.stAmber}`}>
               {a.severity === 'red' ? 'Critical' : 'Warning'}

@@ -71,7 +71,7 @@ export function ActionRulesView({ showToast, editing = false, resetTick = 0 }) {
   };
 
   const renderInline = () => (
-    <Card style={{ borderTop: '3px solid var(--primary-300)' }} title="1. Inline Actions" sub="User-triggered from dashboard context">
+    <Card title="1. Inline Actions" sub="User-triggered from dashboard context">
       {inlineRules.map((r, i) => (
         <div key={i} className={s.ruleCard}>
           <div className={s.ruleTrigger}>{r.trigger}</div>
@@ -83,7 +83,7 @@ export function ActionRulesView({ showToast, editing = false, resetTick = 0 }) {
   );
 
   const renderAutomated = () => (
-    <Card style={{ borderTop: '3px solid var(--status-warning)' }} title="2. Automated Rules Engine" sub="Configurable thresholds trigger actions">
+    <Card title="2. Automated Rules Engine" sub="Configurable thresholds trigger actions">
       {automatedRules.map((r, i) => (
         <div key={i} className={s.ruleCard}>
           <div className={s.ruleTrigger}>{r.trigger}</div>
@@ -95,7 +95,7 @@ export function ActionRulesView({ showToast, editing = false, resetTick = 0 }) {
   );
 
   const renderAgent = () => (
-    <Card style={{ borderTop: '3px solid var(--secondary-300)' }} title="3. Agent-Triggered Actions" sub="AI-initiated multi-step interventions">
+    <Card title="3. Agent-Triggered Actions" sub="AI-initiated multi-step interventions">
       {agentRules.map((r, i) => (
         <div key={i} className={s.ruleCard}>
           <div className={s.ruleTrigger}>{r.trigger}</div>

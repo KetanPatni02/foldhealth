@@ -78,7 +78,7 @@ export function UtilizationView({ showToast, editing = false, resetTick = 0 }) {
   const renderAdtAlert = () => (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 10,
-      background: 'var(--status-error-light)', border: '1px solid var(--status-error-light)', borderRadius: 8,
+      background: 'var(--status-error-light)', border: '0.5px solid var(--status-error)', borderRadius: 8,
       padding: '12px 16px'
     }}>
       <div style={{ fontSize: 18 }}>&#x1F6A8;</div>

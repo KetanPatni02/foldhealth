@@ -117,7 +117,6 @@ export function KpiCard({ value, label, delta, deltaType = 'pos', sub, accentCol
         </span>
       )}
       {sub && <div className={s.kpiSub}>{sub}</div>}
-      {accentColor && <div className={s.kpiAccent} style={{ background: accentColor }} />}
     </div>
   );
 }
@@ -195,7 +194,7 @@ export function ProgressBar({ label, value, pct, color = 'purple', sub }) {
         <span className={s.prValue}>{value}</span>
       </div>
       <div className={s.prTrack}>
-        <div className={`${s.prFill} ${s[color]}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+        <div className={`${s.prFill} ${s[color]}`} style={{ transform: `scaleX(${Math.min(pct, 100) / 100})` }} />
       </div>
       {sub && <div className={s.prSub}>{sub}</div>}
     </div>

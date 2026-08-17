@@ -627,7 +627,7 @@ function ProgramsTab({ showToast, programsDetail, programsLoading, editing = fal
       {programs.map((p, i) => {
         const enrollColor = p.enrolled < 60 ? 'var(--status-error)' : p.enrolled < 75 ? 'var(--status-warning)' : 'var(--status-success)';
         return (
-          <Card key={i} style={{ borderLeft: `4px solid ${p.color}` }}>
+          <Card key={i}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 14, fontWeight: 500 }}>
