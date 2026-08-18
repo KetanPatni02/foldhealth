@@ -2,7 +2,6 @@ import { Icon } from '../../components/Icon/Icon';
 import { BotIcon } from '../../components/Icon/BotIcon';
 import { Badge } from '../../components/Badge/Badge';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
-import { Link } from '../../components/Link/Link';
 import rowStyles from '../toc-worklist/WorklistRow.module.css';
 import styles from './tocColumns.module.css';
 
@@ -17,7 +16,7 @@ const PROGRAM_SUB_STATUS = {
 const OUTREACH_STATUS = {
   Completed: { tone: 'success', icon: 'solar:check-circle-linear' },
   'Needs Review': { tone: 'error', icon: 'solar:danger-triangle-linear' },
-  Scheduled: { tone: 'warning', icon: 'solar:clock-circle-linear' },
+  Queued: { tone: 'warning', icon: 'solar:clock-circle-linear' },
 };
 
 const ADMIT_CLASS = { IP: 'Inpatient', ED: 'Emergency' };
@@ -79,7 +78,7 @@ function outreachStatusLabel(p) {
   if (p.status === 'completed' || p.outreachStatus === 'Completed') return 'Completed';
   if (p.status === 'failed' || p.status === 'review' || p.outreachStatus === 'Overdue') return 'Needs Review';
   if (p.outreachStatus === 'Attempted') return 'Needs Review';
-  return 'Scheduled';
+  return 'Queued';
 }
 
 function riskIq(p) {
@@ -126,7 +125,7 @@ export function enrichTocRow(p) {
     admitClassSort: ADMIT_CLASS[p.tocType] || 'Inpatient',
     laceSort: LACE_RANK[p.lace] ?? 3,
     aiOutcomeSort: outreachStatusLabel(p),
-    assessmentSort: `TOC ${p.tocType === 'ED' ? 'ED' : 'IP'} Assessment`,
+    assessmentSort: assessmentLabel(p),
     nextActionDueSort: parseMdy(p.dueOn || p.nextOutreach),
     outreachSort: parseMdy(p.outreachDate || p.callDate),
     lastOutreachBySort: resolveLastOutreachBy(p).name,
@@ -165,6 +164,82 @@ function RoleAssignee({ name, initials, field, patient, ctx, pickerTitle }) {
       onSelect={onSelect}
       pickerTitle={pickerTitle}
     />
+  );
+}
+
+function AssessmentCompletedIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+      <path
+        d="M2.22266 5.37385L3.71623 7.03337C3.97174 7.31727 4.41308 7.32888 4.68316 7.0588L8.18629 3.55566"
+        stroke="var(--status-success)"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function AssessmentPendingIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+      <path
+        d="M5.33301 1.3335V2.66683M9.33301 5.3335H7.99967M5.33301 9.3335V8.00016M1.33301 5.3335H2.66634M2.50452 2.50507L3.44733 3.44787M8.16138 2.50507L7.21857 3.44788M8.1615 8.16191L7.21869 7.2191M2.50464 8.16191L3.44745 7.2191"
+        stroke="var(--status-warning)"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function assessmentLabel(p) {
+  return `TOC ${p.tocType === 'ED' ? 'ED' : 'IP'} Assessment`;
+}
+
+function sampleAssessmentCompletedDate(p) {
+  const n = String(p.id || '').split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+  const month = 1 + (n % 12);
+  const day = 1 + (n % 28);
+  return `${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}/2025`;
+}
+
+/** Completed vs pending layouts — Figma 1468:158068 / 3048:85368. */
+function resolveAssessmentDisplay(p) {
+  const label = assessmentLabel(p);
+  const status = p.assessmentStatus;
+  const isCompleted = status === 'Completed'
+    || (!status && String(p.id || '').split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0) % 5 === 0);
+
+  if (isCompleted) {
+    const date = p.startDate || p.dischargeDate || sampleAssessmentCompletedDate(p);
+    return { label, isCompleted: true, meta: `Completed • ${date}` };
+  }
+  return { label, isCompleted: false, meta: 'Pending' };
+}
+
+function AssessmentCell({ patient, onOpen }) {
+  const { label, isCompleted, meta } = resolveAssessmentDisplay(patient);
+  return (
+    <button
+      type="button"
+      className={styles.assessmentBtn}
+      onClick={(e) => { e.stopPropagation(); onOpen(); }}
+      aria-label={`Open assessment for ${patient.name}`}
+    >
+      <span className={styles.assessmentLink}>
+        <span>{label}</span>
+        <Icon name="solar:alt-arrow-right-linear" size={14} color="var(--neutral-400)" />
+      </span>
+      <span className={styles.assessmentMeta}>
+        <span
+          className={`${styles.statusDot} ${isCompleted ? styles.statusDotCompleted : styles.statusDotPending}`}
+          aria-hidden="true"
+        >
+          {isCompleted ? <AssessmentCompletedIcon /> : <AssessmentPendingIcon />}
+        </span>
+        <span>{meta}</span>
+      </span>
+    </button>
   );
 }
 
@@ -331,19 +406,15 @@ export const TOC_MIDDLE_COLUMNS = [
     label: 'AI Assessment',
     sortKey: 'assessmentSort',
     sortType: 'alpha',
-    tdClassName: rowStyles.td,
+    width: 200,
+    tdClassName: `${rowStyles.td} ${styles.assessmentTd}`,
     tdStyle: BAND,
-    thStyle: BAND_TH,
+    thStyle: { ...BAND_TH, minWidth: 200 },
     renderCell: (p, ctx) => (
-      <button
-        type="button"
-        className={styles.assessmentBtn}
-        onClick={(e) => { e.stopPropagation(); ctx.openAssessmentDrawer(p.id); }}
-        aria-label={`Open assessment for ${p.name}`}
-      >
-        <Link>TOC {p.tocType === 'ED' ? 'ED' : 'IP'} Assessment</Link>
-        <Icon name="solar:alt-arrow-right-linear" size={14} color="var(--primary-300)" />
-      </button>
+      <AssessmentCell
+        patient={p}
+        onOpen={() => ctx.openAssessmentDrawer(p.id)}
+      />
     ),
   },
   {
