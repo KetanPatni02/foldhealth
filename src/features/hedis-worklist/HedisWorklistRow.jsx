@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Avatar } from '../../components/Avatar/Avatar';
+import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { Badge } from '../../components/Badge/Badge';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
@@ -97,38 +99,59 @@ export const HEDIS_MIDDLE_COLUMNS = [
     key: 'totalGaps',
     label: 'Total Gaps',
     stopRowClickPropagation: true,
-    getTdClassName: (member) => (
-      (Array.isArray(member.gaps) && member.gaps.length === 1)
+    // Single-gap rows center vertically. `visibleGaps` comes from cellCtx and
+    // reflects the collapse state, so a 3-gap row collapsed to 2 stays top-
+    // aligned like other multi-gap rows.
+    getTdClassName: (member, ctx) => (
+      (ctx?.visibleGaps?.length === 1)
         ? `${styles.tdGap} ${styles.tdGapCenter}`
         : styles.tdGap
     ),
     renderCell: (member, ctx) => (
       <div className={styles.gapItems}>
-        {(member.gaps || []).map(g => (
+        {(ctx.visibleGaps || []).map(g => (
           <div key={g.code} className={styles.gapItem}>
             <span onClick={() => ctx.onOpenGap?.(member, g.code)} style={{ cursor: 'pointer' }}>
               <Badge size="M" variant="compliance-na" label={g.code} />
             </span>
           </div>
         ))}
+        {ctx.extraCount > 0 && (
+          <div className={styles.gapFooter}>
+            <button
+              type="button"
+              className={styles.viewMoreBtn}
+              onClick={(e) => { e.stopPropagation(); ctx.toggleExpanded(); }}
+            >
+              {ctx.expanded ? 'View Less' : `View More ${ctx.extraCount}`}
+              <Icon
+                name={ctx.expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
+                size={12}
+                color="var(--neutral-300)"
+              />
+            </button>
+          </div>
+        )}
       </div>
     ),
   },
   {
     key: 'gapStatus',
     label: 'Gap Status',
-    getTdClassName: (member) => (
-      (Array.isArray(member.gaps) && member.gaps.length === 1)
+    getTdClassName: (member, ctx) => (
+      (ctx?.visibleGaps?.length === 1)
         ? `${styles.tdGap} ${styles.tdGapCenter}`
         : styles.tdGap
     ),
-    renderCell: (member) => (
+    renderCell: (member, ctx) => (
       <div className={styles.gapItems}>
-        {(member.gaps || []).map(g => (
+        {(ctx.visibleGaps || []).map(g => (
           <div key={g.code} className={styles.gapItem}>
             <Badge size="M" variant={STATUS_BADGE_VARIANT[g.status] || 'ai-neutral'} label={g.status} />
           </div>
         ))}
+        {/* Empty spacer keeps this column bottom-aligned with Total Gaps' expander. */}
+        {ctx.extraCount > 0 && <div className={styles.gapFooter} />}
       </div>
     ),
   },
@@ -136,34 +159,42 @@ export const HEDIS_MIDDLE_COLUMNS = [
     key: 'assignee',
     label: 'Assignee',
     stopRowClickPropagation: true,
-    getTdClassName: (member) => (
-      (Array.isArray(member.gaps) && member.gaps.length === 1)
+    getTdClassName: (member, ctx) => (
+      (ctx?.visibleGaps?.length === 1)
         ? `${styles.tdGap} ${styles.tdGapCenter}`
         : styles.tdGap
     ),
     renderCell: (member, ctx) => (
       <div className={styles.gapItems}>
-        {(member.gaps || []).map(g => {
+        {(ctx.visibleGaps || []).map(g => {
           const assignee = g.assignee ?? member.assignee;
+          // Gap-level overrides carry name only — derive initials from words
+          // so the avatar always has content. Member-level overrides keep the
+          // curated `assigneeInitials` (handles edge cases like "Dr." prefixes).
+          const initials = (g.assignee && g.assignee !== member.assignee)
+            ? assignee.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('')
+            : (member.assigneeInitials
+                || assignee?.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join(''));
           return (
             <div key={g.code} className={styles.gapItem}>
               {assignee ? (
-                <div className={styles.assigneeName}>
-                  <Icon name="solar:user-linear" size={14} color="var(--neutral-400)" />
-                  <span>{assignee}</span>
-                </div>
+                <AssigneeChange
+                  name={assignee}
+                  initials={initials}
+                  showRole={false}
+                  onClick={() => ctx.showToast(`Change assignee for ${assignee} — coming soon`)}
+                />
               ) : (
-                <button
-                  className={styles.assigneeBtn}
+                <AssigneeChange
+                  unassigned
+                  unassignedLabel="Assign"
                   onClick={() => ctx.showToast('Assign care manager — coming soon')}
-                >
-                  <Icon name="solar:user-linear" size={14} color="var(--neutral-200)" />
-                  Assign
-                </button>
+                />
               )}
             </div>
           );
         })}
+        {ctx.extraCount > 0 && <div className={styles.gapFooter} />}
       </div>
     ),
   },
@@ -171,18 +202,19 @@ export const HEDIS_MIDDLE_COLUMNS = [
     key: 'startDate',
     label: 'Start Date',
     sortKey: 'startDate',
-    getTdClassName: (member) => (
-      (Array.isArray(member.gaps) && member.gaps.length === 1)
+    getTdClassName: (member, ctx) => (
+      (ctx?.visibleGaps?.length === 1)
         ? `${styles.tdGap} ${styles.tdGapCenter} ${styles.tdGapDivide}`
         : `${styles.tdGap} ${styles.tdGapDivide}`
     ),
-    renderCell: (member) => (
+    renderCell: (member, ctx) => (
       <div className={styles.gapItems}>
-        {(member.gaps || []).map(g => (
+        {(ctx.visibleGaps || []).map(g => (
           <div key={g.code} className={styles.gapItem}>
             <span className={styles.startDateValue}>{g.startDate ?? member.startDate}</span>
           </div>
         ))}
+        {ctx.extraCount > 0 && <div className={styles.gapFooter} />}
       </div>
     ),
   },
@@ -236,14 +268,36 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
     .filter(c => !c.sticky && !c.showCheckbox && c.renderCell);
   const visibleMiddle = hiddenSet ? middleCols.filter(c => !hiddenSet.has(c.key)) : middleCols;
 
-  const cellCtx = { onOpenGap, showToast };
+  // Collapse to the first 2 gaps and surface a "View More N" toggle in the
+  // Total Gaps column, mirroring the HCC worklist's DOS collapse pattern.
+  const MAX_INLINE_GAPS = 2;
+  const [expanded, setExpanded] = useState(false);
+  const visibleGaps = expanded ? gaps : gaps.slice(0, MAX_INLINE_GAPS);
+  const extraCount = Math.max(0, gaps.length - MAX_INLINE_GAPS);
+
+  const cellCtx = {
+    onOpenGap,
+    showToast,
+    visibleGaps,
+    extraCount,
+    expanded,
+    toggleExpanded: () => setExpanded(v => !v),
+  };
 
   const langShort = (member.language || 'en').toUpperCase();
   const langFull = LANG_MAP[member.language] || member.language;
 
+  // Multi-gap rows top-align member / per-member cells so the patient name
+  // and single-value columns don't float in the middle of a tall stacked row.
+  const multiGap = gaps.length > 1;
+
   return (
     <tr
-      className={[styles.row, isSelected ? styles.rowChecked : ''].filter(Boolean).join(' ')}
+      className={[
+        styles.row,
+        isSelected ? styles.rowChecked : '',
+        multiGap ? styles.rowMultiGap : '',
+      ].filter(Boolean).join(' ')}
       onClick={() => onOpenGap?.(member, primaryGap.code)}
     >
       {/* Checkbox */}
@@ -287,7 +341,7 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
       </td>
 
       {visibleMiddle.map(col => {
-        const className = col.getTdClassName ? col.getTdClassName(member) : (col.tdClassName || styles.td);
+        const className = col.getTdClassName ? col.getTdClassName(member, cellCtx) : (col.tdClassName || styles.td);
         return (
           <td
             key={col.key}

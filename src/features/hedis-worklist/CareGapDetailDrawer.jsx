@@ -171,37 +171,44 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
       </Drawer>
 
       {assigneePos && createPortal(
-        <>
-          <div aria-hidden="true" className={styles.assigneeMenuOverlay} onClick={closeAssignee} />
-          <div className={styles.assigneeMenu} style={{ top: assigneePos.top, right: assigneePos.right }} role="menu">
-            <div className={styles.assigneeMenuHeader}>{gap.assignee ? 'Change Assignee' : 'Assign to'}</div>
-            <div className={styles.assigneeMenuSearch}>
-              <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-300)" />
-              <input aria-label="Search users" autoFocus type="text" className={styles.assigneeMenuInput} placeholder="Search users…"
-                value={assigneeQuery} onChange={(e) => setAssigneeQuery(e.target.value)} />
-            </div>
-            <div className={styles.assigneeMenuList}>
-              {(() => {
-                const q = assigneeQuery.trim().toLowerCase();
-                const list = q ? platformUsers.filter(u => u.name.toLowerCase().includes(q)) : platformUsers;
-                if (list.length === 0) return <div className={styles.assigneeMenuEmpty}>{q ? 'No users match your search.' : 'No users found.'}</div>;
-                return list.map(u => (
-                  <button key={u.id} type="button" className={`${styles.assigneeMenuItem} ${gap.assignee === u.name ? styles.assigneeMenuItemActive : ''}`}
-                    onClick={() => { updateGapAssignee(member.id, gap.code, u.name); closeAssignee(); }}>
-                    <Avatar variant="assignee" initials={u.initials} />
-                    <span className={styles.assigneeMenuName}>{u.name}</span>
-                    {gap.assignee === u.name && <Icon name="solar:check-read-linear" size={12} color="var(--primary-300)" />}
+        (() => {
+          // Effective assignee = gap-level override, else the member-level
+          // default (same fallback the table row and the header chip use).
+          const effectiveAssignee = gap.assignee ?? member?.assignee ?? null;
+          return (
+            <>
+              <div aria-hidden="true" className={styles.assigneeMenuOverlay} onClick={closeAssignee} />
+              <div className={styles.assigneeMenu} style={{ top: assigneePos.top, right: assigneePos.right }} role="menu">
+                <div className={styles.assigneeMenuHeader}>{effectiveAssignee ? 'Change Assignee' : 'Assign to'}</div>
+                <div className={styles.assigneeMenuSearch}>
+                  <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-300)" />
+                  <input aria-label="Search users" autoFocus type="text" className={styles.assigneeMenuInput} placeholder="Search users…"
+                    value={assigneeQuery} onChange={(e) => setAssigneeQuery(e.target.value)} />
+                </div>
+                <div className={styles.assigneeMenuList}>
+                  {(() => {
+                    const q = assigneeQuery.trim().toLowerCase();
+                    const list = q ? platformUsers.filter(u => u.name.toLowerCase().includes(q)) : platformUsers;
+                    if (list.length === 0) return <div className={styles.assigneeMenuEmpty}>{q ? 'No users match your search.' : 'No users found.'}</div>;
+                    return list.map(u => (
+                      <button key={u.id} type="button" className={`${styles.assigneeMenuItem} ${effectiveAssignee === u.name ? styles.assigneeMenuItemActive : ''}`}
+                        onClick={() => { updateGapAssignee(member.id, gap.code, u.name); closeAssignee(); }}>
+                        <Avatar variant="assignee" initials={u.initials} />
+                        <span className={styles.assigneeMenuName}>{u.name}</span>
+                        {effectiveAssignee === u.name && <Icon name="solar:check-read-linear" size={12} color="var(--primary-300)" />}
+                      </button>
+                    ));
+                  })()}
+                </div>
+                {effectiveAssignee && (
+                  <button type="button" className={styles.assigneeMenuClear} onClick={() => { updateGapAssignee(member.id, gap.code, null); closeAssignee(); }}>
+                    <Icon name="solar:user-cross-linear" size={14} color="var(--status-error)" /> Unassign
                   </button>
-                ));
-              })()}
-            </div>
-            {gap.assignee && (
-              <button type="button" className={styles.assigneeMenuClear} onClick={() => { updateGapAssignee(member.id, gap.code, null); closeAssignee(); }}>
-                <Icon name="solar:user-cross-linear" size={14} color="var(--status-error)" /> Unassign
-              </button>
-            )}
-          </div>
-        </>, document.body,
+                )}
+              </div>
+            </>
+          );
+        })(), document.body,
       )}
 
       {moreMenuRect && createPortal(

@@ -34,8 +34,14 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
   role,
   showRole = true,          // toggle the role sub-line on/off independently of the value
   unassigned = false,
+  unassignedLabel = 'Assign User',
   size = 'M',              // 'M' | 'S'
   avatarOnly = false,
+  // hideAvatar drops the initials avatar in the assigned state and swaps the
+  // outlined person avatar for a plain leading Solar icon in the unassigned
+  // state. Ignored in `avatarOnly` mode (the avatar IS the affordance there).
+  hideAvatar = false,
+  leadingIconName = 'solar:user-plus-rounded-linear',
   disabled = false,
   users,
   onSelect,
@@ -49,6 +55,27 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
   const [pos, setPos] = useState(null);
   const [query, setQuery] = useState('');
   const hasPicker = Array.isArray(users);
+
+  // Hover / focus tooltip — only for the avatar-only variant where the pill
+  // hides the name and role. Matches the HCC RoleTooltip visual spec (Figma
+  // node 50:297369): white card, 24×24 initials avatar, name + role stacked,
+  // 6px arrow tail centred under the card.
+  const canShowTooltip = avatarOnly && !unassigned && (name || role);
+  const [tipRect, setTipRect] = useState(null);
+  const tipTimer = useRef(null);
+  useEffect(() => () => tipTimer.current && clearTimeout(tipTimer.current), []);
+  const openTip = () => {
+    if (!canShowTooltip || disabled) return;
+    if (tipTimer.current) clearTimeout(tipTimer.current);
+    tipTimer.current = setTimeout(() => {
+      const r = btnRef.current?.getBoundingClientRect();
+      if (r) setTipRect(r);
+    }, 120);
+  };
+  const closeTip = () => {
+    if (tipTimer.current) { clearTimeout(tipTimer.current); tipTimer.current = null; }
+    setTipRect(null);
+  };
 
   const setRefs = useCallback((el) => {
     btnRef.current = el;
@@ -132,15 +159,23 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
       aria-disabled={disabled || undefined}
       aria-haspopup={hasPicker ? 'menu' : undefined}
       aria-expanded={hasPicker ? !!pos : undefined}
+      onMouseEnter={openTip}
+      onMouseLeave={closeTip}
+      onFocus={openTip}
+      onBlur={closeTip}
     >
-      <Avatar
-        type="icon"
-        variant="others"
-        size={size === 'S' ? 'XS' : 'S'}
-        iconName="solar:user-rounded-linear"
-        className={avatarOnly ? styles.avatarInner : undefined}
-      />
-      {!avatarOnly && <span className={styles.textLabel}>Assign User</span>}
+      {hideAvatar && !avatarOnly ? (
+        <Icon name={leadingIconName} size={14} color="var(--neutral-200)" />
+      ) : (
+        <Avatar
+          type="icon"
+          variant="others"
+          size={size === 'S' ? 'XS' : 'S'}
+          iconName="solar:user-rounded-linear"
+          className={avatarOnly ? styles.avatarInner : undefined}
+        />
+      )}
+      {!avatarOnly && <span className={styles.textLabel}>{unassignedLabel}</span>}
       <DownChevronIcon size={14} color={chevronColor} className={styles.chevron} />
     </button>
   ) : (
@@ -153,13 +188,19 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
       aria-disabled={disabled || undefined}
       aria-haspopup={hasPicker ? 'menu' : undefined}
       aria-expanded={hasPicker ? !!pos : undefined}
+      onMouseEnter={openTip}
+      onMouseLeave={closeTip}
+      onFocus={openTip}
+      onBlur={closeTip}
     >
-      <Avatar
-        variant="staff"
-        initials={initials}
-        size={avatarSize}
-        className={avatarOnly ? styles.avatarInner : undefined}
-      />
+      {!(hideAvatar && !avatarOnly) && (
+        <Avatar
+          variant="staff"
+          initials={initials}
+          size={avatarSize}
+          className={avatarOnly ? styles.avatarInner : undefined}
+        />
+      )}
       {!avatarOnly && (
         <span className={styles.textBody}>
           <span className={styles.name} title={name}>{name}</span>
@@ -173,6 +214,23 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
   return (
     <>
       {trigger}
+      {tipRect && canShowTooltip && createPortal(
+        <div
+          className={styles.tooltip}
+          style={{ top: tipRect.top - 8, left: tipRect.left + tipRect.width / 2 }}
+          role="tooltip"
+        >
+          <div className={styles.tooltipCard}>
+            <Avatar variant="staff" initials={initials} className={styles.tooltipAvatar} />
+            <span className={styles.tooltipText}>
+              {name && <span className={styles.tooltipName}>{name}</span>}
+              {role && <span className={styles.tooltipRole}>{role}</span>}
+            </span>
+          </div>
+          <span className={styles.tooltipTail} aria-hidden="true" />
+        </div>,
+        document.body,
+      )}
       {hasPicker && pos && createPortal(
         <div
           className={styles.menu}
