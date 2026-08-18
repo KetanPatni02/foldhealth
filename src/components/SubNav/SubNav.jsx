@@ -8,7 +8,8 @@ import styles from './SubNav.module.css';
 const WORKLISTS = [
   { label: 'SNP', filter: null, view: 'snp' },
   { label: 'Annual Visit', filter: null },
-  { label: 'TOC', filter: null },  // default — shows all TOC patients
+  { label: 'TOC', filter: null, view: 'toc' },
+  { label: 'TCM', filter: null },
   { label: 'HCC', filter: null, view: 'hcc' },
   { label: 'HEDIS', filter: null, view: 'hedis' },
   { label: 'CCM', filter: null, view: 'ccm' },
@@ -38,6 +39,7 @@ export function SubNav({ collapsed }) {
   const fetchCallDetails = useAppStore(s => s.fetchCallDetails);
   const fetchWorklistOrder = useAppStore(s => s.fetchWorklistOrder);
   const saveWorklistOrder = useAppStore(s => s.saveWorklistOrder);
+  const fetchWorklistColumnPrefs = useAppStore(s => s.fetchWorklistColumnPrefs);
   const worklistOrder = useAppStore(s => s.worklistOrder);
   const clearSelected = useAppStore(s => s.clearSelected);
   const clearHccSelected = useAppStore(s => s.clearHccSelected);
@@ -57,13 +59,17 @@ export function SubNav({ collapsed }) {
     fetchPatients();
     fetchCallDetails();
     fetchWorklistOrder(WORKLIST_LABELS);
+    fetchWorklistColumnPrefs();
   }, []);
 
   // User-ordered worklists — store order or the default until the fetch
   // resolves. Reconciled here as well (not just in the store) because the
   // localStorage-cached order may predate a newly added worklist.
   const orderedWorklists = useMemo(() => {
-    const saved = (worklistOrder || []).filter(l => WORKLIST_BY_LABEL[l]);
+    let saved = (worklistOrder || []).filter(l => WORKLIST_BY_LABEL[l]);
+    if (saved.includes('TOC') && !saved.includes('TCM')) {
+      saved = saved.map(l => (l === 'TOC' ? 'TCM' : l));
+    }
     const order = saved.length > 0
       ? [...saved, ...WORKLIST_LABELS.filter(l => !saved.includes(l))]
       : WORKLIST_LABELS;
@@ -95,7 +101,8 @@ export function SubNav({ collapsed }) {
       else if (list.view === 'snp') counts[list.label] = snpWorklistMembers.length;
       else if (list.view === 'jsa') counts[list.label] = jsaMembers.length;
       else if (list.label === 'Annual Visit') counts[list.label] = awvMembers.length;
-      else if (list.label === 'TOC') counts[list.label] = patients.length;
+      else if (list.label === 'TCM') counts[list.label] = patients.length;
+      else if (list.label === 'TOC') counts[list.label] = patients.filter(p => p.agentAssigned).length;
       else counts[list.label] = 0;
     }
     return counts;

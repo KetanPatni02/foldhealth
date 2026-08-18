@@ -17,7 +17,7 @@ export const FILTER_DEFS = [
     { value: 'Medium', label: 'Medium' },
     { value: 'Low', label: 'Low' },
   ]},
-  { key: 'tocStatus', label: 'TOC Status', primary: true, options: [
+  { key: 'tocStatus', label: 'TCM Status', primary: true, options: [
     { value: 'enrolled', label: 'Enrolled' },
     { value: 'engaged', label: 'Engaged' },
     { value: 'attempted', label: 'Attempted' },
@@ -32,8 +32,8 @@ export const FILTER_DEFS = [
   ]},
   { key: 'assignee', label: 'Assigned to', primary: true, optionsFromData: true },
   { key: 'outreachType', label: 'Outreach Window', primary: true, options: [
-    { value: '48h', label: 'TOC 48h' },
-    { value: '7d', label: 'TOC 7d' },
+    { value: '48h', label: 'TCM 48h' },
+    { value: '7d', label: 'TCM 7d' },
   ]},
   { key: 'tocType', label: 'Trigger Type', primary: false, options: [
     { value: 'IP', label: 'IP (Inpatient)' },
@@ -63,6 +63,24 @@ export const FILTER_DEFS = [
   ]},
   { key: 'agentAssigned', label: 'Agent', primary: false, optionsFromData: true },
 ];
+
+/** Relabel status + outreach chips for the standalone TOC queue vs TCM. */
+export function filterDefsForList(list) {
+  const program = list === 'TOC' ? 'TOC' : 'TCM';
+  return FILTER_DEFS.map((def) => {
+    if (def.key === 'tocStatus') return { ...def, label: `${program} Status` };
+    if (def.key === 'outreachType') {
+      return {
+        ...def,
+        options: [
+          { value: '48h', label: `${program} 48h` },
+          { value: '7d', label: `${program} 7d` },
+        ],
+      };
+    }
+    return def;
+  });
+}
 
 export function resolveOptions(filterDef, patients) {
   if (filterDef.optionsFromData) {

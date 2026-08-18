@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Avatar } from '../../../components/Avatar/Avatar';
 import { Input } from '../../../components/Input/Input';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { UnityIcon } from '../../../components/UnityIcon/UnityIcon';
 import { FIELD_BY_KEY, ruleSummary } from './fieldCatalog';
+import { toSQL, toJsonLogic } from './formatQueryBridge';
 import styles from './ruleBuilder.module.css';
 
 /* Nested plain-text lines of the rule tree for the criteria card — the same
@@ -58,6 +59,9 @@ export function RuleSummaryPanel({ session, query, qualifiedCount, onEdit, onRen
     }
   };
   const lines = summaryLines(query);
+  const [exportMode, setExportMode] = useState(null); // null | 'sql' | 'jsonlogic'
+  const sqlOutput = useMemo(() => (exportMode === 'sql' ? toSQL(query) : null), [query, exportMode]);
+  const jsonOutput = useMemo(() => (exportMode === 'jsonlogic' ? toJsonLogic(query) : null), [query, exportMode]);
   const copyText = () => {
     const text = lines.map(l => (l.kind === 'value' ? `  • ${l.text}` : l.text)).join('\n');
     navigator.clipboard?.writeText(text).then(
@@ -106,6 +110,22 @@ export function RuleSummaryPanel({ session, query, qualifiedCount, onEdit, onRen
 
         <div className={styles.railCriteria}>
           <span className={styles.railSectionLabel}>Applied Filtration Criteria</span>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <ActionButton
+              icon="solar:code-square-linear"
+              size="S"
+              tooltip="Export as SQL"
+              style={exportMode === 'sql' ? { color: 'var(--primary-300)' } : undefined}
+              onClick={() => setExportMode(m => m === 'sql' ? null : 'sql')}
+            />
+            <ActionButton
+              icon="solar:programming-linear"
+              size="S"
+              tooltip="Export as JsonLogic"
+              style={exportMode === 'jsonlogic' ? { color: 'var(--primary-300)' } : undefined}
+              onClick={() => setExportMode(m => m === 'jsonlogic' ? null : 'jsonlogic')}
+            />
+          </div>
           <div className={styles.criteriaCard}>
             <div className={styles.criteriaBody}>
               {lines.length === 0
@@ -132,6 +152,20 @@ export function RuleSummaryPanel({ session, query, qualifiedCount, onEdit, onRen
               </span>
             </div>
           </div>
+
+          {exportMode === 'sql' && sqlOutput && (
+            <div className={styles.exportSection}>
+              <span className={styles.exportLabel}>Generated SQL</span>
+              <pre className={styles.exportCode}>{sqlOutput.sql}</pre>
+            </div>
+          )}
+
+          {exportMode === 'jsonlogic' && jsonOutput && (
+            <div className={styles.exportSection}>
+              <span className={styles.exportLabel}>JsonLogic</span>
+              <pre className={styles.exportCode}>{JSON.stringify(jsonOutput, null, 2)}</pre>
+            </div>
+          )}
         </div>
       </div>
     </aside>

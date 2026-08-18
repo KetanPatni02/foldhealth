@@ -5,11 +5,13 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { RULE_FIELDS, FIELD_GROUPS, groupAccent } from './fieldCatalog';
 import styles from './ruleBuilder.module.css';
 
-/* Figma lays the five groups over four columns: Personal Info + Location
-   stack in the first, the rest get one each. */
+/* Groups laid over five columns: Personal Info + Location stack in the first,
+   coded conditions get their own column since they're the primary healthcare
+   conditions, the rest get one each. */
 const COLUMN_LAYOUT = [
   ['personal', 'location'],
   ['medical'],
+  ['coded'],
   ['patientInfo'],
   ['others'],
 ];

@@ -8,7 +8,10 @@ Every worklist in Fold Health is a table over a slice of your population. They s
 ## The full list
 
 <CardGroup cols={2}>
-  <Card title="TOC — Transitional Care" icon="hospital-user" href="/features/toc-worklist">
+  <Card title="TOC — Transition of Care queue" icon="hospital-user" href="/features/toc-worklist">
+    Agent-led outreach queue for transition-of-care patients.
+  </Card>
+  <Card title="TCM — Transitional Care Management" icon="hospital-user" href="/features/tcm-worklist">
     Post-discharge patients within 48h or 7d outreach windows.
   </Card>
   <Card title="HCC — Risk-Adjustment Coding" icon="file-medical" href="/features/hcc-worklist">
@@ -59,13 +62,13 @@ Every worklist in Fold Health is a table over a slice of your population. They s
 
 ## Assignment and roles
 
-Every worklist has an **Assignee** column with a role-aware picker. The picker respects role scoping — HCC has multiple roles (Support, Coder, Reviewer 1, Reviewer 2/QA, Compliance); TOC/CCM/HEDIS use a single Care Manager role.
+Every worklist has an **Assignee** column with a role-aware picker. The picker respects role scoping — HCC has multiple roles (Support, Coder, Reviewer 1, Reviewer 2/QA, Compliance); TCM/TOC/CCM/HEDIS use a single Care Manager role.
 
 Bulk **Change Assignee** on any list skips rows already completed for that role and prompts before overwriting an existing assignment.
 
 ## Which list should I use?
 
-- Need a workflow **now**? Start on the list that names your task (TOC for a discharge, HCC for coding).
+- Need a workflow **now**? Start on the list that names your task (TCM for a discharge, TOC for the agent queue, HCC for coding).
 - Need to see **all patients across programs**? Use [All Patients](/features/all-patients).
 - Need to build a **reusable cohort** and act on it? Use [Population Groups](/features/population-groups).
 - Need to see **historical snapshots**? Use the **Archived Worklists** section of the SubNav.

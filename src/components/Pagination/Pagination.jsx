@@ -10,7 +10,7 @@ import styles from './Pagination.module.css';
  *
  * Two usage modes:
  *
- * 1. Store-driven (default) — used by the TOC Worklist + HCC worklist.
+ * 1. Store-driven (default) — used by the TCM Worklist + HCC worklist.
  *    Reads currentPage / perPage / searchQuery / etc. from useAppStore
  *    and derives the total item count from the active subnav.
  *
