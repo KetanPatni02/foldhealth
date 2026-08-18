@@ -11,7 +11,9 @@ import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { HeaderCell } from '../../components/HeaderCell/HeaderCell';
 import { useTableSort } from '../../components/HeaderCell/useTableSort';
 import { SavedFiltersChip } from '../hcc/SavedFiltersChip';
-import { SnpWorklistRow } from './SnpWorklistRow';
+import { SnpWorklistRow, SNP_MIDDLE_COLUMNS } from './SnpWorklistRow';
+import { ColumnsHeaderButton } from '../../components/WorklistColumns/ColumnsHeaderButton';
+import { useWorklistColumns } from '../../components/WorklistColumns/useWorklistColumns';
 import styles from './SnpWorklistTable.module.css';
 
 // Sortable columns — each maps to a field on the enriched row. Tags and
@@ -272,7 +274,16 @@ export function SnpWorklistTable() {
     return next;
   });
 
-  const colCount = 14;
+  // Column prefs — bespoke table, wire useWorklistColumns directly.
+  const columnPrefs = useWorklistColumns('snp', SNP_MIDDLE_COLUMNS);
+  const visibleMiddle = columnPrefs.visibleColumns;
+  const orderedColumnsForRow = useMemo(() => (
+    [{ key: 'select', showCheckbox: true, sticky: 'left' },
+     { key: 'members', label: 'Members', sticky: 'left' },
+     ...columnPrefs.orderedColumns,
+     { key: 'actions', label: 'Actions', sticky: 'right' }]
+  ), [columnPrefs.orderedColumns]);
+  const colCount = 2 + visibleMiddle.length + 1;
 
   return (
     <div className={styles.wrap}>
@@ -343,93 +354,30 @@ export function SnpWorklistTable() {
                   onSort={handleSort}
                   style={{ ...thStyle, padding: '8px 12px', left: 36, zIndex: 4, borderRight: '1px solid var(--neutral-150)' }}
                 />
-                <HeaderCell
-                  label="Program Sub Status"
-                  sortField={SORTABLE_COLS.programSubStatus.field}
-                  sortType={SORTABLE_COLS.programSubStatus.type}
-                  activeKey={sortKey}
-                  activeDir={sortDir}
-                  onSort={handleSort}
-                  style={thStyle}
-                />
-                <HeaderCell
-                  label="Care Plan Status"
-                  sortField={SORTABLE_COLS.carePlanStatus.field}
-                  sortType={SORTABLE_COLS.carePlanStatus.type}
-                  activeKey={sortKey}
-                  activeDir={sortDir}
-                  onSort={handleSort}
-                  style={thStyle}
-                />
-                <HeaderCell
-                  label="Next Action Due"
-                  sortField={SORTABLE_COLS.nextActionDue.field}
-                  sortType={SORTABLE_COLS.nextActionDue.type}
-                  activeKey={sortKey}
-                  activeDir={sortDir}
-                  onSort={handleSort}
-                  style={thStyle}
-                />
-                {/* Outreach — composite cell (icon + status + attempt dots),
-                    no natural ordering, per requirement not sortable. */}
-                <HeaderCell label="Outreach" style={thStyle} />
-                <HeaderCell
-                  label="Assignee"
-                  sortField={SORTABLE_COLS.assigneeName.field}
-                  sortType={SORTABLE_COLS.assigneeName.type}
-                  activeKey={sortKey}
-                  activeDir={sortDir}
-                  onSort={handleSort}
-                  style={thStyle}
-                />
-                <HeaderCell
-                  label="Trigger Date"
-                  sortField={SORTABLE_COLS.triggerDate.field}
-                  sortType={SORTABLE_COLS.triggerDate.type}
-                  activeKey={sortKey}
-                  activeDir={sortDir}
-                  onSort={handleSort}
-                  style={thStyle}
-                />
-                <HeaderCell
-                  label="Last Admission"
-                  sortField={SORTABLE_COLS.lastAdmission.field}
-                  sortType={SORTABLE_COLS.lastAdmission.type}
-                  activeKey={sortKey}
-                  activeDir={sortDir}
-                  onSort={handleSort}
-                  style={thStyle}
-                />
-                <HeaderCell
-                  label="Trigger"
-                  sortField={SORTABLE_COLS.trigger.field}
-                  sortType={SORTABLE_COLS.trigger.type}
-                  activeKey={sortKey}
-                  activeDir={sortDir}
-                  onSort={handleSort}
-                  style={thStyle}
-                />
-                <HeaderCell
-                  label="Risk IQ"
-                  sortField={SORTABLE_COLS.riskIq.field}
-                  sortType={SORTABLE_COLS.riskIq.type}
-                  activeKey={sortKey}
-                  activeDir={sortDir}
-                  onSort={handleSort}
-                  style={thStyle}
-                />
-                {/* Tags — visual chip set, no natural ordering, not sortable. */}
-                <HeaderCell label="Tags" style={thStyle} />
-                <HeaderCell
-                  label="Tasks"
-                  sortField={SORTABLE_COLS.taskCount.field}
-                  sortType={SORTABLE_COLS.taskCount.type}
-                  activeKey={sortKey}
-                  activeDir={sortDir}
-                  onSort={handleSort}
-                  style={thStyle}
-                />
-                <th style={{ ...thStyle, width: 80, right: 0, zIndex: 3, textAlign: 'right' }}>Actions</th>
+                {visibleMiddle.map(col => (
+                  col.sortKey
+                    ? <HeaderCell
+                        key={col.key}
+                        label={col.label}
+                        sortField={col.sortKey}
+                        sortType={col.sortType || 'alpha'}
+                        activeKey={sortKey}
+                        activeDir={sortDir}
+                        onSort={handleSort}
+                        style={thStyle}
+                      />
+                    : <HeaderCell key={col.key} label={col.label} style={thStyle} />
+                ))}
+                <th style={{ ...thStyle, width: 140, right: 0, zIndex: 3, textAlign: 'left' }}>
+                  <ColumnsHeaderButton
+                    columns={columnPrefs.orderedColumns}
+                    hiddenSet={columnPrefs.hiddenSet}
+                    onToggle={columnPrefs.onToggle}
+                    onReorder={columnPrefs.onReorder}
+                    onReset={columnPrefs.onReset}
+                    label="Actions"
+                  />
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -437,6 +385,8 @@ export function SnpWorklistTable() {
                 <SnpWorklistRow
                   key={m.id}
                   member={m}
+                  columns={orderedColumnsForRow}
+                  hiddenSet={columnPrefs.hiddenSet}
                   isSelected={selectedIds.has(m.id)}
                   onSelect={toggleOne}
                 />

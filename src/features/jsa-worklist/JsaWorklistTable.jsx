@@ -5,26 +5,7 @@ import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBa
 import { SubnavToggle } from '../../components/SubnavToggle/SubnavToggle';
 import { FilterBar } from '../../components/FilterBar/FilterBar';
 import { useTableSort } from '../../components/HeaderCell/useTableSort';
-import { JsaWorklistRow } from './JsaWorklistRow';
-import { JSA_COLUMNS } from './data/mock';
-
-// Map WorklistShell column key → the field on a member row the sort
-// comparator reads. Matches HCC / TOC conventions.
-const SORT_KEY_BY_COL = {
-  name:          'name',
-  progSubStatus: 'progSubStatus',
-  progName:      'progName',
-  due:           'due',
-  outreach:      'outreach',
-  assignee:      'assignee',
-  np:            'npAppt',
-  lastAwv:       'lastAwv',
-  ad:            'ad',
-  fr:            'fr',
-  ri:            'ri',
-  dec:           'dec',
-  task:          'task',
-};
+import { JsaWorklistRow, JSA_MIDDLE_COLUMNS } from './JsaWorklistRow';
 
 // FilterBar chip definitions — all seven are primary so they show on wide
 // viewports; auto-fit trims the tail into More Filters on narrow screens.
@@ -50,12 +31,7 @@ for (const fd of JSA_FILTER_DEFS) {
 const JSA_SHELL_COLUMNS = [
   { key: 'select', showCheckbox: true, sticky: 'left', left: 0, width: 36 },
   { key: 'name',   label: 'Members', sortKey: 'name', sticky: 'left', left: 36, width: 240 },
-  ...JSA_COLUMNS.map(c => ({
-    key: c.k,
-    label: c.lb,
-    sortKey: SORT_KEY_BY_COL[c.k],
-    width: c.w,
-  })),
+  ...JSA_MIDDLE_COLUMNS,
   { key: 'actions', label: 'Actions', sticky: 'right', width: 120 },
 ];
 
@@ -187,15 +163,18 @@ export function JsaWorklistTable() {
       header={header}
       showFilters={filterBarOpen}
       filters={filterNode}
+      worklistKey="jsa"
       columns={JSA_SHELL_COLUMNS}
       sortKey={sortKey}
       sortDir={sortDir}
       onSort={requestSort}
       rows={pageRows}
-      renderRow={(m) => (
+      renderRow={(m, _i, ctx) => (
         <JsaWorklistRow
           key={m.id}
           member={m}
+          columns={ctx.orderedColumns}
+          hiddenSet={ctx.hiddenSet}
           selected={selectedIds.includes(m.id)}
           onToggle={() => selectMember(m.id)}
           onView={() => showToast(`Program details for ${m.name} — coming soon`)}

@@ -233,7 +233,7 @@ export function WorklistShell({
                     return (
                       <th
                         key={col.key || idx}
-                        className={styles.th}
+                        className={`${styles.th} ${styles.thCheck}`}
                         style={{ ...stickyStyle, width: col.width || 36, textAlign: 'left' }}
                       >
                         <Checkbox
@@ -288,11 +288,11 @@ export function WorklistShell({
                           onToggle={prefs.onToggle}
                           onReorder={prefs.onReorder}
                           onReset={prefs.onReset}
-                          label={col.label}
+                          label={col.thLabel ?? col.label}
                           lockedTop={lockedTop}
                           lockedBottom={lockedBottom}
                         />
-                      ) : col.label}
+                      ) : (col.thLabel ?? col.label)}
                     </th>
                   );
                 })}

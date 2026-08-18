@@ -105,7 +105,139 @@ function OutreachCell({ patient }) {
   );
 }
 
-export function WorklistRow({ patient, isSelected, onSelect }) {
+function AssigneeCell({ patient, platformUsers, updatePatient }) {
+  const users = platformUsers.map(u => ({
+    id: u.id,
+    name: u.name,
+    initials: u.initials,
+    role: u.clinicalRoles?.[0] || '',
+  }));
+  const onSelect = (u) => updatePatient(patient.id, {
+    assignee: u.name,
+    assigneeInitials: u.initials,
+    assigneeRole: u.role,
+  });
+  if (patient.assignee) {
+    return (
+      <AssigneeChange
+        name={patient.assignee}
+        initials={patient.assigneeInitials}
+        role={
+          patient.assigneeRole ||
+          platformUsers.find(u => u.name === patient.assignee)?.clinicalRoles?.[0]
+        }
+        users={users}
+        onSelect={onSelect}
+        pickerTitle="Change assignee"
+      />
+    );
+  }
+  return (
+    <AssigneeChange
+      unassigned
+      users={users}
+      onSelect={onSelect}
+      pickerTitle="Assign user"
+    />
+  );
+}
+
+function AgentAssignedCell({ patient }) {
+  if (!patient.agentAssigned) {
+    return <span style={{ fontSize: 13, color: 'var(--neutral-200)' }}>—</span>;
+  }
+  return (
+    <div className={styles.agentCell}>
+      <Avatar variant="agent" agentName={patient.agentAssigned} />
+      <div>
+        <div className={styles.agentName}>{patient.agentAssigned}</div>
+        <div className={styles.agentRole}>{patient.agentRole}</div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Middle-column defs for the TCM Worklist. Each carries `renderCell(patient,
+ * ctx)` so the ColumnsHeaderButton popover can hide + reorder columns and
+ * the row body follows along. Sticky checkbox / Members / Actions columns
+ * stay hardcoded around this band.
+ *
+ * ctx shape:
+ *   { platformUsers, updatePatient }
+ */
+export const WORKLIST_MIDDLE_COLUMNS = [
+  {
+    key: 'lace',
+    label: 'LACE Acuity',
+    renderCell: (p) => (
+      <Badge size="M" variant={`lace-${p.lace.toLowerCase()}`} label={p.lace} />
+    ),
+  },
+  {
+    key: 'outreachWindow',
+    label: 'Outreach Window',
+    renderCell: (p) => {
+      const outreachBadgeVariant = p.outreachType === '48h' ? 'outreach-48h' : 'outreach-7d';
+      return (
+        <div className={styles.outreachCell}>
+          <Badge size="M" variant={outreachBadgeVariant} label={`TCM ${p.outreachType}`} />
+          {p.onCall ? (
+            <span className={styles.outreachOncall}>
+              <Icon name="solar:phone-calling-bold" size={14} />
+              On Call: {p.callDuration}
+            </span>
+          ) : (
+            <span className={styles.outreachTime}>
+              <Icon name="solar:clock-circle-linear" size={14} />
+              {p.outreachLeft}
+            </span>
+          )}
+        </div>
+      );
+    },
+  },
+  {
+    key: 'tocStatus',
+    label: 'TCM Status',
+    renderCell: (p) => <TocStatusBadge status={p.tocStatus} />,
+  },
+  {
+    key: 'outreach',
+    label: 'Outreach',
+    renderCell: (p) => <OutreachCell patient={p} />,
+  },
+  {
+    key: 'nextOutreach',
+    label: 'Next Outreach',
+    renderCell: (p) => <span className={styles.dateText}>{p.nextOutreach || '—'}</span>,
+  },
+  {
+    key: 'startDate',
+    label: 'Start Date',
+    renderCell: (p) => <span className={styles.dateText}>{p.startDate || '—'}</span>,
+  },
+  {
+    key: 'lastAdmission',
+    label: 'Last Admission',
+    renderCell: (p) => <span className={styles.dateText}>{p.lastAdmission || '—'}</span>,
+  },
+  {
+    key: 'assignee',
+    label: 'Assignee',
+    stopRowClickPropagation: true,
+    renderCell: (p, ctx) => (
+      <AssigneeCell patient={p} platformUsers={ctx.platformUsers} updatePatient={ctx.updatePatient} />
+    ),
+  },
+  {
+    key: 'agentAssigned',
+    label: 'Agent Assigned',
+    renderCell: (p) => <AgentAssignedCell patient={p} />,
+  },
+];
+
+export function WorklistRow({ patient, columns, hiddenSet, isSelected, onSelect }) {
   const openQuickView = useAppStore(s => s.openQuickView);
   const openCallPopover = useAppStore(s => s.openCallPopover);
   const openDetail = useAppStore(s => s.openDetail);
@@ -118,6 +250,12 @@ export function WorklistRow({ patient, isSelected, onSelect }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropBtnRef = useRef(null);
   const callBtnRef = useRef(null);
+
+  const middleCols = (columns || WORKLIST_MIDDLE_COLUMNS)
+    .filter(c => !c.sticky && !c.showCheckbox && c.renderCell);
+  const visibleMiddle = hiddenSet ? middleCols.filter(c => !hiddenSet.has(c.key)) : middleCols;
+
+  const cellCtx = { platformUsers, updatePatient };
 
   const handleRowClick = () => {
     if (patient.status === 'completed') {
@@ -146,7 +284,6 @@ export function WorklistRow({ patient, isSelected, onSelect }) {
   };
 
   const p = patient;
-  const outreachBadgeVariant = p.outreachType === '48h' ? 'outreach-48h' : 'outreach-7d';
 
   const menuItems = buildPatientRowMenuItems([
     ...(p.status === 'scheduled' || p.status === 'queued'
@@ -194,83 +331,18 @@ export function WorklistRow({ patient, isSelected, onSelect }) {
             </div>
           </div>
         </td>
-        <td className={styles.td}>
-          <Badge size="M" variant={`lace-${p.lace.toLowerCase()}`} label={p.lace} />
-        </td>
-        <td className={styles.td}>
-          <div className={styles.outreachCell}>
-            <Badge size="M" variant={outreachBadgeVariant} label={`TOC ${p.outreachType}`} />
-            {p.onCall ? (
-              <span className={styles.outreachOncall}>
-                <Icon name="solar:phone-calling-bold" size={14} />
-                On Call: {p.callDuration}
-              </span>
-            ) : (
-              <span className={styles.outreachTime}>
-                <Icon name="solar:clock-circle-linear" size={14} />
-                {p.outreachLeft}
-              </span>
-            )}
-          </div>
-        </td>
-        <td className={styles.td}><TocStatusBadge status={p.tocStatus} /></td>
-        <td className={styles.td}><OutreachCell patient={p} /></td>
-        <td className={styles.td}><span className={styles.dateText}>{p.nextOutreach || '—'}</span></td>
-        <td className={styles.td}><span className={styles.dateText}>{p.startDate || '—'}</span></td>
-        <td className={styles.td}><span className={styles.dateText}>{p.lastAdmission || '—'}</span></td>
-        <td className={styles.td} onClick={e => e.stopPropagation()}>
-          {p.assignee ? (
-            <AssigneeChange
-              name={p.assignee}
-              initials={p.assigneeInitials}
-              role={
-                p.assigneeRole ||
-                platformUsers.find(u => u.name === p.assignee)?.clinicalRoles?.[0]
-              }
-              users={platformUsers.map(u => ({
-                id: u.id,
-                name: u.name,
-                initials: u.initials,
-                role: u.clinicalRoles?.[0] || '',
-              }))}
-              onSelect={(u) => updatePatient(p.id, {
-                assignee: u.name,
-                assigneeInitials: u.initials,
-                assigneeRole: u.role,
-              })}
-              pickerTitle="Change assignee"
-            />
-          ) : (
-            <AssigneeChange
-              unassigned
-              users={platformUsers.map(u => ({
-                id: u.id,
-                name: u.name,
-                initials: u.initials,
-                role: u.clinicalRoles?.[0] || '',
-              }))}
-              onSelect={(u) => updatePatient(p.id, {
-                assignee: u.name,
-                assigneeInitials: u.initials,
-                assigneeRole: u.role,
-              })}
-              pickerTitle="Assign user"
-            />
-          )}
-        </td>
-        <td className={styles.td}>
-          {p.agentAssigned ? (
-            <div className={styles.agentCell}>
-              <Avatar variant="agent" agentName={p.agentAssigned} />
-              <div>
-                <div className={styles.agentName}>{p.agentAssigned}</div>
-                <div className={styles.agentRole}>{p.agentRole}</div>
-              </div>
-            </div>
-          ) : (
-            <span style={{ fontSize: 13, color: 'var(--neutral-200)' }}>—</span>
-          )}
-        </td>
+
+        {visibleMiddle.map(col => (
+          <td
+            key={col.key}
+            data-col-key={col.key}
+            className={styles.td}
+            onClick={col.stopRowClickPropagation ? (e) => e.stopPropagation() : undefined}
+          >
+            {col.renderCell(p, cellCtx)}
+          </td>
+        ))}
+
         <td className={`${styles.td} ${styles.stickyRight}`} onClick={e => e.stopPropagation()}>
           <div className={styles.actionsCell}>
             <ActionButton

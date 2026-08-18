@@ -5,26 +5,7 @@ import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBa
 import { SubnavToggle } from '../../components/SubnavToggle/SubnavToggle';
 import { FilterBar } from '../../components/FilterBar/FilterBar';
 import { useTableSort } from '../../components/HeaderCell/useTableSort';
-import { AwvWorklistRow } from './AwvWorklistRow';
-import { AWV_COLUMNS } from './data/mock';
-
-// Map WorklistShell column key → the field on a member row the sort
-// comparator reads. Matches HCC / TOC conventions.
-const SORT_KEY_BY_COL = {
-  name:          'name',
-  progSubStatus: 'progSubStatus',
-  progName:      'progName',
-  due:           'due',
-  outreach:      'outreach',
-  assignee:      'assignee',
-  np:            'npAppt',
-  lastAwv:       'lastAwv',
-  ad:            'ad',
-  fr:            'fr',
-  ri:            'ri',
-  dec:           'dec',
-  task:          'task',
-};
+import { AwvWorklistRow, AWV_MIDDLE_COLUMNS } from './AwvWorklistRow';
 
 // FilterBar chip definitions — all seven are primary so they show on wide
 // viewports; auto-fit trims the tail into More Filters on narrow screens.
@@ -44,18 +25,13 @@ for (const fd of AWV_FILTER_DEFS) {
 }
 
 // WorklistShell column defs — sticky checkbox + sticky Members col on the
-// left, all AWV data columns in the middle, sticky Actions on the right.
-// Same shape TOC uses (once it migrates); keeps the sticky-column scroll
-// behaviour consistent with HCC / TOC.
+// left, AWV middle columns from AwvWorklistRow (each carries `renderCell`
+// so hide/reorder in the Show Columns popover ripples through the body),
+// sticky Actions on the right.
 const AWV_SHELL_COLUMNS = [
   { key: 'select', showCheckbox: true, sticky: 'left', left: 0, width: 36 },
   { key: 'name',   label: 'Members', sortKey: 'name', sticky: 'left', left: 36, width: 240 },
-  ...AWV_COLUMNS.map(c => ({
-    key: c.k,
-    label: c.lb,
-    sortKey: SORT_KEY_BY_COL[c.k],
-    width: c.w,
-  })),
+  ...AWV_MIDDLE_COLUMNS,
   { key: 'actions', label: 'Actions', sticky: 'right', width: 120 },
 ];
 
@@ -185,6 +161,7 @@ export function AwvWorklistTable() {
   return (
     <WorklistShell
       header={header}
+      worklistKey="awv"
       showFilters={filterBarOpen}
       filters={filterNode}
       columns={AWV_SHELL_COLUMNS}
@@ -192,10 +169,12 @@ export function AwvWorklistTable() {
       sortDir={sortDir}
       onSort={requestSort}
       rows={pageRows}
-      renderRow={(m) => (
+      renderRow={(m, _i, ctx) => (
         <AwvWorklistRow
           key={m.id}
           member={m}
+          columns={ctx.orderedColumns}
+          hiddenSet={ctx.hiddenSet}
           selected={selectedIds.includes(m.id)}
           onToggle={() => selectMember(m.id)}
           onView={() => showToast(`Program details for ${m.name} — coming soon`)}
