@@ -65,7 +65,7 @@ function renderNode(field, ctx) {
  * `fallbackForm` is used when the named form is missing from Content → Forms
  * (e.g. the TOC queue drawer rendering PHQ-9 from the validated instrument).
  */
-export function AssessmentFormView({ formName, interpretation = 'High Risk', fallbackForm = null }) {
+export function AssessmentFormView({ formName, interpretation = 'High Risk', fallbackForm = null, initialAnswers = null }) {
   const fetchFormByName = useAppStore(s => s.fetchFormByName);
   const [form, setForm] = useState(null);
   // Which form the loaded `form` belongs to. `loading` is derived from it
@@ -74,8 +74,11 @@ export function AssessmentFormView({ formName, interpretation = 'High Risk', fal
   const [loadedFor, setLoadedFor] = useState(null);
   const loading = loadedFor !== formName;
   // Answers keyed by form name, so pointing at a different form starts from a
-  // clean sheet without an explicit reset.
-  const [answersByForm, setAnswersByForm] = useState({});
+  // clean sheet without an explicit reset. `initialAnswers` seeds the map on
+  // mount — used by the TOC drawer to show an already-filled assessment.
+  const [answersByForm, setAnswersByForm] = useState(() =>
+    initialAnswers ? { [formName]: initialAnswers } : {},
+  );
   const answers = answersByForm[formName] ?? EMPTY_ANSWERS;
 
   useEffect(() => {
