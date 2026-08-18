@@ -7,7 +7,6 @@ import styles from './TasksView.module.css';
 
 export function TaskDetailDrawerHeader({
   task,
-  labels,
   editingTitle,
   titleDraft,
   setTitleDraft,
@@ -47,9 +46,6 @@ export function TaskDetailDrawerHeader({
       <div className={styles.drawerTitleBlock}>
         {task.is_subtask && task.parent_task && (
           <Badge variant="overflow" label={task.parent_task} />
-        )}
-        {labels.length > 0 && !task.is_subtask && (
-          <Badge variant="overflow" label={labels[0]} />
         )}
         {editingTitle ? (
           <input

@@ -3,6 +3,16 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  animation: assessmentFormIn 0.2s ease;
+}
+
+@keyframes assessmentFormIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wrap { animation: none; }
 }
 
 /* ── Stats strip ── */
@@ -89,6 +99,22 @@
 }
 .req { color: var(--status-error); }
 .qControl { padding-left: 24px; }
+
+.skeletonIntro {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeletonQuestion {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeletonProgress {
+  display: inline-block;
+}
 
 .state {
   padding: 24px 16px;

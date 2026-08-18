@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
@@ -11,6 +11,7 @@ import { buildAiTocTasks, toTaskPreview } from './aiTocTasks';
 import styles from './AiTasksDrawer.module.css';
 
 const EMPTY_FILTERS = { status: [], priority: [], dueDate: [] };
+const EMPTY_GROUPS = { pending: [], overdue: [], completed: [] };
 const PRIORITY_LABEL = { high: 'High', medium: 'Medium', low: 'Low' };
 
 function capPriority(p) {
@@ -27,53 +28,65 @@ function matchesFilters(task, section, filters, query) {
 
 /**
  * TOC worklist AI Tasks drawer — PatientBanner + a flush SectionTitleBar,
- * then the profile Tasks tab list. Search / filter / add task are live.
+ * then the profile Tasks tab list. Tasks persist to Supabase per patient.
  */
 export function AiTasksDrawer() {
   const patientId = useAppStore(s => s.aiTasksDrawerPatientId);
   const close = useAppStore(s => s.closeAiTasksDrawer);
   const patients = useAppStore(s => s.patients);
+  const ensureAiTocTasksForPatient = useAppStore(s => s.ensureAiTocTasksForPatient);
+  const updateTask = useAppStore(s => s.updateTask);
   const patient = useMemo(
     () => patients.find(p => p.id === patientId) || null,
     [patients, patientId],
   );
 
-  const seed = useMemo(
-    () => (patient ? buildAiTocTasks(patient) : { pending: [], overdue: [], completed: [] }),
-    [patient],
-  );
-
+  const [taskGroups, setTaskGroups] = useState(EMPTY_GROUPS);
+  const [tasksLoading, setTasksLoading] = useState(false);
   const [added, setAdded] = useState([]);
-  const [completedIds, setCompletedIds] = useState(() => new Set());
   const [search, setSearch] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [addOpen, setAddOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const storeTasks = useAppStore(s => s.tasks);
+  const stored = selectedTask
+    ? storeTasks.find(t => String(t.id) === String(selectedTask.id))
+    : null;
   const liveSelected = selectedTask
-    && (storeTasks.find(t => String(t.id) === String(selectedTask.id)) || selectedTask);
+    ? { ...selectedTask, ...(stored || {}), created_by: selectedTask.created_by || stored?.created_by }
+    : null;
+
+  useEffect(() => {
+    if (!patient) {
+      setTaskGroups(EMPTY_GROUPS);
+      return undefined;
+    }
+    let active = true;
+    setTasksLoading(true);
+    ensureAiTocTasksForPatient(patient)
+      .then((groups) => { if (active) setTaskGroups(groups); })
+      .catch(() => { if (active) setTaskGroups(buildAiTocTasks(patient)); })
+      .finally(() => { if (active) setTasksLoading(false); });
+    return () => { active = false; };
+  }, [patient, ensureAiTocTasksForPatient]);
 
   const allTasks = useMemo(() => ({
-    pending: [...seed.pending, ...added],
-    overdue: seed.overdue,
-    completed: seed.completed,
-  }), [seed, added]);
+    pending: [...taskGroups.pending, ...added],
+    overdue: taskGroups.overdue,
+    completed: taskGroups.completed,
+  }), [taskGroups, added]);
 
   const query = search.trim().toLowerCase();
   const shown = useMemo(() => {
     const pending = allTasks.pending.filter(t =>
-      !completedIds.has(t.id) && matchesFilters(t, 'Pending', filters, query));
+      t.status !== 'completed' && matchesFilters(t, 'Pending', filters, query));
     const overdue = allTasks.overdue.filter(t =>
-      !completedIds.has(t.id) && matchesFilters(t, 'Overdue', filters, query));
-    const completed = [
-      ...allTasks.completed,
-      ...[...allTasks.pending, ...allTasks.overdue]
-        .filter(t => completedIds.has(t.id))
-        .map(t => ({ ...t, completedOn: t.completedOn || new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) })),
-    ].filter(t => matchesFilters(t, 'Completed', filters, query));
+      t.status !== 'completed' && matchesFilters(t, 'Overdue', filters, query));
+    const completed = allTasks.completed.filter(t =>
+      matchesFilters(t, 'Completed', filters, query));
     return { pending, overdue, completed };
-  }, [allTasks, completedIds, filters, query]);
+  }, [allTasks, filters, query]);
 
   const dueOptions = useMemo(() => {
     const dates = [...allTasks.pending, ...allTasks.overdue, ...allTasks.completed]
@@ -90,13 +103,17 @@ export function AiTasksDrawer() {
 
   const filterBadgeCount = Object.values(filters).filter(v => v.length).length;
 
-  const toggleComplete = (id) => {
-    setCompletedIds(prev => {
-      const n = new Set(prev);
-      if (n.has(id)) n.delete(id);
-      else n.add(id);
-      return n;
-    });
+  const refreshTasks = async () => {
+    if (!patient) return;
+    const groups = await ensureAiTocTasksForPatient(patient);
+    setTaskGroups(groups);
+  };
+
+  const toggleComplete = async (id) => {
+    const row = [...allTasks.pending, ...allTasks.overdue, ...allTasks.completed].find(t => t.id === id);
+    const nextStatus = row?.status === 'completed' ? 'pending' : 'completed';
+    await updateTask(id, { status: nextStatus });
+    await refreshTasks();
   };
 
   if (!patient) return null;
@@ -145,21 +162,19 @@ export function AiTasksDrawer() {
           />
         )}
         <div className={styles.list}>
-          <TasksTab
-            data={shown}
-            hideToolbar
-            completedIds={new Set()}
-            onToggle={toggleComplete}
-            onTaskClick={(task, flags) => {
-              const preview = toTaskPreview(task, patient, flags);
-              useAppStore.setState((s) => (
-                s.tasks.some(t => String(t.id) === String(preview.id))
-                  ? s
-                  : { tasks: [...s.tasks, preview] }
-              ));
-              setSelectedTask(preview);
-            }}
-          />
+          {tasksLoading ? (
+            <div className={styles.loading}>Loading tasks…</div>
+          ) : (
+            <TasksTab
+              data={shown}
+              hideToolbar
+              completedIds={new Set()}
+              onToggle={toggleComplete}
+              onTaskClick={(task, flags) => {
+                setSelectedTask(toTaskPreview(task, patient, flags));
+              }}
+            />
+          )}
         </div>
       </Drawer>
       {addOpen && (

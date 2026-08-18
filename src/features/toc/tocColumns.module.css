@@ -77,6 +77,14 @@
   white-space: nowrap;
 }
 
+.aiOutcomeInvokedAt {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-400);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 .statusDot {
   display: inline-flex;
   align-items: center;
@@ -93,9 +101,14 @@
   border-color: var(--status-success);
 }
 
-.statusDotPending {
-  background: var(--status-warning-light);
-  border-color: var(--status-warning);
+.statusDotNotStarted {
+  background: var(--neutral-100);
+  border-color: var(--neutral-300);
+}
+
+.statusDotPartial {
+  background: var(--neutral-0);
+  border-color: var(--status-success);
 }
 
 .radar {
@@ -134,6 +147,15 @@
 
 /* SNP Outreach cell — phone + status + date + attempt dots */
 .outreachCell { display: inline-flex; align-items: flex-start; gap: 6px; }
+.outreachBtn {
+  display: inline-flex;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
 .outreachNone { display: inline-flex; align-items: center; gap: 6px; }
 .outreachBody { display: inline-flex; flex-direction: column; gap: 2px; }
 .outreachStatus { font-size: 13px; font-weight: 500; color: var(--status-error); }

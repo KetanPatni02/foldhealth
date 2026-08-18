@@ -11,7 +11,7 @@ export function TocWorklistTable() {
   return (
     <QueueTable
       worklistKey="toc"
-      programLabel="TOC"
+      programLabel="TOC IP"
       emptyState={<TocEmptyState />}
       middleColumns={TOC_MIDDLE_COLUMNS}
     />

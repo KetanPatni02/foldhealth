@@ -148,7 +148,7 @@ function PopulationView() {
   const isSnp = activeSubnavList === 'SNP';
   const isAllPatients = activeSubnavList === 'All Patients';
   const isPopulationGroup = activeSubnavList.startsWith('pg:');
-  const isToc = activeSubnavList === 'TOC';
+  const isToc = activeSubnavList === 'TOC IP';
   const isTcm = activeSubnavList === 'TCM' || (!isHcc && !isHccArchived && !isHedis && !isCcm && !isAwv && !isJsa && !isAllPatients && !isPopulationGroup && !isToc && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'JSA', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
   const isComingSoon = ['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList);
   const pgFilter = activeSubnavList === 'pg:Static' ? 'Static' : activeSubnavList === 'pg:Dynamic' ? 'Dynamic' : 'All';

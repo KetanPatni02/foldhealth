@@ -4,7 +4,7 @@ import { Badge } from '../../components/Badge/Badge';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import rowStyles from '../toc-worklist/WorklistRow.module.css';
 import styles from './tocColumns.module.css';
-import { hasAgentConnected, outreachStatusLabel, resolveAiTaskCount } from './tocOutcome';
+import { formatAiOutcomeInvokedAt, hasAgentConnected, outreachStatusLabel, resolveAiTaskCount } from './tocOutcome';
 
 const PROGRAM_SUB_STATUS = {
   enrolled: { variant: 'toc-enrolled', label: 'Enrolled', icon: 'solar:check-circle-bold' },
@@ -18,6 +18,7 @@ const OUTREACH_STATUS = {
   Completed: { tone: 'success', icon: 'solar:check-circle-linear' },
   'Needs Review': { tone: 'error', icon: 'solar:danger-triangle-linear' },
   Queued: { tone: 'warning', icon: 'solar:clock-circle-linear' },
+  Aborted: { tone: 'grey', icon: 'solar:close-circle-linear' },
 };
 
 const ADMIT_CLASS = { IP: 'Inpatient', ED: 'Emergency' };
@@ -94,6 +95,7 @@ function parseMdy(s) {
 }
 
 export function resolveLastOutreachBy(p) {
+  if (!hasAgentConnected(p)) return { name: null, isAgent: false };
   if (p.lastOutreachBy) {
     return { name: p.lastOutreachBy, isAgent: p.lastOutreachBy === 'TOC Agent' };
   }
@@ -118,12 +120,12 @@ export function enrichTocRow(p) {
     programSubStatusSort: programSubStatus(p).label,
     admitClassSort: ADMIT_CLASS[p.tocType] || 'Inpatient',
     laceSort: LACE_RANK[p.lace] ?? 3,
-    aiOutcomeSort: outreachStatusLabel(p),
+    aiOutcomeSort: outreachStatusLabel(p) || '',
     assessmentSort: assessmentLabel(p),
     aiTasksSort: resolveAiTaskCount(p),
     nextActionDueSort: parseMdy(p.dueOn || p.nextOutreach),
     outreachSort: parseMdy(p.outreachDate || p.callDate),
-    lastOutreachBySort: resolveLastOutreachBy(p).name,
+    lastOutreachBySort: resolveLastOutreachBy(p).name || '',
     nurseCoachSort: resolveCareTeamName(p, 'nurseCoach'),
     coordinatorSort: resolveCareTeamName(p, 'coordinator', '-c'),
     socialWorkerSort: resolveCareTeamName(p, 'socialWorker', '-s'),
@@ -162,6 +164,24 @@ function RoleAssignee({ name, initials, field, patient, ctx, pickerTitle }) {
   );
 }
 
+function AiOutcomeCell({ patient, onOpen }) {
+  const label = outreachStatusLabel(patient);
+  if (!label) return <span className={styles.dash}>—</span>;
+  const cfg = OUTREACH_STATUS[label];
+  const invokedAt = formatAiOutcomeInvokedAt(patient.aiOutcomeInvokedAt);
+  return (
+    <button
+      type="button"
+      className={styles.assessmentBtn}
+      onClick={(e) => { e.stopPropagation(); onOpen(); }}
+      aria-label={`Open outreach status for ${patient.name}`}
+    >
+      <Badge size="M" tone={cfg.tone} label={label} icon={cfg.icon} />
+      {invokedAt && <span className={styles.aiOutcomeInvokedAt}>{invokedAt}</span>}
+    </button>
+  );
+}
+
 function AssessmentCompletedIcon() {
   return (
     <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
@@ -174,12 +194,12 @@ function AssessmentCompletedIcon() {
   );
 }
 
-function AssessmentPendingIcon() {
+function AssessmentNotStartedIcon() {
   return (
     <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
       <path
         d="M5.33301 1.3335V2.66683M9.33301 5.3335H7.99967M5.33301 9.3335V8.00016M1.33301 5.3335H2.66634M2.50452 2.50507L3.44733 3.44787M8.16138 2.50507L7.21857 3.44788M8.1615 8.16191L7.21869 7.2191M2.50464 8.16191L3.44745 7.2191"
-        stroke="var(--status-warning)"
+        stroke="var(--neutral-300)"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -187,8 +207,20 @@ function AssessmentPendingIcon() {
   );
 }
 
-function assessmentLabel(p) {
-  return `TOC ${p.tocType === 'ED' ? 'ED' : 'IP'} Assessment`;
+function AssessmentPartialIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+      <circle cx="5.5" cy="5.5" r="4.5" fill="var(--neutral-0)" stroke="var(--status-success)" />
+      <path
+        d="M5.5 1A4.5 4.5 0 0 1 10 5.5A4.5 4.5 0 0 1 5.5 10V1Z"
+        fill="var(--status-success)"
+      />
+    </svg>
+  );
+}
+
+function assessmentLabel() {
+  return 'TOC IP Assessment';
 }
 
 function sampleAssessmentCompletedDate(p) {
@@ -198,18 +230,51 @@ function sampleAssessmentCompletedDate(p) {
   return `${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}/2025`;
 }
 
-/** Pending until agent connects; completed once filled — Figma 1468:158068 / 3048:85368. */
+const ASSESSMENT_STATUS = {
+  notStarted: {
+    meta: 'Not Started',
+    dotClass: styles.statusDotNotStarted,
+    Icon: AssessmentNotStartedIcon,
+  },
+  partial: {
+    meta: 'Partial',
+    dotClass: styles.statusDotPartial,
+    Icon: AssessmentPartialIcon,
+  },
+  completed: {
+    meta: null,
+    dotClass: styles.statusDotCompleted,
+    Icon: AssessmentCompletedIcon,
+  },
+};
+
+function resolveAssessmentStatus(p) {
+  if (!hasAgentConnected(p)) return 'notStarted';
+  const status = p.assessmentStatus;
+  if (status === 'Completed') return 'completed';
+  if (status === 'In Progress' || status === 'Overdue') return 'partial';
+  if (status === 'Not Started') return 'notStarted';
+  // Demo mix for connected rows without an explicit status.
+  const n = String(p.id || '').split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+  if (n % 4 === 1) return 'partial';
+  return 'completed';
+}
+
+/** Not Started / Partial / Completed — Figma 3048:85368 / 3048:85387 / 1468:158068. */
 function resolveAssessmentDisplay(p) {
   const label = assessmentLabel(p);
-  if (!hasAgentConnected(p)) {
-    return { label, isCompleted: false, meta: 'Pending' };
+  const status = resolveAssessmentStatus(p);
+  if (status === 'completed') {
+    const date = p.startDate || p.dischargeDate || sampleAssessmentCompletedDate(p);
+    return { label, status, meta: `Completed • ${date}` };
   }
-  const date = p.startDate || p.dischargeDate || sampleAssessmentCompletedDate(p);
-  return { label, isCompleted: true, meta: `Completed • ${date}` };
+  return { label, status, meta: ASSESSMENT_STATUS[status].meta };
 }
 
 function AssessmentCell({ patient, onOpen }) {
-  const { label, isCompleted, meta } = resolveAssessmentDisplay(patient);
+  const { label, status, meta } = resolveAssessmentDisplay(patient);
+  const cfg = ASSESSMENT_STATUS[status];
+  const StatusIcon = cfg.Icon;
   return (
     <button
       type="button"
@@ -222,11 +287,8 @@ function AssessmentCell({ patient, onOpen }) {
         <Icon name="solar:alt-arrow-right-linear" size={14} color="var(--neutral-400)" />
       </span>
       <span className={styles.assessmentMeta}>
-        <span
-          className={`${styles.statusDot} ${isCompleted ? styles.statusDotCompleted : styles.statusDotPending}`}
-          aria-hidden="true"
-        >
-          {isCompleted ? <AssessmentCompletedIcon /> : <AssessmentPendingIcon />}
+        <span className={`${styles.statusDot} ${cfg.dotClass}`} aria-hidden="true">
+          <StatusIcon />
         </span>
         <span>{meta}</span>
       </span>
@@ -289,6 +351,7 @@ function mapOutreachDots(raw) {
 }
 
 function mapTocOutreach(p) {
+  if (!hasAgentConnected(p)) return null;
   const raw = Array.isArray(p.outreachDots) ? p.outreachDots : [];
   const hasSuccess = raw.includes('success') || raw.includes('blue') || p.outreachAttended;
   const hasFailed = raw.includes('failed') || raw.includes('red');
@@ -302,28 +365,24 @@ function mapTocOutreach(p) {
   };
 }
 
-function OutreachCell({ patient }) {
+function OutreachCell({ patient, onOpen }) {
   const outreach = mapTocOutreach(patient);
-  if (!outreach) {
-    return (
-      <span className={styles.outreachNone}>
-        <Icon name="solar:phone-calling-linear" size={16} color="var(--neutral-200)" />
-        <span className={styles.dash}>—</span>
-      </span>
-    );
-  }
-  const failed = outreach.failed;
-  return (
+  const content = !outreach ? (
+    <span className={styles.outreachNone}>
+      <Icon name="solar:phone-calling-linear" size={16} color="var(--neutral-200)" />
+      <span className={styles.dash}>—</span>
+    </span>
+  ) : (
     <span className={styles.outreachCell}>
       <Icon
         name="solar:phone-calling-linear"
         size={16}
-        color={failed ? 'var(--status-error)' : 'var(--status-success)'}
+        color={outreach.failed ? 'var(--status-error)' : 'var(--status-success)'}
       />
       <span className={styles.outreachBody}>
-        <span className={failed ? styles.outreachStatus : styles.outreachStatusOk}>{outreach.status}</span>
+        <span className={outreach.failed ? styles.outreachStatus : styles.outreachStatusOk}>{outreach.status}</span>
         {outreach.date && (
-          <span className={failed ? styles.outreachDate : styles.outreachDateOk}>{outreach.date}</span>
+          <span className={outreach.failed ? styles.outreachDate : styles.outreachDateOk}>{outreach.date}</span>
         )}
         <span className={styles.dots}>
           {outreach.dots.map((c, i) => (
@@ -332,6 +391,19 @@ function OutreachCell({ patient }) {
         </span>
       </span>
     </span>
+  );
+
+  if (!onOpen) return content;
+
+  return (
+    <button
+      type="button"
+      className={styles.outreachBtn}
+      onClick={(e) => { e.stopPropagation(); onOpen(); }}
+      aria-label={`Open patient outreach for ${patient.name}`}
+    >
+      {content}
+    </button>
   );
 }
 
@@ -377,20 +449,12 @@ export const TOC_MIDDLE_COLUMNS = [
     tdClassName: `${rowStyles.td} ${styles.agentBandTd}`,
     tdStyle: BAND_LEFT,
     thStyle: BAND_TH_LEFT,
-    renderCell: (p, ctx) => {
-      const label = outreachStatusLabel(p);
-      const cfg = OUTREACH_STATUS[label];
-      return (
-        <button
-          type="button"
-          className={styles.assessmentBtn}
-          onClick={(e) => { e.stopPropagation(); ctx.openOutreachStatusDrawer(p.id); }}
-          aria-label={`Open outreach status for ${p.name}`}
-        >
-          <Badge size="M" tone={cfg.tone} label={label} icon={cfg.icon} />
-        </button>
-      );
-    },
+    renderCell: (p, ctx) => (
+      <AiOutcomeCell
+        patient={p}
+        onOpen={() => ctx.openOutreachStatusDrawer(p.id)}
+      />
+    ),
   },
   {
     key: 'assessment',
@@ -404,7 +468,9 @@ export const TOC_MIDDLE_COLUMNS = [
     renderCell: (p, ctx) => (
       <AssessmentCell
         patient={p}
-        onOpen={() => ctx.openAssessmentDrawer(p.id, { prefilled: hasAgentConnected(p) })}
+        onOpen={() => ctx.openAssessmentDrawer(p.id, {
+          prefilled: resolveAssessmentStatus(p) === 'completed',
+        })}
       />
     ),
   },
@@ -438,7 +504,12 @@ export const TOC_MIDDLE_COLUMNS = [
     sortKey: 'outreachSort',
     sortType: 'date',
     tdClassName: rowStyles.td,
-    renderCell: (p) => <OutreachCell patient={p} />,
+    renderCell: (p, ctx) => (
+      <OutreachCell
+        patient={p}
+        onOpen={() => ctx.openOutreachStatusDrawer(p.id)}
+      />
+    ),
   },
   {
     key: 'lastOutreachBy',

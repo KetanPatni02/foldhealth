@@ -28,7 +28,7 @@ export function sectionSlugFromState(state) {
 
   if (activePage === 'population' || !activePage) {
     if (activeSubnavList && LIST_TO_SLUG[activeSubnavList]) return LIST_TO_SLUG[activeSubnavList];
-    if (activeSubnavList === 'TOC') return 'toc';
+    if (activeSubnavList === 'TOC IP') return 'toc';
     if (activeSubnavList === 'TCM') return activeTab === 'toc-queue' ? 'tcm-queue' : 'tcm';
     return activeTab === 'toc-queue' ? 'tcm-queue' : 'tcm';
   }

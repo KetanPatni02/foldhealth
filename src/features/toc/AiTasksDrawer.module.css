@@ -10,3 +10,9 @@
   min-height: 0;
   overflow-y: auto;
 }
+
+.loading {
+  padding: 24px 16px;
+  font-size: 14px;
+  color: var(--neutral-300);
+}

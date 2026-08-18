@@ -1967,8 +1967,9 @@ export const useAppStore = create((set, get) => ({
       const cached = JSON.parse(localStorage.getItem('worklistOrder') || 'null');
       if (!Array.isArray(cached) || cached.length === 0) return null;
       // Pre-split caches stored the care-manager list as "TOC"; that list is TCM.
-      if (cached.includes('TOC') && !cached.includes('TCM')) {
-        return cached.map(l => (l === 'TOC' ? 'TCM' : l));
+      if (Array.isArray(cached) && cached.includes('TOC')) {
+        const hasTcm = cached.includes('TCM');
+        return cached.map(l => (l === 'TOC' ? (hasTcm ? 'TOC IP' : 'TCM') : l));
       }
       return cached;
     } catch { return null; }
@@ -2012,8 +2013,9 @@ export const useAppStore = create((set, get) => ({
     const knownSet = new Set(known);
     let saved = (order || []).filter(l => knownSet.has(l));
     // Pre-split saved orders used "TOC" for the care-manager worklist (now TCM).
-    if (saved.includes('TOC') && !saved.includes('TCM')) {
-      saved = saved.map(l => (l === 'TOC' ? 'TCM' : l));
+    if (saved.includes('TOC')) {
+      const hasTcm = saved.includes('TCM');
+      saved = saved.map(l => (l === 'TOC' ? (hasTcm ? 'TOC IP' : 'TCM') : l));
     }
     const savedSet = new Set(saved);
     const merged = [...saved, ...known.filter(l => !savedSet.has(l))];
@@ -2311,6 +2313,9 @@ export const useAppStore = create((set, get) => ({
           // Priority: in-memory invoke state > DB state
           agentAssigned: mem?.agentAssigned || base.agentAssigned || '',
           agentRole: mem?.agentRole || base.agentRole || '',
+          aiOutcomeInitiated: mem?.aiOutcomeInitiated ?? base.aiOutcomeInitiated,
+          aiOutcomeStatus: mem?.aiOutcomeStatus ?? base.aiOutcomeStatus,
+          aiOutcomeInvokedAt: mem?.aiOutcomeInvokedAt ?? base.aiOutcomeInvokedAt,
           onCall: mem ? mem.onCall : (base.onCall || false),
           status: mem ? mem.status : base.status,
           callDuration: mem ? mem.callDuration : base.callDuration,
@@ -3192,7 +3197,7 @@ export const useAppStore = create((set, get) => ({
     // Any explicit list change pins the session — fetchWorklistOrder's
     // top-of-list auto-landing resets this flag after its own call.
     // TOC is the standalone queue worklist; TCM keeps the Worklist / Queue tabs.
-    const tabPatch = list === 'TOC' ? { activeTab: 'toc-queue' }
+    const tabPatch = list === 'TOC IP' ? { activeTab: 'toc-queue' }
       : list === 'TCM' ? { activeTab: 'toc-worklist' }
       : {};
     set({ activeSubnavList: list, currentPage: 1, _subnavNavigated: true, ...tabPatch });
@@ -4142,35 +4147,40 @@ export const useAppStore = create((set, get) => ({
   // Push a real consolidated sign-off task into the existing `tasks` slice so
   // TasksView surfaces it (one task per patient per Submit-for-Review batch).
   // Gap codes ride in `task.labels` to satisfy the Gaps-column filter (AC-8).
-  createCareGapSignOffTask: ({ hedisMemberId, gapCodes, state, pdf } = {}) => {
+  createCareGapSignOffTask: async ({ hedisMemberId, gapCodes, state, pdf } = {}) => {
     track('hedis.signoff_task_created', { memberId: hedisMemberId });
     const member = get().hedisMembers.find(m => m.id === hedisMemberId);
     if (!member || !gapCodes || gapCodes.length === 0) return null;
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 1);
-    const id = `tk-hedis-${hedisMemberId}-${Date.now()}`;
-    const task = {
-      id,
+    const me = get().currentUserProfile;
+    // Route through createTask so this hits Supabase + task_audit_log like
+    // every other task. Actor is the signed-in reviewer if we have one,
+    // otherwise the automation label used by the HEDIS submit path.
+    const payload = {
       name: 'Care Gap Review: Clinical Note',
       description: `Sign off on consolidated note for ${member.name} covering ${gapCodes.length} care gap${gapCodes.length === 1 ? '' : 's'}.`,
       status: 'pending',
       priority: 'medium',
       member: member.name,
       assigned_to: null,
+      assigned_to_id: null,
       pool: 'HEDIS Sign-Off',
       labels: [...gapCodes],
       due_date: dueDate.toISOString().slice(0, 10),
-      created_by: 'Care Manager',
       meta: `HEDIS Sign-Off · ${state || member.state || 'Unknown state'}`,
       hedisMemberId,
       hedisGapCodes: [...gapCodes],
       state: state || member.state,
-      created_at: new Date().toISOString(),
       attachments: pdf ? 1 : 0,
       consolidatedPdf: pdf || null,
+      created_by: me?.name || 'HEDIS Automation',
+      created_by_id: me?.id || null,
     };
-    set(s => ({ tasks: [task, ...s.tasks] }));
-    return task;
+    return get().createTask(payload, {
+      auditUserName: me?.name || 'HEDIS Automation',
+      auditUserId: me?.id || null,
+    });
   },
 
   // Replace the consolidated PDF on an existing sign-off task (reviewer edited
@@ -8232,7 +8242,24 @@ export const useAppStore = create((set, get) => ({
     const updated = state.patients.map(p => {
       if (!patientIdSet.has(p.id)) return p;
       const newP = { ...p, agentAssigned: agentName, agentRole };
-      if (p.status !== 'completed' && p.status !== 'failed') {
+      if (agentRole === 'TOC Agent') {
+        newP.aiOutcomeInitiated = true;
+        newP.aiOutcomeStatus = 'Queued';
+        newP.aiOutcomeInvokedAt = new Date().toISOString();
+        newP.outreachStatus = 'Not Started';
+        newP.assessmentStatus = 'Not Started';
+        if (activeCount < MAX_CONCURRENT) {
+          newP.status = 'oncall';
+          newP.onCall = true;
+          newP.callDuration = '00:00';
+          newP.nextAction = 'Live outreach in progress';
+          activeCount++;
+        } else {
+          newP.status = 'queued';
+          newP.onCall = false;
+          newP.nextAction = 'Queued — waiting for available line';
+        }
+      } else if (p.status !== 'completed' && p.status !== 'failed') {
         if (activeCount < MAX_CONCURRENT) {
           newP.status = 'oncall';
           newP.onCall = true;
@@ -8251,7 +8278,7 @@ export const useAppStore = create((set, get) => ({
     set({ patients: updated, selectedIds: [], showInvokeModal: false, queueTabDot: true });
 
     // Stay on the TOC worklist (it is the queue) or jump to the TCM queue tab.
-    if (get().activeSubnavList === 'TOC') {
+    if (get().activeSubnavList === 'TOC IP') {
       updateHash(get);
     } else {
       set({ activeSubnavList: 'TCM' });
@@ -8264,6 +8291,11 @@ export const useAppStore = create((set, get) => ({
         get().persistPatient(p.id, {
           agentAssigned: p.agentAssigned,
           agentRole: p.agentRole,
+          aiOutcomeInitiated: p.aiOutcomeInitiated,
+          aiOutcomeStatus: p.aiOutcomeStatus,
+          aiOutcomeInvokedAt: p.aiOutcomeInvokedAt,
+          outreachStatus: p.outreachStatus,
+          assessmentStatus: p.assessmentStatus,
           status: p.status,
           onCall: p.onCall,
           callDuration: p.callDuration,
@@ -10028,9 +10060,26 @@ export const useAppStore = create((set, get) => ({
     set({ tasks: [...localHedisTasks, ...now], tasksLoading: false });
   },
 
-  createTask: async (task) => {
+  createTask: async (task, opts = {}) => {
     track('task.created', { taskId: task?.id, taskType: task?.type || null });
     const normalized = { ...task };
+
+    // Attribution is mandatory. Resolve in this order: explicit payload →
+    // opts.auditUserName override (used by AI/automation callers) → current
+    // signed-in profile. If none of those give a real actor, refuse — a task
+    // with no known creator would silently escape the audit log.
+    const me = get().currentUserProfile;
+    const resolvedCreatedBy = normalized.created_by || opts.auditUserName || me?.name || null;
+    const resolvedCreatedById = normalized.created_by_id ?? opts.auditUserId ?? me?.id ?? null;
+    if (!resolvedCreatedBy) {
+      console.warn('createTask refused: missing actor (created_by / auditUserName / currentUserProfile)');
+      get().showToast?.('Cannot create task: no user identified');
+      return null;
+    }
+    normalized.created_by = resolvedCreatedBy;
+    normalized.created_by_id = resolvedCreatedById;
+    if (!normalized.created_at) normalized.created_at = new Date().toISOString();
+
     if (normalized.status === 'pending' && isPastDate(normalized.due_date)) {
       normalized.status = 'missed';
       normalized.due_missed = true;
@@ -10047,7 +10096,7 @@ export const useAppStore = create((set, get) => ({
     // Try insert with full schema; if fails due to missing column, retry with reduced payload
     let { data, error } = await supabase.from('tasks').insert(normalized).select().single();
     if (error && /column .* does not exist|schema cache/.test(error.message || '')) {
-      const { parent_task_id, pool, mentions, completed_at, description, assigned_to_id, created_by_id, program_code, patient_id, ...legacy } = normalized;
+      const { parent_task_id, pool, mentions, completed_at, description, assigned_to_id, created_by_id, program_code, patient_id, source_key, ...legacy } = normalized;
       ({ data, error } = await supabase.from('tasks').insert(legacy).select().single());
     }
     if (error) {
@@ -10058,8 +10107,109 @@ export const useAppStore = create((set, get) => ({
     // Merge full payload back so UI keeps client-side fields even if DB ignored them
     const final = { ...normalized, ...data };
     set(s => ({ tasks: s.tasks.map(t => t.id === tempId ? final : t) }));
-    get().logTaskAudit(final.id, 'created', { to: final.name });
+    if (!opts.skipAudit) {
+      get().logTaskAudit(final.id, 'created', {
+        to: final.name,
+        userName: opts.auditUserName || resolvedCreatedBy,
+        userId: opts.auditUserId ?? resolvedCreatedById,
+        createdAt: opts.auditCreatedAt || normalized.created_at,
+      });
+    }
     return final;
+  },
+
+  /** Persist AI TOC program tasks for a patient (idempotent via source_key). */
+  ensureAiTocTasksForPatient: async (patient) => {
+    if (!patient?.id) return { pending: [], overdue: [], completed: [] };
+    const {
+      resolveAiTaskCount,
+      aiTocSourceKey,
+      getAiTocTaskTemplate,
+      buildAiTocCreatePayload,
+      dbTaskToListRow,
+      groupAiTocListRows,
+      tocAgentCreatedAt,
+    } = await import('../features/toc/aiTocTasks');
+
+    const count = resolveAiTaskCount(patient);
+    if (count === 0) return { pending: [], overdue: [], completed: [] };
+
+    const { data: existingRows, error: fetchErr } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('program_code', 'TOC')
+      .eq('patient_id', patient.id)
+      .order('created_at', { ascending: true });
+    if (fetchErr) console.warn('ensureAiTocTasksForPatient fetch:', fetchErr.message);
+
+    const bySource = new Map();
+    for (const row of existingRows || []) {
+      const key = row.source_key || row.meta;
+      if (key) bySource.set(key, row);
+    }
+
+    const persisted = [];
+    for (let i = 0; i < count; i++) {
+      const template = getAiTocTaskTemplate(i);
+      if (!template) continue;
+      const sourceKey = aiTocSourceKey(patient.id, i);
+      let row = bySource.get(sourceKey);
+      if (!row) {
+        row = await get().createTask(
+          buildAiTocCreatePayload(patient, template, i),
+          {
+            auditUserName: 'TOC Agent',
+            auditUserId: null,
+            auditCreatedAt: tocAgentCreatedAt(patient, i),
+          },
+        );
+        if (!row) {
+          const { data: retryRow } = await supabase
+            .from('tasks')
+            .select('*')
+            .eq('source_key', sourceKey)
+            .maybeSingle();
+          row = retryRow;
+        }
+      }
+      if (row) {
+        const cachedLog = get().taskAuditLogs[row.id] || [];
+        if (!cachedLog.some(l => l.action_type === 'created')) {
+          await get().fetchTaskAuditLog(row.id);
+          const fetched = get().taskAuditLogs[row.id] || [];
+          if (!fetched.some(l => l.action_type === 'created')) {
+            await get().logTaskAudit(row.id, 'created', {
+              to: row.name,
+              userName: 'TOC Agent',
+              userId: null,
+              createdAt: tocAgentCreatedAt(patient, i),
+            });
+          }
+        }
+      }
+      if (row) persisted.push(row);
+    }
+
+    if (persisted.length) {
+      set((s) => {
+        const persistedIds = new Set(persisted.map(t => String(t.id)));
+        const rest = s.tasks.filter(t => !(
+          t.program_code === 'TOC'
+          && t.patient_id === patient.id
+          && persistedIds.has(String(t.id))
+        ));
+        const merged = [...rest];
+        for (const t of persisted) {
+          const idx = merged.findIndex(x => String(x.id) === String(t.id));
+          if (idx >= 0) merged[idx] = { ...merged[idx], ...t };
+          else merged.push(t);
+        }
+        return { tasks: merged };
+      });
+    }
+
+    const listRows = persisted.map((row, i) => dbTaskToListRow(row, getAiTocTaskTemplate(i)));
+    return groupAiTocListRows(listRows);
   },
 
   updateTask: async (id, updates) => {
@@ -10102,7 +10252,7 @@ export const useAppStore = create((set, get) => ({
     // Try DB update; gracefully retry without unknown columns
     let { error } = await supabase.from('tasks').update({ ...final, updated_at: new Date().toISOString() }).eq('id', id);
     if (error && /column .* does not exist|schema cache/.test(error.message || '')) {
-      const { parent_task_id, pool, mentions, completed_at, description, assigned_to_id, created_by_id, program_code, patient_id, ...legacy } = final;
+      const { parent_task_id, pool, mentions, completed_at, description, assigned_to_id, created_by_id, program_code, patient_id, source_key, ...legacy } = final;
       ({ error } = await supabase.from('tasks').update({ ...legacy, updated_at: new Date().toISOString() }).eq('id', id));
     }
     if (error) {
@@ -10270,6 +10420,7 @@ export const useAppStore = create((set, get) => ({
 
   fetchTaskAuditLog: async (taskId) => {
     if (!taskId) return [];
+    const cached = get().taskAuditLogs[taskId] || [];
     const { data, error } = await supabase
       .from('task_audit_log')
       .select('*')
@@ -10277,10 +10428,11 @@ export const useAppStore = create((set, get) => ({
       .order('created_at', { ascending: false });
     if (error) {
       console.warn('task_audit_log fetch failed (run migration?):', error.message);
-      return get().taskAuditLogs[taskId] || [];
+      return cached;
     }
-    set(s => ({ taskAuditLogs: { ...s.taskAuditLogs, [taskId]: data || [] } }));
-    return data || [];
+    const merged = data?.length ? data : cached;
+    set(s => ({ taskAuditLogs: { ...s.taskAuditLogs, [taskId]: merged } }));
+    return merged;
   },
 
   logTaskAudit: async (taskId, actionType, opts = {}) => {
@@ -10288,13 +10440,13 @@ export const useAppStore = create((set, get) => ({
     const me = get().currentUserProfile;
     const entry = {
       task_id: taskId,
-      user_name: me?.name || 'System',
-      user_id: me?.id || null,
+      user_name: opts.userName || me?.name || 'System',
+      user_id: opts.userId !== undefined ? opts.userId : (me?.id || null),
       action_type: actionType,
       field_name: opts.field || null,
       from_value: opts.from != null ? String(opts.from) : null,
       to_value: opts.to != null ? String(opts.to) : null,
-      created_at: new Date().toISOString(),
+      created_at: opts.createdAt || new Date().toISOString(),
     };
     set(s => {
       const existing = s.taskAuditLogs[taskId] || [];

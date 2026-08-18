@@ -13,6 +13,7 @@ import { TaskDetailDrawerSubtasks } from './TaskDetailDrawerSubtasks';
 import { TaskDetailDrawerActivity } from './TaskDetailDrawerActivity';
 import { TaskDetailDrawerHeader } from './TaskDetailDrawerHeader';
 import { buildActivityLogItems } from './TaskDetailDrawer.utils.jsx';
+import { resolveAiTocTaskAuditLog } from '../toc/aiTocTasks';
 import styles from './TasksView.module.css';
 
 export function TaskDetailDrawer({ task, onClose, onSelectTask }) {
@@ -45,12 +46,18 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask }) {
   const allPatients = useAppStore(s => s.allPatients);
   const currentUserProfile = useAppStore(s => s.currentUserProfile);
 
-  useEffect(() => { if (task?.id) fetchTaskAuditLog(task.id); }, [task?.id, fetchTaskAuditLog]);
+  useEffect(() => {
+    if (task?.id) fetchTaskAuditLog(task.id);
+  }, [task?.id, fetchTaskAuditLog]);
 
   const auditLog = task ? (taskAuditLogs[task.id] || []) : [];
+  const effectiveAuditLog = useMemo(
+    () => resolveAiTocTaskAuditLog(task, auditLog, { id: task?.patient_id }),
+    [task, auditLog],
+  );
   const activityLogItems = useMemo(
-    () => buildActivityLogItems(auditLog, activityTab),
-    [auditLog, activityTab],
+    () => buildActivityLogItems(effectiveAuditLog, activityTab),
+    [effectiveAuditLog, activityTab],
   );
 
   if (!task) return null;
@@ -95,13 +102,17 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask }) {
   const handleAddSubtask = async () => {
     const trimmed = subtaskName.trim();
     if (!trimmed) return;
+    if (!currentUserProfile?.name) {
+      showToast('Cannot add subtask: no user identified');
+      return;
+    }
     const sub = {
       name: trimmed.slice(0, TITLE_MAX),
       status: 'pending',
       priority: task.priority || 'medium',
       due_date: task.due_date || todayMMDDYYYY(),
-      assigned_to: task.assigned_to || currentUserProfile?.name || null,
-      assigned_to_id: task.assigned_to_id || currentUserProfile?.id || null,
+      assigned_to: task.assigned_to || currentUserProfile.name,
+      assigned_to_id: task.assigned_to_id || currentUserProfile.id || null,
       member: task.member,
       labels: [],
       parent_task: task.name,
@@ -113,8 +124,8 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask }) {
       description: '',
       pool: null,
       mentions: [],
-      created_by: currentUserProfile?.name || 'Current User',
-      created_by_id: currentUserProfile?.id || null,
+      created_by: currentUserProfile.name,
+      created_by_id: currentUserProfile.id || null,
     };
     const created = await createTask(sub);
     if (created) {
@@ -154,7 +165,6 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask }) {
       <div className={styles.drawerContent}>
         <TaskDetailDrawerHeader
           task={task}
-          labels={labels}
           editingTitle={editingTitle}
           titleDraft={titleDraft}
           setTitleDraft={setTitleDraft}
@@ -209,7 +219,7 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask }) {
           setActivityTab={setActivityTab}
           handleAddComment={handleAddComment}
           activityLogItems={activityLogItems}
-          auditLog={auditLog}
+          auditLog={effectiveAuditLog}
         />
       </div>
       {showDeleteConfirm && (

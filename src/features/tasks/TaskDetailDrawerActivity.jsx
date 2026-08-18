@@ -44,7 +44,7 @@ export function TaskDetailDrawerActivity({
           {/* Activity log — real audit entries */}
           <div className={styles.activityLog}>
             {activityLogItems}
-            {auditLog.length === 0 && (
+            {activityLogItems.length === 0 && (
               <div className={styles.subtaskEmpty}>No activity yet.</div>
             )}
           </div>

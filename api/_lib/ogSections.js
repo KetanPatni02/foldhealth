@@ -23,7 +23,7 @@ const SECTIONS = {
 
   // Population worklists
   population: { eyebrow: 'Population', title: 'TCM Worklist', description: 'Prioritized worklist of patients in transitional care management.', hash: '/population/tcm' },
-  toc: { eyebrow: 'Population', title: 'TOC', description: 'Agent-led outreach queue for transition-of-care patients.', hash: '/population/toc' },
+  toc: { eyebrow: 'Population', title: 'TOC IP', description: 'Agent-led outreach queue for transition-of-care inpatients.', hash: '/population/toc' },
   tcm: { eyebrow: 'Population', title: 'TCM Worklist', description: 'Prioritized worklist of patients in transitional care management.', hash: '/population/tcm' },
   'tcm-queue': { eyebrow: 'Population', title: 'TCM Queue', description: 'Queue of patients awaiting agent-led outreach.', hash: '/population/tcm-queue' },
   'toc-queue': { eyebrow: 'Population', title: 'TCM Queue', description: 'Queue of patients awaiting agent-led outreach.', hash: '/population/tcm-queue' },

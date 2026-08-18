@@ -92,7 +92,8 @@ export function TaskDetailDrawerDetails({
                   variant="overflow"
                   label={l}
                   trailingIcon="solar:close-circle-linear"
-                  onClick={() => {
+                  trailingIconLabel={`Remove ${l}`}
+                  onTrailingIconClick={() => {
                     updateTask(task.id, { labels: labels.filter(x => x !== l) });
                     showToast(`Label "${l}" removed`);
                   }}
