@@ -410,8 +410,14 @@ export function OpenIcdsHoverPopover({
 }
 
 // Row shape (per Figma node 11864:523333): code + description on the top
-// line, HCC chip beneath.
+// line, HCC chip beneath. AI-suggested ICDs (Suspect / Recapture — the
+// ones that surface under "No DOS Linked") also render a type tag next to
+// the HCC chip so this popover mirrors the DiagPanel view-card list.
 function IcdHoverRow({ icd, hccShort, onClick }) {
+  const typeTagClass =
+    icd.type === 'Suspect'   ? styles.icdTypeSuspect
+    : icd.type === 'Recapture' ? styles.icdTypeRecapture
+    : null;
   return (
     <button type="button" className={styles.icdRow} onClick={onClick}>
       <div className={styles.icdRowText}>
@@ -420,9 +426,12 @@ function IcdHoverRow({ icd, hccShort, onClick }) {
           {' - '}
           <span>{icd.desc}</span>
         </div>
-        {icd.hcc && (
+        {(icd.hcc || typeTagClass) && (
           <div className={styles.icdRowMeta}>
-            <span className={styles.icdHccChip}>{hccShort(icd.hcc)}</span>
+            {icd.hcc && <span className={styles.icdHccChip}>{hccShort(icd.hcc)}</span>}
+            {typeTagClass && (
+              <span className={typeTagClass}>{icd.type}</span>
+            )}
           </div>
         )}
       </div>

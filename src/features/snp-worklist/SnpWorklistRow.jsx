@@ -170,13 +170,9 @@ export const SNP_MIDDLE_COLUMNS = [
     key: 'carePlanStatus',
     label: 'Care Plan Status',
     sortKey: 'carePlanStatus',
-    stopRowClickPropagation: true,
-    renderCell: (m) => (
-      <button type="button" className={styles.statusDropdown}>
-        {m.carePlanStatus}
-        <DownChevronIcon size={14} />
-      </button>
-    ),
+    // Care Plan Status is read-only in this table (no chevron, no click) —
+    // Program Sub Status is the only editable status cell in the row.
+    renderCell: (m) => <span className={styles.statusText}>{m.carePlanStatus}</span>,
   },
   {
     key: 'nextActionDue',
