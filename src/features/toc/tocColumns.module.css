@@ -72,15 +72,22 @@
   gap: 4px;
   font-size: 12px;
   font-weight: 400;
-  color: var(--neutral-400);
   line-height: 1.2;
   white-space: nowrap;
+}
+
+.assessmentMetaStatus {
+  color: var(--neutral-300);
+}
+
+.assessmentMetaDetail {
+  color: var(--neutral-300);
 }
 
 .aiOutcomeInvokedAt {
   font-size: 12px;
   font-weight: 400;
-  color: var(--neutral-400);
+  color: var(--neutral-300);
   line-height: 1.2;
   white-space: nowrap;
 }
@@ -158,9 +165,9 @@
 }
 .outreachNone { display: inline-flex; align-items: center; gap: 6px; }
 .outreachBody { display: inline-flex; flex-direction: column; gap: 2px; }
-.outreachStatus { font-size: 13px; font-weight: 500; color: var(--status-error); }
-.outreachDate { font-size: 13px; color: var(--status-error); }
 .outreachStatusOk { font-size: 13px; font-weight: 500; color: var(--status-success); }
-.outreachDateOk { font-size: 13px; color: var(--status-success); }
+.outreachDateOk { font-size: 12px; font-weight: 400; color: var(--neutral-300); }
+.outreachStatus { font-size: 13px; font-weight: 500; color: var(--status-error); }
+.outreachDate { font-size: 12px; font-weight: 400; color: var(--neutral-300); }
 .dots { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; }
 .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
