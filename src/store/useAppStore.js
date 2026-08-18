@@ -8114,8 +8114,12 @@ export const useAppStore = create((set, get) => ({
   // Holds the patient id (not the full object) so state stays in sync when the
   // underlying patient row updates (e.g. status flips) while the drawer is open.
   assessmentDrawerPatientId: null,
-  openAssessmentDrawer: (patientId) => set({ assessmentDrawerPatientId: patientId }),
-  closeAssessmentDrawer: () => set({ assessmentDrawerPatientId: null }),
+  assessmentDrawerPrefilled: true,
+  openAssessmentDrawer: (patientId, opts = {}) => set({
+    assessmentDrawerPatientId: patientId,
+    assessmentDrawerPrefilled: opts.prefilled !== false,
+  }),
+  closeAssessmentDrawer: () => set({ assessmentDrawerPatientId: null, assessmentDrawerPrefilled: true }),
 
   // TOC Queue → Outreach Status drawer — same pattern as the assessment drawer.
   outreachStatusDrawerPatientId: null,

@@ -9,13 +9,13 @@ const WORKLISTS = [
   { label: 'SNP', filter: null, view: 'snp' },
   { label: 'Annual Visit', filter: null },
   { label: 'TOC', filter: null, view: 'toc' },
-  { label: 'TCM', filter: null },
   { label: 'HCC', filter: null, view: 'hcc' },
   { label: 'HEDIS', filter: null, view: 'hedis' },
   { label: 'CCM', filter: null, view: 'ccm' },
   { label: 'JSA', filter: null, view: 'jsa' },
   { label: 'High Utilizers', filter: { readmission: 'Yes' } },
   { label: 'DM', filter: null },
+  { label: 'TCM', filter: null },
 ];
 const WORKLIST_LABELS = WORKLISTS.map(w => w.label);
 const WORKLIST_BY_LABEL = Object.fromEntries(WORKLISTS.map(w => [w.label, w]));

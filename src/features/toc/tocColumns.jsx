@@ -4,6 +4,7 @@ import { Badge } from '../../components/Badge/Badge';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import rowStyles from '../toc-worklist/WorklistRow.module.css';
 import styles from './tocColumns.module.css';
+import { hasAgentConnected, outreachStatusLabel, resolveAiTaskCount } from './tocOutcome';
 
 const PROGRAM_SUB_STATUS = {
   enrolled: { variant: 'toc-enrolled', label: 'Enrolled', icon: 'solar:check-circle-bold' },
@@ -74,13 +75,6 @@ function programSubStatus(p) {
   return PROGRAM_SUB_STATUS[p.tocStatus] || PROGRAM_SUB_STATUS.new;
 }
 
-function outreachStatusLabel(p) {
-  if (p.status === 'completed' || p.outreachStatus === 'Completed') return 'Completed';
-  if (p.status === 'failed' || p.status === 'review' || p.outreachStatus === 'Overdue') return 'Needs Review';
-  if (p.outreachStatus === 'Attempted') return 'Needs Review';
-  return 'Queued';
-}
-
 function riskIq(p) {
   if (p.riskIq) return p.riskIq;
   if (p.lace === 'High') return 'High';
@@ -126,6 +120,7 @@ export function enrichTocRow(p) {
     laceSort: LACE_RANK[p.lace] ?? 3,
     aiOutcomeSort: outreachStatusLabel(p),
     assessmentSort: assessmentLabel(p),
+    aiTasksSort: resolveAiTaskCount(p),
     nextActionDueSort: parseMdy(p.dueOn || p.nextOutreach),
     outreachSort: parseMdy(p.outreachDate || p.callDate),
     lastOutreachBySort: resolveLastOutreachBy(p).name,
@@ -203,18 +198,14 @@ function sampleAssessmentCompletedDate(p) {
   return `${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}/2025`;
 }
 
-/** Completed vs pending layouts — Figma 1468:158068 / 3048:85368. */
+/** Pending until agent connects; completed once filled — Figma 1468:158068 / 3048:85368. */
 function resolveAssessmentDisplay(p) {
   const label = assessmentLabel(p);
-  const status = p.assessmentStatus;
-  const isCompleted = status === 'Completed'
-    || (!status && String(p.id || '').split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0) % 5 === 0);
-
-  if (isCompleted) {
-    const date = p.startDate || p.dischargeDate || sampleAssessmentCompletedDate(p);
-    return { label, isCompleted: true, meta: `Completed • ${date}` };
+  if (!hasAgentConnected(p)) {
+    return { label, isCompleted: false, meta: 'Pending' };
   }
-  return { label, isCompleted: false, meta: 'Pending' };
+  const date = p.startDate || p.dischargeDate || sampleAssessmentCompletedDate(p);
+  return { label, isCompleted: true, meta: `Completed • ${date}` };
 }
 
 function AssessmentCell({ patient, onOpen }) {
@@ -383,7 +374,7 @@ export const TOC_MIDDLE_COLUMNS = [
     label: 'AI Outcome',
     sortKey: 'aiOutcomeSort',
     sortType: 'generic',
-    tdClassName: rowStyles.td,
+    tdClassName: `${rowStyles.td} ${styles.agentBandTd}`,
     tdStyle: BAND_LEFT,
     thStyle: BAND_TH_LEFT,
     renderCell: (p, ctx) => {
@@ -413,20 +404,21 @@ export const TOC_MIDDLE_COLUMNS = [
     renderCell: (p, ctx) => (
       <AssessmentCell
         patient={p}
-        onOpen={() => ctx.openAssessmentDrawer(p.id)}
+        onOpen={() => ctx.openAssessmentDrawer(p.id, { prefilled: hasAgentConnected(p) })}
       />
     ),
   },
   {
     key: 'aiTasks',
     label: 'AI Tasks',
-    sortKey: 'tasks',
+    sortKey: 'aiTasksSort',
     sortType: 'number',
-    tdClassName: rowStyles.td,
+    tdClassName: `${rowStyles.td} ${styles.agentBandTd}`,
     tdStyle: BAND_RIGHT,
     thStyle: BAND_TH_RIGHT,
-    renderCell: (p, ctx) => (
-      p.tasks > 0
+    renderCell: (p, ctx) => {
+      const taskCount = resolveAiTaskCount(p);
+      return taskCount > 0
         ? (
           <button
             type="button"
@@ -434,11 +426,11 @@ export const TOC_MIDDLE_COLUMNS = [
             onClick={(e) => { e.stopPropagation(); ctx.openAiTasksDrawer(p.id); }}
             aria-label={`Open AI tasks for ${p.name}`}
           >
-            <Badge size="M" tone="primary" label={String(p.tasks)} />
+            <Badge size="M" tone="primary" label={String(taskCount)} />
           </button>
         )
-        : <span className={styles.dash}>—</span>
-    ),
+        : <span className={styles.dash}>—</span>;
+    },
   },
   {
     key: 'outreach',

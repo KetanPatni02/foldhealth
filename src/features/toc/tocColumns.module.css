@@ -46,6 +46,15 @@
   min-width: 0;
 }
 
+/* Badge defaults to align-self: center — keep band cells left-aligned. */
+.assessmentBtn > * {
+  align-self: flex-start;
+}
+
+.agentBandTd {
+  text-align: left;
+}
+
 .assessmentLink {
   display: inline-flex;
   align-items: center;

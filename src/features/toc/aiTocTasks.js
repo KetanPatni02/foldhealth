@@ -1,6 +1,8 @@
 // AI-generated TOC follow-up tasks. The worklist badge shows `patient.tasks`;
 // this pool is sliced to that count so the drawer matches the cell.
 
+import { resolveAiTaskCount } from './tocOutcome';
+
 const AI_TOC_TASK_POOL = [
   { title: 'Complete post-discharge medication reconciliation', priority: 'high', subtasks: 2, attachments: 1, comments: 0 },
   { title: 'Schedule PCP follow-up within 7 days of discharge', priority: 'high', subtasks: 0, attachments: 0, comments: 1 },
@@ -11,7 +13,7 @@ const AI_TOC_TASK_POOL = [
 ];
 
 export function buildAiTocTasks(patient) {
-  const count = Math.max(0, Number(patient?.tasks) || 0);
+  const count = resolveAiTaskCount(patient);
   const due = patient?.dueOn || patient?.nextOutreach || '—';
   const pending = AI_TOC_TASK_POOL.slice(0, count).map((t, i) => ({
     id: `${patient?.id || 'toc'}-ai-${i}`,
