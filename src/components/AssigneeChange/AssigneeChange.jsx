@@ -2,16 +2,23 @@ import { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Avatar } from '../Avatar/Avatar';
 import { Icon } from '../Icon/Icon';
+import { DownChevronIcon } from '../Icon/DownChevronIcon';
 import styles from './AssigneeChange.module.css';
 
 /**
  * AssigneeChange — worklist row cell for assigning / re-assigning a user.
  *
- * Two states:
- *   • Assigned  → 24px provider avatar + name (+ optional role sub-line).
- *     Fixed 140px width; long names truncate with ellipsis.
+ * States (per Figma Fold-Pixel-1.0 node 8629:178):
+ *   • Assigned  → provider avatar + name (+ optional role). Fixed pill
+ *                 width; long names truncate with ellipsis.
  *   • Unassigned → outlined person slot + "Assign User". Width hugs the
- *     label so short strings don't leave an oversized dead-zone.
+ *                  label so short strings don't leave an oversized dead-zone.
+ *   • avatarOnly → avatar + chevron, no text (compact cell mode).
+ *   • disabled   → greyed, non-interactive.
+ *
+ * Sizes:
+ *   • 'M' (default) — 24px avatar, 14px name, 12px role.
+ *   • 'S'           — 20px (Avatar size XS) + 12px name for tighter rows.
  *
  * When `users` is supplied, the button owns its own portaled searchable
  * picker: click opens a list of `{id, name, initials, role?}` rows, and
@@ -19,13 +26,17 @@ import styles from './AssigneeChange.module.css';
  * fires `onClick` for callers that want to open their own picker.
  *
  * Hover / keyboard focus fills the pill with a subtle neutral-50
- * background and reveals a chevron.
+ * background and reveals a chevron (disabled states skip the reveal).
  */
 export const AssigneeChange = forwardRef(function AssigneeChange({
   name,
   initials,
   role,
+  showRole = true,          // toggle the role sub-line on/off independently of the value
   unassigned = false,
+  size = 'M',              // 'M' | 'S'
+  avatarOnly = false,
+  disabled = false,
   users,
   onSelect,
   pickerTitle,
@@ -74,10 +85,23 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
   }, [pos]);
 
   const handleClick = (e) => {
+    if (disabled) return;
     e.stopPropagation();
     if (hasPicker) { pos ? close() : open(); return; }
     onClick?.(e);
   };
+
+  // Use Avatar's design-token scale so we inherit the shared radius / font
+  // scale instead of hand-picking pixels: 'S' → 24px, 'XS' → 20px.
+  // Figma node 8629:178 spec.
+  const avatarSize = size === 'S' ? 'XS' : 'S';
+
+  // Chevron picks up the pill's tone in avatar-only mode: orange when a
+  // staff avatar is shown (matches the DH tile), grey otherwise. Everywhere
+  // else it stays grey until hover reveals it. Figma node 8629:178.
+  const chevronColor = (avatarOnly && !unassigned)
+    ? 'var(--secondary-300)'
+    : 'var(--neutral-300)';
 
   const q = query.trim().toLowerCase();
   const filtered = hasPicker && q
@@ -89,48 +113,60 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
     ? 'Assign user'
     : `Change assignee${name ? ` (currently ${name})` : ''}`);
 
+  const rootClass = [
+    styles.root,
+    unassigned ? styles.unassigned : styles.assigned,
+    size === 'S' ? styles.sizeS : styles.sizeM,
+    avatarOnly ? styles.avatarOnly : '',
+    disabled ? styles.disabled : '',
+    className || '',
+  ].filter(Boolean).join(' ');
+
   const trigger = unassigned ? (
     <button
       ref={setRefs}
       type="button"
-      className={[styles.root, styles.unassigned, className || ''].filter(Boolean).join(' ')}
+      className={rootClass}
       onClick={handleClick}
       aria-label={label}
+      aria-disabled={disabled || undefined}
       aria-haspopup={hasPicker ? 'menu' : undefined}
       aria-expanded={hasPicker ? !!pos : undefined}
     >
-      <span className={styles.unassignedSlot} aria-hidden="true">
-        <Icon name="solar:user-rounded-linear" size={16} color="var(--neutral-300)" />
-      </span>
-      <span className={styles.textLabel}>Assign User</span>
-      <Icon
-        name="solar:alt-arrow-down-linear"
-        size={12}
-        color="var(--neutral-300)"
-        className={styles.chevron}
+      <Avatar
+        type="icon"
+        variant="others"
+        size={size === 'S' ? 'XS' : 'S'}
+        iconName="solar:user-rounded-linear"
+        className={avatarOnly ? styles.avatarInner : undefined}
       />
+      {!avatarOnly && <span className={styles.textLabel}>Assign User</span>}
+      <DownChevronIcon size={14} color={chevronColor} className={styles.chevron} />
     </button>
   ) : (
     <button
       ref={setRefs}
       type="button"
-      className={[styles.root, styles.assigned, className || ''].filter(Boolean).join(' ')}
+      className={rootClass}
       onClick={handleClick}
       aria-label={label}
+      aria-disabled={disabled || undefined}
       aria-haspopup={hasPicker ? 'menu' : undefined}
       aria-expanded={hasPicker ? !!pos : undefined}
     >
-      <Avatar variant="staff" initials={initials} size={24} />
-      <span className={styles.textBody}>
-        <span className={styles.name} title={name}>{name}</span>
-        {role && <span className={styles.role}>{role}</span>}
-      </span>
-      <Icon
-        name="solar:alt-arrow-down-linear"
-        size={12}
-        color="var(--neutral-300)"
-        className={styles.chevron}
+      <Avatar
+        variant="staff"
+        initials={initials}
+        size={avatarSize}
+        className={avatarOnly ? styles.avatarInner : undefined}
       />
+      {!avatarOnly && (
+        <span className={styles.textBody}>
+          <span className={styles.name} title={name}>{name}</span>
+          {showRole && role && <span className={styles.role}>{role}</span>}
+        </span>
+      )}
+      <DownChevronIcon size={14} color={chevronColor} className={styles.chevron} />
     </button>
   );
 
