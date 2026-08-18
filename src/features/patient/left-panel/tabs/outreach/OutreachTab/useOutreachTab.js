@@ -20,6 +20,7 @@ export function useOutreachTab({
   defaultPrograms = [],
   defaultFormOpen = false,
   scopedProgram = null,
+  initialLogGroups = INITIAL_LOG_GROUPS,
   // Optional override — TOC / HEDIS drawers pass the row's patient so
   // ScheduleDrawer doesn't depend on the profile-tab selectedPatientId.
   patientId: patientIdProp,
@@ -47,7 +48,7 @@ export function useOutreachTab({
   const [activitySearchText, setActivitySearchText] = useState('');
   const [outreachScope, setOutreachScope] = useState('All');
   const [filterMenu, setFilterMenu] = useState(null);
-  const [logGroups, setLogGroups] = useState(INITIAL_LOG_GROUPS);
+  const [logGroups, setLogGroups] = useState(initialLogGroups);
   const [type, setType] = useState(defaultLogFor === 'hcc-gaps' ? 'Call' : 'General');
   const [datetime, setDatetime] = useState(defaultFormOpen ? formatNow() : '');
   const [selectedProgs, setSelectedProgs] = useState(defaultPrograms);

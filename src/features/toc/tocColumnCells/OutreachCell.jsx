@@ -1,6 +1,6 @@
 import { Icon } from '../../../components/Icon/Icon';
 import styles from '../tocColumns.module.css';
-import { hasAgentConnected } from '../tocOutcome';
+import { hasTocOutreachActivity } from '../tocOutcome';
 
 const DOT_COLOR = { red: 'var(--status-error)', blue: 'var(--status-info)', grey: 'var(--neutral-200)' };
 
@@ -11,12 +11,11 @@ function mapOutreachDots(raw) {
 }
 
 function mapTocOutreach(p) {
-  if (!hasAgentConnected(p)) return null;
+  if (!hasTocOutreachActivity(p)) return null;
   const raw = Array.isArray(p.outreachDots) ? p.outreachDots : [];
   const hasSuccess = raw.includes('success') || raw.includes('blue') || p.outreachAttended;
   const hasFailed = raw.includes('failed') || raw.includes('red');
   const date = p.outreachDate || p.callDate;
-  if (!hasSuccess && !hasFailed && !date) return null;
   return {
     failed: hasFailed && !hasSuccess,
     status: hasSuccess ? 'Attended' : 'Failed',

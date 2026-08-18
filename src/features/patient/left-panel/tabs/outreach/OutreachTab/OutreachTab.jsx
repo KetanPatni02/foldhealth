@@ -14,6 +14,7 @@ export function OutreachTab(props) {
   const {
     programsLabel = 'Select Programs/Gaps',
     hideLogForRow = false,
+    hideActivity = false,
     ...hookProps
   } = props;
 
@@ -84,22 +85,24 @@ export function OutreachTab(props) {
         />
       )}
 
-      <OutreachTabActivity
-        activityFilter={tab.activityFilter}
-        setActivityFilter={tab.setActivityFilter}
-        activitySearchOpen={tab.activitySearchOpen}
-        setActivitySearchOpen={tab.setActivitySearchOpen}
-        activitySearchText={tab.activitySearchText}
-        setActivitySearchText={tab.setActivitySearchText}
-        outreachScope={tab.outreachScope}
-        setOutreachScope={tab.setOutreachScope}
-        filterMenu={tab.filterMenu}
-        setFilterMenu={tab.setFilterMenu}
-        logGroups={tab.logGroups}
-        filteredLogGroups={tab.filteredLogGroups}
-        onEdit={tab.handleEdit}
-        onDelete={tab.handleDelete}
-      />
+      {!hideActivity && (
+        <OutreachTabActivity
+          activityFilter={tab.activityFilter}
+          setActivityFilter={tab.setActivityFilter}
+          activitySearchOpen={tab.activitySearchOpen}
+          setActivitySearchOpen={tab.setActivitySearchOpen}
+          activitySearchText={tab.activitySearchText}
+          setActivitySearchText={tab.setActivitySearchText}
+          outreachScope={tab.outreachScope}
+          setOutreachScope={tab.setOutreachScope}
+          filterMenu={tab.filterMenu}
+          setFilterMenu={tab.setFilterMenu}
+          logGroups={tab.logGroups}
+          filteredLogGroups={tab.filteredLogGroups}
+          onEdit={tab.handleEdit}
+          onDelete={tab.handleDelete}
+        />
+      )}
 
       {tab.addTaskOpen && (
         <AddTaskDrawer

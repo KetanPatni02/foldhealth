@@ -29,6 +29,16 @@ export function resolveAiTaskCount(p) {
   return Math.max(0, Number(p?.tasks) || 0);
 }
 
+/** True when the TOC worklist Outreach column would show Attended/Failed (not —). */
+export function hasTocOutreachActivity(p) {
+  if (!hasAgentConnected(p)) return false;
+  const raw = Array.isArray(p.outreachDots) ? p.outreachDots : [];
+  const hasSuccess = raw.includes('success') || raw.includes('blue') || p.outreachAttended;
+  const hasFailed = raw.includes('failed') || raw.includes('red');
+  const date = p.outreachDate || p.callDate;
+  return !!(hasSuccess || hasFailed || date);
+}
+
 /** "On: 08/18/2026, 07:36pm" — shown below the AI Outcome badge after invoke. */
 export function formatAiOutcomeInvokedAt(iso) {
   if (!iso) return null;

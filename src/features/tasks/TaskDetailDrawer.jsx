@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { PdfPreviewOverlay } from '../../components/PdfPreviewOverlay/PdfPreviewOverlay';
@@ -21,14 +21,11 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask }) {
   const [activityToggle, setActivityToggle] = useState('Activity');
   const [editingDesc, setEditingDesc] = useState(false);
   const [descDraft, setDescDraft] = useState('');
-  const [editingTitle, setEditingTitle] = useState(false);
-  const [titleDraft, setTitleDraft] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showAddSubtask, setShowAddSubtask] = useState(false);
   const [subtaskName, setSubtaskName] = useState('');
   const [pdfPreview, setPdfPreview] = useState(null);
   const [editingNote, setEditingNote] = useState(false);
-  const titleRef = useRef(null);
   const updateTask = useAppStore(s => s.updateTask);
   const deleteTask = useAppStore(s => s.deleteTask);
   const createTask = useAppStore(s => s.createTask);
@@ -90,13 +87,12 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask }) {
     else toast.info(msg);
   };
 
-  const handleTitleSave = () => {
-    const trimmed = titleDraft.trim().slice(0, TITLE_MAX);
+  const handleTitleCommit = (next) => {
+    const trimmed = next.trim().slice(0, TITLE_MAX);
     if (trimmed && trimmed !== task.name) {
       updateTask(task.id, { name: trimmed });
       showToast('Title updated');
     }
-    setEditingTitle(false);
   };
 
   const handleAddSubtask = async () => {
@@ -143,11 +139,6 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask }) {
     onClose();
   };
 
-  const handleTitleKeyDown = (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); handleTitleSave(); }
-    if (e.key === 'Escape') setEditingTitle(false);
-  };
-
   const handleAddComment = (text) => {
     if (!text) return;
     const mentions = (text.match(/@(\w+(?:\s+\w+)?)/g) || []).map(m => m.slice(1).trim());
@@ -165,13 +156,7 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask }) {
       <div className={styles.drawerContent}>
         <TaskDetailDrawerHeader
           task={task}
-          editingTitle={editingTitle}
-          titleDraft={titleDraft}
-          setTitleDraft={setTitleDraft}
-          setEditingTitle={setEditingTitle}
-          titleRef={titleRef}
-          onTitleSave={handleTitleSave}
-          onTitleKeyDown={handleTitleKeyDown}
+          onTitleCommit={handleTitleCommit}
           onStatusChange={handleStatusChange}
           onClaim={async () => { await claimTask(task.id); showToast('Task claimed'); }}
           onCopyLink={() => { navigator.clipboard?.writeText(`${window.location.origin}/#/tasks?taskId=${task.id}`); showToast('Link copied'); }}
@@ -219,7 +204,6 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask }) {
           setActivityTab={setActivityTab}
           handleAddComment={handleAddComment}
           activityLogItems={activityLogItems}
-          auditLog={effectiveAuditLog}
         />
       </div>
       {showDeleteConfirm && (
