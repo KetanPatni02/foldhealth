@@ -742,7 +742,7 @@ const HCC_TRANSITION_LABEL = {
 // Maps a shared-list label to the store-state key that holds its active
 // filter selections. Used by the generic saved-filter actions below so that
 // saving / applying a filter on any list writes to the right slice.
-// Lists not listed here fall back to `activeFilters` (the TOC default).
+// Lists not listed here fall back to `activeFilters` (the TCM / TOC default).
 const LIST_FILTER_KEY = {
   HCC:   'hccFilters',
   HEDIS: 'hedisFilters',
@@ -1954,7 +1954,7 @@ export const useAppStore = create((set, get) => ({
 
   // Filters
   activeFilters: {},  // { gender: 'F', language: 'es', lace: 'High', ... }
-  activeSubnavList: 'TOC',  // which SubNav list is selected
+  activeSubnavList: 'TCM',  // which SubNav list is selected
 
   // ── Per-user worklist ordering (SubNav drag-and-drop) ──
   // Array of worklist labels in the user's preferred display order. Loaded
@@ -1965,7 +1965,12 @@ export const useAppStore = create((set, get) => ({
   worklistOrder: (() => {
     try {
       const cached = JSON.parse(localStorage.getItem('worklistOrder') || 'null');
-      return Array.isArray(cached) && cached.length > 0 ? cached : null;
+      if (!Array.isArray(cached) || cached.length === 0) return null;
+      // Pre-split caches stored the care-manager list as "TOC"; that list is TCM.
+      if (cached.includes('TOC') && !cached.includes('TCM')) {
+        return cached.map(l => (l === 'TOC' ? 'TCM' : l));
+      }
+      return cached;
     } catch { return null; }
   })(),
   worklistOrderLoaded: false,
@@ -2005,7 +2010,11 @@ export const useAppStore = create((set, get) => ({
     // that no longer exist, append any new worklists at the end.
     const known = defaultLabels || [];
     const knownSet = new Set(known);
-    const saved = (order || []).filter(l => knownSet.has(l));
+    let saved = (order || []).filter(l => knownSet.has(l));
+    // Pre-split saved orders used "TOC" for the care-manager worklist (now TCM).
+    if (saved.includes('TOC') && !saved.includes('TCM')) {
+      saved = saved.map(l => (l === 'TOC' ? 'TCM' : l));
+    }
     const savedSet = new Set(saved);
     const merged = [...saved, ...known.filter(l => !savedSet.has(l))];
 
@@ -3181,7 +3190,11 @@ export const useAppStore = create((set, get) => ({
     if (from !== list) track('nav.list_changed', { from, to: list });
     // Any explicit list change pins the session — fetchWorklistOrder's
     // top-of-list auto-landing resets this flag after its own call.
-    set({ activeSubnavList: list, currentPage: 1, _subnavNavigated: true });
+    // TOC is the standalone queue worklist; TCM keeps the Worklist / Queue tabs.
+    const tabPatch = list === 'TOC' ? { activeTab: 'toc-queue' }
+      : list === 'TCM' ? { activeTab: 'toc-worklist' }
+      : {};
+    set({ activeSubnavList: list, currentPage: 1, _subnavNavigated: true, ...tabPatch });
     updateHash(get);
     // First time we land on the HCC list with no filters yet, seed the
     // role-scoped default queue so users don't stare at the full worklist.
@@ -8221,12 +8234,16 @@ export const useAppStore = create((set, get) => ({
       }
       return newP;
     });
-    toast.success('TOC Agent Invoked Successfully');
+    toast.success('Agent Invoked Successfully');
     set({ patients: updated, selectedIds: [], showInvokeModal: false, queueTabDot: true });
 
-    // Auto-navigate to the queue tab so users see their invoked patients
-    const { setActiveTab } = get();
-    setActiveTab('toc-queue');
+    // Stay on the TOC worklist (it is the queue) or jump to the TCM queue tab.
+    if (get().activeSubnavList === 'TOC') {
+      updateHash(get);
+    } else {
+      set({ activeSubnavList: 'TCM' });
+      get().setActiveTab('toc-queue');
+    }
 
     // Create call records for invoked patients and persist to Supabase
     for (const p of updated) {

@@ -3,7 +3,7 @@ import { FilterChip } from '../FilterChip/FilterChip';
 import { useAppStore } from '../../store/useAppStore';
 import { FilterNameDialog } from '../../features/hcc/FilterNameDialog';
 import { MoreFiltersPopover } from '../../features/hcc/MoreFiltersPopover';
-import { FILTER_DEFS, resolveOptions, mergeRefs } from './filterBarUtils';
+import { filterDefsForList, resolveOptions, mergeRefs } from './filterBarUtils';
 import { SingleSelectFilter } from './SingleSelectFilter';
 import { DefaultViewByToggle } from './DefaultViewByToggle';
 import { FilterBarTail } from './FilterBarTail';
@@ -51,10 +51,10 @@ export function FilterBar({
   const setChipsRef = mergeRefs(internalChipsRef, chipsRef);
   const setTailRef = mergeRefs(internalTailRef, tailRef);
 
-  const effectiveDefs = filterDefs ?? FILTER_DEFS;
+  const effectiveDefs = filterDefs ?? filterDefsForList(storeActiveSubnavList);
   const effectiveFilters = filters ?? storeActiveFilters;
   const effectiveGetOptions = getOptions ?? ((def) => resolveOptions(def, storePatients));
-  const listForSave = storeActiveSubnavList || 'TOC';
+  const listForSave = storeActiveSubnavList || 'TCM';
   const effectiveOnFilterChange = onFilterChange ?? ((key, next) => storeSetFilter(key, next));
   const effectiveOnClearAll = onClearAll ?? storeClearAllFilters;
   const effectiveOnSaveFilter = onSaveFilter ?? ((name) => storeSaveSavedFilter(listForSave, name));

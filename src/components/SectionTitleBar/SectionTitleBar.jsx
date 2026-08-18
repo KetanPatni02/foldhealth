@@ -100,7 +100,11 @@ export function SectionTitleBar({
   const rightRef = useRef(null);
   const hasAction = (key) => actions.includes(key);
 
-  const cls = [styles.tabBar, className || ''].filter(Boolean).join(' ');
+  const cls = [
+    styles.tabBar,
+    leadingElement ? styles.hasLeading : '',
+    className || '',
+  ].filter(Boolean).join(' ');
 
   return (
     <div className={cls} ref={barRef}>

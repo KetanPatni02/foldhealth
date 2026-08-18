@@ -1,45 +1,57 @@
-.body {
+/* Flush the drawer body so the assessment header + AssessmentFormView
+   strip hug the panel edges the way the Figma frame does. */
+.drawerBody {
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding-top: 20px;
+  overflow: hidden;
 }
 
-.statusRow {
+.formHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+
+.formHeaderText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.formTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.formMeta {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-200);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.formActions {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-.statusLabel {
-  font-size: 13px;
-  color: var(--neutral-300);
-}
-.statusEmpty {
-  font-size: 13px;
-  color: var(--neutral-200);
-  font-style: italic;
+  flex-shrink: 0;
 }
 
-.placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 40px 24px;
-  border: 1px dashed var(--neutral-150);
-  border-radius: 12px;
-  text-align: center;
-}
-.placeholderTitle {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--neutral-400);
-  margin: 0;
-}
-.placeholderText {
-  font-size: 13px;
-  color: var(--neutral-300);
-  line-height: 1.5;
-  max-width: 440px;
-  margin: 0;
+.actionDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
 }

@@ -44,6 +44,7 @@
             "pages": [
               "features/worklists",
               "features/toc-worklist",
+              "features/tcm-worklist",
               "features/hcc-worklist",
               "features/hedis-worklist",
               "features/ccm-worklist",

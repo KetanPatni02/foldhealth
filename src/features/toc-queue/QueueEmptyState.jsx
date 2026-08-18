@@ -27,10 +27,10 @@ export function QueueEmptyState() {
             fontSize: 13, color: 'var(--primary-300)', cursor: 'pointer', textDecoration: 'none',
             background: 'none', border: 'none', padding: 0, font: 'inherit',
           }}
-          onClick={() => setActiveTab('worklist')}
+          onClick={() => setActiveTab('toc-worklist')}
         >
           <Icon name="solar:arrow-left-linear" size={13} />
-          Go to TOC Worklist
+          Go to TCM Worklist
         </button>
       </div>
     </div>
