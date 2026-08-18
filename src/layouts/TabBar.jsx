@@ -47,10 +47,10 @@ function ConfirmDialog({ message, onConfirm, onCancel }) {
   );
 }
 
-// Two-tab TOC switch (Worklist / Agent Queue) rendered through SectionTitleBar
+// Two-tab TCM switch (Worklist / Agent Queue) rendered through SectionTitleBar
 // variant 3. Falls back to a title-only header for single-list subnav routes
-// (All Patients, HCC, CCM) — SectionTitleBar drops the segmented toggle when
-// only one item is supplied.
+// (TOC, All Patients, HCC, CCM) — SectionTitleBar drops the segmented toggle
+// when only one item is supplied.
 export function TabBar() {
   const activeTab = useAppStore(s => s.activeTab);
   const setActiveTab = useAppStore(s => s.setActiveTab);
@@ -92,10 +92,10 @@ export function TabBar() {
 
   const handleConfirmEdit = () => {
     setShowEditConfirm(false);
-    // Find the TOC agent by name or use_case
+    const needle = activeSubnavList === 'TCM' ? 'tcm' : 'toc';
     const tocAgent = agents.find(a =>
-      (a.name && a.name.toLowerCase().includes('toc')) ||
-      (a.use_case && a.use_case.toLowerCase().includes('toc'))
+      (a.name && (a.name.toLowerCase().includes(needle) || a.name.toLowerCase().includes('toc'))) ||
+      (a.use_case && (a.use_case.toLowerCase().includes(needle) || a.use_case.toLowerCase().includes('toc')))
     );
     const agent = tocAgent || agents[0];
     if (agent) {
@@ -111,8 +111,9 @@ export function TabBar() {
     if (activeSubnavList === 'All Patients') return { title: 'All Patients', toggleItems: [] };
     if (activeSubnavList === 'HCC')          return { title: 'HCC Worklist', toggleItems: [] };
     if (activeSubnavList === 'CCM')          return { title: 'CCM Worklist', toggleItems: [] };
+    if (activeSubnavList === 'TOC')          return { title: 'TOC', toggleItems: [] };
     return {
-      title: 'TOC',
+      title: 'TCM',
       toggleItems: [
         { key: 'toc-worklist', label: 'Worklist' },
         { key: 'toc-queue',    label: 'Agent Queue' },
@@ -172,8 +173,8 @@ export function TabBar() {
             )}
             {/* Saved Filters dropdown — writes to whichever list this TabBar
                 is currently rendering (TOC / SNP / High Utilizers / DM),
-                falling back to 'TOC' when no subnav list is active. */}
-            <SavedFiltersChip list={activeSubnavList || 'TOC'} />
+                falling back to TCM when no subnav list is active. */}
+            <SavedFiltersChip list={activeSubnavList || 'TCM'} />
             <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
           </>
         }
@@ -181,7 +182,7 @@ export function TabBar() {
 
       {showEditConfirm && (
         <ConfirmDialog
-          message="This will take you to the Agent Builder where you can modify the conversation flow, prompts, and transitions for the TOC agent. Any unsaved changes in the current view will be preserved."
+          message={`This will take you to the Agent Builder where you can modify the conversation flow, prompts, and transitions for the ${activeSubnavList === 'TOC' ? 'TOC' : 'TCM'} agent. Any unsaved changes in the current view will be preserved.`}
           onConfirm={handleConfirmEdit}
           onCancel={() => setShowEditConfirm(false)}
         />

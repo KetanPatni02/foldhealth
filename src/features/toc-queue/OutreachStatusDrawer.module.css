@@ -1,45 +1,8 @@
-.body {
+/* Flush the drawer body so OutreachTab's own 12px wrapper padding hugs
+   the panel the way the Figma Quick View frame does. */
+.drawerBody {
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding-top: 20px;
-}
-
-.statusRow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.statusLabel {
-  font-size: 13px;
-  color: var(--neutral-300);
-}
-.statusEmpty {
-  font-size: 13px;
-  color: var(--neutral-200);
-  font-style: italic;
-}
-
-.placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 40px 24px;
-  border: 1px dashed var(--neutral-150);
-  border-radius: 12px;
-  text-align: center;
-}
-.placeholderTitle {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--neutral-400);
-  margin: 0;
-}
-.placeholderText {
-  font-size: 13px;
-  color: var(--neutral-300);
-  line-height: 1.5;
-  max-width: 440px;
-  margin: 0;
+  overflow: hidden;
 }
