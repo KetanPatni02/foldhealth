@@ -13,6 +13,7 @@ import {
   HISTORY as HISTORY_MOCK,
 } from '../data/ancillary';
 import { getChartDocs, makeUploadedChartDoc } from '../data/chartDocs';
+import { VISIT_TYPES } from '../reference/visitTypes';
 import { ACTIVITY, getActivityFromDb } from '../data/activity';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { dosSourceLetter } from '../dosSource';
@@ -1530,6 +1531,7 @@ function DocumentsUploader() {
   const [failInline, setFailInline] = useState(false);
   const [failDetails, setFailDetails] = useState(null); // { reasons, note } | null
   const [category, setCategory] = useState(DOC_CATEGORIES[0]);
+  const [visitType, setVisitType] = useState('');
   const [caption, setCaption] = useState('');
 
   // Simulated upload — progress 0→100 in ~1.2s, then phase='ready'.
@@ -1554,6 +1556,7 @@ function DocumentsUploader() {
     setFile(null); setProgress(0); setError(''); setCaption('');
     setDocStatus(null); setFailInline(false); setFailDetails(null);
     setCategory(DOC_CATEGORIES[0]);
+    setVisitType('');
     setPhase('empty');
   };
 
@@ -1605,6 +1608,7 @@ function DocumentsUploader() {
       file,
       caption: caption.trim(),
       docType: category,
+      visitType,
       status: docStatus,
     });
     addChartDoc(diagPanelMemberId, doc, file);
@@ -1720,6 +1724,10 @@ function DocumentsUploader() {
               placeholder="HCC80 Evidence Document"
             />
           </label>
+          {/* Category + Visit Type share one row — Visit Type mirrors the
+              HCC worklist's Visit Type column so a document uploaded from
+              here can be linked back to the same encounter categories the
+              DOS rows show. Visit Type is optional. */}
           <div className={styles.docUploaderFormRow}>
             <label className={styles.docUploaderField}>
               <span className={styles.docUploaderFieldLabel}>Document Category</span>
@@ -1731,30 +1739,41 @@ function DocumentsUploader() {
                 {DOC_CATEGORIES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </label>
-            {/* Document Status — required. Pass/Fail pills match the pattern
-                from UploadChartDrawer; Fail opens the shared reason picker
-                inline (controlled mode, no Confirm/Cancel — the outer Upload
-                button saves everything on click). */}
-            <div className={styles.docUploaderField}>
-              <span className={styles.docUploaderFieldLabel}>
-                Document Status <span className={styles.docUploaderRequired}>•</span>
-              </span>
-              <div className={styles.docStatusRow}>
-                <button
-                  type="button"
-                  className={[styles.docStatusPill, docStatus === 'Passed' ? styles.docStatusPass : ''].filter(Boolean).join(' ')}
-                  onClick={handlePassClick}
-                >
-                  Pass
-                </button>
-                <button
-                  type="button"
-                  className={[styles.docStatusPill, docStatus === 'Failed' ? styles.docStatusFail : ''].filter(Boolean).join(' ')}
-                  onClick={handleFailClick}
-                >
-                  Fail
-                </button>
-              </div>
+            <label className={styles.docUploaderField}>
+              <span className={styles.docUploaderFieldLabel}>Visit Type</span>
+              <select
+                className={styles.docUploaderSelect}
+                value={visitType}
+                onChange={(e) => setVisitType(e.target.value)}
+              >
+                <option value="">Select Visit Type</option>
+                {VISIT_TYPES.map(vt => <option key={vt} value={vt}>{vt}</option>)}
+              </select>
+            </label>
+          </div>
+          {/* Document Status — required. Pass/Fail pills match the pattern
+              from UploadChartDrawer; Fail opens the shared reason picker
+              inline (controlled mode, no Confirm/Cancel — the outer Upload
+              button saves everything on click). */}
+          <div className={styles.docUploaderField}>
+            <span className={styles.docUploaderFieldLabel}>
+              Document Status <span className={styles.docUploaderRequired}>•</span>
+            </span>
+            <div className={styles.docStatusRow}>
+              <button
+                type="button"
+                className={[styles.docStatusPill, docStatus === 'Passed' ? styles.docStatusPass : ''].filter(Boolean).join(' ')}
+                onClick={handlePassClick}
+              >
+                Pass
+              </button>
+              <button
+                type="button"
+                className={[styles.docStatusPill, docStatus === 'Failed' ? styles.docStatusFail : ''].filter(Boolean).join(' ')}
+                onClick={handleFailClick}
+              >
+                Fail
+              </button>
             </div>
           </div>
           {failInline && (
@@ -1774,13 +1793,13 @@ function DocumentsUploader() {
       <div className={styles.docUploaderActions}>
         <Button
           variant="primary"
-          size="S"
+          size="L"
           disabled={!canSubmit}
           onClick={onSubmit}
         >
           Upload
         </Button>
-        <Button variant="secondary" size="S" onClick={onCancel}>Cancel</Button>
+        <Button variant="secondary" size="L" onClick={onCancel}>Cancel</Button>
       </div>
     </div>
   );

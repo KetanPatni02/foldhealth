@@ -1551,6 +1551,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  /* Hairline separator so Upload/Cancel read as a distinct action band
+     below the form fields (matches the Drawer footer treatment). */
+  padding-top: 12px;
+  border-top: 0.5px solid var(--neutral-150);
 }
 
 /* File row used in 'uploading' (with progress bar) and 'ready' phases. */

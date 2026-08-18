@@ -285,12 +285,9 @@ export function SnpWorklistRow({ member, isSelected, onSelect }) {
         </span>
       </td>
 
-      {/* Care Plan Status — editable dropdown affordance */}
-      <td className={styles.td} onClick={e => e.stopPropagation()}>
-        <button type="button" className={styles.statusDropdown}>
-          {m.carePlanStatus}
-          <DownChevronIcon size={14} />
-        </button>
+      {/* Care Plan Status */}
+      <td className={styles.td}>
+        <span className={styles.statusText}>{m.carePlanStatus}</span>
       </td>
 
       <td className={styles.td}><span className={styles.dateText}>{m.nextActionDue || '—'}</span></td>

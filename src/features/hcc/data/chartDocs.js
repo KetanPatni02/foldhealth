@@ -97,7 +97,7 @@ export const DOC_TYPES = [
  * points so the shape stays identical. Pass the raw `file` for in-session
  * preview via FilePreview; once persisted, the Supabase Storage URL replaces it.
  */
-export function makeUploadedChartDoc(member, { file, caption, docType, status = 'Pending' }) {
+export function makeUploadedChartDoc(member, { file, caption, docType, visitType, status = 'Pending' }) {
   const uploadedOn = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
   const cap = (caption || '').trim();
   // Caption is the user-facing document name (surfaces in the worklist
@@ -109,12 +109,13 @@ export function makeUploadedChartDoc(member, { file, caption, docType, status = 
     n: displayName,
     caption: displayName,
     t: docType,
+    vt: visitType || undefined,
     file,
     fname: file?.name || '',
     ext: ((file?.name || '').match(/\.([a-z0-9]+)$/i)?.[1] || '').toLowerCase(),
     dateAdded: uploadedOn,
     addedBy: 'You',
-    meta: `${uploadedOn} · ${docType}`,
+    meta: visitType ? `${uploadedOn} · ${docType} · ${visitType}` : `${uploadedOn} · ${docType}`,
     status,
   };
 }

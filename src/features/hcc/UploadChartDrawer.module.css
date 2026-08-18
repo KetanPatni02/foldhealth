@@ -141,6 +141,15 @@
   gap: 4px;
 }
 
+/* Two-column row inside the form so paired fields (Document Type + Visit
+   Type, etc.) sit side by side; each `.field` inside still fills its
+   column's width. */
+.fieldRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
 .fieldLabel {
   display: inline-flex;
   align-items: center;
