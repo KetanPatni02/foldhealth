@@ -195,10 +195,193 @@ function StatusPill({ status, onOpen, ariaLabel }) {
   );
 }
 
+// Agent-owned columns get a tinted background + primary rails on the outer
+// edges. The band spans agentStatus (left rail) and agentDueOn (right
+// rail); when the user reorders these away from each other via the Show
+// Columns popover, the rails still frame just the agent-band cells.
+const AGENT_CELL_STYLE = { background: 'var(--agent-col-bg)' };
+const AGENT_CELL_LEFT  = { ...AGENT_CELL_STYLE, borderLeft: '2px solid var(--primary-200)' };
+const AGENT_CELL_RIGHT = { ...AGENT_CELL_STYLE, borderRight: '2px solid var(--primary-200)' };
+const AGENT_TH_STYLE   = { background: 'var(--agent-col-bg)', color: 'var(--primary-300)' };
+const agentThLabel = (icon, text) => (
+  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+    {icon}
+    {text}
+  </span>
+);
+
+/**
+ * Middle-column defs for the TOC / TCM agent queue. Each carries `renderCell(patient,
+ * ctx)` so the WorklistShell can respect the user's hide/reorder
+ * preferences. Sticky checkbox / Members / Actions columns stay hardcoded
+ * in QueueRow around this band.
+ *
+ * ctx shape:
+ *   { voicemailCalls, completedCall, openAssessmentDrawer,
+ *     openOutreachStatusDrawer }
+ */
+export function getQueueMiddleColumns(programLabel = 'TOC') {
+  return [
+  {
+    key: 'lace',
+    label: 'LACE Acuity',
+    tdClassName: rowStyles.td,
+    renderCell: (p) => (
+      <Badge size="M" variant={`lace-${p.lace.toLowerCase()}`} label={p.lace} />
+    ),
+  },
+  {
+    key: 'outreachWindow',
+    label: 'Outreach Window',
+    tdClassName: rowStyles.td,
+    renderCell: (p) => {
+      const outreachBadgeVariant = p.outreachType === '48h' ? 'outreach-48h' : 'outreach-7d';
+      return (
+        <div className={rowStyles.outreachCell}>
+          <Badge size="M" variant={outreachBadgeVariant} label={`${programLabel} ${p.outreachType}`} />
+          {p.onCall ? (
+            <span className={rowStyles.outreachOncall}>
+              <Icon name="solar:phone-calling-bold" size={14} />
+              On Call: {p.callDuration}
+            </span>
+          ) : (
+            <span className={rowStyles.outreachTime}>
+              <Icon name="solar:clock-circle-linear" size={14} />
+              {p.outreachLeft}
+            </span>
+          )}
+        </div>
+      );
+    },
+  },
+  {
+    key: 'agentStatus',
+    // `label` is the plain string shown in the Show Columns popover — the
+    // "Agent" prefix disambiguates from the sibling `tocStatus` column and
+    // the regular `dueOn` column. `thLabel` is the JSX icon+text cluster
+    // shown in the table header so the agent band still reads like a
+    // distinct group without repeating "Agent" in the header.
+    label: 'Agent Status',
+    thLabel: agentThLabel(
+      <svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 1L8.5 5H13L9.5 7.5L11 11L7 8.5L3 11L4.5 7.5L1 5H5.5L7 1Z" fill="currentColor"/></svg>,
+      'Status',
+    ),
+    tdClassName: styles.agentColTd,
+    tdStyle: AGENT_CELL_LEFT,
+    thStyle: { ...AGENT_TH_STYLE, borderLeft: '2px solid var(--primary-200)', minWidth: 200 },
+    renderCell: (p, ctx) => (
+      <StatusCell patient={p} voicemailCalls={ctx.voicemailCalls} completedCall={ctx.completedCall} />
+    ),
+  },
+  {
+    key: 'agentDueOn',
+    label: 'Agent Due On',
+    thLabel: agentThLabel(<Icon name="solar:calendar-linear" size={14} />, 'Due On'),
+    tdClassName: styles.agentColTd,
+    tdStyle: AGENT_CELL_RIGHT,
+    thStyle: { ...AGENT_TH_STYLE, borderRight: '2px solid var(--primary-200)', minWidth: 140 },
+    renderCell: (p) => (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 14, color: 'var(--neutral-400)' }}>
+          {computeAgentDueOn(p.dischargeDate, p.outreachType) || '—'}
+        </span>
+        <span style={{ fontSize: 12, color: 'var(--neutral-300)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <Icon name="solar:clock-circle-linear" size={14} />
+          {p.outreachLeft || '—'}
+        </span>
+      </div>
+    ),
+  },
+  {
+    key: 'assessment',
+    label: 'AI Assessment',
+    tdClassName: rowStyles.td,
+    thStyle: { minWidth: 160 },
+    renderCell: (p, ctx) => (
+      <StatusPill
+        status={p.assessmentStatus}
+        onOpen={() => ctx.openAssessmentDrawer(p.id)}
+        ariaLabel={`Open assessment for ${p.name}`}
+      />
+    ),
+  },
+  {
+    key: 'outreachStatus',
+    label: 'Outreach Status',
+    tdClassName: rowStyles.td,
+    thStyle: { minWidth: 160 },
+    renderCell: (p, ctx) => (
+      <StatusPill
+        status={p.outreachStatus}
+        onOpen={() => ctx.openOutreachStatusDrawer(p.id)}
+        ariaLabel={`Open outreach status for ${p.name}`}
+      />
+    ),
+  },
+  {
+    key: 'tocStatus',
+    label: `${programLabel} Status`,
+    tdClassName: rowStyles.td,
+    renderCell: (p) => <TocStatusBadge status={p.tocStatus} />,
+  },
+  { key: 'dueOn',         label: 'Due On',         tdClassName: rowStyles.td, renderCell: (p) => p.dueOn || '—' },
+  { key: 'nextOutreach',  label: 'Next Outreach',  tdClassName: rowStyles.td, renderCell: (p) => p.nextOutreach || '—' },
+  { key: 'startDate',     label: 'Start Date',     tdClassName: rowStyles.td, renderCell: (p) => p.startDate || '—' },
+  { key: 'lastAdmission', label: 'Last Admission', tdClassName: rowStyles.td, renderCell: (p) => p.lastAdmission || '—' },
+  {
+    key: 'assignee',
+    label: 'Assignee',
+    tdClassName: rowStyles.td,
+    renderCell: (p) => (
+      <div className={rowStyles.assigneeCell}>
+        <Avatar variant="assignee" initials={p.assigneeInitials} />
+        <span style={{ fontSize: 13 }}>{p.assignee}</span>
+      </div>
+    ),
+  },
+  {
+    key: 'readmission',
+    label: 'Readmission',
+    tdClassName: rowStyles.td,
+    renderCell: (p) => (
+      p.readmission === 'Yes'
+        ? <Badge size="M" variant="yes" label="Yes" />
+        : <Badge size="M" variant="no" label="No" />
+    ),
+  },
+  {
+    key: 'tasks',
+    label: 'Tasks',
+    tdClassName: rowStyles.td,
+    renderCell: (p) => (
+      <div className={rowStyles.tasksCell}>
+        {p.tasks > 0
+          ? <span className={rowStyles.taskBadge}>{p.tasks}</span>
+          : <span className={rowStyles.dateDash}>—</span>}
+      </div>
+    ),
+  },
+  {
+    key: 'carePlanStatus',
+    label: 'Care Plan Status',
+    tdClassName: rowStyles.td,
+    renderCell: (p) => (
+      p.carePlanStatus === 'updated'
+        ? <Badge size="M" variant="care-plan-updated" label="Updated" icon="solar:check-circle-linear" />
+        : p.carePlanStatus === 'pending'
+          ? <Badge size="M" variant="care-plan-pending" label="Pending" icon="solar:clock-circle-linear" />
+          : <Badge size="M" variant="care-plan-none" label="No Care Plan" />
+    ),
+  },
+];
+}
+
+export const QUEUE_MIDDLE_COLUMNS = getQueueMiddleColumns('TCM');
+
 // `voicemailCalls`, `completedCall`, and `ongoingCall` are indexed at the
 // table level (see QueueTable's `callsByPatient` memo) and passed in so this
 // row doesn't have to scan the entire callDetails array on every render.
-export function QueueRow({ patient, isSelected, onSelect, voicemailCalls, completedCall, ongoingCall }) {
+export function QueueRow({ patient, columns, hiddenSet, isSelected, onSelect, voicemailCalls, completedCall, ongoingCall }) {
   const openQuickView = useAppStore(s => s.openQuickView);
   const openCallPopover = useAppStore(s => s.openCallPopover);
   const openLiveDrawer = useAppStore(s => s.openLiveDrawer);
@@ -208,9 +391,18 @@ export function QueueRow({ patient, isSelected, onSelect, voicemailCalls, comple
   const callBtnRef = useRef(null);
 
   const p = patient;
-  const outreachBadgeVariant = p.outreachType === '48h' ? 'outreach-48h' : 'outreach-7d';
-
   const openDetail = useAppStore(s => s.openDetail);
+
+  const middleCols = (columns || QUEUE_MIDDLE_COLUMNS)
+    .filter(c => !c.sticky && !c.showCheckbox && c.renderCell);
+  const visibleMiddle = hiddenSet ? middleCols.filter(c => !hiddenSet.has(c.key)) : middleCols;
+
+  const cellCtx = {
+    voicemailCalls,
+    completedCall,
+    openAssessmentDrawer,
+    openOutreachStatusDrawer,
+  };
 
   const handleRowClick = () => {
     if (p.status === 'completed') {
@@ -276,78 +468,18 @@ export function QueueRow({ patient, isSelected, onSelect, voicemailCalls, comple
           </div>
         </div>
       </td>
-      <td className={rowStyles.td}><Badge size="M" variant={`lace-${p.lace.toLowerCase()}`} label={p.lace} /></td>
-      <td className={rowStyles.td}>
-        <div className={rowStyles.outreachCell}>
-          <Badge size="M" variant={outreachBadgeVariant} label={`TOC ${p.outreachType}`} />
-          {p.onCall ? (
-            <span className={rowStyles.outreachOncall}>
-              <Icon name="solar:phone-calling-bold" size={14} />
-              On Call: {p.callDuration}
-            </span>
-          ) : (
-            <span className={rowStyles.outreachTime}>
-              <Icon name="solar:clock-circle-linear" size={14} />
-              {p.outreachLeft}
-            </span>
-          )}
-        </div>
-      </td>
-      {/* Agent columns */}
-      <td className={styles.agentColTd} style={{ background: 'var(--agent-col-bg)', borderLeft: '2px solid var(--primary-200)' }}>
-        <StatusCell patient={p} voicemailCalls={voicemailCalls} completedCall={completedCall} />
-      </td>
-      <td className={styles.agentColTd} style={{ background: 'var(--agent-col-bg)', borderRight: '2px solid var(--primary-200)' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, whiteSpace: 'nowrap' }}>
-          <span style={{ fontSize: 14, color: 'var(--neutral-400)' }}>
-            {computeAgentDueOn(p.dischargeDate, p.outreachType) || '—'}
-          </span>
-          <span style={{ fontSize: 12, color: 'var(--neutral-300)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <Icon name="solar:clock-circle-linear" size={14} />
-            {p.outreachLeft || '—'}
-          </span>
-        </div>
-      </td>
-      <td className={rowStyles.td}>
-        <StatusPill
-          status={p.assessmentStatus}
-          onOpen={() => openAssessmentDrawer(p.id)}
-          ariaLabel={`Open assessment for ${p.name}`}
-        />
-      </td>
-      <td className={rowStyles.td}>
-        <StatusPill
-          status={p.outreachStatus}
-          onOpen={() => openOutreachStatusDrawer(p.id)}
-          ariaLabel={`Open outreach status for ${p.name}`}
-        />
-      </td>
-      <td className={rowStyles.td}><TocStatusBadge status={p.tocStatus} /></td>
-      <td className={rowStyles.td}>{p.dueOn || '—'}</td>
-      <td className={rowStyles.td}>{p.nextOutreach || '—'}</td>
-      <td className={rowStyles.td}>{p.startDate || '—'}</td>
-      <td className={rowStyles.td}>{p.lastAdmission || '—'}</td>
-      <td className={rowStyles.td}>
-        <div className={rowStyles.assigneeCell}>
-          <Avatar variant="assignee" initials={p.assigneeInitials} />
-          <span style={{ fontSize: 13 }}>{p.assignee}</span>
-        </div>
-      </td>
-      <td className={rowStyles.td}>{p.readmission === 'Yes' ? <Badge size="M" variant="yes" label="Yes" /> : <Badge size="M" variant="no" label="No" />}</td>
-      <td className={rowStyles.td}>
-        <div className={rowStyles.tasksCell}>
-          {p.tasks > 0 ? <span className={rowStyles.taskBadge}>{p.tasks}</span> : <span className={rowStyles.dateDash}>—</span>}
-        </div>
-      </td>
-      <td className={rowStyles.td}>
-        {p.carePlanStatus === 'updated' ? (
-          <Badge size="M" variant="care-plan-updated" label="Updated" icon="solar:check-circle-linear" />
-        ) : p.carePlanStatus === 'pending' ? (
-          <Badge size="M" variant="care-plan-pending" label="Pending" icon="solar:clock-circle-linear" />
-        ) : (
-          <Badge size="M" variant="care-plan-none" label="No Care Plan" />
-        )}
-      </td>
+
+      {visibleMiddle.map(col => (
+        <td
+          key={col.key}
+          data-col-key={col.key}
+          className={col.tdClassName || rowStyles.td}
+          style={col.tdStyle}
+        >
+          {col.renderCell(p, cellCtx)}
+        </td>
+      ))}
+
       <td className={`${rowStyles.td} ${rowStyles.stickyRight}`}
         onClick={e => e.stopPropagation()}>
         <div className={rowStyles.actionsCell}>

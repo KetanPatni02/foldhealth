@@ -12,11 +12,6 @@ import { useAppStore } from '../../store/useAppStore';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import styles from './JsaWorklistRow.module.css';
 
-/**
- * Map JSA Program Sub Status → shared Badge variant. Uses the awv-*
- * palette declared in Badge.module.css (blue for info, grey for
- * unreachable, green for engaged, amber for attempted / follow-up).
- */
 const STATUS_VARIANT = {
   Open: 'awv-open',
   New: 'awv-new',
@@ -26,7 +21,6 @@ const STATUS_VARIANT = {
   'Engaged - Requires Follow Up': 'awv-engaged-followup',
 };
 
-/** Risk IQ → shared Badge lace-* variant (Low / Medium / High). */
 const RISK_VARIANT = {
   Low: 'lace-low',
   Medium: 'lace-medium',
@@ -39,21 +33,180 @@ const LANG_MAP = {
 };
 
 /**
- * Single JSA worklist row. Row-level styling comes from
- * JsaWorklistRow.module.css, which mirrors TOC's WorklistRow.module.css
- * so both worklists read as the same visual system (row divider, cell
- * padding, sticky column backgrounds, L-size action buttons with
- * dividers). AWV-specific cells (program-status pill, due-date chip,
- * task badge, assignee assign-button) sit on top of that shared base.
+ * Middle-column defs for JSA. Mirrors AWV_MIDDLE_COLUMNS in shape so both
+ * worklists share the same column-driven cell pattern; row bodies iterate
+ * these and skip hidden ones per the Show Columns popover.
+ *
+ * ctx shape: { statusAnchor, setStatusAnchor, updateJsaMemberStatus, showToast }
  */
-export function JsaWorklistRow({ member, selected, onToggle, onView, onCall, showToast }) {
+export const JSA_MIDDLE_COLUMNS = [
+  {
+    key: 'progSubStatus',
+    label: 'Program Sub Status',
+    sortKey: 'progSubStatus',
+    width: 160,
+    renderCell: (member, ctx) => (
+      <>
+        <button
+          type="button"
+          className={styles.statusBtn}
+          onClick={(e) => {
+            e.stopPropagation();
+            ctx.setStatusAnchor(e.currentTarget);
+          }}
+        >
+          <Badge
+            size="M"
+            variant={STATUS_VARIANT[member.progSubStatus] || 'awv-new'}
+            label={member.progSubStatus}
+            trailingIconElement={<DownChevronIcon size={12} color="currentColor" />}
+          />
+        </button>
+        {ctx.statusAnchor && (
+          <MenuPopover
+            anchorRef={{ current: ctx.statusAnchor }}
+            width={240}
+            items={[
+              { label: 'Engaged', key: 'Engaged' },
+              { label: 'Attempted', key: 'Attempted' },
+              { label: 'Engaged - Requires Follow Up', key: 'Engaged - Requires Follow Up' },
+            ]}
+            onSelect={(key) => ctx.updateJsaMemberStatus(member.id, key)}
+            onClose={() => ctx.setStatusAnchor(null)}
+          />
+        )}
+      </>
+    ),
+  },
+  {
+    key: 'progName',
+    label: 'Program Name',
+    sortKey: 'progName',
+    width: 170,
+    renderCell: (member) => member.progName,
+  },
+  {
+    key: 'due',
+    label: 'Due Date',
+    sortKey: 'due',
+    width: 140,
+    renderCell: (member) => (
+      <div className={styles.dueCell}>
+        <div className={styles.dueDate}>{member.due}</div>
+        <div className={styles.dueLabel} style={{ color: member.dueCol }}>
+          <Icon name="solar:clock-circle-linear" size={11} color={member.dueCol} />
+          {member.dueLabel}
+        </div>
+      </div>
+    ),
+  },
+  {
+    key: 'outreach',
+    label: 'Outreach',
+    sortKey: 'outreach',
+    width: 150,
+    renderCell: (member) => <JsaOutreachCell member={member} />,
+  },
+  {
+    key: 'assignee',
+    label: 'Assignee',
+    sortKey: 'assignee',
+    width: 170,
+    renderCell: (member, ctx) => (
+      member.assignee ? (
+        <div className={styles.assigneeCell}>
+          <Avatar variant="assignee" initials={member.assigneeIn} />
+          <span className={styles.assigneeName}>{member.assignee}</span>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className={styles.assignBtn}
+          onClick={() => ctx.showToast(`Assign owner for ${member.name} — coming soon`)}
+        >
+          Assign
+        </button>
+      )
+    ),
+  },
+  {
+    key: 'np',
+    label: 'NP Appointment Date',
+    sortKey: 'npAppt',
+    width: 170,
+    renderCell: (member) => member.npAppt || '—',
+  },
+  {
+    key: 'lastAwv',
+    label: 'Last Annual Visit Date',
+    sortKey: 'lastAwv',
+    width: 180,
+    renderCell: (member) => member.lastAwv || '—',
+  },
+  {
+    key: 'ad',
+    label: 'AdvIllness',
+    sortKey: 'ad',
+    width: 100,
+    align: 'center',
+    renderCell: (member) => member.ad,
+  },
+  {
+    key: 'fr',
+    label: 'Frailty',
+    sortKey: 'fr',
+    width: 90,
+    align: 'center',
+    renderCell: (member) => member.fr,
+  },
+  {
+    key: 'ri',
+    label: 'Risk IQ',
+    sortKey: 'ri',
+    width: 110,
+    renderCell: (member) => (
+      <Badge size="M" variant={RISK_VARIANT[member.ri] || 'lace-low'} label={member.ri} />
+    ),
+  },
+  {
+    key: 'dec',
+    label: 'Decile',
+    sortKey: 'dec',
+    width: 80,
+    align: 'center',
+    renderCell: (member) => member.dec,
+  },
+  {
+    key: 'task',
+    label: 'Tasks',
+    sortKey: 'task',
+    width: 90,
+    align: 'center',
+    renderCell: (member) => (
+      member.task > 0
+        ? <span className={styles.taskBadge}>{member.task}</span>
+        : <span className={styles.taskBadgeMuted}>0</span>
+    ),
+  },
+];
+
+export function JsaWorklistRow({ member, columns, hiddenSet, selected, onToggle, onView, onCall, showToast }) {
   const updateJsaMemberStatus = useAppStore(s => s.updateJsaMemberStatus);
   const openQuickView = useAppStore(s => s.openQuickView);
   const [statusAnchor, setStatusAnchor] = useState(null);
 
-  const statusVariant = STATUS_VARIANT[member.progSubStatus] || 'awv-new';
-  const riskVariant = RISK_VARIANT[member.ri] || 'lace-low';
   const language = member.language || 'en';
+
+  const middleCols = (columns || JSA_MIDDLE_COLUMNS)
+    .filter(c => !c.sticky && !c.showCheckbox && c.renderCell);
+  const visibleMiddle = hiddenSet ? middleCols.filter(c => !hiddenSet.has(c.key)) : middleCols;
+
+  const cellCtx = {
+    statusAnchor,
+    setStatusAnchor,
+    updateJsaMemberStatus,
+    showToast,
+  };
 
   return (
     <tr className={[styles.row, selected ? styles.rowSelected : ''].filter(Boolean).join(' ')}>
@@ -114,106 +267,16 @@ export function JsaWorklistRow({ member, selected, onToggle, onView, onCall, sho
         </div>
       </td>
 
-      {/* Program Sub Status — clickable Badge with DownChevron. Wrapping
-          Badge in a bare <button> keeps the pill visuals fully owned by
-          the shared Badge component (color, radius, border, padding) while
-          the surrounding button handles the click-to-open-menu affordance. */}
-      <td className={styles.td}>
-        <button
-          type="button"
-          className={styles.statusBtn}
-          onClick={(e) => {
-            e.stopPropagation();
-            setStatusAnchor(e.currentTarget);
-          }}
+      {visibleMiddle.map(col => (
+        <td
+          key={col.key}
+          data-col-key={col.key}
+          className={styles.td}
+          style={col.align === 'center' ? { textAlign: 'center' } : undefined}
         >
-          <Badge
-            size="M"
-            variant={statusVariant}
-            label={member.progSubStatus}
-            trailingIconElement={<DownChevronIcon size={12} color="currentColor" />}
-          />
-        </button>
-        {statusAnchor && (
-          <MenuPopover
-            anchorRef={{ current: statusAnchor }}
-            width={240}
-            items={[
-              { label: 'Engaged', key: 'Engaged' },
-              { label: 'Attempted', key: 'Attempted' },
-              { label: 'Engaged - Requires Follow Up', key: 'Engaged - Requires Follow Up' },
-            ]}
-            onSelect={(key) => updateJsaMemberStatus(member.id, key)}
-            onClose={() => setStatusAnchor(null)}
-          />
-        )}
-      </td>
-
-      {/* Program Name */}
-      <td className={styles.td}>{member.progName}</td>
-
-      {/* Due Date — date on top, colored label below */}
-      <td className={styles.td}>
-        <div className={styles.dueCell}>
-          <div className={styles.dueDate}>{member.due}</div>
-          <div className={styles.dueLabel} style={{ color: member.dueCol }}>
-            <Icon name="solar:clock-circle-linear" size={11} color={member.dueCol} />
-            {member.dueLabel}
-          </div>
-        </div>
-      </td>
-
-      {/* Outreach */}
-      <td className={styles.td}>
-        <AwvOutreachCell member={member} />
-      </td>
-
-      {/* Assignee */}
-      <td className={styles.td}>
-        {member.assignee ? (
-          <div className={styles.assigneeCell}>
-            <Avatar variant="assignee" initials={member.assigneeIn} />
-            <span className={styles.assigneeName}>{member.assignee}</span>
-          </div>
-        ) : (
-          <button
-            type="button"
-            className={styles.assignBtn}
-            onClick={() => showToast(`Assign owner for ${member.name} — coming soon`)}
-          >
-            Assign
-          </button>
-        )}
-      </td>
-
-      {/* NP Appointment */}
-      <td className={styles.td}>{member.npAppt || '—'}</td>
-
-      {/* Last JSA */}
-      <td className={styles.td}>{member.lastAwv || '—'}</td>
-
-      {/* AdvIllness */}
-      <td className={styles.td} style={{ textAlign: 'center' }}>{member.ad}</td>
-
-      {/* Frailty */}
-      <td className={styles.td} style={{ textAlign: 'center' }}>{member.fr}</td>
-
-      {/* Risk IQ — shared Badge with lace-* variant (Low/Medium/High). */}
-      <td className={styles.td}>
-        <Badge size="M" variant={riskVariant} label={member.ri} />
-      </td>
-
-      {/* Decile */}
-      <td className={styles.td} style={{ textAlign: 'center' }}>{member.dec}</td>
-
-      {/* Task */}
-      <td className={styles.td} style={{ textAlign: 'center' }}>
-        {member.task > 0 ? (
-          <span className={styles.taskBadge}>{member.task}</span>
-        ) : (
-          <span className={styles.taskBadgeMuted}>0</span>
-        )}
-      </td>
+          {col.renderCell(member, cellCtx)}
+        </td>
+      ))}
 
       {/* Actions — sticky-right, L-size buttons with dividers, matches TOC */}
       <td className={`${styles.td} ${styles.stickyRight}`}>
@@ -244,9 +307,7 @@ export function JsaWorklistRow({ member, selected, onToggle, onView, onCall, sho
   );
 }
 
-// JSA Outreach cell — status icon+label stacked over 3-dot history.
-// Ported from TOC's OutreachCell so both worklists render identical UI.
-function AwvOutreachCell({ member }) {
+function JsaOutreachCell({ member }) {
   const n = member.outreach || 0;
   const isEngaged = member.progSubStatus === 'Engaged' || member.progSubStatus === 'Engaged - Requires Follow Up';
   const isUnableToReach = member.progSubStatus === 'Unable to Reach';

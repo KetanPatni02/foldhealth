@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { HedisWorklistRow } from './HedisWorklistRow';
+import { HedisWorklistRow, HEDIS_MIDDLE_COLUMNS } from './HedisWorklistRow';
 import { CareGapDetailDrawer } from './CareGapDetailDrawer';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
@@ -10,6 +10,8 @@ import { SubnavToggle } from '../../components/SubnavToggle/SubnavToggle';
 import { HeaderCell } from '../../components/HeaderCell/HeaderCell';
 import { useTableSort } from '../../components/HeaderCell/useTableSort';
 import { Pagination } from '../../components/Pagination/Pagination';
+import { ColumnsHeaderButton } from '../../components/WorklistColumns/ColumnsHeaderButton';
+import { useWorklistColumns } from '../../components/WorklistColumns/useWorklistColumns';
 import { FilterChipBar } from '../hcc/FilterChipBar';
 import { SavedFiltersChip } from '../hcc/SavedFiltersChip';
 import { FilterNameDialog } from '../hcc/FilterNameDialog';
@@ -133,6 +135,19 @@ export function HedisWorklistTable() {
 
   const thStyle = `${rowStyles.stickyLeft}`;
 
+  // Column prefs — HedisWorklistTable renders a bespoke table, so we wire
+  // useWorklistColumns directly. The sticky checkbox / Member / Actions
+  // columns bracket the customisable middle band.
+  const columnPrefs = useWorklistColumns('hedis', HEDIS_MIDDLE_COLUMNS);
+  const visibleMiddle = columnPrefs.visibleColumns;
+  const orderedColumnsForRow = useMemo(() => (
+    [{ key: 'select', showCheckbox: true, sticky: 'left' },
+     { key: 'members', label: 'Member', sticky: 'left' },
+     ...columnPrefs.orderedColumns,
+     { key: 'actions', label: 'Actions', sticky: 'right' }]
+  ), [columnPrefs.orderedColumns]);
+  const emptyColSpan = 2 + visibleMiddle.length + 1;
+
   return (
     <>
     <div className={styles.wrap}>
@@ -189,34 +204,39 @@ export function HedisWorklistTable() {
               <th className={`${rowStyles.stickyLeft} ${rowStyles.stickyMember} ${styles.memberTh}`}>
                 Member
               </th>
-              <th style={{ padding: '8px 14px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', textAlign: 'left', whiteSpace: 'nowrap' }}>
-                Total Gaps
-              </th>
-              <th style={{ padding: '8px 14px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', textAlign: 'left', whiteSpace: 'nowrap' }}>
-                Gap Status
-              </th>
-              <th style={{ padding: '8px 14px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', textAlign: 'left', whiteSpace: 'nowrap', minWidth: 200 }}>
-                Assignee
-              </th>
-              <th style={{ padding: '8px 14px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', textAlign: 'left', whiteSpace: 'nowrap' }}>
-                Start Date
-              </th>
-              <th style={{ padding: '8px 14px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', textAlign: 'left', whiteSpace: 'nowrap' }}>
-                Outreach
-              </th>
-              <HeaderCell label="AdvIllness" sortField="advIllness" activeKey={sortKey} activeDir={sortDir} onSort={requestSort} />
-              <HeaderCell label="Frailty" sortField="frailty" activeKey={sortKey} activeDir={sortDir} onSort={requestSort} />
-              <HeaderCell label="Risk Level" sortField="riskLevel" activeKey={sortKey} activeDir={sortDir} onSort={requestSort} />
-              <HeaderCell label="Tasks" sortField="tasks" activeKey={sortKey} activeDir={sortDir} onSort={requestSort} />
+              {visibleMiddle.map(col => (
+                col.sortKey
+                  ? <HeaderCell
+                      key={col.key}
+                      label={col.label}
+                      sortField={col.sortKey}
+                      activeKey={sortKey}
+                      activeDir={sortDir}
+                      onSort={requestSort}
+                    />
+                  : <th
+                      key={col.key}
+                      style={{ padding: '8px 14px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', textAlign: 'left', whiteSpace: 'nowrap' }}
+                    >
+                      {col.label}
+                    </th>
+              ))}
               <th className={rowStyles.stickyRight} style={{ padding: '8px 12px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', textAlign: 'left', whiteSpace: 'nowrap' }}>
-                Actions
+                <ColumnsHeaderButton
+                  columns={columnPrefs.orderedColumns}
+                  hiddenSet={columnPrefs.hiddenSet}
+                  onToggle={columnPrefs.onToggle}
+                  onReorder={columnPrefs.onReorder}
+                  onReset={columnPrefs.onReset}
+                  label="Actions"
+                />
               </th>
             </tr>
           </thead>
           <tbody>
             {paginated.length === 0 ? (
               <tr>
-                <td colSpan={12}>
+                <td colSpan={emptyColSpan}>
                   <div className={styles.empty}>
                     <Icon name="solar:magnifer-linear" size={40} color="var(--neutral-200)" />
                     <p className={styles.emptyTitle}>No members found</p>
@@ -229,6 +249,8 @@ export function HedisWorklistTable() {
                 <HedisWorklistRow
                   key={m.id}
                   member={m}
+                  columns={orderedColumnsForRow}
+                  hiddenSet={columnPrefs.hiddenSet}
                   isSelected={selectedSet.has(m.id)}
                   onSelect={toggleSelect}
                   onOpenGap={openGapDrawer}
