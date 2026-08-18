@@ -386,6 +386,20 @@
 }
 .editInput:focus { border-color: var(--primary-300); }
 .editSelectTrigger { width: 100%; }
+/* Two-column row inside EditDocInline so Document Type + Visit Type sit
+   side by side. Each `.editField` fills its column so labels + Select
+   controls stay aligned. */
+.editFieldRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.editField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
 .failActions {
   display: flex;
   justify-content: flex-start;

@@ -10,6 +10,7 @@ import { CommentComposer } from '../../components/CommentComposer/CommentCompose
 import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription } from '../../components/ConfirmDialog/AlertDialogPrimitives';
 import { useAppStore } from '../../store/useAppStore';
 import { DOC_TYPES } from './data/chartDocs';
+import { VISIT_TYPES } from './reference/visitTypes';
 import { FAIL_REASONS, INSUFFICIENT_REASONS } from './ChartDetailDrawerParts.constants';
 import styles from './ChartDetailDrawer.module.css';
 
@@ -161,11 +162,12 @@ export function FailReasonInline({ onCancel, onConfirm, value, onChange, hideAct
 }
 
 // Inline metadata editor — the doc card's second row when the ⋯ menu's Edit
-// item is picked. Only caption + document type are editable (the file
-// itself stays put); Save writes through updateChartDocMeta upstream.
+// item is picked. Caption + Document Type + Visit Type are editable (the
+// file itself stays put); Save writes through updateChartDocMeta upstream.
 export function EditDocInline({ doc, onCancel, onSave }) {
   const [caption, setCaption] = useState(doc?.caption || doc?.n || '');
   const [docType, setDocType] = useState(doc?.t || '');
+  const [visitType, setVisitType] = useState(doc?.vt || '');
   const canSave = caption.trim().length > 0 && !!docType;
   return (
     <div className={styles.failInline} onClick={(e) => e.stopPropagation()}>
@@ -179,25 +181,39 @@ export function EditDocInline({ doc, onCancel, onSave }) {
           placeholder="Document caption"
           autoFocus
         />
-        <div className={styles.failNoteLabel}>Document Type</div>
-        <Select
-          className={styles.editSelectTrigger}
-          options={DOC_TYPES.map(t => ({ value: t, label: t }))}
-          value={docType}
-          onChange={setDocType}
-          placeholder="Select a type"
-        />
+        <div className={styles.editFieldRow}>
+          <div className={styles.editField}>
+            <div className={styles.failNoteLabel}>Document Type</div>
+            <Select
+              className={styles.editSelectTrigger}
+              options={DOC_TYPES.map(t => ({ value: t, label: t }))}
+              value={docType}
+              onChange={setDocType}
+              placeholder="Select a type"
+            />
+          </div>
+          <div className={styles.editField}>
+            <div className={styles.failNoteLabel}>Visit Type</div>
+            <Select
+              className={styles.editSelectTrigger}
+              options={VISIT_TYPES.map(vt => ({ value: vt, label: vt }))}
+              value={visitType}
+              onChange={setVisitType}
+              placeholder="Select Visit Type"
+            />
+          </div>
+        </div>
       </div>
       <div className={styles.failActions}>
         <Button
           variant="primary"
-          size="S"
+          size="L"
           disabled={!canSave}
-          onClick={() => onSave({ caption: caption.trim(), docType })}
+          onClick={() => onSave({ caption: caption.trim(), docType, visitType })}
         >
           Save
         </Button>
-        <Button variant="secondary" size="S" onClick={onCancel}>Cancel</Button>
+        <Button variant="secondary" size="L" onClick={onCancel}>Cancel</Button>
       </div>
     </div>
   );

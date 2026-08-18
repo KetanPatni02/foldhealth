@@ -128,8 +128,13 @@ export function ChartDetailDrawerViewDocList(p) {
                       <EditDocInline
                         doc={d}
                         onCancel={() => setEditingDocId(null)}
-                        onSave={({ caption, docType }) => {
-                          updateChartDocMeta(m.id, d.id, { n: caption, caption, t: docType });
+                        onSave={({ caption, docType, visitType }) => {
+                          updateChartDocMeta(m.id, d.id, {
+                            n: caption,
+                            caption,
+                            t: docType,
+                            vt: visitType || undefined,
+                          });
                           showToast(`Updated ${caption}`);
                           setEditingDocId(null);
                         }}

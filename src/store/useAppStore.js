@@ -7312,7 +7312,9 @@ export const useAppStore = create((set, get) => ({
         },
       };
     });
-    // Persist the metadata change so the row survives reload.
+    // Persist the metadata change so the row survives reload. `visit_type`
+    // is optional in the schema — if the column exists the update lands,
+    // otherwise the warn logs and the in-memory update stays authoritative.
     supabase
       .from('hcc_added_charts')
       .update({
@@ -7320,6 +7322,7 @@ export const useAppStore = create((set, get) => ({
         name: patch.n || patch.caption,
         caption: patch.caption,
         doc_type: patch.t,
+        ...(patch.vt !== undefined ? { visit_type: patch.vt || null } : {}),
       })
       .eq('id', docId)
       .then(({ error }) => {

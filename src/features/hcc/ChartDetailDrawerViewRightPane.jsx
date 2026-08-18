@@ -21,6 +21,7 @@ import {
 } from './ChartDetailDrawerParts';
 import { STATUS_OPTIONS, STATUS_BADGE } from './ChartDetailDrawer.utils';
 import { DOC_TYPES } from './data/chartDocs';
+import { VISIT_TYPES } from './reference/visitTypes';
 import { DemoPhiStrip } from '../../components/DemoPhiStrip/DemoPhiStrip';
 import styles from './ChartDetailDrawer.module.css';
 import { ChartDetailDrawerViewDocList } from './ChartDetailDrawerViewDocList';
@@ -35,6 +36,7 @@ export function ChartDetailDrawerViewRightPane(p) {
     dosExpanded, setDosExpanded, dosList, m, canDeleteDos, setDosToDelete,
     showUpload, setShowUpload, commentsCountForMember, leftPanel, setLeftPanel,
     uploadKey, setUpFile, upCaption, setUpCaption, setUpCaptionTouched, upType, setUpType,
+    upVisitType, setUpVisitType,
     canSaveUpload, saveUpload, resetUpload,
   } = p;
 
@@ -230,6 +232,19 @@ export function ChartDetailDrawerViewRightPane(p) {
                       value={upType}
                       onChange={setUpType}
                       placeholder="Select Type"
+                    />
+                  </div>
+                  {/* Visit Type — mirrors the HCC worklist's Visit Type column
+                      so a document uploaded here can be linked back to the
+                      same encounter categories the DOS rows show. Optional. */}
+                  <div className={styles.uploadField}>
+                    <span className={styles.uploadLabel}>Visit Type</span>
+                    <Select
+                      className={styles.uploadSelect}
+                      options={VISIT_TYPES.map((vt) => ({ value: vt, label: vt }))}
+                      value={upVisitType}
+                      onChange={setUpVisitType}
+                      placeholder="Select Visit Type"
                     />
                   </div>
                   <div className={styles.uploadActions}>
