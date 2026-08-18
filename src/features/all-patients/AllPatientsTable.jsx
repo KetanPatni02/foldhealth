@@ -1,9 +1,11 @@
 import { useMemo, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { AllPatientsRow } from './AllPatientsRow';
+import { AllPatientsRow, ALL_PATIENTS_MIDDLE_COLUMNS } from './AllPatientsRow';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { Icon } from '../../components/Icon/Icon';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { ColumnsHeaderButton } from '../../components/WorklistColumns/ColumnsHeaderButton';
+import { useWorklistColumns } from '../../components/WorklistColumns/useWorklistColumns';
 
 const CITIES = [
   ['Queens', 'NY'], ['Brooklyn', 'NY'], ['Manhattan', 'NY'], ['Bronx', 'NY'],
@@ -223,6 +225,16 @@ export function AllPatientsTable() {
     else clearSelected();
   };
 
+  // Column prefs — bespoke table, wire useWorklistColumns directly.
+  const columnPrefs = useWorklistColumns('all-patients', ALL_PATIENTS_MIDDLE_COLUMNS);
+  const visibleMiddle = columnPrefs.visibleColumns;
+  const orderedColumnsForRow = useMemo(() => (
+    [{ key: 'select', showCheckbox: true, sticky: 'left' },
+     { key: 'members', label: 'Members', sticky: 'left' },
+     ...columnPrefs.orderedColumns,
+     { key: 'actions', label: 'Actions', sticky: 'right' }]
+  ), [columnPrefs.orderedColumns]);
+
   if (allPatientsLoading && baseRows.length === 0) return <TableSkeleton rows={perPage} />;
 
   return (
@@ -234,17 +246,19 @@ export function AllPatientsTable() {
               <Checkbox checked={someSelected ? 'indeterminate' : allSelected} onCheckedChange={handleSelectAll} />
             </th>
             <th style={{ ...TH_STYLE, padding: '8px 12px', position: 'sticky', top: 0, left: 36, zIndex: 4, borderRight: '1px solid var(--neutral-150)' }}>Members</th>
-            <th style={TH_STYLE}>Contact Info</th>
-            <th style={TH_STYLE}>Location</th>
-            <th style={TH_STYLE}>Tags</th>
-            <th style={TH_STYLE}>Attributes</th>
-            <th style={TH_STYLE}>Chronic Conditions</th>
-            <th style={TH_STYLE}>PCP</th>
-            <th style={TH_STYLE}>Last Visit</th>
-            <th style={TH_STYLE}>Active Care Program</th>
-            <th style={TH_STYLE}>CCM Consent</th>
-            <th style={TH_STYLE}>APCM Consent</th>
-            <th style={{ ...TH_STYLE, width: 140, position: 'sticky', top: 0, right: 0, zIndex: 3 }}>Actions</th>
+            {visibleMiddle.map(col => (
+              <th key={col.key} style={TH_STYLE}>{col.label}</th>
+            ))}
+            <th style={{ ...TH_STYLE, width: 140, position: 'sticky', top: 0, right: 0, zIndex: 3, textAlign: 'left' }}>
+              <ColumnsHeaderButton
+                columns={columnPrefs.orderedColumns}
+                hiddenSet={columnPrefs.hiddenSet}
+                onToggle={columnPrefs.onToggle}
+                onReorder={columnPrefs.onReorder}
+                onReset={columnPrefs.onReset}
+                label="Actions"
+              />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -252,6 +266,8 @@ export function AllPatientsTable() {
             <AllPatientsRow
               key={row.id}
               row={row}
+              columns={orderedColumnsForRow}
+              hiddenSet={columnPrefs.hiddenSet}
               isSelected={selectedIdSet.has(row.id)}
               onSelect={selectOne}
             />

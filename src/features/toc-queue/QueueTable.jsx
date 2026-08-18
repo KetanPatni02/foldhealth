@@ -2,54 +2,23 @@ import { useMemo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { WorklistShell } from '../../components/WorklistShell/WorklistShell';
-import { QueueRow } from './QueueRow';
+import { useTableSort } from '../../components/HeaderCell/useTableSort';
+import { QueueRow, getQueueMiddleColumns } from './QueueRow';
 import { QueueEmptyState } from './QueueEmptyState';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
+import { enrichTocRow } from '../toc/tocColumns';
 
-// Agent-owned columns get their own header band (tinted background, primary
-// text, 2px rails on both ends) so they read as one grouped unit.
-const agentTh = { background: 'var(--agent-col-bg)', color: 'var(--primary-300)' };
-const agentLabel = (icon, text) => (
-  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-    {icon}
-    {text}
-  </span>
-);
-
-const QUEUE_COLUMNS = [
-  { key: 'select', showCheckbox: true, sticky: 'left', left: 0, width: 36 },
-  { key: 'members', label: 'Members', sticky: 'left', left: 36, width: 240, thStyle: { borderRight: '0.5px solid var(--neutral-150)' } },
-  { key: 'outreachType', label: 'Outreach Type' },
-  { key: 'lace', label: 'LACE Acuity' },
-  { key: 'outreachWindow', label: 'Outreach Window' },
-  {
-    key: 'agentStatus',
-    label: agentLabel(
-      <svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 1L8.5 5H13L9.5 7.5L11 11L7 8.5L3 11L4.5 7.5L1 5H5.5L7 1Z" fill="currentColor"/></svg>,
-      'Status',
-    ),
-    thStyle: { ...agentTh, borderLeft: '2px solid var(--primary-200)', minWidth: 200 },
-  },
-  {
-    key: 'agentDueOn',
-    label: agentLabel(<Icon name="solar:calendar-linear" size={14} />, 'Due On'),
-    thStyle: { ...agentTh, minWidth: 140, borderRight: '2px solid var(--primary-200)' },
-  },
-  { key: 'assessment', label: 'Assessment', thStyle: { minWidth: 160 } },
-  { key: 'outreachStatus', label: 'Outreach Status', thStyle: { minWidth: 160 } },
-  { key: 'tocStatus', label: 'TOC Status' },
-  { key: 'dueOn', label: 'Due On' },
-  { key: 'nextOutreach', label: 'Next Outreach' },
-  { key: 'startDate', label: 'Start Date' },
-  { key: 'lastAdmission', label: 'Last Admission' },
-  { key: 'assignee', label: 'Assignee' },
-  { key: 'readmission', label: 'Readmission' },
-  { key: 'tasks', label: 'Tasks' },
-  { key: 'carePlanStatus', label: 'Care Plan Status' },
-  { key: 'actions', label: 'Actions', sticky: 'right', width: 140 },
-];
-
-export function QueueTable() {
+/**
+ * Agent-queue table shared by the TCM Agent Queue tab and the standalone
+ * TOC worklist. `programLabel` drives the outreach-window + status column
+ * copy; `worklistKey` keeps column prefs isolated per list.
+ */
+export function QueueTable({
+  worklistKey = 'tcm-queue',
+  programLabel = 'TCM',
+  emptyState,
+  middleColumns,
+} = {}) {
   const patients = useAppStore(s => s.patients);
   const patientsLoading = useAppStore(s => s.patientsLoading);
   const callDetails = useAppStore(s => s.callDetails);
@@ -59,18 +28,30 @@ export function QueueTable() {
   const selectAll = useAppStore(s => s.selectAll);
   const clearSelected = useAppStore(s => s.clearSelected);
 
-  // Both patients + call details are fetched once by SubNav on mount. The
-  // store's *DidFetch guards keep every subsequent call idempotent, so we
-  // don't need a QueueTable-local effect (which previously re-fired
-  // fetchCallDetails on every dep change).
+  const isToc = worklistKey === 'toc';
+
+  const columns = useMemo(() => [
+    { key: 'select', showCheckbox: true, sticky: 'left', left: 0, width: 36 },
+    {
+      key: 'members',
+      label: 'Members',
+      sticky: 'left',
+      left: 36,
+      width: 240,
+      ...(isToc ? { sortKey: 'name', sortType: 'alpha' } : {}),
+      thStyle: { borderRight: '0.5px solid var(--neutral-150)' },
+    },
+    ...(middleColumns || getQueueMiddleColumns(programLabel)),
+    { key: 'actions', label: 'Actions', sticky: 'right', width: 140 },
+  ], [programLabel, middleColumns, isToc]);
+
   const activeFilters = useAppStore(s => s.activeFilters);
   const currentPage = useAppStore(s => s.currentPage);
   const perPage = useAppStore(s => s.perPage);
 
-  // Filter to only agent-assigned patients, then apply search + filters
   const filteredQueue = useMemo(() => {
     let result = patients.filter(p => p.agentAssigned)
-      .sort((a, b) => (a.priority || 99) - (b.priority || 99)); // sort by priority
+      .sort((a, b) => (a.priority || 99) - (b.priority || 99));
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
@@ -87,17 +68,27 @@ export function QueueTable() {
       }
     }
 
-    return result;
-  }, [patients, searchQuery, activeFilters]);
+    return isToc ? result.map(enrichTocRow) : result;
+  }, [patients, searchQuery, activeFilters, isToc]);
 
-  // Per-patient callDetails lookups. QueueRow used to run
-  // `callDetails.filter(...)` twice per row on every render — O(rows * calls)
-  // per pass. Now we build the three indexes once at the table level and
-  // hand each row the pre-computed values it needs.
+  // TOC only — click cycles asc → desc → clear (back to priority order).
+  // TCM Agent Queue keeps its fixed priority sort.
+  const { sorted, sortKey, sortDir, setSort, clearSort } = useTableSort(filteredQueue);
+  const handleSort = (field) => {
+    if (sortKey === field) {
+      if (sortDir === 'asc') setSort(field, 'desc');
+      else if (sortDir === 'desc') clearSort();
+      else setSort(field, 'asc');
+    } else {
+      setSort(field, 'asc');
+    }
+  };
+  const displayQueue = isToc ? sorted : filteredQueue;
+
   const callsByPatient = useMemo(() => {
-    const voicemails = new Map();  // patientId -> array (attempt history)
-    const completed  = new Map();  // patientId -> first completed call
-    const ongoing    = new Map();  // patientId -> first ongoing call
+    const voicemails = new Map();
+    const completed  = new Map();
+    const ongoing    = new Map();
     for (const c of callDetails) {
       if (!c.patientId) continue;
       if (c.callType === 'voicemail') {
@@ -116,10 +107,8 @@ export function QueueTable() {
   if (patientsLoading) return <TableSkeleton rows={6} />;
 
   if (!filteredQueue.length) {
-    // Check if there are any invoked patients at all (before filters)
     const anyInvoked = patients.some(p => p.agentAssigned);
-    if (!anyInvoked) return <QueueEmptyState />;
-    // There are invoked patients but filters hide them
+    if (!anyInvoked) return emptyState || <QueueEmptyState />;
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textAlign: 'center', paddingBottom: 64 }}>
@@ -134,25 +123,28 @@ export function QueueTable() {
   }
 
   const startIdx = (currentPage - 1) * perPage;
-  const paginatedQueue = filteredQueue.slice(startIdx, startIdx + perPage);
+  const pageRows = displayQueue.slice(startIdx, startIdx + perPage);
 
   const handleSelectAll = (checked) => {
-    if (checked) selectAll([...new Set([...selectedIds, ...paginatedQueue.map(p => p.id)])]);
-    else selectAll(selectedIds.filter(id => !paginatedQueue.find(p => p.id === id)));
+    if (checked) selectAll([...new Set([...selectedIds, ...pageRows.map(p => p.id)])]);
+    else selectAll(selectedIds.filter(id => !pageRows.find(p => p.id === id)));
   };
 
   return (
-    // The TOC chrome (TabBar with the Worklist / Agent Queue toggle, filter
-    // bar, summary bar, pagination) is rendered by AppLayout — pass an empty
-    // header so the shell contributes only the table conventions.
     <WorklistShell
       header={<></>}
-      columns={QUEUE_COLUMNS}
-      rows={paginatedQueue}
-      renderRow={(p) => (
+      worklistKey={worklistKey}
+      columns={columns}
+      rows={pageRows}
+      sortKey={isToc ? sortKey : undefined}
+      sortDir={isToc ? sortDir : undefined}
+      onSort={isToc ? handleSort : undefined}
+      renderRow={(p, _i, ctx) => (
         <QueueRow
           key={p.id}
           patient={p}
+          columns={ctx.orderedColumns}
+          hiddenSet={ctx.hiddenSet}
           isSelected={selectedIds.includes(p.id)}
           onSelect={selectPatient}
           voicemailCalls={callsByPatient.voicemails.get(p.id)}
@@ -163,7 +155,7 @@ export function QueueTable() {
       selectedIds={selectedIds}
       onSelectAll={handleSelectAll}
       onClearSelection={clearSelected}
-      minTableWidth={1900}
+      minTableWidth={middleColumns ? 3200 : 1900}
     />
   );
 }

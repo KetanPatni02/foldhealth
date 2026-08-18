@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { resolveCurrentAssignee } from './HccWorklistRow.utils';
 import { useTableSort } from '../../components/HeaderCell/useTableSort';
-import { HCC_COLUMNS, orderColumns } from './columns';
+import { useWorklistColumns } from '../../components/WorklistColumns/useWorklistColumns';
+import { HCC_COLUMNS } from './columns';
 import { memberMatchesFilters } from './filters';
 import { getDueCategory } from './DueDateChip.utils';
 
@@ -28,24 +29,15 @@ export function useHccWorklistTable() {
   const renameHccSavedFilter = useAppStore(s => s.renameHccSavedFilter);
   const startHccUpload = useAppStore(s => s.startHccUpload);
   const openHccHistoryDrawer = useAppStore(s => s.openHccHistoryDrawer);
-  const hccHiddenCols = useAppStore(s => s.hccHiddenCols);
-  const toggleHccColumn = useAppStore(s => s.toggleHccColumn);
-  const hccColumnOrder = useAppStore(s => s.hccColumnOrder);
-  const reorderHccColumns = useAppStore(s => s.reorderHccColumns);
-  const setHccDefaultColumnKeys = useAppStore(s => s.setHccDefaultColumnKeys);
-  const clearHccColumnOrder = useAppStore(s => s.clearHccColumnOrder);
-  const clearHccHiddenCols = useAppStore(s => s.clearHccHiddenCols);
-
-  // Seed the store's default-key snapshot once so reorderHccColumns has
-  // something to start from before the user has set any custom order.
-  useEffect(() => {
-    setHccDefaultColumnKeys(HCC_COLUMNS.map(c => c.k));
-  }, [setHccDefaultColumnKeys]);
-
-  const orderedColumns = useMemo(
-    () => orderColumns(HCC_COLUMNS, hccColumnOrder),
-    [hccColumnOrder],
-  );
+  // Archived HCC uses its own worklist_key so its column prefs don't
+  // collide with the live HCC worklist. Everything else flows through the
+  // shared worklistColumnPrefs slice.
+  const columnPrefs = useWorklistColumns('hcc-archived', HCC_COLUMNS);
+  const orderedColumns = columnPrefs.orderedColumns;
+  const toggleHccColumn = columnPrefs.onToggle;
+  const reorderHccColumns = columnPrefs.onReorder;
+  const clearHccColumnOrder = columnPrefs.onReset;
+  const clearHccHiddenCols = () => {};
 
   const [filterOpen, setFilterOpen] = useState(true);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -120,7 +112,7 @@ export function useHccWorklistTable() {
     else clearHccSelected();
   };
 
-  const hiddenSet = useMemo(() => new Set(hccHiddenCols), [hccHiddenCols]);
+  const hiddenSet = columnPrefs.hiddenSet;
 
   return {
     hccMembersLoading, perPage, activeSubnavList, hccDueDateFilter, setHccDueDateFilter,

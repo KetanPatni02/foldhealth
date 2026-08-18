@@ -19,6 +19,7 @@ export function popGroupRowToJs(row) {
     count: row.active_count ?? 0,
     inactive: row.inactive_count ?? 0,
     rule: row.rule || null,
+    status: row.status || 'active',
     created: fmtDate(row.created_at),
     updated: fmtDate(row.updated_at),
   };
@@ -38,5 +39,6 @@ export function popGroupJsToDb(g) {
     // would wipe a Dynamic group's rule every time the edit drawer saves
     // name/description (it doesn't know about rules).
     ...('rule' in g ? { rule: g.rule } : {}),
+    ...('status' in g ? { status: g.status } : {}),
   };
 }

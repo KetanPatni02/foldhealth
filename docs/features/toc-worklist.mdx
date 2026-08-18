@@ -1,78 +1,63 @@
 ---
-title: "TOC Worklist"
-description: "Post-discharge Transitional Care outreach — grouped by outreach window (48h, 7d) and lifecycle stage."
+title: "TOC"
+description: "Agent-led transition-of-care queue — live outreach status, assessment, and outreach drawers."
 ---
 
-The **TOC (Transitional Care) Worklist** is the default landing view (`#/population/toc`). It's the list care managers work through every day: patients who have been discharged and need follow-up within a 48-hour or 7-day window.
+**TOC** is the standalone agent-queue worklist (`#/population/toc`). It is a copy of the TCM Agent Queue: patients who already have an AI agent assigned, with live call status, AI Assessment, and outreach history.
+
+The original care-manager worklist (Worklist + Agent Queue tabs) now lives under **[TCM](/features/tcm-worklist)**.
 
 ## Table columns
 
 | Column | Description |
 | --- | --- |
 | **Members** | Name, gender, age, member ID, preferred language |
-| **LACE Acuity** | LACE risk score (High / Medium / Low) |
-| **Outreach Window** | TOC 48h or TOC 7d, with countdown to deadline |
-| **TOC Status** | Enrolled, Engaged, Attempted, New, On Call |
-| **Outreach** | Historical call attempts as dot indicators |
-| **Next Outreach** | Scheduled follow-up date |
-| **Start Date** | Program enrollment date |
-| **Last Admission** | Most recent hospital admission date + reason |
+| **Program Sub Status** | Enrolled, Engaged, Attempted, New |
+| **Admit Class** | Inpatient or Emergency |
+| **TOC Acuity** | High / Medium / Low (LACE) |
+| **Outreach Status** | Completed, Needs Review, Scheduled — opens Patient Outreach |
+| **AI Assessment** | TOC IP/ED Assessment link — opens Patient Assessment |
+| **Next Action Due** | Next due date |
+| **Outreach** | Last outreach date |
+| **Last Outreach By** | Agent or person who last reached the member |
+| **AI Tasks** | Open AI task count |
 | **Assignee** | Care manager assigned to the row |
-| **Agent Assigned** | AI agent handling automated outreach |
+| **Nurse/Health Coach**, **Coordinator**, **Social Worker**, **Com. Health Worker** | Care-team roles |
+| **Start Date** | Program enrollment date |
+| **Last Admission** | Most recent hospital admission |
+| **Radar** / **Risk IQ** | Radar score and risk band |
+| **Readmission** | Yes / No |
+| **Care Plan Status** | Updated, Pending, or No Care Plan |
+| **Tags** | Row tags |
 | **Actions** | Quick View, place a call, ⋯ menu |
 
-## Grouping
+## Empty state
 
-Toggle **View by** in the toolbar:
+If no agents have been invoked yet, TOC shows **No active agent runs** with a link to the **TCM Worklist**. Invoke an agent from TCM, then return here to monitor the queue.
 
-- **Outreach Window** (default) — sorted by urgency; 48h patients on top, 7d below.
-- **Outreach Status** — grouped into sections: **Ongoing Call**, **In Queue**, **Scheduled**, **Needs Attention**, **Enrolled**.
+## KPI summary bar
 
-## Walkthrough — clear today's 48-hour window
+The bar above the table shows calls placed, connect rate, transfer rate, and average handle time for the current agent runs.
 
-<Steps>
-  <Step title="Land on the worklist">
-    Open **Population** in the sidebar. TOC is the default list, so the URL is `#/population/toc`.
-  </Step>
-  <Step title="Filter to yourself and 48h">
-    Open the **Assigned to** filter chip and pick yourself. Open **Outreach Window** and pick **48h**. The table narrows to your urgent queue.
-  </Step>
-  <Step title="Work top-to-bottom by urgency">
-    With the default grouping (Outreach Window), the shortest-remaining rows sit at the top. Click a row to open the **Quick View** drawer.
-  </Step>
-  <Step title="Place the call">
-    From Quick View, click **Call**. The outbound call opens in the Calls surface with the patient's context pre-loaded. Log the outcome from the call log after hang-up.
-  </Step>
-  <Step title="Reschedule or resolve">
-    Back in the worklist, use the **⋯ menu** on the row to change status (Attempted / Engaged), reassign, add a task, or open the patient profile.
-  </Step>
-</Steps>
-
-## Walkthrough — hand off to an AI agent
+## Walkthrough — monitor agent outreach
 
 <Steps>
-  <Step title="Filter to unassigned rows">
-    Set the **Agent Assigned** filter to **None**.
+  <Step title="Open TOC">
+    In Population → Worklists, select **TOC**. The URL is `#/population/toc`.
   </Step>
-  <Step title="Select in bulk">
-    Check the header checkbox (selects all filtered rows) or check individual rows.
+  <Step title="Scan live status">
+    Rows with an assigned agent show On Call, Queued, or Completed. Use the KPI bar to check connect and transfer rates.
   </Step>
-  <Step title="Open BulkBar → Assign Agent">
-    From the BulkBar action row, click **Assign Agent** and pick the TOC agent. Rows update instantly.
+  <Step title="Open an assessment">
+    Click the **AI Assessment** pill to review the Patient Assessment (PHQ-9 or the form configured in Settings).
   </Step>
-  <Step title="Monitor from the TOC Agent Queue">
-    Switch to the **TOC Queue** tab (`#/toc-queue`). The **KPI summary bar** at the top shows calls placed, connect rate, transfer rate, and average handle time. Rows show live agent status per patient.
+  <Step title="Review outreach">
+    Click the outreach status to open **Patient Outreach** — the same history as the patient Outreach tab.
   </Step>
 </Steps>
-
-## Filters
-
-The TOC filter bar has 12 filter chips: **Gender**, **Language**, **LACE Acuity**, **TOC Status**, **Status**, **Assigned to**, **Outreach Window**, **Trigger Type**, **Readmission**, **Care Plan**, **Priority**, **Outreach Category**, **Agent**.
-
-Every filter is a `FilterChip` — `Label ⌄` when empty, `Label : Value ✕` when active. Combine them freely; the count updates live.
 
 ## Tips
 
-- **The 48-hour clock respects business hours** — the countdown pauses overnight so 6pm discharges don't page you at midnight.
-- **Bulk moves preserve context** — reassigning 30 rows in one action does not overwrite Next Outreach dates or previously logged notes.
-- **Trigger Type** filters between admissions, ED visits, and readmissions — useful when your work is scoped to a specific trigger.
+- **Column prefs are isolated** — hiding or reordering columns on TOC does not change the TCM Agent Queue.
+- **Same patient pool as TCM** — invoking an agent from TCM adds the row here (and on the TCM Agent Queue tab).
+- **Edit Configuration / Abort** sit in the title bar, same as the TCM queue.

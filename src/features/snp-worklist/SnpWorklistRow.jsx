@@ -14,21 +14,13 @@ import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
 import styles from './SnpWorklistRow.module.css';
 
-// SNP Program Sub Status → shared Badge variant. Each value maps onto an
-// existing colour class so we don't have to introduce SNP-specific CSS —
-// New / Closed use the neutral pill (toc-new), Engaged uses the info pill
-// (toc-engaged), Declined and Closed-Do-not-call use the error pill
-// (lace-high), Unable to Reach uses the priority-high orange, Attempted
-// uses toc-attempted (warning), Enrolled and Completed use toc-enrolled
-// (success). Follows the SNP spec groups (Not Started / In progress /
-// Completed / Closed).
 const PROGRAM_SUB_STATUS_VARIANT = {
   'New':                  'toc-new',
   'Engaged':              'toc-engaged',
   'Declined':             'lace-high',
   'Unable to Reach':      'priority-high',
   'Attempted':            'toc-attempted',
-  '2nd Cont. – Fail':     'toc-attempted', // legacy label — colour-align with Attempted
+  '2nd Cont. – Fail':     'toc-attempted',
   'Enrolled':             'toc-enrolled',
   'Completed':            'toc-enrolled',
   'Closed - Other':       'toc-new',
@@ -36,7 +28,6 @@ const PROGRAM_SUB_STATUS_VARIANT = {
   'Closed - Do not call': 'lace-high',
 };
 
-// Popover options, ordered by the spec's group layout.
 const PROGRAM_SUB_STATUS_ITEMS = [
   { section: 'Not Started' },
   { key: 'New', label: 'New' },
@@ -89,10 +80,6 @@ function OutreachCell({ outreach }) {
   );
 }
 
-// Row Tags cell — each pill is a shared Badge. Mock rows tag their pills
-// with a generic tone ('grey' / 'blue' / 'green' / 'amber' / 'red') which
-// we translate to an existing Badge palette variant. Unknown tones fall
-// back to ai-neutral so bad data can't crash the cell.
 const TAG_VARIANT_BY_TONE = {
   grey:  'ai-neutral',
   blue:  'outreach-appointment',
@@ -117,16 +104,8 @@ function TagCell({ tags, tagsMore }) {
   );
 }
 
-// Roles that belong exclusively to the HCC coding pipeline — SNP members
-// should never be assigned to a Coder / Support / QA / Compliance reviewer,
-// so anyone tagged with one of these roles is filtered out of the SNP
-// assignee picker.
 const HCC_ONLY_ROLES = new Set(['Coder', 'Support', 'QA', 'Compliance']);
 
-// Demo/mock assignee names that pre-date the platformUsers table — kept in
-// sync with SNP_WORKLIST_MEMBERS so pre-seeded rows still show a plausible
-// role even when Supabase (which doesn't ship an `assignee_role` column)
-// wins the fetch race over the mock fallback.
 const DEMO_ASSIGNEE_ROLE = {
   'Daniel Arsulo':            'Care Manager',
   'Dr. Shravank Montgomery':  'Physician',
@@ -136,7 +115,147 @@ const DEMO_ASSIGNEE_ROLE = {
   'Michelle Ling':            'Care Manager',
 };
 
-export function SnpWorklistRow({ member, isSelected, onSelect }) {
+/**
+ * Middle-column defs for the SNP worklist. Each carries `renderCell(member,
+ * ctx)` so the ColumnsHeaderButton popover can hide + reorder columns and
+ * the row body follows along. Sticky checkbox / Members / Actions columns
+ * stay hardcoded around this band.
+ *
+ * ctx shape: {
+ *   showStatusMenu, setShowStatusMenu, statusBtnRef,
+ *   setSnpProgramSubStatus, setSnpAssignee, eligibleUsers,
+ *   showToast, derivedAssigneeRole,
+ * }
+ */
+export const SNP_MIDDLE_COLUMNS = [
+  {
+    key: 'programSubStatus',
+    label: 'Program Sub Status',
+    sortKey: 'programSubStatus',
+    stopRowClickPropagation: true,
+    renderCell: (m, ctx) => (
+      <span style={{ position: 'relative', display: 'inline-block' }}>
+        <button
+          ref={ctx.statusBtnRef}
+          type="button"
+          className={styles.statusBadgeBtn}
+          onClick={(e) => { e.stopPropagation(); ctx.setShowStatusMenu(v => !v); }}
+          aria-haspopup="menu"
+          aria-expanded={ctx.showStatusMenu}
+        >
+          <Badge
+            size="M"
+            variant={PROGRAM_SUB_STATUS_VARIANT[m.programSubStatus] || 'snp-new'}
+            label={m.programSubStatus}
+            trailingIconElement={<DownChevronIcon size={13} color="currentColor" />}
+          />
+        </button>
+        {ctx.showStatusMenu && (
+          <MenuPopover
+            anchorRef={ctx.statusBtnRef}
+            items={PROGRAM_SUB_STATUS_ITEMS}
+            onSelect={(key) => {
+              ctx.setSnpProgramSubStatus?.(m.id, key);
+              ctx.setShowStatusMenu(false);
+            }}
+            onClose={() => ctx.setShowStatusMenu(false)}
+            width={220}
+            ariaLabel="Change program sub status"
+          />
+        )}
+      </span>
+    ),
+  },
+  {
+    key: 'carePlanStatus',
+    label: 'Care Plan Status',
+    sortKey: 'carePlanStatus',
+    // Care Plan Status is read-only in this table (no chevron, no click) —
+    // Program Sub Status is the only editable status cell in the row.
+    renderCell: (m) => <span className={styles.statusText}>{m.carePlanStatus}</span>,
+  },
+  {
+    key: 'nextActionDue',
+    label: 'Next Action Due',
+    sortKey: 'nextActionDueSort',
+    sortType: 'date',
+    renderCell: (m) => <span className={styles.dateText}>{m.nextActionDue || '—'}</span>,
+  },
+  {
+    key: 'outreach',
+    label: 'Outreach',
+    renderCell: (m) => <OutreachCell outreach={m.outreach} />,
+  },
+  {
+    key: 'assignee',
+    label: 'Assignee',
+    sortKey: 'assigneeName',
+    stopRowClickPropagation: true,
+    renderCell: (m, ctx) => (
+      m.assigneeName ? (
+        <AssigneeChange
+          name={m.assigneeName}
+          initials={m.assigneeInitials}
+          role={ctx.derivedAssigneeRole}
+          users={ctx.eligibleUsers}
+          onSelect={(u) => ctx.setSnpAssignee(m.id, u)}
+          pickerTitle="Change assignee"
+        />
+      ) : (
+        <AssigneeChange
+          unassigned
+          users={ctx.eligibleUsers}
+          onSelect={(u) => ctx.setSnpAssignee(m.id, u)}
+          pickerTitle="Assign user"
+        />
+      )
+    ),
+  },
+  {
+    key: 'triggerDate',
+    label: 'Trigger Date',
+    sortKey: 'triggerDateSort',
+    sortType: 'date',
+    renderCell: (m) => <span className={styles.dateText}>{m.triggerDate || '—'}</span>,
+  },
+  {
+    key: 'lastAdmission',
+    label: 'Last Admission',
+    sortKey: 'lastAdmissionSort',
+    sortType: 'date',
+    renderCell: (m) => <span className={styles.mutedDash}>{m.lastAdmission || '—'}</span>,
+  },
+  {
+    key: 'trigger',
+    label: 'Trigger',
+    sortKey: 'trigger',
+    renderCell: (m) => <span className={styles.triggerText}>{m.trigger || '—'}</span>,
+  },
+  {
+    key: 'riskIq',
+    label: 'Risk IQ',
+    sortKey: 'riskIq',
+    renderCell: (m) => <span className={styles.riskText}>{m.riskIq || 'Undetermined'}</span>,
+  },
+  {
+    key: 'tags',
+    label: 'Tags',
+    renderCell: (m) => <TagCell tags={m.tags} tagsMore={m.tagsMore} />,
+  },
+  {
+    key: 'taskCount',
+    label: 'Tasks',
+    sortKey: 'taskCount',
+    sortType: 'number',
+    renderCell: (m) => (
+      m.taskCount
+        ? <button type="button" className={styles.taskLink} onClick={e => e.stopPropagation()}>{m.taskCount}</button>
+        : <span className={styles.mutedDash}>—</span>
+    ),
+  },
+];
+
+export function SnpWorklistRow({ member, columns, hiddenSet, isSelected, onSelect }) {
   const openQuickView = useAppStore(s => s.openQuickView);
   const navigateToPatient = useAppStore(s => s.navigateToPatient);
   const openCallPopover = useAppStore(s => s.openCallPopover);
@@ -148,9 +267,10 @@ export function SnpWorklistRow({ member, isSelected, onSelect }) {
   const openPatientEdit = useAppStore(s => s.openPatientEdit);
   const m = member;
 
-  // SNP-eligible users: platform users who do NOT carry any of the HCC-only
-  // clinical roles (Coder / Support / QA / Compliance). Shape matches
-  // AssigneeChange's picker contract — { id, name, initials, role? }.
+  const middleCols = (columns || SNP_MIDDLE_COLUMNS)
+    .filter(c => !c.sticky && !c.showCheckbox && c.renderCell);
+  const visibleMiddle = hiddenSet ? middleCols.filter(c => !hiddenSet.has(c.key)) : middleCols;
+
   const eligibleUsers = [];
   for (const u of platformUsers) {
     if (u.clinicalRoles?.some(r => HCC_ONLY_ROLES.has(r))) continue;
@@ -162,13 +282,6 @@ export function SnpWorklistRow({ member, isSelected, onSelect }) {
     });
   }
 
-  // Derive the role sub-line dynamically. Fallback chain:
-  //   1. explicit `m.assigneeRole` (set by the picker or the mock file)
-  //   2. first clinical role for a matching platformUsers row (real users
-  //      picked via the picker or already seeded on the platform)
-  //   3. DEMO_ASSIGNEE_ROLE lookup (Supabase seed rows carry legacy
-  //      assignee names without any role column)
-  //   4. undefined → AssigneeChange renders the name without a sub-line
   const derivedAssigneeRole =
     m.assigneeRole ||
     platformUsers.find(u => u.name === m.assigneeName)?.clinicalRoles?.[0] ||
@@ -180,6 +293,17 @@ export function SnpWorklistRow({ member, isSelected, onSelect }) {
   const dropBtnRef = useRef(null);
   const callBtnRef = useRef(null);
   const statusBtnRef = useRef(null);
+
+  const cellCtx = {
+    showStatusMenu,
+    setShowStatusMenu,
+    statusBtnRef,
+    setSnpProgramSubStatus,
+    setSnpAssignee,
+    eligibleUsers,
+    derivedAssigneeRole,
+    showToast,
+  };
 
   const handleRowClick = () => {
     if (m.patientId) navigateToPatient(m.patientId);
@@ -249,80 +373,16 @@ export function SnpWorklistRow({ member, isSelected, onSelect }) {
         </div>
       </td>
 
-      {/* Program Sub Status — shared Badge whose colour maps to the status
-          group (Not Started / In progress / Completed / Closed), with a
-          MenuPopover-driven grouped dropdown for changing the value. */}
-      <td className={styles.td} onClick={e => e.stopPropagation()}>
-        <span style={{ position: 'relative', display: 'inline-block' }}>
-          <button
-            ref={statusBtnRef}
-            type="button"
-            className={styles.statusBadgeBtn}
-            onClick={(e) => { e.stopPropagation(); setShowStatusMenu(v => !v); }}
-            aria-haspopup="menu"
-            aria-expanded={showStatusMenu}
-          >
-            <Badge
-              size="M"
-              variant={PROGRAM_SUB_STATUS_VARIANT[m.programSubStatus] || 'snp-new'}
-              label={m.programSubStatus}
-              trailingIconElement={<DownChevronIcon size={13} color="currentColor" />}
-            />
-          </button>
-          {showStatusMenu && (
-            <MenuPopover
-              anchorRef={statusBtnRef}
-              items={PROGRAM_SUB_STATUS_ITEMS}
-              onSelect={(key) => {
-                setSnpProgramSubStatus?.(m.id, key);
-                setShowStatusMenu(false);
-              }}
-              onClose={() => setShowStatusMenu(false)}
-              width={220}
-              ariaLabel="Change program sub status"
-            />
-          )}
-        </span>
-      </td>
-
-      {/* Care Plan Status */}
-      <td className={styles.td}>
-        <span className={styles.statusText}>{m.carePlanStatus}</span>
-      </td>
-
-      <td className={styles.td}><span className={styles.dateText}>{m.nextActionDue || '—'}</span></td>
-
-      <td className={styles.td}><OutreachCell outreach={m.outreach} /></td>
-
-      <td className={styles.td} onClick={e => e.stopPropagation()}>
-        {m.assigneeName ? (
-          <AssigneeChange
-            name={m.assigneeName}
-            initials={m.assigneeInitials}
-            role={derivedAssigneeRole}
-            users={eligibleUsers}
-            onSelect={(u) => setSnpAssignee(m.id, u)}
-            pickerTitle="Change assignee"
-          />
-        ) : (
-          <AssigneeChange
-            unassigned
-            users={eligibleUsers}
-            onSelect={(u) => setSnpAssignee(m.id, u)}
-            pickerTitle="Assign user"
-          />
-        )}
-      </td>
-
-      <td className={styles.td}><span className={styles.dateText}>{m.triggerDate || '—'}</span></td>
-      <td className={styles.td}><span className={styles.mutedDash}>{m.lastAdmission || '—'}</span></td>
-      <td className={styles.td}><span className={styles.triggerText}>{m.trigger || '—'}</span></td>
-      <td className={styles.td}><span className={styles.riskText}>{m.riskIq || 'Undetermined'}</span></td>
-      <td className={styles.td}><TagCell tags={m.tags} tagsMore={m.tagsMore} /></td>
-
-      <td className={styles.td}>
-        {m.taskCount ? <button type="button" className={styles.taskLink} onClick={e => e.stopPropagation()}>{m.taskCount}</button> : <span className={styles.mutedDash}>—</span>}
-      </td>
+      {visibleMiddle.map(col => (
+        <td
+          key={col.key}
+          data-col-key={col.key}
+          className={styles.td}
+          onClick={col.stopRowClickPropagation ? (e) => e.stopPropagation() : undefined}
+        >
+          {col.renderCell(m, cellCtx)}
+        </td>
+      ))}
 
       <td className={`${styles.td} ${styles.stickyRight}`} onClick={e => e.stopPropagation()}>
         <div className={styles.actionsCell}>

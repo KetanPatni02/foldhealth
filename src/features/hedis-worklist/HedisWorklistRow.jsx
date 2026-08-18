@@ -14,7 +14,6 @@ const LANG_MAP = {
   ko: 'Korean', vi: 'Vietnamese', hi: 'Hindi', bn: 'Bengali', ar: 'Arabic',
 };
 
-// HEDIS risk level → existing Badge variant.
 const RISK_BADGE_VARIANT = {
   '1_High':     'priority-critical',
   '2_Mod-High': 'priority-high',
@@ -23,14 +22,6 @@ const RISK_BADGE_VARIANT = {
   '5_Low':      'compliance-pass',
 };
 
-// HEDIS gap status → shared Badge variant. Four canonical status groups
-// (per Care Gap workflow spec):
-//   • Not Started (primary purple) — Open
-//   • In Progress (warning yellow) — Engaged / Engaged Requires Follow-Up / Submitted
-//   • Done        (success green)  — Completed
-//   • Closed      (neutral grey)   — Closed - Do not call / Closed - UTR / Closed - Other
-// Any unrecognised status falls back to `ai-neutral` so the cell never
-// renders as raw text.
 const STATUS_BADGE_VARIANT = {
   Open:                            'ai-care',
   Engaged:                         'status-queued',
@@ -42,12 +33,8 @@ const STATUS_BADGE_VARIANT = {
   'Closed - Other':                'ai-neutral',
 };
 
-// Outreach cell — mirrors the TOC worklist's outreach pattern
-// (src/features/toc-worklist/WorklistRow.jsx OutreachCell).
+// Outreach cell — mirrors the TOC worklist's outreach pattern.
 function OutreachCell({ member }) {
-  // `||` alone isn't enough: a non-array truthy value (e.g. a Supabase JSONB
-  // object that wasn't normalised to an array) would slip through and crash
-  // `.map` below. Use Array.isArray so only real arrays get through.
   const dots = Array.isArray(member.outreachDots)
     ? member.outreachDots
     : ['pending', 'pending', 'pending'];
@@ -91,18 +78,165 @@ function OutreachCell({ member }) {
   );
 }
 
-export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
+/**
+ * Middle-column defs for HEDIS. Every column carries `renderCell(member,
+ * ctx)` so hide + reorder in the Show Columns popover ripple through the
+ * table body. The per-gap columns (total gaps, gap status, assignee, start
+ * date) map each gap to its own row inside the cell, keeping the original
+ * multi-gap presentation.
+ *
+ * Some cells stop row-click propagation because they contain their own
+ * click targets (gap badges, assign button). `stopRowClickPropagation`
+ * routes that through the row iterator without repeating the pattern
+ * inline per cell.
+ *
+ * ctx shape: { onOpenGap, showToast }
+ */
+export const HEDIS_MIDDLE_COLUMNS = [
+  {
+    key: 'totalGaps',
+    label: 'Total Gaps',
+    stopRowClickPropagation: true,
+    getTdClassName: (member) => (
+      (Array.isArray(member.gaps) && member.gaps.length === 1)
+        ? `${styles.tdGap} ${styles.tdGapCenter}`
+        : styles.tdGap
+    ),
+    renderCell: (member, ctx) => (
+      <div className={styles.gapItems}>
+        {(member.gaps || []).map(g => (
+          <div key={g.code} className={styles.gapItem}>
+            <span onClick={() => ctx.onOpenGap?.(member, g.code)} style={{ cursor: 'pointer' }}>
+              <Badge size="M" variant="compliance-na" label={g.code} />
+            </span>
+          </div>
+        ))}
+      </div>
+    ),
+  },
+  {
+    key: 'gapStatus',
+    label: 'Gap Status',
+    getTdClassName: (member) => (
+      (Array.isArray(member.gaps) && member.gaps.length === 1)
+        ? `${styles.tdGap} ${styles.tdGapCenter}`
+        : styles.tdGap
+    ),
+    renderCell: (member) => (
+      <div className={styles.gapItems}>
+        {(member.gaps || []).map(g => (
+          <div key={g.code} className={styles.gapItem}>
+            <Badge size="M" variant={STATUS_BADGE_VARIANT[g.status] || 'ai-neutral'} label={g.status} />
+          </div>
+        ))}
+      </div>
+    ),
+  },
+  {
+    key: 'assignee',
+    label: 'Assignee',
+    stopRowClickPropagation: true,
+    getTdClassName: (member) => (
+      (Array.isArray(member.gaps) && member.gaps.length === 1)
+        ? `${styles.tdGap} ${styles.tdGapCenter}`
+        : styles.tdGap
+    ),
+    renderCell: (member, ctx) => (
+      <div className={styles.gapItems}>
+        {(member.gaps || []).map(g => {
+          const assignee = g.assignee ?? member.assignee;
+          return (
+            <div key={g.code} className={styles.gapItem}>
+              {assignee ? (
+                <div className={styles.assigneeName}>
+                  <Icon name="solar:user-linear" size={14} color="var(--neutral-400)" />
+                  <span>{assignee}</span>
+                </div>
+              ) : (
+                <button
+                  className={styles.assigneeBtn}
+                  onClick={() => ctx.showToast('Assign care manager — coming soon')}
+                >
+                  <Icon name="solar:user-linear" size={14} color="var(--neutral-200)" />
+                  Assign
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    ),
+  },
+  {
+    key: 'startDate',
+    label: 'Start Date',
+    sortKey: 'startDate',
+    getTdClassName: (member) => (
+      (Array.isArray(member.gaps) && member.gaps.length === 1)
+        ? `${styles.tdGap} ${styles.tdGapCenter} ${styles.tdGapDivide}`
+        : `${styles.tdGap} ${styles.tdGapDivide}`
+    ),
+    renderCell: (member) => (
+      <div className={styles.gapItems}>
+        {(member.gaps || []).map(g => (
+          <div key={g.code} className={styles.gapItem}>
+            <span className={styles.startDateValue}>{g.startDate ?? member.startDate}</span>
+          </div>
+        ))}
+      </div>
+    ),
+  },
+  {
+    key: 'outreach',
+    label: 'Outreach',
+    renderCell: (member) => <OutreachCell member={member} />,
+  },
+  {
+    key: 'advIllness',
+    label: 'AdvIllness',
+    sortKey: 'advIllness',
+    renderCell: (member) => <span className={styles.numText}>{member.advIllness ?? 0}</span>,
+  },
+  {
+    key: 'frailty',
+    label: 'Frailty',
+    sortKey: 'frailty',
+    renderCell: (member) => <span className={styles.numText}>{member.frailty ?? 0}</span>,
+  },
+  {
+    key: 'riskLevel',
+    label: 'Risk Level',
+    sortKey: 'riskLevel',
+    renderCell: (member) => (
+      member.riskLevel
+        ? <Badge size="M" variant={RISK_BADGE_VARIANT[member.riskLevel]} label={member.riskLevel} />
+        : <span className={styles.muted}>—</span>
+    ),
+  },
+  {
+    key: 'tasks',
+    label: 'Tasks',
+    sortKey: 'tasks',
+    renderCell: (member) => (
+      member.tasks != null
+        ? <span className={styles.numText}>{member.tasks}</span>
+        : <span className={styles.muted}>—</span>
+    ),
+  },
+];
+
+export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSelect, onOpenGap }) {
   const showToast = useAppStore(s => s.showToast);
   const openQuickView = useAppStore(s => s.openQuickView);
   const gaps = Array.isArray(member.gaps) ? member.gaps : [];
-  // No usable gaps → skip the row entirely. Without this, `primaryGap` below
-  // would be undefined and the row's click handlers would throw on access.
   if (gaps.length === 0) return null;
   const primaryGap = gaps[0];
-  // Single-gap members center their lone item; multi-gap stays top-aligned.
-  const tdGap = gaps.length === 1
-    ? `${styles.tdGap} ${styles.tdGapCenter}`
-    : styles.tdGap;
+
+  const middleCols = (columns || HEDIS_MIDDLE_COLUMNS)
+    .filter(c => !c.sticky && !c.showCheckbox && c.renderCell);
+  const visibleMiddle = hiddenSet ? middleCols.filter(c => !hiddenSet.has(c.key)) : middleCols;
+
+  const cellCtx = { onOpenGap, showToast };
 
   const langShort = (member.language || 'en').toUpperCase();
   const langFull = LANG_MAP[member.language] || member.language;
@@ -117,7 +251,7 @@ export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
         <Checkbox checked={isSelected} onCheckedChange={() => onSelect(member.id)} aria-label={`Select ${member.name}`} />
       </td>
 
-      {/* Member — matches src/features/toc-worklist member-cell pattern */}
+      {/* Member */}
       <td className={`${styles.memberTd} ${styles.stickyLeft} ${styles.stickyMember}`}>
         <div className={styles.patientCell}>
           <Avatar variant="patient" initials={member.in} />
@@ -152,98 +286,19 @@ export function HedisWorklistRow({ member, isSelected, onSelect, onOpenGap }) {
         </div>
       </td>
 
-      {/* Total Gaps — one badge per gap, aligned with sibling gap cells */}
-      <td className={tdGap} onClick={e => e.stopPropagation()}>
-        <div className={styles.gapItems}>
-          {gaps.map(g => (
-            <div key={g.code} className={styles.gapItem}>
-              <span onClick={() => onOpenGap?.(member, g.code)} style={{ cursor: 'pointer' }}>
-                <Badge size="M" variant="compliance-na" label={g.code} />
-              </span>
-            </div>
-          ))}
-        </div>
-      </td>
-
-      {/* Gap Status — one per gap */}
-      <td className={tdGap}>
-        <div className={styles.gapItems}>
-          {gaps.map(g => (
-            <div key={g.code} className={styles.gapItem}>
-              <Badge size="M" variant={STATUS_BADGE_VARIANT[g.status] || 'ai-neutral'} label={g.status} />
-            </div>
-          ))}
-        </div>
-      </td>
-
-      {/* Assignee — per gap, falls back to member-level assignee */}
-      <td className={tdGap} onClick={e => e.stopPropagation()}>
-        <div className={styles.gapItems}>
-          {gaps.map(g => {
-            const assignee = g.assignee ?? member.assignee;
-            return (
-              <div key={g.code} className={styles.gapItem}>
-                {assignee ? (
-                  <div className={styles.assigneeName}>
-                    <Icon name="solar:user-linear" size={14} color="var(--neutral-400)" />
-                    <span>{assignee}</span>
-                  </div>
-                ) : (
-                  <button
-                    className={styles.assigneeBtn}
-                    onClick={() => showToast('Assign care manager — coming soon')}
-                  >
-                    <Icon name="solar:user-linear" size={14} color="var(--neutral-200)" />
-                    Assign
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </td>
-
-      {/* Start Date — per gap, right border divides per-gap from per-member columns */}
-      <td className={`${tdGap} ${styles.tdGapDivide}`}>
-        <div className={styles.gapItems}>
-          {gaps.map(g => (
-            <div key={g.code} className={styles.gapItem}>
-              <span className={styles.startDateValue}>{g.startDate ?? member.startDate}</span>
-            </div>
-          ))}
-        </div>
-      </td>
-
-      {/* Outreach — per member */}
-      <td className={styles.td}>
-        <OutreachCell member={member} />
-      </td>
-
-      {/* AdvIllness */}
-      <td className={styles.td}>
-        <span className={styles.numText}>{member.advIllness ?? 0}</span>
-      </td>
-
-      {/* Frailty */}
-      <td className={styles.td}>
-        <span className={styles.numText}>{member.frailty ?? 0}</span>
-      </td>
-
-      {/* Risk Level — uses shared <Badge size="M"> with risk variants */}
-      <td className={styles.td}>
-        {member.riskLevel ? (
-          <Badge size="M" variant={RISK_BADGE_VARIANT[member.riskLevel]} label={member.riskLevel} />
-        ) : (
-          <span className={styles.muted}>—</span>
-        )}
-      </td>
-
-      {/* Tasks */}
-      <td className={styles.td}>
-        {member.tasks != null
-          ? <span className={styles.numText}>{member.tasks}</span>
-          : <span className={styles.muted}>—</span>}
-      </td>
+      {visibleMiddle.map(col => {
+        const className = col.getTdClassName ? col.getTdClassName(member) : (col.tdClassName || styles.td);
+        return (
+          <td
+            key={col.key}
+            data-col-key={col.key}
+            className={className}
+            onClick={col.stopRowClickPropagation ? (e) => e.stopPropagation() : undefined}
+          >
+            {col.renderCell(member, cellCtx)}
+          </td>
+        );
+      })}
 
       {/* Actions */}
       <td className={`${styles.actionsCell} ${styles.stickyRight}`}>

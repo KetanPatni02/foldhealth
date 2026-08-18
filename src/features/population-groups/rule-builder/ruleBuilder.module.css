@@ -611,3 +611,342 @@
 }
 .canvasJoin .ifTail { margin-left: 13px; }
 .canvasJoin .combo { background: var(--neutral-0); }
+
+/* ── Drag-reorder ── */
+.nodeDragging { opacity: 0.4; }
+.nodeDropBefore { box-shadow: inset 0 2px 0 var(--primary-300); }
+.nodeDropAfter { box-shadow: inset 0 -2px 0 var(--primary-300); }
+
+/* ── Combinator toggle (edit mode) ── */
+.combinatorToggle {
+  cursor: pointer;
+  border: 0.5px solid var(--neutral-150);
+  transition: background 150ms, color 150ms;
+}
+.combinatorToggle:hover { background: var(--primary-50); color: var(--primary-300); }
+
+/* ── Bracket hover actions ── */
+.bracketToggle {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.bracketToggle:hover { color: var(--primary-300); }
+.bracketActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+/* ── Live qualified-member preview panel (edit mode, right side) ── */
+.previewPanel {
+  width: 260px;
+  flex-shrink: 0;
+  border-left: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.previewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.previewTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.previewCount {
+  font-size: 28px;
+  font-weight: 500;
+  color: var(--neutral-500);
+  padding: 12px;
+  line-height: 1.2;
+}
+.previewError {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--status-error-light);
+  font-size: 12px;
+  color: var(--status-error);
+}
+.previewList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 12px 12px;
+}
+.previewEmpty {
+  display: block;
+  padding: 12px 0;
+  font-size: 13px;
+  color: var(--neutral-200);
+}
+.previewRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 4px 0;
+  gap: 8px;
+}
+.previewName {
+  font-size: 13px;
+  color: var(--neutral-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.previewMeta {
+  font-size: 12px;
+  color: var(--neutral-200);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.previewMore {
+  display: block;
+  padding: 6px 0;
+  font-size: 12px;
+  color: var(--neutral-200);
+  text-align: center;
+}
+/* ── Terminology search ── */
+.termSearchWrap {
+  width: 100%;
+  position: relative;
+}
+.termSearchInput {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.termDropdown {
+  position: fixed;
+  z-index: 2500;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+  max-height: 280px;
+  overflow-y: auto;
+}
+.termItem {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+  color: var(--neutral-400);
+}
+.termItem:hover,
+.termItemActive { background: var(--neutral-50); }
+.termCode {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary-300);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.termTitle {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.termEmpty {
+  padding: 12px;
+  font-size: 13px;
+  color: var(--neutral-200);
+  text-align: center;
+}
+
+/* ── Selected code chip ── */
+.selectedCode {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+}
+.selectedCodeText {
+  font-size: 13px;
+  color: var(--neutral-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+}
+
+/* ── Lookback window ── */
+.lookbackSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+}
+.lookbackToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+}
+.lookbackDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--neutral-200);
+  background: var(--neutral-0);
+  flex-shrink: 0;
+  transition: border-color 150ms, background 150ms;
+}
+.lookbackDotActive {
+  border-color: var(--primary-300);
+  background: var(--primary-300);
+}
+.lookbackRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Collapsed strip — clickable pill at the right edge */
+.previewCollapsed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  border: none;
+  border-left: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.previewCollapsedCount {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+
+/* ── Triggers tab ── */
+.triggersTab {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  flex: 1;
+  overflow-y: auto;
+}
+.triggersHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.triggersTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.triggersError {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  background: var(--status-error-light);
+  font-size: 13px;
+  color: var(--status-error);
+}
+.triggerCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+}
+.triggerCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.triggerCardName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  flex: 1;
+  min-width: 0;
+}
+.triggerCardActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.triggerCardBody {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 32px;
+}
+.triggerCardAction {
+  font-size: 13px;
+  color: var(--neutral-300);
+}
+.triggerEventDesc {
+  font-size: 12px;
+  color: var(--neutral-200);
+  line-height: 1.4;
+}
+
+/* ── Export panel (SQL/JsonLogic) ── */
+.exportSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-top: 0.5px solid var(--neutral-150);
+}
+.exportLabel {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--neutral-200);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+.exportCode {
+  font-size: 12px;
+  color: var(--neutral-400);
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  padding: 8px 10px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 120px;
+  overflow-y: auto;
+}

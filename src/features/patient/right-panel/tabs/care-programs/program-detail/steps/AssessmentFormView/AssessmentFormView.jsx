@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
+import { Badge } from '../../../../../../../../components/Badge/Badge';
 import { FieldInput } from '../../../../../../../forms/builder/FieldInput';
 import { evaluate } from '../../../../../../../forms/scoring/evaluate';
 import { toQuestionnaire } from '../../../../../../../forms/builder/engineAdapter';
 import { isVisible } from '../../../../../../../forms/render/layout';
 import { resolveRecall } from '../../../../../../../forms/render/recall';
 import { isAnswered } from '../../../../../../../forms/scoring/util';
+import { SEVERITY } from '../../../../../../../forms/scoring/types';
 import styles from './AssessmentFormView.module.css';
 
 // Stable identity for "no answers yet" so the scoring/visibility memos below
@@ -59,8 +61,11 @@ function renderNode(field, ctx) {
  * Renders the form saved under `formName` (from Settings → Content → Forms)
  * inside the program window, in the Review layout: a stats strip (progress /
  * score / interpretation) above the form's own questions.
+ *
+ * `fallbackForm` is used when the named form is missing from Content → Forms
+ * (e.g. the TOC queue drawer rendering PHQ-9 from the validated instrument).
  */
-export function AssessmentFormView({ formName, interpretation = 'High Risk' }) {
+export function AssessmentFormView({ formName, interpretation = 'High Risk', fallbackForm = null, initialAnswers = null }) {
   const fetchFormByName = useAppStore(s => s.fetchFormByName);
   const [form, setForm] = useState(null);
   // Which form the loaded `form` belongs to. `loading` is derived from it
@@ -69,19 +74,28 @@ export function AssessmentFormView({ formName, interpretation = 'High Risk' }) {
   const [loadedFor, setLoadedFor] = useState(null);
   const loading = loadedFor !== formName;
   // Answers keyed by form name, so pointing at a different form starts from a
-  // clean sheet without an explicit reset.
-  const [answersByForm, setAnswersByForm] = useState({});
+  // clean sheet without an explicit reset. `initialAnswers` seeds the map on
+  // mount — used by the TOC drawer to show an already-filled assessment.
+  const [answersByForm, setAnswersByForm] = useState(() =>
+    initialAnswers ? { [formName]: initialAnswers } : {},
+  );
   const answers = answersByForm[formName] ?? EMPTY_ANSWERS;
 
   useEffect(() => {
     let active = true;
-    fetchFormByName(formName).then(f => {
-      if (!active) return;
-      setForm(f);
-      setLoadedFor(formName);
-    });
+    fetchFormByName(formName)
+      .then(f => {
+        if (!active) return;
+        setForm(f || fallbackForm || null);
+        setLoadedFor(formName);
+      })
+      .catch(() => {
+        if (!active) return;
+        setForm(fallbackForm || null);
+        setLoadedFor(formName);
+      });
     return () => { active = false; };
-  }, [formName, fetchFormByName]);
+  }, [formName, fetchFormByName, fallbackForm]);
 
   const items = useMemo(() => form?.schema?.items || [], [form]);
   const onAnswer = (linkId, v) =>
@@ -115,6 +129,15 @@ export function AssessmentFormView({ formName, interpretation = 'High Risk' }) {
     () => (evalResult.scores || []).reduce((a, s) => a + (typeof s.value === 'number' ? s.value : 0), 0),
     [evalResult],
   );
+  const scoredBand = (evalResult.scores || []).find(s => s.band)?.band;
+  const interpLabel = scoredBand?.label || interpretation;
+  const interpTone = scoredBand
+    ? (scoredBand.severity === SEVERITY.CRITICAL || scoredBand.severity === SEVERITY.HIGH
+      ? 'error'
+      : scoredBand.severity === SEVERITY.WARNING ? 'warning'
+      : scoredBand.severity === SEVERITY.INFO ? 'info'
+      : 'grey')
+    : 'error';
 
   if (loading) return <div className={styles.state}>Loading form…</div>;
   if (!form) {
@@ -140,7 +163,7 @@ export function AssessmentFormView({ formName, interpretation = 'High Risk' }) {
         <span className={styles.stripDot} />
         <span className={styles.stripItem}>Assessment Score: <span className={styles.stripValue}>{score}</span></span>
         <span className={styles.stripDot} />
-        <span className={styles.stripItem}>Interpretation Score : <span className={styles.interp}>{interpretation}</span></span>
+        <span className={styles.stripItem}>Interpretation Score : <Badge tone={interpTone} size="S" label={interpLabel} /></span>
       </div>
 
       {/* Form questions — rendered from the saved definition */}

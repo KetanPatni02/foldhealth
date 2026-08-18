@@ -1,0 +1,65 @@
+/* Import Rule drawer — template list grouped by category. */
+.error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background: var(--status-error-light);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--status-error);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+.groupTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--neutral-200);
+  padding: 4px 0;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 150ms, background 150ms;
+}
+.card:hover { background: var(--neutral-50); }
+.cardActive {
+  border-color: var(--primary-300);
+  background: var(--primary-50);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.cardName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.cardDesc {
+  font-size: 13px;
+  color: var(--neutral-300);
+  line-height: 1.4;
+}

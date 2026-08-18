@@ -22,9 +22,11 @@ const SECTIONS = {
   home: { eyebrow: 'Fold Health', title: 'Home', description: 'Your daily overview — alerts, tasks, calendar, and notes at a glance.', hash: '/home' },
 
   // Population worklists
-  population: { eyebrow: 'Population', title: 'TOC Worklist', description: 'Prioritized worklist of patients in transition of care.', hash: '/population/toc-worklist' },
-  toc: { eyebrow: 'Population', title: 'TOC Worklist', description: 'Prioritized worklist of patients in transition of care.', hash: '/population/toc-worklist' },
-  'toc-queue': { eyebrow: 'Population', title: 'TOC Queue', description: 'Queue of patients awaiting agent-led outreach.', hash: '/population/toc-queue' },
+  population: { eyebrow: 'Population', title: 'TCM Worklist', description: 'Prioritized worklist of patients in transitional care management.', hash: '/population/tcm' },
+  toc: { eyebrow: 'Population', title: 'TOC', description: 'Agent-led outreach queue for transition-of-care patients.', hash: '/population/toc' },
+  tcm: { eyebrow: 'Population', title: 'TCM Worklist', description: 'Prioritized worklist of patients in transitional care management.', hash: '/population/tcm' },
+  'tcm-queue': { eyebrow: 'Population', title: 'TCM Queue', description: 'Queue of patients awaiting agent-led outreach.', hash: '/population/tcm-queue' },
+  'toc-queue': { eyebrow: 'Population', title: 'TCM Queue', description: 'Queue of patients awaiting agent-led outreach.', hash: '/population/tcm-queue' },
   hcc: { eyebrow: 'Population · Risk Adjustment', title: 'HCC Coding', description: 'Risk-adjustment coding worklist with the per-DOS review pipeline: Support → Coder → QA → Compliance → ASM.', hash: '/population/hcc' },
   hedis: { eyebrow: 'Population · Quality', title: 'HEDIS', description: 'Quality-measure gap worklist and clinical note review.', hash: '/hedis' },
   awv: { eyebrow: 'Population', title: 'AWV Worklist', description: 'Annual Wellness Visit worklist and scheduling.', hash: '/population/awv' },

@@ -1,4 +1,4 @@
-# Fold Health — TOC Worklist Platform
+# Fold Health — Care Coordination Platform
 
 A comprehensive healthcare operations platform for Transitional Care Organizations (TCOs), built to coordinate multi-agent patient outreach, track care management goals, monitor population health analytics, and manage AI-powered care workflows.
 

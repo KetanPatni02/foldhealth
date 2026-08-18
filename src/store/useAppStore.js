@@ -742,7 +742,7 @@ const HCC_TRANSITION_LABEL = {
 // Maps a shared-list label to the store-state key that holds its active
 // filter selections. Used by the generic saved-filter actions below so that
 // saving / applying a filter on any list writes to the right slice.
-// Lists not listed here fall back to `activeFilters` (the TOC default).
+// Lists not listed here fall back to `activeFilters` (the TCM / TOC default).
 const LIST_FILTER_KEY = {
   HCC:   'hccFilters',
   HEDIS: 'hedisFilters',
@@ -1954,7 +1954,7 @@ export const useAppStore = create((set, get) => ({
 
   // Filters
   activeFilters: {},  // { gender: 'F', language: 'es', lace: 'High', ... }
-  activeSubnavList: 'TOC',  // which SubNav list is selected
+  activeSubnavList: 'TCM',  // which SubNav list is selected
 
   // ── Per-user worklist ordering (SubNav drag-and-drop) ──
   // Array of worklist labels in the user's preferred display order. Loaded
@@ -1965,7 +1965,12 @@ export const useAppStore = create((set, get) => ({
   worklistOrder: (() => {
     try {
       const cached = JSON.parse(localStorage.getItem('worklistOrder') || 'null');
-      return Array.isArray(cached) && cached.length > 0 ? cached : null;
+      if (!Array.isArray(cached) || cached.length === 0) return null;
+      // Pre-split caches stored the care-manager list as "TOC"; that list is TCM.
+      if (cached.includes('TOC') && !cached.includes('TCM')) {
+        return cached.map(l => (l === 'TOC' ? 'TCM' : l));
+      }
+      return cached;
     } catch { return null; }
   })(),
   worklistOrderLoaded: false,
@@ -2005,7 +2010,11 @@ export const useAppStore = create((set, get) => ({
     // that no longer exist, append any new worklists at the end.
     const known = defaultLabels || [];
     const knownSet = new Set(known);
-    const saved = (order || []).filter(l => knownSet.has(l));
+    let saved = (order || []).filter(l => knownSet.has(l));
+    // Pre-split saved orders used "TOC" for the care-manager worklist (now TCM).
+    if (saved.includes('TOC') && !saved.includes('TCM')) {
+      saved = saved.map(l => (l === 'TOC' ? 'TCM' : l));
+    }
     const savedSet = new Set(saved);
     const merged = [...saved, ...known.filter(l => !savedSet.has(l))];
 
@@ -2432,6 +2441,7 @@ export const useAppStore = create((set, get) => ({
   // ─── Supabase: Persist a patient update ───
   persistPatient: async (id, updates) => {
     const dbUpdates = updatesToDb(updates);
+    if (!Object.keys(dbUpdates).length) return;
     const { error } = await supabase
       .from('patients')
       .update(dbUpdates)
@@ -2742,6 +2752,18 @@ export const useAppStore = create((set, get) => ({
     s.pgRuleBuilder ? { pgRuleBuilder: { ...s.pgRuleBuilder, name } } : {}
   )),
 
+  /* Silent count-sync: the rule-builder detail screen evaluates live
+     membership and pushes the real Active/Inactive split back so the table's
+     columns stay honest (profile data changes between visits).  Fire and
+     forget — never blocks the view or toasts the user. */
+  syncPopGroupCounts: async (id, { count, inactive }) => {
+    const { error } = await supabase
+      .from('population_groups')
+      .update({ active_count: count, inactive_count: inactive })
+      .eq('id', id);
+    if (error) { console.warn('[store] syncPopGroupCounts failed:', error.message); return; }
+    set(s => ({ popGroups: s.popGroups.map(g => (g.id === id ? { ...g, count, inactive } : g)) }));
+  },
   deletePopGroup: async (id) => {
     const name = get().popGroups.find(g => g.id === id)?.name;
     const { error } = await supabase
@@ -3169,7 +3191,11 @@ export const useAppStore = create((set, get) => ({
     if (from !== list) track('nav.list_changed', { from, to: list });
     // Any explicit list change pins the session — fetchWorklistOrder's
     // top-of-list auto-landing resets this flag after its own call.
-    set({ activeSubnavList: list, currentPage: 1, _subnavNavigated: true });
+    // TOC is the standalone queue worklist; TCM keeps the Worklist / Queue tabs.
+    const tabPatch = list === 'TOC' ? { activeTab: 'toc-queue' }
+      : list === 'TCM' ? { activeTab: 'toc-worklist' }
+      : {};
+    set({ activeSubnavList: list, currentPage: 1, _subnavNavigated: true, ...tabPatch });
     updateHash(get);
     // First time we land on the HCC list with no filters yet, seed the
     // role-scoped default queue so users don't stare at the full worklist.
@@ -5911,6 +5937,113 @@ export const useAppStore = create((set, get) => ({
     set({ hccColumnOrder: [] });
   },
 
+  // ── Generic per-worklist column prefs (Supabase + localStorage) ──
+  // Every worklist in the app shares one ColumnConfigPopover; the per-user
+  // hide/reorder state lives here keyed by worklist_key (e.g. 'toc-queue',
+  // 'awv', 'population-groups'). Supabase table: user_worklist_column_prefs
+  // (see supabase/user_worklist_column_prefs_migration.sql). Local storage
+  // seeds the first paint before the DB fetch resolves, matching the
+  // worklistOrder / autoPageSize patterns already in the store.
+  worklistColumnPrefs: (() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem('worklistColumnPrefs') || 'null');
+      return (cached && typeof cached === 'object') ? cached : {};
+    } catch { return {}; }
+  })(),
+  worklistColumnPrefsLoaded: false,
+  // Stash per-worklist default key orders once (matches _hccDefaultColumnKeys)
+  // so reorder can seed itself the first time the user drags a row.
+  _worklistDefaultColumnKeys: {},
+  setWorklistDefaultColumnKeys: (worklistKey, keys) => set(s => {
+    if (s._worklistDefaultColumnKeys[worklistKey]?.length) return {};
+    return { _worklistDefaultColumnKeys: { ...s._worklistDefaultColumnKeys, [worklistKey]: keys } };
+  }),
+
+  fetchWorklistColumnPrefs: async () => {
+    if (get().worklistColumnPrefsLoaded) return;
+    try {
+      const userId = await get()._resolveWorklistUser();
+      const { data, error } = await supabase
+        .from('user_worklist_column_prefs')
+        .select('worklist_key, column_order, hidden_cols')
+        .eq('user_id', userId);
+      if (!error && Array.isArray(data)) {
+        const merged = { ...get().worklistColumnPrefs };
+        for (const row of data) {
+          merged[row.worklist_key] = {
+            order: Array.isArray(row.column_order) ? row.column_order : [],
+            hidden: Array.isArray(row.hidden_cols) ? row.hidden_cols : [],
+          };
+        }
+        set({ worklistColumnPrefs: merged });
+        try { localStorage.setItem('worklistColumnPrefs', JSON.stringify(merged)); } catch { /* */ }
+      }
+    } catch { /* table may not exist yet — keep local cache */ }
+    set({ worklistColumnPrefsLoaded: true });
+  },
+
+  _persistWorklistColumnPref: async (worklistKey) => {
+    const prefs = get().worklistColumnPrefs[worklistKey];
+    if (!prefs) return;
+    try { localStorage.setItem('worklistColumnPrefs', JSON.stringify(get().worklistColumnPrefs)); } catch { /* */ }
+    try {
+      const userId = await get()._resolveWorklistUser();
+      const { error } = await supabase
+        .from('user_worklist_column_prefs')
+        .upsert(
+          {
+            user_id: userId,
+            worklist_key: worklistKey,
+            column_order: prefs.order || [],
+            hidden_cols: prefs.hidden || [],
+          },
+          { onConflict: 'user_id,worklist_key' },
+        );
+      if (error) console.warn('[store] persist column prefs failed — run supabase/user_worklist_column_prefs_migration.sql:', error.message);
+    } catch (e) {
+      console.warn('[store] persist column prefs failed:', e?.message);
+    }
+  },
+
+  toggleWorklistColumn: (worklistKey, colKey) => {
+    track('worklist.column_toggled', { worklist: worklistKey, column: colKey });
+    set(s => {
+      const cur = s.worklistColumnPrefs[worklistKey] || { order: [], hidden: [] };
+      const nextHidden = new Set(cur.hidden);
+      if (nextHidden.has(colKey)) nextHidden.delete(colKey); else nextHidden.add(colKey);
+      const next = { ...s.worklistColumnPrefs, [worklistKey]: { ...cur, hidden: [...nextHidden] } };
+      return { worklistColumnPrefs: next };
+    });
+    get()._persistWorklistColumnPref(worklistKey);
+  },
+
+  reorderWorklistColumn: (worklistKey, fromKey, toKey) => {
+    if (!fromKey || !toKey || fromKey === toKey) return;
+    track('worklist.columns_reordered', { worklist: worklistKey, from: fromKey, to: toKey });
+    set(s => {
+      const cur = s.worklistColumnPrefs[worklistKey] || { order: [], hidden: [] };
+      const base = cur.order.length
+        ? [...cur.order]
+        : (s._worklistDefaultColumnKeys[worklistKey] || []);
+      if (!base.length) return {};
+      const from = base.indexOf(fromKey);
+      const to = base.indexOf(toKey);
+      if (from < 0 || to < 0) return {};
+      base.splice(to, 0, base.splice(from, 1)[0]);
+      const next = { ...s.worklistColumnPrefs, [worklistKey]: { ...cur, order: base } };
+      return { worklistColumnPrefs: next };
+    });
+    get()._persistWorklistColumnPref(worklistKey);
+  },
+
+  resetWorklistColumns: (worklistKey) => {
+    track('worklist.columns_reset', { worklist: worklistKey });
+    set(s => ({
+      worklistColumnPrefs: { ...s.worklistColumnPrefs, [worklistKey]: { order: [], hidden: [] } },
+    }));
+    get()._persistWorklistColumnPref(worklistKey);
+  },
+
   // ─── HCC DOS-level assignment engine ─────────────────────────────────
   // Per-(patient, DOS) assignment state keyed as `${patientId}::${dosDate}`.
   // The shape is defined in features/hcc/assignment/dosState.js. Lifecycle
@@ -8102,12 +8235,16 @@ export const useAppStore = create((set, get) => ({
       }
       return newP;
     });
-    toast.success('TOC Agent Invoked Successfully');
+    toast.success('Agent Invoked Successfully');
     set({ patients: updated, selectedIds: [], showInvokeModal: false, queueTabDot: true });
 
-    // Auto-navigate to the queue tab so users see their invoked patients
-    const { setActiveTab } = get();
-    setActiveTab('toc-queue');
+    // Stay on the TOC worklist (it is the queue) or jump to the TCM queue tab.
+    if (get().activeSubnavList === 'TOC') {
+      updateHash(get);
+    } else {
+      set({ activeSubnavList: 'TCM' });
+      get().setActiveTab('toc-queue');
+    }
 
     // Create call records for invoked patients and persist to Supabase
     for (const p of updated) {
